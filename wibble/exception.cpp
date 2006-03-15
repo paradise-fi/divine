@@ -1,7 +1,7 @@
 /*
  * Generic base exception hierarchy
  * 
- * Copyright (C) 2003,2004,2005  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003,2004,2005,2006  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
