@@ -1,7 +1,7 @@
 /*
  * Generic base exception hierarchy
  * 
- * Copyright (C) 2003  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003,2004,2005  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,17 +17,21 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
-#include <Exception.h>
+#include <wibble/exception.h>
 
 #include <string.h> // strerror_r
-#include <errno.h> // strerror_r
+#include <errno.h>
 
 #include <typeinfo>
 #include <sstream>
+#include <iostream>
 
 #include <execinfo.h>
 
 using namespace std;
+
+namespace wibble {
+namespace exception {
 
 void DefaultUnexpected()
 {
@@ -37,19 +41,19 @@ void DefaultUnexpected()
 		size_t size = backtrace (addrs, trace_size);
 		char **strings = backtrace_symbols (addrs, size);
 
-		fprintf(stderr, "Caught unexpected exception, %d stack frames unwound:\n", (int)size);
+		cerr << "Caught unexpected exception, " << size << " stack frames unwound:" << endl;
 		for (size_t i = 0; i < size; i++)
-			fprintf (stderr, "   %s\n", strings[i]);
+			cerr << "   " << strings[i] << endl;
 		free (strings);
 		throw;
-	} catch (Exception& e) {
-		fprintf(stderr, "Exception was: %s: %.*s.\n", e.type(), PFSTR(e.desc()));
+	} catch (Generic& e) {
+		cerr << "Exception was: " << e.type() << ": " << e.fullInfo() << endl;
 		throw;
-	} catch (exception& e) {
-		fprintf(stderr, "Exception was: %s: %s\n", typeid(e).name(), e.what());
+	} catch (std::exception& e) {
+		cerr << "Exception was: " << typeid(e).name() << ": " << e.what() << endl;
 		throw;
 	} catch (...) {
-		fprintf(stderr, "Exception was: unknown object\n");
+		cerr << "Exception was an unknown object" << endl;
 		throw;
 	}
 }
@@ -66,11 +70,11 @@ InstallUnexpected::~InstallUnexpected()
 
 
 template<typename C>
-virtual std::string ValOutOfRange<C>::desc() const throw ()
+std::string ValOutOfRange<C>::desc() const throw ()
 {
 	stringstream str;
 	str << m_var_desc << "(" << m_val << ") out of range (" <<
-			_inf << "-" << _sup << ")";
+			m_inf << "-" << m_sup << ")";
 	return str.str();
 }
 
@@ -79,12 +83,74 @@ virtual std::string ValOutOfRange<C>::desc() const throw ()
 System::System(const std::string& context) throw ()
 	: Generic(context), m_errno(errno) {}
 
-string SystemException::desc() const throw ()
+string System::desc() const throw ()
 {
 	const int buf_size = 100;
 	char buf[buf_size];
-	strerror_r(_code, buf, buf_size);
+	strerror_r(m_errno, buf, buf_size);
 	return buf;
 }
 
+}
+}
+
+#ifdef COMPILE_TESTSUITE
+
+#include <wibble/tests.h>
+#include <unistd.h>
+
+namespace tut {
+
+using namespace wibble::tests;
+using namespace wibble;
+
+struct wibble_exception_shar {
+};
+
+TESTGRP(wibble_exception);
+
+// Generic
+template<> template<>
+void to::test<1>()
+{
+	try {
+		throw exception::Generic("antani");
+	} catch ( std::exception& e ) {
+		ensure(string(e.what()).find("antani") != string::npos);
+	}
+
+	try {
+		throw exception::Generic("antani");
+	} catch ( exception::Generic& e ) {
+		ensure(e.fullInfo().find("antani") != string::npos);
+	}
+}
+
+// System
+template<> template<>
+void to::test<2>()
+{
+	try {
+		ensure_equals(access("does-not-exist", F_OK), -1);
+		throw exception::System("checking for existance of nonexisting file");
+	} catch ( exception::System& e ) {
+		// Check that we caught the right value of errno
+		ensure_equals(e.code(), ENOENT);
+	}
+
+	try {
+		ensure_equals(access("does-not-exist", F_OK), -1);
+		throw exception::File("does-not-exist", "checking for existance of nonexisting file");
+	} catch ( exception::File& e ) {
+		// Check that we caught the right value of errno
+		ensure_equals(e.code(), ENOENT);
+		ensure(e.fullInfo().find("does-not-exist") != string::npos);
+	}
+}
+
+
+
+}
+
+#endif
 // vim:set ts=4 sw=4:

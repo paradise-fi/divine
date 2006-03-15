@@ -4,7 +4,7 @@
 /*
  * Generic base exception hierarchy
  *
- * Copyright (C) 2003  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003,2004,2005  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
 
 #include <exception>
 #include <string>
+#include <vector>
 
 /*! \file
  * This file provides the root of the exception hierarchy.  The goal of this
@@ -108,10 +109,10 @@ public:
 	 * happened when doing B"
 	 */
 	Context() throw () {}
-	Context(const std::string& context) throw () { add(context); };
+	Context(const std::string& context) throw () { addContext(context); };
 
 	void addContext(const std::string& c) throw () { m_context.push_back(c); }
-	std::string formatContext() throw ()
+	std::string formatContext() const throw ()
 	{
 		if (m_context.empty())
 			return "no context information available";
@@ -138,7 +139,7 @@ public:
 class Generic : public std::exception, public Context
 {
 protected:
-	std::string m_formatted;
+	mutable std::string m_formatted;
 
 public:
 	Generic() throw () {}
@@ -179,11 +180,11 @@ public:
  * \warning Any function throwing InterruptedException must allow to be called
  * again with the same parameters to retry the operation
  */
-class Interrupted : public generic
+class Interrupted : public Generic
 {
 public:
 	Interrupted() throw () {}
-	Interrupted(const std::string& context) throw () : generic(context) {}
+	Interrupted(const std::string& context) throw () : Generic(context) {}
 
 	virtual const char* type() const throw () { return "Interrupted"; }
 };
@@ -196,7 +197,7 @@ public:
  * \warning Any function throwing WaitInterruptedException must allow to be
  * called again with the same parameters to retry the operation
  */
-class WaitInterrupted : public InterruptedException
+class WaitInterrupted : public Interrupted
 {
 public:
 	WaitInterrupted(const std::string& context) throw () :
@@ -234,7 +235,8 @@ protected:
 
 public:
 	OutOfRange(const std::string& var_desc, const std::string& context) throw ()
-		: Consistency(context), _var_desc(var_desc) {}
+		: Consistency(context), m_var_desc(var_desc) {}
+	~OutOfRange() throw () {}
 
 	virtual const char* type() const throw () { return "OutOfRange"; }
 
@@ -320,7 +322,6 @@ protected:
 
 public:
 	System(const std::string& context) throw ();
-		Context(context), _code(code) {}
 
 	virtual const char* type() const throw () { return "System"; }
 
@@ -345,6 +346,7 @@ protected:
 public:
 	File(const std::string& name, const std::string& context)	throw () :
 		System(context), m_name(name) {}
+	~File() throw () {}
 
 	virtual const char* type() const throw () { return "FileException"; }
 
