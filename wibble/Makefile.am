@@ -1,9 +1,13 @@
 wibbledir = $(includedir)/wibble
 
-wibble_HEADERS = tests.h
+wibble_HEADERS = \
+	exception.h \
+	tests.h
 
 lib_LTLIBRARIES = libwibble.la
-libwibble_la_SOURCES = tests.cpp
+libwibble_la_SOURCES = \
+	exception.cpp \
+	tests.cpp
 
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
