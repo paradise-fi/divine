@@ -46,17 +46,35 @@ void OptionParser::addWithoutAna(Option* o)
 	}
 }
 
+void OptionParser::addWithoutAna(const std::vector<Option*>& o)
+{
+	for (std::vector<Option*>::const_iterator i = o.begin();
+			i != o.end(); ++i)
+		addWithoutAna(*i);
+}
+
+void OptionParser::rebuild()
+{
+	// Clear the parser tables
+	m_short.clear();
+	m_long.clear();
+
+	// Add the options from the groups
+	for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
+			i != m_groups.end(); ++i)
+		addWithoutAna((*i)->options);
+
+	// Add the stray options
+	addWithoutAna(m_options);
+}
+
 void OptionParser::add(Option* o)
 {
-	addWithoutAna(o);
 	m_options.push_back(o);	
 }
 
 void OptionParser::add(OptionGroup* group)
 {
-	const vector<Option*>& v = group->options;
-	for (vector<Option*>::const_iterator i = v.begin(); i != v.end(); i++)
-		addWithoutAna(*i);
 	m_groups.push_back(group);	
 }
 
@@ -115,6 +133,8 @@ iter OptionParser::parseConsecutiveSwitches(arglist& list, iter begin)
 
 iter OptionParser::parse(arglist& list, iter begin)
 {
+	rebuild();
+
 	bool foundNonSwitches = false;
 	iter firstNonSwitch;
 	while (begin != list.end())

@@ -10,11 +10,16 @@ namespace wibble {
 namespace exception {
 class BadOption : public Consistency
 {
+	std::string m_error;
+
 public:
-	BadOption(const std::string& context) throw ()
-		: Consistency(context) {}
+	BadOption(const std::string& error, const std::string& context = std::string("parsing commandline options")) throw ()
+		: Consistency(context), m_error(error) {}
+	~BadOption() throw () {}
 
 	virtual const char* type() const throw () { return "BadOption"; }
+	virtual std::string desc() const throw () { return m_error; }
+
 };
 }
 

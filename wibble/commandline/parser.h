@@ -53,6 +53,8 @@ class OptionParser : public Parser
 	iter parseConsecutiveSwitches(arglist& list, iter begin);
 
 	void addWithoutAna(Option* o);
+	void addWithoutAna(const std::vector<Option*>& o);
+	void rebuild();
 
 public:
 	OptionParser(const std::string& name,
