@@ -67,6 +67,24 @@ public:
 	void add(Option* o);
 	void add(OptionGroup* group);
 
+	template<typename T>
+	T* create(const std::string& name,
+			char shortName,
+			const std::string& longName,
+			const std::string& usage = std::string(),
+			const std::string& description = std::string())
+	{
+		T* item = new T(name, shortName, longName, usage, description);
+		add(item);
+		return item;
+	}
+	OptionGroup* create(const std::string& description)
+	{
+		OptionGroup* g = new OptionGroup(description);
+		add(g);
+		return g;
+	}
+
 	const std::vector<OptionGroup*>& groups() const { return m_groups; }
 	const std::vector<Option*>& options() const { return m_options; }
 

@@ -176,6 +176,18 @@ public:
 	std::vector<Option*> options;
 
 	std::string description;
+
+	template<typename T>
+	T* create(const std::string& name,
+			char shortName,
+			const std::string& longName,
+			const std::string& usage = std::string(),
+			const std::string& description = std::string())
+	{
+		T* item = new T(name, shortName, longName, usage, description);
+		add(item);
+		return item;
+	}
 };
 
 }

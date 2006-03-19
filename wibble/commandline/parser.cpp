@@ -464,6 +464,46 @@ void to::test<3>()
 	}
 }
 
+// Test creation shortcuts
+template<> template<>
+void to::test<4>()
+{
+	OptionParser parser("test", "[options]", "test parser", "this is the long description of a test parser");
+	OptionGroup* group = parser.create("test option group");
+	BoolOption* testBool = group->create<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
+	IntOption* testInt = group->create<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
+	StringOption* testString = group->create<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
+	BoolOption* testBool1 = parser.create<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
+	IntOption* testInt1 = parser.create<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
+	StringOption* testString1 = parser.create<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
+
+	list<const char*> opts;
+	opts.push_back("--testbool=true");
+	opts.push_back("--testint=3");
+	opts.push_back("--teststring=antani");
+	opts.push_back("--testbool1=true");
+	opts.push_back("--testint1=5");
+	opts.push_back("--teststring1=blinda");
+
+	iter i = parser.parseList(opts);
+	ensure(i == opts.end());
+	ensure_equals(opts.size(), 0u);
+	ensure_equals(testBool->boolValue(), true);
+	ensure_equals(testInt->intValue(), 3);
+	ensure_equals(testString->stringValue(), "antani");
+	ensure_equals(testBool1->boolValue(), true);
+	ensure_equals(testInt1->intValue(), 5);
+	ensure_equals(testString1->stringValue(), "blinda");
+
+	delete testString1;
+	delete testInt1;
+	delete testBool1;
+	delete testString;
+	delete testInt;
+	delete testBool;
+	delete group;
+}
+
 }
 
 #endif
