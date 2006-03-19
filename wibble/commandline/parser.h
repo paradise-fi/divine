@@ -118,8 +118,10 @@ class CommandParser : public Parser
 {
 	OptionParser* m_last_command;
 	std::map<std::string, OptionParser*> m_aliases;
+	std::vector<OptionParser*> m_parsers;
 
 	void add(const std::string& alias, OptionParser* o);
+	void rebuild();
 
 public:
 	CommandParser(const std::string& name,
@@ -130,9 +132,23 @@ public:
 			usage(usage), description(description), longDescription(longDescription) {}
 
 	OptionParser* lastCommand() const { return m_last_command; }
-	OptionParser* command(const std::string& name) const;
 
-	void add(OptionParser& o);
+	const std::vector<OptionParser*>& commands() const { return m_parsers; }
+
+	void add(OptionParser* o);
+
+	/**
+	 * Create a new OptionParser and add it to this parser
+	 */
+	OptionParser* create(const std::string& name,
+					const std::string& usage = std::string(),
+					const std::string& description = std::string(),
+					const std::string& longDescription = std::string())
+	{
+		OptionParser* item = new OptionParser(name, usage, description, longDescription);
+		add(item);
+		return item;
+	}
 
 	/**
 	 * Look for a command as the first non-switch parameter found, then invoke
@@ -143,8 +159,6 @@ public:
 	 * If no commands have been found, returns begin.
 	 */
 	virtual iter parse(arglist& list, iter begin);
-
-	std::map<std::string, OptionParser*> getCommandInfo() const;
 
 	std::string usage;
 	std::string description;

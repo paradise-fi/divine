@@ -122,16 +122,16 @@ void Help::outputVersion(std::ostream& out)
 void Help::outputHelp(std::ostream& out, const CommandParser& cp)
 {
 	// Dig informations from cp
-	std::map<std::string, OptionParser*> m_info = cp.getCommandInfo();
+	std::vector<OptionParser*> m_info = cp.commands();
 	
 	HelpWriter writer(out);
 
 	// Compute the maximum length of alias names
 	size_t maxAliasSize = 0;
-	for (map<string, OptionParser*>::const_iterator i = m_info.begin();
+	for (vector<OptionParser*>::const_iterator i = m_info.begin();
 			i != m_info.end(); i++)
 	{
-		const string& str = i->second->primaryAlias;
+		const string& str = (*i)->primaryAlias;
 		if (maxAliasSize < str.size())
 			maxAliasSize = str.size();
 	}
@@ -144,11 +144,11 @@ void Help::outputHelp(std::ostream& out, const CommandParser& cp)
 	out << endl;
 
 	// Print the list
-	for (map<string, OptionParser*>::const_iterator i = m_info.begin();
+	for (vector<OptionParser*>::const_iterator i = m_info.begin();
 			i != m_info.end(); i++)
 	{
 		string aliases;
-		const vector<string>& v = i->second->aliases;
+		const vector<string>& v = (*i)->aliases;
 		if (!v.empty())
 		{
 			aliases += "  May also be invoked as ";
@@ -161,7 +161,7 @@ void Help::outputHelp(std::ostream& out, const CommandParser& cp)
 			aliases += ".";
 		}
 
-		writer.outlist(" " + i->second->primaryAlias, maxAliasSize + 3, i->second->description + "." + aliases);
+		writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
 	}
 
 	out << endl;
@@ -304,7 +304,7 @@ void Manpage::endSection(std::ostream& out)
 
 void Manpage::output(std::ostream& out, const CommandParser& cp, int section, const std::string& author)
 {
-	std::map<std::string, OptionParser*> m_info = cp.getCommandInfo();
+	vector<OptionParser*> m_info = cp.commands();
 
 	// Manpage header
 	out << ".TH " << toupper(m_app) << " " << section << " \"" << man_date() << "\" \"" << m_ver << "\"" << endl;
@@ -324,22 +324,22 @@ void Manpage::output(std::ostream& out, const CommandParser& cp, int section, co
 
 	startSection(out, "COMMANDS");
 	out << "\\fB" << cp.name() << "\\fP always requires a non-switch argument, that indicates what is the operation that should be performed:" << endl;
-	for (map<string, OptionParser*>::const_iterator i = m_info.begin();
+	for (vector<OptionParser*>::const_iterator i = m_info.begin();
 			i != m_info.end(); i++)
 	{
 		out << ".TP" << endl;
-		out << "\\fB" << i->second->primaryAlias << "\\fP";
+		out << "\\fB" << (*i)->primaryAlias << "\\fP";
 
-		const vector<string>& v = i->second->aliases;
+		const vector<string>& v = (*i)->aliases;
 		for (vector<string>::const_iterator j = v.begin(); j != v.end(); j++)
 			out << " or \\fB" << *j << "\\fP";
 		
-		out << " " << i->second->usage << endl;
+		out << " " << (*i)->usage << endl;
 		out << ".br" << endl;
-		if (i->second->longDescription.empty())
-			outputParagraph(out, i->second->description);
+		if ((*i)->longDescription.empty())
+			outputParagraph(out, (*i)->description);
 		else
-			outputParagraph(out, i->second->longDescription);
+			outputParagraph(out, (*i)->longDescription);
 	}
 	endSection(out);
 
@@ -350,12 +350,12 @@ void Manpage::output(std::ostream& out, const CommandParser& cp, int section, co
 	// Harvest merged option informations
 	set<OptionGroup*> groups;
 	vector<Option*> options;
-	for(map<string, OptionParser*>::const_iterator i = m_info.begin();
+	for(vector<OptionParser*>::const_iterator i = m_info.begin();
 			i != m_info.end(); i++)
 	{
-		if (i->first == string())
+		if ((*i)->name() == string())
 			continue;
-		OptionParser& o = *i->second;
+		OptionParser& o = **i;
 
 		for (vector<OptionGroup*>::const_iterator i = o.groups().begin();
 				i != o.groups().end(); i++)

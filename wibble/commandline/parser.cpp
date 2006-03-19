@@ -177,25 +177,28 @@ void CommandParser::add(const std::string& alias, OptionParser* o)
 	m_aliases[alias] = o;
 }
 
-void CommandParser::add(OptionParser& o)
+void CommandParser::rebuild()
 {
-	add(o.primaryAlias, &o);
-	for (vector<string>::const_iterator i = o.aliases.begin();
-			i != o.aliases.end(); ++i)
-		add(*i, &o);
+	m_aliases.clear();
+	for (vector<OptionParser*>::const_iterator i = m_parsers.begin();
+			i != m_parsers.end(); ++i)
+	{
+		add((*i)->primaryAlias, *i);
+		for (vector<string>::const_iterator j = (*i)->aliases.begin();
+				j != (*i)->aliases.end(); ++j)
+			add(*j, *i);
+	}
 }
 
-OptionParser* CommandParser::command(const std::string& name) const
+void CommandParser::add(OptionParser* o)
 {
-	map<string, OptionParser*>::const_iterator i = m_aliases.find(name);
-	if (i == m_aliases.end())
-		return 0;
-	else
-		return i->second;
+	m_parsers.push_back(o);
 }
 
 iter CommandParser::parse(arglist& list, iter begin)
 {
+	rebuild();
+
 	// Look for the first non-switch in the list
 	iter cmd = begin;
 	while (cmd != list.end() && isSwitch(*cmd))
@@ -226,24 +229,6 @@ iter CommandParser::parse(arglist& list, iter begin)
 
 	// Invoke the selected parser on the list
 	return a->second->parse(list, begin);
-}
-
-std::map<std::string, OptionParser*> CommandParser::getCommandInfo() const
-{
-	std::map<std::string, OptionParser*> info;
-	
-	// Dig informations from cp
-	for(map<string, OptionParser*>::const_iterator i = m_aliases.begin();
-			i != m_aliases.end(); i++)
-	{
-		if (i->first == string())
-			continue;
-		map<string, OptionParser*>::iterator j = info.find(i->second->name());
-		if (j == info.end())
-			info[i->second->name()] = i->second;
-	}
-
-	return info;
 }
 
 }
@@ -418,8 +403,8 @@ public:
 	TestCParser() :
 		CommandParser("test")
 	{
-		add(scramble);
-		add(fix);
+		add(&scramble);
+		add(&fix);
 	}
 
 	Scramble scramble;
