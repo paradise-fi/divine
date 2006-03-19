@@ -137,6 +137,9 @@ public:
 	bool parse(const char* str);
 };
 
+/**
+ * Commandline option with a mandatory argument naming a file which must exist.
+ */
 class ExistingFileOption : public Option
 {
 	std::string m_value;
@@ -164,6 +167,9 @@ public:
 	bool parse(const char* str);
 };
 
+/**
+ * Group related commandline options
+ */
 class OptionGroup
 {
 
@@ -177,6 +183,9 @@ public:
 
 	std::string description;
 
+	/**
+	 * Create a new option and add it to this group
+	 */
 	template<typename T>
 	T* create(const std::string& name,
 			char shortName,

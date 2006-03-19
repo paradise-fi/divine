@@ -67,6 +67,9 @@ public:
 	void add(Option* o);
 	void add(OptionGroup* group);
 
+	/**
+	 * Create an option and add it to this parser
+	 */
 	template<typename T>
 	T* create(const std::string& name,
 			char shortName,
@@ -78,6 +81,9 @@ public:
 		add(item);
 		return item;
 	}
+	/**
+	 * Create an OptionGroup and add it to this parser
+	 */
 	OptionGroup* create(const std::string& description)
 	{
 		OptionGroup* g = new OptionGroup(description);
@@ -102,6 +108,12 @@ public:
 	std::string examples;
 };
 
+/**
+ * Parse commandline options for programs accepting a non-switch command.
+ *
+ * For every non-switch command there can be a custom set of commandline
+ * options.
+ */
 class CommandParser : public Parser
 {
 	OptionParser* m_last_command;
