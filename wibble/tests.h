@@ -39,12 +39,12 @@ public:
 	std::string msg(const std::string m) const;
 };
 
-#define ensure(x) wibble::tests::impl_ensure(Location(__FILE__, __LINE__, #x), (x))
-#define inner_ensure(x) wibble::tests::impl_ensure(Location(loc, __FILE__, __LINE__, #x), (x))
+#define ensure(x) wibble::tests::impl_ensure(wibble::tests::Location(__FILE__, __LINE__, #x), (x))
+#define inner_ensure(x) wibble::tests::impl_ensure(wibble::tests::Location(loc, __FILE__, __LINE__, #x), (x))
 void impl_ensure(const Location& loc, bool res);
 
-#define ensure_equals(x, y) wibble::tests::impl_ensure_equals(Location(__FILE__, __LINE__, #x " == " #y), (x), (y))
-#define inner_ensure_equals(x, y) wibble::tests::impl_ensure_equals(Location(loc, __FILE__, __LINE__, #x " == " #y), (x), (y))
+#define ensure_equals(x, y) wibble::tests::impl_ensure_equals(wibble::tests::Location(__FILE__, __LINE__, #x " == " #y), (x), (y))
+#define inner_ensure_equals(x, y) wibble::tests::impl_ensure_equals(wibble::tests::Location(loc, __FILE__, __LINE__, #x " == " #y), (x), (y))
 template <class T,class Q>
 void impl_ensure_equals(const Location& loc, const Q& actual, const T& expected)
 {
