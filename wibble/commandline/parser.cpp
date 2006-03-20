@@ -24,7 +24,7 @@ static bool isSwitch(const char* str)
 namespace wibble {
 namespace commandline {
 
-void OptionParser::addWithoutAna(Option* o)
+void Parser::addWithoutAna(Option* o)
 {
 	const vector<char>& shorts = o->shortNames;
 	for (vector<char>::const_iterator i = shorts.begin(); i != shorts.end(); i++)
@@ -47,14 +47,23 @@ void OptionParser::addWithoutAna(Option* o)
 	}
 }
 
-void OptionParser::addWithoutAna(const std::vector<Option*>& o)
+void Parser::addWithoutAna(const std::vector<Option*>& o)
 {
 	for (std::vector<Option*>::const_iterator i = o.begin();
 			i != o.end(); ++i)
 		addWithoutAna(*i);
 }
 
-void OptionParser::rebuild()
+void Parser::add(const std::string& alias, Parser* o)
+{
+	map<string, Parser*>::iterator a = m_aliases.find(alias);
+	if (a != m_aliases.end())
+		throw exception::Consistency("command " + alias + " has already been set to " + a->second->name());
+	m_aliases[alias] = o;
+}
+
+
+void Parser::rebuild()
 {
 	// Clear the parser tables
 	m_short.clear();
@@ -67,9 +76,20 @@ void OptionParser::rebuild()
 
 	// Add the stray options
 	addWithoutAna(m_options);
+
+	// Add the commands
+	m_aliases.clear();
+	for (vector<Parser*>::const_iterator i = m_commands.begin();
+			i != m_commands.end(); ++i)
+	{
+		add((*i)->primaryAlias, *i);
+		for (vector<string>::const_iterator j = (*i)->aliases.begin();
+				j != (*i)->aliases.end(); ++j)
+			add(*j, *i);
+	}
 }
 
-std::pair<ArgList::iterator, bool> OptionParser::parseFirstIfKnown(ArgList& list, ArgList::iterator begin)
+std::pair<ArgList::iterator, bool> Parser::parseFirstIfKnown(ArgList& list, ArgList::iterator begin)
 {
 	std::string& opt = *begin;
 
@@ -119,132 +139,7 @@ std::pair<ArgList::iterator, bool> OptionParser::parseFirstIfKnown(ArgList& list
 	return make_pair(begin, true);
 }
 
-
-void OptionParser::add(Option* o)
-{
-	m_options.push_back(o);	
-}
-
-void OptionParser::add(OptionGroup* group)
-{
-	m_groups.push_back(group);	
-}
-
-ArgList::iterator OptionParser::parseConsecutiveSwitches(ArgList& list, ArgList::iterator begin)
-{
-	while (begin != list.end() && list.isSwitch(*begin))
-	{
-		pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, begin);
-
-		if (!res.second)
-		{
-			if ((*begin)[1] != '-')
-				throw exception::BadOption(string("unknown short option ") + *begin);
-			else
-				throw exception::BadOption(string("unknown long option ") + *begin);
-		}
-
-		begin = res.first;
-	}
-
-	return begin;
-}
-
-ArgList::iterator OptionParser::parse(ArgList& list, ArgList::iterator begin)
-{
-	rebuild();
-
-	bool foundNonSwitches = false;
-	ArgList::iterator firstNonSwitch;
-	while (begin != list.end())
-	{
-		// Parse a row of switches
-		begin = parseConsecutiveSwitches(list, begin);
-
-		// End of switches?
-		if (begin == list.end())
-			break;
-
-		// If the end is the "--" marker, take it out of the list as well
-		if (*begin == "--")
-		{
-			list.eraseAndAdvance(begin);
-			break;
-		}
-
-		if (!foundNonSwitches)
-		{
-			// Mark the start of non-switches if we haven't done it already
-			firstNonSwitch = begin;
-			foundNonSwitches = true;
-		}
-
-		// Skip past the non switches
-		while (begin != list.end() && !list.isSwitch(begin))
-			++begin;
-	}
-	return foundNonSwitches ? firstNonSwitch : begin;
-}
-
-void OptionParser::dump(std::ostream& out, const std::string& pfx)
-{
-	out << pfx << "OptionParser " << name() << ":" << endl;
-	if (!m_groups.empty())
-	{
-		out << pfx << "   " << m_groups.size() << " OptionGroups:" << endl;
-		for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
-				i != m_groups.end(); ++i)
-			out << pfx << "      " << (*i)->description << endl;
-	}
-	if (!m_options.empty())
-	{
-		out << pfx << "   " << m_options.size() << " Options:" << endl;
-		for (std::vector<Option*>::const_iterator i = m_options.begin();
-				i != m_options.end(); ++i)
-			out << pfx << "      " << (*i)->fullUsage() << endl;
-	}
-	
-	rebuild();
-	out << pfx << "   Short options parse table:" << endl;
-	for (std::map<char, Option*>::const_iterator i = m_short.begin();
-			i != m_short.end(); ++i)
-		out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << endl;
-	out << pfx << "   Long options parse table:" << endl;
-	for (std::map<std::string, Option*>::const_iterator i = m_long.begin();
-			i != m_long.end(); ++i)
-		out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << endl;
-}
-
-
-void CommandParser::add(const std::string& alias, OptionParser* o)
-{
-	map<string, OptionParser*>::iterator a = m_aliases.find(alias);
-	if (a != m_aliases.end())
-		throw exception::Consistency("command " + alias + " has already been set to " + a->second->name());
-	m_aliases[alias] = o;
-}
-
-void CommandParser::rebuild()
-{
-	OptionParser::rebuild();
-
-	m_aliases.clear();
-	for (vector<OptionParser*>::const_iterator i = m_commands.begin();
-			i != m_commands.end(); ++i)
-	{
-		add((*i)->primaryAlias, *i);
-		for (vector<string>::const_iterator j = (*i)->aliases.begin();
-				j != (*i)->aliases.end(); ++j)
-			add(*j, *i);
-	}
-}
-
-void CommandParser::add(OptionParser* o)
-{
-	m_commands.push_back(o);
-}
-
-ArgList::iterator CommandParser::parseGlobalSwitches(ArgList& list, ArgList::iterator begin)
+ArgList::iterator Parser::parseKnownSwitches(ArgList& list, ArgList::iterator begin)
 {
 	// Parse the first items, until it works
 	while (1)
@@ -280,59 +175,192 @@ ArgList::iterator CommandParser::parseGlobalSwitches(ArgList& list, ArgList::ite
 	return begin;
 }
 
-ArgList::iterator CommandParser::parse(ArgList& list, ArgList::iterator begin)
+
+void Parser::add(Option* o)
 {
-	rebuild();
-
-	// Parse and remove global switches
-	begin = parseGlobalSwitches(list, begin);
-
-	// Look for the first non-switch in the list
-	ArgList::iterator cmd = begin;
-	while (cmd != list.end() && list.isSwitch(cmd))
-		++cmd;
-
-	map<string, OptionParser*>::iterator a;
-	if (cmd == list.end())
-	{
-		// No command has been found.  Set last_command to 0
-		m_last_command = 0;
-		return begin;
-	} else {
-		// Handle the command
-		a = m_aliases.find(*cmd);
-		if (a == m_aliases.end())
-			throw exception::BadOption("unknown command " + string(*cmd));
-
-		// Remove the command from list
-		if (cmd == begin)
-			++begin;
-		list.erase(cmd);
-
-		m_last_command = a->second;
-
-		// Invoke the selected parser on the list
-		return a->second->parse(list, begin);
-	}
-
+	m_options.push_back(o);	
 }
 
-void CommandParser::dump(std::ostream& out, const std::string& pfx)
+void Parser::add(OptionGroup* group)
 {
-	out << pfx << "CommandParser " << name() << ": " << endl;
-	out << pfx << "   " << m_commands.size() << " commands:" << endl;
+	m_groups.push_back(group);	
+}
 
-	for (std::vector<OptionParser*>::const_iterator i = m_commands.begin();
-			i != m_commands.end(); ++i)
-		(*i)->dump(out, pfx + "   ");
-	
+void Parser::add(Parser* o)
+{
+	m_commands.push_back(o);
+}
+
+
+#if 0
+ArgList::iterator OptionParser::parseConsecutiveSwitches(ArgList& list, ArgList::iterator begin)
+{
+	while (begin != list.end() && list.isSwitch(*begin))
+	{
+		pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, begin);
+
+		if (!res.second)
+		{
+			if ((*begin)[1] != '-')
+				throw exception::BadOption(string("unknown short option ") + *begin);
+			else
+				throw exception::BadOption(string("unknown long option ") + *begin);
+		}
+
+		begin = res.first;
+	}
+
+	return begin;
+}
+#endif
+
+#if 0
+ArgList::iterator Parser::parse(ArgList& list, ArgList::iterator begin)
+{
 	rebuild();
-	out << pfx << "   Command parse table:" << endl;
-	for (std::map<std::string, OptionParser*>::const_iterator i = m_aliases.begin();
-			i != m_aliases.end(); ++i)
-		out << pfx << "      " << i->first << " -> " << i->second->name() << endl;
 
-	OptionParser::dump(out, pfx + "   ");
+	bool foundNonSwitches = false;
+	ArgList::iterator firstNonSwitch;
+	while (begin != list.end())
+	{
+		// Parse a row of switches
+		begin = parseConsecutiveSwitches(list, begin);
+
+		// End of switches?
+		if (begin == list.end())
+			break;
+
+		// If the end is the "--" marker, take it out of the list as well
+		if (*begin == "--")
+		{
+			list.eraseAndAdvance(begin);
+			break;
+		}
+
+		if (!foundNonSwitches)
+		{
+			// Mark the start of non-switches if we haven't done it already
+			firstNonSwitch = begin;
+			foundNonSwitches = true;
+		}
+
+		// Skip past the non switches
+		while (begin != list.end() && !list.isSwitch(begin))
+			++begin;
+	}
+	return foundNonSwitches ? firstNonSwitch : begin;
+}
+#endif
+
+ArgList::iterator Parser::parse(ArgList& list, ArgList::iterator begin)
+{
+	rebuild();
+
+	// Parse and remove known switches
+	begin = parseKnownSwitches(list, begin);
+
+	m_found_command = 0;
+
+	// Check if we have to handle commands
+	if (!m_commands.empty())
+	{
+		// Look for the first non-switch in the list
+		ArgList::iterator cmd = begin;
+		while (cmd != list.end() && list.isSwitch(cmd))
+			++cmd;
+
+		if (cmd != list.end())
+		{
+			// A command has been found, ensure that we can handle it
+			map<string, Parser*>::iterator a = m_aliases.find(*cmd);
+			if (a == m_aliases.end())
+				throw exception::BadOption("unknown command " + *cmd);
+
+			// Remove the command from the list
+			if (cmd == begin)
+				++begin;
+			list.erase(cmd);
+
+			// We found a valid command, let's enable subcommand parsing
+			m_found_command = a->second;
+		}
+	}
+
+	if (!m_found_command)
+	{
+		// If we don't have any more subcommands to parse, then ensure that
+		// there are no switches left to process
+		for (ArgList::iterator i = begin; i != list.end(); ++i)
+		{
+			if (*i == "--")
+			{
+				// Remove '--' and stop looking for switches
+				if (begin == i)
+				{
+					begin++;
+					list.erase(i);
+				}
+				break;
+			}
+			if (list.isSwitch(i))
+				throw exception::BadOption(string("unknown option ") + *i);
+		}
+		m_found_command = 0;
+		return begin;
+	} else {
+		// Else, invoke the subcommand parser on the list
+		return m_found_command->parse(list, begin);
+	}
+}
+
+void Parser::dump(std::ostream& out, const std::string& pfx)
+{
+	rebuild();
+
+	out << pfx << "Parser " << name() << ": " << endl;
+
+	if (!m_commands.empty())
+	{
+		out << pfx << "   " << m_commands.size() << " commands:" << endl;
+		for (std::vector<Parser*>::const_iterator i = m_commands.begin();
+				i != m_commands.end(); ++i)
+			(*i)->dump(out, pfx + "   ");
+	}
+	if (!m_aliases.empty())
+	{
+		out << pfx << "   Command parse table:" << endl;
+		for (std::map<std::string, Parser*>::const_iterator i = m_aliases.begin();
+				i != m_aliases.end(); ++i)
+			out << pfx << "      " << i->first << " -> " << i->second->name() << endl;
+	}
+	if (!m_groups.empty())
+	{
+		out << pfx << "   " << m_groups.size() << " OptionGroups:" << endl;
+		for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
+				i != m_groups.end(); ++i)
+			out << pfx << "      " << (*i)->description << endl;
+	}
+	if (!m_options.empty())
+	{
+		out << pfx << "   " << m_options.size() << " Options:" << endl;
+		for (std::vector<Option*>::const_iterator i = m_options.begin();
+				i != m_options.end(); ++i)
+			out << pfx << "      " << (*i)->fullUsage() << endl;
+	}
+	if (!m_short.empty())
+	{
+		out << pfx << "   Short options parse table:" << endl;
+		for (std::map<char, Option*>::const_iterator i = m_short.begin();
+				i != m_short.end(); ++i)
+			out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << endl;
+	}
+	if (!m_long.empty())
+	{
+		out << pfx << "   Long options parse table:" << endl;
+		for (std::map<std::string, Option*>::const_iterator i = m_long.begin();
+				i != m_long.end(); ++i)
+			out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << endl;
+	}
 }
 
 }
@@ -366,11 +394,11 @@ void to::test<1>()
 	ensure_equals(isSwitch("a--ntani"), false);
 }
 
-class TestParser : public OptionParser
+class TestParser : public Parser
 {
 public:
 	TestParser() :
-		OptionParser("test"),
+		Parser("test"),
 		antani("antani"),
 		blinda("blinda")
 	{
@@ -463,14 +491,14 @@ void to::test<2>()
 	}
 }
 
-class TestCParser : public CommandParser
+class TestCParser : public Parser
 {
 public:
-	class Scramble : public OptionParser
+	class Scramble : public Parser
 	{
 	public:
 		Scramble() :
-			OptionParser("scramble"),
+			Parser("scramble"),
 			random("random"),
 			yell("yell")
 		{
@@ -485,11 +513,11 @@ public:
 		BoolOption random;
 		StringOption yell;
 	};
-	class Fix : public OptionParser
+	class Fix : public Parser
 	{
 	public:
 		Fix() :
-			OptionParser("fix"),
+			Parser("fix"),
 			quick("quick"),
 			yell("yell")
 		{
@@ -505,7 +533,7 @@ public:
 	};
 
 	TestCParser() :
-		CommandParser("test"),
+		Parser("test"),
 		help("help", 'h', "help", "get help")
 	{
 		add(&scramble);
@@ -532,7 +560,7 @@ void to::test<3>()
 		ArgList::iterator i = parser.parseList(opts);
 		ensure(i == opts.end());
 		ensure_equals(opts.size(), 0u);
-		ensure_equals(parser.lastCommand(), &parser.scramble);
+		ensure_equals(parser.foundCommand(), &parser.scramble);
 		ensure_equals(parser.scramble.yell.stringValue(), "foo");
 		ensure_equals(parser.scramble.random.boolValue(), true);
 		ensure_equals(parser.fix.yell.stringValue(), string());
@@ -550,7 +578,7 @@ void to::test<3>()
 		ArgList::iterator i = parser.parseList(opts);
 		ensure(i == opts.end());
 		ensure_equals(opts.size(), 0u);
-		ensure_equals(parser.lastCommand(), &parser.fix);
+		ensure_equals(parser.foundCommand(), &parser.fix);
 		ensure_equals(parser.scramble.yell.stringValue(), string());
 		ensure_equals(parser.scramble.random.boolValue(), false);
 		ensure_equals(parser.fix.yell.stringValue(), "foo");
@@ -565,7 +593,7 @@ void to::test<3>()
 		ArgList::iterator i = parser.parseList(opts);
 		ensure(i == opts.end());
 		ensure_equals(opts.size(), 0u);
-		ensure_equals(parser.lastCommand(), (OptionParser*)0);
+		ensure_equals(parser.foundCommand(), (Parser*)0);
 		ensure_equals(parser.scramble.yell.stringValue(), string());
 		ensure_equals(parser.scramble.random.boolValue(), false);
 		ensure_equals(parser.fix.yell.stringValue(), string());
@@ -578,7 +606,7 @@ void to::test<3>()
 template<> template<>
 void to::test<4>()
 {
-	OptionParser parser("test", "[options]", "test parser", "this is the long description of a test parser");
+	Parser parser("test", "[options]", "test parser", "this is the long description of a test parser");
 	OptionGroup* group = parser.create("test option group");
 	BoolOption* testBool = group->create<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
 	IntOption* testInt = group->create<IntOption>("tint", 0, "testint", "<val>", "a test int switch");

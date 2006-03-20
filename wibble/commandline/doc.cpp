@@ -114,83 +114,12 @@ void HelpWriter::outstring(const std::string& str)
 	}
 }
 
-void Help::outputVersion(std::ostream& out)
+void Help::outputOptions(ostream& out, HelpWriter& writer, const Parser& p)
 {
-	out << m_app << " version " << m_ver << endl;
-}
-
-void Help::outputHelp(std::ostream& out, const CommandParser& cp)
-{
-	// Dig informations from cp
-	std::vector<OptionParser*> m_info = cp.commands();
-	
-	HelpWriter writer(out);
-
-	// Compute the maximum length of alias names
-	size_t maxAliasSize = 0;
-	for (vector<OptionParser*>::const_iterator i = m_info.begin();
-			i != m_info.end(); i++)
-	{
-		const string& str = (*i)->primaryAlias;
-		if (maxAliasSize < str.size())
-			maxAliasSize = str.size();
-	}
-
-	out << "Usage: " << m_app << " [options] " << cp.usage << endl;
-	out << endl;
-	writer.outstring("Description: " + cp.description);
-	out << endl;
-	out << "Commands are:" << endl;
-	out << endl;
-
-	// Print the list
-	for (vector<OptionParser*>::const_iterator i = m_info.begin();
-			i != m_info.end(); i++)
-	{
-		string aliases;
-		const vector<string>& v = (*i)->aliases;
-		if (!v.empty())
-		{
-			aliases += "  May also be invoked as ";
-			for (vector<string>::const_iterator j = v.begin();
-					j != v.end(); j++)
-				if (j == v.begin())
-					aliases += *j;
-				else
-					aliases += " or " + *j;
-			aliases += ".";
-		}
-
-		writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
-	}
-
-	out << endl;
-}
-
-void Help::outputHelp(std::ostream& out, const OptionParser& o)
-{
-	HelpWriter writer(out);
-
-	out << "Usage: " << m_app << " [options] " << o.primaryAlias << " [options] " << o.usage << endl;
-	out << endl;
-	if (!o.aliases.empty())
-	{
-		out << "Command aliases: ";
-		for (vector<string>::const_iterator i = o.aliases.begin();
-				i != o.aliases.end(); i++)
-			if (i == o.aliases.begin())
-				out << *i;
-			else
-				out << ", " << *i;
-		out << "." << endl;
-		out << endl;
-	}
-	writer.outstring("Description: " + o.description);
-
 	// Compute size of option display
 	size_t maxLeftCol = 0;
-	for (vector<OptionGroup*>::const_iterator i = o.groups().begin();
-			i != o.groups().end(); i++)
+	for (vector<OptionGroup*>::const_iterator i = p.groups().begin();
+			i != p.groups().end(); i++)
 		for (vector<Option*>::const_iterator j = (*i)->options.begin();
 				j != (*i)->options.end(); j++)
 		{
@@ -198,8 +127,8 @@ void Help::outputHelp(std::ostream& out, const OptionParser& o)
 			if (w > maxLeftCol)
 				maxLeftCol = w;
 		}
-	for (vector<Option*>::const_iterator j = o.options().begin();
-			j != o.options().end(); j++)
+	for (vector<Option*>::const_iterator j = p.options().begin();
+			j != p.options().end(); j++)
 	{
 		size_t w = (*j)->fullUsage().size();
 		if (w > maxLeftCol)
@@ -211,8 +140,8 @@ void Help::outputHelp(std::ostream& out, const OptionParser& o)
 		// Output the options
 		out << endl;
 		out << "Options are:" << endl;
-		for (vector<OptionGroup*>::const_iterator i = o.groups().begin();
-				i != o.groups().end(); i++)
+		for (vector<OptionGroup*>::const_iterator i = p.groups().begin();
+				i != p.groups().end(); i++)
 		{
 			if (!(*i)->description.empty())
 			{
@@ -224,16 +153,94 @@ void Help::outputHelp(std::ostream& out, const OptionParser& o)
 					j != (*i)->options.end(); j++)
 				writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
 		}
-		if (!o.options().empty())
+		if (!p.options().empty())
 		{
 			out << endl;
 			writer.outstring("Other options:");
 			out << endl;
-			for (vector<Option*>::const_iterator j = o.options().begin();
-					j != o.options().end(); j++)
+			for (vector<Option*>::const_iterator j = p.options().begin();
+					j != p.options().end(); j++)
 				writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
 		}
 	}
+}
+
+void Help::outputVersion(std::ostream& out)
+{
+	out << m_app << " version " << m_ver << endl;
+}
+
+void Help::outputHelp(std::ostream& out, const Parser& p)
+{
+	HelpWriter writer(out);
+
+	if (!p.commands().empty())
+	{
+		// Dig informations from p
+		const std::vector<Parser*>& commands = p.commands();
+	
+		// Compute the maximum length of alias names
+		size_t maxAliasSize = 0;
+		for (vector<Parser*>::const_iterator i = commands.begin();
+				i != commands.end(); i++)
+		{
+			const string& str = (*i)->primaryAlias;
+			if (maxAliasSize < str.size())
+				maxAliasSize = str.size();
+		}
+
+		out << "Usage: " << m_app << " [options] " << p.usage << endl;
+		out << endl;
+		writer.outstring("Description: " + p.description);
+		out << endl;
+		out << "Commands are:" << endl;
+		out << endl;
+
+		// Print the commands
+		for (vector<Parser*>::const_iterator i = commands.begin();
+				i != commands.end(); i++)
+		{
+			string aliases;
+			const vector<string>& v = (*i)->aliases;
+			if (!v.empty())
+			{
+				aliases += "  May also be invoked as ";
+				for (vector<string>::const_iterator j = v.begin();
+						j != v.end(); j++)
+					if (j == v.begin())
+						aliases += *j;
+					else
+						aliases += " or " + *j;
+				aliases += ".";
+			}
+
+			writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
+		}
+	} else {
+		if (p.primaryAlias.empty())
+			out << "Usage: " << m_app << " [options] " << p.usage << endl;
+		else
+			out << "Usage: " << m_app << " [options] " << p.primaryAlias << " [options] " << p.usage << endl;
+		out << endl;
+
+		if (!p.aliases.empty())
+		{
+			out << "Command aliases: ";
+			for (vector<string>::const_iterator i = p.aliases.begin();
+					i != p.aliases.end(); i++)
+				if (i == p.aliases.begin())
+					out << *i;
+				else
+					out << ", " << *i;
+			out << "." << endl;
+			out << endl;
+		}
+		writer.outstring("Description: " + p.description);
+	}
+
+	if (p.hasOptions())
+		outputOptions(out, writer, p);
+
 	out << endl;
 }
 
@@ -302,71 +309,10 @@ void Manpage::endSection(std::ostream& out)
 	lastSection.clear();
 }
 
-void Manpage::output(std::ostream& out, const CommandParser& cp, int section, const std::string& author)
+void Manpage::outputOptions(std::ostream& out, const Parser& p)
 {
-	vector<OptionParser*> m_info = cp.commands();
-
-	// Manpage header
-	out << ".TH " << toupper(m_app) << " " << section << " \"" << man_date() << "\" \"" << m_ver << "\"" << endl;
-
-	startSection(out, "NAME");
-	out << cp.name() << " \\- " << cp.description << endl;
-	endSection(out);
-
-	startSection(out, "SYNOPSIS");
-	out << "\\fB" << cp.name() << "\\fP [options] " << cp.usage << endl;
-	endSection(out);
-
-	startSection(out, "DESCRIPTION");
-	if (!cp.longDescription.empty())
-		outputParagraph(out, cp.longDescription);
-	endSection(out);
-
-	startSection(out, "COMMANDS");
-	out << "\\fB" << cp.name() << "\\fP always requires a non-switch argument, that indicates what is the operation that should be performed:" << endl;
-	for (vector<OptionParser*>::const_iterator i = m_info.begin();
-			i != m_info.end(); i++)
-	{
-		out << ".TP" << endl;
-		out << "\\fB" << (*i)->primaryAlias << "\\fP";
-
-		const vector<string>& v = (*i)->aliases;
-		for (vector<string>::const_iterator j = v.begin(); j != v.end(); j++)
-			out << " or \\fB" << *j << "\\fP";
-		
-		out << " " << (*i)->usage << endl;
-		out << ".br" << endl;
-		if ((*i)->longDescription.empty())
-			outputParagraph(out, (*i)->description);
-		else
-			outputParagraph(out, (*i)->longDescription);
-	}
-	endSection(out);
-
-	startSection(out, "OPTIONS");
-	out << "This program follows the usual GNU command line syntax, with long options starting with two dashes (`\\-')." << endl << endl;
-	out << "Every one of the commands listed above has its own set of options.  To keep this manpage readable, all the options are presented together.  Please refer to \"\\fB" << cp.name() << "\\fP help \\fIcommand\\fP\" to see which options are accepted by a given command." << endl;
-
-	// Harvest merged option informations
-	set<OptionGroup*> groups;
-	vector<Option*> options;
-	for(vector<OptionParser*>::const_iterator i = m_info.begin();
-			i != m_info.end(); i++)
-	{
-		if ((*i)->name() == string())
-			continue;
-		OptionParser& o = **i;
-
-		for (vector<OptionGroup*>::const_iterator i = o.groups().begin();
-				i != o.groups().end(); i++)
-			groups.insert(*i);
-		for (vector<Option*>::const_iterator j = o.options().begin();
-				j != o.options().end(); j++)
-			options.push_back(*j);
-	}
-
-	for (set<OptionGroup*>::const_iterator i = groups.begin();
-			i != groups.end(); i++)
+	for (vector<OptionGroup*>::const_iterator i = p.groups().begin();
+			i != p.groups().end(); i++)
 	{
 		if (!(*i)->description.empty())
 			out << endl << (*i)->description << ":" << endl;
@@ -376,67 +322,85 @@ void Manpage::output(std::ostream& out, const CommandParser& cp, int section, co
 		out << ".PP" << endl;
 	}
 
-	if (!options.empty())
+	if (!p.options().empty())
 	{
 		out << endl;
 		out << "Other options:" << endl;
-		for (vector<Option*>::const_iterator j = options.begin();
-				j != options.end(); ++j)
+		for (vector<Option*>::const_iterator j = p.options().begin();
+				j != p.options().end(); ++j)
 			outputOption(out, *j);
 	}
-	endSection(out);
-
-	startSection(out, "AUTHOR");
-	out << "\\fB" << cp.name() << "\\fP is maintained by " << author << "." << endl << endl;
-	out << "This manpage has been automatically generated by the " << m_app << " program." << endl;
 	endSection(out);
 }
 
-void Manpage::output(std::ostream& out, const OptionParser& o, int section, const std::string& author)
+void Manpage::output(std::ostream& out, const Parser& p)
 {
 	// Manpage header
-	out << ".TH " << toupper(m_app) << " " << section << " \"" << man_date() << "\" \"" << m_ver << "\"" << endl;
+	out << ".TH " << toupper(m_app) << " " << m_section << " \"" << man_date() << "\" \"" << m_ver << "\"" << endl;
 
 	startSection(out, "NAME");
-	out << o.name() << " \\- " << o.description << endl;
+	out << p.name() << " \\- " << p.description << endl;
 	endSection(out);
 
 	startSection(out, "SYNOPSIS");
-	out << "\\fB" << m_app << "\\fP [options] " << o.usage << endl;
+	out << "\\fB" << p.name() << "\\fP [options] " << p.usage << endl;
 	endSection(out);
 
 	startSection(out, "DESCRIPTION");
-	if (!o.longDescription.empty())
-		outputParagraph(out, o.longDescription);
+	if (!p.longDescription.empty())
+		outputParagraph(out, p.longDescription);
 	endSection(out);
+
+	if (!p.commands().empty())
+	{
+		const vector<Parser*>& commands = p.commands();
+
+		startSection(out, "COMMANDS");
+		out << "\\fB" << p.name() << "\\fP accepts a non-switch argument, that indicates what is the operation that should be performed:" << endl;
+		for (vector<Parser*>::const_iterator i = commands.begin();
+				i != commands.end(); i++)
+		{
+			out << ".TP" << endl;
+			out << "\\fB" << (*i)->primaryAlias << "\\fP";
+
+			const vector<string>& v = (*i)->aliases;
+			for (vector<string>::const_iterator j = v.begin(); j != v.end(); j++)
+				out << " or \\fB" << *j << "\\fP";
+
+			out << " " << (*i)->usage << endl;
+			out << ".br" << endl;
+			if ((*i)->longDescription.empty())
+				outputParagraph(out, (*i)->description);
+			else
+				outputParagraph(out, (*i)->longDescription);
+		}
+		endSection(out);
+	}
 
 	startSection(out, "OPTIONS");
 	out << "This program follows the usual GNU command line syntax, with long options starting with two dashes (`\\-')." << endl << endl;
+	if (!p.commands().empty())
+		out << "Every one of the commands listed above has its own set of options.  To keep this manpage readable, all the options are presented together.  Please refer to \"\\fB" << p.name() << "\\fP help \\fIcommand\\fP\" to see which options are accepted by a given command." << endl;
 
-	// Harvest merged option informations
-	for (vector<OptionGroup*>::const_iterator i = o.groups().begin();
-			i != o.groups().end(); i++)
-	{
-		if (!(*i)->description.empty())
-			out << endl << (*i)->description << ":" << endl;
-		for (vector<Option*>::const_iterator j = (*i)->options.begin();
-				j != (*i)->options.end(); ++j)
-			outputOption(out, *j);
-		out << ".PP" << endl;
-	}
+	// Output the general options
+	outputOptions(out, p);
 
-	if (!o.options().empty())
+	// Output group-specific options
+	if (!p.commands().empty())
 	{
-		out << endl;
-		out << "Other options:" << endl;
-		for (vector<Option*>::const_iterator j = o.options().begin();
-				j != o.options().end(); ++j)
-			outputOption(out, *j);
+		const vector<Parser*>& commands = p.commands();
+		for (vector<Parser*>::const_iterator i = commands.begin();
+				i != commands.end(); i++)
+		{
+			out << "\\fBOptions for command " << (*i)->primaryAlias << "\\fP" << endl;
+			out << ".br" << endl;
+			outputOptions(out, **i);
+		}
 	}
 	endSection(out);
 
 	startSection(out, "AUTHOR");
-	out << "\\fB" << o.name() << "\\fP is maintained by " << author << "." << endl << endl;
+	out << "\\fB" << p.name() << "\\fP is maintained by " << m_author << "." << endl << endl;
 	out << "This manpage has been automatically generated by the " << m_app << " program." << endl;
 	endSection(out);
 }

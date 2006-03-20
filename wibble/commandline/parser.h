@@ -26,8 +26,16 @@ namespace commandline {
 	 */
 #endif
 
-/// Parser of many short or long switches all starting with '-'
-class OptionParser
+/**
+ * Parse commandline options.
+ *
+ * Normally it parses short or long switches all starting with '-'
+ *
+ * If other parsers are added, then looks in the commandline for a non-switch
+ * command to select the operation mode.  This allow to have a custom set of
+ * commandline options for every non-switch command.
+ */
+class Parser
 {
 	std::string m_name;
 
@@ -35,13 +43,20 @@ protected:
 	// Elements added to this parser
 	std::vector<OptionGroup*> m_groups;
 	std::vector<Option*> m_options;
+	std::vector<Parser*> m_commands;
 
 	// Parse tables for commandline options
 	std::map<char, Option*> m_short;
 	std::map<std::string, Option*> m_long;
+	std::map<std::string, Parser*> m_aliases;
+
+	// Command selected with the non-switch command, if any were found, else
+	// NULL
+	Parser* m_found_command;
 
 	void addWithoutAna(Option* o);
 	void addWithoutAna(const std::vector<Option*>& o);
+	void add(const std::string& alias, Parser* o);
 
 	// Rebuild the parse tables
 	void rebuild();
@@ -55,15 +70,20 @@ protected:
 	 */
 	std::pair<ArgList::iterator, bool> parseFirstIfKnown(ArgList& list, ArgList::iterator begin);
 
+#if 0
 	/// Parse a consecutive sequence of switches
 	ArgList::iterator parseConsecutiveSwitches(ArgList& list, ArgList::iterator begin);
+#endif
+
+	/// Parse all known Options and leave the rest in list
+	ArgList::iterator parseKnownSwitches(ArgList& list, ArgList::iterator begin);
 
 public:
-	OptionParser(const std::string& name,
+	Parser(const std::string& name = std::string(),
 					const std::string& usage = std::string(),
 					const std::string& description = std::string(),
 					const std::string& longDescription = std::string())
-		: m_name(name), primaryAlias(name),
+		: m_name(name), m_found_command(0), primaryAlias(name),
 			usage(usage), description(description), longDescription(longDescription) {}
 
 	const std::string& name() const { return m_name; }
@@ -73,6 +93,9 @@ public:
 
 	/// Add an OptionGroup to this parser
 	void add(OptionGroup* group);
+
+	/// Add a Parser to this parser
+	void add(Parser* o);
 
 	/**
 	 * Create an option and add it to this parser
@@ -99,11 +122,37 @@ public:
 		return g;
 	}
 
+	/**
+	 * Create a Parser and add it to this parser as a command
+	 */
+	Parser* createParser(const std::string& name,
+					const std::string& usage = std::string(),
+					const std::string& description = std::string(),
+					const std::string& longDescription = std::string())
+	{
+		Parser* item = new Parser(name, usage, description, longDescription);
+		add(item);
+		return item;
+	}
+
 	/// Get the OptionGroups that have been added to this parser
 	const std::vector<OptionGroup*>& groups() const { return m_groups; }
 
 	/// Get the Options that have been added to this parser
 	const std::vector<Option*>& options() const { return m_options; }
+
+	/// Get the Parsers that have been added to this parser
+	const std::vector<Parser*>& commands() const { return m_commands; }
+
+	/// Returns true if this Parser has options to parse
+	bool hasOptions() const { return !m_groups.empty() || !m_options.empty(); }
+
+	/**
+	 * Return the command that has been found in the commandline, or NULL if
+	 * none have been found
+	 */
+	Parser* foundCommand() const { return m_found_command; }
+
 
 	/**
 	 * Parse the list of arguments, starting at the beginning and removing the
@@ -120,6 +169,7 @@ public:
 	 */
 	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
 
+
 	void dump(std::ostream& out, const std::string& prefix = std::string());
 
 	std::string primaryAlias;
@@ -128,94 +178,6 @@ public:
 	std::string description;
 	std::string longDescription;
 	std::string examples;
-};
-
-/**
- * Parse commandline options for programs accepting a non-switch command.
- *
- * For every non-switch command there can be a custom set of commandline
- * options.
- */
-class CommandParser : public OptionParser
-{
-	OptionParser* m_last_command;
-	std::map<std::string, OptionParser*> m_aliases;
-	std::vector<OptionParser*> m_commands;
-
-	ArgList::iterator parseGlobalSwitches(ArgList& list, ArgList::iterator begin);
-	void add(const std::string& alias, OptionParser* o);
-	void rebuild();
-
-public:
-	CommandParser(const std::string& name,
-					const std::string& usage = std::string(),
-					const std::string& description = std::string(),
-					const std::string& longDescription = std::string())
-		: OptionParser(name, usage, description, longDescription), m_last_command(0) {}
-
-	OptionParser* lastCommand() const { return m_last_command; }
-
-	const std::vector<OptionParser*>& commands() const { return m_commands; }
-
-	/// Add an Option to this parser
-	void add(Option* o) { OptionParser::add(o); }
-	void add(OptionGroup* group) { OptionParser::add(group); }
-	void add(OptionParser* o);
-
-#if 0
-	/**
-	 * Create an option and add it to this parser
-	 */
-	template<typename T>
-	T* create(const std::string& name,
-			char shortName,
-			const std::string& longName,
-			const std::string& usage = std::string(),
-			const std::string& description = std::string())
-	{
-		T* item = new T(name, shortName, longName, usage, description);
-		add(item);
-		return item;
-	}
-
-	/**
-	 * Create an OptionGroup and add it to this parser
-	 */
-	OptionGroup* create(const std::string& description)
-	{
-		OptionGroup* g = new OptionGroup(description);
-		add(g);
-		return g;
-	}
-#endif
-
-	/**
-	 * Create a new OptionParser and add it to this parser
-	 */
-	OptionParser* create(const std::string& name,
-					const std::string& usage = std::string(),
-					const std::string& description = std::string(),
-					const std::string& longDescription = std::string())
-	{
-		OptionParser* item = new OptionParser(name, usage, description, longDescription);
-		add(item);
-		return item;
-	}
-
-	// Repeated here to make it call the right parse function
-	ArgList::iterator parseList(ArgList& list) { return parse(list, list.begin()); }
-
-	/**
-	 * Look for a command as the first non-switch parameter found, then invoke
-	 * the corresponding switch parser.
-	 *
-	 * After this function, only non-switch arguments will be left in list
-	 *
-	 * If no commands have been found, returns begin.
-	 */
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-
-	void dump(std::ostream& out, const std::string& prefix = std::string());
 };
 
 /**
