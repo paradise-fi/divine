@@ -145,6 +145,15 @@ public:
 	/// Get the Engines that have been added to this engine
 	const std::vector<Engine*>& commands() const { return m_commands; }
 
+	Engine* command(const std::string& name) const
+	{
+		std::map<std::string, Engine*>::const_iterator i = m_aliases.find(name);
+		if (i == m_aliases.end())
+			return 0;
+		else
+			return i->second;
+	}
+
 	/// Returns true if this Engine has options to parse
 	bool hasOptions() const { return !m_groups.empty() || !m_options.empty(); }
 

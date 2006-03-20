@@ -60,9 +60,11 @@ public:
 		Parser(engine), m_appname(appname), m_version(version)
 	{
 		helpGroup = engine.create("Help options");
-		help = helpGroup->create<BoolOption>("help", 'h', "help", "", "print commandline help");
+		help = helpGroup->create<BoolOption>("help", 'h', "help", "",
+				"print commandline help and exit");
 		help->addAlias('?');
-		this->version = helpGroup->create<BoolOption>("version", 0, "version", "", "print version informations");
+		this->version = helpGroup->create<BoolOption>("version", 0, "version", "",
+				"print the program version and exit");
 	}
 	~StandardParser()
 	{
@@ -99,7 +101,7 @@ public:
 		m_section(section), m_author(author)
 	{
 		manpage = helpGroup->create<StringOption>("manpage", 0, "manpage", "[hooks]",
-				"output the " + m_appname + " manpage");
+				"output the " + m_appname + " manpage and exit");
 	}
 	~StandardParserWithManpage()
 	{
@@ -109,6 +111,36 @@ public:
 	bool parse(int argc, const char* argv[]);
 
 	StringOption* manpage;
+};
+
+/**
+ * Parser for commandline arguments, with builting help functions and manpage
+ * generation, and requiring a mandatory command.
+ */
+class StandardParserWithMandatoryCommand : public StandardParserWithManpage
+{
+public:
+	StandardParserWithMandatoryCommand(
+			Engine& engine,
+			const std::string& appname,
+			const std::string& version,
+			int section,
+			const std::string& author) :
+		StandardParserWithManpage(engine, appname, version, section, author)
+	{
+		helpCommand = m_engine.createEngine("help", "[command]", "print help information",
+				"With no arguments, print a summary of available commands.  "
+				"If given a command name as argument, print detailed informations "
+				"about that command.");
+	}
+	~StandardParserWithMandatoryCommand()
+	{
+		delete helpCommand;
+	}
+
+	bool parse(int argc, const char* argv[]);
+
+	Engine* helpCommand;
 };
 
 }

@@ -53,6 +53,39 @@ bool StandardParserWithManpage::parse(int argc, const char* argv[])
 	return false;
 }
 
+bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
+{
+	if (StandardParserWithManpage::parse(argc, argv))
+		return true;
+
+	if (!m_engine.foundCommand())
+	{
+		commandline::Help help(m_appname, m_version);
+		help.outputHelp(cout, m_engine);
+		return true;
+	}
+	if (m_engine.foundCommand() == helpCommand)
+	{
+		commandline::Help help(m_appname, m_version);
+		if (hasNext())
+		{
+			// Help on a specific command
+			string command = next();
+			if (Engine* e = m_engine.command(command))
+				help.outputHelp(cout, *e);
+			else
+				throw exception::BadOption("unknown command " + command + "; run '" + argv[0] + " help' "
+						"for a list of all the available commands");
+		} else {
+			// General help
+			help.outputHelp(cout, m_engine);
+		}
+		return true;
+	}
+	return false;
+}
+
+
 }
 }
 
