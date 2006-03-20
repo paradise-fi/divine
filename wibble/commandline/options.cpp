@@ -91,11 +91,17 @@ std::string Option::fullUsageForMan() const
 	return res;
 }
 	
-
-bool StringOption::parse(const char* str)
+ArgList::iterator StringOption::parse(ArgList& list, ArgList::iterator begin)
 {
-	if (!str) throw exception::BadOption("no string argument found");
-	m_value = str;
+	if (begin == list.end())
+		throw exception::BadOption("no string argument found");
+	m_value = *begin;
+	// Remove the parsed element
+	return list.eraseAndAdvance(begin);
+}
+bool StringOption::parse(const std::string& param)
+{
+	m_value = param;
 	return true;
 }
 
@@ -106,23 +112,43 @@ std::string IntOption::stringValue() const
 	return str.str();
 }
 
-bool IntOption::parse(const char* str)
+ArgList::iterator IntOption::parse(ArgList& list, ArgList::iterator begin)
 {
-	if (!str) throw exception::BadOption("no int argument found");
+	if (begin == list.end())
+		throw exception::BadOption("no numeric argument found");
 	// Ensure that we're all numeric
-	for (const char* s = str; *s; ++s)
+	for (string::const_iterator s = begin->begin(); s != begin->end(); ++s)
 		if (!isdigit(*s))
-			throw exception::BadOption(string("value ") + str + " must be numeric");
-	m_value = strtoul(str, 0, 10);
+			throw exception::BadOption("value " + *begin + " must be numeric");
+	m_value = strtoul(begin->c_str(), 0, 10);
+	// Remove the parsed element
+	return list.eraseAndAdvance(begin);
+}
+bool IntOption::parse(const std::string& param)
+{
+	m_value = strtoul(param.c_str(), 0, 10);
 	return true;
 }
 
-bool ExistingFileOption::parse(const char* str)
+
+ArgList::iterator ExistingFileOption::parse(ArgList& list, ArgList::iterator begin)
 {
-	if (!str) throw exception::BadOption("no file argument found");
-	if (access(str, F_OK) == -1)
-		throw exception::BadOption(string("file ") + str + " must exist");
-	m_value = str;
+	if (begin == list.end())
+		throw exception::BadOption("no file argument found");
+	if (access(begin->c_str(), F_OK) == -1)
+		throw exception::BadOption("file " + *begin + " must exist");
+	m_value = *begin;
+
+	// Remove the parsed element
+	return list.eraseAndAdvance(begin);
+}
+bool ExistingFileOption::parse(const std::string& param)
+{
+	if (param.empty())
+		throw exception::BadOption("no file argument found");
+	if (access(param.c_str(), F_OK) == -1)
+		throw exception::BadOption("file " + param + " must exist");
+	m_value = param;
 	return true;
 }
 
@@ -152,7 +178,7 @@ void to::test<1>()
 	ensure_equals(opt.boolValue(), false);
 	ensure_equals(opt.stringValue(), string("false"));
 
-	ensure_equals(opt.parse(0), false);
+	ensure_equals(opt.parse(string()), false);
 	ensure_equals(opt.boolValue(), true);
 	ensure_equals(opt.stringValue(), string("true"));
 }

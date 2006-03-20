@@ -24,8 +24,29 @@ public:
 }
 
 namespace commandline {
-typedef std::list<const char*> arglist;
-typedef arglist::iterator iter;
+
+class ArgList : public std::list<std::string>
+{
+public:
+	// Remove the item pointed by the iterator, and advance the iterator to the
+	// next item.  Returns i itself.
+	inline iterator& eraseAndAdvance(iterator& i)
+	{
+		if (i == end())
+			return i;
+		iterator next = i;
+		++next;
+		erase(i);
+		i = next;
+		return i;
+	}
+
+	static bool isSwitch(const char* str);
+	static bool isSwitch(const std::string& str);
+	static bool isSwitch(const const_iterator& iter);
+	static bool isSwitch(const iterator& iter);
+};
+
 }
 
 }

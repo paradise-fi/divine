@@ -40,13 +40,24 @@ public:
 	virtual int intValue() const;
 
 	/**
+	 * Parse the next commandline parameter after the short form of the command
+	 * has been found.  It may or may not remove the parameter from the list,
+	 * depending on if the option wants a value or not.
+	 *
 	 * Signal that the option has been found, with the given argument (or 0 if
 	 * no argument).
 	 *
 	 * @returns
 	 *   true if it used the argument, else false
 	 */
-	virtual bool parse(const char* str = 0) = 0;
+	virtual ArgList::iterator parse(ArgList& list, ArgList::iterator begin) = 0;
+
+	/**
+	 * Parse the commandline parameter of a long commandline switch
+	 *
+	 * @returns true if the parameter has been used
+	 */
+	virtual bool parse(const std::string& param) = 0;
 
 	/// Return a full usage message including all the aliases for this option
 	const std::string& fullUsage() const;
@@ -76,7 +87,8 @@ public:
 	bool boolValue() const { return m_value; }
 	std::string stringValue() const { return m_value ? "true" : "false"; }
 
-	bool parse(const char*) { m_value = true; return false; }
+	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_value = true; return begin; }
+	virtual bool parse(const std::string&) { m_value = true; return false; }
 };
 
 // Option needing a compulsory string value
@@ -103,7 +115,8 @@ public:
 	bool boolValue() const { return !m_value.empty(); }
 	std::string stringValue() const { return m_value; }
 
-	bool parse(const char* str);
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& param);
 };
 
 // Option needing a compulsory int value
@@ -134,7 +147,8 @@ public:
 	int intValue() const { return m_value; }
 	std::string stringValue() const;
 
-	bool parse(const char* str);
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& param);
 };
 
 /**
@@ -164,7 +178,8 @@ public:
 	bool boolValue() const { return !m_value.empty(); }
 	std::string stringValue() const { return m_value; }
 
-	bool parse(const char* str);
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& str);
 };
 
 /**

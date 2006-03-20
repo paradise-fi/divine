@@ -15,6 +15,7 @@ lib_LTLIBRARIES = libwibble.la
 libwibble_la_SOURCES = \
 	exception.cpp \
 	tests.cpp \
+	commandline/core.cpp \
 	commandline/options.cpp \
 	commandline/parser.cpp \
 	commandline/doc.cpp
