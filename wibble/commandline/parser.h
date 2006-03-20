@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <iosfwd>
 
 namespace wibble {
@@ -89,13 +90,13 @@ public:
 	const std::string& name() const { return m_name; }
 
 	/// Add an Option to this parser
-	void add(Option* o);
+	Option* add(Option* o);
 
 	/// Add an OptionGroup to this parser
-	void add(OptionGroup* group);
+	OptionGroup* add(OptionGroup* group);
 
 	/// Add a Parser to this parser
-	void add(Parser* o);
+	Parser* add(Parser* o);
 
 	/**
 	 * Create an option and add it to this parser
@@ -178,6 +179,38 @@ public:
 	std::string description;
 	std::string longDescription;
 	std::string examples;
+};
+
+/** Keep track of various wibble::commandline components, and deallocate them
+ * at object destruction.
+ *
+ * If an object is added multiple times, it will still be deallocated only once.
+ */
+class MemoryManager
+{
+	std::set<Option*> options;
+	std::set<OptionGroup*> groups;
+	std::set<Parser*> parsers;
+
+	Option* addItem(Option* o) { options.insert(o); return o; }
+	OptionGroup* addItem(OptionGroup* o) { groups.insert(o); return o; }
+	Parser* addItem(Parser* p) { parsers.insert(p); return p; }
+
+public:
+	~MemoryManager()
+	{
+		for (std::set<Option*>::const_iterator i = options.begin();
+				i != options.end(); ++i)
+			delete *i;
+		for (std::set<OptionGroup*>::const_iterator i = groups.begin();
+				i != groups.end(); ++i)
+			delete *i;
+		for (std::set<Parser*>::const_iterator i = groups.begin();
+				i != groups.end(); ++i)
+			delete *i;
+	}
+	template<typename T>
+	T* add(T* item) { addItem(item); return item; }
 };
 
 /**
