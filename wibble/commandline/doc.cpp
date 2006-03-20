@@ -114,7 +114,7 @@ void HelpWriter::outstring(const std::string& str)
 	}
 }
 
-void Help::outputOptions(ostream& out, HelpWriter& writer, const Parser& p)
+void Help::outputOptions(ostream& out, HelpWriter& writer, const Engine& p)
 {
 	// Compute size of option display
 	size_t maxLeftCol = 0;
@@ -170,18 +170,18 @@ void Help::outputVersion(std::ostream& out)
 	out << m_app << " version " << m_ver << endl;
 }
 
-void Help::outputHelp(std::ostream& out, const Parser& p)
+void Help::outputHelp(std::ostream& out, const Engine& p)
 {
 	HelpWriter writer(out);
 
 	if (!p.commands().empty())
 	{
 		// Dig informations from p
-		const std::vector<Parser*>& commands = p.commands();
+		const std::vector<Engine*>& commands = p.commands();
 	
 		// Compute the maximum length of alias names
 		size_t maxAliasSize = 0;
-		for (vector<Parser*>::const_iterator i = commands.begin();
+		for (vector<Engine*>::const_iterator i = commands.begin();
 				i != commands.end(); i++)
 		{
 			const string& str = (*i)->primaryAlias;
@@ -197,7 +197,7 @@ void Help::outputHelp(std::ostream& out, const Parser& p)
 		out << endl;
 
 		// Print the commands
-		for (vector<Parser*>::const_iterator i = commands.begin();
+		for (vector<Engine*>::const_iterator i = commands.begin();
 				i != commands.end(); i++)
 		{
 			string aliases;
@@ -309,7 +309,7 @@ void Manpage::endSection(std::ostream& out)
 	lastSection.clear();
 }
 
-void Manpage::outputOptions(std::ostream& out, const Parser& p)
+void Manpage::outputOptions(std::ostream& out, const Engine& p)
 {
 	for (vector<OptionGroup*>::const_iterator i = p.groups().begin();
 			i != p.groups().end(); i++)
@@ -333,7 +333,7 @@ void Manpage::outputOptions(std::ostream& out, const Parser& p)
 	endSection(out);
 }
 
-void Manpage::output(std::ostream& out, const Parser& p)
+void Manpage::output(std::ostream& out, const Engine& p)
 {
 	// Manpage header
 	out << ".TH " << toupper(m_app) << " " << m_section << " \"" << man_date() << "\" \"" << m_ver << "\"" << endl;
@@ -353,11 +353,11 @@ void Manpage::output(std::ostream& out, const Parser& p)
 
 	if (!p.commands().empty())
 	{
-		const vector<Parser*>& commands = p.commands();
+		const vector<Engine*>& commands = p.commands();
 
 		startSection(out, "COMMANDS");
 		out << "\\fB" << p.name() << "\\fP accepts a non-switch argument, that indicates what is the operation that should be performed:" << endl;
-		for (vector<Parser*>::const_iterator i = commands.begin();
+		for (vector<Engine*>::const_iterator i = commands.begin();
 				i != commands.end(); i++)
 		{
 			out << ".TP" << endl;
@@ -388,8 +388,8 @@ void Manpage::output(std::ostream& out, const Parser& p)
 	// Output group-specific options
 	if (!p.commands().empty())
 	{
-		const vector<Parser*>& commands = p.commands();
-		for (vector<Parser*>::const_iterator i = commands.begin();
+		const vector<Engine*>& commands = p.commands();
+		for (vector<Engine*>::const_iterator i = commands.begin();
 				i != commands.end(); i++)
 		{
 			out << "\\fBOptions for command " << (*i)->primaryAlias << "\\fP" << endl;

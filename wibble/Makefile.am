@@ -8,6 +8,7 @@ wibble_HEADERS = \
 wibblecommandline_HEADERS = \
 	commandline/core.h \
 	commandline/options.h \
+	commandline/engine.h \
 	commandline/parser.h \
 	commandline/doc.h
 
@@ -17,6 +18,7 @@ libwibble_la_SOURCES = \
 	tests.cpp \
 	commandline/core.cpp \
 	commandline/options.cpp \
+	commandline/engine.cpp \
 	commandline/parser.cpp \
 	commandline/doc.cpp
 

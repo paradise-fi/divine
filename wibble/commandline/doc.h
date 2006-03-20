@@ -25,14 +25,14 @@ public:
 class Help : public DocMaker
 {
 protected:
-	void outputOptions(std::ostream& out, HelpWriter& writer, const Parser& cp);
+	void outputOptions(std::ostream& out, HelpWriter& writer, const Engine& cp);
 
 public:
 	Help(const std::string& app, const std::string& ver)
 		: DocMaker(app, ver) {}
 	
 	void outputVersion(std::ostream& out);
-	void outputHelp(std::ostream& out, const Parser& cp);
+	void outputHelp(std::ostream& out, const Engine& cp);
 };
 
 class Manpage : public DocMaker
@@ -59,7 +59,7 @@ private:
 	
 	void outputParagraph(std::ostream& out, const std::string& str);
 	void outputOption(std::ostream& out, const Option* o);
-	void outputOptions(std::ostream& out, const Parser& p);
+	void outputOptions(std::ostream& out, const Engine& p);
 	void runHooks(std::ostream& out, const std::string& section, where where);
 	void startSection(std::ostream& out, const std::string& name);
 	void endSection(std::ostream& out);
@@ -75,7 +75,7 @@ public:
 	}
 	void readHooks(const std::string& file);
 
-	void output(std::ostream& out, const Parser& cp);
+	void output(std::ostream& out, const Engine& cp);
 };
 
 }
