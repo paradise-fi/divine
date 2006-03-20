@@ -212,11 +212,21 @@ public:
  */
 class Consistency : public Generic
 {
+	std::string m_error;
+
 public:
-	Consistency(const std::string& context) throw () :
-		Generic(context) {}
+	Consistency(const std::string& context, const std::string& error = std::string()) throw () :
+		Generic(context), m_error(error) {}
+	~Consistency() throw () {}
 
 	virtual const char* type() const throw () { return "Consistency"; }
+
+	virtual std::string desc() const throw ()
+	{
+		if (m_error.empty())
+			return "consistency check failed";
+		return m_error;
+	}
 };
 
 /**
