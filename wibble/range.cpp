@@ -6,8 +6,8 @@
 #include <wibble/range.h>
 using namespace wibble;
 
-#ifdef COMPILE_TESTSUITE
-#include <apt-front/tests/test-utils.h>
+#ifdef WIBBLE_COMPILE_TESTSUITE
+#include <wibble/tests.h>
 #include <list>
 
 namespace tut {

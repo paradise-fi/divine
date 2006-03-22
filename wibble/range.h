@@ -3,6 +3,7 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
+#include <wibble/shared.h>
 #include <wibble/multitype.h>
 #include <wibble/exception.h>
 #include <iterator>
@@ -15,6 +16,9 @@
 #define WIBBLE_RANGE_H
 
 namespace wibble {
+
+template< typename > struct Range;
+template< typename > struct Consumer;
 
 typedef bool SortabilityTag;
 

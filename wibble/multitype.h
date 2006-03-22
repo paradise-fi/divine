@@ -3,13 +3,13 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
-#include <apt-front/utils/cast.h>
+#include <wibble/cast.h>
 #include <typeinfo> // for bad_cast
-#ifndef APTFRONT_UTILS_MULTITYPE_H
-#define APTFRONT_UTILS_MULTITYPE_H
 
-namespace aptFront {
-namespace utils {
+#ifndef WIBBLE_MULTITYPE_H
+#define WIBBLE_MULTITYPE_H
+
+namespace wibble {
 
 template <typename T>
 struct Maybe {
@@ -287,8 +287,6 @@ struct MultiType {
 protected:
     Base *m_impl;
 };
-
-}
 
 template <typename T, typename X>
 typename X::template Convert<T>::type &downcast( X &a )
