@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#include <wibble/config.h>
 #include <wibble/tests.h>
 
 namespace wibble {
@@ -47,24 +48,27 @@ void impl_ensure(const Location& loc, bool res)
 }
 }
 
-#ifdef COMPILE_TESTSUITE
+#ifdef WIBBLE_COMPILE_TESTSUITE
 
 #include <wibble/tests.h>
 
-namespace wibble::tut {
+namespace wibble {
+namespace tut {
 
 using namespace wibble::tests;
 
-struct wibble_tests_shar {
+struct tests_shar {
 };
 
-TESTGRP(wibble_tests);
+TESTGRP(tests);
 
 template<> template<>
 void to::test<1>()
 {
 	ensure(true);
 	ensure_equals(42, 42);
+}
+
 }
 
 }
