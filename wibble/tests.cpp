@@ -51,7 +51,7 @@ void impl_ensure(const Location& loc, bool res)
 
 #include <wibble/tests.h>
 
-namespace tut {
+namespace wibble::tut {
 
 using namespace wibble::tests;
 

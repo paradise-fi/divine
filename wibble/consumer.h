@@ -1,5 +1,5 @@
 /** -*- C++ -*-
-    @file utils/consumer.h
+    @file wibble/consumer.h
     @author Peter Rockai <me@mornfall.net>
 */
 

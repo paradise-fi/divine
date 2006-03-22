@@ -3,6 +3,7 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
+#include <wibble/config.h>
 #include <wibble/range.h>
 using namespace wibble;
 
@@ -10,13 +11,13 @@ using namespace wibble;
 #include <wibble/tests.h>
 #include <list>
 
+namespace wibble {
 namespace tut {
-using namespace aptFront::utils;
 
-struct utils_range_shar {
+struct range_shar {
 };
 
-TESTGRP( utils_range );
+TESTGRP( range );
 
 template<> template<>
 void to::test<1> ()
@@ -354,6 +355,8 @@ void to::test< 20 >() {
     r1.consume( 2 );
     Range< int > r = intersectionRange( r1, r2 );
     ensure( r == r.end() );
+}
+
 }
 
 }

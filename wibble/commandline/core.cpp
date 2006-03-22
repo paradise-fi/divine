@@ -1,3 +1,4 @@
+#include <wibble/config.h>
 #include <wibble/commandline/core.h>
 #include <ctype.h>
 #include <string.h>
@@ -54,15 +55,17 @@ bool ArgList::isSwitch(const char* str)
 }
 
 
-#ifdef COMPILE_TESTSUITE
+#ifdef WIBBLE_COMPILE_TESTSUITE
 
 #include <wibble/tests.h>
 
+namespace wibble {
 namespace tut {
 
-struct wibble_commandline_core_shar {
+struct commandline_core_shar {
 };
-TESTGRP(wibble_commandline_core);
+
+TESTGRP( commandline_core );
 
 using namespace wibble::commandline;
 
@@ -107,7 +110,7 @@ void to::test<2>()
 	ensure(begin == list.end());
 }
 
-
+}
 }
 
 #endif

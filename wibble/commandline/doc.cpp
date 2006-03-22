@@ -1,3 +1,4 @@
+#include <wibble/config.h>
 #include <wibble/commandline/doc.h>
 #include <locale.h>
 #include <errno.h>
@@ -471,6 +472,7 @@ void Manpage::readHooks(const std::string& file)
 
 #include <wibble/tests.h>
 
+namespace wibble {
 namespace tut {
 
 struct wibble_commandline_shar {
@@ -485,6 +487,7 @@ void to::test<1>()
 {
 }
 
+}
 }
 
 #endif

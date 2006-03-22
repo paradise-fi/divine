@@ -17,6 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
+#include <wibble/config.h>
 #include <wibble/exception.h>
 
 #include <string.h> // strerror_r
@@ -94,20 +95,20 @@ string System::desc() const throw ()
 }
 }
 
-#ifdef COMPILE_TESTSUITE
+#ifdef WIBBLE_COMPILE_TESTSUITE
 
 #include <wibble/tests.h>
 #include <unistd.h>
 
+namespace wibble {
 namespace tut {
 
-using namespace wibble::tests;
-using namespace wibble;
+using namespace tests;
 
-struct wibble_exception_shar {
+struct exception_shar {
 };
 
-TESTGRP(wibble_exception);
+TESTGRP(exception);
 
 // Generic
 template<> template<>
@@ -148,7 +149,7 @@ void to::test<2>()
 	}
 }
 
-
+}
 
 }
 
