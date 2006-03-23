@@ -468,7 +468,7 @@ void Manpage::readHooks(const std::string& file)
 }
 
 
-#ifdef COMPILE_TESTSUITE
+#ifdef WIBBLE_COMPILE_TESTSUITE
 
 #include <wibble/tests.h>
 

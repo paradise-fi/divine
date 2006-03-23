@@ -1,3 +1,4 @@
+#include <wibble/config.h>
 #include <wibble/commandline/parser.h>
 #include <wibble/commandline/doc.h>
 #include <iostream>
@@ -95,15 +96,15 @@ bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
 }
 
 
-#ifdef COMPILE_TESTSUITE
-
+#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests.h>
 
+namespace wibble {
 namespace tut {
 
-struct wibble_commandline_parser_shar {
+struct commandline_parser_shar {
 };
-TESTGRP(wibble_commandline_parser);
+TESTGRP( commandline_parser );
 
 using namespace wibble::commandline;
 
@@ -112,6 +113,7 @@ void to::test<1>()
 {
 }
 
+}
 }
 
 #endif

@@ -1,3 +1,4 @@
+#include <wibble/config.h>
 #include <wibble/commandline/engine.h>
 #include <ostream>
 
@@ -352,17 +353,17 @@ void Engine::dump(std::ostream& out, const std::string& pfx)
 }
 
 
-#ifdef COMPILE_TESTSUITE
-
+#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests.h>
 
+namespace wibble {
 namespace tut {
 
-struct wibble_commandline_engine_shar {
+struct commandline_engine_shar {
 };
-TESTGRP(wibble_commandline_engine);
+TESTGRP( commandline_engine );
 
-using namespace wibble::commandline;
+using namespace commandline;
 
 class TestEngine : public Engine
 {
@@ -630,6 +631,8 @@ void to::test<9>()
 	delete testInt;
 	delete testBool;
 	delete group;
+}
+
 }
 
 }

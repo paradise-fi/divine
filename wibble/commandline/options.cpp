@@ -1,3 +1,4 @@
+#include <wibble/config.h>
 #include <wibble/commandline/options.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -156,17 +157,17 @@ bool ExistingFileOption::parse(const std::string& param)
 }
 
 
-#ifdef COMPILE_TESTSUITE
-
+#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests.h>
 
+namespace wibble {
 namespace tut {
 
-struct wibble_commandline_options_shar {
+struct commandline_options_shar {
 };
-TESTGRP(wibble_commandline_options);
+TESTGRP( commandline_options );
 
-using namespace wibble::commandline;
+using namespace commandline;
 
 // Test BoolOption
 template<> template<>
@@ -198,6 +199,7 @@ void to::test<2>()
 	ensure_equals(opt.stringValue(), "-a");
 }
 
+}
 }
 
 #endif
