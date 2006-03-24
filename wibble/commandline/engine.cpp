@@ -621,6 +621,8 @@ void to::test<9>()
 
 }
 
+}
+
 #endif
 
 // vim:set ts=4 sw=4:
