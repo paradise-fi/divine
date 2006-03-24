@@ -10,15 +10,18 @@ namespace commandline {
 /**
  * Generic parser for commandline arguments.
  */
-class Parser
+class Parser : public Engine
 {
 	ArgList m_args;
 
 protected:
-	Engine& m_engine;
+	MemoryManager m_manager;
 
 public:
-	Parser(Engine& engine) : m_engine(engine) {}
+	Parser(const std::string& usage = std::string(),
+		   const std::string& description = std::string(),
+		   const std::string& longDescription = std::string())
+		: Engine(&m_manager, std::string(), usage, description, longDescription) {}
 
 	/**
 	 * Parse the commandline
@@ -28,9 +31,10 @@ public:
 	 */
 	bool parse(int argc, const char* argv[])
 	{
+		m_args.clear();
 		for (int i = 1; i < argc; i++)
 			m_args.push_back(argv[i]);
-		m_engine.parseList(m_args);
+		parseList(m_args);
 		return false;
 	}
 
@@ -56,21 +60,15 @@ protected:
 	std::string m_version;
 
 public:
-	StandardParser(Engine& engine, const std::string& appname, const std::string& version) :
-		Parser(engine), m_appname(appname), m_version(version)
+	StandardParser(const std::string& appname, const std::string& version) :
+		m_appname(appname), m_version(version)
 	{
-		helpGroup = engine.create("Help options");
+		helpGroup = create("Help options");
 		help = helpGroup->create<BoolOption>("help", 'h', "help", "",
 				"print commandline help and exit");
 		help->addAlias('?');
 		this->version = helpGroup->create<BoolOption>("version", 0, "version", "",
 				"print the program version and exit");
-	}
-	~StandardParser()
-	{
-		delete helpGroup;
-		delete help;
-		delete version;
 	}
 
 	void outputHelp(std::ostream& out);
@@ -94,20 +92,15 @@ protected:
 
 public:
 	StandardParserWithManpage(
-			Engine& engine,
 			const std::string& appname,
 			const std::string& version,
 			int section,
 			const std::string& author) :
-		StandardParser(engine, appname, version),
+		StandardParser(appname, version),
 		m_section(section), m_author(author)
 	{
 		manpage = helpGroup->create<StringOption>("manpage", 0, "manpage", "[hooks]",
 				"output the " + m_appname + " manpage and exit");
-	}
-	~StandardParserWithManpage()
-	{
-		delete manpage;
 	}
 
 	bool parse(int argc, const char* argv[]);
@@ -123,21 +116,16 @@ class StandardParserWithMandatoryCommand : public StandardParserWithManpage
 {
 public:
 	StandardParserWithMandatoryCommand(
-			Engine& engine,
 			const std::string& appname,
 			const std::string& version,
 			int section,
 			const std::string& author) :
-		StandardParserWithManpage(engine, appname, version, section, author)
+		StandardParserWithManpage(appname, version, section, author)
 	{
-		helpCommand = m_engine.createEngine("help", "[command]", "print help information",
+		helpCommand = createEngine("help", "[command]", "print help information",
 				"With no arguments, print a summary of available commands.  "
 				"If given a command name as argument, print detailed informations "
 				"about that command.");
-	}
-	~StandardParserWithMandatoryCommand()
-	{
-		delete helpCommand;
 	}
 
 	bool parse(int argc, const char* argv[]);

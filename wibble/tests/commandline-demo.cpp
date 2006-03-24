@@ -7,51 +7,50 @@ using namespace wibble::commandline;
 
 int withCommands(int argc, const char* argv[])
 {
-	MemoryManager cleaner;
-
 	// Main parser
-	Engine* e = cleaner.add(new Engine("", "<command> [options and arguments]",
-				"Demo commandline parser",
+	StandardParserWithMandatoryCommand parser(argv[0], VERSION, 1, "enrico@enricozini.org");
+	parser.usage = "<command> [options and arguments]";
+	parser.description = "Demo commandline parser";
+	parser.longDescription = 
 				"This program is a demo for the commandline parser.  It shows a parser with "
-				"subcommands and various kinds of options."));
+				"subcommands and various kinds of options.";
 
 	// Grep subcommand
-	Engine* grep = cleaner.add(e->createEngine("grep", "<pattern> [files...]",
+	Engine* grep = parser.createEngine("grep", "<pattern> [files...]",
 				"Print lines matching the pattern",
 				"Print all the lines of standard input or the given files that match "
-				"the given pattern."));
-	BoolOption* grep_invert = cleaner.add(grep->create<BoolOption>("invert", 'v', "invert", "",
-				"invert the match"));
-	StringOption* grep_output = cleaner.add(grep->create<StringOption>("output", 'o', "output", "<file>",
-				"write the output to the given file instead of standard output"));
+				"the given pattern.");
+	BoolOption* grep_invert = grep->create<BoolOption>("invert", 'v', "invert", "",
+				"invert the match");
+	StringOption* grep_output = grep->create<StringOption>("output", 'o', "output", "<file>",
+				"write the output to the given file instead of standard output");
 
 	// ls subcommand
-	Engine* ls = cleaner.add(e->createEngine("ls", "[directory...]",
+	Engine* ls = parser.createEngine("ls", "[directory...]",
 				"List files in a directory",
 				"List all files found in the directories given as parameters to standard output.  "
-				"if no directory is given, list the files in the current directory."));
+				"if no directory is given, list the files in the current directory.");
 	// sort option group
-	OptionGroup* ls_sort = cleaner.add(ls->create("Options controlling the order of output"));
-	BoolOption* ls_sort_invert = cleaner.add(ls_sort->create<BoolOption>("invert", 'r', "invert", "",
-				"sort in inverted order"));
-	IntOption* ls_sort_field = cleaner.add(ls_sort->create<IntOption>("field", 0, "field", "",
-				"sort the given field (if the switch is omitted, 1 is assumed"));
+	OptionGroup* ls_sort = ls->create("Options controlling the order of output");
+	BoolOption* ls_sort_invert = ls_sort->create<BoolOption>("invert", 'r', "invert", "",
+				"sort in inverted order");
+	IntOption* ls_sort_field = ls_sort->create<IntOption>("field", 0, "field", "",
+				"sort the given field (if the switch is omitted, 1 is assumed");
 	// format option group
-	OptionGroup* ls_format = cleaner.add(ls->create("Options controlling the format of output"));
-	BoolOption* ls_format_long = cleaner.add(ls_format->create<BoolOption>("long", 'l', "long", "",
-				"long output format with all the details"));
-	BoolOption* ls_format_inode = cleaner.add(ls_format->create<BoolOption>("inode", 'i', "inode", "",
-				"also output the file inode number"));
+	OptionGroup* ls_format = ls->create("Options controlling the format of output");
+	BoolOption* ls_format_long = ls_format->create<BoolOption>("long", 'l', "long", "",
+				"long output format with all the details");
+	BoolOption* ls_format_inode = ls_format->create<BoolOption>("inode", 'i', "inode", "",
+				"also output the file inode number");
 	// other ls options
-	BoolOption* ls_all = cleaner.add(ls->create<BoolOption>("all", 'a', "all", "",
-				"output all files, including the ones starting with a dot"));
+	BoolOption* ls_all = ls->create<BoolOption>("all", 'a', "all", "",
+				"output all files, including the ones starting with a dot");
 
-	StandardParserWithMandatoryCommand parser(*e, argv[0], VERSION, 1, "enrico@enricozini.org");
 	try {
 		if (parser.parse(argc, argv))
 			cerr << "The parser handled the command for us." << endl;
-		if (e->foundCommand())
-			cerr << "Selected command: " << e->foundCommand()->name() << endl;
+		if (parser.foundCommand())
+			cerr << "Selected command: " << parser.foundCommand()->name() << endl;
 		else
 			cerr << "No command selected." << endl;
 		cerr << "Option values:" << endl;

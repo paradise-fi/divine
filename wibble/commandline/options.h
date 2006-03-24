@@ -9,12 +9,12 @@ namespace wibble {
 namespace commandline {
 
 /// Interface for a parser for one commandline option
-class Option
+class Option : public Component
 {
 	std::string m_name;
 	mutable std::string m_fullUsage;
 
-public:
+protected:
 	Option(const std::string& name) : m_name(name) {}
 	Option(const std::string& name,
 			char shortName,
@@ -28,16 +28,6 @@ public:
 		if (!longName.empty())
 			longNames.push_back(longName);
 	}
-	virtual ~Option() {}
-
-	const std::string& name() const { return m_name; }
-
-	void addAlias(char c) { shortNames.push_back(c); }
-	void addAlias(const std::string& str) { longNames.push_back(str); }
-
-	virtual bool boolValue() const = 0;
-	virtual std::string stringValue() const = 0;
-	virtual int intValue() const;
 
 	/**
 	 * Parse the next commandline parameter after the short form of the command
@@ -59,6 +49,18 @@ public:
 	 */
 	virtual bool parse(const std::string& param) = 0;
 
+public:
+	virtual ~Option() {}
+
+	const std::string& name() const { return m_name; }
+
+	void addAlias(char c) { shortNames.push_back(c); }
+	void addAlias(const std::string& str) { longNames.push_back(str); }
+
+	virtual bool boolValue() const = 0;
+	virtual std::string stringValue() const = 0;
+	virtual int intValue() const;
+
 	/// Return a full usage message including all the aliases for this option
 	const std::string& fullUsage() const;
 	std::string fullUsageForMan() const;
@@ -68,13 +70,17 @@ public:
 
 	std::string usage;
 	std::string description;
+
+	friend class OptionGroup;
+	friend class Engine;
 };
 
 /// Boolean option
 class BoolOption : public Option
 {
 	bool m_value;
-public:
+
+protected:
 	BoolOption(const std::string& name)
 		: Option(name), m_value(false) {}
 	BoolOption(const std::string& name,
@@ -84,18 +90,23 @@ public:
 			const std::string& description = std::string())
 		: Option(name, shortName, longName, usage, description), m_value(false) {}
 
+	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_value = true; return begin; }
+	virtual bool parse(const std::string&) { m_value = true; return false; }
+
+public:
 	bool boolValue() const { return m_value; }
 	std::string stringValue() const { return m_value ? "true" : "false"; }
 
-	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_value = true; return begin; }
-	virtual bool parse(const std::string&) { m_value = true; return false; }
+	friend class OptionGroup;
+	friend class Engine;
 };
 
 // Option needing a compulsory string value
 class StringOption : public Option
 {
 	std::string m_value;
-public:
+
+protected:
 	StringOption(const std::string& name)
 		: Option(name)
 	{
@@ -112,11 +123,15 @@ public:
 			this->usage = "<val>";
 	}
 
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& param);
+
+public:
 	bool boolValue() const { return !m_value.empty(); }
 	std::string stringValue() const { return m_value; }
 
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& param);
+	friend class OptionGroup;
+	friend class Engine;
 };
 
 // Option needing a compulsory int value
@@ -125,7 +140,7 @@ class IntOption : public Option
 	bool m_has_value;
 	int m_value;
 
-public:
+protected:
 	IntOption(const std::string& name)
 		: Option(name), m_has_value(false), m_value(0)
 	{
@@ -142,13 +157,16 @@ public:
 			this->usage = "<num>";
 	}
 
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& param);
 
+public:
 	bool boolValue() const { return m_has_value; }
 	int intValue() const { return m_value; }
 	std::string stringValue() const;
 
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& param);
+	friend class OptionGroup;
+	friend class Engine;
 };
 
 /**
@@ -157,7 +175,8 @@ public:
 class ExistingFileOption : public Option
 {
 	std::string m_value;
-public:
+
+protected:
 	ExistingFileOption(const std::string& name)
 		: Option(name)
 	{
@@ -174,24 +193,29 @@ public:
 			this->usage = "<file>";
 	}
 
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+	bool parse(const std::string& str);
 
+public:
 	bool boolValue() const { return !m_value.empty(); }
 	std::string stringValue() const { return m_value; }
 
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& str);
+	friend class OptionGroup;
+	friend class Engine;
 };
 
 /**
  * Group related commandline options
  */
-class OptionGroup
+class OptionGroup : public Component
 {
+	MemoryManager* m_manager;
+
+protected:
+	OptionGroup(MemoryManager* mman = 0, const std::string& description = std::string())
+		: m_manager(mman), description(description) {}
 
 public:
-	OptionGroup(const std::string& description = std::string())
-		: description(description) {}
-
 	void add(Option* o) { options.push_back(o); }
 
 	std::vector<Option*> options;
@@ -209,9 +233,12 @@ public:
 			const std::string& description = std::string())
 	{
 		T* item = new T(name, shortName, longName, usage, description);
+		if (m_manager) m_manager->add(item);
 		add(item);
 		return item;
 	}
+
+	friend class Engine;
 };
 
 }

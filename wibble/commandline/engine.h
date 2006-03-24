@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <set>
 #include <iosfwd>
 
 namespace wibble {
@@ -36,8 +35,9 @@ namespace commandline {
  * command to select the operation mode.  This allow to have a custom set of
  * commandline options for every non-switch command.
  */
-class Engine
+class Engine : public Component
 {
+	MemoryManager* m_manager;
 	std::string m_name;
 
 protected:
@@ -79,14 +79,30 @@ protected:
 	/// Parse all known Options and leave the rest in list
 	ArgList::iterator parseKnownSwitches(ArgList& list, ArgList::iterator begin);
 
-public:
-	Engine(const std::string& name = std::string(),
+	/**
+	 * Parse the list of arguments, starting at the beginning and removing the
+	 * arguments it successfully parses.
+	 *
+	 * @returns
+	 *   An iterator to the first unparsed argument (can be list.end())
+	 */
+	ArgList::iterator parseList(ArgList& list) { return parse(list, list.begin()); }
+
+	/**
+	 * Parse all the switches in list, leaving only the non-switch arguments or
+	 * the arguments following "--"
+	 */
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+
+
+	Engine(MemoryManager* mman = 0, const std::string& name = std::string(),
 					const std::string& usage = std::string(),
 					const std::string& description = std::string(),
 					const std::string& longDescription = std::string())
-		: m_name(name), m_found_command(0), primaryAlias(name),
+		: m_manager(mman), m_name(name), m_found_command(0), primaryAlias(name),
 			usage(usage), description(description), longDescription(longDescription) {}
 
+public:
 	const std::string& name() const { return m_name; }
 
 	/// Add an Option to this engine
@@ -109,6 +125,7 @@ public:
 			const std::string& description = std::string())
 	{
 		T* item = new T(name, shortName, longName, usage, description);
+		if (m_manager) m_manager->add(item);
 		add(item);
 		return item;
 	}
@@ -118,7 +135,8 @@ public:
 	 */
 	OptionGroup* create(const std::string& description)
 	{
-		OptionGroup* g = new OptionGroup(description);
+		OptionGroup* g = new OptionGroup(m_manager, description);
+		if (m_manager) m_manager->add(g);
 		add(g);
 		return g;
 	}
@@ -131,7 +149,8 @@ public:
 					const std::string& description = std::string(),
 					const std::string& longDescription = std::string())
 	{
-		Engine* item = new Engine(name, usage, description, longDescription);
+		Engine* item = new Engine(m_manager, name, usage, description, longDescription);
+		if (m_manager) m_manager->add(item);
 		add(item);
 		return item;
 	}
@@ -164,22 +183,6 @@ public:
 	Engine* foundCommand() const { return m_found_command; }
 
 
-	/**
-	 * Parse the list of arguments, starting at the beginning and removing the
-	 * arguments it successfully parses.
-	 *
-	 * @returns
-	 *   An iterator to the first unparsed argument (can be list.end())
-	 */
-	ArgList::iterator parseList(ArgList& list) { return parse(list, list.begin()); }
-
-	/**
-	 * Parse all the switches in list, leaving only the non-switch arguments or
-	 * the arguments following "--"
-	 */
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-
-
 	void dump(std::ostream& out, const std::string& prefix = std::string());
 
 	std::string primaryAlias;
@@ -188,38 +191,8 @@ public:
 	std::string description;
 	std::string longDescription;
 	std::string examples;
-};
 
-/** Keep track of various wibble::commandline components, and deallocate them
- * at object destruction.
- *
- * If an object is added multiple times, it will still be deallocated only once.
- */
-class MemoryManager
-{
-	std::set<Option*> options;
-	std::set<OptionGroup*> groups;
-	std::set<Engine*> engines;
-
-	Option* addItem(Option* o) { options.insert(o); return o; }
-	OptionGroup* addItem(OptionGroup* o) { groups.insert(o); return o; }
-	Engine* addItem(Engine* p) { engines.insert(p); return p; }
-
-public:
-	~MemoryManager()
-	{
-		for (std::set<Option*>::const_iterator i = options.begin();
-				i != options.end(); ++i)
-			delete *i;
-		for (std::set<OptionGroup*>::const_iterator i = groups.begin();
-				i != groups.end(); ++i)
-			delete *i;
-		for (std::set<Engine*>::const_iterator i = engines.begin();
-				i != engines.end(); ++i)
-			delete *i;
-	}
-	template<typename T>
-	T* add(T* item) { addItem(item); return item; }
+	friend class Parser;
 };
 
 }

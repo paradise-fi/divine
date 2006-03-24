@@ -4,6 +4,7 @@
 #include <wibble/exception.h>
 #include <string>
 #include <list>
+#include <set>
 
 namespace wibble {
 
@@ -45,6 +46,34 @@ public:
 	static bool isSwitch(const std::string& str);
 	static bool isSwitch(const const_iterator& iter);
 	static bool isSwitch(const iterator& iter);
+};
+
+class Component
+{
+public:
+	virtual ~Component() {}
+};
+
+/** Keep track of various wibble::commandline components, and deallocate them
+ * at object destruction.
+ *
+ * If an object is added multiple times, it will still be deallocated only once.
+ */
+class MemoryManager
+{
+	std::set<Component*> components;
+
+	Component* addComponent(Component* o) { components.insert(o); return o; }
+public:
+	~MemoryManager()
+	{
+		for (std::set<Component*>::const_iterator i = components.begin();
+				i != components.end(); ++i)
+			delete *i;
+	}
+
+	template<typename T>
+	T* add(T* item) { addComponent(item); return item; }
 };
 
 }

@@ -365,27 +365,39 @@ TESTGRP( commandline_engine );
 
 using namespace commandline;
 
-class TestEngine : public Engine
+// Happy trick to get access to protected methods we need to use for the tests
+template<typename T>
+class Public : public T
 {
 public:
-	TestEngine() :
-		Engine("test"),
-		antani("antani"),
-		blinda("blinda")
+	Public(MemoryManager* mman = 0, const std::string& name = std::string(),
+					const std::string& usage = std::string(),
+					const std::string& description = std::string(),
+					const std::string& longDescription = std::string())
+		: T(mman, name, usage, description, longDescription) {}
+
+	ArgList::iterator parseList(ArgList& list) { return T::parseList(list); }
+    ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
 	{
-		antani.addAlias('a');
-		antani.addAlias("antani");
-		antani.addAlias("an-tani");
+		return T::parse(list, begin);
+	}
+};
 
-		blinda.addAlias('b');
-		blinda.addAlias("blinda");
+class TestEngine : public Public<Engine>
+{
+	MemoryManager mman;
 
-		add(&antani);
-		add(&blinda);
+public:
+	TestEngine() : Public<Engine>(&mman)
+	{
+		antani = create<BoolOption>("antani", 'a', "antani");
+		blinda = create<StringOption>("blinda", 'b', "blinda");
+
+		antani->addAlias("an-tani");
 	}
 
-	BoolOption antani;
-	StringOption blinda;
+	BoolOption* antani;
+	StringOption* blinda;
 };
 
 // Test mix of options and arguments
@@ -404,8 +416,8 @@ void to::test<1>()
 	ensure_equals(opts.size(), 2u);
 	ensure_equals(string(*opts.begin()), string("ciaps"));
 	ensure_equals(string(*opts.rbegin()), string("foobar"));
-	ensure_equals(engine.antani.boolValue(), false);
-	ensure_equals(engine.blinda.stringValue(), "cippo");
+	ensure_equals(engine.antani->boolValue(), false);
+	ensure_equals(engine.blinda->stringValue(), "cippo");
 }
 
 // Test only options
@@ -421,8 +433,8 @@ void to::test<2>()
 	ensure(i == opts.begin());
 	ensure_equals(opts.size(), 1u);
 	ensure_equals(string(*opts.begin()), string("foobar"));
-	ensure_equals(engine.antani.boolValue(), true);
-	ensure_equals(engine.blinda.boolValue(), false);
+	ensure_equals(engine.antani->boolValue(), true);
+	ensure_equals(engine.blinda->boolValue(), false);
 }
 
 // Test clustered short options
@@ -437,8 +449,8 @@ void to::test<3>()
 	ArgList::iterator i = engine.parseList(opts);
 	ensure(i == opts.end());
 	ensure_equals(opts.size(), 0u);
-	ensure_equals(engine.antani.boolValue(), true);
-	ensure_equals(engine.blinda.stringValue(), "cippo");
+	ensure_equals(engine.antani->boolValue(), true);
+	ensure_equals(engine.blinda->stringValue(), "cippo");
 }
 
 // Test long options with dashes inside
@@ -454,8 +466,8 @@ void to::test<4>()
 	ensure(i == opts.begin());
 	ensure_equals(opts.size(), 1u);
 	ensure_equals(string(*opts.begin()), string("foobar"));
-	ensure_equals(engine.antani.boolValue(), true);
-	ensure_equals(engine.blinda.boolValue(), false);
+	ensure_equals(engine.antani->boolValue(), true);
+	ensure_equals(engine.blinda->boolValue(), false);
 }
 
 // Test long options with arguments
@@ -472,63 +484,36 @@ void to::test<5>()
 	ensure(i == opts.begin());
 	ensure_equals(opts.size(), 1u);
 	ensure_equals(string(*opts.begin()), string("foobar"));
-	ensure_equals(engine.antani.boolValue(), true);
-	ensure_equals(engine.blinda.stringValue(), "cippo");
+	ensure_equals(engine.antani->boolValue(), true);
+	ensure_equals(engine.blinda->stringValue(), "cippo");
 }
 
-class TestCEngine : public Engine
+class TestCEngine : public Public<Engine>
 {
+	MemoryManager mman;
+
 public:
-	class Scramble : public Engine
+	TestCEngine() : Public<Engine>(&mman)
 	{
-	public:
-		Scramble() :
-			Engine("scramble"),
-			random("random"),
-			yell("yell")
-		{
-			random.addAlias('r');
-			random.addAlias("random");
-			yell.addAlias("yell");
-			add(&random);
-			add(&yell);
-			aliases.push_back("mess");
-		}
+		help = create<BoolOption>("help", 'h', "help", "get help");
 
-		BoolOption random;
-		StringOption yell;
-	};
-	class Fix : public Engine
-	{
-	public:
-		Fix() :
-			Engine("fix"),
-			quick("quick"),
-			yell("yell")
-		{
-			quick.addAlias('Q');
-			quick.addAlias("quick");
-			yell.addAlias("yell");
-			add(&quick);
-			add(&yell);
-		}
+		scramble = createEngine("scramble");
+		scramble_random = scramble->create<BoolOption>("random", 'r', "random");
+		scramble_yell = scramble->create<StringOption>("yell", 0, "yell");
+		scramble->aliases.push_back("mess");
 
-		BoolOption quick;
-		StringOption yell;
-	};
-
-	TestCEngine() :
-		Engine("test"),
-		help("help", 'h', "help", "get help")
-	{
-		add(&scramble);
-		add(&fix);
-		add(&help);
+		fix = createEngine("fix");
+		fix_quick = fix->create<BoolOption>("quick", 'Q', "quick");
+		fix_yell = fix->create<StringOption>("yell", 0, "yell");
 	}
 
-	Scramble scramble;
-	Fix fix;
-	BoolOption help;
+	BoolOption*		help;
+	Engine*			scramble;
+	BoolOption*		scramble_random;
+	StringOption*	scramble_yell;
+	Engine*			fix;
+	BoolOption*		fix_quick;
+	StringOption*	fix_yell;
 };
 
 // Test command with arguments
@@ -544,12 +529,12 @@ void to::test<6>()
 	ArgList::iterator i = engine.parseList(opts);
 	ensure(i == opts.end());
 	ensure_equals(opts.size(), 0u);
-	ensure_equals(engine.foundCommand(), &engine.scramble);
-	ensure_equals(engine.scramble.yell.stringValue(), "foo");
-	ensure_equals(engine.scramble.random.boolValue(), true);
-	ensure_equals(engine.fix.yell.stringValue(), string());
-	ensure_equals(engine.fix.quick.boolValue(), false);
-	ensure_equals(engine.help.boolValue(), false);
+	ensure_equals(engine.foundCommand(), engine.scramble);
+	ensure_equals(engine.scramble_yell->stringValue(), "foo");
+	ensure_equals(engine.scramble_random->boolValue(), true);
+	ensure_equals(engine.fix_yell->stringValue(), string());
+	ensure_equals(engine.fix_quick->boolValue(), false);
+	ensure_equals(engine.help->boolValue(), false);
 }
 
 // Test the other command, with overlapping arguments
@@ -566,12 +551,12 @@ void to::test<7>()
 	ArgList::iterator i = engine.parseList(opts);
 	ensure(i == opts.end());
 	ensure_equals(opts.size(), 0u);
-	ensure_equals(engine.foundCommand(), &engine.fix);
-	ensure_equals(engine.scramble.yell.stringValue(), string());
-	ensure_equals(engine.scramble.random.boolValue(), false);
-	ensure_equals(engine.fix.yell.stringValue(), "foo");
-	ensure_equals(engine.fix.quick.boolValue(), true);
-	ensure_equals(engine.help.boolValue(), true);
+	ensure_equals(engine.foundCommand(), engine.fix);
+	ensure_equals(engine.scramble_yell->stringValue(), string());
+	ensure_equals(engine.scramble_random->boolValue(), false);
+	ensure_equals(engine.fix_yell->stringValue(), "foo");
+	ensure_equals(engine.fix_quick->boolValue(), true);
+	ensure_equals(engine.help->boolValue(), true);
 }
 
 // Test invocation without command
@@ -586,18 +571,19 @@ void to::test<8>()
 	ensure(i == opts.end());
 	ensure_equals(opts.size(), 0u);
 	ensure_equals(engine.foundCommand(), (Engine*)0);
-	ensure_equals(engine.scramble.yell.stringValue(), string());
-	ensure_equals(engine.scramble.random.boolValue(), false);
-	ensure_equals(engine.fix.yell.stringValue(), string());
-	ensure_equals(engine.fix.quick.boolValue(), false);
-	ensure_equals(engine.help.boolValue(), true);
+	ensure_equals(engine.scramble_yell->stringValue(), string());
+	ensure_equals(engine.scramble_random->boolValue(), false);
+	ensure_equals(engine.fix_yell->stringValue(), string());
+	ensure_equals(engine.fix_quick->boolValue(), false);
+	ensure_equals(engine.help->boolValue(), true);
 }
 
 // Test creation shortcuts
 template<> template<>
 void to::test<9>()
 {
-	Engine engine("test", "[options]", "test engine", "this is the long description of a test engine");
+	MemoryManager mman;
+	Public<Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
 	OptionGroup* group = engine.create("test option group");
 	BoolOption* testBool = group->create<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
 	IntOption* testInt = group->create<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
@@ -631,8 +617,6 @@ void to::test<9>()
 	delete testInt;
 	delete testBool;
 	delete group;
-}
-
 }
 
 }

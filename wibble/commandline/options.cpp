@@ -169,11 +169,29 @@ TESTGRP( commandline_options );
 
 using namespace commandline;
 
+// Happy trick to get access to protected methods we need to use for the tests
+template<typename T>
+class Public : public T
+{
+public:
+	Public(const std::string& name)
+		: T(name) {}
+	Public(const std::string& name,
+			char shortName,
+			const std::string& longName,
+			const std::string& usage = std::string(),
+			const std::string& description = std::string())
+		: T(name, shortName, longName, usage, description) {}
+
+	virtual ArgList::iterator parse(ArgList& a, ArgList::iterator begin) { return T::parse(a, begin); }
+	virtual bool parse(const std::string& str) { return T::parse(str); }
+};
+
 // Test BoolOption
 template<> template<>
 void to::test<1>()
 {
-	BoolOption opt("test");
+	Public<BoolOption> opt("test");
 
 	ensure_equals(opt.name(), string("test"));
 	ensure_equals(opt.boolValue(), false);
@@ -188,7 +206,7 @@ void to::test<1>()
 template<> template<>
 void to::test<2>()
 {
-	StringOption opt("test");
+	Public<StringOption> opt("test");
 
 	ensure_equals(opt.name(), string("test"));
 	ensure_equals(opt.boolValue(), false);

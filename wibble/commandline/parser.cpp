@@ -11,14 +11,14 @@ namespace commandline {
 void StandardParser::outputHelp(std::ostream& out)
 {
 	commandline::Help help(m_appname, m_version);
-	commandline::Engine* e = m_engine.foundCommand();
+	commandline::Engine* e = foundCommand();
 
 	if (e)
 		// Help on a specific command
 		help.outputHelp(out, *e);
 	else
 		// General help
-		help.outputHelp(out, m_engine);
+		help.outputHelp(out, *this);
 }
 
 bool StandardParser::parse(int argc, const char* argv[])
@@ -53,7 +53,7 @@ bool StandardParserWithManpage::parse(int argc, const char* argv[])
 		string hooks(manpage->stringValue());
 		if (!hooks.empty())
 			man.readHooks(hooks);
-		man.output(cout, m_engine);
+		man.output(cout, *this);
 		return true;
 	}
 	return false;
@@ -64,27 +64,27 @@ bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
 	if (StandardParserWithManpage::parse(argc, argv))
 		return true;
 
-	if (!m_engine.foundCommand())
+	if (!foundCommand())
 	{
 		commandline::Help help(m_appname, m_version);
-		help.outputHelp(cout, m_engine);
+		help.outputHelp(cout, *this);
 		return true;
 	}
-	if (m_engine.foundCommand() == helpCommand)
+	if (foundCommand() == helpCommand)
 	{
 		commandline::Help help(m_appname, m_version);
 		if (hasNext())
 		{
 			// Help on a specific command
 			string command = next();
-			if (Engine* e = m_engine.command(command))
+			if (Engine* e = this->command(command))
 				help.outputHelp(cout, *e);
 			else
 				throw exception::BadOption("unknown command " + command + "; run '" + argv[0] + " help' "
 						"for a list of all the available commands");
 		} else {
 			// General help
-			help.outputHelp(cout, m_engine);
+			help.outputHelp(cout, *this);
 		}
 		return true;
 	}
