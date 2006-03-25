@@ -14,7 +14,7 @@
 namespace wibble {
 
 template< typename T >
-struct ConsumerBase : MultiTypeBase< ConsumerBase< T > >
+struct ConsumerBase : MorphBase< ConsumerBase< T > >
 {
     typedef T InputType;
     virtual void consume( const T &a ) = 0;
@@ -28,14 +28,14 @@ struct ConsumerBase : MultiTypeBase< ConsumerBase< T > >
 };
 
 template< typename T, typename Self, typename Base = ConsumerBase< T > >
-struct ConsumerImpl: MultiTypeImpl< Self, Base >
+struct ConsumerImpl: MorphImpl< Self, Base >
 {
 };
 
 template< typename T >
-struct Consumer: MultiType< Consumer< T >, ConsumerBase< T > >
+struct Consumer: Amorph< Consumer< T >, ConsumerBase< T > >
 {
-    typedef MultiType< Consumer< T >, ConsumerBase< T > > Super;
+    typedef Amorph< Consumer< T >, ConsumerBase< T > > Super;
 
     Consumer( const ConsumerBase< T > *i ) : Super( i ) {}
     Consumer( const Consumer &i ) : Super( i ) {}

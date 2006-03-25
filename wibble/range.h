@@ -38,7 +38,7 @@ struct ExtIteratorTraits< T, typename std::vector< T >::iterator > {
 };
 
 template< typename T >
-struct RangeBase : MultiTypeBase< RangeBase< T > >
+struct RangeBase : MorphBase< RangeBase< T > >
 {
     typedef T value_type;
     typedef ptrdiff_t difference_type;
@@ -65,7 +65,7 @@ struct RangeProxy {
 };
 
 template< typename T, typename Self, typename Base = RangeBase< T > >
-struct RangeImpl: MultiTypeImpl< Self, Base, equalityComparable >
+struct RangeImpl: MorphImpl< Self, Base, equalityComparable >
 {
     typedef T ElementType;
 
@@ -103,9 +103,9 @@ struct RangeImpl: MultiTypeImpl< Self, Base, equalityComparable >
 };
 
 template< typename T >
-struct Range : MultiType< Range< T >, RangeBase< T > >
+struct Range : Amorph< Range< T >, RangeBase< T >, 4 >
 {
-    typedef MultiType< Range< T >, RangeBase< T > > Super;
+    typedef Amorph< Range< T >, RangeBase< T >, 4 > Super;
     typedef T ElementType;
 
     Range( const RangeBase< T > *i ) : Super( i ) {}
