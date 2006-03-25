@@ -35,10 +35,10 @@ struct MorphImplBase {
     void *operator new( unsigned int bytes, void *where, unsigned available ) {
         if ( bytes > available ) {
             where = ::operator new( bytes );
-            std::cerr << "heap constrtuct on: " << where << std::endl;
+            // std::cerr << "heap construct on: " << where << std::endl;
             return where;
         }
-        std::cerr << "in-place constrtuct on: " << where << std::endl;
+        // std::cerr << "in-place construct on: " << where << std::endl;
         return where;
     }
 };
@@ -98,10 +98,10 @@ struct MorphImpl : public Base, MorphImplBase {
 
     virtual void destroy( unsigned int available ) {
         if ( sizeof( Self ) <= available ) {
-            std::cerr << "in-place destroy on: " << this << std::endl;
+            // std::cerr << "in-place destroy on: " << this << std::endl;
             (&self())->~Self();
         } else {
-            std::cerr << "heap destroy on: " << this << std::endl;
+            // std::cerr << "heap destroy on: " << this << std::endl;
             delete this;
         }
     }
