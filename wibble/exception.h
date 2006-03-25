@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #ifndef WIBBLE_EXCEPTION_H
 #define WIBBLE_EXCEPTION_H
 
@@ -22,6 +23,7 @@
  */
 
 #include <exception>
+#include <typeinfo>
 #include <string>
 #include <vector>
 
@@ -165,7 +167,7 @@ public:
 	virtual const std::string& fullInfo() const throw ()
 	{
 		if (m_formatted.empty())
-			m_formatted = desc() + ".  Context: " + formatContext();
+			m_formatted = desc() + ". Context: " + formatContext();
 		return m_formatted;
 	}
 
@@ -227,6 +229,31 @@ public:
 			return "consistency check failed";
 		return m_error;
 	}
+};
+
+struct BadCast : public Consistency
+{
+    BadCast( const std::string &context ) throw()
+        : Consistency( context )
+    {}
+    ~BadCast() throw() {}
+    virtual std::string typeinfo() const throw() { return "unknown types"; }
+    virtual std::string desc() const throw() {
+        return std::string( "bad cast: " ) + typeinfo();
+    }
+};
+
+template< typename From, typename To >
+struct BadCastExt : public BadCast
+{
+    BadCastExt( const std::string &error = std::string() ) throw()
+        : BadCast( error )
+    {}
+    ~BadCastExt() throw() {}
+    virtual std::string typeinfo() const throw() { return std::string( "from " )
+                                                       + typeid( From ).name()
+                                                       + " to "
+                                                       + typeid( To ).name(); }
 };
 
 /**

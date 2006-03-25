@@ -149,6 +149,22 @@ void to::test<2>()
 	}
 }
 
+// BadCast
+template<> template<>
+void to::test<3>()
+{
+    int check = -1;
+	try {
+        check = 0;
+		throw exception::BadCastExt< int, const char * >( "test" );
+        check = 1;
+	} catch ( exception::BadCast& e ) {
+        ensure_equals( e.fullInfo(), "bad cast: from i to PKc. Context: test" );
+        check = 2;
+	}
+    ensure_equals( check, 2 );
+}
+
 }
 
 }
