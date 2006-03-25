@@ -4,7 +4,7 @@
 */
 
 #include <wibble/shared.h>
-#include <wibble/multitype.h>
+#include <wibble/amorph.h>
 #include <wibble/exception.h>
 #include <iterator>
 #include <vector>

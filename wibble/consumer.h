@@ -5,7 +5,7 @@
 
 #include <iterator>
 
-#include <wibble/multitype.h>
+#include <wibble/amorph.h>
 #include <wibble/range.h>
 
 #ifndef WIBBLE_CONSUMER_H
