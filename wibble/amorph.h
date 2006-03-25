@@ -5,8 +5,7 @@
 
 #include <wibble/cast.h>
 #include <wibble/maybe.h>
-#include <iostream> // for debug noise
-#include <typeinfo> // for bad_cast
+// #include <iostream> // for debug noise
 
 #ifndef WIBBLE_AMORPH_H
 #define WIBBLE_AMORPH_H
@@ -88,7 +87,7 @@ struct MorphImpl : public Base, MorphImplBase {
         if (p)
             self() = *p;
         else
-            throw std::bad_cast ();
+            throw exception::BadCastExt< Base, Self >( "dynamic cast failed" );
     }
 
    virtual Base *constructCopy( void *where, unsigned int available ) const {
@@ -165,7 +164,7 @@ struct MorphImpl<Self, Base, comparable>
     virtual bool less( Base *i ) const {
         const Self *p = dynamic_cast<const Self *>( i );
         if (!p)
-           throw std::bad_cast();
+            throw exception::BadCastExt< Base, Self >( "dynamic cast failed" );
         return (this->self()) < Self( *p );
     }
 };
