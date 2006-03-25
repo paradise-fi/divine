@@ -52,7 +52,7 @@ void impl_ensure_equals(const Location& loc, const Actual& actual, const Expecte
 	if( expected != actual )
 	{
 		std::stringstream ss;
-		ss << "expected " << expected << " actual " << actual;
+		ss << "expected '" << expected << "' actual '" << actual << "'";
 		throw tut::failure(loc.msg(ss.str()));
 	}
 }
