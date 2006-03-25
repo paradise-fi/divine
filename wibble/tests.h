@@ -45,8 +45,9 @@ void impl_ensure(const Location& loc, bool res);
 
 #define ensure_equals(x, y) wibble::tests::impl_ensure_equals(wibble::tests::Location(__FILE__, __LINE__, #x " == " #y), (x), (y))
 #define inner_ensure_equals(x, y) wibble::tests::impl_ensure_equals(wibble::tests::Location(loc, __FILE__, __LINE__, #x " == " #y), (x), (y))
-template <class T,class Q>
-void impl_ensure_equals(const Location& loc, const Q& actual, const T& expected)
+
+template <class Actual,class Expected>
+void impl_ensure_equals(const Location& loc, const Actual& actual, const Expected& expected)
 {
 	if( expected != actual )
 	{
