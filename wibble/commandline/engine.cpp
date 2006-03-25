@@ -609,14 +609,6 @@ void to::test<9>()
 	ensure_equals(testBool1->boolValue(), true);
 	ensure_equals(testInt1->intValue(), 5);
 	ensure_equals(testString1->stringValue(), "blinda");
-
-	delete testString1;
-	delete testInt1;
-	delete testBool1;
-	delete testString;
-	delete testInt;
-	delete testBool;
-	delete group;
 }
 
 }
