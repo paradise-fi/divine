@@ -60,7 +60,7 @@ struct MorphImplBase {
    Then, FooImpl would look like this:
 
    template< typename Self, typename Base = FooBase >
-   struct FooImpl : MorphImpl< Safe, Base, equalityComparable >
+   struct FooImpl : MorphImpl< Self, Base, equalityComparable >
    {
        // stuff
    };
