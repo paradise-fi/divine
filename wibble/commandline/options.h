@@ -9,7 +9,7 @@ namespace wibble {
 namespace commandline {
 
 /// Interface for a parser for one commandline option
-class Option : public Component
+class Option : public Managed
 {
 	std::string m_name;
 	mutable std::string m_fullUsage;
@@ -207,7 +207,7 @@ public:
 /**
  * Group related commandline options
  */
-class OptionGroup : public Component
+class OptionGroup : public Managed
 {
 	MemoryManager* m_manager;
 

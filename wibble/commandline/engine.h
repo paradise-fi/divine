@@ -35,7 +35,7 @@ namespace commandline {
  * command to select the operation mode.  This allow to have a custom set of
  * commandline options for every non-switch command.
  */
-class Engine : public Component
+class Engine : public Managed
 {
 	MemoryManager* m_manager;
 	std::string m_name;

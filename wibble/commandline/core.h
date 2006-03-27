@@ -48,10 +48,10 @@ public:
 	static bool isSwitch(const iterator& iter);
 };
 
-class Component
+class Managed
 {
 public:
-	virtual ~Component() {}
+	virtual ~Managed() {}
 };
 
 /** Keep track of various wibble::commandline components, and deallocate them
@@ -61,19 +61,19 @@ public:
  */
 class MemoryManager
 {
-	std::set<Component*> components;
+	std::set<Managed*> components;
 
-	Component* addComponent(Component* o) { components.insert(o); return o; }
+	Managed* addManaged(Managed* o) { components.insert(o); return o; }
 public:
 	~MemoryManager()
 	{
-		for (std::set<Component*>::const_iterator i = components.begin();
+		for (std::set<Managed*>::const_iterator i = components.begin();
 				i != components.end(); ++i)
 			delete *i;
 	}
 
 	template<typename T>
-	T* add(T* item) { addComponent(item); return item; }
+	T* add(T* item) { addManaged(item); return item; }
 };
 
 }
