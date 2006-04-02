@@ -45,7 +45,6 @@ struct RangeInterface {
     virtual T current() const = 0;
     virtual void advance() = 0;
     virtual void setToEnd() = 0;
-    virtual SortedRange< T > sorted_impl() const = 0;
     virtual ~RangeInterface() {}
 };
 
@@ -86,10 +85,6 @@ struct RangeImpl: MorphImpl< Self, Interface, equalityComparable >
     }
 
     SortedRange< T > sorted() const;
-    virtual SortedRange< T > sorted_impl() const {
-        return this->self().sorted();
-    }
-
     T operator*() const { return this->self().current(); }
 
     void output( Consumer< T > t ) const {
@@ -581,7 +576,6 @@ template< typename T >
 struct SortedVectorRange :
     VectorRange< T >, virtual SortedRangeInterface< T >
 {
-    virtual SortedRange< T > sorted_impl() const { return SortedRange< T >( this ); }
 };
 
 template< typename T, typename S, typename I >
