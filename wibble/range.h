@@ -315,7 +315,7 @@ protected:
 
 template< typename R >
 IntersectionRange< typename R::ElementType > intersectionRange( R r1, R r2 ) {
-    return IntersectionRange< typename R::ElementType >( r1.sorted(), r2.sorted() );
+    return IntersectionRange< typename R::ElementType >( r1, r2 );
 }
 
 template< typename R, typename Pred >
