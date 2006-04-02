@@ -3,14 +3,17 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
+#include <iostream> // for noise
+
 #include <wibble/cast.h>
 #include <wibble/maybe.h>
-// #include <iostream> // for debug noise
 
 #ifndef WIBBLE_AMORPH_H
 #define WIBBLE_AMORPH_H
 
 namespace wibble {
+
+struct Baseless {};
 
 /**
    @brief A base class for morphs
@@ -18,20 +21,25 @@ namespace wibble {
    You usually have a base class for all the Morphs. It would probably
    inherit this class. See MorphImpl and Amorph class documentation for details.
  */
-template <typename T>
-struct MorphBase {
-    virtual T *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
+struct MorphInterface {
+    virtual MorphInterface *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
     virtual void destroy( unsigned int available = 0 ) = 0;
-    virtual bool equals( T *i ) const = 0;
-    virtual bool less( T *i ) const = 0;
-    virtual ~MorphBase() {}
+    virtual bool equals( const MorphInterface *i ) const = 0;
+    virtual bool less( const MorphInterface *i ) const = 0;
+    virtual ~MorphInterface() {}
 };
+
+/* template< typename _Interface >
+struct MorphBase : virtual _Interface, virtual MorphInterface {
+    typedef _Interface Interface;
+    virtual ~MorphBase() {}
+    }; */
 
 const int notComparable = 0;
 const int equalityComparable = 1;
 const int comparable = 2;
 
-struct MorphImplBase {
+struct MorphAllocator {
     void *operator new( unsigned int bytes, void *where, unsigned available ) {
         if ( bytes > available ) {
             where = ::operator new( bytes );
@@ -79,18 +87,19 @@ struct MorphImplBase {
 
    See Amorph class for details.
 */
-template <typename Self, typename Base, int comparable = notComparable> 
-struct MorphImpl : public Base, MorphImplBase {
+template< typename Self, typename Interface, int comparable = notComparable >
+struct MorphImpl : virtual Interface, virtual MorphInterface, virtual MorphAllocator {
+    // typedef typename Base::Interface Interface;
 
-    void initFromBase (const Base *i) {
+    void initFromBase( const Interface *i ) {
         const Self *p = dynamic_cast <const Self *> (i);
-        if (p)
+        if ( p )
             self() = *p;
         else
-            throw exception::BadCastExt< Base, Self >( "dynamic cast failed" );
+            throw exception::BadCastExt< Interface, Self >( "dynamic cast failed" );
     }
 
-   virtual Base *constructCopy( void *where, unsigned int available ) const {
+   virtual MorphInterface *constructCopy( void *where, unsigned int available ) const {
         if ( !where || !available )
             return ::new Self( self() );
         return new( where, available ) Self( self() );
@@ -98,10 +107,8 @@ struct MorphImpl : public Base, MorphImplBase {
 
     virtual void destroy( unsigned int available ) {
         if ( sizeof( Self ) <= available ) {
-            // std::cerr << "in-place destroy on: " << this << std::endl;
             (&self())->~Self();
         } else {
-            // std::cerr << "heap destroy on: " << this << std::endl;
             delete this;
         }
     }
@@ -114,14 +121,17 @@ struct MorphImpl : public Base, MorphImplBase {
         return *static_cast<Self *>( this );
     }
 
-    virtual bool equals( Base * ) const {
+    virtual bool equals( const MorphInterface * ) const {
+        std::cout << "MorphImpl< notComparable >::equals()" << std::endl;
         return false; // THROW!
     }
 
-    virtual bool less( Base * ) const {
+    virtual bool less( const MorphInterface * ) const {
+        std::cout << "MorphImpl< notComparable >::less()" << std::endl;
         return false; // THROW!
     }
 
+    virtual ~MorphImpl() {}
 };
 
 /**
@@ -134,7 +144,8 @@ template <typename Self, typename Base>
 struct MorphImpl<Self, Base, equalityComparable>
     : MorphImpl<Self, Base, notComparable>
 {
-    virtual bool equals( Base *i ) const {
+    virtual bool equals( const MorphInterface *i ) const {
+        // std::cout << "MorphImpl< equalityComparable >::equals()" << std::endl;
         const Self *p = dynamic_cast<const Self *>( i );
         /* if (! p)
            throw std::bad_cast(); */
@@ -161,7 +172,7 @@ template <typename Self, typename Base>
 struct MorphImpl<Self, Base, comparable>
     : MorphImpl<Self, Base, equalityComparable>
 {
-    virtual bool less( Base *i ) const {
+    virtual bool less( const MorphInterface *i ) const {
         const Self *p = dynamic_cast<const Self *>( i );
         if (!p)
             throw exception::BadCastExt< Base, Self >( "dynamic cast failed" );
@@ -236,14 +247,17 @@ struct MorphImpl<Self, Base, comparable>
    reasonable amount of padding should improve performance a fair bit
    in some applications (and is worthless in others).
 */
-template <typename Self, typename Base, int Padding = 0>
+template <typename Self, typename _Interface, int Padding = 0>
 struct Amorph {
+    typedef _Interface Interface;
+
     template <typename T> struct Convert {
         typedef T type;
     };
 
-    Amorph( const Base *b ) {
-        m_impl = b->constructCopy( &m_padding, sizeof( m_padding ) );
+    Amorph( const Interface *b ) {
+        m_impl = dynamic_cast< const MorphInterface * >( b )->constructCopy(
+            &m_padding, sizeof( m_padding ) );
     }
 
     Amorph( const Amorph &t ) {
@@ -255,7 +269,7 @@ struct Amorph {
     }
 
     const Self &self() const {
-        return *static_cast<const Self *>( this );
+        return *static_cast< const Self * >( this );
     }
 
     Self &self() {
@@ -263,43 +277,44 @@ struct Amorph {
     }
 
     bool operator== (const Amorph &i) const {
-        if (m_impl)
-            if (i.m_impl)
-                return m_impl->equals( i.m_impl );
+        // std::cout << "Amorph::operator==()" << std::endl;
+        if ( morphInterface() )
+            if ( i.morphInterface() )
+                return morphInterface()->equals( i.morphInterface() );
             else
                 return false;
         else
-            return !i.m_impl;
+            return !i.morphInterface();
     }
 
     bool operator< (const Amorph &i) const {
-        if (m_impl)
-            if (i.m_impl)
-                return m_impl->less( i.m_impl );
+        if ( morphInterface() )
+            if ( i.morphInterface() )
+                return morphInterface()->less( i.morphInterface() );
             else
                 return false;
         else
-            return !i.m_impl;
+            return !i.morphInterface();
     }
     
-    bool operator!=(const Amorph &i) const {
+    /* bool operator!=(const Amorph &i) const {
         return !self().operator==(i);
-    }
+        } */
 
     bool operator> (const Amorph &i) const {
         return !( *this < i || *this == i);
     }
 
     Amorph &operator=( const Amorph &i ) {
-        if (i.m_impl)
-            m_impl = i.m_impl->constructCopy( &m_padding, sizeof( m_padding ) );
+        if ( i.morphInterface() )
+            m_impl = i.morphInterface()->constructCopy( &m_padding, sizeof( m_padding ) );
         else
             m_impl = 0;
         return *this;
     }
 
     ~Amorph() {
-        impl()->destroy( sizeof( m_padding ) );
+        morphInterface()->destroy( sizeof( m_padding ) );
         // delete m_impl;
     }
 
@@ -324,18 +339,22 @@ struct Amorph {
         return ptr;
     }
 
-    Base *impl() const {
+    Interface *implInterface() const {
+        return dynamic_cast< Interface * >( m_impl );
+    }
+
+    MorphInterface *morphInterface() const {
         return m_impl;
     }
 
     template <typename R> R *impl() const {
-        return dynamic_cast<R *>( impl() );
+        return dynamic_cast<R *>( m_impl );
     }
 
 protected:
     unsigned int reservedSize() { return sizeof( m_padding ) + sizeof( m_impl ); }
     int m_padding[ Padding ];
-    Base *m_impl;
+    MorphInterface *m_impl;
 };
 
 template <typename T, typename X>
