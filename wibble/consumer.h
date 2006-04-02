@@ -14,51 +14,62 @@
 namespace wibble {
 
 template< typename T >
-struct ConsumerBase : MorphBase< ConsumerBase< T > >
+struct ConsumerInterface
 {
     typedef T InputType;
     virtual void consume( const T &a ) = 0;
     virtual void consume( Range< T > s ) {
-        while (s != s.end()) {
+        while ( s != s.end() ) {
             consume( s.current() );
             ++s;
         }
     }
+    virtual ~ConsumerInterface() {}
+};
+
+template< typename T, typename Self, typename Interface = ConsumerInterface< T > >
+struct ConsumerImpl: MorphImpl< Self, Interface >
+{
+    typedef std::output_iterator_tag iterator_category;
+
+    Consumer< T > &operator++() { return this->self(); }
+    Consumer< T > &operator++(int) { return this->self(); }
+    Consumer< T > &operator*() { return this->self(); }
+    Consumer< T > &operator=( const T &a ) {
+        this->self()->consume( a );
+        return this->self();
+    }
     operator Consumer< T >() const;
 };
 
-template< typename T, typename Self, typename Base = ConsumerBase< T > >
-struct ConsumerImpl: MorphImpl< Self, Base >
-{
-};
-
 template< typename T >
-struct Consumer: Amorph< Consumer< T >, ConsumerBase< T > >
+struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
+                 ConsumerImpl< T, Consumer< T > >
 {
-    typedef Amorph< Consumer< T >, ConsumerBase< T > > Super;
+    typedef Amorph< Consumer< T >, ConsumerInterface< T > > Super;
 
-    Consumer( const ConsumerBase< T > *i ) : Super( i ) {}
-    Consumer( const Consumer &i ) : Super( i ) {}
-    Consumer() {}
-
-    typedef std::output_iterator_tag iterator_category;
     typedef void value_type;
     typedef void difference_type;
     typedef void pointer;
     typedef void reference;
 
-    // output iterator - can't read or move
-    Consumer &operator++() { return *this; }
-    Consumer &operator++(int) { return *this; }
-    Consumer &operator*() { return *this; }
-    Consumer &operator=( const T &a ) {
-        this->m_impl->consume( a );
+    Consumer( const typename Super::Interface *i ) : Super( i ) {}
+    Consumer( const Consumer &i ) : Super( i ) {}
+    Consumer() {}
+
+    virtual void consume( const T &a ) {
+        return this->implInterface()->consume( a );
+    }
+
+    Consumer< T > &operator=( const T &a ) {
+        consume( a );
         return *this;
     }
+    // output iterator - can't read or move
 };
 
-template< typename T >
-inline ConsumerBase< T >::operator Consumer< T >() const
+template< typename T, typename S, typename I >
+inline ConsumerImpl< T, S, I >::operator Consumer< T >() const
 {
     return Consumer< T >( this );
 }
@@ -83,7 +94,7 @@ Consumer< T > consumer( Out out ) {
 
 template< typename Base >
 Consumer< typename Base::InputType > consumer( Base b ) {
-    return static_cast<Consumer< typename Base::InputType > >( b );
+    return static_cast<Consumer< typename Base::InputType > >( &b );
 }
 
 }
