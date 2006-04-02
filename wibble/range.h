@@ -3,14 +3,16 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
-#include <wibble/shared.h>
-#include <wibble/amorph.h>
-#include <wibble/exception.h>
+#include <iostream> // for noise
 #include <iterator>
 #include <vector>
 #include <set>
 #include <algorithm>
 #include <ext/algorithm>
+
+#include <wibble/shared.h>
+#include <wibble/amorph.h>
+#include <wibble/exception.h>
 
 #ifndef WIBBLE_RANGE_H
 #define WIBBLE_RANGE_H
@@ -18,6 +20,7 @@
 namespace wibble {
 
 template< typename > struct Range;
+template< typename > struct SortedRange;
 template< typename > struct Consumer;
 
 typedef bool SortabilityTag;
@@ -38,23 +41,17 @@ struct ExtIteratorTraits< T, typename std::vector< T >::iterator > {
 };
 
 template< typename T >
-struct RangeBase : MorphBase< RangeBase< T > >
-{
-    typedef T value_type;
-    typedef ptrdiff_t difference_type;
-    typedef T *pointer;
-    typedef T &reference;
-    typedef const T &const_reference;
-
+struct RangeInterface {
     virtual T current() const = 0;
     virtual void advance() = 0;
-    virtual bool isSorted() const { return false; }
-    virtual Range< T > sorted() const = 0;
-    virtual Range< T > next_impl() const = 0;
-    virtual Range< T > end_impl() const = 0;
-    operator Range< T >() const;
-    virtual bool empty() const = 0;
-    virtual bool contains_impl( const T & ) const = 0;
+    virtual void setToEnd() = 0;
+    virtual SortedRange< T > sorted_impl() const = 0;
+    virtual ~RangeInterface() {}
+};
+
+template< typename T >
+struct SortedRangeInterface {
+    virtual ~SortedRangeInterface() {} // polymorphic
 };
 
 template< typename T >
@@ -64,8 +61,8 @@ struct RangeProxy {
     const T *operator->() const { return &x; }
 };
 
-template< typename T, typename Self, typename Base = RangeBase< T > >
-struct RangeImpl: MorphImpl< Self, Base, equalityComparable >
+template< typename T, typename Self, typename Interface = RangeInterface< T > >
+struct RangeImpl: MorphImpl< Self, Interface, equalityComparable >
 {
     typedef T ElementType;
 
@@ -80,83 +77,74 @@ struct RangeImpl: MorphImpl< Self, Base, equalityComparable >
         return RangeProxy< T >(this->self().current()); }
     Self next() const { Self n( this->self() ); n.advance(); return n; }
     Self begin() const { return this->self(); } // STL-style iteration
-    Self end() const { Self e( this->self() ); e.gotoEnd(); return e; }
+    Self end() const { Self e( this->self() ); e.setToEnd(); return e; }
     Self &operator++() { this->self().advance(); return this->self(); }
+    Self operator++(int) {
+        Self tmp = this->self();
+        this->self().advance();
+        return tmp;
+    }
+
+    SortedRange< T > sorted() const;
+    virtual SortedRange< T > sorted_impl() const {
+        return this->self().sorted();
+    }
+
     T operator*() const { return this->self().current(); }
-    virtual Range< T > sorted() const;
-    virtual Range< T > end_impl() const {
-        return this->self().end();
+
+    void output( Consumer< T > t ) const {
+        std::copy( this->self(), end(), t );
     }
-    virtual Range< T > next_impl() const {
-        return this->self().next();
-    }
+
     virtual bool empty() const {
-        return this->self() == this->self().end();
-    }
-    virtual bool contains_impl( const T &t ) const { return this->self().contains( t ); }
-
-    bool contains( const T &t ) const { // errrm...
-        return std::find( this->self(), this->self().end(), t ) != this->self().end();
+        return this->self() == end();
     }
 
-    virtual void gotoEnd() = 0;
+    operator Range< T >() const;
+    virtual ~RangeImpl() {}
 };
 
 template< typename T >
-struct Range : Amorph< Range< T >, RangeBase< T >, 4 >
+struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
+               RangeImpl< T, Range< T > >
 {
-    typedef Amorph< Range< T >, RangeBase< T >, 4 > Super;
+    typedef Amorph< Range< T >, RangeInterface< T >, 0 > Super;
     typedef T ElementType;
 
-    Range( const RangeBase< T > *i ) : Super( i ) {}
+    Range( const typename Super::Interface *i ) : Super( i ) {}
     Range( const Range &i ) : Super( i ) {}
     Range() {}
 
-    typedef std::forward_iterator_tag iterator_category;
-    typedef T value_type;
-    typedef ptrdiff_t difference_type;
-    typedef T *pointer;
-    typedef T &reference;
-    typedef const T &const_reference;
+    T current() const { return this->implInterface()->current(); }
+    virtual void advance() { this->implInterface()->advance(); }
+    virtual void setToEnd() { this->implInterface()->setToEnd(); }
+    virtual bool empty() const { return !this->implInterface() || *this == this->end(); }
 
-    bool empty() const {
-        if (this->impl())
-            return this->impl()->empty();
-        return true;
-    }
-
-    /* struct Proxy {
-        Proxy( T _x ) : x( _x ) {}
-        T x;
-        const T *operator->() const { return &x; }
-        }; */
-
-    T current() const { return this->m_impl->current(); }
-    Range end() const { return this->m_impl->end_impl(); }
-    Range next() const { return this->m_impl->next_impl(); }
-    bool contains( const T &t ) const { return this->m_impl->contains_impl( t ); }
-    void advance() { this->m_impl->advance(); }
-    bool isSorted() const { return this->m_impl->isSorted(); }
-    Range< T > sorted() const { return this->m_impl->sorted(); }
-    T operator*() const { return this->m_impl->current(); }
-    RangeProxy< T > operator->() const {
-        return RangeProxy< T >(this->m_impl->current()); }
-    Range &operator++() { this->m_impl->advance(); return *this; }
-    Range operator++(int) {
-        Range< T > tmp = *this;
-        this->m_impl->advance();
-        return tmp;
-    }
-    void output( Consumer< T > t ) const {
-        std::copy( *this, end(), t );
-    }
-
-    template< typename C >
-    operator Range< C >();
+    template< typename C > operator Range< C >();
 };
 
 template< typename T >
-inline RangeBase< T >::operator Range< T >() const
+struct SortedRange : Amorph< SortedRange< T >, SortedRangeInterface< T >, 0 >,
+                     RangeImpl< T, SortedRange< T >, SortedRangeInterface< T > >
+{
+    typedef Amorph< SortedRange< T >, SortedRangeInterface< T >, 0 > Super;
+    typedef T ElementType;
+
+    SortedRange( const typename Super::Interface *i ) : Super( i ) {}
+    SortedRange( const SortedRange &i ) : Super( i ) {}
+    SortedRange() {}
+
+    T current() const { return this->template impl< RangeInterface< T > >()->current(); }
+    virtual void advance() { this->template impl< RangeInterface< T > >()->advance(); }
+    virtual void setToEnd() { this->template impl< RangeInterface< T > >()->setToEnd(); }
+    virtual bool empty() const {
+        return !this->template impl< RangeInterface< T > >() || *this == this->end(); }
+
+    operator Range< T >() { return Range< T >( this->template impl< RangeInterface< T > >() ); }
+};
+
+template< typename T, typename Self, typename Base >
+inline RangeImpl< T, Self, Base >::operator Range< T >() const
 {
     return Range< T >( this );
 }
@@ -199,23 +187,24 @@ struct IteratorRange : public RangeImpl<
     typedef typename std::iterator_traits< In >::value_type Value;
     typedef std::forward_iterator_tag iterator_category;
     // typedef typename std::iterator_traits< In >::iterator_category iterator_category;
+
     IteratorRange( In c, In e )
         : m_current( c ), m_end( e ) {}
+
     virtual Value current() const {
         return *m_current;
     }
+
     virtual void advance() {
         ++m_current;
     }
+
     bool operator==( const IteratorRange &r ) const {
         return r.m_current == m_current && r.m_end == m_end;
     }
-    void gotoEnd() {
-        m_current = m_end;
-    }
 
-    bool isSorted() const {
-        return isSortedT< Value, In >( m_current, m_end );
+    void setToEnd() {
+        m_current = m_end;
     }
 
 protected:
@@ -234,13 +223,10 @@ struct CastedRange : public RangeImpl< T, CastedRange< T, Casted > >
     bool operator==( const CastedRange &r ) const {
         return m_casted == r.m_casted; }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_casted = m_casted.end();
     }
 
-    bool isSorted() const { // XXX actually, this is probably wrong
-        return m_casted.isSorted();
-    }
 protected:
     Range< Casted > m_casted;
 };
@@ -276,8 +262,8 @@ template< typename T >
 struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
 {
     IntersectionRange() {}
-    IntersectionRange( Range< T > r1, Range< T > r2 )
-        : m_first( r1.sorted() ), m_second( r2.sorted() ),
+    IntersectionRange( SortedRange< T > r1, SortedRange< T > r2 )
+        : m_first( r1 ), m_second( r2 ),
         m_valid( false )
     {
     }
@@ -310,7 +296,7 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
         return m_first.current();
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_first = m_first.end();
         m_second = m_second.end();
     }
@@ -322,16 +308,14 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
         // return m_pred == f.m_pred && m_range == f.m_range;
     }
 
-    bool isSorted() const { return true; }
-
 protected:
-    mutable Range< T > m_first, m_second;
+    mutable SortedRange< T > m_first, m_second;
     mutable bool m_valid:1;
 };
 
 template< typename R >
 IntersectionRange< typename R::ElementType > intersectionRange( R r1, R r2 ) {
-    return IntersectionRange< typename R::ElementType >( r1, r2 );
+    return IntersectionRange< typename R::ElementType >( r1.sorted(), r2.sorted() );
 }
 
 template< typename R, typename Pred >
@@ -359,7 +343,7 @@ struct FilteredRange : RangeImpl< typename R::ElementType,
         return m_range.current();
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_range = m_range.end();
     }
 
@@ -368,10 +352,6 @@ struct FilteredRange : RangeImpl< typename R::ElementType,
         f.find();
         return m_range == f.m_range;
         // return m_pred == f.m_pred && m_range == f.m_range;
-    }
-
-    bool isSorted() const {
-        return m_range.isSorted();
     }
 
 protected:
@@ -390,7 +370,7 @@ template< typename T >
 struct UniqueRange : RangeImpl< T, UniqueRange< T > >
 {
     UniqueRange() {}
-    UniqueRange( Range< T > r ) : m_range( r.sorted() ), m_valid( false ) {}
+    UniqueRange( SortedRange< T > r ) : m_range( r ), m_valid( false ) {}
 
     void find() const {
         if (!m_valid)
@@ -412,7 +392,7 @@ struct UniqueRange : RangeImpl< T, UniqueRange< T > >
         return m_range.current();
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_range = m_range.end();
     }
 
@@ -422,12 +402,8 @@ struct UniqueRange : RangeImpl< T, UniqueRange< T > >
         return m_range == r.m_range;
     }
 
-    bool isSorted() const {
-        return true;
-    }
-
 protected:
-    mutable Range< T > m_range;
+    mutable SortedRange< T > m_range;
     mutable bool m_valid:1;
 };
 
@@ -457,7 +433,7 @@ struct TransformedRange : RangeImpl< typename Transform::result_type,
         ++m_range;
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_range = m_range.end();
     }
 
@@ -488,7 +464,7 @@ struct BackedRange :
     virtual T current() const {
         return *m_position;
     }
-    virtual void gotoEnd() {
+    virtual void setToEnd() {
         m_position = m_container->end();
     }
 
@@ -499,13 +475,21 @@ protected:
     ContainerPtr m_container;
 };
 
+template< typename T, typename Self >
+struct RandomAccessImpl {
+};
+
+template< typename T, typename Self >
+struct MutableImpl {
+};
+
 // XXX using VectorRange as an output iterator compiles but DOES NOT
-// WORK (segfaults)... you can use consumer( myPetVectorRange ) in the
-// meantime
-// this needs fixing though
+// WORK (segfaults)... you can use consumer( myPetVectorRange )
+// this needs fixing though (iow, it specifically should not compile)
+// same issue as with stl, really
 template< typename T >
 struct VectorRange : RangeImpl< T, VectorRange< T > >,
-    ConsumerImpl< T, VectorRange< T > >
+                     virtual ConsumerInterface< T >
 {
     typedef std::random_access_iterator_tag iterator_category;
     VectorRange() : m_vector( new Vector ), m_position( 0 ) {}
@@ -525,7 +509,7 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
         return m_vector->operator[]( m_position );
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_position = std::distance( m_vector->begin(), m_vector->end() );
     }
 
@@ -537,10 +521,12 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
         m_position += off;
         return *this;
     }
+
     VectorRange &operator--() {
         --m_position;
         return *this;
     }
+
     VectorRange operator--( int ) {
         VectorRange tmp( *this );
         --m_position;
@@ -550,6 +536,7 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
     ptrdiff_t operator-( const VectorRange &r ) {
         return m_position - r.m_position;
     }
+
     VectorRange operator-( ptrdiff_t off ) {
         VectorRange< T > r( *this );
         r.m_position = m_position - off;
@@ -583,9 +570,6 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
         m_position = 0;
     }
 
-    bool isSorted() const {
-        return false; // XXX test for sortedness?
-    }
 protected:
     typedef SharedVector< T > Vector;
     typedef SharedPtr< Vector > VectorPointer;
@@ -593,21 +577,20 @@ protected:
     ptrdiff_t m_position;
 };
 
-template< typename R >
-Range< typename R::ElementType > sortedRange( R in ) {
-    VectorRange< typename R::ElementType > out;
-    std::copy( in.begin(), in.end(), consumer( out ) );
-    std::sort( out.begin(), out.end() );
-    return out;
-}
-
-template< typename T, typename Self, typename Base >
-Range< T > RangeImpl< T, Self, Base >::sorted() const
+template< typename T >
+struct SortedVectorRange :
+    VectorRange< T >, virtual SortedRangeInterface< T >
 {
-    if ( this->isSorted() )
-        return this->self();
-    else
-        return sortedRange( this->self() );
+    virtual SortedRange< T > sorted_impl() const { return SortedRange< T >( this ); }
+};
+
+template< typename T, typename S, typename I >
+SortedRange< T > RangeImpl< T, S, I >::sorted() const
+{
+    SortedVectorRange< T > out;
+    output( consumer( out ) );
+    std::sort( out.begin(), out.end() );
+    return SortedRange< T >( &out );
 }
 
 template< typename T, typename _Advance, typename _End >
@@ -626,7 +609,7 @@ struct GeneratedRange : RangeImpl< T, GeneratedRange< T, _Advance, _End > >
         m_advance( m_current );
     }
 
-    void gotoEnd() {
+    void setToEnd() {
         m_end = true;
     }
 

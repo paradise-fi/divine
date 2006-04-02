@@ -148,7 +148,7 @@ void to::test<8> ()
     b.consume( 19 );
     b.consume( 30 );
     b.consume( 10 );
-    Range< int > r = intersectionRange( a, b );
+    Range< int > r = intersectionRange( a.sorted(), b.sorted() );
     ensure_equals( *r, 10 );
     ++r;
     ensure_equals( *r, 30 );
@@ -170,8 +170,8 @@ void to::test<9> ()
     b.push_back( 30 );
     b.push_back( 10 );
     Range< int > r = intersectionRange(
-        range( a.begin(), a.end() ),
-        range( b.begin(), b.end() ) );
+        range( a.begin(), a.end() ).sorted(),
+        range( b.begin(), b.end() ).sorted() );
     ensure_equals( *r, 10 );
     ++r;
     ensure_equals( *r, 30 );
@@ -194,8 +194,8 @@ void to::test<10> ()
     b.push_back( 40 );
     b.push_back( 50 );
     Range< int > r = intersectionRange(
-        range( a.begin(), a.end() ),
-        range( b.begin(), b.end() ) );
+        range( a.begin(), a.end() ).sorted(),
+        range( b.begin(), b.end() ).sorted() );
     ensure_equals( *r, 10 );
     r.advance();
     ensure_equals( *r, 30 );
@@ -290,7 +290,7 @@ void to::test<16> ()
     a.insert( a.begin(), 20 );
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
-    Range< int > r = uniqueRange( range( a.begin(), a.end() ) );
+    Range< int > r = uniqueRange( range( a.begin(), a.end() ).sorted() );
     ensure_equals( *r, 10 );
     r = r.next();
     ensure_equals( *r, 20 );
@@ -300,7 +300,7 @@ void to::test<16> ()
     ensure( r == r.end() );
 }
 
-template<> template<>
+/* template<> template<>
 void to::test<17> ()
 {
     std::vector<int> a;
@@ -313,7 +313,7 @@ void to::test<17> ()
     ensure( r.contains( 20 ) );
     ensure( !r.contains( 25 ) );
     ensure( !r.contains( 15 ) );
-}
+} */
 
 static void advance( int &i ) {
     ++i;
@@ -341,7 +341,7 @@ void to::test< 19 >() {
     r1.consume( 2 );
     r2.consume( 3 );
     r2.consume( 1 );
-    Range< int > r = intersectionRange( r1, r2 );
+    Range< int > r = intersectionRange( r1.sorted(), r2.sorted() );
     ensure_equals( *r, 1 );
     r.advance();
     ensure( r == r.end() );
@@ -353,7 +353,7 @@ void to::test< 20 >() {
     VectorRange< int > r2 = VectorRange< int >();
     r1.consume( 1 );
     r1.consume( 2 );
-    Range< int > r = intersectionRange( r1, r2 );
+    Range< int > r = intersectionRange( r1.sorted(), r2.sorted() );
     ensure( r == r.end() );
 }
 
