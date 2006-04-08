@@ -26,6 +26,10 @@ void to::test< 1 >() {
     ensure_equals( c.size(), 2 );
     ensure( c.find( 4 ) != c.end() );
     ensure( c.find( 5 ) != c.end() );
+    c = a - b;
+    ensure_equals( c.size(), 1 );
+    ensure( c.find( 4 ) != c.end() );
+    ensure( c.find( 5 ) == c.end() );
 }
 
 template<> template<>
@@ -44,6 +48,12 @@ void to::test< 2 >() {
     ensure( b.find( 3 ) != b.end() );
     ensure( b.find( 4 ) != b.end() );
     ensure( b.find( 5 ) == b.end() );
+    b.insert( b.begin(), 2 );
+    b -= a;
+    ensure_equals( b.size(), 1 );
+    ensure( b.find( 2 ) != b.end() );
+    ensure( b.find( 3 ) == b.end() );
+    ensure( b.find( 4 ) == b.end() );
 }
 
 }
