@@ -16,10 +16,7 @@ namespace wibble {
 struct Baseless {};
 
 /**
-   @brief A base class for morphs
-
-   You usually have a base class for all the Morphs. It would probably
-   inherit this class. See MorphImpl and Amorph class documentation for details.
+   @brief An interface implemented by all morph classes
  */
 struct MorphInterface {
     virtual MorphInterface *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
@@ -29,24 +26,17 @@ struct MorphInterface {
     virtual ~MorphInterface() {}
 };
 
-/* template< typename _Interface >
-struct MorphBase : virtual _Interface, virtual MorphInterface {
-    typedef _Interface Interface;
-    virtual ~MorphBase() {}
-    }; */
-
 const int notComparable = 0;
 const int equalityComparable = 1;
 const int comparable = 2;
 
+/** @brief custom allocator for morph classes */
 struct MorphAllocator {
     void *operator new( unsigned int bytes, void *where, unsigned available ) {
         if ( bytes > available ) {
             where = ::operator new( bytes );
-            // std::cerr << "heap construct on: " << where << std::endl;
             return where;
         }
-        // std::cerr << "in-place construct on: " << where << std::endl;
         return where;
     }
 };
@@ -58,17 +48,17 @@ struct MorphAllocator {
    set. The Morphs of this kind will be all derived from FooImpl
    (maybe apart from pathological cases).
 
-   The FooBase class would probably look like:
+   The FooInterface class would probably look like:
 
-   struct FooBase: public MorphBase< FooBase > {
+   struct FooInterface {
        virtual someSharedMethod() = 0;
        virtual anotherSharedMethod() = 0;
    };
 
    Then, FooImpl would look like this:
 
-   template< typename Self, typename Base = FooBase >
-   struct FooImpl : MorphImpl< Self, Base, equalityComparable >
+   template< typename Self, typename Interface = FooInterface >
+   struct FooImpl : MorphImpl< Self, Interface, equalityComparable >
    {
        // stuff
    };
@@ -145,10 +135,7 @@ struct MorphImpl<Self, Base, equalityComparable>
     : MorphImpl<Self, Base, notComparable>
 {
     virtual bool equals( const MorphInterface *i ) const {
-        // std::cout << "MorphImpl< equalityComparable >::equals()" << std::endl;
         const Self *p = dynamic_cast<const Self *>( i );
-        /* if (! p)
-           throw std::bad_cast(); */
         if (!p)
             return false; // distinct types aren't really equal, are
                           // they? :)
@@ -203,7 +190,7 @@ struct MorphImpl<Self, Base, comparable>
    contain the methods that are shared by all it's Morphs. These will
    usually look like
 
-   methodFoo() { return this->impl()->methodFoo(); } 
+   methodFoo() { return this->impl()->methodFoo(); }
 
    If you need to dispatch on the type of the Morph inside the Amorph
    envelope, you can use
@@ -296,7 +283,7 @@ struct Amorph {
         else
             return !i.morphInterface();
     }
-    
+
     /* bool operator!=(const Amorph &i) const {
         return !self().operator==(i);
         } */
