@@ -1,6 +1,7 @@
 PROJECT( wibble )
 
 SET( WSRC
+     operators.cpp
 	 consumer.cpp
 	 range.cpp
 	 exception.cpp
@@ -9,8 +10,7 @@ SET( WSRC
 	 commandline/engine.cpp
 	 commandline/parser.cpp
 	 commandline/doc.cpp
-	 tests.cpp
-)
+	 tests.cpp )
 
 INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 
