@@ -9,11 +9,11 @@
 namespace wibble {
 namespace operators {
 
+/*
 template< typename S, typename VT > struct IsContainer {
     typedef S T;
 };
 
-/*
 template< typename S >
 typename IsContainer< S, typename S::value_type >::T operator &&( const S &a, const S &b ) {
     S ret;
