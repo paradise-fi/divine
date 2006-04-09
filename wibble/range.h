@@ -46,11 +46,13 @@ struct RangeInterface {
     virtual void advance() = 0;
     virtual void setToEnd() = 0;
     virtual ~RangeInterface() {}
+    operator Range< T >() const;
 };
 
 template< typename T >
 struct SortedRangeInterface {
     virtual ~SortedRangeInterface() {} // polymorphic
+    operator SortedRange< T >() const;
 };
 
 template< typename T >
@@ -95,7 +97,7 @@ struct RangeImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
         return this->self() == end();
     }
 
-    operator Range< T >() const;
+    // operator Range< T >() const;
     virtual ~RangeImpl() {}
 };
 
@@ -138,10 +140,16 @@ struct SortedRange : Amorph< SortedRange< T >, SortedRangeInterface< T >, 0 >,
     operator Range< T >() { return Range< T >( this->template impl< RangeInterface< T > >() ); }
 };
 
-template< typename T, typename Self, typename Base >
-inline RangeImpl< T, Self, Base >::operator Range< T >() const
+template< typename T >
+inline RangeInterface< T >::operator Range< T >() const
 {
     return Range< T >( this );
+}
+
+template< typename T >
+inline SortedRangeInterface< T >::operator SortedRange< T >() const
+{
+    return SortedRange< T >( this );
 }
 
 template< typename R >
@@ -569,15 +577,16 @@ template< typename T >
 struct SortedVectorRange :
     VectorRange< T >, virtual SortedRangeInterface< T >
 {
+    SortedVectorRange( Range< T > from ) {
+        from.output( consumer( *this ) );
+        std::sort( this->begin(), this->end() );
+    }
 };
 
 template< typename T, typename S, typename I >
 SortedRange< T > RangeImpl< T, S, I >::sorted() const
 {
-    SortedVectorRange< T > out;
-    output( consumer( out ) );
-    std::sort( out.begin(), out.end() );
-    return SortedRange< T >( &out );
+    return SortedRange< T >( SortedVectorRange< T >( this->self() ) );
 }
 
 template< typename T, typename _Advance, typename _End >
