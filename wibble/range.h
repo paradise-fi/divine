@@ -61,7 +61,7 @@ struct RangeProxy {
 };
 
 template< typename T, typename Self, typename Interface = RangeInterface< T > >
-struct RangeImpl: MorphImpl< Self, Interface, equalityComparable >
+struct RangeImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
 {
     typedef T ElementType;
 
