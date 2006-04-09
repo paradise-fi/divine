@@ -21,14 +21,19 @@ struct Baseless {};
 struct MorphInterface {
     virtual MorphInterface *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
     virtual void destroy( unsigned int available = 0 ) = 0;
-    virtual bool equals( const MorphInterface *i ) const = 0;
-    virtual bool less( const MorphInterface *i ) const = 0;
+    // virtual bool equals( const MorphInterface *i ) const = 0;
+    // virtual bool less( const MorphInterface *i ) const = 0;
     virtual ~MorphInterface() {}
-};
+    virtual bool equals( const MorphInterface * ) const {
+        std::cout << "MorphInterface::equals()" << std::endl;
+        return false; // THROW!
+    }
 
-const int notComparable = 0;
-const int equalityComparable = 1;
-const int comparable = 2;
+    virtual bool less( const MorphInterface * ) const {
+        std::cout << "MorphInterface::less()" << std::endl;
+        return false; // THROW!
+    }
+};
 
 /** @brief custom allocator for morph classes */
 struct MorphAllocator {
@@ -70,14 +75,14 @@ struct MorphAllocator {
    make it easy for you to implement a casting from an Amorph in a
    safe manner.
 
-   This variant provides empty equals() and less(), so use it if your
-   class does not implement operator == and <, respectively. See the
-   equalityComparable and comparable variants if you do provide (some
-   of) those.
+   Provided equals() and less() methods are empty, so your class does
+   not need to implement operators == and <. See also
+   MorphEqualityComparable and MorphComparable if you provide these
+   operators.
 
    See Amorph class for details.
 */
-template< typename Self, typename Interface, int comparable = notComparable >
+template< typename Self, typename Interface >
 struct MorphImpl : virtual Interface, virtual MorphInterface, virtual MorphAllocator {
     // typedef typename Base::Interface Interface;
 
@@ -111,16 +116,6 @@ struct MorphImpl : virtual Interface, virtual MorphInterface, virtual MorphAlloc
         return *static_cast<Self *>( this );
     }
 
-    virtual bool equals( const MorphInterface * ) const {
-        std::cout << "MorphImpl< notComparable >::equals()" << std::endl;
-        return false; // THROW!
-    }
-
-    virtual bool less( const MorphInterface * ) const {
-        std::cout << "MorphImpl< notComparable >::less()" << std::endl;
-        return false; // THROW!
-    }
-
     virtual ~MorphImpl() {}
 };
 
@@ -130,20 +125,20 @@ struct MorphImpl : virtual Interface, virtual MorphInterface, virtual MorphAlloc
    See MoprhImpl notComparable. This class provides equals() in
    addition, use this if you implement operator==, but not operator<.
 */
-template <typename Self, typename Base>
-struct MorphImpl<Self, Base, equalityComparable>
-    : MorphImpl<Self, Base, notComparable>
+template< typename Self >
+struct MorphEqualityComparable : virtual MorphInterface
 {
     virtual bool equals( const MorphInterface *i ) const {
-        const Self *p = dynamic_cast<const Self *>( i );
+        const Self *p = dynamic_cast< const Self * >( i ),
+                   &self = *dynamic_cast< const Self * >( this );
         if (!p)
-            return false; // distinct types aren't really equal, are
-                          // they? :)
-        return (this->self()) == p->MorphImpl::self(); //Self( *p );
+            return false; // distinct types aren't really equal, are they? :)
+        return self == *p;
     }
 
     bool operator!=( const Self &a ) const {
-        return ! ( (this->self()) == a );
+        const Self &self = *dynamic_cast< const Self * >( this );
+        return !( self == a );
     }
 
 };
@@ -151,18 +146,16 @@ struct MorphImpl<Self, Base, equalityComparable>
 /**
    @brief Base class for morph class implementations
 
-   See MorphImpl equalityComparable. This one provides less() in
-   addition to the above, use it if you provide both operator== and
-   operator<
+   This one provides less() in addition to equals() in the above, use
+   it if you provide both operator== and operator<
 */
-template <typename Self, typename Base>
-struct MorphImpl<Self, Base, comparable>
-    : MorphImpl<Self, Base, equalityComparable>
+template< typename Self >
+struct MorphComparable : virtual MorphEqualityComparable< Self >
 {
     virtual bool less( const MorphInterface *i ) const {
         const Self *p = dynamic_cast<const Self *>( i );
         if (!p)
-            throw exception::BadCastExt< Base, Self >( "dynamic cast failed" );
+            throw exception::BadCastExt< MorphInterface, Self >( "dynamic cast failed" );
         return (this->self()) < Self( *p );
     }
 };
