@@ -26,18 +26,18 @@ template< typename > struct Consumer;
 typedef bool SortabilityTag;
 
 template< typename T, typename I >
-struct ExtIteratorTraits {
-    typedef SortabilityTag Unsortable;
+struct IteratorTraits {
+    typedef SortabilityTag Unsorted;
 };
 
 template< typename T >
-struct ExtIteratorTraits< T, typename std::set< T >::iterator > {
+struct IteratorTraits< T, typename std::set< T >::iterator > {
     typedef SortabilityTag Sorted;
 };
 
 template< typename T >
-struct ExtIteratorTraits< T, typename std::vector< T >::iterator > {
-    typedef SortabilityTag Sortable;
+struct IteratorTraits< T, typename std::multiset< T >::iterator > {
+    typedef SortabilityTag Sorted;
 };
 
 template< typename T >
@@ -158,20 +158,13 @@ namespace wibble {
 
 // sfinae: substitution failure is not an error
 template< typename T, typename I >
-typename ExtIteratorTraits< T, I >::Unsortable isSortedT( I, I ) {
+typename IteratorTraits< T, I >::Unsorted isSortedT( I, I ) {
     return false;
 }
 
 template< typename T, typename I >
-typename ExtIteratorTraits< T, I >::Sorted isSortedT( I, I ) {
+typename IteratorTraits< T, I >::Sorted isSortedT( I, I ) {
     return true;
-}
-
-template< typename T, typename I >
-typename ExtIteratorTraits< T, I >::Sortable isSortedT( I a, I b ) {
-    if (__gnu_cxx::is_sorted( a, b ))
-        return true;
-    return false;
 }
 
 template< typename In >
