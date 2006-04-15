@@ -14,6 +14,14 @@ template <typename T, typename X> T &downcast(X *v) {
     return *x;
 }
 
+template< typename T >
+typename T::WrappedType &unwrap( const T &x ) {
+    return x.unwrap();
+}
+
+template< typename T >
+T &unwrap( T &x ) { return x; }
+
 }
 
 #endif

@@ -92,6 +92,16 @@ Consumer< T > consumer( Out out ) {
     return ConsumerFromIterator< T, Out >( out );
 }
 
+template< typename T >
+Consumer< T > consumer( std::set< T > &c ) {
+    return consumer< T >( std::inserter( c, c.begin() ) );
+}
+
+/* causes ambiguities: template< typename Out >
+Consumer< typename std::iterator_traits< Out >::value_type > consumer( Out out ) {
+    return ConsumerFromIterator< typename std::iterator_traits< Out >::value_type, Out >( out );
+    } */
+
 template< typename Base >
 Consumer< typename Base::InputType > consumer( Base b ) {
     return static_cast<Consumer< typename Base::InputType > >( &b );

@@ -1,5 +1,5 @@
 /** -*- C++ -*-
-libLYOD -- An implementation of the ICE protocol, as specified in: 
+libLYOD -- An implementation of the ICE protocol, as specified in:
 
     "Inter-Client Exchance (ICE) Protocol, Version 1.1"
 
@@ -39,14 +39,15 @@ class SharedBase
 protected:
     SharedBase() : _refCount(0)
     {}
-    
-public:    
+
+public:
+    typedef void SharedBaseTag;
     void _ref()
     {
         assert(_refCount >= 0);
         ++_refCount;
     }
-    
+
     void _unref()
     {
         assert(_refCount >= 0);
@@ -63,9 +64,21 @@ private:
     int _refCount;
 };
 
+template< typename T >
+typename T::SharedBaseTag reference( T *x ) { x->_ref(); }
+
+// template< typename T >
+// void reference( T *x ) {}
+
+template< typename T >
+typename T::SharedBaseTag unreference( T *x ) { x->_unref(); }
+
+// template< typename T >
+// void unreference( T *x ) {}
+
 /**
- Reference-counting pointer wrapper. Note that the type must 
- inherit off SharedBase, or compatible. 
+ Reference-counting pointer wrapper. Note that the type must
+ inherit off SharedBase, or compatible.
 */
 template<typename T>
 class SharedPtr
@@ -75,24 +88,24 @@ private:
 public:
     SharedPtr():ptr(0)
     {}
-    
+
     SharedPtr(T* _ptr):ptr(_ptr)
     {
         if (ptr)
-            ptr->_ref();
+            reference( ptr );
     }
-    
+
     SharedPtr(const SharedPtr<T>& other)
     {
         ptr = other.ptr;
         if (ptr)
-            ptr->_ref();
+            reference( ptr );
     }
-    
+
     ~SharedPtr()
     {
         if (ptr)
-            ptr->_unref();
+            unreference( ptr );
     }
 
     bool operator <  (const SharedPtr<T>& other) const
@@ -113,8 +126,8 @@ public:
     T* data()
     {
         return ptr;
-    }            
-    
+    }
+
     T* operator->()
     {
         return ptr;
@@ -124,21 +137,28 @@ public:
     {
         return ptr;
     }
-    
+
     SharedPtr<T>& operator=(const SharedPtr<T>& other)
     {
         //Must do it in this order, in case other is this...
         if (other.ptr)
-            other.ptr->_ref();
-        
+            reference( other.ptr );
+
         if (ptr)
-            ptr->_unref();
-            
+            unreference( ptr );
+
         ptr = other.ptr;
         return *this;
     }
 };
 
+template< typename Base >
+struct Shared : Base, SharedBase {};
+
+template< typename T >
+Shared< T > &shared() {
+    return *(new Shared< T >());
+}
 
 }
 

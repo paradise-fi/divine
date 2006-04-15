@@ -357,6 +357,13 @@ void to::test< 20 >() {
     ensure( r == r.end() );
 }
 
+template<> template<>
+void to::test< 21 >() {
+    Consumer< int > c = consumer( shared< std::set< int > >() );
+    c.consume( 1 );
+    c.consume( 2 );
+}
+
 }
 
 }
