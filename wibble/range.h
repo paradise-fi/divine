@@ -150,12 +150,6 @@ Range< typename In::value_type > range( In b, In e ) {
     return IteratorRange< In >( b, e );
 }
 
-
-template< typename T>
-struct SharedVector : std::vector< T >, SharedBase
-{
-};
-
 template< typename T >
 struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
 {
@@ -390,7 +384,7 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
                      virtual ConsumerInterface< T >
 {
     typedef std::random_access_iterator_tag iterator_category;
-    VectorRange() : m_vector( new Vector ), m_position( 0 ) {}
+    VectorRange() : m_vector( new SharedVector ), m_position( 0 ) {}
     VectorRange( const Range< T > &i ) {
         RangeImpl< T, VectorRange< T > >::initFromBase( i.impl() );
     }
@@ -469,8 +463,8 @@ struct VectorRange : RangeImpl< T, VectorRange< T > >,
     }
 
 protected:
-    typedef SharedVector< T > Vector;
-    typedef SharedPtr< Vector > VectorPointer;
+    typedef Shared< std::vector< T > > SharedVector;
+    typedef SharedPtr< SharedVector > VectorPointer;
     VectorPointer m_vector;
     ptrdiff_t m_position;
 };
