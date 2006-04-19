@@ -28,7 +28,6 @@ struct ConsumerInterface
         }
     }
     virtual ~ConsumerInterface() {}
-    operator Consumer< T >() const;
 };
 
 template< typename T, typename Self, typename Interface = ConsumerInterface< T > >
@@ -56,8 +55,7 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     typedef void pointer;
     typedef void reference;
 
-    Consumer( const typename Super::Interface *i ) : Super( i ) {}
-    Consumer( const Consumer &i ) : Super( i ) {}
+    Consumer( const ConsumerInterface< T > &i ) : Super( i ) {}
     Consumer() {}
 
     virtual void consume( const T &a ) {
@@ -70,12 +68,6 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     }
     // output iterator - can't read or move
 };
-
-template< typename T >
-inline ConsumerInterface< T >::operator Consumer< T >() const
-{
-    return Consumer< T >( this );
-}
 
 template< typename T, typename Out >
 struct ConsumerFromIterator : ConsumerImpl<
