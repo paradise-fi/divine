@@ -31,6 +31,7 @@ struct RangeInterface : IteratorInterface< T > {
 template< typename T, typename Self, typename Interface = RangeInterface< T > >
 struct RangeImpl: IteratorImpl< T, Self, Interface >
 {
+    Self begin() const { return this->self(); } // STL-style iteration
     Self end() const { Self e( this->self() ); e.setToEnd(); return e; }
     Range< T > sorted() const;
 
@@ -83,18 +84,12 @@ struct IteratorRange : public RangeImpl<
 {
     typedef typename std::iterator_traits< It >::value_type Value;
     typedef std::forward_iterator_tag iterator_category;
-    // typedef typename std::iterator_traits< In >::iterator_category iterator_category;
 
     IteratorRange( It c, It e )
         : m_current( c ), m_end( e ) {}
 
-    virtual Value current() const {
-        return *m_current;
-    }
-
-    virtual void advance() {
-        ++m_current;
-    }
+    virtual Value current() const { return *m_current; }
+    virtual void advance() { ++m_current; }
 
     bool operator==( const IteratorRange &r ) const {
         return r.m_current == m_current && r.m_end == m_end;

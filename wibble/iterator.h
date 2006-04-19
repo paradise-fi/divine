@@ -32,7 +32,6 @@ struct IteratorInterface {
     virtual T current() const = 0;
     virtual void advance() = 0;
     virtual ~IteratorInterface() {}
-    // operator Iterator< T >() const;
 };
 
 template< typename T >
@@ -57,7 +56,6 @@ struct IteratorImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self
     IteratorProxy< T > operator->() const {
         return IteratorProxy< T >(this->self().current()); }
     Self next() const { Self n( this->self() ); n.advance(); return n; }
-    Self begin() const { return this->self(); } // STL-style iteration
     T operator*() const { return this->self().current(); }
 
     Self &operator++() { this->self().advance(); return this->self(); }
