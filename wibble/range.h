@@ -52,8 +52,7 @@ struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
     typedef Amorph< Range< T >, RangeInterface< T >, 0 > Super;
     typedef T ElementType;
 
-    Range( const typename Super::Interface *i ) : Super( i ) {}
-    Range( const Range &i ) : Super( i ) {}
+    Range( const RangeInterface< T > &i ) : Super( i ) {}
     Range() {}
 
     T current() const { return this->implInterface()->current(); }
@@ -63,12 +62,6 @@ struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
 
     template< typename C > operator Range< C >();
 };
-
-template< typename T >
-inline RangeInterface< T >::operator Range< T >() const
-{
-    return Range< T >( this );
-}
 
 template< typename R >
 Range< typename R::ElementType > range( R r ) {
