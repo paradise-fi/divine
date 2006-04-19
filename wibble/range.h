@@ -1,5 +1,5 @@
 /** -*- C++ -*-
-    @file utils/range.h
+    @file wibble/range.h
     @author Peter Rockai <me@mornfall.net>
 */
 
@@ -10,8 +10,8 @@
 #include <algorithm>
 #include <ext/algorithm>
 
+#include <wibble/iterator.h>
 #include <wibble/shared.h>
-#include <wibble/amorph.h>
 #include <wibble/exception.h>
 
 #ifndef WIBBLE_RANGE_H
@@ -22,69 +22,10 @@ namespace wibble {
 template< typename > struct Range;
 template< typename > struct Consumer;
 
-typedef bool SortabilityTag;
-
-template< typename T, typename I >
-struct IteratorTraits {
-    typedef SortabilityTag Unsorted;
-};
-
-template< typename T >
-struct IteratorTraits< T, typename std::set< T >::iterator > {
-    typedef SortabilityTag Sorted;
-};
-
-template< typename T >
-struct IteratorTraits< T, typename std::multiset< T >::iterator > {
-    typedef SortabilityTag Sorted;
-};
-
-template< typename T >
-struct IteratorInterface {
-    virtual T current() const = 0;
-    virtual void advance() = 0;
-    virtual ~IteratorInterface() {}
-    // operator Iterator< T >() const;
-};
-
 template< typename T >
 struct RangeInterface : IteratorInterface< T > {
     virtual void setToEnd() = 0;
     virtual ~RangeInterface() {}
-    operator Range< T >() const;
-};
-
-template< typename T >
-struct IteratorProxy {
-    IteratorProxy( T _x ) : x( _x ) {}
-    T x;
-    const T *operator->() const { return &x; }
-};
-
-template< typename T, typename Self, typename Interface = IteratorInterface< T > >
-struct IteratorImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
-{
-    typedef T ElementType;
-
-    typedef std::forward_iterator_tag iterator_category;
-    typedef T value_type;
-    typedef ptrdiff_t difference_type;
-    typedef T *pointer;
-    typedef T &reference;
-    typedef const T &const_reference;
-
-    IteratorProxy< T > operator->() const {
-        return IteratorProxy< T >(this->self().current()); }
-    Self next() const { Self n( this->self() ); n.advance(); return n; }
-    Self begin() const { return this->self(); } // STL-style iteration
-    T operator*() const { return this->self().current(); }
-
-    Self &operator++() { this->self().advance(); return this->self(); }
-    Self operator++(int) {
-        Self tmp = this->self();
-        this->self().advance();
-        return tmp;
-    }
 };
 
 template< typename T, typename Self, typename Interface = RangeInterface< T > >
@@ -101,7 +42,6 @@ struct RangeImpl: IteratorImpl< T, Self, Interface >
         return this->self() == end();
     }
 
-    // operator Range< T >() const;
     virtual ~RangeImpl() {}
 };
 
@@ -143,26 +83,16 @@ Range< typename R::ElementType > range( R r ) {
 namespace wibble {
 
 // sfinae: substitution failure is not an error
-template< typename T, typename I >
-typename IteratorTraits< T, I >::Unsorted isSortedT( I, I ) {
-    return false;
-}
-
-template< typename T, typename I >
-typename IteratorTraits< T, I >::Sorted isSortedT( I, I ) {
-    return true;
-}
-
-template< typename In >
+template< typename It >
 struct IteratorRange : public RangeImpl<
-    typename std::iterator_traits< In >::value_type,
-    IteratorRange< In > >
+    typename std::iterator_traits< It >::value_type,
+    IteratorRange< It > >
 {
-    typedef typename std::iterator_traits< In >::value_type Value;
+    typedef typename std::iterator_traits< It >::value_type Value;
     typedef std::forward_iterator_tag iterator_category;
     // typedef typename std::iterator_traits< In >::iterator_category iterator_category;
 
-    IteratorRange( In c, In e )
+    IteratorRange( It c, It e )
         : m_current( c ), m_end( e ) {}
 
     virtual Value current() const {
@@ -182,7 +112,7 @@ struct IteratorRange : public RangeImpl<
     }
 
 protected:
-    In m_current, m_end;
+    It m_current, m_end;
 };
 
 template< typename T, typename Casted >
