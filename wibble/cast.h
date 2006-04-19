@@ -22,6 +22,10 @@ typename T::WrappedType &unwrap( const T &x ) {
 template< typename T >
 T &unwrap( T &x ) { return x; }
 
+template< typename _T, typename In > struct IsType {
+    typedef _T T;
+};
+
 }
 
 #endif
