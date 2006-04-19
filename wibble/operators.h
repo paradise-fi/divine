@@ -24,6 +24,13 @@ typename IsContainer< S, typename S::value_type >::T operator &&( const S &a, co
 */
 
 template< typename T >
+T operator+( const T &i, typename T::difference_type o ) {
+    T r = i;
+    std::advance( r, o );
+    return r;
+}
+
+template< typename T >
 std::set< T > operator &( const std::set< T > &a, const std::set< T > &b ) {
     std::set< T > ret;
     std::set_intersection( a.begin(), a.end(), b.begin(), b.end(),
