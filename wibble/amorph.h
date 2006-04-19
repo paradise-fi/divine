@@ -235,17 +235,12 @@ struct Amorph {
         typedef T type;
     };
 
-    Amorph( const Interface *b ) {
-        m_impl = dynamic_cast< const MorphInterface * >( b )->constructCopy(
-            &m_padding, sizeof( m_padding ) );
+    Amorph() : m_impl( 0 ) {}
+    Amorph( const Interface &b ) {
+        setInterfacePointer( &b );
     }
-
-    Amorph( const Amorph &t ) {
-        self() = t.self();
-    }
-
-    Amorph() {
-        m_impl = 0;
+    Amorph( const Amorph &a ) {
+        setInterfacePointer( a.implInterface() );
     }
 
     const Self &self() const {
@@ -285,17 +280,22 @@ struct Amorph {
         return !( *this < i || *this == i);
     }
 
-    Amorph &operator=( const Amorph &i ) {
-        if ( i.morphInterface() )
-            m_impl = i.morphInterface()->constructCopy( &m_padding, sizeof( m_padding ) );
-        else
+    void setInterfacePointer( const Interface *i ) {
+        if ( dynamic_cast< const MorphInterface * >( i ) ) {
+            m_impl = dynamic_cast< const MorphInterface * >( i )->constructCopy(
+                &m_padding, sizeof( m_padding ) );
+        } else
             m_impl = 0;
+    }
+
+    Amorph &operator=( const Amorph &i ) {
+        setInterfacePointer( i.implInterface() );
         return *this;
     }
 
     ~Amorph() {
-        morphInterface()->destroy( sizeof( m_padding ) );
-        // delete m_impl;
+        if ( morphInterface() )
+            morphInterface()->destroy( sizeof( m_padding ) );
     }
 
     template< typename F >
