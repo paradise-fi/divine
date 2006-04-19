@@ -20,7 +20,6 @@
 namespace wibble {
 
 template< typename > struct Range;
-template< typename > struct SortedRange;
 template< typename > struct Consumer;
 
 typedef bool SortabilityTag;
@@ -121,35 +120,9 @@ struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
 };
 
 template< typename T >
-struct SortedRange : Amorph< SortedRange< T >, SortedRangeInterface< T >, 0 >,
-                     RangeImpl< T, SortedRange< T >, SortedRangeInterface< T > >
-{
-    typedef Amorph< SortedRange< T >, SortedRangeInterface< T >, 0 > Super;
-    typedef T ElementType;
-
-    SortedRange( const typename Super::Interface *i ) : Super( i ) {}
-    SortedRange( const SortedRange &i ) : Super( i ) {}
-    SortedRange() {}
-
-    T current() const { return this->template impl< RangeInterface< T > >()->current(); }
-    virtual void advance() { this->template impl< RangeInterface< T > >()->advance(); }
-    virtual void setToEnd() { this->template impl< RangeInterface< T > >()->setToEnd(); }
-    virtual bool empty() const {
-        return !this->template impl< RangeInterface< T > >() || *this == this->end(); }
-
-    operator Range< T >() { return Range< T >( this->template impl< RangeInterface< T > >() ); }
-};
-
-template< typename T >
 inline RangeInterface< T >::operator Range< T >() const
 {
     return Range< T >( this );
-}
-
-template< typename T >
-inline SortedRangeInterface< T >::operator SortedRange< T >() const
-{
-    return SortedRange< T >( this );
 }
 
 template< typename R >
@@ -258,7 +231,7 @@ template< typename T >
 struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
 {
     IntersectionRange() {}
-    IntersectionRange( SortedRange< T > r1, SortedRange< T > r2 )
+    IntersectionRange( Range< T > r1, Range< T > r2 )
         : m_first( r1 ), m_second( r2 ),
         m_valid( false )
     {
@@ -305,7 +278,7 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
     }
 
 protected:
-    mutable SortedRange< T > m_first, m_second;
+    mutable Range< T > m_first, m_second;
     mutable bool m_valid:1;
 };
 
@@ -366,7 +339,7 @@ template< typename T >
 struct UniqueRange : RangeImpl< T, UniqueRange< T > >
 {
     UniqueRange() {}
-    UniqueRange( SortedRange< T > r ) : m_range( r ), m_valid( false ) {}
+    UniqueRange( Range< T > r ) : m_range( r ), m_valid( false ) {}
 
     void find() const {
         if (!m_valid)
@@ -399,7 +372,7 @@ struct UniqueRange : RangeImpl< T, UniqueRange< T > >
     }
 
 protected:
-    mutable SortedRange< T > m_range;
+    mutable Range< T > m_range;
     mutable bool m_valid:1;
 };
 
@@ -573,20 +546,13 @@ protected:
     ptrdiff_t m_position;
 };
 
-template< typename T >
-struct SortedVectorRange :
-    VectorRange< T >, virtual SortedRangeInterface< T >
-{
-    SortedVectorRange( Range< T > from ) {
-        from.output( consumer( *this ) );
-        std::sort( this->begin(), this->end() );
-    }
-};
-
 template< typename T, typename S, typename I >
-SortedRange< T > RangeImpl< T, S, I >::sorted() const
+Range< T > RangeImpl< T, S, I >::sorted() const
 {
-    return SortedRange< T >( SortedVectorRange< T >( this->self() ) );
+    VectorRange< T > out;
+    output( consumer( out ) );
+    std::sort( out.begin(), out.end() );
+    return out;
 }
 
 template< typename T, typename _Advance, typename _End >
