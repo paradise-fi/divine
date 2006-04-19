@@ -3,18 +3,23 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
+#include <wibble/config.h>
 #include <wibble/consumer.h>
+#include <wibble/operators.h>
+
+using namespace wibble::operators;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests.h>
 #include <list>
 
-namespace wibble::tests {
+namespace wibble {
+namespace tut {
 
-struct utils_consumer_shar {
+struct consumer_shar {
 };
 
-TESTGRP( utils_consumer );
+TESTGRP( consumer );
 
 template<> template<>
 void to::test<1> ()
@@ -25,11 +30,34 @@ void to::test<1> ()
     Range< int > r = range( a.begin(), a.end() );
     std::list<int> b;
     ensure( a != b );
-    Consumer< int > c = consumer< int >( back_inserter( b ) );
+    Consumer< int > c = consumer( back_inserter( b ) );
     std::copy( r, r.end(), c );
     ensure( a == b );
 }
 
+template<> template<>
+void to::test<2> ()
+{
+    Shared< std::set< int > > s;
+    Consumer< int > c = consumer( s );
+    c.consume( 1 );
+    ensure( *s.begin() == 1 );
+    ensure( s.begin() + 1 == s.end() );
+}
+
+template<> template<>
+void to::test<3> ()
+{
+    Shared< std::vector< int > > v;
+    Consumer< int > c = consumer( v );
+    c.consume( 2 );
+    c.consume( 1 );
+    ensure( *v.begin() == 2 );
+    ensure( *(v.begin() + 1) == 1 );
+    ensure( (v.begin() + 2) == v.end() );
+}
+
+}
 }
 
 #endif
