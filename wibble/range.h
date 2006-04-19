@@ -40,29 +40,29 @@ struct IteratorTraits< T, typename std::multiset< T >::iterator > {
 };
 
 template< typename T >
-struct RangeInterface {
+struct IteratorInterface {
     virtual T current() const = 0;
     virtual void advance() = 0;
+    virtual ~IteratorInterface() {}
+    // operator Iterator< T >() const;
+};
+
+template< typename T >
+struct RangeInterface : IteratorInterface< T > {
     virtual void setToEnd() = 0;
     virtual ~RangeInterface() {}
     operator Range< T >() const;
 };
 
 template< typename T >
-struct SortedRangeInterface {
-    virtual ~SortedRangeInterface() {} // polymorphic
-    operator SortedRange< T >() const;
-};
-
-template< typename T >
-struct RangeProxy {
-    RangeProxy( T _x ) : x( _x ) {}
+struct IteratorProxy {
+    IteratorProxy( T _x ) : x( _x ) {}
     T x;
     const T *operator->() const { return &x; }
 };
 
-template< typename T, typename Self, typename Interface = RangeInterface< T > >
-struct RangeImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
+template< typename T, typename Self, typename Interface = IteratorInterface< T > >
+struct IteratorImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
 {
     typedef T ElementType;
 
@@ -73,20 +73,25 @@ struct RangeImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
     typedef T &reference;
     typedef const T &const_reference;
 
-    RangeProxy< T > operator->() const {
-        return RangeProxy< T >(this->self().current()); }
+    IteratorProxy< T > operator->() const {
+        return IteratorProxy< T >(this->self().current()); }
     Self next() const { Self n( this->self() ); n.advance(); return n; }
     Self begin() const { return this->self(); } // STL-style iteration
-    Self end() const { Self e( this->self() ); e.setToEnd(); return e; }
+    T operator*() const { return this->self().current(); }
+
     Self &operator++() { this->self().advance(); return this->self(); }
     Self operator++(int) {
         Self tmp = this->self();
         this->self().advance();
         return tmp;
     }
+};
 
-    SortedRange< T > sorted() const;
-    T operator*() const { return this->self().current(); }
+template< typename T, typename Self, typename Interface = RangeInterface< T > >
+struct RangeImpl: IteratorImpl< T, Self, Interface >
+{
+    Self end() const { Self e( this->self() ); e.setToEnd(); return e; }
+    Range< T > sorted() const;
 
     void output( Consumer< T > t ) const {
         std::copy( this->self(), end(), t );
@@ -190,7 +195,8 @@ struct CastedRange : public RangeImpl< T, CastedRange< T, Casted > >
     virtual void advance() { m_casted.advance(); }
 
     bool operator==( const CastedRange &r ) const {
-        return m_casted == r.m_casted; }
+        return m_casted == r.m_casted;
+    }
 
     void setToEnd() {
         m_casted = m_casted.end();
