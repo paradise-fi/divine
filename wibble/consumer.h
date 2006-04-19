@@ -88,30 +88,17 @@ Consumer< typename Out::container_type::value_type > consumer( Out out ) {
     return ConsumerFromIterator< typename Out::container_type::value_type, Out >( out );
 }
 
-/* template< typename T >
-Consumer< T > consumer( std::set< T > &c ) {
-    return consumer< T >( std::inserter( c, c.begin() ) );
-    } */
-
-template< typename T >
-Consumer< T > consumer( const ConsumerInterface< T > &t ) {
-    return t;
-}
-
+// containers
 template< typename T >
 typename IsType< Consumer< typename T::value_type >, typename T::iterator >::T consumer( T &c ) {
     return consumer( std::inserter( c, c.end() ) );
 }
 
-/* causes ambiguities: template< typename Out >
-Consumer< typename std::iterator_traits< Out >::value_type > consumer( Out out ) {
-    return ConsumerFromIterator< typename std::iterator_traits< Out >::value_type, Out >( out );
-    }
-
-template< typename Base >
-Consumer< typename Base::InputType > consumer( Base b ) {
-    return static_cast<Consumer< typename Base::InputType > >( &b );
-    } */
+// consumers
+template< typename T >
+Consumer< T > consumer( const ConsumerInterface< T > &t ) {
+    return t;
+}
 
 }
 
