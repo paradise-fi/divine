@@ -7,11 +7,14 @@
 
 #include <wibble/amorph.h>
 #include <wibble/range.h>
+#include <wibble/cast.h>
 
 #ifndef WIBBLE_CONSUMER_H
 #define WIBBLE_CONSUMER_H
 
 namespace wibble {
+
+template< typename T > struct Consumer;
 
 template< typename T >
 struct ConsumerInterface
@@ -25,6 +28,7 @@ struct ConsumerInterface
         }
     }
     virtual ~ConsumerInterface() {}
+    operator Consumer< T >() const;
 };
 
 template< typename T, typename Self, typename Interface = ConsumerInterface< T > >
@@ -39,7 +43,6 @@ struct ConsumerImpl: MorphImpl< Self, Interface >
         this->self()->consume( a );
         return this->self();
     }
-    operator Consumer< T >() const;
 };
 
 template< typename T >
@@ -68,8 +71,8 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     // output iterator - can't read or move
 };
 
-template< typename T, typename S, typename I >
-inline ConsumerImpl< T, S, I >::operator Consumer< T >() const
+template< typename T >
+inline ConsumerInterface< T >::operator Consumer< T >() const
 {
     return Consumer< T >( this );
 }
@@ -87,25 +90,36 @@ protected:
     Out m_out;
 };
 
-template< typename T, typename Out >
-Consumer< T > consumer( Out out ) {
-    return ConsumerFromIterator< T, Out >( out );
+// insert iterators
+template< typename Out >
+Consumer< typename Out::container_type::value_type > consumer( Out out ) {
+    return ConsumerFromIterator< typename Out::container_type::value_type, Out >( out );
+}
+
+/* template< typename T >
+Consumer< T > consumer( std::set< T > &c ) {
+    return consumer< T >( std::inserter( c, c.begin() ) );
+    } */
+
+template< typename T >
+Consumer< T > consumer( const ConsumerInterface< T > &t ) {
+    return t;
 }
 
 template< typename T >
-Consumer< T > consumer( std::set< T > &c ) {
-    return consumer< T >( std::inserter( c, c.begin() ) );
+typename IsType< Consumer< typename T::value_type >, typename T::iterator >::T consumer( T &c ) {
+    return consumer( std::inserter( c, c.end() ) );
 }
 
 /* causes ambiguities: template< typename Out >
 Consumer< typename std::iterator_traits< Out >::value_type > consumer( Out out ) {
     return ConsumerFromIterator< typename std::iterator_traits< Out >::value_type, Out >( out );
-    } */
+    }
 
 template< typename Base >
 Consumer< typename Base::InputType > consumer( Base b ) {
     return static_cast<Consumer< typename Base::InputType > >( &b );
-}
+    } */
 
 }
 
