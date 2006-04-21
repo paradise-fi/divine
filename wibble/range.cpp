@@ -5,7 +5,9 @@
 
 #include <wibble/config.h>
 #include <wibble/range.h>
+#include <wibble/operators.h>
 using namespace wibble;
+using namespace operators;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests.h>
@@ -26,9 +28,10 @@ void to::test<1> ()
     a.push_back( 10 );
     a.push_back( 20 );
     Range< int > r = range( a.begin(), a.end() );
-    ensure_equals( r.current(), 10 );
-    ensure_equals( (++r).current(), 20 );
-    ensure( ++r == r.end() );
+    Range< int >::iterator i = r.begin();
+    ensure_equals( *i, 10 );
+    ensure_equals( *(i + 1), 20 );
+    ensure( i + 2 == r.end() );
 }
 
 template<> template<>
@@ -40,66 +43,63 @@ void to::test<2> ()
     Range< int > r = range( a.begin(), a.end() );
     std::list<int> b;
     ensure( a != b );
-    std::copy( r, r.end(), back_inserter( b ) );
+    std::copy( r.begin(), r.end(), back_inserter( b ) );
     ensure( a == b );
 }
 
 template<> template<>
-void to::test<3> ()
+void to::test< 3 >()
 {
-    VectorRange<int> vr;
-    Range<int> _vr = vr;
-    std::list<int> a;
+    std::vector< int > &vec = *new (GC) std::vector< int >;
+    std::list< int > a;
     a.push_back( 10 );
     a.push_back( 20 );
     Range< int > r = range( a.begin(), a.end() );
-    std::copy( r, r.end(), consumer( vr ) );
-    Range< int > _vr1 = _vr;
-    ensure_equals( *_vr1, 10 );
-    ++_vr1;
-    ensure_equals( *_vr1, 20 );
-    ++_vr1;
-    ensure( _vr1 == _vr1.end() );
-    while ( r != r.end() )
-        ensure_equals( *r++, *_vr++ );
+    std::copy( r.begin(), r.end(), consumer( vec ) );
+    Range< int > r1 = backedRange( vec );
+    ensure_equals( *r1.begin(), 10 );
+    ensure_equals( *(r1.begin() + 1), 20 );
+    ensure( r1.begin() + 2 == r1.end() );
+    while ( !r.empty() ) {
+        ensure_equals( *r, *r1 );
+        r.advance();
+        r1.advance();
+    }
 }
 
 template<> template<>
 void to::test<4> ()
 {
-    VectorRange<int> vr;
-    Range<int> _vr = vr;
-    Range<int> _fr =
-        filteredRange( _vr,
-                       std::bind1st( std::equal_to< int >(), 10 ) );
+    std::vector< int > v;
     std::list<int> a;
     a.push_back( 10 );
     a.push_back( 20 );
     Range< int > r = range( a.begin(), a.end() );
-    r.output( consumer( vr ) );
-    ensure_equals( *_fr, 10 );
-    ++_fr;
-    ensure( _fr == _fr.end() );
+    r.output( consumer( v ) );
+
+    Range<int> fr =
+        filteredRange( backedRange( v ),
+                       std::bind1st( std::equal_to< int >(), 10 ) );
+    ensure_equals( *fr, 10 );
+    fr.advance();
+    ensure( fr.empty() );
 }
 
 template<> template<>
 void to::test<5> ()
 {
-    VectorRange<int> vr;
+    std::vector< int > v;
     std::list<int> a;
     a.push_back( 20 );
     a.push_back( 10 );
     a.push_back( 30 );
     Range< int > r = range( a.begin(), a.end() );
-    r.output( consumer( vr ) );
-    std::sort( vr, vr.end() );
-    ensure_equals( *vr, 10 );
-    ++vr;
-    ensure_equals( *vr, 20 );
-    ++vr;
-    ensure_equals( *vr, 30 );
-    ++vr;
-    ensure( vr == vr.end() );
+    r.output( consumer( v ) );
+    std::sort( v.begin(), v.end() );
+    ensure_equals( *(v.begin()), 10 );
+    ensure_equals( *(v.begin() + 1), 20 );
+    ensure_equals( *(v.begin() + 2), 30 );
+    ensure( v.begin() + 3 == v.end() );
 }
 
 template<> template<>
@@ -111,11 +111,11 @@ void to::test<6> ()
     a.insert( a.begin(), 20 );
     Range< int > r = range( a.begin(), a.end() ).sorted();
     ensure_equals( *r, 10 );
-    ++r;
+    r.advance();
     ensure_equals( *r, 20 );
-    ++r;
+    r.advance();
     ensure_equals( *r, 30 );
-    ++r;
+    r.advance();
     ensure( r == r.end() );
 }
 
@@ -128,34 +128,31 @@ void to::test<7> ()
     a.insert( a.begin(), 20 );
     Range< int > r = range( a.begin(), a.end() ).sorted();
     ensure_equals( *r, 10 );
-    ++r;
+    r.advance();
     ensure_equals( *r, 20 );
-    ++r;
+    r.advance();
     ensure_equals( *r, 30 );
-    ++r;
+    r.advance();
     ensure( r == r.end() );
 }
 
 template<> template<>
 void to::test<8> ()
 {
-    VectorRange< int > a;
+    std::vector< int > av, bv;
+    Consumer< int > a = consumer( av ), b = consumer( bv );
     a.consume( 10 );
     a.consume( 30 );
     a.consume( 20 );
-    VectorRange< int > b;
     b.consume( 5 );
     b.consume( 19 );
     b.consume( 30 );
     b.consume( 10 );
-    Range< int > r = intersectionRange( a.sorted(), b.sorted() );
-    ensure_equals( *r, 10 );
-    ++r;
-    ensure_equals( *r, 30 );
-    ++r;
-    ensure( r == r.end() );
+    Range< int > r = intersectionRange( backedRange( av ).sorted(), backedRange( bv ).sorted() );
+    ensure_equals( *r.begin(), 10 );
+    ensure_equals( *(r.begin() + 1), 30 );
+    ensure( r.begin() + 2 == r.end() );
 }
-
 
 template<> template<>
 void to::test<9> ()
@@ -173,9 +170,9 @@ void to::test<9> ()
         range( a.begin(), a.end() ).sorted(),
         range( b.begin(), b.end() ).sorted() );
     ensure_equals( *r, 10 );
-    ++r;
+    r.advance();
     ensure_equals( *r, 30 );
-    ++r;
+    r.advance();
     ensure( r == r.end() );
 }
 
@@ -206,43 +203,49 @@ void to::test<10> ()
 template<> template<>
 void to::test<11> ()
 {
+    std::vector< int > vec;
     Range< int > a;
     ensure( a.empty() );
-    a = VectorRange< int >();
+    a = backedRange( vec );
     ensure( a.empty() );
-    VectorRange< int > x;
-    x.consume( 4 );
-    a = x;
+    vec.push_back( 4 );
+    Range< int > b = backedRange( vec );
+    ensure( *b == 4 );
+    a = b;
     ensure( !a.empty() );
+    ensure_equals( *a, 4 );
 }
 
 template<> template<>
 void to::test<12> ()
 {
     Range< int > a;
-    VectorRange< int > x;
+    std::vector< int > xv;
+    Consumer< int > x = consumer( xv );
     x.consume( 4 );
     x.consume( 8 );
-    a = transformedRange( range( x ), std::bind1st( std::plus< int >(), 2 ) );
+    a = transformedRange( backedRange( xv ), std::bind1st( std::plus< int >(), 2 ) );
     ensure_equals( *a, 6 );
-    ++a;
+    a.advance();
     ensure_equals( *a, 10 );
-    ++a; ensure( a == a.end() );
+    a.advance();
+    ensure( a == a.end() );
 }
 
 template<> template<>
 void to::test<13> ()
 {
     Range< int > a;
-    VectorRange< unsigned > x;
+    std::vector< unsigned > xv;
+    Consumer< unsigned > x = consumer( xv );
     x.consume( 4 );
     x.consume( 8 );
     a = transformedRange(
-        range( x ), std::bind1st( std::plus< int >(), 2 ) );;
+        backedRange( xv ), std::bind1st( std::plus< int >(), 2 ) );
     ensure_equals( *a, 6 );
-    ++a;
+    a.advance();
     ensure_equals( *a, 10 );
-    ++a;
+    a.advance();
     ensure( a == a.end() );
 }
 
@@ -300,7 +303,8 @@ void to::test<16> ()
     ensure( r == r.end() );
 }
 
-/* template<> template<>
+/*
+template<> template<>
 void to::test<17> ()
 {
     std::vector<int> a;
@@ -313,7 +317,8 @@ void to::test<17> ()
     ensure( r.contains( 20 ) );
     ensure( !r.contains( 25 ) );
     ensure( !r.contains( 15 ) );
-} */
+}
+*/
 
 static void advance( int &i ) {
     ++i;
@@ -333,6 +338,7 @@ void to::test< 18 >() {
     r.advance(); ensure( r == r.end() );
 }
 
+/*
 template<> template<>
 void to::test< 19 >() {
     VectorRange< int > r1 = VectorRange< int >();
@@ -363,6 +369,7 @@ void to::test< 21 >() {
     c.consume( 1 );
     c.consume( 2 );
 }
+*/
 
 }
 
