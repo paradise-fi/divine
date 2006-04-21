@@ -22,6 +22,18 @@ namespace wibble {
 template< typename > struct Range;
 template< typename > struct Consumer;
 
+template< typename R >
+struct RangeIterator : R {
+    RangeIterator() {}
+    RangeIterator( const R &r ) : R( r ) {}
+public:
+    RangeIterator &operator++() { R::operator++(); return *this; }
+    RangeIterator operator++(int) { return R::operator++(0); }
+    bool operator==( const RangeIterator &r ) {
+        return R::operator==( r );
+    }
+};
+
 template< typename T >
 struct RangeInterface : IteratorInterface< T > {
     virtual void setToEnd() = 0;
@@ -31,19 +43,26 @@ struct RangeInterface : IteratorInterface< T > {
 template< typename T, typename Self, typename Interface = RangeInterface< T > >
 struct RangeImpl: IteratorImpl< T, Self, Interface >
 {
-    Self begin() const { return this->self(); } // STL-style iteration
-    Self end() const { Self e( this->self() ); e.setToEnd(); return e; }
+    typedef IteratorImpl< T, Self, Interface > Base;
+    typedef RangeIterator< Self > iterator;
+    friend struct RangeIterator< Self >;
+
+    iterator begin() const { return iterator( this->self() ); } // STL-style iteration
+    iterator end() const { Self e( this->self() ); e.setToEnd(); return iterator( e ); }
     Range< T > sorted() const;
 
     void output( Consumer< T > t ) const {
-        std::copy( this->self(), end(), t );
+        std::copy( begin(), end(), t );
     }
 
     virtual bool empty() const {
-        return this->self() == end();
+        return begin() == end();
     }
 
     virtual ~RangeImpl() {}
+protected:
+    Self &operator++() { return Base::operator++(); }
+    Self operator++(int) { return Base::operator++(0); }
 };
 
 template< typename T >
@@ -59,7 +78,7 @@ struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
     T current() const { return this->implInterface()->current(); }
     virtual void advance() { this->implInterface()->advance(); }
     virtual void setToEnd() { this->implInterface()->setToEnd(); }
-    virtual bool empty() const { return !this->implInterface() || *this == this->end(); }
+    virtual bool empty() const { return !this->implInterface() || this->begin() == this->end(); }
 
     template< typename C > operator Range< C >();
 };
@@ -83,7 +102,6 @@ struct IteratorRange : public RangeImpl<
     IteratorRange< It > >
 {
     typedef typename std::iterator_traits< It >::value_type Value;
-    typedef std::forward_iterator_tag iterator_category;
 
     IteratorRange( It c, It e )
         : m_current( c ), m_end( e ) {}
@@ -160,21 +178,21 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
             while ( m_first != m_first.end()
                     && m_second != m_second.end() ) {
                 if ( *m_first < *m_second )
-                    ++m_first;
+                    m_first.advance();
                 else if ( *m_second < *m_first )
-                    ++m_second;
+                    m_second.advance();
                 else break; // equal
             }
-            if ( m_second == m_second.end() ) m_first = m_first.end();
-            else if ( m_first == m_first.end() ) m_second = m_second.end();
+            if ( m_second.empty() ) m_first.setToEnd();
+            else if ( m_first.empty() ) m_second.setToEnd();
         }
         m_valid = true;
     }
 
     virtual void advance() {
         find();
-        ++m_first;
-        ++m_second;
+        m_first.advance();
+        m_second.advance();
         m_valid = false;
     }
 
@@ -215,13 +233,13 @@ struct FilteredRange : RangeImpl< typename R::ElementType,
 
     void find() const {
         if (!m_valid)
-            m_range = std::find_if( m_range, m_range.end(), m_pred );
+            m_range = std::find_if( m_range.begin(), m_range.end(), m_pred );
         m_valid = true;
     }
 
     virtual void advance() {
         find();
-        ++m_range;
+        m_range.advance();
         m_valid = false;
     }
 
@@ -270,7 +288,7 @@ struct UniqueRange : RangeImpl< T, UniqueRange< T > >
 
     virtual void advance() {
         find();
-        ++m_range;
+        m_range.advance();
         m_valid = false;
     }
 
@@ -317,7 +335,7 @@ struct TransformedRange : RangeImpl< typename Transform::result_type,
     }
 
     void advance() {
-        ++m_range;
+        m_range.advance();
     }
 
     void setToEnd() {
