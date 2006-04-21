@@ -121,6 +121,35 @@ protected:
     It m_current, m_end;
 };
 
+template< typename C >
+struct BackedRange : public RangeImpl< typename C::value_type, BackedRange< C > >
+{
+public:
+    typedef typename C::value_type value_type;
+    BackedRange( const C &backing ) : m_backing( backing ), m_begin( backing.begin() ),
+                                      m_end( backing.end() ) {}
+    bool operator==( const BackedRange &r ) const {
+        return r.m_begin == m_begin && r.m_end == m_end;
+    }
+
+    void setToEnd() {
+        m_begin = m_end;
+    }
+
+    virtual value_type current() const { return *m_begin; }
+    virtual void advance() { ++m_begin; }
+
+protected:
+    typedef typename C::const_iterator It;
+    const C &m_backing;
+    It m_begin, m_end;
+};
+
+template< typename C >
+Range< typename C::value_type > backedRange( const C &b ) {
+    return BackedRange< C >( b );
+}
+
 template< typename T, typename Casted >
 struct CastedRange : public RangeImpl< T, CastedRange< T, Casted > >
 {
@@ -353,142 +382,13 @@ TransformedRange< Trans > transformedRange(
     return TransformedRange< Trans >( r, t );
 }
 
-template< typename Container >
-struct BackedRange :
-    RangeImpl< typename Container::value_type, BackedRange< Container > >
-// ConsumerImpl< typename Cont::value_type, BackedRange< Cont > >
-{
-    typedef typename Container::value_type T;
-    typedef BackedRange< Container > This;
-    struct SharedContainer : Container, SharedBase {
-        template< typename I >
-        SharedContainer( I a, I b ) : Container( a, b ) {}
-    };
-    virtual void advance() { ++m_position; }
-
-    virtual T current() const {
-        return *m_position;
-    }
-    virtual void setToEnd() {
-        m_position = m_container->end();
-    }
-
-protected:
-    typedef SharedPtr< SharedContainer > ContainerPtr;
-    typedef typename Container::const_iterator Position;
-    Position m_position;
-    ContainerPtr m_container;
-};
-
-template< typename T, typename Self >
-struct RandomAccessImpl {
-};
-
-template< typename T, typename Self >
-struct MutableImpl {
-};
-
-// XXX using VectorRange as an output iterator compiles but DOES NOT
-// WORK (segfaults)... you can use consumer( myPetVectorRange )
-// this needs fixing though (iow, it specifically should not compile)
-// same issue as with stl, really
-template< typename T >
-struct VectorRange : RangeImpl< T, VectorRange< T > >,
-                     virtual ConsumerInterface< T >
-{
-    typedef std::random_access_iterator_tag iterator_category;
-    VectorRange() : m_vector( new SharedVector ), m_position( 0 ) {}
-    VectorRange( const Range< T > &i ) {
-        RangeImpl< T, VectorRange< T > >::initFromBase( i.impl() );
-    }
-
-    virtual void consume( const T &a ) {
-        m_vector->push_back( a );
-    }
-
-    virtual void advance() {
-        ++m_position;
-    }
-
-    virtual T current() const {
-        return m_vector->operator[]( m_position );
-    }
-
-    void setToEnd() {
-        m_position = std::distance( m_vector->begin(), m_vector->end() );
-    }
-
-    bool operator==( const VectorRange &r ) const {
-        return m_position == r.m_position;
-    }
-
-    VectorRange &operator+=( ptrdiff_t off ) {
-        m_position += off;
-        return *this;
-    }
-
-    VectorRange &operator--() {
-        --m_position;
-        return *this;
-    }
-
-    VectorRange operator--( int ) {
-        VectorRange tmp( *this );
-        --m_position;
-        return tmp;
-    }
-
-    ptrdiff_t operator-( const VectorRange &r ) {
-        return m_position - r.m_position;
-    }
-
-    VectorRange operator-( ptrdiff_t off ) {
-        VectorRange< T > r( *this );
-        r.m_position = m_position - off;
-        return r;
-    }
-
-    VectorRange operator+( ptrdiff_t off ) {
-        VectorRange< T > r( *this );
-        r.m_position = m_position + off;
-        return r;
-    }
-
-    bool operator<( const VectorRange &r ) {
-        return m_position < r.m_position;
-    }
-
-    size_t size() const {
-        return m_vector->size() - m_position;
-    }
-
-    T &operator*() {
-        return m_vector->operator[]( m_position );
-    }
-
-    const T &operator*() const {
-        return m_vector->operator[]( m_position );
-    }
-
-    void clear() {
-        m_vector->clear();
-        m_position = 0;
-    }
-
-protected:
-    typedef Shared< std::vector< T > > SharedVector;
-    typedef SharedPtr< SharedVector > VectorPointer;
-    VectorPointer m_vector;
-    ptrdiff_t m_position;
-};
-
 template< typename T, typename S, typename I >
 Range< T > RangeImpl< T, S, I >::sorted() const
 {
-    VectorRange< T > out;
-    output( consumer( out ) );
-    std::sort( out.begin(), out.end() );
-    return out;
+    std::vector< T > &backing = *new (GC) std::vector< T >();
+    output( consumer( backing ) );
+    std::sort( backing.begin(), backing.end() );
+    return backedRange( backing );
 }
 
 template< typename T, typename _Advance, typename _End >
