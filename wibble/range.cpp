@@ -56,7 +56,7 @@ void to::test< 3 >()
     a.push_back( 20 );
     Range< int > r = range( a.begin(), a.end() );
     std::copy( r.begin(), r.end(), consumer( vec ) );
-    Range< int > r1 = backedRange( vec );
+    Range< int > r1 = range( vec );
     ensure_equals( *r1.begin(), 10 );
     ensure_equals( *(r1.begin() + 1), 20 );
     ensure( r1.begin() + 2 == r1.end() );
@@ -78,7 +78,7 @@ void to::test<4> ()
     r.output( consumer( v ) );
 
     Range<int> fr =
-        filteredRange( backedRange( v ),
+        filteredRange( range( v ),
                        std::bind1st( std::equal_to< int >(), 10 ) );
     ensure_equals( *fr, 10 );
     fr.advance();
@@ -148,7 +148,7 @@ void to::test<8> ()
     b.consume( 19 );
     b.consume( 30 );
     b.consume( 10 );
-    Range< int > r = intersectionRange( backedRange( av ).sorted(), backedRange( bv ).sorted() );
+    Range< int > r = intersectionRange( range( av ).sorted(), range( bv ).sorted() );
     ensure_equals( *r.begin(), 10 );
     ensure_equals( *(r.begin() + 1), 30 );
     ensure( r.begin() + 2 == r.end() );
@@ -206,10 +206,10 @@ void to::test<11> ()
     std::vector< int > vec;
     Range< int > a;
     ensure( a.empty() );
-    a = backedRange( vec );
+    a = range( vec );
     ensure( a.empty() );
     vec.push_back( 4 );
-    Range< int > b = backedRange( vec );
+    Range< int > b = range( vec );
     ensure( *b == 4 );
     a = b;
     ensure( !a.empty() );
@@ -224,7 +224,7 @@ void to::test<12> ()
     Consumer< int > x = consumer( xv );
     x.consume( 4 );
     x.consume( 8 );
-    a = transformedRange( backedRange( xv ), std::bind1st( std::plus< int >(), 2 ) );
+    a = transformedRange( range( xv ), std::bind1st( std::plus< int >(), 2 ) );
     ensure_equals( *a, 6 );
     a.advance();
     ensure_equals( *a, 10 );
@@ -241,7 +241,7 @@ void to::test<13> ()
     x.consume( 4 );
     x.consume( 8 );
     a = transformedRange(
-        backedRange( xv ), std::bind1st( std::plus< int >(), 2 ) );
+        range( xv ), std::bind1st( std::plus< int >(), 2 ) );
     ensure_equals( *a, 6 );
     a.advance();
     ensure_equals( *a, 10 );

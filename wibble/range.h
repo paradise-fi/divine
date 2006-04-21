@@ -124,10 +124,11 @@ protected:
 template< typename C >
 struct BackedRange : public RangeImpl< typename C::value_type, BackedRange< C > >
 {
+    typedef typename C::const_iterator It;
 public:
     typedef typename C::value_type value_type;
-    BackedRange( const C &backing ) : m_backing( backing ), m_begin( backing.begin() ),
-                                      m_end( backing.end() ) {}
+    BackedRange( const C &c, It b, It e ) : m_backing( c ), m_begin( b ), m_end( e ) {}
+
     bool operator==( const BackedRange &r ) const {
         return r.m_begin == m_begin && r.m_end == m_end;
     }
@@ -140,7 +141,6 @@ public:
     virtual void advance() { ++m_begin; }
 
 protected:
-    typedef typename C::const_iterator It;
     const C &m_backing;
     It m_begin, m_end;
 };
@@ -190,6 +190,24 @@ Range< T >::operator Range< C >() {
 template< typename In >
 Range< typename In::value_type > range( In b, In e ) {
     return IteratorRange< In >( b, e );
+}
+
+// range( container, [iterator1, [iterator2]] ) -- see BackedRange
+template< typename C >
+Range< typename C::value_type > range( const C &c ) {
+    return BackedRange< C >( c, c.begin(), c.end() );
+}
+template< typename C >
+Range< typename C::value_type > range( const C &c,
+                                       typename C::const_iterator b ) {
+    return BackedRange< C >( c, b, c.end() );
+}
+
+template< typename C >
+Range< typename C::value_type > range( const C &c,
+                                       typename C::const_iterator b,
+                                       typename C::const_iterator e ) {
+    return BackedRange< C >( c, b, e );
 }
 
 template< typename T >
@@ -388,7 +406,7 @@ Range< T > RangeImpl< T, S, I >::sorted() const
     std::vector< T > &backing = *new (GC) std::vector< T >();
     output( consumer( backing ) );
     std::sort( backing.begin(), backing.end() );
-    return backedRange( backing );
+    return range( backing );
 }
 
 template< typename T, typename _Advance, typename _End >
