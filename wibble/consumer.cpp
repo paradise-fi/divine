@@ -31,14 +31,14 @@ void to::test<1> ()
     std::list<int> b;
     ensure( a != b );
     Consumer< int > c = consumer( back_inserter( b ) );
-    std::copy( r, r.end(), c );
+    std::copy( r.begin(), r.end(), c );
     ensure( a == b );
 }
 
 template<> template<>
 void to::test<2> ()
 {
-    Shared< std::set< int > > s;
+    std::set< int > s;
     Consumer< int > c = consumer( s );
     c.consume( 1 );
     ensure( *s.begin() == 1 );
@@ -48,7 +48,7 @@ void to::test<2> ()
 template<> template<>
 void to::test<3> ()
 {
-    Shared< std::vector< int > > v;
+    std::vector< int > v;
     Consumer< int > c = consumer( v );
     c.consume( 2 );
     c.consume( 1 );

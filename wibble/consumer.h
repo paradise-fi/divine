@@ -24,7 +24,7 @@ struct ConsumerInterface
     virtual void consume( Range< T > s ) {
         while ( s != s.end() ) {
             consume( s.current() );
-            ++s;
+            s.advance();
         }
     }
     virtual ~ConsumerInterface() {}
