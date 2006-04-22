@@ -44,6 +44,9 @@ struct MorphAllocator {
         }
         return where;
     }
+    void *operator new( unsigned int bytes ) {
+        return ::operator new( bytes );
+    }
 };
 
 /**
