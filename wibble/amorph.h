@@ -156,10 +156,11 @@ template< typename Self >
 struct MorphComparable : virtual MorphEqualityComparable< Self >
 {
     virtual bool less( const MorphInterface *i ) const {
-        const Self *p = dynamic_cast<const Self *>( i );
+        const Self *p = dynamic_cast<const Self *>( i ),
+                &self = *dynamic_cast< const Self * >( this );
         if (!p)
             throw exception::BadCastExt< MorphInterface, Self >( "dynamic cast failed" );
-        return (this->self()) < Self( *p );
+        return self < *p;
     }
 };
 
