@@ -4,6 +4,7 @@
 */
 
 #include <wibble/amorph.h>
+#include <wibble/mixin.h>
 
 #ifndef WIBBLE_ITERATOR_H
 #define WIBBLE_ITERATOR_H
