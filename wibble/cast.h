@@ -1,7 +1,7 @@
 // -*- C++ -*-
 #include <wibble/exception.h>
-#ifndef _APTFRONT_CAST
-#define _APTFRONT_CAST
+#ifndef WIBBLE_CAST_H
+#define WIBBLE_CAST_H
 
 namespace wibble {
 
