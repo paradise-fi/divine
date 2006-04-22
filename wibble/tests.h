@@ -3,10 +3,10 @@
 
 /**
  * @file test-utils.h
- * @author Peter Rockai (mornfall) <mornfall@danill.sk>, Enrico Zini <enrico@enricozini.org>
+ * @author Peter Rockai (mornfall) <me@mornfall.net>, Enrico Zini <enrico@enricozini.org>
  * @brief Utility functions for the unit tests
  */
-#include <wibble/tests/tut.h>
+#include <wibble/tests/tut-wibble.h>
 
 #define TESTGRP(name) \
 typedef test_group<name ## _shar> tg; \
