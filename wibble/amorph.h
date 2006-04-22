@@ -139,10 +139,10 @@ struct MorphEqualityComparable : virtual MorphInterface
         return self == *p;
     }
 
-    bool operator!=( const Self &a ) const {
+    /* bool operator!=( const Self &a ) const {
         const Self &self = *dynamic_cast< const Self * >( this );
         return !( self == a );
-    }
+        } */
 
 };
 
