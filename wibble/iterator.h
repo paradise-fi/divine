@@ -42,7 +42,8 @@ struct IteratorProxy {
 };
 
 template< typename T, typename Self, typename Interface = IteratorInterface< T > >
-struct IteratorImpl: MorphImpl< Self, Interface >, MorphEqualityComparable< Self >
+struct IteratorImpl: MorphImpl< Self, Interface >,
+    MorphEqualityComparable< Self >, mixin::EqualityComparable< Self >
 {
     typedef T ElementType;
 

@@ -22,7 +22,7 @@ struct ConsumerInterface
     typedef T InputType;
     virtual void consume( const T &a ) = 0;
     virtual void consume( Range< T > s ) {
-        while ( s != s.end() ) {
+        while ( s.begin() != s.end() ) {
             consume( s.current() );
             s.advance();
         }
