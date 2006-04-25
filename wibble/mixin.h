@@ -11,15 +11,16 @@ namespace mixin {
 
 template< typename Self >
 struct EqualityComparable {
-    const Self &self() const { return *static_cast< const Self * >( this ); }
-    bool operator!=( const Self &o ) const { return not self() == o; }
+    bool operator!=( const Self &o ) const { return not (comparableSelf() == o); }
+    const Self &comparableSelf() const { return *static_cast< const Self * >( this ); }
 };
 
 template< typename Self >
 struct Comparable : EqualityComparable< Self > {
-    const Self &self() const { return *static_cast< const Self * >( this ); }
-    bool operator>( const Self &o ) const { return not ( self() < o || self() == o ); }
-    bool operator==( const Self &o ) const { return not ( self() < o || o < self() ); }
+    bool operator>( const Self &o ) const { return not ( this->comparableSelf() < o ||
+                                                         this->comparableSelf() == o ); }
+    bool operator==( const Self &o ) const { return not ( this->comparableSelf() < o ||
+                                                          o < this->comparableSelf() ); }
 };
 
 
