@@ -33,8 +33,8 @@ struct Maybe {
         return Maybe( true, df ); }
     operator T() { return value(); }
 protected:
-    T m_value;
     bool m_nothing:1;
+    T m_value;
 };
 
 } 

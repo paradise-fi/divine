@@ -342,7 +342,7 @@ protected:
 };
 
 template <typename T, typename X>
-typename X::template Convert<T>::type &downcast( X &a )
+typename X::template Convert<T>::type &downcast( const X &a )
 {
     return *a.template impl<T>();
 }

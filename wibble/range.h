@@ -31,7 +31,7 @@ struct RangeIterator : R {
 public:
     RangeIterator &operator++() { R::operator++(); return *this; }
     RangeIterator operator++(int) { return R::operator++(0); }
-    bool operator==( const RangeIterator &r ) {
+    bool operator==( const RangeIterator &r ) const {
         return R::operator==( r );
     }
 };
