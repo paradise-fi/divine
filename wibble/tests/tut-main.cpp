@@ -1,5 +1,4 @@
-#include <wibble/tests/tut.h>
-#include <wibble/tests/tut_reporter.h>
+#include <wibble/tests/tut-wibble.h>
 #include <signal.h>
 
 namespace wibble {
