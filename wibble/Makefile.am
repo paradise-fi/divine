@@ -1,6 +1,7 @@
 SUBDIRS = . tests
 wibbledir = $(includedir)/wibble
 wibblecommandlinedir = $(includedir)/wibble/commandline
+wibbletestdir = $(includedir)/wibble/tests
 
 wibble_HEADERS = \
     amorph.h \
@@ -23,6 +24,10 @@ wibblecommandline_HEADERS = \
 	commandline/engine.h \
 	commandline/parser.h \
 	commandline/doc.h
+
+wibbletest_HEADERS = \
+    tests/tut-prereq.h \
+    tests/tut-wibble.h
 
 lib_LTLIBRARIES = libwibble.la
 libwibble_la_SOURCES = \
