@@ -1,25 +1,25 @@
 PROJECT( wibble )
 
-SET( WSRC
+SET( WSRC_TOP
      operators.cpp
      consumer.cpp
      range.cpp
      exception.cpp
+     tests.cpp )
+
+SET( WSRC_CMDL
      commandline/core.cpp
      commandline/options.cpp
      commandline/engine.cpp
      commandline/parser.cpp
      commandline/doc.cpp
-     tests.cpp )
-
-SET( WH
-     operators.h
-     range.h
-     consumer.h
 )
 
+SET( WSRC ${WSRC_TOP} ${WSRC_CMDL} )
+
 INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
-INSTALL_FILES( /include/wibble .h ${WH} )
+INSTALL_FILES( /include/wibble .h ${WSRC_TOP} )
+INSTALL_FILES( /include/wibble/commandline .h ${WSRC_CMDL} )
 
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
                 ${wibble_BINARY_DIR}/config.h )
