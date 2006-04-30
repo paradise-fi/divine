@@ -3,8 +3,19 @@ wibbledir = $(includedir)/wibble
 wibblecommandlinedir = $(includedir)/wibble/commandline
 
 wibble_HEADERS = \
-	exception.h \
-	tests.h
+    amorph.h \
+    cast.h \
+    config.h \
+    consumer.h \
+    exception.h \
+    fallback.h \
+    iterator.h \
+    maybe.h \
+    mixin.h \
+    operators.h \
+    range.h \
+    shared.h \
+    tests.h
 
 wibblecommandline_HEADERS = \
 	commandline/core.h \
