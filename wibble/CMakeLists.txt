@@ -14,7 +14,7 @@ SET( WSRC
 
 INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 
-CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.in
+CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
                 ${wibble_BINARY_DIR}/config.h )
 
 IF( BUILD_FINAL )
