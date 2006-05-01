@@ -9,6 +9,7 @@ wibble_HEADERS = \
     config.h \
     consumer.h \
     exception.h \
+    exception.tcc \
     fallback.h \
     iterator.h \
     maybe.h \

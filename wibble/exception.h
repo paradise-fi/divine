@@ -385,7 +385,7 @@ public:
 		System(context), m_name(name) {}
 	~File() throw () {}
 
-	virtual const char* type() const throw () { return "FileException"; }
+	virtual const char* type() const throw () { return "File"; }
 
 	virtual std::string desc() const throw () { return m_name + ": " + System::desc(); }
 };
