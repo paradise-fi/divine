@@ -44,9 +44,10 @@ public:
 		const_iterator() : value(0) {}
 
 		const T& operator*() const { return *value; }
+		const T* operator->() const { return value; }
 		const_iterator& operator++() { value = 0; return *this; }
-		bool operator==(const const_iterator& iter) { return value == iter.value; }
-		bool operator!=(const const_iterator& iter) { return value != iter.value; }
+		bool operator==(const const_iterator& iter) const { return value == iter.value; }
+		bool operator!=(const const_iterator& iter) const { return value != iter.value; }
 		
 		friend class Singleton<T>;
 	};
@@ -61,10 +62,11 @@ public:
 	public:
 		iterator() : value(0) {}
 
-		T& operator*() const { return *value; }
+		T& operator*() { return *value; }
+		T* operator->() { return value; }
 		iterator& operator++() { value = 0; return *this; }
-		bool operator==(const iterator& iter) { return value == iter.value; }
-		bool operator!=(const iterator& iter) { return value != iter.value; }
+		bool operator==(const iterator& iter) const { return value == iter.value; }
+		bool operator!=(const iterator& iter) const { return value != iter.value; }
 		
 		friend class Singleton<T>;
 	};

@@ -34,16 +34,20 @@ public:
 	{
 	public:
 		const T& operator*() const { return *(T*)0; }
+		const T* operator->() const { return 0; }
 		const_iterator& operator++() { return *this; }
 		bool operator==(const const_iterator&) const { return true; }
+		bool operator!=(const const_iterator&) const { return false; }
 	};
 	
 	class iterator
 	{
 	public:
 		T& operator*() const { return *(T*)0; }
+		T* operator->() const { return 0; }
 		iterator& operator++() { return *this; }
 		bool operator==(const iterator&) const { return true; }
+		bool operator!=(const iterator&) const { return false; }
 	};
 	
 	unsigned int size() const { return 0; }

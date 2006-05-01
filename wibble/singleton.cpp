@@ -19,11 +19,13 @@ void to::test< 1 >() {
     ensure_equals(container.size(), 1u);
 
     Singleton<int>::iterator i = container.begin();
+    ensure(!(i == container.end()));
     ensure(i != container.end());
     ensure_equals(*i, 5);
 
     ++i;
     ensure(i == container.end());
+    ensure(!(i != container.end()));
 }
 
 }

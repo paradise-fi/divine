@@ -20,6 +20,7 @@ void to::test< 1 >() {
 
     Empty<int>::iterator i = container.begin();
     ensure(i == container.end());
+    ensure(!(i == container.end()));
 }
 
 }
