@@ -1,3 +1,4 @@
-#ifdef WIBBLE_BUILD_TESTING
 #define WIBBLE_COMPILE_TESTSUITE
+#ifdef WIBBLE_BUILD_TESTING
+// when we decide to have different testing/final builds
 #endif
