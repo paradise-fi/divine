@@ -14,11 +14,11 @@ TESTGRP( empty );
 
 template<> template<>
 void to::test< 1 >() {
-    Empty container;
+    Empty<int> container;
 
     ensure_equals(container.size(), 0u);
 
-    Empty::iterator i = container.begin();
+    Empty<int>::iterator i = container.begin();
     ensure(i == container.end());
 }
 

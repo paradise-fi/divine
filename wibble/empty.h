@@ -24,13 +24,15 @@
 
 namespace wibble {
 
+template<typename T>
 class Empty
 {
 public:
+	typedef T value_type;
+
 	class iterator
 	{
 	public:
-		template<typename T>
 		T& operator*() const { return *(T*)0; }
 		iterator& operator++() { return *this; }
 		bool operator==(const iterator&) const { return true; }

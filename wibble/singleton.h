@@ -31,6 +31,8 @@ protected:
 	T value;
 	
 public:
+	typedef T value_type;
+
 	class iterator
 	{
 		T* value;
