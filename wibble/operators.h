@@ -39,6 +39,13 @@ std::set< T > operator &( const std::set< T > &a, const std::set< T > &b ) {
 }
 
 template< typename T >
+std::set< T > operator |( const std::set< T > &a, const T& item ) {
+    std::set< T > ret = a;
+    ret.insert(item);
+    return ret;
+}
+
+template< typename T >
 std::set< T > operator |( const std::set< T > &a, const std::set< T > &b ) {
     std::set< T > ret;
     std::set_union( a.begin(), a.end(), b.begin(), b.end(),
@@ -52,6 +59,13 @@ std::set< T > operator -( const std::set< T > &a, const std::set< T > &b ) {
     std::set_difference( a.begin(), a.end(), b.begin(), b.end(),
                          std::inserter(ret, ret.begin() ) );
     return ret;
+}
+
+template< typename T >
+std::set< T > &operator|=( std::set< T > &a, const T& item )
+{
+    a.insert(item);
+    return a;
 }
 
 template< typename T >

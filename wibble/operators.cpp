@@ -38,6 +38,12 @@ void to::test< 2 >() {
     a.insert( a.begin(), 4 );
     a.insert( a.begin(), 3 );
     b.insert( b.begin(), 5 );
+    b |= 3;
+    ensure_equals( b.size(), 2u );
+    ensure( b.find( 2 ) == b.end() );
+    ensure( b.find( 3 ) != b.end() );
+    ensure( b.find( 4 ) == b.end() );
+    ensure( b.find( 5 ) != b.end() );
     b |= a;
     ensure_equals( b.size(), 3u );
     ensure( b.find( 3 ) != b.end() );
