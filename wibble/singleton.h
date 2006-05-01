@@ -33,6 +33,24 @@ protected:
 public:
 	typedef T value_type;
 
+	class const_iterator
+	{
+		const T* value;
+
+	protected:
+		const_iterator(const T* value) : value(value) {}
+	
+	public:
+		const_iterator() : value(0) {}
+
+		const T& operator*() const { return *value; }
+		const_iterator& operator++() { value = 0; return *this; }
+		bool operator==(const const_iterator& iter) { return value == iter.value; }
+		bool operator!=(const const_iterator& iter) { return value != iter.value; }
+		
+		friend class Singleton<T>;
+	};
+	
 	class iterator
 	{
 		T* value;
@@ -57,6 +75,8 @@ public:
 
 	iterator begin() { return iterator(&value); }
 	iterator end() { return iterator(); }
+	const_iterator begin() const { return const_iterator(&value); }
+	const_iterator end() const { return const_iterator(); }
 };
 
 template<typename T>

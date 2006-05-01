@@ -30,6 +30,14 @@ class Empty
 public:
 	typedef T value_type;
 
+	class const_iterator
+	{
+	public:
+		const T& operator*() const { return *(T*)0; }
+		const_iterator& operator++() { return *this; }
+		bool operator==(const const_iterator&) const { return true; }
+	};
+	
 	class iterator
 	{
 	public:
@@ -40,8 +48,10 @@ public:
 	
 	unsigned int size() const { return 0; }
 
-	iterator begin() const { return iterator(); }
-	iterator end() const { return iterator(); }
+	iterator begin() { return iterator(); }
+	iterator end() { return iterator(); }
+	const_iterator begin() const { return const_iterator(); }
+	const_iterator end() const { return const_iterator(); }
 };
 
 }
