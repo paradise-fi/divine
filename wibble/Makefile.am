@@ -15,6 +15,8 @@ wibble_HEADERS = \
     maybe.h \
     mixin.h \
     operators.h \
+    empty.h \
+    singleton.h \
     range.h \
     shared.h \
     tests.h
@@ -33,6 +35,11 @@ wibbletest_HEADERS = \
 lib_LTLIBRARIES = libwibble.la
 libwibble_la_SOURCES = \
 	exception.cpp \
+	empty.cpp \
+	singleton.cpp \
+	consumer.cpp \
+	operators.cpp \
+	range.cpp \
 	tests.cpp \
 	commandline/core.cpp \
 	commandline/options.cpp \

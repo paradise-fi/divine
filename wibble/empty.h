@@ -32,14 +32,15 @@ public:
 	public:
 		template<typename T>
 		T& operator*() const { return *(T*)0; }
-		Iterator& operator++() const {}
+		iterator& operator++() { return *this; }
+		bool operator==(const iterator&) const { return true; }
 	};
 	
-	int size() const { return 0; }
+	unsigned int size() const { return 0; }
 
-	iterator begin() const { return Iterator(); }
-	iterator end() const { return Iterator(); }
-}:
+	iterator begin() const { return iterator(); }
+	iterator end() const { return iterator(); }
+};
 
 }
 

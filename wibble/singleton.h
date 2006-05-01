@@ -36,22 +36,26 @@ public:
 		T* value;
 
 	protected:
-		Iterator(T* value) : value(value) {}
+		iterator(T* value) : value(value) {}
 	
 	public:
-		Iterator() : value(0) {}
+		iterator() : value(0) {}
 
-		T* operator*() const { return *value; }
-		Iterator& operator++() { value = 0; }
+		T& operator*() const { return *value; }
+		iterator& operator++() { value = 0; return *this; }
+		bool operator==(const iterator& iter) { return value == iter.value; }
+		bool operator!=(const iterator& iter) { return value != iter.value; }
+		
+		friend class Singleton<T>;
 	};
 	
 	Singleton(const T& value) : value(value) {}
 
-	int size() const { return 1; }
+	unsigned int size() const { return 1; }
 
-	iterator begin() const { return Iterator(&value); }
-	iterator end() const { return Iterator(); }
-}:
+	iterator begin() { return iterator(&value); }
+	iterator end() { return iterator(); }
+};
 
 template<typename T>
 Singleton<T> singleton(const T& value)
