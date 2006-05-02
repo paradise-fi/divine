@@ -62,6 +62,13 @@ std::set< T > operator -( const std::set< T > &a, const std::set< T > &b ) {
 }
 
 template< typename T >
+std::set< T > operator -( const std::set< T > &a, const T& item ) {
+    std::set< T > ret = a;
+    ret.erase(item);
+    return ret;
+}
+
+template< typename T >
 std::set< T > &operator|=( std::set< T > &a, const T& item )
 {
     a.insert(item);
