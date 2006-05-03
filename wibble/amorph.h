@@ -40,14 +40,26 @@ struct MorphAllocator {
     }
 };
 
+template< typename W >
+struct MorphBase : MorphInterface {
+    MorphBase( const W &w ) : m_wrapped( w ) {}
+
+    W &wrapped() {
+        return m_wrapped;
+    }
+
+protected:
+    W m_wrapped;
+};
+
 template< typename Self, typename W >
-struct Morph : MorphInterface,
+struct Morph : MorphBase< W >,
     mixin::Comparable< Morph< Self, W > >,
     MorphAllocator
 {
     typedef W Wrapped;
 
-    Morph( const Wrapped &w ) : m_wrapped( w ) {}
+    Morph( const Wrapped &w ) : MorphBase< W >( w ) {}
 
     const Self &self() const { return *static_cast< const Self * >( this ); }
 
@@ -74,16 +86,14 @@ struct Morph : MorphInterface,
     }
 
     const Wrapped &wrapped() const {
-        return m_wrapped;
+        return this->m_wrapped;
     }
 
     Wrapped &wrapped() {
-        return m_wrapped;
+        return this->m_wrapped;
     }
 
     virtual ~Morph() {}
-private:
-    Wrapped m_wrapped;
 };
 
 /**
@@ -245,8 +255,19 @@ struct Amorph {
         return m_impl;
     }
 
-    template <typename R> R *impl() const {
-        return dynamic_cast<R *>( m_impl );
+    template< typename T >
+    bool is() const {
+        return impl< T >();
+    }
+
+    template< typename T >
+    T *impl() const {
+        T *p = dynamic_cast< T *>( m_impl );
+        if ( !p ) {
+            MorphBase< T > *m = dynamic_cast< MorphBase< T > * >( m_impl );
+            if ( m ) p = &(m->wrapped());
+        }
+        return p;
     }
 
 private:
