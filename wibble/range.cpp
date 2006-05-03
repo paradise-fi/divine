@@ -68,7 +68,7 @@ void to::test< 3 >()
 }
 
 template<> template<>
-void to::test<4> ()
+void to::test< 4 > ()
 {
     std::vector< int > v;
     std::list<int> a;
@@ -116,7 +116,7 @@ void to::test<6> ()
     r.advance();
     ensure_equals( *r, 30 );
     r.advance();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -133,7 +133,7 @@ void to::test<7> ()
     r.advance();
     ensure_equals( *r, 30 );
     r.advance();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -173,7 +173,7 @@ void to::test<9> ()
     r.advance();
     ensure_equals( *r, 30 );
     r.advance();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -197,7 +197,7 @@ void to::test<10> ()
     r.advance();
     ensure_equals( *r, 30 );
     r.advance();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -229,7 +229,7 @@ void to::test<12> ()
     a.advance();
     ensure_equals( *a, 10 );
     a.advance();
-    ensure( a == a.end() );
+    ensure( a.empty() );
 }
 
 template<> template<>
@@ -246,7 +246,7 @@ void to::test<13> ()
     a.advance();
     ensure_equals( *a, 10 );
     a.advance();
-    ensure( a == a.end() );
+    ensure( a.empty() );
 }
 
 template<> template<>
@@ -263,7 +263,7 @@ void to::test<14> ()
     r = r.next();
     ensure_equals( *r, 30 );
     r = r.next();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -280,7 +280,7 @@ void to::test<15> ()
     r = r.next();
     ensure_equals( *r, 30u );
     r = r.next();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 template<> template<>
@@ -300,7 +300,7 @@ void to::test<16> ()
     r = r.next();
     ensure_equals( *r, 30 );
     r = r.next();
-    ensure( r == r.end() );
+    ensure( r.empty() );
 }
 
 /*
@@ -335,7 +335,37 @@ void to::test< 18 >() {
     r.advance(); ensure_equals( *r, 2 );
     r.advance(); ensure_equals( *r, 3 );
     r.advance(); ensure_equals( *r, 4 );
-    r.advance(); ensure( r == r.end() );
+    r.advance(); ensure( r.empty() );
+}
+
+template<> template<>
+void to::test<19> ()
+{
+    std::vector< int > av;
+    Consumer< int > a = consumer( av );
+    a.consume( 10 );
+    a.consume( 30 );
+    a.consume( 20 );
+    Range< int > r = range( av ).sorted();
+    ensure_equals( *r.begin(), 10 );
+    ensure_equals( *(r.begin() + 1), 20 );
+    ensure_equals( *(r.begin() + 2), 30 );
+    ensure( r.begin() + 3 == r.end() );
+}
+
+template<> template<>
+void to::test<20> ()
+{
+    std::vector< int > av;
+    Consumer< int > a = consumer( av );
+    a.consume( 10 );
+    a.consume( 30 );
+    a.consume( 20 );
+    Range< unsigned > r = range( av ).sorted();
+    ensure_equals( *r.begin(), 10 );
+    ensure_equals( *(r.begin() + 1), 20 );
+    ensure_equals( *(r.begin() + 2), 30 );
+    ensure( r.begin() + 3 == r.end() );
 }
 
 /*

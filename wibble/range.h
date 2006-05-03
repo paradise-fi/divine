@@ -25,15 +25,56 @@ template< typename > struct Consumer;
 // auxilliary class, used as Range< T >::iterator
 // basically same as Range but with post/pre-increment public
 template< typename R >
-struct RangeIterator : R {
+struct RangeIterator : mixin::Comparable< RangeIterator< R > > {
+    struct RangeImplementation {};
+
     RangeIterator() {}
-    RangeIterator( const R &r ) : R( r ) {}
-public:
-    RangeIterator &operator++() { R::operator++(); return *this; }
-    RangeIterator operator++(int) { return R::operator++(0); }
-    bool operator==( const RangeIterator &r ) const {
-        return R::operator==( r );
+    RangeIterator( const R &r ) : m_range( r ) {}
+
+    typedef typename R::iterator_category iterator_category;
+    typedef typename R::difference_type difference_type;
+    typedef typename R::value_type value_type;
+    typedef typename R::pointer pointer;
+    typedef typename R::reference reference;
+
+    typename R::ElementType operator*() const { return m_range.operator*(); }
+    RangeIterator &operator++() { m_range.operator++(); return *this; }
+    RangeIterator operator++(int) { return m_range.operator++(0); }
+    bool operator<=( const RangeIterator &r ) const {
+        return m_range.operator<=( r.m_range );
     }
+protected:
+    R m_range;
+};
+
+template< typename T, typename Self >
+struct RangeMixin: IteratorMixin< T, Self >
+{
+    typedef Self RangeImplementation;
+    const Self &self() const { return *static_cast< const Self * >( this ); }
+    typedef IteratorMixin< T, Self > Base;
+    typedef RangeIterator< Self > iterator;
+    friend struct RangeIterator< Self >;
+
+    iterator begin() const { return iterator( this->self() ); } // STL-style iteration
+    iterator end() const { Self e( this->self() ); e.setToEnd(); return iterator( e ); }
+    Range< T > sorted() const;
+
+    T head() { return self().current(); }
+
+    void output( Consumer< T > t ) const {
+        std::copy( begin(), end(), t );
+    }
+
+    bool empty() const {
+        return begin() == end();
+    }
+
+    ~RangeMixin() {}
+private:
+    Self &operator++() { return Base::operator++(); }
+    Self operator++(int) { return Base::operator++(0); }
+    void operator=( RangeIterator< Self > );
 };
 
 // interface to be implemented by all range implementations
@@ -45,32 +86,15 @@ struct RangeInterface : IteratorInterface< T > {
     virtual ~RangeInterface() {}
 };
 
-// base class for range implementations... mixes into a range
-// implementation and provides all the common parts
-// if you didn't check amorph.h yet, do it *now*
-template< typename T, typename Self, typename Interface = RangeInterface< T > >
-struct RangeImpl: IteratorImpl< T, Self, Interface >
+template< typename T, typename W >
+struct RangeMorph: RangeInterface< T >, Morph< RangeMorph< T, W >, W >
 {
-    typedef IteratorImpl< T, Self, Interface > Base;
-    typedef RangeIterator< Self > iterator;
-    friend struct RangeIterator< Self >;
-
-    iterator begin() const { return iterator( this->self() ); } // STL-style iteration
-    iterator end() const { Self e( this->self() ); e.setToEnd(); return iterator( e ); }
-    Range< T > sorted() const;
-
-    void output( Consumer< T > t ) const {
-        std::copy( begin(), end(), t );
-    }
-
-    virtual bool empty() const {
-        return begin() == end();
-    }
-
-    virtual ~RangeImpl() {}
-protected:
-    Self &operator++() { return Base::operator++(); }
-    Self operator++(int) { return Base::operator++(0); }
+    typedef typename W::RangeImplementation Wrapped;
+    RangeMorph() {}
+    RangeMorph( const Wrapped &w ) : Morph< RangeMorph, Wrapped >( w ) {}
+    virtual void setToEnd() { this->wrapped().setToEnd(); }
+    virtual void advance() { this->wrapped().advance(); }
+    virtual T current() const { return this->wrapped().current(); }
 };
 
 // the Amorph of Ranges... if you still didn't check amorph.h, go and
@@ -116,27 +140,29 @@ protected:
   Amorph Range is used instead.
  */
 template< typename T >
-struct Range : Amorph< Range< T >, RangeInterface< T >, 0 >,
-               RangeImpl< T, Range< T > >
+struct Range : Amorph< Range< T >, RangeInterface< T > >,
+               RangeMixin< T, Range< T > >
 {
     typedef Amorph< Range< T >, RangeInterface< T >, 0 > Super;
     typedef T ElementType;
 
-    Range( const RangeInterface< T > &i ) : Super( i ) {}
+    template< typename C >
+    Range( const C &i ) : Super( RangeMorph< T, C >( i ) ) {}
     Range() {}
 
     T current() const { return this->implInterface()->current(); }
-    virtual void advance() { this->implInterface()->advance(); }
-    virtual void setToEnd() { this->implInterface()->setToEnd(); }
-    virtual bool empty() const { return !this->implInterface() || this->begin() == this->end(); }
+    void advance() { this->implInterface()->advance(); }
+    void setToEnd() { this->implInterface()->setToEnd(); }
+    bool empty() const { return !this->implInterface() || this->begin() == this->end(); }
+    // bool operator<=( const Range &i ) const { return leq( i ); }
 
     template< typename C > operator Range< C >();
 };
 
-template< typename R >
-Range< typename R::ElementType > range( R r ) {
-    return r;
-}
+/* template< typename R >
+Range< typename R::ElementType > rangeMorph( R r ) {
+    return Range< typename R::ElementType > uRangeMorph< typename R::ElementType, R >( r );
+    } */
 
 }
 
@@ -152,19 +178,20 @@ namespace wibble {
 // this is what you get when using range( iterator1, iterator2 )
 // see also range()
 template< typename It >
-struct IteratorRange : public RangeImpl<
+struct IteratorRange : public RangeMixin<
     typename std::iterator_traits< It >::value_type,
     IteratorRange< It > >
 {
     typedef typename std::iterator_traits< It >::value_type Value;
 
+    IteratorRange() {}
     IteratorRange( It c, It e )
         : m_current( c ), m_end( e ) {}
 
-    virtual Value current() const { return *m_current; }
-    virtual void advance() { ++m_current; }
+    Value current() const { return *m_current; }
+    void advance() { ++m_current; }
 
-    bool operator==( const IteratorRange &r ) const {
+    bool operator<=( const IteratorRange &r ) const {
         return r.m_current == m_current && r.m_end == m_end;
     }
 
@@ -183,14 +210,15 @@ protected:
 // this is what you get when using range( container, ... )
 
 template< typename C >
-struct BackedRange : public RangeImpl< typename C::value_type, BackedRange< C > >
+struct BackedRange : public RangeMixin< typename C::value_type, BackedRange< C > >
 {
     typedef typename C::const_iterator It;
 public:
     typedef typename C::value_type value_type;
-    BackedRange( const C &c, It b, It e ) : m_backing( c ), m_begin( b ), m_end( e ) {}
+    BackedRange() {}
+    BackedRange( const C &c, It b, It e ) : m_backing( &c ), m_begin( b ), m_end( e ) {}
 
-    bool operator==( const BackedRange &r ) const {
+    bool operator<=( const BackedRange &r ) const {
         return r.m_begin == m_begin && r.m_end == m_end;
     }
 
@@ -198,11 +226,11 @@ public:
         m_begin = m_end;
     }
 
-    virtual value_type current() const { return *m_begin; }
-    virtual void advance() { ++m_begin; }
+    value_type current() const { return *m_begin; }
+    void advance() { ++m_begin; }
 
 protected:
-    const C &m_backing;
+    const C *m_backing;
     It m_begin, m_end;
 };
 
@@ -214,20 +242,21 @@ protected:
 // static_cast-able to T
 
 template< typename T, typename Casted >
-struct CastedRange : public RangeImpl< T, CastedRange< T, Casted > >
+struct CastedRange : public RangeMixin< T, CastedRange< T, Casted > >
 {
+    CastedRange() {}
     CastedRange( Range< Casted > r ) : m_casted( r ) {}
-    virtual T current() const {
+    T current() const {
         return static_cast< T >( m_casted.current() );
     }
-    virtual void advance() { m_casted.advance(); }
+    void advance() { m_casted.advance(); }
 
-    bool operator==( const CastedRange &r ) const {
-        return m_casted == r.m_casted;
+    bool operator<=( const CastedRange &r ) const {
+        return m_casted <= r.m_casted;
     }
 
     void setToEnd() {
-        m_casted = m_casted.end();
+        m_casted.setToEnd();
     }
 
 protected:
@@ -278,7 +307,7 @@ Range< typename C::value_type > range( const C &c,
 }
 
 template< typename T >
-struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
+struct IntersectionRange : RangeMixin< T, IntersectionRange< T > >
 {
     IntersectionRange() {}
     IntersectionRange( Range< T > r1, Range< T > r2 )
@@ -289,8 +318,7 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
 
     void find() const {
         if (!m_valid) {
-            while ( m_first != m_first.end()
-                    && m_second != m_second.end() ) {
+            while ( !m_first.empty() && !m_second.empty() ) {
                 if ( *m_first < *m_second )
                     m_first.advance();
                 else if ( *m_second < *m_first )
@@ -303,28 +331,27 @@ struct IntersectionRange : RangeImpl< T, IntersectionRange< T > >
         m_valid = true;
     }
 
-    virtual void advance() {
+    void advance() {
         find();
         m_first.advance();
         m_second.advance();
         m_valid = false;
     }
 
-    virtual T current() const {
+    T current() const {
         find();
         return m_first.current();
     }
 
     void setToEnd() {
-        m_first = m_first.end();
-        m_second = m_second.end();
+        m_first.setToEnd();
+        m_second.setToEnd();
     }
 
-    bool operator==( const IntersectionRange &f ) const {
+    bool operator<=( const IntersectionRange &f ) const {
         find();
         f.find();
         return m_first == f.m_first;
-        // return m_pred == f.m_pred && m_range == f.m_range;
     }
 
 protected:
@@ -338,43 +365,45 @@ IntersectionRange< typename R::ElementType > intersectionRange( R r1, R r2 ) {
 }
 
 template< typename R, typename Pred >
-struct FilteredRange : RangeImpl< typename R::ElementType,
+struct FilteredRange : RangeMixin< typename R::ElementType,
                                   FilteredRange< R, Pred > >
 {
     typedef typename R::ElementType ElementType;
-    FilteredRange( const R &r, Pred p ) : m_range( r ), m_pred( p ),
+    FilteredRange( const R &r, Pred p ) : m_range( r ), m_current( r.begin() ), m_pred( p ),
         m_valid( false ) {}
 
     void find() const {
         if (!m_valid)
-            m_range = std::find_if( m_range.begin(), m_range.end(), m_pred );
+            m_current = std::find_if( m_current, m_range.end(), pred() );
         m_valid = true;
     }
 
-    virtual void advance() {
+    void advance() {
         find();
-        m_range.advance();
+        ++m_current;
         m_valid = false;
     }
 
-    virtual ElementType current() const {
+    ElementType current() const {
         find();
-        return m_range.current();
+        return *m_current;
     }
 
     void setToEnd() {
-        m_range = m_range.end();
+        m_current = m_range.end();
     }
 
-    bool operator==( const FilteredRange &f ) const {
+    bool operator<=( const FilteredRange &f ) const {
         find();
         f.find();
-        return m_range == f.m_range;
+        return m_current == f.m_current;
         // return m_pred == f.m_pred && m_range == f.m_range;
     }
 
 protected:
-    mutable R m_range;
+    const Pred &pred() const { return m_pred; }
+    R m_range;
+    mutable typename R::iterator m_current;
     Pred m_pred;
     mutable bool m_valid:1;
 };
@@ -386,36 +415,36 @@ FilteredRange< R, Pred > filteredRange(
 }
 
 template< typename T >
-struct UniqueRange : RangeImpl< T, UniqueRange< T > >
+struct UniqueRange : RangeMixin< T, UniqueRange< T > >
 {
     UniqueRange() {}
     UniqueRange( Range< T > r ) : m_range( r ), m_valid( false ) {}
 
     void find() const {
         if (!m_valid)
-            while ( m_range != m_range.end()
-                    && m_range.next() != m_range.end()
-                    && *m_range == *m_range.next() )
+            while ( !m_range.empty()
+                    && !m_range.next().empty()
+                    && m_range.head() == m_range.next().head() )
                 m_range = m_range.next();
         m_valid = true;
     }
 
-    virtual void advance() {
+    void advance() {
         find();
         m_range.advance();
         m_valid = false;
     }
 
-    virtual T current() const {
+    T current() const {
         find();
         return m_range.current();
     }
 
     void setToEnd() {
-        m_range = m_range.end();
+        m_range.setToEnd();
     }
 
-    bool operator==( const UniqueRange &r ) const {
+    bool operator<=( const UniqueRange &r ) const {
         find();
         r.find();
         return m_range == r.m_range;
@@ -432,7 +461,7 @@ UniqueRange< typename R::ElementType > uniqueRange( R r1 ) {
 }
 
 template< typename Transform >
-struct TransformedRange : RangeImpl< typename Transform::result_type,
+struct TransformedRange : RangeMixin< typename Transform::result_type,
                                      TransformedRange< Transform > >
 {
     typedef typename Transform::argument_type Source;
@@ -440,12 +469,16 @@ struct TransformedRange : RangeImpl< typename Transform::result_type,
     TransformedRange( Range< Source > r, Transform t )
         : m_range( r ), m_transform( t ) {}
 
-    bool operator==( const TransformedRange &o ) const {
-        return m_range == o.m_range; // XXX buaaaahaaa!
+    bool operator<=( const TransformedRange &o ) const {
+        return m_range <= o.m_range;
     }
 
     Result current() const {
-        return m_transform( m_range.current() );
+        return transform()( m_range.current() );
+    }
+
+    const Transform &transform() const {
+        return m_transform;
     }
 
     void advance() {
@@ -453,7 +486,7 @@ struct TransformedRange : RangeImpl< typename Transform::result_type,
     }
 
     void setToEnd() {
-        m_range = m_range.end();
+        m_range.setToEnd();
     }
 
 protected:
@@ -467,8 +500,8 @@ TransformedRange< Trans > transformedRange(
     return TransformedRange< Trans >( r, t );
 }
 
-template< typename T, typename S, typename I >
-Range< T > RangeImpl< T, S, I >::sorted() const
+template< typename T, typename S >
+Range< T > RangeMixin< T, S >::sorted() const
 {
     std::vector< T > &backing = *new (GC) std::vector< T >();
     output( consumer( backing ) );
@@ -477,7 +510,7 @@ Range< T > RangeImpl< T, S, I >::sorted() const
 }
 
 template< typename T, typename _Advance, typename _End >
-struct GeneratedRange : RangeImpl< T, GeneratedRange< T, _Advance, _End > >
+struct GeneratedRange : RangeMixin< T, GeneratedRange< T, _Advance, _End > >
 {
     typedef _Advance Advance;
     typedef _End End;
@@ -500,9 +533,9 @@ struct GeneratedRange : RangeImpl< T, GeneratedRange< T, _Advance, _End > >
 
     bool isEnd() const { return m_end || m_endPred( m_current ); }
 
-    bool operator==( const GeneratedRange &r ) const {
+    bool operator<=( const GeneratedRange &r ) const {
         if ( isEnd() && r.isEnd() ) return true;
-        if ( isEnd() || r.isEnd() ) return false;
+        if ( isEnd() < r.isEnd() ) return true;
         return m_current == r.m_current;
     }
 

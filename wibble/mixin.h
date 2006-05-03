@@ -10,17 +10,16 @@ namespace wibble {
 namespace mixin {
 
 template< typename Self >
-struct EqualityComparable {
-    bool operator!=( const Self &o ) const { return not (comparableSelf() == o); }
-    const Self &comparableSelf() const { return *static_cast< const Self * >( this ); }
-};
+struct Comparable {
+    const Self &cmpSelf() const { return *static_cast< const Self * >( this ); }
+    bool operator!=( const Self &o ) const { return not( cmpSelf() == o ); }
+    bool operator==( const Self &o ) const { return cmpSelf() <= o && o <= cmpSelf(); }
+    bool operator<( const Self &o ) const { return cmpSelf() <= o && cmpSelf() != o; }
+    bool operator>( const Self &o ) const { return o <= cmpSelf() && cmpSelf() != o; }
+    bool operator>=( const Self &o ) const { return o <= cmpSelf(); }
 
-template< typename Self >
-struct Comparable : EqualityComparable< Self > {
-    bool operator>( const Self &o ) const { return not ( this->comparableSelf() < o ||
-                                                         this->comparableSelf() == o ); }
-    bool operator==( const Self &o ) const { return not ( this->comparableSelf() < o ||
-                                                          o < this->comparableSelf() ); }
+    // reimplement this one
+    // bool operator<=( const Self &o ) const { return this <= &o; }
 };
 
 

@@ -42,10 +42,21 @@ struct IteratorProxy {
     const T *operator->() const { return &x; }
 };
 
-template< typename T, typename Self, typename Interface = IteratorInterface< T > >
-struct IteratorImpl: MorphImpl< Self, Interface >,
-    MorphEqualityComparable< Self >, mixin::EqualityComparable< Self >
+template< typename T, typename W >
+struct IteratorMorph : IteratorInterface< T >, Morph< IteratorMorph< T, W >, W >
 {
+    typedef W Wrapped;
+    IteratorMorph() {}
+    IteratorMorph( const Wrapped &w ) : Morph< IteratorMorph, Wrapped >( w ) {}
+    virtual void advance() { this->wrapped().advance(); }
+    virtual T current() const { return this->wrapped().current(); }
+};
+
+template< typename T, typename Self >
+struct IteratorMixin : mixin::Comparable< Self >
+{
+    Self &self() { return *static_cast< const Self * >( this ); }
+    const Self &self() const { return *static_cast< const Self * >( this ); }
     typedef T ElementType;
 
     typedef std::forward_iterator_tag iterator_category;
@@ -56,14 +67,14 @@ struct IteratorImpl: MorphImpl< Self, Interface >,
     typedef const T &const_reference;
 
     IteratorProxy< T > operator->() const {
-        return IteratorProxy< T >(this->self().current()); }
-    Self next() const { Self n( this->self() ); n.advance(); return n; }
-    T operator*() const { return this->self().current(); }
+        return IteratorProxy< T >(self().current()); }
+    Self next() const { Self n( self() ); n.advance(); return n; }
+    T operator*() const { return self().current(); }
 
-    Self &operator++() { this->self().advance(); return this->self(); }
+    Self &operator++() { self().advance(); return self(); }
     Self operator++(int) {
-        Self tmp = this->self();
-        this->self().advance();
+        Self tmp = self();
+        self().advance();
         return tmp;
     }
 };
@@ -80,13 +91,14 @@ typename IteratorTraits< T, I >::Sorted isSortedT( I, I ) {
 
 template< typename T >
 struct Iterator : Amorph< Iterator< T >, IteratorInterface< T >, 0 >,
-                  IteratorImpl< T, Iterator< T > >
+    IteratorMixin< T, Iterator< T > >
 {
     typedef Amorph< Iterator< T >, IteratorInterface< T >, 0 > Super;
     typedef T ElementType;
 
     Iterator( const IteratorInterface< T > &i ) : Super( i ) {}
     Iterator() {}
+    bool operator<=( const Iterator &i ) const { return leq( i ); }
 
     T current() const { return this->implInterface()->current(); }
     virtual void advance() { this->implInterface()->advance(); }
@@ -95,7 +107,7 @@ struct Iterator : Amorph< Iterator< T >, IteratorInterface< T >, 0 >,
 };
 
 template< typename It >
-struct StlIterator : IteratorImpl< typename It::value_type, StlIterator< It > >
+struct StlIterator : IteratorMixin< typename It::value_type, StlIterator< It > >
 {
     typedef typename std::iterator_traits< It >::value_type Value;
     StlIterator( It i ) : m_iterator( i ) {}

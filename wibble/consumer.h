@@ -21,32 +21,48 @@ struct ConsumerInterface
 {
     typedef T InputType;
     virtual void consume( const T &a ) = 0;
+    virtual void consume( Range< T > s ) = 0;
+    virtual ~ConsumerInterface() {}
+};
+
+template< typename T, typename W >
+struct ConsumerMorph : Morph< ConsumerMorph< T, W >, W >, ConsumerInterface< T >
+{
+    ConsumerMorph() {}
+    ConsumerMorph( const W &w ) : Morph< ConsumerMorph, W >( w ) {}
+
+    virtual void consume( const T &a ) {
+        return this->wrapped().consume( a );
+    }
+
     virtual void consume( Range< T > s ) {
         while ( s.begin() != s.end() ) {
             consume( s.current() );
             s.advance();
         }
     }
-    virtual ~ConsumerInterface() {}
 };
 
-template< typename T, typename Self, typename Interface = ConsumerInterface< T > >
-struct ConsumerImpl: MorphImpl< Self, Interface >
+template< typename T, typename Self >
+struct ConsumerMixin : mixin::Comparable< Self >
 {
+    Self &self() { return *static_cast< const Self * >( this ); }
     typedef std::output_iterator_tag iterator_category;
+    typedef T ConsumedType;
 
-    Consumer< T > &operator++() { return this->self(); }
-    Consumer< T > &operator++(int) { return this->self(); }
-    Consumer< T > &operator*() { return this->self(); }
+    bool operator<=( const Self &o ) const { return this <= &o; }
+    Consumer< T > &operator++() { return self(); }
+    Consumer< T > &operator++(int) { return self(); }
+    Consumer< T > &operator*() { return self(); }
     Consumer< T > &operator=( const T &a ) {
-        this->self()->consume( a );
-        return this->self();
+        self()->consume( a );
+        return self();
     }
 };
 
 template< typename T >
 struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
-                 ConsumerImpl< T, Consumer< T > >
+                 ConsumerMixin< T, Consumer< T > >
 {
     typedef Amorph< Consumer< T >, ConsumerInterface< T > > Super;
 
@@ -58,7 +74,7 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     Consumer( const ConsumerInterface< T > &i ) : Super( i ) {}
     Consumer() {}
 
-    virtual void consume( const T &a ) {
+    void consume( const T &a ) {
         return this->implInterface()->consume( a );
     }
 
@@ -70,22 +86,27 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
 };
 
 template< typename T, typename Out >
-struct ConsumerFromIterator : ConsumerImpl<
-    T, ConsumerFromIterator< T, Out > >
+struct ConsumerFromIterator : ConsumerMixin< T, ConsumerFromIterator< T, Out > >
 {
     ConsumerFromIterator( Out out ) : m_out( out ) {}
-    virtual void consume( const T& a ) {
-        *m_out = a;
-        ++m_out;
+    void consume( const T& a ) {
+        *(*m_out) = a;
+        ++(*m_out);
     }
 protected:
     Out m_out;
 };
 
+template< typename R >
+Consumer< typename R::ConsumedType > consumerMorph( R r ) {
+    return ConsumerMorph< typename R::ConsumedType , R >( r );
+}
+
 // insert iterators
 template< typename Out >
 Consumer< typename Out::container_type::value_type > consumer( Out out ) {
-    return ConsumerFromIterator< typename Out::container_type::value_type, Out >( out );
+    return consumerMorph(
+        ConsumerFromIterator< typename Out::container_type::value_type, Out >( out ) );
 }
 
 // containers
