@@ -47,17 +47,7 @@ struct Morph : MorphInterface,
 {
     typedef W Wrapped;
 
-    struct InplaceWrapped : Wrapped {
-        InplaceWrapped( const Wrapped &w ) : Wrapped( w ) {}
-        void *operator new( unsigned int bytes, void *where ) {
-            return where;
-        }
-    };
-
-    Morph() {}
-    Morph( const Wrapped &w ) {
-        new (m_wrapped) InplaceWrapped( w );
-    }
+    Morph( const Wrapped &w ) : m_wrapped( w ) {}
 
     const Self &self() const { return *static_cast< const Self * >( this ); }
 
@@ -68,7 +58,7 @@ struct Morph : MorphInterface,
     virtual bool leq( const MorphInterface *_o ) const {
         const Morph *o = dynamic_cast< const Morph * >( _o );
         if ( !o ) return false; // not comparable
-        return *this <= *o;
+        return wrapped() <= o->wrapped();
     }
 
     virtual MorphInterface *constructCopy( void *where, unsigned int available ) const {
@@ -84,16 +74,16 @@ struct Morph : MorphInterface,
     }
 
     const Wrapped &wrapped() const {
-        return *reinterpret_cast< const Wrapped * >( m_wrapped );
+        return m_wrapped;
     }
 
     Wrapped &wrapped() {
-        return *reinterpret_cast< Wrapped * >( m_wrapped );
+        return m_wrapped;
     }
 
     virtual ~Morph() {}
 private:
-    char m_wrapped[ sizeof( Wrapped ) ];
+    Wrapped m_wrapped;
 };
 
 /**
