@@ -532,9 +532,9 @@ struct GeneratedRange : RangeMixin< T, GeneratedRange< T, _Advance, _End > >
     bool isEnd() const { return m_end || m_endPred( m_current ); }
 
     bool operator<=( const GeneratedRange &r ) const {
-        if ( isEnd() && r.isEnd() ) return true;
-        if ( isEnd() < r.isEnd() ) return true;
-        return m_current == r.m_current;
+        if ( isEnd() == r.isEnd() && !isEnd() )
+            return m_current <= r.m_current;
+        return isEnd() <= r.isEnd();
     }
 
 protected:

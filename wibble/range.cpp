@@ -327,6 +327,7 @@ static bool isEnd( const int &i ) {
 template<> template<>
 void to::test< 18 >() {
     Range< int > r = generatedRange( 0, removeFirst, isEnd );
+    ensure( !r.empty() );
     ensure_equals( *(r.begin() + 0), 0 );
     ensure_equals( *(r.begin() + 1), 1 );
     ensure_equals( *(r.begin() + 2), 2 );
