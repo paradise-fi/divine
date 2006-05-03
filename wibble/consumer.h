@@ -36,9 +36,9 @@ struct ConsumerMorph : Morph< ConsumerMorph< T, W >, W >, ConsumerInterface< T >
     }
 
     virtual void consume( Range< T > s ) {
-        while ( s.begin() != s.end() ) {
-            consume( s.current() );
-            s.advance();
+        while ( !s.empty() ) {
+            consume( s.head() );
+            s = s.tail();
         }
     }
 };

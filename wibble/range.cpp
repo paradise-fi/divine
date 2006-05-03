@@ -61,10 +61,11 @@ void to::test< 3 >()
     ensure_equals( *(r1.begin() + 1), 20 );
     ensure( r1.begin() + 2 == r1.end() );
     while ( !r.empty() ) {
-        ensure_equals( *r, *r1 );
-        r.advance();
-        r1.advance();
+        ensure_equals( r.head(), r1.head() );
+        r = r.tail();
+        r1 = r1.tail();
     }
+    ensure( r1.empty() );
 }
 
 template<> template<>
@@ -80,8 +81,8 @@ void to::test< 4 > ()
     Range<int> fr =
         filteredRange( range( v ),
                        std::bind1st( std::equal_to< int >(), 10 ) );
-    ensure_equals( *fr, 10 );
-    fr.advance();
+    ensure_equals( fr.head(), 10 );
+    fr = fr.tail();
     ensure( fr.empty() );
 }
 
@@ -110,12 +111,12 @@ void to::test<6> ()
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
     Range< int > r = range( a.begin(), a.end() ).sorted();
-    ensure_equals( *r, 10 );
-    r.advance();
-    ensure_equals( *r, 20 );
-    r.advance();
-    ensure_equals( *r, 30 );
-    r.advance();
+    ensure_equals( r.head(), 10 );
+    r = r.tail();
+    ensure_equals( r.head(), 20 );
+    r = r.tail();
+    ensure_equals( r.head(), 30 );
+    r = r.tail();
     ensure( r.empty() );
 }
 
@@ -127,13 +128,10 @@ void to::test<7> ()
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
     Range< int > r = range( a.begin(), a.end() ).sorted();
-    ensure_equals( *r, 10 );
-    r.advance();
-    ensure_equals( *r, 20 );
-    r.advance();
-    ensure_equals( *r, 30 );
-    r.advance();
-    ensure( r.empty() );
+    ensure_equals( *(r.begin() + 0), 10 );
+    ensure_equals( *(r.begin() + 1), 20 );
+    ensure_equals( *(r.begin() + 2), 30 );
+    ensure( r.begin() + 3 == r.end() );
 }
 
 template<> template<>
@@ -169,10 +167,10 @@ void to::test<9> ()
     Range< int > r = intersectionRange(
         range( a.begin(), a.end() ).sorted(),
         range( b.begin(), b.end() ).sorted() );
-    ensure_equals( *r, 10 );
-    r.advance();
-    ensure_equals( *r, 30 );
-    r.advance();
+    ensure_equals( r.head(), 10 );
+    r = r.tail();
+    ensure_equals( r.head(), 30 );
+    r = r.tail();
     ensure( r.empty() );
 }
 
@@ -193,10 +191,10 @@ void to::test<10> ()
     Range< int > r = intersectionRange(
         range( a.begin(), a.end() ).sorted(),
         range( b.begin(), b.end() ).sorted() );
-    ensure_equals( *r, 10 );
-    r.advance();
-    ensure_equals( *r, 30 );
-    r.advance();
+    ensure_equals( r.head(), 10 );
+    r.removeFirst();
+    ensure_equals( r.head(), 30 );
+    r.removeFirst();
     ensure( r.empty() );
 }
 
@@ -205,15 +203,14 @@ void to::test<11> ()
 {
     std::vector< int > vec;
     Range< int > a;
-    ensure( a.empty() );
     a = range( vec );
     ensure( a.empty() );
     vec.push_back( 4 );
     Range< int > b = range( vec );
-    ensure( *b == 4 );
+    ensure( b.head() == 4 );
     a = b;
     ensure( !a.empty() );
-    ensure_equals( *a, 4 );
+    ensure_equals( a.head(), 4 );
 }
 
 template<> template<>
@@ -225,10 +222,10 @@ void to::test<12> ()
     x.consume( 4 );
     x.consume( 8 );
     a = transformedRange( range( xv ), std::bind1st( std::plus< int >(), 2 ) );
-    ensure_equals( *a, 6 );
-    a.advance();
-    ensure_equals( *a, 10 );
-    a.advance();
+    ensure_equals( a.head(), 6 );
+    a.removeFirst();
+    ensure_equals( a.head(), 10 );
+    a.removeFirst();
     ensure( a.empty() );
 }
 
@@ -242,10 +239,10 @@ void to::test<13> ()
     x.consume( 8 );
     a = transformedRange(
         range( xv ), std::bind1st( std::plus< int >(), 2 ) );
-    ensure_equals( *a, 6 );
-    a.advance();
-    ensure_equals( *a, 10 );
-    a.advance();
+    ensure_equals( a.head(), 6 );
+    a.removeFirst();
+    ensure_equals( a.head(), 10 );
+    a.removeFirst();
     ensure( a.empty() );
 }
 
@@ -257,12 +254,12 @@ void to::test<14> ()
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
     Range< int > r = range( a.begin(), a.end() );
-    ensure_equals( *r, 20 );
-    r = r.next();
-    ensure_equals( *r, 10 );
-    r = r.next();
-    ensure_equals( *r, 30 );
-    r = r.next();
+    ensure_equals( r.head(), 20 );
+    r = r.tail();
+    ensure_equals( r.head(), 10 );
+    r = r.tail();
+    ensure_equals( r.head(), 30 );
+    r = r.tail();
     ensure( r.empty() );
 }
 
@@ -274,12 +271,12 @@ void to::test<15> ()
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
     Range< unsigned > r = castedRange< unsigned >( range( a.begin(), a.end() ) );
-    ensure_equals( *r, 20u );
-    r = r.next();
-    ensure_equals( *r, 10u );
-    r = r.next();
-    ensure_equals( *r, 30u );
-    r = r.next();
+    ensure_equals( r.head(), 20u );
+    r = r.tail();
+    ensure_equals( r.head(), 10u );
+    r = r.tail();
+    ensure_equals( r.head(), 30u );
+    r = r.tail();
     ensure( r.empty() );
 }
 
@@ -294,12 +291,12 @@ void to::test<16> ()
     a.insert( a.begin(), 10 );
     a.insert( a.begin(), 20 );
     Range< int > r = uniqueRange( range( a.begin(), a.end() ).sorted() );
-    ensure_equals( *r, 10 );
-    r = r.next();
-    ensure_equals( *r, 20 );
-    r = r.next();
-    ensure_equals( *r, 30 );
-    r = r.next();
+    ensure_equals( r.head(), 10 );
+    r = r.tail();
+    ensure_equals( r.head(), 20 );
+    r = r.tail();
+    ensure_equals( r.head(), 30 );
+    r = r.tail();
     ensure( r.empty() );
 }
 
@@ -320,7 +317,7 @@ void to::test<17> ()
 }
 */
 
-static void advance( int &i ) {
+static void removeFirst( int &i ) {
     ++i;
 }
 static bool isEnd( const int &i ) {
@@ -329,13 +326,13 @@ static bool isEnd( const int &i ) {
 
 template<> template<>
 void to::test< 18 >() {
-    Range< int > r = generatedRange( 0, advance, isEnd );
-    ensure_equals( *r, 0 );
-    r.advance(); ensure_equals( *r, 1 );
-    r.advance(); ensure_equals( *r, 2 );
-    r.advance(); ensure_equals( *r, 3 );
-    r.advance(); ensure_equals( *r, 4 );
-    r.advance(); ensure( r.empty() );
+    Range< int > r = generatedRange( 0, removeFirst, isEnd );
+    ensure_equals( *(r.begin() + 0), 0 );
+    ensure_equals( *(r.begin() + 1), 1 );
+    ensure_equals( *(r.begin() + 2), 2 );
+    ensure_equals( *(r.begin() + 3), 3 );
+    ensure_equals( *(r.begin() + 4), 4 );
+    ensure( (r.begin() + 5) == r.end() );
 }
 
 template<> template<>
@@ -379,7 +376,7 @@ void to::test< 19 >() {
     r2.consume( 1 );
     Range< int > r = intersectionRange( r1.sorted(), r2.sorted() );
     ensure_equals( *r, 1 );
-    r.advance();
+    r.removeFirst();
     ensure( r == r.end() );
 }
 
