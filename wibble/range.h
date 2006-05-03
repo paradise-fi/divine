@@ -162,9 +162,9 @@ struct Range : Amorph< Range< T >, RangeInterface< T > >,
         : Super( RangeMorph< T, C >( i ) ) {}
     Range() {}
 
-    T head() const { return this->implInterface()->head(); }
-    void removeFirst() { this->implInterface()->removeFirst(); }
-    void setToEmpty() { this->implInterface()->setToEmpty(); }
+    T head() const { return this->implementation()->head(); }
+    void removeFirst() { this->implementation()->removeFirst(); }
+    void setToEmpty() { this->implementation()->setToEmpty(); }
 
     template< typename C > operator Range< C >();
 };

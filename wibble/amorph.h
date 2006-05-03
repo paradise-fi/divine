@@ -166,7 +166,7 @@ struct Amorph {
     }
 
     Amorph( const Amorph &a ) {
-        setInterfacePointer( a.implInterface() );
+        setInterfacePointer( a.implementation() );
     }
 
     Amorph() : m_impl( 0 ) {}
@@ -209,7 +209,7 @@ struct Amorph {
     }
 
     Amorph &operator=( const Amorph &i ) {
-        setInterfacePointer( i.implInterface() );
+        setInterfacePointer( i.implementation() );
         return *this;
     }
 
@@ -233,13 +233,11 @@ struct Amorph {
         return rt::Nothing();
     }
 
-    template<typename T>
-    bool is() const {
-        T *ptr = impl<T>();
-        return ptr;
+    const Interface *implementation() const {
+        return dynamic_cast< const Interface * >( m_impl );
     }
 
-    Interface *implInterface() const {
+    Interface *implementation() {
         return dynamic_cast< Interface * >( m_impl );
     }
 

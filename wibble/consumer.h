@@ -75,7 +75,7 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     Consumer() {}
 
     void consume( const T &a ) {
-        return this->implInterface()->consume( a );
+        return this->implementation()->consume( a );
     }
 
     Consumer< T > &operator=( const T &a ) {
