@@ -22,15 +22,21 @@ namespace wibble {
 template< typename > struct Range;
 template< typename > struct Consumer;
 
+// FOO: there was no test catching that we don't implement ->
 // auxilliary class, used as Range< T >::iterator
 template< typename R >
 struct RangeIterator : mixin::Comparable< RangeIterator< R > > {
-    struct RangeImplementation {};
+    typedef typename R::ElementType T;
+
+    struct Proxy {
+        Proxy( T _x ) : x( _x ) {}
+        T x;
+        const T *operator->() const { return &x; }
+    };
 
     RangeIterator() {}
     RangeIterator( const R &r ) : m_range( r ) {}
 
-    typedef typename R::ElementType T;
     typedef std::forward_iterator_tag iterator_category;
     typedef T value_type;
     typedef ptrdiff_t difference_type;
@@ -38,6 +44,9 @@ struct RangeIterator : mixin::Comparable< RangeIterator< R > > {
     typedef T &reference;
     typedef const T &const_reference;
 
+    Proxy operator->() const { return Proxy( *(*this) ); }
+
+    RangeIterator next() const { RangeIterator n( *this ); ++n; return n; }
     typename R::ElementType operator*() const { return m_range.head(); }
     RangeIterator &operator++() { m_range.removeFirst(); return *this; }
     RangeIterator operator++(int) { return m_range.removeFirst(); }
