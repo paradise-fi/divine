@@ -22,6 +22,23 @@ struct Comparable {
     // bool operator<=( const Self &o ) const { return this <= &o; }
 };
 
+/**
+ * Mixin with output iterator paperwork.
+ * 
+ * To make an output iterator, one just needs to inherit from this template and
+ * implement Self& operator=(const WhaToAccept&)
+ */
+template< typename Self >
+struct BasicOutputIterator {
+    Self& operator++() { return *this; }
+    Self operator++(int)
+    {
+   	Self res = *this;
+	++*this;
+	return res;
+    }
+    Self& operator*() { return *this; }
+};
 
 }
 }
