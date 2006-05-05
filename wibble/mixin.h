@@ -29,15 +29,15 @@ struct Comparable {
  * implement Self& operator=(const WhaToAccept&)
  */
 template< typename Self >
-struct BasicOutputIterator {
-    Self& operator++() { return *this; }
+struct OutputIterator {
+    Self& operator++() { return *static_cast<Self*>(this); }
     Self operator++(int)
     {
-   	Self res = *this;
+   	Self res = *static_cast<Self*>(this);
 	++*this;
 	return res;
     }
-    Self& operator*() { return *this; }
+    Self& operator*() { return *static_cast<Self*>(this); }
 };
 
 }
