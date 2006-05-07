@@ -62,6 +62,41 @@ void to::test< 2 >() {
     ensure( b.find( 4 ) == b.end() );
 }
 
+template<> template<>
+void to::test< 3 >() {
+    set< int > a;
+
+    a = a | wibble::Empty<int>();
+    ensure_equals( a.size(), 0u );
+    
+    a = a | wibble::Singleton<int>(1);
+    ensure_equals( a.size(), 1u );
+    ensure( a.find( 1 ) != a.end() );
+
+    a = a - wibble::Empty<int>();
+    ensure_equals( a.size(), 1u );
+    ensure( a.find( 1 ) != a.end() );
+
+    a = a - wibble::Singleton<int>(1);
+    ensure_equals( a.size(), 0u );
+    ensure( a.find( 1 ) == a.end() );
+
+    a |= wibble::Empty<int>();
+    ensure_equals( a.size(), 0u );
+    
+    a |= wibble::Singleton<int>(1);
+    ensure_equals( a.size(), 1u );
+    ensure( a.find( 1 ) != a.end() );
+
+    a -= wibble::Empty<int>();
+    ensure_equals( a.size(), 1u );
+    ensure( a.find( 1 ) != a.end() );
+
+    a -= wibble::Singleton<int>(1);
+    ensure_equals( a.size(), 0u );
+    ensure( a.find( 1 ) == a.end() );
+}
+
 }
 }
 
