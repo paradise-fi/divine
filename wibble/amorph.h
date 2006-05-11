@@ -4,6 +4,7 @@
 */
 
 #include <iostream> // for noise
+#include <cassert>
 
 #include <wibble/mixin.h>
 #include <wibble/cast.h>
@@ -255,10 +256,20 @@ struct Amorph {
         return m_impl;
     }
 
+    const Interface &wrapped() const {
+        return *implementation();
+    }
+
+    Interface &wrapped() {
+        return *implementation();
+    }
+
     template< typename T >
     bool is() const {
         return impl< T >();
     }
+
+    bool isVoid() const { return !m_impl; }
 
     template< typename T >
     T *impl() const {
