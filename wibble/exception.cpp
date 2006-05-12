@@ -86,6 +86,7 @@ System::System(const std::string& context) throw ()
 
 string System::desc() const throw ()
 {
+	// FIXME: this use of strerror_r is broken on non-GNU systems
 	const int buf_size = 500;
 	char buf[buf_size];
 	char* res;
