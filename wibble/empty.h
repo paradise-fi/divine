@@ -50,6 +50,7 @@ public:
 		bool operator!=(const iterator&) const { return false; }
 	};
 	
+	bool empty() const { return true; }
 	unsigned int size() const { return 0; }
 
 	iterator begin() { return iterator(); }

@@ -73,6 +73,7 @@ public:
 	
 	Singleton(const T& value) : value(value) {}
 
+	bool empty() const { return false; }
 	unsigned int size() const { return 1; }
 
 	iterator begin() { return iterator(&value); }
