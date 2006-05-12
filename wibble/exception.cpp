@@ -86,10 +86,12 @@ System::System(const std::string& context) throw ()
 
 string System::desc() const throw ()
 {
-	const int buf_size = 100;
+	const int buf_size = 500;
 	char buf[buf_size];
-	strerror_r(m_errno, buf, buf_size);
-	return buf;
+	char* res;
+	res = strerror_r(m_errno, buf, buf_size);
+	buf[buf_size - 1] = 0;
+	return string(res);
 }
 
 }
