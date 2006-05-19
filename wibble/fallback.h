@@ -16,7 +16,7 @@ template< typename T >
 struct Fallback {
     const T *value;
     Fallback( const T &v ) : value( &v ) {}
-    Fallback( Error e ) : value( 0 ) {}
+    Fallback( Error ) : value( 0 ) {}
 
     template< typename E > const T &get( const E &e ) {
         if ( !value ) throw e;

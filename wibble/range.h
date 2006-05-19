@@ -159,7 +159,7 @@ struct Range : Amorph< Range< T >, RangeInterface< T > >,
 
     template< typename C >
     Range( const C &i, typename IsType< int, typename C::RangeImplementation >::T fake = 0 )
-        : Super( RangeMorph< T, C >( i ) ) {}
+        : Super( RangeMorph< T, C >( i ) ) { (void)fake; }
     Range() {}
 
     T head() const { return this->implementation()->head(); }
