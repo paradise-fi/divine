@@ -63,7 +63,7 @@ public:
 	StandardParser(const std::string& appname, const std::string& version) :
 		m_appname(appname), m_version(version)
 	{
-		helpGroup = create("Help options");
+		helpGroup = createGroup("Help options");
 		help = helpGroup->create<BoolOption>("help", 'h', "help", "",
 				"print commandline help and exit");
 		help->addAlias('?');

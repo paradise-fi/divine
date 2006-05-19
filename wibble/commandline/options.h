@@ -216,14 +216,14 @@ protected:
 		: m_manager(mman), description(description) {}
 
 public:
-	void add(Option* o) { options.push_back(o); }
+	Option* add(Option* o) { options.push_back(o); return o; }
 
 	std::vector<Option*> options;
 
 	std::string description;
 
 	/**
-	 * Create a new option and add it to this group
+	 * Create a new option
 	 */
 	template<typename T>
 	T* create(const std::string& name,
@@ -234,8 +234,22 @@ public:
 	{
 		T* item = new T(name, shortName, longName, usage, description);
 		if (m_manager) m_manager->add(item);
-		add(item);
 		return item;
+	}
+
+	/**
+	 * Create a new option and add it to this group
+	 */
+	template<typename T>
+	T* add(const std::string& name,
+			char shortName,
+			const std::string& longName,
+			const std::string& usage = std::string(),
+			const std::string& description = std::string())
+	{
+		T* res = create<T>(name, shortName, longName, usage, description);
+		add(res);
+		return res;
 	}
 
 	friend class Engine;

@@ -31,13 +31,13 @@ int withCommands(int argc, const char* argv[])
 				"List all files found in the directories given as parameters to standard output.  "
 				"if no directory is given, list the files in the current directory.");
 	// sort option group
-	OptionGroup* ls_sort = ls->create("Options controlling the order of output");
+	OptionGroup* ls_sort = ls->createGroup("Options controlling the order of output");
 	BoolOption* ls_sort_invert = ls_sort->create<BoolOption>("invert", 'r', "invert", "",
 				"sort in inverted order");
 	IntOption* ls_sort_field = ls_sort->create<IntOption>("field", 0, "field", "",
 				"sort the given field (if the switch is omitted, 1 is assumed");
 	// format option group
-	OptionGroup* ls_format = ls->create("Options controlling the format of output");
+	OptionGroup* ls_format = ls->createGroup("Options controlling the format of output");
 	BoolOption* ls_format_long = ls_format->create<BoolOption>("long", 'l', "long", "",
 				"long output format with all the details");
 	BoolOption* ls_format_inode = ls_format->create<BoolOption>("inode", 'i', "inode", "",

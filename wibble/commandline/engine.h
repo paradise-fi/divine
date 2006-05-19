@@ -115,7 +115,7 @@ public:
 	Engine* add(Engine* o);
 
 	/**
-	 * Create an option and add it to this engine
+	 * Create an option
 	 */
 	template<typename T>
 	T* create(const std::string& name,
@@ -126,23 +126,44 @@ public:
 	{
 		T* item = new T(name, shortName, longName, usage, description);
 		if (m_manager) m_manager->add(item);
-		add(item);
 		return item;
+	}
+
+	/**
+	 * Create an option and add to this engine
+	 */
+	template<typename T>
+	T* add(const std::string& name,
+			char shortName,
+			const std::string& longName,
+			const std::string& usage = std::string(),
+			const std::string& description = std::string())
+	{
+		T* res = create<T>(name, shortName, longName, usage, description);
+		add(res);
+		return res;
+	}
+
+	/**
+	 * Create an OptionGroup
+	 */
+	OptionGroup* createGroup(const std::string& description)
+	{
+		OptionGroup* g = new OptionGroup(m_manager, description);
+		if (m_manager) m_manager->add(g);
+		return g;
 	}
 
 	/**
 	 * Create an OptionGroup and add it to this engine
 	 */
-	OptionGroup* create(const std::string& description)
+	OptionGroup* addGroup(const std::string& description)
 	{
-		OptionGroup* g = new OptionGroup(m_manager, description);
-		if (m_manager) m_manager->add(g);
-		add(g);
-		return g;
+		return add(createGroup(description));
 	}
 
 	/**
-	 * Create a Engine and add it to this engine as a command
+	 * Create a Engine
 	 */
 	Engine* createEngine(const std::string& name,
 					const std::string& usage = std::string(),
@@ -151,8 +172,18 @@ public:
 	{
 		Engine* item = new Engine(m_manager, name, usage, description, longDescription);
 		if (m_manager) m_manager->add(item);
-		add(item);
 		return item;
+	}
+
+	/**
+	 * Create a Engine and add it to this engine as a command
+	 */
+	Engine* addEngine(const std::string& name,
+					const std::string& usage = std::string(),
+					const std::string& description = std::string(),
+					const std::string& longDescription = std::string())
+	{
+		return add(createEngine(name, usage, description, longDescription));
 	}
 
 	/// Get the OptionGroups that have been added to this engine

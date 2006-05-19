@@ -14,7 +14,7 @@ void Engine::addWithoutAna(Option* o)
 	{
 		map<char, Option*>::iterator j = m_short.find(*i);
 		if (j != m_short.end())
-			throw exception::Consistency(
+			throw exception::Consistency("building commandline parser",
 					string("short option ") + *i + " is already mapped to " + j->second->name());
 		m_short[*i] = o;
 	}
@@ -24,7 +24,7 @@ void Engine::addWithoutAna(Option* o)
 	{
 		map<string, Option*>::iterator j = m_long.find(*i);
 		if (j != m_long.end())
-			throw exception::Consistency(
+			throw exception::Consistency("building commandline parser",
 					string("long option ") + *i + " is already mapped to " + j->second->name());
 		m_long[*i] = o;
 	}
@@ -390,8 +390,8 @@ class TestEngine : public Public<Engine>
 public:
 	TestEngine() : Public<Engine>(&mman)
 	{
-		antani = create<BoolOption>("antani", 'a', "antani");
-		blinda = create<StringOption>("blinda", 'b', "blinda");
+		antani = add<BoolOption>("antani", 'a', "antani");
+		blinda = add<StringOption>("blinda", 'b', "blinda");
 
 		antani->addAlias("an-tani");
 	}
@@ -495,16 +495,16 @@ class TestCEngine : public Public<Engine>
 public:
 	TestCEngine() : Public<Engine>(&mman)
 	{
-		help = create<BoolOption>("help", 'h', "help", "get help");
+		help = add<BoolOption>("help", 'h', "help", "get help");
 
-		scramble = createEngine("scramble");
-		scramble_random = scramble->create<BoolOption>("random", 'r', "random");
-		scramble_yell = scramble->create<StringOption>("yell", 0, "yell");
+		scramble = addEngine("scramble");
+		scramble_random = scramble->add<BoolOption>("random", 'r', "random");
+		scramble_yell = scramble->add<StringOption>("yell", 0, "yell");
 		scramble->aliases.push_back("mess");
 
-		fix = createEngine("fix");
-		fix_quick = fix->create<BoolOption>("quick", 'Q', "quick");
-		fix_yell = fix->create<StringOption>("yell", 0, "yell");
+		fix = addEngine("fix");
+		fix_quick = fix->add<BoolOption>("quick", 'Q', "quick");
+		fix_yell = fix->add<StringOption>("yell", 0, "yell");
 	}
 
 	BoolOption*		help;
@@ -584,13 +584,13 @@ void to::test<9>()
 {
 	MemoryManager mman;
 	Public<Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
-	OptionGroup* group = engine.create("test option group");
-	BoolOption* testBool = group->create<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
-	IntOption* testInt = group->create<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
-	StringOption* testString = group->create<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
-	BoolOption* testBool1 = engine.create<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
-	IntOption* testInt1 = engine.create<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
-	StringOption* testString1 = engine.create<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
+	OptionGroup* group = engine.addGroup("test option group");
+	BoolOption* testBool = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
+	IntOption* testInt = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
+	StringOption* testString = group->add<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
+	BoolOption* testBool1 = engine.add<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
+	IntOption* testInt1 = engine.add<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
+	StringOption* testString1 = engine.add<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
 
 	ArgList opts;
 	opts.push_back("--testbool=true");
