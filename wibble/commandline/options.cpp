@@ -202,9 +202,26 @@ void to::test<1>()
 	ensure_equals(opt.stringValue(), string("true"));
 }
 
-// Test StringOption
+// Test IntOption
 template<> template<>
 void to::test<2>()
+{
+	Public<IntOption> opt("test");
+
+	ensure_equals(opt.name(), string("test"));
+	ensure_equals(opt.boolValue(), false);
+	ensure_equals(opt.intValue(), 0);
+	ensure_equals(opt.stringValue(), string("0"));
+
+	ensure_equals(opt.parse("42"), true);
+	ensure_equals(opt.boolValue(), true);
+	ensure_equals(opt.intValue(), 42);
+	ensure_equals(opt.stringValue(), string("42"));
+}
+
+// Test StringOption
+template<> template<>
+void to::test<3>()
 {
 	Public<StringOption> opt("test");
 

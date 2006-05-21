@@ -137,12 +137,11 @@ public:
 // Option needing a compulsory int value
 class IntOption : public Option
 {
-	bool m_has_value;
 	int m_value;
 
 protected:
 	IntOption(const std::string& name)
-		: Option(name), m_has_value(false), m_value(0)
+		: Option(name), m_value(0)
 	{
 		usage = "<num>";
 	}
@@ -151,7 +150,7 @@ protected:
 			const std::string& longName,
 			const std::string& usage = std::string(),
 			const std::string& description = std::string())
-		: Option(name, shortName, longName, usage, description), m_has_value(0), m_value(0)
+		: Option(name, shortName, longName, usage, description), m_value(0)
 	{
 		if (usage.empty())
 			this->usage = "<num>";
@@ -161,7 +160,7 @@ protected:
 	bool parse(const std::string& param);
 
 public:
-	bool boolValue() const { return m_has_value; }
+	bool boolValue() const { return m_value != 0; }
 	int intValue() const { return m_value; }
 	std::string stringValue() const;
 
