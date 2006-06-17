@@ -19,8 +19,8 @@
 
 namespace wibble {
 
-template< typename > struct Range;
-template< typename > struct Consumer;
+template< typename _ > struct Range;
+template< typename _ > struct Consumer;
 
 // FOO: there was no test catching that we don't implement ->
 // auxilliary class, used as Range< T >::iterator
