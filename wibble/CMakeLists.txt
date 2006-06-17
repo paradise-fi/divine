@@ -5,6 +5,7 @@ SET( WSRC_TOP
      consumer.cpp
      range.cpp
      exception.cpp
+     amorph.cpp
      tests.cpp )
 
 SET( WSRC_CMDL

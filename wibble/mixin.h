@@ -24,7 +24,7 @@ struct Comparable {
 
 /**
  * Mixin with output iterator paperwork.
- * 
+ *
  * To make an output iterator, one just needs to inherit from this template and
  * implement Self& operator=(const WhaToAccept&)
  */

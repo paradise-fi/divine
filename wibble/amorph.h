@@ -3,6 +3,8 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
+#include <boost/type_traits.hpp> // for is_polymorphic
+
 #include <iostream> // for noise
 #include <cassert>
 
@@ -15,12 +17,18 @@
 
 namespace wibble {
 
+#ifndef SWIG_I
 struct Baseless {};
+
+struct VirtualBase {
+    virtual ~VirtualBase() {}
+};
 
 /**
    @brief An interface implemented by all morph classes
  */
 struct MorphInterface {
+    virtual VirtualBase *virtualBase() { return 0; }
     virtual MorphInterface *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
     virtual void destroy( unsigned int available = 0 ) = 0;
     virtual ~MorphInterface() {}
@@ -44,6 +52,21 @@ struct MorphAllocator {
 template< typename W >
 struct MorphBase : MorphInterface {
     MorphBase( const W &w ) : m_wrapped( w ) {}
+
+    VirtualBase *virtualBase( const boost::true_type & ) {
+        // std::cerr << "MorphBase::virtualBase( true ) called" << std::endl;
+        return dynamic_cast< VirtualBase * >( &m_wrapped );
+    }
+
+    VirtualBase *virtualBase( const boost::false_type & ) {
+        // std::cerr << "MorphBase::virtualBase( false ) called" << std::endl;
+        return 0;
+    }
+
+    virtual VirtualBase *virtualBase() {
+        // std::cerr << "MorphBase::virtualBase() called on " << typeid(W).name() << std::endl;
+        return virtualBase( boost::is_polymorphic< W >() );
+    }
 
     W &wrapped() {
         return m_wrapped;
@@ -96,6 +119,7 @@ struct Morph : MorphBase< W >,
 
     virtual ~Morph() {}
 };
+#endif
 
 /**
    @brief Amorph base class
@@ -164,7 +188,7 @@ struct Morph : MorphBase< W >,
    reasonable amount of padding should improve performance a fair bit
    in some applications (and is worthless in others).
 */
-template <typename Self, typename _Interface, int Padding = 0>
+template< typename Self, typename _Interface, int Padding = 0 >
 struct Amorph {
     typedef _Interface Interface;
 
@@ -273,10 +297,13 @@ struct Amorph {
 
     template< typename T >
     T *impl() const {
-        T *p = dynamic_cast< T *>( m_impl );
+        T *p = dynamic_cast< T * >( m_impl );
         if ( !p ) {
             MorphBase< T > *m = dynamic_cast< MorphBase< T > * >( m_impl );
             if ( m ) p = &(m->wrapped());
+        }
+        if ( !p ) {
+            p = dynamic_cast< T * >( morphInterface()->virtualBase() );
         }
         return p;
     }
@@ -288,11 +315,14 @@ private:
     // Interface *m_impl;
 };
 
-template <typename T, typename X>
+#ifndef SWIG_I
+template< typename T, typename X >
 typename X::template Convert<T>::type &downcast( const X &a )
 {
-    return *a.template impl<T>();
+    return *a.template impl< T >();
 }
+
+#endif
 
 }
 
