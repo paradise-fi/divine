@@ -48,6 +48,7 @@ struct RangeIterator : mixin::Comparable< RangeIterator< R > > {
 
     RangeIterator next() const { RangeIterator n( *this ); ++n; return n; }
     typename R::ElementType operator*() const { return m_range.head(); }
+    typename R::ElementType current() const { return *(*this); }
     RangeIterator &operator++() { m_range.removeFirst(); return *this; }
     RangeIterator operator++(int) { return m_range.removeFirst(); }
     bool operator<=( const RangeIterator &r ) const {
