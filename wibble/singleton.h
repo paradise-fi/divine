@@ -29,7 +29,7 @@ class Singleton
 {
 protected:
 	T value;
-	
+
 public:
 	typedef T value_type;
 
@@ -39,7 +39,7 @@ public:
 
 	protected:
 		const_iterator(const T* value) : value(value) {}
-	
+
 	public:
 		const_iterator() : value(0) {}
 
@@ -48,17 +48,17 @@ public:
 		const_iterator& operator++() { value = 0; return *this; }
 		bool operator==(const const_iterator& iter) const { return value == iter.value; }
 		bool operator!=(const const_iterator& iter) const { return value != iter.value; }
-		
+
 		friend class Singleton<T>;
 	};
-	
+
 	class iterator
 	{
 		T* value;
 
 	protected:
 		iterator(T* value) : value(value) {}
-	
+
 	public:
 		iterator() : value(0) {}
 
@@ -67,11 +67,11 @@ public:
 		iterator& operator++() { value = 0; return *this; }
 		bool operator==(const iterator& iter) const { return value == iter.value; }
 		bool operator!=(const iterator& iter) const { return value != iter.value; }
-		
+
 		friend class Singleton<T>;
 	};
-	
-	Singleton(const T& value) : value(value) {}
+
+	explicit Singleton(const T& value) : value(value) {}
 
 	bool empty() const { return false; }
 	unsigned int size() const { return 1; }
