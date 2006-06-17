@@ -92,9 +92,15 @@ struct Morph : MorphBase< W, Interface >,
         return wrapped().operator<=( o.wrapped() );
     }
 
+    // evaluation of correctness of definition should be done
     virtual bool leq( const MorphInterface< Interface > *_o ) const {
         const Morph *o = dynamic_cast< const Morph * >( _o );
-        if ( !o ) return false; // not comparable
+        if ( !o ) {
+            if ( typeid( Morph ).before( typeid( _o ) ) )
+                return true;
+            else
+                return false;
+        }
         return wrapped() <= o->wrapped();
     }
 
