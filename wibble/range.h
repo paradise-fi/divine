@@ -380,6 +380,7 @@ struct FilteredRange : RangeMixin< typename R::ElementType,
                                   FilteredRange< R, Pred > >
 {
     typedef typename R::ElementType ElementType;
+    FilteredRange() {}
     FilteredRange( const R &r, Pred p ) : m_range( r ), m_current( r.begin() ), m_pred( p ),
         m_valid( false ) {}
 
