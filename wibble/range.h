@@ -156,7 +156,7 @@ template< typename T >
 struct Range : Amorph< Range< T >, RangeInterface< T > >,
                RangeMixin< T, Range< T > >
 {
-    typedef Amorph< Range< T >, RangeInterface< T >, 0 > Super;
+    typedef Amorph< Range< T >, RangeInterface< T > > Super;
 
     template< typename C >
     Range( const C &i, typename IsType< int, typename C::RangeImplementation >::T fake = 0 )
@@ -380,7 +380,7 @@ struct FilteredRange : RangeMixin< typename R::ElementType,
                                   FilteredRange< R, Pred > >
 {
     typedef typename R::ElementType ElementType;
-    FilteredRange() {}
+    // FilteredRange() {}
     FilteredRange( const R &r, Pred p ) : m_range( r ), m_current( r.begin() ), m_pred( p ),
         m_valid( false ) {}
 
@@ -503,7 +503,7 @@ TransformedRange< Trans > transformedRange(
 template< typename T, typename S >
 Range< T > RangeMixin< T, S >::sorted() const
 {
-    std::vector< T > &backing = *new (GC) std::vector< T >();
+    SharedVector< T > &backing = *new SharedVector< T >();
     output( consumer( backing ) );
     std::sort( backing.begin(), backing.end() );
     return range( backing );
