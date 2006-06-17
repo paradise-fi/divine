@@ -43,11 +43,12 @@ struct IteratorProxy {
 };
 
 template< typename T, typename W >
-struct IteratorMorph : IteratorInterface< T >, Morph< IteratorMorph< T, W >, W >
+struct IteratorMorph : Morph< IteratorMorph< T, W >, W, IteratorInterface< T > >
 {
     typedef W Wrapped;
     IteratorMorph() {}
-    IteratorMorph( const Wrapped &w ) : Morph< IteratorMorph, Wrapped >( w ) {}
+    IteratorMorph( const Wrapped &w )
+        : Morph< IteratorMorph, Wrapped, IteratorInterface< T > >( w ) {}
     virtual void advance() { this->wrapped().advance(); }
     virtual T current() const { return this->wrapped().current(); }
 };

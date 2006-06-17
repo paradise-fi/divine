@@ -25,9 +25,10 @@ INSTALL_FILES( /include/wibble/commandline .h ${WSRC_CMDL} )
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
                 ${wibble_BINARY_DIR}/config.h )
 
+add_definitions( ${OPT_FLAGS} )
 ADD_LIBRARY( wibble STATIC ${WSRC} )
 SET_TARGET_PROPERTIES( wibble PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_FINAL )
-TARGET_LINK_LIBRARIES( wibble gc )
+TARGET_LINK_LIBRARIES( wibble )
 INSTALL_TARGETS( /lib wibble )
 
 ADD_SUBDIRECTORY( tests )

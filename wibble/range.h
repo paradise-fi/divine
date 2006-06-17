@@ -101,10 +101,10 @@ struct RangeInterface {
 };
 
 template< typename T, typename W >
-struct RangeMorph: RangeInterface< T >, Morph< RangeMorph< T, W >, W >
+struct RangeMorph: Morph< RangeMorph< T, W >, W, RangeInterface< T > >
 {
     typedef typename W::RangeImplementation Wrapped;
-    RangeMorph( const Wrapped &w ) : Morph< RangeMorph, Wrapped >( w ) {}
+    RangeMorph( const Wrapped &w ) : Morph< RangeMorph, Wrapped, RangeInterface< T > >( w ) {}
     virtual void setToEmpty() { this->wrapped().setToEmpty(); }
     virtual void removeFirst() { this->wrapped().removeFirst(); }
     virtual T head() const { return this->wrapped().head(); }

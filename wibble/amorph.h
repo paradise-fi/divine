@@ -27,7 +27,8 @@ struct VirtualBase {
 /**
    @brief An interface implemented by all morph classes
  */
-struct MorphInterface {
+template< typename Interface >
+struct MorphInterface : public Interface {
     virtual VirtualBase *virtualBase() { return 0; }
     virtual MorphInterface *constructCopy( void *where = 0, unsigned int available = 0 ) const = 0;
     virtual void destroy( unsigned int available = 0 ) = 0;
@@ -49,8 +50,8 @@ struct MorphAllocator {
     }
 };
 
-template< typename W >
-struct MorphBase : MorphInterface {
+template< typename W, typename Interface >
+struct MorphBase : MorphInterface< Interface > {
     MorphBase( const W &w ) : m_wrapped( w ) {}
 
     VirtualBase *virtualBase( const boost::true_type & ) {
@@ -76,14 +77,14 @@ protected:
     W m_wrapped;
 };
 
-template< typename Self, typename W >
-struct Morph : MorphBase< W >,
-    mixin::Comparable< Morph< Self, W > >,
+template< typename Self, typename W, typename Interface >
+struct Morph : MorphBase< W, Interface >,
+    mixin::Comparable< Morph< Self, W, Interface > >,
     MorphAllocator
 {
     typedef W Wrapped;
 
-    Morph( const Wrapped &w ) : MorphBase< W >( w ) {}
+    Morph( const Wrapped &w ) : MorphBase< W, Interface >( w ) {}
 
     const Self &self() const { return *static_cast< const Self * >( this ); }
 
@@ -91,13 +92,15 @@ struct Morph : MorphBase< W >,
         return wrapped().operator<=( o.wrapped() );
     }
 
-    virtual bool leq( const MorphInterface *_o ) const {
+    virtual bool leq( const MorphInterface< Interface > *_o ) const {
         const Morph *o = dynamic_cast< const Morph * >( _o );
         if ( !o ) return false; // not comparable
         return wrapped() <= o->wrapped();
     }
 
-    virtual MorphInterface *constructCopy( void *where, unsigned int available ) const {
+    virtual MorphInterface< Interface > *constructCopy(
+        void *where, unsigned int available ) const
+    {
         return new( where, available ) Self( self() );
     }
 
@@ -191,17 +194,23 @@ struct Morph : MorphBase< W >,
 template< typename Self, typename _Interface, int Padding = 0 >
 struct Amorph {
     typedef _Interface Interface;
+    // typedef MorphInterface< Interface > Morp;
 
     template <typename T> struct Convert {
         typedef T type;
     };
 
-    Amorph( const Interface &b ) {
+    /* Amorph( const Interface &b ) {
         setInterfacePointer( &b );
+        } */
+
+    Amorph( const MorphInterface< Interface > &b ) {
+        setMorphInterfacePointer( &b );
     }
 
     Amorph( const Amorph &a ) {
-        setInterfacePointer( a.implementation() );
+        setMorphInterfacePointer( a.morphInterface() );
+        // setInterfacePointer( a.implementation() );
     }
 
     Amorph() : m_impl( 0 ) {}
@@ -233,14 +242,22 @@ struct Amorph {
             return;
         }
 
-        assert( dynamic_cast< const MorphInterface * >( i ) );
+        /* assert( dynamic_cast< const MorphInterface * >( i ) );
         assert( dynamic_cast< const Interface * >(
-                    dynamic_cast< const MorphInterface * >( i ) ) );
+        dynamic_cast< const MorphInterface * >( i ) ) ); */
 
-        m_impl = dynamic_cast< const MorphInterface * >( i )->constructCopy(
+        m_impl = dynamic_cast< const MorphInterface< Interface > * >( i )->constructCopy(
             &m_padding, sizeof( m_padding ) );
 
-        assert( dynamic_cast< const Interface * >( m_impl ) );
+        // assert( dynamic_cast< const Interface * >( m_impl ) );
+    }
+
+    void setMorphInterfacePointer( const MorphInterface< Interface > *i ) {
+        if ( !i ) {
+            m_impl = 0;
+            return;
+        }
+        m_impl = i->constructCopy( &m_padding, sizeof( m_padding ) );
     }
 
     Amorph &operator=( const Amorph &i ) {
@@ -269,15 +286,18 @@ struct Amorph {
     }
 
     const Interface *implementation() const {
-        return dynamic_cast< const Interface * >( m_impl );
+        // return dynamic_cast< const Interface * >( m_impl );
+        return static_cast< const Interface * >( m_impl );
     }
 
     Interface *implementation() {
-        return dynamic_cast< Interface * >( m_impl );
+        // return dynamic_cast< Interface * >( m_impl );
+        return static_cast< Interface * >( m_impl );
     }
 
-    MorphInterface *morphInterface() const {
+    MorphInterface< Interface > *morphInterface() const {
         return m_impl;
+        // return dynamic_cast< MorphInterface< * >( m_impl );
     }
 
     const Interface &wrapped() const {
@@ -299,7 +319,7 @@ struct Amorph {
     T *impl() const {
         T *p = dynamic_cast< T * >( m_impl );
         if ( !p ) {
-            MorphBase< T > *m = dynamic_cast< MorphBase< T > * >( m_impl );
+            MorphBase< T, Interface > *m = dynamic_cast< MorphBase< T, Interface > * >( m_impl );
             if ( m ) p = &(m->wrapped());
         }
         if ( !p ) {
@@ -311,7 +331,7 @@ struct Amorph {
 private:
     unsigned int reservedSize() { return sizeof( m_padding ) + sizeof( m_impl ); }
     int m_padding[ Padding ];
-    MorphInterface *m_impl;
+    MorphInterface< Interface > *m_impl;
     // Interface *m_impl;
 };
 

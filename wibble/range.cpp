@@ -50,7 +50,8 @@ void to::test<2> ()
 template<> template<>
 void to::test< 3 >()
 {
-    std::vector< int > &vec = *new (GC) std::vector< int >;
+    // std::vector< int > &vec = *new (GC) std::vector< int >;
+    SharedVector< int > &vec= *new SharedVector< int >();
     std::list< int > a;
     a.push_back( 10 );
     a.push_back( 20 );

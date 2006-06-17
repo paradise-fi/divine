@@ -26,10 +26,10 @@ struct ConsumerInterface
 };
 
 template< typename T, typename W >
-struct ConsumerMorph : Morph< ConsumerMorph< T, W >, W >, ConsumerInterface< T >
+struct ConsumerMorph : Morph< ConsumerMorph< T, W >, W, ConsumerInterface< T > >
 {
     ConsumerMorph() {}
-    ConsumerMorph( const W &w ) : Morph< ConsumerMorph, W >( w ) {}
+    ConsumerMorph( const W &w ) : Morph< ConsumerMorph, W, ConsumerInterface< T > >( w ) {}
 
     virtual void consume( const T &a ) {
         return this->wrapped().consume( a );
@@ -71,7 +71,7 @@ struct Consumer: Amorph< Consumer< T >, ConsumerInterface< T > >,
     typedef void pointer;
     typedef void reference;
 
-    Consumer( const ConsumerInterface< T > &i ) : Super( i ) {}
+    Consumer( const MorphInterface< ConsumerInterface< T > > &i ) : Super( i ) {}
     Consumer() {}
 
     void consume( const T &a ) {
