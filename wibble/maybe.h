@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #ifndef WIBBLE_MAYBE_H
 #define WIBBLE_MAYBE_H
 
@@ -5,7 +6,7 @@ namespace wibble {
 
 /*
   A Maybe type. Values of type Maybe< T > can be either Just T or
-  Nothing. 
+  Nothing.
 
   Maybe< int > foo;
   foo = Maybe::Nothing();
@@ -37,6 +38,13 @@ protected:
     T m_value;
 };
 
-} 
+template<>
+struct Maybe< void > {
+    Maybe() {}
+    static Maybe Just() { return Maybe(); }
+    static Maybe Nothing() { return Maybe(); }
+};
+
+}
 
 #endif

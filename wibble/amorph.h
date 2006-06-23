@@ -3,7 +3,7 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
-#include <boost/type_traits.hpp> // for is_polymorphic
+#include <boost/type_traits.hpp> // for is_polymorphic, is_void
 
 #include <iostream> // for noise
 #include <cassert>
@@ -281,14 +281,28 @@ struct Amorph {
         return ifType< F::argument_type >( func );
     }
 
-    template<typename T, typename F>
-    Maybe< typename F::result_type > ifType( F func ) { // ifType?
+    template< typename T, typename F >
+    Maybe< void > ifType_void( F func, const boost::true_type& ) {
+        T *ptr = impl< T >();
+        if (ptr) {
+            func( *ptr );
+        }
+        return Maybe< void >();
+    }
+
+    template< typename T, typename F >
+    Maybe< typename F::result_type > ifType_void( F func, const boost::false_type& ) {
         typedef Maybe< typename F::result_type > rt;
         T *ptr = impl<T>();
         if (ptr) {
             return rt::Just( func(*ptr) );
         }
         return rt::Nothing();
+    }
+
+    template< typename T, typename F >
+    Maybe< typename F::result_type > ifType( F func ) {
+        return ifType_void< T >( func, boost::is_void< typename F::result_type >() );
     }
 
     const Interface *implementation() const {
