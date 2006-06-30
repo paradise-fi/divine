@@ -167,6 +167,26 @@ std::set< T > &operator -=( std::set< T > &a, const std::set< T > &b )
     return a = ret;
 }
 
+template< typename T >
+bool operator<=( const T &a, const std::set< T > &b ) {
+    return b.find( a ) != b.end();
+}
+
+template< typename T >
+bool operator<=( const std::set< T > &a, const std::set< T > &b ) {
+	typename std::set<T>::const_iterator x = a.begin();
+
+	for ( typename std::set<T>::const_iterator y = b.begin(); y != b.end(); ++y )
+		if ( x == a.end() )
+			return true;
+		else if (*x == *y)
+			++x;
+		else if (*x < *y)
+			return false;
+
+	return x == a.end();
+}
+
 }
 }
 
