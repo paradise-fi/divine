@@ -18,6 +18,8 @@ SET( WSRC_CMDL
 
 SET( WSRC ${WSRC_TOP} ${WSRC_CMDL} )
 
+set_source_files_properties( ${WSRC} COMPILE_FLAGS -fPIC )
+
 INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 INSTALL_FILES( /include/wibble .h ${WSRC_TOP} )
 INSTALL_FILES( /include/wibble/commandline .h ${WSRC_CMDL} )
