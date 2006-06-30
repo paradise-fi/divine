@@ -41,6 +41,17 @@ std::set< T > operator &( const std::set< T > &a, const std::set< T > &b ) {
 }
 
 template< typename T >
+std::set< T > operator &( const std::set< T > &a, const T &b ) {
+    std::set< T > ret;
+    if ( a.find( b ) != a.end() ) {
+        std::set< T > r;
+        r.insert( b );
+        return r;
+    }
+    return std::set< T >();
+}
+
+template< typename T >
 std::set< T > operator |( const std::set< T > &a, const T& item ) {
     std::set< T > ret = a;
     ret.insert(item);
