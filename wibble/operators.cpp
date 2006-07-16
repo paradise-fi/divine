@@ -97,6 +97,13 @@ void to::test< 3 >() {
     ensure( a.find( 1 ) == a.end() );
 }
 
+template<> template<>
+void to::test< 4 >() {
+    set< int > a, b;
+    ensure( a <= b );
+    ensure( b <= a );
+}
+
 }
 }
 
