@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Generic base exception hierarchy
  * 
  * Copyright (C) 2003,2004,2005,2006  Enrico Zini <enrico@debian.org>
@@ -22,15 +22,13 @@
 #include <sstream>
 #include <iostream>
 
-using namespace std;
-
 namespace wibble {
 namespace exception {
 
 template<typename C>
 std::string ValOutOfRange<C>::desc() const throw ()
 {
-	stringstream str;
+	std::stringstream str;
 	str << m_var_desc << "(" << m_val << ") out of range (" <<
 			m_inf << "-" << m_sup << ")";
 	return str.str();

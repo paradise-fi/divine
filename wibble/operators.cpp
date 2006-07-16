@@ -68,7 +68,7 @@ void to::test< 3 >() {
 
     a = a | wibble::Empty<int>();
     ensure_equals( a.size(), 0u );
-    
+
     a = a | wibble::Singleton<int>(1);
     ensure_equals( a.size(), 1u );
     ensure( a.find( 1 ) != a.end() );
@@ -83,7 +83,7 @@ void to::test< 3 >() {
 
     a |= wibble::Empty<int>();
     ensure_equals( a.size(), 0u );
-    
+
     a |= wibble::Singleton<int>(1);
     ensure_equals( a.size(), 1u );
     ensure( a.find( 1 ) != a.end() );
