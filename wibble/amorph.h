@@ -197,7 +197,10 @@ struct Morph : MorphBase< W, Interface >,
    reasonable amount of padding should improve performance a fair bit
    in some applications (and is worthless in others).
 */
-template< typename Self, typename _Interface, int Padding = 0 >
+#ifndef WIBBLE_AMORPH_PADDING
+#define WIBBLE_AMORPH_PADDING 0
+#endif
+template< typename Self, typename _Interface, int Padding = WIBBLE_AMORPH_PADDING >
 struct Amorph {
     typedef _Interface Interface;
     // typedef MorphInterface< Interface > Morp;
