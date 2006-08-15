@@ -4,7 +4,6 @@
 /* Define when GC support is enabled */
 #undef HAVE_GC
 
-//#include <wibble/config.h>
 #ifdef HAVE_GC
 #include <gc/gc_cpp.h>
 #include <gc/gc_allocator.h>
