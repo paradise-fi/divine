@@ -84,6 +84,9 @@ std::string ValOutOfRange<C>::desc() const throw ()
 System::System(const std::string& context) throw ()
 	: Generic(context), m_errno(errno) {}
 
+System::System(int code, const std::string& context) throw ()
+	: Generic(context), m_errno(code) {}
+
 string System::desc() const throw ()
 {
 	// FIXME: this use of strerror_r is broken on non-GNU systems

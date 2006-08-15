@@ -359,6 +359,7 @@ protected:
 
 public:
 	System(const std::string& context) throw ();
+	System(int code, const std::string& context) throw ();
 
 	virtual const char* type() const throw () { return "System"; }
 
