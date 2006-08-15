@@ -6,7 +6,8 @@
 #ifndef WIBBLE_MIXIN_H
 #define WIBBLE_MIXIN_H
 
-#include <iterator>
+#include <cstddef>
+#include <bits/stl_iterator_base_types.h>
 
 namespace wibble {
 namespace mixin {
