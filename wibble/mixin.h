@@ -6,6 +6,8 @@
 #ifndef WIBBLE_MIXIN_H
 #define WIBBLE_MIXIN_H
 
+#include <iterator>
+
 namespace wibble {
 namespace mixin {
 
@@ -30,7 +32,7 @@ struct Comparable {
  */
 template< typename Self >
 //struct OutputIterator : public std::output_iterator {
-struct OutputIterator {
+struct OutputIterator : public std::iterator<std::output_iterator_tag, void, void, void, void> {
     Self& operator++() { return *static_cast<Self*>(this); }
     Self operator++(int)
     {
