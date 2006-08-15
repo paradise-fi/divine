@@ -29,6 +29,7 @@ struct Comparable {
  * implement Self& operator=(const WhaToAccept&)
  */
 template< typename Self >
+//struct OutputIterator : public std::output_iterator {
 struct OutputIterator {
     Self& operator++() { return *static_cast<Self*>(this); }
     Self operator++(int)

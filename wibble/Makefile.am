@@ -38,6 +38,7 @@ libwibble_la_SOURCES = \
 	empty.cpp \
 	singleton.cpp \
 	consumer.cpp \
+	mixin.cpp \
 	operators.cpp \
 	range.cpp \
 	tests.cpp \
