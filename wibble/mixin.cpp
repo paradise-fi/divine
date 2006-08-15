@@ -45,8 +45,8 @@ void to::test< 1 >() {
 	ensure(i10 != i20);
 	ensure(!(i10 != i10a));
 
-	ensure(i10 != i10a);
-	ensure(!(i10 != i20));
+	ensure(i10 == i10a);
+	ensure(!(i10 == i20));
 
 	ensure(i10 < i20);
 	ensure(!(i20 < i10));
