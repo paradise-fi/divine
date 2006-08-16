@@ -10,10 +10,9 @@ using namespace wibble;
 using namespace operators;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 #include <list>
 
-namespace wibble {
 namespace tut {
 
 struct range_shar {
@@ -399,8 +398,6 @@ void to::test< 21 >() {
     c.consume( 2 );
 }
 */
-
-}
 
 }
 

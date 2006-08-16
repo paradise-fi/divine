@@ -103,13 +103,12 @@ string System::desc() const throw ()
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
 
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 #include <unistd.h>
 
-namespace wibble {
 namespace tut {
 
-using namespace tests;
+using namespace wibble::tests;
 
 struct exception_shar {
 };
@@ -121,14 +120,14 @@ template<> template<>
 void to::test<1>()
 {
 	try {
-		throw exception::Generic("antani");
+		throw wibble::exception::Generic("antani");
 	} catch ( std::exception& e ) {
 		ensure(string(e.what()).find("antani") != string::npos);
 	}
 
 	try {
-		throw exception::Generic("antani");
-	} catch ( exception::Generic& e ) {
+		throw wibble::exception::Generic("antani");
+	} catch ( wibble::exception::Generic& e ) {
 		ensure(e.fullInfo().find("antani") != string::npos);
 	}
 }
@@ -139,16 +138,16 @@ void to::test<2>()
 {
 	try {
 		ensure_equals(access("does-not-exist", F_OK), -1);
-		throw exception::System("checking for existance of nonexisting file");
-	} catch ( exception::System& e ) {
+		throw wibble::exception::System("checking for existance of nonexisting file");
+	} catch ( wibble::exception::System& e ) {
 		// Check that we caught the right value of errno
 		ensure_equals(e.code(), ENOENT);
 	}
 
 	try {
 		ensure_equals(access("does-not-exist", F_OK), -1);
-		throw exception::File("does-not-exist", "checking for existance of nonexisting file");
-	} catch ( exception::File& e ) {
+		throw wibble::exception::File("does-not-exist", "checking for existance of nonexisting file");
+	} catch ( wibble::exception::File& e ) {
 		// Check that we caught the right value of errno
 		ensure_equals(e.code(), ENOENT);
 		ensure(e.fullInfo().find("does-not-exist") != string::npos);
@@ -162,15 +161,13 @@ void to::test<3>()
     int check = -1;
 	try {
         check = 0;
-		throw exception::BadCastExt< int, const char * >( "test" );
+		throw wibble::exception::BadCastExt< int, const char * >( "test" );
         check = 1;
-	} catch ( exception::BadCast& e ) {
+	} catch ( wibble::exception::BadCast& e ) {
         ensure_equals( e.fullInfo(), "bad cast: from i to PKc. Context: test" );
         check = 2;
 	}
     ensure_equals( check, 2 );
-}
-
 }
 
 }

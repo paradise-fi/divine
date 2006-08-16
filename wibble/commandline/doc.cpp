@@ -470,9 +470,8 @@ void Manpage::readHooks(const std::string& file)
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
 
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct wibble_commandline_shar {
@@ -487,7 +486,6 @@ void to::test<1>()
 {
 }
 
-}
 }
 
 #endif

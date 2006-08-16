@@ -57,9 +57,8 @@ bool ArgList::isSwitch(const char* str)
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
 
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct commandline_core_shar {
@@ -110,7 +109,6 @@ void to::test<2>()
 	ensure(begin == list.end());
 }
 
-}
 }
 
 #endif

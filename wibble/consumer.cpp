@@ -10,11 +10,12 @@
 using namespace wibble::operators;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 #include <list>
 
-namespace wibble {
 namespace tut {
+
+using namespace wibble;
 
 struct consumer_shar {
 };
@@ -57,7 +58,6 @@ void to::test<3> ()
     ensure( (v.begin() + 2) == v.end() );
 }
 
-}
 }
 
 #endif

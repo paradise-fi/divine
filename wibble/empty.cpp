@@ -4,9 +4,8 @@ using namespace std;
 using namespace wibble;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct empty_shar {};
@@ -23,7 +22,6 @@ void to::test< 1 >() {
     ensure(!(i != container.end()));
 }
 
-}
 }
 
 #endif

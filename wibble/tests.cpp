@@ -19,7 +19,7 @@
  */
 
 #include <wibble/config.h>
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
 namespace wibble {
 namespace tests {
@@ -52,7 +52,6 @@ void impl_ensure(const Location& loc, bool res)
 
 #include <wibble/tests.h>
 
-namespace wibble {
 namespace tut {
 
 using namespace wibble::tests;
@@ -67,8 +66,6 @@ void to::test<1>()
 {
 	ensure(true);
 	ensure_equals(42, 42);
-}
-
 }
 
 }

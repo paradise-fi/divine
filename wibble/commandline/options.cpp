@@ -158,16 +158,15 @@ bool ExistingFileOption::parse(const std::string& param)
 
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct commandline_options_shar {
 };
 TESTGRP( commandline_options );
 
-using namespace commandline;
+using namespace wibble::commandline;
 
 // Happy trick to get access to protected methods we need to use for the tests
 template<typename T>
@@ -234,7 +233,6 @@ void to::test<3>()
 	ensure_equals(opt.stringValue(), "-a");
 }
 
-}
 }
 
 #endif

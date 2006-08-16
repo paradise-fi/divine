@@ -97,9 +97,8 @@ bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
 
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct commandline_parser_shar {
@@ -113,7 +112,6 @@ void to::test<1>()
 {
 }
 
-}
 }
 
 #endif

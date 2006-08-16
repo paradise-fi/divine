@@ -4,9 +4,8 @@ using namespace std;
 using namespace wibble::operators;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct operators_shar {};
@@ -104,7 +103,6 @@ void to::test< 4 >() {
     ensure( b <= a );
 }
 
-}
 }
 
 #endif

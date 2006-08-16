@@ -6,7 +6,13 @@
  * @author Peter Rockai (mornfall) <me@mornfall.net>, Enrico Zini <enrico@enricozini.org>
  * @brief Utility functions for the unit tests
  */
-#include <wibble/tests/tut-wibble.h>
+
+#include <string>
+#include <sstream>
+
+#include <tut.h>
+#include <tut_reporter.h>
+
 
 #define TESTGRP(name) \
 typedef test_group<name ## _shar> tg; \

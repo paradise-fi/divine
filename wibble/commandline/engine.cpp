@@ -354,16 +354,15 @@ void Engine::dump(std::ostream& out, const std::string& pfx)
 
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct commandline_engine_shar {
 };
 TESTGRP( commandline_engine );
 
-using namespace commandline;
+using namespace wibble::commandline;
 
 // Happy trick to get access to protected methods we need to use for the tests
 template<typename T>
@@ -609,8 +608,6 @@ void to::test<9>()
 	ensure_equals(testBool1->boolValue(), true);
 	ensure_equals(testInt1->intValue(), 5);
 	ensure_equals(testString1->stringValue(), "blinda");
-}
-
 }
 
 }

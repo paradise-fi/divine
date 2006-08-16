@@ -3,9 +3,8 @@
 using namespace std;
 
 #ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests.h>
+#include <wibble/tests/tut-wibble.h>
 
-namespace wibble {
 namespace tut {
 
 struct mixin_shar {};
@@ -72,7 +71,6 @@ void to::test< 2 >() {
 	std::copy(data.begin(), data.end(), Discard());
 }
 
-}
 }
 
 #endif
