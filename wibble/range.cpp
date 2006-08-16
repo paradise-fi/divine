@@ -361,9 +361,9 @@ void to::test<20> ()
     a.consume( 30 );
     a.consume( 20 );
     Range< unsigned > r = range( av ).sorted();
-    ensure_equals( *r.begin(), 10 );
-    ensure_equals( *(r.begin() + 1), 20 );
-    ensure_equals( *(r.begin() + 2), 30 );
+    ensure_equals( *r.begin(), 10u );
+    ensure_equals( *(r.begin() + 1), 20u );
+    ensure_equals( *(r.begin() + 2), 30u );
     ensure( r.begin() + 3 == r.end() );
 }
 
