@@ -106,10 +106,6 @@ protected:
 	std::vector<std::string> m_context;
 
 public:
-	/** Construct the ContextException, providing the context description in
-	 * printf syntax.  The context should be phrased like "Bad thing A
-	 * happened when doing B"
-	 */
 	Context() throw () {}
 	Context(const std::string& context) throw () { addContext(context); };
 
