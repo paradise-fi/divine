@@ -1,5 +1,9 @@
 PROJECT( wibble )
 
+if ( HAVE_GC )
+  set ( LINK_WITH_LIBGC "-lgc -lgccpp" )
+endif ( HAVE_GC )
+
 file( GLOB WSRC_TOP *.cpp )
 file( GLOB WSRC_CMDL commandline/*.cpp )
 file( GLOB H_TOP *.h )
