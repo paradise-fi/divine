@@ -3,7 +3,6 @@
 using namespace std;
 using namespace wibble;
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests/tut-wibble.h>
 
 namespace tut {
@@ -23,5 +22,3 @@ void to::test< 1 >() {
 }
 
 }
-
-#endif

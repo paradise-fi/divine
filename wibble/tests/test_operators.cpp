@@ -3,7 +3,6 @@
 using namespace std;
 using namespace wibble::operators;
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests/tut-wibble.h>
 
 namespace tut {
@@ -104,5 +103,3 @@ void to::test< 4 >() {
 }
 
 }
-
-#endif

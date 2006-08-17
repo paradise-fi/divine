@@ -9,7 +9,6 @@
 using namespace wibble;
 using namespace operators;
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests/tut-wibble.h>
 #include <list>
 
@@ -400,5 +399,3 @@ void to::test< 21 >() {
 */
 
 }
-
-#endif

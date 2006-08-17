@@ -2,7 +2,6 @@
 #include <wibble/mixin.h>
 using namespace std;
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests/tut-wibble.h>
 
 namespace tut {
@@ -72,5 +71,3 @@ void to::test< 2 >() {
 }
 
 }
-
-#endif

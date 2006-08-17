@@ -9,7 +9,6 @@
 
 using namespace wibble::operators;
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
 #include <wibble/tests/tut-wibble.h>
 #include <list>
 
@@ -59,5 +58,3 @@ void to::test<3> ()
 }
 
 }
-
-#endif

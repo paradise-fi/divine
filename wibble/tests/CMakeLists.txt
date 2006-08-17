@@ -1,9 +1,11 @@
 SET( T "${CMAKE_CURRENT_SOURCE_DIR}/libwibble-check" )
 
+file( GLOB TEST_SOURCES test_*.cpp )
+
 ADD_CUSTOM_TARGET( check COMMAND make libwibble-test && ${T}
                    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/data-stamp )
 
-ADD_EXECUTABLE( libwibble-test tut-main.cpp tut-syms.cpp )
+ADD_EXECUTABLE( libwibble-test tut-main.cpp tut-syms.cpp ${TEST_SOURCES} )
 TARGET_LINK_LIBRARIES( libwibble-test wibble )
 
 ADD_CUSTOM_COMMAND(

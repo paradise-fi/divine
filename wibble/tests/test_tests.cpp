@@ -18,34 +18,29 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#if 0
 #include <wibble/config.h>
 #include <wibble/tests/tut-wibble.h>
+#endif
 
-namespace wibble {
-namespace tests {
+#include <wibble/tests.h>
 
-std::string Location::locstr() const
+namespace tut {
+
+using namespace wibble::tests;
+
+struct tests_shar {
+};
+
+TESTGRP(tests);
+
+template<> template<>
+void to::test<1>()
 {
-	std::stringstream ss;
-	ss << file << ":" << line << "(" << str << ")";
-	if (!testfile.empty())
-		ss << "[" << testfile << ":" << testline << "(" << teststr << ")]";
-	ss << ": ";
-	return ss.str();
+	ensure(true);
+	ensure_equals(42, 42);
 }
 
-std::string Location::msg(const std::string m) const
-{
-	return locstr() + ": " + m;
-}
-	
-void impl_ensure(const Location& loc, bool res)
-{
-	if (!res)
-		throw tut::failure(loc.locstr());
-}
-
-}
 }
 
 // vim:set ts=4 sw=4:

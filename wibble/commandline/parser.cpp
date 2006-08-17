@@ -95,25 +95,4 @@ bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
 }
 }
 
-
-#ifdef WIBBLE_COMPILE_TESTSUITE
-#include <wibble/tests/tut-wibble.h>
-
-namespace tut {
-
-struct commandline_parser_shar {
-};
-TESTGRP( commandline_parser );
-
-using namespace wibble::commandline;
-
-template<> template<>
-void to::test<1>()
-{
-}
-
-}
-
-#endif
-
 // vim:set ts=4 sw=4:

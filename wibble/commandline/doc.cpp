@@ -468,26 +468,4 @@ void Manpage::readHooks(const std::string& file)
 }
 
 
-#ifdef WIBBLE_COMPILE_TESTSUITE
-
-#include <wibble/tests/tut-wibble.h>
-
-namespace tut {
-
-struct wibble_commandline_shar {
-};
-TESTGRP(wibble_commandline);
-
-using namespace wibble::commandline;
-
-// FIXME: I don't know how to do tests for documentation --enrico
-template<> template<>
-void to::test<1>()
-{
-}
-
-}
-
-#endif
-
 // vim:set ts=4 sw=4:
