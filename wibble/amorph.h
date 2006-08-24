@@ -38,14 +38,14 @@ struct MorphInterface : public Interface {
 
 /** @brief custom allocator for morph classes */
 struct MorphAllocator {
-    void *operator new( unsigned int bytes, void *where, unsigned available ) {
+    void *operator new( size_t bytes, void *where, unsigned available ) {
         if ( bytes > available || where == 0 ) {
             where = ::operator new( bytes );
             return where;
         }
         return where;
     }
-    void *operator new( unsigned int bytes ) {
+    void *operator new( size_t bytes ) {
         return ::operator new( bytes );
     }
 };
