@@ -69,16 +69,6 @@ InstallUnexpected::~InstallUnexpected()
 	set_unexpected(old);
 }
 
-
-template<typename C>
-std::string ValOutOfRange<C>::desc() const throw ()
-{
-	stringstream str;
-	str << m_var_desc << "(" << m_val << ") out of range (" <<
-			m_inf << "-" << m_sup << ")";
-	return str.str();
-}
-
 ///// SystemException
 
 System::System(const std::string& context) throw ()
