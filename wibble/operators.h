@@ -118,25 +118,55 @@ std::set< T > &operator|=( std::set< T > &a, const T& item )
     return a;
 }
 
-template< typename T >
-std::set< T > &operator|=( std::set< T > &a, const wibble::Singleton<T>& item )
+// General case
+template< typename T, typename SEQ >
+std::set< T > &operator|=( std::set< T > &a, const SEQ& items )
 {
-    a.insert(*item.begin());
+    for (typename SEQ::const_iterator i = items.begin();
+		    i != items.end(); ++i)
+	    a.insert(*i);
     return a;
 }
 
+// Little optimization in case a is empty
 template< typename T >
 std::set< T > &operator |=( std::set< T > &a, const std::set< T > &b ) {
-    std::set< T > ret;
-    ret = a | b;
-    return a = ret;
+    if (a.empty())
+	    return a = b;
+
+    for (typename std::set<T>::const_iterator i = b.begin();
+		    i != b.end(); ++i)
+	    a.insert(*i);
+    return a;
 }
 
-template< typename T >
-std::set< T > &operator &=( std::set< T > &a, const std::set< T > &b ) {
-    std::set< T > ret;
-    ret = a & b;
-    return a = ret;
+// General case, but assumes that b is sorted
+template< typename T, typename SEQ >
+std::set< T > &operator &=( std::set< T > &a, const SEQ& b ) {
+	// Little optimization: if b is empty, we avoid a run through a
+    if (b.empty())
+    {
+		a.clear();
+		return a;
+	}
+       
+	typename std::set<T>::iterator ia = a.begin();
+	typename SEQ::const_iterator ib = b.begin();
+	while (ia != a.end())
+	{
+		if (ib == b.end() || *ia != *ib)
+		{
+			typename std::set<T>::iterator tmp = ia;
+			++ia;
+			a.erase(tmp);
+		}
+		else
+		{
+			++ia;
+			++ib;
+		}
+	}
+    return a;
 }
 
 template< typename T >
@@ -159,12 +189,27 @@ std::set< T > &operator-=( std::set< T > &a, const wibble::Singleton<T>& item )
     return a;
 }
 
-template< typename T >
-std::set< T > &operator -=( std::set< T > &a, const std::set< T > &b )
+// General case, but works only if b is sorted
+template< typename T, typename SEQ >
+std::set< T > &operator -=( std::set< T > &a, const SEQ& b )
 {
-    std::set< T > ret;
-    ret = a - b;
-    return a = ret;
+	typename std::set<T>::iterator ia = a.begin();
+	typename SEQ::const_iterator ib = b.begin();
+	while (ia != a.end() && ib != b.end())
+	{
+		if (*ia == *ib)
+		{
+			typename std::set<T>::iterator tmp = ia;
+			++ia;
+			++ib;
+			a.erase(tmp);
+		}
+		else if (*ia < *ib)
+			++ia;
+		else
+			++ib;
+	}
+    return a;
 }
 
 template< typename T >
