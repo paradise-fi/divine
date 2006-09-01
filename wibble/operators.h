@@ -154,7 +154,11 @@ std::set< T > &operator &=( std::set< T > &a, const SEQ& b ) {
 	typename SEQ::const_iterator ib = b.begin();
 	while (ia != a.end())
 	{
-		if (ib == b.end() || *ia != *ib)
+		if (ib != b.end() && *ib < *ia)
+		{
+			++ib;
+		}
+		else if (ib == b.end() || *ia != *ib)
 		{
 			typename std::set<T>::iterator tmp = ia;
 			++ia;
