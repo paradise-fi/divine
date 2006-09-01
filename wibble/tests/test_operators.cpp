@@ -115,4 +115,24 @@ void to::test< 4 >() {
     ensure( b <= a );
 }
 
+template<> template<>
+void to::test< 5 >() {
+	// Catches a past bug of in-place intersection that would delete too many
+	// items if the second set had items not present in the first
+	set<int> a = mkset(2);
+	set<int> b = mkset(1, 2);
+	set<int> c = mkset(2);
+
+	set<int> d = a & b;
+	ensure(c == d);
+
+	d = a;
+	d &= b;
+	ensure(c == d);
 }
+
+
+
+}
+
+// vim:set ts=4 sw=4:
