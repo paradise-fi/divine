@@ -10,12 +10,27 @@ namespace tut {
 struct operators_shar {};
 TESTGRP( operators );
 
+static set<int> mkset(int i1)
+{
+	set<int> a; a.insert(i1); return a;
+}
+static set<int> mkset(int i1, int i2)
+{
+	set<int> a; a.insert(i1); a.insert(i2); return a;
+}
+static set<int> mkset(int i1, int i2, int i3)
+{
+	set<int> a; a.insert(i1); a.insert(i2); a.insert(i3); return a;
+}
+static set<int> mkset(int i1, int i2, int i3, int i4)
+{
+	set<int> a; a.insert(i1); a.insert(i2); a.insert(i3); a.insert(i4); return a;
+}
+
 template<> template<>
 void to::test< 1 >() {
-    set< int > a, b;
-    a.insert( a.begin(), 4 );
-    a.insert( a.begin(), 5 );
-    b.insert( b.begin(), 5 );
+    set< int > a = mkset(4, 5);
+	set< int > b = mkset(5);
     set< int > c = a & b;
     ensure_equals( c.size(), 1u );
     ensure( c.find( 4 ) == c.end() );
@@ -32,10 +47,8 @@ void to::test< 1 >() {
 
 template<> template<>
 void to::test< 2 >() {
-    set< int > a, b;
-    a.insert( a.begin(), 4 );
-    a.insert( a.begin(), 3 );
-    b.insert( b.begin(), 5 );
+    set< int > a = mkset(4, 3);
+	set< int > b = mkset(5);
     b |= 3;
     ensure_equals( b.size(), 2u );
     ensure( b.find( 2 ) == b.end() );
