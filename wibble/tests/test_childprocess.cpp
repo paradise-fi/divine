@@ -1,6 +1,7 @@
 #include <wibble/config.h>
 #include <wibble/sys/process.h>
 #include <wibble/sys/childprocess.h>
+#include <wibble/sys/exec.h>
 #include <iostream>
 
 using namespace std;
@@ -33,6 +34,22 @@ protected:
 		return 0;
 	}
 };
+
+std::string suckFd(int fd)
+{
+	std::string res;
+	char c;
+	while (true)
+	{
+		int r = read(fd, &c, 1);
+		if (r == 0)
+			break;
+		if (r < 0)
+			throw wibble::exception::System("reading data from file descriptor");
+		res += c;
+	}
+	return res;
+}
 
 // Try running the child process and kill it
 template<> template<>
@@ -67,9 +84,40 @@ void to::test< 2 >() {
 	ensure(pid != 0);
 
 	// Read the child output
-	char buf[10];
-	read(out, buf, 7);
-	ensure(memcmp(buf, "antani\n", 7) == 0);
+	ensure_equals(suckFd(out), "antani\n");
+
+	// Wait for the child to terminate
+	ensure_equals(child.wait(), 0);
+}
+
+template<> template<>
+void to::test< 3 >() {
+	Exec child("/bin/echo");
+	child.args.push_back("antani");
+	int out;
+	
+	// Fork the child redirecting its stdout
+	pid_t pid = child.forkAndRedirect(0, &out, 0);
+	ensure(pid != 0);
+
+	// Read the child output
+	ensure_equals(suckFd(out), "antani\n");
+
+	// Wait for the child to terminate
+	ensure_equals(child.wait(), 0);
+}
+
+template<> template<>
+void to::test< 4 >() {
+	ShellCommand child("A=antani; echo $A");
+	int out;
+	
+	// Fork the child redirecting its stdout
+	pid_t pid = child.forkAndRedirect(0, &out, 0);
+	ensure(pid != 0);
+
+	// Read the child output
+	ensure_equals(suckFd(out), "antani\n");
 
 	// Wait for the child to terminate
 	ensure_equals(child.wait(), 0);
