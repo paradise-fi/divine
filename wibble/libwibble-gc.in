@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libwibble
+Description: Useles^H^H^Hful C++ hacks
+Version: @VERSION@
+Libs: -L${libdir} -lwibble -lgc -lgccpp
+Cflags: -I@BOOST_INCLUDE_PATH@ -DHAVE_GC
