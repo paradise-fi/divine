@@ -18,6 +18,7 @@ wibble_HEADERS = \
     empty.h \
     singleton.h \
     range.h \
+    regexp.h \
     shared.h \
     tests.h
 
@@ -41,6 +42,7 @@ libwibble_la_SOURCES = \
 	mixin.cpp \
 	operators.cpp \
 	range.cpp \
+    regexp.cpp \
 	tests.cpp \
 	commandline/core.cpp \
 	commandline/options.cpp \
