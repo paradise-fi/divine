@@ -16,7 +16,7 @@ INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. ${BOOST_INC
 INSTALL_FILES( /include/wibble .h ${H_TOP} )
 INSTALL_FILES( /include/wibble .tcc ${TCC_TOP} )
 INSTALL_FILES( /include/wibble/commandline .h ${H_CMDL} )
-INSTALL_FILES( /include/wibble/sys .h ${H_CMDL} )
+INSTALL_FILES( /include/wibble/sys .h ${H_SYS} )
 INSTALL_FILES( /include/wibble .h ${wibble_BINARY_DIR}/config.h )
 
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
