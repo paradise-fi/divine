@@ -65,6 +65,10 @@ public:
 	bool match(const std::string& str, int flags = 0) throw (wibble::exception::Regexp);
 	
 	std::string operator[](int idx) throw (wibble::exception::OutOfRange);
+
+	size_t matchStart(int idx) throw (wibble::exception::OutOfRange);
+	size_t matchEnd(int idx) throw (wibble::exception::OutOfRange);
+	size_t matchLength(int idx) throw (wibble::exception::OutOfRange);
 };
 
 class ERegexp : public Regexp
@@ -72,6 +76,43 @@ class ERegexp : public Regexp
 public:
 	ERegexp(const std::string& expr, int match_count = 0, int flags = 0) throw (wibble::exception::Regexp)
 		: Regexp(expr, match_count, flags | REG_EXTENDED) {}
+};
+
+class Tokenizer
+{
+	const std::string& str;
+	wibble::Regexp re;
+
+public:
+	class const_iterator
+	{
+		Tokenizer& tok;
+		size_t beg, end;
+	public:
+		const_iterator(Tokenizer& tok) : tok(tok), beg(0), end(0) { operator++(); }
+		const_iterator(Tokenizer& tok, bool) : tok(tok), beg(tok.str.size()), end(tok.str.size()) {}
+
+		const_iterator& operator++();
+
+		std::string operator*() const
+		{
+			return tok.str.substr(beg, end-beg);
+		}
+		bool operator==(const const_iterator& ti) const
+		{
+			return beg == ti.beg && end == ti.end;
+		}
+		bool operator!=(const const_iterator& ti) const
+		{
+			return beg != ti.beg || end != ti.end;
+		}
+	};
+
+	Tokenizer(const std::string& str, const std::string& re, int flags)
+		: str(str), re(re, 1, flags) {}
+
+	const_iterator begin() { return const_iterator(*this); }
+	const_iterator end() { return const_iterator(*this, false); }
 };
 
 }

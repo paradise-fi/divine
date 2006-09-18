@@ -47,7 +47,6 @@ Regexp::Regexp(const regex_t& re, int code,
 
 }
 
-
 ////// Regexp
 
 Regexp::Regexp(const string& expr, int match_count, int flags)
@@ -102,6 +101,43 @@ string Regexp::operator[](int idx) throw (wibble::exception::OutOfRange)
 		return string();
 	
 	return string(lastMatch, pmatch[idx].rm_so, pmatch[idx].rm_eo - pmatch[idx].rm_so);
+}
+
+size_t Regexp::matchStart(int idx) throw (wibble::exception::OutOfRange)
+{
+	if (idx > nmatch)
+		throw wibble::exception::ValOutOfRange<int>("index", idx, 0, nmatch, "getting submatch of regexp");
+	return pmatch[idx].rm_so;
+}
+
+size_t Regexp::matchEnd(int idx) throw (wibble::exception::OutOfRange)
+{
+	if (idx > nmatch)
+		throw wibble::exception::ValOutOfRange<int>("index", idx, 0, nmatch, "getting submatch of regexp");
+	return pmatch[idx].rm_eo;
+}
+
+size_t Regexp::matchLength(int idx) throw (wibble::exception::OutOfRange)
+{
+	if (idx > nmatch)
+		throw wibble::exception::ValOutOfRange<int>("index", idx, 0, nmatch, "getting submatch of regexp");
+	return pmatch[idx].rm_eo - pmatch[idx].rm_so;
+}
+
+Tokenizer::const_iterator& Tokenizer::const_iterator::operator++()
+{
+	// Skip past the last token
+	beg = end;
+
+	if (tok.re.match(tok.str.substr(beg)))
+	{
+		beg += tok.re.matchStart(0);
+		end = beg + tok.re.matchLength(0);
+	} 
+	else
+		beg = end = tok.str.size();
+
+	return *this;
 }
 
 }

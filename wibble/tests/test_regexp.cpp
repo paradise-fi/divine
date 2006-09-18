@@ -42,11 +42,39 @@ void to::test< 3 >() {
 	ensure_equals(re[0], string("fobar"));
 	ensure_equals(re[1], string("o"));
 	ensure_equals(re[2], string(""));
+	ensure_equals(re.matchStart(0), 0u);
+	ensure_equals(re.matchEnd(0), 5u);
+	ensure_equals(re.matchLength(0), 5u);
+	ensure_equals(re.matchStart(1), 1u);
+	ensure_equals(re.matchEnd(1), 2u);
+	ensure_equals(re.matchLength(1), 1u);
 
 	ensure(re.match("foobar42"));
 	ensure_equals(re[0], string("foobar42"));
 	ensure_equals(re[1], string("oo"));
 	ensure_equals(re[2], string("42"));
+}
+
+// Test tokenizer
+template<> template<>
+void to::test< 4 >() {
+	string str("antani blinda la supercazzola!");
+	Tokenizer tok(str, "[a-z]+", REG_EXTENDED);
+	Tokenizer::const_iterator i = tok.begin();
+
+	ensure(i != tok.end());
+	ensure_equals(*i, "antani");
+	++i;
+	ensure(i != tok.end());
+	ensure_equals(*i, "blinda");
+	++i;
+	ensure(i != tok.end());
+	ensure_equals(*i, "la");
+	++i;
+	ensure(i != tok.end());
+	ensure_equals(*i, "supercazzola");
+	++i;
+	ensure(i == tok.end());
 }
 
 }
