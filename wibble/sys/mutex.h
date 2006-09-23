@@ -131,7 +131,7 @@ public:
 		if (int res = pthread_cond_wait(&cond, &l.mutex.mutex))
 			throw wibble::exception::System(res, "waiting on a pthread condition");
 	}
-	void wait(MutexLock& l, const struct timespec& abstime) throw ()
+	void wait(MutexLock& l, const struct timespec& abstime)
 	{
 		if (int res = pthread_cond_timedwait(&cond, &l.mutex.mutex, &abstime))
 			throw wibble::exception::System(res, "waiting on a pthread condition");
