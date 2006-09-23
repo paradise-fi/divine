@@ -124,18 +124,27 @@ public:
 			throw wibble::exception::System(res, "broadcasting on a pthread condition");
 	}
 
-	/// Wait on the condition, locking with l [for limited time abstime]
-	/// (Unlock l before waiting and lock it before returning)
+	/**
+	 * Wait on the condition, locking with l.  l is unlocked before waiting and
+	 * locked again before returning.
+	 */
 	void wait(MutexLock& l)
 	{
 		if (int res = pthread_cond_wait(&cond, &l.mutex.mutex))
 			throw wibble::exception::System(res, "waiting on a pthread condition");
 	}
-	void wait(MutexLock& l, const struct timespec& abstime)
-	{
-		if (int res = pthread_cond_timedwait(&cond, &l.mutex.mutex, &abstime))
-			throw wibble::exception::System(res, "waiting on a pthread condition");
-	}
+
+	/**
+	 * Wait on the condition, locking with l.  l is unlocked before waiting and
+	 * locked again before returning.  If the time abstime is reached before
+	 * the condition is signaled, then l is locked and the function returns
+	 * false.
+	 *
+	 * @returns
+	 *   true if the wait succeeded, or false if the timeout was reached before
+	 *   the condition is signaled.
+	 */
+	bool wait(MutexLock& l, const struct timespec& abstime);
 };
 
 }
