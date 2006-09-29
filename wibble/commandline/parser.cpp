@@ -10,7 +10,7 @@ namespace commandline {
 
 void StandardParser::outputHelp(std::ostream& out)
 {
-	commandline::Help help(m_appname, m_version);
+	commandline::Help help(name(), m_version);
 	commandline::Engine* e = foundCommand();
 
 	if (e)
@@ -35,7 +35,7 @@ bool StandardParser::parse(int argc, const char* argv[])
 	if (version->boolValue())
 	{
 		// Print the program version
-		commandline::Help help(m_appname, m_version);
+		commandline::Help help(name(), m_version);
 		help.outputVersion(cout);
 		return true;
 	}
@@ -49,7 +49,7 @@ bool StandardParserWithManpage::parse(int argc, const char* argv[])
 	if (manpage->boolValue())
 	{
 		// Output the manpage
-		commandline::Manpage man(m_appname, m_version, m_section, m_author);
+		commandline::Manpage man(name(), m_version, m_section, m_author);
 		string hooks(manpage->stringValue());
 		if (!hooks.empty())
 			man.readHooks(hooks);
@@ -66,13 +66,13 @@ bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
 
 	if (!foundCommand())
 	{
-		commandline::Help help(m_appname, m_version);
+		commandline::Help help(name(), m_version);
 		help.outputHelp(cout, *this);
 		return true;
 	}
 	if (foundCommand() == helpCommand)
 	{
-		commandline::Help help(m_appname, m_version);
+		commandline::Help help(name(), m_version);
 		if (hasNext())
 		{
 			// Help on a specific command

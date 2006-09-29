@@ -18,10 +18,11 @@ protected:
 	MemoryManager m_manager;
 
 public:
-	Parser(const std::string& usage = std::string(),
+	Parser(const std::string& name,
+		   const std::string& usage = std::string(),
 		   const std::string& description = std::string(),
 		   const std::string& longDescription = std::string())
-		: Engine(&m_manager, std::string(), usage, description, longDescription) {}
+		: Engine(&m_manager, name, usage, description, longDescription) {}
 
 	/**
 	 * Parse the commandline
@@ -56,12 +57,11 @@ public:
 class StandardParser : public Parser
 {
 protected:
-	std::string m_appname;
 	std::string m_version;
 
 public:
 	StandardParser(const std::string& appname, const std::string& version) :
-		m_appname(appname), m_version(version)
+		Parser(appname), m_version(version)
 	{
 		helpGroup = addGroup("Help options");
 		help = helpGroup->add<BoolOption>("help", 'h', "help", "",
@@ -100,7 +100,7 @@ public:
 		m_section(section), m_author(author)
 	{
 		manpage = helpGroup->add<StringOption>("manpage", 0, "manpage", "[hooks]",
-				"output the " + m_appname + " manpage and exit");
+				"output the " + name() + " manpage and exit");
 	}
 
 	bool parse(int argc, const char* argv[]);

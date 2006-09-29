@@ -331,7 +331,6 @@ void Manpage::outputOptions(std::ostream& out, const Engine& p)
 				j != p.options().end(); ++j)
 			outputOption(out, *j);
 	}
-	endSection(out);
 }
 
 void Manpage::output(std::ostream& out, const Engine& p)
