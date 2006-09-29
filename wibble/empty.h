@@ -51,7 +51,7 @@ public:
 	};
 	
 	bool empty() const { return true; }
-	unsigned int size() const { return 0; }
+	size_t size() const { return 0; }
 
 	iterator begin() { return iterator(); }
 	iterator end() { return iterator(); }
