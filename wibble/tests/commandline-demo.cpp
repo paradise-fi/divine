@@ -8,7 +8,7 @@ using namespace wibble::commandline;
 int withCommands(int argc, const char* argv[])
 {
 	// Main parser
-	StandardParserWithMandatoryCommand parser(argv[0], VERSION, 1, "enrico@enricozini.org");
+	StandardParserWithMandatoryCommand parser(argv[0], "0.1", 1, "enrico@enricozini.org");
 	parser.usage = "<command> [options and arguments]";
 	parser.description = "Demo commandline parser";
 	parser.longDescription = 
