@@ -16,34 +16,34 @@ int withCommands(int argc, const char* argv[])
 				"subcommands and various kinds of options.";
 
 	// Grep subcommand
-	Engine* grep = parser.createEngine("grep", "<pattern> [files...]",
+	Engine* grep = parser.addEngine("grep", "<pattern> [files...]",
 				"Print lines matching the pattern",
 				"Print all the lines of standard input or the given files that match "
 				"the given pattern.");
-	BoolOption* grep_invert = grep->create<BoolOption>("invert", 'v', "invert", "",
+	BoolOption* grep_invert = grep->add<BoolOption>("invert", 'v', "invert", "",
 				"invert the match");
-	StringOption* grep_output = grep->create<StringOption>("output", 'o', "output", "<file>",
+	StringOption* grep_output = grep->add<StringOption>("output", 'o', "output", "<file>",
 				"write the output to the given file instead of standard output");
 
 	// ls subcommand
-	Engine* ls = parser.createEngine("ls", "[directory...]",
+	Engine* ls = parser.addEngine("ls", "[directory...]",
 				"List files in a directory",
 				"List all files found in the directories given as parameters to standard output.  "
 				"if no directory is given, list the files in the current directory.");
 	// sort option group
-	OptionGroup* ls_sort = ls->createGroup("Options controlling the order of output");
-	BoolOption* ls_sort_invert = ls_sort->create<BoolOption>("invert", 'r', "invert", "",
+	OptionGroup* ls_sort = ls->addGroup("Options controlling the order of output");
+	BoolOption* ls_sort_invert = ls_sort->add<BoolOption>("invert", 'r', "invert", "",
 				"sort in inverted order");
-	IntOption* ls_sort_field = ls_sort->create<IntOption>("field", 0, "field", "",
+	IntOption* ls_sort_field = ls_sort->add<IntOption>("field", 0, "field", "",
 				"sort the given field (if the switch is omitted, 1 is assumed");
 	// format option group
-	OptionGroup* ls_format = ls->createGroup("Options controlling the format of output");
-	BoolOption* ls_format_long = ls_format->create<BoolOption>("long", 'l', "long", "",
+	OptionGroup* ls_format = ls->addGroup("Options controlling the format of output");
+	BoolOption* ls_format_long = ls_format->add<BoolOption>("long", 'l', "long", "",
 				"long output format with all the details");
-	BoolOption* ls_format_inode = ls_format->create<BoolOption>("inode", 'i', "inode", "",
+	BoolOption* ls_format_inode = ls_format->add<BoolOption>("inode", 'i', "inode", "",
 				"also output the file inode number");
 	// other ls options
-	BoolOption* ls_all = ls->create<BoolOption>("all", 'a', "all", "",
+	BoolOption* ls_all = ls->add<BoolOption>("all", 'a', "all", "",
 				"output all files, including the ones starting with a dot");
 
 	try {
