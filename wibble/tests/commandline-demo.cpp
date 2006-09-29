@@ -1,5 +1,5 @@
 #include <wibble/commandline/parser.h>
-#include <config.h>
+#include <wibble/config.h>
 #include <iostream>
 
 using namespace std;
