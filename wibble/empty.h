@@ -25,6 +25,9 @@
 #include <cstddef>
 #include <bits/stl_iterator_base_types.h>
 
+#include <cstddef>
+#include <bits/stl_iterator_base_types.h>
+
 namespace wibble {
 
 template<typename T>
@@ -42,7 +45,7 @@ public:
 		bool operator==(const const_iterator&) const { return true; }
 		bool operator!=(const const_iterator&) const { return false; }
 	};
-	
+
 	class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
 	{
 	public:
@@ -52,7 +55,7 @@ public:
 		bool operator==(const iterator&) const { return true; }
 		bool operator!=(const iterator&) const { return false; }
 	};
-	
+
 	bool empty() const { return true; }
 	size_t size() const { return 0; }
 
