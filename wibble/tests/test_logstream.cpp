@@ -1,4 +1,5 @@
 #include <wibble/config.h>
+#include <vector>
 
 #ifndef WIBBLE_LOGSTREAM_H
 #define WIBBLE_LOGSTREAM_H
@@ -26,6 +27,11 @@ enum Level
 struct Sender
 {
 	virtual ~Sender() {}
+	/**
+	 * Log one line of text with the given level.
+	 *
+	 * Do not add a trailing newline
+	 */
 	virtual void send(Level level, const std::string& msg) = 0;
 };
 
@@ -45,7 +51,7 @@ protected:
 	 * overridden methods */
 	Sender* sender;
 
-	/// Send the message in line with the level in level
+	/// Send the message "line" with the level "level"
 	void send();
 
 public:
@@ -104,11 +110,19 @@ std::ostream& levWarning(std::ostream &s)
 
 struct TestSender : public Sender
 {
+	std::vector< std::pair<Level, std::string> > log;
+
 	virtual ~TestSender() {}
 
 	virtual void send(Level level, const std::string& msg)
 	{
-		std::cerr << level << " -> " << msg << " <-" << std::endl;
+		log.push_back(make_pair(level, msg));
+	}
+
+	void dump()
+	{
+		for (size_t i = 0; i < log.size(); ++i)
+			std::cerr << log[i].first << " -> " << log[i].second << " <-" << std::endl;
 	}
 };
 
@@ -132,12 +146,30 @@ void to::test< 1 >() {
 	using namespace wibble;
 
 	log::TestSender s;
-	log::Streambuf ls(&s);
-	ostream o(&ls);
+	{
+		log::Streambuf ls(&s);
+		ostream o(&ls);
 
-	o << "test" << endl;
-	o << log::levWarning << "test" << endl;
-	o << "should eventually appear";
+		// Send a normal log message
+		o << "test" << endl;
+		ensure_equals(s.log.size(), 1u);
+		ensure_equals(s.log[0].first, log::INFO);
+		ensure_equals(s.log[0].second, "test");
+
+		// Send a log message with a different priority
+		o << log::levWarning << "test" << endl;
+		ensure_equals(s.log.size(), 2u);
+		ensure_equals(s.log[1].first, log::WARN);
+		ensure_equals(s.log[1].second, "test");
+
+		o << "should eventually appear";
+		ensure_equals(s.log.size(), 2u);
+	}
+	ensure_equals(s.log.size(), 3u);
+	ensure_equals(s.log[2].first, log::INFO);
+	ensure_equals(s.log[2].second, "should eventually appear");
+
+	//s.dump();
 }
 
 }
