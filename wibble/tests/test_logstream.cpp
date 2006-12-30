@@ -1,5 +1,6 @@
 #include <wibble/log/stream.h>
 #include <wibble/log/null.h>
+#include <wibble/log/file.h>
 #include <wibble/config.h>
 #include <vector>
 #include <iostream>
@@ -88,6 +89,30 @@ void to::test< 2 >() {
 
 	log::Streambuf null(&ns);
 	ostream o(&null);
+
+	// Send a normal log message
+	o << "test" << endl;
+
+	// Send a log message with a different priority
+	//o << log::lev(log::WARN) << "test" << endl;
+	o << log::WARN << "test" << endl;
+
+	// Ensure that log messages are only sent after a newline
+	o << "should eventually appear";
+}
+
+// Test the FileSender
+template<> template<>
+void to::test< 3 >() {
+	using namespace wibble;
+
+	// Null does nothing, so we cannot test the results.
+
+	log::FileSender ns("/dev/null");
+	ns.send(log::INFO, "test");
+
+	log::Streambuf file(&ns);
+	ostream o(&file);
 
 	// Send a normal log message
 	o << "test" << endl;
