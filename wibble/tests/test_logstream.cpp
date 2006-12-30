@@ -5,6 +5,10 @@
 #include <vector>
 #include <iostream>
 
+/**
+ * TODO: find a way to test the syslog sender, if at all possible
+ */
+
 namespace wibble {
 namespace log {
 
