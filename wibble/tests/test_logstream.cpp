@@ -1,9 +1,11 @@
 #include <wibble/log/stream.h>
 #include <wibble/log/null.h>
 #include <wibble/log/file.h>
+#include <wibble/log/ostream.h>
 #include <wibble/config.h>
 #include <vector>
 #include <iostream>
+#include <fstream>
 
 /**
  * TODO: find a way to test the syslog sender, if at all possible
@@ -110,13 +112,40 @@ template<> template<>
 void to::test< 3 >() {
 	using namespace wibble;
 
-	// Null does nothing, so we cannot test the results.
+	// We send to /dev/null, so we cannot test the results.
 
 	log::FileSender ns("/dev/null");
 	ns.send(log::INFO, "test");
 
 	log::Streambuf file(&ns);
 	ostream o(&file);
+
+	// Send a normal log message
+	o << "test" << endl;
+
+	// Send a log message with a different priority
+	//o << log::lev(log::WARN) << "test" << endl;
+	o << log::WARN << "test" << endl;
+
+	// Ensure that log messages are only sent after a newline
+	o << "should eventually appear";
+}
+
+// Test the OstreamSender
+template<> template<>
+void to::test< 4 >() {
+	using namespace wibble;
+
+	// We send to /dev/null, so we cannot test the results.
+
+	std::ofstream null("/dev/null", std::ios::out);
+    ensure(!null.fail());
+
+	log::OstreamSender sender(null);
+	sender.send(log::INFO, "test");
+
+	log::Streambuf log(&sender);
+	ostream o(&log);
 
 	// Send a normal log message
 	o << "test" << endl;
