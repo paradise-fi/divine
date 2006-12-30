@@ -1,4 +1,5 @@
 #include <wibble/log/stream.h>
+#include <wibble/log/null.h>
 #include <wibble/config.h>
 #include <vector>
 #include <iostream>
@@ -73,6 +74,30 @@ void to::test< 1 >() {
 	ensure_equals(s.log[2].second, "should eventually appear");
 
 	//s.dump();
+}
+
+// Test the NullSender
+template<> template<>
+void to::test< 2 >() {
+	using namespace wibble;
+
+	// Null does nothing, so we cannot test the results.
+
+	log::NullSender ns;
+	ns.send(log::INFO, "test");
+
+	log::Streambuf null(&ns);
+	ostream o(&null);
+
+	// Send a normal log message
+	o << "test" << endl;
+
+	// Send a log message with a different priority
+	//o << log::lev(log::WARN) << "test" << endl;
+	o << log::WARN << "test" << endl;
+
+	// Ensure that log messages are only sent after a newline
+	o << "should eventually appear";
 }
 
 }

@@ -51,6 +51,9 @@ protected:
 	void send();
 
 public:
+	/// Construct a nonworking Streambuf to be initialised later.
+	Streambuf();
+
 	/**
 	 * @param s
 	 *   The sender to use to send log messages.  Streambuf will just use the
@@ -58,6 +61,9 @@ public:
 	 */
 	Streambuf(Sender* s);
 	virtual ~Streambuf();
+
+	/// Set/change the sender to use for this streambuf
+	void setSender(Sender* s);
 
 	/// Set the level for the next message, and the next message only
 	void setLevel(const Level& level);

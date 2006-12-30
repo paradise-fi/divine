@@ -4,6 +4,8 @@
 namespace wibble {
 namespace log {
 
+Streambuf::Streambuf() : level(defaultLevel), sender(0) {}
+
 Streambuf::Streambuf(Sender* s) : level(defaultLevel), sender(s) {}
 
 Streambuf::~Streambuf()
@@ -11,6 +13,8 @@ Streambuf::~Streambuf()
 	if (!line.empty())
 		send();
 }
+
+void Streambuf::setSender(Sender* s) { sender = s; }
 
 void Streambuf::send()
 {
