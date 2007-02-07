@@ -174,7 +174,8 @@ void Help::outputHelp(std::ostream& out, const Engine& p)
 			writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
 		}
 	} else {
-		if (p.primaryAlias.empty())
+ 		// FIXME the || m_app == thing is a workaround...
+		if (p.primaryAlias.empty() || m_app == p.primaryAlias)
 			out << "Usage: " << m_app << " [options] " << p.usage << endl;
 		else
 			out << "Usage: " << m_app << " [options] " << p.primaryAlias << " [options] " << p.usage << endl;
