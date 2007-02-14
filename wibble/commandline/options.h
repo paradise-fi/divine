@@ -163,6 +163,7 @@ protected:
 	bool parse(const std::string& param);
 
 public:
+        void setValue( int v ) { m_value = v; }
 	bool boolValue() const { return m_value != 0; }
 	int intValue() const { return m_value; }
 	std::string stringValue() const;
