@@ -150,6 +150,12 @@ public:
 			throw wibble::exception::System(res, "waiting on a pthread condition");
 	}
 
+	void wait(Mutex& l)
+	{
+		if (int res = pthread_cond_wait(&cond, &l.mutex))
+			throw wibble::exception::System(res, "waiting on a pthread condition");
+	}
+
 	/**
 	 * Wait on the condition, locking with l.  l is unlocked before waiting and
 	 * locked again before returning.  If the time abstime is reached before
