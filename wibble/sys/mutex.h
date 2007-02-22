@@ -23,6 +23,7 @@
 
 #include <wibble/exception.h>
 #include <pthread.h>
+#include <errno.h>
 
 namespace wibble {
 namespace sys {
@@ -46,6 +47,16 @@ public:
 		if (int res = pthread_mutex_destroy(&mutex))
 			throw wibble::exception::System(res, "destroying pthread mutex");
 	}
+
+        bool trylock()
+        {
+            int res = pthread_mutex_trylock(&mutex);
+            if ( res == EBUSY )
+                return false;
+            if ( res == 0 )
+                return true;
+            throw wibble::exception::System(res, "(try)locking pthread mutex");
+        }
 
 	/// Lock the mutex
 	/// Normally it's better to use MutexLock
