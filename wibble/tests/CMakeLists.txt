@@ -1,4 +1,4 @@
-SET( T "${CMAKE_CURRENT_SOURCE_DIR}/libwibble-check" )
+SET( T sh ${CMAKE_CURRENT_SOURCE_DIR}/libwibble-check )
 
 file( GLOB TEST_SOURCES test_*.cpp )
 
