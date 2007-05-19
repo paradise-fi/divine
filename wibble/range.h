@@ -71,7 +71,6 @@ struct RangeMixin : mixin::Comparable< Self >
 
     iterator begin() const { return iterator( this->self() ); } // STL-style iteration
     iterator end() const { Self e( this->self() ); e.setToEmpty(); return iterator( e ); }
-    Range< T > sorted() const;
 
     // range terminology
     T head() { return self().head(); }
@@ -214,37 +213,6 @@ protected:
     It m_current, m_end;
 };
 
-// a slightly less simple pair of iterators, this one also holds a
-// reference to the container used, so if the container is
-// heap-allocated with GC enabled, it won't disappear
-
-// this is what you get when using range( container, ... )
-
-template< typename C >
-struct BackedRange : public RangeMixin< typename C::value_type, BackedRange< C > >
-{
-    typedef typename C::const_iterator It;
-public:
-    typedef typename C::value_type value_type;
-    BackedRange() {}
-    BackedRange( const C &c, It b, It e ) : m_backing( &c ), m_begin( b ), m_end( e ) {}
-
-    bool operator<=( const BackedRange &r ) const {
-        return r.m_begin == m_begin && r.m_end == m_end;
-    }
-
-    void setToEmpty() {
-        m_begin = m_end;
-    }
-
-    value_type head() const { return *m_begin; }
-    void removeFirst() { ++m_begin; }
-
-protected:
-    const C *m_backing;
-    It m_begin, m_end;
-};
-
 // first in the series of ranges that use another range as backing
 // this one just does static_cast to specified type on all the
 // returned elements
@@ -288,7 +256,7 @@ Range< T > upcastRange( C r ) {
 }
 
 // the range-cast operator, see castedRange and CastedRange
-template< typename T> template< typename C >
+template< typename T > template< typename C >
 Range< T >::operator Range< C >() {
     return castedRange< C >( *this );
 }
@@ -299,22 +267,9 @@ Range< typename In::value_type > range( In b, In e ) {
     return IteratorRange< In >( b, e );
 }
 
-// range( container, [iterator1, [iterator2]] ) -- see BackedRange
 template< typename C >
-Range< typename C::value_type > range( const C &c ) {
-    return BackedRange< C >( c, c.begin(), c.end() );
-}
-template< typename C >
-Range< typename C::value_type > range( const C &c,
-                                       typename C::const_iterator b ) {
-    return BackedRange< C >( c, b, c.end() );
-}
-
-template< typename C >
-Range< typename C::value_type > range( const C &c,
-                                       typename C::const_iterator b,
-                                       typename C::const_iterator e ) {
-    return BackedRange< C >( c, b, e );
+Range< typename C::iterator::value_type > range( C &c ) {
+    return range( c.begin(), c.end() );
 }
 
 template< typename T >
@@ -498,15 +453,6 @@ template< typename Trans >
 TransformedRange< Trans > transformedRange(
     Range< typename Trans::argument_type > r, Trans t ) {
     return TransformedRange< Trans >( r, t );
-}
-
-template< typename T, typename S >
-Range< T > RangeMixin< T, S >::sorted() const
-{
-    SharedVector< T > &backing = *new SharedVector< T >();
-    output( consumer( backing ) );
-    std::sort( backing.begin(), backing.end() );
-    return range( backing );
 }
 
 template< typename T, typename _Advance, typename _End >
