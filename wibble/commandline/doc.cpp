@@ -135,7 +135,7 @@ void Help::outputHelp(std::ostream& out, const Engine& p)
 	{
 		// Dig informations from p
 		const std::vector<Engine*>& commands = p.commands();
-	
+
 		// Compute the maximum length of alias names
 		size_t maxAliasSize = 0;
 		for (vector<Engine*>::const_iterator i = commands.begin();
@@ -234,7 +234,7 @@ void Manpage::outputParagraph(std::ostream& out, const std::string& str)
 				break;
 			default:
 				out << str[i];
-		}		
+		}
 	out << '\n';
 }
 
