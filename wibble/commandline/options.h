@@ -15,13 +15,15 @@ class Option : public Managed
 	mutable std::string m_fullUsage;
 
 protected:
-	Option(const std::string& name) : m_name(name) {}
+	bool m_isset;
+
+	Option(const std::string& name) : m_name(name), m_isset(false) {}
 	Option(const std::string& name,
 			char shortName,
 			const std::string& longName,
 			const std::string& usage = std::string(),
 			const std::string& description = std::string())
-		: m_name(name), usage(usage), description(description)
+		: m_name(name), m_isset(false), usage(usage), description(description)
 	{
 		if (shortName != 0)
 			shortNames.push_back(shortName);
@@ -52,6 +54,7 @@ protected:
 public:
 	virtual ~Option() {}
 
+	const bool isSet() const { return m_isset; }
 	const std::string& name() const { return m_name; }
 
 	void addAlias(char c) { shortNames.push_back(c); }
@@ -90,8 +93,8 @@ protected:
 			const std::string& description = std::string())
 		: Option(name, shortName, longName, usage, description), m_value(false) {}
 
-	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_value = true; return begin; }
-	virtual bool parse(const std::string&) { m_value = true; return false; }
+	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_isset = true; m_value = true; return begin; }
+	virtual bool parse(const std::string&) { m_isset = true; m_value = true; return false; }
 
 public:
 	bool boolValue() const { return m_value; }

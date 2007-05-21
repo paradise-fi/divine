@@ -36,10 +36,12 @@ void to::test<1>()
 	Public<BoolOption> opt("test");
 
 	ensure_equals(opt.name(), string("test"));
+	ensure_equals(opt.isSet(), false);
 	ensure_equals(opt.boolValue(), false);
 	ensure_equals(opt.stringValue(), string("false"));
 
 	ensure_equals(opt.parse(string()), false);
+	ensure_equals(opt.isSet(), true);
 	ensure_equals(opt.boolValue(), true);
 	ensure_equals(opt.stringValue(), string("true"));
 }
@@ -51,11 +53,13 @@ void to::test<2>()
 	Public<IntOption> opt("test");
 
 	ensure_equals(opt.name(), string("test"));
+	ensure_equals(opt.isSet(), false);
 	ensure_equals(opt.boolValue(), false);
 	ensure_equals(opt.intValue(), 0);
 	ensure_equals(opt.stringValue(), string("0"));
 
 	ensure_equals(opt.parse("42"), true);
+	ensure_equals(opt.isSet(), true);
 	ensure_equals(opt.boolValue(), true);
 	ensure_equals(opt.intValue(), 42);
 	ensure_equals(opt.stringValue(), string("42"));
@@ -68,10 +72,12 @@ void to::test<3>()
 	Public<StringOption> opt("test");
 
 	ensure_equals(opt.name(), string("test"));
+	ensure_equals(opt.isSet(), false);
 	ensure_equals(opt.boolValue(), false);
 	ensure_equals(opt.stringValue(), string());
 
 	ensure_equals(opt.parse("-a"), true);
+	ensure_equals(opt.isSet(), true);
 	ensure_equals(opt.boolValue(), true);
 	ensure_equals(opt.stringValue(), "-a");
 }
