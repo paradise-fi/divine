@@ -1,5 +1,6 @@
 #include <wibble/config.h>
 #include <wibble/commandline/doc.h>
+#include <wibble/text/wordwrap.h>
 #include <locale.h>
 #include <errno.h>
 #include <cstdlib>
@@ -10,52 +11,6 @@ using namespace std;
 namespace wibble {
 namespace commandline {
 
-
-class WordWrapper
-{
-	const std::string& s;
-	size_t cursor;
-
-public:
-	WordWrapper(const std::string& s) : s(s), cursor(0) {}
-
-	void restart() { cursor = 0; }
-
-	bool hasData() const { return cursor < s.size(); }
-
-	string get(unsigned int width)
-	{
-		if (cursor >= s.size())
-			return "";
-
-		// Find the last work break before `width'
-		unsigned int brk = cursor;
-		for (unsigned int j = cursor; j < s.size() && j < cursor + width; j++)
-		{
-			if (s[j] == '\n')
-			{
-				brk = j;
-				break;
-			} else if (!isspace(s[j]) && (j + 1 == s.size() || isspace(s[j + 1])))
-				brk = j + 1;
-		}
-		if (brk == cursor)
-			brk = cursor + width;
-
-		string res;
-		if (brk >= s.size())
-		{
-			res = string(s, cursor, string::npos);
-			cursor = s.size();
-		} else {
-			res = string(s, cursor, brk - cursor);
-			cursor = brk;
-			while (cursor < s.size() && isspace(s[cursor]))
-				cursor++;
-		}
-		return res;
-	}
-};
 
 class HelpWriter
 {
@@ -89,7 +44,7 @@ void HelpWriter::pad(size_t size)
 
 void HelpWriter::outlist(const std::string& bullet, size_t bulletsize, const std::string& text)
 {
-	WordWrapper wrapper(text);
+	text::WordWrap wrapper(text);
 	size_t rightcol = m_width - bulletsize;
 
 	out << bullet;
@@ -107,7 +62,7 @@ void HelpWriter::outlist(const std::string& bullet, size_t bulletsize, const std
 
 void HelpWriter::outstring(const std::string& str)
 {
-	WordWrapper wrapper(str);
+	text::WordWrap wrapper(str);
 
 	while (wrapper.hasData())
 	{
