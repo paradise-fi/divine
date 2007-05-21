@@ -1,5 +1,6 @@
 #include <wibble/tests/tut-wibble.h>
 #include <signal.h>
+#include <cstdlib>
 
 namespace tut
 {

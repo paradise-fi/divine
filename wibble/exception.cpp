@@ -23,6 +23,7 @@
 #include <string.h> // strerror_r
 #include <errno.h>
 
+#include <cstdlib>
 #include <typeinfo>
 #include <sstream>
 #include <iostream>

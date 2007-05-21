@@ -2,6 +2,7 @@
 #include <wibble/commandline/doc.h>
 #include <locale.h>
 #include <errno.h>
+#include <cstdlib>
 #include <set>
 
 using namespace std;

@@ -1,6 +1,8 @@
 #include <wibble/config.h>
 #include <wibble/sys/fs.h>
+#include <cstdlib>
 #include <set>
+#include <cstdlib>
 
 using namespace std;
 using namespace wibble::sys::fs;

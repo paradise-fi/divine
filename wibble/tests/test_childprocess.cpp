@@ -2,6 +2,7 @@
 #include <wibble/sys/process.h>
 #include <wibble/sys/childprocess.h>
 #include <wibble/sys/exec.h>
+#include <cstdlib>
 #include <iostream>
 
 using namespace std;

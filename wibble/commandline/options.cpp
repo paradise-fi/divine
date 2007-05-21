@@ -3,7 +3,9 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
+#include <cstdlib>
 #include <set>
+#include <cstdlib>
 #include <sstream>
 
 using namespace std;

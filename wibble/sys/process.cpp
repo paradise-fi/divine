@@ -33,6 +33,7 @@
 #include <grp.h>			// getgr*, initgroups
 #include <errno.h>
 
+#include <cstdlib>
 #include <sstream>
 
 namespace wibble {

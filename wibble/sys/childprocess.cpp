@@ -20,6 +20,7 @@
 
 #include <wibble/sys/childprocess.h>
 
+#include <stdlib.h>		// EXIT_FAILURE
 #include <sys/types.h>		// fork, waitpid, kill, open, getpw*, getgr*, initgroups
 #include <sys/stat.h>		// open
 #include <sys/resource.h>	// getrlimit, setrlimit

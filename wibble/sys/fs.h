@@ -4,6 +4,7 @@
 #include <string>
 #include <dirent.h>		// opendir, closedir
 #include <memory>		// auto_ptr
+#include <sys/types.h>		// mode_t
 
 struct stat;
 
