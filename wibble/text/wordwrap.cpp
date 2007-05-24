@@ -1,8 +1,6 @@
 #include <wibble/text/wordwrap.h>
 #include <cstdlib>
 
-#include <iostream>
-
 using namespace std;
 
 namespace wibble {
