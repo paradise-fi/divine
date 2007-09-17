@@ -11,7 +11,6 @@
 #include <ext/algorithm>
 
 #include <wibble/iterator.h>
-#include <wibble/shared.h>
 #include <wibble/exception.h>
 
 #ifndef WIBBLE_RANGE_H
