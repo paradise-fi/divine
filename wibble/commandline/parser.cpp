@@ -46,7 +46,7 @@ bool StandardParserWithManpage::parse(int argc, const char* argv[])
 {
 	if (StandardParser::parse(argc, argv))
 		return true;
-	if (manpage->boolValue())
+	if (manpage->isSet())
 	{
 		// Output the manpage
 		commandline::Manpage man(name(), m_version, m_section, m_author);
