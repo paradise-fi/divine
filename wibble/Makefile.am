@@ -1,10 +1,10 @@
 wibbledir = $(includedir)/wibble
 
-#wibble_HEADERS = 
-#
-#lib_LTLIBRARIES = libwibble.la
-#libwibble_SOURCES = 
-#
+wibble_HEADERS = tests.h
+
+lib_LTLIBRARIES = libwibble.la
+libwibble_la_SOURCES = tests.cpp
+
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
