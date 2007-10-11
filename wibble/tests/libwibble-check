@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Uncomment to use root privileges to enable more accurate timings
+# run USE_ROOT=1 make check for better timings
+
+MAIN="libwibble-test"
+
+id=`date +%y%m%d%H%M%S`
+if [ "$USE_ROOT"x = x ]
+then
+	$DEBUGGER ./$MAIN $ARGS 2>&1 | tee `pwd`/testrun-$id
+else
+	sudo nice --5 su $LOGNAME -c \
+	"`pwd`/$MAIN $ARGS 2>&1 | tee `pwd`/testrun-$id"
+fi
+echo Output saved in `pwd`/testrun-$id
