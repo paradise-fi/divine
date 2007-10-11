@@ -1,8 +1,12 @@
 /** -*- C++ -*-
 */
 
-/* #include <gc/gc_cpp.h>
-   #include <gc/gc_allocator.h> */
+#include <wibble/config.h>
+#ifdef HAVE_GC
+#include <gc/gc_cpp.h>
+#include <gc/gc_allocator.h>
+#endif
+
 #include <vector>
 
 #ifndef WIBBLE_SHARED_H
@@ -11,13 +15,23 @@
 namespace wibble {
 
 template< typename T >
-struct SharedVector : /* gc, */ std::vector< T/*, gc_allocator< T >*/ > {
+struct SharedVector :
+#ifdef HAVE_GC
+    gc, std::vector< T, gc_allocator< T > >
+#else
+    std::vector< T >
+#endif
+{
 };
 
-/* template< typename T >
+template< typename T >
 T &shared() {
+#ifdef HAVE_GC
     return *(new (GC) T());
-    } */
+#else // leak memory
+    return *(new T());
+#endif
+}
 
 }
 

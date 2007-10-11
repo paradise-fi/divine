@@ -18,10 +18,10 @@ INSTALL_FILES( /include/wibble/commandline .h ${H_CMDL} )
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
                 ${wibble_BINARY_DIR}/config.h )
 
-add_definitions( ${OPT_FLAGS} )
+add_definitions( ${OPT_FLAGS} ${GC_DEFS} )
 ADD_LIBRARY( wibble STATIC ${WSRC} )
 SET_TARGET_PROPERTIES( wibble PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_FINAL )
-TARGET_LINK_LIBRARIES( wibble )
+TARGET_LINK_LIBRARIES( wibble ${GC_LIBS} )
 INSTALL_TARGETS( /lib wibble )
 
 ADD_SUBDIRECTORY( tests )
@@ -31,5 +31,5 @@ IF( XXX_BUILD_TESTING )
   ADD_LIBRARY( wibble-testing SHARED ${WSRC} )
   SET_TARGET_PROPERTIES( wibble-testing
                          PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_TESTING )
-  TARGET_LINK_LIBRARIES( wibble-testing gc )
+  TARGET_LINK_LIBRARIES( wibble-testing ${GC_LIBS} )
 ENDIF( XXX_BUILD_TESTING )
