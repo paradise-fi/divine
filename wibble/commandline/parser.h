@@ -63,11 +63,11 @@ public:
 	StandardParser(const std::string& appname, const std::string& version) :
 		m_appname(appname), m_version(version)
 	{
-		helpGroup = createGroup("Help options");
-		help = helpGroup->create<BoolOption>("help", 'h', "help", "",
+		helpGroup = addGroup("Help options");
+		help = helpGroup->add<BoolOption>("help", 'h', "help", "",
 				"print commandline help and exit");
 		help->addAlias('?');
-		this->version = helpGroup->create<BoolOption>("version", 0, "version", "",
+		this->version = helpGroup->add<BoolOption>("version", 0, "version", "",
 				"print the program version and exit");
 	}
 
@@ -99,7 +99,7 @@ public:
 		StandardParser(appname, version),
 		m_section(section), m_author(author)
 	{
-		manpage = helpGroup->create<StringOption>("manpage", 0, "manpage", "[hooks]",
+		manpage = helpGroup->add<StringOption>("manpage", 0, "manpage", "[hooks]",
 				"output the " + m_appname + " manpage and exit");
 	}
 
@@ -122,7 +122,7 @@ public:
 			const std::string& author) :
 		StandardParserWithManpage(appname, version, section, author)
 	{
-		helpCommand = createEngine("help", "[command]", "print help information",
+		helpCommand = addEngine("help", "[command]", "print help information",
 				"With no arguments, print a summary of available commands.  "
 				"If given a command name as argument, print detailed informations "
 				"about that command.");
