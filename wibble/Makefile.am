@@ -55,11 +55,11 @@ INCLUDES = -I$(top_srcdir)/tests/ -I$(top_srcdir) -DWIBBLE_COMPILE_TESTSUITE -DT
 
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libwibble.pc
+pkgconfig_DATA = libwibble.pc libwibble-gc.pc
 
 m4dir = $(datadir)/aclocal
 m4_DATA = libwibble.m4
 
-EXTRA_DIST = libwibble.m4 libwibble.pc.in
+EXTRA_DIST = libwibble.m4 libwibble.pc.in libwibble-gc.pc.in
 
 # vim:set ts=4 sw=4:

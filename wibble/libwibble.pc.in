@@ -7,3 +7,4 @@ Name: libwibble
 Description: Useles^H^H^Hful C++ hacks
 Version: @VERSION@
 Libs: -L${libdir} -lwibble
+Cflags: -I@BOOST_INCLUDE_PATH@

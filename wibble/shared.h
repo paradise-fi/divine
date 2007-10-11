@@ -1,8 +1,6 @@
 /** -*- C++ -*-
 */
 
-#cmakedefine HAVE_GC
-
 #ifdef HAVE_GC
 #include <gc/gc_cpp.h>
 #include <gc/gc_allocator.h>
