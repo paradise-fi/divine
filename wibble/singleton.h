@@ -23,6 +23,7 @@
  */
 
 #include <cstddef>
+#include <bits/stl_iterator_base_types.h>
 
 namespace wibble {
 
@@ -35,7 +36,7 @@ protected:
 public:
 	typedef T value_type;
 
-	class const_iterator
+	class const_iterator : public std::iterator<std::forward_iterator_tag, const T, void, const T*, const T&>
 	{
 		const T* value;
 
@@ -54,7 +55,7 @@ public:
 		friend class Singleton<T>;
 	};
 
-	class iterator
+	class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
 	{
 		T* value;
 

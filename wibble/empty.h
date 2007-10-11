@@ -23,6 +23,7 @@
  */
 
 #include <cstddef>
+#include <bits/stl_iterator_base_types.h>
 
 namespace wibble {
 
@@ -32,7 +33,7 @@ class Empty
 public:
 	typedef T value_type;
 
-	class const_iterator
+	class const_iterator : public std::iterator<std::forward_iterator_tag, const T, void, const T*, const T&>
 	{
 	public:
 		const T& operator*() const { return *(T*)0; }
@@ -42,7 +43,7 @@ public:
 		bool operator!=(const const_iterator&) const { return false; }
 	};
 	
-	class iterator
+	class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
 	{
 	public:
 		T& operator*() const { return *(T*)0; }
