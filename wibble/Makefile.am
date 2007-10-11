@@ -53,4 +53,13 @@ libwibble_la_SOURCES = \
 
 INCLUDES = -I$(top_srcdir)/tests/ -I$(top_srcdir) -DWIBBLE_COMPILE_TESTSUITE -DTEST_DIR=\"`pwd`/$(top_builddir)/wibble/tests/work/\"
 
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libwibble.pc
+
+m4dir = $(datadir)/aclocal
+m4_DATA = libwibble.m4
+
+EXTRA_DIST = libwibble.m4 libwibble.pc.in
+
 # vim:set ts=4 sw=4:

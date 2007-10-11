@@ -30,6 +30,10 @@ INSTALL_TARGETS( /lib wibble )
 
 ADD_SUBDIRECTORY( tests )
 
+CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
+INSTALL_FILES( /lib/pkgconfig FILES libwibble.pc )
+install_files( /share/aclocal FILES libwibble.m4 )
+
 IF( XXX_BUILD_TESTING )
   SET( TEST_DIR ${wibble_BINARY_DIR}/tests/work/ )
   ADD_LIBRARY( wibble-testing SHARED ${WSRC} )
