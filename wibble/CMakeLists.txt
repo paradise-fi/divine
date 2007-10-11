@@ -34,7 +34,9 @@ SET_TARGET_PROPERTIES( wibble PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_FINAL )
 TARGET_LINK_LIBRARIES( wibble )
 INSTALL_TARGETS( /lib wibble )
 
+IF( HAVE_TUT )
 ADD_SUBDIRECTORY( tests )
+ENDIF( HAVE_TUT )
 
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble-gc.pc.cmake-in ${wibble_BINARY_DIR}/libwibble-gc.pc @ONLY )

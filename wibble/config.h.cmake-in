@@ -1,3 +1,4 @@
+#cmakedefine HAVE_TUT
 #cmakedefine HAVE_GC
 #define WIBBLE_COMPILE_TESTSUITE
 #ifdef WIBBLE_BUILD_TESTING
