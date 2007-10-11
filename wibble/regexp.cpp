@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
-#include <wibble/text/regexp.h>
+#include <wibble/regexp.h>
 #include <wibble/exception.tcc>
 
 using namespace std;
@@ -46,8 +46,6 @@ Regexp::Regexp(const regex_t& re, int code,
 }
 
 }
-
-namespace text {
 
 ////// Regexp
 
@@ -142,7 +140,6 @@ Tokenizer::const_iterator& Tokenizer::const_iterator::operator++()
 	return *this;
 }
 
-}
 }
 
 // vim:set ts=4 sw=4:

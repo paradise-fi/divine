@@ -50,8 +50,6 @@ public:
 
 }
 
-namespace text {
-
 class Regexp
 {
 protected:
@@ -83,7 +81,7 @@ public:
 class Tokenizer
 {
 	const std::string& str;
-	wibble::text::Regexp re;
+	wibble::Regexp re;
 
 public:
 	class const_iterator
@@ -117,7 +115,6 @@ public:
 	const_iterator end() { return const_iterator(*this, false); }
 };
 
-}
 }
 
 // vim:set ts=4 sw=4:

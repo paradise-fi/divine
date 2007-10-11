@@ -1,15 +1,14 @@
 #include <wibble/config.h>
-#include <wibble/text/regexp.h>
+#include <wibble/regexp.h>
 using namespace std;
 using namespace wibble;
-using namespace wibble::text;
 
 #include <wibble/tests/tut-wibble.h>
 
 namespace tut {
 
-struct wibble_text_regexp_shar {};
-TESTGRP( wibble_text_regexp );
+struct wibble_regexp_shar {};
+TESTGRP( wibble_regexp );
 
 // Test normal regular expression matching
 template<> template<>
