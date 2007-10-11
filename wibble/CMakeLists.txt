@@ -39,8 +39,7 @@ ADD_SUBDIRECTORY( tests )
 ENDIF( HAVE_TUT )
 
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
-CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble-gc.pc.cmake-in ${wibble_BINARY_DIR}/libwibble-gc.pc @ONLY )
-INSTALL_FILES( /lib/pkgconfig FILES libwibble.pc libwibble-gc.pc )
+INSTALL_FILES( /lib/pkgconfig FILES libwibble.pc )
 install_files( /share/aclocal FILES libwibble.m4 )
 
 IF( XXX_BUILD_TESTING )
