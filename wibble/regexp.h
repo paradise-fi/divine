@@ -115,6 +115,64 @@ public:
 	const_iterator end() { return const_iterator(*this, false); }
 };
 
+/**
+ * Split a string using a regular expression to match the token separators.
+ *
+ * This does a similar work to the split functions of perl, python and ruby.
+ */
+class Splitter
+{
+	wibble::Regexp re;
+
+public:
+	/**
+	 * Warning: the various iterators reuse the Regexps and therefore only one
+	 * iteration of a Splitter can be done at a given time.
+	 */
+	// TODO: add iterator_traits
+	class const_iterator
+	{
+		wibble::Regexp& re;
+		std::string cur;
+		std::string next;
+
+	public:
+		const_iterator(wibble::Regexp& re, const std::string& str) : re(re), next(str) { ++*this; }
+		const_iterator(wibble::Regexp& re) : re(re) {}
+
+		const_iterator& operator++();
+
+		const std::string& operator*() const
+		{
+			return cur;
+		}
+		const std::string* operator->() const
+		{
+			return &cur;
+		}
+		bool operator==(const const_iterator& ti) const
+		{
+			return cur == ti.cur && next == ti.next;
+		}
+		bool operator!=(const const_iterator& ti) const
+		{
+			return cur != ti.cur || next != ti.next;
+		}
+	};
+
+	/**
+	 * Create a splitter that uses the given regular expression to find tokens.
+	 */
+	Splitter(const std::string& re, int flags)
+		: re(re, 1, flags) {}
+
+	/**
+	 * Split the string and iterate the resulting tokens
+	 */
+	const_iterator begin(const std::string& str) { return const_iterator(re, str); }
+	const_iterator end() { return const_iterator(re); }
+};
+
 }
 
 // vim:set ts=4 sw=4:

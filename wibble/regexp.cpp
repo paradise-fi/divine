@@ -140,6 +140,19 @@ Tokenizer::const_iterator& Tokenizer::const_iterator::operator++()
 	return *this;
 }
 
+Splitter::const_iterator& Splitter::const_iterator::operator++()
+{
+	if (re.match(next))
+	{
+		cur = next.substr(0, re.matchStart(0));
+		next = next.substr(re.matchStart(0) + re.matchLength(0));
+	} else {
+		cur = next;
+		next = string();
+	}
+	return *this;
+}
+
 }
 
 // vim:set ts=4 sw=4:

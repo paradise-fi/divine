@@ -77,6 +77,27 @@ void to::test< 4 >() {
 	ensure(i == tok.end());
 }
 
+// Test Splitter
+template<> template<>
+void to::test< 5 >()
+{
+	utils::Splitter splitter("[ \t]+or[ \t]+", REG_EXTENDED | REG_ICASE);
+	utils::Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
+	ensure_equals(*i, "a");
+	ensure_equals(i->size(), 1u);
+	++i;
+	ensure_equals(*i, "b");
+	ensure_equals(i->size(), 1u);
+	++i;
+	ensure_equals(*i, "c");
+	ensure_equals(i->size(), 1u);
+	++i;
+	ensure_equals(*i, "dadada");
+	ensure_equals(i->size(), 6u);
+	++i;
+	ensure(i == splitter.end());
+}
+
 }
 
 // vim:set ts=4 sw=4:
