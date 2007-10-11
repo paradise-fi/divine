@@ -18,6 +18,8 @@ INSTALL_FILES( /include/wibble .h ${wibble_BINARY_DIR}/config.h )
 
 CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
                 ${wibble_BINARY_DIR}/config.h )
+CONFIGURE_FILE( ${wibble_SOURCE_DIR}/shared.h.cmake-in
+                ${wibble_BINARY_DIR}/shared.h )
 
 add_definitions( ${OPT_FLAGS} ${GC_DEFS} )
 ADD_LIBRARY( wibble STATIC ${WSRC} )

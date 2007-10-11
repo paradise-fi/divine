@@ -1,7 +1,9 @@
 /** -*- C++ -*-
 */
 
-#include <wibble/config.h>
+#cmakedefine HAVE_GC
+
+//#include <wibble/config.h>
 #ifdef HAVE_GC
 #include <gc/gc_cpp.h>
 #include <gc/gc_allocator.h>
