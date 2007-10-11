@@ -81,8 +81,8 @@ void to::test< 4 >() {
 template<> template<>
 void to::test< 5 >()
 {
-	utils::Splitter splitter("[ \t]+or[ \t]+", REG_EXTENDED | REG_ICASE);
-	utils::Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
+	Splitter splitter("[ \t]+or[ \t]+", REG_EXTENDED | REG_ICASE);
+	Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
 	ensure_equals(*i, "a");
 	ensure_equals(i->size(), 1u);
 	++i;
