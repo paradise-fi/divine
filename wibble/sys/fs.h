@@ -11,11 +11,28 @@ namespace wibble {
 namespace sys {
 namespace fs {
 
-/// stat() a filename
+/**
+ * stat() the given file and return the struct stat with the results.
+ * If the file does not exist, return NULL.
+ * Raises exceptions in case of errors.
+ */
 std::auto_ptr<struct stat> stat(const std::string& pathname);
 
 /// access() a filename
 bool access(const std::string &s, int m);
+
+/// Create the given directory, if it does not already exists.
+/// It will complain if the given pathname already exists but is not a
+/// directory.
+void mkdirIfMissing(const std::string& dir, mode_t mode);
+
+/// Create all the component of the given directory, including the directory
+/// itself.
+void mkpath(const std::string& dir);
+
+/// Ensure that the path to the given file exists, creating it if it does not.
+/// The file itself will not get created.
+void mkFilePath(const std::string& file);
 
 /// Nicely wrap access to directories
 class Directory
