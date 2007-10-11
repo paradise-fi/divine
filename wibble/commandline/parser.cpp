@@ -7,6 +7,19 @@ using namespace std;
 namespace wibble {
 namespace commandline {
 
+void StandardParser::outputHelp(std::ostream& out)
+{
+	commandline::Help help(m_appname, m_version);
+	commandline::Engine* e = m_engine.foundCommand();
+
+	if (e)
+		// Help on a specific command
+		help.outputHelp(out, *e);
+	else
+		// General help
+		help.outputHelp(out, m_engine);
+}
+
 bool StandardParser::parse(int argc, const char* argv[])
 {
 	if (Parser::parse(argc, argv))
@@ -15,15 +28,7 @@ bool StandardParser::parse(int argc, const char* argv[])
 	if (help->boolValue())
 	{
 		// Provide help as requested
-		commandline::Help help(m_appname, m_version);
-		commandline::Engine* e = m_engine.foundCommand();
-
-		if (e)
-			// Help on a specific command
-			help.outputHelp(cout, *e);
-		else
-			// General help
-			help.outputHelp(cout, m_engine);
+		outputHelp(cout);
 		return true;
 	}
 	if (version->boolValue())

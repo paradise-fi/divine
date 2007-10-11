@@ -73,6 +73,8 @@ public:
 		delete version;
 	}
 
+	void outputHelp(std::ostream& out);
+
 	bool parse(int argc, const char* argv[]);
 
 	OptionGroup* helpGroup;
