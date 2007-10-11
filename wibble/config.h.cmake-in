@@ -3,3 +3,5 @@
 #ifdef WIBBLE_BUILD_TESTING
 // when we decide to have different testing/final builds
 #endif
+
+#cmakedefine HAVE_TUT
