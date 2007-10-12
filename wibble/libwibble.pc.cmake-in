@@ -4,7 +4,6 @@ libdir=@CMAKE_INSTALL_PREFIX@/lib
 includedir=@CMAKE_INSTALL_PREFIX@/include
 
 Name: libwibble
-Description: Useles^H^H^Hful C++ hacks
+Description: Library of useful C++ code
 Version: @VERSION@
 Libs: -L${libdir} -lwibble
-Cflags: -I@BOOST_INCLUDE_PATH@
