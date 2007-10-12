@@ -1,5 +1,6 @@
-PROJECT( wibble )
+project( wibble )
 
+# glob through source files/headers
 file( GLOB WSRC_TOP *.cpp )
 file( GLOB WSRC_CMDL commandline/*.cpp )
 file( GLOB WSRC_SYS sys/*.cpp )
@@ -12,40 +13,35 @@ file( GLOB H_LOG log/*.h )
 file( GLOB H_TEXT text/*.h )
 file( GLOB TCC_TOP *.tcc )
 
-SET( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} )
+set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} )
 
+# libwibble.a
 set_source_files_properties( ${WSRC} COMPILE_FLAGS -fPIC )
-
-INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
-INSTALL_FILES( /include/wibble .h ${H_TOP} )
-INSTALL_FILES( /include/wibble .tcc ${TCC_TOP} )
-INSTALL_FILES( /include/wibble/commandline .h ${H_CMDL} )
-INSTALL_FILES( /include/wibble/sys .h ${H_SYS} )
-INSTALL_FILES( /include/wibble/log .h ${H_LOG} )
-INSTALL_FILES( /include/wibble/text .h ${H_TEXT} )
-INSTALL_FILES( /include/wibble .h ${wibble_BINARY_DIR}/config.h )
-
-CONFIGURE_FILE( ${wibble_SOURCE_DIR}/config.h.cmake-in
-                ${wibble_BINARY_DIR}/config.h )
-
+include_directories( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 add_definitions( ${OPT_FLAGS} )
-ADD_LIBRARY( wibble STATIC ${WSRC} )
-SET_TARGET_PROPERTIES( wibble PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_FINAL )
-TARGET_LINK_LIBRARIES( wibble )
-INSTALL_TARGETS( /lib wibble )
+add_library( wibble STATIC ${WSRC} )
 
-IF( HAVE_TUT )
-ADD_SUBDIRECTORY( tests )
-ENDIF( HAVE_TUT )
+# make check
+if( HAVE_TUT )
+add_subdirectory( tests )
+endif( HAVE_TUT )
 
-CONFIGURE_FILE( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
-INSTALL_FILES( /lib/pkgconfig FILES libwibble.pc )
-install_files( /share/aclocal FILES libwibble.m4 )
+# cmake-time configuration
+configure_file( ${wibble_SOURCE_DIR}/config.h.cmake-in
+                ${wibble_BINARY_DIR}/config.h )
+configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in
+                ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
 
-IF( XXX_BUILD_TESTING )
-  SET( TEST_DIR ${wibble_BINARY_DIR}/tests/work/ )
-  ADD_LIBRARY( wibble-testing SHARED ${WSRC} )
-  SET_TARGET_PROPERTIES( wibble-testing
-                         PROPERTIES DEFINE_SYMBOL WIBBLE_BUILD_TESTING )
-  TARGET_LINK_LIBRARIES( wibble-testing )
-ENDIF( XXX_BUILD_TESTING )
+# make install
+install( TARGETS wibble DESTINATION lib )
+install( FILES ${wibble_BINARY_DIR}/libwibble.pc DESTINATION lib/pkgconfig )
+install( FILES libwibble.m4 DESTINATION share/aclocal )
+
+install( FILES ${H_TOP} DESTINATION include/wibble )
+install( FILES ${TCC_TOP} DESTINATION include/wibble )
+install( FILES ${H_CMDL} DESTINATION include/wibble/commandline )
+install( FILES ${H_SYS} DESTINATION include/wibble/sys )
+install( FILES ${H_LOG} DESTINATION include/wibble/log )
+install( FILES ${H_TEXT} DESTINATION include/wibble/text )
+install( FILES ${wibble_BINARY_DIR}/config.h DESTINATION include/wibble )
+
