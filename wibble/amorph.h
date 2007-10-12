@@ -3,19 +3,79 @@
     @author Peter Rockai <me@mornfall.net>
 */
 
-#include <boost/type_traits.hpp> // for is_polymorphic, is_void
-
 #include <iostream> // for noise
 #include <cassert>
 
 #include <wibble/mixin.h>
 #include <wibble/cast.h>
 #include <wibble/maybe.h>
+#include <wibble/sfinae.h>
 
 #ifndef WIBBLE_AMORPH_H
 #define WIBBLE_AMORPH_H
 
 namespace wibble {
+
+template< typename _T >
+struct ReturnType {
+    typedef _T T;
+};
+
+template<>
+struct ReturnType< void > {
+    typedef Unit T;
+};
+
+    template< typename F, typename R >
+    struct SanitizeReturn {
+        inline typename ReturnType< R >::T call(
+            typename F::argument_type a )
+        {
+            return f( a );
+        };
+    };
+
+
+    template< typename F >
+    struct SanitizeReturn< F, void > {
+        inline Unit call( typename F::argument_type a )
+        {
+            f( a );
+            return Unit();
+        }
+    };
+
+    template< int A >
+    struct IsZero {
+        static const bool value = false;
+    };
+
+    template<>
+    struct IsZero< 0 > {
+        static const bool value = true;
+    };
+
+    template< typename T >
+    struct IsPolymorphic {
+        struct A : T {
+            virtual ~A();
+        };
+        struct B : T {};
+        static const bool value = IsZero< sizeof( A ) - sizeof( B ) >::value;
+    };
+
+template< typename F >
+struct SanitizeResultType {
+    SanitizeResultType( F _f ) : f( _f ) {}
+    typedef typename ReturnType< typename F::result_type >::T result_type;
+
+    result_type operator()( typename F::argument_type a ) {
+        return SanitizeReturn< F, typename F::result_type >().call( a );
+    }
+
+
+    F f;
+};
 
 #ifndef SWIG_I
 struct Baseless {};
@@ -54,19 +114,19 @@ template< typename W, typename Interface >
 struct MorphBase : MorphInterface< Interface > {
     MorphBase( const W &w ) : m_wrapped( w ) {}
 
-    VirtualBase *virtualBase( const boost::true_type & ) {
-        // std::cerr << "MorphBase::virtualBase( true ) called" << std::endl;
+    template< typename _W >
+    typename EnableIf< IsPolymorphic< _W >, VirtualBase *>::T virtualBase() {
         return dynamic_cast< VirtualBase * >( &m_wrapped );
     }
 
-    VirtualBase *virtualBase( const boost::false_type & ) {
-        // std::cerr << "MorphBase::virtualBase( false ) called" << std::endl;
+    template< typename _W >
+    typename EnableIf< TNot< IsPolymorphic< _W > >, VirtualBase *>::T
+    virtualBase() {
         return 0;
     }
 
     virtual VirtualBase *virtualBase() {
-        // std::cerr << "MorphBase::virtualBase() called on " << typeid(W).name() << std::endl;
-        return virtualBase( boost::is_polymorphic< W >() );
+        return virtualBase< W >();
     }
 
     W &wrapped() {
@@ -281,31 +341,13 @@ struct Amorph {
 
     template< typename F >
     Maybe< typename F::result_type > ifType( F func ) {
-        return ifType< F::argument_type >( func );
-    }
-
-    template< typename T, typename F >
-    Maybe< void > ifType_void( F func, const boost::true_type& ) {
-        T *ptr = impl< T >();
-        if (ptr) {
-            func( *ptr );
-        }
-        return Maybe< void >();
-    }
-
-    template< typename T, typename F >
-    Maybe< typename F::result_type > ifType_void( F func, const boost::false_type& ) {
+        typedef typename F::argument_type T;
         typedef Maybe< typename F::result_type > rt;
         T *ptr = impl<T>();
         if (ptr) {
             return rt::Just( func(*ptr) );
         }
         return rt::Nothing();
-    }
-
-    template< typename T, typename F >
-    Maybe< typename F::result_type > ifType( F func ) {
-        return ifType_void< T >( func, boost::is_void< typename F::result_type >() );
     }
 
     const Interface *implementation() const {
