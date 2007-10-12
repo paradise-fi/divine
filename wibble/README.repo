@@ -55,6 +55,7 @@ little different:
     darcs init
     mkdir src
     vi src/main.c
+    darcs add -r src
     darcs record
     ...
 
