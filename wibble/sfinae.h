@@ -1,9 +1,9 @@
 // -*- C++ -*- Substitution Failure Is Not An Error
 
-#ifndef DIVINE_SFINAE_H
-#define DIVINE_SFINAE_H
+#ifndef DIVINE_WIBBLE_H
+#define DIVINE_WIBBLE_H
 
-namespace divine {
+namespace wibble {
 
 struct TTrue {
     static const bool value = true;
