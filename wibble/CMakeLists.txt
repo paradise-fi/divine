@@ -1,4 +1,5 @@
 project( wibble )
+include( test.cmake )
 
 # glob through source files/headers
 file( GLOB WSRC_TOP *.cpp )
@@ -12,6 +13,8 @@ file( GLOB H_SYS sys/*.h )
 file( GLOB H_LOG log/*.h )
 file( GLOB H_TEXT text/*.h )
 file( GLOB TCC_TOP *.tcc )
+file( GLOB testh *.test.h commandline/*.test.h sys/*.test.h
+                 log/*.test.h text/*.test.h )
 
 set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} )
 
@@ -22,9 +25,8 @@ add_definitions( ${OPT_FLAGS} )
 add_library( wibble STATIC ${WSRC} )
 
 # make check
-if( HAVE_TUT )
-add_subdirectory( tests )
-endif( HAVE_TUT )
+wibble_add_test( wibble-test ${testh} )
+wibble_check_target( wibble-test )
 
 # cmake-time configuration
 configure_file( ${wibble_SOURCE_DIR}/config.h.cmake-in
