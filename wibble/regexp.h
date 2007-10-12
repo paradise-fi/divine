@@ -119,6 +119,14 @@ public:
  * Split a string using a regular expression to match the token separators.
  *
  * This does a similar work to the split functions of perl, python and ruby.
+ *
+ * Example code:
+ * \code
+ *   utils::Splitter splitter("[ \t]*,[ \t]*", REG_EXTENDED);
+ *   vector<string> split;
+ *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
+ * \endcode
+ *
  */
 class Splitter
 {
