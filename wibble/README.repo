@@ -1,3 +1,6 @@
+Wibble repositories
+===================
+
 There are two darcs repositories for wibble:
 
  - http://people.debian.org/~enrico/wibble/standalone
@@ -11,30 +14,77 @@ Embeddable contains only the wibble/ directory and can be used to embed wibble
 into other source directories: that way you can use wibble code without adding
 a build dependency.
 
-Example use of embedded wibble:
+Using embedded wibble
+=====================
 
-  Create a new project of yours:
+Without darcs
+-------------
+
+Create a new project of yours (assuming you do not want to use darcs):
 
     mkdir my-project
     cd my-project
-    darcs/git/bzr/hg/svn... init
+    git/bzr/hg/svn... init
     mkdir src
     vi src/main.c
-    darcs/git/bzr/hg/svn... commit changes
+    git/bzr/hg/svn... commit changes
 
-  At some point you realise you need to embed wibble:
+At some point you realise you need to embed wibble:
     
-    darcs get http://people.debian.org/~enrico/wibble/embeddable wibble
-    
-    Now you plug wibble/ into your build system, be it autotools or cmake, and
-    you're done.
-    
-  Someone made changes to wibble that you would like to pull:
-
+    darcs init
     darcs pull http://people.debian.org/~enrico/wibble/embeddable
     
-  If you instead make changes to wibble, you can record them with darcs and
-  others can pull from you.
+Now you plug wibble/ into your build system, be it autotools or
+cmake, and you're done.
+    
+Someone made changes to wibble that you would like to pull:
+
+    darcs pull http://people.debian.org/~enrico/wibble/embeddable
+
+If you instead make changes to wibble, you can record them with darcs and
+others can pull from you.
+
+With darcs
+----------
+
+However, if your project is managed by darcs, the sequence is a
+little different:
+
+    mkdir my-project
+    cd my-project
+    darcs init
+    mkdir src
+    vi src/main.c
+    darcs record
+    ...
+
+Now you want wibble, and under assumption, that your repository
+never contained a directory called "wibble", you can do this:
+
+    darcs pull http://people.debian.org/~enrico/wibble/embeddable
+  
+At which point, the both repositories will be combined into a single
+one, with patches from both. This is fine with darcs, since the
+patches do not conflict. This way, people using your repository will
+never need to worry about wibble, since you can integrate it on
+buildsystem level as well, and it becomes natural part of both your
+repository and source tree. When you need to update wibble in your
+source tree, you again just issue
+
+    darcs pull http://people.debian.org/~enrico/wibble/embeddable
+
+And the missing changes to wibble will be brought into your copy.
+
+Note: If you have (or had at some point in the past) some sort of
+wibble/ subdirectory already in your darcs repository, this will lead
+to conflicts. I do not know how well things will turn out, it may be
+that it will work, it may be it won't. But since you usually know
+pretty soon that you want wibble, and using a directory name "wibble"
+for your own stuff is unlikely anyway, i do not expect this to be a
+problem.
+
+Standalone wibble
+=================
 
 The standalone wibble is just like any other standalone project that embeds
 wibble, pulling changes from embeddable.
