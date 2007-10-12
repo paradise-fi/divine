@@ -5,6 +5,8 @@
 
 namespace wibble {
 
+struct Unit {};
+
 struct TTrue {
     static const bool value = true;
 };
@@ -67,13 +69,13 @@ struct TImplyC : TNot< TAndC< a, TNotC< b >::value > > {};
 template< typename A, typename B >
 struct TImply : TImplyC< A::value, B::value > {};
 
-template< bool, typename T = Void >
+template< bool, typename T = Unit >
 struct EnableIfC {};
 
 template< typename Type >
 struct EnableIfC< true, Type > { typedef Type T; };
 
-template< typename X, typename T = Void >
+template< typename X, typename T = Unit >
 struct EnableIf : EnableIfC< X::value, T > {};
 
 }
