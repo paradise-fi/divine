@@ -26,43 +26,43 @@ struct ReturnType< void > {
     typedef Unit T;
 };
 
-    template< typename F, typename R >
-    struct SanitizeReturn {
-        inline typename ReturnType< R >::T call(
-            typename F::argument_type a )
-        {
-            return f( a );
-        };
+template< typename F, typename R >
+struct SanitizeReturn {
+    inline typename ReturnType< R >::T call(
+        typename F::argument_type a )
+    {
+        return f( a );
     };
+};
 
 
-    template< typename F >
-    struct SanitizeReturn< F, void > {
-        inline Unit call( typename F::argument_type a )
-        {
-            f( a );
-            return Unit();
-        }
-    };
+template< typename F >
+struct SanitizeReturn< F, void > {
+    inline Unit call( typename F::argument_type a )
+    {
+        f( a );
+        return Unit();
+    }
+};
 
-    template< int A >
-    struct IsZero {
-        static const bool value = false;
-    };
+template< int A >
+struct IsZero {
+    static const bool value = false;
+};
 
-    template<>
-    struct IsZero< 0 > {
-        static const bool value = true;
-    };
+template<>
+struct IsZero< 0 > {
+    static const bool value = true;
+};
 
-    template< typename T >
-    struct IsPolymorphic {
-        struct A : T {
-            virtual ~A();
-        };
-        struct B : T {};
-        static const bool value = IsZero< sizeof( A ) - sizeof( B ) >::value;
+template< typename T >
+struct IsPolymorphic {
+    struct A : T {
+        virtual ~A();
     };
+    struct B : T {};
+    static const bool value = IsZero< sizeof( A ) - sizeof( B ) >::value;
+};
 
 template< typename F >
 struct SanitizeResultType {
