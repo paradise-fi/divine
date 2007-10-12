@@ -1,22 +1,10 @@
-/** -*- C++ -*-
-    @file wibble/tests/test_amorph.cpp
-    @author Peter Rockai <me@mornfall.net>
-*/
+// -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
-#include <wibble/config.h>
 #include <wibble/amorph.h>
 
-#include <wibble/tests/tut-wibble.h>
-#include <list>
-
-namespace tut {
+namespace {
 
 using namespace wibble;
-
-struct amorph_shar {
-};
-
-TESTGRP( amorph );
 
 struct TestInterface {
     virtual int value() = 0;
@@ -74,21 +62,24 @@ TestMorph< T > testMorph( T t ) {
     return TestMorph< T >( t );
 }
 
-template<> template<>
-void to::test<1> ()
-{
-    Test1 t1;
-    Test2 t2;
-    Test3 t3;
-    Test t = testMorph( t1 );
-    ensure_equals( t.value(), 1 );
-    ensure_equals( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 1 ) );
-    t = testMorph( t2 );
-    ensure_equals( t.value(), 2 );
-    ensure_equals( t.ifType( ExtractT1Value() ), Maybe< int >::Nothing() );
-    t = testMorph( t3 );
-    ensure_equals( t.value(), 3 );
-    ensure_equals( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 3 ) );
-}
+struct _TestAmorph {
+    Test basic()
+    {
+        Test1 t1;
+        Test2 t2;
+        Test3 t3;
+        Test t = testMorph( t1 );
+        assert_eq( t.value(), 1 );
+        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 1 ) );
+        t = testMorph( t2 );
+        assert_eq( t.value(), 2 );
+        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Nothing() );
+        t = testMorph( t3 );
+        assert_eq( t.value(), 3 );
+        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 3 ) );
+    }
+};
 
 }
+
+typedef _TestAmorph TestAmorph;
