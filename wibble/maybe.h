@@ -23,16 +23,25 @@ namespace wibble {
 */
 
 template <typename T>
-struct Maybe {
-    bool nothing() { return m_nothing; }
+struct Maybe : mixin::Comparable< Maybe< T > > {
+    bool nothing() const { return m_nothing; }
     T &value() { return m_value; }
+    const T &value() const { return m_value; }
     Maybe( bool n, const T &v ) : m_nothing( n ), m_value( v ) {}
     Maybe( const T &df = T() )
        : m_nothing( true ), m_value( df ) {}
     static Maybe Just( const T &t ) { return Maybe( false, t ); }
     static Maybe Nothing( const T &df = T() ) {
         return Maybe( true, df ); }
-    operator T() { return value(); }
+    operator T() const { return value(); }
+
+    bool operator <=( const Maybe< T > &o ) const {
+        if (o.nothing())
+            return true;
+        if (nothing())
+            return false;
+        return value() <= o.value();
+    }
 protected:
     bool m_nothing:1;
     T m_value;
