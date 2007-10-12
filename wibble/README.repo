@@ -1,0 +1,40 @@
+There are two darcs repositories for wibble:
+
+ - http://people.debian.org/~enrico/wibble/standalone
+ - http://people.debian.org/~enrico/wibble/embeddable
+
+Standalone contains the whole wibble package, including the toplevel cmake and
+autotools configuration and debian and fedora packaging.  It is used to build
+the wibble development library.
+
+Embeddable contains only the wibble/ directory and can be used to embed wibble
+into other source directories: that way you can use wibble code without adding
+a build dependency.
+
+Example use of embedded wibble:
+
+  Create a new project of yours:
+
+    mkdir my-project
+    cd my-project
+    darcs/git/bzr/hg/svn... init
+    mkdir src
+    vi src/main.c
+    darcs/git/bzr/hg/svn... commit changes
+
+  At some point you realise you need to embed wibble:
+    
+    darcs get http://people.debian.org/~enrico/wibble/embeddable wibble
+    
+    Now you plug wibble/ into your build system, be it autotools or cmake, and
+    you're done.
+    
+  Someone made changes to wibble that you would like to pull:
+
+    darcs pull http://people.debian.org/~enrico/wibble/embeddable
+    
+  If you instead make changes to wibble, you can record them with darcs and
+  others can pull from you.
+
+The standalone wibble is just like any other standalone project that embeds
+wibble, pulling changes from embeddable.
