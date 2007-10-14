@@ -24,7 +24,7 @@ public:
 	}
 };
 
-struct _TestMixin {
+struct TestMixin {
 
 // Test Comparable mixin
     Test comparable() {
@@ -71,5 +71,3 @@ struct _TestMixin {
 };
 
 }
-
-typedef _TestMixin TestMixin;
