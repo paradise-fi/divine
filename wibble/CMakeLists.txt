@@ -26,6 +26,7 @@ add_library( wibble STATIC ${WSRC} )
 
 # make check
 wibble_add_test( wibble-test ${testh} )
+target_link_libraries( wibble-test wibble )
 wibble_check_target( wibble-test )
 
 # cmake-time configuration
