@@ -1,6 +1,6 @@
 macro( wibble_add_test name  )
   add_custom_command(
-    OUTPUT "${name}-generated.cpp"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp"
     DEPENDS ${wibble_SOURCE_DIR}/test-genrunner.pl ${ARGN}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND perl ${wibble_SOURCE_DIR}/test-genrunner.pl ${ARGN} > ${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp
