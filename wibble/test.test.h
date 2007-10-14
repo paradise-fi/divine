@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Implementation of some test utility functions
  *
  * Copyright (C) 2003,2004,2005,2006  Enrico Zini <enrico@debian.org>
@@ -18,28 +18,18 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
-#if 0
-#include <wibble/config.h>
-#include <wibble/tests/tut-wibble.h>
-#endif
+#include <wibble/test.h>
 
-#include <wibble/tests.h>
+namespace {
 
-namespace tut {
+struct TestTests {
 
-using namespace wibble::tests;
+    Test assertions() {
+	assert(true);
+	assert_eq(42, 42);
+    }
 
-struct tests_shar {
 };
-
-TESTGRP(tests);
-
-template<> template<>
-void to::test<1>()
-{
-	ensure(true);
-	ensure_equals(42, 42);
-}
 
 }
 
