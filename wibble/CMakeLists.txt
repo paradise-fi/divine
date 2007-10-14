@@ -16,7 +16,7 @@ SET( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} )
 
 set_source_files_properties( ${WSRC} COMPILE_FLAGS -fPIC )
 
-INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. ${BOOST_INCLUDE_PATH} )
+INCLUDE_DIRECTORIES( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 INSTALL_FILES( /include/wibble .h ${H_TOP} )
 INSTALL_FILES( /include/wibble .tcc ${TCC_TOP} )
 INSTALL_FILES( /include/wibble/commandline .h ${H_CMDL} )
