@@ -89,7 +89,7 @@ inline std::string trim(const std::string& str, const FUN& classifier)
  */
 inline std::string trim(const std::string& str)
 {
-	return trim(str, isspace);
+    return trim(str, ::isspace);
 }
 
 /// Convert a string to uppercase
