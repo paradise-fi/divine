@@ -23,6 +23,7 @@ set_source_files_properties( ${WSRC} COMPILE_FLAGS -fPIC )
 include_directories( ${wibble_SOURCE_DIR}/.. ${wibble_BINARY_DIR}/.. )
 add_definitions( ${OPT_FLAGS} )
 add_library( wibble STATIC ${WSRC} )
+target_link_libraries( wibble pthread )
 
 # make check
 wibble_add_test( wibble-test ${testh} )
