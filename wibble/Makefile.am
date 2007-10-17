@@ -31,11 +31,11 @@ wibble_HEADERS = \
     tests.h
 
 wibblecommandline_HEADERS = \
-	commandline/core.h \
-	commandline/options.h \
-	commandline/engine.h \
-	commandline/parser.h \
-	commandline/doc.h
+    commandline/core.h \
+    commandline/options.h \
+    commandline/engine.h \
+    commandline/parser.h \
+    commandline/doc.h
 
 wibbletest_HEADERS = \
     tests/tut-prereq.h \
@@ -47,21 +47,21 @@ noinst_LTLIBRARIES = libwibble.la
 endif
 
 libwibble_la_SOURCES = \
-	exception.cpp \
-	empty.cpp \
-	singleton.cpp \
-	consumer.cpp \
-	mixin.cpp \
-	operators.cpp \
-	range.cpp \
-	regexp.cpp \
-	string.cpp \
-	tests.cpp \
-	commandline/core.cpp \
-	commandline/options.cpp \
-	commandline/engine.cpp \
-	commandline/parser.cpp \
-	commandline/doc.cpp
+    exception.cpp \
+    empty.cpp \
+    singleton.cpp \
+    consumer.cpp \
+    mixin.cpp \
+    operators.cpp \
+    range.cpp \
+    regexp.cpp \
+    string.cpp \
+    tests.cpp \
+    commandline/core.cpp \
+    commandline/options.cpp \
+    commandline/engine.cpp \
+    commandline/parser.cpp \
+    commandline/doc.cpp
 
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
