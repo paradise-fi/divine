@@ -42,9 +42,18 @@ wibbletest_HEADERS = \
     tests/tut-wibble.h
 
 lib_LTLIBRARIES = libwibble.la
+
+config.h: config.h.autotools
+	sed -e 's/^S:/#define /' < $< > $@
+
 else
 noinst_LTLIBRARIES = libwibble.la
+
+config.h: config.h.autotools
+	sed -e 's/^S:/#undef /' < $< > $@
 endif
+
+BUILT_SOURCES = config.h
 
 libwibble_la_SOURCES = \
     exception.cpp \
@@ -66,6 +75,6 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-EXTRA_DIST = libwibble.m4 libwibble.pc.in
+EXTRA_DIST = libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in
 
 # vim:set ts=4 sw=4:
