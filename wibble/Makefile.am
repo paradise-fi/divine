@@ -3,18 +3,21 @@ SUBDIRS = .
 INCLUDES = -I$(top_srcdir)
 
 if WIBBLE_STANDALONE
-SUBDIRS += tests
 INCLUDES += -DWIBBLE_COMPILE_TESTSUITE -DTEST_DIR=\"`pwd`/$(top_builddir)/wibble/tests/work/\"
 
 wibbledir = $(includedir)/wibble
 wibblecommandlinedir = $(includedir)/wibble/commandline
+wibblelogdir = $(includedir)/wibble/log
+wibblesysdir = $(includedir)/wibble/sys
 wibbletestdir = $(includedir)/wibble/tests
+wibbletextdir = $(includedir)/wibble/text
 
 wibble_HEADERS = \
     amorph.h \
     cast.h \
     config.h \
     consumer.h \
+    empty.h \
     exception.h \
     exception.tcc \
     fallback.h \
@@ -22,24 +25,49 @@ wibble_HEADERS = \
     maybe.h \
     mixin.h \
     operators.h \
-    empty.h \
-    singleton.h \
     range.h \
     regexp.h \
+    sfinae.h \
+    singleton.h \
     string.h \
-    shared.h \
     tests.h
+
+wibblesys_HEADERS = \
+    sys/thread.h \
+    sys/process.h \
+    sys/netbuffer.h \
+    sys/mutex.h \
+    sys/fs.test.h \
+    sys/buffer.h \
+    sys/childprocess.h \
+    sys/exec.h \
+    sys/fs.h
+
+wibblelog_HEADERS = \
+    log/stream.h \
+    log/null.h \
+    log/syslog.h \
+    log/ostream.h \
+    log/file.h
 
 wibblecommandline_HEADERS = \
     commandline/core.h \
-    commandline/options.h \
+    commandline/doc.h \
     commandline/engine.h \
-    commandline/parser.h \
-    commandline/doc.h
+    commandline/options.h \
+    commandline/parser.h
 
 wibbletest_HEADERS = \
     tests/tut-prereq.h \
     tests/tut-wibble.h
+    tests/tut-prereq.h \
+    tests/tut_reporter.h \
+    tests/tut-wibble.h \
+    tests/tut.h \
+    tests/tut_restartable.h
+
+wibbletext_HEADERS = \
+    text/wordwrap.h
 
 lib_LTLIBRARIES = libwibble.la
 
@@ -80,6 +108,31 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-EXTRA_DIST = libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in
+EXTRA_DIST = libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in \
+    amorph.test.h \
+    consumer.test.h \
+    empty.test.h \
+    exception.test.h \
+    log.test.h \
+    mixin.test.h \
+    operators.test.h \
+    range.test.h \
+    regexp.test.h \
+    singleton.test.h \
+    string.test.h \
+    commandline/core.test.h \
+    commandline/options.test.h \
+    commandline/doc.test.h \
+    commandline/engine.test.h \
+    test.h \
+    test-main.h \
+    test-runner.h \
+    test.test.h \
+    sys/childprocess.test.h \
+    sys/netbuffer.test.h \
+    sys/buffer.test.h \
+    sys/process.test.h \
+    sys/thread.test.h
+
 
 # vim:set ts=4 sw=4:
