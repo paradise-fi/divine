@@ -1,4 +1,11 @@
-SUBDIRS = . tests
+SUBDIRS = .
+
+INCLUDES = -I$(top_srcdir)
+
+if WIBBLE_STANDALONE
+SUBDIRS += tests
+INCLUDES += -DWIBBLE_COMPILE_TESTSUITE -DTEST_DIR=\"`pwd`/$(top_builddir)/wibble/tests/work/\"
+
 wibbledir = $(includedir)/wibble
 wibblecommandlinedir = $(includedir)/wibble/commandline
 wibbletestdir = $(includedir)/wibble/tests
@@ -35,6 +42,10 @@ wibbletest_HEADERS = \
     tests/tut-wibble.h
 
 lib_LTLIBRARIES = libwibble.la
+else
+noinst_LTLIBRARIES = libwibble.la
+endif
+
 libwibble_la_SOURCES = \
 	exception.cpp \
 	empty.cpp \
@@ -55,15 +66,6 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-INCLUDES = -I$(top_srcdir)/tests/ -I$(top_srcdir) -DWIBBLE_COMPILE_TESTSUITE -DTEST_DIR=\"`pwd`/$(top_builddir)/wibble/tests/work/\"
-
-
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libwibble.pc libwibble-gc.pc
-
-m4dir = $(datadir)/aclocal
-m4_DATA = libwibble.m4
-
-EXTRA_DIST = libwibble.m4 libwibble.pc.in libwibble-gc.pc.in
+EXTRA_DIST = libwibble.m4 libwibble.pc.in
 
 # vim:set ts=4 sw=4:
