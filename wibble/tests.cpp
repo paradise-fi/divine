@@ -19,7 +19,6 @@
  */
 
 #include <wibble/config.h>
-#ifdef HAVE_TUT
 #include <wibble/tests/tut-wibble.h>
 
 namespace wibble {
@@ -48,6 +47,5 @@ void impl_ensure(const Location& loc, bool res)
 
 }
 }
-#endif
 
 // vim:set ts=4 sw=4:

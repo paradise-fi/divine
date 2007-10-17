@@ -10,8 +10,8 @@
 #include <string>
 #include <sstream>
 
-#include <tut.h>
-#include <tut_reporter.h>
+#include <wibble/tests/tut.h>
+#include <wibble/tests/tut_reporter.h>
 
 
 #define TESTGRP(name) \
