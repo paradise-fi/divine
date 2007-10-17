@@ -57,20 +57,25 @@ BUILT_SOURCES = config.h
 
 libwibble_la_SOURCES = \
     exception.cpp \
-    empty.cpp \
-    singleton.cpp \
-    consumer.cpp \
-    mixin.cpp \
-    operators.cpp \
-    range.cpp \
     regexp.cpp \
-    string.cpp \
     tests.cpp \
+    sys/fs.cpp \
+    sys/buffer.cpp \
+    sys/process.cpp \
+    sys/childprocess.cpp \
+    sys/mutex.cpp \
+    sys/exec.cpp \
+    sys/thread.cpp \
+    log/file.cpp \
+    log/stream.cpp \
+    log/ostream.cpp \
+    log/syslog.cpp \
     commandline/core.cpp \
     commandline/options.cpp \
-    commandline/engine.cpp \
+    commandline/doc.cpp \
     commandline/parser.cpp \
-    commandline/doc.cpp
+    commandline/engine.cpp \
+    text/wordwrap.cpp
 
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
