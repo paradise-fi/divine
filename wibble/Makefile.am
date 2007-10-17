@@ -108,7 +108,7 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-EXTRA_DIST = libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in \
+EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in \
     amorph.test.h \
     consumer.test.h \
     empty.test.h \
