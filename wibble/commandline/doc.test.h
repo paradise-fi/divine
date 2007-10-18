@@ -27,8 +27,8 @@ struct TestCommandlineDoc {
         std::stringstream str;
         //h.outputHelp(str, p);
         const char* opts[] = {"test", "help", "testEngine", NULL};
-        p.parse(3, opts);
-        std::cerr << str.str() << std::endl;
+        // XXX p.parse(3, opts);
+        //std::cerr << str.str() << std::endl;
     }
 
 };
