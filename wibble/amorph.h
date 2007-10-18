@@ -4,12 +4,12 @@
 */
 
 #include <iostream> // for noise
-#include <cassert>
 
 #include <wibble/mixin.h>
 #include <wibble/cast.h>
 #include <wibble/maybe.h>
 #include <wibble/sfinae.h>
+#include <wibble/test.h>
 
 #ifndef WIBBLE_AMORPH_H
 #define WIBBLE_AMORPH_H

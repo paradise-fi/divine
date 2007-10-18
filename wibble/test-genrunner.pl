@@ -37,6 +37,7 @@ for $file (@ARGV) {
     }
 }
     
+print "#undef NDEBUG\n";
 print "#include <wibble/test.h>\n";
 for $file (@ARGV) {
     print "#include \"$file\"\n"
