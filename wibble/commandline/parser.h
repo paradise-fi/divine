@@ -12,9 +12,9 @@ namespace commandline {
  */
 class Parser : public Engine
 {
+protected:
 	ArgList m_args;
 
-protected:
 	MemoryManager m_manager;
 
 public:
