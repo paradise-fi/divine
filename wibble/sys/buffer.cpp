@@ -74,6 +74,34 @@ void Buffer::Data::resize(size_t size) throw ()
 	_size = size;
 }
 
+/// Compare the contents of two buffers
+bool Buffer::Data::operator==(const Data& d) const
+{
+	if (_size != d._size)
+		return false;
+	if (_data == 0 && d._data == 0)
+		return true;
+	if (_data == 0 || d._data == 0)
+		return false;
+	return memcmp(_data, d._data, _size) == 0;
+}
+
+/// Compare the contents of two buffers
+bool Buffer::Data::operator<(const Data& d) const
+{
+	if (_size < d._size)
+		return true;
+	if (_size > d._size)
+		return false;
+	if (_data == 0 && d._data == 0)
+		return false;
+	if (_data == 0)
+		return true;
+	if (d._data == 0)
+		return false;
+	return memcmp(_data, d._data, _size) < 0;
+}
+
 }
 }
 

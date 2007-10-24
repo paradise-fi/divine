@@ -57,6 +57,12 @@ public:
 		/// Resize (enlarging or shrinking it) the buffer to `size' bytes
 		void resize(size_t size) throw ();
 
+		/// Compare the contents of two buffers
+		bool operator==(const Data& d) const;
+
+		/// Compare the contents of two buffers
+		bool operator<(const Data& d) const;
+
 		friend class Buffer;
 	};
 
@@ -119,6 +125,28 @@ public:
 
 	/// Resize the buffer to hold exactly the specified amount of bytes
 	void resize(size_t size) throw () { item->resize(size); }
+
+	/// Compare the contents of two buffers
+	bool operator==(const Buffer& buf) const
+	{
+		if (item == 0 && buf.item == 0)
+			return true;
+		if (item != 0 || buf.item != 0)
+			return false;
+		return *item == *buf.item;
+	}
+
+	/// Compare the contents of two buffers
+	bool operator<(const Buffer& buf) const
+	{
+		if (item == 0 && buf.item == 0)
+			return false;
+		if (item == 0)
+			return true;
+		if (buf.item == 0)
+			return false;
+		return *item < *buf.item;
+	}
 };
 
 }
