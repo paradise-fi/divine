@@ -131,7 +131,7 @@ public:
 	{
 		if (item == 0 && buf.item == 0)
 			return true;
-		if (item != 0 || buf.item != 0)
+		if (item == 0 || buf.item == 0)
 			return false;
 		return *item == *buf.item;
 	}
