@@ -13,13 +13,44 @@ struct TestBuffer {
         Buffer buf;
         assert_eq(buf.size(), 0u);
         assert_eq(buf.data(), (void*)0);
+
+		// Empty buffers should be equal
+		Buffer buf1;
+		assert(buf == buf);
+		assert(buf == buf1);
+		assert(!(buf < buf1));
+		assert(!(buf1 < buf));
     }
 
     Test nonemptiness() {
         // Nonempty buffers should be properly nonempty
         Buffer buf(1);
+		((char*)buf.data())[0] = 'a';
         assert_eq(buf.size(), 1u);
         assert(buf.data() != 0);
+
+		// Nonempty buffers should compare by content
+		Buffer buf1(1);
+		((char*)buf1.data())[0] = 'z';
+		assert(buf == buf);
+		assert(buf1 == buf1);
+		assert(!(buf == buf1));
+		assert(buf != buf1);
+		assert(buf < buf1);
+		assert(!(buf1 < buf));
+
+		((char*)buf1.data())[0] = 'a';
+		assert(buf == buf1);
+		assert(!(buf != buf1));
+		assert(!(buf < buf1));
+		assert(!(buf1 < buf));
+
+		// Empty buffers should come before the nonempty ones
+		Buffer buf2;
+		assert(!(buf == buf2));
+		assert(buf != buf2);
+		assert(!(buf < buf2));
+		assert(buf2 < buf);
     }
 
 // Construct by copy should work
