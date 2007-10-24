@@ -136,6 +136,11 @@ public:
 		return *item == *buf.item;
 	}
 
+	bool operator!=(const Buffer& buf) const
+	{
+		return !operator==(buf);
+	}
+
 	/// Compare the contents of two buffers
 	bool operator<(const Buffer& buf) const
 	{
