@@ -27,7 +27,7 @@ namespace wibble {
 namespace sys {
 
 /**
- * Variable-size, reference-counted memory buffer
+ * Variable-size, reference-counted memory buffer.
  */
 class Buffer
 {
@@ -41,11 +41,11 @@ public:
 
 	public:
 		Data() throw () : _ref(0), _size(0), _data(0) {}
-		Data(size_t size) throw ();
+		Data(size_t size);
 		// if own == true, take possession of the memory buffer, else copy it
-		Data(void* buf, size_t size, bool own = true) throw ();
-		Data(const void* buf, size_t size) throw ();
-		~Data() throw ();
+		Data(void* buf, size_t size, bool own = true);
+		Data(const void* buf, size_t size);
+		~Data();
 
 		/// Increment the reference count for this object
 		void ref() const throw () { ++_ref; }
@@ -55,13 +55,13 @@ public:
 		bool unref() const throw () { return --_ref == 0; }
 
 		/// Resize (enlarging or shrinking it) the buffer to `size' bytes
-		void resize(size_t size) throw ();
+		void resize(size_t size);
 
 		/// Compare the contents of two buffers
-		bool operator==(const Data& d) const;
+		bool operator==(const Data& d) const throw();
 
 		/// Compare the contents of two buffers
-		bool operator<(const Data& d) const;
+		bool operator<(const Data& d) const throw();
 
 		friend class Buffer;
 	};
@@ -70,10 +70,17 @@ public:
 	
 public:
 	/// Create a 0-lenght buffer
-	Buffer() throw () : item(new Data()) { item->ref(); }
+	Buffer() throw () : item(0) {}
 
 	/// Create a buffer with the specified size
-	Buffer(size_t size) throw () : item(new Data(size)) { item->ref(); }
+	Buffer(size_t size) : item(0)
+	{
+		if (size)
+		{
+			item = new Data(size);
+			item->ref();
+		}
+	}
 
 	/**
 	 * Create a buffer from existing data
@@ -85,16 +92,28 @@ public:
 	 * @param own
 	 *   If true, take ownership of buf, else make a copy of it.
 	 */
-	Buffer(void* buf, size_t size, bool own = true) throw ()
-		: item(new Data(buf, size, own)) { item->ref(); }
+	Buffer(void* buf, size_t size, bool own = true) : item(0)
+	{
+		if (size)
+		{
+			item = new Data(buf, size, own);
+			item->ref();
+		}
+	}
 
 	/**
 	 * Create a buffer with a copy of the given data
 	 *
 	 * It will always make a copy of the contents of buf.
 	 */
-	Buffer(const void* buf, size_t size) throw ()
-		: item(new Data(buf, size)) { item->ref(); }
+	Buffer(const void* buf, size_t size) : item(0)
+	{
+		if (size)
+		{
+			item = new Data(buf, size);
+			item->ref();
+		}
+	}
 
 	Buffer(const Buffer& buf) throw ()
 	{
@@ -102,12 +121,12 @@ public:
 			buf.item->ref();
 		item = buf.item;
 	}
-	~Buffer() throw ()
+	~Buffer()
 	{
 		if (item && item->unref())
 			delete item;
 	}
-	Buffer& operator=(const Buffer& buf) throw ()
+	Buffer& operator=(const Buffer& buf)
 	{
 		if (buf.item)
 			buf.item->ref();  // Do it early to correctly handle the case of x = x;
@@ -118,16 +137,34 @@ public:
 	}
 
 	/// Return a pointer to the buffer
-	void* data() const throw () { return item->_data; }
+	void* data() throw () { return item ? item->_data : 0; }
+
+	/// Return a pointer to the buffer
+	const void* data() const throw () { return item ? item->_data : 0; }
 
 	/// Return the buffer size
-	size_t size() const throw () { return item->_size; }
+	size_t size() const throw () { return item ? item->_size : 0; }
 
 	/// Resize the buffer to hold exactly the specified amount of bytes
-	void resize(size_t size) throw () { item->resize(size); }
+	void resize(size_t newSize)
+	{
+		if (size() == newSize)
+			return;
+		if (!newSize)
+		{
+			if (item && item->unref())
+				delete item;
+			item = 0;
+		} else if (item) {
+			item->resize(newSize);
+		} else {
+			item = new Data(newSize);
+			item->ref();
+		}
+	}
 
 	/// Compare the contents of two buffers
-	bool operator==(const Buffer& buf) const
+	bool operator==(const Buffer& buf) const throw ()
 	{
 		if (item == 0 && buf.item == 0)
 			return true;
@@ -136,13 +173,13 @@ public:
 		return *item == *buf.item;
 	}
 
-	bool operator!=(const Buffer& buf) const
+	bool operator!=(const Buffer& buf) const throw ()
 	{
 		return !operator==(buf);
 	}
 
 	/// Compare the contents of two buffers
-	bool operator<(const Buffer& buf) const
+	bool operator<(const Buffer& buf) const throw ()
 	{
 		if (item == 0 && buf.item == 0)
 			return false;

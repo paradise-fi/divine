@@ -26,12 +26,12 @@
 namespace wibble {
 namespace sys {
 
-Buffer::Data::Data(size_t size) throw () : _ref(0), _size(size)
+Buffer::Data::Data(size_t size) : _ref(0), _size(size)
 {
 	_data = malloc(size);
 }
 
-Buffer::Data::Data(void* buf, size_t size, bool own) throw ()
+Buffer::Data::Data(void* buf, size_t size, bool own)
 	: _ref(0), _size(size)
 {
 	if (own)
@@ -43,21 +43,21 @@ Buffer::Data::Data(void* buf, size_t size, bool own) throw ()
 	}
 }
 
-Buffer::Data::Data(const void* buf, size_t size) throw ()
+Buffer::Data::Data(const void* buf, size_t size)
 	: _ref(0), _size(size)
 {
 	_data = malloc(size);
 	memcpy(_data, buf, size);
 }
 
-Buffer::Data::~Data() throw ()
+Buffer::Data::~Data()
 {
 	if (_data)
 		free(_data);
 }
 	
 
-void Buffer::Data::resize(size_t size) throw ()
+void Buffer::Data::resize(size_t size)
 {
 	if (size == 0)
 	{
@@ -75,7 +75,7 @@ void Buffer::Data::resize(size_t size) throw ()
 }
 
 /// Compare the contents of two buffers
-bool Buffer::Data::operator==(const Data& d) const
+bool Buffer::Data::operator==(const Data& d) const throw()
 {
 	if (_size != d._size)
 		return false;
@@ -87,7 +87,7 @@ bool Buffer::Data::operator==(const Data& d) const
 }
 
 /// Compare the contents of two buffers
-bool Buffer::Data::operator<(const Data& d) const
+bool Buffer::Data::operator<(const Data& d) const throw()
 {
 	if (_size < d._size)
 		return true;

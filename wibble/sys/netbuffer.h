@@ -43,24 +43,24 @@ public:
 	
 public:
 	NetBuffer() throw () : Buffer(), cursor(0) {}
-	NetBuffer(size_t size) throw () : Buffer(size), cursor(0) {}
-	NetBuffer(void* buf, size_t size, bool own = true) throw ()
+	NetBuffer(size_t size) : Buffer(size), cursor(0) {}
+	NetBuffer(void* buf, size_t size, bool own = true)
 		: Buffer(buf, size, own), cursor(0) {}
-	NetBuffer(const void* buf, size_t size) throw ()
+	NetBuffer(const void* buf, size_t size)
 		: Buffer(buf, size), cursor(0) {}
 
 	NetBuffer(const Buffer& buf) throw () : Buffer(buf), cursor(0) {}
 	NetBuffer(const NetBuffer& buf) throw ()
 		: Buffer(buf), cursor(buf.cursor) {}
 
-	NetBuffer& operator=(const Buffer& buf) throw ()
+	NetBuffer& operator=(const Buffer& buf)
 	{
 		Buffer::operator=(buf);
 		cursor = 0;
 		return *this;
 	}
 
-	NetBuffer& operator=(const NetBuffer& buf) throw ()
+	NetBuffer& operator=(const NetBuffer& buf)
 	{
 		Buffer::operator=(buf);
 		cursor = buf.cursor;
@@ -68,7 +68,10 @@ public:
 	}
 
 	/// Return a pointer to the buffer
-	void* data(size_t ofs = 0) const throw () { return static_cast<char*>(Buffer::data()) + cursor + ofs; }
+	const void* data(size_t ofs = 0) const throw () { return static_cast<const char*>(Buffer::data()) + cursor + ofs; }
+
+	/// Return a pointer to the buffer
+	void* data(size_t ofs = 0) throw () { return static_cast<char*>(Buffer::data()) + cursor + ofs; }
 
 	/// Return the buffer size
 	size_t size() const throw () { return Buffer::size() - cursor; }
