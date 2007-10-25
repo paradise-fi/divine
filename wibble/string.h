@@ -48,6 +48,19 @@ inline std::string basename(const std::string& pathname)
 		return pathname.substr(pos+1);
 }
 
+/// Given a pathname, return the directory name without the file name
+inline std::string dirname(const std::string& pathname)
+{
+	size_t pos = pathname.rfind("/");
+	if (pos == std::string::npos)
+		return pathname;
+	else if (pos == 0)
+		// Handle the case of '/foo'
+		return std::string("/");
+	else
+		return pathname.substr(0, pos);
+}
+
 /// Check if a string starts with the given substring
 inline bool startsWith(const std::string& str, const std::string& part)
 {

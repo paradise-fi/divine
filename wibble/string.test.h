@@ -26,6 +26,15 @@ struct TestString {
         assert_eq(str::basename("/ciao"), "ciao");
     }
 
+    Test dirname()
+    {
+        assert_eq(str::dirname("ciao"), "");
+        assert_eq(str::dirname("a/ciao"), "a");
+        assert_eq(str::dirname("a/b/c/c/d/e/ciao"), "a/b/c/c/d/e");
+        assert_eq(str::dirname("/a/ciao"), "/a");
+        assert_eq(str::dirname("/ciao"), "/");
+    }
+
     Test trim()
     {
         assert_eq(str::trim("   "), "");
