@@ -80,6 +80,14 @@ struct TestString {
         assert(!str::endsWith("ciao", "a"));
     }
 
+    Test joinpath()
+    {
+        assert_eq(str::joinpath("a", "b"), "a/b");
+        assert_eq(str::joinpath("a/", "b"), "a/b");
+        assert_eq(str::joinpath("a", "/b"), "a/b");
+        assert_eq(str::joinpath("a/", "/b"), "a/b");
+    }
+
 };
 
 }
