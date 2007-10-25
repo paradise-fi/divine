@@ -112,6 +112,26 @@ inline std::string tolower(const std::string& str)
 	return res;
 }
 
+/// Join two paths, adding slashes when appropriate
+inline std::string joinpath(const std::string& path1, const std::string& path2)
+{
+	if (path1.empty())
+		return path2;
+	if (path2.empty())
+		return path1;
+
+	if (path1[path1.size() - 1] == '/')
+		if (path2[0] == '/')
+			return path1 + path2.substr(1);
+		else
+			return path1 + path2;
+	else
+		if (path2[0] == '/')
+			return path1 + path2;
+		else
+			return path1 + '/' + path2;
+}
+
 }
 }
 
