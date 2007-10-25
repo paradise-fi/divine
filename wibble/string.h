@@ -53,7 +53,7 @@ inline std::string dirname(const std::string& pathname)
 {
 	size_t pos = pathname.rfind("/");
 	if (pos == std::string::npos)
-		return string();
+		return std::string();
 	else if (pos == 0)
 		// Handle the case of '/foo'
 		return std::string("/");
