@@ -1,7 +1,7 @@
 // -*- C++ -*- Substitution Failure Is Not An Error
 
-#ifndef DIVINE_WIBBLE_H
-#define DIVINE_WIBBLE_H
+#ifndef WIBBLE_SFINAE_H
+#define WIBBLE_SFINAE_H
 
 namespace wibble {
 
