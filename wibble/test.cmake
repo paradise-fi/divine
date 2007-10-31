@@ -1,6 +1,6 @@
 include(FindPerl)
 
-macro( wibble_add_test name  )
+macro( wibble_add_test name )
   add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp"
     DEPENDS ${wibble_SOURCE_DIR}/test-genrunner.pl ${ARGN}
