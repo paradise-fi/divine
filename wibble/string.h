@@ -145,6 +145,12 @@ inline std::string joinpath(const std::string& path1, const std::string& path2)
 			return path1 + '/' + path2;
 }
 
+/// Urlencode a string
+std::string urlencode(const std::string& str);
+
+/// Decode an urlencoded string
+std::string urldecode(const std::string& str);
+
 }
 }
 

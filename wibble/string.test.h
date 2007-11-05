@@ -97,6 +97,23 @@ struct TestString {
         assert_eq(str::joinpath("a/", "/b"), "a/b");
     }
 
+    Test urlencode()
+    {
+        assert_eq(str::urlencode(""), "");
+        assert_eq(str::urlencode("antani"), "antani");
+        assert_eq(str::urlencode("a b c"), "a%20b%20c");
+        assert_eq(str::urlencode("a "), "a%20");
+
+        assert_eq(str::urldecode(""), "");
+        assert_eq(str::urldecode("antani"), "antani");
+        assert_eq(str::urldecode("a%20b"), "a b");
+        assert_eq(str::urldecode("a%20"), "a ");
+        assert_eq(str::urldecode("a%2"), "a");
+        assert_eq(str::urldecode("a%"), "a");
+
+        assert_eq(str::urldecode(str::urlencode("àá☣☢☠!@#$%^&*(\")/A"), "àá☣☢☠!@#$%^&*(\")/A"));
+        assert_eq(str::urldecode(str::urlencode("http://zz:ss@a.b:31/c?d=e&f=g"), "http://zz:ss@a.b:31/c?d=e&f=g"));
+    }
 };
 
 }

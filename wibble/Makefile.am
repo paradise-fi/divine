@@ -86,6 +86,7 @@ BUILT_SOURCES = config.h
 libwibble_la_SOURCES = \
     exception.cpp \
     regexp.cpp \
+    string.cpp \
     tests.cpp \
     sys/fs.cpp \
     sys/buffer.cpp \
