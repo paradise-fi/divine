@@ -111,8 +111,8 @@ struct TestString {
         assert_eq(str::urldecode("a%2"), "a");
         assert_eq(str::urldecode("a%"), "a");
 
-        assert_eq(str::urldecode(str::urlencode("àá☣☢☠!@#$%^&*(\")/A"), "àá☣☢☠!@#$%^&*(\")/A"));
-        assert_eq(str::urldecode(str::urlencode("http://zz:ss@a.b:31/c?d=e&f=g"), "http://zz:ss@a.b:31/c?d=e&f=g"));
+        assert_eq(str::urldecode(str::urlencode("àá☣☢☠!@#$%^&*(\")/A")), "àá☣☢☠!@#$%^&*(\")/A");
+        assert_eq(str::urldecode(str::urlencode("http://zz:ss@a.b:31/c?d=e&f=g")), "http://zz:ss@a.b:31/c?d=e&f=g");
     }
 };
 
