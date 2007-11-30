@@ -63,3 +63,4 @@ for (keys %tests) {
 }
 print "};\n";
 print "#include <wibble/test-main.h>\n";
+print "int assertFailure = 0;\n";

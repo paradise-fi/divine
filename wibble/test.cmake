@@ -9,7 +9,7 @@ macro( wibble_add_test name )
   )
   set_source_files_properties( ${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp
     PROPERTIES GENERATED ON )
-  add_executable( ${name} ${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp ${wibble_SOURCE_DIR}/test.cpp )
+  add_executable( ${name} ${CMAKE_CURRENT_BINARY_DIR}/${name}-generated.cpp )
 endmacro( wibble_add_test )
 
 macro( wibble_check_target tgt )
