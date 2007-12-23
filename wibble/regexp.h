@@ -89,6 +89,11 @@ public:
 		Tokenizer& tok;
 		size_t beg, end;
 	public:
+		typedef std::string value_type;
+		typedef ptrdiff_t difference_type;
+		typedef value_type *pointer;
+		typedef value_type &reference;
+		typedef std::forward_iterator_tag iterator_category;
 		const_iterator(Tokenizer& tok) : tok(tok), beg(0), end(0) { operator++(); }
 		const_iterator(Tokenizer& tok, bool) : tok(tok), beg(tok.str.size()), end(tok.str.size()) {}
 
