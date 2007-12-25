@@ -61,7 +61,7 @@ struct Main {
             if ( WEXITSTATUS( status_code ) == 0 )
                 return;
         }
-        std::cout << "failed test: "<< current;
+        std::cout << "--> FAILED: "<< current;
         if ( WIFEXITED( status_code ) )
             std::cout << " (exit status " << WEXITSTATUS( status_code ) << ")";
         if ( WIFSIGNALED( status_code ) )
