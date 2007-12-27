@@ -51,6 +51,19 @@ struct RunAll {
         fprintf( status, "s/d: %s\n", s.name );
     }
 
+    void runTest( RunSuite &s, int test )
+    {
+        fprintf( status, "s/s: (1/1) %s\n", s.name );
+        fprintf( status, "t/s: (1/1) %s\n", s.tests[test].name );
+        fflush( status );
+        waitForAck();
+        s.tests[test].run();
+        fprintf( status, "t/d: %s\n", s.tests[test].name );
+        fflush( status );
+        waitForAck();
+        fprintf( status, "s/d: %s\n", s.name );
+    }
+
     void runFrom( int suite, int test )
     {
         for ( int i = suite; i < suiteCount; ++i ) {

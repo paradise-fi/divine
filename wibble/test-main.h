@@ -42,7 +42,10 @@ struct Main {
                 // todo dump possible suites?
                 exit(250);
             }
-            all.runSuite( *s, test, 0, 1 );
+            if ( argc > 2 ) {
+                all.runTest( *s, atoi( argv[2] ) );
+            } else
+                all.runSuite( *s, test, 0, 1 );
         }
         if ( argc == 1 ) {
             all.runFrom( suite, test );
