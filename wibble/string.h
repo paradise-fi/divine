@@ -5,7 +5,7 @@
 /*
  * Various string functions
  *
- * Copyright (C) 2007  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2007,2008  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -77,6 +77,7 @@ inline bool endsWith(const std::string& str, const std::string& part)
 	return str.substr(str.size() - part.size()) == part;
 }
 
+#if ! __GNUC__ || __GNUC__ >= 4
 /**
  * Return the substring of 'str' without all leading and trailing characters
  * for which 'classifier' returns true.
@@ -104,6 +105,23 @@ inline std::string trim(const std::string& str)
 {
     return trim(str, ::isspace);
 }
+#else
+/// Workaround version for older gcc
+inline std::string trim(const std::string& str)
+{
+	if (str.empty())
+		return str;
+
+	size_t beg = 0;
+	size_t end = str.size() - 1;
+	while (beg < end && ::isspace(str[beg]))
+		++beg;
+	while (end >= beg && ::isspace(str[end]))
+		--end;
+
+	return str.substr(beg, end-beg+1);
+}
+#endif
 
 /// Convert a string to uppercase
 inline std::string toupper(const std::string& str)
