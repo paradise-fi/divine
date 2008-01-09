@@ -59,8 +59,6 @@ wibblecommandline_HEADERS = \
 
 wibbletest_HEADERS = \
     tests/tut-prereq.h \
-    tests/tut-wibble.h
-    tests/tut-prereq.h \
     tests/tut_reporter.h \
     tests/tut-wibble.h \
     tests/tut.h \
