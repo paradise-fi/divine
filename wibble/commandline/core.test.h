@@ -3,7 +3,7 @@
 
 #include <wibble/commandline/core.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace wibble::commandline;
 
@@ -46,7 +46,5 @@ struct TestCommandlineCore {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

@@ -3,7 +3,7 @@
 
 #include <wibble/sys/buffer.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys;
@@ -54,7 +54,5 @@ struct TestBuffer {
         assert_eq((void*)str, buf.data());
     }
 };
-
-}
 
 // vim:set ts=4 sw=4:

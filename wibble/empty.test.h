@@ -1,9 +1,10 @@
 /* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
                (c) 2007 Enrico Zini <enrico@enricozini.org> */
 
+#include <wibble/test.h>
 #include <wibble/empty.h>
 
-namespace {
+using namespace wibble;
 
 struct TestEmpty {
     Test basic() {
@@ -16,5 +17,3 @@ struct TestEmpty {
         assert(!(i != container.end()));
     }
 };
-
-}

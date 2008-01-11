@@ -5,7 +5,7 @@
 #include <set>
 #include <cstdlib>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys::fs;
@@ -68,7 +68,5 @@ struct TestFs {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

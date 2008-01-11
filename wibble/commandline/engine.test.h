@@ -2,7 +2,7 @@
                (c) 2007 Enrico Zini <enrico@enricozini.org> */
 #include <wibble/commandline/engine.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace wibble::commandline;
 using namespace std;
@@ -233,7 +233,5 @@ struct TestCommandlineEngine {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

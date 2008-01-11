@@ -1,6 +1,7 @@
 /* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
                (c) 2007 Enrico Zini <enrico@enricozini.org> */
 
+#include <wibble/test.h>
 #include <wibble/log/stream.h>
 #include <wibble/log/null.h>
 #include <wibble/log/file.h>

@@ -3,7 +3,8 @@
 
 #include <wibble/sys/netbuffer.h>
 
-namespace {
+#include <wibble/test.h>
+
 using namespace std;
 using namespace wibble::sys;
 
@@ -64,7 +65,5 @@ struct TestNetBuffer {
     }
     
 };
-
-}
 
 // vim:set ts=4 sw=4:

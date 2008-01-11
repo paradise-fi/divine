@@ -3,7 +3,7 @@
 
 #include <wibble/commandline/options.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::commandline;
@@ -76,7 +76,5 @@ struct TestCommandlineOptions {
         assert_eq(opt.stringValue(), "-a");
     }
 };
-
-}
 
 // vim:set ts=4 sw=4:

@@ -3,7 +3,7 @@
 
 #include <wibble/sys/process.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys;
@@ -23,7 +23,5 @@ struct TestProcess {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

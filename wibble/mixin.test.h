@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
+#include <wibble/test.h>
 #include <wibble/mixin.h>
 #include <vector>
 

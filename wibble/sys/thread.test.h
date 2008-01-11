@@ -4,7 +4,7 @@
 #include <wibble/sys/mutex.h>
 #include <wibble/sys/thread.h>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys;
@@ -81,7 +81,5 @@ struct TestThread {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

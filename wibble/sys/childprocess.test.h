@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys;
@@ -120,7 +120,5 @@ struct TestChildprocess {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

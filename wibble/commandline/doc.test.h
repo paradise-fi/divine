@@ -5,7 +5,7 @@
 #include <sstream>
 #include <iostream>
 
-namespace {
+#include <wibble/test.h>
 
 using namespace wibble::commandline;
 
@@ -32,7 +32,5 @@ struct TestCommandlineDoc {
     }
 
 };
-
-}
 
 // vim:set ts=4 sw=4:

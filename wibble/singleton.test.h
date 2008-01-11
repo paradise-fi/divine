@@ -1,6 +1,7 @@
 /* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
                (c) 2007 Enrico Zini <enrico@enricozini.org> */
 
+#include <wibble/test.h>
 #include <wibble/singleton.h>
 
 namespace {
