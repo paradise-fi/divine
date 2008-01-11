@@ -9,7 +9,6 @@ macro( wibble_add_test name )
   string( REGEX REPLACE "^;" "" SOURCES "${SOURCES}" )
     
   set( main "${prefix}main.cpp" )
-  message( STATUS "${SOURCES}" )
   set( generator "${wibble_SOURCE_DIR}/test-genrunner.pl" )
 
   set( HDRS "${ARGN}" )
@@ -19,7 +18,6 @@ macro( wibble_add_test name )
   foreach( i RANGE ${SOURCE_N} )
     LIST( GET HDRS ${i} HDR )
     LIST( GET SOURCES ${i} SRC )
-    message( STATUS "${i}: adding ${HDR}  -> ${SRC}" )
     add_custom_command(
       OUTPUT ${SRC}
       DEPENDS ${wibble_SOURCE_DIR}/test-genrunner.pl ${HDR}
