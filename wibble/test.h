@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-#ifndef EPT_TEST_H
-#define EPT_TEST_H
+#ifndef WIBBLE_TEST_H
+#define WIBBLE_TEST_H
 
 // TODO use TLS
 extern int assertFailure;
