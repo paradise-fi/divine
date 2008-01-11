@@ -1,8 +1,14 @@
 #!/usr/bin/perl
 
-my $in, $set, %tests, %prefix;
+my $in, $set, %tests, %prefix, %filename;
 
-for $file (@ARGV) {
+my $fn_prefix = $ARGV[0];
+shift @ARGV;
+my $mode = $ARGV[0];
+shift @ARGV;
+
+sub process() {
+    $file = shift;
     $in = `cat $file`;
 
     $set = "not defined";
@@ -22,6 +28,7 @@ for $file (@ARGV) {
                 if (/struct ([tT]est_?)([A-Za-z]+)/) {
                     #push @sets, $1;
                     $set = $2;
+                    $filename{$set} = $file;
                     $prefix{$set} = $1;
                     $depth = $nest;
                 } elsif (/Test[ \t\n]+([a-zA-Z_1-9]+)[ \t\n]*\(/) {
@@ -36,31 +43,62 @@ for $file (@ARGV) {
         }
     }
 }
+
+sub dumpfile() {
+    my $file = shift;
+    my $filecpp = $file;
+    $filecpp =~ s/.test.h$/.cpp/;
+    $filecpp =~ s,/,_,g;
+    print STDERR "dumping $fn_prefix$filecpp\n";
+    print "#include \"$file\"\n";
+    print "#define RUN(x,y) x().y()\n";
     
-print "#undef NDEBUG\n";
-print "#include <wibble/test.h>\n";
-for $file (@ARGV) {
-    print "#include \"$file\"\n"
-}
-print "#include <wibble/test-runner.h>\n";
-
-for (keys %tests) {
-    my $set = $_;
-    for (@{$tests{$set}}) {
-        print "void run_${set}_$_() {";
-        print " RUN( $prefix{$set}$set, $_ ); }\n";
+    for (keys %tests) {
+        my $set = $_;
+        if ( $filename{$set} eq $file ) {
+            for (@{$tests{$set}}) {
+                print "void run_${set}_$_() {";
+                print " RUN( $prefix{$set}$set, $_ ); }\n";
+            }
+        }
     }
-
-    print "RunTest run_${set}[] = {\n";
-    print "\t{ \"$_\", run_${set}_$_ },\n" for (@{$tests{$set}});
+}
+    
+sub dumpmain() {
+    print "#undef NDEBUG\n";
+    print "#include <wibble/test.h>\n";
+    print "#include <wibble/test-runner.h>\n";
+    
+    for (keys %tests) {
+        my $set = $_;
+        for (@{$tests{$set}}) {
+            print "void run_${set}_$_();\n";
+        }
+        
+        print "RunTest run_${set}[] = {\n";
+        print "\t{ \"$_\", run_${set}_$_ },\n" for (@{$tests{$set}});
+        print "};\n";
+    }
+    
+    print "RunSuite suites[] = {\n";
+    for (keys %tests) {
+        my $count = scalar @{$tests{$_}};
+        print "{ \"$_\", run_$_, $count },\n";
+    }
     print "};\n";
+    print "#include <wibble/test-main.h>\n";
+    print "int assertFailure = 0;\n";
+}
+for $file (@ARGV) {
+    &process ($file);
+}
+    
+if ($mode eq "header") {
+    for $file (@ARGV) {
+        &dumpfile($file);
+    }
 }
 
-print "RunSuite suites[] = {\n";
-for (keys %tests) {
-    my $count = scalar @{$tests{$_}};
-    print "{ \"$_\", run_$_, $count },\n";
+if ($mode eq "main") {
+    &dumpmain;
 }
-print "};\n";
-print "#include <wibble/test-main.h>\n";
-print "int assertFailure = 0;\n";
