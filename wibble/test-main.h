@@ -43,7 +43,8 @@ struct Main {
                 exit(250);
             }
             if ( argc > 2 ) {
-                all.runTest( *s, atoi( argv[2] ) );
+                if ( !test )
+                    all.runTest( *s, atoi( argv[2] ) );
             } else
                 all.runSuite( *s, test, 0, 1 );
         }
