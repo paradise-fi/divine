@@ -1,4 +1,3 @@
-#include <wibble/config.h>
 #include <wibble/commandline/core.h>
 #include <ctype.h>
 #include <string.h>

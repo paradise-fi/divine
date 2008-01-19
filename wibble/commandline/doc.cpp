@@ -1,4 +1,3 @@
-#include <wibble/config.h>
 #include <wibble/commandline/doc.h>
 #include <wibble/text/wordwrap.h>
 #include <locale.h>

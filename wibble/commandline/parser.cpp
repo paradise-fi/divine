@@ -1,4 +1,3 @@
-#include <wibble/config.h>
 #include <wibble/commandline/parser.h>
 #include <wibble/commandline/doc.h>
 #include <iostream>

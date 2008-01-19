@@ -1,4 +1,3 @@
-#include <wibble/config.h>
 #include <wibble/commandline/engine.h>
 #include <ostream>
 
