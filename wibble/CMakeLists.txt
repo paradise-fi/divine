@@ -31,9 +31,7 @@ target_link_libraries( wibble-test wibble )
 wibble_check_target( wibble-test )
 
 # cmake-time configuration
-configure_file( ${wibble_SOURCE_DIR}/config.h.cmake-in
-                ${wibble_BINARY_DIR}/config.h )
-configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.cmake-in
+configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.in
                 ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
 
 # make install
@@ -47,5 +45,3 @@ install( FILES ${H_CMDL} DESTINATION include/wibble/commandline )
 install( FILES ${H_SYS} DESTINATION include/wibble/sys )
 install( FILES ${H_LOG} DESTINATION include/wibble/log )
 install( FILES ${H_TEXT} DESTINATION include/wibble/text )
-install( FILES ${wibble_BINARY_DIR}/config.h DESTINATION include/wibble )
-

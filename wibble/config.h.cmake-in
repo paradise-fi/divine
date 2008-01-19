@@ -1,8 +1,0 @@
-#cmakedefine HAVE_TUT
-#cmakedefine HAVE_GC
-#define WIBBLE_COMPILE_TESTSUITE
-#ifdef WIBBLE_BUILD_TESTING
-// when we decide to have different testing/final builds
-#endif
-
-#cmakedefine HAVE_TUT
