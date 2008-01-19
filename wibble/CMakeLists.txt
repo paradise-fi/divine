@@ -45,3 +45,7 @@ install( FILES ${H_CMDL} DESTINATION include/wibble/commandline )
 install( FILES ${H_SYS} DESTINATION include/wibble/sys )
 install( FILES ${H_LOG} DESTINATION include/wibble/log )
 install( FILES ${H_TEXT} DESTINATION include/wibble/text )
+install( FILES test-genrunner.pl
+  RENAME wibble-test-genrunner
+  DESTINATION bin
+  PERMISSIONS WORLD_EXECUTE WORLD_READ )
