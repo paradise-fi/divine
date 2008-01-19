@@ -1,5 +1,3 @@
-include(FindPerl)
-
 macro( wibble_add_test name )
   string( REPLACE ".test.h" ".cpp" SOURCES "${ARGN}" )
   set( SOURCES ";${SOURCES}" )
@@ -9,7 +7,15 @@ macro( wibble_add_test name )
   string( REGEX REPLACE "^;" "" SOURCES "${SOURCES}" )
     
   set( main "${prefix}main.cpp" )
-  set( generator "${wibble_SOURCE_DIR}/test-genrunner.pl" )
+  if( NOT WIBBLE_TEST_GENRUNNER )
+    include( FindPERL )
+    set( generator
+      "${PERL_EXECUTABLE} ${wibble_SOURCE_DIR}/test-genrunner.pl" )
+    set( generator_dep"${wibble_SOURCE_DIR}/test-genrunner.pl" )
+  else( NOT WIBBLE_TEST_GENRUNNER )
+    set( generator ${WIBBLE_TEST_GENRUNNER} )
+    set( generator_dep ${generator} )
+  endif( NOT WIBBLE_TEST_GENRUNNER )
 
   set( HDRS "${ARGN}" )
 
@@ -20,17 +26,17 @@ macro( wibble_add_test name )
     LIST( GET SOURCES ${i} SRC )
     add_custom_command(
       OUTPUT ${SRC}
-      DEPENDS ${wibble_SOURCE_DIR}/test-genrunner.pl ${HDR}
+      DEPENDS ${generator_dep} ${HDR}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMAND ${PERL_EXECUTABLE} ${generator} ${prefix} header ${HDR} > ${SRC}
+      COMMAND ${generator} ${prefix} header ${HDR} > ${SRC}
     )
   endforeach( i )
 
   add_custom_command(
     OUTPUT ${main}
-    DEPENDS ${wibble_SOURCE_DIR}/test-genrunner.pl ${ARGN}
+    DEPENDS ${generator_dep} ${ARGN}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${PERL_EXECUTABLE} ${generator} ${prefix} main ${ARGN} > ${main}
+    COMMAND ${generator} ${prefix} main ${ARGN} > ${main}
   )
 
   set_source_files_properties( ${SOURCES} ${main} PROPERTIES GENERATED ON )
