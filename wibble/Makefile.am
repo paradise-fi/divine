@@ -15,7 +15,6 @@ wibbletextdir = $(includedir)/wibble/text
 wibble_HEADERS = \
     amorph.h \
     cast.h \
-    config.h \
     consumer.h \
     empty.h \
     exception.h \
@@ -69,17 +68,9 @@ wibbletext_HEADERS = \
 
 lib_LTLIBRARIES = libwibble.la
 
-config.h: config.h.autotools
-	sed -e 's/^S:/#define /' < $< > $@
-
 else
 noinst_LTLIBRARIES = libwibble.la
-
-config.h: config.h.autotools
-	sed -e 's/^S:/#undef /' < $< > $@
 endif
-
-BUILT_SOURCES = config.h
 
 libwibble_la_SOURCES = \
     exception.cpp \
@@ -107,7 +98,7 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in config.h.autotools config.h.cmake-in \
+EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     amorph.test.h \
     consumer.test.h \
     empty.test.h \
@@ -132,6 +123,5 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in config.h.autotools config.
     sys/buffer.test.h \
     sys/process.test.h \
     sys/thread.test.h
-
 
 # vim:set ts=4 sw=4:
