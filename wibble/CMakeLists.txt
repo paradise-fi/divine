@@ -30,6 +30,11 @@ wibble_add_test( wibble-test ${testh} )
 target_link_libraries( wibble-test wibble )
 wibble_check_target( wibble-test )
 
+set( prefix "${CMAKE_INSTALL_PREFIX}" )
+set( exec_prefix "${prefix}/bin" )
+set( libdir "${prefix}/lib" )
+set( includedir "${prefix}/include" )
+
 # cmake-time configuration
 configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.in
                 ${wibble_BINARY_DIR}/libwibble.pc @ONLY )
