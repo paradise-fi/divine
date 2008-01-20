@@ -4,6 +4,7 @@
 #include <wibble/sys/buffer.h>
 
 #include <wibble/test.h>
+#include <string.h>
 
 using namespace std;
 using namespace wibble::sys;
