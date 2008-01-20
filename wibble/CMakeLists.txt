@@ -43,6 +43,7 @@ configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.in
 install( TARGETS wibble DESTINATION lib )
 install( FILES ${wibble_BINARY_DIR}/libwibble.pc DESTINATION lib/pkgconfig )
 install( FILES libwibble.m4 DESTINATION share/aclocal )
+install( FILES wibble-test-genrunner.1 DESTINATION share/man/man1 )
 
 install( FILES ${H_TOP} DESTINATION include/wibble )
 install( FILES ${TCC_TOP} DESTINATION include/wibble )
