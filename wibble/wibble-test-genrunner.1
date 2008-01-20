@@ -1,0 +1,35 @@
+.TH "wibble-test-genrunner" "1" 
+.SH "NAME" 
+wibble-test-genrunner - Code generator for wibble testsuites.
+.SH "SYNOPSIS" 
+.PP
+\fBwibble-test-genrunner\fP \fBheader\fP <file>
+.PP
+\fBwibble-test-genrunner\fP \fBmain\fP <files>
+.SH "DESCRIPTION"
+.PP
+The program generates .cpp files that are then compiled and linked
+into a test program for running tests from .test.h files. Examples of
+such .test.h files may be found among wibble headers,
+eg. /usr/include/wibble/regexp.test.h.
+
+In the first form, the program processes a single header file (usually
+of the form foo.test.h) and produces a corresponding .cpp file to be
+compiled. In the second form, it takes as <files> \fBall\fP
+the .test.h headers and produces a single main.cpp which contains the
+main() function of the test program, which then runs all the tests in
+all the .test.h files. The generated source code is always written to
+standard output and it is left up to the user to redirect it to a
+meaningful location.
+
+The program currently has no options other than the two forms
+above. The program is intended to be run as part of build process of
+programs or libraries using the wibble testing framework. For
+convenient use from CMake, there is a test.cmake script under
+/usr/share/wibble, that takes care of producing all the .cpp files
+(both per-header and the main one), compiling them and linking them
+into a single binary which executes the testsuite.
+
+.SH "AUTHOR"
+.PP
+Petr Rockai <me@mornfall.net>
