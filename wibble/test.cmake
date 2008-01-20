@@ -8,9 +8,9 @@ macro( wibble_add_test name )
     
   set( main "${prefix}main.cpp" )
   if( NOT WIBBLE_TEST_GENRUNNER )
-    include( FindPERL )
+    include( FindPerl )
     set( generator
-      "${PERL_EXECUTABLE} ${wibble_SOURCE_DIR}/test-genrunner.pl" )
+      "${PERL_EXECUTABLE}" "${wibble_SOURCE_DIR}/test-genrunner.pl" )
     set( generator_dep"${wibble_SOURCE_DIR}/test-genrunner.pl" )
   else( NOT WIBBLE_TEST_GENRUNNER )
     set( generator ${WIBBLE_TEST_GENRUNNER} )
