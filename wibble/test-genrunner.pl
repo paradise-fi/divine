@@ -2,8 +2,6 @@
 
 my $in, $set, %tests, %prefix, %filename;
 
-my $fn_prefix = $ARGV[0];
-shift @ARGV;
 my $mode = $ARGV[0];
 shift @ARGV;
 
@@ -49,7 +47,6 @@ sub dumpfile() {
     my $filecpp = $file;
     $filecpp =~ s/.test.h$/.cpp/;
     $filecpp =~ s,/,_,g;
-    print STDERR "dumping $fn_prefix$filecpp\n";
     print "#include \"$file\"\n";
     print "#define RUN(x,y) x().y()\n";
     

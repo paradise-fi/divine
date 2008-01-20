@@ -2,11 +2,11 @@ macro( wibble_add_test name )
   string( REPLACE ".test.h" ".cpp" SOURCES "${ARGN}" )
   set( SOURCES ";${SOURCES}" )
   string( REPLACE "/" "_" SOURCES "${SOURCES}" )
-  set( prefix "${CMAKE_CURRENT_BINARY_DIR}/${name}-generated-" )
-  string( REPLACE ";" ";${prefix}" SOURCES "${SOURCES}" )
+  set( src_prefix "${CMAKE_CURRENT_BINARY_DIR}/${name}-generated-" )
+  string( REPLACE ";" ";${src_prefix}" SOURCES "${SOURCES}" )
   string( REGEX REPLACE "^;" "" SOURCES "${SOURCES}" )
     
-  set( main "${prefix}main.cpp" )
+  set( main "${src_prefix}main.cpp" )
   if( NOT WIBBLE_TEST_GENRUNNER )
     include( FindPerl )
     set( generator
@@ -28,7 +28,7 @@ macro( wibble_add_test name )
       OUTPUT ${SRC}
       DEPENDS ${generator_dep} ${HDR}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMAND ${generator} ${prefix} header ${HDR} > ${SRC}
+      COMMAND ${generator} header ${HDR} > ${SRC}
     )
   endforeach( i )
 
@@ -36,7 +36,7 @@ macro( wibble_add_test name )
     OUTPUT ${main}
     DEPENDS ${generator_dep} ${ARGN}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${generator} ${prefix} main ${ARGN} > ${main}
+    COMMAND ${generator} main ${ARGN} > ${main}
   )
 
   set_source_files_properties( ${SOURCES} ${main} PROPERTIES GENERATED ON )
