@@ -12,6 +12,7 @@ file( GLOB H_CMDL commandline/*.h )
 file( GLOB H_SYS sys/*.h )
 file( GLOB H_LOG log/*.h )
 file( GLOB H_TEXT text/*.h )
+file( GLOB H_TESTS tests/*.h )
 file( GLOB TCC_TOP *.tcc )
 file( GLOB testh *.test.h commandline/*.test.h sys/*.test.h
                  log/*.test.h text/*.test.h )
@@ -51,6 +52,7 @@ install( FILES ${H_CMDL} DESTINATION include/wibble/commandline )
 install( FILES ${H_SYS} DESTINATION include/wibble/sys )
 install( FILES ${H_LOG} DESTINATION include/wibble/log )
 install( FILES ${H_TEXT} DESTINATION include/wibble/text )
+install( FILES ${H_TESTS} DESTINATION include/wibble/tests )
 install( FILES test.cmake DESTINATION share/wibble )
 install( FILES test-genrunner.pl
   RENAME wibble-test-genrunner
