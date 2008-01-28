@@ -34,6 +34,8 @@ using namespace std;
 namespace wibble {
 namespace exception {
 
+std::vector< std::string > AddContext::s_context;
+
 void DefaultUnexpected()
 {
 	try {
