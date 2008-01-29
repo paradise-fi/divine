@@ -4,7 +4,7 @@
 /*
  * OO encapsulation of Posix threads
  *
- * Copyright (C) 2003--2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003--2008  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,8 @@ namespace sys {
  *         C++ uses the "resource allocation is instantiation" way of managing
  *         resources: when a function exits, either by terminating or because
  *         an exception has been raised, destructors are called.
- *         However, when a thread is cancelled, the flow of control is
+ *
+ *         However, when a thread is canceled, the flow of control is
  *         interrupted and no exceptions are thrown.  Cleanup should be
  *         performed by registering cleanup functions, but a cleanup function
  *         can't usefully throw exceptions nor call destructors.
@@ -45,6 +46,7 @@ namespace sys {
  *         The current way out is not to use cancelation, but explicitly set
  *         some boolean exit condition:
  *
+ * \code
  *         class MyThread
  *         {
  *             bool interrupted;
@@ -61,6 +63,7 @@ namespace sys {
  *             }
  *             MyThread() : interrupted(false) {}
  *         }
+ * \endcode
  */
 class Thread
 {
