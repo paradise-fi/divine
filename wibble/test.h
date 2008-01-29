@@ -1,6 +1,7 @@
 // -*- C++ -*-
 
 #include <iostream>
+#include <cstdlib>
 
 #ifndef WIBBLE_TEST_H
 #define WIBBLE_TEST_H

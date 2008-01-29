@@ -4,6 +4,7 @@
 #include <wibble/sys/netbuffer.h>
 
 #include <wibble/test.h>
+#include <cstring>
 
 using namespace std;
 using namespace wibble::sys;
