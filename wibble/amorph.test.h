@@ -42,7 +42,7 @@ struct T3 : T1 {
     virtual int value() const { return 3; }
 };
 
-struct T2 {
+struct T2 : VirtualBase {
     int value() const { return 2; }
     bool operator<=( const T2 &o ) const {
         return value() <= o.value();
