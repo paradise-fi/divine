@@ -26,6 +26,8 @@
 #include <exception>
 #include <typeinfo>
 #include <string>
+#include <sstream>
+#include <iterator>
 #include <vector>
 
 /*! \file
@@ -147,14 +149,11 @@ public:
         if (m_context.empty())
             return "no context information available";
         
-        std::string res;
-        for (std::vector<std::string>::const_iterator i = m_context.begin();
-             i != m_context.end(); i++)
-            if (i == m_context.begin())
-                res = *i;
-            else
-                res += ", " + *i;
-        return res;
+        std::stringstream res;
+        std::copy( m_context.begin(), m_context.end(),
+                   std::ostream_iterator< std::string >( res, ", " ) );
+        std::string r = res.str();
+        return std::string( r, 0, r.length() - 2 );
     }
 
     const std::vector<std::string>& context() const throw ()
