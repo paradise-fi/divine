@@ -1,4 +1,5 @@
 #include <wibble/commandline/options.h>
+#include <wibble/string.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
@@ -12,9 +13,43 @@ using namespace std;
 namespace wibble {
 namespace commandline {
 
-int Option::intValue() const
+bool Bool::parse(const std::string& val)
 {
-	return strtoul(stringValue().c_str(), NULL, 10);
+	if (val == "true" || val == "t" || val == "1" || val == "yes" || val == "y")
+		return true;
+	if (val == "false" || val == "f" || val == "0" || val == "no" || val == "n")
+		return false;
+	throw exception::BadOption("invalid true/false value: \"" + val + "\"");
+}
+bool Bool::toBool(const bool& val) { return val; }
+int Bool::toInt(const value_type& val) { return val ? 1 : 0; }
+std::string Bool::toString(const value_type& val) { return val ? "true" : "false"; }
+
+int Int::parse(const std::string& val)
+{
+	// Ensure that we're all numeric
+	for (string::const_iterator s = val.begin(); s != val.end(); ++s)
+		if (!isdigit(*s))
+			throw exception::BadOption("value " + val + " must be numeric");
+	return strtoul(val.c_str(), NULL, 10);
+}
+bool Int::toBool(const int& val) { return (bool)val; }
+int Int::toInt(const int& val) { return val; }
+std::string Int::toString(const int& val) { return str::fmt(val); }
+
+std::string String::parse(const std::string& val)
+{
+	return val;
+}
+bool String::toBool(const std::string& val) { return !val.empty(); }
+int String::toInt(const std::string& val) { return strtoul(val.c_str(), NULL, 10); }
+std::string String::toString(const std::string& val) { return val; }
+
+std::string ExistingFile::parse(const std::string& val)
+{
+	if (access(val.c_str(), F_OK) == -1)
+		throw exception::BadOption("file " + val + " must exist");
+	return val;
 }
 
 static string fmtshort(char c, const std::string& usage)
@@ -91,73 +126,6 @@ std::string Option::fullUsageForMan() const
 	}
 
 	return res;
-}
-	
-ArgList::iterator StringOption::parse(ArgList& list, ArgList::iterator begin)
-{
-	if (begin == list.end())
-		throw exception::BadOption("no string argument found");
-	m_isset = true;
-	m_value = *begin;
-	// Remove the parsed element
-	return list.eraseAndAdvance(begin);
-}
-bool StringOption::parse(const std::string& param)
-{
-	m_isset = true;
-	m_value = param;
-	return true;
-}
-
-std::string IntOption::stringValue() const
-{
-	stringstream str;
-	str << m_value;
-	return str.str();
-}
-
-ArgList::iterator IntOption::parse(ArgList& list, ArgList::iterator begin)
-{
-	if (begin == list.end())
-		throw exception::BadOption("no numeric argument found");
-	// Ensure that we're all numeric
-	for (string::const_iterator s = begin->begin(); s != begin->end(); ++s)
-		if (!isdigit(*s))
-			throw exception::BadOption("value " + *begin + " must be numeric");
-	m_isset = true;
-	m_value = strtoul(begin->c_str(), 0, 10);
-	// Remove the parsed element
-	return list.eraseAndAdvance(begin);
-}
-bool IntOption::parse(const std::string& param)
-{
-	m_isset = true;
-	m_value = strtoul(param.c_str(), 0, 10);
-	return true;
-}
-
-
-ArgList::iterator ExistingFileOption::parse(ArgList& list, ArgList::iterator begin)
-{
-	if (begin == list.end())
-		throw exception::BadOption("no file argument found");
-	if (access(begin->c_str(), F_OK) == -1)
-		throw exception::BadOption("file " + *begin + " must exist");
-	m_isset = true;
-	m_value = *begin;
-
-	// Remove the parsed element
-	return list.eraseAndAdvance(begin);
-}
-bool ExistingFileOption::parse(const std::string& param)
-{
-	if (param.empty())
-		throw exception::BadOption("no file argument found");
-	if (access(param.c_str(), F_OK) == -1)
-		throw exception::BadOption("file " + param + " must exist");
-	m_isset = true;
-	m_value = param;
-	return true;
 }
 
 }

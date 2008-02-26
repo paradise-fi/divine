@@ -8,6 +8,44 @@
 namespace wibble {
 namespace commandline {
 
+// Types of values for the command line options
+
+struct Bool
+{
+	typedef bool value_type;
+	static bool parse(const std::string& val);
+
+	static bool toBool(const value_type& val);
+	static int toInt(const value_type& val);
+	static std::string toString(const value_type& val);
+};
+
+struct Int
+{
+	typedef int value_type;
+	static int parse(const std::string& val);
+
+	static bool toBool(const value_type& val);
+	static int toInt(const value_type& val);
+	static std::string toString(const value_type& val);
+};
+
+struct String
+{
+	typedef std::string value_type;
+	static std::string parse(const std::string& val);
+
+	static bool toBool(const value_type& val);
+	static int toInt(const value_type& val);
+	static std::string toString(const value_type& val);
+};
+
+struct ExistingFile
+{
+	typedef std::string value_type;
+	static std::string parse(const std::string& val);
+};
+
 /// Interface for a parser for one commandline option
 class Option : public Managed
 {
@@ -60,10 +98,6 @@ public:
 	void addAlias(char c) { shortNames.push_back(c); }
 	void addAlias(const std::string& str) { longNames.push_back(str); }
 
-	virtual bool boolValue() const = 0;
-	virtual std::string stringValue() const = 0;
-	virtual int intValue() const;
-
 	/// Return a full usage message including all the aliases for this option
 	const std::string& fullUsage() const;
 	std::string fullUsageForMan() const;
@@ -104,18 +138,18 @@ public:
 	friend class Engine;
 };
 
-// Option needing a compulsory string value
-class StringOption : public Option
+template<typename T>
+class SingleOption : public Option
 {
-	std::string m_value;
-
 protected:
-	StringOption(const std::string& name)
+	typename T::value_type m_value;
+
+	SingleOption(const std::string& name)
 		: Option(name)
 	{
 		usage = "<val>";
 	}
-	StringOption(const std::string& name,
+	SingleOption(const std::string& name,
 			char shortName,
 			const std::string& longName,
 			const std::string& usage = std::string(),
@@ -126,48 +160,55 @@ protected:
 			this->usage = "<val>";
 	}
 
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& param);
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+	{
+		if (begin == list.end())
+			throw exception::BadOption("no string argument found");
+		m_value = T::parse(*begin);
+		m_isset = true;
+		// Remove the parsed element
+		return list.eraseAndAdvance(begin);
+	}
+	bool parse(const std::string& param)
+	{
+		m_value = T::parse(param);
+		m_isset = true;
+		return true;
+	}
 
 public:
-	bool boolValue() const { return !m_value.empty(); }
-	std::string stringValue() const { return m_value; }
+	typename T::value_type value() const { return m_value; }
+
+	// Deprecated
+	bool boolValue() const { return T::toBool(m_value); }
+	int intValue() const { return T::toInt(m_value); }
+	std::string stringValue() const { return T::toString(m_value); }
 
 	friend class OptionGroup;
 	friend class Engine;
 };
 
-// Option needing a compulsory int value
-class IntOption : public Option
-{
-	int m_value;
+// Option needing a compulsory string value
+typedef SingleOption<String> StringOption;
 
+// Option needing a compulsory int value
+struct IntOption : public SingleOption<Int>
+{
 protected:
-	IntOption(const std::string& name)
-		: Option(name), m_value(0)
+	IntOption(const std::string& name) : SingleOption<Int>(name)
 	{
-		usage = "<num>";
+		m_value = 0;
 	}
 	IntOption(const std::string& name,
 			char shortName,
 			const std::string& longName,
 			const std::string& usage = std::string(),
 			const std::string& description = std::string())
-		: Option(name, shortName, longName, usage, description), m_value(0)
+		: SingleOption<Int>(name, shortName, longName, usage, description)
 	{
-		if (usage.empty())
-			this->usage = "<num>";
+		m_value = 0;
 	}
-
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& param);
-
 public:
-        void setValue( int v ) { m_value = v; }
-	bool boolValue() const { return m_value != 0; }
-	int intValue() const { return m_value; }
-	std::string stringValue() const;
-
 	friend class OptionGroup;
 	friend class Engine;
 };
@@ -175,17 +216,22 @@ public:
 /**
  * Commandline option with a mandatory argument naming a file which must exist.
  */
-class ExistingFileOption : public Option
+typedef SingleOption<ExistingFile> ExistingFileOption;
+
+
+// Option that can be specified multiple times
+template<typename T>
+class VectorOption : public Option
 {
-	std::string m_value;
+	std::vector< typename T::value_type > m_values;
 
 protected:
-	ExistingFileOption(const std::string& name)
+	VectorOption(const std::string& name)
 		: Option(name)
 	{
-		usage = "<file>";
+		usage = "<val>";
 	}
-	ExistingFileOption(const std::string& name,
+	VectorOption(const std::string& name,
 			char shortName,
 			const std::string& longName,
 			const std::string& usage = std::string(),
@@ -193,19 +239,33 @@ protected:
 		: Option(name, shortName, longName, usage, description)
 	{
 		if (usage.empty())
-			this->usage = "<file>";
+			this->usage = "<val>";
 	}
 
-	ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
-	bool parse(const std::string& str);
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+	{
+		if (begin == list.end())
+			throw exception::BadOption("no string argument found");
+		m_isset = true;
+		m_values.push_back(T::parse(*begin));
+		// Remove the parsed element
+		return list.eraseAndAdvance(begin);
+	}
+	bool parse(const std::string& param)
+	{
+		m_isset = true;
+		m_values.push_back(T::parse(param));
+		return true;
+	}
 
 public:
-	bool boolValue() const { return !m_value.empty(); }
-	std::string stringValue() const { return m_value; }
+	bool boolValue() const { return !m_values.empty(); }
+	const std::vector< typename T::value_type >& values() const { return m_values; }
 
 	friend class OptionGroup;
 	friend class Engine;
 };
+
 
 /**
  * Group related commandline options

@@ -75,6 +75,48 @@ struct TestCommandlineOptions {
         assert_eq(opt.boolValue(), true);
         assert_eq(opt.stringValue(), "-a");
     }
+
+	Test vectorBoolOpt() {
+		Public< VectorOption<Bool> > opt("test");
+        assert_eq(opt.name(), string("test"));
+        assert_eq(opt.isSet(), false);
+        assert_eq(opt.boolValue(), false);
+        assert_eq(opt.values().size(), 0u);
+        
+        assert_eq(opt.parse("yes"), true);
+        assert_eq(opt.isSet(), true);
+        assert_eq(opt.boolValue(), true);
+        assert_eq(opt.values().size(), 1u);
+        assert_eq(opt.values()[0], true);
+        
+        assert_eq(opt.parse("no"), true);
+        assert_eq(opt.isSet(), true);
+        assert_eq(opt.boolValue(), true);
+        assert_eq(opt.values().size(), 2u);
+        assert_eq(opt.values()[0], true);
+        assert_eq(opt.values()[1], false);
+	}
+
+	Test vectorStringOpt() {
+		Public< VectorOption<String> > opt("test");
+        assert_eq(opt.name(), string("test"));
+        assert_eq(opt.isSet(), false);
+        assert_eq(opt.boolValue(), false);
+        assert_eq(opt.values().size(), 0u);
+        
+        assert_eq(opt.parse("-a"), true);
+        assert_eq(opt.isSet(), true);
+        assert_eq(opt.boolValue(), true);
+        assert_eq(opt.values().size(), 1u);
+        assert_eq(opt.values()[0], "-a");
+        
+        assert_eq(opt.parse("foo"), true);
+        assert_eq(opt.isSet(), true);
+        assert_eq(opt.boolValue(), true);
+        assert_eq(opt.values().size(), 2u);
+        assert_eq(opt.values()[0], "-a");
+        assert_eq(opt.values()[1], "foo");
+	}
 };
 
 // vim:set ts=4 sw=4:

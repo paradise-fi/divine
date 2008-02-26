@@ -49,7 +49,7 @@ bool StandardParserWithManpage::parse(int argc, const char* argv[])
 	{
 		// Output the manpage
 		commandline::Manpage man(name(), m_version, m_section, m_author);
-		string hooks(manpage->stringValue());
+		string hooks(manpage->value());
 		if (!hooks.empty())
 			man.readHooks(hooks);
 		man.output(cout, *this);
