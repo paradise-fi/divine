@@ -114,6 +114,85 @@ struct TestString {
         assert_eq(str::urldecode(str::urlencode("àá☣☢☠!@#$%^&*(\")/A")), "àá☣☢☠!@#$%^&*(\")/A");
         assert_eq(str::urldecode(str::urlencode("http://zz:ss@a.b:31/c?d=e&f=g")), "http://zz:ss@a.b:31/c?d=e&f=g");
     }
+
+	Test split1()
+	{
+		string val = "";
+		str::Split split("/", val);
+		str::Split::const_iterator i = split.begin();
+		assert(i == split.end());
+	}
+
+	Test split2()
+	{
+		string val = "foo";
+		str::Split split("/", val);
+		str::Split::const_iterator i = split.begin();
+		assert(i != split.end());
+		assert_eq(*i, "foo");
+		assert_eq(i.remainder(), "");
+		++i;
+		assert(i == split.end());
+	}
+
+	Test split3()
+	{
+		string val = "foo";
+		str::Split split("", val);
+		str::Split::const_iterator i = split.begin();
+		assert(i != split.end());
+		assert_eq(*i, "f");
+		assert_eq(i.remainder(), "oo");
+		++i;
+		assert_eq(*i, "o");
+		assert_eq(i.remainder(), "o");
+		++i;
+		assert_eq(*i, "o");
+		assert_eq(i.remainder(), "");
+		++i;
+		assert(i == split.end());
+	}
+
+	Test split4()
+	{
+		string val = "/a//foo/";
+		str::Split split("/", val);
+		str::Split::const_iterator i = split.begin();
+		assert(i != split.end());
+		assert_eq(*i, "");
+		assert_eq(i.remainder(), "a//foo/");
+		++i;
+		assert(i != split.end());
+		assert_eq(*i, "a");
+		assert_eq(i.remainder(), "/foo/");
+		++i;
+		assert(i != split.end());
+		assert_eq(*i, "");
+		assert_eq(i.remainder(), "foo/");
+		++i;
+		assert(i != split.end());
+		assert_eq(*i, "foo");
+		assert_eq(i.remainder(), "");
+		++i;
+		assert(i == split.end());
+	}
+
+	Test normpath()
+	{
+		assert_eq(str::normpath(""), ".");
+		assert_eq(str::normpath("/"), "/");
+		assert_eq(str::normpath("foo"), "foo");
+		assert_eq(str::normpath("foo/"), "foo");
+		assert_eq(str::normpath("/foo"), "/foo");
+		assert_eq(str::normpath("foo/bar"), "foo/bar");
+		assert_eq(str::normpath("foo/./bar"), "foo/bar");
+		assert_eq(str::normpath("././././foo/./././bar/././././"), "foo/bar");
+		assert_eq(str::normpath("/../../../../../foo"), "/foo");
+		assert_eq(str::normpath("foo/../foo/../foo/../foo/../"), ".");
+		assert_eq(str::normpath("foo//bar"), "foo/bar");
+		assert_eq(str::normpath("foo/./bar"), "foo/bar");
+		assert_eq(str::normpath("foo/foo/../bar"), "foo/bar");
+	}
 };
 
 }

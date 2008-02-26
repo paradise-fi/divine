@@ -19,6 +19,7 @@
  */
 
 #include <wibble/string.h>
+#include <stack>
 #include <cstdio>
 #include <cstdlib>
 
@@ -26,6 +27,33 @@ using namespace std;
 
 namespace wibble {
 namespace str {
+
+std::string normpath(const std::string& pathname)
+{
+	stack<string> st;
+	if (pathname[0] == '/')
+		st.push("/");
+	Split splitter("/", pathname);
+	for (Split::const_iterator i = splitter.begin(); i != splitter.end(); ++i)
+	{
+		if (*i == "." || i->empty()) continue;
+		if (*i == "..")
+			if (st.top() == "..")
+				st.push(*i);
+			else if (st.top() == "/")	
+				continue;
+			else
+				st.pop();
+		else
+			st.push(*i);
+	}
+	if (st.empty())
+		return ".";
+	string res = st.top();
+	for (st.pop(); !st.empty(); st.pop())
+		res = joinpath(st.top(), res);
+	return res;
+}
 
 std::string urlencode(const std::string& str)
 {

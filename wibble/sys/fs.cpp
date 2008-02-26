@@ -1,4 +1,6 @@
 #include <wibble/sys/fs.h>
+#include <wibble/sys/process.h>
+#include <wibble/string.h>
 #include <wibble/exception.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -21,6 +23,14 @@ std::auto_ptr<struct stat> stat(const std::string& pathname)
 bool access(const std::string &s, int m)
 {
 	return ::access(s.c_str(), m) == 0;
+}
+
+std::string abspath(const std::string& pathname)
+{
+	if (pathname[0] == '/')
+		return str::normpath(pathname);
+	else
+		return str::normpath(str::joinpath(process::getcwd(), pathname));
 }
 
 void mkdirIfMissing(const std::string& dir, mode_t mode)

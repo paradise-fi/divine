@@ -22,6 +22,11 @@ std::auto_ptr<struct stat> stat(const std::string& pathname);
 /// access() a filename
 bool access(const std::string &s, int m);
 
+/**
+ * Get the absolute path of a file
+ */
+std::string abspath(const std::string& pathname);
+
 /// Create the given directory, if it does not already exists.
 /// It will complain if the given pathname already exists but is not a
 /// directory.

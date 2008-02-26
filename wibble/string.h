@@ -63,6 +63,13 @@ inline std::string dirname(const std::string& pathname)
 		return pathname.substr(0, pos);
 }
 
+/**
+ * Normalise a pathname.
+ *
+ * For example, A//B, A/./B and A/foo/../B all become A/B.
+ */
+std::string normpath(const std::string& pathname);
+
 /// Check if a string starts with the given substring
 inline bool startsWith(const std::string& str, const std::string& part)
 {
@@ -170,6 +177,109 @@ std::string urlencode(const std::string& str);
 
 /// Decode an urlencoded string
 std::string urldecode(const std::string& str);
+
+/**
+ * Split a string where a given substring is found
+ *
+ * This does a similar work to the split functions of perl, python and ruby.
+ *
+ * Example code:
+ * \code
+ *   str::Split splitter("/");
+ *   vector<string> split;
+ *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
+ * \endcode
+ */
+class Split
+{
+	std::string sep;
+	std::string str;
+
+public:
+	// TODO: add iterator_traits
+	class const_iterator
+	{
+		const std::string& sep;
+		const std::string& str;
+		std::string cur;
+		size_t pos;
+
+	public:
+		const_iterator(const std::string& sep, const std::string& str) : sep(sep), str(str), pos(0)
+		{
+			++*this;
+		}
+		const_iterator(const std::string& sep, const std::string& str, bool) : sep(sep), str(str), pos(std::string::npos) {}
+
+		const_iterator& operator++()
+		{
+			if (pos == str.size())
+				pos = std::string::npos;
+			else
+			{
+				size_t end;
+				if (sep.empty())
+					if (pos + 1 == str.size())
+						end = std::string::npos;
+					else
+						end = pos + 1;
+				else
+					end = str.find(sep, pos);
+				if (end == std::string::npos)
+				{
+					cur = str.substr(pos);
+					pos = str.size();
+				}
+				else
+				{
+					cur = str.substr(pos, end-pos);
+					pos = end + sep.size();
+				}
+			}
+			return *this;
+		}
+
+		std::string remainder() const
+		{
+			if (pos == std::string::npos)
+				return std::string();
+			else
+				return str.substr(pos);
+		}
+
+		const std::string& operator*() const
+		{
+			return cur;
+		}
+		const std::string* operator->() const
+		{
+			return &cur;
+		}
+		bool operator==(const const_iterator& ti) const
+		{
+			// Comparing iterators on different strings is not supported for
+			// performance reasons
+			return pos == ti.pos;
+		}
+		bool operator!=(const const_iterator& ti) const
+		{
+			// Comparing iterators on different strings is not supported for
+			// performance reasons
+			return pos != ti.pos;
+		}
+	};
+
+	/**
+	 * Create a splitter that uses the given regular expression to find tokens.
+	 */
+	Split(const std::string& sep, const std::string& str) : sep(sep), str(str) {}
+
+	/**
+	 * Split the string and iterate the resulting tokens
+	 */
+	const_iterator begin() const { return const_iterator(sep, str); }
+	const_iterator end() const { return const_iterator(sep, str, false); }
+};
 
 }
 }
