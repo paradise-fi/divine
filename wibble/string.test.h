@@ -70,6 +70,14 @@ struct TestString {
         assert_eq(str::toupper("cIAO"), "CIAO");
     }
 
+    Test ucfirst()
+    {
+        assert_eq(str::ucfirst("ciao"), "Ciao");
+        assert_eq(str::ucfirst("CIAO"), "Ciao");
+        assert_eq(str::ucfirst("Ciao"), "Ciao");
+        assert_eq(str::ucfirst("cIAO"), "Ciao");
+    }
+
 // Check startsWith
     Test startsWith()
     {

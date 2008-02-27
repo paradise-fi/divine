@@ -152,6 +152,15 @@ inline std::string tolower(const std::string& str)
 	return res;
 }
 
+/// Return the same string, with the first character uppercased
+inline std::string ucfirst(const std::string& str)
+{
+	if (str.empty()) return str;
+	std::string res;
+	res += ::toupper(str[0]);
+	return res + tolower(str.substr(1));
+}
+
 /// Join two paths, adding slashes when appropriate
 inline std::string joinpath(const std::string& path1, const std::string& path2)
 {
