@@ -278,6 +278,49 @@ struct TestString {
 		i = yamlStream.begin(input);
 		assert(i == yamlStream.end());
 	}
+
+	Test yamlComments()
+	{
+		string data = 
+			"# comment\n"
+			"Name: value # comment\n"
+			"# comment\n"
+			"Multiline: value1          #   comment \n"
+			"  value2 # a\n"
+			"   value3#b\n"
+			"\n"
+			"# comment\n"
+			"\n"
+			"Name: second record\n";
+		stringstream input(data, ios_base::in);
+		str::YamlStream yamlStream;
+		str::YamlStream::const_iterator i = yamlStream.begin(input);
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Name");
+		assert_eq(i->second, "value");
+
+		++i;
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Multiline");
+		assert_eq(i->second,
+			"value1\n"
+			"value2 # a\n"
+			" value3#b\n");
+
+		++i;
+		assert(i == yamlStream.end());
+
+		i = yamlStream.begin(input);
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Name");
+		assert_eq(i->second, "second record");
+
+		++i;
+		assert(i == yamlStream.end());
+
+		i = yamlStream.begin(input);
+		assert(i == yamlStream.end());
+	}
 };
 
 }

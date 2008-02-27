@@ -174,13 +174,31 @@ std::string decodeBase64(const std::string& str)
 	return res;
 }
 
+static std::string stripYamlComment(const std::string& str)
+{
+	std::string res;
+	for (string::const_iterator i = str.begin(); i != str.end(); ++i)
+	{
+		if (*i == '#')
+			break;
+		res += *i;
+	}
+	// Remove trailing spaces
+	while (!res.empty() && ::isspace(res[res.size() - 1]))
+		res.resize(res.size() - 1);
+	return res;
+}
+
 YamlStream::const_iterator::const_iterator(std::istream& sin)
 	: in(&sin)
 {
 	// Read the next line to parse, skipping leading empty lines
 	while (getline(*in, line))
+	{
+		line = stripYamlComment(line);
 		if (!line.empty())
 			break;
+	}
 
 	if (line.empty() && in->eof())
 		// If we reached EOF without reading anything, become the end iterator
@@ -233,8 +251,14 @@ YamlStream::const_iterator& YamlStream::const_iterator::operator++()
 		if (!getline(*in, line)) break;
 		// End of record
 		if (line.empty()) break;
-		// New field
-		if (line[0] != ' ') break;
+		// Full comment line: ignore it
+		if (line[0] == '#') continue;
+		// New field or empty line with comment
+		if (line[0] != ' ')
+		{
+			line = stripYamlComment(line);
+			break;
+		}
 
 		// Continuation line
 
