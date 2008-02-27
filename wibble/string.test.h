@@ -219,6 +219,57 @@ struct TestString {
 		assert_eq(decodeBase64(encodeBase64("ciao cia")), "ciao cia");
 		assert_eq(decodeBase64(encodeBase64("ciao ciao")), "ciao ciao");
 	}
+
+	Test yaml()
+	{
+		string data = 
+			"Name: value\n"
+			"Multiline: value1\n"
+			"  value2\n"
+			"   value3\n"
+			"Multifield:\n"
+			"  Field1: val1\n"
+			"  Field2: val2\n"
+			"   continue val2\n"
+			"\n"
+			"Name: second record\n";
+		stringstream input(data, ios_base::in);
+		str::YamlStream yamlStream;
+		str::YamlStream::const_iterator i = yamlStream.begin(input);
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Name");
+		assert_eq(i->second, "value");
+
+		++i;
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Multiline");
+		assert_eq(i->second,
+			"value1\n"
+			"value2\n"
+			" value3\n");
+
+		++i;
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Multifield");
+		assert_eq(i->second,
+			"Field1: val1\n"
+			"Field2: val2\n"
+			" continue val2\n");
+
+		++i;
+		assert(i == yamlStream.end());
+
+		i = yamlStream.begin(input);
+		assert(i != yamlStream.end());
+		assert_eq(i->first, "Name");
+		assert_eq(i->second, "second record");
+
+		++i;
+		assert(i == yamlStream.end());
+
+		i = yamlStream.begin(input);
+		assert(i == yamlStream.end());
+	}
 };
 
 }
