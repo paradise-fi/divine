@@ -193,6 +193,32 @@ struct TestString {
 		assert_eq(str::normpath("foo/./bar"), "foo/bar");
 		assert_eq(str::normpath("foo/foo/../bar"), "foo/bar");
 	}
+
+	Test base64()
+	{
+		using namespace str;
+		assert_eq(encodeBase64(""), "");
+		assert_eq(encodeBase64("c"), "Yw==");
+		assert_eq(encodeBase64("ci"), "Y2k=");
+		assert_eq(encodeBase64("cia"), "Y2lh");
+		assert_eq(encodeBase64("ciao"), "Y2lhbw==");
+		assert_eq(encodeBase64("ciao "), "Y2lhbyA=");
+		assert_eq(encodeBase64("ciao c"), "Y2lhbyBj");
+		assert_eq(encodeBase64("ciao ci"), "Y2lhbyBjaQ==");
+		assert_eq(encodeBase64("ciao cia"), "Y2lhbyBjaWE=");
+		assert_eq(encodeBase64("ciao ciao"), "Y2lhbyBjaWFv");
+
+		assert_eq(decodeBase64(encodeBase64("")), "");
+		assert_eq(decodeBase64(encodeBase64("c")), "c");
+		assert_eq(decodeBase64(encodeBase64("ci")), "ci");
+		assert_eq(decodeBase64(encodeBase64("cia")), "cia");
+		assert_eq(decodeBase64(encodeBase64("ciao")), "ciao");
+		assert_eq(decodeBase64(encodeBase64("ciao ")), "ciao ");
+		assert_eq(decodeBase64(encodeBase64("ciao c")), "ciao c");
+		assert_eq(decodeBase64(encodeBase64("ciao ci")), "ciao ci");
+		assert_eq(decodeBase64(encodeBase64("ciao cia")), "ciao cia");
+		assert_eq(decodeBase64(encodeBase64("ciao ciao")), "ciao ciao");
+	}
 };
 
 }

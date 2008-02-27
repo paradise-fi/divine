@@ -178,6 +178,12 @@ std::string urlencode(const std::string& str);
 /// Decode an urlencoded string
 std::string urldecode(const std::string& str);
 
+/// Encode a string in Base64
+std::string encodeBase64(const std::string& str);
+
+/// Decode a string encoded in Base64
+std::string decodeBase64(const std::string& str);
+
 /**
  * Split a string where a given substring is found
  *
