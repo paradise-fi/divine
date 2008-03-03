@@ -28,7 +28,7 @@ struct RunAll {
     void waitForAck() {
         size_t n = 0; char *line = 0;
         size_t read = getline( &line, &n, confirm );
-        assert_eq( read, 4 );
+        assert_eq( read, 4u );
         assert_eq( std::string( "ack\n" ), line );
         free( line );
     }

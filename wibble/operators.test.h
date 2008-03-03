@@ -17,6 +17,7 @@ static set<int> mkset(int i1, int i2)
 {
 	set<int> a; a.insert(i1); a.insert(i2); return a;
 }
+#if 0
 static set<int> mkset(int i1, int i2, int i3)
 {
 	set<int> a; a.insert(i1); a.insert(i2); a.insert(i3); return a;
@@ -25,6 +26,7 @@ static set<int> mkset(int i1, int i2, int i3, int i4)
 {
 	set<int> a; a.insert(i1); a.insert(i2); a.insert(i3); a.insert(i4); return a;
 }
+#endif
 
 struct TestOperators {
 
