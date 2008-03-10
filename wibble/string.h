@@ -37,8 +37,6 @@ inline std::string fmt(const T& val)
     str << val;
     return str.str();
 }
-template<> inline std::string fmt<std::string>(const std::string& val) { return val; }
-template<> inline std::string fmt<char*>(char * const & val) { return val; }
 
 /// Given a pathname, return the file name without its path
 inline std::string basename(const std::string& pathname)
