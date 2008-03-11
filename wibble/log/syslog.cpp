@@ -15,7 +15,7 @@ SyslogSender::~SyslogSender()
 
 void SyslogSender::send(Level level, const std::string& msg)
 {
-	int prio;
+	int prio = LOG_INFO;
 	switch (level)
 	{
 		case DEBUG: prio = LOG_DEBUG; break;
