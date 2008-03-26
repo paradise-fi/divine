@@ -227,6 +227,28 @@ struct TestGrcalDate {
 	}
 };
 
+struct TestGrcalTime {
+	void fill(int* dst, int ho=-1, int mi=-1, int se=-1)
+	{
+		dst[0] = ho;
+		dst[1] = mi;
+		dst[2] = se;
+	}
+
+	Test tostring()
+	{
+		int val[3];
+		fill(val);
+		assert_eq(dtime::tostring(val), "");
+		fill(val, 9);
+		assert_eq(dtime::tostring(val), "09");
+		fill(val, 10, 9);
+		assert_eq(dtime::tostring(val), "10:09");
+		fill(val, 11, 10, 9);
+		assert_eq(dtime::tostring(val), "11:10:09");
+	}
+};
+
 }
 
 // vim:set ts=4 sw=4:

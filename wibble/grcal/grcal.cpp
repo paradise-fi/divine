@@ -369,6 +369,19 @@ int duration(const int* begin, const int* end)
 	return lowerbound_sec(end) - upperbound_sec(begin);
 }
 
+std::string tostring(const int* val)
+{
+	if (val[0] == -1) return string();
+	stringstream s;
+	s << setfill('0') << internal;
+	s << setw(2) << val[0];
+	if (val[1] == -1) return s.str();
+	s << ":" << setw(2) << val[1];
+	if (val[2] == -1) return s.str();
+	s << ":" << setw(2) << val[2];
+	return s.str();
+}
+
 }
 
 }

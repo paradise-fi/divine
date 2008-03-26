@@ -175,7 +175,7 @@ void totm(const int* src, struct tm* dst);
 void fromtm(const struct tm& src, int* dst, int count = 6);
 
 /**
- * Convert a date to a string
+ * Convert a datetime to a string
  */
 std::string tostring(const int* val);
 
@@ -230,6 +230,11 @@ int upperbound_sec(const int* src);
  * The result can be negative if end is an earlier time than begin.
  */
 int duration(const int* begin, const int* end);
+
+/**
+ * Convert a time of day to a string
+ */
+std::string tostring(const int* val);
 
 }
 
