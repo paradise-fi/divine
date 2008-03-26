@@ -382,6 +382,16 @@ std::string tostring(const int* val)
 	return s.str();
 }
 
+std::string tostring(int val)
+{
+	stringstream s;
+	s << setfill('0') << internal;
+	s << setw(2) << (val / 3600)
+	  << ":" << setw(2) << (val % 3600) / 60
+	  << ":" << setw(2) << (val % 60);
+	return s.str();
+}
+
 }
 
 }

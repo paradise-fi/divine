@@ -247,6 +247,11 @@ struct TestGrcalTime {
 		fill(val, 11, 10, 9);
 		assert_eq(dtime::tostring(val), "11:10:09");
 	}
+	Test tostring_sec()
+	{
+		assert_eq(dtime::tostring(3600), "01:00:00");
+		assert_eq(dtime::tostring(3661), "01:01:01");
+	}
 };
 
 }

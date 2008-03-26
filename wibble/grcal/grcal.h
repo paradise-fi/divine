@@ -232,9 +232,14 @@ int upperbound_sec(const int* src);
 int duration(const int* begin, const int* end);
 
 /**
- * Convert a time of day to a string
+ * Format a time of day to a string
  */
 std::string tostring(const int* val);
+
+/**
+ * Format a time of day expressed in seconds to a string
+ */
+std::string tostring(int val);
 
 }
 
