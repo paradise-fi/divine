@@ -221,7 +221,9 @@ struct TestGrcalDate {
 		fill(val2, 2006, 12, 31, 23, 59, 59);
 		assert_eq(date::secondsfrom(2006, val2), 3600*24*365-1);
 
-		assert_eq(date::duration(val1, val2), -(1+3600*24+3*3600+4*60+5));
+		fill(val1, 2006, 12, 31, 23, 59, 59);
+		fill(val2, 2007, 1, 2, 3, 4, 5);
+		assert_eq(date::duration(val1, val2), 1+3600*24+3*3600+4*60+5);
 	}
 };
 
