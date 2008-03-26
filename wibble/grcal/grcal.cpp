@@ -229,14 +229,14 @@ long long int secondsfrom(int year, const int* val)
 {
 	long long int res = 0;
 	if (val[5] != -1) res += val[5];
-	if (val[4] != -1) res += val[4]*60;
-	if (val[3] != -1) res += val[3]*3600;
-	if (val[2] != -1) res += (val[2]-1)*3600*24;
-	int month = val[1] != -1 ? val[1] : 1;
-	for (int i = 1; i < month; ++i)
-		res += daysinmonth(val[0], month) * 3600*24;
+	if (val[4] != -1) res += val[4] * 60;
+	if (val[3] != -1) res += val[3] * 3600;
+	if (val[2] != -1) res += (val[2]-1) * 3600 * 24;
+	if (val[1] != -1)
+		for (int i = 1; i < val[1]; ++i)
+			res += daysinmonth(val[0], i) * 3600 * 24;
 	for (int i = year; i < val[0]; ++i)
-		res += daysinyear(i) * 3600*24;
+		res += daysinyear(i) * 3600 * 24;
 	return res;
 }
 
@@ -249,6 +249,11 @@ long long int duration(const int* begin, const int* end)
 	// Fill in missing values appropriately
 	upperbound(begin, b);
 	lowerbound(end, e);
+
+	// Lowerbound both where both had -1
+	for (int i = 0; i < 6; ++i)
+		if (begin[i] == -1 && end[i] == -1)
+			b[i] = e[i] = (i == 1 || i == 2) ? 1 : 0;
 
 	// Find the smaller year, to use as a reference for secondsfrom
 	int y = b[0] < e[0] ? b[0] : e[0];
