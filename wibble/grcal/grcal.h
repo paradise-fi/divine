@@ -22,6 +22,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#include <string>
+
 /**
  * @file
  *
@@ -171,6 +173,11 @@ void totm(const int* src, struct tm* dst);
  * \a dst.
  */
 void fromtm(const struct tm& src, int* dst, int count = 6);
+
+/**
+ * Convert a date to a string
+ */
+std::string tostring(const int* val);
 
 }
 

@@ -22,6 +22,7 @@
 #include <wibble/exception.h>
 #include <ctime>
 #include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -243,6 +244,24 @@ void fromtm(const struct tm& src, int* dst, int count)
 	dst[3] = count < 4 ? -1 : src.tm_hour;
 	dst[4] = count < 5 ? -1 : src.tm_min;
 	dst[5] = count < 6 ? -1 : src.tm_sec;
+}
+
+std::string tostring(const int* val)
+{
+	stringstream s;
+	s << setfill('0') << internal;
+	s << setw(4) << val[0];
+	if (val[1] == -1) return s.str();
+	s << "-" << setw(2) << val[1];
+	if (val[2] == -1) return s.str();
+	s << "-" << setw(2) << val[2];
+	if (val[3] == -1) return s.str();
+	s << " " << setw(2) << val[3];
+	if (val[4] == -1) return s.str();
+	s << ":" << setw(2) << val[4];
+	if (val[5] == -1) return s.str();
+	s << ":" << setw(2) << val[5];
+	return s.str();
 }
 
 }
