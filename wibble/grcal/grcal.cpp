@@ -24,6 +24,28 @@
 #include <sstream>
 #include <iomanip>
 
+//#define DEBUG_GRCAL
+
+#ifdef DEBUG_GRCAL
+#include <iostream>
+
+static std::string tostringall(const int* val)
+{
+	using namespace std;
+	stringstream s;
+	s << setfill('0') << internal;
+	s << setw(4) << val[0];
+	s << "-" << setw(2) << val[1];
+	s << "-" << setw(2) << val[2];
+	s << " " << setw(2) << val[3];
+	s << ":" << setw(2) << val[4];
+	s << ":" << setw(2) << val[5];
+	return s.str();
+}
+
+
+#endif
+
 using namespace std;
 
 namespace wibble {
@@ -33,31 +55,26 @@ namespace date {
 
 int daysinmonth(int year, int month)
 {
-	// Normalise month
-	--month;
-	year += month / 12;
-	month = month % 12;
-
 	switch (month)
 	{
-		case  1-1: return 31;
-		case  2-1:
+		case  1: return 31;
+		case  2:
 			if (year % 400 == 0 || (year % 4 == 0 && ! (year % 100 == 0)))
 				return 29;
 			return 28;
-		case  3-1: return 31;
-		case  4-1: return 30;
-		case  5-1: return 31;
-		case  6-1: return 30;
-		case  7-1: return 31;
-		case  8-1: return 31;
-		case  9-1: return 30;
-		case 10-1: return 31;
-		case 11-1: return 30;
-		case 12-1: return 31;
+		case  3: return 31;
+		case  4: return 30;
+		case  5: return 31;
+		case  6: return 30;
+		case  7: return 31;
+		case  8: return 31;
+		case  9: return 30;
+		case 10: return 31;
+		case 11: return 30;
+		case 12: return 31;
 		default: {
 			stringstream str;
-			str << "Month '" << month+1 << "' is not between 1 and 12";
+			str << "Month '" << month << "' is not between 1 and 12";
 			throw wibble::exception::Consistency("computing number of days in month", str.str());
 		}
 	}
@@ -110,41 +127,69 @@ void lowerbound(int* val)
 	if (val[5] == -1) val[5] = 0; else return;
 }
 
+static inline void normalN(int& lo, int& hi, int N)
+{
+	if (lo < 0)
+	{
+		int m = (-lo)/N;
+		if (lo % N) ++m;
+		hi -= m;
+		lo = (lo + (m*N)) % N;
+	} else {
+		hi += lo / N;
+		lo = lo % N;
+	}
+}
+
 void normalise(int* res)
 {
+	// Rebase day and month numbers on 0
+	--res[1];
+	--res[2];
+	//cerr << "TOZERO " << tostringall(res) << endl;
+
 	// Normalise seconds
-	res[4] += res[5] / 60;
-	res[5] = res[5] % 60;
+	normalN(res[5], res[4], 60);
+	//cerr << "ADJSEC " << tostringall(res) << endl;
 
 	// Normalise minutes
-	res[3] += res[4] / 60;
-	res[4] = res[4] % 60;
+	normalN(res[4], res[3], 60);
+	//cerr << "ADJMIN " << tostringall(res) << endl;
 
 	// Normalise hours
-	res[2] += res[3] / 24;
-	res[3] = res[3] % 24;
+	normalN(res[3], res[2], 24);
+	//cerr << "ADJHOUR " << tostringall(res) << endl;
 
 	// Normalise days
 	while (res[2] < 0)
 	{
 		--res[1];
-		res[2] += daysinmonth(res[0], res[1]);
+		normalN(res[1], res[0], 12);
+		res[2] += daysinmonth(res[0], res[1]+1);
 	}
+	//cerr << "ADJDAY1 " << tostringall(res) << endl;
 	while (true)
 	{
-		int dim = daysinmonth(res[0], res[1]);
-		if (res[2] <= dim) break;
+		normalN(res[1], res[0], 12);
+		int dim = daysinmonth(res[0], res[1]+1);
+		if (res[2] < dim) break;
 		res[2] -= dim;
 		++res[1];
 	}
+	//cerr << "ADJDAY2 " << tostringall(res) << endl;
 
 	// Normalise months
-	res[0] += (res[1]-1) / 12;
-	res[1] = ((res[1]-1) % 12) + 1;
+	normalN(res[1], res[0], 12);
+	//cerr << "ADJMONYEAR " << tostringall(res) << endl;
+
+	++res[1];
+	++res[2];
+	//cerr << "FROMZERO " << tostringall(res) << endl;
 }
 
 void upperbound(const int* src, int* dst)
 {
+	//cerr << "UBSTART " << tostring(src) << endl;
 	// Lowerbound and increment the last valid one
 	for (int i = 0; i < 6; ++i)
 		if (src[i] == -1)
@@ -155,6 +200,7 @@ void upperbound(const int* src, int* dst)
 			dst[i] = src[i] + 1;
 	// Then decrement the second, to get an inclusive range
 	--dst[5];
+	//cerr << "UBNORM " << tostring(dst) << endl;
 	// Normalise the result
 	normalise(dst);
 }
