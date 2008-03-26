@@ -312,8 +312,7 @@ std::string tostring(const int* val)
 
 }
 
-namespace time {
-
+namespace dtime {
 
 void lowerbound(const int* src, int* dst)
 {

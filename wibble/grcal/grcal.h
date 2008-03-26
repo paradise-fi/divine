@@ -184,7 +184,7 @@ std::string tostring(const int* val);
 /**
  * Functions that work with int[3] time of day values
  */
-namespace time {
+namespace dtime {
 
 /**
  * Make a copy of the time, filling in missing values with the lowest
