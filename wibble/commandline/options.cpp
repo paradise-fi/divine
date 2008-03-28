@@ -51,6 +51,7 @@ std::string ExistingFile::parse(const std::string& val)
 		throw exception::BadOption("file " + val + " must exist");
 	return val;
 }
+std::string ExistingFile::toString(const std::string& val) { return val; }
 
 static string fmtshort(char c, const std::string& usage)
 {

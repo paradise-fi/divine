@@ -44,6 +44,7 @@ struct ExistingFile
 {
 	typedef std::string value_type;
 	static std::string parse(const std::string& val);
+	static std::string toString(const value_type& val);
 };
 
 /// Interface for a parser for one commandline option
