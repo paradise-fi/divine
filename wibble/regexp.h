@@ -59,11 +59,19 @@ protected:
 	std::string lastMatch;
 
 public:
+        /* Note that match_count is required to be >1 to enable
+           sub-regexp capture. The maximum *INCLUDES* the whole-regexp
+           match (indexed 0). [TODO we may want to fix this to be more
+           friendly?] */
 	Regexp(const std::string& expr, int match_count = 0, int flags = 0) throw (wibble::exception::Regexp);
 	~Regexp() throw ();
 
 	bool match(const std::string& str, int flags = 0) throw (wibble::exception::Regexp);
 	
+        /* Indexing is from 1 for capture matches, like perl's $0,
+           $1... 0 is whole-regexp match, not a capture. TODO
+           the range is miscalculated (an off-by-one, wrt. the
+           counterintuitive match counting). */
 	std::string operator[](int idx) throw (wibble::exception::OutOfRange);
 
 	size_t matchStart(int idx) throw (wibble::exception::OutOfRange);
