@@ -170,9 +170,9 @@ struct Main {
         all.suites = suites;
 
         while (true) {
-            if ( pipe( status ) )
+            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, status ) )
                 return 1;
-            if ( pipe( confirm ) )
+            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, confirm ) )
                 return 1;
             pid = fork();
             if ( pid < 0 )
