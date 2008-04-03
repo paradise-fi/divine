@@ -81,13 +81,15 @@ System::System(int code, const std::string& context) throw ()
 
 string System::desc() const throw ()
 {
-	// FIXME: this use of strerror_r is broken on non-GNU systems
 	const int buf_size = 500;
 	char buf[buf_size];
-	char* res;
-	res = strerror_r(m_errno, buf, buf_size);
-	buf[buf_size - 1] = 0;
-	return string(res);
+	if (strerror_r(m_errno, buf, buf_size))
+	{
+		buf[buf_size - 1] = 0;
+		return string(buf);
+	} else {
+		return "Unable to get a description for errno value";
+	}
 }
 
 }
