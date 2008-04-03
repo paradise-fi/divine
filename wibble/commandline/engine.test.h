@@ -3,75 +3,75 @@
 #include <wibble/commandline/engine.h>
 
 #include <wibble/test.h>
+#include <string>
 
 using namespace wibble::commandline;
 using namespace std;
 
+// Happy trick to get access to protected methods we need to use for the tests
+template<typename T>
+class Public : public T
+{
+public:
+	Public(MemoryManager* mman = 0, const std::string& name = std::string(),
+		   const std::string& usage = std::string(),
+		   const std::string& description = std::string(),
+		   const std::string& longDescription = std::string())
+		: T(mman, name, usage, description, longDescription) {}
+	
+	ArgList::iterator parseList(ArgList& list) { return T::parseList(list); }
+	ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+	{
+		return T::parse(list, begin);
+	}
+};
+
+class Engine1 : public Public<Engine>
+{
+	MemoryManager mman;
+	
+public:
+	Engine1() : Public<Engine>(&mman)
+	{
+		antani = add<BoolOption>("antani", 'a', "antani");
+		blinda = add<StringOption>("blinda", 'b', "blinda");
+
+		antani->addAlias("an-tani");
+	}
+
+	BoolOption* antani;
+	StringOption* blinda;
+};
+
+class Engine2 : public Public<Engine>
+{
+	MemoryManager mman;
+
+public:
+	Engine2() : Public<Engine>(&mman)
+	{
+		help = add<BoolOption>("help", 'h', "help", "get help");
+
+		scramble = addEngine("scramble");
+		scramble_random = scramble->add<BoolOption>("random", 'r', "random");
+		scramble_yell = scramble->add<StringOption>("yell", 0, "yell");
+		scramble->aliases.push_back("mess");
+
+		fix = addEngine("fix");
+		fix_quick = fix->add<BoolOption>("quick", 'Q', "quick");
+		fix_yell = fix->add<StringOption>("yell", 0, "yell");
+	}
+
+	BoolOption*		help;
+	Engine*			scramble;
+	BoolOption*		scramble_random;
+	StringOption*	scramble_yell;
+	Engine*			fix;
+	BoolOption*		fix_quick;
+	StringOption*	fix_yell;
+};
+
 struct TestCommandlineEngine {
-
-    // Happy trick to get access to protected methods we need to use for the tests
-    template<typename T>
-    class Public : public T
-    {
-    public:
-        Public(MemoryManager* mman = 0, const std::string& name = std::string(),
-               const std::string& usage = std::string(),
-               const std::string& description = std::string(),
-               const std::string& longDescription = std::string())
-            : T(mman, name, usage, description, longDescription) {}
-        
-        ArgList::iterator parseList(ArgList& list) { return T::parseList(list); }
-        ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
-        {
-            return T::parse(list, begin);
-        }
-    };
-    
-    class Engine1 : public Public<Engine>
-    {
-        MemoryManager mman;
-        
-    public:
-        Engine1() : Public<Engine>(&mman)
-        {
-            antani = add<BoolOption>("antani", 'a', "antani");
-            blinda = add<StringOption>("blinda", 'b', "blinda");
-
-            antani->addAlias("an-tani");
-        }
-
-        BoolOption* antani;
-        StringOption* blinda;
-    };
-
-    class Engine2 : public Public<Engine>
-    {
-        MemoryManager mman;
-
-    public:
-        Engine2() : Public<Engine>(&mman)
-        {
-            help = add<BoolOption>("help", 'h', "help", "get help");
-
-            scramble = addEngine("scramble");
-            scramble_random = scramble->add<BoolOption>("random", 'r', "random");
-            scramble_yell = scramble->add<StringOption>("yell", 0, "yell");
-            scramble->aliases.push_back("mess");
-
-            fix = addEngine("fix");
-            fix_quick = fix->add<BoolOption>("quick", 'Q', "quick");
-            fix_yell = fix->add<StringOption>("yell", 0, "yell");
-        }
-
-        BoolOption*		help;
-        Engine*			scramble;
-        BoolOption*		scramble_random;
-        StringOption*	scramble_yell;
-        Engine*			fix;
-        BoolOption*		fix_quick;
-        StringOption*	fix_yell;
-    };
-
     Test optsAndArgs() {
         ArgList opts;
         opts.push_back("ciaps");
