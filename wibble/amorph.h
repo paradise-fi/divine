@@ -260,6 +260,14 @@ struct Morph : MorphBase< W, Interface >,
 #ifndef WIBBLE_AMORPH_PADDING
 #define WIBBLE_AMORPH_PADDING 0
 #endif
+template<int Padding1> class AmorphPadder
+{
+	int m_padding[ Padding1 ];
+};
+template<> class AmorphPadder<0>
+{
+};
+
 template< typename Self, typename _Interface, int Padding = WIBBLE_AMORPH_PADDING >
 struct Amorph {
     typedef _Interface Interface;
@@ -395,7 +403,7 @@ struct Amorph {
 
 private:
     unsigned int reservedSize() { return sizeof( m_padding ) + sizeof( m_impl ); }
-    int m_padding[ Padding ];
+    AmorphPadder<Padding> m_padding;
     MorphInterface< Interface > *m_impl;
     // Interface *m_impl;
 };
