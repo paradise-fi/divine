@@ -260,7 +260,7 @@ static string describe_rlimit_res_t(int rlim)
 		case RLIMIT_NPROC: return "max number of processes";
 		case RLIMIT_NOFILE: return "max number of open files";
 		case RLIMIT_MEMLOCK: return "max locked-in-memory address spac";
-#if RLIMIT_RSS != LIMIT_AS
+#ifndef __APPLE__
 		case RLIMIT_AS: return "address space (virtual memory) limit";
 #endif
 		default: return "unknown";
