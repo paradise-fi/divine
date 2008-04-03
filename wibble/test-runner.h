@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <wibble/sys/pipe.h>
 
 #define RUN(x, y) x().y()
 
@@ -16,7 +17,8 @@ struct RunSuite {
 struct RunAll {
     RunSuite *suites;
     int suiteCount;
-    FILE *status, *confirm;
+    FILE *status;
+    wibble::sys::Pipe confirm;
 
     RunSuite *findSuite( std::string name ) {
         for ( int i = 0; i < suiteCount; ++i )
@@ -26,11 +28,8 @@ struct RunAll {
     }
 
     void waitForAck() {
-        size_t n = 0; char *line = 0;
-        size_t read = getline( &line, &n, confirm );
-        assert_eq( read, 4u );
-        assert_eq( std::string( "ack\n" ), line );
-        free( line );
+        std::string line = confirm.nextLineBlocking();
+        assert_eq( std::string( "ack" ), line );
     }
 
     void runSuite( RunSuite &s, int fromTest, int suite, int suiteCount )

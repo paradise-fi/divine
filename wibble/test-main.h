@@ -2,13 +2,17 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstring>
+#include <sys/socket.h>
+
+#include <wibble/sys/pipe.h>
 
 struct Main {
 
     int suite, test;
+    wibble::sys::Pipe f_status;
     int status[2];
     int confirm[2];
-    FILE *f_confirm, *f_status;
+    FILE *f_confirm;
     pid_t pid;
     int argc;
     char **argv;
@@ -35,7 +39,7 @@ struct Main {
         close( status[0] );
         close( confirm[1] );
         all.status = fdopen( status[1], "w" );
-        all.confirm = fdopen( confirm[0], "r" );
+        all.confirm = wibble::sys::Pipe( confirm[0] );
         if ( argc > 1 ) {
             RunSuite *s = all.findSuite( argv[1] );
             if (!s) {
@@ -79,8 +83,8 @@ struct Main {
         suite_failed ++;
     }
 
-    void processStatus( const char *line ) {
-        if ( std::string("done") == line ) { // finished
+    void processStatus( std::string line ) {
+        if ( line == "done" ) { // finished
             finished = waitpid( pid, &status_code, 0 );
             assert_eq( pid, finished );
             assert( WIFEXITED( status_code ) );
@@ -112,7 +116,8 @@ struct Main {
             }
             if ( line[2] == 's' ) {
                 if ( announced_suite < suite ) {
-                    std::cout << line + 5 << ": " << std::flush;
+                    std::cout << std::string( line.begin() + 5, line.end() )
+                              << ": " << std::flush;
                     announced_suite = suite;
                 }
             }
@@ -126,7 +131,7 @@ struct Main {
             if ( line[2] == 's' ) {
                 fprintf( f_confirm, "ack\n" );
                 fflush( f_confirm );
-                current = line + 5;
+                current = std::string( line.begin() + 5, line.end() );
             }
         }
     }
@@ -134,13 +139,13 @@ struct Main {
     void parent() {
         close( status[1] );
         close( confirm[0] );
-        f_status = fdopen( status[0], "r" );
+        f_status = wibble::sys::Pipe( status[ 0 ]);
         f_confirm = fdopen( confirm[1], "w" );
-        char *line = 0;
+        std::string line;
         size_t n;
 
         while ( true ) {
-            if ( getline( &line, &n, f_status ) < 0 ) {
+            if ( f_status.eof() ) {
                 finished = waitpid( pid, &status_code, 0 );
                 if ( finished < 0 ) {
                     perror( "waitpid failed" );
@@ -148,16 +153,11 @@ struct Main {
                 }
                 assert_eq( pid, finished );
                 testDied();
-                /* std::cerr << "child will be reforked at: "
-                   << suite << " " << test << std::endl; */
                 return;
-            } else {
-                // std::cerr << "reading pipe: " << line;
-                line[ strlen( line ) - 1 ] = 0;
-                processStatus( line );
-                free( line );
             }
-            line = 0;
+
+            line = f_status.nextLineBlocking();
+            processStatus( line );
         }
     }
 
