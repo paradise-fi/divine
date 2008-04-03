@@ -42,7 +42,11 @@ public:
             pthread_mutexattr_t attr;
             pthread_mutexattr_init( &attr );
             if ( recursive ) {
+#ifdef __APPLE__
+                pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
+#else
                 pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE_NP );
+#endif
             }
 		if (int res = pthread_mutex_init(&mutex, &attr))
 			throw wibble::exception::System(res, "creating pthread mutex");
