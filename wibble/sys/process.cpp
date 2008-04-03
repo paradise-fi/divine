@@ -1,7 +1,7 @@
 /*
  * OO base class for process functions and child processes
  *
- * Copyright (C) 2003-2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003-2008  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -247,7 +247,7 @@ void setPerms(uid_t user, gid_t group)
 }
 
 
-static string describe_rlimit_res_t(__rlimit_resource_t rlim)
+static string describe_rlimit_res_t(int rlim)
 {
 	switch (rlim)
 	{
@@ -265,7 +265,7 @@ static string describe_rlimit_res_t(__rlimit_resource_t rlim)
 	}
 }
 
-void setLimit(__rlimit_resource_t rlim, int val)
+static void setLimit(int rlim, int val)
 {
 	struct rlimit lim;
 	if (getrlimit(rlim, &lim) == -1)
@@ -279,7 +279,7 @@ void setLimit(__rlimit_resource_t rlim, int val)
 	}
 }
 
-int getLimit(__rlimit_resource_t rlim, int* max = 0)
+static int getLimit(int rlim, int* max = 0)
 {
 	struct rlimit lim;
 	if (getrlimit(rlim, &lim) == -1)
