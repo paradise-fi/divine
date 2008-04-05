@@ -85,6 +85,8 @@ static string manfmtlong(const std::string& c, const std::string& usage)
 		return string("\\-\\-") + c + "=\\fI" + usage + "\\fP";
 }
 
+Option::Option() : hidden(false) {}
+
 const std::string& Option::fullUsage() const
 {
 	if (m_fullUsage.empty())

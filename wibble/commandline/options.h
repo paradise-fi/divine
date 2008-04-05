@@ -91,6 +91,7 @@ protected:
 	virtual bool parse(const std::string& param) = 0;
 
 public:
+	Option();
 	virtual ~Option() {}
 
 	const bool isSet() const { return m_isset; }
@@ -108,6 +109,9 @@ public:
 
 	std::string usage;
 	std::string description;
+
+	// Set to true if the option should not be documented
+	bool hidden;
 
 	friend class OptionGroup;
 	friend class Engine;
@@ -281,7 +285,7 @@ class OptionGroup : public Managed
 
 protected:
 	OptionGroup(MemoryManager* mman = 0, const std::string& description = std::string())
-		: m_manager(mman), description(description) {}
+		: m_manager(mman), description(description), hidden(false) {}
 
 public:
 	Option* add(Option* o) { options.push_back(o); return o; }
@@ -289,6 +293,9 @@ public:
 	std::vector<Option*> options;
 
 	std::string description;
+
+	// Set to true if the option group should not be documented
+	bool hidden;
 
 	/**
 	 * Create a new option

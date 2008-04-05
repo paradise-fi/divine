@@ -100,7 +100,7 @@ protected:
 					const std::string& description = std::string(),
 					const std::string& longDescription = std::string())
 		: m_manager(mman), m_name(name), m_found_command(0), primaryAlias(name),
-			usage(usage), description(description), longDescription(longDescription) {}
+			usage(usage), description(description), longDescription(longDescription), hidden(false) {}
 
 public:
 	const std::string& name() const { return m_name; }
@@ -222,6 +222,9 @@ public:
 	std::string description;
 	std::string longDescription;
 	std::string examples;
+
+	// Set to true if the engine should not be documented
+	bool hidden;
 
 	friend class Parser;
 };
