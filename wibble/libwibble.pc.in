@@ -7,3 +7,4 @@ Name: libwibble
 Description: Library of useful C++ code
 Version: @VERSION@
 Libs: -L${libdir} -lwibble
+Cflags: -I${includedir}
