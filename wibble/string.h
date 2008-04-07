@@ -340,6 +340,22 @@ public:
 	const_iterator end() const { return const_iterator(sep, str, false); }
 };
 
+template<typename ITER>
+std::string join(const ITER& begin, const ITER& end, const std::string& sep = ", ")
+{
+	std::stringstream res;
+	bool first = true;
+	for (ITER i = begin; i != end; ++i)
+	{
+		if (first)
+			first = false;
+		else
+			res << sep;
+		res << *i;
+	}
+	return res.str();
+}
+
 /**
  * Parse a record of Yaml-style field: value couples.
  *

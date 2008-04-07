@@ -207,6 +207,14 @@ struct TestString {
 		assert(i == split.end());
 	}
 
+	Test join()
+	{
+		string val = "/a//foo/";
+		str::Split split("/", val);
+		string res = str::join(split.begin(), split.end(), ":");
+		assert_eq(res, ":a::foo");
+	}
+
 	Test normpath()
 	{
 		assert_eq(str::normpath(""), ".");
