@@ -42,11 +42,25 @@ struct TestMMap {
     	assert_eq(map.buf[2], 'L');
     	assert_eq(map.buf[3], 'F');
 
-	map.unmap();
+	MMap map1 = map;
         assert_eq(map.filename, string());
         assert_eq(map.fd, -1);
         assert_eq(map.size, 0u);
         assert_eq(map.buf, (const char*)0);
+
+        assert_eq(map1.filename, "/bin/ls");
+        assert(map1.fd != -1);
+        assert(map1.size != 0u);
+        assert(map1.buf != (const char*)0);
+    	assert_eq(map1.buf[1], 'E');
+    	assert_eq(map1.buf[2], 'L');
+    	assert_eq(map1.buf[3], 'F');
+
+	map1.unmap();
+        assert_eq(map1.filename, string());
+        assert_eq(map1.fd, -1);
+        assert_eq(map1.size, 0u);
+        assert_eq(map1.buf, (const char*)0);
     }
 };
 

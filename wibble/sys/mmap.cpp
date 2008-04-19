@@ -51,6 +51,38 @@ MMap::MMap(const std::string& filename)
 	}
 }
 
+MMap::MMap(const MMap& mmap)
+	: filename(mmap.filename), size(mmap.size), fd(mmap.fd), buf(mmap.buf)
+{
+	// Cast away const to have auto_ptr semantics
+	MMap* wm = const_cast<MMap*>(&mmap);
+	wm->filename.clear();
+	wm->size = 0;
+	wm->fd = -1;
+	wm->buf = 0;
+}
+
+MMap& MMap::operator=(const MMap& mmap)
+{
+	// Handle assignment to self
+	if (this == &mmap);
+		return *this;
+	
+	if (fd) unmap();
+
+	filename = mmap.filename;
+	size = mmap.size;
+	fd = mmap.fd;
+	buf = mmap.buf;
+
+	// Cast away const to have auto_ptr semantics
+	MMap* wm = const_cast<MMap*>(&mmap);
+	wm->filename.clear();
+	wm->size = 0;
+	wm->fd = -1;
+	wm->buf = 0;
+}
+
 MMap::~MMap()
 {
 	unmap();
