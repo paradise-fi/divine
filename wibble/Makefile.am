@@ -39,6 +39,7 @@ wibblesys_HEADERS = \
     sys/mutex.h \
     sys/fs.test.h \
     sys/buffer.h \
+    sys/mmap.h \
     sys/childprocess.h \
     sys/exec.h \
     sys/fs.h
@@ -83,6 +84,7 @@ libwibble_la_SOURCES = \
     tests.cpp \
     sys/fs.cpp \
     sys/buffer.cpp \
+    sys/mmap.cpp \
     sys/process.cpp \
     sys/childprocess.cpp \
     sys/mutex.cpp \
@@ -126,6 +128,7 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     sys/childprocess.test.h \
     sys/netbuffer.test.h \
     sys/buffer.test.h \
+    sys/mmap.test.h \
     sys/process.test.h \
     sys/thread.test.h \
     grcal/grcal.test.h
