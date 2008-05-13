@@ -178,6 +178,10 @@ protected:
 	}
 
 public:
+        void setValue( const typename T::value_type &a ) {
+            m_value = a;
+        }
+
 	typename T::value_type value() const { return m_value; }
 
 	// Deprecated
