@@ -40,6 +40,10 @@ void mkpath(const std::string& dir);
 /// The file itself will not get created.
 void mkFilePath(const std::string& file);
 
+/// Read file into memory. Throws exceptions on failure.
+std::string readFile(const std::string &file);
+void writeFile(const std::string &file, const std::string &data);
+
 /// Nicely wrap access to directories
 class Directory
 {

@@ -2,6 +2,7 @@
 #include <wibble/sys/process.h>
 #include <wibble/string.h>
 #include <wibble/exception.h>
+#include <fstream>
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -61,6 +62,31 @@ void mkFilePath(const std::string& file)
 	size_t pos = file.rfind('/');
 	if (pos != std::string::npos)
 		mkpath(file.substr(0, pos));
+}
+
+std::string readFile( const std::string &file )
+{
+    std::ifstream in( file.c_str(), std::ios::binary );
+    if (!in.is_open())
+        throw wibble::exception::System( "reading file " + file );
+    std::string ret;
+    size_t length;
+
+    in.seekg(0, std::ios::end);
+    length = in.tellg();
+    in.seekg(0, std::ios::beg);
+    char buffer[ length ];
+
+    in.read(buffer, length);
+    return std::string( buffer, length );
+}
+
+void writeFile( const std::string &file, const std::string &data )
+{
+    std::ofstream out( file.c_str(), std::ios::binary );
+    if (!out.is_open())
+        throw wibble::exception::System( "writing file " + file );
+    out << data;
 }
 
 Directory::const_iterator Directory::begin()
