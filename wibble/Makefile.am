@@ -12,6 +12,7 @@ wibblesysdir = $(includedir)/wibble/sys
 wibbletestdir = $(includedir)/wibble/tests
 wibbletextdir = $(includedir)/wibble/text
 wibblegrcaldir = $(includedir)/wibble/grcal
+wibblestreamdir = $(includedir)/wibble/stream
 
 wibble_HEADERS = \
     amorph.h \
@@ -70,6 +71,9 @@ wibbletext_HEADERS = \
 
 wibblegrcal_HEADERS = \
     grcal/grcal.h
+
+wibblestream_HEADERS = \
+    stream/posix.h
 
 lib_LTLIBRARIES = libwibble.la
 
@@ -131,6 +135,7 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     sys/mmap.test.h \
     sys/process.test.h \
     sys/thread.test.h \
-    grcal/grcal.test.h
+    grcal/grcal.test.h \
+    stream/posix.test.h
 
 # vim:set ts=4 sw=4:
