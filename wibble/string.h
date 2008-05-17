@@ -43,7 +43,9 @@ inline std::string fmt(const T& val)
     return str.str();
 }
 
-template<> inline std::string fmt<std::string>(const std::string& val) { return val; }
+template<> inline std::string fmt<std::string>(const std::string& val) {
+    return val;
+}
 template<> inline std::string fmt<char*>(char * const & val) { return val; }
 
 template< typename X >
