@@ -35,6 +35,25 @@ namespace str {
 
 using namespace wibble::operators;
 
+// Formatting lists -- actually, we need to move list handling into wibble,
+// really.
+template< typename X >
+inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
+    std::ostream &o, X list )
+{
+    if ( list.empty() )
+        return o << "[]";
+
+    o << "[ ";
+    while( !list.empty() ) {
+        o << fmt( list.head() );
+        if ( !list.tail().empty() )
+            o << ", ";
+        list = list.tail();
+    }
+    return o << " ]";
+}
+
 /// Format any value into a string using a std::stringstream
 template<typename T>
 inline std::string fmt(const T& val)
@@ -63,24 +82,6 @@ inline std::string fmt(const std::set< X >& val) {
             s += ", ";
     }
     return "{ " + s + " }";
-}
-
-// Formatting lists -- actually, we need to move list handling into wibble,
-// really.
-template< typename X >
-inline typename TPair< std::string, typename X::Type >::First fmt(
-    X list )
-{
-    if ( list.empty() )
-        return "[]";
-
-    std::string s;
-    while( !list.empty() ) {
-        s += fmt( list.head() );
-        if ( !list.tail().empty() )
-            s += ", ";
-    }
-    return "[ " + s + " ]";
 }
 
 /// Given a pathname, return the file name without its path
