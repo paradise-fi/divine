@@ -48,6 +48,7 @@ template<> inline std::string fmt<std::string>(const std::string& val) {
 }
 template<> inline std::string fmt<char*>(char * const & val) { return val; }
 
+// formatting sets using { ... } notation
 template< typename X >
 inline std::string fmt(const std::set< X >& val) {
     if ( val.empty() )
