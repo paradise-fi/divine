@@ -18,6 +18,18 @@ struct TestString {
         assert_eq(str::fmt("ciao"), "ciao");
     }
 
+    Test fmtSet()
+    {
+        std::set< int > a;
+        assert_eq(str::fmt(a), "{}");
+        a.insert( a.begin(), 2 );
+        assert_eq(str::fmt(a), "{ 2 }");
+        a.insert( a.begin(), 5 );
+        assert_eq(str::fmt(a), "{ 2, 5 }");
+        a.insert( a.begin(), 1 );
+        assert_eq(str::fmt(a), "{ 1, 2, 5 }");
+    }
+
     Test basename()
     {
         assert_eq(str::basename("ciao"), "ciao");
