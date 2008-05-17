@@ -135,4 +135,27 @@ struct TestList {
         checkOddList( 
             list::map( list, std::ptr_fun( mul2add1 ) ) );
     }
+
+    Test empty() {
+        assert( list::Empty< int >().empty() );
+    }
+
+    Test single() {
+        assert_eq( list::singular( 0 ).head(), 0 );
+        assert( list::singular( 0 ).tail().empty() );
+    }
+
+    Test append() {
+        assert_eq( list::append( list::singular( 0 ),
+                                 list::singular( 1 ) ).head(), 0 );
+        assert_eq( list::append( list::singular( 0 ),
+                                 list::singular( 1 ) ).tail().head(), 1 );
+        assert( list::append( list::singular( 0 ),
+                              list::singular( 1 ) ).tail().tail().empty() );
+    }
+
+    Test appendCount() {
+        assert_eq( list::count( list::append( My( 0, 10 ),
+                                              My2( 0, 5, 1 ) ) ), 20 );
+    }
 };

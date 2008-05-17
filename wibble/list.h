@@ -228,6 +228,63 @@ struct Map {
     {}
 };
 
+template< typename T >
+struct Empty {
+    typedef T Type;
+    T head() const { return T(); }
+    bool empty() const { return true; }
+    Empty tail() const { return Empty(); }
+};
+
+template< typename T >
+struct Singular {
+    typedef T Type;
+    bool m_empty;
+    T m_value;
+
+    Singular() : m_empty( true ) {}
+    Singular( T i ) : m_value( i ), m_empty( false ) {}
+    T head() const { return m_value; }
+    bool empty() const { return m_empty; }
+    Singular tail() const { return Singular(); }
+};
+
+template< typename T1, typename T2 >
+struct Append {
+    typedef typename T1::Type Type;
+    T1 m_1;
+    T2 m_2;
+
+    Append() {}
+    Append( T1 a, T2 b ) : m_1( a ), m_2( b ) {}
+    Type head() const {
+        if ( m_1.empty() )
+            return m_2.head();
+        return m_1.head();
+    }
+
+    bool empty() const { return m_1.empty() && m_2.empty(); }
+    Append tail() const {
+        Append t = *this;
+        if ( !t.m_1.empty() )
+            t.m_1 = t.m_1.tail();
+        else
+            t.m_2 = t.m_2.tail();
+        return t;
+    }
+
+};
+
+template< typename X >
+Singular< X > singular( const X &x ) {
+    return Singular< X >( x );
+}
+
+template< typename X, typename Y >
+Append< X, Y > append( const X &x, const Y &y ) {
+    return Append< X, Y >( x, y );
+}
+
 template< typename List >
 size_t count( List l ) {
     size_t count = 0;
