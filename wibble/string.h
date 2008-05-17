@@ -22,12 +22,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#include <wibble/operators.h>
+
 #include <string>
+#include <set>
 #include <sstream>
 #include <cctype>
 
 namespace wibble {
 namespace str {
+
+using namespace wibble::operators;
 
 /// Format any value into a string using a std::stringstream
 template<typename T>
@@ -40,6 +45,18 @@ inline std::string fmt(const T& val)
 
 template<> inline std::string fmt<std::string>(const std::string& val) { return val; }
 template<> inline std::string fmt<char*>(char * const & val) { return val; }
+
+template< typename X >
+inline std::string fmt(const std::set< X >& val) {
+    std::string s;
+    for ( typename std::set< X >::iterator i = val.begin();
+          i != val.end(); ++i ) {
+        s += fmt( *i );
+        if ( i != val.end() && i + 1 != val.end() )
+            s += ", ";
+    }
+    return "{ " + s + " }";
+}
 
 /// Given a pathname, return the file name without its path
 inline std::string basename(const std::string& pathname)
