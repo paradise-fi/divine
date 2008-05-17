@@ -97,7 +97,7 @@ struct TestList {
         checkListSorted( list );
         checkListSorted( list::sort( list ) );
         {
-            AssertFailure fail;
+            ExpectFailure fail;
             checkListSorted( My( 100, 0 ) );
         }
         checkListSorted( list::sort( My( 100, 0 ) ) );

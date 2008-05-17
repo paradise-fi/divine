@@ -1,5 +1,6 @@
 // -*- C++ -*-
 
+#include <wibble/string.h>
 #include <iostream>
 #include <cstdlib>
 
@@ -22,48 +23,85 @@ struct Location {
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
 
-#define CHECK_ASSERT(x)                                                 \
-    do {                                                                \
-        if ( x ) return;                                                \
-        else if ( assertFailure )                                       \
-        {                                                               \
-            ++assertFailure;                                            \
-            return;                                                     \
-        }                                                               \
-    } while (0)
+struct AssertFailed {
+    std::ostream &stream;
+    std::ostringstream str;
+    bool expect;
+    AssertFailed( Location l, std::ostream &s = std::cerr )
+        : stream( s )
+    {
+        expect = assertFailure > 0;
+        str << l.file << ": " << l.line
+            << ": assertion `" << l.stmt << "' failed;";
+    }
 
-static inline std::ostream &assert_failed( Location l )
+    ~AssertFailed() {
+        if ( expect )
+            ++assertFailure;
+        else {
+            stream << str.str() << std::endl;
+            abort();
+        }
+    }
+};
+
+template< typename X >
+inline AssertFailed &operator<<( AssertFailed &f, X x )
 {
-    return std::cerr << l.file << ": " << l.line
-                     << ": assertion `" << l.stmt << "' failed;";
+    f.str << x;
+    return f;
 }
 
 template< typename X >
 void assert_fn( Location l, X x )
 {
-    CHECK_ASSERT( x );
-    assert_failed( l ) << std::endl;
-    abort();
+    if ( !x ) {
+        AssertFailed f( l );
+    }
 }
 
 template< typename X, typename Y >
 void assert_eq_fn( Location l, X x, Y y )
-
 {
-    CHECK_ASSERT( x == y );
-    assert_failed( l ) << " got ["
-                       << x << "] != [" << y << "] instead" << std::endl;
-    abort();
+    if ( !( x == y ) ) {
+        AssertFailed f( l );
+        f << " got ["
+          << x << "] != [" << y
+          << "] instead";
+    }
+}
+
+template< typename X, typename Y >
+void assert_list_eq_fn(
+    Location loc, int c, X l, const typename X::Type check[] )
+{
+    int i = 0;
+    while ( !l.empty() ) {
+        if ( l.head() != check[ i ] ) {
+            AssertFailed f( loc );
+            f << " list disagrees at position "
+              << i << ": [" << wibble::str::fmt( l.head() )
+              << "] != [" << wibble::str::fmt( check[ i ] )
+              << "]";
+        }
+        l = l.tail();
+        ++ i;
+    }
+    if ( i != c ) {
+        AssertFailed f( loc );
+        f << " got ["
+          << i << "] != [" << c << "] instead";
+    }
 }
 
 template< typename X, typename Y >
 void assert_neq_fn( Location l, X x, Y y )
-
 {
-    CHECK_ASSERT( x != y );
-    assert_failed( l ) << " got ["
-                       << x << "] == [" << y << "] instead" << std::endl;
-    abort();
+    if ( x != y )
+        return;
+    AssertFailed f( l );
+    f << " got ["
+      << x << "] == [" << y << "] instead";
 }
 
 inline void beginAssertFailure() {
@@ -76,9 +114,9 @@ inline void endAssertFailure() {
     assert( f > 1 );
 }
 
-struct AssertFailure {
-    AssertFailure() { beginAssertFailure(); }
-    ~AssertFailure() { endAssertFailure(); }
+struct ExpectFailure {
+    ExpectFailure() { beginAssertFailure(); }
+    ~ExpectFailure() { endAssertFailure(); }
 };
 
 typedef void Test;

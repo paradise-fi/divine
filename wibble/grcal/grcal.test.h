@@ -13,14 +13,16 @@ using namespace wibble::grcal;
 #define assert_dt_eq(x, ...) assert_dt_eq_fn( LOCATION( #x " == " #__VA_ARGS__ ), x, __VA_ARGS__)
 void assert_dt_eq_fn( Location l, const int* val, int ye, int mo=-1, int da=-1, int ho=-1, int mi=-1, int se=-1 )
 {
-	int cmp[6] = { ye, mo, da, ho, mi, se };
-	std::string a = date::tostring(val);
-	std::string b = date::tostring(cmp);
+    int cmp[6] = { ye, mo, da, ho, mi, se };
+    std::string a = date::tostring(val);
+    std::string b = date::tostring(cmp);
 	
-    CHECK_ASSERT( a == b );
-    assert_failed( l ) << " got ["
-                       << a << "] != [" << b << "] instead" << std::endl;
-    abort();
+    if ( !( a == b ) ) {
+        AssertFailed f( l );
+        f << " got ["
+          << a << "] != [" << b
+          << "] instead";
+    }
 }
 
 // This is copied from grcal.cpp, which is dangerous as I may forget to keep
@@ -47,16 +49,13 @@ void assert_nn_eq_fn( Location l, int x, int y, int N, int x1, int y1)
 	int vy = y;
 	normalN(vx, vy, N);
 	
-    if (vx == x1 && vy == y1)
-		return;
-	else if (assertFailure)
-	{
-		++assertFailure;
-		return;
-	}
-    assert_failed( l ) << " got ["
-                       << vx << ", " << vy << "] != [" << x1 << ", " << y1 << "] instead" << std::endl;
-    abort();
+        if (vx == x1 && vy == y1)
+            return;
+
+        AssertFailed f( l );
+         f << " got ["
+           << vx << ", " << vy << "] != ["
+           << x1 << ", " << y1 << "] instead";
 }
 
 
