@@ -22,6 +22,9 @@ struct Location {
 #define assert(x) assert_fn( LOCATION( #x ), x )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
+#define assert_list_eq(x, y) \
+    assert_list_eq_fn( LOCATION( #x " == " #y ), \
+                       sizeof( y ) / sizeof( y[0] ), x, y )
 
 struct AssertFailed {
     std::ostream &stream;
@@ -71,7 +74,7 @@ void assert_eq_fn( Location l, X x, Y y )
     }
 }
 
-template< typename X, typename Y >
+template< typename X >
 void assert_list_eq_fn(
     Location loc, int c, X l, const typename X::Type check[] )
 {
