@@ -23,6 +23,7 @@
  */
 
 #include <wibble/operators.h>
+#include <wibble/sfinae.h>
 
 #include <string>
 #include <set>
@@ -62,6 +63,24 @@ inline std::string fmt(const std::set< X >& val) {
             s += ", ";
     }
     return "{ " + s + " }";
+}
+
+// Formatting lists -- actually, we need to move list handling into wibble,
+// really.
+template< typename X >
+inline typename TPair< std::string, typename X::Type >::First fmt(
+    X list )
+{
+    if ( list.empty() )
+        return "[]";
+
+    std::string s;
+    while( !list.empty() ) {
+        s += fmt( list.head() );
+        if ( !list.tail().empty() )
+            s += ", ";
+    }
+    return "[ " + s + " ]";
 }
 
 /// Given a pathname, return the file name without its path
