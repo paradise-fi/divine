@@ -55,7 +55,7 @@ inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
 }
 
 /// Format any value into a string using a std::stringstream
-template<typename T>
+template< typename T >
 inline std::string fmt(const T& val)
 {
     std::stringstream str;
