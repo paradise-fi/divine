@@ -50,6 +50,9 @@ template<> inline std::string fmt<char*>(char * const & val) { return val; }
 
 template< typename X >
 inline std::string fmt(const std::set< X >& val) {
+    if ( val.empty() )
+        return "{}";
+
     std::string s;
     for ( typename std::set< X >::iterator i = val.begin();
           i != val.end(); ++i ) {
