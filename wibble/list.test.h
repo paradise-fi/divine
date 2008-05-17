@@ -9,7 +9,7 @@ struct TestList {
     struct My {
         typedef int Type;
         int i, max;
-        int head() { return i; }
+        int head() const { return i; }
 
         My tail() const {
             My t = *this;
@@ -28,7 +28,7 @@ struct TestList {
     struct My2 {
         typedef int Type;
         int i, max, rep, repmax;
-        int head() { return i; }
+        int head() const { return i; }
 
         My2 tail() const {
             My2 t = *this;

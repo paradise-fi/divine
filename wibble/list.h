@@ -182,15 +182,15 @@ struct Take {
 
     typedef typename List::Type Type;
 
-    Type head() {
+    Type head() const {
         return l.head();
     }
 
-    bool empty() {
+    bool empty() const {
         return l.empty() || remaining == 0;
     }
 
-    Take tail() {
+    Take tail() const {
         Take t;
         t.remaining = remaining - 1;
         t.l = l.tail();
@@ -207,18 +207,18 @@ struct Map {
     F f;
     typedef typename F::result_type Type;
 
-    Type head() {
+    Type head() const {
         return f( l.head() );
     }
 
-    Map tail() {
+    Map tail() const {
         Map m;
         m.l = l.tail();
         m.f = f;
         return m;
     }
 
-    bool empty() {
+    bool empty() const {
         return l.empty();
     }
 
