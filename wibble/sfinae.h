@@ -78,6 +78,12 @@ struct EnableIfC< true, Type > { typedef Type T; };
 template< typename X, typename T = Unit >
 struct EnableIf : EnableIfC< X::value, T > {};
 
+template< typename A, typename B >
+struct TPair {
+    typedef A First;
+    typedef B Second;
+};
+
 }
 
 #endif
