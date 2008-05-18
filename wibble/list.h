@@ -52,15 +52,53 @@ struct ListIterator
 template< typename List >
 struct Sorted
 {
+    typedef std::vector< typename List::Type > Vec;
+    struct SharedVec {
+        int refs;
+        Vec vec;
+        SharedVec() : refs( 1 ) {}
+        void _ref() { ++refs; }
+        void _deref() { --refs; }
+    };
+
+    struct SharedPtr {
+        SharedVec *vec;
+        SharedPtr( bool a = false ) { vec = a ? new SharedVec : 0; }
+
+        SharedPtr( const SharedPtr &o ) {
+            vec = o.vec;
+            if ( vec )
+                vec->_ref();
+        }
+
+        SharedPtr &operator=( const SharedPtr &o ) {
+            vec = o.vec;
+            if ( vec )
+                vec->_ref();
+        }
+
+        operator bool() { return vec; }
+        Vec &operator*() { return vec->vec; }
+        Vec *operator->() { return &(vec->vec); }
+
+        ~SharedPtr() {
+            if ( vec ) {
+                vec->_deref();
+                if ( !vec->refs )
+                    delete vec;
+            }
+        }
+    };
+
     typedef typename List::Type Type;
     List m_list;
-    mutable std::auto_ptr< std::vector< Type > > m_sorted;
+    mutable SharedPtr m_sorted;
     int m_pos;
 
     void sort() const {
-        if ( m_sorted.get() )
+        if ( m_sorted )
             return;
-        m_sorted.reset( new std::vector< Type >() );
+        m_sorted = SharedPtr( true );
         std::copy( ListIterator< List >( m_list ), ListIterator< List >(),
                    std::back_inserter( *m_sorted ) );
         std::sort( m_sorted->begin(), m_sorted->end() );
