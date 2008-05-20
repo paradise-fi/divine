@@ -144,8 +144,21 @@ Splitter::const_iterator& Splitter::const_iterator::operator++()
 {
 	if (re.match(next))
 	{
-		cur = next.substr(0, re.matchStart(0));
-		next = next.substr(re.matchStart(0) + re.matchLength(0));
+		if (re.matchLength(0))
+		{
+			cur = next.substr(0, re.matchStart(0));
+			next = next.substr(re.matchStart(0) + re.matchLength(0));
+		}
+		else
+		{
+			if (!next.empty())
+			{
+				cur = next.substr(0, 1);
+				next = next.substr(1);
+			} else {
+				cur = next;
+			}
+		}
 	} else {
 		cur = next;
 		next = string();

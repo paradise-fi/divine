@@ -89,6 +89,25 @@ struct TestRegexp {
         assert(i == splitter.end());
     }
 
+    Test emptySplitter()
+    {
+        Splitter splitter("Z*", REG_EXTENDED | REG_ICASE);
+        Splitter::const_iterator i = splitter.begin("ciao");
+        assert_eq(*i, "c");
+        assert_eq(i->size(), 1u);
+        ++i;
+        assert_eq(*i, "i");
+        assert_eq(i->size(), 1u);
+        ++i;
+        assert_eq(*i, "a");
+        assert_eq(i->size(), 1u);
+        ++i;
+        assert_eq(*i, "o");
+        assert_eq(i->size(), 1u);
+        ++i;
+        assert(i == splitter.end());
+    }
+
 };
 
 }
