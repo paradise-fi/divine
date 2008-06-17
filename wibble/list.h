@@ -75,6 +75,7 @@ struct Sorted
             vec = o.vec;
             if ( vec )
                 vec->_ref();
+            return *this;
         }
 
         operator bool() { return vec; }
