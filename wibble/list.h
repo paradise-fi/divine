@@ -280,8 +280,8 @@ struct Empty {
 template< typename T >
 struct Singular {
     typedef T Type;
-    bool m_empty;
     T m_value;
+    bool m_empty;
 
     Singular() : m_empty( true ) {}
     Singular( T i ) : m_value( i ), m_empty( false ) {}
