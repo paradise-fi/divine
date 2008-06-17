@@ -132,7 +132,7 @@ struct Sorted
         return *this;
     }
 
-    Sorted( List l ) : m_list( l ), m_sorted( 0 ), m_pos( 0 ) {}
+    Sorted( List l = List() ) : m_list( l ), m_sorted( 0 ), m_pos( 0 ) {}
 };
 
 template< typename List, typename Predicate >
@@ -170,6 +170,8 @@ struct Filtered
         : m_list( l ), m_pred( p )
     {
     }
+
+    Filtered() {}
 };
 
 template< typename List >
@@ -208,7 +210,7 @@ struct Unique
         return r;
     }
 
-    Unique( List l )
+    Unique( List l = List() )
         : m_list( l )
     {
     }
