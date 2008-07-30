@@ -36,7 +36,9 @@ class ChildProcess
 {
 protected:
 	pid_t _pid;
-	
+        int m_status;
+        void waitError();
+
 	/**
 	 * Main function to be called in the child process after it has forked
 	 */
@@ -65,6 +67,9 @@ public:
 	/// no child is running.
 	/// TODO: gracefully handle the EINTR error code
 	int wait();
+
+        bool running();
+        int exitStatus();
 
 	/// Wait for the child to finish, returing its exit status and storing
 	/// resource usage informations in `ru'.  Return -1 if no child is running.

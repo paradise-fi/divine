@@ -205,6 +205,13 @@ pid_t ChildProcess::forkAndRedirect(int* stdinfd, int* stdoutfd, int* stderrfd)
 	}
 }
 
+void ChildProcess::waitError() {
+    if (errno == EINTR)
+        throw wibble::exception::Interrupted("waiting for child termination");
+    else
+        throw wibble::exception::System("waiting for child termination");
+}
+
 int ChildProcess::wait()
 {
 	if (_pid == -1)
@@ -213,14 +220,29 @@ int ChildProcess::wait()
 		return -1;		// FIXME: for lack of better ideas
 	}
 
-	int status;
-	if (waitpid(_pid, &status, 0) == -1)
-		if (errno == EINTR)
-			throw wibble::exception::Interrupted("waiting for child termination");
-		else
-			throw wibble::exception::System("waiting for child termination");
+	if (waitpid(_pid, &m_status, 0) == -1)
+            waitError();
 	_pid = -1;
-	return status;
+	return m_status;
+}
+
+bool ChildProcess::running()
+{
+    if ( _pid == -1 ) {
+        return false;
+    }
+
+    int res = waitpid(_pid, &m_status, WNOHANG);
+        
+    if ( res == -1 ) {
+        waitError();
+    }
+
+    if ( !res ) {
+        return true;
+    }
+
+    return false;
 }
 
 int ChildProcess::wait(struct rusage* ru)
@@ -231,14 +253,11 @@ int ChildProcess::wait(struct rusage* ru)
 		return -1;		// FIXME: for lack of better ideas
 	}
 
-	int status;
-	if (wait4(_pid, &status, 0, ru) == -1)
-		if (errno == EINTR)
-			throw wibble::exception::Interrupted("waiting for child termination");
-		else
-			throw wibble::exception::System("waiting for child termination");
+	if (wait4(_pid, &m_status, 0, ru) == -1)
+            waitError();
+
 	_pid = -1;
-	return status;
+	return m_status;
 }
 
 void ChildProcess::kill(int signal)
