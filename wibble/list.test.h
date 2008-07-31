@@ -80,9 +80,9 @@ struct TestList {
 
     Test count() {
         My list( 512, 1024 );
-        assert_eq( list::count( list ), 512 );
+        assert_eq( list::count( list ), 512u );
         list = My( 0, 1024 );
-        assert_eq( list::count( list ), 1024 );
+        assert_eq( list::count( list ), 1024u );
     }
 
     Test filtered() {
