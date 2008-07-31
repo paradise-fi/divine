@@ -13,11 +13,12 @@ namespace fs {
 std::auto_ptr<struct stat> stat(const std::string& pathname)
 {
 	std::auto_ptr<struct stat> res(new struct stat);
-	if (::stat(pathname.c_str(), res.get()) == -1)
+	if (::stat(pathname.c_str(), res.get()) == -1) {
 		if (errno == ENOENT)
 			return std::auto_ptr<struct stat>();
 		else
 			throw wibble::exception::System("getting file information for " + pathname);
+        }
 	return res;
 }
 
