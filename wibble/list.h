@@ -94,7 +94,7 @@ struct Sorted
     typedef typename List::Type Type;
     List m_list;
     mutable SharedPtr m_sorted;
-    int m_pos;
+    size_t m_pos;
 
     void sort() const {
         if ( m_sorted )
