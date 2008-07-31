@@ -25,6 +25,7 @@
 #include <wibble/operators.h>
 #include <wibble/sfinae.h>
 
+#include <cstdarg>
 #include <string>
 #include <set>
 #include <sstream>
@@ -52,6 +53,16 @@ inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
         list = list.tail();
     }
     return o << " ]";
+}
+
+static inline std::string fmt( std::string f, ... ) {
+    char *c;
+    va_list ap;
+    va_start( ap, f );
+    vasprintf( &c, f.c_str(), ap );
+    std::string ret( c );
+    free( c );
+    return ret;
 }
 
 /// Format any value into a string using a std::stringstream
@@ -407,7 +418,6 @@ public:
 	const_iterator begin(std::istream& in) { return const_iterator(in); }
 	const_iterator end() { return const_iterator(); }
 };
-
 
 }
 }
