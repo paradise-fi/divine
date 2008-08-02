@@ -31,6 +31,18 @@ struct TestString {
         assert_eq(str::fmt(a), "{ 1, 2, 5 }");
     }
 
+    Test fmtVec()
+    {
+        std::vector< int > a;
+        assert_eq(str::fmt(a), "[]");
+        a.push_back( 2 );
+        assert_eq(str::fmt(a), "[ 2 ]");
+        a.push_back( 5 );
+        assert_eq(str::fmt(a), "[ 2, 5 ]");
+        a.push_back( 1 );
+        assert_eq(str::fmt(a), "[ 2, 5, 1 ]");
+    }
+
     Test fmtList()
     {
         assert_eq( str::fmt( list::Empty< int >() ), "[]" );
