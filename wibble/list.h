@@ -245,17 +245,25 @@ struct Take {
 template< typename List, typename F >
 struct Map {
     List l;
-    F f;
+
+    char f_space[ sizeof( F ) ];
+    F &f() {
+        return *(F *)f_space;
+    }
+    const F &f() const {
+        return *(const F *)f_space;
+    }
+
     typedef typename F::result_type Type;
 
     Type head() const {
-        return f( l.head() );
+        return f()( l.head() );
     }
 
     Map tail() const {
         Map m;
         m.l = l.tail();
-        m.f = f;
+        m.f() = f();
         return m;
     }
 
@@ -265,8 +273,10 @@ struct Map {
 
     Map() {}
     Map( const List &_l, const F &_f ) 
-        : l( _l ), f( _f )
-    {}
+        : l( _l )
+    {
+        f() = _f;
+    }
 };
 
 template< typename T >
