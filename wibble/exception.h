@@ -151,9 +151,9 @@ public:
         
         std::stringstream res;
         std::copy( m_context.begin(), m_context.end(),
-                   std::ostream_iterator< std::string >( res, ", " ) );
+                   std::ostream_iterator< std::string >( res, ", \n    " ) );
         std::string r = res.str();
-        return std::string( r, 0, r.length() - 2 );
+        return std::string( r, 0, r.length() - 7 );
     }
 
     const std::vector<std::string>& context() const throw ()
@@ -198,7 +198,8 @@ public:
 	virtual const std::string& fullInfo() const throw ()
 	{
 		if (m_formatted.empty())
-			m_formatted = desc() + ". Context: " + formatContext();
+			m_formatted = desc() + ". Context:\n    "
+                                      + formatContext();
 		return m_formatted;
 	}
 

@@ -69,7 +69,8 @@ struct TestException {
             throw wex::BadCastExt< int, const char * >( "test" );
             check = 1;
         } catch ( wex::BadCast& e ) {
-            assert_eq( e.fullInfo(), "bad cast: from i to PKc. Context: test" );
+            assert_eq( e.fullInfo(),
+                       "bad cast: from i to PKc. Context:\n    test" );
             check = 2;
         }
         assert_eq( check, 2 );
@@ -86,8 +87,10 @@ struct TestException {
                 throw wex::Generic( "foobar" );
             }
         } catch( wex::Generic &e ) {
-            assert_eq( e.formatContext(), "toplevel context, first context,"
-                       " second context, foobar" );
+            assert_eq( e.formatContext(), "toplevel context, \n    "
+                       "first context, \n    "
+                       "second context, \n    "
+                       "foobar" );
             check = 2;
         }
         assert_eq( check, 2 );
