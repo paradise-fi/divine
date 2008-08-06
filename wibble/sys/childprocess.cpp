@@ -260,6 +260,23 @@ int ChildProcess::wait(struct rusage* ru)
 	return m_status;
 }
 
+void ChildProcess::waitForSuccess() {
+    int r = wait();
+    if ( WIFEXITED( r ) ) {
+        if ( WEXITSTATUS( r ) )
+            throw exception::Generic(
+                str::fmt( "Subprocess terminated with error %d.",
+                          WEXITSTATUS( r ) ) );
+        else
+            return;
+    }
+    if ( WIFSIGNALED( r ) )
+        throw exception::Generic(
+            str::fmt( "Subprocess terminated by signal %d.",
+                      WTERMSIG( r ) ) );
+    throw exception::Generic( "Error waiting for subprocess." );
+}
+
 void ChildProcess::kill(int signal)
 {
 	if (::kill(_pid, signal) == -1)

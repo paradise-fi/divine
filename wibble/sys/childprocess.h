@@ -70,6 +70,7 @@ public:
 
         bool running();
         int exitStatus();
+        void waitForSuccess();
 
 	/// Wait for the child to finish, returing its exit status and storing
 	/// resource usage informations in `ru'.  Return -1 if no child is running.
