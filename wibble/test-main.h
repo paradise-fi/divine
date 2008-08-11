@@ -142,7 +142,6 @@ struct Main {
         f_status = wibble::sys::Pipe( status[ 0 ]);
         f_confirm = fdopen( confirm[1], "w" );
         std::string line;
-        size_t n;
 
         while ( true ) {
             if ( f_status.eof() ) {
