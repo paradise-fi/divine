@@ -94,7 +94,7 @@ public:
 	Option();
 	virtual ~Option() {}
 
-	const bool isSet() const { return m_isset; }
+	bool isSet() const { return m_isset; }
 	const std::string& name() const { return m_name; }
 
 	void addAlias(char c) { shortNames.push_back(c); }
