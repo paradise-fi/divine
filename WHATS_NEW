@@ -1,0 +1,40 @@
+DiVinE Multi-Core 1.2.1
+=======================
+
+- Fix compilation with g++ 4.3.
+- Update the bundled version of HOARD to 3.7.1.
+- Include some updates to the bundled version of wibble (no major impact on
+  DiVinE itself).
+
+DiVinE Multi-Core 1.2
+=====================
+
+- A few minor bugfixes.
+- The divine-mc.combine utility can now handle .mdve and .mprobdve files.
+- Parallel shared-memory probabilistic model checker ProbDiVinE-MC has been
+  added to the distribution, built as divine-mc.probabilistic.
+- NIPS interpreter updated to version 1.2.8
+
+DiVinE Multi-Core 1.1
+=====================
+
+- The OWCTY algorithm now performs an on-the-fly heuristic to speed up
+  discovery of counterexample.
+- Added divine-mc.combine to the distribution.
+- Added report generation functionality (-r commandline switch) to facilitate
+  mass experimental runs.
+- New commandline switch --max-memory to limit address space available to the
+  tool. Can be used to avoid swapping.
+- Counterexample generation can now be disabled through --no-counterexample
+  commandline switch.
+- A dummy high-speed state space generator for performance analysis. It is used
+  when no input file is given.
+- A prototype ProMeLa state space generator and an accompanying bytecode
+  compiler. ProMeLa models can be verified, although no counterexample
+  generation is implemented.
+- Developer documentation updates.
+
+DiVinE Multi-Core 1.0
+=====================
+
+Initial release.
