@@ -1,0 +1,154 @@
+DiVinE Multi-Core
+=================
+
+Introduction
+------------
+
+Based on proven DiVinE LTL model checking system, DiVinE Multi-Core
+brings parallel verification to contemporary high-powered multi-core
+architectures. DiVinE Multi-Core exploits full power of modern x86
+hardware and reduces unnecessary delays in workflow. Employing
+state-of-the-art parallel liveness checking algorithm, DiVinE
+Multi-Core offers unmatched scalability on shared memory platforms in
+the range of 2- to 16-core machines. Moreover, the tool supports
+64-bit platforms out of the box, allowing it to leverage all the
+memory available in contemporary systems (and systems of the upcoming
+years).
+
+In the current DiVinE Multi-Core release, input is provided in DVE
+format -- an industry-strength specification language, as used in
+original DiVinE, with plenty of diverse example models, ranging from
+simple toys to complex real-world models. There is an extensive model
+resource available, [The Beem Database] [1], with large amount of
+downloadable models and properties.
+
+[1]: http://anna.fi.muni.cz/models.
+
+An upcoming release of DiVinE Multi-Core will allow re-use of models
+specified in ProMeLa (as used in the SPIN tool), in addition to its
+native DVE format. Public release is planned for late 2007 or early
+2008. Moreover, further optimisation is expected to be part of this
+second release, pushing the tool performance and scalability even
+closer to the cutting edge.
+
+Build Instructions
+------------------
+
+This package requires pthreads and a recent g++ (4.1 or later, tested
+under 4.1.2 and 4.2.1). You will also need cmake (www.cmake.org,
+tested with 2.4 -- however, the configure script could download and
+compile it for you, just run configure and answer the question(s)).
+
+After unpacking the tarball, compile the source (the build system
+should give you fairly clear indication what's wrong in case of
+failure).
+
+    $ ./configure
+    $ make
+
+Assuming, that build finishes successfully, you can try to run the binary:
+
+    $ ./_build/tools/divine-mc help
+    $ ./_build/tools/divine-mc reachability examples/shuffle.dve
+    $ ./_build/tools/divine-mc owcty examples/peterson-liveness.dve
+    $ ./_build/tools/divine-mc owcty examples/peterson-naive.dve
+
+There is no need to install the binary, it is pretty much
+self-contained. However, if you like, you can install divine-mc and
+divine-mc.simulator:
+
+    # make install
+
+Further usage instructions
+--------------------------
+
+Reference of commandline options is available with `divine-mc help`,
+as detailed above. The most useful invocations are these:
+
+ * run reachability on 8 cores:
+   `./_build/tools/divine-mc reachability -w 8 input.dve`
+ * run model checking on 4 cores:
+   `./_build/tools/divine-mc owcty -w 4 input-with-property.dve`
+
+There are several example inputs, mostly coming from [The BEEM
+Database] [1], distributed with the tool under the examples/
+directory. These are the files prefixed beem-. Many more models are
+available for download in the BEEM repository.
+
+[1]: http://anna.fi.muni.cz/models
+
+When you are running LTL model checking (ie. OWCTY), you may discover
+that your model violates the required property. In that case, a
+counterexample will be generated, and you can use divine-mc.simulate
+to examine it. Example:
+
+    $ ./_build/tools/divine-mc owcty -w 4 examples/peterson-naive.dve
+    $ ./_build/tools/divine-mc.simulate -I examples/peterson-naive.trail examples/peterson-naive.dve
+
+You can tell the model checker to output the trail elsewhere, by using -t:
+
+    $ ./_build/tools/divine-mc owcty -w 4 -t my.trail examples/peterson-naive.dve
+
+Known Issues
+------------
+
+Scalability on 64-bit platforms is inferior to scalability on 32-bit
+platforms. If you are running on x86_64 or other similar architecture
+which can run 32-bit binaries natively, you can compile DiVinE in
+32-bit mode:
+
+    $ CXXFLAGS=-m32 ./configure
+    $ make
+
+If you have previously run configure, you may need to delete or move
+the _build directory out of way. However, using 32-bit mode limits the
+size of verifiable models to roughly 3GB.
+
+Reporting Problems
+------------------
+
+The DiVinE project uses Trac for managing problem reports. If you
+encounter a behaviour you believe is a bug in DiVinE Multi-Core,
+please [file a new ticket for component divine-mc] [1] in [DiVinE
+Trac] [2]. However, before reporting issues, please consider checking
+if there is a more recent version available and if the issue has been
+reported already (in the latter case, please add a comment to the
+existing ticket, that you have encountered the issue, and if possible,
+any further details you may know about the problem). Thanks in
+advance.
+
+[1]: http://anna.fi.muni.cz/divine/trac/newticket?component=divine-mc&version=1.0-beta1
+[2]: http://anna.fi.muni.cz/divine/trac/
+
+Obtaining New Versions
+----------------------
+
+The latest release is always available through [project pages] [1],
+section Download. You could also obtain the latest development
+snapshot through darcs, which is used for version control:
+
+    $ darcs get http://anna.fi.muni.cz/darcs/divine-mc
+
+When you already have a darcs repository of the project, you can get
+the latest changes by issuing:
+
+    $ darcs pull
+
+in the repository directory. For further details on using darcs,
+please consult the file "HACKING" in the source tree and [darcs
+homepage] [2].
+
+[1]: http://anna.fi.muni.cz/divine/divine-mc/
+[2]: http://www.darcs.net/
+
+Licence
+-------
+
+The tool is not production-ready, use with care. There is no warranty
+whatsoever, as detailed in the licence texts, which may be found in
+the file "COPYING" in the distribution tarball. The tool is a product of
+The ParaDiSe Laboratory, Faculty of Informatics of Masaryk University.
+
+This distribution includes freely redistributable third-party
+code. Please refer to AUTHORS and COPYING included in the distribution
+for copyright and licensing details.

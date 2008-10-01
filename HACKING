@@ -1,0 +1,347 @@
+Introduction
+============
+
+This document is intended for people writing algorithms or working on
+the framework itself. The source code is currently layed out like this:
+
+* divine/ is sources and headers of the framework and algorithms
+  * divine/legacy/ contains code from original DiVinE library, among
+    others the DVE state space generator and utilities it requires
+* tools/ is for binaries
+  * tools/divine-mc.cpp is the main user-level entrypoint of the tool
+
+It is advisable, that you first compile the tool on the user level
+(see README) and find out how the divine-mc binary works.
+
+Using Darcs
+===========
+
+Preferably, you should use darcs (see <http://www.darcs.net>) for
+version control. After installing darcs, there is a single "main"
+branch, which you should use as a base for your work. Get it by
+issuing:
+
+    $ darcs get http://anna.fi.muni.cz/darcs/divine-mc
+
+Now, you should have a directory called divine-mc, which contains a
+copy of the source code. You can modify a few files in there, and issue
+
+    $ darcs whatsnew
+    $ darcs record
+
+You will notice, that unlike CVS, darcs will ask you which changes to
+record (or commit, in the CVS vocabulary). Also, darcs will ask you
+for a short patch name. You are encouraged to only record small
+changes at once, so that you can describe the change in a single
+line. Of course, for bigger changes (or those that need more
+explanation), you can still include a longer description after the
+short one (darcs will ask).
+
+Now, after you provide this data, darcs will run the testsuite, to
+ensure you didn't break anything. However, this is most often
+something you do not want to happen, and should disable in your
+personal repo (you can always run the suite with `sh
+test.sh`). Disable the tests with:
+
+    $ echo "ALL no-test" > _darcs/prefs/default
+
+Another important command is:
+
+    $ darcs changes -s --last 50 | less
+
+This will show last 50 changes, with summary of changed files in
+each. You can also use `darcs changes -v --last 20` to see diffs
+instead of just summaries.
+
+When you record a change you don't like, you can use `darcs unrecord`
+to remove the recorded patch. Note however, that the changes will be
+kept in the working copy, so you can `darcs record` them again, or
+`darcs revert` them, if you don't like them, after all.
+
+If you have changes, that you would like to have included within the
+main divine-mc branch, it is probably best, to send those changes by
+mail. They will be reviewed and if suitable, added to the repository.
+
+    $ darcs send
+
+Alternatively, you can publish your darcs repository at a place the
+maintainer can reach it (eg. public http service or otherwise). Then
+contact the maintainer and ask him to merge your changes into
+mainline.
+
+Over time, the mainline will accumulate some changes, and you will
+probably want to stay in sync with those. It is advisable, that before
+merging from mainline, you record all your unrecorded changes. Then,
+you may issue:
+
+    $ darcs pull
+
+Which will ask you which changes would you like to bring into your
+branch. Most of the time, you should not see any conflicts, as darcs
+handles merging automatically (unless there are real conflicts).
+
+If you get spurious conflicts when pulling, it is advisable that you `darcs
+get` a new copy of the mainline repository and use `darcs pull` to move your
+local changes from your previous copy. This means that some patches have
+been removed from the mainline and sometimes happens, although fairly seldom.
+
+Compiling darcs version
+=======================
+
+The configure script contained in the source tree is intended for
+distribution tarballs only. When you are using development version, it
+is recommended that you create a build directory and run cmake manually:
+
+    $ mkdir _build
+    $ cd _build
+    $ cmake ..
+    $ make
+
+The binaries etc. are in the same places, as they would be when using
+./configure (see README for details on usage).
+
+Algorithm Implementation
+========================
+
+Trivia
+------
+
+When implementing a new algorithm, you will probably want to add a new
+header file for it (like eg. owcty.h). After you create the file and
+implement an algorithm skeleton (eg. by looking at owcty or
+reachability and copying the interesting bits, renaming the algorithm
+class and so on). When you have a basic skeleton, you will want to
+make the algorithm runnable, and to do this, you will have to modify
+tools/divine-mc.cpp. In the line `Engine *cmd_reachability, ...`, you
+need to add a `*cmd_my_algorithm`, then in `setupCommandline()`, you
+need to initialize this pointer (see other `cmd_foo =` lines for
+example) and in `runAlgorithm()`, you need to add an if statement to
+actually run it (again, look around for examples).
+
+Now, that you have a skeleton (you could create it by simply copying
+and renaming reachability, in the very first step), you can try to
+compile the tool and run the new algorithm (it should show up in
+`divine-mc help`, and you should be able to run it the same way you
+run other existing algorithms).
+
+Writing the algorithm itself
+----------------------------
+
+When implementing a parallel algorithm, there are two "layers" on
+which you work. The outside skeleton of the algorithm is usually
+serial, and corresponds to the high-level pseudocode of the
+algorithm. For reachability, this is as trivial as:
+
+        pack.initialize();
+        pack.blockingVisit();
+        int seen = 0;
+        for ( int i = 0; i < pack.m_threads; ++i ) {
+            seen += pack.worker( i ).observer().m_stateCount;
+        }
+        std::cout << "seen total of " << seen << " states" << std::endl;
+
+The parallel sections of code are managed by a `Pack`. This `Pack`
+contains workers, that may be mostly arbitrary. The pack provides
+termination detection and hands out IDs to the workers. Right now, the
+workers are always implemented as threads and there is only a single
+implementation of `Pack`, that is used with threads. Eventually, this
+may be split to `ThreadPack` and `ClusterPack` or somesuch.
+
+Here, the pack embodies the parallel level of the algorithm. What
+`pack.initialize()` does is look into the configuration it has been
+given from commandline (not too important here) and instantiates a
+number of worker threads. When we call `blockingVisit()`, the Pack
+takes the initial state of the system (again, the system has been
+derived from the configuration object). Since it has no particular
+knowledge about how work is partitioned, it asks an arbitrary worker,
+where to put the initial state, adds it to this worker's input
+queue. Then it starts the termination detection thread and all the
+workers. When termination detection decides termination,
+`blockingVisit()` returns (this means, it works as a barrier in the
+code, waiting for all the threads to finish).
+
+Now that the parallel section of code has finished, we can collect the
+results and print those to the user.
+
+So let's take a more complex algorithm, OWCTY. The very rough
+pseudocode for the algorithm looks like this:
+
+    reachability()
+    while !fixpoint
+        reset()
+        reachability()
+        elimination()
+
+The reachability and elimination steps are parallel, this skeleton in
+itself is serial. The implementation is to be found in divine/owcty.h,
+`struct Owcty`, method `run()`. Some boring details in the
+implementation, doing with transfer of hash tables and queues, are
+unavoidable in the actual implementation.  However, these are mostly
+encapsulated in the `swap()` and `packSwapAndQueue()` methods.
+
+Parallel Sections
+-----------------
+
+Now that we have seen how the serial outline of the algorithm is
+implemented, we will look at the parallel sections. Each single worker
+is implemented as an object, that encapsulates all its local state and
+is mostly self-contained.
+
+### The Pack requires these methods from each worker: ###
+
+ * `setPack( pack )`
+
+for queuing initial state:
+
+ * `queue( state )`
+ * `owner( state )` to find out which worker owns a given state
+
+for execution control (threading):
+
+ * `start()`
+ * `terminate()`
+ * `join()`
+
+implement the TerminationConsole::Pluggable interface for termination
+detection
+
+### Pack provides to workers: ###
+
+First, when workers are instantiated, for each of them, `setPack( this
+)` is called, to give them access to the Pack.
+
+The workers are supposed to store a pointer to the pack to be able to
+use its services, which are:
+
+ * `workerCount()` -- total number of workers in the pack
+ * `worker( i )` -- reference to i-th worker in the pack
+
+### Pack provides to outside: ###
+
+To the outside, that is the serial skeleton of the algorithm as
+discussed above, the Pack provides the following interface:
+
+ * `blockingVisit()` -- queue initial state to its owner and start blockingRun()
+ * `blockingRun()` -- fire up all the workers and wait for termination
+
+ * `visit()` -- queue initial state and start run()
+ * `run()` -- fire up all the workers and return (asynchronous)
+
+ * `monitor()` -- wait for run() to finish (sort like pthread_join() over
+   all workers, but also performs termination detection)
+
+ * `start()` -- monitor threads asynchronously
+
+The pack *has* to be monitoring the workers, otherwise they may lock
+up, since the termination detection algorithm revives idle workers
+that have received work in the meantime. In case you don't want to
+wait synchronously, use `start()`, otherwise use `monitor()` or either
+of the blocking methods.
+
+When waiting asynchronously, you can use `hasTerminated()` method to
+check whether the algorithm has finished.
+
+
+Default structure of workers
+----------------------------
+
+Since implementing a complete Worker for parallel algorithm is
+laborious at best, there are several building blocks provided in the
+library.
+
+First, the `TerminationConsole::Pluggable` class, which Workers
+probably want to inherit, provides interface to the termination
+detection algorithm.
+
+There is a skeleton of a worker main loop using the termination
+console:
+
+    assert( plugged() );
+    MutexLock lock( plug()->mutex );
+    plug()->started();
+    while ( !m_terminate || checkForWork() ) {
+          if ( !checkForWork() && !m_terminate ) {
+                plug()->idle( lock );
+          }
+          // do some work on queued states
+    }
+    assert( !checkForWork() );
+    // the worker has finished
+
+This would be generally located in the worker's `main()` method, since
+worker is supposed to be a Thread. The `checkForWork()` and
+`m_terminate` are handled by the worker as well. The default
+implementaiton for `terminate()` would be to flip `m_terminate` to
+true and call `plug()->wakeup()`;
+
+The second building block is Controller, which encapsulates work
+distribution scheme and implementation among workers. The
+`controller::Thread` also provides the `main()` method for the thread,
+similar to the above template. This means, that you *don't* need to
+implement the main loop, as long as your problem fits the above
+scheme. This block is fairly specialised, in that it deals with
+transitions and states and how they are transferred among workers.
+
+The third building block (and most specialised one) for workers is a
+visitor, which encapsulates graph exploration. Its role is to expand
+states and transitions and notify an observer about each explored
+transition and about each expanded state. Furthermore, it notifies
+about error states and in case of serial DFS, that a state is moving
+to the closed set. However, the visitor does not talk directly to the
+observer, but to controller, which first decides which worker is
+responsible for processing the given event. In case of transition
+events, the owner of target state is notified, in case of other event,
+owner of the state is notified (at least this is the case for
+statically partitioned distribution scheme, as implemented by
+`controller::Partition` -- different controllers have different
+notions of ownership).
+
+The following pseudocode describes flow of events in the system:
+
+    Visitor: transition is explored, notifies Controller
+    Controller: decides ownership of target state
+      if state is local:
+         notifies Observer
+      else:
+         notifies another worker through Pack about the transition
+
+In the else clause, the exact notification mechanism depends on
+implementation of the Controller, for the (most conventional)
+`controller::Partition`, it is a `Fifo` channel, which is monitored by
+the `main()` loop as shown above. In other words, the Controller,
+which contains the `main()` loop picks up messages from outside (other
+workers) and notifies the Observer:
+
+    Controller: pick up messages from incoming queue
+    Controller: notifies Observer
+
+Therefore, the Observer does not need to know much about remote or
+local states and differences among them, the Controller handles those
+transparently behind the scenes.
+
+Implementing Observers
+----------------------
+
+A fairly basic observer can be seen in `reachability.h`, starting thusly:
+
+    template< typename Bundle, typename Self >
+    struct ObserverImpl : observer::Common< Bundle, ObserverImpl< Bundle, Self > >
+
+This is a fairly basic header for observer, deriving the
+observer::Common base class, which provides (empty) default handlers
+for all events. If you need to override anything, you can look up the
+signature in observer.h, struct Common and provide an implementation
+in your observer implemntation.
+
+You can see, that reachability mostly just counts events (expansions,
+transitions and errors) and reports first error of a given kind.
+
+In the event handlers, you can read everything accessible through the
+parameters (ie, `from` and `to` states for transitions, and the
+relevant state in expansion/error). Apart from reading, you can also
+modify extension of the states. However note, that you should avoid
+modifying extension of the `from` state of a transition, since you
+would have to synchronize (many workers can process transitions from a
+single state simultaneously) and manage remote updates in case of
+cluster computation.
+
