@@ -1,0 +1,55 @@
+/* Peterson's algorithm for N processes - see Lynch's book, p. 284 */
+
+//#define N	3	/* nr of processes */
+
+byte turn[N], flag[N];
+
+byte ncrit;	/* auxiliary var to check mutual exclusion */
+
+proctype user( byte no )
+{	byte j, k;
+again:
+	k = 0;	/* count max N-1 rounds of competition */
+	do
+	:: k < N-1 ->
+		flag[no] = k;
+		turn[k] = no;
+
+		j = 0;		/* for all j != no */
+		do
+		:: j == no ->
+			j++
+		:: j != no ->
+			if
+			:: j < N ->
+				(flag[j] < k || turn[k] != no);
+				j++
+			:: j >= N  ->
+				break
+			fi
+		od;
+		k++
+	:: else ->	/* survived all N-1 rounds */
+		break
+	od;
+
+	ncrit++;
+	assert(ncrit == 1);	/* critical section */
+	ncrit--;
+
+	flag[no] = 0;
+	goto again
+}
+
+init
+{
+  byte no = 0;
+  do
+    ::
+       no < N;
+       run user( no );
+       no++;
+    :: else;
+       break;
+  od
+}

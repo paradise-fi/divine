@@ -1,0 +1,122 @@
+NIPS - New Implementation of Promela Semantics
+Copyright (C) 2005: Stefan Schuermans <stefan@schuermans.info>
+                    Michael Weber <michaelw@i2.informatik.rwth-aachen.de>
+                    Lehrstuhl fuer Informatik II, RWTH Aachen
+Copyleft: GNU public license - http://www.gnu.org/copyleft/gpl.html
+
+specification of the bytecode file format
+
+bytecode file:
+  <file header>
+  <section 0>
+  ...
+  <section sec_cnt-1>
+
+file header:
+  "NIPS v1a"
+  sec_cnt: uint16_t, big-endian, number of sections in file
+
+section:
+  sec_type: 4 uint8_t, ASCII, type of section
+  sec_sz: uint32_t, big-endian, size of section's content
+  section content: sec_sz uint8_t
+
+section: module
+  sec_type: "mod "
+  sec_sz: uint32_t, big-endian, size of module section's content
+  <string module_name>
+  part_cnt: uint16_t, big-endian, number of parts in module
+  <part 0>
+  ...
+  <part part_cnt-1>
+
+part
+  part_type: 4 uint8_t, ASCII, type of part
+  part_sz: uint32_t, big-endian, size of part's content
+  part content: part_sz uint8_t
+
+part: module flags
+  part_type: "modf"
+  part_sz: uint32_t, big-endian, always 4
+  mod_flags: uint32_t, big-endian, some flags describing properties of the module
+             0x00000001 = monitor exists
+
+part: bytecode
+  part_type: "bc  "
+  part_sz: uint32_t, big-endian, size of bytecode
+  bytecode: part_sz uint8_t, the bytecode
+
+part: flag table
+  part_type: "flag"
+  part_sz: uint32_t, big-endian, size of entire flag table
+  flag_cnt: uint16_t, big-endian, number of flag entries in this table
+            the entries in this table have to be sorted ascending by their addresses
+  <flag 0>
+  ...
+  <flag flag_cnt-1>
+
+flag:
+  addr: uint32_t, big-endian, address for which flags are given
+  flags: uint32_t, the flags for this address
+                   0x00000001 = progress state
+                   0x00000002 = accept state
+
+part: string table
+  part_type: "str "
+  part_sz: uint32_t, big-endian, size of entire string table
+  str_cnt: uint16_t, big-endian, number of strings in this table
+  <string 0>
+  ...
+  <string str_cnt-1>
+
+string:
+  str_sz: uint16_t, big-endian, size of string (including terminating zero)
+  str: str_sz uint8_t, ASCII, zero-terminated string
+
+part: source location table
+  part_type: "sloc"
+  part_sz: uint32_t, big-endian, size of entire source location table
+  sloc_cnt: uint16_t, big-endian, number of source locations in this table
+            the entries in this table have to be sorted ascending by their addresses
+  <srcloc 0>
+  ...
+  <srcloc sloc_cnt-1>
+
+srcloc:
+  addr: uint32_t, big-endian, address whose source location is to be specified
+  line: uint32_t, big-endian, line number
+  col: uint32_t, big-endian, column number
+
+part: structure information table
+  part_type: "stin"
+  part_sz: uint32_t, big-endian, size of entire structure information table
+  stin_cnt: uint16_t, big-endian, number of structure information entries in this table
+            the entries in this table have to be sorted ascending by their addresses
+  <strinf 0>
+  ...
+  <strinf stin_cnt-1>
+
+strinf:
+  addr: uint32_t, big-endian, address for which some structure information is given
+  code: uint8_t, 0x00 = start of some structure, 0x01 = end of some structure, 0x02 = middle in some structure
+  <string type>
+  <string name>
+
+part: scc information table
+  part_type: "scc "
+  part_sz: uint32_t, big-endian, size of entire scc information table
+  scc_types_cnt: uint16_t, big-endian
+  <scc_type 0>
+  ...
+  <scc_type scc_types_cnt-1>
+  scc_map_cnt: uint16_t, big-endian
+  <scc_map 0>
+  ...
+  <scc_map scc_map_cnt-1>
+
+scc_type:
+  uint8_t, 0 = NOT ACCEPTING, 1 = PARTIALLY ACCEPTING, 2 = FULLY ACCEPTING
+
+scc_map:
+  addr: uint32_t, big-endian, address
+  scc_id: uint32_t, big-endian, SCC ID number

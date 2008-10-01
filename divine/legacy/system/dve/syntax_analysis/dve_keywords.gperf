@@ -1,0 +1,32 @@
+struct Keyword { char *name; int token; }
+%%
+guard,			T_GUARD
+sync,			T_SYNC
+async,                  T_ASYNC
+effect,			T_EFFECT
+process,		T_PROCESS
+state,			T_STATE
+init,			T_INIT
+accept,			T_ACCEPT
+commit,			T_COMMIT
+trans,			T_TRANS
+system,			T_SYSTEM
+true,			T_TRUE
+false,			T_FALSE
+and,			T_BOOL_AND
+or,			T_BOOL_OR
+not,			T_BOOL_NOT
+imply,			T_IMPLY
+int,			T_INT
+byte,			T_BYTE
+const,			T_CONST
+channel,		T_CHANNEL
+property,		T_PROPERTY
+buchi,			T_BUCHI
+genbuchi,		T_GENBUCHI
+streett,		T_STREETT
+rabin,			T_RABIN
+muller,			T_MULLER
+assert,			T_ASSERT
+%%
+
