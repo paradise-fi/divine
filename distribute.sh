@@ -11,7 +11,7 @@ else
     if grep -q '^#define DIVINE_RELEASE' divine/version.h; then
         name="divine-$ver1"
     else
-        ver1="$ver1+"
+        ver1="$ver1~"
         name="divine-$ver1$bra1$date"
     fi
 fi
