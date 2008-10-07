@@ -30,6 +30,8 @@ do_cmake_inst() {
             curl $CMAKE_URL -o cmake-2.4.7.tar.gz || die "Error downloading cmake, plase install manually.";
         elif type -p wget >& /dev/null; then
             wget $CMAKE_URL || die "Error downloading cmake, please install manually.";
+        else
+            die "Could not find curl nor wget to download cmake: plase install either of them or install cmake manually."
         fi
     fi
     test -e "$CMAKE_TAR" || die "Cmake tarball unexpectedly missing."
