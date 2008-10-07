@@ -196,7 +196,8 @@ struct Combine {
 	ALT_graph_t G;
         BA_opt_graph_t oG, oG1;
         L.nacti( ltl );
-        L.syntax_check( F );
+        if ( !L.syntax_check( F ) )
+	    std::cerr << "Error: Syntax error in LTL formula." << std::endl;
         F = F.negace();
         G.create_graph( F );
         G.transform_vwaa();
@@ -233,7 +234,7 @@ struct Combine {
 
             if ( !o_quiet->boolValue() )
                 std::cerr << outFile( id ) << ": " << *i << std::endl;
-            std::string dve = cpp( ltl_defs + in_data + buchi( *i ) + system );
+            std::string dve = cpp( ltl_defs + "\n" + in_data + "\n" + buchi( *i ) + "\n" + system );
             if ( !o_stdout->boolValue() )
                 fs::writeFile( outFile( id ), dve );
             else
@@ -272,9 +273,11 @@ struct Combine {
             system = "system async property LTL_property;\n";
         else {
             off = in_data.find( "system sync" );
-            if ( off != std::string::npos )
+            if ( off != std::string::npos ) {
                 system = "system sync property LTL_property;\n";
-            else {
+                std::cerr << "Warning: LTL model checking of synchronous "
+                             "systems is not supported yet." << std::endl;
+            } else {
                 std::cerr << "Failing preprocessed source: " << std::endl;
                 std::cerr << in_data;
                 die( "FATAL: DVE has to specify either 'system sync' or "

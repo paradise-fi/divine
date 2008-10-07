@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
-#include <cassert>
+#include <wibble/test.h> // for assert
 #include <queue>
 #include <iostream>
 
@@ -99,8 +99,8 @@ struct Main {
                                            "reachability analysis");
         cmd_owcty = opts.addEngine( "owcty", "<input>",
                                     "one-way catch them young cycle detection");
-        /* cmd_ndfs = opts.addEngine( "nested-dfs", "<input>",
-                                      "nested dfs cycle detection" ); */
+        cmd_ndfs = opts.addEngine( "nested-dfs", "<input>",
+                                   "nested dfs cycle detection" );
         cmd_map = opts.addEngine( "map", "<input>",
                                   "maximum accepting predecessor "
                                   "cycle detection" );
@@ -249,17 +249,22 @@ struct Main {
 
     Result runController()
     {
-        if ( o_shared->boolValue() ) {
-            if ( o_dfs->boolValue() ) {
-                config.setPartitioning( "Handoff" );
-                return runStorage< controller::Handoff >();
-            } else {
-                config.setPartitioning( "Modular" );
-                return runStorage< controller::Shared >();
-            }
+        if ( opts.foundCommand() == cmd_ndfs ) {
+            config.setPartitioning( "None" );
+            return runStorage< controller::Simple >();
         } else {
-            config.setPartitioning( "Static" );
-            return runStorage< controller::Partition >();
+            if ( o_shared->boolValue() ) {
+                if ( o_dfs->boolValue() ) {
+                    config.setPartitioning( "Handoff" );
+                    return runStorage< controller::Handoff >();
+                } else {
+                    config.setPartitioning( "Modular" );
+                    return runStorage< controller::Shared >();
+                }
+            } else {
+                config.setPartitioning( "Static" );
+                return runStorage< controller::Partition >();
+            }
         }
 
         return Result();
@@ -301,6 +306,11 @@ struct Main {
     template< typename Cont, typename Stor >
     Result runOrder()
     {
+        if ( opts.foundCommand() == cmd_ndfs ) {
+            config.setOrder( "DFS" );
+            return runAlgorithm< Cont, Stor, visitor::DFS >();
+        }
+
         /* if ( o_por->boolValue() ) {
             verbose( "partial order reduction: enabled" );
             if ( o_dfs->boolValue() ) {
@@ -342,6 +352,11 @@ struct Main {
             return runGenerator< algorithm::Map, Cont, Stor, Ord >();
         }
 
+        if ( opts.foundCommand() == cmd_ndfs ) {
+            config.setAlgorithm( "NestedDFS" );
+            return runGenerator< algorithm::NestedDFS, Cont, Stor, Ord >();
+        }
+
         return Result();
     }
 
@@ -358,7 +373,8 @@ struct Main {
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
             return run< generator::Dummy, Alg, Cont, Stor, Ord >( Preferred() );
-        }
+        } else
+	    die( "Error: The input file extension is unknown." );
         return Result();
     }
 
@@ -368,16 +384,26 @@ struct Main {
     typename EnableIf<
         TAnd<
             TOr<
-                TOr< TAnd< TSame< C, controller::Partition >,
-                           TSame< S, storage::Partition > >,
-                     TAnd< TSame< C, controller::Partition >,
-                           TSame< S, storage::PooledPartition > > >,
+                TAnd<
+                    TSame< C, controller::Partition >,
+                    TSame< S, storage::Partition > >,
+                TAnd<
+                    TSame< C, controller::Partition >,
+                    TSame< S, storage::PooledPartition > >,
+                TAnd<
+                    TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
+                    TSame< C, controller::Simple >,
+                    TSame< O, visitor::DFS > >,
                 TAnd< TOr< TSame< C, controller::Shared >,
                            TSame< C, controller::Handoff > >,
                       storage::IsShared< S > >
                 >,
-            TImply< TSame< C, controller::Handoff >, TSame< O, visitor::DFS > >
-            >, Result >::T
+            TImply< TSame< C, controller::Handoff >, TSame< O, visitor::DFS > >,
+            TImply< TSame< C, controller::Simple >,
+                    TSame< A< Unit >, algorithm::NestedDFS< Unit > > >,
+            TImply< TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
+                    TSame< O, visitor::DFS > >
+        >, Result >::T
     run( Preferred ) {
         return doRun< G, A, C, S, O >( Preferred() );
     }
