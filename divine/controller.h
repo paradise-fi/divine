@@ -347,6 +347,44 @@ struct Handoff : Shared< T, Self >
     {}
 };
 
+template< typename T, typename Self >
+struct Slave : Simple< T, Self >, wibble::sys::Thread
+{
+    typedef typename T::State State;
+    wibble::sys::Condition cond;
+    bool m_terminate;
+
+    Fifo< State > m_workFifo;
+    void queue( State s ) {
+        m_workFifo.push( s );
+    }
+
+    void *main() {
+        while ( !m_terminate || !m_workFifo.empty() ) {
+            if ( m_workFifo.empty() ) {
+                Mutex foo;
+                MutexLock foobar( foo );
+                cond.wait( foobar );
+            }
+            while ( !m_workFifo.empty() ) {
+                this->visitor().visit( m_workFifo.front() );
+                m_workFifo.pop();
+            }
+        }
+        m_terminate = false;
+        return 0;
+    }
+
+    void terminate() {
+        m_terminate = true;
+        cond.signal();
+    }
+
+    Slave( Config &c ) : Simple< T, Self >( c ) {
+        m_terminate = false;
+    }
+};
+
 }
 
 typedef FinalizeController< impl::Simple > Simple;
@@ -354,6 +392,7 @@ typedef FinalizeController< impl::Thread > Thread;
 typedef FinalizeController< impl::Shared > Shared;
 typedef FinalizeController< impl::Partition > Partition;
 typedef FinalizeController< impl::Handoff > Handoff;
+typedef FinalizeController< impl::Slave > Slave;
 
 }
 

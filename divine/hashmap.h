@@ -240,13 +240,14 @@ struct HashMap
             oldoff = off;
             off = _hash + i*i;
 
-            if ( lock )
+            if ( lock ) {
                 if ( i ) {
                     m_locker.moveLock( oldoff, off );
                 } else {
                     if ( !m_locker.lock( off ) )
                         return std::make_pair( Reference(), -1 );
                 }
+            }
 
             assert( keys.size() == values.size() );
 

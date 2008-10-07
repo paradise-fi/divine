@@ -4,7 +4,6 @@
 #include <divine/visitor.h>
 #include <divine/observer.h>
 #include <divine/threading.h>
-#include <divine/legacy/system/path.hh>
 #include <divine/report.h>
 
 #ifndef DIVINE_OWCTY_H
@@ -205,6 +204,7 @@ struct Owcty : Algorithm
                 // found cycle
                 to.extension().cycle = from;
                 this->owcty().m_cycleFound = true;
+                m_controller.pack().terminate();
                 return ignore( to );
             }
             return follow( to );
@@ -217,7 +217,7 @@ struct Owcty : Algorithm
     };
 
     struct Extension {
-        State< Extension > parent, cycle;
+        State< Extension > parent, cycle; // FIXME
         size_t predCount;
         uintptr_t map;
         bool inS:1;
@@ -332,7 +332,9 @@ struct Owcty : Algorithm
             State st = s.table()[ j ].key;
             if ( !st.valid() )
                 continue;
-            if ( worker.visitor().seen( st ) || !st.extension().inF )
+            if ( worker.visitor().seen( st ) )
+                continue;
+            if ( !st.extension().inS || !st.extension().inF )
                 continue;
             if ( ( st = findCounterexampleFrom( st ) ).valid() )
                 return st;
@@ -359,31 +361,6 @@ struct Owcty : Algorithm
         assert( st.extension().inF );
 
         return st;
-    }
-
-    void printCounterexample( State st ) {
-        State s = st;
-        path_t ce;
-        explicit_system_t * sys =
-            init.anyWorker().observer().system().legacy_system();
-        if (!sys) {
-            std::cerr << "ERROR: Unable to produce counterexample" << std::endl;
-            return;
-        }
-
-        ce.set_system( sys );
-        ce.setAllocator( init.anyWorker().storage().newAllocator() );
-        do {
-            s = s.extension().cycle;
-            ce.push_front( s.state() );
-            assert( s.valid() );
-        } while ( s != st );
-        ce.mark_cycle_start_front();
-        while ( s != State( init.anyWorker().visitor().sys.initial() ) ) {
-            s = s.extension().parent;
-            ce.push_front( s.state() );
-        }
-        ce.write_trans(this->config().trailStream());
     }
 
     void printSize() {
@@ -431,12 +408,7 @@ struct Owcty : Algorithm
         }
 
         bool valid = m_mapCycleState.valid() ? false : ( m_size == 0 );
-        std::cerr << " ===================================== " << std::endl
-                  << ( valid ?
-                     "       Accepting cycle NOT found       " :
-                     "         Accepting cycle FOUND         " )
-                  << std::endl
-                  << " ===================================== " << std::endl;
+        resultBanner( valid );
 
         // counterexample generation
 
@@ -449,7 +421,7 @@ struct Owcty : Algorithm
                 st = counterexample();
             std::cerr << "   done" << std::endl;
 
-            printCounterexample( st );
+            printCounterexample( init, st );
         }
 
         Result res;

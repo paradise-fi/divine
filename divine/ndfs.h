@@ -8,182 +8,190 @@
 
 #ifndef DIVINE_NDFS_H
 #define DIVINE_NDFS_H
-#if 0
 
 namespace divine {
-namespace ndfs {
+namespace algorithm {
 
-typedef divine::State< Void > State;
-struct Master;
-
-template< typename Bundle >
-struct Inner : observer::Common< Bundle, Inner< Bundle > >
+template< typename _Setup >
+struct NestedDFS : Algorithm
 {
-    typedef typename Bundle::State State;
-    typename Bundle::Controller &m_controller;
-
-    State m_first;
-
-    explicit_system_t &system() { return m_controller.visitor().sys; }
-    typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-
-    void started() {
-        m_first.ptr = 0;
-    }
-
-    void expanding( State st ) {
-        if ( !m_first.valid() ) {
-            m_first = st;
-            assert( system().is_accepting( st.state() ) );
-        }
-    }
-
-    State transition( State from, State to )
-    {
-        if ( !m_first.valid() )
-            return follow( to );
-        if ( m_first == to ) {
-            std::cout << "ACCEPTING cycle found" << std::endl;
-        }
-        return follow( to );
-    }
-
-    Inner( typename Bundle::Controller &c )
-        : m_controller( c )
-    {
-        visitor().setSeenFlag( SEEN << 1 );
-    }
-};
-
-template< typename T, typename Self >
-struct SlaveTemplate : controller::Template< T, Self >, wibble::sys::Thread
-{
-    wibble::sys::Condition cond;
     bool m_terminate;
+    Result m_result;
 
-    Fifo< State > m_workFifo;
-    void queue( State s ) {
-        m_workFifo.push( s );
-    }
+    template< typename Bundle, typename Self >
+    struct InnerImpl : observer::Common< Bundle, InnerImpl< Bundle, Self > >
+    {
+        typedef typename Bundle::State State;
+        typename Bundle::Controller &m_controller;
 
-    void *main() {
-        while ( !m_terminate || !m_workFifo.empty() ) {
-            if ( m_workFifo.empty() ) {
-                Mutex foo;
-                MutexLock foobar( foo );
-                cond.wait( foobar );
-            }
-            while ( !m_workFifo.empty() ) {
-                this->visitor().visit( m_workFifo.front() );
-                m_workFifo.pop();
+        State m_first;
+        int m_expanded, m_trans;
+        NestedDFS *m_owner;
+
+        void setOwner( NestedDFS &own ) {
+            m_owner = &own;
+        }
+
+        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
+        typename Bundle::Generator &system() { return visitor().sys; }
+
+        void started() {
+            m_first.ptr = 0;
+        }
+
+        void expanding( State st ) {
+            ++ m_expanded;
+            if ( !m_first.valid() ) {
+                m_first = st;
+                assert( system().is_accepting( st.state() ) );
             }
         }
-        m_terminate = false;
-        return 0;
-    }
 
-    void terminate() {
-        m_terminate = true;
-        cond.signal();
-    }
-
-    SlaveTemplate( Config &c ) : controller::Template< T, Self >( c ) {
-        m_terminate = false;
-    }
-};
-
-template< typename Info >
-struct Slave : controller::MetaTemplate< Info, SlaveTemplate >
-{};
-
-typedef controller::StateInfo< Void, char > SI;
-typedef controller::CompInfo< visitor::DFS, Inner > CInner;
-
-typedef Slave< controller::Info< SI, CInner > >::Controller In;
-
-template< typename Bundle >
-struct OuterDFS : observer::Common< Bundle, OuterDFS< Bundle > >
-{
-    typedef typename Bundle::State State;
-    typename Bundle::Controller &m_controller;
-
-    typedef std::deque< State > Queue;
-
-    In m_inner;
-
-    int threads;
-
-    int m_nestedCount, m_acceptingCount;
-    int m_seenCount, m_lastSeenCount;
-
-    explicit_system_t &system() { return m_controller.visitor().sys; }
-    typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-
-    void expanding( State st )
-    {
-        assert( !visitor().seen( st ) );
-        ++ m_seenCount;
-        if ( system().is_accepting( st.state() ) )
-            ++ m_acceptingCount;
-    }
-
-    void finished( State st )
-    {
-        if ( system().is_accepting( st.state() ) )
-            nested( st );
-    }
-
-    void nested( State state )
-    {
-        ++ m_nestedCount;
-        if ( threads > 1 ) {
-            m_inner.queue( state );
-            if ( m_nestedCount % 50 == 0 )
-                m_inner.cond.signal(); // try to wake them up
-        } else
-            m_inner.visitor().visit( state );
-    }
-
-    void finished()
-    {
-        if ( threads > 1 ) {
-            std::cerr << "NDFS: waiting for nested thread..." << std::flush;
-            m_inner.terminate();
-            m_inner.join();
-            std::cerr << "done" << std::endl;
+        State transition( State from, State to )
+        {
+            ++ m_trans;
+            if ( !m_first.valid() )
+                return follow( to );
+            if ( m_first == to ) {
+                std::cout << "ACCEPTING cycle found" << std::endl;
+                if ( m_owner ) {
+                    m_owner->m_result.ltlPropertyHolds = Result::No;
+                    m_owner->m_result.fullyExplored = Result::No;
+                    m_owner->m_terminate = true;
+                }
+            }
+            return follow( to );
         }
-        assert( m_nestedCount == m_acceptingCount );
+
+        InnerImpl( typename Bundle::Controller &c )
+            : m_controller( c )
+        {
+            visitor().setSeenFlag( SEEN << 1 );
+            m_expanded = m_trans = 0;
+            m_owner = 0;
+        }
+    };
+
+    typedef Finalize< InnerImpl > Inner;
+    typedef typename BundleFromSetup<
+        OverrideController< _Setup, controller::Slave >,
+        Inner, Unit >::T InnerBundle;
+
+    template< typename Bundle, typename Self >
+    struct OuterImpl : observer::Common< Bundle, OuterImpl< Bundle, Self > >
+    {
+        typedef typename Bundle::State State;
+        typename Bundle::Controller &m_controller;
+        typename InnerBundle::Controller m_inner;
+
+        typedef std::deque< State > Queue;
+
+        int m_nestedCount, m_acceptingCount;
+        int m_seenCount, m_lastSeenCount;
+
+        NestedDFS *m_owner;
+
+        void setOwner( NestedDFS &own ) {
+            m_owner = &own;
+        }
+
+        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
+        typename Bundle::Generator &system() { return visitor().sys; }
+
+        bool threaded() { return false; }
+        
+        void expanding( State st )
+        {
+            assert( !visitor().seen( st ) );
+            ++ m_seenCount;
+            if ( system().is_accepting( st.state() ) )
+                ++ m_acceptingCount;
+        }
+
+        void finished( State st )
+        {
+            if ( system().is_accepting( st.state() ) )
+                nested( st );
+        }
+        
+        void nested( State state )
+        {
+            if ( m_owner && m_owner->m_terminate ) {
+                visitor().clear();
+                return;
+            }
+            ++ m_nestedCount;
+            if ( threaded() ) {
+                m_inner.queue( state );
+                if ( m_nestedCount % 50 == 0 )
+                    m_inner.cond.signal(); // try to wake them up
+            } else
+                m_inner.visitor().visit( state );
+        }
+
+        void finished()
+        {
+            if ( threaded() ) {
+                std::cerr << "NDFS: waiting for nested thread..." << std::flush;
+                m_inner.terminate();
+                m_inner.join();
+                std::cerr << "done" << std::endl;
+            }
+            /* std::cerr << "Nested count: " << m_nestedCount << std::endl;
+            std::cerr << "Acceepting count: " << m_acceptingCount << std::endl;
+            std::cerr << "Seen: " << m_seenCount << ", nested-seen: "
+                      << m_inner.observer().m_expanded << std::endl;
+            std::cerr << "Nested-trans: " << m_inner.observer().m_trans << std::endl; */
+
+            assert( m_nestedCount <= m_acceptingCount && (m_acceptingCount ? m_nestedCount > 0 : true) );
+        }
+        
+        OuterImpl( typename Bundle::Controller &c )
+            : m_controller( c ), m_inner( c.config() ),
+              m_nestedCount( 0 ), m_acceptingCount( 0 ),
+              m_seenCount( 0 ), m_lastSeenCount( 0 )
+        {
+            m_owner = 0;
+        }
+    };
+    
+    typedef Finalize< OuterImpl > Outer;
+    typedef typename BundleFromSetup<
+        _Setup, Outer, Unit >::T OuterBundle;
+
+    typename OuterBundle::Controller m_outer;
+
+    Result run()
+    {
+        /* m_outer.observer().setThreadCount(
+           this->config().canSpawnThread() ? 2 : 1 ); */
+        m_terminate = false;
+        if ( m_outer.observer().threaded() )
+            m_outer.observer().m_inner.start();
+        m_outer.visitor().visitFromInitial();
+        m_outer.observer().finished(); // FIXME
+        m_result.visited = m_outer.observer().m_seenCount;
+        m_result.expanded = m_result.visited + m_outer.observer().m_inner.observer().m_expanded;
+
+        if ( m_result.ltlPropertyHolds != Result::Yes )
+            m_result.ltlPropertyHolds = Result::Yes;
+
+        if ( m_result.fullyExplored != Result::No )
+            m_result.fullyExplored = Result::Yes;
+
+        return m_result;
     }
 
-    void setThreadCount( int c )
+    NestedDFS( Config &c )
+        : Algorithm( c ), m_outer( c )
     {
-        threads = c;
-        if ( c >= 2 )
-            m_inner.start();
+        m_outer.observer().setOwner( *this );
+        m_outer.observer().m_inner.observer().setOwner( *this );
     }
 
-    OuterDFS( typename Bundle::Controller &c )
-        : m_controller( c ), m_inner( c.config() ),
-          m_nestedCount( 0 ), m_acceptingCount( 0 ),
-          m_seenCount( 0 ), m_lastSeenCount( 0 )
-    {
-        threads = 1;
-    }
 };
 
-typedef controller::CompInfo< visitor::DFS, OuterDFS > COuter;
-typedef controller::Simple< controller::Info< SI, COuter > >::Controller Outer;
-
-void ndfs( Config &c )
-{
-    Outer m( c );
-    m.observer().setThreadCount( c.canSpawnThread() ? 2 : 1 );
-    m.visitor().visitFromInitial();
-    m.observer().finished(); // FIXME
-}
-
 }
 }
 
-#endif
 #endif

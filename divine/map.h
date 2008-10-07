@@ -14,6 +14,8 @@ namespace algorithm {
 template< typename _Setup >
 struct Map : Algorithm
 {
+    Result m_result;
+
     template< typename Bundle, typename Self >
     struct ObserverImpl :
         observer::Common< Bundle, ObserverImpl< Bundle, Self > >
@@ -25,6 +27,10 @@ struct Map : Algorithm
         typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
         typename Bundle::Generator &system() { return visitor().sys; }
 
+        Map *m_map;
+
+        void setMap( Map &m ) { m_map = &m; }
+
         void expanding( State st )
         {
             ++ m_expanded;
@@ -33,8 +39,12 @@ struct Map : Algorithm
                     st.extension().id = reinterpret_cast< intptr_t >( st.ptr );
                     ++ m_accepting;
                 }
-                if ( st.extension().id == st.extension().map )
-                    std::cout << "found accepting cycle" << std::endl;
+                if ( st.extension().id == st.extension().map ) {
+                    // found accepting cycle
+                    m_map->cycleState = st;
+                    m_map->m_result.ltlPropertyHolds = Result::No;
+                    m_controller.pack().terminate();
+                }
             } else {
                 st.extension().id = 0;
             }
@@ -74,6 +84,9 @@ struct Map : Algorithm
             if ( system().is_accepting( f ) )
                 assert( f.extension().id > 0 );
 
+            if ( !t.extension().parent.valid() )
+                t.extension().parent = f;
+
             std::pair< int, bool > a = map( f, t );
             int map = a.first;
             bool elim = a.second;
@@ -97,13 +110,11 @@ struct Map : Algorithm
 
         ObserverImpl( typename Bundle::Controller &controller )
             : m_controller( controller ), m_expanded( 0 ), m_elim( 0 ),
-            m_accepting( 0 )
+              m_accepting( 0 ), m_map( 0 )
             {
             }
 
         void reset() {
-            std::cerr << "resetting, expanded states = " << m_expanded
-                      << ", eliminated " << m_elim << std::endl;
             for ( size_t i = 0; i < visitor().storage().table().size(); ++i ) {
                 State st = visitor().storage().table()[ i ].key;
                 if ( st.valid() )
@@ -115,6 +126,7 @@ struct Map : Algorithm
     };
 
     struct Extension {
+        State< Extension > parent, cycle; // FIXME
         unsigned id:30;
         unsigned elim:2;
         unsigned map:30;
@@ -135,20 +147,67 @@ struct Map : Algorithm
         }
     }
 
+    // FIXME stolen from OWCTY
+    template< typename Bundle, typename Self >
+    struct FindCycleImpl :
+        observer::Common< Bundle, FindCycleImpl< Bundle, Self > >
+    {
+        typedef typename Bundle::State State;
+        Map *m_map;
+        void setMap( Map &m ) { m_map = &m; }
+
+        typename Bundle::Controller &m_controller;
+        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
+
+        State transition( State from, State to )
+        {
+            if ( !to.extension().cycle.valid() ) {
+                to.extension().cycle = from;
+            }
+            if ( from.valid() && to == m_map->cycleState ) {
+                // found cycle
+                to.extension().cycle = from;
+                m_controller.pack().terminate();
+                return ignore( to );
+            }
+            return follow( to );
+        }
+
+        FindCycleImpl( typename Bundle::Controller &c )
+            : m_map( 0 ), m_controller( c )
+        {
+        }
+    };
+
     Map( Config &c ) : Algorithm( c ) {}
 
     typedef Finalize< ObserverImpl > Observer;
     typedef typename BundleFromSetup<
         _Setup, Observer, Extension >::T Bundle;
 
+    typedef Finalize< FindCycleImpl > FindCycle;
+    typedef typename BundleFromSetup<
+        _Setup, FindCycle, Extension >::T CycleBundle;
+
+    typename Bundle::State cycleState;
+
     Result run()
     {
         threads::Pack< typename Bundle::Controller > map( config() );
+        threads::Pack< typename CycleBundle::Controller > cycle( config() );
 
         map.initialize();
+        cycle.initialize();
+
         int threads = map.workerCount();
         int acceptingCount = 0, eliminated = 0, d_eliminated = 0;
+        int iter = 0;
         do {
+            std::cerr << " iteration " << iter << "...\t\t" << std::flush;
+            for ( int i = 0; i < threads; ++ i ) {
+                map.worker( i ).observer().setMap( *this );
+                cycle.worker( i ).observer().setMap( *this );
+            }
             map.blockingVisit();
             acceptingCount = 0;
             d_eliminated = 0;
@@ -161,45 +220,28 @@ struct Map : Algorithm
             }
             eliminated += d_eliminated;
             assert( eliminated <= acceptingCount );
-            std::cerr << "so far eliminated " << eliminated
-                      << " out of " << acceptingCount
-                      << " total accepting states" << std::endl;
-        } while ( d_eliminated > 0 );
-        std::cout << "no accepting cycles found" << std::endl;
-        return Result();
+            std::cerr <<  eliminated << " eliminated" << std::endl;
+            ++ iter;
+        } while ( d_eliminated > 0 && m_result.ltlPropertyHolds != Result::No );
+
+        if ( m_result.ltlPropertyHolds != Result::No ) {
+            m_result.ltlPropertyHolds = Result::Yes;
+        }
+
+        bool valid = m_result.ltlPropertyHolds == Result::Yes;
+        resultBanner( valid );
+
+        if ( !valid && this->config().generateCounterexample() ) {
+            std::cerr << " generating counterexample...\t" << std::flush;
+            cycle.blockingVisit( cycleState );
+            std::cerr << "   done" << std::endl;
+
+            printCounterexample( map, cycleState );
+        }
+
+        return m_result;
     }
 
-    /* template< template< typename > class Controller,
-              template< typename > class Visitor >
-    void shared( Config &c )
-    {
-        typedef controller::StateInfo< Extension, Void > SI;
-        typedef controller::CompInfo< Visitor, MapObserver, storage::ConstShared >
-            CMap;
-        typedef typename Controller< controller::Info< SI, CMap > >::Controller Map;
-
-        Pack< Map > map( c );
-        map.initialize();
-        int threads = map.workerCount();
-        int acceptingCount = 0, eliminated = 0, d_eliminated = 0;
-        do {
-            map.blockingVisit();
-            acceptingCount = 0;
-            d_eliminated = 0;
-            for ( int i = 0; i < threads; ++ i ) {
-                acceptingCount += map.worker( i ).observer().m_accepting;
-                d_eliminated += map.worker( i ).observer().m_elim;
-                map.worker( i ).observer().reset();
-            }
-            zeroFlags( map.worker( 0 ).visitor().storage() );
-            eliminated += d_eliminated;
-            assert( eliminated <= acceptingCount );
-            std::cerr << "so far eliminated " << eliminated
-                      << " out of " << acceptingCount
-                      << " total accepting states" << std::endl;
-        } while ( d_eliminated > 0 );
-        std::cout << "no accepting cycles found" << std::endl;
-        } */
 };
 
 }

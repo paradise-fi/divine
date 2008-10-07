@@ -132,6 +132,7 @@ struct Common
     void visit()
     // TODO probably remove the dependency here on storage locking
     {
+        self().observer().started(); // XXX
         if ( self().empty() )
             return;
         while ( !self().empty() ) {
@@ -217,35 +218,42 @@ struct Order {
         : Inherit< Bundle, DFS< Bundle, Self > >
     {
         typedef typename Bundle::State State;
-        typedef std::stack< State > Stack;
+        typedef std::deque< State > Stack;
 
         int m_height;
         Stack m_stack;
-        std::stack< bool > m_postStack;
+        std::deque< bool > m_postStack;
 
         int height() { return m_height; }
         bool empty() { return m_stack.empty(); }
-        State next() { return m_stack.top(); }
+        State next() { return m_stack.back(); }
         void remove() {
-            if ( m_postStack.top() ) {
+            if ( m_postStack.back() ) {
                 --m_height;
-                this->self().finished( m_stack.top() );
+                this->self().finished( m_stack.back() );
             }
 
-            m_stack.pop();
-            m_postStack.pop();
+            if ( !m_stack.empty() ) { // finished() is allowed to clear stack
+                m_stack.pop_back();
+                m_postStack.pop_back();
+            }
         }
 
         State push( State st ) {
             assert( st.valid() );
-            m_stack.push( st );
+            m_stack.push_back( st );
             if ( !(st.flags() & PUSHED) ) {
-                m_postStack.push( true );
+                m_postStack.push_back( true );
                 st.setFlags( st.flags() | PUSHED );
                 ++ m_height;
             } else
-                m_postStack.push( false );
+                m_postStack.push_back( false );
             return st;
+        }
+
+        void clear() {
+            m_stack.clear();
+            m_postStack.clear();
         }
 
         DFS( typename Bundle::Controller &m )
@@ -260,19 +268,23 @@ struct Order {
         : Inherit< Bundle, BFS< Bundle, Self > >
     {
         typedef typename Bundle::State State;
-        typedef std::queue< State > Queue;
+        typedef std::deque< State > Queue;
 
         Queue m_queue;
 
         bool empty() { return m_queue.empty(); }
         State next() { return m_queue.front(); }
         void remove() {
-            m_queue.pop();
+            m_queue.pop_front();
         }
 
         State push( State state ) {
-            m_queue.push( state );
+            m_queue.push_back( state );
             return state;
+        }
+
+        void clear() {
+            m_queue.clear();
         }
 
         BFS( typename Bundle::Controller &m )

@@ -33,6 +33,8 @@ struct Common { // a NOOP observer
         return self().visitor().ignore( st );
     }
 
+    void started() {} // XXX: called before each visit()
+
     void expanding( State st ) {}
     void finished( State st ) {}
     void errorState( State st, int err ) {}
