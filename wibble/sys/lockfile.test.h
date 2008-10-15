@@ -10,29 +10,14 @@ using namespace std;
 using namespace wibble::sys::fs;
 
 struct TestLockfile {
+	// Cannot test the locks without forking, as reacquiring the lock from the
+	// same process is just an update of the previous lock
     Test readlock() {
-		{
-			Lockfile lk1("test", false);
-			Lockfile lk2("test", false);
-			try {
-				Lockfile lk3("test", true);
-				assert(false);
-			} catch (...) {
-			}
-		}
-		Lockfile lk3("test", true);
+		Lockfile lk1("testlock", false);
     }
 
     Test writelock() {
-		{
-			Lockfile lk1("test", true);
-			try {
-				Lockfile lk2("test", true);
-				assert(false);
-			} catch (...) {
-			}
-		}
-		Lockfile lk2("test", true);
+		Lockfile lk1("testlock", true);
     }
 };
 
