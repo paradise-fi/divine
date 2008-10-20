@@ -48,8 +48,20 @@ struct Main : RunFeedback {
                 exit(250);
             }
             if ( argc > 2 ) {
-                if ( !test )
+                if ( !test ) {
+                    char *end;
+                    int t = strtol( argv[2], &end, 0 );
+                    if ( end == argv[2] && t == 0 ) {
+                        t = s->findTest( argv[2] );
+                        if ( t < 0 ) {
+                            std::cerr << "No such test " << argv[2]
+                                      << " in suite " << argv[1] << std::endl;
+                            // todo dump possible suites?
+                            exit(250);
+                        }
+                    }
                     all.runTest( *s, atoi( argv[2] ) );
+                }
             } else
                 all.runSuite( *s, test, 0, 1 );
         }

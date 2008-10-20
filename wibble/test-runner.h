@@ -13,6 +13,14 @@ struct RunSuite {
     const char *name;
     RunTest *tests;
     int testCount;
+
+    int findTest( std::string name ) {
+        for ( int i = 0; i < testCount; ++i )
+            if ( tests[i].name == name )
+                return i;
+        return -1;
+    }
+
 };
 
 struct RunFeedback {
