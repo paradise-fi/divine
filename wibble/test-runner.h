@@ -65,7 +65,6 @@ struct RunAll {
         s.tests[test].run();
         feedback->status( std::string( "t/d: " ) + s.tests[test].name );
         feedback->waitForAck();
-        feedback->status( std::string( "s/d: " ) + s.tests[test].name );
         feedback->status( std::string( "s/d: " ) + s.name );
     }
 

@@ -98,10 +98,12 @@ struct Main : RunFeedback {
     void processStatus( std::string line ) {
         // std::cerr << line << std::endl;
         if ( line == "done" ) { // finished
-            finished = waitpid( pid, &status_code, 0 );
-            assert_eq( pid, finished );
-            assert( WIFEXITED( status_code ) );
-            assert_eq( WEXITSTATUS( status_code ), 0 );
+            if ( want_fork ) {
+                finished = waitpid( pid, &status_code, 0 );
+                assert_eq( pid, finished );
+                assert( WIFEXITED( status_code ) );
+                assert_eq( WEXITSTATUS( status_code ), 0 );
+            }
             std::cout << "overall " << total_ok << "/"
                       << total_ok + total_failed
                       << " ok" << std::endl;
@@ -172,10 +174,10 @@ struct Main : RunFeedback {
 
     void status( std::string line ) {
         // std::cerr << "status: " << line << std::endl;
-        line += "\n";
-        if ( want_fork )
+        if ( want_fork ) {
+            line += "\n";
             ::write( status_fds[ 1 ], line.c_str(), line.length() );
-        else
+        } else
             processStatus( line );
     }
 
