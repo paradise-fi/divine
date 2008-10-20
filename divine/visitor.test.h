@@ -62,15 +62,7 @@ struct TestVisitor {
 
     template< int n, int m >
     void _nmtree() {
-        NMTree< n, m > g;
-        Checker c;
-        assert_eq( c.transitions, 0 );
-        assert_eq( c.nodes, 0 );
-        visitor::BFV< NMTree< n, m >, Checker,
-            &Checker::transition, &Checker::expansion > bfv( g, c );
-        bfv.visit( 0 );
-        assert_eq( c.nodes, n );
-
+        // bintree metrics
         int fullheight = 1;
         int fulltree = 1;
         while ( fulltree + pow(m, fullheight) <= n ) {
@@ -79,13 +71,32 @@ struct TestVisitor {
         }
         int lastfull = pow(m, fullheight-1);
         int remaining = n - fulltree;
+        int transitions = (n - 1) + lastfull + remaining - remaining / m;
+        // remaining - remaining/m is not same as remaining/m (due to flooring)
         /* std::cerr << "nodes = " << n
                   << ", fulltree height = " << fullheight
                   << ", fulltree nodes = " << fulltree
                   << ", last full = " << lastfull 
                   << ", remaining = " << remaining << std::endl; */
-        assert_eq( c.transitions, (n - 1) + lastfull + remaining - remaining / m);
-        // remaining - remaining/m is not same as remaining/m (due to flooring)
+
+        NMTree< n, m > g;
+        Checker c1, c2;
+
+        // sanity check 
+        assert_eq( c1.transitions, 0 );
+        assert_eq( c1.nodes, 0 );
+
+        visitor::BFV< NMTree< n, m >, Checker,
+            &Checker::transition, &Checker::expansion > bfv( g, c1 );
+        bfv.visit( 0 );
+        assert_eq( c1.nodes, n );
+        assert_eq( c1.transitions, transitions );
+
+        visitor::DFV< NMTree< n, m >, Checker,
+            &Checker::transition, &Checker::expansion > dfv( g, c2 );
+        dfv.visit( 0 );
+        assert_eq( c2.nodes, n );
+        assert_eq( c2.transitions, transitions );
     }
 
     Test nmtree() {

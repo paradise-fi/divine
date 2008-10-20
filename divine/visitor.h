@@ -18,17 +18,36 @@ namespace visitor {
 enum TransitionAction { FollowTransition };
 enum ExpansionAction { ExpandState };
 
+template< typename T >
+struct Queue {
+    std::deque< T > m_queue;
+    void push( const T &t ) { m_queue.push_back( t ); }
+    void pop() { m_queue.pop_front(); }
+    T &next() { return m_queue.front(); }
+    bool empty() { return m_queue.empty(); }
+};
+
+template< typename T >
+struct Stack {
+    std::deque< T > m_stack;
+    void push( const T &t ) { m_stack.push_back( t ); }
+    void pop() { m_stack.pop_back(); }
+    T &next() { return m_stack.back(); }
+    bool empty() { return m_stack.empty(); }
+};
+
 // the _ suffix is to avoid clashes with the old-style visitors
 template<
+    template< typename > class Queue,
     typename Graph,
     typename Notify,
     TransitionAction (Notify::*transition)(typename Graph::Node, typename Graph::Node),
     ExpansionAction (Notify::*expansion)(typename Graph::Node) >
-struct BFV {
+struct Common_ {
 
     typedef typename Graph::Successors Successors;
     typedef typename Graph::Node Node;
-    std::deque< Successors > m_queue;
+    Queue< Successors > m_queue;
     std::set< Node > m_seen;
     Graph &m_graph;
     Notify &m_notify;
@@ -36,12 +55,12 @@ struct BFV {
     void visit( typename Graph::Node initial ) {
         m_seen.insert( initial );
         (m_notify.*expansion)( initial );
-        m_queue.push_back( m_graph.successors( initial ) );
+        m_queue.push( m_graph.successors( initial ) );
         while ( !m_queue.empty() ) {
-            Successors &s = m_queue.front();
+            Successors &s = m_queue.next();
             if ( s.empty() ) {
                 // finished with s
-                m_queue.pop_front();
+                m_queue.pop();
                 continue;
             } else {
                 Node current = s.head();
@@ -50,7 +69,7 @@ struct BFV {
                     m_seen.insert( current );
                     (m_notify.*expansion)( current );
                     (m_notify.*transition)( s.from(), current );
-                    m_queue.push_back( m_graph.successors( current ) );
+                    m_queue.push( m_graph.successors( current ) );
                 } else {
                     (m_notify.*transition)( s.from(), current );
                 }
@@ -58,7 +77,27 @@ struct BFV {
         }
     }
 
-    BFV( Graph &g, Notify &n ) : m_graph( g ), m_notify( n ) {}
+    Common_( Graph &g, Notify &n ) : m_graph( g ), m_notify( n ) {}
+};
+
+template<
+    typename Graph,
+    typename Notify,
+    TransitionAction (Notify::*transition)(typename Graph::Node, typename Graph::Node),
+    ExpansionAction (Notify::*expansion)(typename Graph::Node) >
+struct BFV : Common_< Queue, Graph, Notify, transition, expansion > {
+    BFV( Graph &g, Notify &n ) : Common_< Queue, Graph, Notify,
+                                          transition, expansion >( g, n ) {}
+};
+
+template<
+    typename Graph,
+    typename Notify,
+    TransitionAction (Notify::*transition)(typename Graph::Node, typename Graph::Node),
+    ExpansionAction (Notify::*expansion)(typename Graph::Node) >
+struct DFV : Common_< Stack, Graph, Notify, transition, expansion > {
+    DFV( Graph &g, Notify &n ) : Common_< Stack, Graph, Notify,
+                                          transition, expansion >( g, n ) {}
 };
 
 namespace impl {
