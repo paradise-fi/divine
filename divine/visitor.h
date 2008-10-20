@@ -1,16 +1,65 @@
 // -*- C++ -*-
 
 #include <fstream>
+#include <vector>
+
 #include <divine/pool.h>
-// #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/generator.h>
 #include <divine/legacy/por/por.hh>
+#include <divine/threading.h>
+#include <divine/bundle.h>
 
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H
 
 namespace divine {
 namespace visitor {
+
+enum TransitionAction { FollowTransition };
+enum ExpansionAction { ExpandState };
+
+// the _ suffix is to avoid clashes with the old-style visitors
+template<
+    typename Graph,
+    typename Notify,
+    TransitionAction (Notify::*transition)(typename Graph::Node, typename Graph::Node),
+    ExpansionAction (Notify::*expansion)(typename Graph::Node) >
+struct BFV {
+
+    typedef typename Graph::Successors Successors;
+    typedef typename Graph::Node Node;
+    std::deque< Successors > m_queue;
+    std::set< Node > m_seen;
+    Graph &m_graph;
+    Notify &m_notify;
+
+    void visit( typename Graph::Node initial ) {
+        m_seen.insert( initial );
+        (m_notify.*expansion)( initial );
+        m_queue.push_back( m_graph.successors( initial ) );
+        while ( !m_queue.empty() ) {
+            Successors &s = m_queue.front();
+            if ( s.empty() ) {
+                // finished with s
+                m_queue.pop_front();
+                continue;
+            } else {
+                Node current = s.head();
+                s = s.tail();
+                if ( !m_seen.count( current ) ) {
+                    m_seen.insert( current );
+                    (m_notify.*expansion)( current );
+                    (m_notify.*transition)( s.from(), current );
+                    m_queue.push_back( m_graph.successors( current ) );
+                } else {
+                    (m_notify.*transition)( s.from(), current );
+                }
+            }
+        }
+    }
+
+    BFV( Graph &g, Notify &n ) : m_graph( g ), m_notify( n ) {}
+};
 
 namespace impl {
 
