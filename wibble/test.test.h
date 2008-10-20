@@ -27,6 +27,9 @@ struct TestTests {
     Test assertions() {
 	assert(true);
 	assert_eq(42, 42);
+        for ( int i = 0; i < 10; ++i ) {
+            assert_eq_l( i, i, i );
+        }
     }
 
 };
