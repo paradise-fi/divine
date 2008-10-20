@@ -61,7 +61,7 @@ struct TestVisitor {
     };
 
     template< int n, int m >
-    void _basic() {
+    void _nmtree() {
         NMTree< n, m > g;
         Checker c;
         assert_eq( c.transitions, 0 );
@@ -88,13 +88,13 @@ struct TestVisitor {
         // remaining - remaining/m is not same as remaining/m (due to flooring)
     }
 
-    Test basic() {
-        _basic< 7, 2 >();
-        _basic< 8, 2 >();
-        _basic< 31, 2 >();
-        _basic< 4, 3 >();
-        _basic< 8, 3 >();
-        _basic< 242, 3 >();
-        _basic< 245, 3 >();
+    Test nmtree() {
+        _nmtree< 7, 2 >();
+        _nmtree< 8, 2 >();
+        _nmtree< 31, 2 >();
+        _nmtree< 4, 3 >();
+        _nmtree< 8, 3 >();
+        _nmtree< 242, 3 >();
+        _nmtree< 245, 3 >();
     }
 };
