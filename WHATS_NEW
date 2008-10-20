@@ -1,3 +1,17 @@
+DiVinE Multi-Core 1.3
+=====================
+
+- Improved and newly included algorithms:
+  - MAP: improved progress reports, early termination and counterexamples
+  - Nested DFS for single-threaded verification (no counterexamples)
+- A new "verify" subcommand to run the most suitable algorithm for given
+  input and number of cores (currently does not produce counterexamples when
+  used with -w 1 due to the abovementioned Nested DFS limitation).
+- Counterexample generation in OWCTY has suffered from a bug that prevented it
+  from finishing in any reasonable time on some property/model combinations.
+  This has been fixed.
+- A few other user experience fixes: improved warnings and overall robustness.
+
 DiVinE Multi-Core 1.2.1
 =======================
 
