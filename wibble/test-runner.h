@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #include <unistd.h>
 #include <wibble/sys/pipe.h>
 
@@ -14,11 +15,15 @@ struct RunSuite {
     int testCount;
 };
 
+struct RunFeedback {
+    virtual void status( std::string l ) = 0;
+    virtual void waitForAck() = 0;
+};
+
 struct RunAll {
     RunSuite *suites;
     int suiteCount;
-    FILE *status;
-    wibble::sys::Pipe confirm;
+    RunFeedback *feedback;
 
     RunSuite *findSuite( std::string name ) {
         for ( int i = 0; i < suiteCount; ++i )
@@ -27,40 +32,33 @@ struct RunAll {
         return 0;
     }
 
-    void waitForAck() {
-        std::string line = confirm.nextLineBlocking();
-        assert_eq( std::string( "ack" ), line );
-    }
-
     void runSuite( RunSuite &s, int fromTest, int suite, int suiteCount )
     {
-        fprintf( status, "s/s: (%d/%d) %s\n", suite + 1, suiteCount, s.name );
+        feedback->status( wibble::str::fmt(
+            "s/s: (%d/%d) %s", suite + 1, suiteCount, s.name ) );
         for ( int i = fromTest; i < s.testCount; ++i ) {
-            fprintf( status, "t/s: (%d/%d) %s\n", i, s.testCount,
-                     s.tests[i].name );
-            fflush( status );
-            waitForAck();
+            feedback->status( wibble::str::fmt(
+                "t/s: (%d/%d) %s", i, s.testCount, s.tests[i].name ) );
+            feedback->waitForAck();
             s.tests[i].run();
-            fprintf( status, "t/d: %s\n", s.tests[i].name );
-            fflush( status );
-            waitForAck();
+            feedback->status( std::string( "t/d: " ) + s.tests[i].name );
+            feedback->waitForAck();
             // exit( 0 ); // TODO make this optional; safety vs
-                       // performance tradeoff
+                          // performance tradeoff
         }
-        fprintf( status, "s/d: %s\n", s.name );
+        feedback->status( std::string( "s/d: " ) + s.name );
     }
 
     void runTest( RunSuite &s, int test )
     {
-        fprintf( status, "s/s: (1/1) %s\n", s.name );
-        fprintf( status, "t/s: (1/1) %s\n", s.tests[test].name );
-        fflush( status );
-        waitForAck();
+        feedback->status( std::string( "s/s: (1/1) " ) + s.name );
+        feedback->status( std::string( "t/s: (1/1) " ) + s.tests[test].name );
+        feedback->waitForAck();
         s.tests[test].run();
-        fprintf( status, "t/d: %s\n", s.tests[test].name );
-        fflush( status );
-        waitForAck();
-        fprintf( status, "s/d: %s\n", s.name );
+        feedback->status( std::string( "t/d: " ) + s.tests[test].name );
+        feedback->waitForAck();
+        feedback->status( std::string( "s/d: " ) + s.tests[test].name );
+        feedback->status( std::string( "s/d: " ) + s.name );
     }
 
     void runFrom( int suite, int test )

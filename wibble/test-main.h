@@ -6,13 +6,13 @@
 
 #include <wibble/sys/pipe.h>
 
-struct Main {
+struct Main : RunFeedback {
 
     int suite, test;
-    wibble::sys::Pipe f_status;
-    int status[2];
-    int confirm[2];
-    FILE *f_confirm;
+    wibble::sys::Pipe p_status;
+    wibble::sys::Pipe p_confirm;
+    int status_fds[2];
+    int confirm_fds[2];
     pid_t pid;
     int argc;
     char **argv;
@@ -25,6 +25,7 @@ struct Main {
 
     int announced_suite;
     std::string current;
+    bool want_fork;
 
     RunAll all;
 
@@ -36,10 +37,9 @@ struct Main {
     }
 
     void child() {
-        close( status[0] );
-        close( confirm[1] );
-        all.status = fdopen( status[1], "w" );
-        all.confirm = wibble::sys::Pipe( confirm[0] );
+        close( status_fds[0] );
+        close( confirm_fds[1] );
+        p_confirm = wibble::sys::Pipe( confirm_fds[0] );
         if ( argc > 1 ) {
             RunSuite *s = all.findSuite( argv[1] );
             if (!s) {
@@ -56,7 +56,7 @@ struct Main {
         if ( argc == 1 ) {
             all.runFrom( suite, test );
         }
-        fprintf( all.status, "done\n" );
+        status( "done" );
         exit( 0 );
     }
 
@@ -84,6 +84,7 @@ struct Main {
     }
 
     void processStatus( std::string line ) {
+        // std::cerr << line << std::endl;
         if ( line == "done" ) { // finished
             finished = waitpid( pid, &status_code, 0 );
             assert_eq( pid, finished );
@@ -124,27 +125,24 @@ struct Main {
         }
         if ( line[0] == 't' ) {
             if ( line[2] == 'd' ) {
-                fprintf( f_confirm, "ack\n" );
-                fflush( f_confirm );
+                confirm();
                 test_ok = 1;
             }
             if ( line[2] == 's' ) {
-                fprintf( f_confirm, "ack\n" );
-                fflush( f_confirm );
+                confirm();
                 current = std::string( line.begin() + 5, line.end() );
             }
         }
     }
 
     void parent() {
-        close( status[1] );
-        close( confirm[0] );
-        f_status = wibble::sys::Pipe( status[ 0 ]);
-        f_confirm = fdopen( confirm[1], "w" );
+        close( status_fds[1] );
+        close( confirm_fds[0] );
+        p_status = wibble::sys::Pipe( status_fds[ 0 ]);
         std::string line;
 
         while ( true ) {
-            if ( f_status.eof() ) {
+            if ( p_status.eof() ) {
                 finished = waitpid( pid, &status_code, 0 );
                 if ( finished < 0 ) {
                     perror( "waitpid failed" );
@@ -155,8 +153,30 @@ struct Main {
                 return;
             }
 
-            line = f_status.nextLineBlocking();
+            line = p_status.nextLineBlocking();
             processStatus( line );
+        }
+    }
+
+    void status( std::string line ) {
+        // std::cerr << "status: " << line << std::endl;
+        line += "\n";
+        if ( want_fork )
+            ::write( status_fds[ 1 ], line.c_str(), line.length() );
+        else
+            processStatus( line );
+    }
+
+    void confirm() {
+        std::string line( "ack\n" );
+        if ( want_fork )
+            ::write( confirm_fds[ 1 ], line.c_str(), line.length() );
+    }
+
+    void waitForAck() {
+        if ( want_fork ) {
+            std::string line = p_confirm.nextLineBlocking();
+            assert_eq( std::string( "ack" ), line );
         }
     }
 
@@ -167,20 +187,25 @@ struct Main {
 
         all.suiteCount = sizeof(suites)/sizeof(RunSuite);
         all.suites = suites;
+        all.feedback = this;
+        want_fork = argc <= 2;
 
         while (true) {
-            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, status ) )
+            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, status_fds ) )
                 return 1;
-            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, confirm ) )
+            if ( socketpair( PF_UNIX,SOCK_STREAM, 0, confirm_fds ) )
                 return 1;
-            pid = fork();
-            if ( pid < 0 )
-                return 2;
-            if ( pid == 0 ) { // child
+            if ( want_fork ) {
+                pid = fork();
+                if ( pid < 0 )
+                    return 2;
+                if ( pid == 0 ) { // child
+                    child();
+                } else {
+                    parent();
+                }
+            } else
                 child();
-            } else {
-                parent();
-            }
         }
     }
 };
