@@ -1,10 +1,16 @@
 cmake_minimum_required(VERSION 2.4.7)
 project( divine )
 
+if(COMMAND cmake_policy)
+  cmake_policy(SET CMP0002 OLD) # FIXME
+  cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
 set( CXX_FLAGS "-pipe -gstabs+" )
 
 set( OPT_FLAGS "-O0" )
 option( OPTIMIZE "override OPT_FLAGS to -O2" ON )
+option( HOARD "use HOARD SMP memory allocator" ON )
 
 if( OPTIMIZE )
 set( OPT_FLAGS "-O2 -DNDEBUG -fomit-frame-pointer" )
@@ -31,7 +37,9 @@ if( NOT SHA1SUM )
 endif( NOT SHA1SUM )
 
 add_subdirectory( wibble )
+if( HOARD )
 add_subdirectory( hoard )
+endif( HOARD )
 add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
