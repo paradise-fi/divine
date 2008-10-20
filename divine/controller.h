@@ -6,6 +6,7 @@
 #include <divine/state.h>
 #include <divine/storage.h>
 #include <divine/threading.h>
+#include <divine/fifo.h>
 
 #include <linux/unistd.h>
 
