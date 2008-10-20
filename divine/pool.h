@@ -1,5 +1,5 @@
 // -*- C++ -*-
-#include <cassert>
+#include <wibble/test.h> // for assert
 #include <map>
 #include <iostream>
 
