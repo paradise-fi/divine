@@ -8,6 +8,7 @@
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sfinae.h>
+#include <wibble/sys/fs.h>
 
 #include <divine/config.h>
 #include <divine/reachability.h>
@@ -42,7 +43,7 @@ void handler( int s ) {
 struct Main {
     Config config;
 
-    Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map;
+    Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify;
     OptionGroup *common, *order;
     BoolOption *o_dfs, *o_bfs, *o_shared, *o_verbose, *o_vcl, *o_pool,
         *o_por, *o_noCe, *o_report;
@@ -85,6 +86,8 @@ struct Main {
     void setupSignals() 
     {
         for ( int i = 0; i <= 32; ++i ) {
+            if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG )
+                continue;
             signal( i, handler );
         }
     }
@@ -97,6 +100,9 @@ struct Main {
         cmd_reachability = opts.addEngine( "reachability",
                                            "<input>",
                                            "reachability analysis");
+        cmd_verify = opts.addEngine( "verify",
+                                     "<input>",
+                                     "verification" );
         cmd_owcty = opts.addEngine( "owcty", "<input>",
                                     "one-way catch them young cycle detection");
         cmd_ndfs = opts.addEngine( "nested-dfs", "<input>",
@@ -178,6 +184,8 @@ struct Main {
         cmd_map->add( order );
     }
 
+    enum { RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
+
     void parseCommandline()
     {
         std::string input;
@@ -241,6 +249,30 @@ struct Main {
         if ( !opts.foundCommand() )
             die( "FATAL: no command specified" );
 
+        if ( opts.foundCommand() == cmd_verify ) {
+            std::string inf = fs::readFile( config.input() );
+            if ( inf.find( "system async property" ) != std::string::npos ||
+                 inf.find( "system sync property" ) != std::string::npos ) {
+                // we have a property automaton --> LTL
+                if ( config.maxThreadCount() > 2 ) {
+                    m_run = RunOwcty;
+                } else {
+                    m_run = RunNdfs;
+                }
+            } else {
+                m_run = RunReachability; // no property
+            }
+        } else if ( opts.foundCommand() == cmd_ndfs )
+            m_run = RunNdfs;
+        else if ( opts.foundCommand() == cmd_owcty )
+            m_run = RunOwcty;
+        else if ( opts.foundCommand() == cmd_reachability )
+            m_run = RunReachability;
+        else if ( opts.foundCommand() == cmd_map )
+            m_run = RunMap;
+        else
+            die( "FATAL: Internal error in commandline parser." );
+
         if ( config.verbose() ) {
             std::cerr << " === configured options ===" << std::endl;
             config.dump( std::cerr );
@@ -249,7 +281,7 @@ struct Main {
 
     Result runController()
     {
-        if ( opts.foundCommand() == cmd_ndfs ) {
+        if ( m_run == RunNdfs ) {
             config.setPartitioning( "None" );
             return runStorage< controller::Simple >();
         } else {
@@ -306,7 +338,7 @@ struct Main {
     template< typename Cont, typename Stor >
     Result runOrder()
     {
-        if ( opts.foundCommand() == cmd_ndfs ) {
+        if ( m_run == RunNdfs ) {
             config.setOrder( "DFS" );
             return runAlgorithm< Cont, Stor, visitor::DFS >();
         }
@@ -337,22 +369,22 @@ struct Main {
     template< typename Cont, typename Stor, typename Ord >
     Result runAlgorithm()
     {
-        if ( opts.foundCommand() == cmd_reachability ) {
+        if ( m_run == RunReachability ) {
             config.setAlgorithm( "Reachability" );
             return runGenerator< algorithm::Reachability, Cont, Stor, Ord >();
         }
 
-        if ( opts.foundCommand() == cmd_owcty ) {
+        if ( m_run == RunOwcty ) {
             config.setAlgorithm( "OWCTY" );
             return runGenerator< algorithm::Owcty, Cont, Stor, Ord >();
         }
 
-        if ( opts.foundCommand() == cmd_map ) {
+        if ( m_run == RunMap ) {
             config.setAlgorithm( "MAP" );
             return runGenerator< algorithm::Map, Cont, Stor, Ord >();
         }
 
-        if ( opts.foundCommand() == cmd_ndfs ) {
+        if ( m_run == RunNdfs ) {
             config.setAlgorithm( "NestedDFS" );
             return runGenerator< algorithm::NestedDFS, Cont, Stor, Ord >();
         }
@@ -408,11 +440,21 @@ struct Main {
         return doRun< G, A, C, S, O >( Preferred() );
     }
 
-    // stealing is synonymouus to pooled ... */
+    /* This only includes a fairly reasonable set of combinations. */
     template< template< typename > class G, template< typename > class A,
               typename C, typename S, typename O >
-    typename EnableIf< TAnd< TNot< storage::IsShared< S > >,
-                             storage::IsStealing< S > >, Result >::T
+    typename EnableIf< TAnd<
+                           TSame< S, storage::PooledPartition >,
+                           TImply<
+                               TSame< O, visitor::DFS >,
+                               TSame< A< Unit >, algorithm::NestedDFS< Unit > >
+                           >,
+                           TSame< G< Unit >, generator::Dve< Unit > >,
+                           TOr< TSame< A< Unit >, algorithm::Owcty< Unit > >,
+                                TSame< A< Unit >, algorithm::NestedDFS< Unit > > >
+                           /* TOr< TSame< G< Unit >, generator::Dve< Unit > >,
+                              TSame< G< Unit >, generator::Bymoc< Unit > > > */ >,
+        Result >::T
     doRun( Preferred ) {
         A< Algorithm::Setup< C, S, O, G > > alg( config );
         return alg.run();

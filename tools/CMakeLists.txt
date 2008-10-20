@@ -1,7 +1,10 @@
 add_definitions( ${OPT_FLAGS} )
 include_directories( ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} 
                      ${WIBBLE_INCLUDES} ${divine_SOURCE_DIR}/divine/legacy )
-link_libraries( hoard divine wibble pthread )
+link_libraries( divine wibble pthread )
+if( HOARD )
+link_libraries( hoard )
+endif( HOARD )
 
 set( PACKJARS "${CMAKE_CURRENT_SOURCE_DIR}/packjars.pl" )
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
