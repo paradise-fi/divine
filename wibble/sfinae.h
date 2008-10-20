@@ -26,31 +26,33 @@ struct TSame< A, A > {
     static const bool value = true;
 };
 
-template< bool, bool >
+template< bool, bool, bool = true, bool = true, bool = true >
 struct TAndC {
     static const bool value = false;
 };
 
 template<>
-struct TAndC< true, true > {
+struct TAndC< true, true, true, true, true > {
     static const bool value = true;
 };
 
-template< typename A, typename B >
-struct TAnd : TAndC< A::value, B::value > {};
+template< typename A, typename B,
+          typename C = TTrue, typename D = TTrue, typename E = TTrue >
+struct TAnd : TAndC< A::value, B::value, C::value, D::value, E::value > {};
 
-template< bool, bool >
+template< bool, bool, bool = false, bool = false, bool = false >
 struct TOrC {
     static const bool value = true;
 };
 
 template<>
-struct TOrC< false, false > {
+struct TOrC< false, false, false, false, false > {
     static const bool value = false;
 };
 
-template< typename A, typename B >
-struct TOr : TOrC< A::value, B::value > {};
+template< typename A, typename B,
+          typename C = TFalse, typename D = TFalse, typename E = TFalse >
+struct TOr : TOrC< A::value, B::value, C::value, D::value, E::value > {};
 
 /* template< typename T >
 struct IsT {
