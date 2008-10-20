@@ -35,6 +35,10 @@ struct Pipe {
         ::write( fd, what.c_str(), what.length() );
     }
 
+    void close() {
+        ::close( fd );
+    }
+
     bool active() {
         return fd != -1 && !_eof;
     }
