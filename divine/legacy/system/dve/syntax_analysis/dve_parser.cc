@@ -6,7 +6,6 @@
 #include "system/dve/dve_prob_system.hh"
 #include "system/dve/dve_prob_process.hh"
 #include "common/error.hh"
-#include "common/inttostr.hh"
 #include "common/deb.hh"
 
 #ifndef DOXYGEN_PROCESSING

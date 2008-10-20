@@ -171,6 +171,7 @@ struct VectorType< Unit > {
         size_t size() { return m_size; }
         void resize( size_t s, Unit = Unit() ) { m_size = s; }
         Unit operator[]( size_t ) { return Unit(); }
+        Vector() : m_size( 0 ) {}
     };
 };
 
@@ -214,7 +215,7 @@ struct HashMap
     int m_used;
     std::vector< int > m_usedVec;
 
-    int used() {
+    size_t usage() {
         if ( m_used == -1 )
             return std::accumulate( m_usedVec.begin(), m_usedVec.end(), 0 );
         return m_used;
@@ -222,7 +223,6 @@ struct HashMap
 
     size_t size() const { return m_keys.size(); }
     bool empty() const { return !m_used; }
-    size_t usage() const { return m_used; }
 
     template< typename Merger >
     std::pair< Reference, int > _mergeInsert( Item item, Merger m,
@@ -276,8 +276,6 @@ struct HashMap
     template< typename Merger >
     Reference mergeInsert( Item item, Merger m, int thread, hash_t hint = 0 ) {
         while ( true ) {
-            if ( usage() > (size() * growthreshold()) / 100 )
-                grow();
             std::pair< Reference, int > r = _mergeInsert( item, m, m_keys,
                                                           m_values, true, hint );
             if ( r.second == -1 )
@@ -295,10 +293,15 @@ struct HashMap
                 grow();
                 continue;
             }
+
             if ( thread == -1 )
                 m_used += r.second;
             else
                 m_usedVec[ thread ] += r.second;
+
+            if ( r.second > 0 && usage() > (size() * growthreshold()) / 100 )
+                grow();
+
             return r.first;
         }
     }
@@ -334,6 +337,11 @@ struct HashMap
     void unlock( Reference r )
     {
         m_locker.unlock( r.offset );
+    }
+
+    void lock( Reference r )
+    {
+        m_locker.lock( r.offset );
     }
 
     Reference get( Key k, hash_t hint = 0 ) // const (bleh)
@@ -400,7 +408,7 @@ struct HashMap
         }
 
         Keys keys; Values values;
-        size_t _used = used();
+        size_t _used = usage();
         _size = size();
 
         assert( m_keys.size() == m_values.size() );
@@ -418,7 +426,7 @@ struct HashMap
         std::swap( keys, m_keys );
         std::swap( values, m_values );
         m_locker.setSize( size() );
-        assert( used() == _used );
+        assert( usage() == _used );
         assert( size() > _size );
         m_locker.unlockAll();
     }

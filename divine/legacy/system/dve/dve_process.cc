@@ -1,5 +1,4 @@
 #include "common/array.hh"
-#include "common/inttostr.hh"
 #include "system/dve/dve_transition.hh"
 #include "system/dve/dve_process.hh"
 #include "system/dve/syntax_analysis/dve_symbol_table.hh"

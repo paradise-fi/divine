@@ -452,7 +452,9 @@ struct Pack : Thread
 }
 
 #define PUSHED (State::FirstUserFlag)
-#define SEEN (State::FirstUserFlag << 1)
+#define PUSHED2 (State::FirstUserFlag << 1)
+#define SEEN (State::FirstUserFlag << 2)
+#define SEEN2 (State::FirstUserFlag << 3)
 
 }
 

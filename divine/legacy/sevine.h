@@ -1,7 +1,6 @@
 //This header file is a header file for libsevine.a - library of sequential
 //part of DiVinE (i. e. all parts of DiVinE except for distributed layer)
 
-#include "common/inttostr.hh"
 #include "common/error.hh"
 #include "common/types.hh"
 #include "common/array.hh"

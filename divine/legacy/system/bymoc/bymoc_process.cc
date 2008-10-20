@@ -1,5 +1,4 @@
 #include "common/array.hh"
-#include "common/inttostr.hh"
 #include "system/bymoc/bymoc_transition.hh"
 #include "system/bymoc/bymoc_process.hh"
 #include "common/deb.hh"

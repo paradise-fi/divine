@@ -30,6 +30,8 @@ struct NestedDFS : Algorithm
 
         void setOwner( NestedDFS &own ) {
             m_owner = &own;
+            visitor().storage().setTable(
+               own.m_outer.visitor().storage().table() );
         }
 
         typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
@@ -66,7 +68,8 @@ struct NestedDFS : Algorithm
         InnerImpl( typename Bundle::Controller &c )
             : m_controller( c )
         {
-            visitor().setSeenFlag( SEEN << 1 );
+            visitor().setSeenFlag( SEEN2 );
+            visitor().setPushedFlag( PUSHED2 );
             m_expanded = m_trans = 0;
             m_owner = 0;
         }
@@ -74,7 +77,9 @@ struct NestedDFS : Algorithm
 
     typedef Finalize< InnerImpl > Inner;
     typedef typename BundleFromSetup<
-        OverrideController< _Setup, controller::Slave >,
+        OverrideStorage<
+            OverrideController< _Setup, controller::Slave >,
+            storage::Shadow >,
         Inner, Unit >::T InnerBundle;
 
     template< typename Bundle, typename Self >
@@ -98,6 +103,8 @@ struct NestedDFS : Algorithm
         typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
         typename Bundle::Generator &system() { return visitor().sys; }
 
+        // FIXME. Since we use the shadow storage, dual-threaded NDFS is
+        // broken. Bummer.
         bool threaded() { return false; }
         
         void expanding( State st )
@@ -173,7 +180,7 @@ struct NestedDFS : Algorithm
         m_result.visited = m_outer.observer().m_seenCount;
         m_result.expanded = m_result.visited + m_outer.observer().m_inner.observer().m_expanded;
 
-        if ( m_result.ltlPropertyHolds != Result::Yes )
+        if ( m_result.ltlPropertyHolds != Result::No )
             m_result.ltlPropertyHolds = Result::Yes;
 
         if ( m_result.fullyExplored != Result::No )

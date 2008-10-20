@@ -4,8 +4,9 @@ file( GLOB TEST_SOURCES test_*.cpp )
 
 include_directories( ${divine_SOURCE_DIR} ${divine_BINARY_DIR} ${BOOST_INCLUDE_PATH} ${MPI_INCLUDE_PATH} ${divine_SOURCE_DIR}/divine/legacy )
 
-add_custom_target( check COMMAND make libdivine-test && ${T}
-                   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/data-stamp )
+wibble_check_target( libdivine-test )
+# add_custom_target( check COMMAND make libdivine-test && ${T}
+#                    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/data-stamp )
 
 add_executable( libdivine-test tut-main.cpp ${TEST_SOURCES} )
 target_link_libraries( libdivine-test divine wibble pthread )

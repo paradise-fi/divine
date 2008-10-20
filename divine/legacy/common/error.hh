@@ -24,9 +24,10 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "common/inttostr.hh"
 #include "common/types.hh"
 #include "common/deb.hh"
+
+#include <wibble/string.h>
 
 namespace divine {
 #endif //DOXYGEN_PROCESSING
@@ -117,10 +118,8 @@ class error_string_t
  //private template for appending string representation of number
  error_string_t & plus(const T i)
  {
-  char * numstr = create_string_from<T>(i);
-  s->append(numstr);
-  dispose_string(numstr);
-  return (*this);
+     s->append(wibble::str::fmt( i ));
+     return (*this);
  }
  public:
  static divine::size_int_t allocated_strings() { return alloc_str_count; }

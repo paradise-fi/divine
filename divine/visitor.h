@@ -29,7 +29,7 @@ struct Common
     // dve_explicit_system_t sys;
     int m_seenCount, m_genCount;
     std::string file;
-    uint16_t m_seenFlag;
+    uint16_t m_seenFlag, m_pushedFlag;
 
     Controller &controller() { return m_controller; }
     Storage &storage() { return controller().storage(); }
@@ -122,24 +122,24 @@ struct Common
     }
 
     bool queued( State st ) {
-        return st.flags() & PUSHED;
+        return st.flags() & m_pushedFlag;
     }
 
     void markQueued( State st ) {
-        st.setFlags( st.flags() | PUSHED );
+        st.setFlags( st.flags() | m_pushedFlag );
     }
 
     void visit()
-    // TODO probably remove the dependency here on storage locking
+    // TODO remove storage locking please (we currently need it here to
+    // manipulate flags safely, apparently)
     {
         self().observer().started(); // XXX
         if ( self().empty() )
             return;
         while ( !self().empty() ) {
-            // merge is here to give us locking
-            // XXX can't use get() since sometimes the state is not
-            // stored... WHY?
-            typename Storage::Reference ref = self().merge( self().next() );
+            typename Storage::Reference ref = self().storage().get( self().next() );
+
+            self().storage().table().lock( ref );
             State state = ref.key;
             self().remove();
             assert( state.valid() );
@@ -164,6 +164,10 @@ struct Common
         m_seenFlag = f;
     }
 
+    void setPushedFlag( size_t f ) {
+        m_pushedFlag = f;
+    }
+
     void initSystem()
     {
         sys.setAllocator( controller().storage().newAllocator() );
@@ -174,6 +178,7 @@ struct Common
         m_controller( c ), m_seenCount( 0 )
     {
         m_seenFlag = SEEN;
+        m_pushedFlag = PUSHED;
         m_genCount = m_seenCount = 0;
     }
 };
@@ -242,9 +247,9 @@ struct Order {
         State push( State st ) {
             assert( st.valid() );
             m_stack.push_back( st );
-            if ( !(st.flags() & PUSHED) ) {
+            if ( !(st.flags() & this->m_pushedFlag ) ) {
                 m_postStack.push_back( true );
-                st.setFlags( st.flags() | PUSHED );
+                st.setFlags( st.flags() | this->m_pushedFlag );
                 ++ m_height;
             } else
                 m_postStack.push_back( false );

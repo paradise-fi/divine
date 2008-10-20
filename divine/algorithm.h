@@ -30,6 +30,11 @@ struct Algorithm {
         typedef _Controller Controller;
     };
 
+    template< typename _Setup, typename _Storage >
+    struct OverrideStorage : _Setup {
+        typedef _Storage Storage;
+    };
+
     template< typename Setup, typename Observer, typename StateExt >
     struct BundleFromSetup {
         typedef bundle::Setup<

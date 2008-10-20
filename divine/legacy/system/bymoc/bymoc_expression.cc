@@ -1,6 +1,5 @@
 #include <string>
 #include <sstream>
-#include "common/inttostr.hh"
 #include "system/bymoc/bymoc_expression.hh"
 
 #ifndef DOXYGEN_PROCESSING

@@ -4,6 +4,8 @@
 #include "system/dve/dve_transition.hh"
 #include "system/dve/syntax_analysis/dve_grammar.hh"
 
+#include <wibble/string.h>
+
 #ifndef DOXYGEN_PROCESSING
 using namespace divine;
 #endif //DOXYGEN_PROCESSING
@@ -33,14 +35,13 @@ void dve_prob_transition_t::write(std::ostream & ostr) const
   {
    dve_transition_t * dve_trans =
      dynamic_cast<dve_transition_t*>(trans[i]);
-   char * prob_weight_i = create_string_from_uint(prob_weights[i]);
+   std::string prob_weight_i = wibble::str::fmt(prob_weights[i]);
    
    aux = std::string(dve_trans->get_state2_name()) + ":"
          + prob_weight_i
          + ((i==(trans.size()-1)) ? " }" : ", ");
    if (aux.size()+str.size()-minus>80) { str += "\n     "; minus+=80; }
 
-   dispose_string(prob_weight_i);
    str += aux;
   }
   

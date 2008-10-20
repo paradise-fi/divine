@@ -24,6 +24,8 @@ struct Partition
     typedef HashMap< State, Unit > Table;
     typedef typename Table::Reference Reference;
 
+    Self &self() { return *static_cast< Self* >( this ); }
+
     Table m_table;
 
     divine::StateAllocator *newAllocator() {
@@ -35,11 +37,11 @@ struct Partition
     }
 
     Reference insert( State st ) {
-        return m_table.insert( st );
+        return self().table().insert( st );
     }
 
     Reference get( State st ) {
-        return m_table.get( st );
+        return self().table().get( st );
     }
 
     Table &table() { return m_table; }
@@ -47,6 +49,23 @@ struct Partition
     Partition( typename Bundle::Controller &c )
         : m_table( c.config().storageInitial(), c.config().storageFactor() )
     {}
+};
+
+template< typename Bundle, typename Self >
+struct Shadow : Partition< Bundle, Self >
+{
+    typedef typename Bundle::State State;
+    typedef HashMap< State, Unit > Table;
+    Table *m_tablePtr;
+    Table &table() { return m_tablePtr ? *m_tablePtr : this->m_table; }
+
+    void setTable( Table &t ) { m_tablePtr = &t; }
+
+    Shadow( typename Bundle::Controller &c )
+        : Partition< Bundle, Self >( c )
+    {
+        m_tablePtr = 0;
+    }
 };
 
 template< typename Bundle, typename Self >
@@ -169,6 +188,7 @@ typedef Finalize< impl::Shared< NaiveLocker >::Get > NaiveShared;
 typedef Finalize< impl::Shared< NoopLocker >::Get > LocklessShared;
 typedef Finalize< impl::Partition > Partition;
 typedef Finalize< impl::PooledPartition > PooledPartition;
+typedef Finalize< impl::Shadow > Shadow;
 
 template< typename T, typename Enable = Unit >
 struct IsShared {

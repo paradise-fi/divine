@@ -1,10 +1,11 @@
 #include <limits.h>
 #include <sstream>
-#include "common/inttostr.hh"
 #include "system/dve/dve_expression.hh"
 #include "system/dve/syntax_analysis/dve_symbol_table.hh"
 #include "system/dve/syntax_analysis/dve_grammar.hh"
 #include "common/deb.hh"
+
+#include <wibble/string.h>
 
 #ifndef DOXYGEN_PROCESSING
 using namespace divine;
@@ -386,8 +387,7 @@ void dve_expression_t::write(std::ostream & ostr) const
       ostr << parent_table->get_variable(contain.symbol_gid)->get_name();
       break; }
    case T_NAT:
-    { char * aux_char = create_string_from<all_values_t>(contain.value);
-      ostr << aux_char; dispose_string(aux_char); break; }
+    { ostr << contain.value; break; }
    case T_PARENTHESIS:
     { ostr << "("; left()->write(ostr); ostr << ")"; break; }
    case T_SQUARE_BRACKETS:
