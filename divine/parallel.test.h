@@ -22,14 +22,12 @@ struct TestParallel {
     }
 
     struct ParCounter {
-        struct Shared {
-            int i;
-        } shared;
+        typedef Counter Shared;
+        Counter shared;
 
         void inc() {
-            shared.i ++;
+            shared.inc();
         }
-        ParCounter() { shared.i = 0; }
     };
 
     Test parCounter() {
@@ -45,5 +43,62 @@ struct TestParallel {
         p.run( &ParCounter::inc );
         for ( int i = 0; i < 10; ++i )
             assert_eq( p.shared( i ).i, 11 );
+    }
+
+    struct DomCounter : Domain< DomCounter >
+    {
+        typedef Counter Shared;
+        Counter shared;
+        void inc() { shared.inc(); }
+
+        void run() {
+            parallel().run( &DomCounter::inc );
+        }
+
+        DomCounter() { shared.i = 0; }
+    };
+
+    Test domCounter() {
+        DomCounter d;
+        assert_eq( d.shared.i, 0 );
+        for ( int i = 0; i < 10; ++i )
+            assert_eq_l( i, d.parallel().shared( i ).i, 0 );
+        d.run();
+        assert_eq( d.shared.i, 0 );
+        for ( int i = 0; i < 10; ++i )
+            assert_eq_l( i, d.parallel().shared( i ).i, 1 );
+    }
+
+    struct Dom2Counter : Domain< Dom2Counter >
+    {
+        typedef Counter Shared;
+        Counter shared;
+
+        void tellInc() {
+            queue( (id() + 1) % peers() ).push( 1 );
+            do {
+                if ( !fifo.empty() ) {
+                    shared.i += fifo.front();
+                    return;
+                }
+            } while ( true );
+        }
+
+        void run() {
+            parallel().run( &Dom2Counter::tellInc );
+        }
+
+        Dom2Counter() { shared.i = 0; }
+    };
+
+    Test dom2Counter() {
+        Dom2Counter d;
+        assert_eq( d.shared.i, 0 );
+        for ( int i = 0; i < 10; ++i )
+            assert_eq_l( i, d.parallel().shared( i ).i, 0 );
+        d.run();
+        assert_eq( d.shared.i, 0 );
+        for ( int i = 0; i < 10; ++i )
+            assert_eq_l( i, d.parallel().shared( i ).i, 1 );
     }
 };
