@@ -6,12 +6,6 @@
 
 namespace divine {
 
-template< typename T >
-struct PageAlign {
-    T t;
-    // char __align[4096 - sizeof(T)];
-};
-
 /*
   A simple structure that runs a method of a class in a separate thread.
  */
