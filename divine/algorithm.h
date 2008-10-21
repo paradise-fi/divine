@@ -1,7 +1,8 @@
-// -*- C++ -*-
+// -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/bundle.h>
 #include <divine/controller.h>
+#include <divine/threading.h>
 #include <divine/state.h>
 #include <divine/legacy/system/path.hh>
 
