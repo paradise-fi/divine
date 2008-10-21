@@ -1,6 +1,9 @@
 // -*- C++ -*-
 #include <wibble/test.h> // for assert
+#include <wibble/sys/mutex.h> // for assert
+#include <pthread.h>
 #include <map>
+#include <deque>
 #include <iostream>
 
 #ifndef DIVINE_POOL_H
@@ -9,7 +12,6 @@
 namespace divine {
 
 struct Pool {
-
     struct Block
     {
         size_t size;
@@ -34,9 +36,8 @@ struct Pool {
     typedef std::vector< Group > Groups;
     Groups m_groups;
 
-    Pool()
-    {
-    }
+    Pool();
+    Pool( const Pool & );
 
     size_t peakAllocation() {
         size_t total = 0;
@@ -208,6 +209,147 @@ struct Pool {
         return s;
     };
 };
+
+struct ThreadPoolManager {
+    static pthread_key_t s_pool_key;
+    static pthread_once_t s_pool_once;
+    typedef std::deque< Pool * > Available;
+    static Available *s_available;
+    static wibble::sys::Mutex *s_mutex;
+
+    static wibble::sys::Mutex &mutex() {
+        if ( !s_mutex )
+            s_mutex = new wibble::sys::Mutex();
+        return *s_mutex;
+    }
+
+    static Available &available() {
+        if ( !s_available )
+            s_available = new Available();
+        return *s_available;
+    }
+
+    static void pool_key_alloc() {
+        pthread_key_create(&s_pool_key, pool_key_reclaim);
+    }
+
+    static void pool_key_reclaim( void *p ) {
+        wibble::sys::MutexLock __l( mutex() );
+        available().push_back( static_cast< Pool * >( p ) );
+    }
+
+    static void add( Pool *p ) {
+        wibble::sys::MutexLock __l( mutex() );
+        pthread_once( &s_pool_once, pool_key_alloc );
+        available().push_back( p );
+    }
+
+    static Pool *force( Pool *p ) {
+        wibble::sys::MutexLock __l( mutex() );
+        Pool *current =
+            static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+        if ( current == p )
+            return p;
+        Available::iterator i =
+            std::find( available().begin(), available().end(), p );
+        assert( i != available().end() );
+        Pool *p1 = *i, *p2 =
+                   static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+        available().erase( i );
+        if ( p2 )
+            available().push_back( p2 );
+        pthread_setspecific( s_pool_key, p1 );
+        return p1;
+    }
+
+    static Pool *get() {
+        std::cerr << "querying" << std::endl;
+        Pool *p = static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+        if ( !p ) {
+            wibble::sys::MutexLock __l( mutex() );
+            if ( available().empty() )
+                p = new Pool();
+            else {
+                p = available().front();
+                available().pop_front();
+            }
+            pthread_setspecific( s_pool_key, p );
+        }
+        return p;
+    }
+};
+
+template< typename T >
+class Allocator
+{
+public:
+    typedef size_t     size_type;
+    typedef ptrdiff_t  difference_type;
+    typedef T*         pointer;
+    typedef const T*   const_pointer;
+    typedef T&         reference;
+    typedef const T&   const_reference;
+    typedef T          value_type;
+
+    template<typename T1>
+    struct rebind
+    { typedef Allocator<T1> other; };
+
+    Pool *m_pool;
+
+    Allocator() throw() {
+        m_pool = ThreadPoolManager::get();
+    }
+
+    Allocator(const Allocator&) throw() {}
+
+      template<typename T1>
+      Allocator(const Allocator<T1> &) throw() {}
+
+      ~Allocator() throw() {}
+
+      pointer address(reference x) const { return &x; }
+      const_pointer address(const_reference x) const { return &x; }
+
+      // NB: __n is permitted to be 0.  The C++ standard says nothing
+      // about what the return value is when __n == 0.
+      pointer allocate( size_type n, const void* = 0 )
+      { 
+      }
+
+      // __p is not permitted to be a null pointer.
+      void deallocate(pointer __p, size_type) {}
+
+#if 0
+      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+      // 402. wrong new expression in [some_] allocator::construct
+      void 
+      construct(pointer __p, const _Tp& __val) 
+      { ::new((void *)__p) _Tp(__val); }
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+      template<typename... _Args>
+        void
+        construct(pointer __p, _Args&&... __args)
+	{ ::new((void *)__p) _Tp(std::forward<_Args>(__args)...); }
+#endif
+
+      void 
+      destroy(pointer __p) { __p->~_Tp(); }
+#endif
+    };
+
+template<typename T>
+inline bool operator==(const Allocator<T> &a, const Allocator<T> &b)
+{
+    return a.m_pool == b.m_pool;
+}
+  
+template<typename T>
+inline bool operator!=(const Allocator<T> &a, const Allocator<T> &b)
+{
+    return a.m_pool != b.m_pool;
+}
 
 }
 
