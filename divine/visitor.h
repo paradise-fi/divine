@@ -15,7 +15,7 @@
 namespace divine {
 namespace visitor {
 
-enum TransitionAction { FollowTransition };
+enum TransitionAction { FollowTransition, IgnoreTransition };
 enum ExpansionAction { ExpandState };
 
 template< typename T >
@@ -53,6 +53,10 @@ struct Common_ {
     Notify &m_notify;
 
     void visit( typename Graph::Node initial ) {
+        TransitionAction tact;
+        ExpansionAction eact;
+        if ( m_seen.count( initial ) )
+            return;
         m_seen.insert( initial );
         (m_notify.*expansion)( initial );
         m_queue.push( m_graph.successors( initial ) );
@@ -65,13 +69,12 @@ struct Common_ {
             } else {
                 Node current = s.head();
                 s = s.tail();
-                if ( !m_seen.count( current ) ) {
+                tact = (m_notify.*transition)( s.from(), current );
+                if ( tact == FollowTransition && !m_seen.count( current ) ) {
+                    eact = (m_notify.*expansion)( current );
                     m_seen.insert( current );
-                    (m_notify.*expansion)( current );
-                    (m_notify.*transition)( s.from(), current );
-                    m_queue.push( m_graph.successors( current ) );
-                } else {
-                    (m_notify.*transition)( s.from(), current );
+                    if ( eact == ExpandState )
+                        m_queue.push( m_graph.successors( current ) );
                 }
             }
         }
