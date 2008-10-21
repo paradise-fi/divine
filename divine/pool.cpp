@@ -17,4 +17,39 @@ Pool::Pool( const Pool& ) {
     ThreadPoolManager::add( this );
 }
 
+size_t Pool::peakAllocation() {
+    size_t total = 0;
+    Groups::iterator i;
+    for ( i = m_groups.begin(); i != m_groups.end(); ++i ) {
+        total += i->total;
+    }
+    return total;
+}
+
+size_t Pool::peakUsage() {
+    size_t total = 0;
+    Groups::iterator i;
+    for ( i = m_groups.begin(); i != m_groups.end(); ++i ) {
+        total += i->peak;
+    }
+    return total;
+}
+
+std::ostream &operator<<( std::ostream &o, const Pool &p )
+{
+    Pool::Groups::const_iterator i;
+    for ( i = p.m_groups.begin(); i != p.m_groups.end(); ++i ) {
+        if ( i->total == 0 )
+            continue;
+        o << "group " << i->item
+          << " holds " << i->used
+          << " (peaked " << i->peak
+          << "), allocated " << i->allocated
+          << " and freed " << i->freed << " bytes in "
+          << i->blocks.size() << " blocks"
+          << std::endl;
+    }
+    return o;
+}
+
 }
