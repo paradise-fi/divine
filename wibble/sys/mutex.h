@@ -100,10 +100,12 @@ class MutexLock
 {
 protected:
 	Mutex& mutex;
+        bool locked;
 	
 public:
-	MutexLock(Mutex& m) : mutex(m) { mutex.lock(); }
-	~MutexLock() { mutex.unlock(); }
+        MutexLock(Mutex& m) : mutex(m) { mutex.lock(); locked = true; }
+	~MutexLock() { if ( locked ) mutex.unlock(); }
+        void drop() { mutex.unlock(); locked = false; }
 
 	friend class Condition;
 };
