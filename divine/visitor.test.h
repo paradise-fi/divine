@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/visitor.h>
-#include <cmath> // for log
+#include <cmath> // for pow
 
 using namespace divine;
 
