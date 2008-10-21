@@ -60,7 +60,7 @@ struct Main : RunFeedback {
                             exit(250);
                         }
                     }
-                    all.runTest( *s, atoi( argv[2] ) );
+                    all.runTest( *s, t );
                 }
             } else
                 all.runSuite( *s, test, 0, 1 );
