@@ -130,7 +130,7 @@ struct TestVisitor {
             return visitor::ExpandState;
         }
 
-        void _visit() {
+        void _visit() { // parallel
             assert( !(n % this->peers()) );
             visitor::BFV< G, ParVisitor< G, n >,
                 &ParVisitor< G, n >::transition,
@@ -148,7 +148,7 @@ struct TestVisitor {
             }
         }
 
-        void _finish() {
+        void _finish() { // parallel
             while ( !this->fifo.empty() ) {
                 this->shared.trans ++;
                 this->fifo.pop();
@@ -181,6 +181,76 @@ struct TestVisitor {
         checkNMTreeMetric( n, m, pv.seen, pv.trans );
     }
 
+    // requires that n % peers() == 0
+    template< typename G >
+    struct TermParVisitor : Domain< TermParVisitor< G > >
+    {
+        struct Shared {
+            Node initial;
+            int seen, trans;
+        } shared;
+
+        G g;
+
+        bool isIdle() {
+            return this->fifo.empty();
+        }
+
+        visitor::TransitionAction transition( Node f, Node t ) {
+            if ( t % this->peers() != this->id() ) {
+                this->queue( t % this->peers() ).push( t );
+                return visitor::IgnoreTransition;
+            }
+            shared.trans ++;
+            return visitor::FollowTransition;
+        }
+
+        visitor::ExpansionAction expansion( Node n ) {
+            ++ shared.seen;
+            return visitor::ExpandState;
+        }
+
+        void _visit() { // parallel
+            visitor::BFV< G, TermParVisitor< G >,
+                &TermParVisitor< G >::transition,
+                &TermParVisitor< G >::expansion > bfv( g, *this );
+            if ( shared.initial % this->peers() == this->id() ) {
+                bfv.visit( shared.initial );
+            }
+            while ( true ) {
+                if ( this->fifo.empty() ) {
+                    if ( this->master().m_barrier.idle( this ) )
+                        return;
+                } else {
+                    assert_eq( this->fifo.front() % this->peers(), this->id() );
+                    shared.trans ++;
+                    bfv.visit( this->fifo.front() );
+                    this->fifo.pop();
+                }
+            }
+        }
+
+        void visit( Node initial ) {
+            shared.initial = initial;
+            shared.seen = 0;
+            shared.trans = 0;
+            this->parallel().run( &TermParVisitor< G >::_visit );
+            for ( int i = 0; i < this->parallel().n; ++i ) {
+                shared.seen += this->parallel().shared( i ).seen;
+                shared.trans += this->parallel().shared( i ).trans;
+            }
+        }
+
+        TermParVisitor() {}
+    };
+
+    template< int n, int m >
+    void _termParVisitor() {
+        TermParVisitor< NMTree< n, m > > pv;
+        pv.visit( 0 );
+        checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
+    }
+
     Test nmtree() {
         _nmtree< 7, 2 >();
         _nmtree< 8, 2 >();
@@ -204,4 +274,10 @@ struct TestVisitor {
         _parVisitor< 120, 8 >();
         _parVisitor< 120, 2 >();
     }
+
+    Test termParVisitor() {
+        _termParVisitor< 7, 2 >();
+        _termParVisitor< 8, 2 >();
+    }
+
 };
