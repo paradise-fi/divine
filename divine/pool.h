@@ -191,7 +191,7 @@ struct ThreadPoolManager {
 
     static wibble::sys::Mutex &mutex() {
         if ( !s_mutex )
-            s_mutex = new wibble::sys::Mutex();
+            s_mutex = new wibble::sys::Mutex( true );
         return *s_mutex;
     }
 
