@@ -3,6 +3,7 @@
 #include <wibble/sys/thread.h>
 #include <divine/threading.h>
 #include <divine/fifo.h>
+#include <divine/barrier.h>
 
 namespace divine {
 
@@ -74,107 +75,11 @@ struct Parallel {
 };
 
 template< typename T >
-struct Barrier {
-    typedef wibble::sys::Mutex Mutex;
-    typedef wibble::sys::MutexLock MutexLock;
-
-    typedef std::map< T *, Mutex > Mutexes;
-    Mutexes m_busy;
-    Mutex m_terminating;
-    std::map< T *, wibble::sys::Condition > m_condition;
-    volatile bool m_done;
-
-    int m_regd, m_expect;
-
-    Mutex &mutex( T *t ) {
-        return m_busy[ t ];
-    }
-
-    Condition &condition( T *t ) {
-        return m_condition[ t ];
-    }
-
-    void unlockSet( std::set< Mutex * > &locks )
-    {
-        for ( std::set< Mutex * >::iterator j = locks.begin();
-              j != locks.end(); ++j )
-            (*j)->unlock();
-    }
-
-    bool idle( T *who ) {
-        if ( m_regd < m_expect )
-            return false;
-
-        MutexLock __l( m_terminating );
-        typename Mutexes::iterator i;
-        std::set< Mutex * > locked;
-
-        m_done = true;
-
-        for ( i = m_busy.begin(); i != m_busy.end(); ++i ) {
-            if ( i->first != who && !i->second.trylock() ) {
-                m_done = false;
-            } else {
-                locked.insert( &(i->second) );
-            }
-        }
-
-        if ( m_done ) { // we have locked all mutexes, check for work
-            for ( i = m_busy.begin(); i != m_busy.end(); ++i ) {
-                if ( !i->first->isIdle() ) {
-                    m_done = false;
-                    condition( i->first ).signal(); // wake up that thread
-                }
-            }
-        }
-
-        unlockSet( locked );
-
-        if ( !m_done ) {
-            __l.drop(); // we are safe now
-            condition( who ).wait( mutex( who ) );
-        } else {
-            // We win. Wake up everyone so they can get through the barrier.
-            for ( i = m_busy.begin();  i != m_busy.end(); ++i ) {
-                if ( i-> first == who )
-                    continue;
-                condition( i->first ).signal();
-            }
-        }
-        return m_done;
-    }
-
-    void connect( T *t ) {
-        m_busy[ t ] = Mutex();
-        m_condition[ t ] = wibble::sys::Condition();
-    }
-
-    void started( T *t ) {
-        MutexLock __l( m_terminating );
-        mutex( t ).lock();
-        ++ m_regd;
-    }
-
-    void clear() {
-        m_regd = 0;
-        m_expect = 0;
-        m_busy.clear();
-        m_condition.clear();
-    }
-
-    void setExpect( int n ) {
-        m_regd = 0;
-        m_expect = n;
-    }
-};
-
-template< typename T >
 struct BarrierThread : RunThread< T > {
     Barrier< T > *m_barrier;
 
     void setBarrier( Barrier< T > &b ) {
         m_barrier = &b;
-        b.connect( this->t );
     }
 
     virtual void init() {
@@ -186,8 +91,7 @@ struct BarrierThread : RunThread< T > {
         // m_done is true if termination has been done, in which case all of
         // the mutexes are unlocked. (and unlocking an already unlocked mutex
         // locks it... d'OH)
-        if ( !m_barrier->m_done )
-            m_barrier->mutex( this->t ).unlock();
+        m_barrier->done( this->t );
     }
 
     BarrierThread( T &_t, typename RunThread< T >::F _f )
