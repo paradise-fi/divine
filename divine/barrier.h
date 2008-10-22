@@ -44,57 +44,46 @@ struct Barrier {
 
         MutexLock __l( m_globalMutex );
 
-        //std::cerr << "---- thread " << who << " entering -------" << std::endl;
-
         bool done = true;
 
-        Set locked;
+        Set locked, busy;
         done = true;
 
         for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
         {
             if ( i->first == who ) {
-                //std::cerr << "got ourselves at " << i->first << std::endl;
                 continue;
             }
             if ( !i->second.trylock() ) {
-                //std::cerr << "failed to get at " << i->first << std::endl;
                 done = false;
             } else {
                 locked.insert( i->first );
-                //std::cerr << "locked out " << i->first << std::endl;
             }
         }
 
-        // we are now holding whatever we could get at
-
-        Set busy;
-
-        // now check that there's no work left in the system
+        // we are now holding whatever we could get at; let's check that
+        // there's no work left in the system
         if ( done ) {
             for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
             {
                 if ( !i->first->isIdle() ) {
                     busy.insert( i->first );
-                    //std::cerr << "thread " << i->first << " busy" << std::endl;
                     done = false;
-                } else {
-                    //std::cerr << "ok, thread "
-                    // << i->first << " idle" << std::endl;
                 }
             }
         }
 
+        // certainly, there are at least as many sleepers as we could lock
+        // out... there may be more, since they might have let gone of the
+        // global mutex, but still haven't arrived to the condition wait
         assert( m_sleeping >= locked.size() );
 
-        // we drop all locks but the first one (on which everyone's preying)
+        // we drop all locks (but we hold on to the global one)
         for ( typename Set::iterator i = locked.begin(); i != locked.end(); ++i ) {
-            //std::cerr << "unlocking " << *i << std::endl;
             mutex( *i ).unlock();
         }
 
         if ( done ) {
-            //std::cerr << "---- thread " << who << " wins ------" << std::endl;
             m_done = true; // mark.
 
             // signal everyone so they get past their sleep
@@ -105,34 +94,29 @@ struct Barrier {
                 i->second.signal();
             }
         } else {
-            // now something failed, let's wake up all sleepers with work waiting
+            // something failed, let's wake up all sleepers with work waiting
             for ( typename ConditionMap::iterator i = m_conditions.begin();
                   i != m_conditions.end(); ++i ) {
                 if ( i->first->isIdle() )
                     continue;
-                //std::cerr << "waking up " << i->first << "..." << std::endl;
                 i->second.signal(); // wake up that thread
             }
 
             // and if we have nothing to do ourselves, go to bed...
             if ( who->isIdle() ) {
-                //std::cerr << m_sleeping << " thread(s) sleeping, "
-                // << locked.size() << " locked" << std::endl;
                 if ( m_sleeping < m_expect - 1 ) {
-                    //std::cerr << "thread " << who << " going to bed..." << std::endl;
                     ++ m_sleeping;
                     __l.drop();
                     condition( who ).wait( mutex( who ) );
                     __l.reclaim();
-                    //std::cerr << who << " woke up" << std::endl;
                     -- m_sleeping;
                 } else {
-                    //std::cerr << who << " is the last man standing" << std::endl;
+                    // we are the last thread to be awake; we need to yield
+                    // after unlocking the global mutex so we avoid starving
+                    // the rest of the system (that's trying to wake up and
+                    // needs the global mutex for that)
                     __l.setYield( true );
-                    // we are the last thread to be awake
                 }
-            } else {
-                //std::cerr << who << " still busy, continuing" << std::endl;
             }
         }
 
