@@ -278,6 +278,15 @@ struct TestVisitor {
     Test termParVisitor() {
         _termParVisitor< 7, 2 >();
         _termParVisitor< 8, 2 >();
+        _termParVisitor< 31, 2 >();
+        _termParVisitor< 4, 3 >();
+        _termParVisitor< 8, 3 >();
+        _termParVisitor< 242, 3 >();
+        _termParVisitor< 245, 3 >();
+        _termParVisitor< 20, 2 >();
+        _termParVisitor< 50, 3 >();
+        _termParVisitor< 120, 8 >();
+        _termParVisitor< 120, 2 >();
     }
 
 };
