@@ -35,6 +35,8 @@ struct Blob
 {
     char *ptr;
 
+    Blob() : ptr( 0 ) {}
+
     template< typename A >
     Blob( A *a, int size ) {
         ptr = a->allocate( allocationSize( size ) );
@@ -49,6 +51,16 @@ struct Blob
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
     explicit Blob( char *s ) : ptr( s ) {}
+
+    template< typename A >
+    void free( A* a ) {
+        a->deallocate( ptr, allocationSize( size() ) );
+    }
+
+    void free() {
+        Allocator< char > a;
+        free( &a );
+    }
 
     bool valid() const
     {
@@ -193,6 +205,17 @@ struct Blob
 };
 
 #undef MIX
+
+template< typename N >
+inline N unblob( Blob b ) {
+    return b.get< N >();
+}
+
+template<>
+inline Blob unblob( Blob b ) {
+    return b;
+}
+
 
 }
 
