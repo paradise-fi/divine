@@ -7,8 +7,6 @@
 using namespace divine;
 
 struct TestVisitor {
-    typedef int Node;
-
     struct NMTree {
         typedef int Node;
         int n, m;
@@ -45,7 +43,9 @@ struct TestVisitor {
         NMTree() : n( 0 ), m( 0 ) {}
     };
 
+    template< typename G >
     struct Checker {
+        typedef typename G::Node Node;
         std::set< Node > seen;
         std::set< std::pair< Node, Node > > t_seen;
         int nodes, transitions;
@@ -96,19 +96,20 @@ struct TestVisitor {
         // remaining - remaining/m is not same as remaining/m (due to flooring)
 
         NMTree g( n, m );
-        Checker c1, c2;
+        typedef Checker< NMTree > C;
+        C c1, c2;
 
         // sanity check 
         assert_eq( c1.transitions, 0 );
         assert_eq( c1.nodes, 0 );
 
-        visitor::BFV< NMTree, Checker,
-            &Checker::transition, &Checker::expansion > bfv( g, c1 );
+        visitor::BFV< NMTree, C,
+            &C::transition, &C::expansion > bfv( g, c1 );
         bfv.visit( 0 );
         checkNMTreeMetric( n, m, c1.nodes, c1.transitions );
 
-        visitor::DFV< NMTree, Checker,
-            &Checker::transition, &Checker::expansion > dfv( g, c2 );
+        visitor::DFV< NMTree, C,
+            &C::transition, &C::expansion > dfv( g, c2 );
         dfv.visit( 0 );
         checkNMTreeMetric( n, m, c2.nodes, c2.transitions );
     }
@@ -116,6 +117,8 @@ struct TestVisitor {
     // requires that n % peers() == 0
     template< typename G >
     struct ParVisitor : Domain< ParVisitor< G > > {
+        typedef typename G::Node Node;
+
         struct Shared {
             Node initial;
             int seen, trans;
@@ -193,6 +196,7 @@ struct TestVisitor {
     template< typename G >
     struct TermParVisitor : Domain< TermParVisitor< G > >
     {
+        typedef typename G::Node Node;
         struct Shared {
             Node initial;
             int seen, trans;
