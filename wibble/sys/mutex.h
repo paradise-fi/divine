@@ -101,11 +101,35 @@ class MutexLock
 protected:
 	Mutex& mutex;
         bool locked;
+        bool yield;
 	
 public:
-        MutexLock(Mutex& m) : mutex(m) { mutex.lock(); locked = true; }
-	~MutexLock() { if ( locked ) mutex.unlock(); }
-        void drop() { mutex.unlock(); locked = false; }
+        MutexLock(Mutex& m) : mutex(m), locked( false ), yield( false ) {
+            mutex.lock();
+            locked = true;
+        }
+
+	~MutexLock() {
+            if ( locked ) {
+                mutex.unlock();
+                checkYield();
+            }
+        }
+
+        void drop() {
+            mutex.unlock();
+            locked = false;
+            checkYield();
+        }
+        void reclaim() { mutex.lock(); locked = true; }
+        void setYield( bool y ) {
+            yield = y;
+        }
+
+        void checkYield() {
+            if ( yield )
+                sched_yield();
+        }
 
 	friend class Condition;
 };
