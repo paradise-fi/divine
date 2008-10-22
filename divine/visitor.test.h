@@ -9,13 +9,17 @@ using namespace divine;
 struct TestVisitor {
     typedef int Node;
 
-    template< int n, int m >
     struct NMTree {
         typedef int Node;
+        int n, m;
+
         struct Successors {
+            int n, m;
             int i, _from;
             Node from() { return _from; }
-            Node head() { int x = m * _from + i + 1; return x >= n ? 0 : x; }
+            Node head() {
+                int x = m * _from + i + 1; return x >= n ? 0 : x;
+            }
             bool empty() {
                 // no multi-edges to 0 please
                 if ( i > 0 && m * _from + i >= n )
@@ -28,12 +32,17 @@ struct TestVisitor {
                 return next;
             }
         };
-        Successors successors( Node n ) {
+        Successors successors( Node from ) {
             Successors s;
-            s._from = n;
+            s.n = n;
+            s.m = m;
+            s._from = from;
             s.i = 0;
             return s;
         }
+
+        NMTree( int _n, int _m ) : n( _n ), m( _m ) {}
+        NMTree() : n( 0 ), m( 0 ) {}
     };
 
     struct Checker {
@@ -82,39 +91,39 @@ struct TestVisitor {
         assert_eq( transitions, _transitions );
     }
 
-    template< int n, int m >
-    void _nmtree() {
+    void _nmtree( int n, int m ) {
         // bintree metrics
         // remaining - remaining/m is not same as remaining/m (due to flooring)
 
-        NMTree< n, m > g;
+        NMTree g( n, m );
         Checker c1, c2;
 
         // sanity check 
         assert_eq( c1.transitions, 0 );
         assert_eq( c1.nodes, 0 );
 
-        visitor::BFV< NMTree< n, m >, Checker,
+        visitor::BFV< NMTree, Checker,
             &Checker::transition, &Checker::expansion > bfv( g, c1 );
         bfv.visit( 0 );
         checkNMTreeMetric( n, m, c1.nodes, c1.transitions );
 
-        visitor::DFV< NMTree< n, m >, Checker,
+        visitor::DFV< NMTree, Checker,
             &Checker::transition, &Checker::expansion > dfv( g, c2 );
         dfv.visit( 0 );
         checkNMTreeMetric( n, m, c2.nodes, c2.transitions );
     }
 
     // requires that n % peers() == 0
-    template< typename G, int n >
-    struct ParVisitor : Domain< ParVisitor< G, n > > {
+    template< typename G >
+    struct ParVisitor : Domain< ParVisitor< G > > {
         struct Shared {
             Node initial;
             int seen, trans;
+            G g;
+            int n;
         } shared;
 
         int seen, trans;
-        G g;
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->id() ) {
@@ -131,14 +140,14 @@ struct TestVisitor {
         }
 
         void _visit() { // parallel
-            assert( !(n % this->peers()) );
-            visitor::BFV< G, ParVisitor< G, n >,
-                &ParVisitor< G, n >::transition,
-                &ParVisitor< G, n >::expansion > bfv( g, *this );
+            assert( !(shared.n % this->peers()) );
+            visitor::BFV< G, ParVisitor< G >,
+                &ParVisitor< G >::transition,
+                &ParVisitor< G >::expansion > bfv( shared.g, *this );
             if ( shared.initial % this->peers() == this->id() ) {
                 bfv.visit( shared.initial );
             }
-            while ( shared.seen != n / this->peers() ) {
+            while ( shared.seen != shared.n / this->peers() ) {
                 if ( this->fifo.empty() )
                     continue;
                 assert_eq( this->fifo.front() % this->peers(), this->id() );
@@ -159,24 +168,23 @@ struct TestVisitor {
             shared.initial = initial;
             seen = shared.seen = 0;
             trans = shared.trans = 0;
-            this->parallel().run( &ParVisitor< G, n >::_visit );
+            this->parallel().run( &ParVisitor< G >::_visit );
             for ( int i = 0; i < this->parallel().n; ++i ) {
                 seen += this->parallel().shared( i ).seen;
                 trans += this->parallel().shared( i ).trans;
             }
             shared.seen = 0;
             shared.trans = 0;
-            this->parallel().run( &ParVisitor< G, n >::_finish );
+            this->parallel().run( &ParVisitor< G >::_finish );
             for ( int i = 0; i < this->parallel().n; ++i )
                 trans += this->parallel().shared( i ).trans;
         }
 
-        ParVisitor() {}
+        ParVisitor( G g = G(), int _n = 0 ) { shared.g = g; shared.n = _n; }
     };
 
-    template< int n, int m >
-    void _parVisitor() {
-        ParVisitor< NMTree< n, m >, n > pv;
+    void _parVisitor( int n, int m ) {
+        ParVisitor< NMTree > pv( NMTree( n, m ), n );
         pv.visit( 0 );
         checkNMTreeMetric( n, m, pv.seen, pv.trans );
     }
@@ -188,9 +196,8 @@ struct TestVisitor {
         struct Shared {
             Node initial;
             int seen, trans;
+            G g;
         } shared;
-
-        G g;
 
         bool isIdle() {
             return this->fifo.empty();
@@ -213,7 +220,7 @@ struct TestVisitor {
         void _visit() { // parallel
             visitor::BFV< G, TermParVisitor< G >,
                 &TermParVisitor< G >::transition,
-                &TermParVisitor< G >::expansion > bfv( g, *this );
+                &TermParVisitor< G >::expansion > bfv( shared.g, *this );
             if ( shared.initial % this->peers() == this->id() ) {
                 bfv.visit( shared.initial );
             }
@@ -241,52 +248,51 @@ struct TestVisitor {
             }
         }
 
-        TermParVisitor() {}
+        TermParVisitor( G g = G() ) { shared.g = g; }
     };
 
-    template< int n, int m >
-    void _termParVisitor() {
-        TermParVisitor< NMTree< n, m > > pv;
+    void _termParVisitor( int n, int m ) {
+        TermParVisitor< NMTree > pv( NMTree( n, m ) );
         pv.visit( 0 );
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
 
     Test nmtree() {
-        _nmtree< 7, 2 >();
-        _nmtree< 8, 2 >();
-        _nmtree< 31, 2 >();
-        _nmtree< 4, 3 >();
-        _nmtree< 8, 3 >();
-        _nmtree< 242, 3 >();
-        _nmtree< 245, 3 >();
+        _nmtree( 7, 2 );
+        _nmtree( 8, 2 );
+        _nmtree( 31, 2 );
+        _nmtree( 4, 3 );
+        _nmtree( 8, 3 );
+        _nmtree( 242, 3 );
+        _nmtree( 245, 3 );
 
         // check that the stuff we use in parVisitor later actually works
-        _nmtree< 20, 2 >();
-        _nmtree< 50, 3 >();
-        _nmtree< 120, 8 >();
-        _nmtree< 120, 2 >();
+        _nmtree( 20, 2 );
+        _nmtree( 50, 3 );
+        _nmtree( 120, 8 );
+        _nmtree( 120, 2 );
     }
 
     Test parVisitor() {
         // note we need first number to be 10-divisible for now.
-        _parVisitor< 20, 2 >();
-        _parVisitor< 50, 3 >();
-        _parVisitor< 120, 8 >();
-        _parVisitor< 120, 2 >();
+        _parVisitor( 20, 2 );
+        _parVisitor( 50, 3 );
+        _parVisitor( 120, 8 );
+        _parVisitor( 120, 2 );
     }
 
     Test termParVisitor() {
-        _termParVisitor< 7, 2 >();
-        _termParVisitor< 8, 2 >();
-        _termParVisitor< 31, 2 >();
-        _termParVisitor< 4, 3 >();
-        _termParVisitor< 8, 3 >();
-        _termParVisitor< 242, 3 >();
-        _termParVisitor< 245, 3 >();
-        _termParVisitor< 20, 2 >();
-        _termParVisitor< 50, 3 >();
-        _termParVisitor< 120, 8 >();
-        _termParVisitor< 120, 2 >();
+        _termParVisitor( 7, 2 );
+        _termParVisitor( 8, 2 );
+        _termParVisitor( 31, 2 );
+        _termParVisitor( 4, 3 );
+        _termParVisitor( 8, 3 );
+        _termParVisitor( 242, 3 );
+        _termParVisitor( 245, 3 );
+        _termParVisitor( 20, 2 );
+        _termParVisitor( 50, 3 );
+        _termParVisitor( 120, 8 );
+        _termParVisitor( 120, 2 );
     }
 
 };
