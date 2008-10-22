@@ -75,10 +75,13 @@ struct TestParallel {
         Counter shared;
 
         void tellInc() {
-            queue( (id() + 1) % peers() ).push( 1 );
+            Blob b( sizeof( int ) );
+            b.get< int >() = 1;
+            queue( (id() + 1) % peers() ).push( b );
             do {
                 if ( !fifo.empty() ) {
-                    shared.i += fifo.front();
+                    shared.i += fifo.front().get< int >();
+                    fifo.front().free();
                     return;
                 }
             } while ( true );

@@ -3,6 +3,7 @@
 #include <wibble/sys/thread.h>
 #include <divine/threading.h>
 #include <divine/fifo.h>
+#include <divine/blob.h>
 #include <divine/barrier.h>
 
 namespace divine {
@@ -138,7 +139,7 @@ struct Domain {
         }
         return *m_parallel;
     }
-    typedef divine::Fifo< int > Fifo;
+    typedef divine::Fifo< Blob > Fifo;
 
     Fifo fifo;
     T *m_master;

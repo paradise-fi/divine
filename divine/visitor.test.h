@@ -3,6 +3,7 @@
 #include <divine/visitor.h>
 #include <divine/parallel.h>
 #include <cmath> // for pow
+#include <divine/blob.h>
 
 using namespace divine;
 
@@ -130,7 +131,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->id() ) {
-                this->queue( t % this->peers() ).push( t );
+                push( this->queue( t % this->peers() ), t );
                 return visitor::IgnoreTransition;
             }
             shared.trans ++;
@@ -153,9 +154,10 @@ struct TestVisitor {
             while ( shared.seen != shared.n / this->peers() ) {
                 if ( this->fifo.empty() )
                     continue;
-                assert_eq( this->fifo.front() % this->peers(), this->id() );
+                assert_eq( this->fifo.front().template get< int >() % this->peers(),
+                           this->id() );
                 shared.trans ++;
-                bfv.visit( this->fifo.front() );
+                bfv.visit( unblob< Node >( this->fifo.front() ) );
                 this->fifo.pop();
             }
         }
@@ -209,7 +211,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->id() ) {
-                this->queue( t % this->peers() ).push( t );
+                push( this->queue( t % this->peers() ), t );
                 return visitor::IgnoreTransition;
             }
             shared.trans ++;
@@ -233,9 +235,10 @@ struct TestVisitor {
                     if ( this->master().m_barrier.idle( this ) )
                         return;
                 } else {
-                    assert_eq( this->fifo.front() % this->peers(), this->id() );
+                    assert_eq( this->fifo.front().template get< int >()
+                            % this->peers(), this->id() );
                     shared.trans ++;
-                    bfv.visit( this->fifo.front() );
+                    bfv.visit( unblob< Node >( this->fifo.front() ) );
                     this->fifo.pop();
                 }
             }
