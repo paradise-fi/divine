@@ -24,4 +24,11 @@ struct TestPool {
         Parallel< Threads > p( m, 10 );
         p.run( &Threads::check );
     }
+
+    Test steal() {
+        Pool p;
+        char *c = p.alloc( 32 );
+        p.steal( c, 32 );
+        assert_eq( p.alloc( 32 ), c );
+    }
 };
