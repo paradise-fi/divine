@@ -252,29 +252,15 @@ public:
       // about what the return value is when __n == 0.
       pointer allocate( size_type n, const void* = 0 )
       { 
+          return m_pool->alloc( sizeof( T ) * n );
       }
 
       // __p is not permitted to be a null pointer.
-      void deallocate(pointer __p, size_type) {}
-
-#if 0
-      // _GLIBCXX_RESOLVE_LIB_DEFECTS
-      // 402. wrong new expression in [some_] allocator::construct
-      void 
-      construct(pointer __p, const _Tp& __val) 
-      { ::new((void *)__p) _Tp(__val); }
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-      template<typename... _Args>
-        void
-        construct(pointer __p, _Args&&... __args)
-	{ ::new((void *)__p) _Tp(std::forward<_Args>(__args)...); }
-#endif
-
-      void 
-      destroy(pointer __p) { __p->~_Tp(); }
-#endif
-    };
+      void deallocate( pointer __p, size_type n )
+      {
+          return m_pool->steal( __p, sizeof( T ) * n );
+      }
+};
 
 template<typename T>
 inline bool operator==(const Allocator<T> &a, const Allocator<T> &b)
