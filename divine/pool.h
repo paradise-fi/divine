@@ -209,44 +209,10 @@ struct ThreadPoolManager {
         available().push_back( static_cast< Pool * >( p ) );
     }
 
-    static void add( Pool *p ) {
-        wibble::sys::MutexLock __l( mutex() );
-        pthread_once( &s_pool_once, pool_key_alloc );
-        available().push_back( p );
-    }
-
-    static Pool *force( Pool *p ) {
-        wibble::sys::MutexLock __l( mutex() );
-        Pool *current =
-            static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
-        if ( current == p )
-            return p;
-        Available::iterator i =
-            std::find( available().begin(), available().end(), p );
-        assert( i != available().end() );
-        Pool *p1 = *i, *p2 =
-                   static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
-        available().erase( i );
-        if ( p2 )
-            available().push_back( p2 );
-        pthread_setspecific( s_pool_key, p1 );
-        return p1;
-    }
-
-    static Pool *get() {
-        Pool *p = static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
-        if ( !p ) {
-            wibble::sys::MutexLock __l( mutex() );
-            if ( available().empty() )
-                p = new Pool();
-            else {
-                p = available().front();
-                available().pop_front();
-            }
-            pthread_setspecific( s_pool_key, p );
-        }
-        return p;
-    }
+    static void add( Pool *p );
+    static void remove( Pool *p );
+    static Pool *force( Pool *p );
+    static Pool *get();
 };
 
 template< typename T >
