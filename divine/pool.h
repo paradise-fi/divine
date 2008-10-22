@@ -37,6 +37,7 @@ struct Pool {
 
     Pool();
     Pool( const Pool & );
+    ~Pool();
 
     size_t peakAllocation();
     size_t peakUsage();

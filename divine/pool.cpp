@@ -17,6 +17,10 @@ Pool::Pool( const Pool& ) {
     ThreadPoolManager::add( this );
 }
 
+Pool::~Pool() {
+    ThreadPoolManager::remove( this );
+}
+
 size_t Pool::peakAllocation() {
     size_t total = 0;
     Groups::iterator i;
