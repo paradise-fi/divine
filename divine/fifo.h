@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/threading.h> // for cacheLine
+#include <divine/blob.h> // for blobby fifos
 
 #ifndef DIVINE_FIFO_H
 #define DIVINE_FIFO_H
@@ -138,6 +139,18 @@ public:
         return head->buffer[ head->read ];
     }
 };
+
+template< typename N >
+inline void push( Fifo< Blob > &fifo, const N &n ) {
+    Blob b( sizeof( N ) );
+    b.template get< N >() = n;
+    fifo.push( b );
+}
+
+template<>
+inline void push< Blob >( Fifo< Blob > &fifo, const Blob &b ) {
+    fifo.push( b );
+}
 
 }
 
