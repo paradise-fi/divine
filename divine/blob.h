@@ -222,6 +222,11 @@ struct Blob
 #undef MIX
 
 template< typename N >
+inline N unblob( const N &n ) {
+    return n;
+}
+
+template< typename N >
 inline N unblob( Blob b ) {
     return b.get< N >();
 }
