@@ -1,11 +1,13 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#include <wibble/sfinae.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
 #include <cmath> // for pow
 #include <divine/blob.h>
 
 using namespace divine;
+using namespace wibble;
 
 struct TestVisitor {
     struct NMTree {
@@ -52,7 +54,6 @@ struct TestVisitor {
         int nodes, transitions;
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            // std::cerr << "transition: " << f << " - > " << t << std::endl;
             assert( seen.count( f ) );
             assert( !t_seen.count( std::make_pair( f, t ) ) );
             t_seen.insert( std::make_pair( f, t ) );
@@ -61,7 +62,6 @@ struct TestVisitor {
         }
 
         visitor::ExpansionAction expansion( Node t ) {
-            // std::cerr << "expansion: " << t << std::endl;
             assert( !seen.count( t ) );
             seen.insert( t );
             nodes ++;
@@ -81,21 +81,14 @@ struct TestVisitor {
         }
         int lastfull = pow(m, fullheight-1);
         int remaining = n - fulltree;
+        // remaining - remaining/m is not same as remaining/m (due to flooring)
         int transitions = (n - 1) + lastfull + remaining - remaining / m;
 
-        /* std::cerr << "nodes = " << n
-                  << ", fulltree height = " << fullheight
-                  << ", fulltree nodes = " << fulltree
-                  << ", last full = " << lastfull 
-                  << ", remaining = " << remaining << std::endl; */
         assert_eq( n, _nodes );
         assert_eq( transitions, _transitions );
     }
 
     void _nmtree( int n, int m ) {
-        // bintree metrics
-        // remaining - remaining/m is not same as remaining/m (due to flooring)
-
         NMTree g( n, m );
         typedef Checker< NMTree > C;
         C c1, c2;
@@ -128,6 +121,7 @@ struct TestVisitor {
         } shared;
 
         int seen, trans;
+        std::set< int > seenset;
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->id() ) {
@@ -140,6 +134,8 @@ struct TestVisitor {
 
         visitor::ExpansionAction expansion( Node n ) {
             ++ shared.seen;
+            assert( !seenset.count( unblob< int >( n ) ) );
+            seenset.insert( unblob< int >( n ) );
             return visitor::ExpandState;
         }
 
@@ -205,30 +201,40 @@ struct TestVisitor {
             G g;
         } shared;
 
+        std::set< int > seenset;
+
         bool isIdle() {
             return this->fifo.empty();
         }
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            if ( t % this->peers() != this->id() ) {
-                push( this->queue( t % this->peers() ), t );
+            if ( owner( t ) != this->id() ) {
+                push( this->queue( owner( t ) ), t );
                 return visitor::IgnoreTransition;
             }
+            assert_eq( owner( t ), this->id() );
             shared.trans ++;
             return visitor::FollowTransition;
         }
 
         visitor::ExpansionAction expansion( Node n ) {
+            assert( !seenset.count( unblob< int >( n ) ) );
+            assert_eq( owner( n ), this->id() );
+            seenset.insert( unblob< int >( n ) );
             ++ shared.seen;
             return visitor::ExpandState;
+        }
+
+        int owner( Node n ) {
+            return unblob< int >( n ) % this->peers();
         }
 
         void _visit() { // parallel
             visitor::BFV< G, TermParVisitor< G >,
                 &TermParVisitor< G >::transition,
                 &TermParVisitor< G >::expansion > bfv( shared.g, *this );
-            if ( shared.initial % this->peers() == this->id() ) {
-                bfv.visit( shared.initial );
+            if ( owner( shared.initial ) == this->id() ) {
+                bfv.visit( unblob< Node >( shared.initial ) );
             }
             while ( true ) {
                 if ( this->fifo.empty() ) {
@@ -302,4 +308,71 @@ struct TestVisitor {
         _termParVisitor( 120, 2 );
     }
 
+    struct BlobNMTree {
+        typedef Blob Node;
+        int n, m;
+
+        struct Successors {
+            int n, m;
+            int i, _from;
+            Node from() {
+                Node n( sizeof( int ) );
+                n.get< int >() = _from;
+                return n;
+            }
+            Node head() {
+                Node r = Node( sizeof( int ) );
+                int x = m * _from + i + 1;
+                r.get< int >() = x >= n ? 0 : x;
+                return r;
+            }
+
+            bool empty() {
+                // no multi-edges to 0 please
+                if ( i > 0 && m * _from + i >= n )
+                    return true;
+                return i >= m;
+            }
+
+            Successors tail() {
+                Successors next = *this;;
+                next.i ++;
+                return next;
+            }
+        };
+
+        Successors successors( Node from ) {
+            Successors s;
+            s.n = n;
+            s.m = m;
+            s._from = from.get< int >();
+            s.i = 0;
+            return s;
+        }
+
+        BlobNMTree( int _n, int _m ) : n( _n ), m( _m ) {}
+        BlobNMTree() : n( 0 ), m( 0 ) {}
+    };
+
+    void _bTermParVisitor( int n, int m ) {
+        TermParVisitor< BlobNMTree > pv( BlobNMTree( n, m ) );
+        Blob init( sizeof( int ) );
+        init.get< int >() = 0;
+        pv.visit( init );
+        checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
+    }
+
+    Test bTermParVisitor() {
+        _bTermParVisitor( 7, 2 );
+        _bTermParVisitor( 8, 2 );
+        _bTermParVisitor( 31, 2 );
+        _bTermParVisitor( 4, 3 );
+        _bTermParVisitor( 8, 3 );
+        _bTermParVisitor( 242, 3 );
+        _bTermParVisitor( 245, 3 );
+        _bTermParVisitor( 20, 2 );
+        _bTermParVisitor( 50, 3 );
+        _bTermParVisitor( 120, 8 );
+        _bTermParVisitor( 120, 2 );
+    }
 };
