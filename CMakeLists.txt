@@ -6,8 +6,6 @@ if(COMMAND cmake_policy)
   cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-set( CXX_FLAGS "-pipe -gstabs+" )
-
 set( OPT_FLAGS "-O0" )
 option( OPTIMIZE "override OPT_FLAGS to -O2" ON )
 option( PROFILE "generate profiling information for lcov coverage" OFF )
