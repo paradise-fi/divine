@@ -46,15 +46,24 @@ if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
 add_custom_target( lcov-clean
+  COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} -d . -z
+  COMMAND find divine/CMakeFiles/divine.dir/legacy/system/ -name "\\*.gcno" | xargs rm -f
+  COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
 )
 
-add_custom_target( lcov
+add_custom_target( lcov-postcheck
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} -b ${divine_SOURCE_DIR} -d divine -c -o lcov-report/divine.info
-  COMMAND ${LCOV} -b ${divine_SOURCE_DIR} -d tools -c -o lcov-report/tools.info
-  COMMAND ${LCOV_GENHTML} -o lcov-report -p ${divine_SOURCE_DIR}
-    lcov-report/divine.info lcov-report/tools.info
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c -o lcov-report/check.info
+  COMMAND ${LCOV} --quiet -a lcov-report/base.info
+                          -a lcov-report/check.info
+                          -o lcov-report/overall.info
+)
+
+add_custom_target( lcov-report
+  COMMAND mkdir -p lcov-report
+  COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
+    lcov-report/overall.info
 )
 add_custom_target( check )
 add_dependencies( check lcov-clean )
@@ -67,3 +76,7 @@ endif( HOARD )
 add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
+
+if( PROFILE )
+add_dependencies( check lcov-postcheck )
+endif( PROFILE )
