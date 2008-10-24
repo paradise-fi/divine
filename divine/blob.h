@@ -113,29 +113,44 @@ struct Blob
         return ptr;
     }
 
-    bool compare( const Blob &cb, int b, int e ) const
+    bool operator<( const Blob &b ) const {
+        int cmp = compare( b, 0, size() );
+        return cmp < 0;
+    }
+
+    bool operator==( const Blob &b ) const {
+        return compare( b, 0, size() ) == 0;
+    }
+
+    int compare( const Blob &cb, int b, int e ) const
     {
         assert( b <= e );
         const Blob &ca = *this;
         if ( !(b < ca.size() && b < cb.size()) )
-             return false;
-        if ( !(e < ca.size() && e < cb.size()) )
-            return false;
+            return ca.size() - cb.size();
+        if ( !(e <= ca.size() && e <= cb.size()) )
+            return ca.size() - cb.size();
 
         while ( b <= e - sizeof(intptr_t) ) {
-            if ( *reinterpret_cast< intptr_t * >( ca.data() + b ) !=
-                 *reinterpret_cast< intptr_t * >( cb.data() + b ) )
-                return false;
+            intptr_t x = *reinterpret_cast< intptr_t * >( ca.data() + b ),
+                     y = *reinterpret_cast< intptr_t * >( cb.data() + b );
+            if ( x < y )
+                return -1;
+            if ( y < x )
+                return 1;
             b += sizeof( intptr_t );
         }
 
         while ( b < e ) {
-            if ( ca.data()[b] != cb.data()[b] )
-                return false;
+            char x = ca.data()[b], y = cb.data()[b];
+            if ( x < y )
+                return -1;
+            if ( y < x )
+                return 1;
             ++b;
         }
 
-        return true;
+        return 0;
     }
 
     hash_t hash( int from, int to ) const
