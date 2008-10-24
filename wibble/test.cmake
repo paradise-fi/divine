@@ -45,7 +45,9 @@ endmacro( wibble_add_test )
 
 # TODO the LD_LIBRARY_PATH may need to be set more elaborately
 macro( wibble_check_target tgt )
-  add_custom_target( check
+  add_custom_target( check )
+
+  add_custom_target( check_${tgt}
     COMMAND LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${tgt}
     DEPENDS ${ARGV} )
   add_dependencies( check check_${tgt} )
