@@ -10,11 +10,17 @@ set( CXX_FLAGS "-pipe -gstabs+" )
 
 set( OPT_FLAGS "-O0" )
 option( OPTIMIZE "override OPT_FLAGS to -O2" ON )
+option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
 
 if( OPTIMIZE )
 set( OPT_FLAGS "-O2 -DNDEBUG -fomit-frame-pointer" )
 endif( OPTIMIZE )
+
+if( PROFILE )
+add_definitions( "-fprofile-arcs -ftest-coverage" )
+link_libraries( "gcov" )
+endif( PROFILE )
 
 include( CheckCXXSourceCompiles )
 check_cxx_source_compiles(
@@ -35,6 +41,24 @@ find_program( SHA1SUM sha1sum )
 if( NOT SHA1SUM )
   message( FATAL_ERROR "I need a working sha1sum program for the build. Please install one or supply me with a path to one. Thank you." )
 endif( NOT SHA1SUM )
+
+if( PROFILE )
+find_program( LCOV lcov )
+find_program( LCOV_GENHTML genhtml )
+add_custom_target( lcov-clean
+  COMMAND ${LCOV} -d . -z
+)
+
+add_custom_target( lcov
+  COMMAND mkdir -p lcov-report
+  COMMAND ${LCOV} -b ${divine_SOURCE_DIR} -d divine -c -o lcov-report/divine.info
+  COMMAND ${LCOV} -b ${divine_SOURCE_DIR} -d tools -c -o lcov-report/tools.info
+  COMMAND ${LCOV_GENHTML} -o lcov-report -p ${divine_SOURCE_DIR}
+    lcov-report/divine.info lcov-report/tools.info
+)
+add_custom_target( check )
+add_dependencies( check lcov-clean )
+endif( PROFILE )
 
 add_subdirectory( wibble )
 if( HOARD )
