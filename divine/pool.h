@@ -88,12 +88,11 @@ struct Pool {
         g.last = b.start + b.size;
         g.total = b.size;
         m_groups.resize( std::max( bytes / 4 + 1, m_groups.size() ), Group() );
-        assert( m_groups[ bytes / 4 ].total == 0 );
+        assert_eq( m_groups[ bytes / 4 ].total, 0 );
         m_groups[ bytes / 4 ] = g;
-        assert( g.total != 0 );
+        assert_neq( g.total, 0 );
         assert( group( bytes ) );
-        assert( group( bytes )->total == g.total );
-        // m_groups.insert( std::make_pair( bytes, g ) );
+        assert_eq( group( bytes )->total, g.total );
         return group( bytes );
     }
 
