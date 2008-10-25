@@ -21,8 +21,8 @@ enum ExpansionAction { ExpandState };
 template<
     typename G, // graph
     typename N, // notify
-    TransitionAction (N::*tr)(typename G::Node, typename G::Node),
-    ExpansionAction (N::*exp)(typename G::Node) >
+    TransitionAction (N::*tr)(typename G::Node, typename G::Node) = &N::transition,
+    ExpansionAction (N::*exp)(typename G::Node) = &N::expansion >
 struct Setup {
     typedef G Graph;
     typedef N Notify;
