@@ -168,6 +168,10 @@ struct Domain {
         return m_ids[ &t ];
     }
 
+    bool isIdle() {
+        return this->fifo.empty();
+    }
+
     Fifo &queue( int i ) {
         return master().parallel().instance( i ).fifo;
     }

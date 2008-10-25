@@ -205,10 +205,6 @@ struct TestVisitor {
 
         std::set< int > seenset;
 
-        bool isIdle() {
-            return this->fifo.empty();
-        }
-
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( owner( t ) != this->id() ) {
                 push( this->queue( owner( t ) ), t );
