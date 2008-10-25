@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <divine/pool.h>
+#include <divine/blob.h>
 #include <divine/generator.h>
 #include <divine/legacy/por/por.hh>
 #include <divine/threading.h>
@@ -108,6 +109,61 @@ template< typename S >
 struct DFV : Common_< Stack, S > {
     DFV( typename S::Graph &g, typename S::Notify &n )
         : Common_< Stack, S >( g, n ) {}
+};
+
+template< typename S, typename Domain >
+struct Parallel {
+    typedef typename S::Node Node;
+
+    Domain &dom;
+    typename S::Notify &notify;
+    typename S::Graph &graph;
+
+    int owner( Node n ) const {
+        return unblob< int >( n ) % dom.peers();
+    }
+
+    visitor::TransitionAction transition( Node f, Node t ) {
+        if ( owner( t ) != dom.id() ) {
+            // FIXME atomicity!
+            push( dom.queue( owner( t ) ), f );
+            push( dom.queue( owner( t ) ), t );
+            return visitor::IgnoreTransition;
+        }
+        return S::transition( notify, f, t );
+    }
+    
+    visitor::ExpansionAction expansion( Node n ) {
+        assert_eq( owner( n ), dom.id() );
+        return S::expansion( notify, n );
+    }
+
+    void visit( Node initial ) {
+        typedef Setup< typename S::Graph, Parallel< S, Domain > > Ours;
+        BFV< Ours > bfv( graph, *this );
+        if ( owner( initial ) == dom.id() ) {
+            bfv.visit( unblob< Node >( initial ) );
+        }
+        while ( true ) {
+            if ( dom.fifo.empty() ) {
+                if ( dom.master().m_barrier.idle( &dom ) )
+                    return;
+            } else {
+                Node f, t;
+                f = dom.fifo.front();
+                dom.fifo.pop();
+                t = dom.fifo.front();
+                dom.fifo.pop();
+
+                S::transition( notify, f, t );
+                bfv.visit( unblob< Node >( t ) );
+            }
+        }
+    }
+
+    Parallel( typename S::Graph &g, Domain &d, typename S::Notify &n )
+        : dom( d ), notify( n ), graph( g )
+    {}
 };
 
 namespace impl {

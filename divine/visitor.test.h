@@ -374,4 +374,65 @@ struct TestVisitor {
         _bTermParVisitor( 120, 8 );
         _bTermParVisitor( 120, 2 );
     }
+
+    template< typename G >
+    struct SimpleParReach : Domain< SimpleParReach< G > >
+    {
+        typedef typename G::Node Node;
+        struct Shared {
+            Node initial;
+            int seen, trans;
+            G g;
+        } shared;
+
+        std::set< int > seenset;
+
+        visitor::TransitionAction transition( Node f, Node t ) {
+            std::cerr << "[" << this->id() << "]: " << unblob< int >( f )
+                      << " -> " << unblob< int >( t ) << std::endl;
+            shared.trans ++;
+            return visitor::FollowTransition;
+        }
+
+        visitor::ExpansionAction expansion( Node n ) {
+            std::cerr << "[" << this->id() << "]: " << unblob< int >( n ) << std::endl;
+            seenset.insert( unblob< int >( n ) );
+            ++ shared.seen;
+            return visitor::ExpandState;
+        }
+
+        void _visit() { // parallel
+            typedef visitor::Setup< G, SimpleParReach< G > > VisitorSetup;
+            visitor::Parallel< VisitorSetup, SimpleParReach< G > >
+                vis( shared.g, *this, *this );
+            vis.visit( shared.initial );
+        }
+
+        void visit( Node initial ) {
+            shared.initial = initial;
+            shared.seen = 0;
+            shared.trans = 0;
+            this->parallel().run( &SimpleParReach< G >::_visit );
+            for ( int i = 0; i < this->parallel().n; ++i ) {
+                shared.seen += this->parallel().shared( i ).seen;
+                shared.trans += this->parallel().shared( i ).trans;
+            }
+        }
+
+        SimpleParReach( G g = G() ) { shared.g = g; }
+    };
+
+    void _simpleParReach( int n, int m ) {
+        SimpleParReach< BlobNMTree > pv( BlobNMTree( n, m ) );
+        Blob init( sizeof( int ) );
+        init.get< int >() = 0;
+        pv.visit( init );
+        checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
+    }
+
+    Test simpleParReach() {
+        _simpleParReach( 7, 2 );
+        _simpleParReach( 242, 3 );
+    }
+
 };
