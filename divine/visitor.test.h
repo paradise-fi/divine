@@ -432,7 +432,16 @@ struct TestVisitor {
 
     Test simpleParReach() {
         _simpleParReach( 7, 2 );
+        _simpleParReach( 8, 2 );
+        _simpleParReach( 31, 2 );
+        _simpleParReach( 4, 3 );
+        _simpleParReach( 8, 3 );
         _simpleParReach( 242, 3 );
+        _simpleParReach( 245, 3 );
+        _simpleParReach( 20, 2 );
+        _simpleParReach( 50, 3 );
+        _simpleParReach( 120, 8 );
+        _simpleParReach( 120, 2 );
     }
 
 };
