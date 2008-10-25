@@ -22,7 +22,7 @@ add_executable( divine-mc divine-mc.cpp )
 add_executable( divine-mc.simulate simulator.cpp )
 add_executable( divine-mc.combine combine.cpp ${COMBINE_M4_H} )
 
-add_executable( divine-mc.probabilistic probabilistic.cpp probabilistic.cpp )
+add_executable( divine-mc.probabilistic probabilistic.cpp )
 target_link_libraries( divine-mc.probabilistic lpsolve )
 
 install( TARGETS divine-mc divine-mc.simulate DESTINATION bin )
