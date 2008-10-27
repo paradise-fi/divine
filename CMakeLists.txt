@@ -6,28 +6,33 @@ if(COMMAND cmake_policy)
   cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-set( OPT_FLAGS "-O0" )
-option( OPTIMIZE "override OPT_FLAGS to -O2" ON )
+if( NOT CMAKE_BUILD_TYPE )
+  set( CMAKE_BUILD_TYPE "RELEASE" )
+endif( NOT CMAKE_BUILD_TYPE )
+
+macro(appendFlag flags value)
+  foreach( F ${flags} )
+    set( CMAKE_${F}_FLAGS_${CMAKE_BUILD_TYPE}
+      "${CMAKE_${F}_FLAGS_${CMAKE_BUILD_TYPE}} ${value}" )
+  endforeach( F )
+endmacro(appendFlag)
+
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 
-if( OPTIMIZE )
-set( OPT_FLAGS "-O2 -DNDEBUG -fomit-frame-pointer" )
-endif( OPTIMIZE )
-
 if( PROFILE )
-add_definitions( "-fprofile-arcs -ftest-coverage" )
-link_libraries( "gcov" )
+  appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
+  link_libraries( "gcov" )
 endif( PROFILE )
 
 if( USE64 )
-  add_definitions( "-m64" )
+  appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m64" )
 endif( USE64 )
 
 if( USE32 )
-  add_definitions( "-m32" )
+  appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m32" )
 endif( USE32 )
 
 include( CheckCXXSourceCompiles )
