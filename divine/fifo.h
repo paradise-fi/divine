@@ -50,6 +50,7 @@ protected:
     char _padding3[cacheLine-2*sizeof(Node*)];
 
 public:
+    typedef WM WriteMutex;
     WM writeMutex;
 
     Fifo() {
@@ -67,7 +68,7 @@ public:
 
     virtual ~Fifo() {} // TODO free up stuff here
 
-    void push( const MutexLock &l, const T&x ) {
+    void push( const MutexLockT< WriteMutex > &l, const T&x ) {
         Node *t;
         assert( l.locked );
         assert( &l.mutex == &writeMutex );
@@ -107,7 +108,7 @@ public:
     }
 
     void push( const T& x ) {
-        MutexLock __l( writeMutex );
+        MutexLockT< WriteMutex > __l( writeMutex );
         push( __l, x );
     }
 
