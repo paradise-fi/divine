@@ -388,14 +388,11 @@ struct TestVisitor {
         std::set< int > seenset;
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            std::cerr << "[" << this->id() << "]: " << unblob< int >( f )
-                      << " -> " << unblob< int >( t ) << std::endl;
             shared.trans ++;
             return visitor::FollowTransition;
         }
 
         visitor::ExpansionAction expansion( Node n ) {
-            std::cerr << "[" << this->id() << "]: " << unblob< int >( n ) << std::endl;
             seenset.insert( unblob< int >( n ) );
             ++ shared.seen;
             return visitor::ExpandState;
