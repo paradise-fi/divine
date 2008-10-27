@@ -183,7 +183,7 @@ std::ostream &operator<<( std::ostream &o, const Pool &p );
 
 struct ThreadPoolManager {
     static pthread_key_t s_pool_key;
-    static pthread_once_t s_pool_once;
+    static volatile bool s_init_done;
     typedef std::deque< Pool * > Available;
     static Available *s_available;
     static wibble::sys::Mutex *s_mutex;
@@ -201,7 +201,6 @@ struct ThreadPoolManager {
     }
 
     static void pool_key_alloc() {
-        pthread_key_create(&s_pool_key, pool_key_reclaim);
     }
 
     static void pool_key_reclaim( void *p ) {
@@ -213,6 +212,7 @@ struct ThreadPoolManager {
     static void remove( Pool *p );
     static Pool *force( Pool *p );
     static Pool *get();
+    static void init();
 };
 
 template< typename T >

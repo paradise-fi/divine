@@ -2,10 +2,12 @@
 
 #include <divine/pool.h>
 
+using namespace wibble::sys;
+
 namespace divine {
 
+volatile bool ThreadPoolManager::s_init_done = false;
 pthread_key_t ThreadPoolManager::s_pool_key;
-pthread_once_t ThreadPoolManager::s_pool_once = PTHREAD_ONCE_INIT;
 ThreadPoolManager::Available *ThreadPoolManager::s_available = 0;
 wibble::sys::Mutex *ThreadPoolManager::s_mutex = 0;
 
@@ -56,15 +58,24 @@ std::ostream &operator<<( std::ostream &o, const Pool &p )
     return o;
 }
 
-// ------
+void ThreadPoolManager::init() {
+    if ( s_init_done )
+        return;
+    MutexLock __l( mutex() );
+    if ( s_init_done )
+        return;
+    s_init_done = true;
+    pthread_key_create(&s_pool_key, pool_key_reclaim);
+}
 
 void ThreadPoolManager::add( Pool *p ) {
+    init();
     wibble::sys::MutexLock __l( mutex() );
     available().push_back( p );
 }
 
 void ThreadPoolManager::remove( Pool *p ) {
-    pthread_once( &s_pool_once, pool_key_alloc );
+    init();
     wibble::sys::MutexLock __l( mutex() );
     Available::iterator i =
         std::find( available().begin(), available().end(), p );
@@ -77,7 +88,7 @@ void ThreadPoolManager::remove( Pool *p ) {
 }
 
 Pool *ThreadPoolManager::force( Pool *p ) {
-    pthread_once( &s_pool_once, pool_key_alloc );
+    init();
     wibble::sys::MutexLock __l( mutex() );
     Pool *current =
         static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
@@ -96,16 +107,17 @@ Pool *ThreadPoolManager::force( Pool *p ) {
 }
 
 Pool *ThreadPoolManager::get() {
-    pthread_once( &s_pool_once, pool_key_alloc );
+    init();
     Pool *p = static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
     if ( !p ) {
         wibble::sys::MutexLock __l( mutex() );
-        if ( available().empty() )
-            p = new Pool();
-        else {
-            p = available().front();
-            available().pop_front();
+        if ( available().empty() ) {
+            new Pool();
         }
+        // the ctor will register itself with available...
+        assert( !available().empty() );
+        p = available().front();
+        available().pop_front();
         pthread_setspecific( s_pool_key, p );
     }
     return p;
