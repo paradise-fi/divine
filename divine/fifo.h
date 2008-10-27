@@ -23,7 +23,6 @@ template< typename T, typename WM = Mutex,
                           - sizeof(void*)) / sizeof(T) >
 struct Fifo {
 protected:
-    WM writeMutex;
     // the Node layout puts read and write counters far apart to avoid
     // them sharing a cache line, since they are always written from
     // different threads
@@ -51,6 +50,8 @@ protected:
     char _padding3[cacheLine-2*sizeof(Node*)];
 
 public:
+    WM writeMutex;
+
     Fifo() {
         head = tail = new Node();
         freehead = freetail = new Node();
@@ -66,9 +67,10 @@ public:
 
     virtual ~Fifo() {} // TODO free up stuff here
 
-    void push( const T& x ) {
+    void push( const MutexLock &l, const T&x ) {
         Node *t;
-        writeMutex.lock();
+        assert( l.locked );
+        assert( &l.mutex == &writeMutex );
         if ( tail->write == NodeSize ) {
             if ( freehead != freetail ) {
                 // grab a node for recycling
@@ -102,7 +104,11 @@ public:
             tail->next = t;
             tail = t;
         }
-        writeMutex.unlock();
+    }
+
+    void push( const T& x ) {
+        MutexLock __l( writeMutex );
+        push( __l, x );
     }
 
     bool empty() {

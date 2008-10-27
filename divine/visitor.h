@@ -5,6 +5,7 @@
 
 #include <divine/pool.h>
 #include <divine/blob.h>
+#include <divine/fifo.h>
 #include <divine/generator.h>
 #include <divine/legacy/por/por.hh>
 #include <divine/threading.h>
@@ -125,9 +126,11 @@ struct Parallel {
 
     visitor::TransitionAction transition( Node f, Node t ) {
         if ( owner( t ) != dom.id() ) {
+            Fifo< Blob > &fifo = dom.queue( owner( t ) );
             // FIXME atomicity!
-            push( dom.queue( owner( t ) ), f );
-            push( dom.queue( owner( t ) ), t );
+            MutexLock __l( fifo.writeMutex );
+            fifo.push( __l, unblob< Node >( f ) );
+            fifo.push( __l, unblob< Node >( t ) );
             return visitor::IgnoreTransition;
         }
         return S::transition( notify, f, t );
