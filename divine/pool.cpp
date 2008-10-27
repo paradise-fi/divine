@@ -6,21 +6,19 @@ using namespace wibble::sys;
 
 namespace divine {
 
-volatile bool ThreadPoolManager::s_init_done = false;
-pthread_key_t ThreadPoolManager::s_pool_key;
-ThreadPoolManager::Available *ThreadPoolManager::s_available = 0;
-wibble::sys::Mutex *ThreadPoolManager::s_mutex = 0;
+GlobalPools *GlobalPools::s_instance = 0;
+pthread_once_t GlobalPools::s_once = PTHREAD_ONCE_INIT;
 
 Pool::Pool() {
-    ThreadPoolManager::add( this );
+    GlobalPools::add( this );
 }
 
 Pool::Pool( const Pool& ) {
-    ThreadPoolManager::add( this );
+    GlobalPools::add( this );
 }
 
 Pool::~Pool() {
-    ThreadPoolManager::remove( this );
+    GlobalPools::remove( this );
 }
 
 size_t Pool::peakAllocation() {
@@ -58,24 +56,40 @@ std::ostream &operator<<( std::ostream &o, const Pool &p )
     return o;
 }
 
-void ThreadPoolManager::init() {
-    if ( s_init_done )
-        return;
-    MutexLock __l( mutex() );
-    if ( s_init_done )
-        return;
-    s_init_done = true;
-    pthread_key_create(&s_pool_key, pool_key_reclaim);
+GlobalPools &GlobalPools::instance() {
+    if ( s_instance )
+        return *s_instance;
+    pthread_once( &s_once, init_instance );
+    assert( s_instance );
+    return *s_instance;
 }
 
-void ThreadPoolManager::add( Pool *p ) {
-    init();
+void GlobalPools::init_instance() {
+    s_instance = new GlobalPools();
+    pthread_key_create(&s_instance->m_pool_key, pool_key_reclaim);
+}
+
+void GlobalPools::pool_key_reclaim( void *p )
+{
+    wibble::sys::MutexLock __l( mutex() );
+    available().push_back( static_cast< Pool * >( p ) );
+}
+
+void GlobalPools::add( Pool *p ) {
     wibble::sys::MutexLock __l( mutex() );
     available().push_back( p );
 }
 
-void ThreadPoolManager::remove( Pool *p ) {
-    init();
+Pool *GlobalPools::getSpecific() {
+    return static_cast< Pool * >(
+            pthread_getspecific( instance().m_pool_key ) );
+}
+
+void GlobalPools::setSpecific( Pool *p ) {
+    pthread_setspecific( instance().m_pool_key, p );
+}
+
+void GlobalPools::remove( Pool *p ) {
     wibble::sys::MutexLock __l( mutex() );
     Available::iterator i =
         std::find( available().begin(), available().end(), p );
@@ -83,32 +97,28 @@ void ThreadPoolManager::remove( Pool *p ) {
         available().erase( i );
     } else {
         assert( get() == p );
-        pthread_setspecific( s_pool_key, 0 );
+        setSpecific( 0 );
     }
 }
 
-Pool *ThreadPoolManager::force( Pool *p ) {
-    init();
+Pool *GlobalPools::force( Pool *p ) {
     wibble::sys::MutexLock __l( mutex() );
-    Pool *current =
-        static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+    Pool *current = getSpecific();
     if ( current == p )
         return p;
     Available::iterator i =
         std::find( available().begin(), available().end(), p );
     assert( i != available().end() );
-    Pool *p1 = *i, *p2 =
-               static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+    Pool *p1 = *i, *p2 = getSpecific();
     available().erase( i );
     if ( p2 )
         available().push_back( p2 );
-    pthread_setspecific( s_pool_key, p1 );
+    setSpecific( p1 );
     return p1;
 }
 
-Pool *ThreadPoolManager::get() {
-    init();
-    Pool *p = static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
+Pool *GlobalPools::get() {
+    Pool *p = getSpecific();
     if ( !p ) {
         wibble::sys::MutexLock __l( mutex() );
         if ( available().empty() ) {
@@ -118,7 +128,7 @@ Pool *ThreadPoolManager::get() {
         assert( !available().empty() );
         p = available().front();
         available().pop_front();
-        pthread_setspecific( s_pool_key, p );
+        setSpecific( p );
     }
     return p;
 }

@@ -181,38 +181,37 @@ struct Pool {
 
 std::ostream &operator<<( std::ostream &o, const Pool &p );
 
-struct ThreadPoolManager {
-    static pthread_key_t s_pool_key;
-    static volatile bool s_init_done;
+struct GlobalPools {
+    pthread_key_t m_pool_key;
     typedef std::deque< Pool * > Available;
-    static Available *s_available;
-    static wibble::sys::Mutex *s_mutex;
+    typedef std::vector< Pool * > Vector;
+    Available m_available;
+    wibble::sys::Mutex m_mutex;
+
+    static GlobalPools *s_instance;
+    static pthread_once_t s_once;
+
+    static GlobalPools &instance();
+    static Pool* getSpecific();
+    static void setSpecific( Pool* );
 
     static wibble::sys::Mutex &mutex() {
-        if ( !s_mutex )
-            s_mutex = new wibble::sys::Mutex( true );
-        return *s_mutex;
+        return instance().m_mutex;
     }
 
     static Available &available() {
-        if ( !s_available )
-            s_available = new Available();
-        return *s_available;
+        return instance().m_available;
     }
 
-    static void pool_key_alloc() {
-    }
+    GlobalPools() : m_mutex( true ) {}
 
-    static void pool_key_reclaim( void *p ) {
-        wibble::sys::MutexLock __l( mutex() );
-        available().push_back( static_cast< Pool * >( p ) );
-    }
+    static void pool_key_reclaim( void *p );
+    static void init_instance();
 
     static void add( Pool *p );
     static void remove( Pool *p );
     static Pool *force( Pool *p );
     static Pool *get();
-    static void init();
 };
 
 template< typename T >
@@ -234,7 +233,7 @@ public:
     Pool *m_pool;
 
     Allocator() throw() {
-        m_pool = ThreadPoolManager::get();
+        m_pool = GlobalPools::get();
     }
 
     Allocator(const Allocator&o) throw() {

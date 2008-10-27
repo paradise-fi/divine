@@ -12,8 +12,8 @@ struct TestPool {
         Pool p;
         void check() {
             // std::cerr << "my = " << (void *)&p << ", thread = " << (void *)ThreadPoolManager::get() << std::endl;
-            assert_eq( &p, ThreadPoolManager::force( &p ) );
-            assert_eq( &p, ThreadPoolManager::get() );
+            assert_eq( &p, GlobalPools::force( &p ) );
+            assert_eq( &p, GlobalPools::get() );
         }
         Threads() { check(); }
     };
@@ -44,8 +44,8 @@ struct TestPool {
         char padding2[128];
 
         Pool &pool() {
-            if ( managed)
-                return *ThreadPoolManager::get();
+            if ( managed )
+                return *GlobalPools::get();
             return m_pool;
         }
         
