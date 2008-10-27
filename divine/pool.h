@@ -237,28 +237,32 @@ public:
         m_pool = ThreadPoolManager::get();
     }
 
-    Allocator(const Allocator&) throw() {}
+    Allocator(const Allocator&o) throw() {
+        m_pool = o.m_pool;
+    }
 
-      template<typename T1>
-      Allocator(const Allocator<T1> &) throw() {}
+    template<typename T1>
+    Allocator(const Allocator<T1> &o) throw() {
+        m_pool = o.m_pool;
+    }
 
-      ~Allocator() throw() {}
+    ~Allocator() throw() {}
 
-      pointer address(reference x) const { return &x; }
-      const_pointer address(const_reference x) const { return &x; }
+    pointer address(reference x) const { return &x; }
+    const_pointer address(const_reference x) const { return &x; }
 
-      // NB: __n is permitted to be 0.  The C++ standard says nothing
-      // about what the return value is when __n == 0.
-      pointer allocate( size_type n, const void* = 0 )
-      { 
-          return m_pool->alloc( sizeof( T ) * n );
-      }
+    // NB: __n is permitted to be 0.  The C++ standard says nothing
+    // about what the return value is when __n == 0.
+    pointer allocate( size_type n, const void* = 0 )
+    { 
+        return m_pool->alloc( sizeof( T ) * n );
+    }
 
-      // __p is not permitted to be a null pointer.
-      void deallocate( pointer __p, size_type n )
-      {
-          return m_pool->steal( __p, sizeof( T ) * n );
-      }
+    // __p is not permitted to be a null pointer.
+    void deallocate( pointer __p, size_type n )
+    {
+        return m_pool->steal( __p, sizeof( T ) * n );
+    }
 };
 
 template<typename T>
