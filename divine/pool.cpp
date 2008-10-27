@@ -60,11 +60,11 @@ std::ostream &operator<<( std::ostream &o, const Pool &p )
 
 void ThreadPoolManager::add( Pool *p ) {
     wibble::sys::MutexLock __l( mutex() );
-    pthread_once( &s_pool_once, pool_key_alloc );
     available().push_back( p );
 }
 
 void ThreadPoolManager::remove( Pool *p ) {
+    pthread_once( &s_pool_once, pool_key_alloc );
     wibble::sys::MutexLock __l( mutex() );
     Available::iterator i =
         std::find( available().begin(), available().end(), p );
@@ -77,6 +77,7 @@ void ThreadPoolManager::remove( Pool *p ) {
 }
 
 Pool *ThreadPoolManager::force( Pool *p ) {
+    pthread_once( &s_pool_once, pool_key_alloc );
     wibble::sys::MutexLock __l( mutex() );
     Pool *current =
         static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
@@ -95,6 +96,7 @@ Pool *ThreadPoolManager::force( Pool *p ) {
 }
 
 Pool *ThreadPoolManager::get() {
+    pthread_once( &s_pool_once, pool_key_alloc );
     Pool *p = static_cast< Pool * >( pthread_getspecific( s_pool_key ) );
     if ( !p ) {
         wibble::sys::MutexLock __l( mutex() );
