@@ -10,6 +10,8 @@ set( OPT_FLAGS "-O0" )
 option( OPTIMIZE "override OPT_FLAGS to -O2" ON )
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
+option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
+option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 
 if( OPTIMIZE )
 set( OPT_FLAGS "-O2 -DNDEBUG -fomit-frame-pointer" )
@@ -19,6 +21,14 @@ if( PROFILE )
 add_definitions( "-fprofile-arcs -ftest-coverage" )
 link_libraries( "gcov" )
 endif( PROFILE )
+
+if( USE64 )
+  add_definitions( "-m64" )
+endif( USE64 )
+
+if( USE32 )
+  add_definitions( "-m32" )
+endif( USE32 )
 
 include( CheckCXXSourceCompiles )
 check_cxx_source_compiles(
