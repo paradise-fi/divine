@@ -131,7 +131,7 @@ struct Blob
         if ( !(e <= ca.size() && e <= cb.size()) )
             return ca.size() - cb.size();
 
-        while ( b <= e - sizeof(intptr_t) ) {
+        while ( b <= e - signed(sizeof(intptr_t)) ) {
             intptr_t x = *reinterpret_cast< intptr_t * >( ca.data() + b ),
                      y = *reinterpret_cast< intptr_t * >( cb.data() + b );
             if ( x < y )
