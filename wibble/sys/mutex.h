@@ -98,12 +98,11 @@ public:
  */
 class MutexLock
 {
-protected:
+public:
 	Mutex& mutex;
         bool locked;
         bool yield;
-	
-public:
+
         MutexLock(Mutex& m) : mutex(m), locked( false ), yield( false ) {
             mutex.lock();
             locked = true;
