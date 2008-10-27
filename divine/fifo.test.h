@@ -5,9 +5,10 @@
 using namespace divine;
 
 struct TestFifo {
+    template< typename T >
     struct Checker : wibble::sys::Thread
     {
-        divine::Fifo< int > fifo;
+        divine::Fifo< T > fifo;
         int terminate;
         int n;
         
@@ -20,7 +21,7 @@ struct TestFifo {
 
             while (true) {
                 while ( !fifo.empty() ) {
-                    int i = fifo.front();
+                    int i = unblob< int >( fifo.front() );
                     assert_eq( x[i % n], i / n );
                     ++ x[ i % n ];
                     fifo.pop();
@@ -33,7 +34,7 @@ struct TestFifo {
             }
             terminate = 0;
             for ( int i = 0; i < n; ++i )
-                assert_eq( x[ i ], 1024*1024 );
+                assert_eq( x[ i ], 128*1024 );
             return 0;
         }
 
@@ -48,7 +49,7 @@ struct TestFifo {
 
         void *main()
         {
-            for( int i = 0; i < 1024 * 1024; ++i )
+            for( int i = 0; i < 128 * 1024; ++i )
                 fifo.push( i * n + id );
             return 0;
         }
@@ -56,13 +57,47 @@ struct TestFifo {
         Pusher( Fifo< int > &f, int _id, int _n ) : fifo( f ), id( _id ), n( _n ) {}
     };
 
+    struct BlobPusher : wibble::sys::Thread
+    {
+        divine::Fifo< Blob > &fifo;
+        int id;
+        int n;
+
+        void *main()
+        {
+            for( int i = 0; i < 128 * 1024; ++i ) {
+                Blob b( sizeof( int ) );
+                b.get< int >() = i * n + id;
+                fifo.push( b );
+            }
+            return 0;
+        }
+
+        BlobPusher( Fifo< Blob > &f, int _id, int _n ) : fifo( f ), id( _id ), n( _n ) {}
+    };
+
     Test stress() {
-        Checker c;
+        Checker< int > c;
         int j = 0;
         for ( int j = 0; j < 5; ++j ) {
             c.start();
-            for( int i = 0; i < 1024 * 1024; ++i )
+            for( int i = 0; i < 128 * 1024; ++i )
                 c.fifo.push( i );
+            c.terminate = true;
+            c.join();
+        }
+    }
+
+    Test blobStress() {
+        Checker< Blob > c;
+        int j = 0;
+        for ( int j = 0; j < 5; ++j ) {
+            c.start();
+            for( int i = 0; i < 128 * 1024; ++i ) {
+                Blob b( sizeof( int ) );
+                b.get< int >() = i;
+                c.fifo.push( b );
+            }
             c.terminate = true;
             c.join();
         }
@@ -70,10 +105,25 @@ struct TestFifo {
 
     Test multiStress() {
         int n = 10;
-        Checker c( n );
+        Checker< int > c( n );
         std::vector< Pusher* > p;
         for ( int i = 0; i < n; ++i )
             p.push_back( new Pusher( c.fifo, i, n ) );
+        c.start();
+        for ( int i = 0; i < n; ++i )
+            p[ i ]->start();
+        for ( int i = 0; i < n; ++i )
+            p[ i ]->join();
+        c.terminate = true;
+        c.join();
+    }
+
+    Test blobMultiStress() {
+        int n = 10;
+        Checker< Blob > c( n );
+        std::vector< BlobPusher* > p;
+        for ( int i = 0; i < n; ++i )
+            p.push_back( new BlobPusher( c.fifo, i, n ) );
         c.start();
         for ( int i = 0; i < n; ++i )
             p[ i ]->start();
