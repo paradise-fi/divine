@@ -436,7 +436,7 @@ void *thread_function( void *ptr )
 
   Storages[id]->set_appendix(appendix);
   Storages[id]->init(*sys);
-  prob_succ_container_t succs_cont(*sys);
+  prob_succ_container_t succs_cont;
   prob_succ_container_t::iterator iter_i,iter_j;
   MyFifo* buffer; // pointer to Buffers[id][?]
   MyFifo_SCC* buffer_SCC; // pointer to Buffers[?]

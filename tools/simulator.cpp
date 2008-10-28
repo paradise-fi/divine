@@ -509,7 +509,7 @@ int main(int argc, char * argv[])
   bool init_state = true; //Am I in the initial state? (for good write of trace)
   char cmd[MAX_CMD_LENGTH]; //string of user's command
   cmd[0]='\0';
-  succ_container_t succs(System); //list of enabled successors states
+  succ_container_t succs; //list of enabled successors states
   enabled_trans_container_t enabled_trans(System);
   const std::size_t print_mode = ES_FMT_PRINT_VAR_NAMES |
                                  ES_FMT_PRINT_STATE_NAMES |  ES_FMT_PRINT_PROCESS_NAMES;
