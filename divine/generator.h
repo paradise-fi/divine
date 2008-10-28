@@ -3,34 +3,42 @@
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
 
+#include <divine/stateallocator.h>
+#include <divine/blob.h>
+
 #ifndef DIVINE_GENERATOR_H
 #define DIVINE_GENERATOR_H
 
 namespace divine {
 namespace generator {
 
+extern wibble::sys::Mutex read_mutex;
+
 template< typename _State, typename system_t >
 struct Common {
     typedef _State State;
-    bool m_succsActive;
-    succ_container_t m_succs;
-    int m_succRes;
-    system_t m_system;
+    typedef State Node;
+
+    std::string file;
+    system_t *m_system;
 
     struct Successors {
         int current;
-        Common< State, system_t > *m_generator;
+        succ_container_t m_succs;
+        Node _from;
 
         int result() {
-            return m_generator->m_succRes;
+            return 0;
         }
 
         bool empty() {
-            return current == m_generator->m_succs.size();
+            return current == m_succs.size();
         }
 
+        Node from() { return _from; }
+
         State head() {
-            return m_generator->m_succs[ current ];
+            return State( m_succs[ current ].ptr, true );
         }
 
         Successors tail() {
@@ -39,37 +47,61 @@ struct Common {
             return s;
         }
 
-        Successors( Common &g ) : current( 0 ), m_generator( &g ) {}
+        Successors() : current( 0 ) {}
     };
 
     Successors successors( State s ) {
-        m_succRes = m_system.get_succs( s.state(), m_succs );
-        return Successors( *this );
+        Successors succ;
+        succ._from = s;
+        legacy_system()->get_succs( legacy_state( s ), succ.m_succs );
+        return succ;
     }
 
     State initial() {
-        return m_system.get_initial_state();
+        return Node( legacy_system()->get_initial_state().ptr, true );
     }
 
     void setAllocator( StateAllocator *a ) {
-        m_system.setAllocator( a );
+        legacy_system()->setAllocator( a );
     }
 
     void read( std::string path ) {
-        m_system.read( path.c_str() );
+        MutexLock __l( read_mutex );
+        std::cerr << "thread " << pthread_self() << " reading input..." << std::endl;
+        legacy_system()->read( path.c_str() );
+        file = path;
     }
 
     void print_state( State s, std::ostream &o = std::cerr ) {
-        m_system.print_state( s.state(), o );
+        legacy_system()->print_state( legacy_state( s ), o );
     }
 
     bool is_accepting( State s ) {
-        return m_system.is_accepting( s.state() );
+        return legacy_system()->is_accepting( legacy_state( s ) );
     }
 
     explicit_system_t *legacy_system() {
-        return &m_system;
+        if ( !m_system ) {
+            std::cerr << "thread " << pthread_self() << " creating system..." << std::endl;
+            m_system = new system_t;
+            m_system->setAllocator( new BlobAllocator() );
+            if ( !file.empty() ) {
+                MutexLock __l( read_mutex );
+                std::cerr << "thread " << pthread_self() << " reading input..." << std::endl;
+                m_system->read( file.c_str() );
+            }
+        }
+        return m_system;
     }
+
+    Common &operator=( const Common &other ) {
+        file = other.file;
+        m_system = 0;
+        return *this;
+    }
+
+    Common( const Common &other ) : file( other.file ), m_system( 0 ) {}
+    Common() : m_system( 0 ) {}
 };
 
 template< typename _State >
@@ -79,6 +111,9 @@ struct Dve : Common< _State, dve_explicit_system_t >
 template< typename _State >
 struct Bymoc : Common< _State, bymoc_explicit_system_t >
 {};
+
+typedef Dve< Blob > NDve;
+typedef Bymoc< Blob > NBymoc;
 
 template< typename _State >
 struct Dummy {
@@ -98,7 +133,7 @@ struct Dummy {
     State initial() {
         State st = m_alloc->new_state( 8 );
         setData( st, 0 );
-        return st;
+        return State( st.ptr, true );
     }
 
     struct Successors {

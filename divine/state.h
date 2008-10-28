@@ -4,6 +4,7 @@
 #include <wibble/sfinae.h> // for Unit
 #include <divine/pool.h>
 #include <divine/legacy/system/state.hh>
+#include <divine/blob.h>
 
 #ifndef DIVINE_STATE_H
 #define DIVINE_STATE_H
@@ -47,12 +48,14 @@ struct State
 
     char *ptr;
     State() : ptr( 0 ) {}
-    State( const divine::state_t &s ) : ptr( s.ptr ? s.ptr - extra : 0 )
+    State( const divine::state_t &s )
+        : ptr( s.ptr ? s.ptr - extra : 0 )
     {
         assert( s.size == size() );
     }
 
-    State( char *s ) : ptr( s ) {}
+    State( char *s, bool data = false )
+        : ptr( data ? s - extra : s ) {}
 
     divine::state_t state()
     {
@@ -270,6 +273,21 @@ struct State
     }
 
 };
+
+template< typename T >
+inline divine::state_t legacy_state( T s )
+{
+    return s.state();
+}
+
+template<>
+inline divine::state_t legacy_state< Blob >( Blob b )
+{
+    divine::state_t s;
+    s.size = b.size();
+    s.ptr = b.data();
+    return s;
+}
 
 #undef MIX
 

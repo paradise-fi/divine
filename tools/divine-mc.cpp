@@ -26,6 +26,12 @@ using namespace divine;
 using namespace wibble;
 using namespace commandline;
 
+namespace divine {
+namespace generator {
+wibble::sys::Mutex read_mutex( true );
+}
+}
+
 struct Preferred {};
 struct NotPreferred { NotPreferred( Preferred ) {} };
 
