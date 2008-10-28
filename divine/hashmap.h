@@ -202,7 +202,9 @@ struct HashMap
                 return Reference( m_keys[ idx ], idx );
             }
         }
-        assert( 0 );
+        // we can be sure that the element is not in the table *because*: we
+        // never create chains longer than "mc", and if we haven't found the
+        // key in this many steps, it can't be in the table
         return Reference();
     }
 
