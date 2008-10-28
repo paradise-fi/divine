@@ -1,12 +1,8 @@
-// -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm.h>
 #include <divine/controller.h>
 #include <divine/visitor.h>
-#include <divine/observer.h>
-#include <divine/threading.h>
-#include <time.h>
-
+#include <divine/parallel.h>
 #include <divine/report.h>
 
 #ifndef DIVINE_REACHABILITY_H
@@ -15,105 +11,85 @@
 namespace divine {
 namespace algorithm {
 
-template< typename _Setup >
-struct Reachability : Algorithm {
+template< typename G >
+struct Reachability : Domain< Reachability< G > >
+{
+    typedef typename G::Node Node;
 
-    template< typename Bundle, typename Self >
-    struct ObserverImpl :
-        observer::Common< Bundle, ObserverImpl< Bundle, Self > >
+    struct Shared {
+        size_t states, transitions, accepting;
+        size_t errors, deadlocks;
+        G g;
+    } shared;
+
+    // TODO error & deadlock states
+    visitor::ExpansionAction expansion( Node st )
     {
-        typedef typename Bundle::State State;
-        size_t m_stateCount, m_acceptingCount, m_transitionCount;
-        size_t m_errorCount, m_deadlockCount;
-        typename Bundle::Controller &m_controller;
-
-        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-        typename Bundle::Generator &system() { return visitor().sys; }
-
-        void expanding( State st )
-        {
-            ++m_stateCount;
-            if ( system().is_accepting( st ) ) {
-                ++ m_acceptingCount;
-            }
+        ++shared.states;
+        if ( shared.g.is_accepting( st ) ) {
+            ++ shared.accepting;
         }
+        return visitor::ExpandState;
+    }
 
-        void errorState( State st, int err )
-        {
-            if ( err & SUCC_DEADLOCK ) {
-                m_deadlockCount ++;
-                if ( m_deadlockCount > 1 ) {
-                    return;
-                } else {
-                    std::cerr << "WARNING: deadlock state reached (at most one deadlock per thread is reported):" << std::endl;
-                }
-            } else {
-                m_errorCount ++;
-                if ( m_errorCount > 1 ) {
-                    return;
-                } else {
-                    std::cerr << "WARNING: error state reached (at most one error per thread is reported):" << std::endl;
-                }
-            }
-            system().print_state( st.state() );
-        }
+    visitor::TransitionAction transition( Node f, Node t )
+    {
+        ++ shared.transitions;
+        return visitor::FollowTransition;
+    }
 
-        State transition( State f, State t )
-        {
-            ++ m_transitionCount;
-            return follow( t );
-        }
+    void _visit() { // parallel
+        typedef visitor::Setup< G, Reachability< G > > VisitorSetup;
+        visitor::Parallel< VisitorSetup, Reachability< G > >
+            vis( shared.g, *this, *this );
+        vis.visit( shared.g.initial() );
+    }
 
-        void done()
-        {
-            // invalid in presence of shared storage
-            // assert( m_stateCount == m_controller.storage().table().usage() );
-        }
+    void printStatistics( std::ostream &str, std::string prefix )
+    {
+        str << prefix << "states: " << shared.states << std::endl;
+        str << prefix << "accepting states: " << shared.accepting
+            << std::endl;
+        str << prefix << "transitions: " << shared.transitions << std::endl;
+    }
 
-        void printStatistics( std::ostream &str, std::string prefix )
-        {
-            str << prefix << "states: " << m_stateCount << std::endl;
-            str << prefix << "accepting states: " << m_acceptingCount
-                << std::endl;
-            str << prefix << "transitions: " << m_transitionCount << std::endl;
-        }
-
-        ObserverImpl( typename Bundle::Controller &controller )
-            : m_stateCount( 0 ), m_acceptingCount( 0 ),
-              m_transitionCount( 0 ),
-              m_errorCount( 0 ), m_deadlockCount( 0 ),
-              m_controller( controller )
-        {
-        }
-    };
-
-    typedef Finalize< ObserverImpl > Observer;
-
-    Reachability( Config &c ) : Algorithm( c )
-    {}
-
-    typedef typename BundleFromSetup< _Setup, Observer, Unit >::T Bundle;
+    Reachability( Config *c = 0 )
+    {
+        shared.states = shared.transitions = shared.accepting = 0;
+        shared.errors = shared.deadlocks = 0;
+        if ( c )
+            shared.g.read( c->input() );
+    }
 
     Result run() {
-        threads::Pack< typename Bundle::Controller > pack( config() );
-        pack.initialize();
-        pack.blockingVisit();
-        int seen = 0, acc = 0, trans = 0, errs = 0, deadl = 0;
-        for ( int i = 0; i < pack.m_threads; ++i ) {
-            seen += pack.worker( i ).observer().m_stateCount;
-            trans += pack.worker( i ).observer().m_transitionCount;
-            acc += pack.worker( i ).observer().m_acceptingCount;
-            deadl += pack.worker( i ).observer().m_deadlockCount;
-            errs += pack.worker( i ).observer().m_errorCount;
+        typedef visitor::Setup< G, Reachability< G > > VisitorSetup;
+        visitor::Parallel< VisitorSetup, Reachability< G > >
+            vis( shared.g, *this, *this );
+
+        this->parallel().run( &Reachability< G >::_visit );
+
+        for ( int i = 0; i < this->parallel().n; ++i ) {
+            Shared &s = this->parallel().shared( i );
+            shared.states += s.states;
+            shared.transitions += s.transitions;
+            shared.accepting += s.accepting;
+            shared.errors += s.errors;
+            shared.deadlocks += s.deadlocks;
         }
-        std::cerr << "seen total of: " << seen << " states (" << acc
-                  << " accepting) and " << trans << " transitions" << std::endl;
-        std::cerr << "encountered total of " << errs << " errors and "
-                  << deadl << " deadlocks" << std::endl;
+
+        std::cerr << "seen total of: " << shared.states
+                  << " states (" << shared.accepting
+                  << " accepting) and "<< shared.transitions
+                  << " transitions" << std::endl;
+
+        std::cerr << "encountered total of " << shared.errors
+                  << " errors and " << shared.deadlocks
+                  << " deadlocks" << std::endl;
+                  
         Result res;
-        res.visited = res.expanded = seen;
-        res.deadlocks = deadl;
-        res.errors = errs;
+        res.visited = res.expanded = shared.states;
+        res.deadlocks = shared.deadlocks;
+        res.errors = shared.errors;
         res.fullyExplored = Result::Yes;
         return res;
     }

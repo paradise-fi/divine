@@ -338,7 +338,7 @@ struct Main {
     {
         if ( m_run == RunReachability ) {
             config.setAlgorithm( "Reachability" );
-            return runGenerator< algorithm::Reachability, Cont, Stor, Ord >();
+            return runAlgorithm_< algorithm::Reachability >();
         }
 
         if ( m_run == RunOwcty ) {
@@ -359,6 +359,23 @@ struct Main {
         return Result();
     }
 
+    template< template< typename > class A >
+    Result runAlgorithm_()
+    {
+        if ( str::endsWith( config.input(), ".dve" ) ) {
+            config.setGenerator( "DiVinE" );
+            return run_< A< generator::NDve > >();
+        } else if ( str::endsWith( config.input(), ".b" ) ) {
+            config.setGenerator( "NIPS" );
+            return run_< A< generator::NBymoc > >();
+        } else if ( dummygen ) {
+            config.setGenerator( "Dummy" );
+            return Result();
+            // return run_< A< generator::Dummy > >();
+        } else
+	    die( "FATAL: Unknown input file extension." );
+    }
+
     template< template< typename > class Alg, typename Cont, typename Stor,
               typename Ord >
     Result runGenerator()
@@ -375,6 +392,12 @@ struct Main {
         } else
 	    die( "Error: The input file extension is unknown." );
         return Result();
+    }
+
+    template< typename A >
+    Result run_() {
+        A alg( &config );
+        return alg.run();
     }
 
     /* this here prunes the set of valid combinations */
