@@ -50,7 +50,8 @@ struct Blob
     }
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
-    explicit Blob( char *s ) : ptr( s ) {}
+    explicit Blob( char *s, bool s_is_data = false )
+        : ptr( s_is_data ? s - sizeof( BlobHeader ) : s ) {}
 
     template< typename A >
     void free( A* a ) {
