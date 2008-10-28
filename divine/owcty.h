@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
+#include <divine/algorithm.h>
 #include <divine/controller.h>
+#include <divine/bundle.h>
 #include <divine/visitor.h>
 #include <divine/observer.h>
 #include <divine/threading.h>
