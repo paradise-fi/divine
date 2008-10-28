@@ -260,7 +260,7 @@ struct HashMap
         return Reference( m_keys[ off ], off );
     }
 
-    HashMap( int initial, int factor )
+    HashMap( int initial = 32, int factor = 2 )
         : m_factor( factor )
     {
         m_used = 0;
