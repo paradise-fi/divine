@@ -61,11 +61,11 @@ struct TestParallel {
     Test domCounter() {
         DomCounter d;
         assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < 10; ++i )
+        for ( int i = 0; i < d.n; ++i )
             assert_eq_l( i, d.parallel().shared( i ).i, 0 );
         d.run();
         assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < 10; ++i )
+        for ( int i = 0; i < d.n; ++i )
             assert_eq_l( i, d.parallel().shared( i ).i, 1 );
     }
 
@@ -97,11 +97,11 @@ struct TestParallel {
     Test dom2Counter() {
         Dom2Counter d;
         assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < 10; ++i )
+        for ( int i = 0; i < d.n; ++i )
             assert_eq_l( i, d.parallel().shared( i ).i, 0 );
         d.run();
         assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < 10; ++i )
+        for ( int i = 0; i < d.n; ++i )
             assert_eq_l( i, d.parallel().shared( i ).i, 1 );
     }
 };

@@ -103,9 +103,6 @@ struct BarrierThread : RunThread< T > {
 
 template< typename T >
 struct Domain {
-    int m_id;
-    std::map< T*, int > m_ids;
-
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
         Domain< T > *m_domain;
@@ -126,23 +123,29 @@ struct Domain {
         }
     };
 
+    typedef divine::Fifo< Blob > Fifo;
+
+    int m_id;
+    std::map< T*, int > m_ids;
+
+    Fifo fifo;
+
     Barrier< T > m_barrier;
     Parallel *m_parallel;
+    T *m_master;
+
+    int n;
+
     Parallel &parallel() {
         if ( !m_parallel ) {
-            // FIXME parametrize over number of workers
-            m_parallel = new Parallel( this, self(), 10 );
-            m_barrier.setExpect( 10 ); // FIXME 10 again
+            m_parallel = new Parallel( this, self(), n );
+            m_barrier.setExpect( n );
             for ( int i = 0; i < m_parallel->n; ++i ) {
                 m_parallel->instance( i ).connect( self() );
             }
         }
         return *m_parallel;
     }
-    typedef divine::Fifo< Blob > Fifo;
-
-    Fifo fifo;
-    T *m_master;
 
     T &self() { return *static_cast< T* >( this ); }
     T &master() { return *m_master; }
@@ -176,7 +179,7 @@ struct Domain {
         return master().parallel().instance( i ).fifo;
     }
 
-    Domain() : m_id( 0 ), m_parallel( 0 ), m_master( 0 ) {
+    Domain( int _n = 4 ) : m_id( 0 ), m_parallel( 0 ), m_master( 0 ), n( _n ) {
     }
 };
 

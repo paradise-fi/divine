@@ -183,7 +183,12 @@ struct TestVisitor {
                 trans += this->parallel().shared( i ).trans;
         }
 
-        ParVisitor( G g = G(), int _n = 0 ) { shared.g = g; shared.n = _n; }
+        ParVisitor( G g = G(), int _n = 0 ) 
+            : Domain< ParVisitor< G > >( 10 )
+        {
+            shared.g = g;
+            shared.n = _n;
+        }
     };
 
     void _parVisitor( int n, int m ) {
