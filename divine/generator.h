@@ -67,7 +67,6 @@ struct Common {
 
     void read( std::string path ) {
         MutexLock __l( read_mutex );
-        std::cerr << "thread " << pthread_self() << " reading input..." << std::endl;
         legacy_system()->read( path.c_str() );
         file = path;
     }
@@ -82,12 +81,10 @@ struct Common {
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
-            std::cerr << "thread " << pthread_self() << " creating system..." << std::endl;
             m_system = new system_t;
             m_system->setAllocator( new BlobAllocator() );
             if ( !file.empty() ) {
                 MutexLock __l( read_mutex );
-                std::cerr << "thread " << pthread_self() << " reading input..." << std::endl;
                 m_system->read( file.c_str() );
             }
         }
