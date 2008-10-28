@@ -294,61 +294,6 @@ struct Partition : Thread< T, Self >
 };
 
 template< typename T, typename Self >
-struct Shared : Thread< T, Self >
-{
-    typedef typename T::State State;
-    int m_counter;
-
-    Self &self() { return *static_cast< Self* >( this ); }
-
-    // all outside states go to first worker (FIXME?)
-    int owner( State st )
-    {
-        return 0;
-    }
-
-    int target( State from, State to )
-    {
-        ++ m_counter;
-        if ( m_counter % self().config().handoff() == 0 ) {
-            return (m_counter / self().config().handoff())
-                % self().pack().workerCount();
-        }
-        return self().id();
-    }
-
-    void stateWork()
-    {
-        while ( this->checkForWork() ) {
-            std::pair< State, State > t = this->m_work.next();
-            assert( t.second.valid() );
-            State to = self().transition( t.first, t.second );
-            if ( to.valid() )
-                self().visitor().visit( to );
-            this->m_work.remove();
-        }
-    }
-
-    Shared( Config &c ) : Thread< T, Self >( c ), m_counter( 0 )
-    {}
-};
-
-template< typename T, typename Self >
-struct Handoff : Shared< T, Self >
-{
-    typedef typename T::State State;
-    int target( State from, State to )
-    {
-        if ( this->self().visitor().height() >= this->self().config().handoff() )
-            return (this->self().id() + 1) % this->self().pack().workerCount();
-        return this->self().id();
-    }
-
-    Handoff( Config &c ) : Shared< T, Self >( c )
-    {}
-};
-
-template< typename T, typename Self >
 struct Slave : Simple< T, Self >, wibble::sys::Thread
 {
     typedef typename T::State State;
@@ -390,9 +335,7 @@ struct Slave : Simple< T, Self >, wibble::sys::Thread
 
 typedef FinalizeController< impl::Simple > Simple;
 typedef FinalizeController< impl::Thread > Thread;
-typedef FinalizeController< impl::Shared > Shared;
 typedef FinalizeController< impl::Partition > Partition;
-typedef FinalizeController< impl::Handoff > Handoff;
 typedef FinalizeController< impl::Slave > Slave;
 
 }

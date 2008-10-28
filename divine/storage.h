@@ -99,106 +99,11 @@ struct PooledPartition : Partition< Bundle, Self >
     {}
 };
 
-template< typename Locker >
-struct Shared {
-
-    template< typename Bundle, typename Self >
-    struct Get
-    {
-        typedef Unit IsStorage;
-        typedef Unit IsShared;
-        typedef Unit IsStealing;
-
-        typedef typename Bundle::State State;
-        typedef HashMap< State, Unit, Locker > Table;
-        typedef typename Table::Reference Reference;
-
-        wibble::sys::Mutex m_mutex;
-        Table *m_table;
-        typename Bundle::Controller &m_controller;
-
-        Pool m_pool;
-
-        divine::StateAllocator *newAllocator() {
-            return new PooledAllocator< State >( m_pool );
-        }
-
-        void steal( typename Bundle::State st ) {
-            m_pool.steal( st.pointer(), State::allocationSize( st.size() ) );
-        }
-
-        void deallocate( typename Bundle::State st ) {
-            m_pool.free( st.pointer(), State::allocationSize( st.size() ) );
-        }
-
-        /* void deallocate( State st ) {
-            delete[] st.pointer();
-            } */
-
-        Reference insert( State st ) {
-            return table().insert( st );
-        }
-
-        Reference get( State st ) {
-            return table().get( st );
-        }
-
-        Table &table() {
-            if ( !m_table && m_controller.id() != 0 ) {
-                Get &wz = m_controller.pack().worker( 0 ).storage();
-                if ( ! wz.m_table ) {
-                    wz.m_mutex.lock();
-                    if ( wz.m_table == 0 ) {
-                        wz.m_table = m_table =
-                                     new Table(
-                                         m_controller.config().storageInitial(),
-                                         m_controller.config().storageFactor() );
-                        m_table->useThreadAccess( m_controller.pack().workerCount() );
-                    }
-                    wz.m_mutex.unlock();
-                } else
-                    m_table = wz.m_table;
-            }
-            if ( !m_table && m_controller.id() == 0 ) {
-                m_mutex.lock();
-                if ( !m_table )
-                    m_table = new Table(
-                        m_controller.config().storageInitial(),
-                        m_controller.config().storageFactor() );
-                m_table->useThreadAccess( m_controller.pack().workerCount() );
-                m_mutex.unlock();
-            }
-            assert( m_table );
-            return *m_table;
-        }
-
-        Get( typename Bundle::Controller &c )
-            : m_table( 0 ), m_controller( c )
-        {
-        }
-    };
-};
-
 }
 
-typedef Finalize< impl::Shared< ConstLocker >::Get > ConstShared;
-typedef Finalize< impl::Shared< LinearLocker >::Get > LinearShared;
-typedef Finalize< impl::Shared< SqrtLocker >::Get > SqrtShared;
-typedef Finalize< impl::Shared< NaiveLocker >::Get > NaiveShared;
-typedef Finalize< impl::Shared< NoopLocker >::Get > LocklessShared;
 typedef Finalize< impl::Partition > Partition;
 typedef Finalize< impl::PooledPartition > PooledPartition;
 typedef Finalize< impl::Shadow > Shadow;
-
-template< typename T, typename Enable = Unit >
-struct IsShared {
-    static const bool value = false;
-};
-
-template< typename T >
-struct IsShared< T, typename T::template Get< VoidBundle >::IsShared > {
-    static const bool value = true;
-};
 
 template< typename T, typename Enable = Unit >
 struct IsStealing {

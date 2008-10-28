@@ -45,9 +45,9 @@ struct Main {
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify;
     OptionGroup *common, *order;
-    BoolOption *o_dfs, *o_bfs, *o_shared, *o_verbose, *o_vcl, *o_pool,
+    BoolOption *o_dfs, *o_bfs, *o_verbose, *o_vcl, *o_pool,
         *o_por, *o_noCe, *o_report;
-    IntOption *o_store, *o_grow, *o_handoff, *o_workers, *o_locking, *o_mem;
+    IntOption *o_store, *o_grow, *o_handoff, *o_workers, *o_mem;
     StringOption *o_trail;
 
     bool dummygen;
@@ -143,10 +143,6 @@ struct Main {
             "handoff threshold (default: 50)" );
         o_handoff->setValue( 50 );
 
-        o_shared = common->add< BoolOption >(
-            "shared", 's', "shared", "",
-            "use shared storage instead of partitioning" );
-
         o_pool = common->add< BoolOption >(
             "disable-pool", '\0', "disable-pool", "",
             "disable pooled allocation (use HOARD for all allocation)" );
@@ -158,12 +154,6 @@ struct Main {
         /* o_por = common->add< BoolOption >(
             "por", 'p', "por", "",
             "use partial order reduction" ); */
-
-        o_locking = common->add< IntOption >(
-            "locking", '\0', "locking", "",
-            "locking scheme to use; 0 = no locking, 1 = const, "
-            "2 = sqrt, 3 = linear, 4 = naive (default: 2)" );
-        o_locking->setValue( 1 );
 
         o_trail = common->add< StringOption >(
             "trail", 't', "trail", "",
@@ -285,18 +275,8 @@ struct Main {
             config.setPartitioning( "None" );
             return runStorage< controller::Simple >();
         } else {
-            if ( o_shared->boolValue() ) {
-                if ( o_dfs->boolValue() ) {
-                    config.setPartitioning( "Handoff" );
-                    return runStorage< controller::Handoff >();
-                } else {
-                    config.setPartitioning( "Modular" );
-                    return runStorage< controller::Shared >();
-                }
-            } else {
-                config.setPartitioning( "Static" );
-                return runStorage< controller::Partition >();
-            }
+            config.setPartitioning( "Static" );
+            return runStorage< controller::Partition >();
         }
 
         return Result();
@@ -305,31 +285,12 @@ struct Main {
     template< typename Cont >
     Result runStorage()
     {
-        if ( o_shared->boolValue() ) {
-            if ( o_locking->intValue() == 0 ) {
-                config.setStorage( "Shared-Lockless" );
-                return runOrder< Cont, storage::LocklessShared >();
-            } else if ( o_locking->intValue() == 1 ) {
-                config.setStorage( "Shared-Constlock" );
-                return runOrder< Cont, storage::ConstShared >();
-            } else if ( o_locking->intValue() == 2 ) {
-                config.setStorage( "Shared-Sqrtlock" );
-                return runOrder< Cont, storage::SqrtShared >();
-            } else if ( o_locking->intValue() == 3 ) {
-                config.setStorage( "Shared-Linearlock" );
-                return runOrder< Cont, storage::LinearShared >();
-            } else if ( o_locking->intValue() == 4 ) {
-                config.setStorage( "Shared-Naivelock" );
-                return runOrder< Cont, storage::NaiveShared >();
-            }
+        if ( o_pool->boolValue() ) {
+            config.setStorage( "Unpooled-Partitioned" );
+            return runOrder< Cont, storage::Partition >();
         } else {
-            if ( o_pool->boolValue() ) {
-                config.setStorage( "Unpooled-Partitioned" );
-                return runOrder< Cont, storage::Partition >();
-            } else {
-                config.setStorage( "Pooled-Partitioned" );
-                return runOrder< Cont, storage::PooledPartition >();
-            }
+            config.setStorage( "Pooled-Partitioned" );
+            return runOrder< Cont, storage::PooledPartition >();
         }
 
         return Result();
@@ -425,12 +386,8 @@ struct Main {
                 TAnd<
                     TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
                     TSame< C, controller::Simple >,
-                    TSame< O, visitor::DFS > >,
-                TAnd< TOr< TSame< C, controller::Shared >,
-                           TSame< C, controller::Handoff > >,
-                      storage::IsShared< S > >
+                    TSame< O, visitor::DFS > >
                 >,
-            TImply< TSame< C, controller::Handoff >, TSame< O, visitor::DFS > >,
             TImply< TSame< C, controller::Simple >,
                     TSame< A< Unit >, algorithm::NestedDFS< Unit > > >,
             TImply< TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
