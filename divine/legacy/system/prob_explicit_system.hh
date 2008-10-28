@@ -15,7 +15,10 @@ using std::cerr; using std::endl;
 #endif //DOXYGEN_PROCESSING
 
 
-class prob_succ_container_t;
+class prob_succ_element_t;
+typedef std::vector< prob_succ_element_t > prob_succ_container_t;
+
+class prob_succ_container_t_;
 
 //!Abstract interface of a class representing a state generator based
 //! on the model of \sys stored in prob_system_t
@@ -119,25 +122,24 @@ struct prob_succ_element_t
   prob_and_property_trans_t prob_and_property_trans; //!<\GID of probabilistic transition and \GID of property transition used for generation of a successor
 };
 
-
 //!Class determined to store probabilistic successors of some state
 /*!It is the descendant of array_t<prob_succ_element_t> and it differs only in a
  * constructor. Its constructor has a parameter of type explicit_system_t,
  * which is used to set the sufficient size of this constainer.
  * 
  * The main reason for this class is a better efficiency.*/
-class prob_succ_container_t: public array_t<prob_succ_element_t>
+class prob_succ_container_t_: public array_t<prob_succ_element_t>
 {
  public:
  //!A constructor (only calls a constructor of array_t<state_t> with
  //! parameters 4096 (preallocation) and 16 (allocation step).
- prob_succ_container_t(): array_t<prob_succ_element_t>(4096, 16) {}
+ prob_succ_container_t_(): array_t<prob_succ_element_t>(4096, 16) {}
  //!A constructor (needs only `system' to guess the preallocation
  //! needed for lists of successors).
- prob_succ_container_t(const explicit_system_t & system):
+ prob_succ_container_t_(const explicit_system_t & system):
    array_t<prob_succ_element_t>(system.get_preallocation_count(), 16) {}
  //!A destructor.
- ~prob_succ_container_t() {}
+ ~prob_succ_container_t_() {}
 };
 
 

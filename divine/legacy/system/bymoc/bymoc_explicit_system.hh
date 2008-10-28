@@ -28,7 +28,7 @@ namespace divine { //We want Doxygen not to see namespace `dve'
 using std::cerr; using std::endl;
 #endif //DOXYGEN_PROCESSING
 
-class succ_container_t;
+class succ_container_t_;
 class enabled_trans_container_t;
 //class bymoc_system_trans_t;
 //class bymoc_enabled_trans_t;

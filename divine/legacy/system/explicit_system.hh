@@ -23,7 +23,8 @@ namespace divine { //We want Doxygen not to see namespace `dve'
 using std::cerr; using std::endl;
 #endif //DOXYGEN_PROCESSING
 
-class succ_container_t;
+class succ_container_t_;
+typedef std::vector< state_t > succ_container_t;
 class enabled_trans_container_t;
 class system_trans_t;
 class enabled_trans_t;
@@ -336,18 +337,18 @@ class explicit_system_t: public virtual system_t
  * which is used to set the sufficient size of this constainer.
  * 
  * The main reason for this class is a better efficiency.*/
-class succ_container_t: public array_t<state_t>
+class succ_container_t_: public array_t<state_t>
 {
  public:
  //!A constructor (only calls a constructor of array_t<state_t> with
  //! parameters 4096 (preallocation) and 16 (allocation step).
- succ_container_t(): array_t<state_t>(4096, 16) {}
+ succ_container_t_(): array_t<state_t>(4096, 16) {}
  //!A constructor (needs only `system' to guess the preallocation
  //! needed for lists of successors).
- succ_container_t(const explicit_system_t & system):
+ succ_container_t_(const explicit_system_t & system):
    array_t<state_t>(system.get_preallocation_count(), 16) {}
  //!A destructor.
- ~succ_container_t() { DEBFUNC(cerr << "Destructing succ_container_t" << endl;)}
+ ~succ_container_t_() { DEBFUNC(cerr << "Destructing succ_container_t" << endl;)}
 };
 
 

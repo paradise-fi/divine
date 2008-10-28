@@ -6,7 +6,7 @@ using namespace std;
 
 string path_t::get_trans_string(state_t s1, state_t s2, bool with_prop) {
   if (!System->can_system_transitions()) return "Unknown system transition";
-  succ_container_t succs(*System); //list of enabled successors states
+  succ_container_t succs; //list of enabled successors states
   enabled_trans_container_t enabled_trans(*System); //list of enabled transitions
     
   try  {
@@ -47,7 +47,7 @@ void path_t::write_trans(std::ostream & out) {
     }
   }
   if (cycle_start_index != -1) {
-    succ_container_t succs(*System);
+      succ_container_t succs;
     if (System->get_succs(s_list[cycle_start_index], succs) != SUCC_ERROR)
       {
         if (succs.size()) //property process is not in deadlock

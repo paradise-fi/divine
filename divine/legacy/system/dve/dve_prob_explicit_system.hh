@@ -59,7 +59,7 @@ class dve_prob_explicit_system_t : public dve_explicit_system_t, public prob_exp
 
  //!A constructor
  /*!\param evect = \evector used for reporting of error messages*/
- dve_prob_explicit_system_t(error_vector_t & evect = gerr): explicit_system_t(evect), dve_explicit_system_t(evect), prob_explicit_system_t(evect), only_succs(*this), aux_prob_succs(*this) {}
+ dve_prob_explicit_system_t(error_vector_t & evect = gerr): explicit_system_t(evect), dve_explicit_system_t(evect), prob_explicit_system_t(evect), only_succs(), aux_prob_succs() {}
  //!A destructor
  virtual ~dve_prob_explicit_system_t() {};
  

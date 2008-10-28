@@ -65,7 +65,7 @@ struct ES_parameters_t
 //!Pointer to ES_parameters_t
 typedef ES_parameters_t * ES_p_parameters_t;
 
-class succ_container_t;
+class succ_container_t_;
 class enabled_trans_container_t;
 class dve_system_trans_t;
 class dve_enabled_trans_t;

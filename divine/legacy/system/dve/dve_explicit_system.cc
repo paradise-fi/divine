@@ -361,7 +361,7 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
      max_succ_count *= processes[prop_gid]->get_trans_count();
  aux_enabled_trans = new enabled_trans_container_t(*this);
  aux_enabled_trans2 = new enabled_trans_container_t(*this);
- aux_succ_container = new succ_container_t(*this);
+ aux_succ_container = new succ_container_t();
  if (get_with_property())
    property_trans.extend(pproperty->get_trans_count());
 
