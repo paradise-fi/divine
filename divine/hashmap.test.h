@@ -30,11 +30,18 @@ struct TestHashmap {
     Test set() {
         HashMap< int, Unit > set;
         for ( int i = 1; i < 32*1024; ++i ) {
+            assert( !set.has( i ) );
+        }
+        for ( int i = 1; i < 32*1024; ++i ) {
             set.insert( i );
             assert( set.has( i ) );
+            assert( !set.has( i + 1 ) );
         }
         for ( int i = 1; i < 32*1024; ++i ) {
             assert( set.has( i ) );
+        }
+        for ( int i = 32*1024; i < 64 * 1024; ++i ) {
+            assert( !set.has( i ) );
         }
     }
 
