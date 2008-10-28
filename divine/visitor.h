@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 
+#include <divine/hashmap.h>
 #include <divine/pool.h>
 #include <divine/blob.h>
 #include <divine/fifo.h>
@@ -65,14 +66,14 @@ struct Common_ {
     typedef typename S::Notify Notify;
     typedef typename Graph::Successors Successors;
     Queue< Successors > m_queue;
-    std::set< Node > m_seen;
+    HashMap< Node, Unit > m_seen;
     Graph &m_graph;
     Notify &m_notify;
 
     void visit( Node initial ) {
         TransitionAction tact;
         ExpansionAction eact;
-        if ( m_seen.count( initial ) )
+        if ( m_seen.has( initial ) )
             return;
         m_seen.insert( initial );
         S::expansion( m_notify, initial );
@@ -87,7 +88,7 @@ struct Common_ {
                 Node current = s.head();
                 s = s.tail();
                 tact = S::transition( m_notify, s.from(), current );
-                if ( tact == FollowTransition && !m_seen.count( current ) ) {
+                if ( tact == FollowTransition && !m_seen.has( current ) ) {
                     eact = S::expansion( m_notify, current );
                     m_seen.insert( current );
                     if ( eact == ExpandState )
