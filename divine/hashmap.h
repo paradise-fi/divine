@@ -12,14 +12,22 @@ namespace divine {
 
 // default hash implementation
 template< typename T >
-hash_t hash( T t ) {
+inline hash_t hash( T t ) {
     return t.hash();
 }
 
 // default validity implementation
 template< typename T >
-bool valid( T t ) {
+inline bool valid( T t ) {
     return t.valid();
+}
+
+template<> inline bool valid( int t ) {
+    return t != 0;
+}
+
+template<> inline hash_t hash( int t ) {
+    return t;
 }
 
 template< typename T >

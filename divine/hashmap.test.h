@@ -2,15 +2,6 @@
 
 #include <divine/hashmap.h>
 
-namespace divine {
-template<> bool valid( int t ) {
-    return t != 0;
-}
-template<> hash_t hash( int t ) {
-    return t;
-}
-}
-
 namespace {
 
 using namespace divine;
