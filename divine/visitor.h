@@ -240,7 +240,6 @@ struct Common
     {
         typename Storage::Reference r = self().merge( initial );
         self().push( r.key );
-        self().storage().table().unlock( r );
         self().visit();
     }
 
@@ -296,13 +295,11 @@ struct Common
         while ( !self().empty() ) {
             typename Storage::Reference ref = self().storage().get( self().next() );
 
-            self().storage().table().lock( ref );
             State state = ref.key;
             self().remove();
             assert( state.valid() );
 
             if ( self().seen( state ) ) {
-                self().storage().table().unlock( ref );
                 continue;
             }
 
@@ -310,8 +307,6 @@ struct Common
 
             self().markSeen( state );
             assert( self().seen( state ) );
-
-            self().storage().table().unlock( ref );
 
             self().processSuccessors( state );
         }

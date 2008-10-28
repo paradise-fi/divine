@@ -44,7 +44,6 @@ struct Simple
     {
         typename Visitor::Storage::Reference r = visitor().merge( to );
         State ret = this->visitor().localTransition( from, r.key );
-        self().visitor().storage().table().unlock( r );
         return ret;
     }
 
@@ -195,7 +194,6 @@ struct Thread : Simple< T, Self >, wibble::sys::Thread,
             self().deallocationRequest( std::make_pair( from, to ) );
         }
         State ret = this->visitor().localTransition( from, r.key );
-        self().visitor().storage().table().unlock( r );
         return ret;
     }
 
