@@ -43,4 +43,9 @@ struct TestBlob {
     Test comparisonChar() {
         comparison< char >();
     }
+
+    Test allocSize() {
+        for ( int i = 0; i < 100; ++i )
+            assert( i <= Blob::allocationSize( i ) );
+    }
 };
