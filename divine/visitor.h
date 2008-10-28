@@ -155,7 +155,7 @@ struct Parallel {
                 Node f, t;
                 f = dom.fifo.front();
                 dom.fifo.pop();
-                t = dom.fifo.front();
+                t = dom.fifo.front( true );
                 dom.fifo.pop();
 
                 S::transition( notify, f, t );
