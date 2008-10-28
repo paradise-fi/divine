@@ -127,7 +127,6 @@ struct Parallel {
     visitor::TransitionAction transition( Node f, Node t ) {
         if ( owner( t ) != dom.id() ) {
             Fifo< Blob > &fifo = dom.queue( owner( t ) );
-            // FIXME atomicity!
             MutexLock __l( fifo.writeMutex );
             fifo.push( __l, unblob< Node >( f ) );
             fifo.push( __l, unblob< Node >( t ) );
