@@ -154,6 +154,11 @@ struct Blob
         return 0;
     }
 
+    hash_t hash() const
+    {
+        return hash( 0, size() );
+    }
+
     hash_t hash( int from, int to ) const
     {
         // jenkins hash from common/hash_function.cc
