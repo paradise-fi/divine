@@ -90,8 +90,6 @@ public:
                     delete freehead;
                     freehead = next;
                 }
-
-                assert( freehead == freetail );
             } else {
                 t = new Node();
             }
