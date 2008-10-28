@@ -42,7 +42,7 @@ namespace divine {
  * (processes, transition and expressions are not supported).
  * The calls of non-implemented methods cause error messsages.
  */
-class bymoc_system_t: virtual public system_t, public LegacyStateAllocator
+class bymoc_system_t: virtual public system_t
  {
      friend class bymoc_process_decomposition_t;
   protected:

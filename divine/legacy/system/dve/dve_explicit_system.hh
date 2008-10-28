@@ -14,7 +14,6 @@
 #include "system/dve/dve_system_trans.hh"
 #include "common/types.hh"
 #include "common/deb.hh"
-#include "common/stateallocator.hh"
 
 namespace divine { //We want Doxygen not to see namespace `dve'
 using std::cerr; using std::endl;
@@ -91,8 +90,7 @@ class dve_enabled_trans_t;
  * specific.
  */
 class dve_explicit_system_t : public virtual explicit_system_t,
-                              public virtual dve_system_t,
-                              public LegacyStateAllocator
+                              public virtual dve_system_t
 {
 public:
 

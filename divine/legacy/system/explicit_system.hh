@@ -87,7 +87,7 @@ inline bool succs_deadlock(const int succs_result)
  * get_succs(). Values returned from get_succs() can be analyzed by
  * succs_normal(), succs_error() and succs_deadlock().
  */
-class explicit_system_t: public virtual system_t 
+class explicit_system_t: public virtual system_t
 {
  //PUBLIC PART:
  public:

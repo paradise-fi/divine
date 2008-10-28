@@ -14,6 +14,7 @@
 #include "system/transition.hh"
 #include "system/process.hh"
 #include "system/state.hh"
+#include "common/stateallocator.hh"
 
 //The main DiVinE namespace - we do not want Doxygen to see it
 namespace divine {
@@ -35,7 +36,7 @@ class process_decomposition_t;
  * Furthermore you can generate states of the system using
  * child class explitcit_system_t (and its children)
  */
-class system_t
+class system_t : public LegacyStateAllocator
  {
   protected:
     error_vector_t & terr;
