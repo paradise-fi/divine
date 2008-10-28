@@ -26,6 +26,32 @@ struct TestHashmap {
             assert_eq( map.value( map.get( i ) ), 2*i );
         }
     }
+
+    Test set() {
+        HashMap< int, Unit > set;
+        for ( int i = 1; i < 32*1024; ++i ) {
+            set.insert( i );
+            assert( set.has( i ) );
+        }
+        for ( int i = 1; i < 32*1024; ++i ) {
+            assert( set.has( i ) );
+        }
+    }
+
+    Test blobish() {
+        HashMap< Blob, Unit > set;
+        for ( int i = 1; i < 32*1024; ++i ) {
+            Blob b( sizeof( int ) );
+            b.get< int >() = i;
+            set.insert( b );
+            assert( set.has( b ) );
+        }
+        for ( int i = 1; i < 32*1024; ++i ) {
+            Blob b( sizeof( int ) );
+            b.get< int >() = i;
+            assert( set.has( b ) );
+        }
+    }
 };
 
 }
