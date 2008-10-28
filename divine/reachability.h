@@ -45,14 +45,6 @@ struct Reachability : Domain< Reachability< G > >
         vis.visit( shared.g.initial() );
     }
 
-    void printStatistics( std::ostream &str, std::string prefix )
-    {
-        str << prefix << "states: " << shared.states << std::endl;
-        str << prefix << "accepting states: " << shared.accepting
-            << std::endl;
-        str << prefix << "transitions: " << shared.transitions << std::endl;
-    }
-
     Reachability( Config *c = 0 )
     {
         shared.states = shared.transitions = shared.accepting = 0;
