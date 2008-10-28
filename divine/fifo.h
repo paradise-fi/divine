@@ -46,7 +46,7 @@ protected:
     char _padding1[cacheLine-2*sizeof(Node*)];
     Node *head, *freetail;
     char _padding2[cacheLine-2*sizeof(Node*)];
-    Node *tail, *freehead;
+    Node * volatile tail, *freehead;
     char _padding3[cacheLine-2*sizeof(Node*)];
 
 public:
@@ -135,7 +135,8 @@ public:
         }
     }
 
-    T &front() {
+    T &front( bool wait = false ) {
+        while ( wait && empty() );
         assert( head );
         assert( !empty() );
         // last pop could have left us with empty queue exactly at an
