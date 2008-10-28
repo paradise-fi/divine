@@ -69,7 +69,7 @@ struct HashMap
             : key( k ), offset( off )
         {}
 
-        Reference() : offset( 0 )
+        Reference() : key( Key() ), offset( 0 )
         {}
     };
 
