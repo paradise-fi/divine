@@ -19,11 +19,11 @@ struct TestVisitor {
             int i, _from;
             Node from() { return _from; }
             Node head() {
-                int x = m * _from + i + 1; return x >= n ? 0 : x;
+                int x = m * (_from - 1) + i + 1; return (x >= n ? 0 : x)+1;
             }
             bool empty() {
                 // no multi-edges to 0 please
-                if ( i > 0 && m * _from + i >= n )
+                if ( i > 0 && m * (_from - 1) + i >= n )
                     return true;
                 return i >= m;
             }
@@ -101,11 +101,11 @@ struct TestVisitor {
             &C::transition, &C::expansion > CheckSetup;
 
         visitor::BFV< CheckSetup > bfv( g, c1 );
-        bfv.visit( 0 );
+        bfv.visit( 1 );
         checkNMTreeMetric( n, m, c1.nodes, c1.transitions );
 
         visitor::DFV< CheckSetup > dfv( g, c2 );
-        dfv.visit( 0 );
+        dfv.visit( 1 );
         checkNMTreeMetric( n, m, c2.nodes, c2.transitions );
     }
 
@@ -193,7 +193,7 @@ struct TestVisitor {
 
     void _parVisitor( int n, int m ) {
         ParVisitor< NMTree > pv( NMTree( n, m ), n );
-        pv.visit( 0 );
+        pv.visit( 1 );
         checkNMTreeMetric( n, m, pv.seen, pv.trans );
     }
 
@@ -270,7 +270,7 @@ struct TestVisitor {
 
     void _termParVisitor( int n, int m ) {
         TermParVisitor< NMTree > pv( NMTree( n, m ) );
-        pv.visit( 0 );
+        pv.visit( 1 );
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
 
