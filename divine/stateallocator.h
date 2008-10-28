@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
 #include <divine/pool.h>
+#include <divine/blob.h>
+#include <divine/state.h>
 
 #ifndef DIVINE_STATEALLOCATOR_H
 #define DIVINE_STATEALLOCATOR_H
@@ -54,6 +56,34 @@ struct PooledAllocator : StateAllocator {
 
     void delete_state( state_t &st ) {
         State( st ).deallocate( m_pool );
+    }
+};
+
+struct BlobAllocator : StateAllocator {
+    Allocator< char > *_a;
+
+    BlobAllocator() : _a( 0 ) {
+    }
+
+    Allocator< char > *alloc() {
+        if ( !_a )
+            _a = new Allocator< char >();
+        return _a;
+    }
+
+    state_t duplicate_state( const state_t &st ) {
+        Blob a( st.ptr, true ), b( alloc(), st.size );
+        a.copyTo( b );
+        return legacy_state( b );
+    }
+
+    state_t new_state( const std::size_t size ) {
+        return legacy_state( Blob( alloc(), size ) );
+    }
+
+    void delete_state( state_t &st ) {
+        Blob a( st.ptr, true );
+        a.free( alloc() );
     }
 };
 
