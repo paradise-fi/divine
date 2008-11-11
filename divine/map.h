@@ -4,6 +4,7 @@
 #include <divine/visitor.h>
 #include <divine/observer.h>
 #include <divine/threading.h>
+#include <divine/algorithm.h>
 
 #ifndef DIVINE_MAP_H
 #define DIVINE_MAP_H
