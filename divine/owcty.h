@@ -20,7 +20,7 @@ struct Owcty : Domain< Owcty< G > >
     // --
 
     struct Shared {
-        size_t size;
+        size_t size, oldsize;
         Node cycle;
         int iteration;
         G g;
@@ -98,11 +98,15 @@ struct Owcty : Domain< Owcty< G > >
     }
 
     template< typename V >
-    void queueAll( V &v ) {
+    void queueAll( V &v, bool reset = false ) {
         for ( size_t i = 0; i < table().size(); ++i ) {
             Node st = table()[ i ].key;
-            if ( st.valid() && extension( st ).inS && extension( st ).inF )
-                v.queue( Blob(), st );
+            if ( st.valid() ) {
+                if ( reset )
+                    extension( st ).predCount = 0;
+                if ( extension( st ).inS && extension( st ).inF )
+                    v.queue( Blob(), st );
+            }
         }
     }
 
@@ -146,9 +150,9 @@ struct Owcty : Domain< Owcty< G > >
             &Owcty< G >::reachTransition,
             &Owcty< G >::reachExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
-        Visitor visitor( shared.g, *this, *this, &table() );
 
-        queueAll( visitor );
+        Visitor visitor( shared.g, *this, *this, &table() );
+        queueAll( visitor, true );
         visitor.visit();
     }
 
@@ -184,7 +188,6 @@ struct Owcty : Domain< Owcty< G > >
 
     visitor::ExpansionAction initExpansion( Node st )
     {
-        extension( st ).predCount = 0;
         extension( st ).inF = extension( st ).inS = shared.g.is_accepting( st );
         shared.size += extension( st ).inS;
         return visitor::ExpandState;
@@ -203,7 +206,7 @@ struct Owcty : Domain< Owcty< G > >
     
     void initialise() {
         this->parallel().run( &Owcty< G >::_initialise );
-        shared.size = totalSize();
+        shared.oldsize = shared.size = totalSize();
     }
 
     // -----------------------------------------------
@@ -214,7 +217,8 @@ struct Owcty : Domain< Owcty< G > >
     {
         assert( extension( st ).predCount == 0 );
         extension( st ).inS = false;
-        shared.size ++;
+        if ( extension( st ).inF )
+            shared.size ++;
         return visitor::ExpandState;
     }
 
@@ -246,10 +250,9 @@ struct Owcty : Domain< Owcty< G > >
     }
 
     void elimination() {
-        int origSize = totalSize();
         shared.size = 0;
         this->parallel().run( &Owcty< G >::_elimination );
-        shared.size = origSize - totalSize();
+        shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
 
