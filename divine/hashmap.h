@@ -26,6 +26,14 @@ struct valid {
     }
 };
 
+// default equality implementation
+template< typename T >
+struct equal {
+    inline bool operator()( T a, T b ) {
+        return a == b;
+    }
+};
+
 template<>
 struct valid< int > {
     inline bool operator()( int t ) {
@@ -62,16 +70,15 @@ namespace divine {
 
 template< typename _Key, typename _Value,
           typename _Hash = divine::hash< _Key >,
-          typename _Valid = divine::valid< _Key > >
+          typename _Valid = divine::valid< _Key >,
+          typename _Equal = divine::equal< _Key > >
 struct HashMap
 {
     typedef _Key Key;
     typedef _Value Value;
     typedef _Hash Hash;
     typedef _Valid Valid;
-
-    Hash hash;
-    Valid valid;
+    typedef _Equal Equal;
 
     typedef std::pair< Key, Value > Item;
 
@@ -100,6 +107,10 @@ struct HashMap
     int m_factor;
     int m_used;
 
+    Hash hash;
+    Valid valid;
+    Equal equal;
+
     size_t usage() {
         return m_used;
     }
@@ -125,7 +136,7 @@ struct HashMap
 
             idx = off % keys.size();
 
-            if ( !valid( keys[ idx ] ) || item.first == keys[ idx ] ) {
+            if ( !valid( keys[ idx ] ) || equal( item.first, keys[ idx ] ) ) {
                 if ( !valid( keys[ idx ] ) )
                     ++ used;
                 Item use = valid( keys[ idx ] ) ?
@@ -141,7 +152,7 @@ struct HashMap
         for ( int i = 0; i < mc; ++i ) {
             size_t idx = ((_hash + i*i)%keys.size());
             assert( valid( keys[ idx ] ) );
-            assert( ! (keys[ idx ] == item.first) );
+            assert( ! equal( keys[ idx ], item.first ) );
         }
         return std::make_pair( Reference(), -2 );
     }
@@ -204,7 +215,7 @@ struct HashMap
             if ( !valid( m_keys[ idx ] ) ) {
                 return Reference();
             }
-            if ( k == m_keys[ idx ] ) {
+            if ( equal( k, m_keys[ idx ] ) ) {
                 return Reference( m_keys[ idx ], idx );
             }
         }
@@ -268,8 +279,9 @@ struct HashMap
         return Reference( m_keys[ off ], off );
     }
 
-    HashMap( int initial = 32, int factor = 2 )
-        : m_factor( factor )
+    HashMap( Hash h = Hash(), Valid v = Valid(), Equal eq = Equal(),
+             int initial = 32, int factor = 2 )
+        : m_factor( factor ), hash( h ), valid( v ), equal( eq )
     {
         m_used = 0;
         setSize( initial );

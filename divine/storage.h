@@ -47,7 +47,7 @@ struct Partition
     Table &table() { return m_table; }
 
     Partition( typename Bundle::Controller &c )
-        : m_table( c.config().storageInitial(), c.config().storageFactor() )
+    // : m_table( c.config().storageInitial(), c.config().storageFactor() )
     {}
 };
 
