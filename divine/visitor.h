@@ -18,7 +18,12 @@
 namespace divine {
 namespace visitor {
 
-enum TransitionAction { FollowTransition, IgnoreTransition };
+enum TransitionAction { ExpandTransition, // force expansion on the target state
+                        FollowTransition, // expand the target state if it's
+                                          // not been expanded yet
+                        IgnoreTransition, // pretend the transition didn't exist
+                        TerminateOnTransition
+};
 enum ExpansionAction { ExpandState };
 
 template<
@@ -66,16 +71,25 @@ struct Common_ {
     typedef typename S::Notify Notify;
     typedef typename Graph::Successors Successors;
     Queue< Successors > m_queue;
-    HashMap< Node, Unit > m_seen;
+    typedef HashMap< Node, Unit > Seen;
     Graph &m_graph;
     Notify &m_notify;
+    Seen *m_seen;
+
+    Seen &seen() {
+        return *m_seen;
+    }
+
+    void visit() {
+        assert( 0 );
+    }
 
     void visit( Node initial ) {
         TransitionAction tact;
         ExpansionAction eact;
-        if ( m_seen.has( initial ) )
+        if ( seen().has( initial ) )
             return;
-        m_seen.insert( initial );
+        seen().insert( initial );
         S::expansion( m_notify, initial );
         m_queue.push( m_graph.successors( initial ) );
         while ( !m_queue.empty() ) {
@@ -87,10 +101,15 @@ struct Common_ {
             } else {
                 Node current = s.head();
                 s = s.tail();
+
+                int usage = seen().usage();
+                current = seen().insert( current ).key;
+                bool had = usage == seen().usage(); // not a new state...
+
                 tact = S::transition( m_notify, s.from(), current );
-                if ( tact == FollowTransition && !m_seen.has( current ) ) {
+                if ( tact == ExpandTransition ||
+                     (tact == FollowTransition && !had) ) {
                     eact = S::expansion( m_notify, current );
-                    m_seen.insert( current );
                     if ( eact == ExpandState )
                         m_queue.push( m_graph.successors( current ) );
                 }
@@ -98,19 +117,26 @@ struct Common_ {
         }
     }
 
-    Common_( Graph &g, Notify &n ) : m_graph( g ), m_notify( n ) {}
+    Common_( Graph &g, Notify &n, Seen *s ) :
+        m_graph( g ), m_notify( n ), m_seen( s )
+    {
+        if ( !m_seen )
+            m_seen = new Seen();
+    }
 };
 
 template< typename S >
 struct BFV : Common_< Queue, S > {
-    BFV( typename S::Graph &g, typename S::Notify &n )
-        : Common_< Queue, S >( g, n ) {}
+    typedef HashMap< typename S::Node, Unit > Seen;
+    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
+        : Common_< Queue, S >( g, n, s ) {}
 };
 
 template< typename S >
 struct DFV : Common_< Stack, S > {
-    DFV( typename S::Graph &g, typename S::Notify &n )
-        : Common_< Stack, S >( g, n ) {}
+    typedef HashMap< typename S::Node, Unit > Seen;
+    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
+        : Common_< Stack, S >( g, n, s ) {}
 };
 
 template< typename S, typename Domain >
@@ -120,6 +146,9 @@ struct Parallel {
     Domain &dom;
     typename S::Notify &notify;
     typename S::Graph &graph;
+    typedef HashMap< Node, Unit > Seen;
+
+    Seen *m_seen;
 
     int owner( Node n ) const {
         return unblob< int >( n ) % dom.peers();
@@ -141,12 +170,8 @@ struct Parallel {
         return S::expansion( notify, n );
     }
 
-    void visit( Node initial ) {
-        typedef Setup< typename S::Graph, Parallel< S, Domain > > Ours;
-        BFV< Ours > bfv( graph, *this );
-        if ( owner( initial ) == dom.id() ) {
-            bfv.visit( unblob< Node >( initial ) );
-        }
+    template< typename BFV >
+    void run( BFV &bfv ) {
         while ( true ) {
             if ( dom.fifo.empty() ) {
                 if ( dom.master().m_barrier.idle( &dom ) )
@@ -164,8 +189,21 @@ struct Parallel {
         }
     }
 
-    Parallel( typename S::Graph &g, Domain &d, typename S::Notify &n )
-        : dom( d ), notify( n ), graph( g )
+    void visit( Node initial ) {
+        typedef Setup< typename S::Graph, Parallel< S, Domain > > Ours;
+        BFV< Ours > bfv( graph, *this, m_seen );
+        if ( initial.valid() && owner( initial ) == dom.id() ) {
+            bfv.visit( unblob< Node >( initial ) );
+        }
+        run( bfv );
+    }
+
+    void visit() {
+        return visit( Node() ); // assuming Node().valid() == false
+    }
+
+    Parallel( typename S::Graph &g, Domain &d, typename S::Notify &n, Seen *s = 0 )
+        : dom( d ), notify( n ), graph( g ), m_seen( s )
     {}
 };
 
