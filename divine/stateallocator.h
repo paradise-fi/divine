@@ -13,6 +13,7 @@ struct StateAllocator {
     virtual state_t duplicate_state( const state_t &state ) = 0;
     virtual state_t new_state( std::size_t size ) = 0;
     virtual void delete_state( state_t &st ) = 0;
+    virtual void fixup_state( state_t &st ) {}
     virtual ~StateAllocator() {}
 };
 
@@ -61,8 +62,9 @@ struct PooledAllocator : StateAllocator {
 
 struct BlobAllocator : StateAllocator {
     Allocator< char > *_a;
+    int _ext;
 
-    BlobAllocator() : _a( 0 ) {
+    BlobAllocator( int ext = 0 ) : _a( 0 ), _ext( ext ) {
     }
 
     Allocator< char > *alloc() {
@@ -71,14 +73,19 @@ struct BlobAllocator : StateAllocator {
         return _a;
     }
 
+    // GOSH!
+    virtual void fixup_state( state_t &st ) {
+        st.size -= _ext;
+    }
+
     state_t duplicate_state( const state_t &st ) {
-        Blob a( st.ptr, true ), b( alloc(), st.size );
+        Blob a( st.ptr, true ), b( alloc(), st.size + _ext );
         a.copyTo( b );
-        return legacy_state( b );
+        return legacy_state( b, _ext );
     }
 
     state_t new_state( const std::size_t size ) {
-        return legacy_state( Blob( alloc(), size ) );
+        return legacy_state( Blob( alloc(), size + _ext ), _ext );
     }
 
     void delete_state( state_t &st ) {

@@ -53,7 +53,9 @@ struct Common {
     Successors successors( State s ) {
         Successors succ;
         succ._from = s;
-        legacy_system()->get_succs( legacy_state( s ), succ.m_succs );
+        state_t legacy = legacy_state( s );
+        legacy_system()->m_allocator->fixup_state( legacy );
+        legacy_system()->get_succs( legacy, succ.m_succs );
         return succ;
     }
 
@@ -63,6 +65,13 @@ struct Common {
 
     void setAllocator( StateAllocator *a ) {
         legacy_system()->setAllocator( a );
+    }
+
+    int stateSize() {
+        dve_explicit_system_t *sys =
+            dynamic_cast< dve_explicit_system_t * >( legacy_system() );
+        assert( sys );
+        return sys->get_space_sum();
     }
 
     void read( std::string path ) {

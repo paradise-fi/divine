@@ -289,6 +289,14 @@ inline divine::state_t legacy_state< Blob >( Blob b )
     return s;
 }
 
+inline divine::state_t legacy_state( Blob b, int ext )
+{
+    divine::state_t s;
+    s.size = b.size() - ext;
+    s.ptr = b.data();
+    return s;
+}
+
 #undef MIX
 
 }
