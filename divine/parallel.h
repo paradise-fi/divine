@@ -6,6 +6,9 @@
 #include <divine/blob.h>
 #include <divine/barrier.h>
 
+#ifndef DIVINE_PARALLEL_H
+#define DIVINE_PARALLEL_H
+
 namespace divine {
 
 /*
@@ -184,3 +187,5 @@ struct Domain {
 };
 
 }
+
+#endif
