@@ -142,7 +142,6 @@ struct Barrier {
 
     void clear() {
         m_regd = 0;
-        m_expect = 0;
         m_done = false;
         m_mutexes.clear();
         m_conditions.clear();
