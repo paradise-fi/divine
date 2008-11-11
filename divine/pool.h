@@ -280,7 +280,8 @@ inline bool operator!=(const Allocator<T> &a, const Allocator<T> &b)
 
 namespace std {
 
-inline void swap( divine::Pool &a, divine::Pool &b )
+template<>
+inline void swap< divine::Pool >( divine::Pool &a, divine::Pool &b )
 {
     swap( a.m_groups, b.m_groups );
 }
