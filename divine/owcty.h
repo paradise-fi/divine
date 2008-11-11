@@ -31,8 +31,25 @@ struct Owcty : Domain< Owcty< G > >
         bool inF:1;
     };
 
-    typedef HashMap< Node, Unit > Table;
-    Table m_table;
+    struct Hasher {
+        int size;
+        Hasher( int s = 0 ) : size( s ) {}
+        inline hash_t operator()( Blob b ) {
+            return b.hash( 0, size );
+        }
+    };
+
+    struct Equal {
+        int size;
+        Equal( int s = 0 ) : size( s ) {}
+        inline hash_t operator()( Blob a, Blob b ) {
+            return a.compare( b, 0, size ) == 0;
+        }
+    };
+
+    typedef HashMap< Node, Unit, Hasher,
+                     divine::valid< Node >, Equal > Table;
+    Table *m_table;
 
     Node m_cycleCandidate;
     Node m_mapCycleState;
@@ -41,11 +58,17 @@ struct Owcty : Domain< Owcty< G > >
     // -- generally useful utilities ------------------------
 
     Table &table() {
-        return m_table;
+        if ( !m_table ) {
+            int size = shared.g.stateSize();
+            assert( size );
+            m_table = new Table( Hasher( size ), divine::valid< Node >(),
+                                 Equal( size ) );
+        }
+        return *m_table;
     }
 
     Extension &extension( Node n ) {
-        int stateSize = shared.g.stateSize(); // ERR!
+        int stateSize = shared.g.stateSize();
         assert( stateSize );
         return n.template get< Extension >( stateSize );
     }
@@ -80,6 +103,12 @@ struct Owcty : Domain< Owcty< G > >
         return reinterpret_cast< uintptr_t >( t.ptr );
     }
 
+    bool updateIteration( Node t, int n ) {
+        int old = extension( t ).iteration;
+        extension( t ).iteration = 2 * shared.iteration + n;
+        return old != 2 * shared.iteration + n;
+    }
+
     // -- reachability pass implementation -----------------
 
     visitor::ExpansionAction reachExpansion( Node st )
@@ -96,12 +125,15 @@ struct Owcty : Domain< Owcty< G > >
         extension( t ).inS = true;
         if ( extension( t ).inF && f.valid() )
             return visitor::IgnoreTransition;
-        else
-            return visitor::FollowTransition;
+        else {
+            return updateIteration( t, 0 ) ?
+                visitor::ExpandTransition :
+                visitor::IgnoreTransition;
+        }
     }
 
     void _reachability() { // parallel
-        typedef visitor::Setup< G, Owcty< G >,
+        typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::reachTransition,
             &Owcty< G >::reachExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
@@ -114,8 +146,7 @@ struct Owcty : Domain< Owcty< G > >
     void reachability() {
         shared.size = 0;
         this->parallel().run( &Owcty< G >::_reachability );
-        for ( int i = 0; i < this->parallel().n; ++i )
-            shared.size += this->parallel().shared( i ).size;
+        shared.size = totalSize();
     }
 
     // -- initialise pass implementation ------------------
@@ -144,11 +175,12 @@ struct Owcty : Domain< Owcty< G > >
     {
         extension( st ).predCount = 0;
         extension( st ).inF = extension( st ).inS = shared.g.is_accepting( st );
+        shared.size += extension( st ).inS;
         return visitor::ExpandState;
     }
 
     void _initialise() { // parallel
-        typedef visitor::Setup< G, Owcty< G >,
+        typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::initTransition,
             &Owcty< G >::initExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
@@ -160,6 +192,7 @@ struct Owcty : Domain< Owcty< G > >
     
     void initialise() {
         this->parallel().run( &Owcty< G >::_initialise );
+        shared.size = totalSize();
     }
 
     // -- elimination pass implementation ------------------
@@ -168,6 +201,7 @@ struct Owcty : Domain< Owcty< G > >
     {
         assert( extension( st ).predCount == 0 );
         extension( st ).inS = false;
+        shared.size ++;
         return visitor::ExpandState;
     }
 
@@ -181,14 +215,16 @@ struct Owcty : Domain< Owcty< G > >
         -- extension( t ).predCount;
         // we follow a transition only if the target state is going to
         // be eliminated
-        if ( extension( t ).predCount == 0 )
-            return visitor::FollowTransition;
-        else
+        if ( extension( t ).predCount == 0 ) {
+            return updateIteration( t, 1 ) ?
+                visitor::ExpandTransition :
+                visitor::IgnoreTransition;
+        } else
             return visitor::IgnoreTransition;
     }
 
     void _elimination() {
-        typedef visitor::Setup< G, Owcty< G >,
+        typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::elimTransition,
             &Owcty< G >::elimExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
@@ -199,7 +235,10 @@ struct Owcty : Domain< Owcty< G > >
     }
 
     void elimination() {
+        int origSize = totalSize();
+        shared.size = 0;
         this->parallel().run( &Owcty< G >::_elimination );
+        shared.size = origSize - totalSize();
     }
 
 
@@ -319,27 +358,25 @@ struct Owcty : Domain< Owcty< G > >
         initialise();
         printSize();
 
-        shared.iteration = 0;
+        shared.iteration = 1;
 
         if ( !m_mapCycleState.valid() ) {
             do {
-                oldsize = totalSize();
+                oldsize = shared.size;
                 
                 printIteration( shared.iteration );
                 
                 std::cerr << " reachability...\t" << std::flush;
-                shared.size = 0;
                 reachability();
                 printSize();
                 
                 std::cerr << " elimination & reset...\t" << std::flush;
-                resetSize();
                 elimination();
                 printSize();
                 
                 ++shared.iteration;
                 
-            } while ( oldsize != totalSize() && totalSize() != 0 );
+            } while ( oldsize != shared.size && shared.size != 0 );
         }
 
         bool valid = shared.cycle.valid() ? false : ( shared.size == 0 );
@@ -366,6 +403,7 @@ struct Owcty : Domain< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
+        : m_table( 0 )
     {
         shared.size = 0;
         if ( c )
