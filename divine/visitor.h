@@ -29,11 +29,13 @@ enum ExpansionAction { ExpandState };
 template<
     typename G, // graph
     typename N, // notify
+    typename S = HashMap< typename G::Node, Unit >,
     TransitionAction (N::*tr)(typename G::Node, typename G::Node) = &N::transition,
     ExpansionAction (N::*exp)(typename G::Node) = &N::expansion >
 struct Setup {
     typedef G Graph;
     typedef N Notify;
+    typedef S Seen;
     typedef typename Graph::Node Node;
     static TransitionAction transition( Notify &n, Node a, Node b ) {
         return (n.*tr)( a, b );
@@ -71,7 +73,7 @@ struct Common_ {
     typedef typename S::Notify Notify;
     typedef typename Graph::Successors Successors;
     Queue< Successors > m_queue;
-    typedef HashMap< Node, Unit > Seen;
+    typedef typename S::Seen Seen;
     Graph &m_graph;
     Notify &m_notify;
     Seen *m_seen;
@@ -127,14 +129,14 @@ struct Common_ {
 
 template< typename S >
 struct BFV : Common_< Queue, S > {
-    typedef HashMap< typename S::Node, Unit > Seen;
+    typedef typename S::Seen Seen;
     BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
         : Common_< Queue, S >( g, n, s ) {}
 };
 
 template< typename S >
 struct DFV : Common_< Stack, S > {
-    typedef HashMap< typename S::Node, Unit > Seen;
+    typedef typename S::Seen Seen;
     DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
         : Common_< Stack, S >( g, n, s ) {}
 };
@@ -146,7 +148,7 @@ struct Parallel {
     Domain &dom;
     typename S::Notify &notify;
     typename S::Graph &graph;
-    typedef HashMap< Node, Unit > Seen;
+    typedef typename S::Seen Seen;
 
     Seen *m_seen;
 
@@ -194,7 +196,7 @@ struct Parallel {
     }
 
     void visit( Node initial ) {
-        typedef Setup< typename S::Graph, Parallel< S, Domain > > Ours;
+        typedef Setup< typename S::Graph, Parallel< S, Domain >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
         if ( initial.valid() && owner( initial ) == dom.id() ) {
             bfv.visit( unblob< Node >( initial ) );

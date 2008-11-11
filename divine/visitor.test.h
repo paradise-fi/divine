@@ -97,8 +97,7 @@ struct TestVisitor {
         assert_eq( c1.transitions, 0 );
         assert_eq( c1.nodes, 0 );
 
-        typedef visitor::Setup< NMTree, C,
-            &C::transition, &C::expansion > CheckSetup;
+        typedef visitor::Setup< NMTree, C > CheckSetup;
 
         visitor::BFV< CheckSetup > bfv( g, c1 );
         bfv.visit( 1 );
@@ -142,9 +141,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert( !(shared.n % this->peers()) );
-            typedef visitor::Setup< G, ParVisitor< G >,
-                &ParVisitor< G >::transition,
-                &ParVisitor< G >::expansion > VisitorSetup;
+            typedef visitor::Setup< G, ParVisitor< G > > VisitorSetup;
             visitor::BFV< VisitorSetup > bfv( shared.g, *this );
             if ( shared.initial % this->peers() == this->id() ) {
                 bfv.visit( shared.initial );
@@ -233,9 +230,7 @@ struct TestVisitor {
         }
 
         void _visit() { // parallel
-            typedef visitor::Setup< G, TermParVisitor< G >,
-                &TermParVisitor< G >::transition,
-                &TermParVisitor< G >::expansion > VisitorSetup;
+            typedef visitor::Setup< G, TermParVisitor< G > > VisitorSetup;
             visitor::BFV<  VisitorSetup > bfv( shared.g, *this );
             if ( owner( shared.initial ) == this->id() ) {
                 bfv.visit( unblob< Node >( shared.initial ) );
