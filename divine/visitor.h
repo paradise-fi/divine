@@ -82,10 +82,6 @@ struct Common_ {
         return *m_seen;
     }
 
-    void visit() {
-        assert( 0 );
-    }
-
     void visit( Node initial ) {
         TransitionAction tact;
         ExpansionAction eact;
@@ -94,6 +90,10 @@ struct Common_ {
         seen().insert( initial );
         S::expansion( m_notify, initial );
         m_queue.push( m_graph.successors( initial ) );
+        visit();
+    }
+
+    void visit() {
         while ( !m_queue.empty() ) {
             Successors &s = m_queue.next();
             if ( s.empty() ) {
@@ -104,18 +104,25 @@ struct Common_ {
                 Node current = s.head();
                 s = s.tail();
 
-                int usage = seen().usage();
-                current = seen().insert( current ).key;
-                bool had = usage == seen().usage(); // not a new state...
-
-                tact = S::transition( m_notify, s.from(), current );
-                if ( tact == ExpandTransition ||
-                     (tact == FollowTransition && !had) ) {
-                    eact = S::expansion( m_notify, current );
-                    if ( eact == ExpandState )
-                        m_queue.push( m_graph.successors( current ) );
-                }
+                visit( s.from(), current );
             }
+        }
+    }
+
+    void visit( Node from, Node _to ) {
+        TransitionAction tact;
+        ExpansionAction eact;
+
+        int usage = seen().usage();
+        Node to = seen().insert( _to ).key;
+        bool had = usage == seen().usage(); // not a new state...
+
+        tact = S::transition( m_notify, from, to );
+        if ( tact == ExpandTransition ||
+             (tact == FollowTransition && !had) ) {
+            eact = S::expansion( m_notify, to );
+            if ( eact == ExpandState )
+                m_queue.push( m_graph.successors( to ) );
         }
     }
 
@@ -189,8 +196,8 @@ struct Parallel {
                 t = dom.fifo.front( true );
                 dom.fifo.pop();
 
-                S::transition( notify, f, t );
-                bfv.visit( unblob< Node >( t ) );
+                bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
+                bfv.visit();
             }
         }
     }
