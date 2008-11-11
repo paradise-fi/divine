@@ -12,23 +12,33 @@ namespace divine {
 
 // default hash implementation
 template< typename T >
-inline hash_t hash( T t ) {
-    return t.hash();
-}
+struct hash {
+    inline hash_t operator()( T t ) {
+        return t.hash();
+    }
+};
 
 // default validity implementation
 template< typename T >
-inline bool valid( T t ) {
-    return t.valid();
-}
+struct valid {
+    inline bool operator()( T t ) {
+        return t.valid();
+    }
+};
 
-template<> inline bool valid( int t ) {
-    return t != 0;
-}
+template<>
+struct valid< int > {
+    inline bool operator()( int t ) {
+        return t != 0;
+    }
+};
 
-template<> inline hash_t hash( int t ) {
-    return t;
-}
+template<>
+struct hash< int > {
+    inline hash_t operator()( int t ) {
+        return t;
+    }
+};
 
 template< typename T >
 struct VectorType {
@@ -50,11 +60,18 @@ struct VectorType< Unit > {
 
 namespace divine {
 
-template< typename _Key, typename _Value >
+template< typename _Key, typename _Value,
+          typename _Hash = divine::hash< _Key >,
+          typename _Valid = divine::valid< _Key > >
 struct HashMap
 {
     typedef _Key Key;
     typedef _Value Value;
+    typedef _Hash Hash;
+    typedef _Valid Valid;
+
+    Hash hash;
+    Valid valid;
 
     typedef std::pair< Key, Value > Item;
 
@@ -90,8 +107,7 @@ struct HashMap
     size_t size() const { return m_keys.size(); }
     bool empty() const { return !m_used; }
 
-    template< typename Merger >
-    std::pair< Reference, int > _mergeInsert( Item item, Merger m,
+    std::pair< Reference, int > _mergeInsert( Item item,
                                               Keys &keys,
                                               Values &values,
                                               hash_t hint = 0 )
@@ -112,7 +128,9 @@ struct HashMap
             if ( !valid( keys[ idx ] ) || item.first == keys[ idx ] ) {
                 if ( !valid( keys[ idx ] ) )
                     ++ used;
-                Item use = m( std::make_pair( keys[ idx ], values[ idx ] ), item );
+                Item use = valid( keys[ idx ] ) ?
+                             std::make_pair( keys[ idx ], values[ idx ] ) :
+                             item;
                 keys[ idx ] = use.first;
                 values[ idx ] = use.second;
                 if ( !valid( keys[ idx ] ) )
@@ -128,10 +146,9 @@ struct HashMap
         return std::make_pair( Reference(), -2 );
     }
 
-    template< typename Merger >
-    Reference mergeInsert( Item item, Merger m, int thread, hash_t hint = 0 ) {
+    Reference mergeInsert( Item item, int thread, hash_t hint = 0 ) {
         while ( true ) {
-            std::pair< Reference, int > r = _mergeInsert( item, m, m_keys,
+            std::pair< Reference, int > r = _mergeInsert( item, m_keys,
                                                           m_values, hint );
             if ( r.second == -1 )
                 continue;
@@ -158,25 +175,14 @@ struct HashMap
         }
     }
 
-    struct DefaultMerger
-    {
-        Item operator()( Item a, Item b )
-        {
-            if ( valid( a.first ) )
-                return a;
-            return b;
-        }
-    };
-
     Reference insert( Key k, int thread = -1, hash_t hint = 0 )
     {
-        return mergeInsert( std::make_pair( k, Value() ), DefaultMerger(),
-                            thread, hint );
+        return mergeInsert( std::make_pair( k, Value() ), thread, hint );
     }
 
     Reference insert( Item item, int thread = -1, hash_t hint = 0 )
     {
-        return mergeInsert( item, DefaultMerger(), thread, hint );
+        return mergeInsert( item, thread, hint );
     }
 
     bool has( Key k, hash_t hint = 0 )
@@ -250,7 +256,7 @@ struct HashMap
         for ( size_t i = 0; i < m_keys.size(); ++i ) {
             if ( valid( m_keys[ i ] ) )
                 _mergeInsert( std::make_pair( m_keys[ i ], m_values[ i ] ),
-                              DefaultMerger(), keys, values );
+                              keys, values );
         }
         std::swap( keys, m_keys );
         std::swap( values, m_values );
