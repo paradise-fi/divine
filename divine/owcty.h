@@ -15,6 +15,10 @@ struct Owcty : Domain< Owcty< G > >
 {
     typedef typename G::Node Node;
 
+    // -------------------------------
+    // -- Some useful types
+    // --
+
     struct Shared {
         size_t size;
         Node cycle;
@@ -49,13 +53,16 @@ struct Owcty : Domain< Owcty< G > >
 
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
+
     Table *m_table;
 
     Node m_cycleCandidate;
     Node m_mapCycleState;
     bool m_cycleFound;
 
-    // -- generally useful utilities ------------------------
+    // ------------------------------------------------------
+    // -- generally useful utilities
+    // --
 
     Table &table() {
         if ( !m_table ) {
@@ -109,7 +116,9 @@ struct Owcty : Domain< Owcty< G > >
         return old != 2 * shared.iteration + n;
     }
 
-    // -- reachability pass implementation -----------------
+    // -----------------------------------------------
+    // -- REACHABILITY implementation 
+    // --
 
     visitor::ExpansionAction reachExpansion( Node st )
     {
@@ -149,7 +158,9 @@ struct Owcty : Domain< Owcty< G > >
         shared.size = totalSize();
     }
 
-    // -- initialise pass implementation ------------------
+    // -----------------------------------------------
+    // -- INITIALISE implementation 
+    // --
 
     visitor::TransitionAction initTransition( Node from, Node to )
     {
@@ -195,7 +206,9 @@ struct Owcty : Domain< Owcty< G > >
         shared.size = totalSize();
     }
 
-    // -- elimination pass implementation ------------------
+    // -----------------------------------------------
+    // -- ELIMINATION implementation 
+    // --
 
     visitor::ExpansionAction elimExpansion( Node st )
     {
@@ -207,9 +220,7 @@ struct Owcty : Domain< Owcty< G > >
 
     visitor::TransitionAction elimTransition( Node f, Node t )
     {
-        // assert( m_controller.owner( t ) == m_controller.id() );
         assert( t.valid() );
-        // assert( !visitor().seen( t ) );
         assert( extension( t ).inS );
         assert( extension( t ).predCount >= 1 );
         -- extension( t ).predCount;
@@ -242,9 +253,12 @@ struct Owcty : Domain< Owcty< G > >
     }
 
 
-    // -- ... ---
+    // -------------------------------------------
+    // -- COUNTEREXAMPLES (to be done)
+    // --
 
-    /* template< typename Bundle, typename Self >
+#if 0
+    template< typename Bundle, typename Self >
     struct FindCycleImpl :
         ImplCommon,
         observer::Common< Bundle, FindCycleImpl< Bundle, Self > >
@@ -325,7 +339,12 @@ struct Owcty : Domain< Owcty< G > >
         assert( st.extension().inF );
 
         return st;
-        } */
+        } 
+#endif
+
+    // -------------------------------------------
+    // -- MAIN LOOP implementation
+    // --
 
     void printSize() {
         if ( m_mapCycleState.valid() )
@@ -353,7 +372,7 @@ struct Owcty : Domain< Owcty< G > >
     {
         size_t oldsize = 0;
 
-        std::cerr << " initialize...\t\t" << std::flush;
+        std::cerr << " initialise...\t\t" << std::flush;
         shared.size = 0;
         initialise();
         printSize();
@@ -382,7 +401,7 @@ struct Owcty : Domain< Owcty< G > >
         bool valid = shared.cycle.valid() ? false : ( shared.size == 0 );
         resultBanner( valid );
 
-        // counterexample generation
+        // counterexample ... (to be restored)
 
         /* if ( !valid && this->config().generateCounterexample() ) {
             std::cerr << " generating counterexample...\t" << std::flush;
