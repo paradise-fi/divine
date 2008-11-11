@@ -154,12 +154,16 @@ struct Parallel {
         return unblob< int >( n ) % dom.peers();
     }
 
+    void queue( Node from, Node to ) {
+        Fifo< Blob > &fifo = dom.queue( owner( to ) );
+        MutexLock __l( fifo.writeMutex );
+        fifo.push( __l, unblob< Node >( from ) );
+        fifo.push( __l, unblob< Node >( to ) );
+    }
+
     visitor::TransitionAction transition( Node f, Node t ) {
         if ( owner( t ) != dom.id() ) {
-            Fifo< Blob > &fifo = dom.queue( owner( t ) );
-            MutexLock __l( fifo.writeMutex );
-            fifo.push( __l, unblob< Node >( f ) );
-            fifo.push( __l, unblob< Node >( t ) );
+            queue( f, t );
             return visitor::IgnoreTransition;
         }
         return S::transition( notify, f, t );
