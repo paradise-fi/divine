@@ -343,7 +343,7 @@ struct Main {
 
         if ( m_run == RunOwcty ) {
             config.setAlgorithm( "OWCTY" );
-            return runGenerator< algorithm::Owcty, Cont, Stor, Ord >();
+            return runAlgorithm_< algorithm::Owcty >();
         }
 
         if ( m_run == RunMap ) {

@@ -1,11 +1,7 @@
-// -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm.h>
-#include <divine/controller.h>
-#include <divine/bundle.h>
 #include <divine/visitor.h>
-#include <divine/observer.h>
-#include <divine/threading.h>
+#include <divine/parallel.h>
 #include <divine/report.h>
 
 #ifndef DIVINE_OWCTY_H
@@ -14,180 +10,202 @@
 namespace divine {
 namespace algorithm {
 
-template< typename _Setup >
-struct Owcty : Algorithm
+template< typename G >
+struct Owcty : Domain< Owcty< G > >
 {
+    typedef typename G::Node Node;
 
-    struct ImplCommon {
-        Owcty *m_owcty;
-        void setOwcty( Owcty *o ) { m_owcty = o; }
-        Owcty &owcty() { return *m_owcty; }
-        size_t &owctySize() { return owcty().m_size; }
+    struct Shared {
+        size_t size;
+        Node cycle;
+        int iteration;
+        G g;
+    } shared;
+
+    struct Extension {
+        Blob parent, cycle; // TODO We only want to keep one of those two.
+        uintptr_t map;
+        size_t predCount:15;
+        size_t iteration:15;
+        bool inS:1;
+        bool inF:1;
     };
 
-    template< typename Bundle, typename Self >
-    struct ReachabilityImpl :
-        ImplCommon,
-        observer::Common< Bundle, ReachabilityImpl< Bundle, Self > >
+    typedef HashMap< Node, Unit > Table;
+    Table m_table;
+
+    Node m_cycleCandidate;
+    Node m_mapCycleState;
+    bool m_cycleFound;
+
+    // -- generally useful utilities ------------------------
+
+    Table &table() {
+        return m_table;
+    }
+
+    Extension &extension( Node n ) {
+        int stateSize = shared.g.stateSize(); // ERR!
+        assert( stateSize );
+        return n.template get< Extension >( stateSize );
+    }
+
+    int totalSize() {
+        int sz = 0;
+        for ( int i = 0; i < this->parallel().n; ++i ) {
+            Shared &s = this->parallel().shared( i );
+            sz += s.size;
+        }
+        return sz;
+    }
+
+    void resetSize() {
+        shared.size = 0;
+        for ( int i = 0; i < this->parallel().n; ++i ) {
+            Shared &s = this->parallel().shared( i );
+            s.size = 0;
+        }
+    }
+
+    template< typename V >
+    void queueAll( V &v ) {
+        for ( size_t i = 0; i < table().size(); ++i ) {
+            Node st = table()[ i ].key;
+            if ( st.valid() && extension( st ).inS && extension( st ).inF )
+                v.queue( Blob(), st );
+        }
+    }
+
+    uintptr_t mapId( Node t ) {
+        return reinterpret_cast< uintptr_t >( t.ptr );
+    }
+
+    // -- reachability pass implementation -----------------
+
+    visitor::ExpansionAction reachExpansion( Node st )
     {
-        typedef typename Bundle::State State;
-        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
+        assert( extension( st ).predCount > 0 );
+        assert( extension( st ).inS );
+        ++ shared.size;
+        return visitor::ExpandState;
+    }
 
-        typename Bundle::Controller &m_controller;
-        size_t m_size;
-
-        void expanding( State st )
-        {
-            assert( st.extension().predCount > 0 );
-            assert( st.extension().inS );
-            ++ m_size;
-        }
-
-        State transition( State f, State t )
-        {
-            ++ t.extension().predCount;
-            t.extension().inS = true;
-            if ( t.extension().inF && f.valid() )
-                return ignore( t );
-            else
-                return follow( t );
-        }
-
-        ReachabilityImpl( typename Bundle::Controller &controller )
-            : m_controller( controller ), m_size( 0 )
-        {
-        }
-
-        void parallelTermination() {
-            zeroFlags( visitor().storage(), false );
-            this->owcty().swap(
-                m_controller,
-                this->owcty().elim.worker( m_controller.id() ) );
-        }
-
-        void serialTermination() {
-            this->owctySize() += m_size;
-            m_size = 0;
-        }
-
-    };
-
-    template< typename Bundle, typename Self >
-    struct InitializeImpl :
-        ImplCommon,
-        observer::Common< Bundle, InitializeImpl< Bundle, Self > >
+    visitor::TransitionAction reachTransition( Node f, Node t )
     {
-        typedef typename Bundle::State State;
-        typename Bundle::Controller &m_controller;
-        size_t m_size;
+        ++ extension( t ).predCount;
+        extension( t ).inS = true;
+        if ( extension( t ).inF && f.valid() )
+            return visitor::IgnoreTransition;
+        else
+            return visitor::FollowTransition;
+    }
 
-        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-        typename Bundle::Generator &system() { return visitor().sys; }
+    void _reachability() { // parallel
+        typedef visitor::Setup< G, Owcty< G >,
+            &Owcty< G >::reachTransition,
+            &Owcty< G >::reachExpansion > Setup;
+        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
+        Visitor visitor( shared.g, *this, *this, &table() );
 
-        uintptr_t id( State t ) {
-            return reinterpret_cast< uintptr_t >( t.ptr );
-        }
+        queueAll( visitor );
+        visitor.visit();
+    }
 
-        State transition( State from, State to )
-        {
-            if ( !to.extension().parent.valid() )
-                to.extension().parent = from;
-            if ( from.valid() ) {
-                uintptr_t fromMap = from.extension().map;
-                uintptr_t fromId = id( from );
-                if ( fromMap > to.extension().map )
-                    to.extension().map = fromMap;
-                if ( system().is_accepting( from ) )
-                    if ( fromId > to.extension().map )
-                        to.extension().map = fromId;
-                if ( id( to ) == fromMap ) {
-                    this->owcty().mapCycleFound( to );
-                    m_controller.pack().terminate();
-                }
+    void reachability() {
+        shared.size = 0;
+        this->parallel().run( &Owcty< G >::_reachability );
+        for ( int i = 0; i < this->parallel().n; ++i )
+            shared.size += this->parallel().shared( i ).size;
+    }
+
+    // -- initialise pass implementation ------------------
+
+    visitor::TransitionAction initTransition( Node from, Node to )
+    {
+        if ( !extension( to ).parent.valid() )
+            extension( to ).parent = from;
+        if ( from.valid() ) {
+            uintptr_t fromMap = extension( from ).map;
+            uintptr_t fromId = mapId( from );
+            if ( fromMap > extension( to ).map )
+                extension( to ).map = fromMap;
+            if ( shared.g.is_accepting( from ) )
+                if ( fromId > extension( to ).map )
+                    extension( to ).map = fromId;
+            if ( mapId( to ) == fromMap ) {
+                shared.cycle = to;
+                return visitor::TerminateOnTransition;
             }
-            return follow( to );
         }
+        return visitor::FollowTransition;
+    }
 
-        void expanding( State st )
-        {
-            st.extension().predCount = 0;
-            if ( system().is_accepting( st ) ) {
-                st.extension().inF = st.extension().inS = true;
-            } else {
-                st.extension().inF = st.extension().inS = false;
-            }
-        }
-
-        InitializeImpl( typename Bundle::Controller &controller )
-            : m_controller( controller )
-        {
-        }
-
-        void parallelTermination() {
-            m_size = swapAndQueue(
-                m_controller,
-                this->owcty().reach.worker( m_controller.id() ),
-                this->owcty().elim.worker( m_controller.id() ) );
-        }
-
-        void serialTermination() {
-            this->owctySize() += m_size;
-        }
-    };
-
-    template< typename Bundle, typename Self >
-    struct EliminationImpl :
-        ImplCommon,
-        observer::Common< Bundle, EliminationImpl< Bundle, Self > >
+    visitor::ExpansionAction initExpansion( Node st )
     {
-        typedef typename Bundle::State State;
-        typename Bundle::Controller &m_controller;
-        size_t m_size;
+        extension( st ).predCount = 0;
+        extension( st ).inF = extension( st ).inS = shared.g.is_accepting( st );
+        return visitor::ExpandState;
+    }
 
-        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-        typename Bundle::Generator &system() { return visitor().sys; }
+    void _initialise() { // parallel
+        typedef visitor::Setup< G, Owcty< G >,
+            &Owcty< G >::initTransition,
+            &Owcty< G >::initExpansion > Setup;
+        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
+        Visitor visitor( shared.g, *this, *this, &table() );
+        shared.g.setAllocator( new BlobAllocator( sizeof( Extension ) ) );
 
-        void expanding( State st )
-        {
-            assert( st.extension().predCount == 0 );
-            st.extension().inS = false;
-        }
+        visitor.visit( shared.g.initial() );
+    }
+    
+    void initialise() {
+        this->parallel().run( &Owcty< G >::_initialise );
+    }
 
-        State transition( State f, State t )
-        {
-            // assert( m_controller.owner( t ) == m_controller.id() );
-            assert( t.valid() );
-            assert( !visitor().seen( t ) );
-            assert( t.extension().inS );
-            assert( t.extension().predCount >= 1 );
-            -- t.extension().predCount;
-            // we follow a transition only if the target state is going to
-            // be eliminated
-            if ( t.extension().predCount == 0 )
-                return follow( t );
-            else
-                return ignore( t );
-        }
+    // -- elimination pass implementation ------------------
 
-        EliminationImpl( typename Bundle::Controller &c )
-            : m_controller( c )
-        {
-        }
+    visitor::ExpansionAction elimExpansion( Node st )
+    {
+        assert( extension( st ).predCount == 0 );
+        extension( st ).inS = false;
+        return visitor::ExpandState;
+    }
 
-        void parallelTermination() {
-            m_size = swapAndQueue(
-                m_controller,
-                this->owcty().reach.worker( m_controller.id() ),
-                m_controller );
-        }
+    visitor::TransitionAction elimTransition( Node f, Node t )
+    {
+        // assert( m_controller.owner( t ) == m_controller.id() );
+        assert( t.valid() );
+        // assert( !visitor().seen( t ) );
+        assert( extension( t ).inS );
+        assert( extension( t ).predCount >= 1 );
+        -- extension( t ).predCount;
+        // we follow a transition only if the target state is going to
+        // be eliminated
+        if ( extension( t ).predCount == 0 )
+            return visitor::FollowTransition;
+        else
+            return visitor::IgnoreTransition;
+    }
 
-        void serialTermination() {
-            this->owctySize() += m_size;
-        }
+    void _elimination() {
+        typedef visitor::Setup< G, Owcty< G >,
+            &Owcty< G >::elimTransition,
+            &Owcty< G >::elimExpansion > Setup;
+        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
 
-    };
+        Visitor visitor( shared.g, *this, *this, &table() );
+        queueAll( visitor );
+        visitor.visit();
+    }
 
-    template< typename Bundle, typename Self >
+    void elimination() {
+        this->parallel().run( &Owcty< G >::_elimination );
+    }
+
+
+    // -- ... ---
+
+    /* template< typename Bundle, typename Self >
     struct FindCycleImpl :
         ImplCommon,
         observer::Common< Bundle, FindCycleImpl< Bundle, Self > >
@@ -217,101 +235,6 @@ struct Owcty : Algorithm
         {
         }
     };
-
-    struct Extension {
-        State< Extension > parent, cycle; // FIXME
-        size_t predCount;
-        uintptr_t map;
-        bool inS:1;
-        bool inF:1;
-    };
-
-    typedef Finalize< InitializeImpl > Initialize;
-    typedef Finalize< ReachabilityImpl > Reachability;
-    typedef Finalize< EliminationImpl > Elimination;
-    typedef Finalize< FindCycleImpl > FindCycle;
-
-    typedef typename BundleFromSetup<
-        _Setup, Initialize, Extension >::T InitBundle;
-    typedef typename BundleFromSetup<
-        _Setup, Reachability, Extension >::T ReachBundle;
-    typedef typename BundleFromSetup<
-        _Setup, Elimination, Extension >::T ElimBundle;
-    typedef typename BundleFromSetup<
-        _Setup, FindCycle, Extension >::T FindBundle;
-
-    typedef typename InitBundle::State State;
-
-    template< typename A, typename B >
-    static void swap( A &a, B &b )
-    {
-        std::swap( a.visitor().storage(), b.visitor().storage() );
-    }
-
-    template< typename A, typename B, typename C >
-    static int swapAndQueue( A &a, B &b, C &c )
-    {
-        int ret = 0;
-        typename A::Storage &stor = a.visitor().storage();
-        assert( !b.checkForWork() );
-        assert( !c.checkForWork() );
-        for ( size_t i = 0; i < stor.table().size(); ++i ) {
-            State st = stor.table()[ i ].key;
-            // assert( a.owner( st ) == a.id() );
-            if ( st.valid() && st.extension().inS && st.extension().inF ) {
-                b.queue( st );
-                c.queue( st );
-                ++ ret;
-            }
-        }
-
-        zeroFlags( a.visitor().storage(), true );
-
-        swap( a, b );
-
-        return ret;
-    }
-
-    template< typename Storage >
-    static void zeroFlags( Storage &stor, bool pcount )
-    {
-        for ( size_t j = 0; j < stor.table().size(); ++j ) {
-            typename Storage::State st = stor.table()[ j ].key;
-            if ( st.valid() ) {
-                st.setFlags( 0 );
-                if ( pcount )
-                    st.extension().predCount = 0;
-            }
-        }
-    }
-
-    threads::Pack< typename InitBundle::Controller > init;
-    threads::Pack< typename ReachBundle::Controller > reach;
-    threads::Pack< typename ElimBundle::Controller > elim;
-    threads::Pack< typename FindBundle::Controller > find;
-
-    size_t m_size;
-
-    State m_cycleCandidate;
-    State m_mapCycleState;
-    bool m_cycleFound;
-
-    Owcty( Config &c ) : Algorithm( c ), init( c ), reach( c ),
-                         elim( c ), find( c ),
-                         m_size( 0 )
-    {
-        init.initialize();
-        reach.initialize();
-        elim.initialize();
-        find.initialize();
-
-        for ( int i = 0; i < init.workerCount(); ++i ) {
-            init.worker( i ).observer().setOwcty( this );
-            reach.worker( i ).observer().setOwcty( this );
-            elim.worker( i ).observer().setOwcty( this );
-            find.worker( i ).observer().setOwcty( this );
-        }
-    }
 
     void mapCycleFound( State st ) {
         m_mapCycleState = st;
@@ -363,13 +286,13 @@ struct Owcty : Algorithm
         assert( st.extension().inF );
 
         return st;
-    }
+        } */
 
     void printSize() {
         if ( m_mapCycleState.valid() )
             std::cerr << "   (MAP: cycle found)" << std::endl << std::flush;
         else
-            std::cerr << "   |S| = " << m_size << std::endl << std::flush;
+            std::cerr << "   |S| = " << shared.size << std::endl << std::flush;
     }
 
     void printIteration( int i ) {
@@ -377,59 +300,76 @@ struct Owcty : Algorithm
                   << " ------------- " << std::endl;
     }
 
+    // FIXME this should be shared again, later
+    void resultBanner( bool valid ) {
+        std::cerr << " ===================================== " << std::endl
+                  << ( valid ?
+                     "       Accepting cycle NOT found       " :
+                     "         Accepting cycle FOUND         " )
+                  << std::endl
+                  << " ===================================== " << std::endl;
+    }
+
     Result run()
     {
         size_t oldsize = 0;
 
         std::cerr << " initialize...\t\t" << std::flush;
-        m_size = 0;
-        init.blockingVisit();
+        shared.size = 0;
+        initialise();
         printSize();
 
-        int iter = 0;
+        shared.iteration = 0;
 
         if ( !m_mapCycleState.valid() ) {
             do {
-                oldsize = m_size;
+                oldsize = totalSize();
                 
-                printIteration( iter );
+                printIteration( shared.iteration );
                 
                 std::cerr << " reachability...\t" << std::flush;
-                m_size = 0;
-                reach.blockingRun();
+                shared.size = 0;
+                reachability();
                 printSize();
                 
                 std::cerr << " elimination & reset...\t" << std::flush;
-                m_size = 0;
-                elim.blockingRun();
+                resetSize();
+                elimination();
                 printSize();
                 
-                ++iter;
+                ++shared.iteration;
                 
-            } while ( oldsize != m_size && m_size != 0 );
+            } while ( oldsize != totalSize() && totalSize() != 0 );
         }
 
-        bool valid = m_mapCycleState.valid() ? false : ( m_size == 0 );
+        bool valid = shared.cycle.valid() ? false : ( shared.size == 0 );
         resultBanner( valid );
 
         // counterexample generation
 
-        if ( !valid && this->config().generateCounterexample() ) {
+        /* if ( !valid && this->config().generateCounterexample() ) {
             std::cerr << " generating counterexample...\t" << std::flush;
             State st;
-            if ( m_mapCycleState.valid() )
-                st = findCounterexampleFrom( m_mapCycleState );
+            if ( shared.cycle.valid() )
+                st = findCounterexampleFrom( shared.cycle );
             else
                 st = counterexample();
             std::cerr << "   done" << std::endl;
 
             printCounterexample( init, st );
-        }
+        } */
 
         Result res;
         res.ltlPropertyHolds = valid ? Result::Yes : Result::No;
-        res.fullyExplored = m_mapCycleState.valid() ? Result::No : Result::Yes;
+        res.fullyExplored = shared.cycle.valid() ? Result::No : Result::Yes;
         return res;
+    }
+
+    Owcty( Config *c = 0 )
+    {
+        shared.size = 0;
+        if ( c )
+            shared.g.read( c->input() );
     }
 
 };
