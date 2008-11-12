@@ -217,6 +217,7 @@ struct Parallel {
     }
 
     void visit() {
+        assert( !Node().valid() );
         return visit( Node() ); // assuming Node().valid() == false
     }
 
