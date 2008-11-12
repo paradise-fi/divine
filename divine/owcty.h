@@ -104,8 +104,10 @@ struct Owcty : Domain< Owcty< G > >
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
-                if ( extension( st ).inS && extension( st ).inF )
+                if ( extension( st ).inS && extension( st ).inF ) {
+                    assert_eq( v.owner( st ), v.dom.id() );
                     v.queue( Blob(), st );
+                }
             }
         }
     }
