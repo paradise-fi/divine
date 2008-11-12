@@ -115,7 +115,7 @@ struct Common_ {
 
         bool had = true;
         Node to = seen().get( _to ).key;
-        if ( !to.valid() ) {
+        if ( !seen().valid( to ) ) {
             had = false;
             to = _to;
         }
@@ -210,14 +210,14 @@ struct Parallel {
     void visit( Node initial ) {
         typedef Setup< typename S::Graph, Parallel< S, Domain >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
-        if ( initial.valid() && owner( initial ) == dom.id() ) {
+        if ( bfv.seen().valid( initial ) && owner( initial ) == dom.id() ) {
             bfv.visit( unblob< Node >( initial ) );
         }
         run( bfv );
     }
 
     void visit() {
-        assert( !Node().valid() );
+        // assert( !seen().valid( Node() ) );
         return visit( Node() ); // assuming Node().valid() == false
     }
 
