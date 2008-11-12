@@ -89,6 +89,7 @@ endif( HOARD )
 add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
+add_subdirectory( test )
 
 if( PROFILE )
 add_dependencies( check lcov-postcheck )
