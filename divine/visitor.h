@@ -113,13 +113,18 @@ struct Common_ {
         TransitionAction tact;
         ExpansionAction eact;
 
-        int usage = seen().usage();
-        Node to = seen().insert( _to ).key;
-        bool had = usage == seen().usage(); // not a new state...
+        bool had = true;
+        Node to = seen().get( _to ).key;
+        if ( !to.valid() ) {
+            had = false;
+            to = _to;
+        }
 
         tact = S::transition( m_notify, from, to );
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
+            if ( !had )
+                seen().insert( to );
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.push( m_graph.successors( to ) );
