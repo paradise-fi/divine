@@ -1,3 +1,4 @@
+set -vex
 not () { "$@" && exit 1 || return 0; }
 
 divine-mc reachability --report peterson-naive.dve > report
