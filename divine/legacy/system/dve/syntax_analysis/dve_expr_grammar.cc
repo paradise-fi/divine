@@ -190,7 +190,6 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 5 "dve_expr_grammar.yy"
 
   #ifdef yylex
    #undef yylex
@@ -249,14 +248,12 @@
 #endif
 
 #if ! defined (YYSTYPE) && ! defined (YYSTYPE_IS_DECLARED)
-#line 103 "dve_expr_grammar.yy"
 typedef union YYSTYPE {
   bool flag;
   int number;
   char string[MAXLEN];
 } YYSTYPE;
 /* Line 190 of yacc.c.  */
-#line 260 "dve_expr_grammar.tab.cc"
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1
@@ -280,7 +277,6 @@ typedef struct YYLTYPE
 
 
 /* Line 213 of yacc.c.  */
-#line 284 "dve_expr_grammar.tab.cc"
 
 #if ! defined (yyoverflow) || YYERROR_VERBOSE
 
@@ -1301,172 +1297,138 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 131 "dve_expr_grammar.yy"
     { strncpy((yyval.string), (yyvsp[0].string), MAXLEN); ;}
     break;
 
   case 3:
-#line 486 "dve_expr_grammar.yy"
     { parser->done(); ;}
     break;
 
   case 4:
-#line 491 "dve_expr_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_false()); ;}
     break;
 
   case 5:
-#line 493 "dve_expr_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_true()); ;}
     break;
 
   case 6:
-#line 495 "dve_expr_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_nat((yyvsp[0].number))); ;}
     break;
 
   case 7:
-#line 497 "dve_expr_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_id((yyvsp[0].string))); ;}
     break;
 
   case 8:
-#line 499 "dve_expr_grammar.yy"
     { CALL((yylsp[-3]),(yylsp[0]),expr_array_mem((yyvsp[-3].string))); ;}
     break;
 
   case 9:
-#line 501 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_parenthesis()); ;}
     break;
 
   case 10:
-#line 503 "dve_expr_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[0]),expr_unary((yyvsp[-1].number))); ;}
     break;
 
   case 11:
-#line 505 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LT)); ;}
     break;
 
   case 12:
-#line 507 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LEQ)); ;}
     break;
 
   case 13:
-#line 509 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_EQ)); ;}
     break;
 
   case 14:
-#line 511 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_NEQ)); ;}
     break;
 
   case 15:
-#line 513 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_GT)); ;}
     break;
 
   case 16:
-#line 515 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_GEQ)); ;}
     break;
 
   case 17:
-#line 517 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_PLUS)); ;}
     break;
 
   case 18:
-#line 519 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MINUS)); ;}
     break;
 
   case 19:
-#line 521 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MULT)); ;}
     break;
 
   case 20:
-#line 523 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_DIV)); ;}
     break;
 
   case 21:
-#line 525 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MOD)); ;}
     break;
 
   case 22:
-#line 527 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_AND)); ;}
     break;
 
   case 23:
-#line 529 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_OR)); ;}
     break;
 
   case 24:
-#line 531 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_XOR)); ;}
     break;
 
   case 25:
-#line 533 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LSHIFT)); ;}
     break;
 
   case 26:
-#line 535 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_RSHIFT)); ;}
     break;
 
   case 27:
-#line 537 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_BOOL_AND)); ;}
     break;
 
   case 28:
-#line 539 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_BOOL_OR)); ;}
     break;
 
   case 29:
-#line 541 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_state_of_process((yyvsp[-2].string),(yyvsp[0].string))); ;}
     break;
 
   case 30:
-#line 545 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_var_of_process((yyvsp[-2].string),(yyvsp[0].string))); ;}
     break;
 
   case 31:
-#line 547 "dve_expr_grammar.yy"
     { CALL((yylsp[-5]),(yylsp[-3]),expr_var_of_process((yyvsp[-5].string),(yyvsp[-3].string),true)); ;}
     break;
 
   case 32:
-#line 549 "dve_expr_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_IMPLY)); ;}
     break;
 
   case 33:
-#line 567 "dve_expr_grammar.yy"
     { (yyval.number) = T_UNARY_MINUS; ;}
     break;
 
   case 34:
-#line 568 "dve_expr_grammar.yy"
     { (yyval.number) = T_TILDE; ;}
     break;
 
   case 35:
-#line 569 "dve_expr_grammar.yy"
     { (yyval.number) = T_BOOL_NOT; ;}
     break;
 
@@ -1474,7 +1436,6 @@ yyreduce:
     }
 
 /* Line 1037 of yacc.c.  */
-#line 1478 "dve_expr_grammar.tab.cc"
 
   yyvsp -= yylen;
   yyssp -= yylen;
@@ -1709,7 +1670,6 @@ yyreturn:
 }
 
 
-#line 593 "dve_expr_grammar.yy"
 
 
 

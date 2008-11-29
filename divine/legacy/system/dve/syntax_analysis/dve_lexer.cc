@@ -369,9 +369,7 @@ static yyconst short int yy_chk[112] =
 #define yymore() yymore_used_but_not_detected
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
-#line 1 "dve_lexer.l"
 #define INITIAL 0
-#line 3 "dve_lexer.l"
 /* error space 35500-35599 */
 #include <string.h>
 #include <iostream>
@@ -398,7 +396,6 @@ extern dve_position_t dve_yylloc;
 #define YY_FATAL_ERROR(msg) { gerr << msg << thr(); }
 #define comment 1
 
-#line 402 "lex.yy.cc"
 
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -525,7 +522,6 @@ YY_DECL
 	register char *yy_cp = NULL, *yy_bp = NULL;
 	register int yy_act;
 
-#line 35 "dve_lexer.l"
 
 
 
@@ -534,7 +530,6 @@ YY_DECL
   dve_yylloc.step();
 
 
-#line 538 "lex.yy.cc"
 
 	if ( yy_init )
 		{
@@ -620,37 +615,30 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 44 "dve_lexer.l"
 { dve_yylloc.lines(yyleng); dve_yylloc.step(); }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 45 "dve_lexer.l"
 { BEGIN(INITIAL); }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 46 "dve_lexer.l"
 /* Single line comments take precedence over multilines */;
 	YY_BREAK
 case YY_STATE_EOF(comment):
-#line 47 "dve_lexer.l"
 { dve_yyerror("Unclosed comment."); }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 48 "dve_lexer.l"
 /* ignore anything thats not a '*' or '/' to increase speed */;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 49 "dve_lexer.l"
 /* ignore (multiline comments)*/
 	YY_BREAK
 
 case 6:
 YY_RULE_SETUP
-#line 52 "dve_lexer.l"
 { /* Use \ as continuation character */ 
                   dve_yylloc.lines(1); 
                   dve_yylloc.step();
@@ -658,22 +646,18 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 57 "dve_lexer.l"
 /* ignore (singleline comment)*/;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 59 "dve_lexer.l"
 { dve_yylloc.step(); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 61 "dve_lexer.l"
 { BEGIN(comment); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 63 "dve_lexer.l"
 {
                   dve_yylloc.lines(yyleng); 
  		  dve_yylloc.step();
@@ -683,187 +667,150 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 70 "dve_lexer.l"
 { return '.'; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 71 "dve_lexer.l"
 { return ','; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 72 "dve_lexer.l"
 { return ';'; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 73 "dve_lexer.l"
 { return ':'; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 74 "dve_lexer.l"
 { return '{'; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 75 "dve_lexer.l"
 { return '}'; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 76 "dve_lexer.l"
 { return '['; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 77 "dve_lexer.l"
 { return ']'; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 78 "dve_lexer.l"
 { return '('; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 79 "dve_lexer.l"
 { return ')'; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 80 "dve_lexer.l"
 { return '?'; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 81 "dve_lexer.l"
 { return T_EXCLAM; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 82 "dve_lexer.l"
 { return T_TILDE; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 84 "dve_lexer.l"
 { return T_ARROW; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 85 "dve_lexer.l"
 { return T_WIDE_ARROW; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 86 "dve_lexer.l"
 { return T_ASSIGNMENT; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 88 "dve_lexer.l"
 { return T_PLUS; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 89 "dve_lexer.l"
 { return T_MINUS; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 90 "dve_lexer.l"
 { return T_MULT; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 91 "dve_lexer.l"
 { return T_DIV; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 92 "dve_lexer.l"
 { return T_MOD; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 93 "dve_lexer.l"
 { return T_OR; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 94 "dve_lexer.l"
 { return T_AND; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 95 "dve_lexer.l"
 { return T_XOR; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 96 "dve_lexer.l"
 { return T_LSHIFT; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 97 "dve_lexer.l"
 { return T_RSHIFT; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 98 "dve_lexer.l"
 { return T_BOOL_OR; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 99 "dve_lexer.l"
 { return T_BOOL_AND; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 101 "dve_lexer.l"
 { return T_LEQ; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 102 "dve_lexer.l"
 { return T_LT; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 103 "dve_lexer.l"
 { return T_GEQ; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 104 "dve_lexer.l"
 { return T_GT; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 105 "dve_lexer.l"
 { return T_EQ; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 106 "dve_lexer.l"
 { return T_NEQ; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 108 "dve_lexer.l"
 { return T_INCREMENT; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 109 "dve_lexer.l"
 { return T_DECREMENT; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 111 "dve_lexer.l"
 {
 /*  		if (strlen(decl_text) >= MaxIdLen ) */
 /*  			declError << "Identifier too long. Only " << MaxIdLen  */
@@ -896,7 +843,6 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 141 "dve_lexer.l"
 { 
                   dve_yylval.number = atoi(yytext); 
                   return T_NAT; 
@@ -904,22 +850,18 @@ YY_RULE_SETUP
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 146 "dve_lexer.l"
 { 
                   gerr << "Unknown symbol '" << yytext << "'" << thr(35500); 
                   return 1;  /* unreachable */
                 }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 151 "dve_lexer.l"
 { return 0; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 153 "dve_lexer.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 923 "lex.yy.cc"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1722,7 +1664,6 @@ int main()
 	return 0;
 	}
 #endif
-#line 153 "dve_lexer.l"
 
 
 ostream &operator <<(ostream &out, const YYLTYPE &l) 

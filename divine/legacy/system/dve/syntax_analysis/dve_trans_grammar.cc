@@ -190,7 +190,6 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 5 "dve_trans_grammar.yy"
 
   #ifdef yylex
    #undef yylex
@@ -249,14 +248,12 @@
 #endif
 
 #if ! defined (YYSTYPE) && ! defined (YYSTYPE_IS_DECLARED)
-#line 103 "dve_trans_grammar.yy"
 typedef union YYSTYPE {
   bool flag;
   int number;
   char string[MAXLEN];
 } YYSTYPE;
 /* Line 190 of yacc.c.  */
-#line 260 "dve_trans_grammar.tab.cc"
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1
@@ -280,7 +277,6 @@ typedef struct YYLTYPE
 
 
 /* Line 213 of yacc.c.  */
-#line 284 "dve_trans_grammar.tab.cc"
 
 #if ! defined (yyoverflow) || YYERROR_VERBOSE
 
@@ -1389,334 +1385,268 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 131 "dve_trans_grammar.yy"
     { strncpy((yyval.string), (yyvsp[0].string), MAXLEN); ;}
     break;
 
   case 3:
-#line 399 "dve_trans_grammar.yy"
     { parser->done(); ;}
     break;
 
   case 4:
-#line 404 "dve_trans_grammar.yy"
     { CALL((yylsp[-7]),(yylsp[0]),trans_create((yyvsp[-7].string),(yyvsp[-5].string),(yyvsp[-3].flag),(yyvsp[-2].number),(yyvsp[-1].number))); ;}
     break;
 
   case 6:
-#line 409 "dve_trans_grammar.yy"
     { CALL((yylsp[-4]),(yylsp[0]),prob_trans_create((yyvsp[-4].string))); ;}
     break;
 
   case 7:
-#line 413 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),prob_transition_part((yyvsp[-2].string),(yyvsp[0].number))); ;}
     break;
 
   case 10:
-#line 428 "dve_trans_grammar.yy"
     { (yyval.flag) = false ;}
     break;
 
   case 11:
-#line 429 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),take_expression()); ;}
     break;
 
   case 12:
-#line 430 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[-2]),trans_guard_expr()); (yyval.flag) = true; ;}
     break;
 
   case 13:
-#line 431 "dve_trans_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[-1]),take_expression_cancel()) ;}
     break;
 
   case 14:
-#line 431 "dve_trans_grammar.yy"
     { (yyval.flag) = false; ;}
     break;
 
   case 15:
-#line 435 "dve_trans_grammar.yy"
     { (yyval.number) = 0; ;}
     break;
 
   case 16:
-#line 436 "dve_trans_grammar.yy"
     { (yyval.number) = (yyvsp[-1].number); ;}
     break;
 
   case 17:
-#line 440 "dve_trans_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[0]),take_expression()); ;}
     break;
 
   case 18:
-#line 441 "dve_trans_grammar.yy"
     { CALL((yylsp[-3]),(yylsp[0]),trans_sync((yyvsp[-3].string),1,(yyvsp[0].flag))); (yyval.number) = 1; ;}
     break;
 
   case 19:
-#line 442 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[-1]),take_expression_cancel()); ;}
     break;
 
   case 20:
-#line 442 "dve_trans_grammar.yy"
     { (yyval.number) = 1; ;}
     break;
 
   case 21:
-#line 443 "dve_trans_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[0]),take_expression()); ;}
     break;
 
   case 22:
-#line 444 "dve_trans_grammar.yy"
     { CALL((yylsp[-3]),(yylsp[0]),trans_sync((yyvsp[-3].string),2,(yyvsp[0].flag))); (yyval.number) = 2; ;}
     break;
 
   case 23:
-#line 445 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[-1]),take_expression_cancel()); ;}
     break;
 
   case 24:
-#line 445 "dve_trans_grammar.yy"
     { (yyval.number) = 1; ;}
     break;
 
   case 25:
-#line 449 "dve_trans_grammar.yy"
     { (yyval.flag) = false; ;}
     break;
 
   case 26:
-#line 450 "dve_trans_grammar.yy"
     { (yyval.flag) = true; ;}
     break;
 
   case 27:
-#line 451 "dve_trans_grammar.yy"
     { (yyval.flag) = true; ;}
     break;
 
   case 30:
-#line 460 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]), expression_list_store()); ;}
     break;
 
   case 31:
-#line 464 "dve_trans_grammar.yy"
     { (yyval.number) = 0; ;}
     break;
 
   case 32:
-#line 465 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),trans_effect_list_begin()); ;}
     break;
 
   case 33:
-#line 465 "dve_trans_grammar.yy"
     { CALL((yylsp[-3]),(yylsp[-3]),trans_effect_list_end()); ;}
     break;
 
   case 34:
-#line 466 "dve_trans_grammar.yy"
     { (yyval.number) = (yyvsp[-2].number); ;}
     break;
 
   case 35:
-#line 468 "dve_trans_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[-1]),trans_effect_list_cancel());
 	    PERROR(PE_EFFECT_LIST);
 	  ;}
     break;
 
   case 36:
-#line 474 "dve_trans_grammar.yy"
     { (yyval.number) = 1; CALL((yylsp[0]),(yylsp[0]),trans_effect_part()); ;}
     break;
 
   case 37:
-#line 476 "dve_trans_grammar.yy"
     { (yyval.number) = (yyvsp[-2].number) + 1; CALL((yylsp[0]),(yylsp[0]),trans_effect_part()); ;}
     break;
 
   case 38:
-#line 491 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_false()); ;}
     break;
 
   case 39:
-#line 493 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_true()); ;}
     break;
 
   case 40:
-#line 495 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_nat((yyvsp[0].number))); ;}
     break;
 
   case 41:
-#line 497 "dve_trans_grammar.yy"
     { CALL((yylsp[0]),(yylsp[0]),expr_id((yyvsp[0].string))); ;}
     break;
 
   case 42:
-#line 499 "dve_trans_grammar.yy"
     { CALL((yylsp[-3]),(yylsp[0]),expr_array_mem((yyvsp[-3].string))); ;}
     break;
 
   case 43:
-#line 501 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_parenthesis()); ;}
     break;
 
   case 44:
-#line 503 "dve_trans_grammar.yy"
     { CALL((yylsp[-1]),(yylsp[0]),expr_unary((yyvsp[-1].number))); ;}
     break;
 
   case 45:
-#line 505 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LT)); ;}
     break;
 
   case 46:
-#line 507 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LEQ)); ;}
     break;
 
   case 47:
-#line 509 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_EQ)); ;}
     break;
 
   case 48:
-#line 511 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_NEQ)); ;}
     break;
 
   case 49:
-#line 513 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_GT)); ;}
     break;
 
   case 50:
-#line 515 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_GEQ)); ;}
     break;
 
   case 51:
-#line 517 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_PLUS)); ;}
     break;
 
   case 52:
-#line 519 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MINUS)); ;}
     break;
 
   case 53:
-#line 521 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MULT)); ;}
     break;
 
   case 54:
-#line 523 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_DIV)); ;}
     break;
 
   case 55:
-#line 525 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_MOD)); ;}
     break;
 
   case 56:
-#line 527 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_AND)); ;}
     break;
 
   case 57:
-#line 529 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_OR)); ;}
     break;
 
   case 58:
-#line 531 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_XOR)); ;}
     break;
 
   case 59:
-#line 533 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_LSHIFT)); ;}
     break;
 
   case 60:
-#line 535 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_RSHIFT)); ;}
     break;
 
   case 61:
-#line 537 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_BOOL_AND)); ;}
     break;
 
   case 62:
-#line 539 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_BOOL_OR)); ;}
     break;
 
   case 63:
-#line 541 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_state_of_process((yyvsp[-2].string),(yyvsp[0].string))); ;}
     break;
 
   case 64:
-#line 545 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_var_of_process((yyvsp[-2].string),(yyvsp[0].string))); ;}
     break;
 
   case 65:
-#line 547 "dve_trans_grammar.yy"
     { CALL((yylsp[-5]),(yylsp[-3]),expr_var_of_process((yyvsp[-5].string),(yyvsp[-3].string),true)); ;}
     break;
 
   case 66:
-#line 549 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_bin(T_IMPLY)); ;}
     break;
 
   case 67:
-#line 556 "dve_trans_grammar.yy"
     { CALL((yylsp[-2]),(yylsp[0]),expr_assign((yyvsp[-1].number))); ;}
     break;
 
   case 68:
-#line 557 "dve_trans_grammar.yy"
     { PERROR(PE_EXPR); ;}
     break;
 
   case 69:
-#line 562 "dve_trans_grammar.yy"
     { (yyval.number) = T_ASSIGNMENT; ;}
     break;
 
   case 70:
-#line 567 "dve_trans_grammar.yy"
     { (yyval.number) = T_UNARY_MINUS; ;}
     break;
 
   case 71:
-#line 568 "dve_trans_grammar.yy"
     { (yyval.number) = T_TILDE; ;}
     break;
 
   case 72:
-#line 569 "dve_trans_grammar.yy"
     { (yyval.number) = T_BOOL_NOT; ;}
     break;
 
@@ -1724,7 +1654,6 @@ yyreduce:
     }
 
 /* Line 1037 of yacc.c.  */
-#line 1728 "dve_trans_grammar.tab.cc"
 
   yyvsp -= yylen;
   yyssp -= yylen;
@@ -1959,7 +1888,6 @@ yyreturn:
 }
 
 
-#line 593 "dve_trans_grammar.yy"
 
 
 
