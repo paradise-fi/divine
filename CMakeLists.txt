@@ -68,7 +68,8 @@ macro( lcov_collect suf )
 add_custom_target( lcov-collect-$suf
   COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
-                  -o lcov-report/collect$suf.info
+                  -o lcov-report/collect${suf}.info
+  COMMAND ${LCOV} -d . --zerocounters
 )
 endmacro( lcov_collect )
 
