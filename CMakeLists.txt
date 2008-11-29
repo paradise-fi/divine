@@ -74,7 +74,7 @@ endmacro( lcov_collect )
 
 add_custom_target( lcov-report
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d .
                   -a lcov-report/base.info
                   -a lcov-report/collect-1.info
                   -a lcov-report/collect-2.info
