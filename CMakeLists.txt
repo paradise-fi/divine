@@ -71,6 +71,7 @@ add_custom_target( lcov-clean
   COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} -d . -z
   COMMAND touch ${BADPATHS}
+  COMMAND touch dve_lexer.l lex.yy.cc
   COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
 )
 
