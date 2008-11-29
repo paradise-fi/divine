@@ -55,29 +55,19 @@ if( NOT SHA1SUM )
   message( FATAL_ERROR "I need a working sha1sum program for the build. Please install one or supply me with a path to one. Thank you." )
 endif( NOT SHA1SUM )
 
-set( BADDIR divine/CMakeFiles/divine.dir/legacy/system/dve/syntax_analysis/ )
-set( BADF
-  dve_proc_grammar.tab.cc dve_trans_grammar.tab.cc
-  dve_trans_grammar.yy dve_proc_grammar.yy dve_grammar.yy )
-foreach( F ${BADF} )
-  string( REPLACE "dve_" "${BADDIR}/dve_" P ${F} )
-  list( APPEND BADPATHS ${P} )
-endforeach( F )
-
 if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
 add_custom_target( lcov-clean
   COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} -d . -z
-  COMMAND touch ${BADPATHS}
-  COMMAND touch dve_lexer.l lex.yy.cc
   COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
 )
 
 add_custom_target( lcov-postcheck
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c -o lcov-report/check.info
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
+                  -o lcov-report/check.info
   COMMAND ${LCOV} --quiet -a lcov-report/base.info
                           -a lcov-report/check.info
                           -o lcov-report/overall.info
