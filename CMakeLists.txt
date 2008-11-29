@@ -64,17 +64,21 @@ add_custom_target( lcov-clean
   COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
 )
 
-add_custom_target( lcov-postcheck
+macro( lcov_collect suf )
+add_custom_target( lcov-collect-$suf
   COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
-                  -o lcov-report/check.info
-  COMMAND ${LCOV} --quiet -a lcov-report/base.info
-                          -a lcov-report/check.info
-                          -o lcov-report/overall.info
+                  -o lcov-report/collect$suf.info
 )
+endmacro( lcov_collect )
 
 add_custom_target( lcov-report
   COMMAND mkdir -p lcov-report
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
+                  -a lcov-report/base.info
+                  -a lcov-report/collect-1.info
+                  -a lcov-report/collect-2.info
+                  -o lcov-report/overall.info
   COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
     lcov-report/overall.info
 )
@@ -89,8 +93,10 @@ endif( HOARD )
 add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
-add_subdirectory( test )
 
 if( PROFILE )
-add_dependencies( check lcov-postcheck )
+  lcov_collect( "-1" )
+  add_dependencies( check lcov-collect-1 )
 endif( PROFILE )
+
+add_subdirectory( test )
