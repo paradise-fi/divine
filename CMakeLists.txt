@@ -58,30 +58,31 @@ endif( NOT SHA1SUM )
 if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
+set( LCOV_RDIR "${divine_BINARY_DIR}/lcov-report" )
 add_custom_target( lcov-clean
-  COMMAND mkdir -p lcov-report
+  COMMAND mkdir -p ${LCOV_RDIR}
   COMMAND ${LCOV} -d ${divine_SOURCE_DIR} -z
-  COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o lcov-report/base.info
+  COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o ${LCOV_RDIR}/base.info
 )
 
 macro( lcov_collect id )
 add_custom_target( lcov-collect-${id}
-  COMMAND mkdir -p lcov-report
+  COMMAND mkdir -p ${LCOV_RDIR}
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
-                  -o lcov-report/collect-${id}.info
+                  -o ${LCOV_RDIR}/collect-${id}.info
   COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters
 )
 endmacro( lcov_collect )
 
 add_custom_target( lcov-report
-  COMMAND mkdir -p lcov-report
+  COMMAND mkdir -p ${LCOV_RDIR}
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
-                  -a lcov-report/base.info
-                  -a lcov-report/collect-1.info
-                  -a lcov-report/collect-2.info
-                  -o lcov-report/overall.info
+                  -a ${LCOV_RDIR}/base.info
+                  -a ${LCOV_RDIR}/collect-1.info
+                  -a ${LCOV_RDIR}/collect-2.info
+                  -o ${LCOV_RDIR}/overall.info
   COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-    lcov-report/overall.info
+    ${LCOV_RDIR}/overall.info
 )
 add_custom_target( check )
 add_dependencies( check lcov-clean )
