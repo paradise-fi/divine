@@ -64,11 +64,11 @@ add_custom_target( lcov-clean
   COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
 )
 
-macro( lcov_collect suf )
-add_custom_target( lcov-collect-$suf
+macro( lcov_collect id )
+add_custom_target( lcov-collect-${id}
   COMMAND mkdir -p lcov-report
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
-                  -o lcov-report/collect${suf}.info
+                  -o lcov-report/collect-${id}.info
   COMMAND ${LCOV} -d . --zerocounters
 )
 endmacro( lcov_collect )
@@ -96,7 +96,7 @@ add_subdirectory( divine )
 add_subdirectory( tools )
 
 if( PROFILE )
-  lcov_collect( "-1" )
+  lcov_collect( "1" )
   add_dependencies( check lcov-collect-1 )
 endif( PROFILE )
 
