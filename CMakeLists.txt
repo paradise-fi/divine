@@ -60,22 +60,22 @@ find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
 add_custom_target( lcov-clean
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} -d . -z
-  COMMAND ${LCOV} -c -i -d . -o lcov-report/base.info
+  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} -z
+  COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o lcov-report/base.info
 )
 
 macro( lcov_collect id )
 add_custom_target( lcov-collect-${id}
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d . -c
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
                   -o lcov-report/collect-${id}.info
-  COMMAND ${LCOV} -d . --zerocounters
+  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters
 )
 endmacro( lcov_collect )
 
 add_custom_target( lcov-report
   COMMAND mkdir -p lcov-report
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d .
+  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
                   -a lcov-report/base.info
                   -a lcov-report/collect-1.info
                   -a lcov-report/collect-2.info
