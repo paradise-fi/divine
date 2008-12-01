@@ -43,12 +43,21 @@ struct Parallel {
 
     int n;
 
-    T &instance( int i ) { return m_instances[ i ]; }
+    T &instance( int i ) {
+        assert( i < n );
+        assert_eq( n, m_instances.size() );
+        return m_instances[ i ];
+    }
+
     T &master() { return *m_master; }
 
     typename T::Shared &shared( int i ) { return instance( i ).shared; }
 
-    R< T > &thread( int i ) { return m_threads[ i ]; }
+    R< T > &thread( int i ) {
+        assert( i < n );
+        assert_eq( n, m_threads.size() );
+        return m_threads[ i ];
+    }
 
     template< typename F >
     void initThreads( F f ) {
