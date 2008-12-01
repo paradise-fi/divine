@@ -107,6 +107,9 @@ struct Common {
     Common &operator=( const Common &other ) {
         file = other.file;
         m_system = 0;
+        legacy_system(); // FIXME, we force read here to keep
+                         // dve_explicit_system::read() from happening in
+                         // multiple threads at once, no matter the mutex...
         return *this;
     }
 
