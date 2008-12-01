@@ -22,7 +22,6 @@ add_custom_command(
 
 set_source_files_properties( ${CONTEXT}.bwah PROPERTIES SYMBOLIC ON )
 
-add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} )
 include_directories( ${divine_SOURCE_DIR} ${divine_BINARY_DIR} ${BOOST_INCLUDE_PATH} ${MPI_INCLUDE_PATH} ${divine_SOURCE_DIR}/divine/legacy )
 
 add_library( divine STATIC

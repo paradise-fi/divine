@@ -1,4 +1,4 @@
-add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} -static -Bsymbolic )
+add_definitions( -static -Bsymbolic )
 include_directories( . bfp bfp/bfp_LUSOL bfp/bfp_LUSOL/LUSOL colamd shared )
 
 add_definitions( -DYY_NEVER_INTERACTIVE -DPARSER_LP -DINVERSE_ACTIVE=INVERSE_LUSOL -DRoleIsExternalInvEngine )

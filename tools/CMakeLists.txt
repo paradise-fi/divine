@@ -1,4 +1,3 @@
-add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} )
 include_directories( ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} 
                      ${WIBBLE_INCLUDES} ${divine_SOURCE_DIR}/divine/legacy )
 link_libraries( divine wibble pthread )
