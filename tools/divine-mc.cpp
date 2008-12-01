@@ -50,10 +50,9 @@ struct Main {
     Config config;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify;
-    OptionGroup *common, *order;
-    BoolOption *o_dfs, *o_bfs, *o_verbose, *o_vcl, *o_pool,
-        *o_por, *o_noCe, *o_report;
-    IntOption *o_store, *o_grow, *o_handoff, *o_workers, *o_mem;
+    OptionGroup *common;
+    BoolOption *o_verbose, *o_pool, *o_noCe, *o_report;
+    IntOption *o_workers, *o_mem;
     StringOption *o_trail;
 
     bool dummygen;
@@ -74,7 +73,7 @@ struct Main {
         Report rep( config );
         report = &rep;
         rep.start();
-        rep.finished( runController() );
+        rep.finished( selectAlgorithm() );
         rep.final( std::cout );
     }
 
@@ -83,6 +82,8 @@ struct Main {
         std::cerr << bla << std::endl;
         exit( 1 );
     }
+
+    void FIXME( std::string x ) __attribute__((noreturn)) { die( x ); }
 
     void verbose( std::string bla )
     {
@@ -119,7 +120,6 @@ struct Main {
                                   "cycle detection" );
 
         common = opts.createGroup( "Common Options" );
-        order = opts.createGroup( "Visit Order Options" );
 
         o_verbose = common->add< BoolOption >(
             "verbose", 'v', "verbose", "", "more verbose operation" );
@@ -131,24 +131,9 @@ struct Main {
             "number of worker threads (default: 2)" );
         o_workers ->setValue( 2 );
 
-        o_store = common->add< IntOption >(
-            "init-store", 'i', "init-store", "",
-            "initial store (hash table) size (default: 4097)" );
-        o_store->setValue( 4097 );
-
-        o_grow = common->add< IntOption >(
-            "store-grow", 'g', "store-grow", "",
-            "store grow factor (default: 2)" );
-        o_grow->setValue( 2 );
-
         o_mem = common->add< IntOption >(
             "max-memory", '\0', "max-memory", "",
             "maximum memory to use in MB (default: 0 = unlimited)" );
-
-        o_handoff = common->add< IntOption >(
-            "handoff", '\0', "handoff", "",
-            "handoff threshold (default: 50)" );
-        o_handoff->setValue( 50 );
 
         o_pool = common->add< BoolOption >(
             "disable-pool", '\0', "disable-pool", "",
@@ -158,27 +143,11 @@ struct Main {
             "no-counterexample", 'n', "no-counterexample", "",
             "disable counterexample generation" );
 
-        /* o_por = common->add< BoolOption >(
-            "por", 'p', "por", "",
-            "use partial order reduction" ); */
-
         o_trail = common->add< StringOption >(
             "trail", 't', "trail", "",
             "file to output trail to (default: input-file.trail)" );
 
-        o_bfs = order->add< BoolOption >(
-            "bfs", 'b', "bfs", "", "Breadth-First Search (default)" );
-        o_dfs = order->add< BoolOption >(
-            "dfs", 'd', "dfs", "", "Depth-First Search" );
-
-        /* o_vcl = cmd_ndfs->add< BoolOption >(
-            "vcl", 'v', "vcl", "", "VCL decomposition (warning:
-            disobeys -t)"); */
-
         opts.add( common );
-        cmd_reachability->add( order );
-        cmd_owcty->add( order );
-        cmd_map->add( order );
     }
 
     enum { RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
@@ -204,9 +173,6 @@ struct Main {
         }
 
         config.setMaxThreads( o_workers->intValue() + 1 );
-        config.setStorageInitial( o_store->intValue() );
-        config.setStorageFactor( o_grow->intValue() );
-        config.setHandoff( o_handoff->intValue() );
         config.setInput( input );
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );
@@ -236,9 +202,6 @@ struct Main {
             config.setTrailFile( t );
         } else
             config.setTrailFile( o_trail->stringValue() );
-
-        if ( o_dfs->boolValue() && o_bfs->boolValue() )
-            die( "FATAL: only one of --dfs and --bfs may be used" );
 
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
@@ -276,194 +239,46 @@ struct Main {
         }
     }
 
-    Result runController()
+    Result selectAlgorithm()
     {
-        if ( m_run == RunNdfs ) {
-            config.setPartitioning( "None" );
-            return runStorage< controller::Simple >();
-        } else {
-            config.setPartitioning( "Static" );
-            return runStorage< controller::Partition >();
+        switch ( m_run ) {
+            case RunReachability:
+                config.setAlgorithm( "Reachability" );
+                return selectGraph< algorithm::Reachability >();
+            case RunOwcty:
+                config.setAlgorithm( "OWCTY" );
+                return selectGraph< algorithm::Owcty >();
+            case RunMap:
+                config.setAlgorithm( "MAP" );
+                FIXME( "Sorry, MAP currently not implemented." );
+            case RunNdfs:
+                config.setAlgorithm( "NestedDFS" );
+                FIXME( "Sorry, Nested DFS currently not implemented." );
+            default:
+                die( "FATAL: Internal error choosing algorithm." );
         }
-
-        return Result();
     }
 
-    template< typename Cont >
-    Result runStorage()
-    {
-        if ( o_pool->boolValue() ) {
-            config.setStorage( "Unpooled-Partitioned" );
-            return runOrder< Cont, storage::Partition >();
-        } else {
-            config.setStorage( "Pooled-Partitioned" );
-            return runOrder< Cont, storage::PooledPartition >();
-        }
-
-        return Result();
-    }
-
-    template< typename Cont, typename Stor >
-    Result runOrder()
-    {
-        if ( m_run == RunNdfs ) {
-            config.setOrder( "DFS" );
-            return runAlgorithm< Cont, Stor, visitor::DFS >();
-        }
-
-        /* if ( o_por->boolValue() ) {
-            verbose( "partial order reduction: enabled" );
-            if ( o_dfs->boolValue() ) {
-                verbose( "search order: depth first" );
-                runAlgorithm< Cont, Stor, visitor::PorDFS >();
-            } else {
-                verbose( "search order: breadth first" );
-                runAlgorithm< Cont, Stor, visitor::PorBFS >();
-            }
-        } else */ { 
-            // verbose( "partial order reduction: disabled" );
-            if ( o_dfs->boolValue() ) {
-                config.setOrder( "DFS" );
-                return runAlgorithm< Cont, Stor, visitor::DFS >();
-            } else {
-                config.setOrder( "BFS" );
-                return runAlgorithm< Cont, Stor, visitor::BFS >();
-            }
-        }
-
-        return Result();
-    }
-
-    template< typename Cont, typename Stor, typename Ord >
-    Result runAlgorithm()
-    {
-        if ( m_run == RunReachability ) {
-            config.setAlgorithm( "Reachability" );
-            return runAlgorithm_< algorithm::Reachability >();
-        }
-
-        if ( m_run == RunOwcty ) {
-            config.setAlgorithm( "OWCTY" );
-            return runAlgorithm_< algorithm::Owcty >();
-        }
-
-        if ( m_run == RunMap ) {
-            config.setAlgorithm( "MAP" );
-            return runGenerator< algorithm::Map, Cont, Stor, Ord >();
-        }
-
-        if ( m_run == RunNdfs ) {
-            config.setAlgorithm( "NestedDFS" );
-            return runGenerator< algorithm::NestedDFS, Cont, Stor, Ord >();
-        }
-
-        return Result();
-    }
-
-    template< template< typename > class A >
-    Result runAlgorithm_()
+    template< template< typename > class Algorithm >
+    Result selectGraph()
     {
         if ( str::endsWith( config.input(), ".dve" ) ) {
             config.setGenerator( "DiVinE" );
-            return run_< A< generator::NDve > >();
+            return run< Algorithm< generator::NDve > >();
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
-            return run_< A< generator::NBymoc > >();
+            return run< Algorithm< generator::NBymoc > >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
-            return Result();
-            // return run_< A< generator::Dummy > >();
+            FIXME( "FATAL: Dummy generator currently not implemented." );
         } else
 	    die( "FATAL: Unknown input file extension." );
     }
 
-    template< template< typename > class Alg, typename Cont, typename Stor,
-              typename Ord >
-    Result runGenerator()
-    {
-        if ( str::endsWith( config.input(), ".dve" ) ) {
-            config.setGenerator( "DiVinE" );
-            return run< generator::Dve, Alg, Cont, Stor, Ord >( Preferred() );
-        } else if ( str::endsWith( config.input(), ".b" ) ) {
-            config.setGenerator( "NIPS" );
-            return run< generator::Bymoc, Alg, Cont, Stor, Ord >( Preferred() );
-        } else if ( dummygen ) {
-            config.setGenerator( "Dummy" );
-            return run< generator::Dummy, Alg, Cont, Stor, Ord >( Preferred() );
-        } else
-	    die( "Error: The input file extension is unknown." );
-        return Result();
-    }
-
     template< typename A >
-    Result run_() {
+    Result run() {
         A alg( &config );
         return alg.run();
-    }
-
-    /* this here prunes the set of valid combinations */
-    template< template< typename > class G, template< typename > class A,
-              typename C, typename S, typename O >
-    typename EnableIf<
-        TAnd<
-            TOr<
-                TAnd<
-                    TSame< C, controller::Partition >,
-                    TSame< S, storage::Partition > >,
-                TAnd<
-                    TSame< C, controller::Partition >,
-                    TSame< S, storage::PooledPartition > >,
-                TAnd<
-                    TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
-                    TSame< C, controller::Simple >,
-                    TSame< O, visitor::DFS > >
-                >,
-            TImply< TSame< C, controller::Simple >,
-                    TSame< A< Unit >, algorithm::NestedDFS< Unit > > >,
-            TImply< TSame< A< Unit >, algorithm::NestedDFS< Unit > >,
-                    TSame< O, visitor::DFS > >
-        >, Result >::T
-    run( Preferred ) {
-        return doRun< G, A, C, S, O >( Preferred() );
-    }
-
-    /* This only includes a fairly reasonable set of combinations. */
-    template< template< typename > class G, template< typename > class A,
-              typename C, typename S, typename O >
-    typename EnableIf< TAnd<
-                           TSame< S, storage::PooledPartition >,
-                           TImply<
-                               TSame< O, visitor::DFS >,
-                               TSame< A< Unit >, algorithm::NestedDFS< Unit > >
-                           >,
-                           TSame< G< Unit >, generator::Dve< Unit > >,
-                           TOr< TSame< A< Unit >, algorithm::Owcty< Unit > >,
-                                TSame< A< Unit >, algorithm::NestedDFS< Unit > > >
-                           /* TOr< TSame< G< Unit >, generator::Dve< Unit > >,
-                              TSame< G< Unit >, generator::Bymoc< Unit > > > */ >,
-        Result >::T
-    doRun( Preferred ) {
-        A< Algorithm::Setup< C, S, O, G > > alg( config );
-        return alg.run();
-    }
-
-    template< template< typename > class G, template< typename > class A,
-              typename C, typename S, typename O >
-    Result doRun( NotPreferred ) {
-        std::cerr << "FATAL: selected combination is not supported by "
-                  << "this binary" << std::endl;
-        return Result();
-    }
-
-    /* this here is called if the combination does not satisfy the
-       predicate in the above instance of run( Preferred ) */
-    template< template< typename > class G, template< typename > class A,
-              typename C, typename S, typename O >
-    Result run( NotPreferred )
-    {
-        std::cerr << "FATAL: illegal combination of features selected"
-                  << std::endl;
-        return Result();
     }
 
 };
