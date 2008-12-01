@@ -18,10 +18,22 @@ namespace visitor {
 enum TransitionAction { ExpandTransition, // force expansion on the target state
                         FollowTransition, // expand the target state if it's
                                           // not been expanded yet
-                        IgnoreTransition, // pretend the transition didn't exist
+                        IgnoreTransition, // pretend the transition does not
+                                          // exist; this also means that the
+                                          // target state of the transition is
+                                          // NOT FREED
                         TerminateOnTransition
 };
 enum ExpansionAction { ExpandState };
+
+template< typename T >
+bool alias( T a, T b ) {
+    return false;
+}
+
+template<> bool alias< Blob >( Blob a, Blob b ) {
+    return a.ptr == b.ptr;
+}
 
 template<
     typename G, // graph
@@ -95,6 +107,9 @@ struct Common_ {
             Successors &s = m_queue.next();
             if ( s.empty() ) {
                 // finished with s
+                Node hashed = seen().get( s.from() ).key;
+                if ( (!seen().valid( hashed )) || alias( hashed, s.from() ) )
+                    m_graph.release( s.from() );
                 m_queue.pop();
                 continue;
             } else {
@@ -112,7 +127,12 @@ struct Common_ {
 
         bool had = true;
         Node to = seen().get( _to ).key;
+
+        if ( alias( _to, to ) )
+            assert( seen().valid( to ) );
+
         if ( !seen().valid( to ) ) {
+            assert( !alias( _to, to ) );
             had = false;
             to = _to;
         }
@@ -122,6 +142,16 @@ struct Common_ {
              (tact == FollowTransition && !had) ) {
             if ( !had )
                 seen().insert( to );
+            else { // for the IgnoreTransition case, the transition handler
+                   // is responsible for freeing up the _to state as needed
+                assert( had );
+                assert( seen().valid( to ) );
+                assert( seen().valid( _to ) );
+                // we do not want to release a state we are revisiting, that
+                // has already been in the table...
+                if ( alias( to, _to ) )
+                    m_graph.release( _to );
+            }
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.push( m_graph.successors( to ) );
