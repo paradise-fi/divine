@@ -56,6 +56,7 @@ if( NOT SHA1SUM )
 endif( NOT SHA1SUM )
 
 add_custom_target( check )
+add_custom_target( lcovd-unit )
 
 if( PROFILE )
 find_program( LCOV lcov )
@@ -97,12 +98,14 @@ add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
 
+add_dependencies( lcovd-unit unit )
+
 if( PROFILE )
   lcov_collect( "1" )
-  add_dependencies( unit lcov-collect-1 )
+  add_dependencies( lcovd-unit lcov-collect-1 )
 endif( PROFILE )
 
-add_dependencies( check unit )
+add_dependencies( check lcovd-unit )
 add_dependencies( check functional )
 
 add_subdirectory( test )
