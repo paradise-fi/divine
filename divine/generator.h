@@ -25,6 +25,7 @@ struct Common {
 
     std::string file;
     system_t *m_system;
+    BlobAllocator *alloc;
 
     struct Successors {
         int current;
@@ -68,7 +69,9 @@ struct Common {
     }
 
     void setAllocator( StateAllocator *a ) {
-        legacy_system()->setAllocator( a );
+        alloc = dynamic_cast< BlobAllocator * >( a );
+        assert( alloc );
+        legacy_system()->setAllocator( alloc );
     }
 
     int stateSize() {
@@ -96,12 +99,16 @@ struct Common {
         if ( !m_system ) {
             MutexLock __l( readMutex() );
             m_system = new system_t;
-            m_system->setAllocator( new BlobAllocator() );
+            m_system->setAllocator( alloc = new BlobAllocator() );
             if ( !file.empty() ) {
                 m_system->read( file.c_str() );
             }
         }
         return m_system;
+    }
+
+    void release( State s ) {
+        s.free( alloc->alloc() );
     }
 
     Common &operator=( const Common &other ) {

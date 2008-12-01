@@ -33,6 +33,9 @@ struct TestVisitor {
                 return next;
             }
         };
+
+        void release( Node ) {}
+
         Successors successors( Node from ) {
             Successors s;
             s.n = n;
@@ -339,6 +342,10 @@ struct TestVisitor {
                 return next;
             }
         };
+
+        void release( Node n ) {
+            n.free();
+        }
 
         Successors successors( Node from ) {
             Successors s;
