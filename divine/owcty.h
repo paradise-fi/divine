@@ -139,11 +139,11 @@ struct Owcty : Domain< Owcty< G > >
         ++ extension( t ).predCount;
         extension( t ).inS = true;
         if ( extension( t ).inF && f.valid() )
-            return visitor::IgnoreTransition;
+            return visitor::ForgetTransition;
         else {
             return updateIteration( t, 0 ) ?
                 visitor::ExpandTransition :
-                visitor::IgnoreTransition;
+                visitor::ForgetTransition;
         }
     }
 
@@ -235,9 +235,9 @@ struct Owcty : Domain< Owcty< G > >
         if ( extension( t ).predCount == 0 ) {
             return updateIteration( t, 1 ) ?
                 visitor::ExpandTransition :
-                visitor::IgnoreTransition;
+                visitor::ForgetTransition;
         } else
-            return visitor::IgnoreTransition;
+            return visitor::ForgetTransition;
     }
 
     void _elimination() {

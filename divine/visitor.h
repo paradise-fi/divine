@@ -18,6 +18,8 @@ namespace visitor {
 enum TransitionAction { ExpandTransition, // force expansion on the target state
                         FollowTransition, // expand the target state if it's
                                           // not been expanded yet
+                        ForgetTransition, // do not act upon this transition;
+                                          // target state is freed by visitor
                         IgnoreTransition, // pretend the transition does not
                                           // exist; this also means that the
                                           // target state of the transition is
@@ -142,19 +144,21 @@ struct Common_ {
              (tact == FollowTransition && !had) ) {
             if ( !had )
                 seen().insert( to );
-            else { // for the IgnoreTransition case, the transition handler
-                   // is responsible for freeing up the _to state as needed
-                assert( had );
-                assert( seen().valid( to ) );
-                assert( seen().valid( _to ) );
-                // we do not want to release a state we are revisiting, that
-                // has already been in the table...
-                if ( !alias( to, _to ) )
-                    m_graph.release( _to );
-            }
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.push( m_graph.successors( to ) );
+        }
+
+        if ( tact != IgnoreTransition && had ) {
+            // for the IgnoreTransition case, the transition handler
+            // is responsible for freeing up the _to state as needed
+            assert( had );
+            assert( seen().valid( to ) );
+            assert( seen().valid( _to ) );
+            // we do not want to release a state we are revisiting, that
+            // has already been in the table...
+            if ( !alias( to, _to ) )
+                m_graph.release( _to );
         }
     }
 
