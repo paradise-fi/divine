@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/fifo.h>
+#include <wibble/sys/thread.h>
 
 using namespace divine;
 
