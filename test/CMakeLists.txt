@@ -6,7 +6,6 @@ add_custom_target( do-functional
 )
 add_dependencies( do-functional divine-mc )
 add_dependencies( functional do-functional )
-add_dependencies( check functional )
 if( PROFILE )
   lcov_collect( "2" )
   add_dependencies( functional lcov-collect-2 )

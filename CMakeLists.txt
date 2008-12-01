@@ -55,6 +55,8 @@ if( NOT SHA1SUM )
   message( FATAL_ERROR "I need a working sha1sum program for the build. Please install one or supply me with a path to one. Thank you." )
 endif( NOT SHA1SUM )
 
+add_custom_target( check )
+
 if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
@@ -84,7 +86,6 @@ add_custom_target( lcov-report
   COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
     ${LCOV_RDIR}/overall.info
 )
-add_custom_target( check )
 add_dependencies( check lcov-clean )
 endif( PROFILE )
 
@@ -98,7 +99,10 @@ add_subdirectory( tools )
 
 if( PROFILE )
   lcov_collect( "1" )
-  add_dependencies( check lcov-collect-1 )
+  add_dependencies( unit lcov-collect-1 )
 endif( PROFILE )
+
+add_dependencies( check unit )
+add_dependencies( check functional )
 
 add_subdirectory( test )
