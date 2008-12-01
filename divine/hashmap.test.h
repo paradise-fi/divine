@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
 #include <divine/hashmap.h>
+#include <divine/blob.h>
 
 using namespace divine;
 
