@@ -1,9 +1,13 @@
 #!/bin/sh
 
+test -d "$1" -a -f "$1/divine-mc" || {
+    echo "First parameter has to be directory with your divine-mc binary."
+    exit 1
+}
+PATH="$1:$PATH"
+shift
 tests="$@"
 #test -z "$tests" && tests=`echo *.sh`
-
-PATH=`pwd`/../tools:$PATH
 
 for t_ in $tests; do
     t=`basename $t_`
