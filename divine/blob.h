@@ -89,6 +89,10 @@ struct Blob
         *reinterpret_cast< uint16_t * >( pointer() ) = size;
     }
 
+    void clear( char pattern = 0 ) {
+        std::fill( data(), data() + size(), pattern );
+    }
+
     size_t size() const
     {
         return (*reinterpret_cast< uint16_t * >( pointer() )) & 0x3FFF;

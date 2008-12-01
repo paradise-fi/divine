@@ -85,7 +85,9 @@ struct BlobAllocator : StateAllocator {
     }
 
     state_t new_state( const std::size_t size ) {
-        return legacy_state( Blob( alloc(), size + _ext ), _ext );
+        Blob b( alloc(), size + _ext );
+        b.clear();
+        return legacy_state( b, _ext );
     }
 
     void delete_state( state_t &st ) {
