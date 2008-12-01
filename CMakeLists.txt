@@ -103,6 +103,7 @@ add_dependencies( lcovd-unit unit )
 if( PROFILE )
   lcov_collect( "1" )
   add_dependencies( lcovd-unit lcov-collect-1 )
+  add_dependencies( lcov-collect-1 unit )
 endif( PROFILE )
 
 add_dependencies( check lcovd-unit )
