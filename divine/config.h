@@ -1,8 +1,8 @@
 // -*- C++ -*-
 #include <wibble/sys/thread.h>
+#include <wibble/test.h> // for assert
 #include <iostream>
 #include <fstream>
-#include <cassert>
 
 #ifndef DIVINE_CONFIG_H
 #define DIVINE_CONFIG_H
