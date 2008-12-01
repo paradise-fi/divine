@@ -28,7 +28,7 @@ using namespace commandline;
 
 namespace divine {
 namespace generator {
-wibble::sys::Mutex read_mutex( true );
+wibble::sys::Mutex *read_mutex = 0;
 }
 }
 
@@ -69,6 +69,7 @@ struct Main {
         setupSignals();
         setupCommandline();
         parseCommandline();
+        generator::read_mutex = new wibble::sys::Mutex( true );
 
         Report rep( config );
         report = &rep;

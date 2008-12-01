@@ -12,7 +12,11 @@
 namespace divine {
 namespace generator {
 
-extern wibble::sys::Mutex read_mutex;
+extern wibble::sys::Mutex *read_mutex;
+inline wibble::sys::Mutex &readMutex() {
+    assert( read_mutex );
+    return *read_mutex;
+}
 
 template< typename _State, typename system_t >
 struct Common {
@@ -75,7 +79,7 @@ struct Common {
     }
 
     void read( std::string path ) {
-        MutexLock __l( read_mutex );
+        MutexLock __l( readMutex() );
         legacy_system()->read( path.c_str() );
         file = path;
     }
@@ -90,10 +94,10 @@ struct Common {
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
+            MutexLock __l( readMutex() );
             m_system = new system_t;
             m_system->setAllocator( new BlobAllocator() );
             if ( !file.empty() ) {
-                MutexLock __l( read_mutex );
                 m_system->read( file.c_str() );
             }
         }
