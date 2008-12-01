@@ -8,7 +8,6 @@
 #include <divine/blob.h>
 #include <divine/fifo.h>
 #include <divine/generator.h>
-#include <divine/threading.h>
 
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H

@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/sys/thread.h>
-#include <divine/threading.h>
 #include <divine/fifo.h>
 #include <divine/blob.h>
 #include <divine/barrier.h>

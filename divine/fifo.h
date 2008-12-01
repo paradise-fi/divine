@@ -1,6 +1,5 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/threading.h> // for cacheLine
 #include <divine/blob.h> // for blobby fifos
 
 #ifndef DIVINE_FIFO_H
@@ -9,6 +8,8 @@
 namespace divine {
 // fixme?
 using namespace wibble::sys;
+
+const int cacheLine = 64;
 
 struct NoopMutex {
     void lock() {}
