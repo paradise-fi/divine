@@ -149,7 +149,7 @@ struct Common_ {
                 assert( seen().valid( _to ) );
                 // we do not want to release a state we are revisiting, that
                 // has already been in the table...
-                if ( alias( to, _to ) )
+                if ( !alias( to, _to ) )
                     m_graph.release( _to );
             }
             eact = S::expansion( m_notify, to );
