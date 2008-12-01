@@ -1,5 +1,5 @@
 #include <exception>
-#include <cassert>
+#include <wibble/test.h> // for assert
 
 #include "system/bymoc/bymoc_explicit_system.hh"
 #include "system/bymoc/bymoc_system.hh"
