@@ -4,7 +4,7 @@ add_custom_target( do-functional
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.dve .
   COMMAND sh ${CMAKE_SOURCE_DIR}/test/harness ${divine_BINARY_DIR}/tools ${tests}
 )
-add_dependencies( functional divine-mc )
+add_dependencies( do-functional divine-mc )
 add_dependencies( functional do-functional )
 add_dependencies( check functional )
 if( PROFILE )
