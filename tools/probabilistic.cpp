@@ -54,7 +54,7 @@ struct NoopMutex {
     void unlock() {}
 };
 
-typedef struct remote_state_t
+struct remote_state_t
 {
   state_t state;    // for forward reachibility
   state_ref_t ref; // reference to predecessor during the first reachibility after reference to state for backward reachibility
@@ -65,7 +65,7 @@ typedef struct remote_state_t
   int job; // job id later size of SCC corresponding to predecessor root
 };
 
-typedef struct remote_SCC_t
+struct remote_SCC_t
 {
   state_ref_t pred_root;
   int pred_root_id;
@@ -215,7 +215,7 @@ int  Working_set = -1;
 // locking variable
 bool system_locked = false;
 
-typedef struct padding_int_t
+struct padding_int_t
 {
 volatile int value;
 char padding[cacheLine - sizeof(int)];
@@ -228,7 +228,7 @@ vector<padding_int_t> synchronization_scc;
 vector<padding_int_t> synchronization_scc_graph;
 vector<padding_int_t> inicialization;
 
-typedef struct info_t
+struct info_t
 {
  int inset; //  set of the state in which we performe  the reachibility  (0 for first job we work on all state)
  int states; // number of visited states in corresponding job
@@ -244,7 +244,7 @@ typedef struct info_t
  queue<state_ref_t>* SCC_list;
 };
 
-typedef struct thread_state_ref_t
+struct thread_state_ref_t
 {
   state_ref_t state_ref;
   int thread_id; 
@@ -305,7 +305,7 @@ pthread_mutex_t mutex;
 
 
 // SCC representation
-typedef struct SCC_t
+struct SCC_t
 {
 state_ref_t root;
 int root_id;
@@ -348,7 +348,7 @@ int tmp_explored_state = 0;
 int tmp_eliminated_state = 0;
 int seeds = 0;
 
-typedef struct inicialization_info_t
+struct inicialization_info_t
 {
  int id;
  dve_prob_explicit_system_t* sys;
@@ -356,7 +356,7 @@ typedef struct inicialization_info_t
 vector<inicialization_info_t> inicialization_info;
 
 
-typedef struct prob_thread_state_ref_t
+struct prob_thread_state_ref_t
 {
   thread_state_ref_t thread_state_ref;
   prob_and_property_trans_t action; 
@@ -364,7 +364,7 @@ typedef struct prob_thread_state_ref_t
 
 
 
-typedef struct appendix_t 
+struct appendix_t 
 {
   int visited;  //visited in the correponding job 
   int inset;    // membership to the corresponding job
@@ -379,7 +379,7 @@ typedef struct appendix_t
   long double value;
 };
 
-typedef struct root_state_t
+struct root_state_t
 {
    state_ref_t ref;
    bool expanded;

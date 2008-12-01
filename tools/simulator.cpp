@@ -35,7 +35,7 @@ const char switch_interactive_in = 'I'; //similar to switch_in but not silent (p
 const char switch_vers           = 'v'; //switch of printing program version
 const char *getopt_string        = "hs:o:i:I:v"; //BE AWARE: this constant has to correspond to constants switch_*
 
-typedef struct var_print_t //structure about variable to show after each transition execution
+struct var_print_t //structure about variable to show after each transition execution
 { 
   char * name; //name of the variable in the source file
   std::size_t gid; //UID of the variable
