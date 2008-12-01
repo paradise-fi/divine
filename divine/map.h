@@ -1,11 +1,6 @@
-// -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/controller.h>
-#include <divine/visitor.h>
-#include <divine/observer.h>
-#include <divine/threading.h>
-#include <divine/algorithm.h>
-
+#if 0
 #ifndef DIVINE_MAP_H
 #define DIVINE_MAP_H
 
@@ -248,4 +243,5 @@ struct Map : Algorithm
 }
 }
 
+#endif
 #endif

@@ -1,11 +1,6 @@
-// -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/controller.h>
-#include <divine/visitor.h>
-#include <divine/observer.h>
-#include <divine/threading.h>
-#include <cmath>
-
+#if 0
 #ifndef DIVINE_NDFS_H
 #define DIVINE_NDFS_H
 
@@ -201,4 +196,5 @@ struct NestedDFS : Algorithm
 }
 }
 
+#endif
 #endif

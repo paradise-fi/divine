@@ -3,12 +3,15 @@
 #include <numeric>
 #include <cmath>
 #include <wibble/sys/mutex.h>
-#include <divine/state.h>
+#include <wibble/sfinae.h> // for Unit
 
 #ifndef DIVINE_HASHMAP_H
 #define DIVINE_HASHMAP_H
 
 namespace divine {
+
+using wibble::Unit;
+typedef uint32_t hash_t;
 
 // default hash implementation
 template< typename T >

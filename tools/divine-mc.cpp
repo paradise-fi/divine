@@ -13,9 +13,6 @@
 #include <divine/config.h>
 #include <divine/reachability.h>
 #include <divine/owcty.h>
-#include <divine/map.h>
-#include <divine/ndfs.h>
-#include <divine/ndfs-vcl.h>
 #include <divine/generator.h>
 
 #include <divine/report.h>
@@ -196,8 +193,8 @@ struct Main {
         }
 
         if ( o_trail->stringValue() == "" ) {
-            std::string t = string( input, 0,
-                                    input.rfind( '.' ) );
+            std::string t = std::string( input, 0,
+                                         input.rfind( '.' ) );
             t += ".trail";
             config.setTrailFile( t );
         } else

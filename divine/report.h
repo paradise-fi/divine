@@ -1,9 +1,5 @@
 // -*- C++ -*-
 
-#include <signal.h>
-#include <time.h>
-#include <sys/resource.h>
-
 #include <iomanip>
 #include <sstream>
 
@@ -11,6 +7,11 @@
 #include <wibble/regexp.h>
 #include <divine/config.h>
 #include <divine/version.h>
+
+#include <signal.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 #ifndef DIVINE_REPORT_H
 #define DIVINE_REPORT_H
