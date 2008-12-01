@@ -108,7 +108,7 @@ struct Common_ {
             if ( s.empty() ) {
                 // finished with s
                 Node hashed = seen().get( s.from() ).key;
-                if ( (!seen().valid( hashed )) || alias( hashed, s.from() ) )
+                if ( (!seen().valid( hashed )) || !alias( hashed, s.from() ) )
                     m_graph.release( s.from() );
                 m_queue.pop();
                 continue;
