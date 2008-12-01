@@ -72,8 +72,8 @@ macro( lcov_collect id )
 add_custom_target( lcov-collect-${id}
   COMMAND mkdir -p ${LCOV_RDIR}
   COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
-                  -o ${LCOV_RDIR}/collect-${id}.info
-  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters
+                  -o ${LCOV_RDIR}/collect-${id}.info || true
+  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters || true
 )
 endmacro( lcov_collect )
 
