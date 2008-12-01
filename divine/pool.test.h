@@ -59,13 +59,21 @@ struct TestPool {
         void *main()
         {
             limit = 32*1024;
+            int state = 0;
             for ( int i = 0; i < limit; ++i ) {
+                assert( state >= 0 );
                 if ( decide( i ) || ptrs.empty() ) {
+                    ++ state;
                     ptrs.push_back( pool().alloc( 32 ) );
                 } else {
+                    -- state;
                     pool().free( ptrs.front(), 32 );
                     ptrs.pop_front();
                 }
+            }
+            while ( !ptrs.empty() ) {
+                pool().free( ptrs.front(), 32 );
+                ptrs.pop_front();
             }
             return 0;
         }
