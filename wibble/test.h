@@ -12,17 +12,18 @@ extern int assertFailure;
 
 struct Location {
     const char *file;
-    int line;
+    int line, iteration;
     const char *stmt;
-    Location( const char *f, int l, const char *st )
-        : file( f ), line( l ), stmt( st ) {}
+    Location( const char *f, int l, const char *st, int iter = -1 )
+        : file( f ), line( l ), iteration( iter ), stmt( st ) {}
 };
 
 #ifndef NDEBUG
 #define LOCATION(stmt) Location( __FILE__, __LINE__, stmt )
+#define LOCATION_I(stmt, i) Location( __FILE__, __LINE__, stmt, i )
 #define assert(x) assert_fn( LOCATION( #x ), x )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
-#define assert_eq_l(i, x, y) assert_eq_fn( LOCATION( #x " == " #y ", iteration " + wibble::str::fmt( i ) ), x, y )
+#define assert_eq_l(i, x, y) assert_eq_fn( LOCATION_I( #x " == " #y, i ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
 #define assert_list_eq(x, y) \
     assert_list_eq_fn( LOCATION( #x " == " #y ), \
@@ -43,8 +44,10 @@ struct AssertFailed {
         : stream( s )
     {
         expect = assertFailure > 0;
-        str << l.file << ": " << l.line
-            << ": assertion `" << l.stmt << "' failed;";
+        str << l.file << ": " << l.line;
+        if ( l.iteration != -1 )
+            str << " (iteration " << l.iteration << ")";
+        str << ": assertion `" << l.stmt << "' failed;";
     }
 
     ~AssertFailed() {
