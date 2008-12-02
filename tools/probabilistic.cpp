@@ -27,7 +27,10 @@
 #include <map>
 #include <set>
 #include <stack>
-#include <divine/legacy/sevine.h>
+#include <divine/legacy/storage/explicit_storage.hh>
+#include <divine/legacy/system/dve/dve_prob_explicit_system.hh>
+#include <divine/legacy/common/sysinfo.hh>
+//#include <divine/legacy/sevine.h>
 #include <divine/version.h>
 #include <pthread.h>
 #include <assert.h>
