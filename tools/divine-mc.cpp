@@ -265,6 +265,9 @@ struct Main {
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
             return run< Algorithm< generator::NBymoc > >();
+        } else if ( str::endsWith( config.input(), ".so" ) ) {
+            config.setGenerator( "Custom" );
+            return run< Algorithm< generator::Custom > >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
             FIXME( "FATAL: Dummy generator currently not implemented." );

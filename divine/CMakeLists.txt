@@ -27,5 +27,6 @@ include_directories( ${divine_SOURCE_DIR} ${divine_BINARY_DIR} ${BOOST_INCLUDE_P
 add_library( divine STATIC
     ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
 wibble_add_test( divine-test ${testh} )
+target_link_libraries( divine dl )
 target_link_libraries( divine-test divine wibble )
 wibble_check_target( divine-test )

@@ -90,6 +90,10 @@ struct BlobAllocator : StateAllocator {
         return legacy_state( b, _ext );
     }
 
+    Blob new_blob( std::size_t size ) {
+        return Blob( alloc(), size + _ext );
+    }
+
     void delete_state( state_t &st ) {
         Blob a( st.ptr, true );
         a.free( alloc() );
