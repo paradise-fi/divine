@@ -56,6 +56,7 @@ if( NOT SHA1SUM )
 endif( NOT SHA1SUM )
 
 add_custom_target( check )
+add_custom_target( unit )
 add_custom_target( lcovd-unit )
 
 if( PROFILE )
