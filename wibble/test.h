@@ -13,8 +13,8 @@ extern int assertFailure;
 struct Location {
     const char *file;
     int line;
-    std::string stmt;
-    Location( const char *f, int l, std::string st )
+    const char *stmt;
+    Location( const char *f, int l, const char *st )
         : file( f ), line( l ), stmt( st ) {}
 };
 
