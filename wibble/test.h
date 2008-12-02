@@ -18,6 +18,7 @@ struct Location {
         : file( f ), line( l ), stmt( st ) {}
 };
 
+#ifndef NDEBUG
 #define LOCATION(stmt) Location( __FILE__, __LINE__, stmt )
 #define assert(x) assert_fn( LOCATION( #x ), x )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
@@ -26,6 +27,13 @@ struct Location {
 #define assert_list_eq(x, y) \
     assert_list_eq_fn( LOCATION( #x " == " #y ), \
                        sizeof( y ) / sizeof( y[0] ), x, y )
+#else
+#define assert(x)
+#define assert_eq(x, y)
+#define assert_eq_l(i, x, y)
+#define assert_neq(x, y)
+#define assert_list_eq(x, y)
+#endif
 
 struct AssertFailed {
     std::ostream &stream;
