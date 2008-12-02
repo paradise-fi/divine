@@ -47,6 +47,7 @@ sub dumpfile() {
     my $filecpp = $file;
     $filecpp =~ s/.test.h$/.cpp/;
     $filecpp =~ s,/,_,g;
+    print "#undef NDEBUG\n";
     print "#include \"$file\"\n";
     print "#define RUN(x,y) x().y()\n";
     
