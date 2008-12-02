@@ -183,7 +183,7 @@ bool copy_file(istream& fr, ostream& fw)
 	string s;
 	int stav = 0, i;
 
-	int npos = string::npos;
+	size_t npos = string::npos;
 
 	while (!fr.eof()) {
 		getline(fr, s);
