@@ -295,9 +295,7 @@ struct Custom {
         dl_get_state_size = (dl_get_state_size_t) dlsym(dl, "get_state_size");
 
         assert( dl_get_initial_state );
-        assert( dl_get_successors );
-        assert( dl_get_next_successor );
-        assert( dl_has_next_successor );
+        assert( dl_get_successor );
         assert( dl_get_state_size );
 
         size = dl_get_state_size();
