@@ -306,10 +306,6 @@ struct Custom {
         std::cerr << path << " loaded [size = " << size << "]..." << std::endl;
     }
 
-    void print_state( Node s, std::ostream &o = std::cerr ) {
-        o << "foo!";
-    }
-
     bool is_accepting( Node s ) {
         return false;
     }
