@@ -270,7 +270,7 @@ struct Main {
             return run< Algorithm< generator::Custom > >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
-            FIXME( "FATAL: Dummy generator currently not implemented." );
+            return run< Algorithm< generator::Dummy > >();
         } else
 	    die( "FATAL: Unknown input file extension." );
     }

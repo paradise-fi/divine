@@ -136,40 +136,39 @@ struct Bymoc : Common< _State, bymoc_explicit_system_t >
 typedef Dve< Blob > NDve;
 typedef Bymoc< Blob > NBymoc;
 
-template< typename _State >
 struct Dummy {
-    typedef _State State;
-    StateAllocator *m_alloc;
+    typedef std::pair< short, short > Content;
+    typedef Blob Node;
+    BlobAllocator *alloc;
 
-    static uint64_t data( State st ) {
-        return *reinterpret_cast< uint64_t * >( st.data() );
+    void setAllocator( StateAllocator *a ) {
+        alloc = dynamic_cast< BlobAllocator * >( a );
+        assert( alloc );
     }
 
-    static void setData( State st, uint64_t d ) {
-        *reinterpret_cast< uint64_t * >( st.data() ) = d;
-    }
-
-    void setAllocator( StateAllocator *a ) { m_alloc = a; }
-
-    State initial() {
-        State st = m_alloc->new_state( 8 );
-        setData( st, 0 );
-        return State( st.ptr, true );
+    Node initial() {
+        Blob b = alloc->new_blob( sizeof( Content ) );
+        b.get< Content >() = std::make_pair( 0, 0 );
+        return b;
     }
 
     struct Successors {
-        divine::StateAllocator *alloc;
-        State from;
+        divine::BlobAllocator *alloc;
+        Node _from;
         int nth;
-        Successors() : from( 0 ), nth( 1 ) {}
 
         int result() {
             return 0;
         }
 
         bool empty() {
-            return nth > 6;
+            Content f = _from.get< Content >();
+            if ( f.first == 1024 || f.second == 1024 )
+                return true;
+            return nth == 3;
         }
+
+        Node from() { return _from; }
 
         Successors tail() {
             Successors s = *this;
@@ -177,37 +176,41 @@ struct Dummy {
             return s;
         }
 
-        State head() {
-            State ret = alloc->new_state( 8 );
-            if ( nth <= 4 ) {
-                setData( ret, data( from ) > (8000 * 8000) ?
-                         data( from ) / 2 : data( from ) * 4 + nth );
-            } else {
-                setData( ret, data( from ) / 4 + nth );
-            }
+        Node head() {
+            Node ret = alloc->new_blob( sizeof( Content ) );
+            ret.get< Content >() = _from.get< Content >();
+            if ( nth == 1 )
+                ret.get< Content >().first ++;
+            if ( nth == 2 )
+                ret.get< Content >().second ++;
             return ret;
         }
     };
 
-    Successors successors( State st ) {
+    int stateSize() {
+        return sizeof( Content );
+    }
+
+    Successors successors( Node st ) {
         Successors ret;
-        ret.alloc = m_alloc;
-        ret.from = st;
+        ret.alloc = alloc;
+        ret._from = st;
+        ret.nth = 1;
         return ret;
     }
 
-    bool is_accepting( State s ) {
-        return false;
+    void release( Node s ) {
+        s.free( alloc->alloc() );
     }
 
-    void print_state( State st ) {
-        std::cout << data( st ) << std::endl;
+    bool is_accepting( Node s ) {
+        return false;
     }
 
     void read( std::string ) {}
 
-    explicit_system_t *legacy_system() {
-        return 0;
+    Dummy() {
+        alloc = new BlobAllocator( 0 );
     }
 };
 
