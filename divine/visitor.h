@@ -75,10 +75,9 @@ struct Stack {
     bool empty() { return m_stack.empty(); }
 };
 
-// the _ suffix is to avoid clashes with the old-style visitors
 template<
     template< typename > class Queue, typename S >
-struct Common_ {
+struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
     typedef typename S::Notify Notify;
@@ -162,7 +161,7 @@ struct Common_ {
         }
     }
 
-    Common_( Graph &g, Notify &n, Seen *s ) :
+    Common( Graph &g, Notify &n, Seen *s ) :
         m_graph( g ), m_notify( n ), m_seen( s )
     {
         if ( !m_seen )
@@ -171,17 +170,17 @@ struct Common_ {
 };
 
 template< typename S >
-struct BFV : Common_< Queue, S > {
+struct BFV : Common< Queue, S > {
     typedef typename S::Seen Seen;
     BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
-        : Common_< Queue, S >( g, n, s ) {}
+        : Common< Queue, S >( g, n, s ) {}
 };
 
 template< typename S >
-struct DFV : Common_< Stack, S > {
+struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
     DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
-        : Common_< Stack, S >( g, n, s ) {}
+        : Common< Stack, S >( g, n, s ) {}
 };
 
 template< typename S, typename Domain >
