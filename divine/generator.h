@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
+#include <wibble/sys/mutex.h>
+
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
 
@@ -85,7 +87,7 @@ struct Common {
     }
 
     void read( std::string path ) {
-        MutexLock __l( readMutex() );
+        wibble::sys::MutexLock __l( readMutex() );
         legacy_system()->read( path.c_str() );
         file = path;
     }
@@ -100,7 +102,7 @@ struct Common {
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
-            MutexLock __l( readMutex() );
+            wibble::sys::MutexLock __l( readMutex() );
             m_system = new system_t;
             m_system->setAllocator( alloc = new BlobAllocator() );
             if ( !file.empty() ) {
