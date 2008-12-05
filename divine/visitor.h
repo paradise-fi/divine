@@ -38,6 +38,15 @@ template<> bool alias< Blob >( Blob a, Blob b ) {
     return a.ptr == b.ptr;
 }
 
+template< typename T > bool disposable( T ) { return false; }
+template< typename T > void setDisposable( T ) {}
+
+template<> bool disposable( Blob b ) { return b.header().disposable; }
+template<> void setDisposable( Blob b ) {
+    if ( b.valid() )
+        b.header().disposable = 1;
+}
+
 template<
     typename G, // graph
     typename N, // notify
@@ -100,6 +109,12 @@ struct Common {
             std::pair< Node, Node > c = m_queue.next();
             visit( c.first, c.second );
             m_queue.pop();
+            while ( !m_queue.finishedEmpty() ) {
+                Node n = m_queue.nextFinished();
+                if ( disposable( n ) )
+                    m_graph.release( n );
+                m_queue.popFinished();
+            }
         }
     }
 
@@ -212,6 +227,7 @@ struct Parallel {
                 t = dom.fifo.front( true );
                 dom.fifo.pop();
 
+                setDisposable( f );
                 bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
                 bfv.visit();
             }
