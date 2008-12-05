@@ -103,6 +103,74 @@ struct Queue {
     Queue( Graph &_g ) : g( _g ) {}
 };
 
+template< typename Graph >
+struct BufferedQueue {
+    typedef typename Graph::Node Node;
+    Circular< Node, 64 > m_in;
+    Circular< Node, 512 > m_out;
+    std::deque< Node > m_queue;
+    Graph &g;
+
+    // TODO this should only be used as a fallback mechanism for graphs that do
+    // not implement fillCircular themselves... (therefore it also needs to be
+    // moved somewhere to an utility class for graphs)
+    template< typename C1, typename C2 >
+    void fillCircular( C1 &in, C2 &out ) {
+        while ( !in.empty() ) {
+            int i = 0;
+            typename Graph::Successors s = g.successors( in[ 0 ] );
+            while ( !s.empty() ) {
+                if ( out.space() < 2 ) {
+                    out.unadd( i );
+                    return;
+                }
+                out.add( s.from() );
+                out.add( s.head() );
+                s = s.tail();
+                ++ i;
+            }
+            in.drop( 1 );
+        }
+    }
+
+    void pushSuccessors( const Node &t )
+    {
+        if ( !m_in.full() ) {
+            m_in.add( t );
+        } else {
+            m_queue.push_back( t );
+        }
+    }
+
+    void fill() {
+        while ( !m_in.full() && !m_queue.empty() ) {
+            m_in.add( m_queue.front() );
+            m_queue.pop_front();
+        }
+        fillCircular( m_in, m_out );
+    }
+
+    std::pair< Node, Node > next() {
+        if ( m_out.empty() )
+            fill();
+        Node a = m_out[0],
+             b = m_out[1];
+        return std::make_pair( a, b );
+    }
+
+    bool empty() {
+        return m_out.empty() && m_in.empty() && m_queue.empty();
+    }
+
+    void pop() {
+        if ( m_out.empty() )
+            fill();
+        m_out.drop( 2 );
+    }
+
+    BufferedQueue( Graph &_g ) : g( _g ) {}
+};
+
 }
 
 #endif

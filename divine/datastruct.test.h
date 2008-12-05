@@ -32,9 +32,10 @@ struct TestDatastruct {
         assert_eq( *circ.last(), 7 );
     }
 
-    Test queue() {
+    template< template< typename > class Q >
+    void _queue() {
         generator::Dummy d;
-        Queue< generator::Dummy > q( d );
+        Q< generator::Dummy > q( d );
         assert( q.empty() );
         q.pushSuccessors( d.initial() );
         assert( !q.empty() );
@@ -45,26 +46,37 @@ struct TestDatastruct {
         q.pushSuccessors( d.initial() );
         q.pushSuccessors( q.next().second );
         assert( !q.empty() );
-        assert_eq( q.next().second.get< short >(), 1 );
-        assert_eq( q.next().second.get< short >( 2 ), 0 );
+        assert_eq( q.next().second.template get< short >(), 1 );
+        assert_eq( q.next().second.template get< short >( 2 ), 0 );
         assert( q.next().second == d.successors( d.initial() ).head() );
         q.pop();
-        assert_eq( q.next().second.get< short >(), 0 );
-        assert_eq( q.next().second.get< short >( 2 ), 1 );
+        assert( !q.empty() );
+        assert_eq( q.next().second.template get< short >(), 0 );
+        assert_eq( q.next().second.template get< short >( 2 ), 1 );
         assert( q.next().second
                 == d.successors( d.initial() ).tail().head() );
         q.pop();
-        assert_eq( q.next().second.get< short >(), 2 );
-        assert_eq( q.next().second.get< short >( 2 ), 0 );
+        assert( !q.empty() );
+        assert_eq( q.next().second.template get< short >(), 2 );
+        assert_eq( q.next().second.template get< short >( 2 ), 0 );
         assert( q.next().second
                 == d.successors( d.successors( d.initial() ).head() ).head() );
         q.pop();
-        assert_eq( q.next().second.get< short >(), 1 );
-        assert_eq( q.next().second.get< short >( 2 ), 1 );
+        assert( !q.empty() );
+        assert_eq( q.next().second.template get< short >(), 1 );
+        assert_eq( q.next().second.template get< short >( 2 ), 1 );
         assert( q.next().second
                 == d.successors(
                     d.successors( d.initial() ).head() ).tail().head() );
         q.pop();
         assert( q.empty() );
+    }
+
+    Test queue() {
+        _queue< Queue >();
+    }
+
+    Test bufferedQueue() {
+        _queue< BufferedQueue >();
     }
 };
