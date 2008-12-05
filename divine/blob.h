@@ -41,13 +41,15 @@ struct Blob
     template< typename A >
     Blob( A *a, int size ) {
         ptr = a->allocate( allocationSize( size ) );
-        setSize( size );
+        header().size = size;
+        header().disposable = 0;
     }
 
     explicit Blob( int size ) {
         Allocator< char > a;
         ptr = a.allocate( allocationSize( size ) );
-        setSize( size );
+        header().size = size;
+        header().disposable = 0;
     }
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
