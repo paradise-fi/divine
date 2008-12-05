@@ -123,7 +123,8 @@ struct Common {
         ExpansionAction eact;
 
         bool had = true;
-        Node to = seen().get( _to ).key;
+        hash_t hint = seen().hash( _to );
+        Node to = seen().get( _to, hint ).key;
 
         if ( alias( _to, to ) )
             assert( seen().valid( to ) );
@@ -138,7 +139,7 @@ struct Common {
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
             if ( !had )
-                seen().insert( to );
+                seen().insert( to, hint );
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.pushSuccessors( to );
