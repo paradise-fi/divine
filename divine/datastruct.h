@@ -56,6 +56,7 @@ struct Queue {
     Graph &g;
     typedef typename Graph::Node Node;
     std::deque< Node > m_queue;
+    std::deque< Node > m_finished;
     typename Graph::Successors m_head;
 
     void pushSuccessors( const Node &t )
@@ -69,8 +70,9 @@ struct Queue {
     }
 
     void checkHead() {
-        if ( m_head.empty() && !m_queue.empty() ) {
+        while ( m_head.empty() && !m_queue.empty() ) {
             m_head = g.successors( m_queue.front() );
+            m_finished.push_back( m_queue.front() );
             m_queue.pop_front();
         }
     }
@@ -79,6 +81,18 @@ struct Queue {
         checkHead();
         assert ( !empty() );
         return std::make_pair( m_head.from(), m_head.head() );
+    }
+
+    Node nextFinished() {
+        return m_finished.front();
+    }
+
+    void popFinished() {
+        m_finished.pop_front();
+    }
+
+    bool finishedEmpty() {
+        return m_finished.empty();
     }
 
     bool empty() {
