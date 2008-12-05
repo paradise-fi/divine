@@ -75,6 +75,10 @@ struct Blob
         return *reinterpret_cast< BlobHeader * >( pointer() );
     }
 
+    const BlobHeader &header() const {
+        return *reinterpret_cast< BlobHeader * >( pointer() );
+    }
+
     template< typename T >
     T &get( int off = 0 ) {
         return *reinterpret_cast< T * >( data() + off );
@@ -89,7 +93,7 @@ struct Blob
     void setSize( size_t size )
     {
         assert( size <= 0x3FFF );
-        *reinterpret_cast< uint16_t * >( pointer() ) = size;
+        header().size = size;
     }
 
     void clear( char pattern = 0 ) {
@@ -98,7 +102,7 @@ struct Blob
 
     size_t size() const
     {
-        return (*reinterpret_cast< uint16_t * >( pointer() )) & 0x3FFF;
+        return header().size;
     }
 
     static size_t allocationSize( size_t size )
