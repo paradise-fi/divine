@@ -160,7 +160,7 @@ struct HashMap
         return std::make_pair( Reference(), -2 );
     }
 
-    Reference mergeInsert( Item item, int thread, hash_t hint = 0 ) {
+    Reference mergeInsert( Item item, hash_t hint = 0 ) {
         while ( true ) {
             std::pair< Reference, int > r = _mergeInsert( item, m_keys,
                                                           m_values, hint );
@@ -189,14 +189,14 @@ struct HashMap
         }
     }
 
-    Reference insert( Key k, int thread = -1, hash_t hint = 0 )
+    Reference insert( Key k, hash_t hint = 0 )
     {
-        return mergeInsert( std::make_pair( k, Value() ), thread, hint );
+        return mergeInsert( std::make_pair( k, Value() ), hint );
     }
 
-    Reference insert( Item item, int thread = -1, hash_t hint = 0 )
+    Reference insert( Item item, hash_t hint = 0 )
     {
-        return mergeInsert( item, thread, hint );
+        return mergeInsert( item, hint );
     }
 
     bool has( Key k, hash_t hint = 0 )
