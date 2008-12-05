@@ -231,9 +231,9 @@ struct Custom {
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
 
-    dl_get_state_size_t dl_get_state_size;
     dl_get_initial_state_t dl_get_initial_state;
     dl_get_successor_t dl_get_successor;
+    dl_get_state_size_t dl_get_state_size;
 
     struct Successors {
         Node _from, my;
