@@ -28,7 +28,8 @@ namespace divine {
 typedef uint32_t hash_t;
 
 struct BlobHeader {
-    uint16_t size;
+    uint16_t size:15;
+    uint16_t disposable:1;
 };
 
 struct Blob
