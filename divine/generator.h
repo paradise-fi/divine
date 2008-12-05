@@ -38,6 +38,8 @@ struct Common {
         }
 
         bool empty() {
+            if ( !_from.valid() )
+                return true;
             return current == m_succs.size();
         }
 
@@ -162,6 +164,8 @@ struct Dummy {
         }
 
         bool empty() {
+            if ( !_from.valid() )
+                return true;
             Content f = _from.get< Content >();
             if ( f.first == 1024 || f.second == 1024 )
                 return true;
@@ -239,6 +243,8 @@ struct Custom {
         }
 
         bool empty() {
+            if ( !_from.valid() )
+                return true;
             force();
             return handle == 0;
         }

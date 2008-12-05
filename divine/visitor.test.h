@@ -22,16 +22,21 @@ struct TestVisitor {
                 int x = m * (_from - 1) + i + 1; return (x >= n ? 0 : x)+1;
             }
             bool empty() {
+                if ( n < 0 )
+                    return true;
                 // no multi-edges to 0 please
                 if ( i > 0 && m * (_from - 1) + i >= n )
                     return true;
                 return i >= m;
             }
+
             Successors tail() {
                 Successors next = *this;;
                 next.i ++;
                 return next;
             }
+
+            Successors() : n( -1 ) {}
         };
 
         void release( Node ) {}
@@ -330,6 +335,8 @@ struct TestVisitor {
             }
 
             bool empty() {
+                if ( n < 0 )
+                    return true;
                 // no multi-edges to 0 please
                 if ( i > 0 && m * _from + i >= n )
                     return true;
@@ -341,6 +348,8 @@ struct TestVisitor {
                 next.i ++;
                 return next;
             }
+
+            Successors() : n( -1 ) {}
         };
 
         void release( Node n ) {

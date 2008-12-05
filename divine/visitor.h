@@ -57,23 +57,52 @@ struct Setup {
     }
 };
 
-template< typename T >
+template< typename Graph >
 struct Queue {
-    std::deque< T > m_queue;
-    void push( const T &t ) { m_queue.push_back( t ); }
-    void pop() { m_queue.pop_front(); }
-    T &next() { return m_queue.front(); }
-    bool empty() { return m_queue.empty(); }
+    Graph &g;
+    typedef typename Graph::Node Node;
+    std::deque< Node > m_queue;
+    typename Graph::Successors m_head;
+
+    void pushSuccessors( const Node &t )
+    {
+        m_queue.push_back( t );
+    }
+
+    void pop() {
+        m_head = m_head.tail();
+        checkHead();
+    }
+
+    void checkHead() {
+        if ( m_head.empty() && !m_queue.empty() ) {
+            m_head = g.successors( m_queue.front() );
+            m_queue.pop_front();
+        }
+    }
+
+    std::pair< Node, Node > next() {
+        checkHead();
+        assert ( !empty() );
+        return std::make_pair( m_head.from(), m_head.head() );
+    }
+
+    bool empty() {
+        checkHead();
+        return m_head.empty() && m_queue.empty();
+    }
+
+    Queue( Graph &_g ) : g( _g ) {}
 };
 
-template< typename T >
+/* template< typename T >
 struct Stack {
     std::deque< T > m_stack;
     void push( const T &t ) { m_stack.push_back( t ); }
     void pop() { m_stack.pop_back(); }
     T &next() { return m_stack.back(); }
     bool empty() { return m_stack.empty(); }
-};
+    }; */
 
 template<
     template< typename > class Queue, typename S >
@@ -82,11 +111,11 @@ struct Common {
     typedef typename S::Node Node;
     typedef typename S::Notify Notify;
     typedef typename Graph::Successors Successors;
-    Queue< Successors > m_queue;
     typedef typename S::Seen Seen;
     Graph &m_graph;
     Notify &m_notify;
     Seen *m_seen;
+    Queue< Graph > m_queue;
 
     Seen &seen() {
         return *m_seen;
@@ -99,26 +128,15 @@ struct Common {
             return;
         seen().insert( initial );
         S::expansion( m_notify, initial );
-        m_queue.push( m_graph.successors( initial ) );
+        m_queue.pushSuccessors( initial );
         visit();
     }
 
     void visit() {
         while ( !m_queue.empty() ) {
-            Successors &s = m_queue.next();
-            if ( s.empty() ) {
-                // finished with s
-                Node hashed = seen().get( s.from() ).key;
-                if ( (!seen().valid( hashed )) || !alias( hashed, s.from() ) )
-                    m_graph.release( s.from() );
-                m_queue.pop();
-                continue;
-            } else {
-                Node current = s.head();
-                s = s.tail();
-
-                visit( s.from(), current );
-            }
+            std::pair< Node, Node > c = m_queue.next();
+            visit( c.first, c.second );
+            m_queue.pop();
         }
     }
 
@@ -145,7 +163,7 @@ struct Common {
                 seen().insert( to );
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
-                m_queue.push( m_graph.successors( to ) );
+                m_queue.pushSuccessors( to );
         }
 
         if ( tact != IgnoreTransition && had ) {
@@ -162,7 +180,7 @@ struct Common {
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :
-        m_graph( g ), m_notify( n ), m_seen( s )
+        m_graph( g ), m_notify( n ), m_seen( s ), m_queue( g )
     {
         if ( !m_seen )
             m_seen = new Seen();
@@ -176,12 +194,12 @@ struct BFV : Common< Queue, S > {
         : Common< Queue, S >( g, n, s ) {}
 };
 
-template< typename S >
+/* template< typename S >
 struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
     DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
         : Common< Stack, S >( g, n, s ) {}
-};
+        }; */
 
 template< typename S, typename Domain >
 struct Parallel {
