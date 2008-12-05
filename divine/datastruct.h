@@ -11,19 +11,13 @@ namespace divine {
 template< typename T, int size >
 struct Circular {
     T items[ size ];
-    int _first, _count;
+    int _count, _first;
 
-    T *start() {
-        return items;
-    }
-
-    T *first() {
-        return items + _first;
-    }
-
-    T *last() {
-        return items + (_first + _count - 1) % size;
-    }
+    T *start() { return items; }
+    T *nth( int i ) { return items + (_first + i) % size; }
+    T *first() { return nth( 0 ); }
+    T *last() { return nth( _count - 1 ); }
+    T &operator[]( int i ) { return *nth( i ); }
 
     void add( T t ) {
         assert( _count < size );
@@ -31,8 +25,16 @@ struct Circular {
         *last() = t;
     }
 
+    int space() {
+        return size - _count;
+    }
+
     bool full() {
         return _count == size;
+    }
+
+    bool empty() {
+        return !_count;
     }
 
     void drop( int n ) {
@@ -40,6 +42,10 @@ struct Circular {
         _first += n;
         _count -= n;
         _first %= size;
+    }
+
+    void unadd( int n ) {
+        _count -= n;
     }
 
     Circular() : _count( 0 ), _first( 0 ) {}
