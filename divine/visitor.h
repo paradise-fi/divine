@@ -8,6 +8,7 @@
 #include <divine/blob.h>
 #include <divine/fifo.h>
 #include <divine/generator.h>
+#include <divine/datastruct.h>
 
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H
@@ -55,44 +56,6 @@ struct Setup {
     static ExpansionAction expansion( Notify &n, Node a ) {
         return (n.*exp)( a );
     }
-};
-
-template< typename Graph >
-struct Queue {
-    Graph &g;
-    typedef typename Graph::Node Node;
-    std::deque< Node > m_queue;
-    typename Graph::Successors m_head;
-
-    void pushSuccessors( const Node &t )
-    {
-        m_queue.push_back( t );
-    }
-
-    void pop() {
-        m_head = m_head.tail();
-        checkHead();
-    }
-
-    void checkHead() {
-        if ( m_head.empty() && !m_queue.empty() ) {
-            m_head = g.successors( m_queue.front() );
-            m_queue.pop_front();
-        }
-    }
-
-    std::pair< Node, Node > next() {
-        checkHead();
-        assert ( !empty() );
-        return std::make_pair( m_head.from(), m_head.head() );
-    }
-
-    bool empty() {
-        checkHead();
-        return m_head.empty() && m_queue.empty();
-    }
-
-    Queue( Graph &_g ) : g( _g ) {}
 };
 
 /* template< typename T >
