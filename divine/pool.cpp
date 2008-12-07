@@ -21,6 +21,7 @@ Pool::~Pool() {
     GlobalPools::remove( this );
 }
 
+#ifndef DISABLE_POOLS
 size_t Pool::peakAllocation() {
     size_t total = 0;
     Groups::iterator i;
@@ -55,6 +56,7 @@ std::ostream &operator<<( std::ostream &o, const Pool &p )
     }
     return o;
 }
+#endif
 
 GlobalPools &GlobalPools::instance() {
     if ( s_instance )

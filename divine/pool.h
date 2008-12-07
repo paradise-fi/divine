@@ -8,7 +8,33 @@
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
 
+
 namespace divine {
+
+#ifdef DISABLE_POOLS
+struct Pool {
+
+    Pool();
+    Pool( const Pool & );
+    ~Pool();
+
+    char *alloc( size_t s ) {
+        return new char[ s ];
+    }
+
+    template< typename T >
+    void free( T *_ptr, size_t size = 0 )
+    {
+        delete[] static_cast< char * >( _ptr );
+    }
+
+    template< typename T >
+    void steal( T *_ptr, size_t size = 0 ) {
+        delete[] static_cast< char * >( _ptr );
+    }
+};
+
+#else
 
 struct Pool {
     struct Block
@@ -179,6 +205,8 @@ struct Pool {
     }
 };
 
+#endif
+
 std::ostream &operator<<( std::ostream &o, const Pool &p );
 
 struct GlobalPools {
@@ -283,7 +311,9 @@ namespace std {
 template<>
 inline void swap< divine::Pool >( divine::Pool &a, divine::Pool &b )
 {
+#ifndef DISABLE_POOLS
     swap( a.m_groups, b.m_groups );
+#endif
 }
 
 }

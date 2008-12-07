@@ -19,6 +19,7 @@ endmacro(appendFlag)
 
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
+option( POOLS "use pool allocation for graph vertices" ON )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 
@@ -34,6 +35,10 @@ endif( USE64 )
 if( USE32 )
   appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m32" )
 endif( USE32 )
+
+if( NOT POOLS )
+  add_definitions( "-DDISABLE_POOLS" )
+endif( NOT POOLS )
 
 include( CheckCXXSourceCompiles )
 check_cxx_source_compiles(
