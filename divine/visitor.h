@@ -219,7 +219,6 @@ struct Parallel {
                 t = dom.fifo.front( true );
                 dom.fifo.pop();
 
-                setDisposable( f );
                 bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
                 bfv.visit();
             }
