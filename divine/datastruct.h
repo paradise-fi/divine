@@ -95,6 +95,7 @@ struct BufferedQueue {
     Circular< Node, 64 > m_in;
     Circular< Node, 512 > m_out;
     std::deque< Node > m_queue;
+    std::deque< Node > m_finished;
     Graph &g;
 
     // TODO this should only be used as a fallback mechanism for graphs that do
@@ -102,6 +103,7 @@ struct BufferedQueue {
     // moved somewhere to an utility class for graphs)
     template< typename C1, typename C2 >
     void fillCircular( C1 &in, C2 &out ) {
+        assert_eq( out.space(), out.size() );
         while ( !in.empty() ) {
             int i = 0;
             typename Graph::Successors s = g.successors( in[ 0 ] );
@@ -113,7 +115,7 @@ struct BufferedQueue {
                 out.add( s.from() );
                 out.add( s.head() );
                 s = s.tail();
-                ++ i;
+                i += 2;
             }
             in.drop( 1 );
         }
@@ -128,7 +130,9 @@ struct BufferedQueue {
         }
     }
 
-    void fill() {
+    void checkFilled() {
+        if ( m_out.count() >= 2 )
+            return;
         while ( !m_in.full() && !m_queue.empty() ) {
             m_in.add( m_queue.front() );
             m_queue.pop_front();
@@ -137,22 +141,26 @@ struct BufferedQueue {
     }
 
     std::pair< Node, Node > next() {
-        if ( m_out.empty() )
-            fill();
+        checkFilled();
         Node a = m_out[0],
              b = m_out[1];
         return std::make_pair( a, b );
     }
 
     bool empty() {
-        return m_out.empty() && m_in.empty() && m_queue.empty();
+        checkFilled();
+        return m_out.empty();
     }
 
     void pop() {
-        if ( m_out.empty() )
-            fill();
+        checkFilled();
         m_out.drop( 2 );
+        checkFilled();
     }
+
+    Node nextFinished() { return m_finished.front(); }
+    void popFinished() { m_finished.pop_front(); }
+    bool finishedEmpty() { return m_finished.empty(); }
 
     BufferedQueue( Graph &_g ) : g( _g ) {}
 };
