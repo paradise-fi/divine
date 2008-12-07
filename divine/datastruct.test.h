@@ -79,4 +79,62 @@ struct TestDatastruct {
     Test bufferedQueue() {
         _queue< BufferedQueue >();
     }
+
+    Test stack() {
+        generator::Dummy d;
+        Stack< generator::Dummy > q( d );
+        assert( q.empty() );
+        q.pushSuccessors( d.initial() );
+        assert( !q.empty() );
+        q.pop();
+        assert( !q.empty() );
+        q.pop();
+        assert( q.empty() );
+
+        q.pushSuccessors( d.initial() );
+        q.pushSuccessors( q.next().second );
+
+        // 2, 0, from 1, 0
+        assert( !q.empty() );
+        assert_eq( q.next().first.get< short >(), 1 );
+        assert_eq( q.next().first.get< short >( 2 ), 0 );
+        assert_eq( q.next().second.get< short >(), 2 );
+        assert_eq( q.next().second.get< short >( 2 ), 0 );
+        assert( q.next().second
+                == d.successors( d.successors( d.initial() ).head() ).head() );
+        q.pop();
+
+        // 1, 1, from 1, 0
+        assert( !q.empty() );
+        assert_eq( q.next().first.get< short >(), 1 );
+        assert_eq( q.next().first.get< short >( 2 ), 0 );
+        assert_eq( q.next().second.get< short >(), 1 );
+        assert_eq( q.next().second.get< short >( 2 ), 1 );
+        assert( q.next().second
+                == d.successors(
+                    d.successors( d.initial() ).head() ).tail().head() );
+        q.pop();
+
+        // 1, 0, from 0, 0
+        assert( !q.empty() );
+        assert_eq( q.next().first.get< short >(), 0 );
+        assert_eq( q.next().first.get< short >( 2 ), 0 );
+        assert_eq( q.next().second.get< short >(), 1 );
+        assert_eq( q.next().second.get< short >( 2 ), 0 );
+        assert( q.next().second == d.successors( d.initial() ).head() );
+        q.pop();
+
+        // 0, 1, from 0, 0
+        assert( !q.empty() );
+        assert_eq( q.next().first.get< short >(), 0 );
+        assert_eq( q.next().first.get< short >( 2 ), 0 );
+        assert_eq( q.next().second.get< short >(), 0 );
+        assert_eq( q.next().second.get< short >( 2 ), 1 );
+        assert( q.next().second
+                == d.successors( d.initial() ).tail().head() );
+        q.pop();
+
+        assert( q.empty() );
+    }
+
 };

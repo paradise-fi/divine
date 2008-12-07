@@ -67,15 +67,6 @@ struct Setup {
     }
 };
 
-/* template< typename T >
-struct Stack {
-    std::deque< T > m_stack;
-    void push( const T &t ) { m_stack.push_back( t ); }
-    void pop() { m_stack.pop_back(); }
-    T &next() { return m_stack.back(); }
-    bool empty() { return m_stack.empty(); }
-    }; */
-
 template<
     template< typename > class Queue, typename S >
 struct Common {

@@ -83,17 +83,9 @@ struct Queue {
         return std::make_pair( m_head.from(), m_head.head() );
     }
 
-    Node nextFinished() {
-        return m_finished.front();
-    }
-
-    void popFinished() {
-        m_finished.pop_front();
-    }
-
-    bool finishedEmpty() {
-        return m_finished.empty();
-    }
+    Node nextFinished() { return m_finished.front(); }
+    void popFinished() { m_finished.pop_front(); }
+    bool finishedEmpty() { return m_finished.empty(); }
 
     bool empty() {
         checkHead();
@@ -169,6 +161,59 @@ struct BufferedQueue {
     }
 
     BufferedQueue( Graph &_g ) : g( _g ) {}
+};
+
+template< typename Graph >
+struct Stack {
+    Graph &g;
+    typedef typename Graph::Node Node;
+    std::deque< typename Graph::Successors > m_stack;
+    std::deque< Node > m_finished;
+
+    int pushes, pops;
+
+    void pushSuccessors( Node t ) {
+        m_stack.push_back( g.successors( t ) );
+        typename Graph::Successors s = g.successors( t );
+        while ( !s.empty() ) {
+            ++ pushes;
+            s = s.tail();
+        }
+    }
+
+    void checkTop() {
+        while ( !m_stack.empty() && m_stack.back().empty() ) {
+            m_finished.push_back( m_stack.back().from() );
+            m_stack.pop_back();
+        }
+    }
+
+    void pop() {
+        checkTop();
+        assert( !empty() );
+        assert( !m_stack.back().empty() );
+        m_stack.back() = m_stack.back().tail();
+        checkTop();
+        ++ pops;
+        assert( pops <= pushes );
+    }
+
+    std::pair< Node, Node > next() {
+        assert( !empty() );
+        checkTop();
+        return std::make_pair( m_stack.back().from(), m_stack.back().head() );
+    }
+
+    bool empty() {
+        checkTop();
+        return m_stack.empty();
+    }
+
+    Node nextFinished() { return m_finished.front(); }
+    void popFinished() { m_finished.pop_front(); }
+    bool finishedEmpty() { return m_finished.empty(); }
+
+    Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
 };
 
 }
