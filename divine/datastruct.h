@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // assert
+#include <wibble/sfinae.h>
 
 #include <deque>
 
@@ -7,6 +8,46 @@
 #define DIVINE_DATASTRUCT_H
 
 namespace divine {
+
+template< typename T, typename Enable = wibble::Unit >
+struct HasCircular {
+    static const bool value = false;
+};
+
+template< typename T >
+struct HasCircular< T, typename T::CircularSupport > {
+    static const bool value = true;
+};
+
+template< typename G, typename C1, typename C2 >
+typename wibble::EnableIf< HasCircular< G > >::T
+fillCircular( G &g, C1 &in, C2 &out ) {
+    g.fillCircular( in, out );
+    return wibble::Unit();
+}
+
+template< typename G, typename C1, typename C2 >
+typename wibble::EnableIf< wibble::TNot< HasCircular< G > > >::T
+fillCircular( G &g, C1 &in, C2 &out )
+{
+    assert_eq( out.space(), out.size() );
+    while ( !in.empty() ) {
+        int i = 0;
+        typename G::Successors s = g.successors( in[ 0 ] );
+        while ( !s.empty() ) {
+            if ( out.space() < 2 ) {
+                out.unadd( i );
+                return wibble::Unit();
+            }
+            out.add( s.from() );
+            out.add( s.head() );
+            s = s.tail();
+            i += 2;
+        }
+        in.drop( 1 );
+    }
+    return wibble::Unit();
+}
 
 template< typename T, int _size >
 struct Circular {
@@ -98,29 +139,6 @@ struct BufferedQueue {
     std::deque< Node > m_finished;
     Graph &g;
 
-    // TODO this should only be used as a fallback mechanism for graphs that do
-    // not implement fillCircular themselves... (therefore it also needs to be
-    // moved somewhere to an utility class for graphs)
-    template< typename C1, typename C2 >
-    void fillCircular( C1 &in, C2 &out ) {
-        assert_eq( out.space(), out.size() );
-        while ( !in.empty() ) {
-            int i = 0;
-            typename Graph::Successors s = g.successors( in[ 0 ] );
-            while ( !s.empty() ) {
-                if ( out.space() < 2 ) {
-                    out.unadd( i );
-                    return;
-                }
-                out.add( s.from() );
-                out.add( s.head() );
-                s = s.tail();
-                i += 2;
-            }
-            in.drop( 1 );
-        }
-    }
-
     void pushSuccessors( const Node &t )
     {
         if ( !m_in.full() ) {
@@ -137,7 +155,7 @@ struct BufferedQueue {
             m_in.add( m_queue.front() );
             m_queue.pop_front();
         }
-        fillCircular( m_in, m_out );
+        fillCircular( g, m_in, m_out );
     }
 
     std::pair< Node, Node > next() {
