@@ -98,8 +98,8 @@ struct Common {
     void visit() {
         while ( !m_queue.empty() ) {
             std::pair< Node, Node > c = m_queue.next();
-            visit( c.first, c.second );
             m_queue.pop();
+            visit( c.first, c.second );
             while ( !m_queue.finishedEmpty() ) {
                 Node n = m_queue.nextFinished();
                 if ( disposable( n ) )
@@ -164,12 +164,12 @@ struct BFV : Common< Queue, S > {
         : Common< Queue, S >( g, n, s ) {}
 };
 
-/* template< typename S >
+template< typename S >
 struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
     DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
         : Common< Stack, S >( g, n, s ) {}
-        }; */
+}; 
 
 template< typename S, typename Domain >
 struct Parallel {
