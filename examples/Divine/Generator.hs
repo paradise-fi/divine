@@ -13,9 +13,7 @@ module Divine.Generator (
     ffi_initialState,
     ffi_getSuccessor,
     ffi_getManySuccessors,
-    ffi_getStateSize,
-    numerate',
-    numerate
+    ffi_getStateSize
     ) where
 
 import qualified Data.ByteString as B
@@ -38,13 +36,13 @@ import Data.Array
 data System state trans =
     System
     { initialState :: state
-    , getSuccessor :: state -> Int -> (state, Int)
+    , getSuccessor :: state -> [state]
     }
 
 -- | User-level System constructor
 mkSystem ::
     state ->
-    (state -> Int -> (state, Int)) ->
+    (state -> [state]) ->
     System state trans
 mkSystem initialState getSuccessor =
     System
@@ -94,7 +92,7 @@ ffi_getSuccessor :: forall state trans. (Show state, Storable state)
                         CInt -> Ptr state -> Ptr state -> IO CInt
 ffi_getSuccessor system handle from to = do
   from' <- peek from
-  let (res, i) = getSuccessor system from' (fromIntegral handle)
+  let (res, i) = (numerate' $ getSuccessor system) from' (fromIntegral handle)
   unless (i == 0) $ poke to res
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}

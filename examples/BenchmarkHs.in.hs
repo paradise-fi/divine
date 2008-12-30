@@ -30,18 +30,9 @@ instance Storable MyState where
 mysystem :: System MyState ()
 mysystem =
     let initialState = MyState 0 0
-        succ (MyState a b) | a < 1024 && b < 1024 =
-                               [MyState (a + 1) b, MyState a (b + 1)]
-                           | otherwise = []
-        getSuccessor :: MyState -> Int -> (MyState, Int)
-        getSuccessor = numerate' succ
-	{- getSuccessor (MyState a b) i | a < 1024 && b < 1024
-            = case i of
-                1 -> (MyState (a + 1) b, 2)
-                2 -> (MyState a (b + 1), 3)
-                3 -> (undefined, 0)
-                x -> error $ "bad successor handle " ++ show x
-            | otherwise = (undefined, 0) -}
+        getSuccessor (MyState a b) | a < 1024 && b < 1024 =
+                                       [MyState (a + 1) b, MyState a (b + 1)]
+                                   | otherwise = []
     in
 	mkSystem initialState getSuccessor
 
