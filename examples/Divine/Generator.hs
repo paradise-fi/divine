@@ -16,6 +16,7 @@ module Divine.Generator (
     ffi_getStateSize
     ) where
 
+import Prelude hiding ( last, drop )
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as BU
 import qualified Data.ByteString.Lazy as L
@@ -55,8 +56,45 @@ mkSystem initialState getSuccessor =
 --
 
 data Circular a = Circular { size :: CInt, count :: CInt,
-                             first :: CInt, _items :: Ptr a }
+                             first :: CInt, _items :: Ptr a } deriving Show
 type Blob = Ptr ()
+
+makeBlob :: forall x. (Storable x) => x -> IO Blob
+makeBlob a = do m <- mallocBytes $ size + header
+                poke (castPtr m) (fromIntegral size :: CShort)
+                pokeBlob m a
+                return m
+    where size = sizeOf (undefined :: x)
+          header = sizeOf (undefined :: CShort)
+
+pokeBlob :: (Storable y) => Blob -> y -> IO ()
+pokeBlob blob v = pokeByteOff blob 2 v
+
+peekBlob :: (Storable y) => Blob -> IO y
+peekBlob blob = peekByteOff blob 2
+
+nth :: forall a. (Storable a) => Circular a -> Int -> Ptr a
+nth c i = plusPtr (_items c) (((f + i) `mod` sz) * one)
+    where one = sizeOf (undefined :: a)
+          sz = fromIntegral $ size c
+          f = fromIntegral $ first c
+
+last :: forall a. (Storable a) => Circular a -> Ptr a
+last c = nth c $ fromIntegral $ count c - 1
+
+chCount :: (CInt -> CInt) -> Circular a -> Circular a
+chCount f x = x { count = f $ count x }
+
+add :: (Storable a) => a -> Ptr (Circular a) -> IO ()
+add a c = do x <- chCount (+1) `fmap` peek c
+             poke c x
+             -- putStrLn $ "poking into slot " ++ show (last x)
+             poke (last x) a
+
+drop :: (Storable a) => Ptr (Circular a) -> IO ()
+drop c = do x <- peek c
+            poke c $ x { count = count x - 1,
+                         first = (first x + 1) `mod` size x }
 
 instance (Storable a) => (Storable (Circular a)) where
     peek p = do s <- peekElemOff (castPtr p) 0
@@ -64,15 +102,17 @@ instance (Storable a) => (Storable (Circular a)) where
                 f <- peekElemOff (castPtr p) 2
                 let i = plusPtr p $ 3 * sizeOf (undefined :: CInt)
                 return Circular { size = s, count = c, first = f, _items = i }
+    poke p c = do pokeElemOff (castPtr p) 0 (size c)
+                  pokeElemOff (castPtr p) 1 (count c)
+                  pokeElemOff (castPtr p) 2 (first c)
+                  return ()
+    sizeOf _ = 3 * sizeOf (undefined :: CInt) + sizeOf (undefined :: Ptr ())
 
 item :: forall a. (Storable a) => Circular a -> Int -> Ptr a
 item c i = plusPtr (_items c) (i * sizeOf (undefined :: a))
 
 peekNth :: (Storable a) => Circular a -> Int -> IO a
 peekNth c i = peekElemOff (_items c) i
-
-pokeBlob :: (Storable y) => Blob -> y -> IO ()
-pokeBlob blob v = pokeByteOff blob 2 v
 
 -- ffi_getManySuccessors system from to =
 
@@ -97,13 +137,24 @@ ffi_getSuccessor system handle from to = do
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 
-ffi_getManySuccessors :: (System state trans) ->
+ffi_getManySuccessors :: forall state trans. (Storable state) =>
+                         (System state trans) ->
                          Ptr (Circular Blob) -> Ptr (Circular Blob) -> IO ()
 ffi_getManySuccessors system from to = do
-  f <- peek from
-  t <- peek to
-  print (size f, count f, first f)
-  print (size t, count t, first t)
+  -- peek from >>= print
+  -- peek to >>= print
+  fromQ :: Circular Blob <- peek from
+  from' :: Blob <- peekNth fromQ (fromIntegral $ first fromQ)
+  fromSt <- peekBlob from'
+  drop from
+  sequence [ do b <- makeBlob x
+                putStrLn $ "adding " ++ show b
+                add from' to
+                add b to
+             | x <- getSuccessor system fromSt ]
+  peek from >>= print
+  -- peek to >>= print
+  return ()
 
 instance Storable () where
     sizeOf _ = 0
