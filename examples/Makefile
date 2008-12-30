@@ -10,8 +10,7 @@ DRIFT=DrIFT
 
 all: BenchmarkHs.so BenchmarkC.so
 
-BenchmarkHs.o: Divine/Generator.hs
-BenchmarkHs.so: Divine/Generator.hs
+BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs
 
 # We should use -fPIC here, but GHC manual says it doesn't quite work on x86
 # Linux yet (5.10.6).

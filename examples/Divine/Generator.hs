@@ -16,22 +16,15 @@ module Divine.Generator (
     ffi_getStateSize
     ) where
 
-import Prelude hiding ( last, drop )
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Unsafe as BU
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy.Char8 as C
-import Data.Binary
-import Data.IORef
+import qualified Divine.Circular as C
+import Divine.Blob
 import Foreign.Ptr
 import Foreign.C.Types
 import Foreign.C.String
-import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
 import Foreign.Storable
-import Foreign.StablePtr
-import Control.Monad
 import Data.Array
+import Control.Monad( unless )
 
 -- | The system datatype.
 data System state trans =
@@ -54,66 +47,6 @@ mkSystem initialState getSuccessor =
 --
 -- FFI interface
 --
-
-data Circular a = Circular { size :: CInt, count :: CInt,
-                             first :: CInt, _items :: Ptr a } deriving Show
-type Blob = Ptr ()
-
-space c = size c - count c
-
-makeBlob :: forall x. (Storable x) => x -> IO Blob
-makeBlob a = do m <- mallocBytes $ size + header
-                poke (castPtr m) (fromIntegral size :: CShort)
-                pokeBlob m a
-                return m
-    where size = sizeOf (undefined :: x)
-          header = sizeOf (undefined :: CShort)
-
-pokeBlob :: (Storable y) => Blob -> y -> IO ()
-pokeBlob blob v = pokeByteOff blob 2 v
-
-peekBlob :: (Storable y) => Blob -> IO y
-peekBlob blob = peekByteOff blob 2
-
-nth :: forall a. (Storable a) => Circular a -> Int -> Ptr a
-nth c i = plusPtr (_items c) (((f + i) `mod` sz) * one)
-    where one = sizeOf (undefined :: a)
-          sz = fromIntegral $ size c
-          f = fromIntegral $ first c
-
-last :: forall a. (Storable a) => Circular a -> Ptr a
-last c = nth c $ fromIntegral $ count c - 1
-
-chCount :: (CInt -> CInt) -> Circular a -> Circular a
-chCount f x = x { count = f $ count x }
-
-add :: (Storable a) => a -> Ptr (Circular a) -> IO ()
-add a c = do x <- chCount (+1) `fmap` peek c
-             poke c x
-             poke (last x) a
-
-drop :: (Storable a) => Ptr (Circular a) -> IO ()
-drop c = do x <- peek c
-            poke c $ x { count = count x - 1,
-                         first = (first x + 1) `mod` size x }
-
-instance (Storable a) => (Storable (Circular a)) where
-    peek p = do s <- peekElemOff (castPtr p) 0
-                c <- peekElemOff (castPtr p) 1
-                f <- peekElemOff (castPtr p) 2
-                let i = plusPtr p $ 3 * sizeOf (undefined :: CInt)
-                return Circular { size = s, count = c, first = f, _items = i }
-    poke p c = do pokeElemOff (castPtr p) 0 (size c)
-                  pokeElemOff (castPtr p) 1 (count c)
-                  pokeElemOff (castPtr p) 2 (first c)
-                  return ()
-    sizeOf _ = 3 * sizeOf (undefined :: CInt) + sizeOf (undefined :: Ptr ())
-
-item :: forall a. (Storable a) => Circular a -> Int -> Ptr a
-item c i = plusPtr (_items c) (i * sizeOf (undefined :: a))
-
-peekNth :: (Storable a) => Circular a -> Int -> IO a
-peekNth c i = peekElemOff (_items c) i
 
 ffi_getStateSize :: forall state trans. (Storable state) => System state trans -> IO CSize
 ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: state)
@@ -138,24 +71,24 @@ ffi_getSuccessor system handle from to = do
 
 ffi_getManySuccessors :: forall state trans. (Storable state) =>
                          (System state trans) ->
-                         Ptr (Circular Blob) -> Ptr (Circular Blob) -> IO ()
+                         Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
 ffi_getManySuccessors system from to = do
   gen
   return ()
   where gen' q = do 
-          from' :: Blob <- peekNth q (fromIntegral $ first q)
+          from' :: Blob <- C.peekNth q (fromIntegral $ C.first q)
           fromSt <- peekBlob from'
-          drop from
+          C.drop from
           sequence [ do b <- makeBlob x
-                        add from' to
-                        add b to
+                        C.add from' to
+                        C.add b to
                      | x <- getSuccessor system fromSt ]
           gen
         gen = do
-          fromQ :: Circular Blob <- peek from
-          toQ :: Circular Blob <- peek to
+          fromQ :: C.Circular Blob <- peek from
+          toQ :: C.Circular Blob <- peek to
           -- FIXME hardcoded 2
-          if count fromQ > 0 && space toQ >= 2 then gen' fromQ else return ()
+          if C.count fromQ > 0 && C.space toQ >= 2 then gen' fromQ else return ()
 
 instance Storable () where
     sizeOf _ = 0
