@@ -20,15 +20,7 @@ struct HasCircular< T, typename T::CircularSupport > {
 };
 
 template< typename G, typename C1, typename C2 >
-typename wibble::EnableIf< HasCircular< G > >::T
-fillCircular( G &g, C1 &in, C2 &out ) {
-    g.fillCircular( in, out );
-    return wibble::Unit();
-}
-
-template< typename G, typename C1, typename C2 >
-typename wibble::EnableIf< wibble::TNot< HasCircular< G > > >::T
-fillCircular( G &g, C1 &in, C2 &out )
+wibble::Unit fillCircularTedious( G &g, C1 &in, C2 &out )
 {
     assert_eq( out.space(), out.size() );
     while ( !in.empty() ) {
@@ -47,6 +39,20 @@ fillCircular( G &g, C1 &in, C2 &out )
         in.drop( 1 );
     }
     return wibble::Unit();
+}
+
+template< typename G, typename C1, typename C2 >
+typename wibble::EnableIf< HasCircular< G > >::T
+fillCircular( G &g, C1 &in, C2 &out ) {
+    g.fillCircular( in, out );
+    return wibble::Unit();
+}
+
+template< typename G, typename C1, typename C2 >
+typename wibble::EnableIf< wibble::TNot< HasCircular< G > > >::T
+fillCircular( G &g, C1 &in, C2 &out )
+{
+    return fillCircularTedious( g, in, out );
 }
 
 template< typename T, int _size >

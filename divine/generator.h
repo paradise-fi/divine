@@ -289,9 +289,12 @@ struct Custom {
     template< typename C1, typename C2 >
     void fillCircular( C1 &in, C2 &out )
     {
-        if( in.empty() )
+        if ( in.empty() )
             return;
-        dl_get_many_successors( (char*) &in, (char*) &out );
+        if ( dl_get_many_successors )
+            dl_get_many_successors( (char*) &in, (char*) &out );
+        else
+            fillCircularTedious( *this, in, out );
     }
 
     Node initial() {
@@ -321,9 +324,8 @@ struct Custom {
                                  dlsym(dl, "get_many_successors");
 
         assert( dl_get_initial_state );
-        assert( dl_get_successor );
         assert( dl_get_state_size );
-        assert( dl_get_many_successors );
+        assert( dl_get_successor || dl_get_many_successors );
 
         size = dl_get_state_size();
         
