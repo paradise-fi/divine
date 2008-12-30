@@ -59,6 +59,8 @@ data Circular a = Circular { size :: CInt, count :: CInt,
                              first :: CInt, _items :: Ptr a } deriving Show
 type Blob = Ptr ()
 
+space c = size c - count c
+
 makeBlob :: forall x. (Storable x) => x -> IO Blob
 makeBlob a = do m <- mallocBytes $ size + header
                 poke (castPtr m) (fromIntegral size :: CShort)
@@ -143,18 +145,25 @@ ffi_getManySuccessors :: forall state trans. (Storable state) =>
 ffi_getManySuccessors system from to = do
   -- peek from >>= print
   -- peek to >>= print
-  fromQ :: Circular Blob <- peek from
-  from' :: Blob <- peekNth fromQ (fromIntegral $ first fromQ)
-  fromSt <- peekBlob from'
-  drop from
-  sequence [ do b <- makeBlob x
-                putStrLn $ "adding " ++ show b
-                add from' to
-                add b to
-             | x <- getSuccessor system fromSt ]
-  peek from >>= print
+  -- peek from >>= print
+  gen
   -- peek to >>= print
   return ()
+  where gen' q = do 
+          from' :: Blob <- peekNth q (fromIntegral $ first q)
+          fromSt <- peekBlob from'
+          drop from
+          sequence [ do b <- makeBlob x
+                        -- putStrLn $ "adding " ++ show b
+                        add from' to
+                        add b to
+                     | x <- getSuccessor system fromSt ]
+          gen
+        gen = do
+          fromQ :: Circular Blob <- peek from
+          toQ :: Circular Blob <- peek to
+          -- FIXME hardcoded 2
+          if count fromQ > 0 && space toQ >= 2 then gen' fromQ else return ()
 
 instance Storable () where
     sizeOf _ = 0
