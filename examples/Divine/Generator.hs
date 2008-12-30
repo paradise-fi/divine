@@ -90,7 +90,6 @@ chCount f x = x { count = f $ count x }
 add :: (Storable a) => a -> Ptr (Circular a) -> IO ()
 add a c = do x <- chCount (+1) `fmap` peek c
              poke c x
-             -- putStrLn $ "poking into slot " ++ show (last x)
              poke (last x) a
 
 drop :: (Storable a) => Ptr (Circular a) -> IO ()
@@ -115,8 +114,6 @@ item c i = plusPtr (_items c) (i * sizeOf (undefined :: a))
 
 peekNth :: (Storable a) => Circular a -> Int -> IO a
 peekNth c i = peekElemOff (_items c) i
-
--- ffi_getManySuccessors system from to =
 
 ffi_getStateSize :: forall state trans. (Storable state) => System state trans -> IO CSize
 ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: state)
@@ -143,18 +140,13 @@ ffi_getManySuccessors :: forall state trans. (Storable state) =>
                          (System state trans) ->
                          Ptr (Circular Blob) -> Ptr (Circular Blob) -> IO ()
 ffi_getManySuccessors system from to = do
-  -- peek from >>= print
-  -- peek to >>= print
-  -- peek from >>= print
   gen
-  -- peek to >>= print
   return ()
   where gen' q = do 
           from' :: Blob <- peekNth q (fromIntegral $ first q)
           fromSt <- peekBlob from'
           drop from
           sequence [ do b <- makeBlob x
-                        -- putStrLn $ "adding " ++ show b
                         add from' to
                         add b to
                      | x <- getSuccessor system fromSt ]
