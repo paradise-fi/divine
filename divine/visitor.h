@@ -158,10 +158,10 @@ struct Common {
 };
 
 template< typename S >
-struct BFV : Common< Queue, S > {
+struct BFV : Common< BufferedQueue, S > {
     typedef typename S::Seen Seen;
     BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
-        : Common< Queue, S >( g, n, s ) {}
+        : Common< BufferedQueue, S >( g, n, s ) {}
 };
 
 template< typename S >
