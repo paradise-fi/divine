@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
 #include <wibble/sys/mutex.h>
+#include <wibble/sfinae.h>
 
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
@@ -230,10 +231,14 @@ struct Custom {
     typedef void (*dl_get_initial_state_t)(char *);
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
+    typedef void (*dl_get_many_successors_t)(char *, char *);
 
     dl_get_initial_state_t dl_get_initial_state;
     dl_get_successor_t dl_get_successor;
     dl_get_state_size_t dl_get_state_size;
+    dl_get_many_successors_t dl_get_many_successors;
+
+    typedef wibble::Unit CircularSupport;
 
     struct Successors {
         Node _from, my;
@@ -281,6 +286,14 @@ struct Custom {
         return succ;
     }
 
+    template< typename C1, typename C2 >
+    void fillCircular( C1 &in, C2 &out )
+    {
+        if( in.empty() )
+            return;
+        dl_get_many_successors( (char*) &in, (char*) &out );
+    }
+
     Node initial() {
         Blob b = alloc->new_blob( size );
         dl_get_initial_state( b.data() );
@@ -304,10 +317,13 @@ struct Custom {
         dl_get_initial_state = (dl_get_initial_state_t) dlsym(dl, "get_initial_state");
         dl_get_successor = (dl_get_successor_t) dlsym(dl, "get_successor");
         dl_get_state_size = (dl_get_state_size_t) dlsym(dl, "get_state_size");
+        dl_get_many_successors = (dl_get_many_successors_t)
+                                 dlsym(dl, "get_many_successors");
 
         assert( dl_get_initial_state );
         assert( dl_get_successor );
         assert( dl_get_state_size );
+        assert( dl_get_many_successors );
 
         size = dl_get_state_size();
         
@@ -319,7 +335,7 @@ struct Custom {
     }
 
     void release( Node s ) {
-        s.free( alloc->alloc() );
+        // s.free( alloc->alloc() );
     }
 
     Custom() : dl( 0 ),
