@@ -47,3 +47,5 @@ foreign export ccall
     get_initial_state :: CString -> IO ()
 foreign export ccall
     get_successor :: CInt -> CString -> CString -> IO CInt
+foreign export ccall
+    get_many_successors :: CString -> CString -> IO ()
