@@ -51,8 +51,9 @@ fillCircular( G &g, C1 &in, C2 &out )
 
 template< typename T, int _size >
 struct Circular {
+    int __size, // for non-C++ access
+        _count, _first;
     T items[ _size ];
-    int _count, _first;
 
     T *start() { return items; }
     T *nth( int i ) { return items + (_first + i) % _size; }
@@ -83,7 +84,7 @@ struct Circular {
         _count -= n;
     }
 
-    Circular() : _count( 0 ), _first( 0 ) {}
+    Circular() : __size( _size ), _count( 0 ), _first( 0 ) {}
 };
 
 template< typename Graph >
