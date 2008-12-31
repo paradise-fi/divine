@@ -7,8 +7,8 @@ import Foreign.Ptr
 import Foreign.C.Types
 
 import Prelude hiding ( last, drop )
-data Circular a = Circular { size :: CInt, count :: CInt,
-                             first :: CInt, _items :: Ptr a } deriving Show
+data Circular a = Circular { size :: !CInt, count :: !CInt,
+                             first :: !CInt, _items :: !(Ptr a) } deriving Show
 
 space c = size c - count c
 {-# INLINE space #-}
