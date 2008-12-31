@@ -3,8 +3,7 @@
 #define STR(a) XSTR(a)
 #define XSTR(a) #a
 
-#include <stdio.h>
-#include STR(CAT(MODULE, _stub.h))
+#include <HsFFI.h>
 
 extern void CAT(__stginit_, MODULE)(void);
 

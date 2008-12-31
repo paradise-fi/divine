@@ -10,15 +10,12 @@ DRIFT=DrIFT
 
 all: BenchmarkHs.so BenchmarkC.so
 
-BenchmarkHs.o BenchmarkHs.so: Divine/Pool.hs Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs Divine/module_init.c ../divine/pool.ffi.h
+BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs
 
 # We should use -fPIC here, but GHC manual says it doesn't quite work on x86
 # Linux yet (5.10.6).
 
-%.o: %.hs
-	$(HC) $(HCFLAGS) --make -c $<
-
-%.so: %.hs %.o
+%.so: %.hs
 	$(HC) $(HCFLAGS) --make \
 		-no-hs-main -optl '-shared' -optl "-L." \
 		-optl '-ldivine' \
