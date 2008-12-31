@@ -10,7 +10,7 @@ DRIFT=DrIFT
 
 all: BenchmarkHs.so BenchmarkC.so
 
-BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs
+BenchmarkHs.o BenchmarkHs.so: Divine/Pool.hs Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs Divine/module_init.c ../divine/pool.ffi.h
 
 # We should use -fPIC here, but GHC manual says it doesn't quite work on x86
 # Linux yet (5.10.6).
@@ -20,7 +20,9 @@ BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular
 
 %.so: %.hs %.o
 	$(HC) $(HCFLAGS) --make \
-		-no-hs-main -optl '-shared' -optc '-I.' -optc '-DMODULE='$(*F) \
+		-no-hs-main -optl '-shared' -optl "-L." \
+		-optl '-ldivine' \
+		-optc '-I.' -optc '-I..' -optc '-DMODULE='$(*F) \
 		-o $@ $< Divine/module_init.c
 
 %.hs: %.in.hs
@@ -31,3 +33,4 @@ BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular
 
 clean:
 	$(RM) $(wildcard *.o *.hi *.so *_stub.c *_stub.h)
+	$(RM) $(wildcard Divine/*.o Divine/*.hi Divine/*.so Divine/*_stub.c Divine/*_stub.h)
