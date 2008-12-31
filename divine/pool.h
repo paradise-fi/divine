@@ -58,6 +58,7 @@ struct Pool {
     };
 
     typedef std::vector< Group > Groups;
+    size_t m_groupCount; // for FFI
     Groups m_groups;
 
     Pool();
@@ -110,6 +111,7 @@ struct Pool {
         g.last = b.start + b.size;
         g.total = b.size;
         m_groups.resize( std::max( bytes / 4 + 1, m_groups.size() ), Group() );
+        m_groupCount = m_groups.size();
         assert_eq( m_groups[ bytes / 4 ].total, 0 );
         m_groups[ bytes / 4 ] = g;
         assert_neq( g.total, 0 );

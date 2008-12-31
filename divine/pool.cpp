@@ -9,11 +9,11 @@ namespace divine {
 GlobalPools *GlobalPools::s_instance = 0;
 pthread_once_t GlobalPools::s_once = PTHREAD_ONCE_INIT;
 
-Pool::Pool() {
+Pool::Pool() : m_groupCount( 0 ) {
     GlobalPools::add( this );
 }
 
-Pool::Pool( const Pool& ) {
+Pool::Pool( const Pool& ): m_groupCount( 0 )  {
     GlobalPools::add( this );
 }
 
@@ -98,4 +98,18 @@ Pool *GlobalPools::get() {
     return p;
 }
 
+}
+
+extern "C" void *pool_extend( void *pool, size_t sz ) {
+    std::cerr << "extending pool " << pool << std::endl;
+    divine::Pool *p = (divine::Pool *) pool;
+    if ( !p->group( sz ) )
+        p->createGroup( sz );
+    p->newBlock( p->group( sz ) );
+    return &(p->m_groups.front());
+}
+
+extern "C" void *pool_allocate( void *pool, size_t sz ) {
+    divine::Pool *p = (divine::Pool *) pool;
+    return p->alloc( sz );
 }
