@@ -46,7 +46,7 @@ struct Pool {
 
     struct Group
     {
-        size_t item, used, total, allocated;
+        size_t item, used, total;
         char **free; // reuse allocation
         char *current; // tail allocation
         char *last; // bumper
