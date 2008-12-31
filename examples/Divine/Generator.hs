@@ -17,6 +17,7 @@ module Divine.Generator (
     ) where
 
 import qualified Divine.Circular as C
+import qualified Divine.Pool as P
 import Divine.Blob
 import Foreign.Ptr
 import Foreign.C.Types
@@ -71,24 +72,26 @@ ffi_getSuccessor system handle from to = do
 
 ffi_getManySuccessors :: forall state trans. (Storable state) =>
                          (System state trans) ->
+                         Ptr P.Pool -> Ptr P.Group ->
                          Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
-ffi_getManySuccessors system from to = do
-  gen
-  return ()
-  where gen' q = do 
+ffi_getManySuccessors system p g from to = do
+  pool <- P.get p g
+  gen pool
+  where gen' pool q = do
           from' :: Blob <- C.peekNth q (fromIntegral $ C.first q)
           fromSt <- peekBlob from'
           C.drop from
-          sequence [ do b <- makeBlob x
+          sequence [ do b <- poolBlob pool x
                         C.add from' to
                         C.add b to
                      | x <- getSuccessor system fromSt ]
-          gen
-        gen = do
+          gen pool
+        gen pool = do
           fromQ :: C.Circular Blob <- peek from
           toQ :: C.Circular Blob <- peek to
-          -- FIXME hardcoded 2
-          if C.count fromQ > 0 && C.space toQ >= 2 then gen' fromQ else return ()
+          if C.count fromQ > 0 && C.space toQ >= 2
+            then gen' pool fromQ
+            else return ()
 
 instance Storable () where
     sizeOf _ = 0

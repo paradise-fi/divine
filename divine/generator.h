@@ -231,7 +231,7 @@ struct Custom {
     typedef void (*dl_get_initial_state_t)(char *);
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
-    typedef void (*dl_get_many_successors_t)(char *, char *);
+    typedef void (*dl_get_many_successors_t)(char *, char *, char *, char *);
 
     dl_get_initial_state_t dl_get_initial_state;
     dl_get_successor_t dl_get_successor;
@@ -291,9 +291,11 @@ struct Custom {
     {
         if ( in.empty() )
             return;
-        if ( dl_get_many_successors )
-            dl_get_many_successors( (char*) &in, (char*) &out );
-        else
+        if ( dl_get_many_successors ) {
+            Pool *p = alloc->_a->m_pool;
+            dl_get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
+                                    (char *) &in, (char *) &out );
+        } else
             fillCircularTedious( *this, in, out );
     }
 

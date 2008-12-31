@@ -38,7 +38,8 @@ mysystem =
 get_state_size = ffi_getStateSize mysystem
 get_initial_state t = ffi_initialState mysystem (castPtr t)
 get_successor h f t = ffi_getSuccessor mysystem h (castPtr f) (castPtr t)
-get_many_successors f t = ffi_getManySuccessors mysystem (castPtr f) (castPtr t)
+get_many_successors p g f t = ffi_getManySuccessors mysystem 
+                                (castPtr p) (castPtr g) (castPtr f) (castPtr t)
 
 foreign export ccall
     get_state_size :: IO CSize
@@ -47,4 +48,4 @@ foreign export ccall
 foreign export ccall
     get_successor :: CInt -> CString -> CString -> IO CInt
 foreign export ccall
-    get_many_successors :: CString -> CString -> IO ()
+    get_many_successors :: CString -> CString -> CString -> CString -> IO ()
