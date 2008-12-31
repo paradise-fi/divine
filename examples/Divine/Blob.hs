@@ -22,4 +22,3 @@ pokeBlob blob v = pokeByteOff blob 2 v
 
 peekBlob :: (Storable y) => Blob -> IO y
 peekBlob blob = peekByteOff blob 2
-

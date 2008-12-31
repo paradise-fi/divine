@@ -46,14 +46,13 @@ struct Pool {
 
     struct Group
     {
-        size_t item, used, total, peak, freed, allocated, stolen;
+        size_t item, used, total, allocated;
         char **free; // reuse allocation
         char *current; // tail allocation
         char *last; // bumper
         std::vector< Block > blocks;
         Group()
-            : item( 0 ), used( 0 ), total( 0 ), peak( 0 ),
-              freed( 0 ), allocated( 0 ), stolen( 0 ),
+            : item( 0 ), used( 0 ), total( 0 ),
               free( 0 ), current( 0 ), last( 0 )
         {}
     };
@@ -64,9 +63,6 @@ struct Pool {
     Pool();
     Pool( const Pool & );
     ~Pool();
-
-    size_t peakAllocation();
-    size_t peakUsage();
 
     void newBlock( Group *g )
     {
@@ -143,8 +139,6 @@ struct Pool {
             g->current += bytes;
         }
         g->used += bytes;
-        g->allocated += bytes;
-        if ( g->used > g->peak ) g->peak = g->used;
         assert( g->used <= g->total );
 
         return ret;
@@ -159,7 +153,6 @@ struct Pool {
     {
         assert( g );
         assert( g->item == size );
-        g->freed += size;
         char ***ptr3 = reinterpret_cast< char *** >( ptr );
         char **ptr2 = reinterpret_cast< char ** >( ptr );
         *ptr3 = g->free;
@@ -200,7 +193,6 @@ struct Pool {
             g = createGroup( size );
         assert( g );
         g->total += size;
-        g->stolen += size;
         release( g, ptr, size );
     }
 };
