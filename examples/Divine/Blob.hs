@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PatternSignatures #-}
 
-module Divine.Blob ( Blob, poolBlob, pokeBlob, peekBlob ) where
+module Divine.Blob ( Blob, poolBlob, mallocBlob, pokeBlob, peekBlob ) where
 
 import qualified Divine.Pool as P
 import Foreign.Storable
