@@ -68,7 +68,8 @@ struct Pool {
     void newBlock( Group *g )
     {
         Block b;
-        size_t s = std::min( 2 * g->blocks.back().size, size_t( 1024 * 1024 ) );
+        size_t s = std::min( 4 * g->blocks.back().size,
+                             size_t( 4 * 1024 * 1024 ) );
         b.size = s;
         b.start = new char[ s ];
         g->current = b.start;
@@ -104,7 +105,7 @@ struct Pool {
         Group g;
         g.item = bytes;
         Block b;
-        b.size = 1024 * bytes;
+        b.size = 4096 * bytes;
         b.start = new char[ b.size ];
         g.blocks.push_back( b );
         g.current = b.start;
