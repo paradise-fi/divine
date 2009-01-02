@@ -339,7 +339,7 @@ struct Custom {
     }
 
     void release( Node s ) {
-        // s.free( alloc->alloc() );
+        s.free( alloc->alloc() );
     }
 
     Custom() : dl( 0 ),
