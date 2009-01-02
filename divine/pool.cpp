@@ -11,10 +11,12 @@ pthread_once_t GlobalPools::s_once = PTHREAD_ONCE_INIT;
 
 Pool::Pool() : m_groupCount( 0 ) {
     GlobalPools::add( this );
+    m_groups.reserve( 8096 ); // FIXME
 }
 
 Pool::Pool( const Pool& ): m_groupCount( 0 )  {
     GlobalPools::add( this );
+    m_groups.reserve( 8096 ); // FIXME
 }
 
 Pool::~Pool() {
@@ -100,7 +102,7 @@ Pool *GlobalPools::get() {
 
 }
 
-extern "C" void *pool_extend( void *pool, size_t sz ) {
+extern "C" void *pool_extend( void *pool, int sz ) {
     std::cerr << "extending pool " << pool << std::endl;
     divine::Pool *p = (divine::Pool *) pool;
     if ( !p->group( sz ) )
@@ -109,7 +111,7 @@ extern "C" void *pool_extend( void *pool, size_t sz ) {
     return &(p->m_groups.front());
 }
 
-extern "C" void *pool_allocate( void *pool, size_t sz ) {
+extern "C" void *pool_allocate( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
     return p->alloc( sz );
 }

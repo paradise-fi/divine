@@ -72,7 +72,7 @@ ffi_getSuccessor system handle from to = do
 
 ffi_getManySuccessors :: forall state trans. (Storable state) =>
                          (System state trans) ->
-                         Ptr P.Pool -> Ptr P.Group ->
+                         Ptr () -> Ptr P.Group ->
                          Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
 ffi_getManySuccessors system p g from to = do
   pool <- P.get p g
