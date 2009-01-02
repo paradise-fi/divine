@@ -3,7 +3,7 @@
 
 HC=ghc
 CC=gcc
-HCFLAGS=-O2 #-threaded
+HCFLAGS=-O2 -threaded
 #HCFLAGS=-O2 -prof -auto-all -caf-all
 #HCFLAGS=-O2 -funbox-strict-fields -fvia-C -optc-O2
 DRIFT=DrIFT
