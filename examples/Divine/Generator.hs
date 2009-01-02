@@ -1,11 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Divine.Generator (
-    System(..),
-    mkSystem,
-
+    Process, PComp, initial, successors,
     Ptr,
     CString,
     CSize,
@@ -27,54 +26,48 @@ import Foreign.Storable
 import Data.Array
 import Control.Monad( unless )
 
--- | The system datatype.
-data System state trans =
-    System
-    { initialState :: state
-    , getSuccessor :: state -> [state]
-    }
+class (Storable p) => Process p where
+    successors :: p -> [p]
+    initial :: p
 
--- | User-level System constructor
-mkSystem ::
-    state ->
-    (state -> [state]) ->
-    System state trans
-mkSystem initialState getSuccessor =
-    System
-    { initialState = initialState
-    , getSuccessor = getSuccessor
-    }
+data PComp p q = PComp p q deriving Show
+
+instance forall p q. (Process p, Process q) => Process (PComp p q) where
+    successors (PComp a b) = [ PComp x b | x <- successors a ]
+                             ++ [ PComp a x | x <- successors b ]
+    {-# INLINE successors #-}
+    initial = PComp (initial :: p) (initial :: q)
+
+instance forall p q. (Storable p, Storable q) => Storable (PComp p q) where
+    peek ptr = do a <- peek (castPtr ptr)
+                  b <- peekByteOff (castPtr ptr) (sizeOf (undefined :: p))
+                  return $ PComp a b
+    poke ptr (PComp a b) = do poke (castPtr ptr) a
+                              pokeByteOff (castPtr ptr) (sizeOf a) b
+    sizeOf _ = sizeOf (undefined :: p) + sizeOf (undefined :: q)
 
 --
 -- FFI interface
 --
 
-ffi_getStateSize :: forall state trans. (Storable state) => System state trans -> IO CSize
-ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: state)
+ffi_getStateSize :: forall p. (Process p) => p -> IO CSize
+ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: p)
 
-ffi_initialState :: (Show state, Storable state) => System state trans -> CString -> IO ()
-ffi_initialState system out = do
-  let ini = initialState system
-      out' = (castPtr :: CString -> Ptr state) out
-  poke out' ini
-  return ()
+ffi_initialState :: (Process p) => Ptr p -> IO ()
+ffi_initialState out = poke out initial
 {-# INLINE ffi_initialState #-}
 
-ffi_getSuccessor :: forall state trans. (Show state, Storable state)
-                    => System state trans ->
-                        CInt -> Ptr state -> Ptr state -> IO CInt
-ffi_getSuccessor system handle from to = do
+ffi_getSuccessor :: (Process p) => CInt -> Ptr p -> Ptr p -> IO CInt
+ffi_getSuccessor handle from to = do
   from' <- peek from
-  let (res, i) = (numerate' $ getSuccessor system) from' (fromIntegral handle)
+  let (res, i) = (numerate' $ successors) from' (fromIntegral handle)
   unless (i == 0) $ poke to res
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 
-ffi_getManySuccessors :: forall state trans. (Storable state) =>
-                         (System state trans) ->
-                         Ptr () -> Ptr P.Group ->
+ffi_getManySuccessors :: forall p. (Process p) => p -> Ptr () -> Ptr P.Group ->
                          Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
-ffi_getManySuccessors system p g from to = do
+ffi_getManySuccessors _ p g from to = do
   pool <- P.get p g
   fromQ :: C.Circular Blob <- peek from
   toQ :: C.Circular Blob <- peek to
@@ -84,11 +77,14 @@ ffi_getManySuccessors system p g from to = do
       end = start + count
       gen i = do
         from' :: Blob <- C.peekNth fromQ (fromIntegral $ i `mod` size)
-        fromSt <- peekBlob from'
-        sequence [ do b <- poolBlob pool x
-                      C.add from' to
-                      C.add b to
-                   | x <- getSuccessor system fromSt ]
+        fromSt :: p <- peekBlob from'
+        let succs = successors fromSt
+            inner [] = return ()
+            inner (x:xs) = do b <- poolBlob pool x
+                              C.add from' to
+                              C.add b to
+                              inner xs
+        inner succs
       loop i = if i < end && C.space toQ >= 2 -- FIXME
                    then do gen i
                            loop $ i + 1

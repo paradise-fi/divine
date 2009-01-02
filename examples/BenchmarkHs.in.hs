@@ -11,36 +11,48 @@ import Foreign.Storable
 import Foreign.Ptr
 import Divine.Generator
 
-data MyState = MyState !Int16 !Int16
-    deriving (Show) {-!derive : Binary !-}
+data P = P Int16
+data Q = Q Int16 Int16
 
--- TODO Storable (drift) deriving
-instance Storable MyState where
+instance Process P where
+    successors (P i) = if i > 1024 then [] else [P (i + 1)]
+    initial = P 0
+
+instance Storable P where
+    sizeOf _ = sizeOf (undefined :: Int16)
+    alignment _ = 4
+    peek p = do x <- peek (castPtr p)
+                return $ P x
+    {-# INLINE peek #-}
+    poke p (P x) = poke (castPtr p) x
+    {-# INLINE poke #-}
+
+instance Storable Q where
     sizeOf _ = 2 * sizeOf (undefined :: Int16)
     alignment _ = alignment (undefined :: Int16)
     peek p = do
 	a <- peekElemOff (castPtr p) 0
 	b <- peekElemOff (castPtr p) 1
-	return (MyState a b)
-    poke p (MyState a b) = do
+	return (Q a b)
+    {-# INLINE peek #-}
+    poke p (Q a b) = do
 	pokeElemOff (castPtr p) 0 a
 	pokeElemOff (castPtr p) 1 b
 
-mysystem :: System MyState ()
-mysystem =
-    let initialState = MyState 0 0
-        getSuccessor (MyState a b) | a < 1024 && b < 1024 =
-                                       [MyState (a + 1) b, MyState a (b + 1)]
-                                   | otherwise = []
-    in
-	mkSystem initialState getSuccessor
+instance Process Q where
+    initial = Q 0 0
+    successors (Q a b) | a < 1024 && b < 1024 =
+                           [Q (a + 1) b, Q a (b + 1)]
+                       | otherwise = []
+    {-# INLINE successors #-}
 
-get_state_size = ffi_getStateSize mysystem
-get_initial_state t = ffi_initialState mysystem (castPtr t)
-get_successor h f t = ffi_getSuccessor mysystem h (castPtr f) (castPtr t)
-get_many_successors p g f t = ffi_getManySuccessors mysystem 
+type My = Q -- PComp P P
+
+get_state_size = ffi_getStateSize (initial :: My)
+get_initial_state t = ffi_initialState ((castPtr t) :: Ptr My)
+get_successor h f t = ffi_getSuccessor h ((castPtr f) :: Ptr My) (castPtr t)
+get_many_successors p g f t = ffi_getManySuccessors (initial :: My)
                                 (castPtr p) (castPtr g) (castPtr f) (castPtr t)
-
 foreign export ccall
     get_state_size :: IO CSize
 foreign export ccall
