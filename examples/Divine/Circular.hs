@@ -45,7 +45,7 @@ instance (Storable a) => (Storable (Circular a)) where
                 f <- peekElemOff (castPtr p) 2
                 let i = plusPtr p $ 3 * sizeOf (undefined :: CInt)
                 return Circular { size = s, count = c, first = f, _items = i }
-    poke p c = do pokeElemOff (castPtr p) 0 (size c)
+    poke p c = do -- pokeElemOff (castPtr p) 0 (size c)
                   pokeElemOff (castPtr p) 1 (count c)
                   pokeElemOff (castPtr p) 2 (first c)
                   return ()
