@@ -91,6 +91,7 @@ ffi_getManySuccessors _ p g from to = do
                    else return i
   i <- loop start
   C.drop from (i - start)
+{-# INLINE ffi_getManySuccessors #-}
 
 instance Storable () where
     sizeOf _ = 0

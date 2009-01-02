@@ -29,6 +29,7 @@ instance Storable P where
 
 instance Storable Q where
     sizeOf _ = 2 * sizeOf (undefined :: Int16)
+    {-# INLINE sizeOf #-}
     alignment _ = alignment (undefined :: Int16)
     peek p = do
 	a <- peekElemOff (castPtr p) 0
@@ -38,6 +39,7 @@ instance Storable Q where
     poke p (Q a b) = do
 	pokeElemOff (castPtr p) 0 a
 	pokeElemOff (castPtr p) 1 b
+    {-# INLINE poke #-}
 
 instance Process Q where
     initial = Q 0 0
