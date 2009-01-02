@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean ghc-make
 .SUFFIXES:
 
 HC=ghc
@@ -10,12 +10,10 @@ DRIFT=DrIFT
 
 all: BenchmarkHs.so BenchmarkC.so
 
-BenchmarkHs.o BenchmarkHs.so: Divine/Generator.hs Divine/Blob.hs Divine/Circular.hs
-
 # We should use -fPIC here, but GHC manual says it doesn't quite work on x86
 # Linux yet (5.10.6).
 
-%.so: %.hs
+%.so: %.hs ghc-make
 	$(HC) $(HCFLAGS) --make \
 		-no-hs-main -optl '-shared' -optl "-L." \
 		-optl '-ldivine' \
