@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Divine.Circular ( Circular, space, count, first,
-                         nth, last, add, drop, peekNth ) where
+                         nth, last, add, drop, peekNth, size ) where
 import Foreign.Storable
 import Foreign.Ptr
 import Foreign.C.Types
@@ -33,10 +33,10 @@ add a c = do x <- chCount (+1) `fmap` peek c
              poke (last x) a
 {-# INLINE add #-}
 
-drop :: (Storable a) => Ptr (Circular a) -> IO ()
-drop c = do x <- peek c
-            poke c $ x { count = count x - 1,
-                         first = (first x + 1) `mod` size x }
+drop :: (Storable a) => Ptr (Circular a) -> CInt -> IO ()
+drop c n = do x <- peek c
+              poke c $ x { count = count x - n,
+                           first = (first x + n) `mod` size x }
 {-# INLINE drop #-}
 
 instance (Storable a) => (Storable (Circular a)) where

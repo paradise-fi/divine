@@ -76,22 +76,25 @@ ffi_getManySuccessors :: forall state trans. (Storable state) =>
                          Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
 ffi_getManySuccessors system p g from to = do
   pool <- P.get p g
-  gen pool
-  where gen' pool q = do
-          from' :: Blob <- C.peekNth q (fromIntegral $ C.first q)
-          fromSt <- peekBlob from'
-          C.drop from
-          sequence [ do b <- poolBlob pool x
-                        C.add from' to
-                        C.add b to
-                     | x <- getSuccessor system fromSt ]
-          gen pool
-        gen pool = do
-          fromQ :: C.Circular Blob <- peek from
-          toQ :: C.Circular Blob <- peek to
-          if C.count fromQ > 0 && C.space toQ >= 2
-            then gen' pool fromQ
-            else return ()
+  fromQ :: C.Circular Blob <- peek from
+  toQ :: C.Circular Blob <- peek to
+  let start = C.first fromQ
+      count = C.count fromQ
+      size = C.size fromQ
+      end = start + count
+      gen i = do
+        from' :: Blob <- C.peekNth fromQ (fromIntegral $ i `mod` size)
+        fromSt <- peekBlob from'
+        sequence [ do b <- poolBlob pool x
+                      C.add from' to
+                      C.add b to
+                   | x <- getSuccessor system fromSt ]
+      loop i = if i < end && C.space toQ >= 2 -- FIXME
+                   then do gen i
+                           loop $ i + 1
+                   else return i
+  i <- loop start
+  C.drop from (i - start)
 
 instance Storable () where
     sizeOf _ = 0
