@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
