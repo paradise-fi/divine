@@ -6,7 +6,6 @@
 
 module BenchmarkHs where
 
-import Data.Binary
 import Data.Int
 import Foreign.Storable
 import Foreign.Ptr
