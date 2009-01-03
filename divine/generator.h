@@ -224,19 +224,25 @@ struct Dummy {
 struct Custom {
     typedef Blob Node;
     std::string file;
-    void *dl;
     BlobAllocator *alloc;
-    size_t size;
 
     typedef void (*dl_get_initial_state_t)(char *);
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
     typedef void (*dl_get_many_successors_t)(char *, char *, char *, char *);
 
-    dl_get_initial_state_t dl_get_initial_state;
-    dl_get_successor_t dl_get_successor;
-    dl_get_state_size_t dl_get_state_size;
-    dl_get_many_successors_t dl_get_many_successors;
+    struct Dl {
+        void *handle;
+        dl_get_initial_state_t get_initial_state;
+        dl_get_successor_t get_successor;
+        dl_get_state_size_t get_state_size;
+        dl_get_many_successors_t get_many_successors;
+        size_t size;
+
+        Dl() : get_initial_state( 0 ), get_successor( 0 ),
+               get_state_size( 0 ), get_many_successors( 0 ),
+               size( 0 ) {}
+    } dl;
 
     typedef wibble::Unit CircularSupport;
 
@@ -260,8 +266,8 @@ struct Custom {
 
         void force() {
             if ( my.valid() ) return;
-            my = custom->alloc->new_blob( custom->size );
-            handle = custom->dl_get_successor(
+            my = custom->alloc->new_blob( custom->dl.size );
+            handle = custom->dl.get_successor(
                 handle, _from.data(), my.data() );
         }
 
@@ -291,17 +297,17 @@ struct Custom {
     {
         if ( in.empty() )
             return;
-        if ( dl_get_many_successors ) {
-            Pool *p = alloc->_a->m_pool;
-            dl_get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
+        if ( dl.get_many_successors ) {
+            Pool *p = alloc->alloc()->m_pool;
+            dl.get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
                                     (char *) &in, (char *) &out );
         } else
             fillCircularTedious( *this, in, out );
     }
 
     Node initial() {
-        Blob b = alloc->new_blob( size );
-        dl_get_initial_state( b.data() );
+        Blob b = alloc->new_blob( dl.size );
+        dl.get_initial_state( b.data() );
         return b;
     }
 
@@ -311,27 +317,31 @@ struct Custom {
     }
 
     int stateSize() {
-        return size;
+        return dl.size;
     }
 
     void read( std::string path ) {
-        dl = dlopen(path.c_str(), RTLD_LAZY);
+        dl.handle = dlopen( path.c_str(), RTLD_LAZY );
 
-        assert( dl );
+        assert( dl.handle );
 
-        dl_get_initial_state = (dl_get_initial_state_t) dlsym(dl, "get_initial_state");
-        dl_get_successor = (dl_get_successor_t) dlsym(dl, "get_successor");
-        dl_get_state_size = (dl_get_state_size_t) dlsym(dl, "get_state_size");
-        dl_get_many_successors = (dl_get_many_successors_t)
-                                 dlsym(dl, "get_many_successors");
+        dl.get_initial_state = (dl_get_initial_state_t)
+                               dlsym(dl.handle, "get_initial_state");
+        dl.get_successor = (dl_get_successor_t)
+                           dlsym(dl.handle, "get_successor");
+        dl.get_state_size = (dl_get_state_size_t)
+                            dlsym(dl.handle, "get_state_size");
+        dl.get_many_successors = (dl_get_many_successors_t)
+                                 dlsym(dl.handle, "get_many_successors");
 
-        assert( dl_get_initial_state );
-        assert( dl_get_state_size );
-        assert( dl_get_successor || dl_get_many_successors );
+        assert( dl.get_initial_state );
+        assert( dl.get_state_size );
+        assert( dl.get_successor || dl.get_many_successors );
 
-        size = dl_get_state_size();
+        dl.size = dl.get_state_size();
         
-        std::cerr << path << " loaded [size = " << size << "]..." << std::endl;
+        std::cerr << path << " loaded [state size = "
+                  << dl.size << "]..." << std::endl;
     }
 
     bool is_accepting( Node s ) {
@@ -342,11 +352,21 @@ struct Custom {
         s.free( alloc->alloc() );
     }
 
-    Custom() : dl( 0 ),
-               dl_get_initial_state( 0 ),
-               dl_get_successor( 0 ),
-               dl_get_state_size( 0 ) {
+    Custom() {
         alloc = new BlobAllocator( 0 );
+    }
+
+    Custom( const Custom &o )
+        : dl( o.dl )
+    {
+        alloc = new BlobAllocator( 0 );
+    }
+
+    Custom &operator=( const Custom &o ) {
+        dl = o.dl;
+        if ( !alloc )
+            alloc = new BlobAllocator( 0 );
+        return *this;
     }
 };
 
