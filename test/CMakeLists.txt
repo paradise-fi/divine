@@ -11,3 +11,7 @@ if( PROFILE )
   add_dependencies( functional lcov-collect-2 )
   add_dependencies( lcov-collect-2 do-functional )
 endif( PROFILE )
+
+if( GHC )
+  add_dependencies( do-functional examples )
+endif( GHC )
