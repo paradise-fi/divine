@@ -12,6 +12,7 @@ add_custom_command(
 add_custom_target(
   ${name}
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${name}.hs
+  DEPENDS divine
   COMMAND ${GHC} ${GHCFLAGS} --make -no-hs-main -optl '-shared' -optl "-L${divine_BUILD_DIR}" -optl "-ldivine" -optc "-I." -optc "-I${CMAKE_SOURCE_DIR}" -optc "-DMODULE=${name}" -odir "." -hidir "." -o ${name}.so ${hssrc} ${name}.hs ${CMAKE_CURRENT_SOURCE_DIR}/Divine/module_init.c
 )
 endmacro( haskell_so )
