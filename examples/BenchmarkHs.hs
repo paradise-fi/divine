@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 module BenchmarkHs where
@@ -7,35 +8,24 @@ import Foreign.Storable
 import Foreign.Ptr
 import Divine.Generator
 
+import Data.DeriveTH
+import qualified Data.Derive.Storable
+
 data P = P Int16
 data Q = Q Int16 Int16
+
+$( derive Data.Derive.Storable.makeStorable ''P )
+$( derive Data.Derive.Storable.makeStorable ''Q )
+
+{- TODO
+{-# INLINE sizeOf #-}
+{-# INLINE peek #-}
+{-# INLINE poke #-}
+-}
 
 instance Process P where
     successors (P i) = if i > 1024 then [] else [P (i + 1)]
     initial = P 0
-
-instance Storable P where
-    sizeOf _ = sizeOf (undefined :: Int16)
-    alignment _ = 4
-    peek p = do x <- peek (castPtr p)
-                return $ P x
-    {-# INLINE peek #-}
-    poke p (P x) = poke (castPtr p) x
-    {-# INLINE poke #-}
-
-instance Storable Q where
-    sizeOf _ = 2 * sizeOf (undefined :: Int16)
-    {-# INLINE sizeOf #-}
-    alignment _ = alignment (undefined :: Int16)
-    peek p = do
-	a <- peekElemOff (castPtr p) 0
-	b <- peekElemOff (castPtr p) 1
-	return (Q a b)
-    {-# INLINE peek #-}
-    poke p (Q a b) = do
-	pokeElemOff (castPtr p) 0 a
-	pokeElemOff (castPtr p) 1 b
-    {-# INLINE poke #-}
 
 instance Process Q where
     initial = Q 0 0

@@ -1,20 +1,13 @@
 find_program( GHC ghc )
-find_program( DRIFT DrIFT )
 
 set( GHCFLAGS -O2 -threaded )
 
 macro( haskell_so name )
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${name}.hs
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${name}.in.hs
-  COMMAND DrIFT ${CMAKE_CURRENT_SOURCE_DIR}/${name}.in.hs > ${name}.hs
-)
-
 add_custom_target(
   ${name}
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${name}.hs
   DEPENDS divine
-  COMMAND ${GHC} ${GHCFLAGS} --make -no-hs-main -optl '-shared' -optl "-L${divine_BUILD_DIR}" -optl "-ldivine" -optc "-I." -optc "-I${CMAKE_SOURCE_DIR}" -optc "-DMODULE=${name}" -odir "." -hidir "." -i${CMAKE_CURRENT_SOURCE_DIR} -o ${name}.so ${name}.hs ${CMAKE_CURRENT_SOURCE_DIR}/Divine/module_init.c
+  COMMAND ${GHC} ${GHCFLAGS} --make -no-hs-main -optl '-shared' -odir "." -hidir "." -i${CMAKE_CURRENT_SOURCE_DIR} -o ${name}.dummy.so ${CMAKE_CURRENT_SOURCE_DIR}/${name}.hs
+  COMMAND ${GHC} ${GHCFLAGS} --make -no-hs-main -optl '-shared' -odir "." -hidir "." -i${CMAKE_CURRENT_SOURCE_DIR} -o ${name}.so ${CMAKE_CURRENT_SOURCE_DIR}/${name}.hs ${CMAKE_CURRENT_SOURCE_DIR}/Divine/module_init.c -optc "-DMODULE=${name}"
 )
 endmacro( haskell_so )
 
@@ -25,16 +18,11 @@ add_custom_target( examples )
 add_dependencies( examples BenchmarkC )
 
 if( GHC )
-  if( DRIFT )
-    if( NOT USE64 AND NOT USE32 )
-       set( HS_EXAMPLES ON )
-    else()
-        message( "-- WARNING: Multiarch is not supported by GHC. Not compiling haskell example models." )
-    endif()
-  else( DRIFT )
-    message( "-- WARNING: Could not find DrIFT. Not compiling haskell example models." )
-    message( "   (to tell me where DrIFT lives, use -DDRIFT=/path/to/DrIFT, thanks!)" )
-  endif( DRIFT )
+  if( NOT USE64 AND NOT USE32 )
+     set( HS_EXAMPLES ON )
+  else()
+      message( "-- WARNING: Multiarch is not supported by GHC. Not compiling haskell example models." )
+  endif()
 else( GHC )
   message( "-- WARNING: Could not find GHC. Not compiling haskell example models." )
   message( "   (to tell me where GHC lives, use -DGHC=/path/to/ghc, thanks!)" )
