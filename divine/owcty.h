@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
+#include <divine/algorithm.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
 #include <divine/report.h>
@@ -11,7 +12,7 @@ namespace divine {
 namespace algorithm {
 
 template< typename G >
-struct Owcty : Domain< Owcty< G > >
+struct Owcty : Algorithm, Domain< Owcty< G > >
 {
     typedef typename G::Node Node;
 
@@ -363,16 +364,6 @@ struct Owcty : Domain< Owcty< G > >
                   << " ------------- " << std::endl;
     }
 
-    // FIXME this should be shared again, later
-    void resultBanner( bool valid ) {
-        std::cerr << " ===================================== " << std::endl
-                  << ( valid ?
-                     "       Accepting cycle NOT found       " :
-                     "         Accepting cycle FOUND         " )
-                  << std::endl
-                  << " ===================================== " << std::endl;
-    }
-
     Result run()
     {
         size_t oldsize = 0;
@@ -404,7 +395,7 @@ struct Owcty : Domain< Owcty< G > >
         }
 
         bool valid = shared.cycle.valid() ? false : ( shared.size == 0 );
-        resultBanner( valid );
+        this->resultBanner( valid );
 
         // counterexample ... (to be restored)
 
@@ -427,7 +418,7 @@ struct Owcty : Domain< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
-        : m_table( 0 )
+        : Domain< Owcty< G > >( workerCount( c ) ), m_table( 0 )
     {
         shared.size = 0;
         if ( c )

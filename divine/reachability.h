@@ -45,6 +45,7 @@ struct Reachability : Domain< Reachability< G > >
     }
 
     Reachability( Config *c = 0 )
+        : Domain< Reachability< G > >( workerCount( c ) )
     {
         shared.states = shared.transitions = shared.accepting = 0;
         shared.errors = shared.deadlocks = 0;
@@ -87,7 +88,6 @@ struct Reachability : Domain< Reachability< G > >
 };
 
 }
-
 }
 
 #endif
