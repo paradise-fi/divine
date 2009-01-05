@@ -1,4 +1,4 @@
-// -*- C++ -*-
+// -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
 #include <iomanip>
 #include <sstream>
