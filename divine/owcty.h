@@ -378,19 +378,19 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
         if ( !m_mapCycleState.valid() ) {
             do {
                 oldsize = shared.size;
-                
+
                 printIteration( shared.iteration );
-                
+
                 std::cerr << " reachability...\t" << std::flush;
                 reachability();
                 printSize();
-                
+
                 std::cerr << " elimination & reset...\t" << std::flush;
                 elimination();
                 printSize();
-                
+
                 ++shared.iteration;
-                
+
             } while ( oldsize != shared.size && shared.size != 0 );
         }
 

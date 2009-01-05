@@ -190,8 +190,10 @@ struct Domain {
         return master().parallel().instance( i ).fifo;
     }
 
-    Domain( int _n = 4 ) : m_id( 0 ), m_parallel( 0 ), m_master( 0 ), n( _n ) {
-    }
+    Domain( int _n = 4 )
+        : m_id( 0 ), m_parallel( 0 ),
+          m_master( 0 ), n( _n )
+    {}
 };
 
 }
