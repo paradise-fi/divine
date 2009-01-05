@@ -169,7 +169,7 @@ struct Main {
             die( e.fullInfo() );
         }
 
-        config.setMaxThreads( o_workers->intValue() + 1 );
+        config.setWorkers( o_workers->intValue() );
         config.setInput( input );
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );
@@ -211,7 +211,7 @@ struct Main {
             if ( inf.find( "system async property" ) != std::string::npos ||
                  inf.find( "system sync property" ) != std::string::npos ) {
                 // we have a property automaton --> LTL
-                if ( config.maxThreadCount() > 2 ) {
+                if ( config.workers() > 1 ) {
                     m_run = RunOwcty;
                 } else {
                     m_run = RunNdfs;
