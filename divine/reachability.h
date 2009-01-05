@@ -54,10 +54,6 @@ struct Reachability : Domain< Reachability< G > >
     }
 
     Result run() {
-        typedef visitor::Setup< G, Reachability< G > > VisitorSetup;
-        visitor::Parallel< VisitorSetup, Reachability< G > >
-            vis( shared.g, *this, *this );
-
         this->parallel().run( &Reachability< G >::_visit );
 
         for ( int i = 0; i < this->parallel().n; ++i ) {
