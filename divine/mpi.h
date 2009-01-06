@@ -108,10 +108,12 @@ struct Mpi {
 
 #else
 
+template< typename M, typename D >
 struct Mpi {
     int rank() { return 0; }
     int size() { return 1; }
     void start() {}
+    Mpi( M *, D * ) {}
 };
 
 #endif
