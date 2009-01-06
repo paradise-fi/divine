@@ -219,6 +219,15 @@ struct Dummy {
     Dummy() {
         alloc = new BlobAllocator( 0 );
     }
+
+    Dummy( const Dummy & ) {
+        alloc = new BlobAllocator( 0 );
+    }
+
+    Dummy &operator=( const Dummy & ) {
+        if ( !alloc )
+            alloc = new BlobAllocator( 0 );
+    }
 };
 
 struct Custom {
