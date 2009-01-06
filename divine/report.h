@@ -131,22 +131,25 @@ struct Report : wibble::sys::Thread
         getrusage( RUSAGE_SELF, &usage );
 
         config.dump( o );
-        o << "User-Time: " << userTime() << std::endl;
-        o << "System-Time: " << systemTime() << std::endl;
-        o << "Wall-Time: " << interval( tv, now ) << std::endl;
-        o << "Termination-Signal: " << sig << std::endl;
-        o << "Memory-Used: " << vmSize() << std::endl;
-        o << "Finished: " << (m_finished ? "Yes" : "No") << std::endl;
-        o << "Full-State-Space: " << res.fullyExplored << std::endl;
-        o << "LTL-Property-Holds: " << res.ltlPropertyHolds << std::endl;
-        o << "Deadlock-Count: " << res.deadlocks << std::endl;
-        o << "Error-State-Count: " << res.errors << std::endl;
-        o << "States-Visited: " << res.visited << std::endl;
-        o << "State-Expansions: " << res.expanded << std::endl;
+        o << std::endl;
         o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
         o << "Version: " << DIVINE_VERSION << std::endl;
         o << "Build-Date: " << DIVINE_BUILD_DATE << std::endl;
         o << "Architecture: " << architecture() << std::endl;
+        o << std::endl;
+        o << "User-Time: " << userTime() << std::endl;
+        o << "System-Time: " << systemTime() << std::endl;
+        o << "Wall-Time: " << interval( tv, now ) << std::endl;
+        o << "Memory-Used: " << vmSize() << std::endl;
+        o << "Termination-Signal: " << sig << std::endl;
+        o << std::endl;
+        o << "Full-State-Space: " << res.fullyExplored << std::endl;
+        o << "Deadlock-Count: " << res.deadlocks << std::endl;
+        o << "Error-State-Count: " << res.errors << std::endl;
+        o << "State-Expansions: " << res.expanded << std::endl;
+        o << "Finished: " << (m_finished ? "Yes" : "No") << std::endl;
+        o << "States-Visited: " << res.visited << std::endl;
+        o << "LTL-Property-Holds: " << res.ltlPropertyHolds << std::endl;
     }
 };
 
