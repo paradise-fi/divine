@@ -38,6 +38,19 @@ struct Reachability : Domain< Reachability< G > >
         return visitor::FollowTransition;
     }
 
+    // MPI function-to-number-and-back-again drudgery... To be automated.
+    void (Reachability< G >::*_mpi_from_id( int n ))()
+    {
+        assert_eq( n, 0 );
+        return &Reachability< G >::_visit;
+    }
+
+    int _mpi_to_id( void (Reachability< G >::*f)() ) {
+        assert_eq( f, &Reachability< G >::_visit );
+        return 0;
+    }
+    // END MPI drudgery
+
     void _visit() { // parallel
         typedef visitor::Setup< G, Reachability< G > > VisitorSetup;
         visitor::Parallel< VisitorSetup, Reachability< G > >
