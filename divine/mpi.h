@@ -38,14 +38,19 @@ struct Mpi {
         if ( !master() ) slaveLoop(); // never returns
     }
 
+    void notifySlaves( int tag, int id ) {
+        for ( int i = 1; i < m_size; ++i ) {
+            std::cerr << "MPI: notify slave: tag = " << tag
+                      << ", id = " << id << ", target = " << i
+                      << std::endl;
+            MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
+        }
+    }
+
     ~Mpi() {
         if ( m_started && master() ) {
             std::cerr << "MPI: Teardown..." << std::endl;
-            int id = 0;
-            for ( int i = 1; i < m_size; ++i ) {
-                std::cerr << "MPI: Killing " << i << "..." << std::endl;
-                MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, TAG_ALL_DONE );
-            }
+            notifySlaves( TAG_ALL_DONE, 0 );
             MPI::Finalize();
             std::cerr << "MPI: Done." << std::endl;
         }
