@@ -24,17 +24,17 @@ import Foreign.Storable
 import Data.Array
 import Control.Monad( unless )
 
-class (Storable p) => Process p where
+class Process p where
     successors :: p -> [p]
     initial :: p
 
 data PComp p q = PComp p q deriving Show
 
-instance forall p q. (Process p, Process q) => Process (PComp p q) where
+instance (Process p, Process q) => Process (PComp p q) where
     successors (PComp a b) = [ PComp x b | x <- successors a ]
                              ++ [ PComp a x | x <- successors b ]
     {-# INLINE successors #-}
-    initial = PComp (initial :: p) (initial :: q)
+    initial = PComp initial initial
 
 instance forall p q. (Storable p, Storable q) => Storable (PComp p q) where
     peek ptr = do a <- peek (castPtr ptr)
@@ -43,19 +43,20 @@ instance forall p q. (Storable p, Storable q) => Storable (PComp p q) where
     poke ptr (PComp a b) = do poke (castPtr ptr) a
                               pokeByteOff (castPtr ptr) (sizeOf a) b
     sizeOf _ = sizeOf (undefined :: p) + sizeOf (undefined :: q)
+    alignment _ = alignment (undefined :: p) `lcm` alignment (undefined :: q)
 
 --
 -- FFI interface
 --
 
-ffi_getStateSize :: forall p. (Process p) => p -> IO CSize
+ffi_getStateSize :: forall p. (Storable p) => p -> IO CSize
 ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: p)
 
-ffi_initialState :: (Process p) => Ptr p -> IO ()
+ffi_initialState :: (Process p, Storable p) => Ptr p -> IO ()
 ffi_initialState out = poke out initial
 {-# INLINE ffi_initialState #-}
 
-ffi_getSuccessor :: (Process p) => CInt -> Ptr p -> Ptr p -> IO CInt
+ffi_getSuccessor :: (Process p, Storable p) => CInt -> Ptr p -> Ptr p -> IO CInt
 ffi_getSuccessor handle from to = do
   from' <- peek from
   let (res, i) = (numerate' $ successors) from' (fromIntegral handle)
@@ -63,8 +64,9 @@ ffi_getSuccessor handle from to = do
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 
-ffi_getManySuccessors :: forall p. (Process p) => p -> Ptr () -> Ptr P.Group ->
-                         Ptr (C.Circular Blob) -> Ptr (C.Circular Blob) -> IO ()
+ffi_getManySuccessors :: forall p. (Process p, Storable p) => p -> Ptr () ->
+                         Ptr P.Group -> Ptr (C.Circular Blob) ->
+                         Ptr (C.Circular Blob) -> IO ()
 ffi_getManySuccessors _ p g from to = do
   pool <- P.get p g
   fromQ :: C.Circular Blob <- peek from
