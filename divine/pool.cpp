@@ -103,7 +103,6 @@ Pool *GlobalPools::get() {
 }
 
 extern "C" void *pool_extend( void *pool, int sz ) {
-    std::cerr << "extending pool " << pool << std::endl;
     divine::Pool *p = (divine::Pool *) pool;
     if ( !p->group( sz ) )
         p->createGroup( sz );
