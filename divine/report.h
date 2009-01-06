@@ -7,6 +7,7 @@
 #include <wibble/regexp.h>
 #include <divine/config.h>
 #include <divine/version.h>
+#include <divine/mpi.h>
 
 #include <signal.h>
 #include <time.h>
@@ -44,6 +45,7 @@ struct Report : wibble::sys::Thread
 
     int sig;
     bool m_finished;
+    std::string mpi_info;
 
     Report( Config &c ) : config( c ),
                           sig( 0 ),
@@ -122,6 +124,23 @@ struct Report : wibble::sys::Thread
         return false;
     }
 
+    template< typename Mpi >
+    void mpiInfo( Mpi &mpi ) {
+        std::stringstream s;
+#ifdef HAVE_MPI
+        s << "compiled in, ";
+        if (mpi.size() > 1)
+            s << "used, nodes = "
+              << mpi.size();
+        else
+            s << "not used";
+#else
+        "not compiled in"
+#endif
+            ;
+        mpi_info = s.str();
+    }
+
     void final( std::ostream &o ) {
         if ( !config.report() )
             return;
@@ -136,6 +155,7 @@ struct Report : wibble::sys::Thread
         o << "Version: " << DIVINE_VERSION << std::endl;
         o << "Build-Date: " << DIVINE_BUILD_DATE << std::endl;
         o << "Architecture: " << architecture() << std::endl;
+        o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
         o << "User-Time: " << userTime() << std::endl;
         o << "System-Time: " << systemTime() << std::endl;

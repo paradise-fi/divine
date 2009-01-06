@@ -278,6 +278,11 @@ struct Main {
     template< typename A >
     Result run() {
         A alg( &config );
+
+        // TBD. This does not belong here. It is, however, convenient.
+        alg.mpi.start();
+        report->mpiInfo( alg.mpi );
+
         return alg.run();
     }
 

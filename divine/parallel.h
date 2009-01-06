@@ -4,6 +4,7 @@
 #include <divine/fifo.h>
 #include <divine/blob.h>
 #include <divine/barrier.h>
+#include <divine/mpi.h>
 
 #ifndef DIVINE_PARALLEL_H
 #define DIVINE_PARALLEL_H
@@ -136,6 +137,8 @@ struct Domain {
 
     typedef divine::Fifo< Blob > Fifo;
 
+    Mpi< T, T > mpi;
+
     int m_id;
     std::map< T*, int > m_ids;
 
@@ -191,7 +194,8 @@ struct Domain {
     }
 
     Domain( int _n = 4 )
-        : m_id( 0 ), m_parallel( 0 ),
+        : mpi( &self(), &self() ),
+          m_id( 0 ), m_parallel( 0 ),
           m_master( 0 ), n( _n )
     {}
 };
