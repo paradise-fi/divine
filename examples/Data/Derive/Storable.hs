@@ -57,6 +57,7 @@ derive dat =
         items :: [(Integer,CtorDef)]
         items = zip [0..] ctors
         allTypes = nub $ concatMap ctorTypes ctors ++ maybeToList tagtype
+        myType = lK (qualifiedDataName dat) (map vr typeVars)
 
         -- | Tag type, if any.
         tagtype | nctors <= 1     = Nothing
@@ -101,7 +102,7 @@ derive dat =
                   lastEndVar = if null types
                                   then lit (0 :: Integer)
                                   else vrn 'e' (length types - 1)
-                  typeSize = sizeOf (lK (qualifiedDataName dat) [])
+                  typeSize = sizeOf myType
                   lastPad = zeroPad (vr "p") lastEndVar typeSize
                   poke1 n x = [ pokeByteOff (vr "p") (vrn 'o' n) x
                               , zeroPad (vr "p") (vrn 'e' n) (vrn 'o' (n + 1))
@@ -150,6 +151,29 @@ derive dat =
 
         -- | Safe version of Prelude.init.
         safeInit s = if null s then s else init s
+
+        -- Stuff dealing with data definitions with non-zero arity...
+        -- (This basically redefines the ctorTypes function so that it returns
+        -- t1, t2 ... for type parameters bound in the instance declaration.)
+        typeVars = map mkName [ 't' : show n | n <- [1 .. dataArity dat] ]
+
+        dataTypeVars :: DataDef -> [Name]
+        dataTypeVars (DataD    _ _ xs _ _) = xs
+        dataTypeVars (NewtypeD _ _ xs _ _) = xs
+
+        typeVarSubsts v = case lookup v substitutions of
+                               Nothing -> v
+                               Just x -> x
+            where substitutions = zip (dataTypeVars dat) typeVars
+
+        ctorTypes :: CtorDef -> [Type]
+        ctorTypes = map (substType . snd) . ctorStrictTypes
+
+        substType :: Type -> Type
+        substType (ForallT ns c t) = ForallT ns c (substType t)
+        substType (VarT n) = VarT (typeVarSubsts n)
+        substType (AppT t1 t2) = AppT (substType t1) (substType t2)
+        substType t = t
 
 -- | Least Common Multiply of a list of integers
 lcm' :: Integral a => [a] -> a
