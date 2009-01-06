@@ -22,11 +22,12 @@ add_custom_command(
 
 set_source_files_properties( ${CONTEXT}.bwah PROPERTIES SYMBOLIC ON )
 
-include_directories( ${divine_SOURCE_DIR} ${divine_BINARY_DIR} ${BOOST_INCLUDE_PATH} ${MPI_INCLUDE_PATH} ${divine_SOURCE_DIR}/divine/legacy )
+include_directories( ${DIVINE_INCLUDES} )
+add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( divine STATIC
     ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
 wibble_add_test( divine-test ${testh} )
-target_link_libraries( divine dl )
+target_link_libraries( divine dl ${MPI_LIBRARIES} )
 target_link_libraries( divine-test divine wibble )
 wibble_check_target( divine-test )

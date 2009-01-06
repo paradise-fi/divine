@@ -22,6 +22,7 @@ option( HOARD "use HOARD SMP memory allocator" ON )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
+option( MPI "compile DiVinE with MPI for clustering support" ON )
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
@@ -39,6 +40,22 @@ endif( USE32 )
 if( NOT POOLS )
   add_definitions( "-DDISABLE_POOLS" )
 endif( NOT POOLS )
+
+if( MPI )
+  include( FindMPI )
+  if( MPI_FOUND )
+    add_definitions( "-DHAVE_MPI" )
+  else( MPI_FOUND )
+    message( "-- WARNING: I could not find MPI. Disabling cluster support." )
+    set( MPI OFF )
+  endif( MPI_FOUND )
+endif( MPI )
+
+set( DIVINE_INCLUDES
+  ${divine_SOURCE_DIR}
+  ${divine_BINARY_DIR}
+  ${MPI_INCLUDE_PATH}
+  ${divine_SOURCE_DIR}/divine/legacy )
 
 include( CheckCXXSourceCompiles )
 check_cxx_source_compiles(

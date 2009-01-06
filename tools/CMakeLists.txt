@@ -1,5 +1,4 @@
-include_directories( ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} 
-                     ${WIBBLE_INCLUDES} ${divine_SOURCE_DIR}/divine/legacy )
+include_directories( ${DIVINE_INCLUDES} )
 link_libraries( divine wibble pthread )
 if( HOARD )
 link_libraries( hoard )
