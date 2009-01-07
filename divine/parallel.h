@@ -122,11 +122,29 @@ struct BarrierThread : RunThread< T > {
     }
 };
 
+template< typename D >
+struct MpiThread : wibble::sys::Thread {
+    D *m_domain;
+    typedef typename D::Fifo Fifo;
+
+    std::vector< Fifo > fifo;
+
+    MpiThread( D *d ) : m_domain( d ) {
+        fifo.resize( d->n * d->mpi.size() );
+    }
+
+    void *main() {
+        // sentinel code here
+        return 0;
+    }
+};
+
 template< typename T >
 struct Domain {
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
         Domain< T > *m_domain;
+        MpiThread< Domain< T > > mpiThread;
 
         template< typename F >
         void run( F f ) {
@@ -139,8 +157,10 @@ struct Domain {
 
         Parallel( Domain *dom, T &master, int _n )
             : divine::Parallel< T, BarrierThread >( master, _n ),
-              m_domain( dom )
+              m_domain( dom ), mpiThread( dom )
         {
+            if ( dom->mpi.size() > 1 )
+                addExtra( &mpiThread );
         }
     };
 
