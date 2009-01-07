@@ -11,15 +11,15 @@
 namespace divine {
 namespace algorithm {
 
+template< typename > struct Owcty;
+
+// ------------------------------------------
+// -- Some drudgery for MPI's sake
+// --
 template< typename G >
-struct Owcty : Algorithm, Domain< Owcty< G > >
+struct _MpiId< Owcty< G > >
 {
-    typedef typename G::Node Node;
- 
-    // ------------------------------------------
-    // -- Some drudgery for MPI's sake
-    // --
-    void (Owcty< G >::*_mpi_from_id( int n ))()
+    static void (Owcty< G >::*from_id( int n ))()
     {
         switch ( n ) {
             case 0: return &Owcty< G >::_initialise;
@@ -29,7 +29,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
         }
     }
 
-    int _mpi_to_id( void (Owcty< G >::*f)() ) {
+    static int to_id( void (Owcty< G >::*f)() ) {
         if( f == &Owcty< G >::_initialise )
             return 0;
         if( f == &Owcty< G >::_reachability )
@@ -38,7 +38,13 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
             return 2;
         assert( 0 );
     }
+};
 
+template< typename G >
+struct Owcty : Algorithm, Domain< Owcty< G > >
+{
+    typedef typename G::Node Node;
+ 
     // -------------------------------
     // -- Some useful types
     // --

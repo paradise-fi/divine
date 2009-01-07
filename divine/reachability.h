@@ -11,6 +11,25 @@
 namespace divine {
 namespace algorithm {
 
+template< typename > struct Reachability;
+
+// MPI function-to-number-and-back-again drudgery... To be automated.
+template< typename G >
+struct _MpiId< Reachability< G > >
+{
+    static int to_id( void (Reachability< G >::*f)() ) {
+        assert_eq( f, &Reachability< G >::_visit );
+        return 0;
+    }
+
+    static void (Reachability< G >::*from_id( int n ))()
+    {
+        assert_eq( n, 0 );
+        return &Reachability< G >::_visit;
+    }
+};
+// END MPI drudgery
+
 template< typename G >
 struct Reachability : Domain< Reachability< G > >
 {
@@ -37,19 +56,6 @@ struct Reachability : Domain< Reachability< G > >
         ++ shared.transitions;
         return visitor::FollowTransition;
     }
-
-    // MPI function-to-number-and-back-again drudgery... To be automated.
-    void (Reachability< G >::*_mpi_from_id( int n ))()
-    {
-        assert_eq( n, 0 );
-        return &Reachability< G >::_visit;
-    }
-
-    int _mpi_to_id( void (Reachability< G >::*f)() ) {
-        assert_eq( f, &Reachability< G >::_visit );
-        return 0;
-    }
-    // END MPI drudgery
 
     void _visit() { // parallel
         typedef visitor::Setup< G, Reachability< G > > VisitorSetup;

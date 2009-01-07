@@ -8,6 +8,20 @@
 namespace divine {
 namespace algorithm {
 
+template< typename T >
+struct _MpiId
+{
+    static int to_id( void (T::*f)() ) {
+        // assert( 0 );
+        return -1;
+    }
+
+    static void (T::*from_id( int ))() {
+        // assert( 0 );
+        return 0;
+    }
+};
+
 inline int workerCount( Config *c ) {
     if ( !c )
         return 1;

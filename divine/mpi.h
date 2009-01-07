@@ -4,6 +4,7 @@
 #define DIVINE_MPI_H
 
 #ifdef HAVE_MPI
+#include <divine/algorithm.h>
 #include <mpi.h>
 #endif
 
@@ -80,8 +81,9 @@ struct Mpi {
         // TDB. First distribute the shared bits ... Probably a
         // MPI::COMM_WORLD.Scatter is in place.
 
-        // Btw, we want to use buffering sends.
-        m_domain->parallel().run( m_master->_mpi_from_id( id ) );
+        // Btw, we want to use buffering sends. We need to use nonblocking
+        // receive, since blocking receive is busy-waiting under openmpi.
+        m_domain->parallel().run( algorithm::_MpiId< M >::from_id( id ) );
 
         // TBD. we need to collect the shared data now; maybe a call to
         // MPI::COMM_WORLD.Gather would help.
