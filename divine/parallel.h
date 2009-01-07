@@ -40,8 +40,13 @@ struct Parallel {
     T *m_master;
     std::vector< T > m_instances;
     std::vector< R< T > > m_threads;
+    std::vector< wibble::sys::Thread * > m_extra;
 
     int n;
+
+    void addExtra( wibble::sys::Thread *t ) {
+        m_extra.push_back( t );
+    }
 
     T &instance( int i ) {
         assert( i < n );
@@ -71,8 +76,12 @@ struct Parallel {
     void runThreads() {
         for ( int i = 0; i < n; ++i )
             thread( i ).start();
+        for ( int i = 0; i < m_extra.size(); ++i )
+            m_extra[ i ]->start();
         for ( int i = 0; i < n; ++i )
             thread( i ).join();
+        for ( int i = 0; i < m_extra.size(); ++i )
+            m_extra[ i ]->join();
     }
 
     template< typename F >
