@@ -43,17 +43,17 @@ endif( NOT POOLS )
 
 include( FindMPI )
 
-if( MPI )
-  if( MPI_FOUND )
-    add_definitions( "-DHAVE_MPI" )
-  else( MPI_FOUND )
-    set( MPI_INCLUDE_PATH "" )
-    set( MPI_LIBRARIES "" )
-    set( MPI_LIBRARY "" )
+if( MPI AND MPI_FOUND )
+  add_definitions( "-DHAVE_MPI" )
+else( MPI AND MPI_FOUND )
+  set( MPI_INCLUDE_PATH "" )
+  set( MPI_LIBRARIES "" )
+  set( MPI_LIBRARY "" )
+  if( MPI )
     message( "-- WARNING: I could not find MPI. Disabling cluster support." )
-    set( MPI OFF )
-  endif( MPI_FOUND )
-endif( MPI )
+  endif( MPI )
+  set( MPI OFF )
+endif( MPI AND MPI_FOUND )
 
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
