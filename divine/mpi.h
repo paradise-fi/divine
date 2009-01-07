@@ -40,8 +40,8 @@ struct Mpi {
     }
 
     void notifySlaves( int tag, int id ) {
-        for ( int i = 1; i < m_size; ++i ) {
-            std::cerr << "MPI: notify slave: tag = " << tag
+        for ( int i = 1; i < size(); ++i ) {
+            std::cerr << "MPI: Notify: tag = " << tag
                       << ", id = " << id << ", target = " << i
                       << std::endl;
             MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
@@ -50,18 +50,18 @@ struct Mpi {
 
     ~Mpi() {
         if ( m_started && master() ) {
-            std::cerr << "MPI: Teardown..." << std::endl;
+            std::cerr << "MPI: Teardown start." << std::endl;
             notifySlaves( TAG_ALL_DONE, 0 );
             MPI::Finalize();
-            std::cerr << "MPI: Done." << std::endl;
+            std::cerr << "MPI: Teardown end." << std::endl;
         }
     }
 
-    int rank() { return m_rank; }
-    int size() { return m_size; }
+    int rank() { if ( m_started ) return m_rank; else return 0; }
+    int size() { if ( m_started ) return m_size; else return 1; }
 
     bool master() {
-        return m_rank == 0;
+        return rank() == 0;
     }
 
     // Default copy and assignment is fine for us.
@@ -92,11 +92,11 @@ struct Mpi {
     void slaveLoop() {
         MPI::Status status;
         int id;
-        std::cerr << "MPI-Slave: waiting..." << std::endl;
+        std::cerr << "MPI-Slave: Waiting." << std::endl;
         MPI::COMM_WORLD.Recv( &id, 1 /* one integer per message */,
                               MPI::INT, 0 /* from master */,
                               MPI::ANY_TAG, status );
-        std::cerr << "MPI-Slave: received tag " << status.Get_tag()
+        std::cerr << "MPI-Slave: Notified. Tag = " << status.Get_tag()
                   << ", id = " << id << std::endl;
         switch ( status.Get_tag() ) {
             case TAG_ALL_DONE:
@@ -119,6 +119,7 @@ template< typename M, typename D >
 struct Mpi {
     int rank() { return 0; }
     int size() { return 1; }
+    void notifySlaves( int, int ) {}
     void start() {}
     Mpi( M *, D * ) {}
 };
