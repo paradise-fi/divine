@@ -7,10 +7,10 @@ import Foreign.Ptr
 import Foreign.Storable
 import Control.Monad( when )
 
-foreign import ccall "divine/pool.ffi.h pool_extend"
+foreign import ccall "pool_extend"
         pool_extend :: Ptr () -> CInt -> IO (Ptr Group)
 
-foreign import ccall "divine/pool.ffi.h pool_allocate"
+foreign import ccall "pool_allocate"
         pool_allocate :: Ptr () -> CInt -> IO (Ptr a)
 
 data Group = Group { -- item :: !CSize, used :: !CSize, total :: !CSize,
