@@ -168,7 +168,7 @@ struct Domain {
 
     Mpi< T, T > mpi;
 
-    int m_id;
+    int m_id, minId, maxId;
     std::map< T*, int > m_ids;
 
     Fifo fifo;
@@ -196,6 +196,8 @@ struct Domain {
     void connect( T &master ) {
         m_master = &master;
         m_id = master.obtainId( self() );
+        minId = master.minId;
+        maxId = master.maxId;
     }
 
     int peers() {
@@ -209,6 +211,11 @@ struct Domain {
     }
 
     int obtainId( T &t ) {
+        if ( !m_id ) {
+            minId = m_id = n * mpi.rank();
+            maxId = (n * (mpi.rank() + 1)) - 1;
+        }
+
         if ( !m_ids.count( &t ) )
             m_ids[ &t ] = m_id ++;
         return m_ids[ &t ];
