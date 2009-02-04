@@ -156,7 +156,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     bool workWaiting() {
-        return !this->fifo.empty();
+        return !outgoingEmpty();
     }
 
     template< typename Mpi >
@@ -231,7 +231,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 MPI::COMM_WORLD.Send( cnt, 3, MPI::INT, 0, TAG_GIVE_COUNTS );
                 return false;
             case TAG_DONE:
-                return true;
+                return m_domain.barrier().idle( this );
             default:
                 assert( 0 );
         }
