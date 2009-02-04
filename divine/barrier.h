@@ -37,7 +37,7 @@ struct Barrier {
         return m_conditions[ t ];
     }
 
-    bool idle( T *who ) {
+    bool maybeIdle( T *who, bool really ) {
         assert( m_expect );
         if ( m_regd < m_expect )
             return false;
@@ -88,6 +88,9 @@ struct Barrier {
         }
 
         if ( done ) {
+            if ( !really )
+                return true;
+
             m_done = true; // mark.
 
             // signal everyone so they get past their sleep
@@ -106,7 +109,12 @@ struct Barrier {
                 i->second.signal(); // wake up that thread
             }
 
-            // and if we have nothing to do ourselves, go to bed...
+            // and if we have nothing to do ourselves, go to bed... for the
+            // "last man" check, we don't go to sleep, just return false right
+            // away here
+            if ( !really )
+                return false;
+
             if ( who->isIdle() ) {
                 if ( m_sleeping < m_expect - 1 ) {
                     ++ m_sleeping;
@@ -127,6 +135,18 @@ struct Barrier {
         if ( m_done )
             this->done( who );
         return m_done;
+    }
+
+    bool idle( T *who ) {
+        return maybeIdle( who, true );
+    }
+
+    // Returns true if a call to idle( who ) would return true, but *does not
+    // perform the actual termination* (ie. a thread can probe whether the rest
+    // of the system is idle, without actually becoming idle itself).
+    bool lastMan( T *who ) {
+        bool r = maybeIdle( who, false );
+        return r;
     }
 
     void done( T *t ) {
