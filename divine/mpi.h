@@ -45,9 +45,9 @@ struct Mpi {
         if ( !master() )
             return;
         for ( int i = 1; i < size(); ++i ) {
-            std::cerr << "MPI: Notify: tag = " << tag
+            /*  std::cerr << "MPI: Notify: tag = " << tag
                       << ", id = " << id << ", target = " << i
-                      << std::endl;
+                      << std::endl; */
             MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
         }
     }
@@ -170,14 +170,14 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             MPI::COMM_WORLD.Recv( cnt, 3, MPI::INT,
                                   MPI::ANY_SOURCE, TAG_GIVE_COUNTS,
                                   status );
-            std::cerr << "result from " << status.Get_source() << " counts: " << cnt[0] << ", "
-                      << cnt[1] << ", " << cnt[2] << std::endl;
             if ( !cnt[0] )
                 valid = false;
             s += cnt[1];
             r += cnt[2];
         }
-        std::cerr << "termination phase " << id << " counts: " << r << ", " << s << std::endl;
+        std::cerr << "termination phase "
+                  << id << " (" << (valid ? "" : "in") << "valid) counts: "
+                  << r << ", " << s << std::endl;
         return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
     }
 
@@ -222,10 +222,10 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         int id;
         MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
                               MPI::ANY_SOURCE, MPI::ANY_TAG, status );
-        std::cerr << "MPI CONTROL: " << m_domain.mpi.rank()
+        /* std::cerr << "MPI CONTROL: " << m_domain.mpi.rank()
                   << " <-- "
                   << status.Get_source()
-                  << " [tag = " << status.Get_tag() << ", id = " << id << "]" << std::endl;
+                  << " [tag = " << status.Get_tag() << ", id = " << id << "]" << std::endl; */
         switch ( status.Get_tag() ) {
             case TAG_GET_COUNTS:
                 int cnt[3];
@@ -258,11 +258,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 Blob &b = fifo[ i ].front();
                 fifo[ i ].pop();
                 // might make sense to use ISend and waitall after the loop
-                std::cerr << "MPI: " << m_domain.mpi.rank()
+                /* std::cerr << "MPI: " << m_domain.mpi.rank()
                           << " --> " << i / m_domain.n << " ("
                           << i << ")" << " [size = " << b.size()
                           << ", word0 = " << b.get< uint32_t >()
-                          << "]" << std::endl;
+                          << "]" << std::endl; */
 
                 MPI::COMM_WORLD.Send( b.data(), b.size(),
                                       MPI::CHAR, i / m_domain.n,
@@ -286,7 +286,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         // by non-master nodes, to wake up sleeping workers that have received
         // messages from network. Ugly, yes.
         if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
-            // std::cerr << "master wants to terminate..." << std::endl;
             if ( termination() ) {
                 std::cerr << "MPI: Master terminated." << std::endl;
                 return false;
