@@ -22,6 +22,7 @@ struct Location {
 #define LOCATION(stmt) Location( __FILE__, __LINE__, stmt )
 #define LOCATION_I(stmt, i) Location( __FILE__, __LINE__, stmt, i )
 #define assert(x) assert_fn( LOCATION( #x ), x )
+#define assert_die() assert_die_fn( LOCATION( "forbidden code path tripped" ) )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
 #define assert_eq_l(i, x, y) assert_eq_fn( LOCATION_I( #x " == " #y, i ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
@@ -30,6 +31,7 @@ struct Location {
                        sizeof( y ) / sizeof( y[0] ), x, y )
 #else
 #define assert(x)
+#define assert_die() abort()
 #define assert_eq(x, y)
 #define assert_eq_l(i, x, y)
 #define assert_neq(x, y)
@@ -74,6 +76,8 @@ void assert_fn( Location l, X x )
         AssertFailed f( l );
     }
 }
+
+void assert_die_fn( Location l ) __attribute__((noreturn));
 
 template< typename X, typename Y >
 void assert_eq_fn( Location l, X x, Y y )

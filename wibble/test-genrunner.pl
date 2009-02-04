@@ -85,7 +85,7 @@ sub dumpmain() {
     }
     print "};\n";
     print "#include <wibble/test-main.h>\n";
-    print "int assertFailure = 0;\n";
+    #print "int assertFailure = 0;\n";
 }
 for $file (@ARGV) {
     &process ($file);
