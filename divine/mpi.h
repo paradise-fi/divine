@@ -3,14 +3,14 @@
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
 
-#ifdef HAVE_MPI
+#include <wibble/test.h>
 #include <divine/algorithm.h>
+
+#ifdef HAVE_MPI
 #include <mpi.h>
 #endif
 
 namespace divine {
-
-#ifdef HAVE_MPI
 
 #define TAG_ALL_DONE    0
 #define TAG_RUN         1
@@ -18,6 +18,8 @@ namespace divine {
 #define TAG_GIVE_COUNTS 4
 #define TAG_DONE        5
 #define TAG_ID          6
+
+#ifdef HAVE_MPI
 
 template< typename Algorithm, typename D >
 struct Mpi {
@@ -119,19 +121,6 @@ struct Mpi {
     }
 
 };
-
-#else
-
-template< typename M, typename D >
-struct Mpi {
-    int rank() { return 0; }
-    int size() { return 1; }
-    void notifySlaves( int, int ) {}
-    void start() {}
-    Mpi( D * ) {}
-};
-
-#endif
 
 template< typename D >
 struct MpiThread : wibble::sys::Thread, Terminable {
@@ -304,6 +293,36 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return 0;
     }
 };
+
+#else
+
+template< typename M, typename D >
+struct Mpi {
+    int rank() { return 0; }
+    int size() { return 1; }
+    void notifySlaves( int, int ) {}
+    void start() {}
+    Mpi( D * ) {}
+};
+
+template< typename D >
+struct MpiThread : wibble::sys::Thread {
+    struct Fifos {
+        Fifo< Blob > &operator[]( int ) __attribute__((noreturn)) {
+            assert_die();
+        }
+    };
+
+    Fifos fifo;
+
+    void *main() {
+        assert_die();
+    }
+
+    MpiThread( D& ) {}
+};
+
+#endif
 
 }
 
