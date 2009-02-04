@@ -170,7 +170,7 @@ struct Dummy {
             if ( !_from.valid() )
                 return true;
             Content f = _from.get< Content >();
-            if ( f.first == 32 || f.second == 32 )
+            if ( f.first == 1024 || f.second == 1024 )
                 return true;
             return nth == 3;
         }
