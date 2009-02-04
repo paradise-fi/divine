@@ -306,11 +306,13 @@ struct Custom {
     {
         if ( in.empty() )
             return;
+#ifndef DISABLE_POOLS
         if ( dl.get_many_successors ) {
             Pool *p = alloc->alloc()->m_pool;
             dl.get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
                                     (char *) &in, (char *) &out );
         } else
+#endif
             fillCircularTedious( *this, in, out );
     }
 

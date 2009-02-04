@@ -9,14 +9,20 @@ namespace divine {
 GlobalPools *GlobalPools::s_instance = 0;
 pthread_once_t GlobalPools::s_once = PTHREAD_ONCE_INIT;
 
-Pool::Pool() : m_groupCount( 0 ) {
+Pool::Pool() {
     GlobalPools::add( this );
+#ifndef DISABLE_POOLS
+    m_groupCount = 0;
     m_groups.reserve( 8096 ); // FIXME
+#endif
 }
 
-Pool::Pool( const Pool& ): m_groupCount( 0 )  {
+Pool::Pool( const Pool& ) {
     GlobalPools::add( this );
+#ifndef DISABLE_POOLS
+    m_groupCount = 0;
     m_groups.reserve( 8096 ); // FIXME
+#endif
 }
 
 Pool::~Pool() {
@@ -102,6 +108,7 @@ Pool *GlobalPools::get() {
 
 }
 
+#ifndef DISABLE_POOLS
 extern "C" void *pool_extend( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
     if ( !p->group( sz ) )
@@ -114,3 +121,4 @@ extern "C" void *pool_allocate( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
     return p->alloc( sz );
 }
+#endif
