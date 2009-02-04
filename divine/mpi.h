@@ -12,19 +12,21 @@ namespace divine {
 
 #ifdef HAVE_MPI
 
-#define TAG_ALL_DONE 0
-#define TAG_RUN 1
+#define TAG_ALL_DONE    0
+#define TAG_RUN         1
+#define TAG_GET_COUNTS  2
+#define TAG_GIVE_COUNTS 4
+#define TAG_DONE        5
+#define TAG_ID          6
 
-template< typename M, typename D >
+template< typename Algorithm, typename D >
 struct Mpi {
 
     bool m_started;
     int m_rank, m_size;
-    M *m_master;
     D *m_domain;
 
-    Mpi( M *m, D *d ) {
-        m_master = m;
+    Mpi( D *d ) {
         m_domain = d;
         m_started = false;
     }
@@ -40,6 +42,8 @@ struct Mpi {
     }
 
     void notifySlaves( int tag, int id ) {
+        if ( !master() )
+            return;
         for ( int i = 1; i < size(); ++i ) {
             std::cerr << "MPI: Notify: tag = " << tag
                       << ", id = " << id << ", target = " << i
@@ -83,7 +87,10 @@ struct Mpi {
 
         // Btw, we want to use buffering sends. We need to use nonblocking
         // receive, since blocking receive is busy-waiting under openmpi.
-        m_domain->parallel().run( algorithm::_MpiId< M >::from_id( id ) );
+        typename Algorithm::Shared shared;
+        m_domain->parallel().run(
+            shared,
+            algorithm::_MpiId< Algorithm >::from_id( id ) );
 
         // TBD. we need to collect the shared data now; maybe a call to
         // MPI::COMM_WORLD.Gather would help.
@@ -121,11 +128,28 @@ struct Mpi {
     int size() { return 1; }
     void notifySlaves( int, int ) {}
     void start() {}
-    Mpi( M *, D * ) {}
+    Mpi( D * ) {}
 };
 
 #endif
 
 }
+
+template< typename D >
+struct MpiThread : wibble::sys::Thread {
+    D *m_domain;
+    typedef typename D::Fifo Fifo;
+
+    std::vector< Fifo > fifo;
+
+    MpiThread( D &d ) : m_domain( &d ) {
+        fifo.resize( d.n * d.mpi.size() );
+    }
+
+    void *main() {
+        // sentinel code here
+        return 0;
+    }
+};
 
 #endif

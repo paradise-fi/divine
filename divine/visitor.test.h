@@ -118,7 +118,8 @@ struct TestVisitor {
 
     // requires that n % peers() == 0
     template< typename G >
-    struct ParVisitor : Domain< ParVisitor< G > > {
+    struct ParVisitor : DomainWorker< ParVisitor< G > > {
+        Domain< ParVisitor< G > > domain;
         typedef typename G::Node Node;
 
         struct Shared {
@@ -132,7 +133,7 @@ struct TestVisitor {
         std::set< int > seenset;
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            if ( t % this->peers() != this->id() ) {
+            if ( t % this->peers() != this->globalId() ) {
                 push( this->queue( t % this->peers() ), t );
                 return visitor::IgnoreTransition;
             }
@@ -151,14 +152,15 @@ struct TestVisitor {
             assert( !(shared.n % this->peers()) );
             typedef visitor::Setup< G, ParVisitor< G > > VisitorSetup;
             visitor::BFV< VisitorSetup > bfv( shared.g, *this );
-            if ( shared.initial % this->peers() == this->id() ) {
+            if ( shared.initial % this->peers() == this->globalId() ) {
                 bfv.visit( shared.initial );
             }
             while ( shared.seen != shared.n / this->peers() ) {
                 if ( this->fifo.empty() )
                     continue;
-                assert_eq( this->fifo.front().template get< int >() % this->peers(),
-                           this->id() );
+                assert_eq( this->fifo.front().template get< int >()
+                             % this->peers(),
+                           this->globalId() );
                 shared.trans ++;
                 bfv.visit( unblob< Node >( this->fifo.front() ) );
                 this->fifo.pop();
@@ -167,7 +169,7 @@ struct TestVisitor {
 
         void _finish() { // parallel
             while ( !this->fifo.empty() ) {
-                this->shared.trans ++;
+                shared.trans ++;
                 this->fifo.pop();
             }
         }
@@ -176,20 +178,20 @@ struct TestVisitor {
             shared.initial = initial;
             seen = shared.seen = 0;
             trans = shared.trans = 0;
-            this->parallel().run( &ParVisitor< G >::_visit );
-            for ( int i = 0; i < this->parallel().n; ++i ) {
-                seen += this->parallel().shared( i ).seen;
-                trans += this->parallel().shared( i ).trans;
+            domain.parallel().run( shared, &ParVisitor< G >::_visit );
+            for ( int i = 0; i < domain.parallel().n; ++i ) {
+                seen += domain.parallel().shared( i ).seen;
+                trans += domain.parallel().shared( i ).trans;
             }
             shared.seen = 0;
             shared.trans = 0;
-            this->parallel().run( &ParVisitor< G >::_finish );
-            for ( int i = 0; i < this->parallel().n; ++i )
-                trans += this->parallel().shared( i ).trans;
+            domain.parallel().run( shared, &ParVisitor< G >::_finish );
+            for ( int i = 0; i < domain.parallel().n; ++i )
+                trans += domain.parallel().shared( i ).trans;
         }
 
         ParVisitor( G g = G(), int _n = 0 ) 
-            : Domain< ParVisitor< G > >( 10 )
+            : domain( 10 )
         {
             shared.g = g;
             shared.n = _n;
@@ -204,8 +206,9 @@ struct TestVisitor {
 
     // requires that n % peers() == 0
     template< typename G >
-    struct TermParVisitor : Domain< TermParVisitor< G > >
+    struct TermParVisitor : DomainWorker< TermParVisitor< G > >
     {
+        Domain< TermParVisitor< G > > domain;
         typedef typename G::Node Node;
         struct Shared {
             Node initial;
@@ -216,18 +219,18 @@ struct TestVisitor {
         std::set< int > seenset;
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            if ( owner( t ) != this->id() ) {
+            if ( owner( t ) != this->globalId() ) {
                 push( this->queue( owner( t ) ), t );
                 return visitor::IgnoreTransition;
             }
-            assert_eq( owner( t ), this->id() );
+            assert_eq( owner( t ), this->globalId() );
             shared.trans ++;
             return visitor::FollowTransition;
         }
 
         visitor::ExpansionAction expansion( Node n ) {
             assert( !seenset.count( unblob< int >( n ) ) );
-            assert_eq( owner( n ), this->id() );
+            assert_eq( owner( n ), this->globalId() );
             seenset.insert( unblob< int >( n ) );
             ++ shared.seen;
             return visitor::ExpandState;
@@ -240,16 +243,16 @@ struct TestVisitor {
         void _visit() { // parallel
             typedef visitor::Setup< G, TermParVisitor< G > > VisitorSetup;
             visitor::BFV<  VisitorSetup > bfv( shared.g, *this );
-            if ( owner( shared.initial ) == this->id() ) {
+            if ( owner( shared.initial ) == this->globalId() ) {
                 bfv.visit( unblob< Node >( shared.initial ) );
             }
             while ( true ) {
                 if ( this->fifo.empty() ) {
-                    if ( this->master().m_barrier.idle( this ) )
+                    if ( this->idle() )
                         return;
                 } else {
                     assert_eq( this->fifo.front().template get< int >()
-                            % this->peers(), this->id() );
+                            % this->peers(), this->globalId() );
                     shared.trans ++;
                     bfv.visit( unblob< Node >( this->fifo.front() ) );
                     this->fifo.pop();
@@ -261,10 +264,10 @@ struct TestVisitor {
             shared.initial = initial;
             shared.seen = 0;
             shared.trans = 0;
-            this->parallel().run( &TermParVisitor< G >::_visit );
-            for ( int i = 0; i < this->parallel().n; ++i ) {
-                shared.seen += this->parallel().shared( i ).seen;
-                shared.trans += this->parallel().shared( i ).trans;
+            domain.parallel().run( shared, &TermParVisitor< G >::_visit );
+            for ( int i = 0; i < domain.parallel().n; ++i ) {
+                shared.seen += domain.parallel().shared( i ).seen;
+                shared.trans += domain.parallel().shared( i ).trans;
             }
         }
 
@@ -392,8 +395,9 @@ struct TestVisitor {
     }
 
     template< typename G >
-    struct SimpleParReach : Domain< SimpleParReach< G > >
+    struct SimpleParReach : DomainWorker< SimpleParReach< G > >
     {
+        Domain< SimpleParReach< G > > domain;
         typedef typename G::Node Node;
         struct Shared {
             Node initial;
@@ -425,10 +429,10 @@ struct TestVisitor {
             shared.initial = initial;
             shared.seen = 0;
             shared.trans = 0;
-            this->parallel().run( &SimpleParReach< G >::_visit );
-            for ( int i = 0; i < this->parallel().n; ++i ) {
-                shared.seen += this->parallel().shared( i ).seen;
-                shared.trans += this->parallel().shared( i ).trans;
+            domain.parallel().run( shared, &SimpleParReach< G >::_visit );
+            for ( int i = 0; i < domain.parallel().n; ++i ) {
+                shared.seen += domain.parallel().shared( i ).seen;
+                shared.trans += domain.parallel().shared( i ).trans;
             }
         }
 

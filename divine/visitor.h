@@ -171,11 +171,11 @@ struct DFV : Common< Stack, S > {
         : Common< Stack, S >( g, n, s ) {}
 }; 
 
-template< typename S, typename Domain >
+template< typename S, typename Worker >
 struct Parallel {
     typedef typename S::Node Node;
 
-    Domain &dom;
+    Worker &worker;
     typename S::Notify &notify;
     typename S::Graph &graph;
     typedef typename S::Seen Seen;
@@ -183,18 +183,18 @@ struct Parallel {
     Seen *m_seen;
 
     int owner( Node n ) const {
-        return unblob< int >( n ) % dom.peers();
+        return unblob< int >( n ) % worker.peers();
     }
 
     void queue( Node from, Node to ) {
-        Fifo< Blob > &fifo = dom.queue( owner( to ) );
+        Fifo< Blob > &fifo = worker.queue( owner( to ) );
         MutexLock __l( fifo.writeMutex );
         fifo.push( __l, unblob< Node >( from ) );
         fifo.push( __l, unblob< Node >( to ) );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
-        if ( owner( t ) != dom.id() ) {
+        if ( owner( t ) != notify.globalId() ) {
             queue( f, t );
             return visitor::IgnoreTransition;
         }
@@ -202,22 +202,22 @@ struct Parallel {
     }
     
     visitor::ExpansionAction expansion( Node n ) {
-        assert_eq( owner( n ), dom.id() );
+        assert_eq( owner( n ), notify.globalId() );
         return S::expansion( notify, n );
     }
 
     template< typename BFV >
     void run( BFV &bfv ) {
         while ( true ) {
-            if ( dom.fifo.empty() ) {
-                if ( dom.master().m_barrier.idle( &dom ) )
+            if ( worker.fifo.empty() ) {
+                if ( worker.idle() )
                     return;
             } else {
                 Node f, t;
-                f = dom.fifo.front();
-                dom.fifo.pop();
-                t = dom.fifo.front( true );
-                dom.fifo.pop();
+                f = worker.fifo.front();
+                worker.fifo.pop();
+                t = worker.fifo.front( true );
+                worker.fifo.pop();
 
                 bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
                 bfv.visit();
@@ -226,9 +226,12 @@ struct Parallel {
     }
 
     void visit( Node initial ) {
-        typedef Setup< typename S::Graph, Parallel< S, Domain >, Seen > Ours;
+        // TBD. Tell the graph that this is our thread and it wants to init its
+        // allocator. Or something.
+        typedef Setup< typename S::Graph, Parallel< S, Worker >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
-        if ( bfv.seen().valid( initial ) && owner( initial ) == dom.id() ) {
+        if ( bfv.seen().valid( initial ) &&
+             owner( initial ) == notify.globalId() ) {
             bfv.visit( unblob< Node >( initial ) );
         }
         run( bfv );
@@ -239,8 +242,9 @@ struct Parallel {
         return visit( Node() ); // assuming Node().valid() == false
     }
 
-    Parallel( typename S::Graph &g, Domain &d, typename S::Notify &n, Seen *s = 0 )
-        : dom( d ), notify( n ), graph( g ), m_seen( s )
+    Parallel( typename S::Graph &g, Worker &w,
+              typename S::Notify &n, Seen *s = 0 )
+        : worker( w ), notify( n ), graph( g ), m_seen( s )
     {}
 };
 

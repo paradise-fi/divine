@@ -280,8 +280,8 @@ struct Main {
         A alg( &config );
 
         // TBD. This does not belong here. It is, however, convenient.
-        alg.mpi.start();
-        report->mpiInfo( alg.mpi );
+        alg.domain.mpi.start();
+        report->mpiInfo( alg.domain.mpi );
 
         return alg.run();
     }

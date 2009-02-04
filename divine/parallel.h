@@ -37,7 +37,7 @@ struct RunThread : wibble::sys::Thread {
 
 template< typename T, template< typename > class R = RunThread >
 struct Parallel {
-    T *m_master;
+    typedef typename T::Shared Shared;
     std::vector< T > m_instances;
     std::vector< R< T > > m_threads;
     std::vector< wibble::sys::Thread * > m_extra;
@@ -54,9 +54,7 @@ struct Parallel {
         return m_instances[ i ];
     }
 
-    T &master() { return *m_master; }
-
-    typename T::Shared &shared( int i ) { return instance( i ).shared; }
+    Shared &shared( int i ) { return instance( i ).shared; }
 
     R< T > &thread( int i ) {
         assert( i < n );
@@ -64,11 +62,11 @@ struct Parallel {
         return m_threads[ i ];
     }
 
-    template< typename F >
-    void initThreads( F f ) {
+    template< typename Shared, typename F >
+    void initThreads( Shared &sh, F f ) {
         m_threads.clear();
         for ( int i = 0; i < n; ++i ) {
-            instance( i ).shared = master().shared;
+            instance( i ).shared = sh;
             m_threads.push_back( R< T >( instance( i ), f ) );
         }
     }
@@ -85,35 +83,39 @@ struct Parallel {
     }
 
     template< typename F >
-    void run( F f ) {
-        initThreads( f );
+    void run( Shared &sh, F f ) {
+        initThreads( sh, f );
         runThreads();
     }
 
-    Parallel( T &master, int _n ) : m_master( &master ), n( _n )
+    Parallel( int _n ) : n( _n )
     {
         m_instances.resize( n );
     }
 };
 
 template< typename T >
-struct BarrierThread : RunThread< T > {
-    Barrier< T > *m_barrier;
+struct BarrierThread : RunThread< T >, Terminable {
+    Barrier< Terminable > *m_barrier;
 
-    void setBarrier( Barrier< T > &b ) {
+    void setBarrier( Barrier< Terminable > &b ) {
         m_barrier = &b;
     }
 
     virtual void init() {
         assert( m_barrier );
-        m_barrier->started( this->t );
+        m_barrier->started( this );
     }
 
     virtual void fini() {
         // m_done is true if termination has been done, in which case all of
         // the mutexes are unlocked. (and unlocking an already unlocked mutex
         // locks it... d'OH)
-        m_barrier->done( this->t );
+        m_barrier->done( this );
+    }
+
+    bool workWaiting() {
+        return this->t->workWaiting();
     }
 
     BarrierThread( T &_t, typename RunThread< T >::F _f )
@@ -122,117 +124,149 @@ struct BarrierThread : RunThread< T > {
     }
 };
 
-template< typename D >
-struct MpiThread : wibble::sys::Thread {
-    D *m_domain;
-    typedef typename D::Fifo Fifo;
+template< typename > struct Domain;
 
-    std::vector< Fifo > fifo;
+template< typename T >
+struct DomainWorker {
+    typedef divine::Fifo< Blob > Fifo;
 
-    MpiThread( D *d ) : m_domain( d ) {
-        fifo.resize( d->n * d->mpi.size() );
+    Domain< T > *m_master;
+    Fifo fifo;
+    int m_id;
+
+    Domain< T > &master() {
+        assert( m_master );
+        return *m_master;
     }
 
-    void *main() {
-        // sentinel code here
-        return 0;
+    void connect( Domain< T > &master ) {
+        m_master = &master;
+        m_id = master.obtainId( *this );
+    }
+
+    int peers() {
+        return master().n * master().mpi.size();
+    }
+
+    bool idle() {
+        return master().barrier().idle( terminable() );
+    }
+
+    bool workWaiting() {
+        return !this->fifo.empty();
+    }
+
+    int globalId() {
+        assert( m_master );
+        return m_id;
+    }
+
+    int localId() {
+        return m_id - master().minId;
+    }
+
+    Terminable *terminable() {
+        return &master().parallel().m_threads[ localId() ];
+    }
+
+    Fifo &queue( int globalId ) {
+        assert( globalId < peers() );
+        return master().queue( globalId );
     }
 };
 
 template< typename T >
 struct Domain {
+    typedef divine::Fifo< Blob > Fifo;
+
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
         Domain< T > *m_domain;
         MpiThread< Domain< T > > mpiThread;
 
-        template< typename F >
-        void run( F f ) {
-            initThreads( f );
+        template< typename Shared, typename F >
+        void run( Shared &sh, F f ) {
+            initThreads( sh, f );
+
             for ( int i = 0; i < this->n; ++i )
-                this->thread( i ).setBarrier( m_domain->m_barrier );
+                this->thread( i ).setBarrier( m_domain->barrier() );
+
+            m_domain->mpi.notifySlaves(
+                TAG_RUN, algorithm::_MpiId< T >::to_id( f ) );
+
             this->runThreads();
-            m_domain->m_barrier.clear();
+            m_domain->barrier().clear();
         }
 
-        Parallel( Domain *dom, T &master, int _n )
-            : divine::Parallel< T, BarrierThread >( master, _n ),
-              m_domain( dom ), mpiThread( dom )
+        Parallel( Domain< T > &dom, int _n )
+            : divine::Parallel< T, BarrierThread >( _n ),
+              m_domain( &dom ), mpiThread( dom )
         {
-            if ( dom->mpi.size() > 1 )
+            if ( dom.mpi.size() > 1 )
                 addExtra( &mpiThread );
         }
     };
 
-    typedef divine::Fifo< Blob > Fifo;
 
-    Mpi< T, T > mpi;
+    Mpi< T, Domain< T > > mpi;
+    Barrier< Terminable > m_barrier;
 
-    int m_id, minId, maxId;
-    std::map< T*, int > m_ids;
-
-    Fifo fifo;
-
-    Barrier< T > m_barrier;
+    int minId, maxId, lastId;
+    std::map< DomainWorker< T >*, int > m_ids;
     Parallel *m_parallel;
-    T *m_master;
 
     int n;
 
+    Barrier< Terminable > &barrier() {
+        return m_barrier;
+    }
+
     Parallel &parallel() {
         if ( !m_parallel ) {
-            m_parallel = new Parallel( this, self(), n );
-            m_barrier.setExpect( n );
+            m_parallel = new Parallel( *this, n );
+
+            int count = n;
+            if ( mpi.size() > 1 )
+                ++ count;
+
+            m_barrier.setExpect( count );
+
             for ( int i = 0; i < m_parallel->n; ++i ) {
-                m_parallel->instance( i ).connect( self() );
+                m_parallel->instance( i ).connect( *this );
             }
         }
         return *m_parallel;
     }
 
-    T &self() { return *static_cast< T* >( this ); }
-    T &master() { return *m_master; }
-
-    void connect( T &master ) {
-        m_master = &master;
-        m_id = master.obtainId( self() );
-        minId = master.minId;
-        maxId = master.maxId;
-    }
-
-    int peers() {
-        if ( m_master )
-            return master().m_id; // FIXME
-        return 0;
-    }
-
-    int id() {
-        return m_id;
-    }
-
-    int obtainId( T &t ) {
-        if ( !m_id ) {
-            minId = m_id = n * mpi.rank();
+    int obtainId( DomainWorker< T > &t ) {
+        if ( !lastId ) {
+            minId = lastId = n * mpi.rank();
             maxId = (n * (mpi.rank() + 1)) - 1;
         }
 
         if ( !m_ids.count( &t ) )
-            m_ids[ &t ] = m_id ++;
+            m_ids[ &t ] = lastId ++;
+
         return m_ids[ &t ];
     }
 
-    bool isIdle() {
-        return this->fifo.empty();
+    bool isLocalId( int id ) {
+        return id >= minId && id <= maxId;
     }
 
-    Fifo &queue( int i ) {
-        return master().parallel().instance( i ).fifo;
+    Fifo &queue( int globalId )
+    {
+        if ( isLocalId( globalId ) )
+            return parallel().instance( globalId - minId ).fifo;
+        else
+            return parallel().mpiThread.fifo[ globalId ];
     }
 
     Domain( int _n = 4 )
-        : mpi( &self(), &self() ),
-          m_id( 0 ), m_parallel( 0 ),
-          m_master( 0 ), n( _n )
+        : mpi( this ),
+          lastId( 0 ),
+          m_parallel( 0 ),
+          n( _n )
     {}
 };
 

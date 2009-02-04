@@ -21,8 +21,8 @@ struct TestPool {
     Test threads() {
         Threads m;
         m.check();
-        Parallel< Threads > p( m, 10 );
-        p.run( &Threads::check );
+        Parallel< Threads > p( 10 );
+        p.run( m.shared, &Threads::check );
     }
 
     Test steal() {

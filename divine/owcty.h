@@ -41,7 +41,7 @@ struct _MpiId< Owcty< G > >
 };
 
 template< typename G >
-struct Owcty : Algorithm, Domain< Owcty< G > >
+struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 {
     typedef typename G::Node Node;
  
@@ -84,6 +84,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
 
+    Domain< Owcty< G > > domain;
     Table *m_table;
 
     Node m_cycleCandidate;
@@ -112,8 +113,8 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
 
     int totalSize() {
         int sz = 0;
-        for ( int i = 0; i < this->parallel().n; ++i ) {
-            Shared &s = this->parallel().shared( i );
+        for ( int i = 0; i < domain.parallel().n; ++i ) {
+            Shared &s = domain.parallel().shared( i );
             sz += s.size;
         }
         return sz;
@@ -121,8 +122,8 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
 
     void resetSize() {
         shared.size = 0;
-        for ( int i = 0; i < this->parallel().n; ++i ) {
-            Shared &s = this->parallel().shared( i );
+        for ( int i = 0; i < domain.parallel().n; ++i ) {
+            Shared &s = domain.parallel().shared( i );
             s.size = 0;
         }
     }
@@ -135,7 +136,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
                 if ( reset )
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
-                    assert_eq( v.owner( st ), v.dom.id() );
+                    assert_eq( v.owner( st ), v.worker.globalId() );
                     v.queue( Blob(), st );
                 }
             }
@@ -190,7 +191,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
 
     void reachability() {
         shared.size = 0;
-        this->parallel().run( &Owcty< G >::_reachability );
+        domain.parallel().run( shared, &Owcty< G >::_reachability );
         shared.size = totalSize();
     }
 
@@ -237,7 +238,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
     }
     
     void initialise() {
-        this->parallel().run( &Owcty< G >::_initialise );
+        domain.parallel().run( shared, &Owcty< G >::_initialise );
         shared.oldsize = shared.size = totalSize();
     }
 
@@ -283,7 +284,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
 
     void elimination() {
         shared.size = 0;
-        this->parallel().run( &Owcty< G >::_elimination );
+        domain.parallel().run( shared, &Owcty< G >::_elimination );
         shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
@@ -447,7 +448,7 @@ struct Owcty : Algorithm, Domain< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
-        : Domain< Owcty< G > >( workerCount( c ) ), m_table( 0 )
+        : domain( workerCount( c ) ), m_table( 0 )
     {
         shared.size = 0;
         if ( c )

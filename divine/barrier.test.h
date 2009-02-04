@@ -12,11 +12,11 @@ struct TestBarrier {
         int id;
         bool busy;
         TestBarrier *owner;
-        bool isIdle() {
+        bool workWaiting() {
             if ( busy )
-                return false;
+                return true;
             busy = (i % 3) != 1;
-            return !busy;
+            return busy;
         }
 
         void *main() {

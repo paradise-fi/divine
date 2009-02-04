@@ -8,6 +8,12 @@
 
 namespace divine {
 
+// You can usually use Barrier< Terminable > and derive your threads from this
+// class. This is however not a requirement of Barrier itself.
+struct Terminable {
+    virtual bool workWaiting() = 0;
+};
+
 template< typename T >
 struct Barrier {
     typedef wibble::sys::Mutex Mutex;
@@ -70,7 +76,7 @@ struct Barrier {
         if ( done ) {
             for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
             {
-                if ( !i->first->isIdle() ) {
+                if ( i->first->workWaiting() ) {
                     busy.insert( i->first );
                     done = false;
                 }
@@ -104,7 +110,7 @@ struct Barrier {
             // something failed, let's wake up all sleepers with work waiting
             for ( typename ConditionMap::iterator i = m_conditions.begin();
                   i != m_conditions.end(); ++i ) {
-                if ( i->first->isIdle() )
+                if ( !i->first->workWaiting() )
                     continue;
                 i->second.signal(); // wake up that thread
             }
@@ -115,7 +121,7 @@ struct Barrier {
             if ( !really )
                 return false;
 
-            if ( who->isIdle() ) {
+            if ( !who->workWaiting() ) {
                 if ( m_sleeping < m_expect - 1 ) {
                     ++ m_sleeping;
                     __l.drop();

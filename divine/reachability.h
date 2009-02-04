@@ -31,7 +31,7 @@ struct _MpiId< Reachability< G > >
 // END MPI drudgery
 
 template< typename G >
-struct Reachability : Domain< Reachability< G > >
+struct Reachability : DomainWorker< Reachability< G > >
 {
     typedef typename G::Node Node;
 
@@ -40,6 +40,7 @@ struct Reachability : Domain< Reachability< G > >
         size_t errors, deadlocks;
         G g;
     } shared;
+    Domain< Reachability< G > > domain;
 
     // TODO error & deadlock states
     visitor::ExpansionAction expansion( Node st )
@@ -65,7 +66,7 @@ struct Reachability : Domain< Reachability< G > >
     }
 
     Reachability( Config *c = 0 )
-        : Domain< Reachability< G > >( workerCount( c ) )
+        : domain( workerCount( c ) )
     {
         shared.states = shared.transitions = shared.accepting = 0;
         shared.errors = shared.deadlocks = 0;
@@ -74,10 +75,10 @@ struct Reachability : Domain< Reachability< G > >
     }
 
     Result run() {
-        this->parallel().run( &Reachability< G >::_visit );
+        domain.parallel().run( shared, &Reachability< G >::_visit );
 
-        for ( int i = 0; i < this->parallel().n; ++i ) {
-            Shared &s = this->parallel().shared( i );
+        for ( int i = 0; i < domain.parallel().n; ++i ) {
+            Shared &s = domain.parallel().shared( i );
             shared.states += s.states;
             shared.transitions += s.transitions;
             shared.accepting += s.accepting;
@@ -93,7 +94,7 @@ struct Reachability : Domain< Reachability< G > >
         std::cerr << "encountered total of " << shared.errors
                   << " errors and " << shared.deadlocks
                   << " deadlocks" << std::endl;
-                  
+
         Result res;
         res.visited = res.expanded = shared.states;
         res.deadlocks = shared.deadlocks;
