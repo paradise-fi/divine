@@ -246,9 +246,9 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return r;
     }
 
-    void loop( Allocator< char > &alloc ) {
+    bool loop( Allocator< char > &alloc ) {
         MPI::Status status;
-    begin:
+
         for ( int i = 0; i < fifo.size(); ++i ) {
             if ( m_domain.isLocalId( i ) ) {
                 assert( fifo[ i ].empty() );
@@ -277,7 +277,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         {
             if ( status.Get_tag() < TAG_ID ) {
                 if ( receiveControlMessage( status ) )
-                    return;
+                    return false;
             } else
                 receiveDataMessage( alloc, status );
         }
@@ -288,13 +288,12 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
             // std::cerr << "master wants to terminate..." << std::endl;
             if ( termination() ) {
-                std::cerr << "master terminated." << std::endl;
-                return;
+                std::cerr << "MPI: Master terminated." << std::endl;
+                return false;
             }
         }
 
-        goto begin;
-        return loop( alloc ); // tail recursion is in vogue...
+        return true;
     }
 
     void *main() {
@@ -302,7 +301,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
         std::cerr << "domain started: " << m_domain.mpi.rank() << std::endl;
         m_domain.barrier().started( this );
-        loop( alloc );
+        while ( loop( alloc ) );
         return 0;
     }
 };
