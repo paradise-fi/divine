@@ -133,23 +133,176 @@ struct Mpi {
 
 #endif
 
-}
-
 template< typename D >
-struct MpiThread : wibble::sys::Thread {
-    D *m_domain;
+struct MpiThread : wibble::sys::Thread, Terminable {
+    D &m_domain;
+    int recv, sent;
     typedef typename D::Fifo Fifo;
 
     std::vector< Fifo > fifo;
+    bool busy;
 
-    MpiThread( D &d ) : m_domain( &d ) {
+    MpiThread( D &d ) : m_domain( d ) {
         fifo.resize( d.n * d.mpi.size() );
+        busy = true;
+        sent = recv = 0;
+    }
+
+    bool outgoingEmpty() {
+        for ( int i = 0; i < fifo.size(); ++i )
+            if ( !fifo[ i ].empty() )
+                return false;
+        return true;
+    }
+
+    bool workWaiting() {
+        return !this->fifo.empty();
+    }
+
+    template< typename Mpi >
+    std::pair< int, int > accumCounts( Mpi &mpi, int id ) {
+        mpi.notifySlaves( TAG_GET_COUNTS, id );
+        MPI::Status status;
+        int r = recv, s = sent;
+        bool valid = true;
+        for ( int i = 1; i < mpi.size(); ++ i ) {
+            int cnt[3];
+            MPI::COMM_WORLD.Recv( cnt, 3, MPI::INT,
+                                  MPI::ANY_SOURCE, TAG_GIVE_COUNTS,
+                                  status );
+            std::cerr << "result from " << status.Get_source() << " counts: " << cnt[0] << ", "
+                      << cnt[1] << ", " << cnt[2] << std::endl;
+            if ( !cnt[0] )
+                valid = false;
+            s += cnt[1];
+            r += cnt[2];
+        }
+        std::cerr << "termination phase " << id << " counts: " << r << ", " << s << std::endl;
+        return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
+    }
+
+    bool termination() {
+        std::pair< int, int > one, two;
+
+        one = accumCounts( m_domain.mpi, 0 );
+        two = accumCounts( m_domain.mpi, 1 );
+
+        if ( one.first == one.second && one.first == two.first && two.first == two.second ) {
+            m_domain.mpi.notifySlaves( TAG_DONE, 0 );
+
+            if ( m_domain.barrier().idle( this ) )
+                return true;
+        }
+
+        return false;
+    }
+
+    void receiveDataMessage( Allocator< char > &alloc, MPI::Status &status ) {
+        Blob b( &alloc, status.Get_count( MPI::CHAR ) );
+        MPI::COMM_WORLD.Recv( b.data(), status.Get_count( MPI::CHAR ),
+                              MPI::CHAR,
+                              MPI::ANY_SOURCE, MPI::ANY_TAG, status );
+        int target = status.Get_tag() - TAG_ID;
+        assert( m_domain.isLocalId( target ) );
+        /* std::cerr << "MPI: " << m_domain.mpi.rank()
+                  << " (" << target << ") <-- "
+                  << status.Get_source()
+                  << " [size = " << status.Get_count( MPI::CHAR )
+                  << ", word0 = " << b.get< uint32_t >()
+                  << "]" << std::endl; */
+        m_domain.queue( target ).push( b );
+        ++ recv;
+    }
+
+    bool receiveControlMessage( MPI::Status &status ) {
+        int id;
+        MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
+                              MPI::ANY_SOURCE, MPI::ANY_TAG, status );
+        std::cerr << "MPI CONTROL: " << m_domain.mpi.rank()
+                  << " <-- "
+                  << status.Get_source()
+                  << " [tag = " << status.Get_tag() << ", id = " << id << "]" << std::endl;
+        switch ( status.Get_tag() ) {
+            case TAG_GET_COUNTS:
+                int cnt[3];
+                cnt[0] = outgoingEmpty() && lastMan();
+                cnt[1] = sent;
+                cnt[2] = recv;
+                MPI::COMM_WORLD.Send( cnt, 3, MPI::INT, 0, TAG_GIVE_COUNTS );
+                return false;
+            case TAG_DONE:
+                return true;
+            default:
+                assert( 0 );
+        }
+    }
+
+    bool lastMan() {
+        bool r = m_domain.barrier().lastMan( this );
+        return r;
+    }
+
+    void loop( Allocator< char > &alloc ) {
+        MPI::Status status;
+    begin:
+        for ( int i = 0; i < fifo.size(); ++i ) {
+            if ( m_domain.isLocalId( i ) ) {
+                assert( fifo[ i ].empty() );
+                continue;
+            }
+            while ( !fifo[ i ].empty() ) {
+                Blob &b = fifo[ i ].front();
+                fifo[ i ].pop();
+                // might make sense to use ISend and waitall after the loop
+                std::cerr << "MPI: " << m_domain.mpi.rank()
+                          << " --> " << i / m_domain.n << " ("
+                          << i << ")" << " [size = " << b.size()
+                          << ", word0 = " << b.get< uint32_t >()
+                          << "]" << std::endl;
+
+                MPI::COMM_WORLD.Send( b.data(), b.size(),
+                                      MPI::CHAR, i / m_domain.n,
+                                      TAG_ID + i );
+                // b.free( &alloc );
+                ++ sent;
+            }
+        }
+
+        while ( MPI::COMM_WORLD.Iprobe(
+                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
+        {
+            if ( status.Get_tag() < TAG_ID ) {
+                if ( receiveControlMessage( status ) )
+                    return;
+            } else
+                receiveDataMessage( alloc, status );
+        }
+
+        // NB. The call to lastMan() here is first, since it needs to be done
+        // by non-master nodes, to wake up sleeping workers that have received
+        // messages from network. Ugly, yes.
+        if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
+            // std::cerr << "master wants to terminate..." << std::endl;
+            if ( termination() ) {
+                std::cerr << "master terminated." << std::endl;
+                return;
+            }
+        }
+
+        goto begin;
+        return loop( alloc ); // tail recursion is in vogue...
     }
 
     void *main() {
-        // sentinel code here
+        Allocator< char > alloc; // needs to be here, since this depends on current thread's ID.
+
+        std::cerr << "domain started: " << m_domain.mpi.rank() << std::endl;
+        m_domain.barrier().started( this );
+        loop( alloc );
         return 0;
     }
 };
+
+}
 
 #endif
