@@ -185,9 +185,13 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         std::pair< int, int > one, two;
 
         one = accumCounts( m_domain.mpi, 0 );
+
+        if ( one.first != one.second )
+            return false;
+
         two = accumCounts( m_domain.mpi, 1 );
 
-        if ( one.first == one.second && one.first == two.first && two.first == two.second ) {
+        if ( one.first == two.first && two.first == two.second ) {
             m_domain.mpi.notifySlaves( TAG_DONE, 0 );
 
             if ( m_domain.barrier().idle( this ) )
