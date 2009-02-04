@@ -45,6 +45,7 @@ struct Barrier {
         MutexLock __l( m_globalMutex );
 
         bool done = true;
+        bool who_is_ours = false;
 
         Set locked, busy;
         done = true;
@@ -52,6 +53,7 @@ struct Barrier {
         for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
         {
             if ( i->first == who ) {
+                who_is_ours = true;
                 continue;
             }
             if ( !i->second.trylock() ) {
@@ -60,6 +62,8 @@ struct Barrier {
                 locked.insert( i->first );
             }
         }
+
+        assert( who_is_ours );
 
         // we are now holding whatever we could get at; let's check that
         // there's no work left in the system
