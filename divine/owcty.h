@@ -68,7 +68,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     struct Hasher {
         int size;
         Hasher( int s = 0 ) : size( s ) {}
-        inline hash_t operator()( Blob b ) {
+        inline hash_t operator()( Blob b ) const {
             return b.hash( 0, size );
         }
     };
@@ -76,7 +76,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     struct Equal {
         int size;
         Equal( int s = 0 ) : size( s ) {}
-        inline hash_t operator()( Blob a, Blob b ) {
+        inline hash_t operator()( Blob a, Blob b ) const {
             return a.compare( b, 0, size ) == 0;
         }
     };
@@ -182,9 +182,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::reachTransition,
             &Owcty< G >::reachExpansion > Setup;
-        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
+        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, &table() );
+        int size = shared.g.stateSize();
+        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
         queueAll( visitor, true );
         visitor.visit();
     }
@@ -230,8 +231,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::initTransition,
             &Owcty< G >::initExpansion > Setup;
-        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
-        Visitor visitor( shared.g, *this, *this, &table() );
+        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
+
+        int size = shared.g.stateSize();
+        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
         shared.g.setAllocator( new BlobAllocator( sizeof( Extension ) ) );
 
         visitor.visit( shared.g.initial() );
@@ -275,9 +278,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         typedef visitor::Setup< G, Owcty< G >, Table,
             &Owcty< G >::elimTransition,
             &Owcty< G >::elimExpansion > Setup;
-        typedef visitor::Parallel< Setup, Owcty< G > > Visitor;
+        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, &table() );
+        int size = shared.g.stateSize();
+        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
         queueAll( visitor );
         visitor.visit();
     }

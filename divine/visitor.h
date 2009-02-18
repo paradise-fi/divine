@@ -171,7 +171,8 @@ struct DFV : Common< Stack, S > {
         : Common< Stack, S >( g, n, s ) {}
 }; 
 
-template< typename S, typename Worker >
+template< typename S, typename Worker,
+          typename _Hash = divine::hash< typename S::Node > >
 struct Parallel {
     typedef typename S::Node Node;
 
@@ -180,10 +181,11 @@ struct Parallel {
     typename S::Graph &graph;
     typedef typename S::Seen Seen;
 
+    _Hash hash;
     Seen *m_seen;
 
     int owner( Node n ) const {
-        return unblob< int >( n ) % worker.peers();
+        return hash( n ) % worker.peers();
     }
 
     void queue( Node from, Node to ) {
@@ -228,7 +230,8 @@ struct Parallel {
     void visit( Node initial ) {
         // TBD. Tell the graph that this is our thread and it wants to init its
         // allocator. Or something.
-        typedef Setup< typename S::Graph, Parallel< S, Worker >, Seen > Ours;
+        typedef Setup< typename S::Graph,
+            Parallel< S, Worker, _Hash >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
         if ( bfv.seen().valid( initial ) &&
              owner( initial ) == notify.globalId() ) {
@@ -243,8 +246,8 @@ struct Parallel {
     }
 
     Parallel( typename S::Graph &g, Worker &w,
-              typename S::Notify &n, Seen *s = 0 )
-        : worker( w ), notify( n ), graph( g ), m_seen( s )
+              typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0 )
+        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s )
     {}
 };
 

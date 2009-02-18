@@ -16,7 +16,7 @@ typedef uint32_t hash_t;
 // default hash implementation
 template< typename T >
 struct hash {
-    inline hash_t operator()( T t ) {
+    inline hash_t operator()( T t ) const {
         return t.hash();
     }
 };
@@ -24,7 +24,7 @@ struct hash {
 // default validity implementation
 template< typename T >
 struct valid {
-    inline bool operator()( T t ) {
+    inline bool operator()( T t ) const {
         return t.valid();
     }
 };
@@ -32,21 +32,21 @@ struct valid {
 // default equality implementation
 template< typename T >
 struct equal {
-    inline bool operator()( T a, T b ) {
+    inline bool operator()( T a, T b ) const {
         return a == b;
     }
 };
 
 template<>
 struct valid< int > {
-    inline bool operator()( int t ) {
+    inline bool operator()( int t ) const {
         return t != 0;
     }
 };
 
 template<>
 struct hash< int > {
-    inline hash_t operator()( int t ) {
+    inline hash_t operator()( int t ) const {
         return t;
     }
 };
