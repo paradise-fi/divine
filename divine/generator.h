@@ -227,6 +227,7 @@ struct Dummy {
     Dummy &operator=( const Dummy & ) {
         if ( !alloc )
             alloc = new BlobAllocator( 0 );
+        return *this;
     }
 };
 
