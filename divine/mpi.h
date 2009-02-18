@@ -40,7 +40,10 @@ struct Mpi {
         m_rank = MPI::COMM_WORLD.Get_rank();
         startupSync();
 
-        if ( !master() ) slaveLoop(); // never returns
+        if ( !master() ) {
+            while ( true )
+                slaveLoop();
+        }
     }
 
     void notifySlaves( int tag, int id ) {
@@ -117,7 +120,6 @@ struct Mpi {
             default:
                 assert( 0 );
         }
-        slaveLoop(); // oops, tail recursion? : - )
     }
 
 };
