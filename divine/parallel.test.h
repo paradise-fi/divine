@@ -79,10 +79,10 @@ struct TestParallel {
         void tellInc() {
             Blob b( sizeof( int ) );
             b.get< int >() = 1;
-            queue( (globalId() + 1) % peers() ).push( b );
+            queue( globalId(), (globalId() + 1) % peers() ).push( b );
             do {
                 if ( !fifo.empty() ) {
-                    shared.i += fifo.front().get< int >();
+                    shared.i += fifo.next().get< int >();
                     fifo.front().free();
                     return;
                 }

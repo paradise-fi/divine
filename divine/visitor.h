@@ -189,8 +189,9 @@ struct Parallel {
     }
 
     void queue( Node from, Node to ) {
-        Fifo< Blob > &fifo = worker.queue( owner( to ) );
-        MutexLock __l( fifo.writeMutex );
+        Fifo< Blob, NoopMutex > &fifo
+            = worker.queue( notify.globalId(), owner( to ) );
+        MutexLockT< NoopMutex > __l( fifo.writeMutex );
         fifo.push( __l, unblob< Node >( from ) );
         fifo.push( __l, unblob< Node >( to ) );
     }
@@ -216,10 +217,10 @@ struct Parallel {
                     return;
             } else {
                 Node f, t;
-                f = worker.fifo.front();
-                worker.fifo.pop();
-                t = worker.fifo.front( true );
-                worker.fifo.pop();
+                f = worker.fifo.next();
+                worker.fifo.remove();
+                t = worker.fifo.next( true );
+                worker.fifo.remove();
 
                 bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
                 bfv.visit();

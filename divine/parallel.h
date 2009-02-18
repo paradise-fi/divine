@@ -127,11 +127,48 @@ struct BarrierThread : RunThread< T >, Terminable {
 template< typename > struct Domain;
 
 template< typename T >
+struct FifoVector
+{
+    int m_last;
+    typedef divine::Fifo< T, NoopMutex > Fifo;
+    std::vector< Fifo > m_vector;
+
+    bool empty() {
+        for ( int i = 0; i < m_vector.size(); ++i ) {
+            Fifo &fifo = m_vector[ (m_last + i) % m_vector.size() ];
+            if ( !fifo.empty() )
+                return false;
+        }
+        return true;
+    };
+
+    T &next( bool wait = false ) {
+        if ( wait )
+            return m_vector[ m_last ].front( wait );
+
+        while ( m_vector[ m_last ].empty() )
+            m_last = (m_last + 1) % m_vector.size();
+        return m_vector[ m_last ].front( wait );
+    }
+
+    Fifo &operator[]( int i ) {
+        return m_vector[ i ];
+    }
+
+    void remove() {
+        m_vector[ m_last ].pop();
+    }
+
+    void resize( int i ) { m_vector.resize( i, Fifo() ); }
+    FifoVector() : m_last( 0 ) {}
+};
+
+template< typename T >
 struct DomainWorker {
-    typedef divine::Fifo< Blob > Fifo;
+    typedef divine::Fifo< Blob, NoopMutex > Fifo;
 
     Domain< T > *m_master;
-    Fifo fifo;
+    FifoVector< Blob > fifo;
     int m_id;
 
     Domain< T > &master() {
@@ -142,6 +179,8 @@ struct DomainWorker {
     void connect( Domain< T > &master ) {
         m_master = &master;
         m_id = master.obtainId( *this );
+        // FIXME this whole fifo allocation business is an ugly hack...
+        fifo.resize( peers() + 1 );
     }
 
     int peers() {
@@ -169,15 +208,15 @@ struct DomainWorker {
         return &master().parallel().m_threads[ localId() ];
     }
 
-    Fifo &queue( int globalId ) {
-        assert( globalId < peers() );
-        return master().queue( globalId );
+    Fifo &queue( int from, int to ) {
+        assert( from < peers() );
+        return master().queue( from, to );
     }
 };
 
 template< typename T >
 struct Domain {
-    typedef divine::Fifo< Blob > Fifo;
+    typedef divine::Fifo< Blob, NoopMutex > Fifo;
 
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
@@ -254,12 +293,16 @@ struct Domain {
         return id >= minId && id <= maxId;
     }
 
-    Fifo &queue( int globalId )
+    int peers() {
+        return n * mpi.size();
+    }
+
+    Fifo &queue( int from, int to )
     {
-        if ( isLocalId( globalId ) )
-            return parallel().instance( globalId - minId ).fifo;
+        if ( isLocalId( to ) )
+            return parallel().instance( to - minId ).fifo[ from + 1 ];
         else
-            return parallel().mpiThread.fifo[ globalId ];
+            return parallel().mpiThread.fifo[ from + to * peers() ];
     }
 
     Domain( int _n = 4 )

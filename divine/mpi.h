@@ -132,7 +132,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     bool busy;
 
     MpiThread( D &d ) : m_domain( d ) {
-        fifo.resize( d.n * d.mpi.size() );
+        fifo.resize( d.peers() * d.peers() );
         busy = true;
         sent = recv = 0;
     }
@@ -203,7 +203,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                   << " [size = " << status.Get_count( MPI::CHAR )
                   << ", word0 = " << b.get< uint32_t >()
                   << "]" << std::endl; */
-        m_domain.queue( target ).push( b );
+        m_domain.queue( -1, target ).push( b );
         ++ recv;
     }
 
