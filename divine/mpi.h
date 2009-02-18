@@ -226,7 +226,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             case TAG_DONE:
                 return m_domain.barrier().idle( this );
             default:
-                assert( 0 );
+                assert_die();
         }
     }
 

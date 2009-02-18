@@ -25,7 +25,7 @@ struct _MpiId< Owcty< G > >
             case 0: return &Owcty< G >::_initialise;
             case 1: return &Owcty< G >::_reachability;
             case 2: return &Owcty< G >::_elimination;
-            default: assert( 0 );
+            default: assert_die();
         }
     }
 
@@ -36,7 +36,7 @@ struct _MpiId< Owcty< G > >
             return 1;
         if( f == &Owcty< G >::_elimination )
             return 2;
-        assert( 0 );
+        assert_die();
     }
 };
 
