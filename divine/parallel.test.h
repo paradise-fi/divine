@@ -83,7 +83,7 @@ struct TestParallel {
             do {
                 if ( !fifo.empty() ) {
                     shared.i += fifo.next().get< int >();
-                    fifo.front().free();
+                    fifo.next().free();
                     return;
                 }
             } while ( true );

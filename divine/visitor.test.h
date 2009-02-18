@@ -134,7 +134,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->globalId() ) {
-                push( this->queue( t % this->peers() ), t );
+                push( this->queue( this->globalId(), t % this->peers() ), t );
                 return visitor::IgnoreTransition;
             }
             shared.trans ++;
@@ -158,19 +158,19 @@ struct TestVisitor {
             while ( shared.seen != shared.n / this->peers() ) {
                 if ( this->fifo.empty() )
                     continue;
-                assert_eq( this->fifo.front().template get< int >()
+                assert_eq( this->fifo.next().template get< int >()
                              % this->peers(),
                            this->globalId() );
                 shared.trans ++;
-                bfv.visit( unblob< Node >( this->fifo.front() ) );
-                this->fifo.pop();
+                bfv.visit( unblob< Node >( this->fifo.next() ) );
+                this->fifo.remove();
             }
         }
 
         void _finish() { // parallel
             while ( !this->fifo.empty() ) {
                 shared.trans ++;
-                this->fifo.pop();
+                this->fifo.remove();
             }
         }
 
@@ -220,7 +220,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( owner( t ) != this->globalId() ) {
-                push( this->queue( owner( t ) ), t );
+                push( this->queue( this->globalId(), owner( t ) ), t );
                 return visitor::IgnoreTransition;
             }
             assert_eq( owner( t ), this->globalId() );
@@ -251,11 +251,11 @@ struct TestVisitor {
                     if ( this->idle() )
                         return;
                 } else {
-                    assert_eq( this->fifo.front().template get< int >()
+                    assert_eq( this->fifo.next().template get< int >()
                             % this->peers(), this->globalId() );
                     shared.trans ++;
-                    bfv.visit( unblob< Node >( this->fifo.front() ) );
-                    this->fifo.pop();
+                    bfv.visit( unblob< Node >( this->fifo.next() ) );
+                    this->fifo.remove();
                 }
             }
         }

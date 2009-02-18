@@ -148,14 +148,14 @@ public:
 };
 
 template< typename N >
-inline void push( Fifo< Blob > &fifo, const N &n ) {
+inline void push( Fifo< Blob, NoopMutex > &fifo, const N &n ) {
     Blob b( sizeof( N ) );
     b.template get< N >() = n;
     fifo.push( b );
 }
 
 template<>
-inline void push< Blob >( Fifo< Blob > &fifo, const Blob &b ) {
+inline void push< Blob >( Fifo< Blob, NoopMutex > &fifo, const Blob &b ) {
     fifo.push( b );
 }
 

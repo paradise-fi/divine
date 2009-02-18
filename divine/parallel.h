@@ -156,6 +156,8 @@ struct FifoVector
     }
 
     void remove() {
+        while ( m_vector[ m_last ].empty() )
+            m_last = (m_last + 1) % m_vector.size();
         m_vector[ m_last ].pop();
     }
 
