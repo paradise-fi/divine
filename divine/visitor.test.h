@@ -119,7 +119,6 @@ struct TestVisitor {
     // requires that n % peers() == 0
     template< typename G >
     struct ParVisitor : DomainWorker< ParVisitor< G > > {
-        Domain< ParVisitor< G > > domain;
         typedef typename G::Node Node;
 
         struct Shared {
@@ -128,6 +127,7 @@ struct TestVisitor {
             G g;
             int n;
         } shared;
+        Domain< ParVisitor< G > > domain;
 
         int seen, trans;
         std::set< int > seenset;
@@ -191,7 +191,7 @@ struct TestVisitor {
         }
 
         ParVisitor( G g = G(), int _n = 0 ) 
-            : domain( 10 )
+            : domain( 0, 10 )
         {
             shared.g = g;
             shared.n = _n;
@@ -208,13 +208,13 @@ struct TestVisitor {
     template< typename G >
     struct TermParVisitor : DomainWorker< TermParVisitor< G > >
     {
-        Domain< TermParVisitor< G > > domain;
         typedef typename G::Node Node;
         struct Shared {
             Node initial;
             int seen, trans;
             G g;
         } shared;
+        Domain< TermParVisitor< G > > domain;
 
         std::set< int > seenset;
 
@@ -397,13 +397,13 @@ struct TestVisitor {
     template< typename G >
     struct SimpleParReach : DomainWorker< SimpleParReach< G > >
     {
-        Domain< SimpleParReach< G > > domain;
         typedef typename G::Node Node;
         struct Shared {
             Node initial;
             int seen, trans;
             G g;
         } shared;
+        Domain< SimpleParReach< G > > domain;
 
         std::set< int > seenset;
 

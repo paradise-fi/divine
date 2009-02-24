@@ -47,8 +47,8 @@ struct TestParallel {
 
     struct DomCounter : DomainWorker< DomCounter >
     {
-        Domain< DomCounter > domain;
         typedef Counter Shared;
+        Domain< DomCounter > domain;
         Counter shared;
         void inc() { shared.inc(); }
 
@@ -72,8 +72,8 @@ struct TestParallel {
 
     struct Dom2Counter : DomainWorker< Dom2Counter >
     {
-        Domain< Dom2Counter > domain;
         typedef Counter Shared;
+        Domain< Dom2Counter > domain;
         Counter shared;
 
         void tellInc() {

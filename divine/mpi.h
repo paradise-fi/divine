@@ -27,8 +27,11 @@ struct Mpi {
     bool m_started;
     int m_rank, m_size;
     D *m_domain;
+    typedef typename Algorithm::Shared Shared;
+    Shared *shared;
 
-    Mpi( D *d ) {
+    Mpi( Shared *sh, D *d ) : shared( sh )
+    {
         m_domain = d;
         m_started = false;
     }
@@ -80,21 +83,14 @@ struct Mpi {
     }
     
     void run( int id ) {
-        // TBD. We want to add a "mpi-thread" to the domain, that handles
-        // inter-node messaging and termination detection... Ie all mpi-thread
-        // instances in a system become idle at once, after distributed
-        // termination has finished. Ie: if ( dom.master().m_barrier.lastMan(
-        // &dom ) ) { start distributed termination detection; if ( success &&
-        // dom.master().m_barrier.idle( &dom ) ) { return; }
-
         // TDB. First distribute the shared bits ... Probably a
         // MPI::COMM_WORLD.Scatter is in place.
 
         // Btw, we want to use buffering sends. We need to use nonblocking
         // receive, since blocking receive is busy-waiting under openmpi.
-        typename Algorithm::Shared shared;
+        assert( shared );
         m_domain->parallel().run(
-            shared,
+            *shared,
             algorithm::_MpiId< Algorithm >::from_id( id ) );
 
         // TBD. we need to collect the shared data now; maybe a call to

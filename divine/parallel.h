@@ -307,8 +307,8 @@ struct Domain {
             return parallel().mpiThread.fifo[ from + to * peers() ];
     }
 
-    Domain( int _n = 4 )
-        : mpi( this ),
+    Domain( typename T::Shared *shared = 0, int _n = 4 )
+        : mpi( shared, this ),
           lastId( 0 ),
           m_parallel( 0 ),
           n( _n )

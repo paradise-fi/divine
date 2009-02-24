@@ -452,7 +452,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
-        : domain( workerCount( c ) ), m_table( 0 )
+        : domain( &shared, workerCount( c ) ), m_table( 0 )
     {
         shared.size = 0;
         if ( c )
