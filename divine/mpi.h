@@ -237,7 +237,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         MPI::Status status;
 
         for ( int i = 0; i < fifo.size(); ++i ) {
-            if ( m_domain.isLocalId( i ) ) {
+            int to = i / m_domain.peers();
+            if ( m_domain.isLocalId( to ) ) {
                 assert( fifo[ i ].empty() );
                 continue;
             }
@@ -252,8 +253,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                           << "]" << std::endl; */
 
                 MPI::COMM_WORLD.Send( b.data(), b.size(),
-                                      MPI::CHAR, i / m_domain.n,
-                                      TAG_ID + i );
+                                      MPI::CHAR, to / m_domain.n,
+                                      TAG_ID + to );
                 // b.free( &alloc );
                 ++ sent;
             }
