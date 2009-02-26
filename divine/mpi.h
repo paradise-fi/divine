@@ -257,26 +257,29 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     bool loop( Allocator< char > &alloc ) {
         MPI::Status status;
 
+        // Fill outgoing buffers from the incoming FIFO queues...
         for ( int i = 0; i < fifo.size(); ++i ) {
-            int to = i / m_domain.peers();
+            int to = i / m_domain.peers(),
+              rank = to / m_domain.n;
             if ( m_domain.isLocalId( to ) ) {
                 assert( fifo[ i ].empty() );
                 continue;
             }
 
-            while ( !fifo[ i ].empty() ) {
+            // The size limit for these buffers is about .8M -- the hard limit
+            // in MPI is set above to 1M, so if state size is on the order of
+            // 200k, we might have a problem (trying to Bsend a message bigger
+            // than MPI buffer size kills the application, sadly).
+            while ( !fifo[ i ].empty() && buffers[ rank ].size() <= 200 * 1024 )
+            {
                 Blob &b = fifo[ i ].front();
                 fifo[ i ].pop();
-                buffers[ to / m_domain.n ].push_back( to );
-                b.write32( std::back_inserter( buffers[ to / m_domain.n ] ) );
-                /* std::cerr << "MPI: " << m_domain.mpi.rank()
-                          << " --> " << i / m_domain.n << " ("
-                          << i << ")" << " [size = " << b.size()
-                          << ", word0 = " << b.get< uint32_t >()
-                          << "]" << std::endl; */
+                buffers[ rank ].push_back( to );
+                b.write32( std::back_inserter( buffers[ rank ] ) );
             }
         }
 
+        // ... and flush the buffers.
         for ( int to = 0; to < buffers.size(); ++ to ) {
             if ( buffers[ to ].empty() )
                 continue;
@@ -287,6 +290,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             ++ sent;
         }
 
+        // And process incoming MPI traffic.
         while ( MPI::COMM_WORLD.Iprobe(
                     MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
         {
