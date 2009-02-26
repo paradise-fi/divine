@@ -3,7 +3,6 @@
 #define DIVINE_LEGACY_STATEALLOCATOR_HH
 
 #include <divine/stateallocator.h>
-#include <divine/pool.h>
 
 namespace divine {
 

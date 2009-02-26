@@ -8,6 +8,7 @@
 
 #include <divine/stateallocator.h>
 #include <divine/blob.h>
+#include <divine/state.h>
 #include <dlfcn.h>
 
 #ifndef DIVINE_GENERATOR_H
