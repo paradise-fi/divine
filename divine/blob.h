@@ -90,6 +90,26 @@ struct Blob
         std::copy( data(), data() + size(), where.data() );
     }
 
+    template< typename O >
+    void write32( O o ) const
+    {
+        std::copy( pointer32(), pointer32() + allocationSize( size() ) / 4, o );
+    }
+
+    template< typename Alloc, typename In >
+    In read32( Alloc *a, In i )
+    {
+        int hdr_cnt = allocationSize( 0 ) / 4;
+        int32_t hdr[ hdr_cnt ];
+        std::copy( i, i + hdr_cnt, hdr );
+        int size = reinterpret_cast< BlobHeader * >( hdr )->size;
+
+        ptr = a->allocate( allocationSize( size ) );
+        In end = i + allocationSize( size ) / 4;
+        std::copy( i, end, pointer32() );
+        return end;
+    }
+
     void setSize( size_t size )
     {
         assert( size <= 0x3FFF );
@@ -123,6 +143,11 @@ struct Blob
     char *pointer() const
     {
         return ptr;
+    }
+
+    int32_t *pointer32() const
+    {
+        return reinterpret_cast< int32_t * >( ptr );
     }
 
     bool operator<( const Blob &b ) const {
@@ -252,7 +277,6 @@ template<>
 inline Blob unblob( Blob b ) {
     return b;
 }
-
 
 }
 
