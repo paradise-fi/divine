@@ -135,8 +135,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     MpiThread( D &d ) : m_domain( d ) {
         fifo.resize( d.peers() * d.peers() );
         buffers.resize( d.mpi.size() );
-        char *mpibuf = new char[ 1024 * 1024 ];
-        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
         busy = true;
         sent = recv = 0;
     }
@@ -318,6 +316,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         Allocator< char > alloc; // needs to be here, since this depends on current thread's ID.
 
         std::cerr << "domain started: " << m_domain.mpi.rank() << std::endl;
+        char *mpibuf = new char[ 1024 * 1024 ];
+        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
         m_domain.barrier().started( this );
         while ( loop( alloc ) );
         return 0;
