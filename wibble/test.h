@@ -23,6 +23,8 @@ struct Location {
 #ifndef NDEBUG
 #define LOCATION_I(stmt, i) Location( __FILE__, __LINE__, stmt, i )
 #define assert(x) assert_fn( LOCATION( #x ), x )
+#define assert_pred(p, x) assert_pred_fn( \
+        LOCATION( #p "( " #x " )" ), x, p( x ) )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
 #define assert_eq_l(i, x, y) assert_eq_fn( LOCATION_I( #x " == " #y, i ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
@@ -31,6 +33,7 @@ struct Location {
                        sizeof( y ) / sizeof( y[0] ), x, y )
 #else
 #define assert(x)
+#define assert_pred(p, x)
 #define assert_eq(x, y)
 #define assert_eq_l(i, x, y)
 #define assert_neq(x, y)
@@ -88,6 +91,15 @@ void assert_eq_fn( Location l, X x, Y y )
         f << " got ["
           << x << "] != [" << y
           << "] instead";
+    }
+}
+
+template< typename X >
+void assert_pred_fn( Location l, X x, bool p )
+{
+    if ( !p ) {
+        AssertFailed f( l );
+        f << " for " << x;
     }
 }
 
