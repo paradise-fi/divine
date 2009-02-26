@@ -332,7 +332,7 @@ struct Mpi {
     int size() { return 1; }
     void notifySlaves( int, int ) {}
     void start() {}
-    Mpi( D * ) {}
+    Mpi( typename M::Shared *, D * ) {}
 };
 
 template< typename D >
