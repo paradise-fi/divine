@@ -127,10 +127,16 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     typedef typename D::Fifo Fifo;
 
     std::vector< Fifo > fifo;
+    std::vector< std::vector< int32_t > > buffers;
+    std::vector< int32_t > in_buffer;
+
     bool busy;
 
     MpiThread( D &d ) : m_domain( d ) {
         fifo.resize( d.peers() * d.peers() );
+        buffers.resize( d.mpi.size() );
+        char *mpibuf = new char[ 1024 * 1024 ];
+        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
         busy = true;
         sent = recv = 0;
     }
@@ -189,19 +195,34 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     void receiveDataMessage( Allocator< char > &alloc, MPI::Status &status ) {
-        Blob b( &alloc, status.Get_count( MPI::CHAR ) );
-        MPI::COMM_WORLD.Recv( b.data(), status.Get_count( MPI::CHAR ),
-                              MPI::CHAR,
+        in_buffer.resize( status.Get_count( MPI::BYTE ) / 4 );
+        MPI::COMM_WORLD.Recv( &in_buffer.front(), in_buffer.size() * 4,
+                              MPI::BYTE,
                               MPI::ANY_SOURCE, MPI::ANY_TAG, status );
-        int target = status.Get_tag() - TAG_ID;
-        assert( m_domain.isLocalId( target ) );
+        std::vector< int32_t >::const_iterator i = in_buffer.begin();
+        int count = 0;
+        while ( i != in_buffer.end() ) {
+            Blob b;
+            int target = *i;
+            /* std::cerr << "reading blob (off = "
+                      << i - in_buffer.begin()
+                      << ", total = "
+                      << in_buffer.end() - in_buffer.begin()
+                      << ", ct = "
+                      << count
+                      << "), for " << target << std::endl; */
+            ++count;
+            ++i;
+            i = b.read32( &alloc, i );
+            assert_pred( m_domain.isLocalId, target );
+            m_domain.queue( -1, target ).push( b );
+        }
         /* std::cerr << "MPI: " << m_domain.mpi.rank()
                   << " (" << target << ") <-- "
                   << status.Get_source()
                   << " [size = " << status.Get_count( MPI::CHAR )
                   << ", word0 = " << b.get< uint32_t >()
                   << "]" << std::endl; */
-        m_domain.queue( -1, target ).push( b );
         ++ recv;
     }
 
@@ -242,22 +263,28 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 assert( fifo[ i ].empty() );
                 continue;
             }
+
             while ( !fifo[ i ].empty() ) {
                 Blob &b = fifo[ i ].front();
                 fifo[ i ].pop();
-                // might make sense to use ISend and waitall after the loop
+                buffers[ to / m_domain.n ].push_back( to );
+                b.write32( std::back_inserter( buffers[ to / m_domain.n ] ) );
                 /* std::cerr << "MPI: " << m_domain.mpi.rank()
                           << " --> " << i / m_domain.n << " ("
                           << i << ")" << " [size = " << b.size()
                           << ", word0 = " << b.get< uint32_t >()
                           << "]" << std::endl; */
-
-                MPI::COMM_WORLD.Send( b.data(), b.size(),
-                                      MPI::CHAR, to / m_domain.n,
-                                      TAG_ID + to );
-                // b.free( &alloc );
-                ++ sent;
             }
+        }
+
+        for ( int to = 0; to < buffers.size(); ++ to ) {
+            if ( buffers[ to ].empty() )
+                continue;
+            MPI::COMM_WORLD.Bsend( &buffers[ to ].front(),
+                                   buffers[ to ].size() * 4,
+                                   MPI::BYTE, to, TAG_ID );
+            buffers[ to ].clear();
+            ++ sent;
         }
 
         while ( MPI::COMM_WORLD.Iprobe(
