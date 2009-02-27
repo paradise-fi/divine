@@ -190,35 +190,22 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return false;
     }
 
-    void receiveDataMessage( Allocator< char > &alloc, MPI::Status &status ) {
+    void receiveDataMessage( Allocator< char > &alloc, MPI::Status &status )
+    {
+        Blob b;
+        int target;
+
         in_buffer.resize( status.Get_count( MPI::BYTE ) / 4 );
         MPI::COMM_WORLD.Recv( &in_buffer.front(), in_buffer.size() * 4,
                               MPI::BYTE,
                               MPI::ANY_SOURCE, MPI::ANY_TAG, status );
         std::vector< int32_t >::const_iterator i = in_buffer.begin();
-        int count = 0;
         while ( i != in_buffer.end() ) {
-            Blob b;
-            int target = *i;
-            /* std::cerr << "reading blob (off = "
-                      << i - in_buffer.begin()
-                      << ", total = "
-                      << in_buffer.end() - in_buffer.begin()
-                      << ", ct = "
-                      << count
-                      << "), for " << target << std::endl; */
-            ++count;
-            ++i;
+            target = *i++;
             i = b.read32( &alloc, i );
             assert_pred( m_domain.isLocalId, target );
             m_domain.queue( -1, target ).push( b );
         }
-        /* std::cerr << "MPI: " << m_domain.mpi.rank()
-                  << " (" << target << ") <-- "
-                  << status.Get_source()
-                  << " [size = " << status.Get_count( MPI::CHAR )
-                  << ", word0 = " << b.get< uint32_t >()
-                  << "]" << std::endl; */
         ++ recv;
     }
 
