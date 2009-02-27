@@ -20,6 +20,15 @@ struct _MpiId
         // assert( 0 );
         return 0;
     }
+
+    template< typename O >
+    static void writeShared( typename T::Shared, O ) {
+    }
+
+    template< typename I >
+    static I readShared( typename T::Shared &, I i ) {
+        return i;
+    }
 };
 
 inline int workerCount( Config *c ) {

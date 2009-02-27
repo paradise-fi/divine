@@ -17,7 +17,8 @@ namespace divine {
 #define TAG_GET_COUNTS  2
 #define TAG_GIVE_COUNTS 4
 #define TAG_DONE        5
-#define TAG_ID          6
+#define TAG_SHARED      6
+#define TAG_ID          7
 
 #ifdef HAVE_MPI
 
@@ -28,12 +29,17 @@ struct Mpi {
     int m_rank, m_size;
     D *m_domain;
     typedef typename Algorithm::Shared Shared;
-    Shared *shared;
+    Shared *master_shared;
+    std::vector< Shared > m_shared;
 
-    Mpi( Shared *sh, D *d ) : shared( sh )
+    Mpi( Shared *sh, D *d ) : master_shared( sh )
     {
         m_domain = d;
         m_started = false;
+    }
+
+    Shared &shared( int i ) {
+        return m_shared[ i ];
     }
 
     void start() {
@@ -44,6 +50,8 @@ struct Mpi {
 
         char *mpibuf = new char[ 1024 * 1024 ];
         MPI::Attach_buffer( mpibuf, 1024 * 1024 );
+
+        m_shared.resize( m_domain->peers() );
 
         if ( !master() ) {
             while ( true )
@@ -59,6 +67,51 @@ struct Mpi {
                       << ", id = " << id << ", target = " << i
                       << std::endl; */
             MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
+        }
+    }
+
+    void returnSharedBits() {
+        std::vector< int32_t > shbits;
+        for ( int i = 0; i < m_domain->n; ++i ) {
+            algorithm::_MpiId< Algorithm >::writeShared(
+                m_domain->parallel().shared( i ),
+                std::back_inserter( shbits ) );
+        }
+        MPI::COMM_WORLD.Send( &shbits.front(),
+                              shbits.size() * 4,
+                              MPI::BYTE, 0, TAG_SHARED );
+    }
+
+    void collectSharedBits() {
+        MPI::Status status;
+        std::vector< int32_t > shbits;
+        for ( int i = 1; i < size(); ++ i ) {
+            MPI::COMM_WORLD.Probe( i, TAG_SHARED, status );
+            shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
+            MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
+                                  MPI::BYTE, i, TAG_SHARED, status );
+            std::vector< int32_t >::const_iterator it = shbits.begin();
+            for ( int k = 0; k < m_domain->n; ++k ) {
+                std::cerr << "collecting shared bits from peer " << i * m_domain->n + k << std::endl;
+                it = algorithm::_MpiId< Algorithm >::readShared(
+                    m_shared[ i * m_domain->n + k ], it );
+            }
+            assert( it == shbits.end() ); // sanity check
+        }
+    }
+
+    template< typename F >
+    void runOnSlaves( F f ) {
+        if( !master() ) return;
+        std::vector< int32_t > shbits;
+        algorithm::_MpiId< Algorithm >::writeShared(
+            *master_shared, std::back_inserter( shbits ) );
+        notifySlaves( TAG_RUN,
+                      algorithm::_MpiId< Algorithm >::to_id( f ) );
+        for ( int i = 1; i < size(); ++i ) {
+            MPI::COMM_WORLD.Send( &shbits.front(),
+                                  shbits.size() * 4,
+                                  MPI::BYTE, i, TAG_SHARED );
         }
     }
 
@@ -81,18 +134,20 @@ struct Mpi {
     // Default copy and assignment is fine for us.
 
     void run( int id ) {
-        // TDB. First distribute the shared bits ... Probably a
-        // MPI::COMM_WORLD.Scatter is in place.
+        MPI::Status status;
+        std::vector< int32_t > shbits;
+        Shared sh = *master_shared;
 
-        // Btw, we want to use buffering sends. We need to use nonblocking
+        MPI::COMM_WORLD.Probe( 0, TAG_SHARED, status );
+        shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
+        MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
+                              MPI::BYTE, 0, TAG_SHARED, status );
+        algorithm::_MpiId< Algorithm >::readShared( sh, shbits.begin() );
+
+        // Btw, we want to use buffering sends. We also need to use nonblocking
         // receive, since blocking receive is busy-waiting under openmpi.
-        assert( shared );
         m_domain->parallel().run(
-            *shared,
-            algorithm::_MpiId< Algorithm >::from_id( id ) );
-
-        // TBD. we need to collect the shared data now; maybe a call to
-        // MPI::COMM_WORLD.Gather would help.
+            sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
     }
 
     void slaveLoop() {
@@ -182,6 +237,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
         if ( one.first == two.first && two.first == two.second ) {
             m_domain.mpi.notifySlaves( TAG_DONE, 0 );
+            m_domain.mpi.collectSharedBits();
 
             if ( m_domain.barrier().idle( this ) )
                 return true;
@@ -226,6 +282,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 MPI::COMM_WORLD.Send( cnt, 3, MPI::INT, 0, TAG_GIVE_COUNTS );
                 return false;
             case TAG_DONE:
+                m_domain.mpi.returnSharedBits();
                 return m_domain.barrier().idle( this );
             default:
                 assert_die();

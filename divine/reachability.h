@@ -27,6 +27,19 @@ struct _MpiId< Reachability< G > >
         assert_eq( n, 0 );
         return &Reachability< G >::_visit;
     }
+
+    template< typename O >
+    static void writeShared( typename Reachability< G >::Shared s, O o ) {
+        *o++ = s.states;
+        *o++ = s.transitions;
+    }
+
+    template< typename I >
+    static I readShared( typename Reachability< G >::Shared &s, I i ) {
+        s.states = *i++;
+        s.transitions = *i++;
+        return i;
+    }
 };
 // END MPI drudgery
 
@@ -77,9 +90,11 @@ struct Reachability : DomainWorker< Reachability< G > >
     Result run() {
         domain.parallel().run( shared, &Reachability< G >::_visit );
 
-        for ( int i = 0; i < domain.parallel().n; ++i ) {
-            Shared &s = domain.parallel().shared( i );
+        for ( int i = 0; i < domain.peers(); ++i ) {
+            Shared &s = domain.shared( i );
             shared.states += s.states;
+            std::cerr << "peer " << i << " has seen "
+                      << s.states << " states" << std::endl;
             shared.transitions += s.transitions;
             shared.accepting += s.accepting;
             shared.errors += s.errors;

@@ -54,7 +54,9 @@ struct Parallel {
         return m_instances[ i ];
     }
 
-    Shared &shared( int i ) { return instance( i ).shared; }
+    Shared &shared( int i ) {
+        return instance( i ).shared;
+    }
 
     R< T > &thread( int i ) {
         assert( i < n );
@@ -232,8 +234,9 @@ struct Domain {
             for ( int i = 0; i < this->n; ++i )
                 this->thread( i ).setBarrier( m_domain->barrier() );
 
-            m_domain->mpi.notifySlaves(
-                TAG_RUN, algorithm::_MpiId< T >::to_id( f ) );
+            m_domain->mpi.runOnSlaves( f );
+            /* m_domain->mpi.notifySlaves(
+               TAG_RUN, algorithm::_MpiId< T >::to_id( f ) ); */
 
             this->runThreads();
             m_domain->barrier().clear();
@@ -297,6 +300,12 @@ struct Domain {
 
     int peers() {
         return n * mpi.size();
+    }
+
+    typename T::Shared &shared( int i ) {
+        if ( isLocalId( i ) )
+            return parallel().shared( i - minId );
+        return mpi.shared( i );
     }
 
     Fifo &queue( int from, int to )

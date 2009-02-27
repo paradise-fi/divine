@@ -38,6 +38,15 @@ struct _MpiId< Owcty< G > >
             return 2;
         assert_die();
     }
+
+    template< typename O >
+    static void writeShared( typename Owcty< G >::Shared, O ) {
+    }
+
+    template< typename I >
+    static I readShared( typename Owcty< G >::Shared &, I i ) {
+        return i;
+    }
 };
 
 template< typename G >
