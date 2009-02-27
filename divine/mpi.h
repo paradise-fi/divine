@@ -42,6 +42,9 @@ struct Mpi {
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
 
+        char *mpibuf = new char[ 1024 * 1024 ];
+        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
+
         if ( !master() ) {
             while ( true )
                 slaveLoop();
@@ -308,11 +311,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     void *main() {
-        Allocator< char > alloc; // needs to be here, since this depends on current thread's ID.
+        // The allocator needs to be instantiated here, since this depends on
+        // current thread's ID. Yes, icky.
+        Allocator< char > alloc;
 
-        std::cerr << "domain started: " << m_domain.mpi.rank() << std::endl;
-        char *mpibuf = new char[ 1024 * 1024 ];
-        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
+        std::cerr << "MPI domain started: " << m_domain.mpi.rank() << std::endl;
         m_domain.barrier().started( this );
         while ( loop( alloc ) );
         return 0;
