@@ -41,7 +41,6 @@ struct Mpi {
         MPI::Init();
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
-        startupSync();
 
         if ( !master() ) {
             while ( true )
@@ -78,10 +77,6 @@ struct Mpi {
 
     // Default copy and assignment is fine for us.
 
-    void startupSync() {
-        // TBD. all-to-all sync
-    }
-    
     void run( int id ) {
         // TDB. First distribute the shared bits ... Probably a
         // MPI::COMM_WORLD.Scatter is in place.
