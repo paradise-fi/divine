@@ -63,6 +63,7 @@ struct Common {
     };
 
     Successors successors( State s ) {
+        assert( s.valid() );
         Successors succ;
         succ._from = s;
         state_t legacy = legacy_state( s );
