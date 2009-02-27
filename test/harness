@@ -4,10 +4,19 @@ test -d "$1" -a -f "$1/divine-mc" || {
     echo "First parameter has to be directory with your divine-mc binary."
     exit 1
 }
+
+# fake ssh for mpiexec
+echo "#!/bin/sh" > $1/ssh
+echo 'exec "$@"' >> $1/ssh
+chmod +x $1/ssh
+
 PATH="$1:$PATH"
 shift
+
+export MPIEXEC="$1"
+shift
+
 tests="$@"
-#test -z "$tests" && tests=`echo *.sh`
 
 for t_ in $tests; do
     t=`basename $t_`
