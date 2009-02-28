@@ -257,10 +257,17 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                               status.Get_source(),
                               status.Get_tag(), status );
         std::vector< int32_t >::const_iterator i = in_buffer.begin();
+
+        // FIXME. This here hardcoding of pairwise blob relationship is rather
+        // evil, but necessary for correctness with regards to parallel visitor
+        // implementation. It is however a modularity violation and this whole
+        // pairing mess needs to be addressed somehow.
         while ( i != in_buffer.end() ) {
             target = *i++;
-            i = b.read32( &alloc, i );
             assert_pred( m_domain.isLocalId, target );
+            i = b.read32( &alloc, i );
+            m_domain.queue( -1, target ).push( b );
+            i = b.read32( &alloc, i );
             m_domain.queue( -1, target ).push( b );
         }
         ++ recv;
@@ -314,9 +321,14 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             // than MPI buffer size kills the application, sadly).
             while ( !fifo[ i ].empty() && buffers[ rank ].size() <= 200 * 1024 )
             {
-                Blob &b = fifo[ i ].front();
-                fifo[ i ].pop();
                 buffers[ rank ].push_back( to );
+
+                Blob b = fifo[ i ].front();
+                fifo[ i ].pop();
+                b.write32( std::back_inserter( buffers[ rank ] ) );
+
+                b = fifo[ i ].front( true );
+                fifo[ i ].pop();
                 b.write32( std::back_inserter( buffers[ rank ] ) );
             }
         }
