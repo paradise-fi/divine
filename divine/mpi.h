@@ -269,7 +269,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     bool receiveControlMessage( MPI::Status &status ) {
         int id;
         MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
-                              MPI::ANY_SOURCE, MPI::ANY_TAG, status );
+                              status.Get_source(),
+                              status.Get_tag(), status );
         /* std::cerr << "MPI CONTROL: " << m_domain.mpi.rank()
                   << " <-- "
                   << status.Get_source()
