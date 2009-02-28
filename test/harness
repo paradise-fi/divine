@@ -6,8 +6,12 @@ test -d "$1" -a -f "$1/divine-mc" || {
 }
 
 # fake ssh for mpiexec
-echo "#!/bin/sh" > $1/ssh
-echo 'exec "$@"' >> $1/ssh
+cat > $1/ssh <<EOF
+#!/bin/sh
+test "\$1" = "-x" && shift
+shift # hostname
+eval "\$@"
+EOF
 chmod +x $1/ssh
 
 PATH="$1:$PATH"
