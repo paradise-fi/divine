@@ -254,7 +254,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         in_buffer.resize( status.Get_count( MPI::BYTE ) / 4 );
         MPI::COMM_WORLD.Recv( &in_buffer.front(), in_buffer.size() * 4,
                               MPI::BYTE,
-                              MPI::ANY_SOURCE, MPI::ANY_TAG, status );
+                              status.Get_source(),
+                              status.Get_tag(), status );
         std::vector< int32_t >::const_iterator i = in_buffer.begin();
         while ( i != in_buffer.end() ) {
             target = *i++;
