@@ -102,7 +102,9 @@ struct Mpi {
 
     template< typename F >
     void runOnSlaves( F f ) {
-        if( !master() ) return;
+        if ( !master() ) return;
+        if ( size() <= 1 ) return; // master_shared can be NULL otherwise
+        assert( master_shared );
         std::vector< int32_t > shbits;
         algorithm::_MpiId< Algorithm >::writeShared(
             *master_shared, std::back_inserter( shbits ) );
