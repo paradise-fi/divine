@@ -7,6 +7,9 @@
 #include "common/error.hh"
 #include "system/dve/syntax_analysis/dve_keywords.cc"
 
+/* Necessary to get the definition of EOF: */
+#include <cstdio>
+
 
 using namespace divine;
 using std::ostream;
