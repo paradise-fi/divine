@@ -6,6 +6,7 @@
 #include <ctime>                                                                
 #include <list>
 #include <map>
+#include <limits.h>
 #include "sevine.h"
 //#include "divine_utils.hh"
 
