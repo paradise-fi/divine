@@ -10,10 +10,10 @@ IPATH = .
 #LEXFLAGS = -l
 LEXFLAGS =
 
-all: dve_grammar.cc dve_expr_grammar.cc dve_trans_grammar.cc dve_proc_grammar.cc $(IPATH)/dve_gramsymb.hh dve_lexer.cc dve_keywords.cc 
+all: dve_grammar.cc dve_expr_grammar.cc dve_trans_grammar.cc dve_proc_grammar.cc $(IPATH)/dve_gramsymb.hh dve_lexer.cc dve_keywords.cci
 
-dve_keywords.cc: dve_keywords.gperf
-	$(PERF) $(PERFFLAGS) -Z Keywords dve_keywords.gperf >dve_keywords.cc
+dve_keywords.cci: dve_keywords.gperf
+	$(PERF) $(PERFFLAGS) -Z Keywords dve_keywords.gperf >dve_keywords.cci
 dve_grammar.cc $(IPATH)/dve_gramsymb.hh: dve_grammar.yy
 	$(YACC) -p dve_yy -v -d dve_grammar.yy; mv dve_grammar.tab.cc dve_grammar.cc; \
 	mv dve_grammar.tab.hh $(IPATH)/dve_gramsymb.hh
@@ -36,13 +36,11 @@ dve_proc_grammar.cc: dve_grammar.yy
 	rm dve_proc_grammar.tab.hh
 	rm dve_proc_grammar.yy
 dve_lexer.cc: dve_lexer.l
-	$(LEX) $(LEXFLAGS) dve_lexer.l;
-	sed 's/#include <FlexLexer.h>/#include "system\/dve\/syntax_analysis\/dve_flex_lexer.hh"/'\
-	    <lex.yy.cc >dve_lexer.cc
-	rm lex.yy.cc
+	$(LEX) $(LEXFLAGS) -o dve_lexer.cc dve_lexer.l;
+	sed -i.orig 's/#include <FlexLexer.h>/#include "system\/dve\/syntax_analysis\/dve_flex_lexer.hh"/' dve_lexer.cc
 	cp /usr/include/FlexLexer.h $(IPATH)/dve_flex_lexer.hh
 
 clean:
-	rm dve_keywords.cc dve_grammar.cc $(IPATH)/dve_gramsymb.hh \
+	rm dve_keywords.cci dve_grammar.cc $(IPATH)/dve_gramsymb.hh \
 	   dve_expr_grammar.cc dve_trans_grammar.cc dve_proc_grammar.cc\
 	   dve_lexer.cc

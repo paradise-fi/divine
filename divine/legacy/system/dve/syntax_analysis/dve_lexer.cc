@@ -1,5 +1,6 @@
+#line 2 "dve_lexer.cc"
 
-#line 3 "lex.yy.cc"
+#line 4 "dve_lexer.cc"
 
 #define  YY_INT_ALIGNED short int
 
@@ -477,7 +478,7 @@ extern dve_position_t dve_yylloc;
 //moje: it had to be removed - we do not use throw
 #define YY_FATAL_ERROR(msg) { gerr << msg << thr(); }
 
-#line 481 "lex.yy.cc"
+#line 482 "dve_lexer.cc"
 
 #define INITIAL 0
 #define comment 1
@@ -592,7 +593,7 @@ YY_DECL
   dve_yylloc.step();
 
 
-#line 596 "lex.yy.cc"
+#line 597 "dve_lexer.cc"
 
 	if ( !(yy_init) )
 		{
@@ -979,7 +980,7 @@ YY_RULE_SETUP
 #line 157 "dve_lexer.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 983 "lex.yy.cc"
+#line 984 "dve_lexer.cc"
 
 	case YY_END_OF_BUFFER:
 		{
