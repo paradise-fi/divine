@@ -6,7 +6,7 @@
 #include <iostream>
 #include "system/dve/syntax_analysis/dve_commonparse.hh"
 #include "common/error.hh"
-#include "system/dve/syntax_analysis/dve_keywords.cc"
+#include "system/dve/syntax_analysis/dve_keywords.cci"
 
 /* Necessary to get the definition of EOF: */
 #include <cstdio>
