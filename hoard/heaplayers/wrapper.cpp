@@ -113,7 +113,8 @@ extern "C" void * MYCDECL CUSTOM_CALLOC (size_t nelem, size_t elsize)
 
 
 #if !defined(_WIN32)
-extern "C" void * MYCDECL CUSTOM_MEMALIGN (size_t alignment, size_t size);
+extern "C" void * MYCDECL CUSTOM_MEMALIGN (size_t alignment, size_t size)
+                  throw ();
 
 extern "C" int posix_memalign (void **memptr, size_t alignment, size_t size)
 {
@@ -135,6 +136,7 @@ extern "C" int posix_memalign (void **memptr, size_t alignment, size_t size)
 
 
 extern "C" void * MYCDECL CUSTOM_MEMALIGN (size_t alignment, size_t size)
+                  throw ()
 {
   // NOTE: This function is deprecated.
   if (alignment == sizeof(double)) {
