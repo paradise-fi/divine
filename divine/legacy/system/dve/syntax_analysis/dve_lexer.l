@@ -1,3 +1,4 @@
+%option noyywrap
 %option nodefault
 %{
 /* error space 35500-35599 */
