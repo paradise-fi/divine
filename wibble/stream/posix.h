@@ -4,6 +4,7 @@
 #include <wibble/exception.h>
 #include <streambuf>
 #include <unistd.h>
+#include <cstdio>
 
 // http://www.icce.rug.nl/documents/cplusplus/cplusplus21.html#CONCRETE
 // 21.2.1: Classes for output operations

@@ -1,6 +1,7 @@
 // -*- C++ -*-
 #include <unistd.h>
 #include <wibble/sys/pipe.h>
+#include <cstdio>
 
 #define RUN(x, y) x().y()
 

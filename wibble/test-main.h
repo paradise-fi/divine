@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <sys/socket.h>
+#include <cstdio>
 
 #include <wibble/sys/pipe.h>
 
