@@ -76,7 +76,7 @@
 /* Copy the first part of user declarations.  */
 
 /* Line 189 of yacc.c  */
-#line 5 "dve_expr_grammar.yy"
+
 
   #ifdef yylex
    #undef yylex
@@ -122,7 +122,7 @@
 
 
 /* Line 189 of yacc.c  */
-#line 126 "dve_expr_grammar.tab.cc"
+
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -220,7 +220,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 103 "dve_expr_grammar.yy"
+
 
   bool flag;
   int number;
@@ -229,7 +229,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 233 "dve_expr_grammar.tab.cc"
+
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -254,7 +254,7 @@ typedef struct YYLTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 258 "dve_expr_grammar.tab.cc"
+
 
 #ifdef short
 # undef short
@@ -1575,245 +1575,245 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 131 "dve_expr_grammar.yy"
+
     { strncpy((yyval.string), (yyvsp[(1) - (1)].string), MAXLEN); ;}
     break;
 
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 486 "dve_expr_grammar.yy"
+
     { parser->done(); ;}
     break;
 
   case 4:
 
 /* Line 1455 of yacc.c  */
-#line 491 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (1)]),(yylsp[(1) - (1)]),expr_false()); ;}
     break;
 
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 493 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (1)]),(yylsp[(1) - (1)]),expr_true()); ;}
     break;
 
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 495 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (1)]),(yylsp[(1) - (1)]),expr_nat((yyvsp[(1) - (1)].number))); ;}
     break;
 
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 497 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (1)]),(yylsp[(1) - (1)]),expr_id((yyvsp[(1) - (1)].string))); ;}
     break;
 
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 499 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (4)]),(yylsp[(4) - (4)]),expr_array_mem((yyvsp[(1) - (4)].string))); ;}
     break;
 
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 501 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_parenthesis()); ;}
     break;
 
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 503 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (2)]),(yylsp[(2) - (2)]),expr_unary((yyvsp[(1) - (2)].number))); ;}
     break;
 
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 505 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_LT)); ;}
     break;
 
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 507 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_LEQ)); ;}
     break;
 
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 509 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_EQ)); ;}
     break;
 
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 511 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_NEQ)); ;}
     break;
 
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 513 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_GT)); ;}
     break;
 
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 515 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_GEQ)); ;}
     break;
 
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 517 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_PLUS)); ;}
     break;
 
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 519 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_MINUS)); ;}
     break;
 
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 521 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_MULT)); ;}
     break;
 
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 523 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_DIV)); ;}
     break;
 
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 525 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_MOD)); ;}
     break;
 
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 527 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_AND)); ;}
     break;
 
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 529 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_OR)); ;}
     break;
 
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 531 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_XOR)); ;}
     break;
 
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 533 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_LSHIFT)); ;}
     break;
 
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 535 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_RSHIFT)); ;}
     break;
 
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 537 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_BOOL_AND)); ;}
     break;
 
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 539 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_BOOL_OR)); ;}
     break;
 
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 541 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_state_of_process((yyvsp[(1) - (3)].string),(yyvsp[(3) - (3)].string))); ;}
     break;
 
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 545 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_var_of_process((yyvsp[(1) - (3)].string),(yyvsp[(3) - (3)].string))); ;}
     break;
 
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 547 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (6)]),(yylsp[(3) - (6)]),expr_var_of_process((yyvsp[(1) - (6)].string),(yyvsp[(3) - (6)].string),true)); ;}
     break;
 
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 549 "dve_expr_grammar.yy"
+
     { CALL((yylsp[(1) - (3)]),(yylsp[(3) - (3)]),expr_bin(T_IMPLY)); ;}
     break;
 
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 567 "dve_expr_grammar.yy"
+
     { (yyval.number) = T_UNARY_MINUS; ;}
     break;
 
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 568 "dve_expr_grammar.yy"
+
     { (yyval.number) = T_TILDE; ;}
     break;
 
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 569 "dve_expr_grammar.yy"
+
     { (yyval.number) = T_BOOL_NOT; ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 1817 "dve_expr_grammar.tab.cc"
+
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2032,7 +2032,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 593 "dve_expr_grammar.yy"
+
 
 
 
