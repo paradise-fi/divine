@@ -21,6 +21,7 @@ import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Marshal.Utils
 import Foreign.Storable
+import Data.Storable
 import Data.Array
 import Control.Monad( unless )
 
@@ -49,22 +50,22 @@ instance forall p q. (Storable p, Storable q) => Storable (PComp p q) where
 -- FFI interface
 --
 
-ffi_getStateSize :: forall p. (Storable p) => p -> IO CSize
-ffi_getStateSize _ = return $ fromIntegral $ sizeOf (undefined :: p)
+ffi_getStateSize :: forall p. (StorableM p) => p -> IO CSize
+ffi_getStateSize s = return $ fromIntegral $ sizeOfV s
 
-ffi_initialState :: (Process p, Storable p) => Ptr p -> IO ()
-ffi_initialState out = poke out initial
+ffi_initialState :: (Process p, StorableM p) => Ptr p -> IO ()
+ffi_initialState out = pokeV out initial
 {-# INLINE ffi_initialState #-}
 
-ffi_getSuccessor :: (Process p, Storable p) => CInt -> Ptr p -> Ptr p -> IO CInt
+ffi_getSuccessor :: (Process p, StorableM p) => CInt -> Ptr p -> Ptr p -> IO CInt
 ffi_getSuccessor handle from to = do
-  from' <- peek from
+  from' <- peekV from
   let (res, i) = (numerate' $ successors) from' (fromIntegral handle)
-  unless (i == 0) $ poke to res
+  unless (i == 0) $ pokeV to res
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 
-ffi_getManySuccessors :: forall p. (Process p, Storable p) => p -> Ptr () ->
+ffi_getManySuccessors :: forall p. (Process p, StorableM p) => p -> Ptr () ->
                          Ptr P.Group -> Ptr (C.Circular Blob) ->
                          Ptr (C.Circular Blob) -> IO ()
 ffi_getManySuccessors _ p g from to = do
@@ -79,6 +80,7 @@ ffi_getManySuccessors _ p g from to = do
         from' :: Blob <- C.peekNth fromQ (fromIntegral $ i `mod` size)
         fromSt :: p <- peekBlob from'
         let succs = successors fromSt
+            inner :: [p] -> IO ()
             inner [] = return ()
             inner (x:xs) = do b <- poolBlob pool x
                               C.add from' to

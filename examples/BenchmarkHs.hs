@@ -4,18 +4,33 @@
 module BenchmarkHs where
 
 import Data.Int
-import Foreign.Storable
+import Data.Storable
 import Foreign.Ptr
 import Divine.Generator
 
-import Data.DeriveTH
-import qualified Data.Derive.Storable
+-- import Data.DeriveTH
+-- import qualified Data.Derive.Storable
 
 data P = P Int16
 data Q = Q Int16 Int16
 
-$( derive Data.Derive.Storable.makeStorable ''P )
-$( derive Data.Derive.Storable.makeStorable ''Q )
+instance StorableM Q where
+    sizeOfM (Q a b) = do sizeOfM a
+                         sizeOfM b
+    {-# INLINE sizeOfM #-}
+    alignmentM ~(Q a b) = do alignmentM a
+                             alignmentM b
+    {-# INLINE alignmentM #-}
+    peekM = do a <- peekM
+               b <- peekM
+               return $ Q a b
+    {-# INLINE peekM #-}
+    pokeM (Q a b) = do pokeM a
+                       pokeM b
+    {-# INLINE pokeM #-}
+
+-- $( derive Data.Derive.Storable.makeStorable ''P )
+-- $( derive Data.Derive.Storable.makeStorable ''Q )
 
 {- TODO
 {-# INLINE sizeOf #-}
