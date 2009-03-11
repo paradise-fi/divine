@@ -25,9 +25,10 @@ set_source_files_properties( ${CONTEXT}.bwah PROPERTIES SYMBOLIC ON )
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
-add_library( divine STATIC
+add_library( libdivine STATIC
     ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
+set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
-target_link_libraries( divine dl ${MPI_LIBRARIES} )
+target_link_libraries( libdivine dl ${MPI_LIBRARIES} )
 target_link_libraries( divine-test divine wibble )
 wibble_check_target( divine-test )

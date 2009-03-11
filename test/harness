@@ -1,7 +1,7 @@
 #!/bin/sh
 
-test -d "$1" -a -f "$1/divine-mc" || {
-    echo "First parameter has to be directory with your divine-mc binary."
+test -d "$1" -a -f "$1/divine" || {
+    echo "First parameter has to be directory with your divine binary."
     exit 1
 }
 

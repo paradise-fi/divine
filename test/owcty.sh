@@ -1,7 +1,7 @@
 set -vex
 not () { "$@" && exit 1 || return 0; }
 
-divine-mc owcty --report peterson-naive.dve > report 2> progress
+divine owcty --report peterson-naive.dve > report 2> progress
 
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: No" report
@@ -16,7 +16,7 @@ cat > numbers-right <<EOF
 EOF
 diff -u numbers numbers-right
 
-divine-mc owcty --report peterson-liveness.dve > report 2> progress
+divine owcty --report peterson-liveness.dve > report 2> progress
 
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: Yes" report
