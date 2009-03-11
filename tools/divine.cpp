@@ -11,9 +11,11 @@
 #include <wibble/sys/fs.h>
 
 #include <divine/config.h>
+#include <divine/generator.h>
+
 #include <divine/reachability.h>
 #include <divine/owcty.h>
-#include <divine/generator.h>
+#include <divine/metrics.h>
 
 #include <divine/report.h>
 
@@ -46,7 +48,8 @@ void handler( int s ) {
 struct Main {
     Config config;
 
-    Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify;
+    Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
+        *cmd_metrics;
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_report;
     IntOption *o_workers, *o_mem;
@@ -102,6 +105,9 @@ struct Main {
         opts.usage = "<command> [command-specific options] <input file>";
         opts.description = "A Parallel Explicit-State LTL Model Checker";
 
+        cmd_metrics = opts.addEngine( "metrics",
+                                      "<input>",
+                                      "state space metrics");
         cmd_reachability = opts.addEngine( "reachability",
                                            "<input>",
                                            "reachability analysis");
@@ -147,7 +153,7 @@ struct Main {
         opts.add( common );
     }
 
-    enum { RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
+    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
 
     void parseCommandline()
     {
@@ -227,6 +233,8 @@ struct Main {
             m_run = RunReachability;
         else if ( opts.foundCommand() == cmd_map )
             m_run = RunMap;
+        else if ( opts.foundCommand() == cmd_metrics )
+            m_run = RunMetrics;
         else
             die( "FATAL: Internal error in commandline parser." );
 
@@ -242,6 +250,9 @@ struct Main {
             case RunReachability:
                 config.setAlgorithm( "Reachability" );
                 return selectGraph< algorithm::Reachability >();
+            case RunMetrics:
+                config.setAlgorithm( "Metrics" );
+                return selectGraph< algorithm::Metrics >();
             case RunOwcty:
                 config.setAlgorithm( "OWCTY" );
                 return selectGraph< algorithm::Owcty >();
