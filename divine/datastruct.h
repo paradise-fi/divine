@@ -141,7 +141,7 @@ template< typename Graph >
 struct BufferedQueue {
     typedef typename Graph::Node Node;
     Circular< Node, 256 > m_in;
-    Circular< Node, 4096> m_out;
+    Circular< Node, 4096 > m_out;
     std::deque< Node > m_queue;
     std::deque< Node > m_finished;
     Graph &g;

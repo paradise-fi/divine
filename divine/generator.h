@@ -353,7 +353,7 @@ struct Custom {
         assert( dl.get_successor || dl.get_many_successors );
 
         dl.size = dl.get_state_size();
-        
+
         std::cerr << path << " loaded [state size = "
                   << dl.size << "]..." << std::endl;
     }
