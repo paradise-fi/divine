@@ -163,7 +163,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     // -----------------------------------------------
-    // -- REACHABILITY implementation 
+    // -- REACHABILITY implementation
     // --
 
     visitor::ExpansionAction reachExpansion( Node st )
@@ -206,7 +206,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     // -----------------------------------------------
-    // -- INITIALISE implementation 
+    // -- INITIALISE implementation
     // --
 
     visitor::TransitionAction initTransition( Node from, Node to )
