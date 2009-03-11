@@ -55,6 +55,9 @@ struct Reachability : DomainWorker< Reachability< G > >
     } shared;
     Domain< Reachability< G > > domain;
 
+    typedef HashMap< Node, Unit, Hasher > Table;
+    Hasher hasher;
+
     // TODO error & deadlock states
     visitor::ExpansionAction expansion( Node st )
     {

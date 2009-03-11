@@ -74,21 +74,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool inF:1;
     };
 
-    struct Hasher {
-        int size;
-        Hasher( int s = 0 ) : size( s ) {}
-        inline hash_t operator()( Blob b ) const {
-            return b.hash( 0, size );
-        }
-    };
-
-    struct Equal {
-        int size;
-        Equal( int s = 0 ) : size( s ) {}
-        inline hash_t operator()( Blob a, Blob b ) const {
-            return a.compare( b, 0, size ) == 0;
-        }
-    };
+    Hasher hasher;
 
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
@@ -106,10 +92,9 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     Table &table() {
         if ( !m_table ) {
-            int size = shared.g.stateSize();
-            assert( size );
-            m_table = new Table( Hasher( size ), divine::valid< Node >(),
-                                 Equal( size ) );
+            hasher.setSize( shared.g.stateSize() );
+            m_table = new Table( hasher, divine::valid< Node >(),
+                                 Equal( hasher.size ) );
         }
         return *m_table;
     }
@@ -193,8 +178,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::reachExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        int size = shared.g.stateSize();
-        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
+        hasher.setSize( shared.g.stateSize() );
+        Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor, true );
         visitor.visit();
     }
