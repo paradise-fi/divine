@@ -100,7 +100,7 @@ struct Main {
     void setupCommandline()
     {
         opts.usage = "<command> [command-specific options] <input file>";
-        opts.description = "Multi-Threaded Model Checker based on DiVinE";
+        opts.description = "A Parallel Explicit-State LTL Model Checker";
 
         cmd_reachability = opts.addEngine( "reachability",
                                            "<input>",
