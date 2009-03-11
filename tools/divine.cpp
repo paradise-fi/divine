@@ -19,6 +19,8 @@
 
 #include <divine/report.h>
 
+#include <tools/combine.h>
+
 #include <sys/resource.h>
 
 using namespace divine;
@@ -61,13 +63,22 @@ struct Main {
     const char **argv;
     commandline::StandardParserWithMandatoryCommand opts;
 
+    Combine combine;
+
     Main( int _argc, const char **_argv )
         : dummygen( false ), argc( _argc ), argv( _argv ),
-          opts( argv[ 0 ], DIVINE_VERSION, 1, "DiVinE Team <divine@fi.muni.cz>" )
+          opts( argv[ 0 ], DIVINE_VERSION, 1, "DiVinE Team <divine@fi.muni.cz>" ),
+          combine( opts, argc, argv )
     {
         setupSignals();
         setupCommandline();
         parseCommandline();
+
+        if ( m_run == RunCombine ) {
+            combine.main();
+            return;
+        }
+
         generator::read_mutex = new wibble::sys::Mutex( true );
 
         Report rep( config );
@@ -153,7 +164,8 @@ struct Main {
         opts.add( common );
     }
 
-    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
+    enum { RunCombine, RunMetrics, RunReachability, RunNdfs,
+           RunMap, RunOwcty } m_run;
 
     void parseCommandline()
     {
@@ -173,6 +185,14 @@ struct Main {
 
         } catch( wibble::exception::BadOption &e ) {
             die( e.fullInfo() );
+        }
+
+        if ( !opts.foundCommand() )
+            die( "FATAL: no command specified" );
+
+        if ( opts.foundCommand() == combine.cmd_combine ) {
+            m_run = RunCombine;
+            return;
         }
 
         config.setWorkers( o_workers->intValue() );
@@ -208,9 +228,6 @@ struct Main {
 
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
-
-        if ( !opts.foundCommand() )
-            die( "FATAL: no command specified" );
 
         if ( opts.foundCommand() == cmd_verify ) {
             std::string inf = fs::readFile( config.input() );

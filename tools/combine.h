@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #include <iostream>
 #include <sstream>
 #include <divine/version.h>
@@ -102,9 +103,10 @@ struct PipeThrough
 };
 
 struct Combine {
+    Engine *cmd_combine;
     IntOption *o_propId;
     BoolOption *o_stdout, *o_quiet, *o_help, *o_version,  *o_det;
-    commandline::StandardParserWithManpage opts;
+    commandline::StandardParserWithMandatoryCommand &opts;
 
     std::string input, ltl, defs;
     std::string in_data, ltl_data, ltl_defs, system;
@@ -124,42 +126,24 @@ struct Combine {
         exit( 1 );
     }
 
-    Combine( int argc, const char **argv )
-        : opts( argv[ 0 ], DIVINE_VERSION , 1, "DiVinE Team <divine@fi.muni.cz>"  )
+    Combine( commandline::StandardParserWithMandatoryCommand &_opts,
+             int argc, const char **argv )
+        : opts( _opts )
     {
-        opts.usage = "[switches] input.[m][prob]dve formula.[m]ltl [preprocessor defs]";
-        opts.description = "DiVinE Multi-Core";
+        cmd_combine = opts.addEngine(
+            "combine",
+            "input.[m][prob]dve [formula.[m]ltl] [preprocessor defs]",
+            "combine DVE models with LTL properties" );
 
-        o_propId = opts.add< IntOption >(
+        o_propId = cmd_combine->add< IntOption >(
             "property", 'p', "property", "",
             "only process n-th property from the LTL file" );
-        o_stdout = opts.add< BoolOption >(
+        o_stdout = cmd_combine->add< BoolOption >(
             "stdout", 'o', "stdout", "",
             "print output to stdout; implies -q" );
-        o_quiet = opts.add< BoolOption >(
+        o_quiet = cmd_combine->add< BoolOption >(
             "quiet", 'q', "quiet", "",
             "suppress normal output" );
-        
-        try {
-            if ( opts.parse( argc, argv ) )
-                exit( 0 ); // built-in command executed
-            if ( !opts.hasNext() )
-                die_help( "FATAL: No input file specified." );
-            input = opts.next();
-
-            if ( !opts.hasNext() )
-                die_help( "FATAL: No formula file specified." );
-            ltl = opts.next();
-
-            while ( opts.hasNext() )
-                defs += " -D" + opts.next(); // .push_back( opts.next() );
-
-        } catch( wibble::exception::BadOption &e ) {
-            die_help( e.fullInfo() );
-        }
-
-        if ( o_stdout->boolValue() && !o_propId->intValue() )
-            die( "FATAL: cannot print to stdout more than single property. Use -p n." );
     }
 
     std::string m4( std::string in )
@@ -242,7 +226,30 @@ struct Combine {
         }
     }
 
+    void parseOptions() {
+        try {
+            if ( !opts.hasNext() )
+                die_help( "FATAL: No input file specified." );
+            input = opts.next();
+
+            if ( !opts.hasNext() )
+                die_help( "FATAL: No formula file specified." );
+            ltl = opts.next();
+
+            while ( opts.hasNext() )
+                defs += " -D" + opts.next(); // .push_back( opts.next() );
+
+        } catch( wibble::exception::BadOption &e ) {
+            die_help( e.fullInfo() );
+        }
+
+        if ( o_stdout->boolValue() && !o_propId->intValue() )
+            die( "FATAL: cannot print to stdout more than single property. Use -p n." );
+    }
+
     int main() {
+        parseOptions();
+
         if ( str::endsWith( input, "probdve" ) )
             ext = ".probdve";
         else if ( str::endsWith( input, "dve" ) )
@@ -292,9 +299,3 @@ struct Combine {
     }
 
 };
-
-int main( int argc, const char **argv )
-{
-    Combine c( argc, argv );
-    return c.main();
-}
