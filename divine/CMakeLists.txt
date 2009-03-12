@@ -30,5 +30,5 @@ add_library( libdivine STATIC
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 target_link_libraries( libdivine dl ${MPI_LIBRARIES} )
-target_link_libraries( divine-test divine wibble )
+target_link_libraries( divine-test libdivine wibble )
 wibble_check_target( divine-test )
