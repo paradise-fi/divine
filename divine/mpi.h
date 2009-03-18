@@ -45,7 +45,9 @@ struct Mpi {
     void start() {
         m_started = true;
         MPI::Init();
+#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
         MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_THROW_EXCEPTIONS );
+#endif
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
 
@@ -336,7 +338,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             }
         }
 
+#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
         try {
+#else
+        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_RETURN );
+#endif
             // ... and flush the buffers.
             for ( int to = 0; to < buffers.size(); ++ to ) {
                 if ( buffers[ to ].empty() )
@@ -344,15 +350,23 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 MPI::COMM_WORLD.Bsend( &buffers[ to ].front(),
                                        buffers[ to ].size() * 4,
                                        MPI::BYTE, to, TAG_ID );
+#if !OMPI_HAVE_CXX_EXCEPTION_SUPPORT
+                if ( MPI::mpi_errno == MPI_ERR_BUFFER )
+                    break;
+                if ( MPI::mpi_errno != MPI_SUCCESS )
+                    MPI::COMM_WORLD.Abort( MPI::mpi_errno );
+#endif
                 buffers[ to ].clear();
                 ++ sent;
             }
+#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
         } catch ( MPI::Exception &e ) {
             if ( e.Get_error_class() != MPI_ERR_BUFFER )
                 throw;
-            // ignore MPI_ERR_BUFFER -- it'll presumablby succeed later, when
-            // buffer space is reclaimed
         }
+#else
+        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_ARE_FATAL );
+#endif
 
         // And process incoming MPI traffic.
         while ( MPI::COMM_WORLD.Iprobe(
@@ -385,7 +399,9 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
         std::cerr << "MPI domain started: " << m_domain.mpi.rank() << std::endl;
         m_domain.barrier().started( this );
+
         while ( loop( alloc ) );
+
         return 0;
     }
 };
