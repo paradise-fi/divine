@@ -45,6 +45,7 @@ struct Mpi {
     void start() {
         m_started = true;
         MPI::Init();
+        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_THROW_EXCEPTIONS );
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
 
@@ -335,15 +336,22 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             }
         }
 
-        // ... and flush the buffers.
-        for ( int to = 0; to < buffers.size(); ++ to ) {
-            if ( buffers[ to ].empty() )
-                continue;
-            MPI::COMM_WORLD.Bsend( &buffers[ to ].front(),
-                                   buffers[ to ].size() * 4,
-                                   MPI::BYTE, to, TAG_ID );
-            buffers[ to ].clear();
-            ++ sent;
+        try {
+            // ... and flush the buffers.
+            for ( int to = 0; to < buffers.size(); ++ to ) {
+                if ( buffers[ to ].empty() )
+                    continue;
+                MPI::COMM_WORLD.Bsend( &buffers[ to ].front(),
+                                       buffers[ to ].size() * 4,
+                                       MPI::BYTE, to, TAG_ID );
+                buffers[ to ].clear();
+                ++ sent;
+            }
+        } catch ( MPI::Exception &e ) {
+            if ( e.Get_error_class() != MPI_ERR_BUFFER )
+                throw;
+            // ignore MPI_ERR_BUFFER -- it'll presumablby succeed later, when
+            // buffer space is reclaimed
         }
 
         // And process incoming MPI traffic.
