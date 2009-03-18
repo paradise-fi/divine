@@ -49,20 +49,31 @@ struct Reachability : DomainWorker< Reachability< G > >
     typedef typename G::Node Node;
 
     struct Shared {
+        Node goal;
         size_t states, transitions, accepting;
         size_t errors, deadlocks;
         G g;
     } shared;
     Domain< Reachability< G > > domain;
 
-    typedef HashMap< Node, Unit, Hasher > Table;
+    struct Extension {
+        Blob parent;
+    };
+
+    typedef HashMap< Node, Unit, Hasher,
+                     divine::valid< Node >, Equal > Table;
     Hasher hasher;
 
-    // TODO error & deadlock states
+    Extension &extension( Node n ) {
+        int stateSize = shared.g.stateSize();
+        assert( stateSize );
+        return n.template get< Extension >( stateSize );
+    }
+
     visitor::ExpansionAction expansion( Node st )
     {
         ++shared.states;
-        if ( shared.g.is_accepting( st ) ) {
+        if ( shared.g.isAccepting( st ) ) {
             ++ shared.accepting;
         }
         return visitor::ExpandState;
@@ -70,14 +81,26 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     visitor::TransitionAction transition( Node f, Node t )
     {
+        if ( !extension( t ).parent.valid() )
+            extension( t ).parent = f;
         ++ shared.transitions;
+
+        if ( shared.g.isGoal( t ) ) {
+            shared.goal = t;
+            return visitor::TerminateOnTransition;
+        }
+
         return visitor::FollowTransition;
     }
 
     void _visit() { // parallel
-        typedef visitor::Setup< G, Reachability< G > > VisitorSetup;
-        visitor::Parallel< VisitorSetup, Reachability< G > >
-            vis( shared.g, *this, *this );
+        typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
+
+        hasher.setSize( shared.g.stateSize() );
+        visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
+            vis( shared.g, *this, *this, hasher,
+                 new Table( hasher, divine::valid< Node >(), Equal( hasher.size ) ) );
+        shared.g.setAllocator( new BlobAllocator( sizeof( Extension ) ) );
         vis.visit( shared.g.initial() );
     }
 
@@ -90,11 +113,27 @@ struct Reachability : DomainWorker< Reachability< G > >
             shared.g.read( c->input() );
     }
 
+    void counterexample( Node n ) {
+        std::cerr << "GOAL: " << std::endl
+                  << shared.g.showNode( n ) << std::endl;
+        Node x = extension( n ).parent;
+
+        if ( x.valid() ) {
+            std::cerr << "reached from:" << std::endl;
+            do {
+                std::cerr << shared.g.showNode( x ) << std::endl;
+                x = extension( x ).parent;
+            } while ( extension( x ).parent.valid() );
+        }
+    }
+
     Result run() {
         domain.parallel().run( shared, &Reachability< G >::_visit );
 
         for ( int i = 0; i < domain.peers(); ++i ) {
             Shared &s = domain.shared( i );
+            if ( s.goal.valid() )
+                counterexample( s.goal );
             shared.states += s.states;
             std::cerr << "peer " << i << " has seen "
                       << s.states << " states" << std::endl;

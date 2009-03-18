@@ -9,6 +9,8 @@
 #include <divine/stateallocator.h>
 #include <divine/blob.h>
 #include <divine/state.h>
+
+#include <sstream>
 #include <dlfcn.h>
 
 #ifndef DIVINE_GENERATOR_H
@@ -99,9 +101,13 @@ struct Common {
         legacy_system()->print_state( legacy_state( s ), o );
     }
 
-    bool is_accepting( State s ) {
+    bool isAccepting( State s ) {
         return legacy_system()->is_accepting( legacy_state( s ) );
     }
+
+    bool isDeadlock( State s ) { return false; } // XXX
+    bool isGoal( State s ) { return false; } // XXX
+    std::string showNode( State s ) { return "Foo."; }
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
@@ -212,8 +218,18 @@ struct Dummy {
         s.free( alloc->alloc() );
     }
 
-    bool is_accepting( Node s ) {
-        return false;
+    bool isDeadlock( Node s ) { return false; }
+    bool isGoal( Node s ) {
+        Content f = s.get< Content >();
+        return f.first == 512;
+    }
+
+    bool isAccepting( Node s ) { return false; }
+    std::string showNode( Node s ) {
+        Content f = s.get< Content >();
+        std::stringstream stream;
+        stream << "[" << f.first << ", " << f.second << "]";
+        return stream.str();
     }
 
     void read( std::string ) {}
@@ -358,13 +374,12 @@ struct Custom {
                   << dl.size << "]..." << std::endl;
     }
 
-    bool is_accepting( Node s ) {
-        return false;
-    }
+    bool isDeadlock( Node s ) { return false; } // XXX
+    bool isGoal( Node s ) { return false; } // XXX
+    bool isAccepting( Node s ) { return false; } // XXX
+    std::string showNode( Node s ) { return "Foo."; } // XXX
 
-    void release( Node s ) {
-        s.free( alloc->alloc() );
-    }
+    void release( Node s ) { s.free( alloc->alloc() ); }
 
     Custom() {
         alloc = new BlobAllocator( 0 );

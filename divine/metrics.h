@@ -62,7 +62,7 @@ struct Metrics : DomainWorker< Metrics< G > >
     visitor::ExpansionAction expansion( Node st )
     {
         ++shared.states;
-        if ( shared.g.is_accepting( st ) ) {
+        if ( shared.g.isAccepting( st ) ) {
             ++ shared.accepting;
         }
         return visitor::ExpandState;

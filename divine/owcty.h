@@ -203,7 +203,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             uintptr_t fromId = mapId( from );
             if ( fromMap > extension( to ).map )
                 extension( to ).map = fromMap;
-            if ( shared.g.is_accepting( from ) )
+            if ( shared.g.isAccepting( from ) )
                 if ( fromId > extension( to ).map )
                     extension( to ).map = fromId;
             if ( mapId( to ) == fromMap ) {
@@ -216,7 +216,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     visitor::ExpansionAction initExpansion( Node st )
     {
-        extension( st ).inF = extension( st ).inS = shared.g.is_accepting( st );
+        extension( st ).inF = extension( st ).inS = shared.g.isAccepting( st );
         shared.size += extension( st ).inS;
         return visitor::ExpandState;
     }
