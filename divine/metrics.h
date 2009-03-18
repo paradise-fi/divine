@@ -32,12 +32,18 @@ struct _MpiId< Metrics< G > >
     static void writeShared( typename Metrics< G >::Shared s, O o ) {
         *o++ = s.states;
         *o++ = s.transitions;
+        *o++ = s.accepting;
+        *o++ = s.errors;
+        *o++ = s.deadlocks;
     }
 
     template< typename I >
     static I readShared( typename Metrics< G >::Shared &s, I i ) {
         s.states = *i++;
         s.transitions = *i++;
+        s.accepting = *i++;
+        s.errors = *i++;
+        s.deadlocks = *i++;
         return i;
     }
 };
