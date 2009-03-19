@@ -45,14 +45,8 @@ struct Mpi {
     void start() {
         m_started = true;
         MPI::Init();
-#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
-        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_THROW_EXCEPTIONS );
-#endif
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
-
-        char *mpibuf = new char[ 1024 * 1024 ];
-        MPI::Attach_buffer( mpibuf, 1024 * 1024 );
 
         m_shared.resize( m_domain->peers() );
 
@@ -186,6 +180,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
     std::vector< Fifo > fifo;
     std::vector< std::vector< int32_t > > buffers;
+    std::vector< std::pair< bool, MPI::Request > > requests;
     std::vector< int32_t > in_buffer;
 
     bool busy;
@@ -193,6 +188,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     MpiThread( D &d ) : m_domain( d ) {
         fifo.resize( d.peers() * d.peers() );
         buffers.resize( d.mpi.size() );
+        requests.resize( d.mpi.size() );
         busy = true;
         sent = recv = 0;
     }
@@ -320,11 +316,9 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 continue;
             }
 
-            // The size limit for these buffers is about .8M -- the hard limit
-            // in MPI is set above to 1M, so if state size is on the order of
-            // 200k, we might have a problem (trying to Bsend a message bigger
-            // than MPI buffer size kills the application, sadly).
-            while ( !fifo[ i ].empty() && buffers[ rank ].size() <= 200 * 1024 )
+            // Build up linear buffers for MPI send. We only do that on
+            // buffers that are not currently in-flight (request not busy).
+            while ( !fifo[ i ].empty() && !requests[ rank ].first )
             {
                 buffers[ rank ].push_back( to );
 
@@ -338,35 +332,26 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             }
         }
 
-#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
-        try {
-#else
-        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_RETURN );
-#endif
-            // ... and flush the buffers.
-            for ( int to = 0; to < buffers.size(); ++ to ) {
-                if ( buffers[ to ].empty() )
-                    continue;
-                MPI::COMM_WORLD.Bsend( &buffers[ to ].front(),
-                                       buffers[ to ].size() * 4,
-                                       MPI::BYTE, to, TAG_ID );
-#if !OMPI_HAVE_CXX_EXCEPTION_SUPPORT
-                if ( MPI::mpi_errno == MPI_ERR_BUFFER )
-                    break;
-                if ( MPI::mpi_errno != MPI_SUCCESS )
-                    MPI::COMM_WORLD.Abort( MPI::mpi_errno );
-#endif
-                buffers[ to ].clear();
-                ++ sent;
+        // ... and flush the buffers.
+        for ( int to = 0; to < buffers.size(); ++ to ) {
+            if ( requests[ to ].first ) {
+                if ( requests[ to ].second.Test() ) {
+                    buffers[ to ].clear();
+                    requests[ to ].first = false;
+                }
+                continue;
             }
-#if OMPI_HAVE_CXX_EXCEPTION_SUPPORT
-        } catch ( MPI::Exception &e ) {
-            if ( e.Get_error_class() != MPI_ERR_BUFFER )
-                throw;
+
+            if ( buffers[ to ].empty() )
+                continue;
+
+            requests[ to ].first = true;
+            requests[ to ].second = MPI::COMM_WORLD.Isend(
+                    &buffers[ to ].front(),
+                    buffers[ to ].size() * 4,
+                    MPI::BYTE, to, TAG_ID );
+            ++ sent;
         }
-#else
-        MPI::COMM_WORLD.Set_errhandler( MPI::ERRORS_ARE_FATAL );
-#endif
 
         // And process incoming MPI traffic.
         while ( MPI::COMM_WORLD.Iprobe(
