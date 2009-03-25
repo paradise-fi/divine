@@ -63,6 +63,21 @@ void impl_ensure_equals(const Location& loc, const Actual& actual, const Expecte
 	}
 }
 
+#define ensure_similar(x, y, prec) wibble::tests::impl_ensure_similar(wibble::tests::Location(__FILE__, __LINE__, #x " == " #y), (x), (y), (prec))
+#define inner_ensure_similar(x, y, prec) wibble::tests::impl_ensure_similar(wibble::tests::Location(loc, __FILE__, __LINE__, #x " == " #y), (x), (y), (prec))
+
+template <class Actual, class Expected, class Precision>
+void impl_ensure_similar(const Location& loc, const Actual& actual, const Expected& expected, const Precision& precision)
+{
+	if( actual < expected - precision || expected + precision < actual )
+	{
+		std::stringstream ss;
+		ss << "expected '" << expected << "' actual '" << actual << "'";
+                throw tut::failure(loc.msg(ss.str()));
+	}
+}
+
+
 }
 }
 
