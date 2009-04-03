@@ -33,7 +33,7 @@ struct _MpiId< Metrics< G > >
         *o++ = s.states;
         *o++ = s.transitions;
         *o++ = s.accepting;
-        *o++ = s.errors;
+        *o++ = s.goals;
         *o++ = s.deadlocks;
     }
 
@@ -42,7 +42,7 @@ struct _MpiId< Metrics< G > >
         s.states = *i++;
         s.transitions = *i++;
         s.accepting = *i++;
-        s.errors = *i++;
+        s.goals = *i++;
         s.deadlocks = *i++;
         return i;
     }
@@ -56,7 +56,7 @@ struct Metrics : DomainWorker< Metrics< G > >
 
     struct Shared {
         size_t states, transitions, accepting;
-        size_t errors, deadlocks;
+        size_t goals, deadlocks;
         G g;
     } shared;
     Domain< Metrics< G > > domain;
@@ -91,7 +91,7 @@ struct Metrics : DomainWorker< Metrics< G > >
         : domain( &shared, workerCount( c ) )
     {
         shared.states = shared.transitions = shared.accepting = 0;
-        shared.errors = shared.deadlocks = 0;
+        shared.goals = shared.deadlocks = 0;
         if ( c )
             shared.g.read( c->input() );
     }
@@ -106,7 +106,7 @@ struct Metrics : DomainWorker< Metrics< G > >
                       << s.states << " states" << std::endl;
             shared.transitions += s.transitions;
             shared.accepting += s.accepting;
-            shared.errors += s.errors;
+            shared.goals += s.goals;
             shared.deadlocks += s.deadlocks;
         }
 
@@ -115,14 +115,14 @@ struct Metrics : DomainWorker< Metrics< G > >
                   << " accepting) and "<< shared.transitions
                   << " transitions" << std::endl;
 
-        std::cerr << "encountered total of " << shared.errors
-                  << " errors and " << shared.deadlocks
-                  << " deadlocks" << std::endl;
+        std::cerr << "encountered total of " << shared.goals
+                  << " goal and " << shared.deadlocks
+                  << " deadlock states" << std::endl;
 
         Result res;
         res.visited = res.expanded = shared.states;
         res.deadlocks = shared.deadlocks;
-        res.errors = shared.errors;
+        res.goals = shared.goals;
         res.fullyExplored = Result::Yes;
         return res;
     }

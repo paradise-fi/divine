@@ -23,10 +23,10 @@ struct Result
 {
     enum R { Yes, No, Unknown };
     R ltlPropertyHolds, fullyExplored;
-    uint64_t visited, expanded, deadlocks, errors;
+    uint64_t visited, expanded, deadlocks, goals;
     Result() :
         ltlPropertyHolds( Unknown ), fullyExplored( Unknown ),
-        visited( 0 ), expanded( 0 ), deadlocks( 0 ), errors( 0 )
+        visited( 0 ), expanded( 0 ), deadlocks( 0 ), goals( 0 )
     {}
 };
 
@@ -165,7 +165,7 @@ struct Report : wibble::sys::Thread
         o << std::endl;
         o << "Full-State-Space: " << res.fullyExplored << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
-        o << "Error-State-Count: " << res.errors << std::endl;
+        o << "Error-State-Count: " << res.goals << std::endl;
         o << "State-Expansions: " << res.expanded << std::endl;
         o << "Finished: " << (m_finished ? "Yes" : "No") << std::endl;
         o << "States-Visited: " << res.visited << std::endl;
