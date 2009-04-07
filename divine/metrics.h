@@ -30,24 +30,84 @@ struct _MpiId< Metrics< G > >
 
     template< typename O >
     static void writeShared( typename Metrics< G >::Shared s, O o ) {
-        *o++ = s.states;
-        *o++ = s.transitions;
-        *o++ = s.accepting;
-        *o++ = s.goals;
-        *o++ = s.deadlocks;
+        s.stats.write( o );
     }
 
     template< typename I >
     static I readShared( typename Metrics< G >::Shared &s, I i ) {
-        s.states = *i++;
-        s.transitions = *i++;
-        s.accepting = *i++;
-        s.goals = *i++;
-        s.deadlocks = *i++;
+        s.stats.read( i );
         return i;
     }
 };
 // END MPI drudgery
+
+template< typename G >
+struct Statistics {
+    int states, transitions, accepting, goals, deadlocks;
+
+    Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), goals( 0 ), deadlocks( 0 ) {}
+
+    void addNode( G &g, typename G::Node n ) {
+        ++states;
+        if ( g.isAccepting( n ) )
+            ++ accepting;
+        if ( g.isDeadlock( n ) )
+            ++ deadlocks;
+        if ( g.isGoal( n ) )
+            ++ goals;
+    }
+
+    void addEdge() {
+        ++ transitions;
+    }
+
+    void updateResult( Result &res ) {
+        res.visited = res.expanded = states;
+        res.deadlocks = deadlocks;
+        res.goals = goals;
+    }
+
+    void print( std::ostream &o ) {
+        o << "seen total of: " << states
+          << " states (" << accepting
+          << " accepting) and "<< transitions
+          << " transitions" << std::endl;
+
+        o << "encountered total of " << goals
+          << " goal and " << deadlocks
+          << " deadlock states" << std::endl;
+    }
+
+    template< typename O >
+    O write( O o ) {
+        *o++ = states;
+        *o++ = transitions;
+        *o++ = accepting;
+        *o++ = goals;
+        *o++ = deadlocks;
+        return o;
+    }
+
+    template< typename I >
+    I read( I i ) {
+        states = *i++;
+        transitions = *i++;
+        accepting = *i++;
+        goals = *i++;
+        deadlocks = *i++;
+        return i;
+    }
+
+    template< typename G1 >
+    void merge( Statistics< G1 > other ) {
+        states += other.states;
+        transitions += other.transitions;
+        accepting += other.accepting;
+        goals += other.goals;
+        deadlocks += other.deadlocks;
+    }
+
+};
 
 template< typename G >
 struct Metrics : DomainWorker< Metrics< G > >
@@ -55,8 +115,7 @@ struct Metrics : DomainWorker< Metrics< G > >
     typedef typename G::Node Node;
 
     struct Shared {
-        size_t states, transitions, accepting;
-        size_t goals, deadlocks;
+        Statistics< G > stats;
         G g;
     } shared;
     Domain< Metrics< G > > domain;
@@ -67,16 +126,13 @@ struct Metrics : DomainWorker< Metrics< G > >
     // TODO error & deadlock states
     visitor::ExpansionAction expansion( Node st )
     {
-        ++shared.states;
-        if ( shared.g.isAccepting( st ) ) {
-            ++ shared.accepting;
-        }
+        shared.stats.addNode( shared.g, st );
         return visitor::ExpandState;
     }
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        ++ shared.transitions;
+        shared.stats.addEdge();
         return visitor::FollowTransition;
     }
 
@@ -90,8 +146,6 @@ struct Metrics : DomainWorker< Metrics< G > >
     Metrics( Config *c = 0 )
         : domain( &shared, workerCount( c ) )
     {
-        shared.states = shared.transitions = shared.accepting = 0;
-        shared.goals = shared.deadlocks = 0;
         if ( c )
             shared.g.read( c->input() );
     }
@@ -101,29 +155,14 @@ struct Metrics : DomainWorker< Metrics< G > >
 
         for ( int i = 0; i < domain.peers(); ++i ) {
             Shared &s = domain.shared( i );
-            shared.states += s.states;
-            std::cerr << "peer " << i << " has seen "
-                      << s.states << " states" << std::endl;
-            shared.transitions += s.transitions;
-            shared.accepting += s.accepting;
-            shared.goals += s.goals;
-            shared.deadlocks += s.deadlocks;
+            shared.stats.merge( s.stats );
         }
 
-        std::cerr << "seen total of: " << shared.states
-                  << " states (" << shared.accepting
-                  << " accepting) and "<< shared.transitions
-                  << " transitions" << std::endl;
-
-        std::cerr << "encountered total of " << shared.goals
-                  << " goal and " << shared.deadlocks
-                  << " deadlock states" << std::endl;
+        shared.stats.print( std::cerr );
 
         Result res;
-        res.visited = res.expanded = shared.states;
-        res.deadlocks = shared.deadlocks;
-        res.goals = shared.goals;
         res.fullyExplored = Result::Yes;
+        shared.stats.updateResult( res );
         return res;
     }
 };

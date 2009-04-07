@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm.h>
+#include <divine/metrics.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
 #include <divine/report.h>
@@ -30,14 +31,12 @@ struct _MpiId< Reachability< G > >
 
     template< typename O >
     static void writeShared( typename Reachability< G >::Shared s, O o ) {
-        *o++ = s.states;
-        *o++ = s.transitions;
+        o = s.stats.write( o );
     }
 
     template< typename I >
     static I readShared( typename Reachability< G >::Shared &s, I i ) {
-        s.states = *i++;
-        s.transitions = *i++;
+        i = s.stats.read( i );
         return i;
     }
 };
@@ -50,8 +49,7 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     struct Shared {
         Node goal;
-        size_t states, transitions, accepting;
-        size_t goals, deadlocks;
+        Statistics< G > stats;
         G g;
     } shared;
     Domain< Reachability< G > > domain;
@@ -72,10 +70,7 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     visitor::ExpansionAction expansion( Node st )
     {
-        ++shared.states;
-        if ( shared.g.isAccepting( st ) ) {
-            ++ shared.accepting;
-        }
+        shared.stats.addNode( shared.g, st );
         return visitor::ExpandState;
     }
 
@@ -83,7 +78,7 @@ struct Reachability : DomainWorker< Reachability< G > >
     {
         if ( !extension( t ).parent.valid() )
             extension( t ).parent = f;
-        ++ shared.transitions;
+        shared.stats.addEdge();
 
         if ( shared.g.isGoal( t ) ) {
             shared.goal = t;
@@ -107,8 +102,6 @@ struct Reachability : DomainWorker< Reachability< G > >
     Reachability( Config *c = 0 )
         : domain( &shared, workerCount( c ) )
     {
-        shared.states = shared.transitions = shared.accepting = 0;
-        shared.goals = shared.deadlocks = 0;
         if ( c )
             shared.g.read( c->input() );
     }
@@ -134,29 +127,14 @@ struct Reachability : DomainWorker< Reachability< G > >
             Shared &s = domain.shared( i );
             if ( s.goal.valid() )
                 counterexample( s.goal );
-            shared.states += s.states;
-            std::cerr << "peer " << i << " has seen "
-                      << s.states << " states" << std::endl;
-            shared.transitions += s.transitions;
-            shared.accepting += s.accepting;
-            shared.goals += s.goals;
-            shared.deadlocks += s.deadlocks;
+            shared.stats.merge( s.stats );
         }
 
-        std::cerr << "seen total of: " << shared.states
-                  << " states (" << shared.accepting
-                  << " accepting) and "<< shared.transitions
-                  << " transitions" << std::endl;
-
-        std::cerr << "encountered total of " << shared.goals
-                  << " goal and " << shared.deadlocks
-                  << " deadlock states" << std::endl;
+        shared.stats.print( std::cerr );
 
         Result res;
-        res.visited = res.expanded = shared.states;
-        res.deadlocks = shared.deadlocks;
-        res.goals = shared.goals;
         res.fullyExplored = Result::Yes;
+        shared.stats.updateResult( res );
         return res;
     }
 };
