@@ -155,6 +155,7 @@ struct Pool {
 
     size_t pointerSize( char *_ptr )
     {
+        assert_die();
         return 0; // replace with magic
     }
 
