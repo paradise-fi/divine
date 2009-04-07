@@ -119,6 +119,6 @@ extern "C" void *pool_extend( void *pool, int sz ) {
 
 extern "C" void *pool_allocate( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
-    return p->alloc( sz );
+    return p->allocate( sz );
 }
 #endif

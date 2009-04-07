@@ -18,8 +18,14 @@ struct Pool {
     Pool( const Pool & );
     ~Pool();
 
-    char *alloc( size_t s ) {
+    char *allocate( size_t s ) {
         return new char[ s ];
+    }
+
+    template< typename T >
+    void deallocate( T *_ptr, size_t size = 0 )
+    {
+        return steal( _ptr, size );
     }
 
     template< typename T >
@@ -121,7 +127,7 @@ struct Pool {
         return group( bytes );
     }
 
-    char *alloc( size_t bytes )
+    char *allocate( size_t bytes )
     {
         assert( bytes );
         bytes = adjustSize( bytes );
@@ -197,6 +203,12 @@ struct Pool {
         assert( g );
         g->total += size;
         release( g, ptr, size );
+    }
+
+    template< typename T >
+    void deallocate( T *_ptr, size_t size = 0 )
+    {
+        return steal( _ptr, size );
     }
 };
 
@@ -277,13 +289,13 @@ public:
     // about what the return value is when __n == 0.
     pointer allocate( size_type n, const void* = 0 )
     { 
-        return m_pool->alloc( sizeof( T ) * n );
+        return m_pool->allocate( sizeof( T ) * n );
     }
 
     // __p is not permitted to be a null pointer.
     void deallocate( pointer __p, size_type n )
     {
-        return m_pool->steal( __p, sizeof( T ) * n );
+        return m_pool->deallocate( __p, sizeof( T ) * n );
     }
 };
 
