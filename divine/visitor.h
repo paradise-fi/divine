@@ -7,7 +7,7 @@
 #include <divine/pool.h>
 #include <divine/blob.h>
 #include <divine/fifo.h>
-#include <divine/generator.h>
+#include <divine/state.h>
 #include <divine/datastruct.h>
 
 #ifndef DIVINE_VISITOR_H

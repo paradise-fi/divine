@@ -11,7 +11,9 @@
 #include <wibble/sys/fs.h>
 
 #include <divine/config.h>
-#include <divine/generator.h>
+#include <divine/generator/dummy.h>
+#include <divine/generator/legacy.h>
+#include <divine/generator/custom.h>
 
 #include <divine/reachability.h>
 #include <divine/owcty.h>

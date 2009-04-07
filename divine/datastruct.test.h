@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/datastruct.h>
-#include <divine/generator.h>
+#include <divine/generator/dummy.h>
 
 using namespace divine;
 
