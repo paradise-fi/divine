@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 
 #include <divine/pool.h>
+#include <divine/legacy/system/state.hh>
 
 #ifndef DIVINE_STATEALLOCATOR_H
 #define DIVINE_STATEALLOCATOR_H
