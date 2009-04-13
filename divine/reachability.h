@@ -124,7 +124,7 @@ struct Reachability : DomainWorker< Reachability< G > >
             do {
                 std::cerr << shared.g.showNode( x ) << std::endl;
                 x = extension( x ).parent;
-            } while ( extension( x ).parent.valid() );
+            } while ( x.valid() );
         }
     }
 
