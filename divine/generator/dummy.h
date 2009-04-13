@@ -56,10 +56,6 @@ struct Dummy : Common {
         }
     };
 
-    int stateSize() {
-        return sizeof( Content );
-    }
-
     Successors successors( Node st ) {
         Successors ret;
         ret.alloc = &alloc;

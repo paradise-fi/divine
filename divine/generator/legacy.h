@@ -71,13 +71,6 @@ struct LegacyCommon : Common {
         return alloc.unlegacy_state( legacy_system()->get_initial_state() );
     }
 
-    int stateSize() {
-        dve_explicit_system_t *sys =
-            dynamic_cast< dve_explicit_system_t * >( legacy_system() );
-        assert( sys );
-        return sys->get_space_sum();
-    }
-
     void read( std::string path ) {
         wibble::sys::MutexLock __l( readMutex() );
         legacy_system()->read( path.c_str() );

@@ -101,10 +101,6 @@ struct Custom : Common {
         return b;
     }
 
-    int stateSize() {
-        return dl.size;
-    }
-
     void read( std::string path ) {
         dl.handle = dlopen( path.c_str(), RTLD_LAZY );
 
