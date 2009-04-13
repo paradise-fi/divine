@@ -145,19 +145,19 @@ struct Custom {
     void release( Node s ) { s.free( alloc->alloc() ); }
 
     Custom() {
-        alloc = new BlobAllocator( 0 );
+        alloc = new BlobAllocator();
     }
 
     Custom( const Custom &o )
         : dl( o.dl )
     {
-        alloc = new BlobAllocator( 0 );
+        alloc = new BlobAllocator();
     }
 
     Custom &operator=( const Custom &o ) {
         dl = o.dl;
         if ( !alloc )
-            alloc = new BlobAllocator( 0 );
+            alloc = new BlobAllocator();
         return *this;
     }
 };

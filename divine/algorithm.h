@@ -39,21 +39,24 @@ inline int workerCount( Config *c ) {
 }
 
 struct Hasher {
-    int size;
+    int slack;
 
-    Hasher( int s = 0 ) : size( s ) {}
-    void setSize( int s ) { size = s; }
+    Hasher( int s = 0 ) : slack( s ) {}
+    void setSlack( int s ) { slack = s; }
 
     inline hash_t operator()( Blob b ) const {
-        return size ? b.hash( 0, size ) : b.hash();
+        assert( b.valid() );
+        return b.hash( slack, b.size() );
     }
 };
 
 struct Equal {
-    int size;
-    Equal( int s = 0 ) : size( s ) {}
+    int slack;
+    Equal( int s = 0 ) : slack( s ) {}
     inline hash_t operator()( Blob a, Blob b ) const {
-        return a.compare( b, 0, size ) == 0;
+        assert( a.valid() );
+        assert( b.valid() );
+        return a.compare( b, slack, std::max( a.size(), b.size() ) ) == 0;
     }
 };
 

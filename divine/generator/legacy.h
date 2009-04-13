@@ -31,6 +31,7 @@ struct Common {
         int current;
         succ_container_t m_succs;
         Node _from;
+        BlobAllocator *alloc;
 
         int result() {
             return 0;
@@ -45,7 +46,7 @@ struct Common {
         Node from() { return _from; }
 
         State head() {
-            return State( m_succs[ current ].ptr, true );
+            return alloc->unlegacy_state( m_succs[ current ] );
         }
 
         Successors tail() {
@@ -60,15 +61,15 @@ struct Common {
     Successors successors( State s ) {
         assert( s.valid() );
         Successors succ;
+        succ.alloc = alloc;
         succ._from = s;
-        state_t legacy = legacy_state( s );
-        legacy_system()->m_allocator->fixup_state( legacy );
+        state_t legacy = alloc->legacy_state( s );
         legacy_system()->get_succs( legacy, succ.m_succs );
         return succ;
     }
 
     State initial() {
-        return Node( legacy_system()->get_initial_state().ptr, true );
+        return alloc->unlegacy_state( legacy_system()->get_initial_state() );
     }
 
     void setAllocator( StateAllocator *a ) {
@@ -95,7 +96,7 @@ struct Common {
     }
 
     bool isAccepting( State s ) {
-        return legacy_system()->is_accepting( legacy_state( s ) );
+        return legacy_system()->is_accepting( alloc->legacy_state( s ) );
     }
 
     bool isDeadlock( State s ) { return false; } // XXX
@@ -106,7 +107,9 @@ struct Common {
         if ( !m_system ) {
             wibble::sys::MutexLock __l( readMutex() );
             m_system = new system_t;
-            m_system->setAllocator( alloc = new BlobAllocator() );
+            if ( !alloc )
+                alloc = new BlobAllocator();
+            m_system->setAllocator( alloc );
             if ( !file.empty() ) {
                 m_system->read( file.c_str() );
             }
@@ -127,8 +130,8 @@ struct Common {
         return *this;
     }
 
-    Common( const Common &other ) : file( other.file ), m_system( 0 ) {}
-    Common() : m_system( 0 ) {}
+    Common( const Common &other ) : file( other.file ), m_system( 0 ), alloc( 0 ) {}
+    Common() : m_system( 0 ), alloc( 0 ) {}
 };
 
 template< typename _State >

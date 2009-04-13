@@ -92,17 +92,15 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     Table &table() {
         if ( !m_table ) {
-            hasher.setSize( shared.g.stateSize() );
+            hasher.setSlack( sizeof( Extension ) );
             m_table = new Table( hasher, divine::valid< Node >(),
-                                 Equal( hasher.size ) );
+                                 Equal( hasher.slack ) );
         }
         return *m_table;
     }
 
     Extension &extension( Node n ) {
-        int stateSize = shared.g.stateSize();
-        assert( stateSize );
-        return n.template get< Extension >( stateSize );
+        return n.template get< Extension >();
     }
 
     int totalSize() {
@@ -178,7 +176,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::reachExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        hasher.setSize( shared.g.stateSize() );
+        hasher.setSlack( sizeof( Extension ) );
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor, true );
         visitor.visit();
@@ -227,9 +225,11 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::initExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        int size = shared.g.stateSize();
-        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
-        shared.g.setAllocator( new BlobAllocator( sizeof( Extension ) ) );
+        Visitor visitor( shared.g, *this, *this,
+                         Hasher( sizeof( Extension ) ), &table() );
+        BlobAllocator *alloc = new BlobAllocator();
+        alloc->setSlack( sizeof( Extension ) );
+        shared.g.setAllocator( alloc );
 
         visitor.visit( shared.g.initial() );
     }
@@ -274,8 +274,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::elimExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        int size = shared.g.stateSize();
-        Visitor visitor( shared.g, *this, *this, Hasher( size ), &table() );
+        Visitor visitor( shared.g, *this, *this,
+                         Hasher( sizeof( Extension ) ), &table() );
         queueAll( visitor );
         visitor.visit();
     }

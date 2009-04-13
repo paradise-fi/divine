@@ -63,9 +63,7 @@ struct Reachability : DomainWorker< Reachability< G > >
     Hasher hasher;
 
     Extension &extension( Node n ) {
-        int stateSize = shared.g.stateSize();
-        assert( stateSize );
-        return n.template get< Extension >( stateSize );
+        return n.template get< Extension >();
     }
 
     visitor::ExpansionAction expansion( Node st )
@@ -91,11 +89,14 @@ struct Reachability : DomainWorker< Reachability< G > >
     void _visit() { // parallel
         typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
 
-        hasher.setSize( shared.g.stateSize() );
+        hasher.setSlack( sizeof( Extension ) );
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( shared.g, *this, *this, hasher,
-                 new Table( hasher, divine::valid< Node >(), Equal( hasher.size ) ) );
-        shared.g.setAllocator( new BlobAllocator( sizeof( Extension ) ) );
+                 new Table( hasher, divine::valid< Node >(),
+                            Equal( hasher.slack ) ) );
+        BlobAllocator *alloc = new BlobAllocator();
+        alloc->setSlack( sizeof( Extension ) );
+        shared.g.setAllocator( alloc );
         vis.visit( shared.g.initial() );
     }
 
@@ -107,6 +108,13 @@ struct Reachability : DomainWorker< Reachability< G > >
     }
 
     void counterexample( Node n ) {
+        // XXX ... alloc is used by shared.g to determine slack size... this is
+        // needed for showNode to work (it needs to know the slack)... Btw.,
+        // OWCTY has the same problem...
+        BlobAllocator *alloc = new BlobAllocator();
+        alloc->setSlack( sizeof( Extension ) );
+        shared.g.setAllocator( alloc );
+
         std::cerr << "GOAL: " << std::endl
                   << shared.g.showNode( n ) << std::endl;
         Node x = extension( n ).parent;

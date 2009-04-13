@@ -21,7 +21,7 @@ struct Dummy {
 
     Node initial() {
         Blob b = alloc->new_blob( sizeof( Content ) );
-        b.get< Content >() = std::make_pair( 0, 0 );
+        b.get< Content >( alloc->_slack ) = std::make_pair( 0, 0 );
         return b;
     }
 
@@ -37,7 +37,7 @@ struct Dummy {
         bool empty() {
             if ( !_from.valid() )
                 return true;
-            Content f = _from.get< Content >();
+            Content f = _from.get< Content >( alloc->_slack );
             if ( f.first == 1024 || f.second == 1024 )
                 return true;
             return nth == 3;
@@ -53,11 +53,12 @@ struct Dummy {
 
         Node head() {
             Node ret = alloc->new_blob( sizeof( Content ) );
-            ret.get< Content >() = _from.get< Content >();
+            ret.get< Content >( alloc->_slack ) =
+                _from.get< Content >( alloc->_slack );
             if ( nth == 1 )
-                ret.get< Content >().first ++;
+                ret.get< Content >( alloc->_slack ).first ++;
             if ( nth == 2 )
-                ret.get< Content >().second ++;
+                ret.get< Content >( alloc->_slack ).second ++;
             return ret;
         }
     };
@@ -80,13 +81,13 @@ struct Dummy {
 
     bool isDeadlock( Node s ) { return false; }
     bool isGoal( Node s ) {
-        Content f = s.get< Content >();
+        Content f = s.get< Content >( alloc->_slack );
         return f.first == 512;
     }
 
     bool isAccepting( Node s ) { return false; }
     std::string showNode( Node s ) {
-        Content f = s.get< Content >();
+        Content f = s.get< Content >( alloc->_slack );
         std::stringstream stream;
         stream << "[" << f.first << ", " << f.second << "]";
         return stream.str();
@@ -95,16 +96,16 @@ struct Dummy {
     void read( std::string ) {}
 
     Dummy() {
-        alloc = new BlobAllocator( 0 );
+        alloc = new BlobAllocator();
     }
 
     Dummy( const Dummy & ) {
-        alloc = new BlobAllocator( 0 );
+        alloc = new BlobAllocator();
     }
 
     Dummy &operator=( const Dummy & ) {
         if ( !alloc )
-            alloc = new BlobAllocator( 0 );
+            alloc = new BlobAllocator();
         return *this;
     }
 };
