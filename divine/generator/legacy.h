@@ -20,7 +20,7 @@ inline wibble::sys::Mutex &readMutex() {
 }
 
 template< typename _State, typename system_t >
-struct Common {
+struct LegacyCommon {
     typedef _State State;
     typedef State Node;
 
@@ -126,7 +126,7 @@ struct Common {
         s.free( alloc->alloc() );
     }
 
-    Common &operator=( const Common &other ) {
+    LegacyCommon &operator=( const LegacyCommon &other ) {
         file = other.file;
         m_system = 0;
         legacy_system(); // FIXME, we force read here to keep
@@ -135,16 +135,16 @@ struct Common {
         return *this;
     }
 
-    Common( const Common &other ) : file( other.file ), m_system( 0 ), alloc( 0 ) {}
-    Common() : m_system( 0 ), alloc( 0 ) {}
+    LegacyCommon( const LegacyCommon &other ) : file( other.file ), m_system( 0 ), alloc( 0 ) {}
+    LegacyCommon() : m_system( 0 ), alloc( 0 ) {}
 };
 
 template< typename _State >
-struct Dve : Common< _State, dve_explicit_system_t >
+struct Dve : LegacyCommon< _State, dve_explicit_system_t >
 {};
 
 template< typename _State >
-struct Bymoc : Common< _State, bymoc_explicit_system_t >
+struct Bymoc : LegacyCommon< _State, bymoc_explicit_system_t >
 {};
 
 typedef Dve< Blob > NDve;
