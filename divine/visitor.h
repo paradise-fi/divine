@@ -38,13 +38,13 @@ template<> bool alias< Blob >( Blob a, Blob b ) {
     return a.ptr == b.ptr;
 }
 
-template< typename T > bool disposable( T ) { return false; }
-template< typename T > void setDisposable( T ) {}
+template< typename T > bool permanent( T ) { return false; }
+template< typename T > void setPermanent( T ) {}
 
-template<> bool disposable( Blob b ) { return b.header().disposable; }
-template<> void setDisposable( Blob b ) {
+template<> bool permanent( Blob b ) { return b.header().permanent; }
+template<> void setPermanent( Blob b ) {
     if ( b.valid() )
-        b.header().disposable = 1;
+        b.header().permanent = 1;
 }
 
 template<
@@ -102,8 +102,7 @@ struct Common {
             visit( c.first, c.second );
             while ( !m_queue.finishedEmpty() ) {
                 Node n = m_queue.nextFinished();
-                if ( disposable( n ) )
-                    m_graph.release( n );
+                m_graph.release( n );
                 m_queue.popFinished();
             }
         }
@@ -129,24 +128,16 @@ struct Common {
         tact = S::transition( m_notify, from, to );
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
-            if ( !had )
+            if ( !had ) {
                 seen().insert( to, hint );
+                setPermanent( to );
+            }
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.pushSuccessors( to );
         }
 
-        if ( tact != IgnoreTransition && had ) {
-            // for the IgnoreTransition case, the transition handler
-            // is responsible for freeing up the _to state as needed
-            assert( had );
-            assert( seen().valid( to ) );
-            assert( seen().valid( _to ) );
-            // we do not want to release a state we are revisiting, that
-            // has already been in the table...
-            if ( !alias( to, _to ) )
-                m_graph.release( _to );
-        }
+        m_graph.release( _to );
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :

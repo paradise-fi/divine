@@ -29,7 +29,7 @@ typedef uint32_t hash_t;
 
 struct BlobHeader {
     uint16_t size:15;
-    uint16_t disposable:1;
+    uint16_t permanent:1;
 };
 
 struct Blob
@@ -43,7 +43,7 @@ struct Blob
         assert_leq( 1, size );
         ptr = a.allocate( allocationSize( size ) );
         header().size = size;
-        header().disposable = 0;
+        header().permanent = 0;
     }
 
     explicit Blob( int size ) {
@@ -51,7 +51,7 @@ struct Blob
         assert_leq( 1, size );
         ptr = a.allocate( allocationSize( size ) );
         header().size = size;
-        header().disposable = 0;
+        header().permanent = 0;
     }
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
@@ -60,7 +60,8 @@ struct Blob
 
     template< typename A >
     void free( A &a ) {
-        a.deallocate( ptr, allocationSize( size() ) );
+        if ( !header().permanent )
+            a.deallocate( ptr, allocationSize( size() ) );
     }
 
     void free() {
