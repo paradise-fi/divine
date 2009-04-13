@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
+#include <sstream>
 #include <divine/stateallocator.h>
 #include <divine/blob.h>
 
@@ -101,7 +102,11 @@ struct Common {
 
     bool isDeadlock( State s ) { return false; } // XXX
     bool isGoal( State s ) { return false; } // XXX
-    std::string showNode( State s ) { return "Foo."; }
+    std::string showNode( State s ) {
+        std::stringstream o;
+        legacy_system()->print_state( alloc->legacy_state( s ), o );
+        return o.str();
+    }
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
