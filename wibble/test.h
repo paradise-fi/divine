@@ -26,6 +26,7 @@ struct Location {
 #define assert_pred(p, x) assert_pred_fn( \
         LOCATION( #p "( " #x " )" ), x, p( x ) )
 #define assert_eq(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
+#define assert_leq(x, y) assert_leq_fn( LOCATION( #x " <= " #y ), x, y )
 #define assert_eq_l(i, x, y) assert_eq_fn( LOCATION_I( #x " == " #y, i ), x, y )
 #define assert_neq(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
 #define assert_list_eq(x, y) \
@@ -35,6 +36,7 @@ struct Location {
 #define assert(x)
 #define assert_pred(p, x)
 #define assert_eq(x, y)
+#define assert_leq(x, y)
 #define assert_eq_l(i, x, y)
 #define assert_neq(x, y)
 #define assert_list_eq(x, y)
@@ -90,6 +92,17 @@ void assert_eq_fn( Location l, X x, Y y )
         AssertFailed f( l );
         f << " got ["
           << x << "] != [" << y
+          << "] instead";
+    }
+}
+
+template< typename X, typename Y >
+void assert_leq_fn( Location l, X x, Y y )
+{
+    if ( !( x <= y ) ) {
+        AssertFailed f( l );
+        f << " got ["
+          << x << "] > [" << y
           << "] instead";
     }
 }
