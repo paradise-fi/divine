@@ -1,11 +1,10 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
-#include <sstream>
-#include <divine/stateallocator.h>
-#include <divine/blob.h>
-
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
+#include <sstream>
+
+#include <divine/generator/common.h>
 
 #ifndef DIVINE_GENERATOR_LEGACY_H
 #define DIVINE_GENERATOR_LEGACY_H
@@ -20,13 +19,12 @@ inline wibble::sys::Mutex &readMutex() {
 }
 
 template< typename _State, typename system_t >
-struct LegacyCommon {
+struct LegacyCommon : Common {
     typedef _State State;
     typedef State Node;
 
     std::string file;
     system_t *m_system;
-    BlobAllocator *alloc;
 
     struct Successors {
         int current;
@@ -62,21 +60,15 @@ struct LegacyCommon {
     Successors successors( State s ) {
         assert( s.valid() );
         Successors succ;
-        succ.alloc = alloc;
+        succ.alloc = &alloc;
         succ._from = s;
-        state_t legacy = alloc->legacy_state( s );
+        state_t legacy = alloc.legacy_state( s );
         legacy_system()->get_succs( legacy, succ.m_succs );
         return succ;
     }
 
     State initial() {
-        return alloc->unlegacy_state( legacy_system()->get_initial_state() );
-    }
-
-    void setAllocator( StateAllocator *a ) {
-        alloc = dynamic_cast< BlobAllocator * >( a );
-        assert( alloc );
-        legacy_system()->setAllocator( alloc );
+        return alloc.unlegacy_state( legacy_system()->get_initial_state() );
     }
 
     int stateSize() {
@@ -97,14 +89,14 @@ struct LegacyCommon {
     }
 
     bool isAccepting( State s ) {
-        return legacy_system()->is_accepting( alloc->legacy_state( s ) );
+        return legacy_system()->is_accepting( alloc.legacy_state( s ) );
     }
 
     bool isDeadlock( State s ) { return false; } // XXX
     bool isGoal( State s ) { return false; } // XXX
     std::string showNode( State s ) {
         std::stringstream o;
-        legacy_system()->print_state( alloc->legacy_state( s ), o );
+        legacy_system()->print_state( alloc.legacy_state( s ), o );
         return o.str();
     }
 
@@ -112,9 +104,7 @@ struct LegacyCommon {
         if ( !m_system ) {
             wibble::sys::MutexLock __l( readMutex() );
             m_system = new system_t;
-            if ( !alloc )
-                alloc = new BlobAllocator();
-            m_system->setAllocator( alloc );
+            m_system->setAllocator( &alloc );
             if ( !file.empty() ) {
                 m_system->read( file.c_str() );
             }
@@ -123,7 +113,7 @@ struct LegacyCommon {
     }
 
     void release( State s ) {
-        s.free( alloc->alloc() );
+        s.free( pool() );
     }
 
     LegacyCommon &operator=( const LegacyCommon &other ) {
@@ -135,8 +125,9 @@ struct LegacyCommon {
         return *this;
     }
 
-    LegacyCommon( const LegacyCommon &other ) : file( other.file ), m_system( 0 ), alloc( 0 ) {}
-    LegacyCommon() : m_system( 0 ), alloc( 0 ) {}
+    LegacyCommon( const LegacyCommon &other )
+        : file( other.file ), m_system( 0 ) {}
+    LegacyCommon() : m_system( 0 ) {}
 };
 
 template< typename _State >

@@ -39,14 +39,16 @@ struct Blob
     Blob() : ptr( 0 ) {}
 
     template< typename A >
-    Blob( A *a, int size ) {
-        ptr = a->allocate( allocationSize( size ) );
+    Blob( A &a, int size ) {
+        assert_leq( 1, size );
+        ptr = a.allocate( allocationSize( size ) );
         header().size = size;
         header().disposable = 0;
     }
 
     explicit Blob( int size ) {
         Allocator< char > a;
+        assert_leq( 1, size );
         ptr = a.allocate( allocationSize( size ) );
         header().size = size;
         header().disposable = 0;
@@ -57,13 +59,13 @@ struct Blob
         : ptr( s_is_data ? s - sizeof( BlobHeader ) : s ) {}
 
     template< typename A >
-    void free( A* a ) {
-        a->deallocate( ptr, allocationSize( size() ) );
+    void free( A &a ) {
+        a.deallocate( ptr, allocationSize( size() ) );
     }
 
     void free() {
         Allocator< char > a;
-        free( &a );
+        free( a );
     }
 
     bool valid() const
@@ -205,7 +207,7 @@ struct Blob
         if ( !valid() || from == to )
             return 0;
 
-        assert( from <= to );
+        assert_leq( from, to );
 
         a = b = 0x9e3779b9; // magic
         len = c = to - from;

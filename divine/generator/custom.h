@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/stateallocator.h>
-#include <divine/blob.h>
-#include <divine/state.h>
+#include <divine/generator/common.h>
 
 #include <dlfcn.h>
 
@@ -12,10 +10,9 @@
 namespace divine {
 namespace generator {
 
-struct Custom {
+struct Custom : Common {
     typedef Blob Node;
     std::string file;
-    BlobAllocator *alloc;
 
     typedef void (*dl_get_initial_state_t)(char *);
     typedef size_t (*dl_get_state_size_t)();
@@ -57,7 +54,7 @@ struct Custom {
 
         void force() {
             if ( my.valid() ) return;
-            my = custom->alloc->new_blob( custom->dl.size );
+            my = custom->alloc.new_blob( custom->dl.size );
             handle = custom->dl.get_successor(
                 handle, _from.data(), my.data() );
         }
@@ -90,7 +87,7 @@ struct Custom {
             return;
 #ifndef DISABLE_POOLS
         if ( dl.get_many_successors ) {
-            Pool *p = alloc->alloc()->m_pool;
+            Pool *p = &pool();
             dl.get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
                                     (char *) &in, (char *) &out );
         } else
@@ -99,14 +96,9 @@ struct Custom {
     }
 
     Node initial() {
-        Blob b = alloc->new_blob( dl.size );
+        Blob b = alloc.new_blob( dl.size );
         dl.get_initial_state( b.data() );
         return b;
-    }
-
-    void setAllocator( StateAllocator *a ) {
-        alloc = dynamic_cast< BlobAllocator * >( a );
-        assert( alloc );
     }
 
     int stateSize() {
@@ -142,24 +134,7 @@ struct Custom {
     bool isAccepting( Node s ) { return false; } // XXX
     std::string showNode( Node s ) { return "Foo."; } // XXX
 
-    void release( Node s ) { s.free( alloc->alloc() ); }
-
-    Custom() {
-        alloc = new BlobAllocator();
-    }
-
-    Custom( const Custom &o )
-        : dl( o.dl )
-    {
-        alloc = new BlobAllocator();
-    }
-
-    Custom &operator=( const Custom &o ) {
-        dl = o.dl;
-        if ( !alloc )
-            alloc = new BlobAllocator();
-        return *this;
-    }
+    void release( Node s ) { s.free( pool() ); }
 };
 
 }

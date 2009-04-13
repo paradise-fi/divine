@@ -26,18 +26,14 @@ inline divine::state_t legacy_state( Blob b, int slack )
 }
 
 struct BlobAllocator : StateAllocator {
-    Allocator< char > *_a;
+    Pool *_pool;
     int _slack;
 
-    BlobAllocator() : _a( 0 ), _slack( 0 ) {}
+    BlobAllocator() : _pool( 0 ), _slack( 0 ) {}
 
     void setSlack( int s ) { _slack = s; }
-
-    Allocator< char > *alloc() {
-        if ( !_a )
-            _a = new Allocator< char >();
-        return _a;
-    }
+    void setPool( Pool &p ) { _pool = &p; }
+    Pool &pool() { assert( _pool ); return *_pool; }
 
     virtual state_t legacy_state( Blob b ) {
         return divine::legacy_state( b, _slack );
@@ -48,24 +44,24 @@ struct BlobAllocator : StateAllocator {
     }
 
     state_t duplicate_state( const state_t &st ) {
-        Blob a = unlegacy_state( st ), b( alloc(), st.size + _slack );
+        Blob a = unlegacy_state( st ), b( pool(), st.size + _slack );
         a.copyTo( b );
         return legacy_state( b );
     }
 
     state_t new_state( const std::size_t size ) {
-        Blob b( alloc(), size + _slack );
+        Blob b( pool(), size + _slack );
         b.clear();
         return legacy_state( b );
     }
 
     Blob new_blob( std::size_t size ) {
-        return Blob( alloc(), size + _slack );
+        return Blob( pool(), size + _slack );
     }
 
     void delete_state( state_t &st ) {
         Blob a( st.ptr, true );
-        a.free( alloc() );
+        a.free( pool() );
     }
 };
 

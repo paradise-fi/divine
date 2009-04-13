@@ -225,15 +225,12 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::initExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
+        shared.g.setPool( this->pool() );
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
-        BlobAllocator *alloc = new BlobAllocator();
-        alloc->setSlack( sizeof( Extension ) );
-        shared.g.setAllocator( alloc );
-
         visitor.visit( shared.g.initial() );
     }
-    
+
     void initialise() {
         domain.parallel().run( shared, &Owcty< G >::_initialise );
         shared.oldsize = shared.size = totalSize();
@@ -448,6 +445,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     Owcty( Config *c = 0 )
         : domain( &shared, workerCount( c ) ), m_table( 0 )
     {
+        shared.g.setSlack( sizeof( Extension ) );
         shared.size = 0;
         if ( c )
             shared.g.read( c->input() );
