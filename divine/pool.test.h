@@ -27,9 +27,9 @@ struct TestPool {
 
     Test steal() {
         Pool p;
-        char *c = p.alloc( 32 );
+        char *c = p.allocate( 32 );
         p.steal( c, 32 );
-        assert_eq( p.alloc( 32 ), c );
+        assert_eq( p.allocate( 32 ), c );
     }
 
     struct Checker : wibble::sys::Thread
@@ -64,7 +64,7 @@ struct TestPool {
                 assert( state >= 0 );
                 if ( decide( i ) || ptrs.empty() ) {
                     ++ state;
-                    ptrs.push_back( pool().alloc( 32 ) );
+                    ptrs.push_back( pool().allocate( 32 ) );
                 } else {
                     -- state;
                     pool().free( ptrs.front(), 32 );
