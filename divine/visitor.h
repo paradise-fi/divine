@@ -137,7 +137,8 @@ struct Common {
                 m_queue.pushSuccessors( to );
         }
 
-        m_graph.release( _to );
+        if ( tact != IgnoreTransition )
+            m_graph.release( _to );
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :
