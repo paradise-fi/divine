@@ -12,12 +12,6 @@
 namespace divine {
 namespace generator {
 
-extern wibble::sys::Mutex *read_mutex;
-inline wibble::sys::Mutex &readMutex() {
-    assert( read_mutex );
-    return *read_mutex;
-}
-
 template< typename _State, typename system_t >
 struct LegacyCommon : Common {
     typedef _State State;
@@ -72,7 +66,6 @@ struct LegacyCommon : Common {
     }
 
     void read( std::string path ) {
-        wibble::sys::MutexLock __l( readMutex() );
         legacy_system()->read( path.c_str() );
         file = path;
     }
@@ -95,7 +88,6 @@ struct LegacyCommon : Common {
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
-            wibble::sys::MutexLock __l( readMutex() );
             m_system = new system_t;
             m_system->setAllocator( &alloc );
             if ( !file.empty() ) {
