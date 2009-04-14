@@ -220,8 +220,6 @@ struct Parallel {
     }
 
     void visit( Node initial ) {
-        // TBD. Tell the graph that this is our thread and it wants to init its
-        // allocator. Or something.
         typedef Setup< typename S::Graph,
             Parallel< S, Worker, _Hash >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
