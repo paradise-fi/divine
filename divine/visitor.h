@@ -160,7 +160,7 @@ struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
     DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
         : Common< Stack, S >( g, n, s ) {}
-}; 
+};
 
 template< typename S, typename Worker,
           typename _Hash = divine::hash< typename S::Node > >
@@ -194,7 +194,7 @@ struct Parallel {
         }
         return S::transition( notify, f, t );
     }
-    
+
     visitor::ExpansionAction expansion( Node n ) {
         assert_eq( owner( n ), notify.globalId() );
         return S::expansion( notify, n );

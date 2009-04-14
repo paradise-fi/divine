@@ -8,7 +8,6 @@
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
 
-
 namespace divine {
 
 #ifdef DISABLE_POOLS
@@ -289,7 +288,7 @@ public:
     // NB: __n is permitted to be 0.  The C++ standard says nothing
     // about what the return value is when __n == 0.
     pointer allocate( size_type n, const void* = 0 )
-    { 
+    {
         return m_pool->allocate( sizeof( T ) * n );
     }
 
@@ -305,7 +304,7 @@ inline bool operator==(const Allocator<T> &a, const Allocator<T> &b)
 {
     return a.m_pool == b.m_pool;
 }
-  
+
 template<typename T>
 inline bool operator!=(const Allocator<T> &a, const Allocator<T> &b)
 {
