@@ -111,7 +111,7 @@ struct LegacyCommon : Common {
     }
 
     LegacyCommon( const LegacyCommon &other )
-        : file( other.file ), m_system( 0 ) {}
+        : Common( other ), file( other.file ), m_system( 0 ) {}
     LegacyCommon() : m_system( 0 ) {}
 };
 
