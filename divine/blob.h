@@ -119,8 +119,10 @@ struct Blob
         header().size = size;
     }
 
-    void clear( char pattern = 0 ) {
-        std::fill( data(), data() + size(), pattern );
+    void clear( int from = 0, int to = 0, char pattern = 0 ) {
+        if ( to == 0 )
+            to = size();
+        std::fill( data() + from, data() + to, pattern );
     }
 
     size_t size() const

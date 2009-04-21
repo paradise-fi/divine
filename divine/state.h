@@ -46,6 +46,8 @@ struct BlobAllocator : StateAllocator {
     state_t duplicate_state( const state_t &st ) {
         Blob a = unlegacy_state( st ), b( pool(), st.size + _slack );
         a.copyTo( b );
+        if ( _slack )
+            b.clear( 0, _slack );
         return legacy_state( b );
     }
 
