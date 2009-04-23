@@ -19,7 +19,7 @@ struct Dummy : Common {
     }
 
     struct Successors {
-        divine::BlobAllocator *alloc;
+        Allocator *alloc;
         Node _from;
         int nth;
 

@@ -24,7 +24,7 @@ struct LegacyCommon : Common {
         int current;
         succ_container_t m_succs;
         Node _from;
-        BlobAllocator *alloc;
+        Allocator *alloc;
 
         int result() {
             return 0;
