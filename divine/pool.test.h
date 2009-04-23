@@ -6,25 +6,6 @@
 using namespace divine;
 
 struct TestPool {
-    struct Threads {
-        typedef int Shared;
-        Shared shared;
-        Pool p;
-        void check() {
-            // std::cerr << "my = " << (void *)&p << ", thread = " << (void *)ThreadPoolManager::get() << std::endl;
-            assert_eq( &p, GlobalPools::force( &p ) );
-            assert_eq( &p, GlobalPools::get() );
-        }
-        Threads() { check(); }
-    };
-
-    Test threads() {
-        Threads m;
-        m.check();
-        Parallel< Threads > p( 10 );
-        p.run( m.shared, &Threads::check );
-    }
-
     Test steal() {
         Pool p;
         char *c = p.allocate( 32 );
@@ -35,7 +16,6 @@ struct TestPool {
     struct Checker : wibble::sys::Thread
     {
         char padding[128];
-        bool managed;
         divine::Pool m_pool;
         std::deque< char * > ptrs;
         int limit;
@@ -44,8 +24,6 @@ struct TestPool {
         char padding2[128];
 
         Pool &pool() {
-            if ( managed )
-                return *GlobalPools::get();
             return m_pool;
         }
         
@@ -78,25 +56,13 @@ struct TestPool {
             return 0;
         }
 
-        Checker( bool _managed = false )
-            : managed( _managed ), terminate( 0 ) {}
+        Checker()
+            : terminate( 0 ) {}
     };
 
     Test stress() {
         std::vector< Checker > c;
         c.resize( 3 );
-        int j = 0;
-        for ( int j = 0; j < 5; ++j ) {
-            for ( int i = 0; i < c.size(); ++i )
-                c[ i ].start();
-            for ( int i = 0; i < c.size(); ++i )
-                c[ i ].join();
-        }
-    }
-
-    Test stressManaged() {
-        std::vector< Checker > c;
-        c.resize( 3, Checker( true ) );
         int j = 0;
         for ( int j = 0; j < 5; ++j ) {
             for ( int i = 0; i < c.size(); ++i )
