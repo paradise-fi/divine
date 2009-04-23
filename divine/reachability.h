@@ -68,7 +68,16 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
+    Table *m_table, *m_oldtable;
     Hasher hasher;
+
+    Table &table() {
+        if ( !m_table ) {
+            m_table = new Table( hasher, divine::valid< Node >(),
+                                 Equal( hasher.slack ) );
+        }
+        return *m_table;
+    }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -100,14 +109,12 @@ struct Reachability : DomainWorker< Reachability< G > >
         typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
 
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
-            vis( shared.g, *this, *this, hasher,
-                 new Table( hasher, divine::valid< Node >(),
-                            Equal( hasher.slack ) ) );
+            vis( shared.g, *this, *this, hasher, &table() );
         vis.visit( shared.g.initial() );
     }
 
     Reachability( Config *c = 0 )
-        : domain( &shared, workerCount( c ) )
+        : domain( &shared, workerCount( c ) ), m_table( 0 )
     {
         hasher.setSlack( sizeof( Extension ) );
         shared.g.setSlack( sizeof( Extension ) );
