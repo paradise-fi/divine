@@ -183,9 +183,8 @@ struct Parallel {
     void queue( Node from, Node to ) {
         Fifo< Blob, NoopMutex > &fifo
             = worker.queue( notify.globalId(), owner( to ) );
-        MutexLockT< NoopMutex > __l( fifo.writeMutex );
-        fifo.push( __l, unblob< Node >( from ) );
-        fifo.push( __l, unblob< Node >( to ) );
+        fifo.push( unblob< Node >( from ) );
+        fifo.push( unblob< Node >( to ) );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
