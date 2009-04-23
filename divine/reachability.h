@@ -74,8 +74,10 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( !extension( t ).parent.valid() )
+        if ( !extension( t ).parent.valid() ) {
             extension( t ).parent = f;
+            visitor::setPermanent( f );
+        }
         shared.stats.addEdge();
 
         if ( shared.g.isGoal( t ) ) {
