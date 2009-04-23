@@ -32,11 +32,19 @@ struct _MpiId< Reachability< G > >
     template< typename O >
     static void writeShared( typename Reachability< G >::Shared s, O o ) {
         o = s.stats.write( o );
+        *o++ = s.goal.valid();
+        if ( s.goal.valid() )
+            o = s.goal.write32( o );
     }
 
     template< typename I >
     static I readShared( typename Reachability< G >::Shared &s, I i ) {
         i = s.stats.read( i );
+        bool valid = *i++;
+        if ( valid ) {
+            FakePool fp;
+            i = s.goal.read32( &fp, i );
+        }
         return i;
     }
 };
