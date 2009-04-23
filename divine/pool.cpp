@@ -6,21 +6,19 @@ using namespace wibble::sys;
 
 namespace divine {
 
-Pool::Pool() {
 #ifndef DISABLE_POOLS
+Pool::Pool() {
     m_groupCount = 0;
     m_groups.reserve( 8096 ); // FIXME
-#endif
 }
 
 Pool::Pool( const Pool& ) {
-#ifndef DISABLE_POOLS
     m_groupCount = 0;
     m_groups.reserve( 8096 ); // FIXME
-#endif
 }
 
 Pool::~Pool() {}
+#endif
 
 }
 

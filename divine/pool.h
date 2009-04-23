@@ -10,12 +10,11 @@
 
 namespace divine {
 
-#ifdef DISABLE_POOLS
-struct Pool {
+struct FakePool {
 
-    Pool();
-    Pool( const Pool & );
-    ~Pool();
+    FakePool() {}
+    FakePool( const FakePool & ) {}
+    ~FakePool() {}
 
     char *allocate( size_t s ) {
         return new char[ s ];
@@ -38,6 +37,10 @@ struct Pool {
         delete[] static_cast< char * >( _ptr );
     }
 };
+
+#ifdef DISABLE_POOLS
+
+typedef FakePool Pool;
 
 #else
 
