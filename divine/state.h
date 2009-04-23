@@ -9,22 +9,6 @@
 
 namespace divine {
 
-/* inline divine::state_t legacy_state( Blob b )
-{
-    divine::state_t s;
-    s.size = b.size();
-    s.ptr = b.data();
-    return s;
-    } */
-
-inline divine::state_t legacy_state( Blob b, int slack )
-{
-    divine::state_t s;
-    s.size = b.size() - slack;
-    s.ptr = b.data() + slack;
-    return s;
-}
-
 struct BlobAllocator : StateAllocator {
     Pool *_pool;
     int _slack;
@@ -36,7 +20,10 @@ struct BlobAllocator : StateAllocator {
     Pool &pool() { assert( _pool ); return *_pool; }
 
     virtual state_t legacy_state( Blob b ) {
-        return divine::legacy_state( b, _slack );
+        divine::state_t s;
+        s.size = b.size() - _slack;
+        s.ptr = b.data() + _slack;
+        return s;
     }
 
     virtual Blob unlegacy_state( state_t s ) {
