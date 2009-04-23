@@ -239,8 +239,6 @@ struct Domain {
                 this->thread( i ).setBarrier( m_domain->barrier() );
 
             m_domain->mpi.runOnSlaves( f );
-            /* m_domain->mpi.notifySlaves(
-               TAG_RUN, algorithm::_MpiId< T >::to_id( f ) ); */
 
             this->runThreads();
             m_domain->barrier().clear();
