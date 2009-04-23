@@ -100,11 +100,6 @@ struct Common {
             std::pair< Node, Node > c = m_queue.next();
             m_queue.pop();
             visit( c.first, c.second );
-            while ( !m_queue.finishedEmpty() ) {
-                Node n = m_queue.nextFinished();
-                m_graph.release( n );
-                m_queue.popFinished();
-            }
         }
     }
 

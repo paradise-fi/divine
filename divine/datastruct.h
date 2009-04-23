@@ -123,10 +123,6 @@ struct Queue {
         return std::make_pair( m_head.from(), m_head.head() );
     }
 
-    Node nextFinished() { assert_die(); }
-    void popFinished() { assert_die(); }
-    bool finishedEmpty() { return true; }
-
     bool empty() {
         checkHead();
         return m_head.empty() && m_queue.empty();
@@ -180,10 +176,6 @@ struct BufferedQueue {
         checkFilled();
     }
 
-    Node nextFinished() { assert_die(); }
-    void popFinished() { assert_die(); }
-    bool finishedEmpty() { return true; }
-
     BufferedQueue( Graph &_g ) : g( _g ) {}
 };
 
@@ -192,7 +184,6 @@ struct Stack {
     Graph &g;
     typedef typename Graph::Node Node;
     std::deque< typename Graph::Successors > m_stack;
-    std::deque< Node > m_finished;
 
     int pushes, pops;
 
@@ -207,7 +198,6 @@ struct Stack {
 
     void checkTop() {
         while ( !m_stack.empty() && m_stack.back().empty() ) {
-            m_finished.push_back( m_stack.back().from() );
             m_stack.pop_back();
         }
     }
@@ -232,10 +222,6 @@ struct Stack {
         checkTop();
         return m_stack.empty();
     }
-
-    Node nextFinished() { return m_finished.front(); }
-    void popFinished() { m_finished.pop_front(); }
-    bool finishedEmpty() { return m_finished.empty(); }
 
     Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
 };
