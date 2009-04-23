@@ -98,9 +98,10 @@ struct Blob
     }
 
     template< typename O >
-    void write32( O o ) const
+    O write32( O o ) const
     {
-        std::copy( pointer32(), pointer32() + allocationSize( size() ) / 4, o );
+        return std::copy( pointer32(),
+                          pointer32() + allocationSize( size() ) / 4, o );
     }
 
     template< typename Alloc, typename In >
