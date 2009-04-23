@@ -65,9 +65,6 @@ struct Mpi {
         if ( !master() )
             return;
         for ( int i = 1; i < size(); ++i ) {
-            /*  std::cerr << "MPI: Notify: tag = " << tag
-                      << ", id = " << id << ", target = " << i
-                      << std::endl; */
             MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
         }
     }
@@ -120,10 +117,8 @@ struct Mpi {
 
     ~Mpi() {
         if ( m_started && master() ) {
-            std::cerr << "MPI: Teardown start." << std::endl;
             notifySlaves( TAG_ALL_DONE, 0 );
             MPI::Finalize();
-            std::cerr << "MPI: Teardown end." << std::endl;
         }
     }
 
@@ -156,12 +151,9 @@ struct Mpi {
     void slaveLoop() {
         MPI::Status status;
         int id;
-        std::cerr << "MPI-Slave: Waiting." << std::endl;
         MPI::COMM_WORLD.Recv( &id, 1 /* one integer per message */,
                               MPI::INT, 0 /* from master */,
                               MPI::ANY_TAG, status );
-        std::cerr << "MPI-Slave: Notified. Tag = " << status.Get_tag()
-                  << ", id = " << id << std::endl;
         switch ( status.Get_tag() ) {
             case TAG_ALL_DONE:
                 MPI::Finalize();
@@ -221,9 +213,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             s += cnt[1];
             r += cnt[2];
         }
-        std::cerr << "termination phase "
-                  << id << " (" << (valid ? "" : "in") << "valid) counts: "
-                  << r << ", " << s << std::endl;
         return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
     }
 
@@ -280,10 +269,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
                               status.Get_source(),
                               status.Get_tag(), status );
-        /* std::cerr << "MPI CONTROL: " << m_domain.mpi.rank()
-                  << " <-- "
-                  << status.Get_source()
-                  << " [tag = " << status.Get_tag() << ", id = " << id << "]" << std::endl; */
         switch ( status.Get_tag() ) {
             case TAG_GET_COUNTS:
                 int cnt[3];
@@ -370,7 +355,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         // messages from network. Ugly, yes.
         if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
             if ( termination() ) {
-                std::cerr << "MPI: Master terminated." << std::endl;
                 return false;
             }
         }
@@ -383,7 +367,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         // current thread's ID. Yes, icky.
         Allocator< char > alloc;
 
-        std::cerr << "MPI domain started: " << m_domain.mpi.rank() << std::endl;
         m_domain.barrier().started( this );
 
         while ( loop( alloc ) );
