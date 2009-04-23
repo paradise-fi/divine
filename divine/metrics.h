@@ -35,8 +35,7 @@ struct _MpiId< Metrics< G > >
 
     template< typename I >
     static I readShared( typename Metrics< G >::Shared &s, I i ) {
-        s.stats.read( i );
-        return i;
+        return s.stats.read( i );
     }
 };
 // END MPI drudgery
