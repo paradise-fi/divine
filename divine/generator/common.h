@@ -44,7 +44,9 @@ struct Allocator : StateAllocator {
     }
 
     Blob new_blob( std::size_t size ) {
-        return Blob( pool(), size + _slack );
+        Blob b = Blob( pool(), size + _slack );
+        b.clear();
+        return b;
     }
 
     void delete_state( state_t &st ) {
