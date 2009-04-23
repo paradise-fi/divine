@@ -22,7 +22,12 @@ add_executable( divine.simulate simulator.cpp )
 add_executable( divine.probabilistic probabilistic.cpp )
 target_link_libraries( divine.probabilistic lpsolve )
 
-install( TARGETS divine divine.simulate DESTINATION bin )
+install( TARGETS divine
+                 divine.simulate
+                 divine.probabilistic
+         DESTINATION bin )
+
+install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION bin)
 
 add_custom_command(
   OUTPUT ${PML_C}
