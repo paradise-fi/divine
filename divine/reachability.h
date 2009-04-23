@@ -19,14 +19,20 @@ template< typename G >
 struct _MpiId< Reachability< G > >
 {
     static int to_id( void (Reachability< G >::*f)() ) {
-        assert_eq( f, &Reachability< G >::_visit );
-        return 0;
+        if( f == &Reachability< G >::_visit )
+            return 0;
+        if( f == &Reachability< G >::_counterexample )
+            return 1;
+        assert_die();
     }
 
     static void (Reachability< G >::*from_id( int n ))()
     {
-        assert_eq( n, 0 );
-        return &Reachability< G >::_visit;
+        switch ( n ) {
+            case 0: return &Reachability< G >::_visit;
+            case 1: return &Reachability< G >::_counterexample;
+            default: assert_die();
+        }
     }
 
     template< typename O >
@@ -49,6 +55,49 @@ struct _MpiId< Reachability< G > >
     }
 };
 // END MPI drudgery
+
+template< typename G, typename Ext >
+struct ParentGraph {
+    typedef typename G::Node Node;
+    Node _initial;
+
+    struct Successors {
+        Node _from;
+        bool empty() {
+            if ( !_from.valid() )
+                return true;
+            if ( !_from.template get< Ext >().parent.valid() )
+                return true;
+            return false;
+        }
+
+        Node from() { return _from; }
+
+        Successors tail() {
+            Successors s;
+            s._from = Blob();
+            return s;
+        }
+
+        Node head() {
+            return _from.template get< Ext >().parent;
+        }
+    };
+
+    Node initial() {
+        return _initial;
+    }
+
+    Successors successors( Node n ) {
+        Successors s;
+        s._from = n;
+        return s;
+    }
+
+    void release( Node ) {}
+
+    ParentGraph( Node ini ) : _initial( ini ) {}
+};
 
 template< typename G >
 struct Reachability : DomainWorker< Reachability< G > >
@@ -122,18 +171,38 @@ struct Reachability : DomainWorker< Reachability< G > >
             shared.g.read( c->input() );
     }
 
+    visitor::ExpansionAction ceExpansion( Node n ) {
+        std::cerr << shared.g.showNode( n ) << std::endl;
+        return visitor::ExpandState;
+    }
+
+    visitor::TransitionAction ceTransition( Node, Node ) {
+        std::cerr << " --> ";
+        return visitor::FollowTransition;
+    }
+
+    void _counterexample() {
+        typedef ParentGraph< G, Extension > PG;
+        typedef visitor::Setup< PG, Reachability< G >, Table,
+            &Reachability< G >::ceTransition,
+            &Reachability< G >::ceExpansion > VisitorSetup;
+
+        m_oldtable = m_table;
+        m_table = 0;
+
+        PG pg( shared.goal );
+        visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
+            vis( pg, *this, *this, hasher, &table() );
+        vis.visit( shared.goal );
+    }
+
     void counterexample( Node n ) {
         std::cerr << "GOAL: " << std::endl
                   << shared.g.showNode( n ) << std::endl;
-        Node x = extension( n ).parent;
 
-        if ( x.valid() ) {
-            std::cerr << "reached from:" << std::endl;
-            do {
-                std::cerr << shared.g.showNode( x ) << std::endl;
-                x = extension( x ).parent;
-            } while ( x.valid() );
-        }
+        shared.goal = n;
+        // shared.goal = table().get( n ).key;
+        domain.parallel().run( shared, &Reachability< G >::_counterexample );
     }
 
     Result run() {
