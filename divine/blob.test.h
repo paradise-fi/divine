@@ -50,13 +50,13 @@ struct TestBlob {
     }
 
     Test writeAndRead() {
-        Allocator< char > alloc;
-        Blob b1( sizeof( int ) ), b2;
+        Pool p;
+        Blob b1( p, sizeof( int ) ), b2;
         int32_t buf[ 2 ];
 
         b1.get< int >() = 42;
         b1.write32( buf );
-        int32_t *end = b2.read32( &alloc, buf );
+        int32_t *end = b2.read32( &p, buf );
         assert_eq( b1.get< int >(), 42 );
         assert_eq( b1.get< int >(), b2.get< int >() );
         assert( b1 == b2 );

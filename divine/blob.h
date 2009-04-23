@@ -28,8 +28,9 @@ namespace divine {
 typedef uint32_t hash_t;
 
 struct BlobHeader {
-    uint16_t size:15;
+    uint16_t size:14;
     uint16_t permanent:1;
+    uint16_t heap:1;
 };
 
 struct Blob
@@ -44,14 +45,15 @@ struct Blob
         ptr = a.allocate( allocationSize( size ) );
         header().size = size;
         header().permanent = 0;
+        header().heap = 0;
     }
 
     explicit Blob( int size ) {
-        Allocator< char > a;
         assert_leq( 1, size );
-        ptr = a.allocate( allocationSize( size ) );
+        ptr = new char[ allocationSize( size ) ];
         header().size = size;
         header().permanent = 0;
+        header().heap = 1;
     }
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
@@ -60,13 +62,15 @@ struct Blob
 
     template< typename A >
     void free( A &a ) {
+        assert( !header().heap );
         if ( !header().permanent )
             a.deallocate( ptr, allocationSize( size() ) );
     }
 
     void free() {
-        Allocator< char > a;
-        free( a );
+        assert( header().heap );
+        if ( !header().permanent )
+            delete[] ptr;
     }
 
     bool valid() const
