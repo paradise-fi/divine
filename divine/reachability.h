@@ -139,11 +139,15 @@ struct Reachability : DomainWorker< Reachability< G > >
     Result run() {
         domain.parallel().run( shared, &Reachability< G >::_visit );
 
+        for ( int i = 0; i < domain.peers(); ++i )
+            shared.stats.merge( domain.shared( i ).stats );
+
         for ( int i = 0; i < domain.peers(); ++i ) {
             Shared &s = domain.shared( i );
-            if ( s.goal.valid() )
-                counterexample( s.goal );
-            shared.stats.merge( s.stats );
+            if ( s.goal.valid() ) {
+               counterexample( s.goal );
+               break;
+            }
         }
 
         shared.stats.print( std::cerr );
