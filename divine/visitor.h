@@ -120,12 +120,13 @@ struct Common {
         }
 
         tact = S::transition( m_notify, from, to );
+        if ( tact != IgnoreTransition && !had ) {
+            seen().insert( to, hint );
+            setPermanent( to );
+        }
+
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
-            if ( !had ) {
-                seen().insert( to, hint );
-                setPermanent( to );
-            }
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
                 m_queue.pushSuccessors( to );
