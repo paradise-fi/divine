@@ -187,13 +187,10 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     std::vector< std::pair< bool, MPI::Request > > requests;
     std::vector< int32_t > in_buffer;
 
-    bool busy;
-
     MpiThread( D &d ) : m_domain( d ) {
         fifo.resize( d.peers() * d.peers() );
         buffers.resize( d.mpi.size() );
         requests.resize( d.mpi.size() );
-        busy = true;
         sent = recv = 0;
     }
 
