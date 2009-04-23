@@ -32,6 +32,11 @@ struct Mpi {
     Shared *master_shared;
     std::vector< Shared > m_shared;
 
+    D &domain() {
+        assert( m_domain );
+        return *m_domain;
+    }
+
     Mpi( Shared *sh, D *d ) : master_shared( sh )
     {
         m_domain = d;
@@ -48,7 +53,7 @@ struct Mpi {
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
 
-        m_shared.resize( m_domain->peers() );
+        m_shared.resize( domain().peers() );
 
         if ( !master() ) {
             while ( true )
@@ -69,9 +74,9 @@ struct Mpi {
 
     void returnSharedBits() {
         std::vector< int32_t > shbits;
-        for ( int i = 0; i < m_domain->n; ++i ) {
+        for ( int i = 0; i < domain().n; ++i ) {
             algorithm::_MpiId< Algorithm >::writeShared(
-                m_domain->parallel().shared( i ),
+                domain().parallel().shared( i ),
                 std::back_inserter( shbits ) );
         }
         MPI::COMM_WORLD.Send( &shbits.front(),
@@ -88,10 +93,9 @@ struct Mpi {
             MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
                                   MPI::BYTE, i, TAG_SHARED, status );
             std::vector< int32_t >::const_iterator it = shbits.begin();
-            for ( int k = 0; k < m_domain->n; ++k ) {
-                std::cerr << "collecting shared bits from peer " << i * m_domain->n + k << std::endl;
+            for ( int k = 0; k < domain().n; ++k ) {
                 it = algorithm::_MpiId< Algorithm >::readShared(
-                    m_shared[ i * m_domain->n + k ], it );
+                    m_shared[ i * domain().n + k ], it );
             }
             assert( it == shbits.end() ); // sanity check
         }
@@ -145,7 +149,7 @@ struct Mpi {
 
         // Btw, we want to use buffering sends. We also need to use nonblocking
         // receive, since blocking receive is busy-waiting under openmpi.
-        m_domain->parallel().run(
+        domain().parallel().run(
             sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
     }
 
