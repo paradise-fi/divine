@@ -174,6 +174,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     int recv, sent;
     typedef typename D::Fifo Fifo;
 
+    Pool pool;
     std::vector< Fifo > fifo;
     std::vector< std::vector< int32_t > > buffers;
     std::vector< std::pair< bool, MPI::Request > > requests;
@@ -237,7 +238,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return false;
     }
 
-    void receiveDataMessage( Allocator< char > &alloc, MPI::Status &status )
+    void receiveDataMessage( MPI::Status &status )
     {
         Blob b;
         int target;
@@ -256,9 +257,9 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         while ( i != in_buffer.end() ) {
             target = *i++;
             assert_pred( m_domain.isLocalId, target );
-            i = b.read32( &alloc, i );
+            i = b.read32( &pool, i );
             m_domain.queue( -1, target ).push( b );
-            i = b.read32( &alloc, i );
+            i = b.read32( &pool, i );
             m_domain.queue( -1, target ).push( b );
         }
         ++ recv;
@@ -290,7 +291,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return r;
     }
 
-    bool loop( Allocator< char > &alloc ) {
+    bool loop() {
         MPI::Status status;
 
         // Fill outgoing buffers from the incoming FIFO queues...
@@ -347,7 +348,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 if ( receiveControlMessage( status ) )
                     return false;
             } else
-                receiveDataMessage( alloc, status );
+                receiveDataMessage( status );
         }
 
         // NB. The call to lastMan() here is first, since it needs to be done
@@ -363,14 +364,8 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     void *main() {
-        // The allocator needs to be instantiated here, since this depends on
-        // current thread's ID. Yes, icky.
-        Allocator< char > alloc;
-
         m_domain.barrier().started( this );
-
-        while ( loop( alloc ) );
-
+        while ( loop() );
         return 0;
     }
 };
