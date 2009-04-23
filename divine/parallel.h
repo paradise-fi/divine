@@ -208,10 +208,6 @@ struct DomainWorker {
         return m_id - master().minId;
     }
 
-    Pool &pool() {
-        return master().m_pools[ localId() ];
-    }
-
     Terminable *terminable() {
         return &master().parallel().m_threads[ localId() ];
     }
@@ -260,7 +256,6 @@ struct Domain {
     int minId, maxId, lastId;
     std::map< DomainWorker< T >*, int > m_ids;
     Parallel *m_parallel;
-    std::vector< Pool > m_pools;
 
     int n;
 
@@ -290,8 +285,6 @@ struct Domain {
             minId = lastId = n * mpi.rank();
             maxId = (n * (mpi.rank() + 1)) - 1;
         }
-
-        m_pools.resize( 1 + maxId - minId );
 
         if ( !m_ids.count( &t ) )
             m_ids[ &t ] = lastId ++;

@@ -225,7 +225,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::initExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        shared.g.setPool( this->pool() );
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
         visitor.visit( shared.g.initial() );

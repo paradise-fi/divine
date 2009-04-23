@@ -91,7 +91,6 @@ struct Reachability : DomainWorker< Reachability< G > >
     void _visit() { // parallel
         typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
 
-        shared.g.setPool( this->pool() );
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( shared.g, *this, *this, hasher,
                  new Table( hasher, divine::valid< Node >(),

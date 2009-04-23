@@ -56,7 +56,6 @@ struct Allocator : StateAllocator {
 struct Common {
     Allocator alloc;
     void setSlack( int s ) { alloc.setSlack( s ); }
-    void setPool( Pool &p ) { alloc.setPool( p ); }
     Pool &pool() { return alloc.pool(); }
 };
 
