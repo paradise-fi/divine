@@ -96,7 +96,7 @@ struct Main {
             std::cerr << bla << std::endl;
     }
 
-    void setupSignals() 
+    void setupSignals()
     {
         for ( int i = 0; i <= 32; ++i ) {
             if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG )

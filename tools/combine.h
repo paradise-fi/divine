@@ -268,7 +268,7 @@ struct Combine {
 
         if ( str::endsWith( ltl, ".mltl" ) ) {
             ltl_data = m4( combine_m4 + ltl_data );
-        } 
+        }
 
         if ( str::endsWith( input, ".mprobdve" )
              || str::endsWith( input, ".mdve" ) ) {
