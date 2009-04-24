@@ -25,17 +25,18 @@ struct _MpiId< Owcty< G > >
             case 0: return &Owcty< G >::_initialise;
             case 1: return &Owcty< G >::_reachability;
             case 2: return &Owcty< G >::_elimination;
+            case 3: return &Owcty< G >::_counterexample;
+            case 4: return &Owcty< G >::_checkCycle;
             default: assert_die();
         }
     }
 
     static int to_id( void (Owcty< G >::*f)() ) {
-        if( f == &Owcty< G >::_initialise )
-            return 0;
-        if( f == &Owcty< G >::_reachability )
-            return 1;
-        if( f == &Owcty< G >::_elimination )
-            return 2;
+        if( f == &Owcty< G >::_initialise ) return 0;
+        if( f == &Owcty< G >::_reachability ) return 1;
+        if( f == &Owcty< G >::_elimination ) return 2;
+        if( f == &Owcty< G >::_counterexample ) return 3;
+        if( f == &Owcty< G >::_checkCycle) return 4;
         assert_die();
     }
 
@@ -44,6 +45,9 @@ struct _MpiId< Owcty< G > >
         *o++ = s.size;
         *o++ = s.oldsize;
         *o++ = s.iteration;
+        *o++ = s.cycle_node.valid();
+        if ( s.cycle_node.valid() )
+            o = s.cycle_node.write32( o );
     }
 
     template< typename I >
@@ -51,6 +55,11 @@ struct _MpiId< Owcty< G > >
         s.size = *i++;
         s.oldsize = *i++;
         s.iteration = *i++;
+        bool valid = *i++;
+        if ( valid ) {
+            FakePool fp;
+            i = s.cycle_node.read32( &fp, i );
+        }
         return i;
     }
 };
@@ -66,13 +75,14 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     struct Shared {
         size_t size, oldsize;
-        Node cycle;
+        Node cycle_node;
+        bool cycle_found;
         int iteration;
         G g;
     } shared;
 
     struct Extension {
-        Blob parent, cycle; // TODO We only want to keep one of those two.
+        Blob parent;
         uintptr_t map;
         size_t predCount:15;
         size_t iteration:15;
@@ -88,9 +98,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     Domain< Owcty< G > > *m_domain;
     Table *m_table;
 
-    Node m_cycleCandidate;
-    Node m_mapCycleState;
-    bool m_cycleFound;
+    bool want_ce;
 
     Domain< Owcty< G > > &domain() {
         if ( !m_domain ) {
@@ -115,6 +123,22 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
+    }
+
+    bool cycleFound() {
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            if ( domain().shared( i ).cycle_found )
+                return true;
+        }
+        return false;
+    }
+
+    Node cycleNode() {
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            if ( domain().shared( i ).cycle_found )
+                return domain().shared( i ).cycle_node;
+        }
+        assert_die();
     }
 
     int totalSize() {
@@ -301,97 +325,72 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     // -- COUNTEREXAMPLES (to be done)
     // --
 
-#if 0
-    template< typename Bundle, typename Self >
-    struct FindCycleImpl :
-        ImplCommon,
-        observer::Common< Bundle, FindCycleImpl< Bundle, Self > >
+    visitor::TransitionAction ccTransition( Node from, Node to )
     {
-        typedef typename Bundle::State State;
-
-        typename Bundle::Controller &m_controller;
-        typename Bundle::Visitor &visitor() { return m_controller.visitor(); }
-
-        State transition( State from, State to )
-        {
-            if ( !to.extension().cycle.valid() ) {
-                to.extension().cycle = from;
-            }
-            if ( from.valid() && to == this->owcty().m_cycleCandidate ) {
-                // found cycle
-                to.extension().cycle = from;
-                this->owcty().m_cycleFound = true;
-                m_controller.pack().terminate();
-                return ignore( to );
-            }
-            return follow( to );
+        if ( from.valid() && to == shared.cycle_node ) {
+            std::cerr << "Found cycle at: " << std::endl
+                      << shared.g.showNode( to ) << std::endl;
+            shared.cycle_found = true;
+            return visitor::TerminateOnTransition;
         }
 
-        FindCycleImpl( typename Bundle::Controller &c )
-            : m_controller( c )
-        {
-        }
-    };
-
-    void mapCycleFound( State st ) {
-        m_mapCycleState = st;
+        return updateIteration( to, 0 ) ?
+            visitor::ExpandTransition :
+            visitor::ForgetTransition;
     }
 
-    State findCounterexampleFrom( State st ) {
-        m_cycleCandidate = st;
-        find.blockingVisit( st );
-        if ( m_cycleFound )
-            return st;
-        return State();
+    visitor::ExpansionAction ccExpansion( Node ) {
+        return visitor::ExpandState;
     }
 
-    template< typename T >
-    State iterateCandidates( T &worker )
-    {
-        typedef typename T::Visitor::Storage Storage;
-        Storage &s = worker.visitor().storage();
-        for ( int j = 0; j < s.table().size(); ++j ) {
-            State st = s.table()[ j ].key;
+    void _checkCycle() {
+        typedef visitor::Setup< G, Owcty< G >, Table,
+            &Owcty< G >::ccTransition,
+            &Owcty< G >::ccExpansion > Setup;
+        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
+
+        Visitor visitor( shared.g, *this, *this,
+                         Hasher( sizeof( Extension ) ), &table() );
+        assert( shared.cycle_node.valid() );
+        if ( visitor.owner( shared.cycle_node ) == this->globalId() )
+            visitor.queue( Blob(), shared.cycle_node );
+        visitor.visit();
+    }
+
+    void _counterexample() {
+        std::cerr << this->globalId() << " in _counterexample" << std::endl;
+        for ( int i = 0; i < table().size(); ++i ) {
+            if ( cycleFound() ) {
+                shared.cycle_node = cycleNode();
+                shared.cycle_found = true;
+                return;
+            }
+            Node st = shared.cycle_node = table()[ i ].key;
             if ( !st.valid() )
                 continue;
-            if ( worker.visitor().seen( st ) )
+            if ( extension( st ).iteration == 2 * shared.iteration )
+                continue; // already seen
+            if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
-            if ( !st.extension().inS || !st.extension().inF )
-                continue;
-            if ( ( st = findCounterexampleFrom( st ) ).valid() )
-                return st;
+            std::cerr << this->globalId() << " looking for cycle (i = " << i << ", size = " << table().size() << ")" << std::endl;
+                // << shared.g.showNode( st ) << std::endl;
+            domain().parallel().run( shared, &Owcty< G >::_checkCycle );
         }
-        return State();
     }
 
-    State counterexample() {
-        State st;
-
-        m_cycleFound = false;
-
-        for ( int i = 0; i < find.workerCount(); ++i ) {
-            swap( reach.worker( i ), find.worker( i ) );
-            zeroFlags( find.worker( i ).visitor().storage(), false );
+    void counterexample() {
+        if ( !cycleFound() ) {
+            domain().parallel().runInRing(
+                shared, &Owcty< G >::_counterexample );
         }
-
-        for ( int i = 0; i < find.workerCount(); ++i ) {
-            if ( !st.valid() )
-                st = iterateCandidates( find.worker( i ) );
-        }
-
-        assert( st.valid() );
-        assert( st.extension().inF );
-
-        return st;
-        } 
-#endif
+    }
 
     // -------------------------------------------
     // -- MAIN LOOP implementation
     // --
 
     void printSize() {
-        if ( m_mapCycleState.valid() )
+        if ( cycleFound() )
             std::cerr << "   (MAP: cycle found)" << std::endl << std::flush;
         else
             std::cerr << "   |S| = " << shared.size << std::endl << std::flush;
@@ -413,7 +412,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
         shared.iteration = 1;
 
-        if ( !m_mapCycleState.valid() ) {
+        if ( !cycleFound() ) {
             do {
                 oldsize = shared.size;
 
@@ -432,10 +431,12 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             } while ( oldsize != shared.size && shared.size != 0 );
         }
 
-        bool valid = shared.cycle.valid() ? false : ( shared.size == 0 );
+        bool valid = cycleFound() ? false : ( shared.size == 0 );
         this->resultBanner( valid );
 
         // counterexample ... (to be restored)
+        if ( want_ce && !valid )
+            counterexample();
 
         /* if ( !valid && this->config().generateCounterexample() ) {
             std::cerr << " generating counterexample...\t" << std::flush;
@@ -451,7 +452,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
         Result res;
         res.ltlPropertyHolds = valid ? Result::Yes : Result::No;
-        res.fullyExplored = shared.cycle.valid() ? Result::No : Result::Yes;
+        res.fullyExplored = shared.cycle_node.valid() ? Result::No : Result::Yes;
         return res;
     }
 
@@ -459,10 +460,12 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         : m_table( 0 )
     {
         shared.g.setSlack( sizeof( Extension ) );
+        shared.cycle_found = false;
         shared.size = 0;
         m_domain = 0;
         if ( c ) {
             shared.g.read( c->input() );
+            want_ce = c->generateCounterexample();
             m_domain = new Domain< Owcty< G > >( &shared, workerCount( c ) );
         }
     }
