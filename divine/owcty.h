@@ -40,11 +40,17 @@ struct _MpiId< Owcty< G > >
     }
 
     template< typename O >
-    static void writeShared( typename Owcty< G >::Shared, O ) {
+    static void writeShared( typename Owcty< G >::Shared s, O o ) {
+        *o++ = s.size;
+        *o++ = s.oldsize;
+        *o++ = s.iteration;
     }
 
     template< typename I >
-    static I readShared( typename Owcty< G >::Shared &, I i ) {
+    static I readShared( typename Owcty< G >::Shared &s, I i ) {
+        s.size = *i++;
+        s.oldsize = *i++;
+        s.iteration = *i++;
         return i;
     }
 };
@@ -105,8 +111,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     int totalSize() {
         int sz = 0;
-        for ( int i = 0; i < domain.parallel().n; ++i ) {
-            Shared &s = domain.parallel().shared( i );
+        for ( int i = 0; i < domain.peers(); ++i ) {
+            Shared &s = domain.shared( i );
             sz += s.size;
         }
         return sz;
@@ -114,8 +120,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     void resetSize() {
         shared.size = 0;
-        for ( int i = 0; i < domain.parallel().n; ++i ) {
-            Shared &s = domain.parallel().shared( i );
+        for ( int i = 0; i < domain.peers(); ++i ) {
+            Shared &s = domain.shared( i );
             s.size = 0;
         }
     }
