@@ -53,6 +53,7 @@ else( MPI AND MPI_FOUND )
     message( "-- WARNING: I could not find MPI. Disabling cluster support." )
   endif( MPI )
   set( MPI OFF )
+  set( MPIEXEC "" )
 endif( MPI AND MPI_FOUND )
 
 set( DIVINE_INCLUDES
