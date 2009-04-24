@@ -30,6 +30,10 @@ struct RunThread : wibble::sys::Thread {
         return 0;
     }
 
+    void serial() {
+        (t->*f)();
+    }
+
     RunThread( T &_t, F _f ) : t( &_t ), f( _f )
     {
     }
@@ -238,6 +242,19 @@ struct Domain {
 
             this->runThreads();
             m_domain->barrier().clear();
+        }
+
+        template< typename Shared, typename F >
+        void runInRing( Shared &sh, F f ) {
+            initThreads( sh, f );
+            for ( int i = 0; i < this->n; ++i ) {
+                this->thread( i ).serial();
+                if ( i < this->n - 1 )
+                    this->shared( i + 1 ) = this->shared( i );
+                if ( i == this->n - 1 )
+                    sh = this->shared( i );
+            }
+            m_domain->mpi.runInRing( f );
         }
 
         Parallel( Domain< T > &dom, int _n )

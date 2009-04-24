@@ -19,6 +19,8 @@ namespace divine {
 #define TAG_DONE        5
 #define TAG_SHARED      6
 #define TAG_ID          7
+#define TAG_RING_RUN    8
+#define TAG_RING_DONE   9
 
 #ifdef HAVE_MPI
 
@@ -26,6 +28,7 @@ template< typename Algorithm, typename D >
 struct Mpi {
 
     bool m_started;
+    bool is_master; // the master token
     int m_rank, m_size;
     D *m_domain;
     typedef typename Algorithm::Shared Shared;
@@ -40,6 +43,7 @@ struct Mpi {
     Mpi( Shared *sh, D *d ) : master_shared( sh )
     {
         m_domain = d;
+        is_master = false;
         m_started = false;
     }
 
@@ -55,17 +59,23 @@ struct Mpi {
 
         m_shared.resize( domain().peers() );
 
-        if ( !master() ) {
+        if ( m_rank == 0 )
+            is_master = true;
+
+        if ( !master() )
             while ( true )
                 slaveLoop();
-        }
+    }
+
+    void notifySlave( int i, int tag, int id ) {
+        MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
     }
 
     void notifySlaves( int tag, int id ) {
         if ( !master() )
             return;
         for ( int i = 1; i < size(); ++i ) {
-            MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
+            notifySlave( i, tag, id );
         }
     }
 
@@ -98,20 +108,49 @@ struct Mpi {
         }
     }
 
+    Shared obtainSharedBits() {
+        MPI::Status status;
+        std::vector< int32_t > shbits;
+        Shared sh = *master_shared;
+
+        MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_SHARED, status );
+        shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
+        MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
+                              MPI::BYTE, MPI::ANY_SOURCE, TAG_SHARED, status );
+        algorithm::_MpiId< Algorithm >::readShared( sh, shbits.begin() );
+        return sh;
+    }
+
+    void sendSharedBits( int to, const Shared &sh ) {
+        std::vector< int32_t > shbits;
+        algorithm::_MpiId< Algorithm >::writeShared(
+            sh, std::back_inserter( shbits ) );
+        MPI::COMM_WORLD.Send( &shbits.front(),
+                              shbits.size() * 4,
+                              MPI::BYTE, to, TAG_SHARED );
+    }
+
+    template< typename F >
+    void runInRing( F f ) {
+        if ( rank() != 0 ) return;
+        if ( size() <= 1 ) return;
+
+        notifySlave( 1, TAG_RING_RUN,
+                     algorithm::_MpiId< Algorithm >::to_id( f ) );
+        sendSharedBits( 1, *master_shared );
+
+        while( slaveLoop() ); // wait (and serve) till the ring is done
+    }
+
     template< typename F >
     void runOnSlaves( F f ) {
         if ( !master() ) return;
         if ( size() <= 1 ) return; // master_shared can be NULL otherwise
         assert( master_shared );
-        std::vector< int32_t > shbits;
-        algorithm::_MpiId< Algorithm >::writeShared(
-            *master_shared, std::back_inserter( shbits ) );
         notifySlaves( TAG_RUN,
                       algorithm::_MpiId< Algorithm >::to_id( f ) );
         for ( int i = 1; i < size(); ++i ) {
-            MPI::COMM_WORLD.Send( &shbits.front(),
-                                  shbits.size() * 4,
-                                  MPI::BYTE, i, TAG_SHARED );
+            sendSharedBits( i, *master_shared );
         }
     }
 
@@ -125,45 +164,54 @@ struct Mpi {
     int rank() { if ( m_started ) return m_rank; else return 0; }
     int size() { if ( m_started ) return m_size; else return 1; }
 
-    bool master() {
-        return rank() == 0;
-    }
+    bool master() { return is_master; }
 
     // Default copy and assignment is fine for us.
 
+    void runSerial( int id ) {
+        is_master = true;
+        *master_shared = obtainSharedBits();
+        domain().parallel().runInRing(
+            *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
+        is_master = false;
+        if ( rank() < size() - 1 )
+            notifySlave( rank() + 1, TAG_RING_RUN, id );
+        else
+            notifySlave( 0, TAG_RING_DONE, 0 );
+        sendSharedBits( ( rank() + 1 ) % size(), *master_shared );
+    }
+
     void run( int id ) {
-        MPI::Status status;
-        std::vector< int32_t > shbits;
-        Shared sh = *master_shared;
-
-        MPI::COMM_WORLD.Probe( 0, TAG_SHARED, status );
-        shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
-        MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
-                              MPI::BYTE, 0, TAG_SHARED, status );
-        algorithm::_MpiId< Algorithm >::readShared( sh, shbits.begin() );
-
-        // Btw, we want to use buffering sends. We also need to use nonblocking
-        // receive, since blocking receive is busy-waiting under openmpi.
+        Shared sh = obtainSharedBits();
         domain().parallel().run(
             sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
     }
 
-    void slaveLoop() {
+    bool slaveLoop() {
         MPI::Status status;
         int id;
-        MPI::COMM_WORLD.Recv( &id, 1 /* one integer per message */,
-                              MPI::INT, 0 /* from master */,
+        MPI::COMM_WORLD.Recv( &id, 1, /* one integer per message */
+                              MPI::INT,
+                              MPI::ANY_SOURCE, /* anyone can become a master these days */
                               MPI::ANY_TAG, status );
         switch ( status.Get_tag() ) {
             case TAG_ALL_DONE:
                 MPI::Finalize();
                 exit( 0 ); // after a fashion...
+            case TAG_RING_RUN:
+                runSerial( id );
+                break;
+            case TAG_RING_DONE:
+                assert( master_shared );
+                *master_shared = obtainSharedBits();
+                return false;
             case TAG_RUN:
                 run( id );
                 break;
             default:
                 assert( 0 );
         }
+        return true;
     }
 
 };
