@@ -238,7 +238,7 @@ struct Domain {
             for ( int i = 0; i < this->n; ++i )
                 this->thread( i ).setBarrier( m_domain->barrier() );
 
-            m_domain->mpi.runOnSlaves( f );
+            m_domain->mpi.runOnSlaves( sh, f );
 
             this->runThreads();
             m_domain->barrier().clear();
@@ -246,11 +246,12 @@ struct Domain {
 
         template< typename Shared, typename F >
         void runInRing( Shared &sh, F f ) {
-            initThreads( sh, f );
+            this->shared( 0 ) = sh;
             for ( int i = 0; i < this->n; ++i ) {
-                this->thread( i ).serial();
-                if ( i < this->n - 1 )
+                ((this->instance( i )).*f)();
+                if ( i < this->n - 1 ) {
                     this->shared( i + 1 ) = this->shared( i );
+                }
                 if ( i == this->n - 1 )
                     sh = this->shared( i );
             }

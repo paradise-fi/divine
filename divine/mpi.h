@@ -74,12 +74,13 @@ struct Mpi {
     void notifySlaves( int tag, int id ) {
         if ( !master() )
             return;
-        for ( int i = 1; i < size(); ++i ) {
-            notifySlave( i, tag, id );
+        for ( int i = 0; i < size(); ++i ) {
+            if ( i != rank() )
+                notifySlave( i, tag, id );
         }
     }
 
-    void returnSharedBits() {
+    void returnSharedBits( int to ) {
         std::vector< int32_t > shbits;
         for ( int i = 0; i < domain().n; ++i ) {
             algorithm::_MpiId< Algorithm >::writeShared(
@@ -88,13 +89,15 @@ struct Mpi {
         }
         MPI::COMM_WORLD.Send( &shbits.front(),
                               shbits.size() * 4,
-                              MPI::BYTE, 0, TAG_SHARED );
+                              MPI::BYTE, to, TAG_SHARED );
     }
 
     void collectSharedBits() {
         MPI::Status status;
         std::vector< int32_t > shbits;
-        for ( int i = 1; i < size(); ++ i ) {
+        for ( int i = 0; i < size(); ++ i ) {
+            if ( i == rank() )
+                continue;
             MPI::COMM_WORLD.Probe( i, TAG_SHARED, status );
             shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
             MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
@@ -135,22 +138,24 @@ struct Mpi {
         if ( rank() != 0 ) return;
         if ( size() <= 1 ) return;
 
+        is_master = false;
         notifySlave( 1, TAG_RING_RUN,
                      algorithm::_MpiId< Algorithm >::to_id( f ) );
         sendSharedBits( 1, *master_shared );
 
         while( slaveLoop() ); // wait (and serve) till the ring is done
+        is_master = true;
     }
 
-    template< typename F >
-    void runOnSlaves( F f ) {
+    template< typename Shared, typename F >
+    void runOnSlaves( Shared sh, F f ) {
         if ( !master() ) return;
         if ( size() <= 1 ) return; // master_shared can be NULL otherwise
-        assert( master_shared );
         notifySlaves( TAG_RUN,
                       algorithm::_MpiId< Algorithm >::to_id( f ) );
-        for ( int i = 1; i < size(); ++i ) {
-            sendSharedBits( i, *master_shared );
+        for ( int i = 0; i < size(); ++i ) {
+            if ( i != rank() )
+                sendSharedBits( i, sh );
         }
     }
 
@@ -252,7 +257,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         MPI::Status status;
         int r = recv, s = sent;
         bool valid = true;
-        for ( int i = 1; i < mpi.size(); ++ i ) {
+        for ( int i = 0; i < mpi.size(); ++ i ) {
+
+            if ( i == mpi.rank() )
+                continue;
+
             int cnt[3];
             MPI::COMM_WORLD.Recv( cnt, 3, MPI::INT,
                                   MPI::ANY_SOURCE, TAG_GIVE_COUNTS,
@@ -324,10 +333,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 cnt[0] = outgoingEmpty() && lastMan();
                 cnt[1] = sent;
                 cnt[2] = recv;
-                MPI::COMM_WORLD.Send( cnt, 3, MPI::INT, 0, TAG_GIVE_COUNTS );
+                MPI::COMM_WORLD.Send( cnt, 3, MPI::INT,
+                                      status.Get_source(), TAG_GIVE_COUNTS );
                 return false;
             case TAG_DONE:
-                m_domain.mpi.returnSharedBits();
+                m_domain.mpi.returnSharedBits( status.Get_source() );
                 return m_domain.barrier().idle( this );
             default:
                 assert_die();
