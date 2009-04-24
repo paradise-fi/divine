@@ -85,12 +85,20 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
 
-    Domain< Owcty< G > > domain;
+    Domain< Owcty< G > > *m_domain;
     Table *m_table;
 
     Node m_cycleCandidate;
     Node m_mapCycleState;
     bool m_cycleFound;
+
+    Domain< Owcty< G > > &domain() {
+        if ( !m_domain ) {
+            assert( this->m_master );
+            m_domain = this->m_master;
+        }
+        return *m_domain;
+    }
 
     // ------------------------------------------------------
     // -- generally useful utilities
@@ -111,8 +119,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     int totalSize() {
         int sz = 0;
-        for ( int i = 0; i < domain.peers(); ++i ) {
-            Shared &s = domain.shared( i );
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            Shared &s = domain().shared( i );
             sz += s.size;
         }
         return sz;
@@ -120,8 +128,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     void resetSize() {
         shared.size = 0;
-        for ( int i = 0; i < domain.peers(); ++i ) {
-            Shared &s = domain.shared( i );
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            Shared &s = domain().shared( i );
             s.size = 0;
         }
     }
@@ -190,7 +198,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     void reachability() {
         shared.size = 0;
-        domain.parallel().run( shared, &Owcty< G >::_reachability );
+        domain().parallel().run( shared, &Owcty< G >::_reachability );
         shared.size = totalSize();
     }
 
@@ -237,7 +245,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     void initialise() {
-        domain.parallel().run( shared, &Owcty< G >::_initialise );
+        domain().parallel().run( shared, &Owcty< G >::_initialise );
         shared.oldsize = shared.size = totalSize();
     }
 
@@ -284,7 +292,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     void elimination() {
         shared.size = 0;
-        domain.parallel().run( shared, &Owcty< G >::_elimination );
+        domain().parallel().run( shared, &Owcty< G >::_elimination );
         shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
@@ -448,12 +456,15 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
-        : domain( &shared, workerCount( c ) ), m_table( 0 )
+        : m_table( 0 )
     {
         shared.g.setSlack( sizeof( Extension ) );
         shared.size = 0;
-        if ( c )
+        m_domain = 0;
+        if ( c ) {
             shared.g.read( c->input() );
+            m_domain = new Domain< Owcty< G > >( &shared, workerCount( c ) );
+        }
     }
 
 };

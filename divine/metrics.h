@@ -117,7 +117,8 @@ struct Metrics : DomainWorker< Metrics< G > >
         Statistics< G > stats;
         G g;
     } shared;
-    Domain< Metrics< G > > domain;
+    Domain< Metrics< G > > m_domain;
+    Domain< Metrics< G > > &domain() { return m_domain; }
 
     typedef HashMap< Node, Unit, Hasher > Table;
     Hasher hasher;
@@ -143,17 +144,17 @@ struct Metrics : DomainWorker< Metrics< G > >
     }
 
     Metrics( Config *c = 0 )
-        : domain( &shared, workerCount( c ) )
+        : m_domain( &shared, workerCount( c ) )
     {
         if ( c )
             shared.g.read( c->input() );
     }
 
     Result run() {
-        domain.parallel().run( shared, &Metrics< G >::_visit );
+        domain().parallel().run( shared, &Metrics< G >::_visit );
 
-        for ( int i = 0; i < domain.peers(); ++i ) {
-            Shared &s = domain.shared( i );
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            Shared &s = domain().shared( i );
             shared.stats.merge( s.stats );
         }
 

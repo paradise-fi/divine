@@ -109,7 +109,9 @@ struct Reachability : DomainWorker< Reachability< G > >
         Statistics< G > stats;
         G g;
     } shared;
-    Domain< Reachability< G > > domain;
+
+    Domain< Reachability< G > > m_domain;
+    Domain< Reachability< G > > &domain() { return m_domain; }
 
     struct Extension {
         Blob parent;
@@ -163,7 +165,7 @@ struct Reachability : DomainWorker< Reachability< G > >
     }
 
     Reachability( Config *c = 0 )
-        : domain( &shared, workerCount( c ) ), m_table( 0 )
+        : m_domain( &shared, workerCount( c ) ), m_table( 0 )
     {
         hasher.setSlack( sizeof( Extension ) );
         shared.g.setSlack( sizeof( Extension ) );
@@ -202,17 +204,17 @@ struct Reachability : DomainWorker< Reachability< G > >
 
         shared.goal = n;
         // shared.goal = table().get( n ).key;
-        domain.parallel().run( shared, &Reachability< G >::_counterexample );
+        domain().parallel().run( shared, &Reachability< G >::_counterexample );
     }
 
     Result run() {
-        domain.parallel().run( shared, &Reachability< G >::_visit );
+        domain().parallel().run( shared, &Reachability< G >::_visit );
 
-        for ( int i = 0; i < domain.peers(); ++i )
-            shared.stats.merge( domain.shared( i ).stats );
+        for ( int i = 0; i < domain().peers(); ++i )
+            shared.stats.merge( domain().shared( i ).stats );
 
-        for ( int i = 0; i < domain.peers(); ++i ) {
-            Shared &s = domain.shared( i );
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            Shared &s = domain().shared( i );
             if ( s.goal.valid() ) {
                counterexample( s.goal );
                break;
