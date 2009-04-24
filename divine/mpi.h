@@ -435,8 +435,13 @@ struct Mpi {
     int rank() { return 0; }
     int size() { return 1; }
     void notifySlaves( int, int ) {}
+
+    template< typename Shared, typename F >
+    void runOnSlaves( Shared, F ) {}
+
     template< typename F >
-    void runOnSlaves( F ) {}
+    void runInRing( F f ) {}
+
     void start() {}
     typename M::Shared &shared( int i ) {
         assert_die();
