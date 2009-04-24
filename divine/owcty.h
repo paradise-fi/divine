@@ -95,7 +95,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     Domain< Owcty< G > > &domain() {
         if ( !m_domain ) {
             assert( this->m_master );
-            m_domain = this->m_master;
+            return *this->m_master;
         }
         return *m_domain;
     }
@@ -467,6 +467,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         }
     }
 
+    ~Owcty() {
+        if ( m_domain )
+            delete m_domain;
+    }
 };
 
 }
