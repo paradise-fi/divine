@@ -339,6 +339,10 @@ struct Domain {
           m_parallel( 0 ),
           n( _n )
     {}
+
+    ~Domain() {
+        delete m_parallel;
+    }
 };
 
 }
