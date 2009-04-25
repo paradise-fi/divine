@@ -27,6 +27,8 @@ struct _MpiId< Owcty< G > >
             case 2: return &Owcty< G >::_elimination;
             case 3: return &Owcty< G >::_counterexample;
             case 4: return &Owcty< G >::_checkCycle;
+            case 5: return &Owcty< G >::_parentTrace;
+            case 6: return &Owcty< G >::_traceCycle;
             default: assert_die();
         }
     }
@@ -37,6 +39,8 @@ struct _MpiId< Owcty< G > >
         if( f == &Owcty< G >::_elimination ) return 2;
         if( f == &Owcty< G >::_counterexample ) return 3;
         if( f == &Owcty< G >::_checkCycle) return 4;
+        if( f == &Owcty< G >::_parentTrace) return 5;
+        if( f == &Owcty< G >::_traceCycle) return 6;
         assert_die();
     }
 
@@ -377,14 +381,94 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             std::cerr << this->globalId() << " looking for cycle (i = " << i << ", size = " << table().size() << ")" << std::endl;
                 // << shared.g.showNode( st ) << std::endl;
             domain().parallel().run( shared, &Owcty< G >::_checkCycle );
+            if ( cycleFound() ) {
+                std::cerr << std::endl << "===== Accepting state ====="
+                          << std::endl << std::endl;
+                std::cerr << shared.g.showNode( cycleNode() ) << std::endl;
+            }
         }
+    }
+
+    visitor::ExpansionAction traceExpansion( Node n ) {
+        std::cerr << shared.g.showNode( n ) << std::endl;
+        return visitor::ExpandState;
+    }
+
+    visitor::TransitionAction traceTransition( Node, Node to ) {
+        if ( updateIteration( to, 0 ) ) {
+            // std::cerr << std::endl;
+            return visitor::ExpandTransition;
+        }
+        return visitor::ForgetTransition;
+    }
+
+    void _parentTrace() {
+        typedef ParentGraph< G, Extension > PG;
+        typedef visitor::Setup< PG, Owcty< G >, Table,
+            &Owcty< G >::traceTransition,
+            &Owcty< G >::traceExpansion > VisitorSetup;
+
+        PG pg( shared.cycle_node );
+        visitor::Parallel< VisitorSetup, Owcty< G >, Hasher >
+            vis( pg, *this, *this, hasher, &table() );
+
+        if ( vis.owner( shared.cycle_node ) == this->globalId() )
+            vis.queue( Blob(), shared.cycle_node );
+        vis.visit();
+    }
+
+    visitor::ExpansionAction cycleExpansion( Node n ) {
+        return visitor::ExpandState;
+    }
+
+    visitor::TransitionAction cycleTransition( Node from, Node to ) {
+        if ( from.valid() && to == shared.cycle_node ) {
+            extension( to ).parent = from;
+            return visitor::TerminateOnTransition;
+        }
+        if ( updateIteration( to, 1 ) ) {
+            extension( to ).parent = from;
+            return visitor::ExpandTransition;
+        }
+        return visitor::ForgetTransition;
+    }
+
+    void _traceCycle() {
+        typedef visitor::Setup< G, Owcty< G >, Table,
+            &Owcty< G >::cycleTransition,
+            &Owcty< G >::cycleExpansion > Setup;
+        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
+
+        Visitor visitor( shared.g, *this, *this,
+                         Hasher( sizeof( Extension ) ), &table() );
+        assert( shared.cycle_node.valid() );
+        if ( visitor.owner( shared.cycle_node ) == this->globalId() )
+            visitor.queue( Blob(), shared.cycle_node );
+        visitor.visit();
     }
 
     void counterexample() {
         if ( !cycleFound() ) {
+            std::cerr << "obtaining counterexample..." << std::endl;
             domain().parallel().runInRing(
                 shared, &Owcty< G >::_counterexample );
         }
+
+        assert( cycleFound() );
+        shared.cycle_node = cycleNode();
+
+        ++ shared.iteration;
+
+        std::cerr << std::endl << "===== Trace to initial ====="
+                  << std::endl << std::endl;
+        domain().parallel().run( shared, &Owcty< G >::_parentTrace );
+        domain().parallel().run( shared, &Owcty< G >::_traceCycle );
+
+        ++ shared.iteration;
+
+        std::cerr << std::endl << "===== The cycle ====="
+                  << std::endl << std::endl;
+        domain().parallel().run( shared, &Owcty< G >::_parentTrace );
     }
 
     // -------------------------------------------
