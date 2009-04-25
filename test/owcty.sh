@@ -14,7 +14,10 @@ cat > numbers-right <<EOF
 47598
 47598
 EOF
-diff -u numbers numbers-right
+
+if !grep -q "MAP: cycle found" progress;  then
+    diff -u numbers-right numbers
+fi
 
 divine owcty --report peterson-liveness.dve > report 2> progress
 
@@ -43,5 +46,5 @@ cat > numbers-right <<EOF
 7913
 0
 EOF
-diff -u numbers numbers-right
+diff -u numbers-right numbers
 
