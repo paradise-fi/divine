@@ -106,7 +106,10 @@ struct Combine {
     Engine *cmd_combine;
     IntOption *o_propId;
     BoolOption *o_stdout, *o_quiet, *o_help, *o_version,  *o_det;
+    StringOption *o_formula;
     commandline::StandardParserWithMandatoryCommand &opts;
+
+    bool have_ltl;
 
     std::string input, ltl, defs;
     std::string in_data, ltl_data, ltl_defs, system;
@@ -132,9 +135,12 @@ struct Combine {
     {
         cmd_combine = opts.addEngine(
             "combine",
-            "input.[m][prob]dve [formula.[m]ltl] [preprocessor defs]",
+            "input.[m][prob]dve [preprocessor defs]",
             "combine DVE models with LTL properties" );
 
+        o_formula = cmd_combine->add< StringOption >(
+            "formula", 'f', "formula", "",
+            "a file with LTL properties" );
         o_propId = cmd_combine->add< IntOption >(
             "property", 'p', "property", "",
             "only process n-th property from the LTL file" );
@@ -166,8 +172,10 @@ struct Combine {
             throw wibble::exception::Generic( "Bla." );
         std::string base( input, 0, a );
         str << base;
-        str << ".prop";
-        str << i;
+        if ( i != -1 ) {
+            str << ".prop";
+            str << i;
+        }
         str << ext;
         return str.str();
     }
@@ -192,8 +200,17 @@ struct Combine {
         oG.to_one_initial();
         oG.optimize(oG1, 6);
         // semideterminizace?
-        output(oG1, str);
+        divine::output(oG1, str);
         return str.str();
+    }
+
+    void output( int id, std::string data, std::string prop_descr ) {
+        if ( !o_quiet->boolValue() && !o_stdout->boolValue() )
+            std::cerr << outFile( id ) << ": " << prop_descr << std::endl;
+        if ( !o_stdout->boolValue() )
+            fs::writeFile( outFile( id ), data );
+        else
+            std::cout << data;
     }
 
     void combine()
@@ -216,13 +233,8 @@ struct Combine {
             if ( o_propId->intValue() && o_propId->intValue() != id )
                 continue;
 
-            if ( !o_quiet->boolValue() )
-                std::cerr << outFile( id ) << ": " << *i << std::endl;
             std::string dve = cpp( ltl_defs + "\n" + in_data + "\n" + buchi( *i ) + "\n" + system );
-            if ( !o_stdout->boolValue() )
-                fs::writeFile( outFile( id ), dve );
-            else
-                std::cout << dve;
+            output( id, dve, *i );
         }
     }
 
@@ -232,9 +244,9 @@ struct Combine {
                 die_help( "FATAL: No input file specified." );
             input = opts.next();
 
-            if ( !opts.hasNext() )
-                die_help( "FATAL: No formula file specified." );
-            ltl = opts.next();
+            have_ltl = o_formula->boolValue();
+            if ( have_ltl )
+                ltl = o_formula->stringValue();
 
             while ( opts.hasNext() )
                 defs += " -D" + opts.next(); // .push_back( opts.next() );
@@ -243,7 +255,7 @@ struct Combine {
             die_help( e.fullInfo() );
         }
 
-        if ( o_stdout->boolValue() && !o_propId->intValue() )
+        if ( have_ltl && o_stdout->boolValue() && !o_propId->intValue() )
             die( "FATAL: cannot print to stdout more than single property. Use -p n." );
     }
 
@@ -258,13 +270,17 @@ struct Combine {
             die( "FATAL: Input file extension has to be either "
                  ".[m]dve or .[m]probdve." );
 
+
         if ( !fs::access( input, R_OK ) )
             die( "FATAL: Can't open '" + input + "' for reading." );
-        if ( !fs::access( ltl, R_OK ) )
-            die( "FATAL: Can't open '" + ltl + "' for reading." );
 
         in_data = fs::readFile( input ) + "\n";
-        ltl_data = fs::readFile( ltl ) + "\n";
+
+        if ( have_ltl ) {
+            if ( !fs::access( ltl, R_OK ) )
+                die( "FATAL: Can't open '" + ltl + "' for reading." );
+            ltl_data = fs::readFile( ltl ) + "\n";
+        }
 
         if ( str::endsWith( ltl, ".mltl" ) ) {
             ltl_data = m4( combine_m4 + ltl_data );
@@ -273,6 +289,13 @@ struct Combine {
         if ( str::endsWith( input, ".mprobdve" )
              || str::endsWith( input, ".mdve" ) ) {
             in_data = m4( combine_m4 + in_data );
+            if ( !have_ltl ) {
+                output( -1, in_data, "(no property)" );
+                return 0;
+            }
+        } else {
+           if ( !have_ltl )
+               die( "FATAL: Nothing to do." );
         }
 
         int off = in_data.find( "system async" );
