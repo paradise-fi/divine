@@ -249,7 +249,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                 if ( fromId > extension( to ).map )
                     extension( to ).map = fromId;
             if ( mapId( to ) == fromMap ) {
-                shared.cycle = to;
+                shared.cycle_node = to;
+                shared.cycle_found = true;
                 return visitor::TerminateOnTransition;
             }
         }
