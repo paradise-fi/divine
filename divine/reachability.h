@@ -179,7 +179,6 @@ struct Reachability : DomainWorker< Reachability< G > >
     }
 
     visitor::TransitionAction ceTransition( Node, Node ) {
-        std::cerr << " --> ";
         return visitor::FollowTransition;
     }
 
@@ -199,11 +198,14 @@ struct Reachability : DomainWorker< Reachability< G > >
     }
 
     void counterexample( Node n ) {
-        std::cerr << "GOAL: " << std::endl
+        std::cerr << std::endl << "===== GOAL ====="
+                  << std::endl << std::endl
                   << shared.g.showNode( n ) << std::endl;
 
         shared.goal = n;
-        // shared.goal = table().get( n ).key;
+
+        std::cerr << std::endl << "===== Trace to initial ====="
+                  << std::endl << std::endl;
         domain().parallel().run( shared, &Reachability< G >::_counterexample );
     }
 
