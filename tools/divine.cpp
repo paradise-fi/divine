@@ -169,13 +169,18 @@ struct Main {
             if ( opts.parse( argc, argv ) )
                 exit( 0 ); // built-in command executed
 
+            if ( opts.foundCommand() == combine.cmd_combine ) {
+                m_run = RunCombine;
+                return;
+            }
+
             if ( !opts.hasNext() ) {
                 std::cerr
                     << "WARNING: no input file specified, using dummy generator"
                     << std::endl;
                 dummygen = true;
-            }
-            input = opts.next();
+            } else
+                input = opts.next();
 
         } catch( wibble::exception::BadOption &e ) {
             die( e.fullInfo() );
@@ -183,11 +188,6 @@ struct Main {
 
         if ( !opts.foundCommand() )
             die( "FATAL: no command specified" );
-
-        if ( opts.foundCommand() == combine.cmd_combine ) {
-            m_run = RunCombine;
-            return;
-        }
 
         config.setWorkers( o_workers->intValue() );
         config.setInput( input );
