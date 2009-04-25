@@ -334,8 +334,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     visitor::TransitionAction ccTransition( Node from, Node to )
     {
         if ( from.valid() && to == shared.cycle_node ) {
-            std::cerr << "Found cycle at: " << std::endl
-                      << shared.g.showNode( to ) << std::endl;
             shared.cycle_found = true;
             return visitor::TerminateOnTransition;
         }
@@ -364,7 +362,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     void _counterexample() {
-        std::cerr << this->globalId() << " in _counterexample" << std::endl;
         for ( int i = 0; i < table().size(); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
@@ -378,8 +375,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                 continue; // already seen
             if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
-            std::cerr << this->globalId() << " looking for cycle (i = " << i << ", size = " << table().size() << ")" << std::endl;
-                // << shared.g.showNode( st ) << std::endl;
             domain().parallel().run( shared, &Owcty< G >::_checkCycle );
             if ( cycleFound() ) {
                 std::cerr << std::endl << "===== Accepting state ====="
@@ -520,21 +515,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool valid = cycleFound() ? false : ( shared.size == 0 );
         this->resultBanner( valid );
 
-        // counterexample ... (to be restored)
         if ( want_ce && !valid )
             counterexample();
-
-        /* if ( !valid && this->config().generateCounterexample() ) {
-            std::cerr << " generating counterexample...\t" << std::flush;
-            State st;
-            if ( shared.cycle.valid() )
-                st = findCounterexampleFrom( shared.cycle );
-            else
-                st = counterexample();
-            std::cerr << "   done" << std::endl;
-
-            printCounterexample( init, st );
-        } */
 
         Result res;
         res.ltlPropertyHolds = valid ? Result::Yes : Result::No;
