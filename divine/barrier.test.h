@@ -12,6 +12,7 @@ struct TestBarrier {
         int id;
         bool busy;
         TestBarrier *owner;
+        bool sleeping;
         bool workWaiting() {
             if ( busy )
                 return true;
