@@ -80,7 +80,7 @@ struct PipeThrough
             close( socks_in[1] );
             dup2( socks_out[0], STDOUT_FILENO );
             close( socks_out[1] );
-            execl( "/bin/sh", "/bin/sh", "-c", cmd.c_str(), 0 );
+            execl( "/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL );
             throw wibble::exception::System( "exec failed" );
         }
         close( socks_in[0] );
