@@ -29,10 +29,18 @@ install( TARGETS divine
 
 install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION bin)
 
+set( PROMELA_JARS "BUNDLE" CACHE STRING "Either path to the ProMeLa/NIPS JAR files or BUNDLE" )
+
+if ( PROMELA_JARS STREQUAL "BUNDLE" )
+  set( JAR_DEPS ${JARS} )
+else()
+  set( JAR_DEPS "" )
+endif()
+
 add_custom_command(
   OUTPUT ${PML_C}
-  DEPENDS packjars.pl ${JARS} ${NIPS_ASM} ${PACKJARS}
-  COMMAND ${PERL_EXECUTABLE} ${PACKJARS} ${NIPS_ASM} ${JARS} > ${PML_C}
+  DEPENDS packjars.pl ${JAR_DEPS} ${NIPS_ASM} ${PACKJARS}
+  COMMAND ${PERL_EXECUTABLE} ${PACKJARS} "${PROMELA_JARS}" ${NIPS_ASM} ${JARS} > ${PML_C}
   COMMAND chmod +x ${PML_C} )
 
 add_custom_command(
