@@ -12,6 +12,9 @@ namespace divine {
 // class. This is however not a requirement of Barrier itself.
 struct Terminable {
     virtual bool workWaiting() = 0;
+    bool sleeping;
+
+    Terminable() : sleeping( false ) {}
 };
 
 template< typename T >
@@ -34,6 +37,11 @@ struct Barrier {
     volatile bool m_done;
 
     int m_regd, m_expect;
+
+    void wakeup( T *who ) {
+        if ( who->sleeping )
+            condition( who ).signal();
+    }
 
     Mutex &mutex( T *t ) {
         return m_mutexes[ t ];
@@ -124,9 +132,11 @@ struct Barrier {
             if ( !who->workWaiting() ) {
                 if ( m_sleeping < m_expect - 1 ) {
                     ++ m_sleeping;
+                    who->sleeping = true;
                     __l.drop();
                     condition( who ).wait( mutex( who ) );
                     __l.reclaim();
+                    who->sleeping = false;
                     -- m_sleeping;
                 } else {
                     // we are the last thread to be awake; we need to yield

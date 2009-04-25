@@ -326,9 +326,10 @@ struct Domain {
 
     Fifo &queue( int from, int to )
     {
-        if ( isLocalId( to ) )
+        if ( isLocalId( to ) ) {
+            barrier().wakeup( &parallel().thread( to - minId ) );
             return parallel().instance( to - minId ).fifo[ from + 1 ];
-        else
+        } else
             return parallel().mpiThread.fifo[ from + to * peers() ];
     }
 
