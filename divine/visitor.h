@@ -64,6 +64,11 @@ struct Setup {
     static ExpansionAction expansion( Notify &n, Node a ) {
         return (n.*exp)( a );
     }
+
+    static TransitionAction transitionHint( Notify &n, Node a, Node b ) {
+        return FollowTransition;
+    }
+
 };
 
 template<
@@ -108,6 +113,10 @@ struct Common {
 
         bool had = true;
         hash_t hint = seen().hash( _to );
+
+        if ( S::transitionHint( m_notify, from, _to ) == IgnoreTransition )
+            return;
+
         Node to = seen().get( _to, hint ).key;
 
         if ( alias( _to, to ) )
@@ -183,10 +192,6 @@ struct Parallel {
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
-        if ( owner( t ) != notify.globalId() ) {
-            queue( f, t );
-            return visitor::IgnoreTransition;
-        }
         return S::transition( notify, f, t );
     }
 
@@ -214,9 +219,20 @@ struct Parallel {
         }
     }
 
+    typedef Parallel< S, Worker, _Hash > P;
+    struct Ours : Setup< typename S::Graph, P, Seen >
+    {
+        typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
+        static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
+            if ( n.owner( t ) != n.notify.globalId() ) {
+                n.queue( f, t );
+                return visitor::IgnoreTransition;
+            }
+            return visitor::FollowTransition;
+        }
+    };
+
     void visit( Node initial ) {
-        typedef Setup< typename S::Graph,
-            Parallel< S, Worker, _Hash >, Seen > Ours;
         BFV< Ours > bfv( graph, *this, m_seen );
         if ( bfv.seen().valid( initial ) &&
              owner( initial ) == notify.globalId() ) {
