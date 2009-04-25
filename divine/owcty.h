@@ -45,6 +45,7 @@ struct _MpiId< Owcty< G > >
         *o++ = s.size;
         *o++ = s.oldsize;
         *o++ = s.iteration;
+        *o++ = s.cycle_found;
         *o++ = s.cycle_node.valid();
         if ( s.cycle_node.valid() )
             o = s.cycle_node.write32( o );
@@ -55,6 +56,7 @@ struct _MpiId< Owcty< G > >
         s.size = *i++;
         s.oldsize = *i++;
         s.iteration = *i++;
+        s.cycle_found = *i++;
         bool valid = *i++;
         if ( valid ) {
             FakePool fp;
