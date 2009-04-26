@@ -45,9 +45,9 @@ protected:
     // pad the fifo object to ensure that head/tail pointers never
     // share a cache line with anyone else
     char _padding1[cacheLine-2*sizeof(Node*)];
-    Node *head, *freetail;
+    Node *head;
     char _padding2[cacheLine-2*sizeof(Node*)];
-    Node * volatile tail, *freehead;
+    Node * volatile tail;
     char _padding3[cacheLine-2*sizeof(Node*)];
 
 public:
@@ -56,45 +56,32 @@ public:
 
     Fifo() {
         head = tail = new Node();
-        freehead = freetail = new Node();
         assert( empty() );
     }
 
     // copying a fifo is not allowed
     Fifo( const Fifo &f ) {
         head = tail = new Node();
-        freehead = freetail = new Node();
         assert( empty() );
     }
 
-    virtual ~Fifo() {} // TODO free up stuff here
+    ~Fifo() {
+        while ( head != tail ) {
+            Node *next = head->next;
+            assert( next != 0 );
+            delete head;
+            head = next;
+        }
+        delete head;
+    }
 
     void push( const MutexLockT< WriteMutex > &l, const T&x ) {
         Node *t;
         assert( l.locked );
         assert( &l.mutex == &writeMutex );
-        if ( tail->write == NodeSize ) {
-            if ( freehead != freetail ) {
-                // grab a node for recycling
-                t = freehead;
-                assert( freehead->next != 0 );
-                freehead = freehead->next;
-
-                // clear it
-                t->read = t->write = 0;
-                t->next = 0;
-
-                // dump the rest of the freelist
-                while ( freehead != freetail ) {
-                    Node *next = freehead->next;
-                    assert( next != 0 );
-                    delete freehead;
-                    freehead = next;
-                }
-            } else {
-                t = new Node();
-            }
-        } else
+        if ( tail->write == NodeSize )
+            t = new Node();
+        else
             t = tail;
 
         t->buffer[ t->write ] = x;
@@ -119,9 +106,7 @@ public:
         Node *old = head;
         head = head->next;
         assert( head );
-        old->next = 0;
-        freetail->next = old;
-        freetail = old;
+        delete old;
     }
 
     void pop() {
