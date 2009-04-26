@@ -474,6 +474,8 @@ struct MpiThread : wibble::sys::Thread {
 
     Fifos fifo;
 
+    void interrupt() {}
+
     void *main() {
         assert_die();
     }
