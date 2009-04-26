@@ -119,7 +119,7 @@ struct Reachability : DomainWorker< Reachability< G > >
 
     typedef HashMap< Node, Unit, Hasher,
                      divine::valid< Node >, Equal > Table;
-    Table *m_table, *m_oldtable;
+    Table *m_table;
     Hasher hasher;
 
     Table &table() {
@@ -178,8 +178,8 @@ struct Reachability : DomainWorker< Reachability< G > >
         return visitor::ExpandState;
     }
 
-    visitor::TransitionAction ceTransition( Node, Node ) {
-        return visitor::FollowTransition;
+    visitor::TransitionAction ceTransition( Node f, Node t ) {
+        return visitor::ExpandTransition;
     }
 
     void _counterexample() {
@@ -188,13 +188,12 @@ struct Reachability : DomainWorker< Reachability< G > >
             &Reachability< G >::ceTransition,
             &Reachability< G >::ceExpansion > VisitorSetup;
 
-        m_oldtable = m_table;
-        m_table = 0;
-
         PG pg( shared.goal );
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( pg, *this, *this, hasher, &table() );
-        vis.visit( shared.goal );
+        if ( vis.owner( shared.goal ) == this->globalId() )
+            vis.queue( Blob(), shared.goal );
+        vis.visit();
     }
 
     void counterexample( Node n ) {
