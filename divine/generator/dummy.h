@@ -76,6 +76,8 @@ struct Dummy : Common {
 
     bool isAccepting( Node s ) { return false; }
     std::string showNode( Node s ) {
+        if ( !s.valid() )
+            return "[]";
         Content f = s.get< Content >( alloc._slack );
         std::stringstream stream;
         stream << "[" << f.first << ", " << f.second << "]";
