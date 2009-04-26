@@ -81,6 +81,8 @@ struct LegacyCommon : Common {
     bool isDeadlock( State s ) { return false; } // XXX
     bool isGoal( State s ) { return false; } // XXX
     std::string showNode( State s ) {
+        if ( !s.valid() )
+            return "[]";
         std::stringstream o;
         legacy_system()->print_state( alloc.legacy_state( s ), o );
         return o.str();
