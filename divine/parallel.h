@@ -178,6 +178,9 @@ struct DomainWorker {
     Domain< T > *m_master;
     FifoVector< Blob > fifo;
     int m_id;
+    bool m_interrupt;
+
+    DomainWorker() : m_master( 0 ), m_interrupt( false ) {}
 
     Domain< T > &master() {
         assert( m_master );
@@ -196,6 +199,7 @@ struct DomainWorker {
     }
 
     bool idle() {
+        m_interrupt = false;
         return master().barrier().idle( terminable() );
     }
 
@@ -210,6 +214,16 @@ struct DomainWorker {
 
     int localId() {
         return m_id - master().minId;
+    }
+
+    void interrupt( bool from_master = false ) {
+        m_interrupt = true;
+        if ( !from_master )
+            master().interrupt();
+    }
+
+    bool interrupted() {
+        return m_interrupt;
     }
 
     Terminable *terminable() {
@@ -322,6 +336,13 @@ struct Domain {
         if ( isLocalId( i ) )
             return parallel().shared( i - minId );
         return mpi.shared( i );
+    }
+
+    void interrupt( bool from_mpi = false ) {
+        for ( int i = 0; i < parallel().n; ++i )
+            parallel().instance( i ).interrupt( true );
+        if ( !from_mpi )
+            parallel().mpiThread.interrupt();
     }
 
     Fifo &queue( int from, int to )

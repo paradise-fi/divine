@@ -143,6 +143,9 @@ struct Common {
 
         if ( tact != IgnoreTransition )
             m_graph.release( _to );
+
+        if ( tact == TerminateOnTransition )
+            m_queue.clear();
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :
@@ -192,7 +195,10 @@ struct Parallel {
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
-        return S::transition( notify, f, t );
+        visitor::TransitionAction tact = S::transition( notify, f, t );
+        if ( tact == TerminateOnTransition )
+            worker.interrupt();
+        return tact;
     }
 
     visitor::ExpansionAction expansion( Node n ) {
@@ -207,6 +213,13 @@ struct Parallel {
                 if ( worker.idle() )
                     return;
             } else {
+                if ( worker.interrupted() ) {
+                    while ( !worker.idle() ) {
+                        while ( !worker.fifo.empty() )
+                            worker.fifo.remove();
+                    }
+                    return;
+                }
                 Node f, t;
                 f = worker.fifo.next();
                 worker.fifo.remove();

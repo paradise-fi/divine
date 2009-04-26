@@ -18,9 +18,11 @@ namespace divine {
 #define TAG_GIVE_COUNTS 4
 #define TAG_DONE        5
 #define TAG_SHARED      6
-#define TAG_ID          7
+#define TAG_INTERRUPT   7
 #define TAG_RING_RUN    8
 #define TAG_RING_DONE   9
+
+#define TAG_ID           100
 
 #ifdef HAVE_MPI
 
@@ -299,6 +301,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return false;
     }
 
+    void interrupt() {
+        m_domain.mpi.notify( TAG_INTERRUPT, 0 );
+        sent += m_domain.mpi.size() - 1;
+    }
+
     void receiveDataMessage( MPI::Status &status )
     {
         Blob b;
@@ -343,6 +350,10 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             case TAG_DONE:
                 m_domain.mpi.returnSharedBits( status.Get_source() );
                 return m_domain.barrier().idle( this );
+            case TAG_INTERRUPT:
+                ++ recv;
+                m_domain.interrupt( true );
+                return false;
             default:
                 assert_die();
         }
