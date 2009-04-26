@@ -117,7 +117,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     visitor::TransitionAction transition( Node f, Node t )
     {
         if ( !f.valid() ) {
-            // assert( t == shared.g.initial() );
+            assert( table().equal( t, shared.g.initial() ) );
             return updateIteration( t );
         }
 
@@ -164,6 +164,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             Node st = table()[ i ].key;
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
+                extension( st ).map = 0;
                 if ( extension( st ).elim == 1 )
                     extension( st ).elim = 2;
             }
