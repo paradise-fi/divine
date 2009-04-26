@@ -18,6 +18,7 @@
 #include <divine/reachability.h>
 #include <divine/owcty.h>
 #include <divine/metrics.h>
+#include <divine/map.h>
 
 #include <divine/report.h>
 
@@ -269,7 +270,7 @@ struct Main {
                 return selectGraph< algorithm::Owcty >();
             case RunMap:
                 config.setAlgorithm( "MAP" );
-                FIXME( "Sorry, MAP currently not implemented." );
+                return selectGraph< algorithm::Map >();
             case RunNdfs:
                 config.setAlgorithm( "NestedDFS" );
                 FIXME( "Sorry, Nested DFS currently not implemented." );
