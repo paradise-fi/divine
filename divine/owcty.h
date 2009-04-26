@@ -546,8 +546,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     ~Owcty() {
-        if ( m_domain )
-            delete m_domain;
+        delete m_domain;
     }
 };
 
