@@ -26,7 +26,7 @@ enum TransitionAction { ExpandTransition, // force expansion on the target state
                                           // NOT FREED
                         TerminateOnTransition
 };
-enum ExpansionAction { ExpandState };
+enum ExpansionAction { ExpandState, TerminateOnState };
 
 template< typename T >
 bool alias( T a, T b ) {
@@ -144,7 +144,7 @@ struct Common {
         if ( tact != IgnoreTransition )
             m_graph.release( _to );
 
-        if ( tact == TerminateOnTransition )
+        if ( tact == TerminateOnTransition || eact == TerminateOnState )
             m_queue.clear();
     }
 
