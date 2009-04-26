@@ -78,6 +78,7 @@ struct Circular {
     int size() { return _size; }
     bool full() { return _count == _size; }
     bool empty() { return !_count; }
+    void clear() { drop( count() ); }
 
     void drop( int n ) {
         assert( n <= _count );
@@ -128,6 +129,8 @@ struct Queue {
         return m_head.empty() && m_queue.empty();
     }
 
+    void clear() { while ( !empty() ) pop(); }
+
     Queue( Graph &_g ) : g( _g ) {}
 };
 
@@ -176,6 +179,8 @@ struct BufferedQueue {
         checkFilled();
     }
 
+    void clear() { while ( !empty() ) pop(); }
+
     BufferedQueue( Graph &_g ) : g( _g ) {}
 };
 
@@ -222,6 +227,8 @@ struct Stack {
         checkTop();
         return m_stack.empty();
     }
+
+    void clear() { while ( !empty() ) pop(); }
 
     Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
 };
