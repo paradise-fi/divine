@@ -67,16 +67,20 @@ struct Mpi {
                 slaveLoop();
     }
 
-    void notifySlave( int i, int tag, int id ) {
+    void notifyOne( int i, int tag, int id ) {
         MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
     }
 
     void notifySlaves( int tag, int id ) {
         if ( !master() )
             return;
+        notify( tag, id );
+    }
+
+    void notify( int tag, int id ) {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
-                notifySlave( i, tag, id );
+                notifyOne( i, tag, id );
         }
     }
 
@@ -139,8 +143,8 @@ struct Mpi {
         if ( size() <= 1 ) return;
 
         is_master = false;
-        notifySlave( 1, TAG_RING_RUN,
-                     algorithm::_MpiId< Algorithm >::to_id( f ) );
+        notifyOne( 1, TAG_RING_RUN,
+                   algorithm::_MpiId< Algorithm >::to_id( f ) );
         sendSharedBits( 1, *master_shared );
 
         while( slaveLoop() ); // wait (and serve) till the ring is done
@@ -180,9 +184,9 @@ struct Mpi {
             *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
         is_master = false;
         if ( rank() < size() - 1 )
-            notifySlave( rank() + 1, TAG_RING_RUN, id );
+            notifyOne( rank() + 1, TAG_RING_RUN, id );
         else
-            notifySlave( 0, TAG_RING_DONE, 0 );
+            notifyOne( 0, TAG_RING_DONE, 0 );
         sendSharedBits( ( rank() + 1 ) % size(), *master_shared );
     }
 
