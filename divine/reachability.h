@@ -100,7 +100,7 @@ struct ParentGraph {
 };
 
 template< typename G >
-struct Reachability : DomainWorker< Reachability< G > >
+struct Reachability : Algorithm, DomainWorker< Reachability< G > >
 {
     typedef typename G::Node Node;
 
@@ -110,25 +110,13 @@ struct Reachability : DomainWorker< Reachability< G > >
         G g;
     } shared;
 
-    Domain< Reachability< G > > m_domain;
-    Domain< Reachability< G > > &domain() { return m_domain; }
+    Domain< Reachability< G > > &domain() {
+        return DomainWorker< Reachability< G > >::domain();
+    }
 
     struct Extension {
         Blob parent;
     };
-
-    typedef HashMap< Node, Unit, Hasher,
-                     divine::valid< Node >, Equal > Table;
-    Table *m_table;
-    Hasher hasher;
-
-    Table &table() {
-        if ( !m_table ) {
-            m_table = new Table( hasher, divine::valid< Node >(),
-                                 Equal( hasher.slack ) );
-        }
-        return *m_table;
-    }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -165,12 +153,11 @@ struct Reachability : DomainWorker< Reachability< G > >
     }
 
     Reachability( Config *c = 0 )
-        : m_domain( &shared, workerCount( c ) ), m_table( 0 )
+        : Algorithm( c, sizeof( Extension ) )
     {
-        hasher.setSlack( sizeof( Extension ) );
-        shared.g.setSlack( sizeof( Extension ) );
+        initGraph( shared.g );
         if ( c )
-            shared.g.read( c->input() );
+            becomeMaster( &shared, workerCount( c ) );
     }
 
     visitor::ExpansionAction ceExpansion( Node n ) {
