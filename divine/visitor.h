@@ -189,7 +189,7 @@ struct Parallel {
 
     void queue( Node from, Node to ) {
         Fifo< Blob, NoopMutex > &fifo
-            = worker.queue( notify.globalId(), owner( to ) );
+            = worker.queue( worker.globalId(), owner( to ) );
         fifo.push( unblob< Node >( from ) );
         fifo.push( unblob< Node >( to ) );
     }
@@ -240,7 +240,7 @@ struct Parallel {
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
         static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
-            if ( n.owner( t ) != n.notify.globalId() ) {
+            if ( n.owner( t ) != n.worker.globalId() ) {
                 n.queue( f, t );
                 return visitor::IgnoreTransition;
             }
@@ -251,7 +251,7 @@ struct Parallel {
     void visit( Node initial ) {
         BFV< Ours > bfv( graph, *this, m_seen );
         if ( bfv.seen().valid( initial ) &&
-             owner( initial ) == notify.globalId() ) {
+             owner( initial ) == worker.globalId() ) {
             bfv.visit( unblob< Node >( initial ) );
         }
         run( bfv );
