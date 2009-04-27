@@ -96,15 +96,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool inF:1;
     };
 
-    Hasher hasher;
-
-    typedef HashMap< Node, Unit, Hasher,
-                     divine::valid< Node >, Equal > Table;
-
     Domain< Owcty< G > > *m_domain;
-    Table *m_table;
-
-    bool want_ce;
 
     Domain< Owcty< G > > &domain() {
         if ( !m_domain ) {
@@ -117,15 +109,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     // ------------------------------------------------------
     // -- generally useful utilities
     // --
-
-    Table &table() {
-        if ( !m_table ) {
-            hasher.setSlack( sizeof( Extension ) );
-            m_table = new Table( hasher, divine::valid< Node >(),
-                                 Equal( hasher.slack ) );
-        }
-        return *m_table;
-    }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -220,7 +203,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::reachExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
-        hasher.setSlack( sizeof( Extension ) );
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor, true );
         visitor.visit();
@@ -532,15 +514,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     Owcty( Config *c = 0 )
-        : m_table( 0 )
+        : Algorithm( c, sizeof( Extension ) )
     {
-        shared.g.setSlack( sizeof( Extension ) );
+        initGraph( shared.g );
         shared.cycle_found = false;
         shared.size = 0;
         m_domain = 0;
         if ( c ) {
-            shared.g.read( c->input() );
-            want_ce = c->generateCounterexample();
             m_domain = new Domain< Owcty< G > >( &shared, workerCount( c ) );
         }
     }

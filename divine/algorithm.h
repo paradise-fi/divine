@@ -2,6 +2,7 @@
 
 #include <divine/config.h>
 #include <divine/blob.h>
+#include <divine/hashmap.h>
 
 #ifndef DIVINE_ALGORITHM_H
 #define DIVINE_ALGORITHM_H
@@ -53,6 +54,7 @@ struct Hasher {
 struct Equal {
     int slack;
     Equal( int s = 0 ) : slack( s ) {}
+    void setSlack( int s ) { slack = s; }
     inline hash_t operator()( Blob a, Blob b ) const {
         assert( a.valid() );
         assert( b.valid() );
@@ -62,6 +64,25 @@ struct Equal {
 
 struct Algorithm
 {
+    typedef Blob Node; // Umm.
+
+    typedef HashMap< Node, Unit, Hasher,
+                     divine::valid< Node >, Equal > Table;
+
+    Config *m_config;
+    int m_slack;
+    Hasher hasher;
+    Equal equal;
+    Table *m_table;
+
+    bool want_ce;
+
+    Table &table() {
+        if ( !m_table )
+            m_table = new Table( hasher, divine::valid< Node >(), equal );
+        return *m_table;
+    }
+
     void resultBanner( bool valid ) {
         std::cerr << " ===================================== " << std::endl
                   << ( valid ?
@@ -69,6 +90,24 @@ struct Algorithm
                      "         Accepting cycle FOUND         " )
                   << std::endl
                   << " ===================================== " << std::endl;
+    }
+
+    template< typename G >
+    void initGraph( G &g ) {
+        g.setSlack( m_slack );
+        if ( m_config ) { // this is the master instance
+            g.read( m_config->input() );
+        }
+    }
+
+    Algorithm( Config *c = 0, int slack = 0 )
+        : m_config( c ), m_slack( slack ), m_table( 0 )
+    {
+        hasher.setSlack( slack );
+        equal.setSlack( slack );
+        if ( c ) {
+            want_ce = c->generateCounterexample();
+        }
     }
 };
 

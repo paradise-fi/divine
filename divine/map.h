@@ -27,27 +27,11 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         unsigned iteration;
     };
 
-    typedef HashMap< Node, Unit, Hasher,
-                     divine::valid< Node >, Equal > Table;
-
     Result m_result;
     Domain< Map< G > > *m_domain;
-    Table *m_table;
-    Hasher hasher;
-
-    bool want_ce;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
-    }
-
-    Table &table() {
-        if ( !m_table ) {
-            hasher.setSlack( sizeof( Extension ) );
-            m_table = new Table( hasher, divine::valid< Node >(),
-                                 Equal( hasher.slack ) );
-        }
-        return *m_table;
     }
 
     Domain< Map< G > > &domain() {
@@ -117,7 +101,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     visitor::TransitionAction transition( Node f, Node t )
     {
         if ( !f.valid() ) {
-            assert( table().equal( t, shared.g.initial() ) );
+            assert( equal( t, shared.g.initial() ) );
             return updateIteration( t );
         }
 
@@ -175,20 +159,6 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         domain().parallel().run( shared, &Map< G >::_visit );
     }
 
-    Map( Config *c = 0 ) : m_table( 0 ) {
-        shared.g.setSlack( sizeof( Extension ) );
-        m_domain = 0;
-        if ( c ) {
-            shared.g.read( c->input() );
-            want_ce = c->generateCounterexample();
-            m_domain = new Domain< Map< G > >( &shared, workerCount( c ) );
-        }
-    }
-
-    ~Map() {
-        delete m_domain;
-    }
-
     Result run()
     {
         shared.iteration = 1;
@@ -226,6 +196,20 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         }
 
         return m_result;
+    }
+
+    Map( Config *c = 0 )
+        : Algorithm( c, sizeof( Extension ) )
+    {
+        initGraph( shared.g );
+        m_domain = 0;
+        if ( c ) {
+            m_domain = new Domain< Map< G > >( &shared, workerCount( c ) );
+        }
+    }
+
+    ~Map() {
+        delete m_domain;
     }
 
 };
