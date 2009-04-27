@@ -185,9 +185,14 @@ struct DomainWorker {
         : m_domain( 0 ), is_master( false ), m_interrupt( false )
     {}
 
+    DomainWorker( const DomainWorker &o )
+        : m_domain( 0 ), is_master( false ), m_interrupt( false )
+    {}
+
     template< typename Shared >
     void becomeMaster( Shared *shared = 0, int n = 4 ) {
         is_master = true;
+        assert( !m_domain );
         m_domain = new Domain< T >( shared, n );
     }
 
@@ -201,6 +206,7 @@ struct DomainWorker {
     }
 
     void connect( Domain< T > &dom ) {
+        assert( !m_domain );
         m_domain = &dom;
         m_id = dom.obtainId( *this );
         // FIXME this whole fifo allocation business is an ugly hack...
