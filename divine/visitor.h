@@ -29,19 +29,19 @@ enum TransitionAction { ExpandTransition, // force expansion on the target state
 enum ExpansionAction { ExpandState, TerminateOnState };
 
 template< typename T >
-bool alias( T a, T b ) {
+inline bool alias( T a, T b ) {
     return false;
 }
 
-template<> bool alias< Blob >( Blob a, Blob b ) {
+template<> inline bool alias< Blob >( Blob a, Blob b ) {
     return a.ptr == b.ptr;
 }
 
-template< typename T > bool permanent( T ) { return false; }
-template< typename T > void setPermanent( T ) {}
+template< typename T > inline bool permanent( T ) { return false; }
+template< typename T > inline void setPermanent( T ) {}
 
-template<> bool permanent( Blob b ) { return b.header().permanent; }
-template<> void setPermanent( Blob b ) {
+template<> inline bool permanent( Blob b ) { return b.header().permanent; }
+template<> inline void setPermanent( Blob b ) {
     if ( b.valid() )
         b.header().permanent = 1;
 }
