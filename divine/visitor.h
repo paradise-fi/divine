@@ -202,8 +202,11 @@ struct Parallel {
     }
 
     visitor::ExpansionAction expansion( Node n ) {
-        assert_eq( owner( n ), notify.globalId() );
-        return S::expansion( notify, n );
+        assert_eq( owner( n ), worker.globalId() );
+        ExpansionAction eact = S::expansion( notify, n );
+        if ( eact == TerminateOnState )
+            worker.interrupt();
+        return eact;
     }
 
     template< typename BFV >
