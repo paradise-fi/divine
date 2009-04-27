@@ -96,6 +96,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool inF:1;
     };
 
+    LtlCE< G, Shared, Extension > ce;
+
     // ------------------------------------------------------
     // -- generally useful utilities
     // --
@@ -160,10 +162,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         return reinterpret_cast< uintptr_t >( t.ptr );
     }
 
-    bool updateIteration( Node t, int n ) {
+    bool updateIteration( Node t ) {
         int old = extension( t ).iteration;
-        extension( t ).iteration = 2 * shared.iteration + n;
-        return old != 2 * shared.iteration + n;
+        extension( t ).iteration = shared.iteration;
+        return old != shared.iteration;
     }
 
     // -----------------------------------------------
@@ -185,7 +187,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         if ( extension( t ).inF && f.valid() )
             return visitor::ForgetTransition;
         else {
-            return updateIteration( t, 0 ) ?
+            return updateIteration( t ) ?
                 visitor::ExpandTransition :
                 visitor::ForgetTransition;
         }
@@ -284,7 +286,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         // we follow a transition only if the target state is going to
         // be eliminated
         if ( extension( t ).predCount == 0 ) {
-            return updateIteration( t, 1 ) ?
+            return updateIteration( t ) ?
                 visitor::ExpandTransition :
                 visitor::ForgetTransition;
         } else
@@ -321,7 +323,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             return visitor::TerminateOnTransition;
         }
 
-        return updateIteration( to, 0 ) ?
+        return updateIteration( to ) ?
             visitor::ExpandTransition :
             visitor::ForgetTransition;
     }
@@ -354,7 +356,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             Node st = shared.cycle_node = table()[ i ].key;
             if ( !st.valid() )
                 continue;
-            if ( extension( st ).iteration == 2 * shared.iteration )
+            if ( extension( st ).iteration == shared.iteration )
                 continue; // already seen
             if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
@@ -367,62 +369,14 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         }
     }
 
-    visitor::ExpansionAction traceExpansion( Node n ) {
-        std::cerr << shared.g.showNode( n ) << std::endl;
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction traceTransition( Node, Node to ) {
-        if ( updateIteration( to, 0 ) ) {
-            // std::cerr << std::endl;
-            return visitor::ExpandTransition;
-        }
-        return visitor::ForgetTransition;
-    }
-
     void _parentTrace() {
-        typedef ParentGraph< G, Extension > PG;
-        typedef visitor::Setup< PG, Owcty< G >, Table,
-            &Owcty< G >::traceTransition,
-            &Owcty< G >::traceExpansion > VisitorSetup;
-
-        PG pg( shared.cycle_node );
-        visitor::Parallel< VisitorSetup, Owcty< G >, Hasher >
-            vis( pg, *this, *this, hasher, &table() );
-
-        if ( vis.owner( shared.cycle_node ) == this->globalId() )
-            vis.queue( Blob(), shared.cycle_node );
-        vis.visit();
-    }
-
-    visitor::ExpansionAction cycleExpansion( Node n ) {
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction cycleTransition( Node from, Node to ) {
-        if ( from.valid() && to == shared.cycle_node ) {
-            extension( to ).parent = from;
-            return visitor::TerminateOnTransition;
-        }
-        if ( updateIteration( to, 1 ) ) {
-            extension( to ).parent = from;
-            return visitor::ExpandTransition;
-        }
-        return visitor::ForgetTransition;
+        ce.setup( shared.g, shared );
+        ce.setFrom( shared.cycle_node );
+        ce._parentTrace( *this, hasher, table() );
     }
 
     void _traceCycle() {
-        typedef visitor::Setup< G, Owcty< G >, Table,
-            &Owcty< G >::cycleTransition,
-            &Owcty< G >::cycleExpansion > Setup;
-        typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
-
-        Visitor visitor( shared.g, *this, *this,
-                         Hasher( sizeof( Extension ) ), &table() );
-        assert( shared.cycle_node.valid() );
-        if ( visitor.owner( shared.cycle_node ) == this->globalId() )
-            visitor.queue( Blob(), shared.cycle_node );
-        visitor.visit();
+        ce._traceCycle( *this, hasher, table() );
     }
 
     void counterexample() {
@@ -432,21 +386,11 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                 shared, &Owcty< G >::_counterexample );
         }
 
-        assert( cycleFound() );
         shared.cycle_node = cycleNode();
+        assert( cycleFound() );
 
-        ++ shared.iteration;
-
-        std::cerr << std::endl << "===== Trace to initial ====="
-                  << std::endl << std::endl;
-        domain().parallel().run( shared, &Owcty< G >::_parentTrace );
-        domain().parallel().run( shared, &Owcty< G >::_traceCycle );
-
-        ++ shared.iteration;
-
-        std::cerr << std::endl << "===== The cycle ====="
-                  << std::endl << std::endl;
-        domain().parallel().run( shared, &Owcty< G >::_parentTrace );
+        ce.setup( shared.g, shared );
+        ce.lasso( domain(), *this );
     }
 
     // -------------------------------------------
@@ -480,11 +424,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             do {
                 oldsize = shared.size;
 
-                printIteration( shared.iteration );
+                printIteration( 1 + shared.iteration / 2 );
 
                 std::cerr << " reachability...\t" << std::flush;
                 reachability();
                 printSize();
+
+                ++shared.iteration;
 
                 std::cerr << " elimination & reset...\t" << std::flush;
                 elimination();

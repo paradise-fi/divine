@@ -3,6 +3,7 @@
 #include <divine/config.h>
 #include <divine/blob.h>
 #include <divine/hashmap.h>
+#include <divine/visitor.h>
 
 #ifndef DIVINE_ALGORITHM_H
 #define DIVINE_ALGORITHM_H
@@ -118,6 +119,171 @@ struct Algorithm
             want_ce = c->generateCounterexample();
         }
     }
+};
+
+template< typename G, typename Ext >
+struct ParentGraph {
+    typedef typename G::Node Node;
+    Node _initial;
+
+    struct Successors {
+        Node _from;
+        bool empty() {
+            if ( !_from.valid() )
+                return true;
+            if ( !_from.template get< Ext >().parent.valid() )
+                return true;
+            return false;
+        }
+
+        Node from() { return _from; }
+
+        Successors tail() {
+            Successors s;
+            s._from = Blob();
+            return s;
+        }
+
+        Node head() {
+            return _from.template get< Ext >().parent;
+        }
+    };
+
+    Node initial() {
+        return _initial;
+    }
+
+    Successors successors( Node n ) {
+        Successors s;
+        s._from = n;
+        return s;
+    }
+
+    void release( Node ) {}
+
+    ParentGraph( Node ini ) : _initial( ini ) {}
+};
+
+template< typename G, typename Shared, typename Extension >
+struct LtlCE {
+    typedef typename G::Node Node;
+    typedef LtlCE< G, Shared, Extension > Us;
+
+    G *_g;
+    Shared *_shared;
+    Node ce_node;
+
+    G &g() { assert( _g ); return *_g; }
+    Shared &shared() { assert( _shared ); return *_shared; }
+
+    LtlCE() : _g( 0 ), _shared( 0 ) {}
+
+    void setup( G &g, Shared &s )
+    {
+        _g = &g;
+        _shared = &s;
+    }
+
+    void setFrom( Node n ) { ce_node = n; }
+
+    Extension &extension( Node n ) {
+        return n.template get< Extension >();
+    }
+
+    bool updateIteration( Node t ) {
+        int old = extension( t ).iteration;
+        extension( t ).iteration = shared().iteration;
+        return old != shared().iteration;
+    }
+
+    // -------------------------------------
+    // -- Parent trace extraction
+    // --
+
+    visitor::ExpansionAction traceExpansion( Node n ) {
+        std::cerr << g().showNode( n ) << std::endl;
+        return visitor::ExpandState;
+    }
+
+    visitor::TransitionAction traceTransition( Node, Node to ) {
+        if ( updateIteration( to ) ) {
+            // std::cerr << std::endl;
+            return visitor::ExpandTransition;
+        }
+        return visitor::ForgetTransition;
+    }
+
+    template< typename Worker, typename Hasher, typename Table >
+    void _parentTrace( Worker &w, Hasher &h, Table &t ) {
+        typedef ParentGraph< G, Extension > PG;
+        typedef visitor::Setup< PG, Us, Table,
+            &Us::traceTransition,
+            &Us::traceExpansion > VisitorSetup;
+
+        assert( ce_node.valid() );
+        PG pg( ce_node );
+        visitor::Parallel< VisitorSetup, Worker, Hasher >
+            vis( pg, w, *this, h, &t );
+
+        if ( vis.owner( ce_node ) == w.globalId() )
+            vis.queue( Blob(), ce_node );
+        vis.visit();
+    }
+
+    // -------------------------------------
+    // -- Local cycle discovery
+    // --
+
+    visitor::ExpansionAction cycleExpansion( Node n ) {
+        return visitor::ExpandState;
+    }
+
+    visitor::TransitionAction cycleTransition( Node from, Node to ) {
+        if ( from.valid() && to == ce_node ) {
+            extension( to ).parent = from;
+            return visitor::TerminateOnTransition;
+        }
+        if ( updateIteration( to ) ) {
+            extension( to ).parent = from;
+            return visitor::ExpandTransition;
+        }
+        return visitor::ForgetTransition;
+    }
+
+    template< typename Worker, typename Hasher, typename Table >
+    void _traceCycle( Worker &w, Hasher &h, Table &t ) {
+        typedef visitor::Setup< G, Us, Table,
+            &Us::cycleTransition,
+            &Us::cycleExpansion > Setup;
+        typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
+
+        Visitor visitor( g(), w, *this, h, &t );
+        assert( ce_node.valid() );
+        if ( visitor.owner( ce_node ) == w.globalId() )
+            visitor.queue( Blob(), ce_node );
+        visitor.visit();
+    }
+
+    // ------------------------------------------------
+    // -- Lasso counterexample generation
+    // --
+
+    template< typename Domain, typename Alg >
+    void lasso( Domain &d, Alg ) {
+        std::cerr << std::endl << "===== Trace to initial ====="
+                  << std::endl << std::endl;
+        ++ shared().iteration;
+        d.parallel().run( shared(), &Alg::_parentTrace );
+
+        ++ shared().iteration;
+        d.parallel().run( shared(), &Alg::_traceCycle );
+
+        std::cerr << std::endl << "===== The cycle ====="
+                  << std::endl << std::endl;
+        ++ shared().iteration;
+        d.parallel().run( shared(), &Alg::_parentTrace );
+    }
+
 };
 
 }

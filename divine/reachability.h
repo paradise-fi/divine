@@ -56,49 +56,6 @@ struct _MpiId< Reachability< G > >
 };
 // END MPI drudgery
 
-template< typename G, typename Ext >
-struct ParentGraph {
-    typedef typename G::Node Node;
-    Node _initial;
-
-    struct Successors {
-        Node _from;
-        bool empty() {
-            if ( !_from.valid() )
-                return true;
-            if ( !_from.template get< Ext >().parent.valid() )
-                return true;
-            return false;
-        }
-
-        Node from() { return _from; }
-
-        Successors tail() {
-            Successors s;
-            s._from = Blob();
-            return s;
-        }
-
-        Node head() {
-            return _from.template get< Ext >().parent;
-        }
-    };
-
-    Node initial() {
-        return _initial;
-    }
-
-    Successors successors( Node n ) {
-        Successors s;
-        s._from = n;
-        return s;
-    }
-
-    void release( Node ) {}
-
-    ParentGraph( Node ini ) : _initial( ini ) {}
-};
-
 template< typename G >
 struct Reachability : Algorithm, DomainWorker< Reachability< G > >
 {
