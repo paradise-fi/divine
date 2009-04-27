@@ -137,6 +137,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         shared.stats.addEdge();
 
         if ( shared.g.isGoal( t ) ) {
+            shared.stats.goals ++;
             shared.goal = t;
             return visitor::TerminateOnTransition;
         }
@@ -196,10 +197,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
     }
 
     Result run() {
+        std::cerr << "  searching... \t" << std::flush;
+
         domain().parallel().run( shared, &Reachability< G >::_visit );
 
         for ( int i = 0; i < domain().peers(); ++i )
             shared.stats.merge( domain().shared( i ).stats );
+
+        std::cerr << shared.stats.states << " states, "
+                  << shared.stats.transitions << " edges" << std::endl;
 
         Node goal;
 
@@ -211,7 +217,6 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
             }
         }
 
-        shared.stats.print( std::cerr );
         safetyBanner( !goal.valid() );
         if ( goal.valid() )
             counterexample( goal );

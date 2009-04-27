@@ -5,6 +5,8 @@
 #include <divine/parallel.h>
 #include <divine/report.h>
 
+#include <iomanip>
+
 #ifndef DIVINE_METRICS_H
 #define DIVINE_METRICS_H
 
@@ -67,14 +69,13 @@ struct Statistics {
     }
 
     void print( std::ostream &o ) {
-        o << "seen total of: " << states
-          << " states (" << accepting
-          << " accepting) and "<< transitions
-          << " transitions" << std::endl;
+        o << " ================================================ " << std::endl;
+        o << std::setw( 12 ) << states << " states    | "
+          << std::setw( 11 ) << transitions << " transitions" << std::endl;
 
-        o << "encountered total of " << goals
-          << " goal and " << deadlocks
-          << " deadlock states" << std::endl;
+        o << std::setw( 12 ) << accepting << " accepting | "
+          << std::setw( 11 ) << deadlocks << " deadlocks " << std::endl;
+        o << " ================================================ " << std::endl;
     }
 
     template< typename O >
@@ -151,7 +152,9 @@ struct Metrics : DomainWorker< Metrics< G > >
     }
 
     Result run() {
+        std::cerr << "  exploring... \t\t\t\t" << std::flush;
         domain().parallel().run( shared, &Metrics< G >::_visit );
+        std::cerr << "   done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {
             Shared &s = domain().shared( i );

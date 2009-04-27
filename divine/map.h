@@ -160,7 +160,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         int acceptingCount = 0, eliminated = 0, d_eliminated = 0, expanded = 0;
         bool valid = true;
         do {
-            std::cerr << " iteration " << shared.iteration
+            std::cerr << " iteration " << std::setw( 3 ) << shared.iteration
                       << "...\t\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
             visit();
