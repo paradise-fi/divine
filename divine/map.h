@@ -183,7 +183,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
 
         m_result.ltlPropertyHolds = valid ? Result::Yes : Result::No;
 
-        resultBanner( valid );
+        livenessBanner( valid );
 
         if ( !valid && want_ce ) {
             std::cerr << " generating counterexample..." << std::flush;

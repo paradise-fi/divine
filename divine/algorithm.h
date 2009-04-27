@@ -83,11 +83,20 @@ struct Algorithm
         return *m_table;
     }
 
-    void resultBanner( bool valid ) {
+    void livenessBanner( bool valid ) {
         std::cerr << " ===================================== " << std::endl
                   << ( valid ?
                      "       Accepting cycle NOT found       " :
                      "         Accepting cycle FOUND         " )
+                  << std::endl
+                  << " ===================================== " << std::endl;
+    }
+
+    void safetyBanner( bool valid ) {
+        std::cerr << " ===================================== " << std::endl
+                  << ( valid ?
+                     "          Goal state NOT found         " :
+                     "            Goal state FOUND           " )
                   << std::endl
                   << " ===================================== " << std::endl;
     }

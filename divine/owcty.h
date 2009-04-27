@@ -496,7 +496,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         }
 
         bool valid = cycleFound() ? false : ( shared.size == 0 );
-        this->resultBanner( valid );
+        livenessBanner( valid );
 
         if ( want_ce && !valid )
             counterexample();

@@ -201,15 +201,20 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         for ( int i = 0; i < domain().peers(); ++i )
             shared.stats.merge( domain().shared( i ).stats );
 
+        Node goal;
+
         for ( int i = 0; i < domain().peers(); ++i ) {
             Shared &s = domain().shared( i );
             if ( s.goal.valid() ) {
-               counterexample( s.goal );
-               break;
+                goal = s.goal;
+                break;
             }
         }
 
         shared.stats.print( std::cerr );
+        safetyBanner( !goal.valid() );
+        if ( goal.valid() )
+            counterexample( goal );
 
         Result res;
         res.fullyExplored = Result::Yes;
