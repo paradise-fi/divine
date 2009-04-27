@@ -175,21 +175,34 @@ template< typename T >
 struct DomainWorker {
     typedef divine::Fifo< Blob, NoopMutex > Fifo;
 
-    Domain< T > *m_master;
+    Domain< T > *m_domain;
+    bool is_master;
     FifoVector< Blob > fifo;
     int m_id;
     bool m_interrupt;
 
-    DomainWorker() : m_master( 0 ), m_interrupt( false ) {}
+    DomainWorker()
+        : m_domain( 0 ), is_master( false ), m_interrupt( false )
+    {}
 
-    Domain< T > &master() {
-        assert( m_master );
-        return *m_master;
+    template< typename Shared >
+    void becomeMaster( Shared *shared = 0, int n = 4 ) {
+        is_master = true;
+        m_domain = new Domain< T >( shared, n );
     }
 
-    void connect( Domain< T > &master ) {
-        m_master = &master;
-        m_id = master.obtainId( *this );
+    Domain< T > &master() {
+        return domain();
+    }
+
+    Domain< T > &domain() {
+        assert( m_domain );
+        return *m_domain;
+    }
+
+    void connect( Domain< T > &dom ) {
+        m_domain = &dom;
+        m_id = dom.obtainId( *this );
         // FIXME this whole fifo allocation business is an ugly hack...
         fifo.resize( peers() + 1 );
     }
@@ -208,7 +221,7 @@ struct DomainWorker {
     }
 
     int globalId() {
-        assert( m_master );
+        assert( m_domain );
         return m_id;
     }
 
@@ -233,6 +246,11 @@ struct DomainWorker {
     Fifo &queue( int from, int to ) {
         assert( from < peers() );
         return master().queue( from, to );
+    }
+
+    ~DomainWorker() {
+        if ( is_master )
+            delete m_domain;
     }
 };
 

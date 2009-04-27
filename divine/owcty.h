@@ -96,19 +96,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool inF:1;
     };
 
-    Domain< Owcty< G > > *m_domain;
-
-    Domain< Owcty< G > > &domain() {
-        if ( !m_domain ) {
-            assert( this->m_master );
-            return *this->m_master;
-        }
-        return *m_domain;
-    }
-
     // ------------------------------------------------------
     // -- generally useful utilities
     // --
+
+    Domain< Owcty< G > > &domain() {
+        return DomainWorker< Owcty< G > >::domain();
+    }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -519,14 +513,9 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         initGraph( shared.g );
         shared.cycle_found = false;
         shared.size = 0;
-        m_domain = 0;
         if ( c ) {
-            m_domain = new Domain< Owcty< G > >( &shared, workerCount( c ) );
+            becomeMaster( &shared, workerCount( c ) );
         }
-    }
-
-    ~Owcty() {
-        delete m_domain;
     }
 };
 

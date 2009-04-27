@@ -28,18 +28,13 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     };
 
     Result m_result;
-    Domain< Map< G > > *m_domain;
+
+    Domain< Map< G > > &domain() {
+        return DomainWorker< Map< G > >::domain();
+    }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
-    }
-
-    Domain< Map< G > > &domain() {
-        if ( !m_domain ) {
-            assert( this->m_master );
-            return *this->m_master;
-        }
-        return *m_domain;
     }
 
     Node cycleNode() {
@@ -202,14 +197,9 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         : Algorithm( c, sizeof( Extension ) )
     {
         initGraph( shared.g );
-        m_domain = 0;
         if ( c ) {
-            m_domain = new Domain< Map< G > >( &shared, workerCount( c ) );
+            becomeMaster( &shared, workerCount( c ) );
         }
-    }
-
-    ~Map() {
-        delete m_domain;
     }
 
 };
