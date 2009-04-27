@@ -161,7 +161,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         bool valid = true;
         do {
             std::cerr << " iteration " << std::setw( 3 ) << shared.iteration
-                      << "...\t\t" << std::flush;
+                      << "...\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
             visit();
             d_eliminated = 0;
@@ -174,9 +174,8 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             }
             eliminated += d_eliminated;
             assert( eliminated <= acceptingCount );
-            std::cerr << eliminated << " eliminated (";
-            std::cerr << expanded << " expanded, ";
-            std::cerr << acceptingCount << " accepting)" << std::endl;
+            std::cerr << eliminated << " eliminated, "
+                      << expanded << " expanded" << std::endl;
             ++ shared.iteration;
             valid = !cycleNode().valid();
         } while ( d_eliminated > 0 && valid );
