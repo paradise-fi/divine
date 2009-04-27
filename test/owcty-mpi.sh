@@ -17,7 +17,7 @@ cat > numbers-right <<EOF
 47598
 EOF
 
-if !grep -q "MAP: cycle found" progress; then
+if ! grep -q "MAP: cycle found" progress; then
     diff -u numbers-right numbers
 fi
 
