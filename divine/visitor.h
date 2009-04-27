@@ -109,7 +109,7 @@ struct Common {
 
     void visit( Node from, Node _to ) {
         TransitionAction tact;
-        ExpansionAction eact;
+        ExpansionAction eact = ExpandState;
 
         bool had = true;
         hash_t hint = seen().hash( _to );
