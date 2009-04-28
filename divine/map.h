@@ -27,6 +27,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         unsigned iteration;
     };
 
+    LtlCE< G, Shared, Extension > ce;
     Result m_result;
 
     Domain< Map< G > > &domain() {
@@ -154,6 +155,16 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         domain().parallel().run( shared, &Map< G >::_visit );
     }
 
+    void _parentTrace() {
+        ce.setup( shared.g, shared );
+        ce.setFrom( shared.cycle_node );
+        ce._parentTrace( *this, hasher, equal, table() );
+    }
+
+    void _traceCycle() {
+        ce._traceCycle( *this, hasher, table() );
+    }
+
     Result run()
     {
         shared.iteration = 1;
@@ -185,8 +196,11 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         livenessBanner( valid );
 
         if ( !valid && want_ce ) {
-            std::cerr << " generating counterexample..." << std::flush;
-            // counterexample()
+            std::cerr << " generating counterexample..." << std::endl;
+            assert( cycleNode().valid() );
+            shared.cycle_node = cycleNode();
+            ce.setup( shared.g, shared );
+            ce.lasso( domain(), *this );
         }
 
         return m_result;
