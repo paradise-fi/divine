@@ -75,6 +75,8 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         Blob parent;
     };
 
+    LtlCE< G, Shared, Extension > ce;
+
     Extension &extension( Node n ) {
         return n.template get< Extension >();
     }
@@ -118,27 +120,10 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
             becomeMaster( &shared, workerCount( c ) );
     }
 
-    visitor::ExpansionAction ceExpansion( Node n ) {
-        std::cerr << shared.g.showNode( n ) << std::endl;
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction ceTransition( Node f, Node t ) {
-        return visitor::ExpandTransition;
-    }
-
     void _counterexample() {
-        typedef ParentGraph< G, Extension > PG;
-        typedef visitor::Setup< PG, Reachability< G >, Table,
-            &Reachability< G >::ceTransition,
-            &Reachability< G >::ceExpansion > VisitorSetup;
-
-        PG pg( shared.goal );
-        visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
-            vis( pg, *this, *this, hasher, &table() );
-        if ( vis.owner( shared.goal ) == this->globalId() )
-            vis.queue( Blob(), shared.goal );
-        vis.visit();
+        ce.setup( shared.g, shared );
+        ce.setFrom( shared.goal );
+        ce._parentTrace( *this, hasher, equal, table() );
     }
 
     void counterexample( Node n ) {
