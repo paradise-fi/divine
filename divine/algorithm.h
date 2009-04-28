@@ -153,6 +153,8 @@ struct ParentGraph {
         return _initial;
     }
 
+    void setInitial( Node n ) { _initial = n; }
+
     Successors successors( Node n ) {
         Successors s;
         s._from = n;
@@ -206,27 +208,28 @@ struct LtlCE {
     }
 
     visitor::TransitionAction traceTransition( Node, Node to ) {
-        if ( updateIteration( to ) ) {
-            // std::cerr << std::endl;
-            return visitor::ExpandTransition;
-        }
-        return visitor::ForgetTransition;
+        return visitor::FollowTransition;
     }
 
-    template< typename Worker, typename Hasher, typename Table >
-    void _parentTrace( Worker &w, Hasher &h, Table &t ) {
+    template< typename Worker, typename Hasher, typename Equal, typename Table >
+    void _parentTrace( Worker &w, Hasher &h, Equal &eq, Table &t ) {
         typedef ParentGraph< G, Extension > PG;
-        typedef visitor::Setup< PG, Us, Table,
+        typedef visitor::Setup< PG, Us, Algorithm::Table,
             &Us::traceTransition,
             &Us::traceExpansion > VisitorSetup;
 
+        Algorithm::Table table( h, divine::valid< Node >(), eq );
         assert( ce_node.valid() );
         PG pg( ce_node );
         visitor::Parallel< VisitorSetup, Worker, Hasher >
-            vis( pg, w, *this, h, &t );
+            vis( pg, w, *this, h, &table );
 
-        if ( vis.owner( ce_node ) == w.globalId() )
+        if ( vis.owner( ce_node ) == w.globalId() ) {
+            ce_node = t.get( ce_node ).key;
+            assert( ce_node.valid() );
+            pg.setInitial( ce_node );
             vis.queue( Blob(), ce_node );
+        }
         vis.visit();
     }
 
@@ -259,8 +262,10 @@ struct LtlCE {
 
         Visitor visitor( g(), w, *this, h, &t );
         assert( ce_node.valid() );
-        if ( visitor.owner( ce_node ) == w.globalId() )
+        if ( visitor.owner( ce_node ) == w.globalId() ) {
+            ce_node = t.get( ce_node ).key;
             visitor.queue( Blob(), ce_node );
+        }
         visitor.visit();
     }
 

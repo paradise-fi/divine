@@ -372,7 +372,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     void _parentTrace() {
         ce.setup( shared.g, shared );
         ce.setFrom( shared.cycle_node );
-        ce._parentTrace( *this, hasher, table() );
+        ce._parentTrace( *this, hasher, equal, table() );
     }
 
     void _traceCycle() {
