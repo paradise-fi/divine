@@ -385,10 +385,12 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 Blob b = fifo[ i ].front();
                 fifo[ i ].pop();
                 b.write32( std::back_inserter( buffers[ rank ] ) );
+                b.free( pool );
 
                 b = fifo[ i ].front( true );
                 fifo[ i ].pop();
                 b.write32( std::back_inserter( buffers[ rank ] ) );
+                b.free( pool );
             }
         }
 
