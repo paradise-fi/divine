@@ -94,6 +94,7 @@ struct Common {
         if ( seen().has( initial ) )
             return;
         seen().insert( initial );
+        setPermanent( initial );
         S::expansion( m_notify, initial );
         m_queue.pushSuccessors( initial );
         visit();
