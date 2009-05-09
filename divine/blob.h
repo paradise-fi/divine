@@ -62,12 +62,16 @@ struct Blob
 
     template< typename A >
     void free( A &a ) {
+        if ( !valid() )
+            return;
         assert( !header().heap );
         if ( !header().permanent )
             a.deallocate( ptr, allocationSize( size() ) );
     }
 
     void free() {
+        if ( !valid() )
+            return;
         assert( header().heap );
         if ( !header().permanent )
             delete[] ptr;
