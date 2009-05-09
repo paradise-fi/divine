@@ -44,6 +44,18 @@ void handler( int s ) {
     raise( s );
 }
 
+template< typename T >
+typename T::IsDomainWorker mpiSetup( Preferred, Report *r, T &t ) {
+    t.domain().mpi.start();
+    report->mpiInfo( t.domain().mpi );
+    return wibble::Unit();
+}
+
+template< typename T >
+wibble::Unit mpiSetup( NotPreferred, Report *, T & ) {
+    return wibble::Unit();
+}
+
 struct Main {
     Config config;
 
@@ -302,10 +314,7 @@ struct Main {
     Result run() {
         A alg( &config );
 
-        // TBD. This does not belong here. It is, however, convenient.
-        alg.domain().mpi.start();
-        report->mpiInfo( alg.domain().mpi );
-
+        mpiSetup( Preferred(), report, alg );
         return alg.run();
     }
 

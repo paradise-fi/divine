@@ -175,6 +175,8 @@ template< typename T >
 struct DomainWorker {
     typedef divine::Fifo< Blob, NoopMutex > Fifo;
 
+    typedef wibble::Unit IsDomainWorker;
+
     Domain< T > *m_domain;
     bool is_master;
     FifoVector< Blob > fifo;
