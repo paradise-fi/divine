@@ -88,15 +88,17 @@ struct Common {
         return *m_seen;
     }
 
-    void visit( Node initial ) {
+    void visit( Node _initial ) {
         TransitionAction tact;
         ExpansionAction eact;
-        if ( seen().has( initial ) )
-            return;
-        seen().insert( initial );
+
+        Node initial = seen().insert( _initial ).key;
         setPermanent( initial );
-        S::expansion( m_notify, initial );
-        m_queue.pushSuccessors( initial );
+        m_graph.release( _initial );
+
+        if ( S::expansion( m_notify, initial ) == ExpandState )
+            m_queue.pushSuccessors( initial );
+
         visit();
     }
 
