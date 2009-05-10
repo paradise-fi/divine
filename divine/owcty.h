@@ -233,9 +233,14 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                     extension( to ).map = fromId;
             }
             if ( mapId( to ) == fromMap ) {
-                shared.cycle_node = to;
-                shared.cycle_found = true;
-                return visitor::TerminateOnTransition;
+                // FIXME until we get unique state IDs that work with MPI, this
+                // heuristic is incorrect, as it may find a cycle where there
+                // is none
+                if ( domain().mpi.size() == 1 ) {
+                    shared.cycle_node = to;
+                    shared.cycle_found = true;
+                    return visitor::TerminateOnTransition;
+                }
             }
         }
         return visitor::FollowTransition;
