@@ -19,6 +19,7 @@
 #include <divine/owcty.h>
 #include <divine/metrics.h>
 #include <divine/map.h>
+#include <divine/ndfs.h>
 
 #include <divine/report.h>
 
@@ -285,7 +286,7 @@ struct Main {
                 return selectGraph< algorithm::Map >();
             case RunNdfs:
                 config.setAlgorithm( "NestedDFS" );
-                FIXME( "Sorry, Nested DFS currently not implemented." );
+                return selectGraph< algorithm::NestedDFS >();
             default:
                 die( "FATAL: Internal error choosing algorithm." );
         }
