@@ -65,6 +65,8 @@ struct Setup {
         return (n.*exp)( a );
     }
 
+    static void finished( Notify &, Node n ) {}
+
     static TransitionAction transitionHint( Notify &n, Node a, Node b ) {
         return FollowTransition;
     }
@@ -103,7 +105,13 @@ struct Common {
     }
 
     void visit() {
-        while ( !m_queue.empty() ) {
+        while ( true ) {
+            while ( m_queue.finished() ) {
+                S::finished( m_notify, m_queue.from() );
+                m_queue.popFinished();
+            }
+            if ( m_queue.empty() )
+                return;
             std::pair< Node, Node > c = m_queue.next();
             m_queue.pop();
             visit( c.first, c.second );
