@@ -252,6 +252,7 @@ struct Parallel {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
         static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
             if ( n.owner( t ) != n.worker.globalId() ) {
+                assert_eq( n.owner( f ), n.worker.globalId() );
                 n.queue( f, t );
                 return visitor::IgnoreTransition;
             }
