@@ -85,13 +85,17 @@ struct TestDatastruct {
         Stack< generator::Dummy > q( d );
         assert( q.empty() );
         q.pushSuccessors( d.initial() );
+        assert( !q.finished() );
         assert( !q.empty() );
         q.pop();
+        assert( !q.finished() );
         assert( !q.empty() );
         q.pop();
+        assert( q.finished() );
         assert( q.empty() );
 
         q.pushSuccessors( d.initial() );
+        assert( !q.finished() );
         q.pushSuccessors( q.next().second );
 
         // 2, 0, from 1, 0

@@ -131,6 +131,10 @@ struct Queue {
 
     void clear() { while ( !empty() ) pop(); }
 
+    bool finished() { return false; }
+    void popFinished() {}
+    Node from() { return Node(); }
+
     Queue( Graph &_g ) : g( _g ) {}
 };
 
@@ -181,6 +185,10 @@ struct BufferedQueue {
 
     void clear() { while ( !empty() ) pop(); }
 
+    bool finished() { return false; }
+    void popFinished() {}
+    Node from() { return Node(); }
+
     BufferedQueue( Graph &_g ) : g( _g ) {}
 };
 
@@ -201,30 +209,42 @@ struct Stack {
         }
     }
 
-    void checkTop() {
-        while ( !m_stack.empty() && m_stack.back().empty() ) {
-            m_stack.pop_back();
-        }
+    void clearFinished() {
+        while ( finished() )
+            popFinished();
+    }
+
+    void popFinished() {
+        assert( finished() );
+        m_stack.pop_back();
     }
 
     void pop() {
-        checkTop();
+        clearFinished();
         assert( !empty() );
         assert( !m_stack.back().empty() );
         m_stack.back() = m_stack.back().tail();
-        checkTop();
         ++ pops;
         assert( pops <= pushes );
     }
 
+    bool finished() {
+        return !m_stack.empty() && m_stack.back().empty();
+    }
+
+    Node from() {
+        assert( !m_stack.empty() );
+        return m_stack.back().from();
+    }
+
     std::pair< Node, Node > next() {
         assert( !empty() );
-        checkTop();
+        clearFinished();
         return std::make_pair( m_stack.back().from(), m_stack.back().head() );
     }
 
     bool empty() {
-        checkTop();
+        clearFinished();
         return m_stack.empty();
     }
 
