@@ -118,7 +118,6 @@ all_values_t ES_eval_dot
 dve_explicit_system_t::dve_explicit_system_t(error_vector_t & evect):
   system_t(evect), explicit_system_t(evect), dve_system_t(evect)
 {
-    m_allocator = new LegacyAllocator();
  //initialization of the data:
  aux_enabled_trans = 0; aux_enabled_trans2 = 0;
  aux_succ_container =0; max_succ_count = 0;
