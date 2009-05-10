@@ -162,7 +162,7 @@ struct TestVisitor {
                              % this->peers(),
                            this->globalId() );
                 shared.trans ++;
-                bfv.visit( unblob< Node >( this->fifo.next() ) );
+                bfv.expand( unblob< Node >( this->fifo.next() ) );
                 this->fifo.remove();
             }
         }
@@ -254,7 +254,7 @@ struct TestVisitor {
                     assert_eq( this->fifo.next().template get< int >()
                             % this->peers(), this->globalId() );
                     shared.trans ++;
-                    bfv.visit( unblob< Node >( this->fifo.next() ) );
+                    bfv.expand( unblob< Node >( this->fifo.next() ) );
                     this->fifo.remove();
                 }
             }

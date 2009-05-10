@@ -90,6 +90,12 @@ struct Common {
         return *m_seen;
     }
 
+    void expand( Node n ) {
+        if ( seen().has( n ) )
+            return;
+        visit( n );
+    }
+
     void visit( Node _initial ) {
         TransitionAction tact;
         ExpansionAction eact;
