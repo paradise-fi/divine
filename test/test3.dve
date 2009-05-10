@@ -1,0 +1,27 @@
+process P1 
+{
+  state a,b;
+  init a;
+  trans	a->b {guard true;},
+	b->b {guard true;};
+}
+
+process P2
+{
+  state a,b;
+  init a;
+  trans	a->b {guard true;},
+	b->b {guard true;};
+}
+
+process Pltl 
+{
+  state qa,qb,qc;
+  init qa;
+  accept qb;
+  trans qa->qb {guard true;},
+  	qb->qc {guard true;},
+  	qc->qc {guard true;};
+}
+
+system async property Pltl;
