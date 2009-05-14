@@ -95,8 +95,9 @@ public:
 			return *this;
 		}
 
-		std::string operator*() { return d->d_name; }
+		std::string operator*() const { return d->d_name; }
 		struct dirent* operator->() { return d; }
+		const struct dirent* operator->() const { return d; }
 
 		bool operator==(const const_iterator& iter) const
 		{
