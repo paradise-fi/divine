@@ -1,5 +1,7 @@
 #include <wibble/sys/fs.h>
+#ifdef POSIX
 #include <wibble/sys/process.h>
+#endif
 #include <wibble/string.h>
 #include <wibble/exception.h>
 #include <fstream>
@@ -10,6 +12,7 @@ namespace wibble {
 namespace sys {
 namespace fs {
 
+#ifdef POSIX
 std::auto_ptr<struct stat> stat(const std::string& pathname)
 {
 	std::auto_ptr<struct stat> res(new struct stat);
@@ -64,7 +67,7 @@ void mkFilePath(const std::string& file)
 	if (pos != std::string::npos)
 		mkpath(file.substr(0, pos));
 }
-
+#endif
 std::string readFile( const std::string &file )
 {
     std::ifstream in( file.c_str(), std::ios::binary );
@@ -81,7 +84,7 @@ std::string readFile( const std::string &file )
     in.read(buffer, length);
     return std::string( buffer, length );
 }
-
+#ifdef POSIX
 void writeFile( const std::string &file, const std::string &data )
 {
     std::ofstream out( file.c_str(), std::ios::binary );
@@ -114,7 +117,7 @@ bool Directory::valid()
 		return false;
 	return true;
 }
-
+#endif
 }
 }
 }

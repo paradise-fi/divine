@@ -1,6 +1,8 @@
 // -*- C++ -*-
 #include <unistd.h>
+#ifdef POSIX
 #include <wibble/sys/pipe.h>
+#endif
 #include <cstdio>
 
 #define RUN(x, y) x().y()
@@ -29,6 +31,7 @@ struct RunFeedback {
     virtual void waitForAck() = 0;
 };
 
+#ifdef POSIX
 struct RunAll {
     RunSuite *suites;
     int suiteCount;
@@ -78,4 +81,4 @@ struct RunAll {
         }
     }
 };
-
+#endif

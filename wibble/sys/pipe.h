@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#ifdef POSIX
 #include <fcntl.h>
 #include <sys/select.h>
 
@@ -93,5 +94,5 @@ struct Pipe {
 
 }
 }
-
+#endif
 #endif

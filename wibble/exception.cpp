@@ -27,7 +27,9 @@
 #include <sstream>
 #include <iostream>
 
+#ifdef POSIX
 #include <execinfo.h>
+#endif
 
 using namespace std;
 
@@ -36,6 +38,7 @@ namespace exception {
 
 std::vector< std::string > *AddContext::s_context = 0;
 
+#ifdef POSIX
 void DefaultUnexpected()
 {
 	try {
@@ -60,6 +63,7 @@ void DefaultUnexpected()
 		throw;
 	}
 }
+#endif
 
 InstallUnexpected::InstallUnexpected(void (*func)())
 {
@@ -79,6 +83,7 @@ System::System(const std::string& context) throw ()
 System::System(int code, const std::string& context) throw ()
 	: Generic(context), m_errno(code) {}
 
+#ifdef POSIX
 string System::desc() const throw ()
 {
 	const int buf_size = 500;
@@ -95,7 +100,14 @@ string System::desc() const throw ()
 	return string(strerror_r(m_errno, buf, buf_size));
 #endif
 }
+#endif
 
+#ifdef _WIN32
+string System::desc() const throw ()
+{
+	return strerror(m_errno);
+}
+#endif
 }
 }
 

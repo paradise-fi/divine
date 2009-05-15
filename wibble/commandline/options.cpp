@@ -45,12 +45,14 @@ bool String::toBool(const std::string& val) { return !val.empty(); }
 int String::toInt(const std::string& val) { return strtoul(val.c_str(), NULL, 10); }
 std::string String::toString(const std::string& val) { return val; }
 
+#ifdef POSIX
 std::string ExistingFile::parse(const std::string& val)
 {
 	if (access(val.c_str(), F_OK) == -1)
 		throw exception::BadOption("file " + val + " must exist");
 	return val;
 }
+#endif
 std::string ExistingFile::toString(const std::string& val) { return val; }
 
 static string fmtshort(char c, const std::string& usage)

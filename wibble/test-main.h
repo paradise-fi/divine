@@ -1,4 +1,5 @@
 // -*- C++ -*-
+#ifdef POSIX
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstring>
@@ -228,3 +229,4 @@ struct Main : RunFeedback {
 int main( int argc, char **argv ) {
     return Main().main( argc, argv );
 }
+#endif

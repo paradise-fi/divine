@@ -17,7 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
-
+#ifdef POSIX
 #include <wibble/sys/childprocess.h>
 
 #include <stdlib.h>		// EXIT_FAILURE
@@ -289,5 +289,5 @@ void ChildProcess::kill(int signal)
 
 }
 }
-
+#endif
 // vim:set ts=4 sw=4:

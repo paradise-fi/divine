@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef POSIX
 #include <wibble/exception.h>
 #include <wibble/sys/mmap.h>
 
@@ -135,5 +136,5 @@ void MMap::unmap()
 
 }
 }
-
+#endif
 // vim:set ts=4 sw=4:

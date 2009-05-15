@@ -1,6 +1,6 @@
 /* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
    (c) 2007 Enrico Zini <enrico@enricozini.org> */
-
+#ifdef POSIX
 #include <wibble/sys/process.h>
 #include <wibble/sys/childprocess.h>
 #include <wibble/sys/exec.h>
@@ -120,5 +120,5 @@ struct TestChildprocess {
     }
 
 };
-
+#endif
 // vim:set ts=4 sw=4:

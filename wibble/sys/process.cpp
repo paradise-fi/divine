@@ -17,7 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
-
+#ifdef POSIX
 #include <wibble/sys/process.h>
 
 #include <sys/types.h>		// fork, waitpid, kill, open, getpw*, getgr*, initgroups
@@ -308,5 +308,5 @@ void setOpenFilesLimit(int value) { setLimit(RLIMIT_NOFILE, value); }
 }
 }
 }
-	
+#endif
 // vim:set ts=4 sw=4:

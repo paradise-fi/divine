@@ -5,6 +5,9 @@
 #include <cstdlib>
 #include <set>
 #include <cstdio>
+#ifdef _WIN32
+#include <ctime>
+#endif
 
 using namespace std;
 
