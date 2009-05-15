@@ -1,7 +1,13 @@
 #include <wibble/log/file.h>
 #include <wibble/exception.h>
 #include <stdio.h>
+#ifdef POSIX
 #include <time.h>
+#endif
+
+#ifdef _WIN32
+#include <ctime>
+#endif
 
 namespace wibble {
 namespace log {
@@ -21,8 +27,15 @@ FileSender::~FileSender()
 void FileSender::send(Level level, const std::string& msg)
 {
 	time_t now = time(NULL);
+#ifdef POSIX
 	struct tm pnow;
 	localtime_r(&now, &pnow);
+#endif
+
+#ifdef _WIN32
+	struct tm * pnow;
+	pnow = localtime(&now);
+#endif
 	char timebuf[20];
 	/*
 	 * Strftime specifiers used here:
@@ -32,8 +45,14 @@ void FileSender::send(Level level, const std::string& msg)
 	 *			leading zero is replaced by a space. (SU)
 	 *	%T      The time in 24-hour notation (%H:%M:%S). (SU)
 	 */
+#ifdef POSIX
 	strftime(timebuf, 20, "%b %e %T", &pnow);
 	fprintf((FILE*)out, "%s: %s\n", timebuf, msg.c_str());
+#endif
+
+#ifdef _WIN32
+	fprintf((FILE*)out, "%s: %s\n",  asctime(pnow), msg.c_str());
+#endif
 	if (level >= WARN)
 		fflush((FILE*)out);
 }

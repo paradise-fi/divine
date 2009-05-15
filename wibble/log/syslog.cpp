@@ -1,3 +1,4 @@
+#ifdef POSIX
 #include <wibble/log/syslog.h>
 
 namespace wibble {
@@ -31,5 +32,5 @@ void SyslogSender::send(Level level, const std::string& msg)
 
 }
 }
-
+#endif
 // vim:set ts=4 sw=4:
