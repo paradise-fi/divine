@@ -22,7 +22,14 @@
  */
 
 #include <wibble/exception.h>
+#ifdef POSIX
 #include <pthread.h>
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
+#include <process.h>
+#endif
 #include <signal.h>
 
 namespace wibble {
@@ -68,7 +75,14 @@ namespace sys {
 class Thread
 {
 protected:
+#ifdef POSIX
 	pthread_t thread;
+#endif
+
+#ifdef _WIN32
+  unsigned int thread;
+  HANDLE hThread;
+#endif
 
 	/**
 	 * Short tag describing this thread, used in error messages and
@@ -83,7 +97,13 @@ protected:
 	virtual void* main() = 0;
 
 	/// Callback function used to start the thread
+#ifdef POSIX
 	static void* Starter(void* parm);
+#endif
+
+#ifdef _WIN32
+  static unsigned __stdcall Starter(void* parm);
+#endif
 
 	void testcancel();
 
