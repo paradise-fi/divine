@@ -26,12 +26,14 @@ namespace sys {
 
 bool Condition::wait(MutexLock& l, const struct timespec& abstime)
 {
+#ifdef POSIX
 	if (int res = pthread_cond_timedwait(&cond, &l.mutex.mutex, &abstime))
 		if (res == ETIMEDOUT)
 			return false;
 		else
 			throw wibble::exception::System(res, "waiting on a pthread condition");
 	return true;
+#endif
 }
 
 }
