@@ -86,6 +86,7 @@ libwibble_la_SOURCES = \
     exception.cpp \
     regexp.cpp \
     string.cpp \
+    test.cpp \
     tests.cpp \
     sys/fs.cpp \
     sys/lockfile.cpp \
