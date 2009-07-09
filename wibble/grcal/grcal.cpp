@@ -297,6 +297,22 @@ void fromtm(const struct tm& src, int* dst, int count)
 	dst[5] = count < 6 ? -1 : src.tm_sec;
 }
 
+void today(int* dst)
+{
+	time_t now = time(NULL);
+	struct tm t;
+	gmtime_r(&now, &t);
+	fromtm(t, dst, 3);
+}
+
+void now(int* dst)
+{
+	time_t now = time(NULL);
+	struct tm t;
+	gmtime_r(&now, &t);
+	fromtm(t, dst);
+}
+
 std::string tostring(const int* val)
 {
 	stringstream s;

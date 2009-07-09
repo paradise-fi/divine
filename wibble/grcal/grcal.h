@@ -74,6 +74,14 @@ namespace grcal {
  */
 namespace date {
 
+/**
+ * Fill in an int[6] with the UTC values for today (leaving the time of day elements to -1)
+ */
+void today(int* dst);
+
+/// Fill in an int[6] with the UTC values for now
+void now(int* dst);
+
 /// Return the number of days in a month
 int daysinmonth(int year, int month);
 
