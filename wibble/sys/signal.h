@@ -27,6 +27,23 @@ struct ProcMask
 	}
 };
 
+struct Action
+{
+	int signum;
+	struct sigaction oldact;
+
+	Action(int signum, const struct sigaction& act) : signum(signum)
+	{
+		if (sigaction(signum, &act, &oldact) < 0)
+			throw wibble::exception::System("setting signal action");
+	}
+	~Action()
+	{
+		if (sigaction(signum, &oldact, NULL) < 0)
+			throw wibble::exception::System("restoring signal action");
+	}
+};
+
 }
 }
 }

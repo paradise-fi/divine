@@ -6,33 +6,48 @@
 #include <wibble/test.h>
 
 using namespace std;
-using namespace wibble::sys::sig;
+using namespace wibble::sys;
 
-/*
- * Any ideas on how I can nicely test signal handling, since the default action
- * of a signal is to kill the process?
- *
- * Is there anything better than creating a child process and interacting with
- * it via pipes?
+static int counter;
+static void test_signal_action(int signum)
+{
+	++counter;
+}
 
 struct TestSignal {
+    Test sigAction() {
+	    struct sigaction a;
+	    a.sa_handler = test_signal_action;
+	    sigemptyset(&a.sa_mask);
+	    a.sa_flags = 0;
 
-    // Test directory iteration
-    Test directoryIterate() {
-        Directory dir("/");
+	    counter = 0;
 
-        set<string> files;
-        for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
-            files.insert(*i);
-    
-        assert(files.size() > 0);
-        assert(files.find(".") != files.end());
-        assert(files.find("..") != files.end());
-        assert(files.find("etc") != files.end());
-        assert(files.find("usr") != files.end());
-        assert(files.find("tmp") != files.end());
+	    sig::Action act(SIGUSR1, a);
+	    kill(getpid(), SIGUSR1);
+	    assert_eq(counter, 1);
+    }
+
+    Test sigProcMask() {
+	    sigset_t blocked;
+	    struct sigaction a;
+	    a.sa_handler = test_signal_action;
+	    sigemptyset(&a.sa_mask);
+	    a.sa_flags = 0;
+
+	    sigemptyset(&blocked);
+	    sigaddset(&blocked, SIGUSR1);
+
+	    counter = 0;
+
+	    sig::Action act(SIGUSR1, a);
+	    {
+		    sig::ProcMask mask(blocked);
+		    kill(getpid(), SIGUSR1);
+		    assert_eq(counter, 0);
+	    }
+	    assert_eq(counter, 1);
     }
 };
-*/
 
 // vim:set ts=4 sw=4:
