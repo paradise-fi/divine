@@ -44,6 +44,7 @@ wibblesys_HEADERS = \
     sys/childprocess.h \
     sys/exec.h \
     sys/fs.h \
+    sys/signal.h \
     sys/lockfile.h
 
 wibblelog_HEADERS = \
@@ -97,6 +98,7 @@ libwibble_la_SOURCES = \
     sys/mutex.cpp \
     sys/exec.cpp \
     sys/thread.cpp \
+    sys/signal.cpp \
     log/file.cpp \
     log/stream.cpp \
     log/ostream.cpp \
@@ -140,6 +142,7 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     sys/thread.test.h \
     sys/fs.test.h \
     sys/lockfile.test.h \
+    sys/signal.test.h \
     grcal/grcal.test.h \
     stream/posix.test.h
 
