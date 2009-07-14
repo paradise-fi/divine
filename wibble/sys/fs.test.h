@@ -67,6 +67,21 @@ struct TestFs {
         system("rm -rf test-mkpath");
     }
 
+    Test _deleteIfExists {
+	system("rm -f does-not-exist");
+	assert(!deleteIfExists("does-not-exist"));
+	system("touch does-exist");
+	assert(deleteIfExists("does-exist"));
+    }
+
+    Test _isDirectory {
+	system("rm -rf testdir");
+	assert(!isDirectory("testdir"));
+	system("touch testdir");
+	assert(!isDirectory("testdir"));
+	system("rm testdir; mkdir testdir");
+	assert(isDirectory("testdir"));
+    }
 };
 
 // vim:set ts=4 sw=4:

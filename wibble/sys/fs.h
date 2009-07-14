@@ -45,6 +45,20 @@ void mkFilePath(const std::string& file);
 std::string readFile(const std::string &file);
 void writeFile(const std::string &file, const std::string &data);
 
+/**
+ * Delete a file if it exists. If it does not exist, do nothing.
+ *
+ * @return true if the file was deleted, false if it did not exist
+ */
+bool deleteIfExists(const std::string& file);
+
+/**
+ * Returns true if the given pathname is a directory, else false.
+ *
+ * It also returns false if the pathname does not exist.
+ */
+bool isDirectory(const std::string& pathname);
+
 /// Nicely wrap access to directories
 class Directory
 {
