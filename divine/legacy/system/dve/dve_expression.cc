@@ -80,11 +80,18 @@ std::string compacted_t::to_string()
   case T_ID:
     tmpstr<<"T_ID,gid="<<get_gid() ; 
     break;
+  case T_FOREIGN_ID:
+    tmpstr<<"T_FOREIGN_ID,gid="<<get_gid() ; 
+    break;
   case T_NAT:
     tmpstr<<"T_NAT,gid="<<get_value() ; 
     break;
   case T_PARENTHESIS:
     tmpstr<<"T_PARENTHESIS,"<<l.to_string();
+    break;
+  case T_FOREIGN_SQUARE_BRACKETS:
+    tmpstr<<"T_FOREIGN_SQUARE_BRACKETS,"<<l.to_string()<<","
+	  <<r.to_string(); 
     break;
   case T_SQUARE_BRACKETS:
     tmpstr<<"T_SQUARE_BRACKETS,"<<l.to_string()<<","
@@ -174,7 +181,7 @@ void dve_expression_t::compaction()
   compacted_t c;
   int expr_op=get_operator();
   
-  if (expr_op == T_NAT || expr_op == T_DOT || expr_op == T_ID)
+  if (expr_op == T_NAT || expr_op == T_DOT || expr_op == T_ID || expr_op == T_FOREIGN_ID)
     {
       if (expr_op == T_NAT)
 	{
@@ -196,7 +203,7 @@ void dve_expression_t::compaction()
    * compaction purposes we will consider it as an expression of arity 2.
    */
 
-  if (expr_op==T_SQUARE_BRACKETS)
+  if (expr_op==T_SQUARE_BRACKETS || expr_op==T_FOREIGN_SQUARE_BRACKETS)
     {
       c.create_val(T_NAT,static_cast<all_values_t>(get_ident_gid()));
       compacted_viewer_t *tmp=c.ptr;
