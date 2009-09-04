@@ -35,7 +35,7 @@ class Exec : public ChildProcess
 protected:
 	/**
 	 * Used to run the program as a child process, if one of the
-	 * ChildProcess::fork functions is called
+	 * ChildProcess::fork functions is called. Simply calls exec()
 	 */
 	virtual int main();
 
