@@ -89,6 +89,24 @@ struct TestCommandlineEngine {
         assert_eq(engine.blinda->stringValue(), "cippo");
     }
 
+    Test noSwitchesAfterFirstArg() {
+        ArgList opts;
+        opts.push_back("-b");
+        opts.push_back("cippo");
+        opts.push_back("foobar");
+        opts.push_back("--cabal");
+        
+        Engine1 engine;
+	engine.no_switches_after_first_arg = true;
+        ArgList::iterator i = engine.parseList(opts);
+        assert(i == opts.begin());
+        assert_eq(opts.size(), 2u);
+        assert_eq(string(*opts.begin()), string("foobar"));
+        assert_eq(string(*opts.rbegin()), string("--cabal"));
+        assert_eq(engine.antani->boolValue(), false);
+        assert_eq(engine.blinda->stringValue(), "cippo");
+    }
+
     Test optsOnly() {
         ArgList opts;
         opts.push_back("-a");

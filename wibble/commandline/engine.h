@@ -100,7 +100,8 @@ protected:
 					const std::string& description = std::string(),
 					const std::string& longDescription = std::string())
 		: m_manager(mman), m_name(name), m_found_command(0), primaryAlias(name),
-			usage(usage), description(description), longDescription(longDescription), hidden(false) {}
+			usage(usage), description(description), longDescription(longDescription), hidden(false),
+			no_switches_after_first_arg(false) {}
 
 public:
 	const std::string& name() const { return m_name; }
@@ -225,6 +226,12 @@ public:
 
 	// Set to true if the engine should not be documented
 	bool hidden;
+
+	// Set to true if no switches should be parsed after the first
+	// non-switch argument, and they should be just left in the argument
+	// list
+	bool no_switches_after_first_arg;
+
 
 	friend class Parser;
 };

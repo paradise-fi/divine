@@ -123,7 +123,7 @@ std::pair<ArgList::iterator, bool> Engine::parseFirstIfKnown(ArgList& list, ArgL
 
 ArgList::iterator Engine::parseKnownSwitches(ArgList& list, ArgList::iterator begin)
 {
-	// Parse the first items, until it works
+	// Parse the first items, chopping them off the list, until it works
 	while (1)
 	{
 		if (begin == list.end())
@@ -136,7 +136,11 @@ ArgList::iterator Engine::parseKnownSwitches(ArgList& list, ArgList::iterator be
 		begin = res.first;
 	}
 
-	// Parse the next items
+	// If requested, stop here
+	if (no_switches_after_first_arg)
+		return begin;
+
+	// Parse the next items, chopping off the list only those that we know
 	for (ArgList::iterator cur = begin; cur != list.end(); )
 	{
 		// Skip non-switches
@@ -289,6 +293,10 @@ ArgList::iterator Engine::parse(ArgList& list, ArgList::iterator begin)
 			}
 			if (list.isSwitch(i))
 				throw exception::BadOption(string("unknown option ") + *i);
+			else if (no_switches_after_first_arg)
+				// If requested, stop looking for switches
+				// after the first non-switch argument
+				break;
 		}
 		m_found_command = 0;
 		return begin;
