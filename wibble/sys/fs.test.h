@@ -67,14 +67,14 @@ struct TestFs {
         system("rm -rf test-mkpath");
     }
 
-    Test _deleteIfExists {
+    Test _deleteIfExists() {
 	system("rm -f does-not-exist");
 	assert(!deleteIfExists("does-not-exist"));
 	system("touch does-exist");
 	assert(deleteIfExists("does-exist"));
     }
 
-    Test _isDirectory {
+    Test _isDirectory() {
 	system("rm -rf testdir");
 	assert(!isDirectory("testdir"));
 	system("touch testdir");
