@@ -25,7 +25,9 @@
 
 #include <tools/combine.h>
 
+#ifdef POSIX
 #include <sys/resource.h>
+#endif
 
 using namespace divine;
 using namespace wibble;
@@ -113,8 +115,10 @@ struct Main {
     void setupSignals()
     {
         for ( int i = 0; i <= 32; ++i ) {
+#ifdef POSIX
             if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG )
                 continue;
+#endif
             signal( i, handler );
         }
     }
@@ -216,6 +220,7 @@ struct Main {
             if ( o_mem->intValue() < 16 ) {
                 die( "FATAL: we really need at least 16M of memory" );
             }
+#ifdef POSIX
             struct rlimit limit;
             limit.rlim_cur = limit.rlim_max = o_mem->intValue() * 1024 * 1024;
             if (setrlimit( RLIMIT_AS, &limit ) != 0) {
@@ -224,6 +229,10 @@ struct Main {
                           << o_mem->intValue() << "MB. System said: "
                           << strerror(err) << std::endl;
             }
+#else
+            std::cerr << "WARNING: Setting memory limit not supported "
+                      << "on this platform."  << std::endl;
+#endif
         }
 
         if ( o_trail->stringValue() == "" ) {
