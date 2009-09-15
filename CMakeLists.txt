@@ -87,7 +87,7 @@ endif( NOT TMPL_SIZEOF_WORKS )
 find_program( SHA1SUM sha1sum )
 
 if( NOT SHA1SUM )
-  message( FATAL_ERROR "I need a working sha1sum program for the build. Please install one or supply me with a path to one. Thank you." )
+  message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
 endif( NOT SHA1SUM )
 
 add_custom_target( check )
