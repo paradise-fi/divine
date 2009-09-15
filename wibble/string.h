@@ -31,6 +31,10 @@
 #include <vector>
 #include <sstream>
 #include <cctype>
+#ifdef _WIN32
+#include <cstring>
+#include <cstdlib>
+#endif
 
 namespace wibble {
 namespace str {
@@ -55,6 +59,10 @@ inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
     }
     return o << " ]";
 }
+
+#ifdef _WIN32
+static int vasprintf (char **, const char *, va_list);
+#endif
 
 static inline std::string fmt( std::string f, ... ) {
     char *c;
