@@ -28,12 +28,14 @@
 //    long tv_usec;  /* microseconds */
 //};
 
-struct timezone {
-    int tz_minuteswest; /* minutes W of Greenwich */
-    int tz_dsttime;     /* type of dst correction */
-};
+//already defined in sys/time.h
+//struct timezone {
+//    int tz_minuteswest; /* minutes W of Greenwich */
+//    int tz_dsttime;     /* type of dst correction */
+//};
 
-__inline int gettimeofday(struct timeval *tv, struct timezone *tz)
+//had to rename it, was in conflict with mingw
+__inline int w32gettimeofday(struct timeval *tv, struct timezone *tz)
 {
     FILETIME        ft;
     LARGE_INTEGER   li;
