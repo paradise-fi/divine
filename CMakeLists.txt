@@ -24,6 +24,12 @@ option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
 
+if( WINDOWS )
+add_definitions( -D_WIN32 )
+else( WINDOWS )
+add_definitions( -DPOSIX )
+endif( WINDOWS )
+
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
   link_libraries( "gcov" )
