@@ -96,7 +96,7 @@ struct Report : wibble::sys::Thread
         while ( true ) {
 #ifdef POSIX
             sleep( 1 );
-#elifdef _WIN32
+#elif defined(_WIN32)
 	    Sleep( 1 );
 #endif
             if ( m_finished )
