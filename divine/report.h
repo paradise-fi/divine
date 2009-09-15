@@ -11,8 +11,21 @@
 
 #include <signal.h>
 #include <time.h>
+
+#ifdef POSIX
 #include <sys/resource.h>
 #include <sys/time.h>
+#endif
+
+#ifdef _WIN32
+#include <psapi.h>
+#include <setupapi.h>
+
+#define CPU_REG_KEY    HKEY_LOCAL_MACHINE
+#define CPU_REG_SUBKEY "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"
+#define CPU_SPEED      "~MHz"
+#define CPU_NAME       "ProcessorNameString"
+#endif
 
 #ifndef DIVINE_REPORT_H
 #define DIVINE_REPORT_H
@@ -39,8 +52,17 @@ std::ostream &operator<<( std::ostream &o, Result::R v )
 struct Report : wibble::sys::Thread
 {
     Config &config;
+#ifdef POSIX
     struct timeval tv;
     struct rusage usage;
+#endif
+
+#ifdef _WIN32
+    HANDLE hProcess;
+    FILETIME ftCreation, ftExit, ftKernel, ftUser;
+    SYSTEMTIME stStart, stFinish, stKernel, stUser;
+    unsigned __int64 dwSpeed;
+#endif
     Result res;
 
     int sig;
@@ -51,15 +73,32 @@ struct Report : wibble::sys::Thread
                           sig( 0 ),
                           m_finished( false )
     {
+#ifdef POSIX
         gettimeofday(&tv, NULL);
-        // getrusage( RUSAGE_SELF, &usage );
+#endif
+
+#ifdef _WIN32
+	hProcess = GetCurrentProcess();
+        GetLocalTime(&stStart);
+#endif
     }
+
+#ifdef _WIN32
+    ~Report()
+    {
+	CloseHandle(hProcess);
+    }
+#endif
 
     void *main() {
         if ( !config.report() )
             return 0;
         while ( true ) {
+#ifdef POSIX
             sleep( 1 );
+#elifdef _WIN32
+	    Sleep( 1 );
+#endif
             if ( m_finished )
                 return 0;
         }
@@ -82,35 +121,86 @@ struct Report : wibble::sys::Thread
         return r;
     }
 
+#ifdef POSIX
     double userTime() {
         return interval( zeroTime(), usage.ru_utime );
     }
 
     double systemTime() {
-        return interval( zeroTime(), usage.ru_stime );
+	return interval( zeroTime(), usage.ru_stime );
     }
 
     double interval( struct timeval from, struct timeval to ) {
         return to.tv_sec - from.tv_sec +
             double(to.tv_usec - from.tv_usec) / 1000000;
     }
+#endif
+
+#ifdef _WIN32
+    double SystemTimeToDouble(SYSTEMTIME &time)
+    {
+      return (double)(time.wHour * 3600 + time.wMinute * 60 +
+		      time.wSecond + (double)(time.wMilliseconds) / 1000);
+    }
+#endif
 
     int vmSize() {
         int vmsz = 0;
+#ifdef __linux
         std::stringstream file;
         file << "/proc/" << uint64_t( getpid() ) << "/status";
         wibble::ERegexp r( "VmPeak:[\t ]*([0-9]+)", 2 );
         if ( matchLine( file.str(), r ) ) {
             vmsz = atoi( r[1].c_str() );
         }
+#endif
+  
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (hProcess != NULL && GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
+      vmsz = pmc.PeakWorkingSetSize/(1024);
+#endif
         return vmsz;
     }
 
     std::string architecture() {
+#ifdef __linux
         wibble::ERegexp r( "model name[\t ]*: (.+)", 2 );
         if ( matchLine( "/proc/cpuinfo", r ) )
             return r[1];
-        return "";
+        return "Unknown";
+#endif
+
+#ifdef _WIN32
+      HKEY hKey;
+      DWORD dwType;
+      DWORD dwSize;
+      LONG ret = RegOpenKeyEx(CPU_REG_KEY, CPU_REG_SUBKEY, 0, KEY_READ, &hKey);
+
+      // key could not be opened
+      if(ret != ERROR_SUCCESS)
+          return "Unknown";
+
+      // get CPU name
+      dwSize = 0;
+      ret = RegQueryValueEx(hKey, CPU_NAME, NULL, &dwType, NULL, &dwSize);
+      LPTSTR name;
+      name = new TCHAR[dwSize];
+      ret = RegQueryValueEx(hKey, CPU_NAME, NULL, &dwType, (LPBYTE)name, &dwSize);
+
+      if(ret != ERROR_SUCCESS)
+      {
+	RegCloseKey(hKey);
+	return "Unknown";
+      }
+
+      RegCloseKey(hKey);
+      std::string result( name );
+      delete[] name;
+      return result;
+#endif
+
+      return "Unknown";
     }
 
     bool matchLine( std::string file, wibble::ERegexp &r ) {
@@ -145,9 +235,11 @@ struct Report : wibble::sys::Thread
         if ( !config.report() )
             return;
 
+#ifdef POSIX
         struct timeval now;
         gettimeofday(&now, NULL);
         getrusage( RUSAGE_SELF, &usage );
+#endif
 
         config.dump( o );
         o << std::endl;
@@ -157,11 +249,13 @@ struct Report : wibble::sys::Thread
         o << "Architecture: " << architecture() << std::endl;
         o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
+#ifdef POSIX
         o << "User-Time: " << userTime() << std::endl;
         o << "System-Time: " << systemTime() << std::endl;
         o << "Wall-Time: " << interval( tv, now ) << std::endl;
         o << "Memory-Used: " << vmSize() << std::endl;
         o << "Termination-Signal: " << sig << std::endl;
+#endif
         o << std::endl;
         o << "Full-State-Space: " << res.fullyExplored << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
