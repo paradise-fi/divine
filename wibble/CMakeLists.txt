@@ -33,7 +33,7 @@ add_definitions( ${OPT_FLAGS} )
 add_library( wibble STATIC ${WSRC} )
 
 if( WINDOWS )
-target_link_libraries( wibble pthread wsock32 psapi )
+target_link_libraries( wibble wsock32 psapi regex )
 else( WINDOWS )
 target_link_libraries( wibble pthread )
 endif( WINDOWS )
