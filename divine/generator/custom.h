@@ -2,7 +2,9 @@
 
 #include <divine/generator/common.h>
 
+#ifdef POSIX
 #include <dlfcn.h>
+#endif
 
 #ifndef DIVINE_GENERATOR_CUSTOM_H
 #define DIVINE_GENERATOR_CUSTOM_H
@@ -102,6 +104,9 @@ struct Custom : Common {
     }
 
     void read( std::string path ) {
+#ifdef _WIN32
+        assert_die();
+#else
         dl.handle = dlopen( path.c_str(), RTLD_LAZY );
 
         assert( dl.handle );
@@ -123,6 +128,7 @@ struct Custom : Common {
 
         std::cerr << path << " loaded [state size = "
                   << dl.size << "]..." << std::endl;
+#endif
     }
 
     bool isDeadlock( Node s ) { return false; } // XXX
