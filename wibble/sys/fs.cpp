@@ -118,6 +118,14 @@ bool Directory::valid()
 	return true;
 }
 #endif
+
+#ifdef _WIN32
+bool access(const std::string &s, int m)
+{
+	return 1; /* FIXME */
+}
+#endif
+
 }
 }
 }
