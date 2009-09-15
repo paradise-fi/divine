@@ -47,7 +47,9 @@ if( NOT POOLS )
   add_definitions( "-DDISABLE_POOLS" )
 endif( NOT POOLS )
 
+if( NOT WINDOWS )
 include( FindMPI )
+endif( NOT WINDOWS )
 
 if( MPI AND MPI_FOUND )
   add_definitions( "-DHAVE_MPI" )
