@@ -50,7 +50,7 @@ void vminfo_t::print()
 
 void vminfo_t::scan()
 {
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
   char line[1000];
   FILE *statusfile;
   if ((statusfile = fopen (filename,"r")) == NULL) {
@@ -272,7 +272,13 @@ long timeprofiler_t::get_global_time()
 int loadinfo_t::getload()
 {
   double result;
+#if defined(__linux)
   getloadavg(&result,1);
+#endif
+
+#if defined(_WIN32)
+  result = 0.0;
+#endif 
   return static_cast<int>(100*result);
 }
 

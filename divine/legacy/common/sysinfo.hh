@@ -8,7 +8,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#if defined (__linux)
 #include <sys/resource.h>
+#endif
 #ifdef __APPLE__
 #include <mach/task.h>
 #include <mach/mach_init.h>

@@ -88,7 +88,13 @@
 //  #define YY_DECL int lexer_flex(void)
 //  #define yylex lexer_flex
   #define YY_DECL static yyFlexLexer mylexer;
+#if defined(__linux)
   #define YYINITDEPTH 30000
+#endif
+
+#if defined(_WIN32)
+  #define YYINITDEPTH 10000
+#endif
   #define YYMAXDEPTH 30000
   #ifdef yylex
    #undef yylex
