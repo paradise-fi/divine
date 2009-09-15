@@ -1,5 +1,11 @@
 include_directories( ${DIVINE_INCLUDES} )
-link_libraries( libdivine wibble pthread )
+
+link_libraries( libdivine wibble )
+
+if( NOT WINDOWS )
+link_libraries( libdivine pthread )
+endif( NOT WINDOWS )
+
 if( HOARD )
 link_libraries( hoard )
 endif( HOARD )
