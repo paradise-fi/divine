@@ -201,8 +201,10 @@ public:
         }
 
         void checkYield() {
+#ifdef POSIX
             if ( yield )
                 sched_yield();
+#endif
         }
 
 	friend class Condition;
