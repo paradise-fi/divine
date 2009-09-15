@@ -13,8 +13,10 @@
 #include <divine/ltl2ba/formul.hh>
 #include <divine/ltl2ba/support_dve.hh>
 
+#ifdef POSIX
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
 
 #include "tools/combine.m4.h"
 
@@ -68,6 +70,9 @@ struct PipeThrough
     }
 
     std::string run( std::string data ) {
+#ifdef _WIN32
+        assert_die();
+#else
         int socks_in[2], socks_out[2];
         if ( socketpair( PF_UNIX, SOCK_STREAM, 0, socks_in ) )
             throw wibble::exception::System( "creating socket pair" );
@@ -99,6 +104,7 @@ struct PipeThrough
             return ret;
         }
         throw wibble::exception::System( "fork failed" );
+#endif
     }
 };
 
