@@ -23,6 +23,10 @@ file( GLOB testh *.test.h commandline/*.test.h sys/*.test.h
 
 set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} ${WSRC_GRCAL} ${WSRC_STREAM})
 
+# on some mingw32, regex.h is not on the default include path
+find_path( RX_PATH regex.h )
+include_directories( ${RX_PATH} )
+
 # libwibble.a
 if( NOT WINDOWS )
 set_source_files_properties( ${WSRC} COMPILE_FLAGS -fPIC )
