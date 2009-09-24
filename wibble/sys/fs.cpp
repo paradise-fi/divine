@@ -84,7 +84,7 @@ std::string readFile( const std::string &file )
     in.read(buffer, length);
     return std::string( buffer, length );
 }
-#ifdef POSIX
+
 void writeFile( const std::string &file, const std::string &data )
 {
     std::ofstream out( file.c_str(), std::ios::binary );
@@ -93,6 +93,7 @@ void writeFile( const std::string &file, const std::string &data )
     out << data;
 }
 
+#ifdef POSIX
 Directory::const_iterator Directory::begin()
 {
 	DIR* dir = opendir(m_path.c_str());
