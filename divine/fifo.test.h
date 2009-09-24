@@ -27,7 +27,9 @@ struct TestFifo {
                     ++ x[ i % n ];
                     fifo.pop();
                 }
+#ifdef POSIX
                 sched_yield();
+#endif
                 if ( terminate > 1 )
                     break;
                 if ( terminate )
