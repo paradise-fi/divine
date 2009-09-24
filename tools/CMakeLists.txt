@@ -30,13 +30,16 @@ set( NIPS_ASM "${CMAKE_CURRENT_SOURCE_DIR}/compile-pml.pl" )
 add_executable( divine divine.cpp combine.h ${COMBINE_M4_H} )
 add_executable( divine.simulate simulator.cpp )
 
-add_executable( divine.probabilistic probabilistic.cpp )
-target_link_libraries( divine.probabilistic lpsolve )
-
 install( TARGETS divine
                  divine.simulate
-                 divine.probabilistic
          DESTINATION bin )
+
+if( NOT WINDOWS )
+# This code uses raw pthreads, so no-go on win32.
+add_executable( divine.probabilistic probabilistic.cpp )
+target_link_libraries( divine.probabilistic lpsolve )
+install( TARGETS divine.probabilistic DESTINATION bin )
+endif( NOT WINDOWS )
 
 install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION bin)
 
