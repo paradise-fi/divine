@@ -2,7 +2,7 @@
 
 #include <wibble/sys/thread.h>
 #include <divine/barrier.h>
-#include <stdlib.h> // for random
+#include <stdlib.h> // for rand
 
 using namespace divine;
 
@@ -25,7 +25,7 @@ struct TestBarrier {
             owner->barrier.started( this );
             while ( true ) {
                 // std::cerr << "thread " << this << " iteration " << i << std::endl;
-                owner->threads[ random() % owner->count ].i ++;
+                owner->threads[ rand() % owner->count ].i ++;
                 if ( i % 3 == 1 ) {
                     busy = false;
                     if ( owner->barrier.idle( this ) )
