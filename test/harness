@@ -14,7 +14,11 @@ eval "\$@"
 EOF
 chmod +x $1/ssh
 
-PATH="$1:$PATH"
+p="$1"
+shift
+
+p1=`echo -n "$p" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
+PATH="$p:$p1:$PATH"
 shift
 
 export MPIEXEC="$1"
