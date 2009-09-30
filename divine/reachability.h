@@ -65,6 +65,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         Node goal;
         Statistics< G > stats;
         G g;
+        CeShared< Node > ce;
     } shared;
 
     Domain< Reachability< G > > &domain() {
@@ -122,7 +123,6 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
 
     void _counterexample() {
         ce.setup( shared.g, shared );
-        ce.setFrom( shared.goal );
         ce._parentTrace( *this, hasher, equal, table() );
     }
 
@@ -131,7 +131,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
                   << std::endl << std::endl
                   << shared.g.showNode( n ) << std::endl;
 
-        shared.goal = n;
+        shared.ce.initial = n;
 
         std::cerr << std::endl << "===== Trace to initial ====="
                   << std::endl << std::endl;

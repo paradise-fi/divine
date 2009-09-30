@@ -121,49 +121,34 @@ struct Algorithm
     }
 };
 
-template< typename G, typename Ext >
-struct ParentGraph {
-    typedef typename G::Node Node;
-    Node _initial;
+template< typename Node >
+struct CeShared {
+    Node initial;
+    Node current;
+    bool current_updated;
+    template< typename I >
+    I read( I i ) {
+        FakePool fp;
 
-    struct Successors {
-        Node _from;
-        bool empty() {
-            if ( !_from.valid() )
-                return true;
-            if ( !_from.template get< Ext >().parent.valid() )
-                return true;
-            return false;
-        }
-
-        Node from() { return _from; }
-
-        Successors tail() {
-            Successors s;
-            s._from = Blob();
-            return s;
-        }
-
-        Node head() {
-            return _from.template get< Ext >().parent;
-        }
-    };
-
-    Node initial() {
-        return _initial;
+        if ( *i++ )
+            i = initial.read32( &fp, i );
+        if ( *i++ )
+            i = current.read32( &fp, i );
+        current_updated = *i++;
+        return i;
     }
 
-    void setInitial( Node n ) { _initial = n; }
-
-    Successors successors( Node n ) {
-        Successors s;
-        s._from = n;
-        return s;
+    template< typename O >
+    O write( O o ) {
+        *o++ = initial.valid();
+        if ( initial.valid() )
+            o = initial.write32( o );
+        *o++ = current.valid();
+        if ( current.valid() )
+            o = current.write32( o );
+        *o++ = current_updated;
+        return o;
     }
-
-    void release( Node ) {}
-
-    ParentGraph( Node ini ) : _initial( ini ) {}
 };
 
 template< typename G, typename Shared, typename Extension >
@@ -173,20 +158,23 @@ struct LtlCE {
 
     G *_g;
     Shared *_shared;
-    Node ce_node;
 
     G &g() { assert( _g ); return *_g; }
     Shared &shared() { assert( _shared ); return *_shared; }
 
     LtlCE() : _g( 0 ), _shared( 0 ) {}
 
+    // XXX duplicated from visitor
+    template< typename Hash, typename Worker >
+    int owner( Hash &hash, Worker &worker, Node n ) const {
+        return hash( n ) % worker.peers();
+    }
+
     void setup( G &g, Shared &s )
     {
         _g = &g;
         _shared = &s;
     }
-
-    void setFrom( Node n ) { ce_node = n; }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -202,35 +190,17 @@ struct LtlCE {
     // -- Parent trace extraction
     // --
 
-    visitor::ExpansionAction traceExpansion( Node n ) {
-        std::cerr << g().showNode( n ) << std::endl;
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction traceTransition( Node, Node to ) {
-        return visitor::FollowTransition;
-    }
-
     template< typename Worker, typename Hasher, typename Equal, typename Table >
     void _parentTrace( Worker &w, Hasher &h, Equal &eq, Table &t ) {
-        typedef ParentGraph< G, Extension > PG;
-        typedef visitor::Setup< PG, Us, Algorithm::Table,
-            &Us::traceTransition,
-            &Us::traceExpansion > VisitorSetup;
-
-        Algorithm::Table table( h, divine::valid< Node >(), eq );
-        assert( ce_node.valid() );
-        PG pg( ce_node );
-        visitor::Parallel< VisitorSetup, Worker, Hasher >
-            vis( pg, w, *this, h, &table );
-
-        if ( vis.owner( ce_node ) == w.globalId() ) {
-            ce_node = t.get( ce_node ).key;
-            assert( ce_node.valid() );
-            pg.setInitial( ce_node );
-            vis.queue( Blob(), ce_node );
+        if ( shared().ce.current_updated )
+            return;
+        if ( owner( h, w, shared().ce.current ) == w.globalId() ) {
+            Node n = t.get( shared().ce.current ).key;
+            assert( n.valid() );
+            shared().ce.current = extension( n ).parent;
+            shared().ce.current_updated = true;
         }
-        vis.processQueue();
+        vis.visit();
     }
 
     // -------------------------------------
@@ -242,7 +212,7 @@ struct LtlCE {
     }
 
     visitor::TransitionAction cycleTransition( Node from, Node to ) {
-        if ( from.valid() && to == ce_node ) {
+        if ( from.valid() && to == shared().ce.initial ) {
             extension( to ).parent = from;
             return visitor::TerminateOnTransition;
         }
@@ -261,10 +231,10 @@ struct LtlCE {
         typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
 
         Visitor visitor( g(), w, *this, h, &t );
-        assert( ce_node.valid() );
-        if ( visitor.owner( ce_node ) == w.globalId() ) {
-            ce_node = t.get( ce_node ).key;
-            visitor.queue( Blob(), ce_node );
+        assert( shared().ce.initial.valid() );
+        if ( visitor.owner( shared().ce.initial ) == w.globalId() ) {
+            shared().ce.initial = t.get( shared().ce.initial ).key;
+            visitor.queue( Blob(), shared().ce.initial );
         }
         visitor.processQueue();
     }
@@ -274,19 +244,30 @@ struct LtlCE {
     // --
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg ) {
+    void parentTrace( Domain &d, Alg a, Node stop, bool cycle = 0 ) {
+        shared().ce.current = shared().ce.initial;
+        do {
+            shared().ce.current_updated = false;
+            std::cerr << g().showNode( shared().ce.current ) << std::endl;
+            d.parallel().runInRing( shared(), &Alg::_parentTrace );
+            assert( shared().ce.current_updated );
+        } while ( !a.equal( shared().ce.current, stop ) );
+        if ( !cycle )
+            std::cerr << g().showNode( shared().ce.current ) << std::endl;
+    }
+
+    template< typename Domain, typename Alg >
+    void lasso( Domain &d, Alg a ) {
         std::cerr << std::endl << "===== Trace to initial ====="
                   << std::endl << std::endl;
-        ++ shared().iteration;
-        d.parallel().run( shared(), &Alg::_parentTrace );
+        parentTrace( d, a, g().initial(), false );
 
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
         std::cerr << std::endl << "===== The cycle ====="
                   << std::endl << std::endl;
-        ++ shared().iteration;
-        d.parallel().run( shared(), &Alg::_parentTrace );
+        parentTrace( d, a, shared().ce.initial, true );
     }
 
 };

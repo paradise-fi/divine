@@ -53,6 +53,7 @@ struct _MpiId< Owcty< G > >
         *o++ = s.cycle_node.valid();
         if ( s.cycle_node.valid() )
             o = s.cycle_node.write32( o );
+        o = s.ce.write( o );
     }
 
     template< typename I >
@@ -66,6 +67,7 @@ struct _MpiId< Owcty< G > >
             FakePool fp;
             i = s.cycle_node.read32( &fp, i );
         }
+        i = s.ce.read( i );
         return i;
     }
 };
@@ -85,6 +87,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         bool cycle_found;
         int iteration;
         G g;
+        CeShared< Node > ce;
     } shared;
 
     struct Extension {
@@ -375,8 +378,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     void _parentTrace() {
-        ce.setup( shared.g, shared );
-        ce.setFrom( shared.cycle_node );
+        ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
         ce._parentTrace( *this, hasher, equal, table() );
     }
 
@@ -391,7 +393,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                 shared, &Owcty< G >::_counterexample );
         }
 
-        shared.cycle_node = cycleNode();
+        shared.ce.initial = cycleNode();
         assert( cycleFound() );
 
         ce.setup( shared.g, shared );

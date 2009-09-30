@@ -14,8 +14,8 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     struct Shared {
         int expanded, eliminated, accepting;
         int iteration;
-        Blob cycle_node;
         G g;
+        CeShared< Node > ce;
     } shared;
 
     struct Extension {
@@ -40,8 +40,8 @@ struct Map : Algorithm, DomainWorker< Map< G > >
 
     Node cycleNode() {
         for ( int i = 0; i < domain().peers(); ++i ) {
-            if ( domain().shared( i ).cycle_node.valid() )
-                return domain().shared( i ).cycle_node;
+            if ( domain().shared( i ).ce.initial.valid() )
+                return domain().shared( i ).ce.initial;
         }
         return Node();
     }
@@ -65,7 +65,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             }
             if ( extension( st ).id == extension( st ).map ) {
                 // found accepting cycle
-                shared.cycle_node = st;
+                shared.ce.initial = st;
                 return visitor::TerminateOnState;
             }
         }
@@ -157,7 +157,6 @@ struct Map : Algorithm, DomainWorker< Map< G > >
 
     void _parentTrace() {
         ce.setup( shared.g, shared );
-        ce.setFrom( shared.cycle_node );
         ce._parentTrace( *this, hasher, equal, table() );
     }
 
@@ -198,7 +197,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         if ( !valid && want_ce ) {
             std::cerr << " generating counterexample..." << std::endl;
             assert( cycleNode().valid() );
-            shared.cycle_node = cycleNode();
+            shared.ce.initial = cycleNode();
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
         }
