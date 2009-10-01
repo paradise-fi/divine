@@ -30,7 +30,7 @@
 #endif
 
 
-struct Keyword { char *name; int token; };
+struct Keyword { const char *name; int token; };
 /* maximum key range = 40, duplicates = 0 */
 
 class Keywords
