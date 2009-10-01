@@ -69,6 +69,10 @@ struct Config {
     std::string m_trailFile;
     std::ostream *m_trailStream;
 
+    std::ostream &ceStream() {
+        return std::cerr;
+    }
+
     std::ostream &trailStream() {
         if ( !m_trailStream ) {
             m_trailStream = new std::ofstream( m_trailFile.c_str() );

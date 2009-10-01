@@ -78,6 +78,11 @@ struct Algorithm
 
     bool want_ce;
 
+    Config &config() {
+        assert( m_config );
+        return *m_config;
+    }
+
     Table &table() {
         if ( !m_table )
             m_table = new Table( hasher, divine::valid< Node >(), equal );
@@ -244,28 +249,30 @@ struct LtlCE {
 
     template< typename Domain, typename Alg >
     void parentTrace( Domain &d, Alg a, Node stop, bool cycle = 0 ) {
+        std::ostream &out = a.config().ceStream();
         shared().ce.current = shared().ce.initial;
         do {
             shared().ce.current_updated = false;
-            std::cerr << g().showNode( shared().ce.current ) << std::endl;
+            out << g().showNode( shared().ce.current ) << std::endl;
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
         } while ( !a.equal( shared().ce.current, stop ) );
         if ( !cycle )
-            std::cerr << g().showNode( shared().ce.current ) << std::endl;
+            out << g().showNode( shared().ce.current ) << std::endl;
     }
 
     template< typename Domain, typename Alg >
     void lasso( Domain &d, Alg a ) {
-        std::cerr << std::endl << "===== Trace to initial ====="
-                  << std::endl << std::endl;
+        std::ostream &out = a.config().ceStream();
+        out << std::endl << "===== Trace to initial ====="
+            << std::endl << std::endl;
         parentTrace( d, a, g().initial(), false );
 
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        std::cerr << std::endl << "===== The cycle ====="
-                  << std::endl << std::endl;
+        out << std::endl << "===== The cycle ====="
+            << std::endl << std::endl;
         parentTrace( d, a, shared().ce.initial, true );
     }
 
