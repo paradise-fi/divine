@@ -200,7 +200,6 @@ struct LtlCE {
             shared().ce.current = extension( n ).parent;
             shared().ce.current_updated = true;
         }
-        vis.visit();
     }
 
     // -------------------------------------
