@@ -104,16 +104,25 @@ struct Report : wibble::sys::Thread
         }
     }
 
+    void stop() {
+        try {
+            cancel();
+            join();
+        } catch (...) {} // hopefully nothing fatal...
+    }
+
     void signal( int s ) 
     {
         m_finished = false;
         sig = s;
+        stop();
     }
 
     void finished( Result r ) 
     {
         m_finished = true;
         res = r;
+        stop();
     }
 
     struct timeval zeroTime() {
