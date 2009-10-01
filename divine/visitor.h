@@ -26,6 +26,7 @@ enum TransitionAction { ExpandTransition, // force expansion on the target state
                                           // NOT FREED
                         TerminateOnTransition
 };
+
 enum ExpansionAction { ExpandState, TerminateOnState };
 
 template< typename T >
@@ -57,6 +58,7 @@ struct Setup {
     typedef N Notify;
     typedef S Seen;
     typedef typename Graph::Node Node;
+
     static TransitionAction transition( Notify &n, Node a, Node b ) {
         return (n.*tr)( a, b );
     }
@@ -93,10 +95,10 @@ struct Common {
     void expand( Node n ) {
         if ( seen().has( n ) )
             return;
-        visit( n );
+        exploreFrom( n );
     }
 
-    void visit( Node _initial ) {
+    void exploreFrom( Node _initial ) {
         TransitionAction tact;
         ExpansionAction eact;
 
@@ -107,10 +109,10 @@ struct Common {
         if ( S::expansion( m_notify, initial ) == ExpandState )
             m_queue.pushSuccessors( initial );
 
-        visit();
+        processQueue();
     }
 
-    void visit() {
+    void processQueue() {
         while ( true ) {
             while ( m_queue.finished() ) {
                 S::finished( m_notify, m_queue.from() );
@@ -120,11 +122,11 @@ struct Common {
                 return;
             std::pair< Node, Node > c = m_queue.next();
             m_queue.pop();
-            visit( c.first, c.second );
+            edge( c.first, c.second );
         }
     }
 
-    void visit( Node from, Node _to ) {
+    void edge( Node from, Node _to ) {
         TransitionAction tact;
         ExpansionAction eact = ExpandState;
 
@@ -246,8 +248,8 @@ struct Parallel {
                 t = worker.fifo.next( true );
                 worker.fifo.remove();
 
-                bfv.visit( unblob< Node >( f ), unblob< Node >( t ) );
-                bfv.visit();
+                bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                bfv.processQueue();
             }
         }
     }
@@ -266,18 +268,17 @@ struct Parallel {
         }
     };
 
-    void visit( Node initial ) {
+    void exploreFrom( Node initial ) {
         BFV< Ours > bfv( graph, *this, m_seen );
-        if ( bfv.seen().valid( initial ) &&
-             owner( initial ) == worker.globalId() ) {
-            bfv.visit( unblob< Node >( initial ) );
+        if ( owner( initial ) == worker.globalId() ) {
+            bfv.exploreFrom( unblob< Node >( initial ) );
         }
         run( bfv );
     }
 
-    void visit() {
-        // assert( !seen().valid( Node() ) );
-        return visit( Node() ); // assuming Node().valid() == false
+    void processQueue() {
+        BFV< Ours > bfv( graph, *this, m_seen );
+        run( bfv );
     }
 
     Parallel( typename S::Graph &g, Worker &w,

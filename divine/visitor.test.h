@@ -108,11 +108,11 @@ struct TestVisitor {
         typedef visitor::Setup< NMTree, C > CheckSetup;
 
         visitor::BFV< CheckSetup > bfv( g, c1 );
-        bfv.visit( 1 );
+        bfv.exploreFrom( 1 );
         checkNMTreeMetric( n, m, c1.nodes, c1.transitions );
 
         visitor::DFV< CheckSetup > dfv( g, c2 );
-        dfv.visit( 1 );
+        dfv.exploreFrom( 1 );
         checkNMTreeMetric( n, m, c2.nodes, c2.transitions );
     }
 
@@ -153,7 +153,7 @@ struct TestVisitor {
             typedef visitor::Setup< G, ParVisitor< G > > VisitorSetup;
             visitor::BFV< VisitorSetup > bfv( shared.g, *this );
             if ( shared.initial % this->peers() == this->globalId() ) {
-                bfv.visit( shared.initial );
+                bfv.exploreFrom( shared.initial );
             }
             while ( shared.seen != shared.n / this->peers() ) {
                 if ( this->fifo.empty() )
@@ -244,7 +244,7 @@ struct TestVisitor {
             typedef visitor::Setup< G, TermParVisitor< G > > VisitorSetup;
             visitor::BFV<  VisitorSetup > bfv( shared.g, *this );
             if ( owner( shared.initial ) == this->globalId() ) {
-                bfv.visit( unblob< Node >( shared.initial ) );
+                bfv.exploreFrom( unblob< Node >( shared.initial ) );
             }
             while ( true ) {
                 if ( this->fifo.empty() ) {
@@ -422,7 +422,7 @@ struct TestVisitor {
             typedef visitor::Setup< G, SimpleParReach< G > > VisitorSetup;
             visitor::Parallel< VisitorSetup, SimpleParReach< G > >
                 vis( shared.g, *this, *this );
-            vis.visit( shared.initial );
+            vis.exploreFrom( shared.initial );
         }
 
         void visit( Node initial ) {

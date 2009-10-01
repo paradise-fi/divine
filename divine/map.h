@@ -138,7 +138,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         if ( visitor.owner( shared.g.initial() ) == this->globalId() )
             visitor.queue( Blob(), shared.g.initial() );
-        visitor.visit();
+        visitor.processQueue();
 
         for ( size_t i = 0; i < table().size(); ++i ) {
             Node st = table()[ i ].key;

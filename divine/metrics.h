@@ -141,7 +141,7 @@ struct Metrics : DomainWorker< Metrics< G > >
         typedef visitor::Setup< G, Metrics< G >, Table > VisitorSetup;
         visitor::Parallel< VisitorSetup, Metrics< G >, Hasher >
             vis( shared.g, *this, *this, hasher, new Table( hasher ) );
-        vis.visit( shared.g.initial() );
+        vis.exploreFrom( shared.g.initial() );
     }
 
     Metrics( Config *c = 0 )

@@ -40,13 +40,13 @@ struct NestedDFS : Algorithm
         typedef visitor::Setup< G, NestedDFS< G >, Table,
             &NestedDFS< G >::innerTransition > Setup;
         visitor::DFV< Setup > inner( g, *this, &table() );
-        inner.visit( n );
+        inner.exploreFrom( n );
     }
 
     Result run() {
         std::cerr << " searching...\t\t\t" << std::flush;
         visitor::DFV< OuterVisit > visitor( g, *this, &table() );
-        visitor.visit( g.initial() );
+        visitor.exploreFrom( g.initial() );
 
         std::cerr << "done" << std::endl;
         livenessBanner( valid );

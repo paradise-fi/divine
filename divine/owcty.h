@@ -201,7 +201,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor, true );
-        visitor.visit();
+        visitor.processQueue();
     }
 
     void reachability() {
@@ -261,7 +261,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
-        visitor.visit( shared.g.initial() );
+        visitor.exploreFrom( shared.g.initial() );
     }
 
     void initialise() {
@@ -307,7 +307,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
         queueAll( visitor );
-        visitor.visit();
+        visitor.processQueue();
     }
 
     void elimination() {
@@ -348,7 +348,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         assert( shared.cycle_node.valid() );
         if ( visitor.owner( shared.cycle_node ) == this->globalId() )
             visitor.queue( Blob(), shared.cycle_node );
-        visitor.visit();
+        visitor.processQueue();
     }
 
     void _counterexample() {

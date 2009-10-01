@@ -109,7 +109,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
 
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
-        vis.visit( shared.g.initial() );
+        vis.exploreFrom( shared.g.initial() );
     }
 
     Reachability( Config *c = 0 )

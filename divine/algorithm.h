@@ -230,7 +230,7 @@ struct LtlCE {
             pg.setInitial( ce_node );
             vis.queue( Blob(), ce_node );
         }
-        vis.visit();
+        vis.processQueue();
     }
 
     // -------------------------------------
@@ -266,7 +266,7 @@ struct LtlCE {
             ce_node = t.get( ce_node ).key;
             visitor.queue( Blob(), ce_node );
         }
-        visitor.visit();
+        visitor.processQueue();
     }
 
     // ------------------------------------------------
