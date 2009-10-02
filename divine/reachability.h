@@ -22,7 +22,7 @@ struct _MpiId< Reachability< G > >
     static int to_id( void (Reachability< G >::*f)() ) {
         if( f == &Reachability< G >::_visit )
             return 0;
-        if( f == &Reachability< G >::_counterexample )
+        if( f == &Reachability< G >::_parentTrace )
             return 1;
         assert_die();
     }
@@ -31,7 +31,7 @@ struct _MpiId< Reachability< G > >
     {
         switch ( n ) {
             case 0: return &Reachability< G >::_visit;
-            case 1: return &Reachability< G >::_counterexample;
+            case 1: return &Reachability< G >::_parentTrace;
             default: assert_die();
         }
     }
@@ -122,21 +122,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
             becomeMaster( &shared, workerCount( c ) );
     }
 
-    void _counterexample() {
-        ce.setup( shared.g, shared );
+    void _parentTrace() {
+        ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
         ce._parentTrace( *this, hasher, equal, table() );
     }
 
     void counterexample( Node n ) {
-        std::cerr << std::endl << "===== GOAL ====="
-                  << std::endl << std::endl
-                  << shared.g.showNode( n ) << std::endl;
-
         shared.ce.initial = n;
-
-        std::cerr << std::endl << "===== Trace to initial ====="
-                  << std::endl << std::endl;
-        domain().parallel().run( shared, &Reachability< G >::_counterexample );
+        ce.setup( shared.g, shared );
+        ce.linear( domain(), *this );
     }
 
     Result run() {
@@ -164,10 +158,9 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         if ( goal.valid() )
             counterexample( goal );
 
-        Result res;
-        res.fullyExplored = Result::Yes;
-        shared.stats.updateResult( res );
-        return res;
+        result().fullyExplored = Result::Yes;
+        shared.stats.updateResult( result() );
+        return result();
     }
 };
 
