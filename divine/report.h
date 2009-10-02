@@ -48,7 +48,7 @@ struct Result
     {}
 };
 
-std::ostream &operator<<( std::ostream &o, Result::R v )
+static inline std::ostream &operator<<( std::ostream &o, Result::R v )
 {
     return o << (v == Result::Unknown ? "-" :
                  (v == Result::Yes ? "Yes" : "No" ) );
