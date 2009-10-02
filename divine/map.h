@@ -8,6 +8,43 @@
 namespace divine {
 namespace algorithm {
 
+template< typename > struct Map;
+
+// ------------------------------------------
+// -- Some drudgery for MPI's sake
+// --
+template< typename G >
+struct _MpiId< Map< G > >
+{
+    static void (Map< G >::*from_id( int n ))()
+    {
+        switch ( n ) {
+            case 0: return &Map< G >::_visit;
+            case 1: return &Map< G >::_parentTrace;
+            case 2: return &Map< G >::_traceCycle;
+            default: assert_die();
+        }
+    }
+
+    static int to_id( void (Map< G >::*f)() ) {
+        if( f == &Map< G >::_visit ) return 0;
+        if( f == &Map< G >::_parentTrace ) return 1;
+        if( f == &Map< G >::_traceCycle ) return 2;
+        assert_die();
+    }
+
+    template< typename O >
+    static void writeShared( typename Map< G >::Shared s, O o ) {
+        *o++ = s.iteration;
+    }
+
+    template< typename I >
+    static I readShared( typename Map< G >::Shared &s, I i ) {
+        s.iteration = *i++;
+        return i;
+    }
+};
+
 template< typename G >
 struct Map : Algorithm, DomainWorker< Map< G > >
 {
