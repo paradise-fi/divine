@@ -89,7 +89,8 @@ struct Algorithm
 
     Table &table() {
         if ( !m_table )
-            m_table = new Table( hasher, divine::valid< Node >(), equal );
+            m_table = new Table( hasher, divine::valid< Node >(), equal,
+                                 4096, 2 ); // FIXME configurable?
         return *m_table;
     }
 
