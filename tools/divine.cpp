@@ -65,7 +65,7 @@ struct Main {
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics;
     OptionGroup *common;
-    BoolOption *o_verbose, *o_pool, *o_noCe, *o_report;
+    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report;
     IntOption *o_workers, *o_mem;
     StringOption *o_trail;
 
@@ -169,6 +169,10 @@ struct Main {
             "no-counterexample", 'n', "no-counterexample", "",
             "disable counterexample generation" );
 
+        o_dispCe = common->add< BoolOption >(
+            "display-counterexample", 'd', "display-counterexample", "",
+            "display the counterexample after finishing" );
+
         o_trail = common->add< StringOption >(
             "trail", 't', "trail", "",
             "file to output trail to (default: input-file.trail)" );
@@ -235,13 +239,19 @@ struct Main {
 #endif
         }
 
-        if ( o_trail->stringValue() == "" ) {
-            std::string t = std::string( input, 0,
-                                         input.rfind( '.' ) );
-            t += ".trail";
-            config.setTrailFile( t );
-        } else
-            config.setTrailFile( o_trail->stringValue() );
+        if ( o_trail->boolValue() ) {
+            if ( o_trail->stringValue() == "" ) {
+                std::string t = std::string( input, 0,
+                                             input.rfind( '.' ) );
+                t += ".trail";
+                config.setTrailFile( t );
+            } else
+                config.setTrailFile( o_trail->stringValue() );
+        }
+
+        if ( o_dispCe->boolValue() ) {
+            config.setCeFile( "-" );
+        }
 
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );

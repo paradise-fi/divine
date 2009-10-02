@@ -66,24 +66,39 @@ struct Config {
         return o;
     }
 
-    std::string m_trailFile;
-    std::ostream *m_trailStream;
+    std::string m_trailFile, m_ceFile;
+    std::ostream *m_trailStream, *m_ceStream;
 
     std::ostream &ceStream() {
-        return std::cerr;
+        if ( !m_ceStream ) {
+            if ( m_ceFile.empty() )
+                m_ceStream = new std::stringstream();
+            else
+                m_ceStream = new std::ofstream( m_ceFile.c_str() );
+        }
+        return *m_ceStream;
     }
 
     std::ostream &trailStream() {
         if ( !m_trailStream ) {
-            m_trailStream = new std::ofstream( m_trailFile.c_str() );
+            if ( m_trailFile.empty() )
+                m_trailStream = new std::stringstream();
+            else
+                m_trailStream = new std::ofstream( m_trailFile.c_str() );
         }
         return *m_trailStream;
     }
 
     void setTrailFile( std::string f ) {
         if ( f == "-" )
-            m_trailStream = &std::cout;
+            m_trailStream = &std::cerr;
         m_trailFile = f;
+    }
+
+    void setCeFile( std::string f ) {
+        if ( f == "-" )
+            m_ceStream = &std::cerr;
+        m_ceFile = f;
     }
 
     void setGenerateCounterexample( bool e ) {
@@ -92,7 +107,7 @@ struct Config {
 
     Config() : m_workers( 2 ),
                m_storageInitial( 4097 ), m_storageFactor( 2 ), m_handoff( 50 ),
-               m_verbose( false ), m_ce( true ), m_trailStream( 0 )
+               m_verbose( false ), m_ce( true ), m_trailStream( 0 ), m_ceStream( 0 )
     {}
 };
 

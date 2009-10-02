@@ -370,11 +370,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
             domain().parallel().run( shared, &Owcty< G >::_checkCycle );
-            if ( cycleFound() ) {
-                std::cerr << std::endl << "===== Accepting state ====="
-                          << std::endl << std::endl;
-                std::cerr << shared.g.showNode( cycleNode() ) << std::endl;
-            }
         }
     }
 
@@ -389,9 +384,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     void counterexample() {
         if ( !cycleFound() ) {
-            std::cerr << "obtaining counterexample..." << std::endl;
+            std::cerr << " obtaining counterexample...      " << std::flush;
             domain().parallel().runInRing(
                 shared, &Owcty< G >::_counterexample );
+            std::cerr << "done" << std::endl;
         }
 
         shared.ce.initial = cycleNode();
