@@ -131,32 +131,59 @@ struct LtlCE {
     // --
 
     template< typename Domain, typename Alg >
-    void parentTrace( Domain &d, Alg a, Node stop, bool cycle = 0 ) {
-        std::ostream &out = a.config().ceStream();
+    std::string parentTrace( Domain &d, Alg &a, Node stop, bool cycle = 0 ) {
+        std::vector< Node > trace;
+        std::stringstream o_tr_str;
+        std::ostream &o_ce = a.config().ceStream(),
+                     &o_tr = a.config().trailStream();
         shared().ce.current = shared().ce.initial;
         do {
             shared().ce.current_updated = false;
-            out << g().showNode( shared().ce.current ) << std::endl;
+            trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
         } while ( !a.equal( shared().ce.current, stop ) );
-        if ( !cycle )
-            out << g().showNode( shared().ce.current ) << std::endl;
+        trace.push_back( shared().ce.current );
+
+        while ( !trace.empty() ) {
+            Node current = trace.back();
+            trace.pop_back();
+            o_ce << g().showNode( current ) << std::endl;
+            if ( trace.empty() )
+                break;
+
+            typename G::Successors succ = g().successors( current );
+            int edge = 0;
+            while ( !succ.empty() ) {
+                ++ edge;
+                if ( a.equal( succ.head(), trace.back() ) )
+                    break;
+                succ = succ.tail();
+            }
+            assert_leq( 1, edge );
+            o_tr << edge << std::endl;
+            o_tr_str << edge << ",";
+        }
+        // drop trailing comma
+        return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg a ) {
-        std::ostream &out = a.config().ceStream();
-        out << std::endl << "===== Trace to initial ====="
-            << std::endl << std::endl;
-        parentTrace( d, a, g().initial(), false );
+    void lasso( Domain &d, Alg &a ) {
+        std::ostream &o_ce = a.config().ceStream(),
+                     &o_tr = a.config().trailStream();
+        o_ce << std::endl << "===== Trace from initial ====="
+             << std::endl << std::endl;
+        o_tr << "# from initial" << std::endl;
+        a.result().iniTrail = parentTrace( d, a, g().initial(), false );
 
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        out << std::endl << "===== The cycle ====="
-            << std::endl << std::endl;
-        parentTrace( d, a, shared().ce.initial, true );
+        o_ce << std::endl << "===== The cycle ====="
+             << std::endl << std::endl;
+        o_tr << "# cycle" << std::endl;
+        a.result().cycleTrail = parentTrace( d, a, shared().ce.initial, true );
     }
 
 };
