@@ -315,7 +315,7 @@ struct Main {
     Result selectGraph()
     {
         if ( str::endsWith( config.input(), ".dve" ) ) {
-            config.setGenerator( "DiVinE" );
+            config.setGenerator( "DVE" );
             return run< Algorithm< generator::NDve > >();
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
