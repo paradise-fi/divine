@@ -169,20 +169,22 @@ struct LtlCE {
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg &a ) {
-        std::ostream &o_ce = a.config().ceStream(),
-                     &o_tr = a.config().trailStream();
-        o_ce << std::endl << "===== Trace from initial ====="
-             << std::endl << std::endl;
-        o_tr << "# from initial" << std::endl;
+    void linear( Domain &d, Alg &a ) {
+        a.config().ceStream() << std::endl << "===== Trace from initial ====="
+                              << std::endl << std::endl;
+        a.config().trailStream() << "# from initial" << std::endl;
         a.result().iniTrail = parentTrace( d, a, g().initial(), false );
+    }
 
+    template< typename Domain, typename Alg >
+    void lasso( Domain &d, Alg &a ) {
+        linear( d, a );
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        o_ce << std::endl << "===== The cycle ====="
-             << std::endl << std::endl;
-        o_tr << "# cycle" << std::endl;
+        a.config().ceStream() << std::endl << "===== The cycle ====="
+                              << std::endl << std::endl;
+        a.config().trailStream() << "# cycle" << std::endl;
         a.result().cycleTrail = parentTrace( d, a, shared().ce.initial, true );
     }
 
