@@ -1,10 +1,10 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
-#ifndef DIVINE_MPI_H
-#define DIVINE_MPI_H
-
 #include <wibble/test.h>
 #include <divine/algorithm.h>
+
+#ifndef DIVINE_MPI_H
+#define DIVINE_MPI_H
 
 #ifdef HAVE_MPI
 #include <mpi.h>
