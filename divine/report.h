@@ -72,13 +72,15 @@ struct Report : wibble::sys::Thread
 
     int sig;
     bool m_finished;
+    bool m_dumped;
     std::string mpi_info;
 
     Report( Config &c ) : config( c ),
                           sig( 0 ),
-                          m_finished( false )
+                          m_finished( false ),
+                          m_dumped( false ),
+                          mpi_info( "-" )
     {
-        mpi_info = "-";
 #ifdef POSIX
         gettimeofday(&tv, NULL);
 #endif
@@ -242,8 +244,9 @@ struct Report : wibble::sys::Thread
     }
 
     void final( std::ostream &o ) {
-        if ( !config.report() )
+        if ( !config.report() || m_dumped )
             return;
+        m_dumped = true;
 
 #ifdef POSIX
         struct timeval now;
