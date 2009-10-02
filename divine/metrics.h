@@ -110,7 +110,7 @@ struct Statistics {
 };
 
 template< typename G >
-struct Metrics : DomainWorker< Metrics< G > >
+struct Metrics : Algorithm, DomainWorker< Metrics< G > >
 {
     typedef typename G::Node Node;
 
@@ -163,10 +163,9 @@ struct Metrics : DomainWorker< Metrics< G > >
 
         shared.stats.print( std::cerr );
 
-        Result res;
-        res.fullyExplored = Result::Yes;
-        shared.stats.updateResult( res );
-        return res;
+        result().fullyExplored = Result::Yes;
+        shared.stats.updateResult( result() );
+        return result();
     }
 };
 
