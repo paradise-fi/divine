@@ -184,7 +184,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
                 expanded += domain().shared( i ).expanded;
             }
             eliminated += d_eliminated;
-            assert( eliminated <= acceptingCount );
+            assert_leq( eliminated, acceptingCount );
             std::cerr << eliminated << " eliminated, "
                       << expanded << " expanded" << std::endl;
             ++ shared.iteration;
