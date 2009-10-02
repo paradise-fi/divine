@@ -327,6 +327,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
     visitor::TransitionAction ccTransition( Node from, Node to )
     {
+        if ( !extension( to ).inS )
+            return visitor::ForgetTransition;
         if ( from.valid() && to == shared.cycle_node ) {
             shared.cycle_found = true;
             return visitor::TerminateOnTransition;
