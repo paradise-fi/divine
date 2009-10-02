@@ -73,6 +73,7 @@ struct Report : wibble::sys::Thread
                           sig( 0 ),
                           m_finished( false )
     {
+        mpi_info = "-";
 #ifdef POSIX
         gettimeofday(&tv, NULL);
 #endif
@@ -225,19 +226,14 @@ struct Report : wibble::sys::Thread
 
     template< typename Mpi >
     void mpiInfo( Mpi &mpi ) {
-        std::stringstream s;
 #ifdef HAVE_MPI
-        s << "compiled in, ";
+        std::stringstream s;
         if (mpi.size() > 1)
-            s << "used, nodes = "
-              << mpi.size();
+            s << mpi.size() << " nodes";
         else
             s << "not used";
-#else
-        "not compiled in"
-#endif
-            ;
         mpi_info = s.str();
+#endif
     }
 
     void final( std::ostream &o ) {
@@ -256,6 +252,13 @@ struct Report : wibble::sys::Thread
         o << "Version: " << DIVINE_VERSION << std::endl;
         o << "Build-Date: " << DIVINE_BUILD_DATE << std::endl;
         o << "Architecture: " << architecture() << std::endl;
+#ifdef HAVE_MPI
+        int vers, subvers;
+        MPI::Get_version( vers, subvers );
+        o << "MPI-Version: " << vers << "." << subvers << std::endl;
+#else
+        o << "MPI-Vesrion: n/a" << std::endl;
+#endif
         o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
 #ifdef POSIX
