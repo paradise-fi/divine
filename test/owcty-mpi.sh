@@ -1,7 +1,7 @@
 set -vex
 not () { "$@" && exit 1 || return 0; }
 
-test -x "$MPIEXEC" || exit 200
+test -x "`which $MPIEXEC`" || exit 200
 
 $MPIEXEC -H localhost,localhost divine owcty --report peterson-naive.dve > report 2> progress
 
