@@ -1,9 +1,10 @@
 set -vex
+set -o pipefail
 not () { "$@" && exit 1 || return 0; }
 
 test -x "`which $MPIEXEC`" || exit 200
 
-$MPIEXEC -H localhost,localhost divine owcty --report peterson-naive.dve > report 2> progress
+$MPIEXEC -H localhost,localhost divine owcty --report peterson-naive.dve 2> progress | tee report
 
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: No" report
@@ -21,7 +22,7 @@ if ! grep -q "MAP: cycle found" progress; then
     diff -u numbers-right numbers
 fi
 
-$MPIEXEC -H localhost,localhost divine owcty --report peterson-liveness.dve > report 2> progress
+$MPIEXEC -H localhost,localhost divine owcty --report peterson-liveness.dve 2> progress | tee report
 
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: Yes" report
