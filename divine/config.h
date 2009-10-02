@@ -10,39 +10,21 @@
 // configuration stuff, may need refactoring later
 struct Config {
     int m_workers;
-    int m_storageInitial;
-    int m_storageFactor;
-    int m_handoff;
     bool m_verbose, m_ce, m_report;
 
-    std::string m_algorithm, m_generator, m_order, m_partitioning, m_storage;
+    std::string m_algorithm, m_generator;
 
-    void setPartitioning( std::string p ) { m_partitioning = p; }
     void setAlgorithm( std::string p ) { m_algorithm = p; }
     void setGenerator( std::string p ) { m_generator = p; }
-    void setOrder( std::string p ) { m_order = p; }
-    void setStorage( std::string p ) { m_storage = p; }
 
     std::string m_input;
 
     void setWorkers( int t ) { m_workers = t; }
     int workers() { return m_workers; }
 
-    void setStorageInitial( int i ) { assert( i > 0 ); m_storageInitial = i; }
-    void setStorageFactor( int f ) { assert( f > 1 ); m_storageFactor = f; }
     void setInput( std::string in ) { m_input = in; }
 
-    int storageInitial() { return m_storageInitial; }
-    int storageFactor() { return m_storageFactor; }
     std::string input() { return m_input; }
-
-    int handoff() {
-        return m_handoff;
-    }
-
-    void setHandoff( int h ) {
-        m_handoff = h;
-    }
 
     void setVerbose( bool v ) { m_verbose = v; }
     void setReport( bool v ) { m_report = v; }
@@ -52,17 +34,11 @@ struct Config {
     bool generateCounterexample() { return m_ce; }
 
     std::ostream &dump( std::ostream &o ) {
+        o << "Algorithm: " << m_algorithm << std::endl;
+        o << "Generator: " << m_generator << std::endl;
         o << "Workers: " << workers() << std::endl;
-        o << "Initial-Storage-Size: " << storageInitial() << std::endl;
-        o << "Storage-Growth-Factor: " << storageFactor() << std::endl;
-        o << "Handoff-Threshold: " << handoff() << std::endl;
         o << "Input-File: " << input() << std::endl;
         o << "Trail-File: " << m_trailFile << std::endl;
-        o << "Algorithm: " << m_algorithm << std::endl;
-        o << "Order: " << m_order << std::endl;
-        o << "Partitioning: " << m_partitioning << std::endl;
-        o << "Generator: " << m_generator << std::endl;
-        o << "Storage: " << m_storage << std::endl;
         return o;
     }
 
@@ -106,8 +82,8 @@ struct Config {
     }
 
     Config() : m_workers( 2 ),
-               m_storageInitial( 4097 ), m_storageFactor( 2 ), m_handoff( 50 ),
-               m_verbose( false ), m_ce( true ), m_trailStream( 0 ), m_ceStream( 0 )
+               m_verbose( false ), m_ce( true ),
+               m_trailStream( 0 ), m_ceStream( 0 )
     {}
 };
 
