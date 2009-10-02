@@ -28,7 +28,6 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     };
 
     LtlCE< G, Shared, Extension > ce;
-    Result m_result;
 
     Domain< Map< G > > &domain() {
         return DomainWorker< Map< G > >::domain();
@@ -190,7 +189,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             valid = !cycleNode().valid();
         } while ( d_eliminated > 0 && valid );
 
-        m_result.ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
 
         livenessBanner( valid );
 
@@ -202,7 +201,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             ce.lasso( domain(), *this );
         }
 
-        return m_result;
+        return result();
     }
 
     Map( Config *c = 0 )

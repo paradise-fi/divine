@@ -13,7 +13,6 @@ namespace algorithm {
 template< typename G >
 struct NestedDFS : Algorithm
 {
-    Result m_result;
     G g;
     typedef typename G::Node Node;
     Node seed;
@@ -51,10 +50,9 @@ struct NestedDFS : Algorithm
         std::cerr << "done" << std::endl;
         livenessBanner( valid );
 
-        Result res;
-        res.ltlPropertyHolds = valid ? Result::Yes : Result::No;
-        res.fullyExplored = valid ? Result::Yes : Result::No;
-        return res;
+        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().fullyExplored = valid ? Result::Yes : Result::No;
+        return result();
     }
 
     visitor::ExpansionAction expansion( Node ) {

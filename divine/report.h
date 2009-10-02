@@ -7,7 +7,6 @@
 #include <wibble/regexp.h>
 #include <divine/config.h>
 #include <divine/version.h>
-#include <divine/mpi.h>
 
 #include <signal.h>
 #include <time.h>
@@ -15,6 +14,10 @@
 #ifdef POSIX
 #include <sys/resource.h>
 #include <sys/time.h>
+#endif
+
+#ifdef HAVE_MPI
+#include <mpi.h>
 #endif
 
 #ifdef _WIN32

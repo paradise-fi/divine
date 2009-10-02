@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
 #include <divine/config.h>
+#include <divine/report.h>
 #include <divine/blob.h>
 #include <divine/hashmap.h>
 #include <divine/visitor.h>
@@ -75,6 +76,9 @@ struct Algorithm
     Hasher hasher;
     Equal equal;
     Table *m_table;
+    Result m_result;
+
+    Result &result() { return m_result; }
 
     bool want_ce;
 

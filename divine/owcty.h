@@ -454,10 +454,9 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         if ( want_ce && !valid )
             counterexample();
 
-        Result res;
-        res.ltlPropertyHolds = valid ? Result::Yes : Result::No;
-        res.fullyExplored = shared.cycle_node.valid() ? Result::No : Result::Yes;
-        return res;
+        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().fullyExplored = shared.cycle_node.valid() ? Result::No : Result::Yes;
+        return result();
     }
 
     Owcty( Config *c = 0 )
