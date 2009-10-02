@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm.h>
+#include <divine/ltlce.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
 #include <divine/report.h>
