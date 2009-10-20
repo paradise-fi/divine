@@ -117,6 +117,12 @@ public:
                 dropHead();
             }
         }
+        // the following can happen when head->next is 0 even though head->read
+        // has reached NodeSize, *and* no front() has been called in the meantime
+        if ( head->read > NodeSize ) {
+            dropHead();
+            pop();
+        }
     }
 
     T &front( bool wait = false ) {
