@@ -39,11 +39,11 @@ struct NotPreferred { NotPreferred( Preferred ) {} };
 Report *report = 0;
 
 void handler( int s ) {
+    signal( s, SIG_DFL );
     if ( report ) {
         report->signal( s );
         report->final( std::cout );
     }
-    signal( s, SIG_DFL );
     raise( s );
 }
 
