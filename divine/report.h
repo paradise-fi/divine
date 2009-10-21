@@ -254,6 +254,10 @@ struct Report : wibble::sys::Thread
         getrusage( RUSAGE_SELF, &usage );
 #endif
 
+#ifdef _WIN32
+	      GetLocalTime(&stFinish);
+	      GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
+#endif
         config.dump( o );
         o << std::endl;
         o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
@@ -279,9 +283,17 @@ struct Report : wibble::sys::Thread
         o << "User-Time: " << userTime() << std::endl;
         o << "System-Time: " << systemTime() << std::endl;
         o << "Wall-Time: " << interval( tv, now ) << std::endl;
+#endif
+
+#ifdef _WIN32
+	FileTimeToSystemTime(&ftUser, &stUser);
+        o << "User-Time: " <<  SystemTimeToDouble(stUser) << std::endl;
+	FileTimeToSystemTime(&ftKernel, &stKernel);
+        o << "System-Time: " << SystemTimeToDouble(stKernel) << std::endl;
+        o << "Wall-Time: " << SystemTimeToDouble(stFinish) - SystemTimeToDouble(stStart) << std::endl;
+#endif
         o << "Memory-Used: " << vmSize() << std::endl;
         o << "Termination-Signal: " << sig << std::endl;
-#endif
         o << std::endl;
         o << "Full-State-Space: " << res.fullyExplored << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
