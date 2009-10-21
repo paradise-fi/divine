@@ -52,13 +52,14 @@ protected:
 #endif
 
 #ifdef _WIN32
-  CRITICAL_SECTION CriticalSection;
+  HANDLE mutex;
+  bool singlylocking;
 #endif
 	
 public:
   Mutex(bool recursive = false)
 	{
-    int res = 1;
+    int res = 0;
 #ifdef POSIX
             pthread_mutexattr_t attr;
             pthread_mutexattr_init( &attr );
@@ -73,28 +74,46 @@ public:
 #endif
 
 #ifdef _WIN32
-    InitializeCriticalSection(&CriticalSection);
-    res = 0;
+    mutex = CreateMutex( NULL, FALSE, NULL );
+    singlylocking = false;
+    
+    if (mutex == NULL)
+      res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "creating pthread mutex");
 	}
-#ifdef _WIN32
-	void initialize()
+
+  Mutex( const Mutex & m )
 	{
-		InitializeCriticalSection(&CriticalSection);
-	}
+    int res = 0;
+#ifdef POSIX
+            pthread_mutexattr_t attr;
+            pthread_mutexattr_init( &attr );
+            res = pthread_mutex_init(&mutex, &attr);
 #endif
+
+#ifdef _WIN32
+    mutex = CreateMutex(NULL, FALSE, NULL);
+    singlylocking = false;
+    
+    if(mutex == NULL)
+      res = (int)GetLastError();
+#endif
+		if (res != 0)
+			throw wibble::exception::System(res, "creating pthread mutex");
+	}
+
 	~Mutex()
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_mutex_destroy(&mutex);
 #endif
 
 #ifdef _WIN32
-      DeleteCriticalSection(&CriticalSection);
-      res = 0;
+      if(!CloseHandle(mutex))
+        res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "destroying pthread mutex");
@@ -102,21 +121,22 @@ public:
 
         bool trylock()
         {
-    		int res = 1;
+    		int res = 0;
 #ifdef POSIX
     		res = pthread_mutex_trylock(&mutex);
     		if ( res == EBUSY )
     			return false;
     		if ( res == 0 )
-    			return true;
+    		  return true;
 #endif
 
 #ifdef _WIN32
-          res = TryEnterCriticalSection(&CriticalSection);
-          if(res == 0)
-            return false;
-          else
-            return true;
+		DWORD dwWaitResult = !singlylocking ? WaitForSingleObject(mutex, 0) : WAIT_TIMEOUT;
+		if(dwWaitResult == WAIT_OBJECT_0)
+		  return true;
+		if(dwWaitResult == WAIT_TIMEOUT)
+      return false;
+    res = (int)GetLastError();		  
 #endif
     		throw wibble::exception::System(res, "(try)locking pthread mutex");
         }
@@ -125,14 +145,16 @@ public:
 	/// Normally it's better to use MutexLock
 	void lock()
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_mutex_lock(&mutex);
 #endif
 
 #ifdef _WIN32
-      EnterCriticalSection(&CriticalSection);
-      res = 0;
+    while(singlylocking)
+      Sleep(1);
+    if(WaitForSingleObject(mutex, INFINITE) != WAIT_OBJECT_0)
+      res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "locking pthread mutex");
@@ -142,14 +164,14 @@ public:
 	/// Normally it's better to use MutexLock
 	void unlock()
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_mutex_unlock(&mutex);
 #endif
 
 #ifdef _WIN32
-      LeaveCriticalSection(&CriticalSection);
-      res = 0;
+	  if(!ReleaseMutex(mutex))
+      res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "unlocking pthread mutex");
@@ -201,9 +223,14 @@ public:
         }
 
         void checkYield() {
-#ifdef POSIX
+
             if ( yield )
+#ifdef POSIX
                 sched_yield();
+#endif
+
+#ifdef _WIN32
+                Sleep(0);
 #endif
         }
 
@@ -225,31 +252,62 @@ protected:
 #endif
 
 #ifdef _WIN32
-  std::queue<HANDLE *> qEvent;
-  CRITICAL_SECTION CSQueueAccess;
+  int waiters_count_; // number of waiting threads
+  CRITICAL_SECTION waiters_count_lock_;
+  HANDLE sema_; // semaphore used to queue up threads waiting for the condition
+  HANDLE waiters_done_;
+  // An auto-reset event used by the broadcast/signal thread to wait
+  // for all the waiting thread(s) to wake up and be released from the
+  // semaphore. 
+
+  bool was_broadcast_;
+  // Keeps track of whether we were broadcasting or signaling.  This
+  // allows us to optimize the code if we're just signaling.
 #endif
 
 public:
 	Condition()
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_cond_init(&cond, 0);
 #endif
 
 #ifdef _WIN32
-      InitializeCriticalSection(&CSQueueAccess);
-      res = 0;
+    waiters_count_ = 0;
+	  was_broadcast_ = false;
+    sema_ = CreateSemaphore(NULL, 0, 0x7fffffff, NULL);
+	  InitializeCriticalSection(&waiters_count_lock_);
+	  waiters_done_ = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    if(sema_ == NULL || waiters_done_ == NULL)
+      res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "creating pthread condition");
 	}
-#ifdef _WIN32
-	void initialize()
+
+  Condition( const Condition & con )
 	{
-		InitializeCriticalSection(&CSQueueAccess);
-	}
+		int res = 0;
+#ifdef POSIX
+		res = pthread_cond_init(&cond, 0);
 #endif
+
+#ifdef _WIN32
+    waiters_count_ = 0;
+	  was_broadcast_ = false;
+    sema_ = CreateSemaphore(NULL, 0, 0x7fffffff, NULL);
+	  InitializeCriticalSection(&waiters_count_lock_);
+	  waiters_done_ = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    if(sema_ == NULL || waiters_done_ == NULL)
+      res = (int)GetLastError();
+#endif
+		if (res != 0)
+			throw wibble::exception::System(res, "creating pthread condition");
+	}
+
 	~Condition()
 	{
 		int res = 0;
@@ -258,15 +316,9 @@ public:
 #endif
 
 #ifdef _WIN32
-	  EnterCriticalSection(&CSQueueAccess);
-      while(!qEvent.empty())
-      {
-        if(CloseHandle(*(qEvent.front())) == 0)
-          res = 1;
-        qEvent.pop();   
-      }
-	  LeaveCriticalSection(&CSQueueAccess);
-	  DeleteCriticalSection(&CSQueueAccess);
+    DeleteCriticalSection(&waiters_count_lock_);
+    if(!CloseHandle(sema_) || !CloseHandle(waiters_done_))
+      res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "destroying pthread condition");
@@ -275,21 +327,19 @@ public:
 	/// Wake up one process waiting on the condition
 	void signal()
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_cond_signal(&cond);
 #endif
 
 #ifdef _WIN32
-      EnterCriticalSection(&CSQueueAccess);
-      if(!qEvent.empty() && SetEvent(*(qEvent.front())) != 0)
-      {
-        res = 0;
-        qEvent.pop();
-      }
-	  else if(qEvent.empty())
-	    res = 0;
-      LeaveCriticalSection(&CSQueueAccess);
+    EnterCriticalSection(&waiters_count_lock_);
+      bool have_waiters = waiters_count_ > 0;
+	  LeaveCriticalSection(&waiters_count_lock_);
+
+	  // if there aren't any waiters, then this is a no-op
+	  if(have_waiters && !ReleaseSemaphore(sema_, 1, 0))
+		  res = (int)GetLastError();
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "signaling on a pthread condition");
@@ -298,21 +348,37 @@ public:
 	/// Wake up all processes waiting on the condition
 	void broadcast()
 	{
-		int res = 0;
+    int res = 0;
 #ifdef POSIX
 		res = pthread_cond_broadcast(&cond);
 #endif
 
 #ifdef _WIN32
-      EnterCriticalSection(&CSQueueAccess);
-      while(!qEvent.empty())
-      {
-        if(SetEvent(*(qEvent.front())) != 0)
-          qEvent.pop();
-        else
-          res = 1;
+    for(bool once = true; once; once = false)
+    {
+      EnterCriticalSection(&waiters_count_lock_);
+	    bool have_waiters = false;
+
+	    if(waiters_count_ > 0) {
+        was_broadcast_ = true;
+        have_waiters = true;
+	    }
+
+	    if(have_waiters) {
+        if(!ReleaseSemaphore(sema_, waiters_count_, 0)) {
+          res = (int)GetLastError();
+          break;
+        }
+		    LeaveCriticalSection(&waiters_count_lock_); 
+		    if(WaitForSingleObject(waiters_done_, INFINITE) != WAIT_OBJECT_0) {
+          res = (int)GetLastError();
+          break;
+        }
+		    was_broadcast_ = false;
       }
-      LeaveCriticalSection(&CSQueueAccess);
+	    else
+		    LeaveCriticalSection(&waiters_count_lock_);
+		}
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "broadcasting on a pthread condition");
@@ -324,27 +390,43 @@ public:
 	 */
     void wait(MutexLock& l)
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_cond_wait(&cond, &l.mutex.mutex);
 #endif
 
 #ifdef _WIN32
-	  EnterCriticalSection(&CSQueueAccess);
-      HANDLE thEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-      if(thEvent != NULL)
-      {
-	    l.mutex.unlock();
-        qEvent.push(&thEvent);
-        LeaveCriticalSection(&CSQueueAccess);
-        if(WaitForSingleObject(thEvent, INFINITE) == WAIT_OBJECT_0 && CloseHandle(thEvent) != 0)
+    for(bool once = true; once; once = false)
+    {
+      EnterCriticalSection (&waiters_count_lock_);
+        waiters_count_++;
+	    LeaveCriticalSection (&waiters_count_lock_);
+
+	    if(SignalObjectAndWait(l.mutex.mutex, sema_, INFINITE, FALSE) != WAIT_OBJECT_0) {
+	      res = (int)GetLastError();
+	      break;
+	    }
+
+	    EnterCriticalSection (&waiters_count_lock_);
+        waiters_count_--;
+	      bool last_waiter = was_broadcast_ && waiters_count_ == 0;
+	    LeaveCriticalSection (&waiters_count_lock_);
+
+      if (last_waiter) {
+		    if(SignalObjectAndWait (waiters_done_, l.mutex.mutex, INFINITE, FALSE) != WAIT_OBJECT_0)
         {
-          res = 0;
-          l.mutex.lock();
-        }
-      }
-	  else
-		LeaveCriticalSection(&CSQueueAccess);
+	        res = (int)GetLastError();
+	        break;
+	      }
+	    }
+	    else {
+		    if(WaitForSingleObject (l.mutex.mutex, INFINITE) != WAIT_OBJECT_0)
+        {
+	        res = (int)GetLastError();
+	        break;
+	      }
+	    }
+    }
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "waiting on a pthread condition");
@@ -352,27 +434,53 @@ public:
 
 	void wait(Mutex& l)
 	{
-		int res = 1;
+		int res = 0;
 #ifdef POSIX
 		res = pthread_cond_wait(&cond, &l.mutex);
 #endif
 
 #ifdef _WIN32
-	  EnterCriticalSection(&CSQueueAccess);
-      HANDLE thEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-      if(thEvent != NULL)
-      {
-	    l.unlock();
-        qEvent.push(&thEvent);
-        LeaveCriticalSection(&CSQueueAccess);
-        if(WaitForSingleObject(thEvent, INFINITE) == WAIT_OBJECT_0 && CloseHandle(thEvent) != 0)
-        {
-          res = 0;
-          l.lock();
-        }
+    for(bool once = true; once; once = false)
+    {
+      if(WaitForSingleObject(l.mutex, 0) == WAIT_OBJECT_0) {
+        l.singlylocking = true;
+        while(ReleaseMutex(l.mutex)) ;
+        if(res = (int)GetLastError() != 288) //288 -> MUTEX_NOT_OWNED
+          break;
       }
-	  else
-		LeaveCriticalSection(&CSQueueAccess);
+      if(WaitForSingleObject(l.mutex, INFINITE) != WAIT_OBJECT_0) {
+        res = (int)GetLastError();
+        break;
+      }
+      l.singlylocking = false;
+      
+      EnterCriticalSection (&waiters_count_lock_);
+        waiters_count_++;
+	    LeaveCriticalSection (&waiters_count_lock_);
+
+	    if(SignalObjectAndWait(l.mutex, sema_, INFINITE, FALSE) != WAIT_OBJECT_0) {
+	      res = (int)GetLastError();
+	      break;
+	    }
+
+	    EnterCriticalSection (&waiters_count_lock_);
+        waiters_count_--;
+	      bool last_waiter = was_broadcast_ && waiters_count_ == 0;
+	    LeaveCriticalSection (&waiters_count_lock_);
+
+      if(last_waiter) {
+		    if(SignalObjectAndWait (waiters_done_, l.mutex, INFINITE, FALSE) != WAIT_OBJECT_0) {
+	        res = (int)GetLastError();
+	        break;
+	      }
+	    }
+	    else {
+		    if(WaitForSingleObject(l.mutex, INFINITE) != WAIT_OBJECT_0) {
+	        res = (int)GetLastError();
+	        break;
+	      }
+	    }
+    }
 #endif
 		if (res != 0)
 			throw wibble::exception::System(res, "waiting on a pthread condition");
