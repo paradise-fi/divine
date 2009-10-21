@@ -16,7 +16,7 @@ set( CONTEXT ${divine_BINARY_DIR}/divine/context.sha1 )
 set( UPDATE_CONTEXT ${divine_SOURCE_DIR}/divine/update-context.sh )
 
 add_custom_command(
-  COMMAND sh ${UPDATE_CONTEXT} ${SHA1SUM} ${divine_SOURCE_DIR} ${CONTEXT}
+  COMMAND sh ${UPDATE_CONTEXT} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${CONTEXT}"
   OUTPUT ${CONTEXT}.bwah
 )
 
