@@ -65,7 +65,7 @@ struct Main {
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics;
     OptionGroup *common;
-    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report;
+    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy;
     IntOption *o_workers, *o_mem;
     StringOption *o_trail;
 
@@ -177,6 +177,10 @@ struct Main {
             "trail", 't', "trail", "",
             "file to output trail to (default: input-file.trail)" );
 
+        o_dummy = common->add< BoolOption >(
+            "dummy", '\0', "dummy", "",
+            "use a \"dummy\" benchmarking model instead of a real input" );
+
         opts.add( common );
     }
 
@@ -197,12 +201,15 @@ struct Main {
             }
 
             if ( !opts.hasNext() ) {
-                std::cerr
-                    << "WARNING: no input file specified, using dummy generator"
-                    << std::endl;
-                dummygen = true;
-            } else
+                if ( o_dummy->boolValue() )
+                    dummygen = true;
+                else
+                    die( "FATAL: no input file specified" );
+            } else {
                 input = opts.next();
+                if ( o_dummy->boolValue() )
+                    std::cerr << "Both input and --dummy specified. Ignoring --dummy." << std::endl;
+            }
 
         } catch( wibble::exception::BadOption &e ) {
             die( e.fullInfo() );
