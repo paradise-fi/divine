@@ -168,14 +168,16 @@ struct Barrier {
     void done( T *t ) {
         MutexLock __l( m_globalMutex );
         if ( m_mutexes.count( t ) ) {
+#ifdef POSIX
             mutex( t ).unlock();
+#endif
             m_mutexes.erase( t );
         }
     }
 
     void started( T *t ) {
         MutexLock __l( m_globalMutex );
-        m_conditions[ t ] = wibble::sys::Condition();
+        m_conditions[ t ];
         m_mutexes[ t ].lock();
         ++ m_regd;
     }
