@@ -158,6 +158,7 @@ struct FifoVector
     }
 
     Fifo &operator[]( int i ) {
+        assert_leq( i, m_vector.size() );
         return m_vector[ i ];
     }
 
