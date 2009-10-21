@@ -9,10 +9,10 @@ else
     test -n "$bra1" && bra1="$bra1+"
     #version="$ver1$bra1$date"
     if grep -q '^#define DIVINE_RELEASE' divine/version.h; then
-        name="divine-mc-$ver1"
+        name="divine-$ver1"
     else
         ver1="$ver1+"
-        name="divine-mc-$ver1$bra1$date"
+        name="divine-$ver1$bra1$date"
     fi
 fi
 if test -e "$name"; then
