@@ -260,6 +260,12 @@ struct Report : wibble::sys::Thread
         o << "Version: " << DIVINE_VERSION << std::endl;
         o << "Build-Date: " << DIVINE_BUILD_DATE << std::endl;
         o << "Architecture: " << architecture() << std::endl;
+#ifdef NDEBUG
+        o << "Debug: disabled" << std::endl;
+#else
+        o << "Debug: enabled" << std::endl;
+#endif
+
 #ifdef HAVE_MPI
         int vers, subvers;
         MPI::Get_version( vers, subvers );
