@@ -86,6 +86,7 @@ struct LtlCE {
             Node n = t.get( shared().ce.current ).key;
             assert( n.valid() );
             shared().ce.current = extension( n ).parent;
+            assert( shared().ce.current.valid() );
             shared().ce.current_updated = true;
         }
     }
@@ -142,8 +143,10 @@ struct LtlCE {
             trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
-        } while ( !a.equal( shared().ce.current, stop ) );
-        trace.push_back( shared().ce.current );
+        } while ( shared().ce.current.valid() && !a.equal( shared().ce.current, stop ) );
+
+        if ( shared().ce.current.valid() ) // i.e. this was not a self-loop
+            trace.push_back( shared().ce.current );
 
         while ( !trace.empty() ) {
             Node current = trace.back();
