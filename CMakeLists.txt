@@ -97,6 +97,12 @@ add_custom_target( lcovd-unit )
 if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
+if( NOT LCOV )
+  message( "-- WARNING: I could not find LCOV, disabling coverage report generation." )
+endif( NOT LCOV )
+endif( PROFILE )
+
+if( LCOV )
 set( LCOV_RDIR "${divine_BINARY_DIR}/lcov-report" )
 add_custom_target( lcov-clean
   COMMAND mkdir -p ${LCOV_RDIR}
@@ -124,7 +130,7 @@ add_custom_target( lcov-report
     ${LCOV_RDIR}/overall.info
 )
 add_dependencies( check lcov-clean )
-endif( PROFILE )
+endif( LCOV )
 
 add_subdirectory( wibble )
 if( HOARD )
@@ -137,11 +143,11 @@ add_subdirectory( examples )
 
 add_dependencies( lcovd-unit unit )
 
-if( PROFILE )
+if( LCOV )
   lcov_collect( "1" )
   add_dependencies( lcovd-unit lcov-collect-1 )
   add_dependencies( lcov-collect-1 unit )
-endif( PROFILE )
+endif( LCOV )
 
 add_dependencies( check lcovd-unit )
 add_dependencies( check functional )
