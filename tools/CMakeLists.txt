@@ -10,11 +10,6 @@ if( HOARD )
 link_libraries( hoard )
 endif( HOARD )
 
-# on some mingw32, regex.h is not on the default include path
-find_path( RX_PATH regex.h )
-include_directories( ${RX_PATH} )
-link_directories( ${RX_PATH} )
-
 set( PACKJARS "${CMAKE_CURRENT_SOURCE_DIR}/packjars.pl" )
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 

@@ -47,6 +47,11 @@ if( NOT POOLS )
   add_definitions( "-DDISABLE_POOLS" )
 endif( NOT POOLS )
 
+# on some mingw32, regex.h is not on the default include path
+find_path( RX_PATH regex.h )
+include_directories( ${RX_PATH} )
+link_directories( ${RX_PATH} )
+
 if( NOT WINDOWS )
 include( FindMPI )
 endif( NOT WINDOWS )
