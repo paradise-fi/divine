@@ -445,7 +445,7 @@ public:
       if(WaitForSingleObject(l.mutex, 0) == WAIT_OBJECT_0) {
         l.singlylocking = true;
         while(ReleaseMutex(l.mutex)) ;
-        if(res = (int)GetLastError() != 288) //288 -> MUTEX_NOT_OWNED
+        if((res = (int)GetLastError()) != 288) //288 -> MUTEX_NOT_OWNED
           break;
       }
       if(WaitForSingleObject(l.mutex, INFINITE) != WAIT_OBJECT_0) {
