@@ -49,7 +49,7 @@ if( NOT POOLS )
 endif( NOT POOLS )
 
 if( GUI )
-    find_package( Qt4 )
+    find_package( Qt4 4.5.0 )
 endif( GUI )
 
 # on some mingw32, regex.h is not on the default include path
