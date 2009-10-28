@@ -155,7 +155,7 @@ if( GUI )
     if ( QT_FOUND )
         add_subdirectory( gui )
     else()
-        message( "-- WARNING: Could not find Qt4. Disabling GUI." )
+        message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
     endif()
 endif( GUI )
 
