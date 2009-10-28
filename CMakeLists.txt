@@ -152,7 +152,7 @@ add_subdirectory( tools )
 add_subdirectory( examples )
 
 if( GUI )
-    if ( QT4_FOUND AND ( QT_VERSION_MINOR EQUAL 5 OR QT_VERSION_MINOR GREATER 5 ) )
+    if ( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
         add_subdirectory( gui )
     else()
         message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
