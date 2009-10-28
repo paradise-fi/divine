@@ -3,7 +3,7 @@
 // Set the version information here.
 #define DIVINE_VERSION_ID "2.0~beta2"
 #define DIVINE_BRANCH "dev"
-// #define DIVINE_RELEASE
+#define DIVINE_RELEASE
 
 // Defined in terms of above. Do not touch.
 #ifdef DIVINE_BRANCH
