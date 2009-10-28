@@ -23,6 +23,7 @@ option( POOLS "use pool allocation for graph vertices" ON )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
+option( GUI "compile the Qt GUI" ON )
 
 if( WINDOWS )
 add_definitions( -D_WIN32 )
@@ -46,6 +47,10 @@ endif( USE32 )
 if( NOT POOLS )
   add_definitions( "-DDISABLE_POOLS" )
 endif( NOT POOLS )
+
+if( GUI )
+    find_package( Qt4 )
+endif( GUI )
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
@@ -145,6 +150,14 @@ add_subdirectory( lpsolve )
 add_subdirectory( divine )
 add_subdirectory( tools )
 add_subdirectory( examples )
+
+if( GUI )
+    if ( QT_FOUND )
+        add_subdirectory( gui )
+    else()
+        message( "-- WARNING: Could not find Qt4. Disabling GUI." )
+    endif()
+endif( GUI )
 
 add_dependencies( lcovd-unit unit )
 
