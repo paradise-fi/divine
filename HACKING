@@ -103,6 +103,10 @@ The binaries etc. are in the same places, as they would be when using
 Algorithm Implementation
 ========================
 
+PLEASE NOTE WELL: THIS SECTION IS OUTDATED, REFERRING TO DiVinE Multi-Core 1.4
+AND EARLIER! Documentation will be eventually updated to reflect the new
+parallel architecture.
+
 Trivia
 ------
 
