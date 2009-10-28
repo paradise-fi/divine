@@ -67,6 +67,17 @@ available for download in the BEEM repository.
 
 [1]: http://anna.fi.muni.cz/models
 
+Graphical User Interface
+------------------------
+
+If Qt4 development files are available on your machine, a graphical user
+interface for the DiVinE Tool will be compiled as part of the build process.
+You can run the interface with:
+
+    $ PATH=./_build/tools:$PATH ./_build/gui/divine-ide
+
+Please see online help for further information about using the interface.
+
 Known Issues
 ------------
 
