@@ -1,3 +1,5 @@
+#include <wibble/sys/macros.h>
+
 #ifdef POSIX
 #ifndef WIBBLE_LOG_SYSLOG_H
 #define WIBBLE_LOG_SYSLOG_H

@@ -1,3 +1,4 @@
+#include <wibble/sys/macros.h>
 #include <wibble/commandline/options.h>
 #include <wibble/string.h>
 #include <ctype.h>

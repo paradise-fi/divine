@@ -1,3 +1,5 @@
+#include <wibble/sys/macros.h>
+
 #include <wibble/log/ostream.h>
 #ifdef POSIX
 #include <time.h>

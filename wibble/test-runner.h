@@ -1,4 +1,6 @@
 // -*- C++ -*-
+#include <wibble/sys/macros.h>
+
 #include <unistd.h>
 #ifdef POSIX
 #include <wibble/sys/pipe.h>

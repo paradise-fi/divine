@@ -1,7 +1,5 @@
 #include <wibble/sys/fs.h>
-#ifdef POSIX
 #include <wibble/sys/process.h>
-#endif
 #include <wibble/string.h>
 #include <wibble/exception.h>
 #include <fstream>

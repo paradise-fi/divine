@@ -1,6 +1,6 @@
-#ifdef POSIX
 #include <wibble/log/syslog.h>
 
+#ifdef POSIX
 namespace wibble {
 namespace log {
 

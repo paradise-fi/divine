@@ -23,6 +23,7 @@
 
 #include <sys/types.h>
 #include <wibble/exception.h>
+#include <wibble/sys/macros.h>
 
 struct rusage;
 

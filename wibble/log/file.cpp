@@ -1,3 +1,4 @@
+#include <wibble/sys/macros.h>
 #include <wibble/log/file.h>
 #include <wibble/exception.h>
 #include <stdio.h>
