@@ -23,6 +23,8 @@
 
 #include <wibble/sys/macros.h>
 #include <wibble/exception.h>
+
+#ifdef POSIX
 #include <sys/types.h>
 
 namespace wibble {
@@ -73,6 +75,8 @@ void detachFromTTY();
 }
 }
 }
+
+#endif
 
 // vim:set ts=4 sw=4:
 #endif
