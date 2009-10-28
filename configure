@@ -21,13 +21,13 @@ cat manifest | while read; do
 done
 
 do_cmake_inst() {
-    CMAKE_VER=2.4.7;
+    CMAKE_VER=2.6.4;
     CMAKE_DIR="cmake-$CMAKE_VER";
     CMAKE_TAR="$CMAKE_DIR.tar.gz";
-    CMAKE_URL="http://www.cmake.org/files/v2.4/$CMAKE_TAR";
+    CMAKE_URL="http://www.cmake.org/files/v2.6/$CMAKE_TAR";
     if ! test -e "$CMAKE_TAR"; then
         if type -p curl >& /dev/null; then
-            curl $CMAKE_URL -o cmake-2.4.7.tar.gz || die "Error downloading cmake, plase install manually.";
+            curl $CMAKE_URL -o cmake-$CMAKE_VER.tar.gz || die "Error downloading cmake, plase install manually.";
         elif type -p wget >& /dev/null; then
             wget $CMAKE_URL || die "Error downloading cmake, please install manually.";
         else
