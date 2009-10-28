@@ -108,7 +108,7 @@ if( PROFILE )
 find_program( LCOV lcov )
 find_program( LCOV_GENHTML genhtml )
 if( NOT LCOV )
-  message( "-- WARNING: I could not find LCOV, disabling coverage report generation." )
+  message( "-- WARNING: Could not find LCOV, disabling coverage report generation." )
 endif( NOT LCOV )
 endif( PROFILE )
 
