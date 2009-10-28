@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CombineDialog</class>
+ <widget class="QDialog" name="CombineDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>301</width>
+    <height>252</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Combine</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="pathLayout">
+     <item>
+      <widget class="QLabel" name="pathLabel">
+       <property name="text">
+        <string>&amp;Path:</string>
+       </property>
+       <property name="buddy">
+        <cstring>pathBox</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="pathBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="pathButton">
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="defsLayout">
+     <item>
+      <widget class="QLabel" name="defsLabel">
+       <property name="text">
+        <string>&amp;Definitions:</string>
+       </property>
+       <property name="buddy">
+        <cstring>defsEdit</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="defsEdit"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QListWidget" name="formulaList"/>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>pathBox</tabstop>
+  <tabstop>pathButton</tabstop>
+  <tabstop>defsEdit</tabstop>
+  <tabstop>formulaList</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>CombineDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>159</x>
+     <y>212</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>76</x>
+     <y>199</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>CombineDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>204</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>247</x>
+     <y>200</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>formulaList</sender>
+   <signal>activated(QModelIndex)</signal>
+   <receiver>CombineDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>249</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>281</x>
+     <y>1</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

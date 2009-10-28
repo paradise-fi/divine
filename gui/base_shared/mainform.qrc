@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="icons" >
+    <file alias="sim/random" >res/roll.png</file>
+    <file alias="sim/start" >res/media-playback-start.png</file>
+    <file alias="sim/stop" >res/media-playback-stop.png</file>
+    <file alias="sim/undo" >res/media-seek-backward.png</file>
+    <file alias="sim/redo" >res/media-seek-forward.png</file>
+    <file alias="sim/restart" >res/media-skip-backward.png</file>
+    <file alias="file/new" >res/document-new.png</file>
+    <file alias="file/open" >res/document-open.png</file>
+    <file alias="file/print" >res/document-print.png</file>
+    <file alias="file/save" >res/document-save.png</file>
+    <file alias="edit/copy" >res/edit-copy.png</file>
+    <file alias="edit/cut" >res/edit-cut.png</file>
+    <file alias="edit/paste" >res/edit-paste.png</file>
+    <file alias="edit/redo" >res/edit-redo.png</file>
+    <file alias="edit/undo" >res/edit-undo.png</file>
+  </qresource>
+</RCC>
