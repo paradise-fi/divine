@@ -4,6 +4,8 @@ DiVinE 2.0
 - This version is a major rewrite of the parallel framework and algorithms.
 - MPI is now partially supported in addition to shared memory parallelism
   OpenMPI 1.3 is recommended.
+- A new graphical user interface is available, including model editor,
+  simulator and a counterexample browser.
 - Support for running on Windows (win32) machines (shared memory only).
 - It is now possible to load models in form of ELF shared objects (POSIX only).
 - More data available in --report (including machine-readable counterexample).
