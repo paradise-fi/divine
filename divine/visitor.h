@@ -230,6 +230,7 @@ struct Parallel {
 
     template< typename BFV >
     void run( BFV &bfv ) {
+        worker.clearInterrupt();
         while ( true ) {
             if ( worker.fifo.empty() ) {
                 if ( worker.idle() )

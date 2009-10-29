@@ -244,6 +244,10 @@ struct DomainWorker {
             master().interrupt();
     }
 
+    void clearInterrupt() {
+        m_interrupt = false;
+    }
+
     bool interrupted() {
         return m_interrupt;
     }
