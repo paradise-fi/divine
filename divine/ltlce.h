@@ -143,10 +143,8 @@ struct LtlCE {
             trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
-        } while ( shared().ce.current.valid() && !a.equal( shared().ce.current, stop ) );
-
-        if ( shared().ce.current.valid() ) // i.e. this was not a self-loop
-            trace.push_back( shared().ce.current );
+        } while ( !a.equal( shared().ce.current, stop ) );
+        trace.push_back( shared().ce.current );
 
         while ( !trace.empty() ) {
             Node current = trace.back();
