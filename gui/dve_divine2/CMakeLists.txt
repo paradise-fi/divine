@@ -39,3 +39,5 @@ qt4_wrap_ui(DVE_DIVINE2_SRC3 ${DVE_DIVINE2_UI})
 
 add_library(dve_divine2 MODULE ${DVE_DIVINE2_SRC} ${DVE_DIVINE2_SRC2} ${DVE_DIVINE2_SRC3})
 target_link_libraries(dve_divine2 base_shared libdivine wibble ${QT_LIBRARIES})
+
+install(TARGETS dve_divine2 DESTINATION ${GUI_PLUGIN_PATH})

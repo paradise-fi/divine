@@ -28,3 +28,5 @@ qt4_wrap_cpp(LTL_EDITOR_SRC2 ${LTL_EDITOR_MOC})
 
 add_library(ltl_editor MODULE ${LTL_EDITOR_SRC} ${LTL_EDITOR_SRC2})
 target_link_libraries(ltl_editor base_shared ${QT_LIBRARIES})
+
+install(TARGETS ltl_editor DESTINATION ${GUI_PLUGIN_PATH})

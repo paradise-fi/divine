@@ -28,3 +28,5 @@ qt4_wrap_cpp(DVE_EDITOR_SRC2 ${DVE_EDITOR_MOC})
 
 add_library(dve_editor MODULE ${DVE_EDITOR_SRC} ${DVE_EDITOR_SRC2})
 target_link_libraries(dve_editor base_shared ${QT_LIBRARIES})
+
+install(TARGETS dve_editor DESTINATION ${GUI_PLUGIN_PATH})

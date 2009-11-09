@@ -21,8 +21,15 @@
 
 void loadPlugins(MainForm * root)
 {
-  QDir pluginsDir = QDir(qApp->applicationDirPath());
-  pluginsDir.cd("plugins");
+  QDir pluginsDir;
+  const char * envPlugins = getenv("DIVINE_GUI_PLUGIN_PATH");
+
+  if(envPlugins) {
+    pluginsDir = QDir(envPlugins);
+  } else {
+    pluginsDir = QDir(qApp->applicationDirPath());
+    pluginsDir.cd("plugins");
+  }
 
   foreach(QString fileName, pluginsDir.entryList(QDir::Files)) {
     QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
