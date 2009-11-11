@@ -19,15 +19,16 @@ struct Dummy : Common {
     }
 
     struct Successors {
+        typedef Node Type;
         Allocator *alloc;
-        Node _from;
+        mutable Node _from;
         int nth;
 
         int result() {
             return 0;
         }
 
-        bool empty() {
+        bool empty() const {
             if ( !_from.valid() )
                 return true;
             Content f = _from.get< Content >( alloc->_slack );
@@ -38,7 +39,7 @@ struct Dummy : Common {
 
         Node from() { return _from; }
 
-        Successors tail() {
+        Successors tail() const {
             Successors s = *this;
             s.nth ++;
             return s;

@@ -37,15 +37,17 @@ struct Custom : Common {
     typedef wibble::Unit CircularSupport;
 
     struct Successors {
-        Node _from, my;
-        int handle;
+        typedef Node Type;
+        Node _from;
+        mutable Node my;
+        mutable int handle;
         Custom *custom;
 
         int result() {
             return 0;
         }
 
-        bool empty() {
+        bool empty() const {
             if ( !_from.valid() )
                 return true;
             force();
@@ -54,7 +56,7 @@ struct Custom : Common {
 
         Node from() { return _from; }
 
-        void force() {
+        void force() const {
             if ( my.valid() ) return;
             my = custom->alloc.new_blob( custom->dl.size );
             handle = custom->dl.get_successor(

@@ -21,6 +21,7 @@ struct LegacyCommon : Common {
     system_t *m_system;
 
     struct Successors {
+        typedef Node Type;
         int current;
         succ_container_t m_succs;
         Node _from;
@@ -30,7 +31,7 @@ struct LegacyCommon : Common {
             return 0;
         }
 
-        bool empty() {
+        bool empty() const {
             if ( !_from.valid() )
                 return true;
             return current == m_succs.size();
@@ -38,11 +39,11 @@ struct LegacyCommon : Common {
 
         Node from() { return _from; }
 
-        State head() {
+        State head() const {
             return alloc->unlegacy_state( m_succs[ current ] );
         }
 
-        Successors tail() {
+        Successors tail() const {
             Successors s = *this;
             ++ s.current;
             return s;
