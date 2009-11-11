@@ -26,6 +26,7 @@
 #include <wibble/sfinae.h>
 
 #include <cstdarg>
+#include <cstdio>
 #include <string>
 #include <set>
 #include <vector>
