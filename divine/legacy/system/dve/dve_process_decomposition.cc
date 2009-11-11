@@ -65,7 +65,7 @@ void dve_process_decomposition_t::parse_process(std::size_t gid_in)
   n = dve_proc_ptr->get_state_count();
   h = dve_proc_ptr->get_trans_count();
   graf = new int[n*h];
-  hran = new int[h];
+  hran = new int[std::max(n, h)];
   pocitadlo = 1;
   number = new int[n];
   low = new int[n];
