@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <cmath>
+#include <stdint.h>
 #include <wibble/sys/mutex.h>
 #include <wibble/sfinae.h> // for Unit
 
