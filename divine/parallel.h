@@ -114,9 +114,6 @@ struct BarrierThread : RunThread< T >, Terminable {
     }
 
     virtual void fini() {
-        // m_done is true if termination has been done, in which case all of
-        // the mutexes are unlocked. (and unlocking an already unlocked mutex
-        // locks it... d'OH)
         m_barrier->done( this );
     }
 
