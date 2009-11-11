@@ -30,9 +30,9 @@ using namespace divine;
 // paste from ltl2ba.cc
 void copy_graph(const ALT_graph_t& aG, BA_opt_graph_t& oG)
 {
-	list<ALT_ba_node_t*> node_list, init_nodes, accept_nodes;
-	list<ALT_ba_node_t*>::const_iterator n_b, n_e, n_i;
-	list<ALT_ba_trans_t>::const_iterator t_b, t_e, t_i;
+	std::list<ALT_ba_node_t*> node_list, init_nodes, accept_nodes;
+	std::list<ALT_ba_node_t*>::const_iterator n_b, n_e, n_i;
+	std::list<ALT_ba_trans_t>::const_iterator t_b, t_e, t_i;
 	KS_BA_node_t *p_N;
 
 	node_list = aG.get_all_BA_nodes();
