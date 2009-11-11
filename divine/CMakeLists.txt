@@ -24,6 +24,7 @@ set_source_files_properties( ${CONTEXT}.bwah PROPERTIES SYMBOLIC ON )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
+add_definitions( "-fPIC" )
 
 add_library( libdivine STATIC
     ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
