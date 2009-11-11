@@ -58,6 +58,7 @@ struct Barrier {
 
         MutexLock __l( m_globalMutex );
 
+        m_done = false; // reset
         bool done = true;
         bool who_is_ours = false;
 
@@ -172,11 +173,15 @@ struct Barrier {
             mutex( t ).unlock();
 #endif
             m_mutexes.erase( t );
+            m_conditions.erase( t );
+            -- m_regd;
         }
     }
 
     void started( T *t ) {
         MutexLock __l( m_globalMutex );
+        if ( m_mutexes.count( t ) )
+            return; // already started, noop
         m_conditions[ t ];
         m_mutexes[ t ].lock();
         ++ m_regd;

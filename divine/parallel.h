@@ -252,6 +252,12 @@ struct DomainWorker {
         return m_interrupt;
     }
 
+    void restart() {
+        clearInterrupt();
+        // ugh...
+        master().parallel().m_threads[ localId() ].m_barrier->started( terminable() );
+    }
+
     Terminable *terminable() {
         return &master().parallel().m_threads[ localId() ];
     }
