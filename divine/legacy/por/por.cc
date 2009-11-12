@@ -261,6 +261,7 @@ bool por_t::set_pre(bool *trans_scan_loc_states, bool *trans_scan_vars, bool *tr
 
 void por_t::init(explicit_system_t *S, list<expression_t*>* vis_list)
 { 
+    count_approx_interuptions = false; // XXX
   System=dynamic_cast<dve_explicit_system_t*>(S);
   Table=System->get_symbol_table();
   proc_count=System->get_process_count(); //property process included here :-(
