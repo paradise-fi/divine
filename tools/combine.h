@@ -276,10 +276,10 @@ struct Combine {
     int main() {
         parseOptions();
 
-        if ( str::endsWith( input, "probdve" ) ) {
+        probabilistic = str::endsWith( input, "probdve" );
+        if ( probabilistic )
             ext = ".probdve";
-            probabilistic = true;
-        } else if ( str::endsWith( input, "dve" ) )
+        else if ( str::endsWith( input, "dve" ) )
             ext = ".dve";
         else
             die( "FATAL: Input file extension has to be either "
