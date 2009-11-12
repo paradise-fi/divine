@@ -12,6 +12,7 @@
 #include <divine/ltl2ba/alt_graph.hh>
 #include <divine/ltl2ba/formul.hh>
 #include <divine/ltl2ba/support_dve.hh>
+#include <divine/ltl2ba/DBA_graph.hh>
 
 #ifdef POSIX
 #include <sys/types.h>
@@ -116,6 +117,7 @@ struct Combine {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     bool have_ltl;
+    bool probabilistic;
 
     std::string input, ltl, defs;
     std::string in_data, ltl_data, ltl_defs, system;
@@ -205,7 +207,13 @@ struct Combine {
         copy_graph(G, oG);
         oG.to_one_initial();
         oG.optimize(oG1, 6);
-        // semideterminizace?
+
+        if ( probabilistic && !oG1.is_semideterministic() ) {
+            DBA_graph_t DG;
+            DG.semideterminization( oG1 );
+            oG1 = DG.transform();
+        }
+
         divine::output(oG1, str);
         return str.str();
     }
@@ -268,9 +276,10 @@ struct Combine {
     int main() {
         parseOptions();
 
-        if ( str::endsWith( input, "probdve" ) )
+        if ( str::endsWith( input, "probdve" ) ) {
             ext = ".probdve";
-        else if ( str::endsWith( input, "dve" ) )
+            probabilistic = true;
+        } else if ( str::endsWith( input, "dve" ) )
             ext = ".dve";
         else
             die( "FATAL: Input file extension has to be either "
