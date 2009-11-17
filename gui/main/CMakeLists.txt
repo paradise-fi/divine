@@ -16,6 +16,6 @@ ENDIF (APPLE)
 add_executable(divine.ide ${GUI_TYPE} main.cpp)
 target_link_libraries(divine.ide base_shared ${QT_LIBRARIES})
 
-install(TARGETS divine.ide DESTINATION ${GUI_LIB_PATH})
-install(CODE "file(WRITE ${GUI_BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${GUI_LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${GUI_PLUGIN_PATH}'\n${GUI_LIB_PATH}/divine.ide\n\") ")
+install(TARGETS divine.ide DESTINATION ${GUI_LIBEXEC_PATH})
+install(CODE "file(WRITE ${GUI_BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${GUI_LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${GUI_PLUGIN_PATH}'\n${GUI_LIBEXEC_PATH}/divine.ide\n\") ")
 install(CODE "execute_process(COMMAND chmod a+x ${GUI_BIN_PATH}/divine.ide)")
