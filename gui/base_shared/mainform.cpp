@@ -1445,8 +1445,7 @@ void MainForm::onSimulatorStopped(void)
     editor->autoHighlight(NULL);
   }
 
-  simProxy_->deleteLater();
-
+  delete simProxy_;
   simProxy_ = NULL;
 
   emit simulatorChanged(NULL);
