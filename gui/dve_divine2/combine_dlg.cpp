@@ -16,14 +16,16 @@
 #include <QCompleter>
 #include <QDirModel>
 #include <QTextStream>
+#include <QPushButton>
 
 #include "ui_combine.h"
 
+#include "settings.h"
 #include "mainform.h"
 #include "combine_dlg.h"
-#include <QPushButton>
 
-CombineDialog::CombineDialog(MainForm * root) : QDialog(root)
+CombineDialog::CombineDialog(MainForm * root, const QString & path)
+  : QDialog(root), path_(path)
 {
   ui_ = new Ui::CombineDialog;
 
@@ -38,6 +40,12 @@ CombineDialog::CombineDialog(MainForm * root) : QDialog(root)
   completer->setModel(new QDirModel(completer));
 
   ui_->pathBox->setCompleter(completer);
+  
+  sSettings().beginGroup("Combine");
+  ui_->defsEdit->setText(sSettings().value(path, "").toString());
+  sSettings().endGroup();
+  
+  connect(this, SIGNAL(accepted()), SLOT(onAccepted()));
 }
 
 CombineDialog::~CombineDialog()
@@ -116,4 +124,11 @@ void CombineDialog::on_pathBox_editTextChanged(const QString & text)
   
   if(ui_->formulaList->currentRow() == -1)
     ui_->formulaList->setCurrentRow(0);
+}
+
+void CombineDialog::onAccepted(void)
+{
+  sSettings().beginGroup("Combine");
+  sSettings().setValue(path_, ui_->defsEdit->text());
+  sSettings().endGroup();
 }

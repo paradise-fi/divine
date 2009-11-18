@@ -20,7 +20,7 @@
 #include <QProcess>
 
 class QAction;
-class QMenu;
+class QActionGroup;
 
 // default values
 const int defDivThreads = 2;
@@ -28,6 +28,8 @@ const int defDivMemory = 0;
 const bool defDivNoPool = false;
 const bool defDivReport = false;
 const char defDivPath[] = "divine";
+
+const int defDivAlgorithm = 0;
 
 class DveSimulatorLoader : public SimulatorLoader
 {
@@ -55,7 +57,10 @@ class DvePlugin : public QObject, public AbstractPlugin
   private:
     QAction * syntaxAct_;
     QAction * combineAct_;
-    QMenu * algorithmMenu_;
+    QAction * reachabilityAct_;
+    QAction * metricsAct_;
+    QAction * verifyAct_;
+    QActionGroup * algorithmGroup_;
     
     // divine runner
     QProcess * divineProcess_;
@@ -71,11 +76,15 @@ class DvePlugin : public QObject, public AbstractPlugin
   private slots:
     void checkSyntax(void);
     void combine(void);
-    void runAlgorithm(QAction * action);
+    
+    void reachability(void);
+    void metrics(void);
+    void verify(void);
     
     void onRunnerError(QProcess::ProcessError error);
     void onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void onEditorChanged(SourceEditor * editor);
+    void onAlgorithmTriggered(QAction * action);
 };
 
 #endif

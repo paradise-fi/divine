@@ -15,6 +15,7 @@
 #include <QtPlugin>
 #include <QAction>
 #include <QMenu>
+#include <QToolBar>
 #include <QProcess>
 #include <QUrl>
 #include <QMessageBox>
@@ -60,33 +61,55 @@ void DvePlugin::install(MainForm * root)
   syntaxAct_->setStatusTip(tr("Check model syntax"));
   connect(syntaxAct_, SIGNAL(triggered()), SLOT(checkSyntax()));
   
-  algorithmMenu_ = new QMenu(tr("&Algorithm"));
-  QAction * action = algorithmMenu_->addAction(tr("&Reachability"));
-  action->setStatusTip(tr("Perform reachability analysis"));
-  action->setData("reachability");
-  
-  action = algorithmMenu_->addAction(tr("Me&trics"));
-  action->setStatusTip(tr("Analyze state space metrics"));
-  action->setData("metrics");
-  
-  action = algorithmMenu_->addAction(tr("&OWCTY"));
-  action->setStatusTip(tr("Verify model using the One-way-catch-them-young algorithm"));
-  action->setData("owcty");
-  
-  action = algorithmMenu_->addAction(tr("Nested &DFS"));
-  action->setStatusTip(tr("Verify model using the nested DFS algorithm"));
-  action->setData("nested-dfs");
-  
-  action = algorithmMenu_->addAction(tr("&MAP"));
-  action->setStatusTip(tr("Verify model using the Maximum accepting predecessor algorithm"));
-  action->setData("map");
-  
-  connect(algorithmMenu_, SIGNAL(triggered(QAction*)), SLOT(runAlgorithm(QAction*)));
-
-  combineAct_ = new QAction(tr("&Combine..."), this);
+  combineAct_ = new QAction(tr("C&ombine..."), this);
   combineAct_->setObjectName("combineAct");
   combineAct_->setStatusTip(tr("Combines current model with LTL formula"));
   connect(combineAct_, SIGNAL(triggered()), SLOT(combine()));
+  
+  reachabilityAct_ = new QAction(tr("&Reachability"), this);
+  reachabilityAct_->setObjectName("reachabilityAct");
+  reachabilityAct_->setStatusTip(tr("Perform reachability analysis"));
+  connect(reachabilityAct_, SIGNAL(triggered()), SLOT(reachability()));
+    
+  metricsAct_ = new QAction(tr("&Metrics"), this);
+  metricsAct_->setObjectName("metricsAct");
+  metricsAct_->setStatusTip(tr("Analyze state space metrics"));
+  connect(metricsAct_, SIGNAL(triggered()), SLOT(metrics()));
+  
+  verifyAct_ = new QAction(tr("&Verify LTL"), this);
+  verifyAct_->setObjectName("verifyAct");
+  verifyAct_->setStatusTip(tr("Verify a model with LTL formula"));
+  connect(verifyAct_, SIGNAL(triggered()), SLOT(verify()));
+  
+  QMenu * algorithmMenu = new QMenu(tr("&Algorithm"));
+  algorithmMenu->setObjectName("AlgorithmMenu");
+  algorithmMenu->setStatusTip(tr("Select default verification algorithm"));
+  
+  algorithmGroup_ = new QActionGroup(algorithmMenu);
+  
+  QAction * action = algorithmGroup_->addAction(tr("&OWCTY"));
+  action->setStatusTip(tr("One-way-catch-them-young algorithm"));
+  action->setData("owcty");
+  action->setCheckable(true);
+  
+  action = algorithmGroup_->addAction(tr("Nested &DFS"));
+  action->setStatusTip(tr("Nested DFS algorithm"));
+  action->setData("nested-dfs");
+  action->setCheckable(true);
+  
+  action = algorithmGroup_->addAction(tr("&MAP"));
+  action->setStatusTip(tr("Maximum accepting predecessor algorithm"));
+  action->setData("map");
+  action->setCheckable(true);
+  
+  algorithmMenu->addActions(algorithmGroup_->actions());
+  
+  sSettings().beginGroup("DiVinE Tool");
+  int alg = qBound(0, sSettings().value("algorithm", defDivAlgorithm).toInt(), 2);
+  algorithmGroup_->actions().at(alg)->setChecked(true);
+  sSettings().endGroup();
+  
+  connect(algorithmMenu, SIGNAL(triggered(QAction*)), SLOT(onAlgorithmTriggered(QAction*)));
   
   QMenu * menu = root->findChild<QMenu*>("toolsMenu");
   QAction * sep = root->findChild<QAction*>("toolsSeparator");
@@ -94,14 +117,35 @@ void DvePlugin::install(MainForm * root)
   
   menu->insertAction(sep, syntaxAct_);
   menu->insertAction(sep, combineAct_);
-  menu->insertMenu(sep, algorithmMenu_);
+  menu->insertSeparator(sep);
+  menu->insertAction(sep, reachabilityAct_);
+  menu->insertAction(sep, metricsAct_);
+  menu->insertAction(sep, verifyAct_);
+  menu->insertSeparator(sep);
+  menu->insertMenu(sep, algorithmMenu);
+  
   menu->setEnabled(true);
+
+  menu = root->findChild<QMenu*>("toolbarsMenu");
+  Q_ASSERT(menu);
+
+  QToolBar * toolbar = root->addToolBar(tr("Verification"));
+  toolbar->setObjectName("divine2ToolBar");
+  toolbar->addAction(reachabilityAct_);
+  toolbar->addAction(verifyAct_);
+
+  action = toolbar->toggleViewAction();
+  action->setText(tr("&Verification"));
+  action->setStatusTip(tr("Toggles the verification toolbar"));
+  menu->addAction(action);
   
   PreferencesPage * page = new DivinePreferences();
   root->registerPreferences(QObject::tr("Tools"), QObject::tr("DiVinE Tool"), page);
   
   connect(this, SIGNAL(message(QString)), root, SIGNAL(message(QString)));
   connect(root, SIGNAL(editorChanged(SourceEditor*)), SLOT(onEditorChanged(SourceEditor*)));
+  
+  onEditorChanged(root->activeEditor());
 }
 
 void DvePlugin::prepareDivine(QStringList & args)
@@ -186,7 +230,7 @@ void DvePlugin::combine(void)
   if(url.path().isEmpty())
     return;
   
-  CombineDialog dlg(root_);
+  CombineDialog dlg(root_, url.path());
   
   if(!dlg.exec())
     return;
@@ -228,19 +272,26 @@ void DvePlugin::combine(void)
   if(!errors.isEmpty())
     emit message(errors);
   
-  if(process.exitCode() == 0) {
-    root_->newFile("dve");
-    root_->activeEditor()->setPlainText(output);
-    root_->activeEditor()->document()->setModified(true);
-  }
+  if(process.exitCode() == 0)
+    root_->newFile("dve", output);
 }
 
-void DvePlugin::runAlgorithm(QAction * action)
+void DvePlugin::reachability(void)
 {
+  runDivine("reachability");
+}
+
+void DvePlugin::metrics(void)
+{
+  runDivine("metrics");
+}
+
+void DvePlugin::verify(void)
+{
+  QAction * action = algorithmGroup_->checkedAction();
   Q_ASSERT(action);
   
-  QString algorithm = action->data().toString();
-  runDivine(algorithm);
+  runDivine(action->data().toString());
 }
 
 void DvePlugin::onRunnerError(QProcess::ProcessError error)
@@ -363,7 +414,10 @@ void DvePlugin::onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus)
 
 void DvePlugin::onEditorChanged(SourceEditor * editor)
 {
-  QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
+  QUrl url;
+  
+  if(editor)
+    url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
   
   bool isDve = url.scheme() == "dve";
   bool isMDve = url.scheme() == "mdve";
@@ -372,7 +426,19 @@ void DvePlugin::onEditorChanged(SourceEditor * editor)
   combineAct_->setEnabled(isDve || isMDve);
   
   // only one parallel process is allowed
-  algorithmMenu_->setEnabled(isDve && !divineProcess_);
+  reachabilityAct_->setEnabled(isDve && !divineProcess_);
+  metricsAct_->setEnabled(isDve && !divineProcess_);
+  verifyAct_->setEnabled(isDve && !divineProcess_);
+}
+
+void DvePlugin::onAlgorithmTriggered(QAction * action)
+{
+  sSettings().beginGroup("DiVinE Tool");
+  
+  int index = algorithmGroup_->actions().indexOf(action);
+  sSettings().setValue("algorithm", index);
+  
+  sSettings().endGroup();
 }
 
 Q_EXPORT_PLUGIN2(dve_legacy, DvePlugin)

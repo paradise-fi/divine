@@ -229,24 +229,19 @@ bool MainForm::maybeSave(const QList<SourceEditor*> & editors)
   if (tabs.isEmpty())
     return true;
 
-
   if (tabs.count() == 1 && pageArea_->currentWidget() == tabs.first()) {
     return maybeSave(tabs.first());
   } else {
     MultiSaveDialog * dlg = new MultiSaveDialog(tabs, this);
 
-    int ret = dlg->exec();
-
-    if (ret == MultiSaveDialog::btCancel)
+    if (!dlg->exec())
       return false;
 
-    if (ret == MultiSaveDialog::btSave) {
-      tabs = dlg->selection();
+    tabs = dlg->selection();
 
-      foreach(SourceEditor * editor, tabs) {
-        if (!save(editor))
-          return false;
-      }
+    foreach(SourceEditor * editor, tabs) {
+      if (!save(editor))
+        return false;
     }
   }
 
@@ -256,23 +251,15 @@ bool MainForm::maybeSave(const QList<SourceEditor*> & editors)
 bool MainForm::maybeSaveAll(void)
 {
   QList<SourceEditor*> tabs;
-  SourceEditor * editor;
-
-  // collect dirty tabs
 
   for (int i = 0; i < pageArea_->count(); ++i) {
-    editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
-    Q_ASSERT(editor);
-
-    if (editor->document()->isModified()) {
-      tabs.append(editor);
-    }
+    tabs.append(qobject_cast<SourceEditor*>(pageArea_->widget(i)));
   }
 
   return maybeSave(tabs);
 }
 
-void MainForm::newFile(const QString & hint)
+void MainForm::newFile(const QString & hint, const QByteArray & text)
 {
   SourceEditor * editor = new SourceEditor(this);
 
@@ -287,8 +274,11 @@ void MainForm::newFile(const QString & hint)
   connect(editor, SIGNAL(copyAvailable(bool)), cutAct_, SLOT(setEnabled(bool)));
   connect(editor, SIGNAL(copyAvailable(bool)), copyAct_, SLOT(setEnabled(bool)));
 
+  editor->document()->setPlainText(text);
+  editor->document()->setModified(!text.isEmpty());
+  
   EditorBuilder * builder = NULL;
-
+  
   // install hinted highlighter & completer
   if (!hint.isEmpty())
     builder = getBuilder(hint);
@@ -305,8 +295,11 @@ void MainForm::newFile(const QString & hint)
   
   const int tab = pageArea_->currentIndex();
 
-  pageArea_->insertTab(tab + 1, editor, tr("untitled"));
+  pageArea_->insertTab(tab + 1, editor, editor->documentTitle());
   pageArea_->setCurrentIndex(tab + 1);
+  
+  if(editor->document()->isModified())
+    onDocumentModified(editor, true);
 }
 
 void MainForm::openFile(const QString & fileName)
@@ -466,9 +459,6 @@ void MainForm::updateWindowTitle(void)
   if (editor) {
     // either real filename, or "untitled"
     QString title = editor->documentTitle();
-
-    if (title.isEmpty())
-      title = tr("untitled");
 
     setWindowTitle(tr("DiVinE IDE - %1 [*]").arg(title));
     setWindowModified(editor->document()->isModified());
@@ -900,7 +890,7 @@ void MainForm::createToolBars(void)
   toolbar->addAction(saveAct_);
 
   action = toolbar->toggleViewAction();
-  action->setText(tr("&File Toolbar"));
+  action->setText(tr("&File"));
   action->setStatusTip(tr("Toggles the file toolbar"));
   menu->addAction(action);
 
@@ -913,7 +903,7 @@ void MainForm::createToolBars(void)
   toolbar->addAction(pasteAct_);
 
   action = toolbar->toggleViewAction();
-  action->setText(tr("&Edit Toolbar"));
+  action->setText(tr("&Edit"));
   action->setStatusTip(tr("Toggles the edit toolbar"));
   menu->addAction(action);
 
@@ -927,7 +917,7 @@ void MainForm::createToolBars(void)
   toolbar->addAction(stopAct_);
 
   action = toolbar->toggleViewAction();
-  action->setText(tr("&Simulation Toolbar"));
+  action->setText(tr("&Simulation"));
   action->setStatusTip(tr("Toggles the simulator toolbar"));
   menu->addAction(action);
 }

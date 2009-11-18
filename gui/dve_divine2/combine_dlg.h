@@ -29,7 +29,7 @@ class CombineDialog: public QDialog {
   Q_OBJECT
 
   public:
-    CombineDialog(MainForm * root);
+    CombineDialog(MainForm * root, const QString & path="");
     ~CombineDialog();
 
     const QString file(void) const;
@@ -39,10 +39,14 @@ class CombineDialog: public QDialog {
     
   private:
     Ui::CombineDialog * ui_;
+    
+    QString path_;      // settings key
 
   private slots:
     void on_pathButton_clicked(void);
     void on_pathBox_editTextChanged(const QString & text);
+    
+    void onAccepted(void);
 };
 
 #endif

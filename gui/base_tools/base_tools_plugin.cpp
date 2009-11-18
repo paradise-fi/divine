@@ -80,7 +80,7 @@ void BaseToolsPlugin::install(MainForm * root)
   connect(root, SIGNAL(settingsChanged()), console, SLOT(readSettings()));
 
   action = console->toggleViewAction();
-  action->setText(QObject::tr("Log &console panel"));
+  action->setText(QObject::tr("Log &console"));
   action->setStatusTip(QObject::tr("Toggles the console panel"));
   menu->addAction(action);
 
@@ -97,7 +97,7 @@ void BaseToolsPlugin::install(MainForm * root)
           watch, SLOT(setSimulator(SimulatorProxy*)));
 
   action = watch->toggleViewAction();
-  action->setText(QObject::tr("&Watch panel"));
+  action->setText(QObject::tr("&Watch"));
   action->setStatusTip(QObject::tr("Toggles the watch panel"));
   menu->addAction(action);
 
@@ -114,7 +114,7 @@ void BaseToolsPlugin::install(MainForm * root)
           trace, SLOT(setSimulator(SimulatorProxy*)));
 
   action = trace->toggleViewAction();
-  action->setText(QObject::tr("&Trace stack panel"));
+  action->setText(QObject::tr("&Trace stack"));
   action->setStatusTip(QObject::tr("Toggles the trace stack panel"));
   menu->addAction(action);
 
@@ -131,7 +131,7 @@ void BaseToolsPlugin::install(MainForm * root)
           trans, SLOT(setSimulator(SimulatorProxy*)));
 
   action = trans->toggleViewAction();
-  action->setText(QObject::tr("&Enabled transitions panel"));
+  action->setText(QObject::tr("&Enabled transitions"));
   action->setStatusTip(QObject::tr("Toggles the enabled transitions panel"));
   menu->addAction(action);
 
@@ -147,7 +147,7 @@ void BaseToolsPlugin::install(MainForm * root)
           msc, SLOT(setSimulator(SimulatorProxy*)));
 
   action = msc->toggleViewAction();
-  action->setText(QObject::tr("&Sequence diagram panel"));
+  action->setText(QObject::tr("&Sequence diagram"));
   action->setStatusTip(QObject::tr("Toggles the sequence diagram panel"));
   menu->addAction(action);
 

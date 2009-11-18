@@ -94,5 +94,38 @@
   </layout>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>saveButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MultiSaveDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>214</x>
+     <y>247</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>234</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cancelButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MultiSaveDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>301</x>
+     <y>241</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>232</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

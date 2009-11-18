@@ -61,17 +61,13 @@ const QList<SourceEditor*> MultiSaveDialog::selection(void) const
   return res;
 }
 
-void MultiSaveDialog::on_saveButton_clicked(void)
-{
-  done(btSave);
-}
-
 void MultiSaveDialog::on_noneButton_clicked(void)
 {
-  done(btNone);
-}
-
-void MultiSaveDialog::on_cancelButton_clicked(void)
-{
-  done(btCancel);
+  for (int i = 0; i < ui_->fileTree->topLevelItemCount(); ++i) {
+    QTreeWidgetItem * item = ui_->fileTree->topLevelItem(i);
+    
+    item->setCheckState(0, Qt::Unchecked);
+  }
+  
+  accept();
 }

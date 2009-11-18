@@ -74,7 +74,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     bool maybeSaveAll(void);
     
   public slots:
-    void newFile(const QString & hint = QString());
+    void newFile(const QString & hint = QString(), const QByteArray & text = QByteArray());
     void openFile(const QString & fileName);
 
     void startSimulation(void);

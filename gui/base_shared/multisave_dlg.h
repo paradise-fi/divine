@@ -29,12 +29,6 @@ class MultiSaveDialog : public QDialog
     Q_OBJECT
 
   public:
-    // button codes
-    static const int btCancel = 0x1;
-    static const int btSave = 0x2;
-    static const int btNone = 0x4;
-
-  public:
     MultiSaveDialog(const QList<SourceEditor*> & files, QWidget * parent = NULL);
     ~MultiSaveDialog();
 
@@ -44,9 +38,7 @@ class MultiSaveDialog : public QDialog
     Ui::MultiSaveDialog * ui_;
 
   private slots:
-    void on_saveButton_clicked(void);
     void on_noneButton_clicked(void);
-    void on_cancelButton_clicked(void);
 };
 
 #endif
