@@ -43,27 +43,27 @@ Assuming, that build finishes successfully, you can try to run the binary:
     $ ./_build/tools/divine owcty examples/peterson-liveness.dve
     $ ./_build/tools/divine owcty examples/peterson-naive.dve
 
-There is no need to install the binary, it is pretty much
-self-contained. However, if you like, you can install divine-mc and
-divine-mc.simulator:
+There is no need to install the binaries, as they are mostly
+self-contained. However, to make the tool more readily available, you can
+install using:
 
     # make install
 
 Further usage instructions
 --------------------------
 
-Reference of commandline options is available with `divine-mc help`,
-as detailed above. The most useful invocations are these:
+Reference of commandline options is available with `divine help`, as detailed
+above. The most useful invocations are these:
 
  * run reachability on 8 cores:
    `./_build/tools/divine reachability -w 8 input.dve`
  * run model checking on 4 cores:
    `./_build/tools/divine owcty -w 4 input-with-property.dve`
 
-There are several example inputs, mostly coming from [The BEEM
-Database] [1], distributed with the tool under the examples/
-directory. These are the files prefixed beem-. Many more models are
-available for download in the BEEM repository.
+There are several example inputs, mostly coming from [The BEEM Database] [1],
+distributed with the tool under the `examples/` directory. These are the files
+prefixed `beem-`. Many more models are available for download in the BEEM
+repository.
 
 [1]: http://anna.fi.muni.cz/models
 
@@ -74,9 +74,11 @@ If Qt4 development files are available on your machine, a graphical user
 interface for the DiVinE Tool will be compiled as part of the build process.
 You can run the interface with:
 
-    $ PATH=./_build/tools:$PATH ./_build/gui/divine-ide
+    $ PATH=./_build/tools:$PATH ./_build/gui/divine.ide
 
-Please see online help for further information about using the interface.
+Please see online help for further information about using the interface. If
+you have chosen to install the tool, you should put it on your PATH, and then
+issue `divine.ide`.
 
 Known Issues
 ------------
@@ -96,36 +98,34 @@ size of verifiable models to roughly 3GB.
 Reporting Problems
 ------------------
 
-The DiVinE project uses Trac for managing problem reports. If you
-encounter a behaviour you believe is a bug in DiVinE Multi-Core,
-please [file a new ticket for component divine-mc] [1] in [DiVinE
-Trac] [2]. However, before reporting issues, please consider checking
-if there is a more recent version available and if the issue has been
-reported already (in the latter case, please add a comment to the
-existing ticket, that you have encountered the issue, and if possible,
-any further details you may know about the problem). Thanks in
-advance.
+The DiVinE project uses Trac for managing problem reports. If you encounter a
+behaviour you believe is a bug in DiVinE, please
+[file a new ticket for component divine-mc] [1] in [DiVinE Trac] [2]. However,
+before reporting issues, please consider checking if there is a more recent
+version available and if the issue has been reported already (in the latter
+case, please add a comment to the existing ticket, that you have encountered
+the issue, and if possible, any further details you may know about the
+problem). Thanks in advance.
 
-[1]: http://divine.fi.muni.cz/trac/newticket?version=2.0~beta2
+[1]: http://divine.fi.muni.cz/trac/newticket?version=2.0
 [2]: http://divine.fi.muni.cz/trac/
 
 Obtaining New Versions
 ----------------------
 
-The latest release is always available through [project pages] [1],
-section Download. You could also obtain the latest development
-snapshot through darcs, which is used for version control:
+The latest release is always available through [project pages] [1], section
+Download. You could also obtain the latest development snapshot through darcs
+(you need version 2.0 or later), which is used for version control:
 
-    $ darcs get http://anna.fi.muni.cz/darcs/divine/mainline
+    $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
 When you already have a darcs repository of the project, you can get
 the latest changes by issuing:
 
     $ darcs pull
 
-in the repository directory. For further details on using darcs,
-please consult the file "HACKING" in the source tree and [darcs
-homepage] [2].
+in the repository directory. For further details on using darcs, please consult
+the file "HACKING" in the source tree and [darcs homepage] [2].
 
 [1]: http://divine.fi.muni.cz/
 [2]: http://www.darcs.net/
@@ -133,10 +133,10 @@ homepage] [2].
 Licence
 -------
 
-The tool is not production-ready, use with care. There is no warranty
-whatsoever, as detailed in the licence texts, which may be found in
-the file "COPYING" in the distribution tarball. The tool is a product of
-The ParaDiSe Laboratory, Faculty of Informatics of Masaryk University.
+The source code comes with NO WARRANTY, as detailed in the licence texts, which
+may be found in the file "COPYING" in the distribution tarball. The tool is a
+product of The ParaDiSe Laboratory, Faculty of Informatics of Masaryk
+University.
 
 This distribution includes freely redistributable third-party
 code. Please refer to AUTHORS and COPYING included in the distribution
