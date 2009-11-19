@@ -11,6 +11,15 @@ DiVinE 2.0
 - More data available in --report (including machine-readable counterexample).
 - The divine.combine binary has been removed, use "divine combine" instead.
 
+DiVinE Multi-Core 1.4
+=====================
+
+- Unfortunately, an incorrect implementation of Nested DFS has slipped into the
+  1.3 release. Version 1.4 fixes this problem.
+- Early counterexample discovery in OWCTY has been improved: accepting
+  self-loops are now detected on-the-fly, and early termination is now more
+  efficient.
+
 DiVinE Multi-Core 1.3
 =====================
 
