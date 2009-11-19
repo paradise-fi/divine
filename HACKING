@@ -16,81 +16,78 @@ It is advisable, that you first compile the tool on the user level
 Using Darcs
 ===========
 
-Preferably, you should use darcs (see <http://www.darcs.net>) for
-version control. After installing darcs, there is a single "main"
-branch, which you should use as a base for your work. Get it by
-issuing:
+Preferably, you should use darcs 2.x (see <http://www.darcs.net>) for version
+control. After installing darcs, there is a single "main" branch, which you
+should use as a base for your work. Get it by issuing:
 
-    $ darcs get http://anna.fi.muni.cz/darcs/divine-mc
+    $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
-Now, you should have a directory called divine-mc, which contains a
-copy of the source code. You can modify a few files in there, and issue
+Now, you should have a directory called divine, which contains a copy of the
+source code. You can modify a few files in there, and issue
 
     $ darcs whatsnew
     $ darcs record
 
-You will notice, that unlike CVS, darcs will ask you which changes to
-record (or commit, in the CVS vocabulary). Also, darcs will ask you
-for a short patch name. You are encouraged to only record small
-changes at once, so that you can describe the change in a single
-line. Of course, for bigger changes (or those that need more
-explanation), you can still include a longer description after the
-short one (darcs will ask).
+You will notice, that unlike CVS, darcs will ask you which changes to record
+(or commit, in the CVS vocabulary). Also, darcs will ask you for a short patch
+name. You are encouraged to only record small changes at once, so that you can
+describe the change in a single line. Of course, for bigger changes (or those
+that need more explanation), you can still include a longer description after
+the short one (darcs will ask). The description should be an English sentence,
+starting with a capital letter and ending with a period. It should preferably
+be no longer than 80 characters.
 
-Now, after you provide this data, darcs will run the testsuite, to
-ensure you didn't break anything. However, this is most often
-something you do not want to happen, and should disable in your
-personal repo (you can always run the suite with `sh
-test.sh`). Disable the tests with:
+Now, after you provide this data, darcs will run the testsuite, to ensure you
+didn't break anything. However, this is most often something you do not want to
+happen, and should disable in your personal repo (you can always run the suite
+with `make check`). Prevent darcs from running the tests with:
 
     $ echo "ALL no-test" > _darcs/prefs/default
 
 Another important command is:
 
-    $ darcs changes -s --last 50 | less
+    $ darcs changes -s -i
 
-This will show last 50 changes, with summary of changed files in
-each. You can also use `darcs changes -v --last 20` to see diffs
-instead of just summaries.
+This will let you browse the recent changes, with summary of changed files in
+each. You can hit `v` in the interactive prompt to inspect the change in
+detail.
 
-When you record a change you don't like, you can use `darcs unrecord`
-to remove the recorded patch. Note however, that the changes will be
-kept in the working copy, so you can `darcs record` them again, or
-`darcs revert` them, if you don't like them, after all.
+When you record a change you don't like, you can use `darcs unrecord` to remove
+the recorded patch. Note however, that the changes will be kept in the working
+copy, so you can `darcs record` them again, or `darcs revert` them, if you
+don't like them, after all.
 
-If you have changes, that you would like to have included within the
-main divine-mc branch, it is probably best, to send those changes by
-mail. They will be reviewed and if suitable, added to the repository.
+If you have changes, that you would like to have included within the main
+divine branch, it is probably best to send those changes by mail. They will be
+reviewed and if suitable, added to the repository.
 
     $ darcs send
 
-Alternatively, you can publish your darcs repository at a place the
-maintainer can reach it (eg. public http service or otherwise). Then
-contact the maintainer and ask him to merge your changes into
-mainline.
+Alternatively, you can publish your darcs repository at a place the maintainer
+can reach it (eg. public http service or otherwise). Then contact the
+maintainer and ask them to merge your changes into mainline.
 
-Over time, the mainline will accumulate some changes, and you will
-probably want to stay in sync with those. It is advisable, that before
-merging from mainline, you record all your unrecorded changes. Then,
-you may issue:
+Over time, the mainline will accumulate some changes, and you will probably
+want to stay in sync with those. It is advisable, that before merging from
+mainline, you record all your unrecorded changes. Then, you may issue:
 
     $ darcs pull
 
-Which will ask you which changes would you like to bring into your
-branch. Most of the time, you should not see any conflicts, as darcs
-handles merging automatically (unless there are real conflicts).
+Which will ask you which changes would you like to bring into your branch. Most
+of the time, you should not see any conflicts, as darcs handles merging
+automatically (unless there are real conflicts).
 
 If you get spurious conflicts when pulling, it is advisable that you `darcs
 get` a new copy of the mainline repository and use `darcs pull` to move your
-local changes from your previous copy. This means that some patches have
-been removed from the mainline and sometimes happens, although fairly seldom.
+local changes from your previous copy. This means that some patches have been
+removed from the mainline, although this happens only very rarely.
 
-Compiling darcs version
-=======================
+Compiling from Darcs
+====================
 
-The configure script contained in the source tree is intended for
-distribution tarballs only. When you are using development version, it
-is recommended that you create a build directory and run cmake manually:
+The configure script contained in the source tree is intended for distribution
+tarballs only. When you are using development version, it is recommended that
+you create a build directory and run cmake manually:
 
     $ mkdir _build
     $ cd _build
