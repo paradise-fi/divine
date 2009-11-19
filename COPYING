@@ -1,6 +1,6 @@
 Files under divine/ are copyright (c) 2007, 2008, 2009 by ParaDiSe Laboratory
 member Petr Rockai <me@mornfall.net>, with exception of files under
-divine/legacy, see below.
+divine/legacy and divine/ltl2ba, see below.
 
 Files under gui/ are copyright (c) 2009 by ParaDiSe Laboratory member Martin
 Moráček <xmoracek@fi.muni.cz>.
@@ -29,9 +29,9 @@ POSSIBILITY OF SUCH DAMAGE.
 
 --
 
-The files under divine/legacy and hoard/ are copyrighted by their
-respective authors and covered by the GNU General Public License
-version 2, as reproduced below.
+The files under divine/legacy, divine/ltl2ba and hoard/ are copyrighted by
+their respective authors and covered by the GNU General Public License version
+2, as reproduced below.
 
 DiVinE is (c) 2003-2007 members of the ParaDiSe Laboratory: Jiri
 Barnat, Lubos Brim, Jakub Chaloupka, Jitka Kudrnacova, Pavel Moravec,
