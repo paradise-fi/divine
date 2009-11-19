@@ -96,3 +96,32 @@ you create a build directory and run cmake manually:
 
 The binaries etc. are in the same places, as they would be when using
 ./configure (see README for details on usage).
+
+Source Code Overview
+====================
+
+There is a number of toplevel source directories in the repository. The most
+interesting ones are `divine`, `tools` and `gui`.
+
+Moreover, there is a toplevel directory named `wibble`, which is a
+general-purpose utility library for C++. DiVinE uses the Thread abstraction
+provided in this library, as well as the commandline parser, and the unit
+testing framework.
+
+The directory `divine` contains the divine library: (1) a parallel programming
+toolkit (`parallel.h`, `barrier.h`, `fifo.h`, `hashmap.h`, `blob.h`, `pool.h`,
+`mpi.h`), parallel graph traversal utilities (`visitor.h`, `datastruct.h`), an
+LTL to Büchi conversion algorithm (the `ltl2ba` directory), a DVE language
+interpreter (the `divine/legacy/system` subdirectory) and the model-checking
+algorithms (`metrics.h`, `reachability.h`, `ndfs.h`, `owcty.h`, `map.h`) and a
+few other utility units. (The `.test.h` files contain unit tests for the
+respective unit defined in the corresponding `.h` file.)
+
+The directory `tools` contains the commandline interface of the tool --
+`divine.cpp`, a ProMeLa/NIPS compiler (`compile-pml.pl`, `packjars.pl`), a
+standalone probabilistic model checker (`probabilistic.cpp`) and a legacy DVE
+simulator (`simulator.cpp`). It also contains the code for the `divine combine`
+command, in `combine.h`.
+
+Finally, the `gui` directory contains the sources of a graphical user interface
+for the DiVinE tool, based on Qt 4.x.
