@@ -99,13 +99,12 @@ Reporting Problems
 ------------------
 
 The DiVinE project uses Trac for managing problem reports. If you encounter a
-behaviour you believe is a bug in DiVinE, please
-[file a new ticket for component divine-mc] [1] in [DiVinE Trac] [2]. However,
-before reporting issues, please consider checking if there is a more recent
-version available and if the issue has been reported already (in the latter
-case, please add a comment to the existing ticket, that you have encountered
-the issue, and if possible, any further details you may know about the
-problem). Thanks in advance.
+behaviour you believe is a bug in DiVinE, please [file a new ticket] [1] in
+[DiVinE Trac] [2]. However, before reporting issues, please consider checking
+if there is a more recent version available and if the issue has been reported
+already (in the latter case, please add a comment to the existing ticket, that
+you have encountered the issue, and if possible, any further details you may
+know about the problem). Thanks in advance.
 
 [1]: http://divine.fi.muni.cz/trac/newticket?version=2.0
 [2]: http://divine.fi.muni.cz/trac/
