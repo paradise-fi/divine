@@ -30,7 +30,7 @@ for f in `darcs query manifest | grep -v _attic`; do
 done
 darcs query manifest | grep -v _attic > "$name/manifest"
 chmod +x "$name/configure"
-markdown $1/README > $name/README.html
+markdown $name/README > $name/README.html
 tar cvzf "$name.tar.gz" "$name"
 rm -rf "$name"
 grep -q '^#define DIVINE_RELEASE' divine/version.h || \
