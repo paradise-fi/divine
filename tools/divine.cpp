@@ -15,11 +15,12 @@
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
 
-#include <divine/reachability.h>
-#include <divine/owcty.h>
-#include <divine/metrics.h>
-#include <divine/map.h>
-#include <divine/ndfs.h>
+// The algorithms.
+#include <divine/algorithm/reachability.h>
+#include <divine/algorithm/owcty.h>
+#include <divine/algorithm/metrics.h>
+#include <divine/algorithm/map.h>
+#include <divine/algorithm/nested-dfs.h>
 
 #include <divine/report.h>
 

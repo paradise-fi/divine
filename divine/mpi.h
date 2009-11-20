@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/test.h>
-#include <divine/algorithm.h>
+#include <divine/algorithm/common.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H

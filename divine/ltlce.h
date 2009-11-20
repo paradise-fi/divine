@@ -1,6 +1,5 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm.h>
 #include <sstream>
 
 #ifndef DIVINE_LTLCE_H

@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
+#include <divine/algorithm/common.h>
 #include <divine/ltlce.h>
 
 #ifndef DIVINE_MAP_H
