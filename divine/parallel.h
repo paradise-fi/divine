@@ -30,10 +30,6 @@ struct RunThread : wibble::sys::Thread {
         return 0;
     }
 
-    void serial() {
-        (t->*f)();
-    }
-
     RunThread( T &_t, F _f ) : t( &_t ), f( _f )
     {
     }
@@ -282,18 +278,13 @@ struct DomainWorker {
             master().interrupt();
     }
 
-    void clearInterrupt() {
-        m_interrupt = false;
-    }
-
     bool interrupted() {
         return m_interrupt;
     }
 
     /// Restart (i.e. continue) computation (after termination has happened).
     void restart() {
-        clearInterrupt();
-        // ugh...
+        m_interrupt = false;
         master().parallel().m_threads[ localId() ].m_barrier->started( terminable() );
     }
 
