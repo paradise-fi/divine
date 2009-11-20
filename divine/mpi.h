@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/test.h>
-#include <divine/algorithm/common.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
@@ -23,6 +22,33 @@ namespace divine {
 #define TAG_RING_DONE   9
 
 #define TAG_ID           100
+
+namespace algorithm {
+
+template< typename T >
+struct _MpiId
+{
+    static int to_id( void (T::*f)() ) {
+        // assert( 0 );
+        return -1;
+    }
+
+    static void (T::*from_id( int ))() {
+        // assert( 0 );
+        return 0;
+    }
+
+    template< typename O >
+    static void writeShared( typename T::Shared, O ) {
+    }
+
+    template< typename I >
+    static I readShared( typename T::Shared &, I i ) {
+        return i;
+    }
+};
+
+}
 
 #ifdef HAVE_MPI
 
