@@ -11,8 +11,8 @@
 
 namespace divine {
 
-/*
-  A simple structure that runs a method of a class in a separate thread.
+/**
+ * A simple structure that runs a method of a class in a separate thread.
  */
 template< typename T >
 struct RunThread : wibble::sys::Thread {
@@ -39,6 +39,17 @@ struct RunThread : wibble::sys::Thread {
     }
 };
 
+/**
+ * The basic structure for implementing (shared-memory) parallelism. The
+ * Parallel< T > class implements a simple model of thread-based
+ * parallelism. Each thread executes the same code, and the caller blocks until
+ * all the threads are finished.
+ *
+ * The type T is expected to include a nested typedef, Shared -- a value of
+ * this Shared type is then, at the start of each parallel execution,
+ * distributed to each of the threads (cf. the run() method). The number of
+ * (identical) threads to execute is passed in as a constructor parameter.
+ */
 template< typename T, template< typename > class R = RunThread >
 struct Parallel {
     typedef typename T::Shared Shared;
@@ -58,16 +69,19 @@ struct Parallel {
         return m_instances[ i ];
     }
 
+    /// Look up i-th instance's shared data.
     Shared &shared( int i ) {
         return instance( i ).shared;
     }
 
+    /// Look up i-th thread (as opposed to i-th instance).
     R< T > &thread( int i ) {
         assert( i < n );
         assert_eq( n, m_threads.size() );
         return m_threads[ i ];
     }
 
+    /// Internal.
     template< typename Shared, typename F >
     void initThreads( Shared &sh, F f ) {
         m_threads.clear();
@@ -77,6 +91,7 @@ struct Parallel {
         }
     }
 
+    /// Internal.
     void runThreads() {
         for ( int i = 0; i < n; ++i )
             thread( i ).start();
@@ -100,6 +115,10 @@ struct Parallel {
     }
 };
 
+/**
+ * Straightforward extension of RunThread -- additionally, this one registers
+ * with a Barrier, for distributed termination detection.
+ */
 template< typename T >
 struct BarrierThread : RunThread< T >, Terminable {
     Barrier< Terminable > *m_barrier;
@@ -129,6 +148,15 @@ struct BarrierThread : RunThread< T >, Terminable {
 
 template< typename > struct Domain;
 
+/**
+ * A building block of two-dimensional communication matrix primitive. The
+ * resulting matrix, for size n, has n^2 Fifo instances, one for each direction
+ * of communication for each pair of communicating tasks (threads). The Fifo
+ * instances are relatively cheap to instantiate.
+ *
+ * This class in itself is a single row of such a matrix, representing
+ * *incoming* queues for a single thread. See also Domain and DomaniWorker.
+ */
 template< typename T >
 struct FifoVector
 {
@@ -169,6 +197,18 @@ struct FifoVector
     FifoVector() : m_last( 0 ) {}
 };
 
+/**
+ * A basic template of a worker object, as a part of a larger work
+ * Domain. Provides communication, distributed termination detection and clean
+ * early termination (interrupt). You usually want to derive your parallel
+ * workers from this class. See e.g. reachability.h for usage example.
+ *
+ * Usually, one of a group of DomainWorker-derived instances is the
+ * master. NB. The master does no parallel work. The master is expected to
+ * coordinate the high-level serial structure of the algorithm, and call into
+ * parallel sections as needed, using domain().parallel().run( ... ). The
+ * master is expected to call becomeMaster( ... ) in its constructor.
+ */
 template< typename T >
 struct DomainWorker {
     typedef divine::Fifo< Blob, NoopMutex > Fifo;
@@ -235,6 +275,7 @@ struct DomainWorker {
         return m_id - master().minId;
     }
 
+    /// Terminate early. Notifies peers (always call without a parameter!).
     void interrupt( bool from_master = false ) {
         m_interrupt = true;
         if ( !from_master )
@@ -249,16 +290,19 @@ struct DomainWorker {
         return m_interrupt;
     }
 
+    /// Restart (i.e. continue) computation (after termination has happened).
     void restart() {
         clearInterrupt();
         // ugh...
         master().parallel().m_threads[ localId() ].m_barrier->started( terminable() );
     }
 
+    /// Internal.
     Terminable *terminable() {
         return &master().parallel().m_threads[ localId() ];
     }
 
+    /// Find a queue used for passing messages between a pair of workers.
     Fifo &queue( int from, int to ) {
         assert( from < peers() );
         return master().queue( from, to );
@@ -270,6 +314,11 @@ struct DomainWorker {
     }
 };
 
+/**
+ * A parallel Domain. This is the control object, maintained (automatically) by
+ * the master. Cf. DomainWorker. You should not need to instantiate this
+ * manually.
+ */
 template< typename T >
 struct Domain {
     typedef divine::Fifo< Blob, NoopMutex > Fifo;
