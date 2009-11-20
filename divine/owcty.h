@@ -73,11 +73,23 @@ struct _MpiId< Owcty< G > >
     }
 };
 
+/**
+ * Implementation of the One-Way Catch Them Young algorithm for fair cycle
+ * detection, as described in I. Černá and R. Pelánek. Distributed Explicit
+ * Fair Cycle Detection (Set a a Based Approach). In T. Ball and S.K. Rajamani,
+ * editors, Model Checking Software, the 10th International SPIN Workshop,
+ * volume 2648 of LNCS, pages 49 – 73. Springer-Verlag, 2003.
+ *
+ * Extended to work on-the-fly, as described in J. Barnat, L. Brim, and
+ * P. Ročkai. An Optimal On-the-fly Parallel Algorithm for Model Checking of
+ * Weak LTL Properties. In International Conference on Formal Engineering
+ * Methods, LNCS. Springer-Verlag, 2009.  To appear.
+ */
 template< typename G >
 struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 {
     typedef typename G::Node Node;
- 
+
     // -------------------------------
     // -- Some useful types
     // --
@@ -322,7 +334,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
 
     // -------------------------------------------
-    // -- COUNTEREXAMPLES (to be done)
+    // -- COUNTEREXAMPLES
     // --
 
     visitor::TransitionAction ccTransition( Node from, Node to )

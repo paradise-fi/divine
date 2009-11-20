@@ -57,6 +57,10 @@ struct _MpiId< Reachability< G > >
 };
 // END MPI drudgery
 
+/**
+ * A simple parallel reachability analysis implementation. Nothing to worry
+ * about here.
+ */
 template< typename G >
 struct Reachability : Algorithm, DomainWorker< Reachability< G > >
 {

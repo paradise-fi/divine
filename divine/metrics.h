@@ -42,6 +42,13 @@ struct _MpiId< Metrics< G > >
 };
 // END MPI drudgery
 
+/**
+ * A generalized statistics tracker for parallel algorithms. Put an instance in
+ * your Shared structure and use the addNode/addEdge traps in your algorithm to
+ * collect data. Use merge() at the end of your computation to combine the data
+ * from multiple parallel workers. Call updateResult to popuplate your Result
+ * structure with collected data (for the report).
+ */
 template< typename G >
 struct Statistics {
     int states, transitions, accepting, goals, deadlocks;
@@ -109,6 +116,11 @@ struct Statistics {
 
 };
 
+/**
+ * A very simple state space measurement algorithm. Explores the full state
+ * space, keeping simple numeric statistics (see the Statistics template
+ * above).
+ */
 template< typename G >
 struct Metrics : Algorithm, DomainWorker< Metrics< G > >
 {

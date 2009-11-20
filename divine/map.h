@@ -45,6 +45,14 @@ struct _MpiId< Map< G > >
     }
 };
 
+/**
+ * Implementation of Maximal Accepting Predecessors fair cycle detection
+ * algorithm. L. Brim, I. Černá, P. Moravec, and J. Šimša. Accepting
+ * Predecessors are a Better than Back Edges in Distributed LTL
+ * Model-Checking. In 5th International Conference on Formal Methods in
+ * Computer-Aided Design (FM-CAD'04), volume 3312 of LNCS, pages
+ * 352–366. Springer-Verlag, 2004.
+ */
 template< typename G >
 struct Map : Algorithm, DomainWorker< Map< G > >
 {
