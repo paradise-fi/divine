@@ -16,9 +16,20 @@ struct NoopMutex {
     void unlock() {}
 };
 
-// make the node a page-sized object by default; hopefully, the
-// allocator will figure to page-align the object which gives optimal
-// cache usage
+/**
+ * A simple queue (First-In, First-Out). Concurrent access to the ends of the
+ * queue is supported -- a thread may write to the queue while another is
+ * reading. Concurrent access to a single end is not supported. By default,
+ * each end is protected by a mutex (to prevent multiple writers or multiple
+ * readers from accessing a given queue concurrently), but this can be disabled
+ * by setting the WM template parameter to NoopMutex. For the NoopMutex case,
+ * care has to be taken to avoid concurrent access by other means.
+ *
+ * The NodeSize parameter defines a size of single block of objects. By
+ * default, we make the node a page-sized object -- this seems to work well in
+ * practice. We rely on the allocator to align the allocated blocks reasonably
+ * to give good cache usage.
+ */
 template< typename T, typename WM = Mutex,
           int NodeSize = (4096 - cacheLine - sizeof(int)
                           - sizeof(void*)) / sizeof(T) >

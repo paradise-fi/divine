@@ -33,6 +33,20 @@ struct BlobHeader {
     uint16_t heap:1;
 };
 
+/**
+ * A pointer to an adorned memory area. Basically an array of bytes which knows
+ * its size and allows convenient (albeit type-unsafe) access to contents. The
+ * array can be up to 2^14 (16k) bytes, the header is 2 bytes. Copies of the
+ * Blob object share the array (i.e. this really behaves as a pointer). Users
+ * are expected to manage associated memory explicitly (no reference counting
+ * is done, for performance reasons).
+ *
+ * This structure also provides convenient hashing and comparison. The equality
+ * operator (==) is implemented in terms of the array contents, not in terms of
+ * pointer equality. The hash provided is due to Jenkins, a design which should
+ * be both fast to compute and well-behaved. Both hashing and comparison can be
+ * limited to a contiguous range within the whole array.
+ */
 struct Blob
 {
     char *ptr;

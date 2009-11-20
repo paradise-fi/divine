@@ -72,6 +72,19 @@ struct VectorType< Unit > {
 
 namespace divine {
 
+/**
+ * An implementation of high-performance hash table. May be used both as an
+ * associative array and as an unordered set. To use a set, use Unit for the
+ * _Value type parameter (in this case, the value storage is completely
+ * optimised away, only memory for the keys is ever allocated).
+ *
+ * The implementation is based on a dynamically growing hashtable with
+ * quadratic probing for collision resolution. The initial size may be provided
+ * to improve performance in cases where it is known there will be many
+ * elements. Table growth is exponential, the default base is 2 and is
+ * controlled by both collision rate and load ratio (see maxcollision and
+ * growthreshold).
+ */
 template< typename _Key, typename _Value,
           typename _Hash = divine::hash< _Key >,
           typename _Valid = divine::valid< _Key >,
