@@ -19,11 +19,11 @@ struct NoopMutex {
 /**
  * A simple queue (First-In, First-Out). Concurrent access to the ends of the
  * queue is supported -- a thread may write to the queue while another is
- * reading. Concurrent access to a single end is not supported. By default,
- * each end is protected by a mutex (to prevent multiple writers or multiple
- * readers from accessing a given queue concurrently), but this can be disabled
- * by setting the WM template parameter to NoopMutex. For the NoopMutex case,
- * care has to be taken to avoid concurrent access by other means.
+ * reading. Concurrent access to a single end is not supported. By default, the
+ * write end is protected by a mutex (to prevent multiple writers from
+ * accessing a given queue concurrently), but this can be disabled by setting
+ * the WM template parameter to NoopMutex. For the NoopMutex case, care has to
+ * be taken to avoid concurrent access by other means.
  *
  * The NodeSize parameter defines a size of single block of objects. By
  * default, we make the node a page-sized object -- this seems to work well in
