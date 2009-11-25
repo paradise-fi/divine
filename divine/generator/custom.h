@@ -60,7 +60,9 @@ struct Custom : Common {
             if ( my.valid() ) return;
             my = custom->alloc.new_blob( custom->dl.size );
             handle = custom->dl.get_successor(
-                handle, _from.data(), my.data() );
+                handle,
+                _from.data() + custom->alloc._slack,
+                my.data() + custom->alloc._slack );
         }
 
         Node head() {
