@@ -25,7 +25,7 @@ struct LegacyCommon : Common {
         int current;
         succ_container_t m_succs;
         Node _from;
-        Allocator *alloc;
+        LegacyCommon *parent;
 
         int result() {
             return 0;
@@ -34,13 +34,15 @@ struct LegacyCommon : Common {
         bool empty() const {
             if ( !_from.valid() )
                 return true;
+            if ( parent->legacy_system()->is_erroneous( parent->alloc.legacy_state( _from ) ) )
+                return true;
             return current == m_succs.size();
         }
 
         Node from() { return _from; }
 
         State head() const {
-            return alloc->unlegacy_state( m_succs[ current ] );
+            return parent->alloc.unlegacy_state( m_succs[ current ] );
         }
 
         Successors tail() const {
@@ -55,7 +57,7 @@ struct LegacyCommon : Common {
     Successors successors( State s ) {
         assert( s.valid() );
         Successors succ;
-        succ.alloc = &alloc;
+        succ.parent = this;
         succ._from = s;
         state_t legacy = alloc.legacy_state( s );
         legacy_system()->get_succs( legacy, succ.m_succs );
