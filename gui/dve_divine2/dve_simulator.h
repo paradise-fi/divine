@@ -15,8 +15,6 @@
 #ifndef DVE_SIMULATOR_H_
 #define DVE_SIMULATOR_H_
 
-#include <QString>
-
 #include "simulator.h"
 #include "sevine.h"
 
@@ -28,19 +26,19 @@ class DveSimulator : public Simulator {
   public:
     static DveSimulator * instance(void) {return instance_;}
 
-    static void checkSyntax(const QString & fileName);
-
   public:
     DveSimulator(QObject * parent);
     ~DveSimulator();
     
     bool openFile(const QString & fileName);
+    bool isOpen(void) const {return system_ != 0;}
 
     bool loadTrail(const QString & fileName);
     bool saveTrail(const QString & fileName) const;
     
-    // returns list of absolute filenames
     const QStringList files(void) const {return QStringList(fileName_);}
+    
+    const SyntaxErrorList errors(void);
 
     bool isRunning(void) const {return state_ != -1;}
     bool canUndo(void) const {return state_ > 0;}

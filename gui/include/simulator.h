@@ -52,6 +52,15 @@ class BASE_SHARED_EXPORT SyncInfo
 
 Q_DECLARE_METATYPE(SyncInfo);
 
+struct SyntaxError
+{
+  QString file;
+  QRect block;
+  QString message;
+};
+
+typedef QList<SyntaxError> SyntaxErrorList;
+
 class BASE_SHARED_EXPORT Simulator : public QObject
 {
     Q_OBJECT
@@ -79,6 +88,7 @@ class BASE_SHARED_EXPORT Simulator : public QObject
     virtual ~Simulator() {}
 
     virtual bool openFile(const QString & fileName) = 0;
+    virtual bool isOpen(void) const = 0;
     
     virtual bool loadTrail(const QString & fileName) = 0;
     virtual bool saveTrail(const QString & fileName) const = 0;
@@ -86,6 +96,9 @@ class BASE_SHARED_EXPORT Simulator : public QObject
     // returns list of absolute filenames (paths)
     virtual const QStringList files(void) const = 0;
 
+    // retrieve errors
+    virtual const SyntaxErrorList errors(void) = 0;
+    
     virtual bool isRunning(void) const = 0;
     virtual bool canUndo(void) const = 0;
     virtual bool canRedo(void) const = 0;

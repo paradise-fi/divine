@@ -31,12 +31,6 @@ extern const bool defConsoleSysColours;
 extern const QColor defConsoleFore;
 extern const QColor defConsoleBack;
 
-// simulator
-extern const bool defSimulatorRandom;
-extern const uint defSimulatorSeed;
-extern const uint defSimulatorDelay;
-extern const uint defSimulatorSteps;
-
 // trace
 extern const bool defTraceVars;
 extern const bool defTraceVarNames;

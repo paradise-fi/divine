@@ -23,6 +23,11 @@ const bool defEditorNoTabs = false;
 const bool defEditorAutoIndent = true;
 
 // simulator settings
+const bool defSimulatorRandom = true;
+const uint defSimulatorSeed = 0;
+const uint defSimulatorDelay = 0;
+const uint defSimulatorSteps = 10;
+
 const QColor defSimulatorNormal = QColor("#a5bfdc");
 const QColor defSimulatorUsed = QColor("#5289e3");
 const QColor defSimulatorHighlight = QColor("#ee8");

@@ -27,11 +27,11 @@
 namespace
 {
 
-  const int cycleBarWidth = 10;
+  const int cycleBarWidth = 15;
 
   // cycle painting constants
   const int cycleBaseSize = 8;
-  const int cycleLeftOffset = 3;
+  const int cycleLeftOffset = 7;
 
 }
 

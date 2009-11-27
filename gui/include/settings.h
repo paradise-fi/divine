@@ -35,6 +35,11 @@ extern BASE_SHARED_EXPORT const uint defEditorTabWidth;
 extern BASE_SHARED_EXPORT const bool defEditorNoTabs;
 extern BASE_SHARED_EXPORT const bool defEditorAutoIndent;
 
+extern BASE_SHARED_EXPORT const bool defSimulatorRandom;
+extern BASE_SHARED_EXPORT const uint defSimulatorSeed;
+extern BASE_SHARED_EXPORT const uint defSimulatorDelay;
+extern BASE_SHARED_EXPORT const uint defSimulatorSteps;
+
 extern BASE_SHARED_EXPORT const QColor defSimulatorNormal;
 extern BASE_SHARED_EXPORT const QColor defSimulatorUsed;
 extern BASE_SHARED_EXPORT const QColor defSimulatorHighlight;

@@ -64,6 +64,9 @@ MainForm::MainForm(QWidget* parent, Qt::WindowFlags flags)
   // other persistent objects
   helpProc_ = new QProcess(this);
   watcher_ = new QFileSystemWatcher(this);
+  
+  randomTimer_ = new QTimer(this);
+  randomTimer_->setSingleShot(false);
 
   connect(watcher_, SIGNAL(fileChanged(QString)), SLOT(onFileChanged(QString)));
 
@@ -402,6 +405,20 @@ void MainForm::startSimulation(void)
 
   if (!simulator)
     return;
+  
+  // clear highlights
+  for (int i = 0; i < pageArea_->count(); ++i) {
+    editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    editor->resetHighlighting();
+  }
+  
+  // check for errors
+  if(!simulator->isOpen()) {
+    checkSyntaxErrors(simulator);
+    
+    delete simulator;
+    return;
+  }
 
   layman_->switchLayout("debug");
 
@@ -419,13 +436,14 @@ void MainForm::startSimulation(void)
 
   connect(simProxy_, SIGNAL(locked(bool)), SLOT(updateSimulator()));
 
+  emit message(tr("=== Starting simulation ==="));
   emit simulatorChanged(simProxy_);
 
   // load settings
   sSettings().beginGroup("Simulator");
 
-  if (sSettings().value("random").toBool()) {
-    qsrand(sSettings().value("seed").toUInt());
+  if (sSettings().value("random", defSimulatorRandom).toBool()) {
+    qsrand(sSettings().value("seed", defSimulatorSeed).toUInt());
   } else {
     qsrand(QTime::currentTime().msec());
   }
@@ -440,10 +458,9 @@ void MainForm::startSimulation(void)
   for (int i = 0; i < pageArea_->count(); ++i) {
     editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
     QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
-
+  
     if (files.contains(url.path())) {
       editor->setReadOnly(true);
-      editor->setUndoRedoEnabled(false);
       editor->autoHighlight(simProxy_);
     }
   }
@@ -483,8 +500,10 @@ void MainForm::updateWorkspace(void)
   closeAct_->setEnabled(editor);
   closeAllAct_->setEnabled(editor);
 
-  undoAct_->setEnabled(editor && editor->document()->isUndoAvailable());
-  redoAct_->setEnabled(editor && editor->document()->isRedoAvailable());
+  undoAct_->setEnabled(editor && editor->document()->isUndoAvailable() &&
+                       !editor->isReadOnly());
+  redoAct_->setEnabled(editor && editor->document()->isRedoAvailable() &&
+                       !editor->isReadOnly());
 
   cutAct_->setEnabled(editor && editor->textCursor().hasSelection() &&
                       !editor->isReadOnly());
@@ -521,8 +540,14 @@ void MainForm::updateSimulator(void)
   stepBackAct_->setEnabled(running && !locked && simulator->canUndo());
   stepForeAct_->setEnabled(running && !locked && simulator->canRedo());
   stepRandomAct_->setEnabled(running && !locked && simulator->transitionCount());
+  randomRunAct_->setEnabled(running && !locked && simulator->transitionCount());
   importAct_->setEnabled(!running && ready);
   exportAct_->setEnabled(running && !locked);
+  
+  // NOTE: cannot check syntax during simulation because the current dve
+  //       simulator must be implemented as a singleton
+  syntaxAct_->setEnabled(!running && ready);
+  
 }
 
 void MainForm::updateStatusLabel()
@@ -758,6 +783,10 @@ void MainForm::createActions(void)
   stepRandomAct_->setStatusTip(tr("Choose and execute random transition"));
   connect(stepRandomAct_, SIGNAL(triggered()), SLOT(randomStep()));
 
+  randomRunAct_ = new QAction(tr("&Random run..."), this);
+  randomRunAct_->setObjectName("randomRunAct");
+  connect(randomRunAct_, SIGNAL(triggered()), SLOT(randomRun()));
+  
   importAct_ = new QAction(tr("&Import..."), this);
   importAct_->setObjectName("importAct");
   importAct_->setStatusTip(tr("Import simulation run"));
@@ -768,6 +797,11 @@ void MainForm::createActions(void)
   exportAct_->setStatusTip(tr("Export current simulation run"));
   connect(exportAct_, SIGNAL(triggered()), SLOT(exportRun()));
 
+  syntaxAct_ = new QAction(tr("Check &Syntax"), this);
+  syntaxAct_->setObjectName("syntaxAct");
+  syntaxAct_->setStatusTip(tr("Check model syntax"));
+  connect(syntaxAct_, SIGNAL(triggered()), SLOT(checkSyntax()));
+  
   helpAct_ = new QAction(tr("&Show help"), this);
   helpAct_->setObjectName("helpAct");
   helpAct_->setShortcut(tr("F1"));
@@ -844,10 +878,11 @@ void MainForm::createMenus(void)
 
   menu = menuBar()->addMenu(tr("&Tools"));
   menu->setObjectName("toolsMenu");
-  menu->setEnabled(false);
+  menu->addAction(syntaxAct_);
 
   sep = menu->addSeparator();
   sep->setObjectName("toolsSeparator");
+  sep->setVisible(false);
 
   menu = menuBar()->addMenu(tr("Si&mulate"));
   menu->setObjectName("simMenu");
@@ -859,7 +894,7 @@ void MainForm::createMenus(void)
   menu->addAction(stopAct_);
   sep = menu->addSeparator();
   sep->setObjectName("simSeparator1");
-  sep->setVisible(false);
+  menu->addAction(randomRunAct_);
   sep = menu->addSeparator();
   sep->setObjectName("simSeparator2");
   menu->addAction(importAct_);
@@ -988,6 +1023,38 @@ EditorBuilder * MainForm::getBuilder(const QString & suffix)
   }
 
   return res;
+}
+
+bool MainForm::checkSyntaxErrors(Simulator * sim)
+{
+  Q_ASSERT(sim);
+  
+  SourceEditor * editor;
+  QUrl url;
+  
+  SyntaxErrorList err_list = sim->errors();
+  
+  emit message(tr("=== Syntax check ==="));
+  
+  if(!err_list.isEmpty()) {
+    for (int i = 0; i < pageArea_->count(); ++i) {
+      editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+      url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
+      
+      foreach(SyntaxError err, err_list) {
+        if(err.file != url.path())
+          continue;
+        
+        if(!err.block.isNull())
+          editor->highlightBlock(err.block, "salmon");
+      
+        emit message(QString("%1: %2").arg(QFileInfo(err.file).fileName(), err.message));
+      }
+    }
+  } else {
+    emit message(tr("Ok"));
+  }
+  return !err_list.empty();
 }
 
 void MainForm::open()
@@ -1252,7 +1319,7 @@ void MainForm::showPreferences(void)
 void MainForm::help(void)
 {
   if (helpProc_->state() == QProcess::Running) {
-// TODO: remote focus should be implemented in Qt 4.6
+// NOTE: remote focus won't be implemented in the near future :(
 //       QByteArray ar;
 //       ar.append("focus");
 //       ar.append('\0');
@@ -1262,7 +1329,7 @@ void MainForm::help(void)
                      QIODevice::WriteOnly);
     helpProc_->waitForStarted();
 
-    if (!helpProc_->state() != QProcess::Running) {
+    if (helpProc_->state() != QProcess::Running) {
       QMessageBox::warning(this, tr("DiVinE IDE"), tr("Error launching help viewer!"));
     }
   }
@@ -1285,7 +1352,89 @@ void MainForm::randomStep(void)
 
   int rnd = qrand() % simulator->transitionCount();
 
-  simProxy_->step(rnd);
+  simProxy_->step(rnd, this);
+}
+
+void MainForm::randomRun(void)
+{
+  const Simulator * simulator = simProxy_ ? simProxy_->simulator() : NULL;
+
+  if (!simulator || !simulator->transitionCount())
+    return;
+  
+  // clear highlighting
+  for (int i = 0; i < pageArea_->count(); ++i) {
+    SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    editor->resetHighlighting();
+  }
+  
+  sSettings().beginGroup("Simulator");
+  
+  int steps = sSettings().value("steps", defSimulatorSteps).toInt();
+  int delay = sSettings().value("delay", defSimulatorDelay).toInt();
+  
+  sSettings().endGroup();
+  
+  steps = QInputDialog::getInteger(this, tr("Random run"),
+    tr("Select number of steps to run:"), steps, 1, 800);
+
+  if(delay == 0) {
+    for(int i = 0; i < steps && simulator->transitionCount() > 0; ++i)
+      randomStep();
+  } else {
+    simProxy_->lock(this);
+    
+    for (int i = 0; i < pageArea_->count(); ++i) {
+      SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+      editor->autoHighlight(NULL);
+    }
+    
+    steps_ = steps;
+    randomTimer_->setInterval(delay);
+    connect(randomTimer_, SIGNAL(timeout()), SLOT(randomTimeout()));
+    randomTimer_->start();
+  }
+}
+
+void MainForm::randomTimeout(void)
+{
+  Q_ASSERT(simProxy_ && simProxy_->simulator());
+  Q_ASSERT(simProxy_->simulator()->transitionCount() > 0);
+
+  int rnd = qrand() % simProxy_->simulator()->transitionCount();
+  
+  Simulator::TransitionList trans = simProxy_->simulator()->transitionSource(rnd);
+  SourceEditor * editor;
+  
+  // highlight the transition
+  for (int i = 0; i < pageArea_->count(); ++i) {
+    editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    editor->resetHighlighting();
+    
+    foreach(Simulator::TransitionPair itr, trans) {
+      QString path = QUrl(editor->document()->metaInformation(QTextDocument::DocumentUrl)).path();
+      if (itr.first != path)
+          continue;
+
+      editor->highlightBlock(itr.second, QColor("burlywood"));
+    }
+  }
+  
+  simProxy_->step(rnd, this);
+  
+  if(--steps_ <= 0 || simProxy_->simulator()->transitionCount() == 0) {
+    disconnect(randomTimer_, SIGNAL(timeout()), this, SLOT(randomTimeout()));
+    randomTimer_->stop();
+    
+    simProxy_->release(this);
+
+    // re-enable auto highlighting
+    for (int i = 0; i < pageArea_->count(); ++i) {
+      editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+      editor->resetHighlighting();
+      editor->autoHighlight(simProxy_);
+    }
+  }
 }
 
 void MainForm::importRun(void)
@@ -1318,6 +1467,57 @@ void MainForm::exportRun(void)
 
   if (!fileName.isEmpty())
     simulator->saveTrail(fileName);
+}
+
+void MainForm::checkSyntax()
+{
+  Q_ASSERT(pageArea_->currentWidget());
+
+  SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
+  QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
+
+  // if current page is untitled -> force save as
+  if(url.path().isEmpty()) {
+    if(!save(editor))
+      return;
+  }
+  
+  // auto save
+  for(int i = 0; i < pageArea_->count(); ++i) {
+    editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
+  
+    if(editor->document()->isModified() && !url.path().isEmpty())
+      save(editor);
+  }
+  
+  editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
+  url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
+  
+  SimulatorLoader * loader = simLoaders_[url.scheme()];
+  Q_ASSERT(loader);
+
+  Simulator * simulator = loader->load(url.path(), this);
+
+  if (!simulator)
+    return;
+  
+  // clear highlights
+  for (int i = 0; i < pageArea_->count(); ++i) {
+    editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    editor->resetHighlighting();
+  }
+  
+  // check for errors
+  if(checkSyntaxErrors(simulator)) {
+    QMessageBox::warning(NULL, tr("Syntax Check"),
+                         tr("Source contains errors!"));
+  } else {
+    QMessageBox::information(NULL, tr("Syntax Check"),
+                             tr("No errors found."));
+  }
+
+  delete simulator;
 }
 
 void MainForm::findNext(void)
@@ -1420,6 +1620,19 @@ void MainForm::onSimulatorStopped(void)
   if (!simProxy_)
     return;
 
+  // stop random runner
+  if(randomTimer_->isActive()) {
+    disconnect(randomTimer_, SIGNAL(timeout()), this, SLOT(randomTimeout()));
+    randomTimer_->stop();
+    simProxy_->release(this);
+    
+    // clear highlighting
+    for (int i = 0; i < pageArea_->count(); ++i) {
+      SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+      editor->resetHighlighting();
+    }
+  }
+  
   layman_->switchLayout("edit");
 
   const Simulator * simulator = simProxy_->simulator();
@@ -1441,13 +1654,13 @@ void MainForm::onSimulatorStopped(void)
     Q_ASSERT(editor);
 
     editor->setReadOnly(false);
-    editor->setUndoRedoEnabled(true);
     editor->autoHighlight(NULL);
   }
 
   delete simProxy_;
   simProxy_ = NULL;
 
+  emit message(tr("=== Simulation stopped ==="));
   emit simulatorChanged(NULL);
 
   updateWorkspace();

@@ -46,33 +46,6 @@ void syntaxHandler2(divine::error_vector_t & err, const divine::ERR_throw_t tp)
 
 DveSimulator * DveSimulator::instance_ = NULL;
 
-void DveSimulator::checkSyntax(const QString & fileName)
-{
-  divine::error_vector_t err;
-  err.set_silent(true);
-  err.set_push_callback(syntaxHandler1);
-  err.set_throw_callback(syntaxHandler2);
-  
-  divine::dve_explicit_system_t * system = new divine::dve_explicit_system_t(err);
-
-  system->read(fileName.toAscii().data());
-  
-  if(err.count() > 0) {
-    QStringList err_list;
-    
-    for(int i = 0; i < err.count(); ++i) {
-      err_list.append((*err.string(i)).c_str());
-    }
-    
-    QMessageBox::warning(NULL, DveSimulator::tr("Syntax Check"),
-                          DveSimulator::tr("Errors found:\n\n%1").arg(err_list.join("\n")));
-  } else {
-    QMessageBox::information(NULL, DveSimulator::tr("Syntax Check"), DveSimulator::tr("No errors found."));
-  }
-  
-  delete system;
-}
-
 DveSimulator::DveSimulator(QObject * parent)
     : Simulator(parent), generator_(NULL), system_(NULL), state_(-1)
 {
@@ -80,8 +53,6 @@ DveSimulator::DveSimulator(QObject * parent)
   instance_ = this;
 
   err_.set_silent(true);
-  err_.set_push_callback(errorHandler1);
-  err_.set_throw_callback(errorHandler2);
   
   generator_ = new divine::generator::Allocator();
 }
@@ -98,18 +69,24 @@ DveSimulator::~DveSimulator()
 bool DveSimulator::openFile(const QString & fileName)
 {
   clearSimulation();
-
+  
+  err_.set_push_callback(syntaxHandler1);
+  err_.set_throw_callback(syntaxHandler2);
+  
   dve_debug_system_t * newsys = new dve_debug_system_t(err_);
   newsys->setAllocator(generator_);
+  
+  fileName_ = fileName;
   
   if(newsys->read(fileName.toAscii().data()) != 0) {
     delete newsys;
     return false;
   }  
 
-  system_ = newsys;
+  err_.set_push_callback(errorHandler1);
+  err_.set_throw_callback(errorHandler2);
 
-  fileName_ = fileName;
+  system_ = newsys;
   return true;
 }
 
@@ -150,7 +127,7 @@ bool DveSimulator::saveTrail(const QString & fileName) const
     QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Unable to save trail '%1'!").arg(fileName));
     return false;
   }
-  qDebug("%d %d",cycle_.first, cycle_.second);
+  
   trail.write("# from initial\n");
   
   for(int i = 0; i < stack_.size() - 1; ++i) {
@@ -163,6 +140,35 @@ bool DveSimulator::saveTrail(const QString & fileName) const
     trail.write(QString("%1\n").arg(usedTransition(i) + 1).toAscii().data());
   }
   return true;
+}
+
+const SyntaxErrorList DveSimulator::errors(void)
+{
+  QRegExp err_re("^(\\d+):(\\d+)-(\\d+):(\\d+)\\s*(.*)$");
+  SyntaxErrorList res;
+  
+  int x1, y1, x2, y2;
+  
+  SyntaxError tmp_err;
+  tmp_err.file = fileName_;
+  
+  for(int i = 0; i < err_.count(); ++i) {
+    tmp_err.message = QString((*err_.string(i)).c_str()).simplified();
+    tmp_err.block = QRect();
+    
+    if(err_re.exactMatch(tmp_err.message)) {
+      y1 = err_re.capturedTexts().at(1).toInt();
+      x1 = err_re.capturedTexts().at(2).toInt();
+      y2 = err_re.capturedTexts().at(3).toInt();
+      x2 = err_re.capturedTexts().at(4).toInt();
+
+      tmp_err.block = QRect(x1 - 1, y1 - 1, x2 - x1, y2 - y1 + 1);
+    }
+    res.append(tmp_err);
+  }
+  err_.clear();
+  
+  return res;
 }
 
 int DveSimulator::traceDepth(void) const
@@ -597,11 +603,11 @@ void DveSimulator::errorHandler(void)
 {
   QString str;
 
-  while(err_.empty()) {
-    str = (*err_.string_back()).c_str();
-    err_.pop_back();
+  for(int i = 0; i < err_.count(); ++i) {
+    str = (*err_.string(i)).c_str();
     emit message(str);
   }
+  err_.clear();
 }
 
 void DveSimulator::start(void)

@@ -301,6 +301,9 @@ SequenceWidget::SequenceWidget(QWidget * parent) : QAbstractItemView(parent)
 
 QModelIndex SequenceWidget::indexAt(const QPoint & point) const
 {
+  if (!model())
+    return QModelIndex();
+  
   const int x = point.x() + horizontalOffset();
   const int y = point.y() + verticalOffset();
   const int r_height = rowHeight();

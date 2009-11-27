@@ -39,11 +39,9 @@ Simulator * DveSimulatorLoader::load(const QString & fileName, MainForm * root)
 
   connect(simulator, SIGNAL(message(QString)), root, SIGNAL(message(QString)));
   
-  // neither new file, nor successfully loaded
-  if (!fileName.isEmpty() && !simulator->openFile(fileName)) {
-    delete simulator;
-    return NULL;
-  }
+  // try to open the file
+  if (!fileName.isEmpty()) 
+    simulator->openFile(fileName);
 
   return simulator;
 }
@@ -55,11 +53,6 @@ void DvePlugin::install(MainForm * root)
   // document loaders
   SimulatorLoader * loader = new DveSimulatorLoader(root);
   root->registerSimulator("dve", loader);
-
-  syntaxAct_ = new QAction(tr("Check &Syntax"), this);
-  syntaxAct_->setObjectName("syntaxAct");
-  syntaxAct_->setStatusTip(tr("Check model syntax"));
-  connect(syntaxAct_, SIGNAL(triggered()), SLOT(checkSyntax()));
   
   combineAct_ = new QAction(tr("C&ombine..."), this);
   combineAct_->setObjectName("combineAct");
@@ -114,8 +107,8 @@ void DvePlugin::install(MainForm * root)
   QMenu * menu = root->findChild<QMenu*>("toolsMenu");
   QAction * sep = root->findChild<QAction*>("toolsSeparator");
   Q_ASSERT(menu);
+  Q_ASSERT(sep);
   
-  menu->insertAction(sep, syntaxAct_);
   menu->insertAction(sep, combineAct_);
   menu->insertSeparator(sep);
   menu->insertAction(sep, reachabilityAct_);
@@ -124,7 +117,7 @@ void DvePlugin::install(MainForm * root)
   menu->insertSeparator(sep);
   menu->insertMenu(sep, algorithmMenu);
   
-  menu->setEnabled(true);
+  sep->setVisible(true);
 
   menu = root->findChild<QMenu*>("toolbarsMenu");
   Q_ASSERT(menu);
@@ -198,24 +191,9 @@ void DvePlugin::runDivine(const QString & algorithm)
   connect(divineProcess_, SIGNAL(error(QProcess::ProcessError)), SLOT(onRunnerError(QProcess::ProcessError)));
   connect(divineProcess_, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(onRunnerFinished(int,QProcess::ExitStatus)));
   
-  emit message(tr("Running %1 algorithm...").arg(algorithm));
+  emit message(tr("=== Running divine - %1 algorithm ===").arg(algorithm));
   
   divineProcess_->start(program, args, QIODevice::ReadOnly);
-}
-
-void DvePlugin::checkSyntax(void)
-{
-  Q_ASSERT(root_->activeEditor());
-  
-  if(!root_->maybeSave(root_->activeEditor()))
-    return;
-  
-  // never saved
-  QUrl url(root_->activeEditor()->document()->metaInformation(QTextDocument::DocumentUrl));
-  if(url.path().isEmpty())
-    return;
-  
-  DveSimulator::checkSyntax(url.path());
 }
 
 void DvePlugin::combine(void)
@@ -254,7 +232,9 @@ void DvePlugin::combine(void)
   }
   args.append(url.path());
   args.append(dlg.definitions());
-    
+  
+  emit message(tr("=== Running divine combine ==="));
+  
   QProcess process;
   process.start(program, args, QIODevice::ReadOnly);
   process.waitForStarted();
@@ -303,8 +283,6 @@ void DvePlugin::onRunnerError(QProcess::ProcessError error)
     
     emit message(tr("Error invoking divine (%1)").arg(program));
   }
-
-  qDebug("process error: %d", error);
 }
 
 void DvePlugin::onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus)
@@ -422,7 +400,6 @@ void DvePlugin::onEditorChanged(SourceEditor * editor)
   bool isDve = url.scheme() == "dve";
   bool isMDve = url.scheme() == "mdve";
 
-  syntaxAct_->setEnabled(isDve);
   combineAct_->setEnabled(isDve || isMDve);
   
   // only one parallel process is allowed

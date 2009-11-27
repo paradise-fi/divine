@@ -29,6 +29,7 @@ class QCloseEvent;
 class QProcess;
 class QLabel;
 class QFileSystemWatcher;
+class QTimer;
 
 class RecentFilesMenu;
 class PreferencesPage;
@@ -36,6 +37,7 @@ class PreferencesDialog;
 class SearchDialog;
 class LayoutManager;
 class SimulatorProxy;
+class Simulator;
 class SourceEditor;
 class EditorBuilder;
 class SimulatorLoader;
@@ -133,8 +135,10 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     QAction * stepBackAct_;
     QAction * stepForeAct_;
     QAction * stepRandomAct_;
+    QAction * randomRunAct_;
     QAction * importAct_;
     QAction * exportAct_;
+    QAction * syntaxAct_;
     QAction * helpAct_;
     QAction * aboutAct_;
     QAction * aboutQtAct_;
@@ -161,10 +165,11 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     PreferencesDialog * preferences_;
     SearchDialog * search_;
 
-    // help process
+    // misc persistent objects
     QProcess * helpProc_;
-    
     QFileSystemWatcher * watcher_;
+    QTimer * randomTimer_;
+    int steps_;
     
   private:
     void createActions();
@@ -175,6 +180,8 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     void writeSettings();
 
     EditorBuilder * getBuilder(const QString & suffix);
+    
+    bool checkSyntaxErrors(Simulator * sim);
     
   private slots:
     void open();
@@ -195,9 +202,13 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     void about();
 
     void randomStep(void);
+    void randomRun(void);
+    void randomTimeout(void);
     void importRun(void);
     void exportRun(void);
 
+    void checkSyntax();
+    
     void findNext(void);
     void findPrevious(void);
     void replace(void);

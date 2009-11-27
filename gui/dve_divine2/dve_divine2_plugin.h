@@ -55,7 +55,6 @@ class DvePlugin : public QObject, public AbstractPlugin
     void message(const QString & msg);
     
   private:
-    QAction * syntaxAct_;
     QAction * combineAct_;
     QAction * reachabilityAct_;
     QAction * metricsAct_;
@@ -74,7 +73,6 @@ class DvePlugin : public QObject, public AbstractPlugin
     void runDivine(const QString & algorithm);
     
   private slots:
-    void checkSyntax(void);
     void combine(void);
     
     void reachability(void);

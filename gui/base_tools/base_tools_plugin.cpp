@@ -36,12 +36,6 @@ const bool defConsoleSysColours = true;
 const QColor defConsoleFore = QColor("#000");
 const QColor defConsoleBack = QColor("#fff");
 
-// simulator
-const bool defSimulatorRandom = true;
-const uint defSimulatorSeed = 0;
-const uint defSimulatorDelay = 0;
-const uint defSimulatorSteps = 10;
-
 // trace
 const bool defTraceVars = true;
 const bool defTraceVarNames = false;
@@ -85,8 +79,11 @@ void BaseToolsPlugin::install(MainForm * root)
   menu->addAction(action);
 
   QMenu * tmenu = root->findChild<QMenu*>("toolsMenu");
+  QAction * sep = root->findChild<QAction*>("toolsSeparator");
   Q_ASSERT(menu);
+  Q_ASSERT(sep);
   tmenu->addAction(tr("&Clear Console"), console, SLOT(clear()));
+  sep->setVisible(true);
 
   // watch
   WatchDock * watch = new WatchDock(root);
