@@ -29,7 +29,7 @@ BASE_SHARED_EXPORT QSettings & sSettings(void);
 BASE_SHARED_EXPORT const QFont defaultFont(const QString & family);
 
 // default settings
-inline BASE_SHARED_EXPORT const QFont defEditorFont(void) {return defaultFont("monospace");}
+inline const QFont defEditorFont(void) {return defaultFont("monospace");}
 
 extern BASE_SHARED_EXPORT const uint defEditorTabWidth;
 extern BASE_SHARED_EXPORT const bool defEditorNoTabs;

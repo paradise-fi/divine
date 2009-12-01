@@ -77,7 +77,13 @@ void DivinePreferences::writeSettings(void)
 void DivinePreferences::on_pathButton_clicked(void)
 {
   QString file = QFileDialog::getOpenFileName(this, tr("Locate divine binary"),
-                                              ui_->pathEdit->text(), tr("divine (divine)"));
+                                              ui_->pathEdit->text(),
+#ifdef Q_OS_WIN32
+                                              tr("divine.exe (divine.exe)"));
+#else
+                                              tr("divine (divine)"));
+#endif
+                                              
   
   if(!file.isEmpty())
     ui_->pathEdit->setText(file);

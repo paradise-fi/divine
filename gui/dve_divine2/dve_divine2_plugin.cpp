@@ -194,6 +194,8 @@ void DvePlugin::runDivine(const QString & algorithm)
   emit message(tr("=== Running divine - %1 algorithm ===").arg(algorithm));
   
   divineProcess_->start(program, args, QIODevice::ReadOnly);
+  
+  onEditorChanged(root_->activeEditor());
 }
 
 void DvePlugin::combine(void)
@@ -282,6 +284,12 @@ void DvePlugin::onRunnerError(QProcess::ProcessError error)
     sSettings().endGroup();
     
     emit message(tr("Error invoking divine (%1)").arg(program));
+    
+    delete divineProcess_;
+    divineProcess_ = NULL;
+    
+    // update menu options
+    onEditorChanged(root_->activeEditor());
   }
 }
 

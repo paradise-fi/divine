@@ -256,8 +256,14 @@ void SourceEditor::dropEvent(QDropEvent * event)
     QUrl url = event->mimeData()->urls().first();
 
     if (url.scheme() == "file") {
-      emit fileDropped(event->mimeData()->urls().first().toString(
-                         QUrl::RemoveScheme));
+      QString path = event->mimeData()->urls().first().path();
+// check for invalid paths (/C:/blabla)
+#ifdef Q_OS_WIN32
+      QRegExp drive_re("^/[A-Z]:");
+      if(path.contains(drive_re))
+        path.remove(0, 1);
+#endif
+      emit fileDropped(path);
     }
   } else {
     QPlainTextEdit::dropEvent(event);

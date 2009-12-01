@@ -52,7 +52,7 @@ MainForm::MainForm(QWidget* parent, Qt::WindowFlags flags)
           SLOT(onTabCloseRequested(int)));
   connect(pageArea_, SIGNAL(currentChanged(int)),
           SLOT(onTabCurrentChanged(int)));
-
+          
   // persistent dialogs
   preferences_ = new PreferencesDialog(this);
   search_ = new SearchDialog(this);
@@ -356,8 +356,12 @@ void MainForm::openFile(const QString & fileName)
   // create highlighter
   EditorBuilder * builder = getBuilder(finfo.suffix());
 
+  QUrl url;
+  url.setScheme(finfo.suffix());
+  url.setPath(finfo.absoluteFilePath());
+  
   editor->document()->setMetaInformation(QTextDocument::DocumentTitle, finfo.fileName());
-  editor->document()->setMetaInformation(QTextDocument::DocumentUrl, QString("%1://%2").arg(finfo.suffix(), finfo.absoluteFilePath()));
+  editor->document()->setMetaInformation(QTextDocument::DocumentUrl, url.toString());
 
   if (builder)
     builder->install(editor);
@@ -604,7 +608,14 @@ void MainForm::dropEvent(QDropEvent * event)
     QUrl url = event->mimeData()->urls().first();
 
     if (url.scheme() == "file") {
-      openFile(event->mimeData()->urls().first().toString(QUrl::RemoveScheme));
+      QString path = event->mimeData()->urls().first().path();
+// check for invalid paths (/C:/blabla)
+#ifdef Q_OS_WIN32
+      QRegExp drive_re("^/[A-Z]:");
+      if(path.contains(drive_re))
+        path.remove(0, 1);
+#endif
+      openFile(path);
     }
   } else {
     QMainWindow::dropEvent(event);
@@ -1125,9 +1136,12 @@ bool MainForm::saveAs(SourceEditor * editor)
 
   QFileInfo finfo(fileName);
 
+  QUrl url;
+  url.setScheme(finfo.suffix());
+  url.setPath(finfo.absoluteFilePath());
+  
   editor->document()->setMetaInformation(QTextDocument::DocumentTitle, finfo.fileName());
-  editor->document()->setMetaInformation(QTextDocument::DocumentUrl,
-                                         QString("%1://%2").arg(finfo.suffix(), finfo.absoluteFilePath()));
+  editor->document()->setMetaInformation(QTextDocument::DocumentUrl, url.toString());
 
   // do we need to switch highlighters?
   if (old_url.scheme() != finfo.suffix()) {
@@ -1147,6 +1161,9 @@ bool MainForm::saveAs(SourceEditor * editor)
 
   watcher_->addPath(finfo.absoluteFilePath());
   pageArea_->setTabText(pageArea_->currentIndex(), editor->documentTitle());
+  
+  emit editorChanged(editor);
+  
   return true;
 }
 
