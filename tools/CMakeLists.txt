@@ -2,12 +2,12 @@ include_directories( ${DIVINE_INCLUDES} )
 
 link_libraries( libdivine wibble )
 
-if( NOT WINDOWS )
-link_libraries( libdivine pthread )
-endif( NOT WINDOWS )
+if( NOT WIN32 )
+  link_libraries( libdivine pthread )
+endif( NOT WIN32 )
 
 if( HOARD )
-link_libraries( hoard )
+  link_libraries( hoard )
 endif( HOARD )
 
 set( PACKJARS "${CMAKE_CURRENT_SOURCE_DIR}/packjars.pl" )
@@ -25,18 +25,24 @@ set( NIPS_ASM "${CMAKE_CURRENT_SOURCE_DIR}/compile-pml.pl" )
 add_executable( divine divine.cpp dvecompile.cpp combine.h ${COMBINE_M4_H} )
 add_executable( divine.simulate simulator.cpp )
 
+if( WIN32 )
+  set( INSTALL_BIN_DEST ./ )
+else( WIN32 )
+  set( INSTALL_BIN_DEST bin )
+endif( WIN32 )
+
 install( TARGETS divine
                  divine.simulate
-         DESTINATION bin )
+         DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
 
-if( NOT WINDOWS )
-# This code uses raw pthreads, so no-go on win32.
-add_executable( divine.probabilistic probabilistic.cpp )
-target_link_libraries( divine.probabilistic lpsolve )
-install( TARGETS divine.probabilistic DESTINATION bin )
-endif( NOT WINDOWS )
+if( NOT WIN32 )
+  # This code uses raw pthreads, so no-go on win32.
+  add_executable( divine.probabilistic probabilistic.cpp )
+  target_link_libraries( divine.probabilistic lpsolve )
+  install( TARGETS divine.probabilistic DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
+endif( NOT WIN32 )
 
-install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION bin)
+install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
 
 set( PROMELA_JARS "BUNDLE" CACHE STRING "Either path to the ProMeLa/NIPS JAR files or BUNDLE" )
 

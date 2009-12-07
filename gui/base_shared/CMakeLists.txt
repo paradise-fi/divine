@@ -65,4 +65,4 @@ add_library(base_shared SHARED ${BASE_SHARED_SRC} ${BASE_SHARED_SRC2}
   ${BASE_SHARED_SRC3} ${BASE_SHARED_SRC4})
 target_link_libraries(base_shared ${QT_LIBRARIES})
 
-install(TARGETS base_shared DESTINATION ${GUI_LIB_PATH})
+install(TARGETS base_shared DESTINATION ${GUI_LIB_DEST} COMPONENT gui_tools)

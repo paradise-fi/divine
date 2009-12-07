@@ -7,7 +7,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE "RELEASE" )
+  set( CMAKE_BUILD_TYPE "Release" )
 endif( NOT CMAKE_BUILD_TYPE )
 
 macro(appendFlag flags value)
@@ -25,11 +25,9 @@ option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( GUI "compile the Qt GUI" ON )
 
-if( WINDOWS )
-add_definitions( -D_WIN32 )
-else( WINDOWS )
-add_definitions( -DPOSIX )
-endif( WINDOWS )
+if( NOT WIN32 )
+  add_definitions( -DPOSIX )
+endif( NOT WIN32 )
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
@@ -49,7 +47,7 @@ if( NOT POOLS )
 endif( NOT POOLS )
 
 if( GUI )
-    find_package( Qt4 4.5.0 )
+  find_package( Qt4 4.5.0 )
 endif( GUI )
 
 # on some mingw32, regex.h is not on the default include path
@@ -57,9 +55,9 @@ find_path( RX_PATH regex.h )
 include_directories( ${RX_PATH} )
 link_directories( ${RX_PATH} )
 
-if( MPI AND NOT WINDOWS )
+if( MPI AND NOT WIN32 )
 include( FindMPI )
-endif( MPI AND NOT WINDOWS )
+endif( MPI AND NOT WIN32 )
 
 if( MPI AND MPI_FOUND )
   add_definitions( "-DHAVE_MPI" )
@@ -105,46 +103,46 @@ add_custom_target( unit )
 add_custom_target( lcovd-unit )
 
 if( PROFILE )
-find_program( LCOV lcov )
-find_program( LCOV_GENHTML genhtml )
-if( NOT LCOV )
-  message( "-- WARNING: Could not find LCOV, disabling coverage report generation." )
-endif( NOT LCOV )
+  find_program( LCOV lcov )
+  find_program( LCOV_GENHTML genhtml )
+  if( NOT LCOV )
+    message( "-- WARNING: Could not find LCOV, disabling coverage report generation." )
+  endif( NOT LCOV )
 endif( PROFILE )
 
 if( LCOV )
-set( LCOV_RDIR "${divine_BINARY_DIR}/lcov-report" )
-add_custom_target( lcov-clean
-  COMMAND mkdir -p ${LCOV_RDIR}
-  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} -z
-  COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o ${LCOV_RDIR}/base.info
-)
+  set( LCOV_RDIR "${divine_BINARY_DIR}/lcov-report" )
+  add_custom_target( lcov-clean
+    COMMAND mkdir -p ${LCOV_RDIR}
+    COMMAND ${LCOV} -d ${divine_SOURCE_DIR} -z
+    COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o ${LCOV_RDIR}/base.info
+  )
 
-macro( lcov_collect id )
-add_custom_target( lcov-collect-${id}
-  COMMAND mkdir -p ${LCOV_RDIR}
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
-                  -o ${LCOV_RDIR}/collect-${id}.info || true
-  COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters || true
-)
-endmacro( lcov_collect )
+  macro( lcov_collect id )
+    add_custom_target( lcov-collect-${id}
+      COMMAND mkdir -p ${LCOV_RDIR}
+      COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
+                      -o ${LCOV_RDIR}/collect-${id}.info || true
+      COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters || true
+    )
+  endmacro( lcov_collect )
 
-add_custom_target( lcov-report
-  COMMAND mkdir -p ${LCOV_RDIR}
-  COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
-                  -a ${LCOV_RDIR}/base.info
-                  -a ${LCOV_RDIR}/collect-1.info
-                  -a ${LCOV_RDIR}/collect-2.info
-                  -o ${LCOV_RDIR}/overall.info
-  COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-    ${LCOV_RDIR}/overall.info
-)
-add_dependencies( check lcov-clean )
+  add_custom_target( lcov-report
+    COMMAND mkdir -p ${LCOV_RDIR}
+    COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
+                    -a ${LCOV_RDIR}/base.info
+                    -a ${LCOV_RDIR}/collect-1.info
+                    -a ${LCOV_RDIR}/collect-2.info
+                    -o ${LCOV_RDIR}/overall.info
+    COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
+      ${LCOV_RDIR}/overall.info
+  )
+  add_dependencies( check lcov-clean )
 endif( LCOV )
 
 add_subdirectory( wibble )
 if( HOARD )
-add_subdirectory( hoard )
+  add_subdirectory( hoard )
 endif( HOARD )
 add_subdirectory( lpsolve )
 add_subdirectory( divine )
@@ -152,11 +150,11 @@ add_subdirectory( tools )
 add_subdirectory( examples )
 
 if( GUI )
-    if ( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
-        add_subdirectory( gui )
-    else()
-        message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
-    endif()
+  if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
+    add_subdirectory( gui )
+  else()
+    message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
+  endif()
 endif( GUI )
 
 add_dependencies( lcovd-unit unit )
@@ -171,3 +169,71 @@ add_dependencies( check lcovd-unit )
 add_dependencies( check functional )
 
 add_subdirectory( test )
+
+# FIXME: better dependency detection
+if( WIN32 )
+  find_file( MINGW_LIB mingwm10.dll )
+  find_file( REGEX_LIB libgnurx-0.dll )
+  find_file( GCC_LIB libgcc_s_sjlj-1.dll )
+
+  install(FILES ${MINGW_LIB} ${REGEX_LIB} ${GCC_LIB} DESTINATION ./ COMPONENT sys)
+endif( WIN32 )
+
+install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
+install(FILES COPYING RENAME COPYING.txt DESTINATION ./ COMPONENT sys)
+install(FILES AUTHORS RENAME AUTHORS.txt DESTINATION ./ COMPONENT sys)
+install(FILES WHATS_NEW RENAME WHATS_NEW.txt DESTINATION ./ COMPONENT sys)        
+
+set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "DiViNE Distributed and Parallel Verification Environment" )
+set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
+set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README" )
+set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING" )
+set( CPACK_PACKAGE_VERSION_MAJOR "2" )
+set( CPACK_PACKAGE_VERSION_MINOR "0" )
+set( CPACK_PACKAGE_VERSION_PATCH "0" )
+set( CPACK_PACKAGE_INSTALL_DIRECTORY "divine-2.0" )
+
+set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev wibble_dev qt sys examples )
+
+if(WIN32)
+  set(CPACK_NSIS_MENU_LINKS "./divine.ide.exe" "DiViNE IDE"
+                            "./README.txt" "README"
+                            "./COPYING.txt" "COPYING"
+                            "./AUTHORS.txt" "AUTHORS"
+                            "./WHATS_NEW.txt" "WHATS_NEW")
+  set(CPACK_PACKAGE_EXECUTABLES "" "")
+  set(CPACK_NSIS_MODIFY_PATH ON)
+endif(WIN32)
+
+include( CPack )
+
+cpack_add_component_group( tools DISPLAY_NAME "Tools"
+                           DESCRIPTION "Installs the basic tools"
+                           EXPANDED )
+
+cpack_add_component_group( devel DISPLAY_NAME "Development"
+                           DESCRIPTION "Installs header and library files"
+                           EXPANDED )
+
+cpack_add_component( console_tools DISPLAY_NAME "Console Tools"
+                     DESCRIPTION "Console tools"
+                     GROUP tools )
+
+cpack_add_component( gui_tools DISPLAY_NAME "IDE"
+                     DESCRIPTION "Graphical environment"
+                     GROUP tools )
+
+cpack_add_component( wibble_dev DISPLAY_NAME "Wibble"
+                     DESCRIPTION "Wibble library"
+                     GROUP devel )
+
+cpack_add_component( divine_dev DISPLAY_NAME "Divine"
+                     DESCRIPTION "Divine development files"
+                     DEPENDS wibble_dev
+                     GROUP devel )
+
+cpack_add_component( qt HIDDEN DEPENDS gui_tools )
+cpack_add_component( sys HIDDEN )
+
+cpack_add_component( examples DISPLAY_NAME "Examples"
+                     DESCRIPTION "Sample models" )

@@ -56,4 +56,4 @@ qt4_wrap_ui(BASE_TOOLS_SRC3 ${BASE_TOOLS_UI})
 add_library(base_tools MODULE ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2} ${BASE_TOOLS_SRC3})
 target_link_libraries(base_tools base_shared ${QT_LIBRARIES})
 
-install(TARGETS base_tools DESTINATION ${GUI_PLUGIN_PATH})
+install(TARGETS base_tools DESTINATION ${GUI_PLUGIN_DEST} COMPONENT gui_tools)
