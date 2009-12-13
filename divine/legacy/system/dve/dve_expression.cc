@@ -176,6 +176,14 @@ std::string compacted_t::to_string()
 error_vector_t *dve_expression_t::pexpr_terr = &gerr;
 dve_parser_t dve_expression_t::expr_parser(*pexpr_terr, (dve_expression_t *)(0));
 
+template< typename T >
+void safe_free(T *&ptr) {
+    if (ptr != NULL) {
+        free(ptr);
+        ptr = NULL;
+    }
+}
+
 void dve_expression_t::compaction()
 {  
   compacted_t c;
@@ -186,11 +194,13 @@ void dve_expression_t::compaction()
       if (expr_op == T_NAT)
 	{
 	  c.create_val(expr_op,get_value());
+      safe_free(p_compact);
 	  p_compact = c.ptr;
 	}
       else
 	{
 	  c.create_gid(expr_op,get_ident_gid());
+      safe_free(p_compact);
 	  p_compact = c.ptr;	   
 	}
       return;
@@ -212,6 +222,7 @@ void dve_expression_t::compaction()
 	  left()->compaction();
 	}
       c.join(expr_op,tmp,left()->get_p_compact());
+      safe_free(p_compact);
       p_compact = c.ptr;
       free (tmp);
       return;
@@ -233,6 +244,7 @@ void dve_expression_t::compaction()
 		 left()->get_p_compact(),
 		 right()->get_p_compact()
 		 );
+      safe_free(p_compact);
 	  p_compact = c.ptr;
 	}
       else
@@ -241,6 +253,7 @@ void dve_expression_t::compaction()
 		 left()->get_p_compact(),
 		 0
 		 );
+      safe_free(p_compact);
 	  p_compact = c.ptr;
 	}
      }

@@ -253,6 +253,22 @@ struct Stack {
     Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
 };
 
+template< typename T >
+void safe_delete( T* &ptr ) {
+    if ( ptr != NULL ) {
+        delete ptr;
+        ptr = NULL;
+    }
+}
+
+template< typename T >
+void safe_delete_array( T* &ptr ) {
+    if ( ptr != NULL ) {
+        delete [] ptr;
+        ptr = NULL;
+    }
+}
+
 }
 
 #endif

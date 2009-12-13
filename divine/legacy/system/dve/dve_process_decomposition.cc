@@ -9,6 +9,23 @@ dve_process_decomposition_t::dve_process_decomposition_t(dve_explicit_system_t& 
       proc_id(0), proc_size(0), scc_count(0)
 {}
 
+dve_process_decomposition_t::~dve_process_decomposition_t() {
+  if (initialized)
+    {
+  delete[] graf;
+  delete[] hran;
+  delete[] number;
+  delete[] low;
+  delete[] zasobnik;
+  delete[] on_stack;
+  delete[] komp;
+  delete[] types;
+    }
+  initialized = false;
+}
+
+
+
 void dve_process_decomposition_t::strong(int vrchol) {
   int i, w;    
   pocitadlo++;

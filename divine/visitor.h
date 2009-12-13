@@ -164,7 +164,17 @@ struct Common {
             m_graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
-            m_queue.clear();
+            clearQueue();
+    }
+
+    void clearQueue() {
+        while ( !m_queue.empty() ) {
+            std::pair< Node, Node > elem = m_queue.next();
+            m_queue.pop();
+
+            m_graph.release( elem.first );
+            m_graph.release( elem.second );
+        }
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :

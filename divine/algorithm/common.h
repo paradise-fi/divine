@@ -106,6 +106,10 @@ struct Algorithm
             want_ce = c->generateCounterexample();
         }
     }
+
+    ~Algorithm() {
+        safe_delete( m_table );
+    }
 };
 
 }

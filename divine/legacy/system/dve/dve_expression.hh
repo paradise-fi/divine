@@ -131,6 +131,8 @@ struct compacted_t {
   {
     return *((size_int_t*)((char*)ptr + sizeof(compacted_viewer_t)));
   }
+
+  compacted_t(): ptr(NULL) {}
 };
 
 

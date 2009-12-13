@@ -17,7 +17,15 @@ Pool::Pool( const Pool& ) {
     m_groups.reserve( 8096 ); // FIXME
 }
 
-Pool::~Pool() {}
+Pool::~Pool() {
+    for (Groups::iterator i = m_groups.begin(); i != m_groups.end(); i++) {
+        for (std::vector< Block >::iterator b = i->blocks.begin(); b != i->blocks.end(); b++) {
+            delete[] b->start;
+        }
+
+        i->blocks.clear();
+    }
+}
 #endif
 
 }

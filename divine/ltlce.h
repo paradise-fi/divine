@@ -149,8 +149,10 @@ struct LtlCE {
             Node current = trace.back();
             trace.pop_back();
             o_ce << g().showNode( current ) << std::endl;
-            if ( trace.empty() )
+            if ( trace.empty() ) {
+                g().release( current );
                 break;
+            }
 
             typename G::Successors succ = g().successors( current );
             int edge = 0;
@@ -163,6 +165,8 @@ struct LtlCE {
             assert_leq( 1, edge );
             o_tr << edge << std::endl;
             o_tr_str << edge << ",";
+
+            g().release( current );
         }
         // drop trailing comma
         return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );

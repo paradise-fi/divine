@@ -8,6 +8,8 @@
 #include "common/error.hh"
 #include "common/deb.hh"
 
+#include <divine/datastruct.h>
+
 #ifndef DOXYGEN_PROCESSING
 using namespace divine;
 #endif
@@ -136,21 +138,22 @@ dve_explicit_system_t::~dve_explicit_system_t()
 {
  DEB(cerr << "BEGIN of destructor of dve_explicit_system_t" << endl;)
  if (parameters) delete ES_p_parameters_t(parameters);
- if (channels) delete [] channels;
- if (state_positions_var) delete [] state_positions_var;
- if (state_positions_state) delete [] state_positions_state;
- if (state_positions_proc) delete [] state_positions_proc;
- if (state_positions_channel) delete [] state_positions_channel;
- if (channel_buffer_size) delete [] channel_buffer_size;
- if (channel_element_size) delete [] channel_element_size;
- if (channel_item_type) delete [] channel_item_type;
- if (channel_item_pos) delete [] channel_item_pos;
- if (state_sizes_var) delete [] state_sizes_var;
- if (process_positions) delete [] process_positions;
- if (array_sizes) delete [] array_sizes;
- if (aux_enabled_trans) delete aux_enabled_trans;
- if (aux_enabled_trans2) delete aux_enabled_trans2;
- if (aux_succ_container) delete aux_succ_container;
+ safe_delete_array(channels);
+ safe_delete_array(state_positions_var);
+ safe_delete_array(state_positions_state);
+ safe_delete_array(state_positions_proc);
+ safe_delete_array(state_positions_channel);
+ safe_delete_array(channel_buffer_size);
+ safe_delete_array(channel_element_size);
+ safe_delete_array(channel_item_type);
+ safe_delete_array(channel_item_pos);
+ safe_delete_array(state_sizes_var);
+ safe_delete_array(process_positions);
+ safe_delete_array(array_sizes);
+ safe_delete(aux_enabled_trans);
+ safe_delete(aux_enabled_trans2);
+ safe_delete(aux_succ_container);
+ safe_delete(property_decomposition);
  for (size_int_t gf_i=0; gf_i<glob_filters.size(); ++gf_i)
    free(glob_filters[gf_i]);
  //delete [] gone; //only for combined_succs
@@ -322,6 +325,8 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
  eval_id_compact = ES_eval_id_compact;
  eval_square_bracket_compact = ES_eval_square_bracket_compact;
  eval_dot_compact = ES_eval_dot_compact;
+
+ safe_delete_array(channels);
  channels = new channels_t[get_channel_count()];
  for (size_int_t i = 0; i!=get_channel_count(); ++i)
    channels[i].allocate(get_channel_freq(i));
@@ -331,16 +336,38 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
  space_sum =0;
  state_creators_count = 0;
  process_count = processes.size();
+
+ safe_delete_array(state_positions_var);
  state_positions_var = new size_int_t[var_count];
+
+ safe_delete_array(state_positions_state);
  state_positions_state = new size_int_t[state_count];
+
+ safe_delete_array(state_positions_proc);
  state_positions_proc = new size_int_t[processes.size()];
+
+ safe_delete_array(state_positions_channel);
  state_positions_channel = new size_int_t[get_channel_count()];
+
+ safe_delete_array(channel_buffer_size);
  channel_buffer_size = new size_int_t[get_channel_count()];
+
+ safe_delete_array(channel_element_size);
  channel_element_size = new size_int_t[get_channel_count()];
+
+ safe_delete_array(channel_item_type);
  channel_item_type = new dve_var_type_t*[get_channel_count()];
+
+ safe_delete_array(channel_item_pos);
  channel_item_pos = new size_int_t*[get_channel_count()];
+
+ safe_delete_array(state_sizes_var);
  state_sizes_var = new size_int_t[var_count];
+
+ safe_delete_array(array_sizes);
  array_sizes = new size_int_t[var_count];
+
+ if (parameters) delete ES_p_parameters_t(parameters);
  parameters = (void *)(new ES_parameters_t);
  ES_p_parameters_t(parameters)->state_positions_var = state_positions_var;
  ES_p_parameters_t(parameters)->state_positions_state = state_positions_state;
@@ -350,7 +377,10 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
  ES_p_parameters_t(parameters)->state_lids = state_lids;
  ES_p_parameters_t(parameters)->var_types = var_types;
  ES_p_parameters_t(parameters)->array_sizes = array_sizes;
+
+ safe_delete_array(process_positions);
  process_positions = new process_position_t[process_count];
+
  trans_count = dve_system_t::get_trans_count();
  max_succ_count = trans_count;
  for (size_int_t i=0; i!=get_channel_count(); i++)
@@ -358,8 +388,14 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
      max_succ_count += get_channel_freq(i)*get_channel_freq(i)-1;
  if (get_with_property())
      max_succ_count *= processes[prop_gid]->get_trans_count();
+
+ safe_delete(aux_enabled_trans);
  aux_enabled_trans = new enabled_trans_container_t(*this);
+
+ safe_delete(aux_enabled_trans2);
  aux_enabled_trans2 = new enabled_trans_container_t(*this);
+
+ safe_delete(aux_succ_container);
  aux_succ_container = new succ_container_t();
  if (get_with_property())
    property_trans.extend(pproperty->get_trans_count());

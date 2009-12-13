@@ -3,6 +3,7 @@
 #include <wibble/test.h> // for assert
 #include <iostream>
 #include <fstream>
+#include <divine/datastruct.h>
 
 #ifndef DIVINE_CONFIG_H
 #define DIVINE_CONFIG_H
@@ -85,6 +86,11 @@ struct Config {
                m_verbose( false ), m_ce( true ),
                m_trailStream( 0 ), m_ceStream( 0 )
     {}
+
+    ~Config() {
+        divine::safe_delete( m_trailStream );
+        divine::safe_delete( m_ceStream );
+    }
 };
 
 #endif

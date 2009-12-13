@@ -38,6 +38,7 @@ namespace divine {
     void strong(int);
   public:
     dve_process_decomposition_t(dve_explicit_system_t& system);
+    ~dve_process_decomposition_t();
     
     void parse_process(std::size_t);
     int get_process_scc_id(state_t&);
