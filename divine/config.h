@@ -88,8 +88,8 @@ struct Config {
     {}
 
     ~Config() {
-        divine::safe_delete( m_trailStream );
-        divine::safe_delete( m_ceStream );
+        if ( ( m_trailStream != &std::cerr ) && ( m_trailStream != &std::cout ) ) divine::safe_delete( m_trailStream );
+        if ( ( m_ceStream != &std::cerr ) && ( m_ceStream != &std::cout ) ) divine::safe_delete( m_ceStream );
     }
 };
 
