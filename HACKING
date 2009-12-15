@@ -125,3 +125,15 @@ command, in `combine.h`.
 
 Finally, the `gui` directory contains the sources of a graphical user interface
 for the DiVinE tool, based on Qt 4.x.
+
+Debugging
+=========
+
+When debugging DiVinE with gdb, no special precautions are usually needed. You
+however probably want a build with debugging enabled and optimisations
+disabled: pass -DCMAKE_BUILD_TYPE=Debug to obtain such a build. This also
+enables assertion checking, which is definitely useful for debugging.
+
+Moreover, when using valgrind to hunt down leaks and/or memory corruption, it
+is often desirable do disable custom memory management: pass -DHOARD=OFF and
+-DPOOLS=OFF (in addition to the above) at configure time to achieve this.
