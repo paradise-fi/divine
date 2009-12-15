@@ -26,6 +26,7 @@
 #include <wibble/sfinae.h>
 
 #include <cstdarg>
+#include <cstdio>
 #include <string>
 #include <set>
 #include <vector>
@@ -60,15 +61,12 @@ inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
     return o << " ]";
 }
 
-static inline std::string fmt( std::string f, ... ) {
-    char *c;
-    va_list ap;
-    va_start( ap, f );
-    vasprintf( &c, f.c_str(), ap );
-    std::string ret( c );
-    free( c );
-    return ret;
-}
+#ifdef _WIN32
+static int vasprintf (char **, const char *, va_list);
+#endif
+
+std::string fmt( const char* f, ... ) __attribute__ ((deprecated));
+std::string fmtf( const char* f, ... );
 
 /// Format any value into a string using a std::stringstream
 template< typename T >

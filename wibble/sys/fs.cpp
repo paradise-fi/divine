@@ -103,6 +103,18 @@ void writeFile( const std::string &file, const std::string &data )
     out << data;
 }
 
+#ifdef POSIX
+bool deleteIfExists(const std::string& file)
+{
+	if (unlink(file.c_str()) != 0)
+		if (errno != ENOENT)
+			throw wibble::exception::File(file, "removing file");
+		else
+			return false;
+	else
+		return true;
+}
+
 Directory::const_iterator Directory::begin()
 {
 	DIR* dir = opendir(m_path.c_str());
