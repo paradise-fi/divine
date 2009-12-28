@@ -85,11 +85,20 @@ void chdir(const string& dir)
 
 std::string getcwd()
 {
+#if defined(__GLIBC__)
+	char* cwd = ::get_current_dir_name();
+	if (cwd == NULL)
+		throw wibble::exception::System("getting the current working directory");
+	const std::string str(cwd);
+	::free(cwd);
+	return str;
+#else
 	size_t size = pathconf(".", _PC_PATH_MAX);
 	char *buf = (char *)alloca( size );
 	if (::getcwd(buf, size) == NULL)
 		throw wibble::exception::System("getting the current working directory");
 	return buf;
+#endif
 }
 
 void chroot(const string& dir)
