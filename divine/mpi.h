@@ -52,6 +52,18 @@ struct _MpiId
 
 #ifdef HAVE_MPI
 
+/**
+ * A global per-mpi-node structure that manages the low-level aspects of MPI
+ * communication. Each node should call start() when it is ready to do so
+ * (i.e. the local data structures are set up and the algorithm is about to be
+ * started). On the master node, start() returns control to its caller after
+ * setting up MPI. However, on slave (non-master) nodes, it seizes the control
+ * and never returns. The slave nodes then wait for commands from the master.
+ *
+ * The MpiThread (see below) is designed to plug into the Domain framework (see
+ * parallel.h) and to relay the parallel-start and the termination detection
+ * over MPI to the slave nodes.
+ */
 template< typename Algorithm, typename D >
 struct Mpi {
 
@@ -253,6 +265,12 @@ struct Mpi {
 
 };
 
+/**
+ * A high-level MPI bridge. This structure is designed to integrate into the
+ * Domain framework (see parallel.h). The addExtra mechanism of Parallel can be
+ * used to plug in the MpiThread into a Parallel setup. The MpiThread then
+ * takes care to relay
+ */
 template< typename D >
 struct MpiThread : wibble::sys::Thread, Terminable {
     D &m_domain;
