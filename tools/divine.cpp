@@ -25,6 +25,7 @@
 #include <divine/report.h>
 
 #include <tools/combine.h>
+#include <tools/compile.h>
 
 #ifdef POSIX
 #include <sys/resource.h>
@@ -64,7 +65,7 @@ struct Main {
     Config config;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics;
+        *cmd_metrics, *cmd_compile;
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy;
     IntOption *o_workers, *o_mem;
@@ -77,18 +78,20 @@ struct Main {
     commandline::StandardParserWithMandatoryCommand opts;
 
     Combine combine;
+    Compile compile;
 
     Main( int _argc, const char **_argv )
         : dummygen( false ), argc( _argc ), argv( _argv ),
           opts( argv[ 0 ], DIVINE_VERSION, 1, "DiVinE Team <divine@fi.muni.cz>" ),
-          combine( opts, argc, argv )
+          combine( opts, argc, argv ),
+          compile( opts )
     {
         setupSignals();
         setupCommandline();
         parseCommandline();
 
-        if ( m_run == RunCombine ) {
-            combine.main();
+        if ( m_noMC ) {
+            noMC();
             return;
         }
 
@@ -148,7 +151,7 @@ struct Main {
 
         common = opts.createGroup( "Common Options" );
 
-        o_verbose = common->add< BoolOption >(
+        o_verbose = opts.add< BoolOption >(
             "verbose", 'v', "verbose", "", "more verbose operation" );
         o_report = common->add< BoolOption >(
             "report", 'r', "report", "", "output standardised report" );
@@ -182,11 +185,16 @@ struct Main {
             "dummy", '\0', "dummy", "",
             "use a \"dummy\" benchmarking model instead of a real input" );
 
-        opts.add( common );
+        cmd_metrics->add( common );
+        cmd_reachability->add( common );
+        cmd_owcty->add( common );
+        cmd_map->add( common );
+        cmd_ndfs->add( common );
+        cmd_verify->add( common );
     }
 
-    enum { RunCombine, RunMetrics, RunReachability, RunNdfs,
-           RunMap, RunOwcty } m_run;
+    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
+    bool m_noMC;
 
     void parseCommandline()
     {
@@ -196,10 +204,13 @@ struct Main {
             if ( opts.parse( argc, argv ) )
                 exit( 0 ); // built-in command executed
 
-            if ( opts.foundCommand() == combine.cmd_combine ) {
-                m_run = RunCombine;
+            if ( opts.foundCommand() == combine.cmd_combine
+                 || opts.foundCommand() == compile.cmd_compile ) {
+                m_noMC = true;
                 return;
             }
+
+            m_noMC = false;
 
             if ( !opts.hasNext() ) {
                 if ( o_dummy->boolValue() )
@@ -346,8 +357,14 @@ struct Main {
         return alg.run();
     }
 
-};
+    void noMC() {
+        if ( opts.foundCommand() == compile.cmd_compile )
+            return compile.main();
+        if ( opts.foundCommand() == combine.cmd_combine )
+            return compile.main();
+    }
 
+};
 
 int main( int argc, const char **argv )
 {
