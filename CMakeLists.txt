@@ -207,33 +207,39 @@ endif(WIN32)
 
 include( CPack )
 
-cpack_add_component_group( tools DISPLAY_NAME "Tools"
-                           DESCRIPTION "Installs the basic tools"
-                           EXPANDED )
+if(CMAKE_MINOR_VERSION EQUAL 6 AND CMAKE_PATCH_VERSION GREATER 0)
+  set(HAVE_CMAKE_261 1)
+endif()
 
-cpack_add_component_group( devel DISPLAY_NAME "Development"
-                           DESCRIPTION "Installs header and library files"
-                           EXPANDED )
+if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_261)
+  cpack_add_component_group( tools DISPLAY_NAME "Tools"
+                             DESCRIPTION "Installs the basic tools"
+                             EXPANDED )
 
-cpack_add_component( console_tools DISPLAY_NAME "Console Tools"
-                     DESCRIPTION "Console tools"
-                     GROUP tools )
+  cpack_add_component_group( devel DISPLAY_NAME "Development"
+                             DESCRIPTION "Installs header and library files"
+                             EXPANDED )
 
-cpack_add_component( gui_tools DISPLAY_NAME "IDE"
-                     DESCRIPTION "Graphical environment"
-                     GROUP tools )
+  cpack_add_component( console_tools DISPLAY_NAME "Console Tools"
+                       DESCRIPTION "Console tools"
+                       GROUP tools )
 
-cpack_add_component( wibble_dev DISPLAY_NAME "Wibble"
-                     DESCRIPTION "Wibble library"
-                     GROUP devel )
+  cpack_add_component( gui_tools DISPLAY_NAME "IDE"
+                       DESCRIPTION "Graphical environment"
+                       GROUP tools )
 
-cpack_add_component( divine_dev DISPLAY_NAME "Divine"
-                     DESCRIPTION "Divine development files"
-                     DEPENDS wibble_dev
-                     GROUP devel )
+  cpack_add_component( wibble_dev DISPLAY_NAME "Wibble"
+                       DESCRIPTION "Wibble library"
+                       GROUP devel )
 
-cpack_add_component( qt HIDDEN DEPENDS gui_tools )
-cpack_add_component( sys HIDDEN )
+  cpack_add_component( divine_dev DISPLAY_NAME "Divine"
+                       DESCRIPTION "Divine development files"
+                       DEPENDS wibble_dev
+                       GROUP devel )
 
-cpack_add_component( examples DISPLAY_NAME "Examples"
-                     DESCRIPTION "Sample models" )
+  cpack_add_component( qt HIDDEN DEPENDS gui_tools )
+  cpack_add_component( sys HIDDEN )
+
+  cpack_add_component( examples DISPLAY_NAME "Examples"
+                       DESCRIPTION "Sample models" )
+endif()
