@@ -47,5 +47,5 @@ struct dve_compiler: public dve_explicit_system_t
     void print_include(std::ostream & ostr);
     void print_test_header(std::ostream & ostr);
     void print_main(std::ostream & ostr);
-    void print_initial_state_struct(std::ostream & ostr);
+    void print_initial_state(std::ostream & ostr);
 };

@@ -154,16 +154,40 @@ void dve_compiler::print_duplicate_state(ostream & ostr)
 
 void dve_compiler::print_state_struct(ostream & ostr)
 {
+ for (size_int_t i=0; i!=glob_var_count; i++)
+ {
+  dve_symbol_t * var = get_symbol_table()->get_variable(get_global_variable_gid(i));
+  if (var->is_const())
+  {
+    ostr << "const ";
+    if (var->is_byte()) ostr << "byte_t ";
+       else ostr << "sshort_int_t ";
+    ostr << var->get_name();
+   if (var->is_vector())
+    {
+     ostr << "[" << var->get_vector_size() << "]";
+     if (var->get_init_expr_count()) ostr << " = {";
+     for (size_int_t j=0; j!=var->get_init_expr_count(); j++)
+      {
+       ostr << var->get_init_expr(j)->to_string();
+       if (j!=(var->get_init_expr_count()-1)) ostr << ", ";
+       else ostr << "}";
+      }
+    }
+    else if (var->get_init_expr())
+    { ostr << " = " << var->get_init_expr()->to_string(); }
+   ostr << ";" << endl;
+  }
+ }
+ ostr << endl;
+
  bool global = true;
- int current_type = 0;
- int padd = 0;
  string spaces = "  ";
  string orig_spaces = spaces;
  string name;
  string process_name = "UNINITIALIZED";
  ostr << "struct state_struct_t" << endl;
  ostr << " {" << endl;
-
  for (size_int_t i=0; i!=state_creators_count; ++i)
   {
    switch (state_creators[i].type)
@@ -174,43 +198,18 @@ void dve_compiler::print_state_struct(ostream & ostr)
        if (state_creators[i].array_size)
         {
          if (state_creators[i].var_type==VAR_BYTE)
-         {
-             ostr << spaces << "byte_t ";
-             current_type = 1;
-         }
+           ostr << spaces << "byte_t ";
          else if (state_creators[i].var_type==VAR_INT)
-              {
-                if(current_size % 2 !=0)
-                {
-                  ostr << spaces << "byte_t pad_"<<padd<<";"<<endl;
-                  padd++;
-                  current_size++;
-                }
-                ostr << spaces << "sshort_int_t ";
-                current_type = 2;
-              }
+           ostr << spaces << "sshort_int_t ";
          else gerr << "Unexpected error" << thr();
          ostr << name << "[" <<state_creators[i].array_size<< "];" << endl;
-         current_size = current_size + state_creators[i].array_size*current_type;
         }
        else
         {
          if (state_creators[i].var_type==VAR_BYTE)
-         {
            ostr << spaces << "byte_t " << name << ";" << endl;
-           current_size++;
-         }
          else if (state_creators[i].var_type==VAR_INT)
-               {
-                    if(current_size % 2 !=0)
-                    {
-                      ostr << spaces << "byte_t pad_"<<padd<<";"<<endl;
-                      padd++;
-                      current_size++;
-                    }
-                    ostr << spaces << "sshort_int_t " << name << ";" << endl;
-                    current_size = current_size + 2;
-               }
+           ostr << spaces << "sshort_int_t " << name << ";" << endl;
          else gerr << "Unexpected error" << thr();
         }
       }
@@ -224,41 +223,21 @@ void dve_compiler::print_state_struct(ostream & ostr)
         }
        else
         {
-          if(current_size %  2 !=0)
-          {
-            string spaces = "  ";
-            ostr << spaces << "  byte_t pad_"<<padd<<";"<<endl;
-            padd++;
-            current_size++;
-          }
-          ostr << orig_spaces << " } " << process_name << ";" << endl;
+         ostr << orig_spaces << " } __attribute__((__packed__)) " << process_name << ";" << endl;
         }
-       if(current_size % 2 !=0)
-       {
-         ostr << spaces << "byte_t pad_"<<padd<<";"<<endl;
-         padd++;
-         current_size++;
-       }
        ostr << orig_spaces << "struct" << endl;
        ostr << orig_spaces << " {" << endl;
-       process_name = get_symbol_table()->get_process(state_creators[i].gid)->get_name();
-       ostr << spaces << "ushort_int_t state;" << endl; 
-       current_size = current_size + 2;
+       process_name=
+         get_symbol_table()->get_process(state_creators[i].gid)->get_name();
+       ostr << spaces << "ushort_int_t state;" << endl;
       }
      break;
      case state_creator_t::CHANNEL_BUFFER:
       {
        name=get_symbol_table()->get_channel(state_creators[i].gid)->get_name();
-       if(current_size % 2 !=0)
-       {
-         ostr << spaces << "byte_t pad_"<<padd<<";"<<endl;
-         padd++;
-         current_size++;
-       }
        ostr << spaces << "struct" << endl;
        ostr << spaces << " {" << endl;
        ostr << spaces << "  ushort_int_t number_of_items;" << endl;
-       current_size = current_size + 2;
        ostr << spaces << "  struct" << endl;
        ostr << spaces << "   {" << endl;
        string extra_spaces = spaces + "    ";
@@ -266,21 +245,13 @@ void dve_compiler::print_state_struct(ostream & ostr)
          get_symbol_table()->get_channel(state_creators[i].gid);
        size_int_t item_count = symbol->get_channel_type_list_size();
        for (size_int_t j=0; j<item_count; ++j)
-         //TO DO multiple item_count
          if (symbol->get_channel_type_list_item(j)==VAR_BYTE)
-         {
            ostr << extra_spaces << "byte_t x" << j << ";" << endl;
-           current_type = 1;
-         }
          else if (symbol->get_channel_type_list_item(j)==VAR_INT)
-           {
-             ostr << extra_spaces << "sshort_int_t x" << j << ";" << endl;
-             current_type = 2;
-           }
+           ostr << extra_spaces << "sshort_int_t x" << j << ";" << endl;
          else gerr << "Unexpected error" << thr();
-       ostr << spaces << "   }  content["<< symbol->get_channel_buffer_size() << "];"<< endl;
-       current_size = current_size + symbol->get_channel_buffer_size()*current_type;
-       ostr << spaces << " } " << name << ";" <<endl;
+       ostr << spaces << "   } __attribute__((__packed__)) content["<< symbol->get_channel_buffer_size() << "];"<< endl;
+       ostr << spaces << " } __attribute__((__packed__)) " << name << ";" <<endl;
       }
      break;
      default: gerr << "Unexpected error" << thr();
@@ -289,195 +260,35 @@ void dve_compiler::print_state_struct(ostream & ostr)
   }
  if (!global)
   {
-   if(current_size %  2 !=0)
-   {
-     string spaces = "  ";
-     ostr << spaces << "  byte_t pad_"<<padd<<";"<<endl;
-     padd++;
-     current_size++;
-   }
-   ostr << orig_spaces << " }  " << process_name << ";" << endl;
+   ostr << orig_spaces << " } __attribute__((__packed__)) " << process_name << ";" << endl;
   }
- ostr << " }  ;" << endl;
+ ostr << " } __attribute__((__packed__));" << endl;
  ostr << endl;
- ostr << "int state_size = " << current_size << ";" << endl;
+ ostr << "int state_size = sizeof(state_struct_t);" << endl;
  ostr << endl ;
 }
 
 
-void dve_compiler::print_initial_state_struct(ostream & ostr)
+struct MyStateAllocator : StateAllocator {
+    virtual state_t duplicate_state( const state_t &state ) {};
+    virtual state_t new_state( std::size_t size ) { state_t x; x.ptr = new char[size]; x.size = size; memset(x.ptr,0,size); return x; }
+    virtual void delete_state( state_t &st ) {};
+    virtual ~MyStateAllocator() {}
+};
+
+void dve_compiler::print_initial_state(ostream & ostr)
 {
- bool global = true;
- int current_type = 0;
- current_size = 0;
- int padd = 0;
- string spaces = "  ";
- string orig_spaces = spaces;
- string name;
- string process_name = "UNINITIALIZED";
- ostr << "state_struct_t init_state_struct;" << endl;
-
- for (size_int_t i=0; i!=state_creators_count; ++i)
+  setAllocator(new MyStateAllocator);
+  state_t initial_state =  dve_explicit_system_t::get_initial_state();
+  ostr << "char initial_state[] = {";
+  for(int i = 0; i < initial_state.size; i++)
   {
-   switch (state_creators[i].type)
-    {
-     case state_creator_t::VARIABLE:
-      {
-       name=get_symbol_table()->get_variable(state_creators[i].gid)->get_name();
-       if (state_creators[i].array_size)
-        {
-         if (state_creators[i].var_type==VAR_BYTE)
-         {
-             current_type = 1;
-         }
-         else if (state_creators[i].var_type==VAR_INT)
-              {
-                if(current_size % 2 !=0)
-                {
-                  if(global) 
-                   ostr <<"init_state_struct.pad_"<<padd<<" = 0;"<<endl;
-                  else
-                   ostr <<"init_state_struct."<<process_name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-                  padd++;
-                  current_size++;
-                }
-                current_type = 2;
-              }
-         else gerr << "Unexpected error" << thr();
-         for(size_int_t j=0; j<state_creators[i].array_size; j++)
-         { 
-            if(global)
-             if (initial_values_counts[state_creators[i].gid])
-               ostr <<"init_state_struct."<<name <<"["<<j<<"] = "<<initial_values[state_creators[i].gid].all_values[j]<<";" << endl;
-             else
-               ostr <<"init_state_struct."<<name <<"["<<j<<"] = 0;" << endl;
-            else
-               if (initial_values_counts[state_creators[i].gid])
-                ostr <<"init_state_struct."<<process_name<<"."<<name <<"["<<j<<"] = "<<initial_values[state_creators[i].gid].all_values[j]<<";" << endl;
-               else
-                ostr <<"init_state_struct."<<process_name<<"."<<name <<"["<<j<<"] = 0;" << endl;
-         }
-         current_size = current_size + state_creators[i].array_size*current_type;
-        }
-       else
-        {
-         if (state_creators[i].var_type==VAR_BYTE)
-         {
-           if(global)
-             if (initial_values_counts[state_creators[i].gid])
-               ostr <<"init_state_struct."<<name <<" = "<<initial_values[state_creators[i].gid].all_values<<";" << endl;
-             else
-               ostr <<"init_state_struct."<<name <<" = 0;" << endl;
-            else
-               if (initial_values_counts[state_creators[i].gid])
-                ostr <<"init_state_struct."<<process_name<<"."<<name <<"= "<<initial_values[state_creators[i].gid].all_values<<";" << endl;
-               else
-                ostr <<"init_state_struct."<<process_name<<"."<<name <<"= 0;" << endl;
-           current_size++;
-         }
-         else if (state_creators[i].var_type==VAR_INT)
-               {
-                    if(current_size % 2 !=0)
-                    {
-                      if(global) 
-                       ostr <<"init_state_struct.pad_"<<padd<<" = 0;"<<endl;
-                      else
-                       ostr <<"init_state_struct."<<process_name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-                      padd++;
-                      current_size++;
-                    }
-                    if(global)
-                      ostr <<"init_state_struct."<<name <<" = "<<initial_values[state_creators[i].gid].all_values<<";" << endl;
-                    else
-                      ostr <<"init_state_struct."<<process_name<<"."<<name <<" = "<<initial_values[state_creators[i].gid].all_values<<";" << endl;
-                    current_size = current_size + 2;
-               }
-         else gerr << "Unexpected error" << thr();
-        }
-      }
-     break;
-     case state_creator_t::PROCESS_STATE:
-      {
-       if (global)
-        {
-         global = false;
-        }
-       else
-        {
-          if(current_size %  2 !=0)
-          {
-            string spaces = "  ";
-            if(global) 
-             ostr <<"init_state_struct.pad_"<<padd<<" = 0;"<<endl;
-            else
-             ostr <<"init_state_struct."<<process_name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-            padd++;
-            current_size++;
-          }
-        }
-       if(current_size % 2 !=0)
-       {
-         if(global) 
-          ostr <<"init_state_struct.pad_"<<padd<<" = 0;"<<endl;
-         else
-          ostr <<"init_state_struct."<<process_name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-         padd++;
-         current_size++;
-       }
-       process_name = get_symbol_table()->get_process(state_creators[i].gid)->get_name();
-       ostr <<"init_state_struct."<<process_name<<".state = 0;"<<endl;
-       current_size = current_size + 2;
-      }
-     break;
-     case state_creator_t::CHANNEL_BUFFER:
-      {
-       name=get_symbol_table()->get_channel(state_creators[i].gid)->get_name();
-       if(current_size % 2 !=0)
-       {
-         ostr <<"init_state_struct."<<name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-         padd++;
-         current_size++;
-       }
-       ostr <<"init_state_struct."<<name<<".number_of_items = 0;" << endl;
-       current_size = current_size + 2;
-       string extra_spaces = spaces + "    ";
-       dve_symbol_t * symbol =
-         get_symbol_table()->get_channel(state_creators[i].gid);
-       size_int_t item_count = symbol->get_channel_type_list_size();
-       for (size_int_t k=0; k<symbol->get_channel_buffer_size(); k++)
-        for (size_int_t j=0; j<item_count; ++j)
-          //TO DO multiple item_count
-         if (symbol->get_channel_type_list_item(j)==VAR_BYTE)
-         {
-           ostr <<"init_state_struct."<<name<<".content["<<k<<"].x" << j << " = 0;" << endl;
-           current_type = 1;
-         }
-         else if (symbol->get_channel_type_list_item(j)==VAR_INT)
-           {
-             ostr <<"init_state_struct."<<name<<".content["<<k<<"].x" << j << " = 0;" << endl;
-             current_type = 2;
-           }
-         else gerr << "Unexpected error" << thr();
-       current_size = current_size + symbol->get_channel_buffer_size()*current_type;
-      }
-     break;
-     default: gerr << "Unexpected error" << thr();
-     break;
-    };
+   ostr << (unsigned int)(unsigned char)initial_state.ptr[i];
+   if(i != initial_state.size - 1)
+    ostr << ", ";
   }
- if (!global)
-  {
-   if(current_size %  2 !=0)
-   {
-     ostr <<"init_state_struct."<<process_name<<"."<<"pad_"<<padd<<" = 0;"<<endl;
-     padd++;
-     current_size++;
-   }
-
-  }
-
- //ostr << "int state_size = " << current_size << ";" << endl;
- ostr << endl ;
+  ostr<<"};"<<endl;
+  ostr<<endl;
 }
 
 void dve_compiler::print_DVE_compiler(ostream & ostr)
@@ -2273,7 +2084,7 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
 
   ostr << "extern "<< '"' << "C" << '"' << " void get_initial_state(char* to)" <<endl;
   ostr << " {"<<endl;
-  ostr << "   memset(to,0,state_size); "<<endl;
+  ostr << "   memcpy(to,initial_state,state_size); "<<endl;
   ostr << " }"<<endl;
 }
 
