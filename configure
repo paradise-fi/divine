@@ -10,12 +10,13 @@ PACKAGE=divine-mc
 
 test -e configure.vars && source ./configure.vars
 
+test -d _darcs && DARCS=true
 
-test -f manifest || die \
+$DARCS || test -f manifest || die \
     "Sorry, the file \"manifest\" appears to be missing from the distribution;\n\
 please make sure you are running this script in the source directory."
 
-cat manifest | while read; do
+cat manifest 2> /dev/null | while read; do
     test -e "$REPLY" || die \
         "Sorry, but file \"$REPLY\" appears to be missing from the distribution;\nplease make sure your tarball is complete.";
 done
