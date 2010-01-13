@@ -1657,7 +1657,7 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
          {
            if(dynamic_cast<dve_process_t*>(this->get_process(i))->get_commited(iter_process_transition_map->first))
            {
-             ostr << space << label << ": if( " << state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state == " <<iter_process_transition_map->first<<" )"<<endl;
+             ostr << space <<"l"<< label << ": if( " << state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state == " <<iter_process_transition_map->first<<" )"<<endl;
              label++;
              ostr << space << "  {"<<endl;
              for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
