@@ -107,13 +107,21 @@ struct Custom : Common {
         return b;
     }
 
+    void die( const char *fmt, ... ) __attribute__((noreturn)) {
+        va_list ap;
+        va_start( ap, fmt );
+        vfprintf( stderr, fmt, ap );
+        exit( 1 );
+    }
+
     void read( std::string path ) {
 #ifdef _WIN32
         assert_die();
 #else
         dl.handle = dlopen( path.c_str(), RTLD_LAZY );
 
-        assert( dl.handle );
+        if( !dl.handle )
+            die( "FATAL: Error loading \"%s\".\n%s", path.c_str(), dlerror() );
 
         dl.get_initial_state = (dl_get_initial_state_t)
                                dlsym(dl.handle, "get_initial_state");
@@ -124,9 +132,12 @@ struct Custom : Common {
         dl.get_many_successors = (dl_get_many_successors_t)
                                  dlsym(dl.handle, "get_many_successors");
 
-        assert( dl.get_initial_state );
-        assert( dl.get_state_size );
-        assert( dl.get_successor || dl.get_many_successors );
+        if( !dl.get_initial_state )
+            die( "FATAL: Could not resolve get_initial_state." );
+        if( !dl.get_state_size )
+            die( "FATAL: Could not resolve get_state_size." );
+        if( !dl.get_successor && !dl.get_many_successors )
+            die( "FATAL: Could not resolve neither of get_successor/get_many_successors." );
 
         dl.size = dl.get_state_size();
 
