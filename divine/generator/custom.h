@@ -118,6 +118,10 @@ struct Custom : Common {
 #ifdef _WIN32
         assert_die();
 #else
+        // dlopen does not like path-less shared objects outside lib locations
+        if ( wibble::str::basename( path ) == path )
+            path = "./" + path;
+
         dl.handle = dlopen( path.c_str(), RTLD_LAZY );
 
         if( !dl.handle )
