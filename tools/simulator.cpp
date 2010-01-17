@@ -10,6 +10,8 @@
 #include "sevine.h"
 //#include "divine_utils.hh"
 
+#include "divine/generator/common.h"
+
 #define MAX_CMD_LENGTH 100 //maximal length of the user's command
 #define MAX_LENGTH_VAR 5   //maximal number of characters of vector's item to write to output file
 
@@ -459,7 +461,10 @@ int main(int argc, char * argv[])
     strcpy(trace_out_name,const_trace_out_name);
     trace_out_name[strlen(const_trace_out_name)]='\0';
   }
+  generator::Allocator Generator;
   dve_explicit_system_t System(gerr);
+  System.setAllocator(&Generator);
+  
   const char * VSTUP = argv[optind]; //the latest parameter is the filename of input model
   int file_opening = System.read(VSTUP);
   try
@@ -662,7 +667,7 @@ int main(int argc, char * argv[])
         "--------------------------------------------------------------------------------" << endl; //free lines to parse previous and next step of the execution
     }
     else switch (cmd[0])
-    { case cmd_init: { delete_state(s); //dealocate old state
+    { case cmd_init: { Generator.delete_state(s); //dealocate old state
                        s = System.get_initial_state();
                        if (write_to_cout)
                          cout << "Initial state created." << endl;
@@ -671,7 +676,7 @@ int main(int argc, char * argv[])
                        init_state = true;
                        break;
                      }                     
-      case cmd_quit: { finish = true; delete_state(s); /*to dealocate state 's'*/ break; }
+      case cmd_quit: { finish = true; Generator.delete_state(s); /*to dealocate state 's'*/ break; }
       case cmd_rand: { if (succs.size()==0)
                        { cerr << "No successors, can't be executed." << endl;
                          print_trans=false;
@@ -846,8 +851,8 @@ int main(int argc, char * argv[])
     if (print_trans) //some action executed, generate new succs etc. => succs. must be deleted
     { for (size_t i=0; i!=succs.size(); ++i)
         if ((s2.ptr==0)||(succs[i]!=s2))
-          delete_state(succs[i]);
-      if ((s2.ptr!=0)&&(s2!=s)) { delete_state(s); s=s2; }
+          Generator.delete_state(succs[i]);
+      if ((s2.ptr!=0)&&(s2!=s)) { Generator.delete_state(s); s=s2; }
       delete[] trans_name;
     }
   } //end of while 
