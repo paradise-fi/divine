@@ -45,10 +45,10 @@ void SimulatorPreferences::readSettings(void)
   ui_->seedSpin->setValue(s.value("seed", defSimulatorSeed).toUInt());
   ui_->stepsSpin->setValue(s.value("steps", defSimulatorSteps).toUInt());
 
-  ui_->normalButton->setPalette(QPalette(
-    s.value("normal", defSimulatorNormal).value<QColor>()));
-  ui_->highlightButton->setPalette(QPalette(
-    s.value("highlight", defSimulatorHighlight).value<QColor>()));
+  ui_->normalButton->setCurrentColor(
+    s.value("normal", defSimulatorNormal).value<QColor>());
+  ui_->highlightButton->setCurrentColor(
+    s.value("highlight", defSimulatorHighlight).value<QColor>());
 
   s.endGroup();
 }
@@ -64,9 +64,8 @@ void SimulatorPreferences::writeSettings(void)
   s.setValue("seed", ui_->seedSpin->value());
   s.setValue("steps", ui_->stepsSpin->value());
 
-  s.setValue("normal", ui_->normalButton->palette().color(QPalette::Button));
-  s.setValue("highlight",
-    ui_->highlightButton->palette().color(QPalette::Button));
+  s.setValue("normal", ui_->normalButton->currentColor());
+  s.setValue("highlight", ui_->highlightButton->currentColor());
 
   s.endGroup();
 }
@@ -77,22 +76,4 @@ void SimulatorPreferences::on_randomBox_stateChanged(int state)
 
   ui_->seedSpin->setEnabled(st);
   ui_->seedLabel->setEnabled(st);
-}
-
-void SimulatorPreferences::on_normalButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-    ui_->normalButton->palette().color(QPalette::Button), this);
-
-  if(color.isValid())
-    ui_->normalButton->setPalette(QPalette(color));
-}
-
-void SimulatorPreferences::on_highlightButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-    ui_->highlightButton->palette().color(QPalette::Button), this);
-
-  if(color.isValid())
-    ui_->highlightButton->setPalette(QPalette(color));
 }

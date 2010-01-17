@@ -31,16 +31,21 @@ const char defDivPath[] = "divine";
 
 const int defDivAlgorithm = 0;
 
-class DveSimulatorLoader : public SimulatorLoader
+//! Builds the DVE simulator.
+class DveSimulatorFactory : public SimulatorFactory
 {
     Q_OBJECT
   public:
-    DveSimulatorLoader(QObject * parent) : SimulatorLoader(parent) {}
+    DveSimulatorFactory(QObject * parent) : SimulatorFactory(parent) {}
 
     Simulator * load(const QString & fileName, MainForm * root);
 };
 
-// plugin class
+/*!
+ * This class is the main class of the dve_divine2 plugin. It provides
+ * connection to the divine-2 tool and implements front-ends for most
+ * of it's tools.
+ */
 class DvePlugin : public QObject, public AbstractPlugin
 {
     Q_OBJECT
@@ -52,6 +57,7 @@ class DvePlugin : public QObject, public AbstractPlugin
     void install(MainForm * root);
     
   signals:
+    //! Sends a text message to the output window.
     void message(const QString & msg);
     
   private:
@@ -59,6 +65,7 @@ class DvePlugin : public QObject, public AbstractPlugin
     QAction * reachabilityAct_;
     QAction * metricsAct_;
     QAction * verifyAct_;
+    QAction * abortAct_;
     QActionGroup * algorithmGroup_;
     
     // divine runner
@@ -78,6 +85,8 @@ class DvePlugin : public QObject, public AbstractPlugin
     void reachability(void);
     void metrics(void);
     void verify(void);
+    
+    void abort(void);
     
     void onRunnerError(QProcess::ProcessError error);
     void onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus);

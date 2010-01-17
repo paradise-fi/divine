@@ -25,6 +25,10 @@ class QWidget;
 class QAction;
 class QMainWindow;
 
+/*!
+ * The LayoutSet class stores the visibility of widgets and action in one layout.
+ * \see LayoutManager
+ */
 class LayoutSet
 {
   public:
@@ -45,6 +49,11 @@ class LayoutSet
     ActionHash actions_;
 };
 
+/*!
+ * The LayoutManager class provides mechanism for managing application layouts.
+ * It helps serialize geometry and visibility of widgets and actions among
+ * number of layouts.
+ */
 class BASE_SHARED_EXPORT LayoutManager : public QObject
 {
     Q_OBJECT
@@ -52,8 +61,6 @@ class BASE_SHARED_EXPORT LayoutManager : public QObject
   public:
     LayoutManager(QMainWindow * parent, const QStringList & layouts);
     ~LayoutManager();
-
-    const QStringList layouts(void) const;
 
     void switchLayout(const QString & layout);
 

@@ -18,6 +18,12 @@
 #include "recent.h"
 #include "settings.h"
 
+/*!
+ * initializes the Recent Files menu.
+ * \param title Menu title.
+ * \param max Max. number of stored files.
+ * \param parent Parent widget.
+ */
 RecentFilesMenu::RecentFilesMenu(const QString & title, int max, QWidget * parent)
     : QMenu(title, parent), max_(max)
 {
@@ -32,6 +38,7 @@ RecentFilesMenu::RecentFilesMenu(const QString & title, int max, QWidget * paren
   updateActions();
 }
 
+//! Adds file to the history discarding the oldest one if the limit is reached.
 void RecentFilesMenu::addFile(const QString & fileName)
 {
   if (fileName.isEmpty())

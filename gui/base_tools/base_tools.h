@@ -23,13 +23,13 @@
 
 // default settings
 
-// console
-inline const QFont defConsoleFont(void) {return defaultFont("monospace");}
+// output window
+inline const QFont defOutputFont(void) {return defaultFont("monospace");}
 
-extern const bool defConsoleEFont;
-extern const bool defConsoleSysColours;
-extern const QColor defConsoleFore;
-extern const QColor defConsoleBack;
+extern const bool defOutputEFont;
+extern const bool defOutputSysColors;
+extern const QColor defOutputFore;
+extern const QColor defOutputBack;
 
 // trace
 extern const bool defTraceVars;
@@ -41,7 +41,9 @@ extern const bool defTraceBufNames;
 extern const QColor defTraceDeadlock;
 extern const QColor defTraceError;
 
-// plugin class
+/*!
+ * The BaseToolsPlugin class is the main class in base_tools plugin.
+ */
 class BaseToolsPlugin : public QObject, public AbstractPlugin
 {
     Q_OBJECT

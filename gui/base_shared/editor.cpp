@@ -12,6 +12,8 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
+#include <limits.h>
+
 #include <QKeyEvent>
 #include <QCompleter>
 #include <QSettings>
@@ -31,12 +33,14 @@
 
 static const char * s_eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="; // end of word
 
-//
-// SideBar class
-//
+/*!
+ * The Sidebar class draws line numbers on the side of a text editor.
+ * \see SourceEditor
+ */
 
 class SideBar : public QWidget
 {
+
   public:
     SideBar(SourceEditor * parent);
 
@@ -54,6 +58,7 @@ SideBar::SideBar(SourceEditor * parent) : QWidget(parent), edit_(parent)
   setAutoFillBackground(true);
 }
 
+//! Calculates width of the sid bar based on the max. number of digits.
 int SideBar::calculateWidth(int lines)
 {
   uint nums = QString::number(lines).length();
@@ -64,6 +69,7 @@ int SideBar::calculateWidth(int lines)
   return fontMetrics().width(QString(nums + 1, '0'))/* + 6*/;
 }
 
+//! Forwards painting to the SourceEditor class.
 void SideBar::paintEvent(QPaintEvent * event)
 {
   edit_->sideBarPaintEvent(event);
@@ -98,6 +104,7 @@ SourceEditor::~SourceEditor()
 {
 }
 
+//! Assigns a new code completer.
 void SourceEditor::setCompleter(QCompleter * cmpl)
 {
   if (cmpl == completer_)
@@ -111,17 +118,24 @@ void SourceEditor::setCompleter(QCompleter * cmpl)
   completer_ = cmpl;
 
   // done?
+
   if (!completer_)
     return;
 
   completer_->setWidget(this);
+
   completer_->setCompletionMode(QCompleter::PopupCompletion);
+
   completer_->setCaseSensitivity(Qt::CaseSensitive);
 
   connect(completer_, SIGNAL(activated(const QString &)),
           this, SLOT(insertCompletion(const QString &)));
 }
 
+/*!
+ * Shows the side bar.
+ * \see SideBar
+ */
 void SourceEditor::setShowLineNumbers(bool show)
 {
   showLineNumbers_ = show;
@@ -129,11 +143,16 @@ void SourceEditor::setShowLineNumbers(bool show)
   updateSideBarWidth(blockCount());
 }
 
-void SourceEditor::highlightBlock(const QRect & rect, const QColor & color)
+/*!
+ * Highlights provided block of code with given colour.
+ * \param block Code block. QRect specifies upper left and lower right character.
+ * \param color Desired color.
+ */
+void SourceEditor::highlightBlock(const QRect & block, const QColor & color)
 {
   QTextEdit::ExtraSelection esel;
 
-  esel.cursor = rectToCursor(rect);
+  esel.cursor = rectToCursor(block);
   esel.format.setBackground(color);
 
   blocks_.append(esel);
@@ -141,6 +160,7 @@ void SourceEditor::highlightBlock(const QRect & rect, const QColor & color)
   updateExtraSelections();
 }
 
+//! Clears all user-specified highlighting.
 void SourceEditor::resetHighlighting(void)
 {
   blocks_.clear();
@@ -148,14 +168,15 @@ void SourceEditor::resetHighlighting(void)
   updateExtraSelections();
 }
 
-bool SourceEditor::loadFile(const QString & fileName)
+//! Loads contents from a given file.
+bool SourceEditor::loadFile(const QString & path)
 {
-  QFile file(fileName);
+  QFile file(path);
 
   if (!file.open(QFile::ReadOnly | QFile::Text)) {
     QMessageBox::warning(
       this, tr("DiVinE IDE"),
-      tr("Cannot read file %1:\n%2.").arg(fileName).arg(file.errorString()));
+      tr("Cannot read file %1:\n%2.").arg(path).arg(file.errorString()));
     return false;
   }
 
@@ -167,14 +188,15 @@ bool SourceEditor::loadFile(const QString & fileName)
   return true;
 }
 
-bool SourceEditor::saveFile(const QString & fileName)
+//! Saves contents to a given file.
+bool SourceEditor::saveFile(const QString & path)
 {
-  QFile file(fileName);
+  QFile file(path);
 
   if (!file.open(QFile::WriteOnly | QFile::Text)) {
     QMessageBox::warning(
       this, tr("DiVinE IDE"),
-      tr("Cannot write file %1:\n%2.").arg(fileName).arg(file.errorString()));
+      tr("Cannot write file %1:\n%2.").arg(path).arg(file.errorString()));
     return false;
   }
 
@@ -186,6 +208,7 @@ bool SourceEditor::saveFile(const QString & fileName)
   return true;
 }
 
+//! Reloads settings.
 void SourceEditor::readSettings(void)
 {
   QSettings & s = sSettings();
@@ -217,6 +240,7 @@ void SourceEditor::readSettings(void)
   updateExtraSelections();
 }
 
+//! Enables automatic highlighting of transition from given simulator.
 void SourceEditor::autoHighlight(SimulatorProxy * sim)
 {
   if (sim_ == sim)
@@ -225,30 +249,35 @@ void SourceEditor::autoHighlight(SimulatorProxy * sim)
   activeTrans_ = -1;
 
   if (sim_) {
-    disconnect(sim_->simulator(), SIGNAL(stateReset()), this, SLOT(onSimulatorUpdate()));
-    disconnect(sim_->simulator(), SIGNAL(stateChanged()), this, SLOT(onSimulatorUpdate()));
+    disconnect(sim_, SIGNAL(started()), this, SLOT(onSimulatorUpdate()));
+    disconnect(sim_, SIGNAL(stateChanged()), this, SLOT(onSimulatorUpdate()));
   }
 
   sim_ = sim;
 
   if (sim_) {
-    connect(sim_->simulator(), SIGNAL(stateReset()), this, SLOT(onSimulatorUpdate()));
-    connect(sim_->simulator(), SIGNAL(stateChanged()), this, SLOT(onSimulatorUpdate()));
+    connect(sim_, SIGNAL(started()), this, SLOT(onSimulatorUpdate()));
+    connect(sim_, SIGNAL(stateChanged()), this, SLOT(onSimulatorUpdate()));
   }
 
   updateExtraSelections();
 }
 
-void SourceEditor::highlightTransition(int tran)
+//! Highlights specified transition. Auto highlighting must be turned on.
+void SourceEditor::highlightTransition(int id)
 {
-  if (tran == activeTrans_)
+  if (id == activeTrans_)
     return;
 
-  activeTrans_ = tran;
+  activeTrans_ = id;
 
   updateExtraSelections();
 }
 
+/*!
+ * D&D files are forwarded to the main form.
+ * Reimplements QPlainTextEdit::dropEvent
+ */
 void SourceEditor::dropEvent(QDropEvent * event)
 {
   if (event->mimeData()->hasUrls()) {
@@ -260,16 +289,20 @@ void SourceEditor::dropEvent(QDropEvent * event)
 // check for invalid paths (/C:/blabla)
 #ifdef Q_OS_WIN32
       QRegExp drive_re("^/[A-Z]:");
-      if(path.contains(drive_re))
+
+      if (path.contains(drive_re))
         path.remove(0, 1);
+
 #endif
       emit fileDropped(path);
     }
-  } else {
+  }
+  else {
     QPlainTextEdit::dropEvent(event);
   }
 }
 
+//! Reimplements QPlainTextEdit::dragEnterEvent.
 void SourceEditor::dragEnterEvent(QDragEnterEvent * event)
 {
   if (event->mimeData()->hasUrls())
@@ -278,13 +311,16 @@ void SourceEditor::dragEnterEvent(QDragEnterEvent * event)
     QPlainTextEdit::dragEnterEvent(event);
 }
 
+/*!
+ * Handles key press events and processes code completion.
+ * Reimplements QPlainTextEdit::keyPressEvent.
+ */
 void SourceEditor::keyPressEvent(QKeyEvent * event)
 {
   QString eow(s_eow); // end of word
 
   // don't process the event if completion is disabled or we don't
   // have a completer ()
-
   if (!completer_) {
     handleKeyPressEvent(event);
     return;
@@ -304,7 +340,6 @@ void SourceEditor::keyPressEvent(QKeyEvent * event)
         // close the popup if we hit an invalid character
         if (!event->text().isEmpty() && eow.contains(event->text()))
           completer_->popup()->hide();
-
         break;
     }
   }
@@ -327,7 +362,8 @@ void SourceEditor::keyPressEvent(QKeyEvent * event)
       insertCompletion(mdl->itemData(
                          mdl->index(0, 0))[Qt::DisplayRole].toString());
       completer_->popup()->hide();
-    } else {
+    }
+    else {
       QRect cr = cursorRect();
       cr.setWidth(completer_->popup()->sizeHintForColumn(0)
                   + completer_->popup()->verticalScrollBar()->sizeHint().width());
@@ -338,6 +374,7 @@ void SourceEditor::keyPressEvent(QKeyEvent * event)
   }
 }
 
+//! Reimplements QPlainTextEdit::focusInEvent
 void SourceEditor::focusInEvent(QFocusEvent * event)
 {
   if (completer_)
@@ -346,24 +383,30 @@ void SourceEditor::focusInEvent(QFocusEvent * event)
   QPlainTextEdit::focusInEvent(event);
 }
 
+/*!
+ * Clears the highlighted transition when mouse leaves the window.
+ * Reimplements QPlainTextEdit::leaveEvent.
+ */
 void SourceEditor::leaveEvent(QEvent * event)
 {
   // reset the highlighted transition
   highlightTransition(-1);
+  
+  QPlainTextEdit::leaveEvent(event);
 }
 
+//! Reimplements QPlainTextEdit::mouseDoubleClickEvent.
 void SourceEditor::mouseDoubleClickEvent(QMouseEvent * event)
 {
-  int id;
+  int trans = getTransitionFromPos(event->pos());
 
-  if (!sim_ || (id = getExtraSelectionFromPos(event->pos())) == -1 ||
-      id < 0 || id >= transMap_.size()) {
+  if (!sim_ || trans == -1)
     QPlainTextEdit::mouseDoubleClickEvent(event);
-  } else {
-    sim_->step(transMap_[id]);
-  }
+  else
+    sim_->step(trans);
 }
 
+//! Reimplements QPlainTextEdit::mouseMoveEvent.
 void SourceEditor::mouseMoveEvent(QMouseEvent * event)
 {
   QPlainTextEdit::mouseMoveEvent(event);
@@ -371,18 +414,12 @@ void SourceEditor::mouseMoveEvent(QMouseEvent * event)
   if (!sim_)
     return;
 
-  int id, trans;
-
-  id = getExtraSelectionFromPos(event->pos());
-
-  if (id >= 0 && id < transMap_.size())
-    trans = transMap_[id];
-  else
-    trans = -1;
+  int trans = getTransitionFromPos(event->pos());
 
   highlightTransition(trans);
 }
 
+//! Reimplements QPlainTextEdit::resizeEvent.
 void SourceEditor::resizeEvent(QResizeEvent * event)
 {
   QPlainTextEdit::resizeEvent(event);
@@ -395,11 +432,12 @@ void SourceEditor::resizeEvent(QResizeEvent * event)
 
   QRect view = viewport()->rect();
   QRect visual = QStyle::visualRect(layoutDirection(), view, QRect(
-    client.left(), client.top(), numbar_->width(), view.height() - view.top()));
+                                      client.left(), client.top(), numbar_->width(), view.height() - view.top()));
 
   numbar_->setGeometry(visual);
 }
 
+//! Reimplements QPlainTextEdit::changeEvent.
 void SourceEditor::changeEvent(QEvent * event)
 {
   QPlainTextEdit::changeEvent(event);
@@ -435,10 +473,11 @@ void SourceEditor::handleKeyPressEvent(QKeyEvent * event)
     }
 
     // convert tabs to spaces
-  } else if (event->key() == Qt::Key_Tab && noTabs_) {
+  }
+  else if (event->key() == Qt::Key_Tab && noTabs_) {
     const uint col = textCursor().columnNumber();
     const uint fill = (col / tabWidth_ + 1) * tabWidth_ - col;
-    
+
     textCursor().insertText(QString(fill, ' '));
     return;
   }
@@ -458,6 +497,7 @@ void SourceEditor::sideBarPaintEvent(QPaintEvent * ev)
   const int fontHeight = painter.fontMetrics().height();
 
   QTextBlock block = firstVisibleBlock();
+
   int blockNumber = block.blockNumber();
   int top = (int)blockBoundingGeometry(block).translated(contentOffset()).top();
   int bottom = top;
@@ -474,8 +514,23 @@ void SourceEditor::sideBarPaintEvent(QPaintEvent * ev)
   }
 }
 
-int SourceEditor::getExtraSelectionFromPos(const QPoint & pos)
+int SourceEditor::getTransitionFromPos(const QPoint & pos)
 {
+  QList<int> extras = getExtraSelectionsFromPos(pos);
+
+  int trans = INT_MAX;
+
+  foreach(int sel, extras) {
+    if (sel >= 0 && sel < transMap_.size())
+      trans = qMin(trans, transMap_[sel]);
+  }
+
+  return trans != INT_MAX ? trans : -1;
+}
+
+const QList<int> SourceEditor::getExtraSelectionsFromPos(const QPoint & pos)
+{
+  QList<int> res;
   QTextCursor cur = cursorForPosition(pos);
 
   for (int i = 0; i < extraSelections().size(); ++i) {
@@ -483,11 +538,11 @@ int SourceEditor::getExtraSelectionFromPos(const QPoint & pos)
 
     if (cur.position() >= itr.cursor.selectionStart() &&
         cur.position() < itr.cursor.selectionEnd()) {
-      return i;
+      res.append(i);
     }
   }
 
-  return -1;
+  return res;
 }
 
 void SourceEditor::selectWordUnderCursor(QTextCursor & cur)
@@ -519,7 +574,6 @@ const QString SourceEditor::getCompletionPrefix(void)
   QTextCursor tc = textCursor();
 
   // must be empty prefix
-
   if (tc.atBlockStart())
     return QString();
 
@@ -527,7 +581,6 @@ const QString SourceEditor::getCompletionPrefix(void)
   tc.movePosition(QTextCursor::StartOfWord, QTextCursor::KeepAnchor);
 
   QString prefix = tc.selectedText();
-
   QString eow(s_eow);
 
   // check for \words and {} [] () etc.
@@ -683,7 +736,8 @@ void SourceEditor::onUpdateRequest(const QRect & r, int dy)
   if (dy) {
     numbar_->scroll(0, dy);
     // wider than cursor width, not just cursor blinking
-  } else if (r.width() > 4) {
+  }
+  else if (r.width() > 4) {
     numbar_->update(0, r.y(), numbar_->width(), r.height());
   }
 

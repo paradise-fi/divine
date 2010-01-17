@@ -125,6 +125,10 @@ WatchDock::WatchDock(QWidget * parent) : QDockWidget(tr("Watch"), parent)
           SLOT(onItemChanged(QTreeWidgetItem *, int)));
 }
 
+/*!
+ * Switches between read-only and read-write state of the widget.
+ * \param state True if read-only.
+ */
 void WatchDock::setReadOnly(bool state)
 {
   tree_->itemDelegate()->deleteLater();
@@ -139,6 +143,7 @@ void WatchDock::setReadOnly(bool state)
   tree_->setItemDelegate(delegate);
 }
 
+//! Update current simulator.
 void WatchDock::setSimulator(SimulatorProxy * sim)
 {
   if (sim_ == sim)
@@ -149,8 +154,8 @@ void WatchDock::setSimulator(SimulatorProxy * sim)
   if (sim_) {
     setReadOnly(sim_->isLocked());
 
-    connect(sim_->simulator(), SIGNAL(stateReset()), SLOT(resetWatch()));
-    connect(sim_->simulator(), SIGNAL(stateChanged()), SLOT(updateWatch()));
+    connect(sim_, SIGNAL(started()), SLOT(resetWatch()));
+    connect(sim_, SIGNAL(stateChanged()), SLOT(updateWatch()));
     connect(sim_, SIGNAL(locked(bool)), SLOT(setReadOnly(bool)));
   } else {
     tree_->clear();
@@ -184,8 +189,13 @@ void WatchDock::updateProcess(QTreeWidgetItem * group, int pid, bool editable)
   const Simulator * simulator = sim_->simulator();
 
   if (pid != Simulator::globalId) {
+    // NOTE: Divine reports invalid state value for errorneous processes
     const int state = simulator->processState(pid);
-    group->setText(1, group->data(1, Qt::UserRole).toStringList().at(state));
+    QStringList list = group->data(1, Qt::UserRole).toStringList();
+    if (state >= 0 && state < list.size())
+      group->setText(1, list.at(state));
+    else
+      group->setText(1, tr("-Error-"));
   }
 
   for (int i = 0; i < group->childCount(); ++i) {
@@ -220,7 +230,6 @@ void WatchDock::updateArray
   item->setData(1, Qt::UserRole, (int)QVariant::List);
 
   // equalize items by removing last
-
   while (item->childCount() > array.size()) {
     item->removeChild(item->child(item->childCount() - 1));
   }
@@ -258,7 +267,6 @@ void WatchDock::updateMap(QTreeWidgetItem * item, const QVariantMap & map, bool 
   item->setData(1, Qt::UserRole, (int)QVariant::Map);
 
   // equalize items by removing last
-
   while (item->childCount() > map.size()) {
     item->removeChild(item->child(item->childCount() - 1));
   }

@@ -20,17 +20,10 @@
 #include "settings.h"
 #include "prefs_ltl.h"
 
-LtlHighlighter::LtlHighlighter(bool macros, QTextDocument * parent)
+LtlHighlighter::LtlHighlighter(QTextDocument * parent)
     : QSyntaxHighlighter(parent)
 {
   // fill in the pattern list
-  if(macros) {
-    patterns_.append(qMakePair(QRegExp("\\b(forloop|false|true|bool|stack|queue|"
-                                      "full|empty|push|pop|top|front|pop_front|"
-                                      "buffer_channel|async_channel|loosy_channel|"
-                                      "bounded_loosy_channel|system|default|define)\\b"), hsMacro));
-  }
-  patterns_.append(qMakePair(QRegExp("\\b[0-9]+\\b"), hsNumber));
   patterns_.append(qMakePair(QRegExp("^\\s*#define\\s+\\S.*$"), hsDefinition));
   patterns_.append(qMakePair(QRegExp("^\\s*#property\\s+\\S.*$"), hsProperty));
 
@@ -38,6 +31,7 @@ LtlHighlighter::LtlHighlighter(bool macros, QTextDocument * parent)
   readSettings();
 }
 
+//! Reloads settings.
 void LtlHighlighter::readSettings(void)
 {
   QSettings & s = sSettings();

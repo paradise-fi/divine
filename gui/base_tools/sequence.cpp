@@ -46,24 +46,27 @@ namespace
 //
 // SequenceModel class
 //
-SequenceModel::SequenceModel(const Simulator * sim, QObject * parent)
-    : QAbstractItemModel(parent), sim_(sim), depth_(0)
+//! Creates the model for given simulator.
+SequenceModel::SequenceModel(const SimulatorProxy * sim, QObject * parent)
+    : QAbstractItemModel(parent), sim_(sim->simulator()), depth_(0)
 {
   if (!sim_)
     return;
 
-  connect(sim_, SIGNAL(stateReset()), SLOT(resetModel()));
-  connect(sim_, SIGNAL(stateChanged()), SLOT(updateModel()));
+  connect(sim, SIGNAL(started()), SLOT(resetModel()));
+  connect(sim, SIGNAL(stateChanged()), SLOT(updateModel()));
 
   state_ = sim_->currentState();
-  depth_ = sim_->traceDepth();
+  depth_ = sim_->stackDepth();
 }
 
+//! Implements QAbstractItemModel::rowCount.
 int SequenceModel::rowCount(const QModelIndex & parent) const
 {
   return depth_;
 }
 
+//! Implements QAbstractItemModel::columnCount.
 int SequenceModel::columnCount(const QModelIndex & parent) const
 {
   if (!sim_)
@@ -72,6 +75,7 @@ int SequenceModel::columnCount(const QModelIndex & parent) const
   return sim_->processCount() + 1;  // the last column is padding
 }
 
+//! Reimplements QAbstractItemModel::headerData.
 QVariant SequenceModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
   if (!sim_ || role != Qt::DisplayRole || orientation != Qt::Horizontal ||
@@ -81,9 +85,10 @@ QVariant SequenceModel::headerData(int section, Qt::Orientation orientation, int
   return sim_->processName(section);
 }
 
+//! Implements QAbstractItemModel::data.
 QVariant SequenceModel::data(const QModelIndex & index, int role) const
 {
-  if (!sim_ || !index.isValid() || index.row() >= sim_->traceDepth() ||
+  if (!sim_ || !index.isValid() || index.row() >= sim_->stackDepth() ||
       index.column() >= sim_->processCount()) {
     return QVariant();
   }
@@ -91,13 +96,22 @@ QVariant SequenceModel::data(const QModelIndex & index, int role) const
   const int pid = index.column();
   const int state = index.row();
 
+  // NOTE: DiVinE reports invalid state value for errorneous processes
+  const int sid = sim_->processState(pid, state);
+  
   if (role == Qt::DisplayRole) {
-    if (state == 0 || sim_->processState(pid, state) != sim_->processState(pid, state - 1)) {
-      return states_[pid][sim_->processState(pid, state)];
+    if (state == 0 || sid != sim_->processState(pid, state - 1)) {
+      if (sid >= 0 && sid < states_[pid].size())
+        return states_[pid][sid];
+      else
+        return tr("-Err-");
     }
   } else if (role == stateRole) {
-    return states_[pid][sim_->processState(pid, state)];
-  } else if (role == messageRole && index.column() == 0) {
+    if (sid >= 0 && sid < states_[pid].size())
+        return states_[pid][sid];
+      else
+        return tr("-Err-");
+  } else if (role == messageRole) {
     const int tid = sim_->usedTransition(state);
 
     if (tid >= 0)
@@ -111,6 +125,7 @@ QVariant SequenceModel::data(const QModelIndex & index, int role) const
   return QVariant();
 }
 
+//! Implements QAbstractItemModel::index.
 QModelIndex SequenceModel::index(int row, int column, const QModelIndex & parent) const
 {
   if (row < 0 || row >= rowCount() || column < 0 ||
@@ -121,16 +136,21 @@ QModelIndex SequenceModel::index(int row, int column, const QModelIndex & parent
   return createIndex(row, column);
 }
 
+//! Implements QAbstractItemModel::parent.
 QModelIndex SequenceModel::parent(const QModelIndex & index) const
 {
   return QModelIndex();
 }
 
+/*!
+ * Reloads all information from the simulator and returns model to
+ * it's initial state.
+ */
 void SequenceModel::resetModel(void)
 {
   if (sim_) {
     state_ = sim_->currentState();
-    depth_ = sim_->traceDepth();
+    depth_ = sim_->stackDepth();
 
     states_.clear();
 
@@ -142,28 +162,28 @@ void SequenceModel::resetModel(void)
   reset();
 }
 
+//! Updates model from the simulator.
 void SequenceModel::updateModel(void)
 {
   Q_ASSERT(sim_);
 
-  const int sd = sim_->traceDepth();
+  const int sd = sim_->stackDepth();
 
   // equalize item count
-
-  if (depth_ < sim_->traceDepth()) {
-    beginInsertRows(QModelIndex(), depth_, sim_->traceDepth() - 1);
-    depth_ = sim_->traceDepth();
+  if (depth_ < sim_->stackDepth()) {
+    beginInsertRows(QModelIndex(), depth_, sim_->stackDepth() - 1);
+    depth_ = sim_->stackDepth();
     endInsertRows();
   }
 
-  if (depth_ > sim_->traceDepth()) {
-    beginRemoveRows(QModelIndex(), sim_->traceDepth(), depth_ - 1);
-    depth_ = sim_->traceDepth();
+  if (depth_ > sim_->stackDepth()) {
+    beginRemoveRows(QModelIndex(), sim_->stackDepth(), depth_ - 1);
+    depth_ = sim_->stackDepth();
     endRemoveRows();
   }
 
   // mark previous state as dirty
-  Q_ASSERT(state_ < sim_->traceDepth());
+  Q_ASSERT(state_ < sim_->stackDepth());
 
   emit dataChanged(index(state_, 0), index(state_, sim_->processCount()));
 
@@ -181,6 +201,7 @@ SequenceDelegate::SequenceDelegate(QObject * parent) : QAbstractItemDelegate(par
 {
 }
 
+//! Implements QAbstractItemDelegate::paint.
 void SequenceDelegate::paint
 (QPainter * painter, const QStyleOptionViewItem & option, const QModelIndex & index) const
 {
@@ -258,6 +279,7 @@ void SequenceDelegate::paint
   }
 }
 
+//! Implements QAbstractItemDelegate::sizeHint.
 QSize SequenceDelegate::sizeHint(const QStyleOptionViewItem & option, const QModelIndex & index) const
 {
   if (!index.isValid())
@@ -299,6 +321,7 @@ SequenceWidget::SequenceWidget(QWidget * parent) : QAbstractItemView(parent)
   setAttribute(Qt::WA_MacShowFocusRect);
 }
 
+//! Implements QAbstractItemView::indexAt.
 QModelIndex SequenceWidget::indexAt(const QPoint & point) const
 {
   if (!model())
@@ -327,6 +350,7 @@ QModelIndex SequenceWidget::indexAt(const QPoint & point) const
   return QModelIndex();
 }
 
+//! Implements QAbstractItemView::scrollTo.
 void SequenceWidget::scrollTo(const QModelIndex & index, ScrollHint hint)
 {
   if (!index.isValid())
@@ -381,6 +405,7 @@ void SequenceWidget::scrollTo(const QModelIndex & index, ScrollHint hint)
   }
 }
 
+//! Reimplements QAbstractItemView::sizeHintForColumn.
 int SequenceWidget::sizeHintForColumn(int column) const
 {
   if (!model())
@@ -395,6 +420,7 @@ int SequenceWidget::sizeHintForColumn(int column) const
   return hint.width();
 }
 
+//! Implements QAbstractItemView::visualRect.
 QRect SequenceWidget::visualRect(const QModelIndex & index) const
 {
   if (index.parent() != QModelIndex() || index.row() >= model()->rowCount() ||
@@ -417,6 +443,10 @@ QRect SequenceWidget::visualRect(const QModelIndex & index) const
   return res;
 }
 
+/*!
+ * Resized the given column according to the hint given by the function
+ * sizeHintForColumn.
+ */
 void SequenceWidget::resizeColumnToContents(int column)
 {
   if (!model())
@@ -427,6 +457,7 @@ void SequenceWidget::resizeColumnToContents(int column)
   header_->resizeSection(column, hint);
 }
 
+//! Reimplements QAbstractItemView::setModel.
 void SequenceWidget::setModel(QAbstractItemModel * model)
 {
   header_->setModel(model);
@@ -447,6 +478,7 @@ void SequenceWidget::setModel(QAbstractItemModel * model)
   }
 }
 
+//! Implements QAbstractItemView::horizontalOffset.
 int SequenceWidget::horizontalOffset() const
 {
   if (horizontalScrollMode() == QAbstractItemView::ScrollPerItem) {
@@ -457,6 +489,7 @@ int SequenceWidget::horizontalOffset() const
   }
 }
 
+//! Implements QAbstractItemView::verticalOffset.
 int SequenceWidget::verticalOffset() const
 {
   if (verticalScrollMode() == QAbstractItemView::ScrollPerItem) {
@@ -466,11 +499,13 @@ int SequenceWidget::verticalOffset() const
   }
 }
 
+//! Implements QAbstractItemView::isIndexHidden.
 bool SequenceWidget::isIndexHidden(const QModelIndex & index) const
 {
   return false;
 }
 
+//! Implements QAbstractItemView::moveCursor.
 QModelIndex SequenceWidget::moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers)
 {
   if (!model())
@@ -516,6 +551,7 @@ QModelIndex SequenceWidget::moveCursor(CursorAction cursorAction, Qt::KeyboardMo
   return index;
 }
 
+//! Reimplements QAbstractScrollArea::scrollContentsBy.
 void SequenceWidget::scrollContentsBy(int dx, int dy)
 {
   if (dx) {
@@ -529,6 +565,7 @@ void SequenceWidget::scrollContentsBy(int dx, int dy)
   QAbstractItemView::scrollContentsBy(dx, dy);
 }
 
+//! Implements QAbstractItemView::setSelection.
 void SequenceWidget::setSelection(const QRect & rect, QItemSelectionModel::SelectionFlags flags)
 {
   if (!selectionModel() || rect.isNull())
@@ -573,6 +610,7 @@ void SequenceWidget::setSelection(const QRect & rect, QItemSelectionModel::Selec
   selectionModel()->select(selection, flags);
 }
 
+//! Implements QAbstractItemView::visualRegionForSelection.
 QRegion SequenceWidget::visualRegionForSelection(const QItemSelection & selection) const
 {
   Q_ASSERT(model());
@@ -603,6 +641,7 @@ QRegion SequenceWidget::visualRegionForSelection(const QItemSelection & selectio
   return region;
 }
 
+//! Reimplements QWidget::leaveEvent.
 void SequenceWidget::leaveEvent(QEvent *)
 {
   if (hover_ == -1)
@@ -621,6 +660,7 @@ void SequenceWidget::leaveEvent(QEvent *)
   setDirtyRegion(rect);
 }
 
+//! Reimplements QAbstractItemView::mouseMoveEvent.
 void SequenceWidget::mouseMoveEvent(QMouseEvent * event)
 {
   QAbstractItemView::mouseMoveEvent(event);
@@ -650,6 +690,7 @@ void SequenceWidget::mouseMoveEvent(QMouseEvent * event)
   setDirtyRegion(region);
 }
 
+//! Reimplements QAbstractScrollArea::paintEvent.
 void SequenceWidget::paintEvent(QPaintEvent * event)
 {
   if (!model())
@@ -818,6 +859,7 @@ void SequenceWidget::paintEvent(QPaintEvent * event)
   }
 }
 
+//! Reimplements QAbstractItemView::updateGeometries.
 void SequenceWidget::updateGeometries(void)
 {
   const QSize hint = header_->sizeHint();
@@ -952,6 +994,7 @@ SequenceDock::SequenceDock(QWidget * parent)
   connect(msc_, SIGNAL(activated(QModelIndex)), SLOT(onItemActivated(QModelIndex)));
 }
 
+//! Update current simulator.
 void SequenceDock::setSimulator(SimulatorProxy * sim)
 {
   if (sim_ == sim)
@@ -963,7 +1006,7 @@ void SequenceDock::setSimulator(SimulatorProxy * sim)
   sim_ = sim;
 
   if (sim_) {
-    model_ = new SequenceModel(sim_->simulator(), this);
+    model_ = new SequenceModel(sim_, this);
     msc_->setModel(model_);
   } else {
     msc_->setModel(NULL);
@@ -973,5 +1016,5 @@ void SequenceDock::setSimulator(SimulatorProxy * sim)
 void SequenceDock::onItemActivated(const QModelIndex & index)
 {
   if (sim_)
-    sim_->backtrace(index.row());
+    sim_->backstep(index.row());
 }

@@ -18,47 +18,43 @@
 
 #include "base_tools.h"
 #include "settings.h"
-#include "console.h"
+#include "output.h"
 
 // editor settings
-static const uint maxConsoleLines = 0;
+static const uint maxOutputLines = 0;
 
-ConsoleDock::ConsoleDock(QWidget * parent)
-    : QDockWidget(tr("Log console"), parent)
+OutputDock::OutputDock(QWidget * parent)
+    : QDockWidget(tr("Output"), parent)
 {
   edit_ = new QTextEdit(this);
   edit_->setReadOnly(true);
-  edit_->document()->setMaximumBlockCount(maxConsoleLines);
+  edit_->document()->setMaximumBlockCount(maxOutputLines);
 
   setWidget(edit_);
 
   readSettings();
 }
 
-bool ConsoleDock::isEmpty(void) const
-{
-  return edit_->document()->isEmpty();
-}
-
-void ConsoleDock::readSettings(void)
+//! Reloads settings.
+void OutputDock::readSettings(void)
 {
   QSettings & s = sSettings();
 
-  s.beginGroup("Console");
+  s.beginGroup("Output");
 
-  bool useEFont = s.value("useEditorFont", defConsoleEFont).toBool();
-  bool useSysCols = s.value("useSystemColours", defConsoleSysColours).toBool();
+  bool useEFont = s.value("useEditorFont", defOutputEFont).toBool();
+  bool useSysCols = s.value("useSystemColors", defOutputSysColors).toBool();
 
   // if clauses
 
   if (!useEFont)
-    edit_->setFont(s.value("font", defConsoleFont()).value<QFont>());
+    edit_->setFont(s.value("font", defOutputFont()).value<QFont>());
 
   QPalette pal;
 
   if (!useSysCols) {
-    QColor fore = s.value("background", defConsoleFore).value<QColor>();
-    QColor back = s.value("foreground", defConsoleFore).value<QColor>();
+    QColor fore = s.value("background", defOutputFore).value<QColor>();
+    QColor back = s.value("foreground", defOutputFore).value<QColor>();
 
     pal = edit_->palette();
     pal.setColor(QPalette::Text, fore);
@@ -78,12 +74,14 @@ void ConsoleDock::readSettings(void)
   }
 }
 
-void ConsoleDock::clear(void)
+//! Clears the output window.
+void OutputDock::clear(void)
 {
   edit_->clear();
 }
 
-void ConsoleDock::appendText(const QString & text)
+//! Appends given text to the output window.
+void OutputDock::appendText(const QString & text)
 {
   edit_->append(text);
 

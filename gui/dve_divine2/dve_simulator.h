@@ -20,23 +20,30 @@
 
 class dve_debug_system_t;
 
+/*!
+ * This class implements the DVE simulator back-end.
+ *
+ * Due to the divine::dve_explicit_system_t interface and it's error handling,
+ * there must be at most one instance of this class.
+ */
 class DveSimulator : public Simulator {
   Q_OBJECT
 
   public:
+    //! Returns the single instance of this class.
     static DveSimulator * instance(void) {return instance_;}
 
   public:
     DveSimulator(QObject * parent);
     ~DveSimulator();
     
-    bool openFile(const QString & fileName);
-    bool isOpen(void) const {return system_ != 0;}
+    bool loadFile(const QString & path);
+    bool isReady(void) const {return system_ != 0;}
 
-    bool loadTrail(const QString & fileName);
-    bool saveTrail(const QString & fileName) const;
+    bool loadTrail(const QString & path);
+    bool saveTrail(const QString & path) const;
     
-    const QStringList files(void) const {return QStringList(fileName_);}
+    const QStringList files(void) const {return QStringList(path_);}
     
     const SyntaxErrorList errors(void);
 
@@ -45,7 +52,7 @@ class DveSimulator : public Simulator {
     bool canRedo(void) const {return state_ >= 0 && state_ < stack_.size() - 1;}
 
     // states
-    int traceDepth(void) const;
+    int stackDepth(void) const;
     int currentState(void) const;
     bool isAccepting(int state = -1) const;
     bool isErrorneous(int state = -1) const;
@@ -86,12 +93,11 @@ class DveSimulator : public Simulator {
     
   public slots:
     void start(void);
-    void restart(void);
     void stop(void);
     void undo(void);
     void redo(void);
     void step(int id);
-    void backtrace(int depth);
+    void backstep(int depth);
 
   private:
     static DveSimulator * instance_;
@@ -104,8 +110,8 @@ class DveSimulator : public Simulator {
     divine::StateAllocator * generator_;
     dve_debug_system_t * system_;
 
-    // model filename
-    QString fileName_;
+    // model path
+    QString path_;
 
     // state stack
     TraceStack stack_;

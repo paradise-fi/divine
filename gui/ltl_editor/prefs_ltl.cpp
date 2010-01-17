@@ -26,12 +26,10 @@
 
 const wchar_t noneSymb[] = L"\u2014";
 
-const HighlightInfo ltlDefs[] = {
+const LtlPreferences::HighlightInfo ltlDefs[] = {
   {false, false, false, "", ""},            // hsDefault
-  {false, false, false, "darkblue", ""},    // hsNumber
   {false, false, false, "darkgreen", ""},   // hsDefinition
-  {false, false, false, "darkmagenta", ""}, // hsProperty
-  {true, false, false, "", ""}              // hsMacro
+  {false, false, false, "darkmagenta", ""}  // hsProperty
 };
 
 LtlPreferences::LtlPreferences(QWidget * parent)
@@ -60,7 +58,6 @@ LtlPreferences::LtlPreferences(QWidget * parent)
   new QTreeWidgetItem(tree_, QStringList(tr("Number")));
   new QTreeWidgetItem(tree_, QStringList(tr("Definition")));
   new QTreeWidgetItem(tree_, QStringList(tr("Property")));
-  new QTreeWidgetItem(tree_, QStringList(tr("Macro")));
 
   //   tree_->resizeColumnToContents(0);
   tree_->resizeColumnToContents(1);

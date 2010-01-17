@@ -20,12 +20,22 @@ SimulatorProxy::SimulatorProxy(Simulator * sim, QObject * parent)
   Q_ASSERT(sim);
 
   sim->setParent(this);
+  
+  // forward signals
+  connect(sim, SIGNAL(message(QString)), SIGNAL(message(QString)));
+  connect(sim, SIGNAL(started()), SIGNAL(started()));
+  connect(sim, SIGNAL(stopped()), SIGNAL(stopped()));
+  connect(sim, SIGNAL(stateChanged()), SIGNAL(stateChanged()));
 }
 
 SimulatorProxy::~SimulatorProxy()
 {
 }
 
+/*!
+ * Locks the simulator owner.
+ * \return Success of the operation.
+ */
 bool SimulatorProxy::lock(QObject * owner)
 {
   if (!sim_ || lock_)
@@ -36,6 +46,11 @@ bool SimulatorProxy::lock(QObject * owner)
   return true;
 }
 
+/*!
+ * Releases lock on the simulator.
+ * \param owner Caller, must be the same as the lock's owner.
+ * \return Success of the operation.
+ */
 bool SimulatorProxy::release(QObject * owner)
 {
   if (!sim_ || !lock_)
@@ -46,6 +61,12 @@ bool SimulatorProxy::release(QObject * owner)
   return true;
 }
 
+/*!
+ * Calls Simulator::setChannelValue.
+ * \param cid Channel ID.
+ * \param val New value.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::setChannelValue
 (int cid, const QVariantList & val, QObject * owner)
 {
@@ -53,12 +74,25 @@ void SimulatorProxy::setChannelValue
     sim_->setChannelValue(cid, val);
 }
 
+/*!
+ * Calls Simulator::setProcessState.
+ * \param pid Process ID.
+ * \param val New state value.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::setProcessState(int pid, int val, QObject * owner)
 {
   if (sim_ && (!lock_ || lock_ == owner))
     sim_->setProcessState(pid, val);
 }
 
+/*!
+ * Calls Simulator::setVariableValue.
+ * \param pid Process ID.
+ * \param vid Variable ID.
+ * \param val New value.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::setVariableValue
 (int pid, int vid, const QVariant & val, QObject * owner)
 {
@@ -66,41 +100,56 @@ void SimulatorProxy::setVariableValue
     sim_->setVariableValue(pid, vid, val);
 }
 
+//! Calls Simulator::start.
 void SimulatorProxy::start(void)
 {
   sim_->start();
 }
 
-void SimulatorProxy::restart(void)
-{
-  sim_->restart();
-}
-
+//! Calls Simulator::stop.
 void SimulatorProxy::stop(void)
 {
   sim_->stop();
 }
 
+/*!
+ * Calls Simulator::undo.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::undo(QObject * owner)
 {
   if (sim_ && (!lock_ || lock_ == owner))
     sim_->undo();
 }
 
+/*!
+ * Calls Simulator::redo.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::redo(QObject * owner)
 {
   if (sim_ && (!lock_ || lock_ == owner))
     sim_->redo();
 }
 
+/*!
+ * Calls Simulator::step.
+ * \param id Transition ID.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
 void SimulatorProxy::step(int id, QObject * owner)
 {
   if (sim_ && (!lock_ || lock_ == owner))
     sim_->step(id);
 }
 
-void SimulatorProxy::backtrace(int depth, QObject * owner)
+/*!
+ * Calls Simulator::backstep.
+ * \param depth Desired stack position.
+ * \param owner Caller, must be the same as the lock's owner.
+ */
+void SimulatorProxy::backstep(int depth, QObject * owner)
 {
   if (sim_ && (!lock_ || lock_ == owner))
-    sim_->backtrace(depth);
+    sim_->backstep(depth);
 }

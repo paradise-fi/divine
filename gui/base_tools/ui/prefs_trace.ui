@@ -79,7 +79,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="deadButton">
+       <widget class="QtColorPicker" name="deadButton">
         <property name="text">
          <string/>
         </property>
@@ -96,7 +96,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QPushButton" name="errorButton">
+       <widget class="QtColorPicker" name="errorButton">
         <property name="text">
          <string/>
         </property>
@@ -120,6 +120,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QtColorPicker</class>
+   <extends>QPushButton</extends>
+   <header location="global">qtcolorpicker.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

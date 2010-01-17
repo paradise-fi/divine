@@ -30,18 +30,16 @@
 #include "settings.h"
 #include "combine_dlg.h"
 
-Simulator * DveSimulatorLoader::load(const QString & fileName, MainForm * root)
+Simulator * DveSimulatorFactory::load(const QString & fileName, MainForm * root)
 {
   DveSimulator * simulator = new DveSimulator(root);
 
   if (!simulator)
     return NULL;
-
-  connect(simulator, SIGNAL(message(QString)), root, SIGNAL(message(QString)));
   
   // try to open the file
   if (!fileName.isEmpty()) 
-    simulator->openFile(fileName);
+    simulator->loadFile(fileName);
 
   return simulator;
 }
@@ -51,8 +49,8 @@ void DvePlugin::install(MainForm * root)
   root_ = root;
   
   // document loaders
-  SimulatorLoader * loader = new DveSimulatorLoader(root);
-  root->registerSimulator("dve", loader);
+  SimulatorFactory * factory = new DveSimulatorFactory(root);
+  root->registerSimulator("dve", factory);
   
   combineAct_ = new QAction(tr("C&ombine..."), this);
   combineAct_->setObjectName("combineAct");
@@ -73,6 +71,12 @@ void DvePlugin::install(MainForm * root)
   verifyAct_->setObjectName("verifyAct");
   verifyAct_->setStatusTip(tr("Verify a model with LTL formula"));
   connect(verifyAct_, SIGNAL(triggered()), SLOT(verify()));
+  
+  abortAct_ = new QAction(tr("&Abort"), this);
+  abortAct_->setObjectName("abortAct");
+  abortAct_->setStatusTip(tr("Abort computation"));
+  abortAct_->setEnabled(false);
+  connect(abortAct_, SIGNAL(triggered()), SLOT(abort()));
   
   QMenu * algorithmMenu = new QMenu(tr("&Algorithm"));
   algorithmMenu->setObjectName("AlgorithmMenu");
@@ -97,7 +101,7 @@ void DvePlugin::install(MainForm * root)
   
   algorithmMenu->addActions(algorithmGroup_->actions());
   
-  sSettings().beginGroup("DiVinE Tool");
+  sSettings().beginGroup("DiVinE");
   int alg = qBound(0, sSettings().value("algorithm", defDivAlgorithm).toInt(), 2);
   algorithmGroup_->actions().at(alg)->setChecked(true);
   sSettings().endGroup();
@@ -115,6 +119,8 @@ void DvePlugin::install(MainForm * root)
   menu->insertAction(sep, metricsAct_);
   menu->insertAction(sep, verifyAct_);
   menu->insertSeparator(sep);
+  menu->insertAction(sep, abortAct_);
+  menu->insertSeparator(sep);
   menu->insertMenu(sep, algorithmMenu);
   
   sep->setVisible(true);
@@ -126,6 +132,8 @@ void DvePlugin::install(MainForm * root)
   toolbar->setObjectName("divine2ToolBar");
   toolbar->addAction(reachabilityAct_);
   toolbar->addAction(verifyAct_);
+  toolbar->addSeparator();
+  toolbar->addAction(abortAct_);
 
   action = toolbar->toggleViewAction();
   action->setText(tr("&Verification"));
@@ -133,7 +141,7 @@ void DvePlugin::install(MainForm * root)
   menu->addAction(action);
   
   PreferencesPage * page = new DivinePreferences();
-  root->registerPreferences(QObject::tr("Tools"), QObject::tr("DiVinE Tool"), page);
+  root->registerPreferences(QObject::tr("Tools"), QObject::tr("DiVinE"), page);
   
   connect(this, SIGNAL(message(QString)), root, SIGNAL(message(QString)));
   connect(root, SIGNAL(editorChanged(SourceEditor*)), SLOT(onEditorChanged(SourceEditor*)));
@@ -145,7 +153,7 @@ void DvePlugin::prepareDivine(QStringList & args)
 {
   QSettings & s = sSettings();
   
-  s.beginGroup("DiVinE Tool");
+  s.beginGroup("DiVinE");
   
   args.append(QString("--workers=%1").arg(s.value("threads", defDivThreads).toInt()));
   args.append(QString("--max-memory=%1").arg(s.value("memory", defDivMemory).toInt()));
@@ -178,7 +186,7 @@ void DvePlugin::runDivine(const QString & algorithm)
   args.append(algorithm);
   args.append(url.path());
   
-  sSettings().beginGroup("DiVinE Tool");
+  sSettings().beginGroup("DiVinE");
   program = sSettings().value("path", defDivPath).toString();
   sSettings().endGroup();
  
@@ -189,11 +197,12 @@ void DvePlugin::runDivine(const QString & algorithm)
   divineCRC_ = qChecksum(array.data(), array.size());
   
   connect(divineProcess_, SIGNAL(error(QProcess::ProcessError)), SLOT(onRunnerError(QProcess::ProcessError)));
-  connect(divineProcess_, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(onRunnerFinished(int,QProcess::ExitStatus)));
+  connect(divineProcess_, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(onRunnerFinished(int,QProcess::ExitStatus))); 
   
   emit message(tr("=== Running divine - %1 algorithm ===").arg(algorithm));
   
   divineProcess_->start(program, args, QIODevice::ReadOnly);
+  abortAct_->setEnabled(true);
   
   onEditorChanged(root_->activeEditor());
 }
@@ -202,13 +211,23 @@ void DvePlugin::combine(void)
 {
   Q_ASSERT(root_->activeEditor());
   
-  if(!root_->maybeSaveAll())
+  QList<SourceEditor*> elist;
+  elist.append(root_->activeEditor());
+
+  for(int i = 0; i < root_->editorCount(); ++i) {
+    SourceEditor * editor = root_->editor(i);
+    QUrl url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
+    if(url.scheme() == "ltl")
+      elist.append(editor);
+  }
+  
+  // try to save current LTL files
+  if(!root_->maybeSave(elist))
     return;
   
   // never saved
   QUrl url(root_->activeEditor()->document()->metaInformation(QTextDocument::DocumentUrl));
-  if(url.path().isEmpty())
-    return;
+  Q_ASSERT(!url.path().isEmpty());
   
   CombineDialog dlg(root_, url.path());
   
@@ -218,7 +237,7 @@ void DvePlugin::combine(void)
   QStringList args;
   QString program;
   
-  sSettings().beginGroup("DiVinE Tool");
+  sSettings().beginGroup("DiVinE");
   program = sSettings().value("path", defDivPath).toString();
   sSettings().endGroup();
   
@@ -276,36 +295,67 @@ void DvePlugin::verify(void)
   runDivine(action->data().toString());
 }
 
+void DvePlugin::abort(void)
+{
+  if(divineProcess_) {
+    divineProcess_->terminate();
+    
+    divineProcess_->deleteLater();
+    divineProcess_ = NULL;
+  }
+}
+
 void DvePlugin::onRunnerError(QProcess::ProcessError error)
 {
-  if(error == QProcess::FailedToStart) {
-    sSettings().beginGroup("DiVinE Tool");
-    QString program = sSettings().value("path", defDivPath).toString();
-    sSettings().endGroup();
-    
-    emit message(tr("Error invoking divine (%1)").arg(program));
-    
-    delete divineProcess_;
-    divineProcess_ = NULL;
-    
-    // update menu options
-    onEditorChanged(root_->activeEditor());
+  sSettings().beginGroup("DiVinE");
+  QString program = sSettings().value("path", defDivPath).toString();
+  sSettings().endGroup();
+  
+  QString reason;
+  switch (error) {
+    case QProcess::FailedToStart:
+      reason = tr("Process failed to start");
+      break;
+    case QProcess::Crashed:
+      reason = tr("Process crashed");
+      break;
+    default:
+      reason = tr("Unknown");
+      break;
   }
+  
+  emit message(tr("Error running divine (%1)\nReason: %2").arg(program, reason));
+  
+  abortAct_->setEnabled(false);
+  
+  if(divineProcess_) {
+    divineProcess_->deleteLater();
+    divineProcess_ = NULL;
+  }
+  
+  // update menu options
+  onEditorChanged(root_->activeEditor());
 }
 
 void DvePlugin::onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
+  // error occured and process has already been deleted
+  if(!divineProcess_)
+    return;
+  
+  abortAct_->setEnabled(false);
+  
   // retrieve output from divine process
   QByteArray report = divineProcess_->readAllStandardOutput();
   QByteArray log = divineProcess_->readAllStandardError();
   
-  delete divineProcess_;
+  divineProcess_->deleteLater();
   divineProcess_ = NULL;
   
   // update menu options
   onEditorChanged(root_->activeEditor());
   
-  sSettings().beginGroup("DiVinE Tool");
+  sSettings().beginGroup("DiVinE");
   bool printReport = sSettings().value("report", defDivReport).toBool();
   sSettings().endGroup();
   
@@ -364,6 +414,7 @@ void DvePlugin::onRunnerFinished(int exitCode, QProcess::ExitStatus exitStatus)
     array = in.readAll().toAscii();
     
     changed = divineCRC_ != qChecksum(array.data(), array.size());
+    
   }
     
   int res;
@@ -418,7 +469,7 @@ void DvePlugin::onEditorChanged(SourceEditor * editor)
 
 void DvePlugin::onAlgorithmTriggered(QAction * action)
 {
-  sSettings().beginGroup("DiVinE Tool");
+  sSettings().beginGroup("DiVinE");
   
   int index = algorithmGroup_->actions().indexOf(action);
   sSettings().setValue("algorithm", index);

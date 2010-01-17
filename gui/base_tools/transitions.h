@@ -21,6 +21,9 @@ class SimulatorProxy;
 class QTreeWidget;
 class QTreeWidgetItem;
 
+/*!
+ * This class implements the list of active transitions.
+ */
 class TransitionDock : public QDockWidget
 {
     Q_OBJECT
@@ -32,6 +35,7 @@ class TransitionDock : public QDockWidget
     void setSimulator(SimulatorProxy * sim);
 
   signals:
+    //! Requests that specified transition should be highlighted.
     void highlightTransition(int id);
     
   protected:

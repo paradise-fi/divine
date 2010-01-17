@@ -14,69 +14,69 @@
 
 #include <QColorDialog>
 
-#include "ui_prefs_console.h"
+#include "ui_prefs_output.h"
 
-#include "prefs_console.h"
+#include "prefs_output.h"
 #include "settings.h"
 
 // defaults
 #include "base_tools.h"
 
-ConsolePreferences::ConsolePreferences(QWidget * parent)
+OutputPreferences::OutputPreferences(QWidget * parent)
     : PreferencesPage(parent)
 {
-  ui_ = new Ui::ConsolePreferences();
+  ui_ = new Ui::OutputPreferences();
   ui_->setupUi(this);
 }
 
-ConsolePreferences::~ConsolePreferences()
+OutputPreferences::~OutputPreferences()
 {
   delete ui_;
 }
 
-void ConsolePreferences::readSettings(void)
+void OutputPreferences::readSettings(void)
 {
   QSettings & s  = sSettings();
 
-  s.beginGroup("Console");
+  s.beginGroup("Output");
 
-  QFont fnt = s.value("font", defConsoleFont()).value<QFont>();
+  QFont fnt = s.value("font", defOutputFont()).value<QFont>();
 
   ui_->fontSelect->setCurrentFont(fnt);
   ui_->sizeSpin->setValue(fnt.pointSize());
   ui_->editorBox->setChecked(s.value(
-                               "useEditorFont", defConsoleEFont).toBool());
+                               "useEditorFont", defOutputEFont).toBool());
 
-  ui_->foreButton->setPalette(QPalette(
-    s.value("foreground", defConsoleFore).value<QColor>()));
-  ui_->backButton->setPalette(QPalette(
-    s.value("background", defConsoleBack).value<QColor>()));
+  ui_->foreButton->setCurrentColor(
+    s.value("foreground", defOutputFore).value<QColor>());
+  ui_->backButton->setCurrentColor(
+    s.value("background", defOutputBack).value<QColor>());
   ui_->syscolBox->setChecked(s.value(
-    "useSystemColours", defConsoleSysColours).toBool());
+    "useSystemColors", defOutputSysColors).toBool());
 
   s.endGroup();
 }
 
-void ConsolePreferences::writeSettings(void)
+void OutputPreferences::writeSettings(void)
 {
   QSettings & s  = sSettings();
 
-  s.beginGroup("Console");
+  s.beginGroup("Output");
 
   QFont fnt(ui_->fontSelect->currentFont());
   fnt.setPointSize(ui_->sizeSpin->value());
 
   s.setValue("font", fnt);
   s.setValue("useEditorFont", ui_->editorBox->isChecked());
-  s.setValue("useSystemColours", ui_->syscolBox->isChecked());
+  s.setValue("useSystemColors", ui_->syscolBox->isChecked());
 
-  s.setValue("foreground", ui_->foreButton->palette().color(QPalette::Button));
-  s.setValue("background", ui_->backButton->palette().color(QPalette::Button));
+  s.setValue("foreground", ui_->foreButton->currentColor());
+  s.setValue("background", ui_->backButton->currentColor());
 
   s.endGroup();
 }
 
-void ConsolePreferences::on_editorBox_stateChanged(int state)
+void OutputPreferences::on_editorBox_stateChanged(int state)
 {
   const bool st = !(state == Qt::Checked);
 
@@ -86,7 +86,7 @@ void ConsolePreferences::on_editorBox_stateChanged(int state)
   ui_->sizeLabel->setEnabled(st);
 }
 
-void ConsolePreferences::on_syscolBox_stateChanged(int state)
+void OutputPreferences::on_syscolBox_stateChanged(int state)
 {
   const bool st = !(state == Qt::Checked);
 
@@ -96,20 +96,20 @@ void ConsolePreferences::on_syscolBox_stateChanged(int state)
   ui_->backLabel->setEnabled(st);
 }
 
-void ConsolePreferences::on_foreButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-  ui_->foreButton->palette().color(QPalette::Button), this);
-
-  if (color.isValid())
-    ui_->foreButton->setPalette(QPalette(color));
-}
-
-void ConsolePreferences::on_backButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-    ui_->backButton->palette().color(QPalette::Button), this);
-
-  if (color.isValid())
-    ui_->backButton->setPalette(QPalette(color));
-}
+// void OutputPreferences::on_foreButton_clicked(void)
+// {
+//   const QColor color = QColorDialog::getColor(
+//   ui_->foreButton->palette().color(QPalette::Button), this);
+// 
+//   if (color.isValid())
+//     ui_->foreButton->setPalette(QPalette(color));
+// }
+// 
+// void OutputPreferences::on_backButton_clicked(void)
+// {
+//   const QColor color = QColorDialog::getColor(
+//     ui_->backButton->palette().color(QPalette::Button), this);
+// 
+//   if (color.isValid())
+//     ui_->backButton->setPalette(QPalette(color));
+// }

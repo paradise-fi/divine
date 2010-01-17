@@ -17,12 +17,14 @@
 
 #include "plugins.h"
 
-// document loader
-class LtlBuilder : public EditorBuilder
+/*!
+ * Implements the EditorBuilder interface for LTL files.
+ */
+class LtlEditorBuilder : public EditorBuilder
 {
     Q_OBJECT
   public:
-    LtlBuilder(MainForm * root);
+    LtlEditorBuilder(MainForm * root);
 
     void install(SourceEditor * editor);
     void uninstall(SourceEditor * editor);
@@ -31,7 +33,9 @@ class LtlBuilder : public EditorBuilder
     MainForm * root_;
 };
 
-// plugin class
+/*!
+ * Main class of the ltl_editor plugin.
+ */
 class LtlEditorPlugin : public QObject, public AbstractPlugin
 {
     Q_OBJECT

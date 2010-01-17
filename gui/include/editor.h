@@ -24,6 +24,11 @@ class QCompleter;
 class SimulatorProxy;
 class SideBar;
 
+/*! 
+ * This SourceEditor class provides foundation for the text editor component.
+ * It contains all the routines for code highlighting and hooks
+ * for code completion (and syntax highlighting).
+ */
 class BASE_SHARED_EXPORT SourceEditor : public QPlainTextEdit
 {
     Q_OBJECT
@@ -34,27 +39,36 @@ class BASE_SHARED_EXPORT SourceEditor : public QPlainTextEdit
     SourceEditor(QWidget * parent = NULL);
     virtual ~SourceEditor();
 
-    void setCompleter(QCompleter * cmpl);
+    //! Gets the current QCompleter.
     QCompleter * completer() const {return completer_;}
+    void setCompleter(QCompleter * cmpl);
     
+    //! Returns the visibility of the side bar.
     bool showLineNumbers(void) const {return showLineNumbers_;}
     void setShowLineNumbers(bool show);
     
     // highlighting
-    void highlightBlock(const QRect & rect, const QColor & color);
+    void highlightBlock(const QRect & block, const QColor & color);
     void resetHighlighting(void);
     
-    bool loadFile(const QString & fileName);
-    bool saveFile(const QString & fileName);
+    bool loadFile(const QString & path);
+    bool saveFile(const QString & path);
     
   public slots:
     void readSettings(void);
     
     void autoHighlight(SimulatorProxy * sim);
-    void highlightTransition(int tran);
+    void highlightTransition(int id);
     
   signals:
-    void fileDropped(const QString & fileName);    
+    //! A file has been dropped onto the editor.
+    void fileDropped(const QString & fileName); 
+    
+    /*! 
+     * Indicates that the modification flag of the document has changed.
+     * \param sender This instance.
+     * \param state New modification state.
+     */
     void documentModified(SourceEditor * sender, bool state);
     
   protected:
@@ -104,7 +118,8 @@ class BASE_SHARED_EXPORT SourceEditor : public QPlainTextEdit
     void handleKeyPressEvent(QKeyEvent * event);
     void sideBarPaintEvent(QPaintEvent * event);
 
-    int getExtraSelectionFromPos(const QPoint & pos);
+    int getTransitionFromPos(const QPoint & pos);
+    const QList<int> getExtraSelectionsFromPos(const QPoint & pos);
     void selectWordUnderCursor(QTextCursor & cur);
     const QString getCompletionPrefix(void);
     

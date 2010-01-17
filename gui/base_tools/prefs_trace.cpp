@@ -50,10 +50,10 @@ void TracePreferences::readSettings(void)
   ui_->channelBox->setChecked(s.value("channel", defTraceBufs).toBool());
   ui_->channelNameBox->setChecked(s.value("channelName", defTraceBufNames).toBool());
 
-  ui_->deadButton->setPalette(QPalette(
-    s.value("deadlock", defTraceDeadlock).value<QColor>()));
-  ui_->errorButton->setPalette(QPalette(
-    s.value("error", defTraceError).value<QColor>()));
+  ui_->deadButton->setCurrentColor(
+    s.value("deadlock", defTraceDeadlock).value<QColor>());
+  ui_->errorButton->setCurrentColor(
+    s.value("error", defTraceError).value<QColor>());
 
   s.endGroup();
 }
@@ -71,8 +71,8 @@ void TracePreferences::writeSettings(void)
   s.setValue("channel", ui_->channelBox->isChecked());
   s.setValue("channelName", ui_->channelNameBox->isChecked());
 
-  s.setValue("deadlock", ui_->deadButton->palette().color(QPalette::Button));
-  s.setValue("error", ui_->errorButton->palette().color(QPalette::Button));
+  s.setValue("deadlock", ui_->deadButton->currentColor());
+  s.setValue("error", ui_->errorButton->currentColor());
 
   s.endGroup();
 }
@@ -90,22 +90,4 @@ void TracePreferences::on_processBox_stateChanged(int state)
 void TracePreferences::on_channelBox_stateChanged(int state)
 {
   ui_->channelNameBox->setEnabled(state == Qt::Checked);
-}
-
-void TracePreferences::on_deadButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-    ui_->deadButton->palette().color(QPalette::Button), this);
-
-  if(color.isValid())
-    ui_->deadButton->setPalette(QPalette(color));
-}
-
-void TracePreferences::on_errorButton_clicked(void)
-{
-  const QColor color = QColorDialog::getColor(
-    ui_->errorButton->palette().color(QPalette::Button), this);
-
-  if(color.isValid())
-    ui_->errorButton->setPalette(QPalette(color));
 }

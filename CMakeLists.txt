@@ -172,11 +172,11 @@ add_subdirectory( test )
 
 # FIXME: better dependency detection
 if( WIN32 )
-  find_file( MINGW_LIB mingwm10.dll )
   find_file( REGEX_LIB libgnurx-0.dll )
-  find_file( GCC_LIB libgcc_s_sjlj-1.dll )
+  find_file( GCC_SJL_LIB libgcc_s_sjlj-1.dll )
 
-  install(FILES ${MINGW_LIB} ${REGEX_LIB} ${GCC_LIB} DESTINATION ./ COMPONENT sys)
+  install(FILES ${REGEX_LIB} DESTINATION ./ COMPONENT sys)
+  install(FILES ${GCC_SJL_LIB} DESTINATION ./ COMPONENT qt)
 endif( WIN32 )
 
 install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
@@ -193,7 +193,7 @@ set( CPACK_PACKAGE_VERSION_MINOR "0" )
 set( CPACK_PACKAGE_VERSION_PATCH "0" )
 set( CPACK_PACKAGE_INSTALL_DIRECTORY "divine-2.0" )
 
-set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev wibble_dev qt sys examples )
+set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev wibble_dev qt sys examples help)
 
 if(WIN32)
   set(CPACK_NSIS_MENU_LINKS "./divine.ide.exe" "DiViNE IDE"
@@ -236,6 +236,8 @@ if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_
                        DESCRIPTION "Divine development files"
                        DEPENDS wibble_dev
                        GROUP devel )
+
+  cpack_add_component( help HIDDEN DEPENDS gui_tools )
 
   cpack_add_component( qt HIDDEN DEPENDS gui_tools )
   cpack_add_component( sys HIDDEN )

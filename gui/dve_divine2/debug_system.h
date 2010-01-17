@@ -19,6 +19,11 @@
 
 #include "sevine.h"
 
+/*!
+ * This class provides access to some of the protected members of
+ * divine::dve_explicit_system_t. This is a necessary workaround to get
+ * more information about channels.
+ */
 class dve_debug_system_t : public divine::dve_explicit_system_t {
   public:
     dve_debug_system_t(divine::error_vector_t & evect = divine::gerr);

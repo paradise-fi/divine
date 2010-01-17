@@ -36,6 +36,11 @@ SearchDialog::~SearchDialog()
   delete ui_;
 }
 
+/*!
+ * Initializes the dialog window.
+ * \param hint Default text sample.
+ * \param replace Determines whether replace controls should be displayed.
+ */
 void SearchDialog::initialize(const QString & hint, bool replace)
 {
   if (replace)
@@ -44,17 +49,11 @@ void SearchDialog::initialize(const QString & hint, bool replace)
     setWindowTitle(tr("Find"));
 
   ui_->findEdit->setText(hint);
-
   ui_->replaceLabel->setVisible(replace);
-
   ui_->replaceEdit->setVisible(replace);
-
   ui_->replaceButton->setVisible(replace);
-
   ui_->replaceAllButton->setVisible(replace);
-
   ui_->replaceButton->setDefault(replace);
-
   ui_->nextButton->setDefault(!replace);
 
   updateButtonState();
@@ -65,17 +64,20 @@ void SearchDialog::initialize(const QString & hint, bool replace)
   resize(width(), 0);
 }
 
+//! Returns the query as a regular expression pattern.
 const QRegExp SearchDialog::pattern(void) const
 {
   return QRegExp(ui_->findEdit->text(), Qt::CaseSensitive,
                  ui_->regularBox->isChecked() ? QRegExp::RegExp : QRegExp::FixedString);
 }
 
+//! Returns the replacement sample.
 const QString SearchDialog::sample(void) const
 {
   return ui_->replaceEdit->text();
 }
 
+//! Returns the set of flags user has specified.
 QTextDocument::FindFlags SearchDialog::flags(void) const
 {
   QTextDocument::FindFlags flags;

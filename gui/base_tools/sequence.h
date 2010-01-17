@@ -27,18 +27,40 @@ class QMouseEvent;
 class Simulator;
 class SimulatorProxy;
 
+/*!
+ * This class provides model of the simulated run for the model-view
+ * architecture.
+ *
+ * This model very closely follows the desired sequence chart:
+ * <ul>
+ *  <li>The Qt::DisplayRole returns the name of the changed state (or
+ *      an empty string if the state has not changed).</li>
+ *  <li>The SequenceModel::stateRole returns the state name in every case (for
+ *      selected or "hovered" rows).</li>
+ *  <li>The SequenceModel::messageRole gets information about synchronisation
+ *      in the current row.</li>
+ *  <li>The SequenceModel::currentStateRole simply states whether given row is
+ *      also the current state in the simulation.</li>
+ *  <li>The SequenceModel::enumStatesRole is used for getting names of process
+ *      state values.</li>
+ * </ul>
+ */
 class SequenceModel : public QAbstractItemModel
 {
     Q_OBJECT
 
   public:
+    //! Returns states for every item unlike the DisplayRole.
     static const int stateRole = Qt::UserRole;
+    //! Get information about synchronisation in the current row.
     static const int messageRole = Qt::UserRole + 1;
+    //! Tells whether given row is also the current state.
     static const int currentStateRole = Qt::UserRole + 2;
+    //! Returns names of states in the process.
     static const int enumStatesRole = Qt::UserRole + 3;
 
   public:
-    SequenceModel(const Simulator * sim, QObject * parent = NULL);
+    SequenceModel(const SimulatorProxy * sim, QObject * parent = NULL);
 
     int rowCount(const QModelIndex & parent = QModelIndex()) const;
     int columnCount(const QModelIndex & parent = QModelIndex()) const;
@@ -62,6 +84,9 @@ class SequenceModel : public QAbstractItemModel
     QList<QStringList> states_;
 };
 
+/*!
+ * This class does the painting for the sequence chart.
+ */
 class SequenceDelegate : public QAbstractItemDelegate
 {
   public:
@@ -73,6 +98,10 @@ class SequenceDelegate : public QAbstractItemDelegate
     QSize sizeHint(const QStyleOptionViewItem & option, const QModelIndex & index) const;
 };
 
+/*!
+ * This class implements the main widget of the sequence chart.
+ * It is based on the Qt's model-view architecture.
+ */
 class SequenceWidget : public QAbstractItemView
 {
     Q_OBJECT
@@ -123,6 +152,9 @@ class SequenceWidget : public QAbstractItemView
     void onColumnResized(int logicalIndex, int oldSize, int newSize);
 };
 
+/*!
+ * This class implements the sequence chart window.
+ */
 class SequenceDock : public QDockWidget
 {
     Q_OBJECT

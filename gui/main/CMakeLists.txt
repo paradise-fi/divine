@@ -22,16 +22,8 @@ set(BIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_BIN_DEST})
 set(LIB_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_LIB_DEST})
 set(LIBEXEC_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_LIBEXEC_DEST})
 set(PLUGIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_PLUGIN_DEST})
+set(HELP_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_HELP_DEST})
 
 install(TARGETS divine.ide DESTINATION ${GUI_LIBEXEC_DEST} COMPONENT gui_tools)
-install(CODE "file(WRITE ${BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${PLUGIN_PATH}'\n${LIBEXEC_PATH}/divine.ide\n\") ")
+install(CODE "file(WRITE ${BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${PLUGIN_PATH}'\nexport DIVINE_GUI_HELP_PATH='${HELP_PATH}'\n${LIBEXEC_PATH}/divine.ide\n\") ")
 install(CODE "execute_process(COMMAND chmod a+x ${BIN_PATH}/divine.ide)")
-
-# install required Qt components
-if(WIN32)
-  if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    install(FILES ${QT_BINARY_DIR}/QtCore4.dll ${QT_BINARY_DIR}/QtGui4.dll DESTINATION ./ COMPONENT qt)
-  else(CMAKE_BUILD_TYPE STREQUAL "Release")
-    install(FILES ${QT_BINARY_DIR}/QtCore4d.dll ${QT_BINARY_DIR}/QtGui4d.dll DESTINATION ./ COMPONENT qt)
-  endif(CMAKE_BUILD_TYPE STREQUAL "Release")
-endif(WIN32)

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ConsolePreferences</class>
- <widget class="QWidget" name="ConsolePreferences">
+ <class>OutputPreferences</class>
+ <widget class="QWidget" name="OutputPreferences">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -87,7 +87,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="foreButton">
+       <widget class="QtColorPicker" name="foreButton">
         <property name="text">
          <string/>
         </property>
@@ -104,7 +104,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QPushButton" name="backButton">
+       <widget class="QtColorPicker" name="backButton">
         <property name="text">
          <string/>
         </property>
@@ -135,6 +135,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QtColorPicker</class>
+   <extends>QPushButton</extends>
+   <header location="global">qtcolorpicker.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>fontSelect</tabstop>
   <tabstop>sizeSpin</tabstop>

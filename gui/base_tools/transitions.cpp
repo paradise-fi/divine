@@ -38,6 +38,7 @@ TransitionDock::TransitionDock(QWidget * parent)
           SLOT(onItemEntered(QTreeWidgetItem*, int)));
 }
 
+//! Update current simulator.
 void TransitionDock::setSimulator(SimulatorProxy * sim)
 {
   if (sim_ == sim)
@@ -46,13 +47,14 @@ void TransitionDock::setSimulator(SimulatorProxy * sim)
   sim_ = sim;
 
   if (sim_) {
-    connect(sim_->simulator(), SIGNAL(stateReset()), SLOT(updateTransitions()));
-    connect(sim_->simulator(), SIGNAL(stateChanged()), SLOT(updateTransitions()));
+    connect(sim_, SIGNAL(started()), SLOT(updateTransitions()));
+    connect(sim_, SIGNAL(stateChanged()), SLOT(updateTransitions()));
   } else {
     tree_->clear();
   }
 }
 
+//! When mouse leaves this window, we must clear our highlighted transitions.
 void TransitionDock::leaveEvent(QEvent * event)
 {
   // reset the highlighted transition

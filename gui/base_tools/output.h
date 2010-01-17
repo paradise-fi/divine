@@ -12,8 +12,8 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#ifndef CONSOLE_H_
-#define CONSOLE_H_
+#ifndef OUTPUT_H_
+#define OUTPUT_H_
 
 #include <QDockWidget>
 
@@ -24,16 +24,14 @@ class Simulator;
 
 class PreferencesPage;
 
-class ConsoleDock : public QDockWidget {
+/*!
+ * The OutputDock class implements the output window.
+ */
+class OutputDock : public QDockWidget {
   Q_OBJECT
 
   public:
-    static PreferencesPage * createPreferencesPage(QWidget * parent);
-
-  public:
-    ConsoleDock(QWidget * parent=NULL);
-
-    bool isEmpty(void) const;
+    OutputDock(QWidget * parent=NULL);
 
   public slots:
     void readSettings(void);

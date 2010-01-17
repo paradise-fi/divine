@@ -23,6 +23,9 @@ class QTreeWidgetItem;
 
 class SimulatorProxy;
 
+/*!
+ * This class implements the watch window for variables.
+ */
 class WatchDock : public QDockWidget
 {
     Q_OBJECT

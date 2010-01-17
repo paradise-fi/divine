@@ -44,7 +44,7 @@ void DivinePreferences::readSettings(void)
 {
   QSettings & s  = sSettings();
 
-  s.beginGroup("DiVinE Tool");
+  s.beginGroup("DiVinE");
 
   ui_->threadsSpin->setValue(s.value("threads", defDivThreads).toInt());
   ui_->memorySpin->setValue(s.value("memory", defDivMemory).toInt());
@@ -61,7 +61,7 @@ void DivinePreferences::writeSettings(void)
 {
   QSettings & s  = sSettings();
 
-  s.beginGroup("DiVinE Tool");
+  s.beginGroup("DiVinE");
 
   s.setValue("threads", ui_->threadsSpin->value());
   s.setValue("memory", ui_->memorySpin->value());

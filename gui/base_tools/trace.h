@@ -24,6 +24,9 @@ class SimulatorProxy;
 class CycleBar;
 class PreferencesPage;
 
+/*!
+ * This class implements the main widget of the stack trace window.
+ */
 class TraceWidget : public QListWidget
 {
     Q_OBJECT
@@ -33,6 +36,7 @@ class TraceWidget : public QListWidget
   public:
     TraceWidget(QWidget * parent = NULL);
 
+    //! Gets the current accepting cycle.
     const QPair<int, int> & acceptingCycle(void) const {return cycle_;}
     void setAcceptingCycle(const QPair<int, int> & cycle);
 
@@ -49,6 +53,9 @@ class TraceWidget : public QListWidget
     void sideBarPaintEvent(QPaintEvent * event);
 };
 
+/*!
+ * This class implements the stack trace window.
+ */
 class TraceDock : public QDockWidget
 {
     Q_OBJECT
@@ -81,7 +88,7 @@ class TraceDock : public QDockWidget
     void updateTraceItem(int state);
     
   private slots:
-    void onSimulatorStateReset(void);
+    void onSimulatorStarted(void);
     void onSimulatorStateChanged(void);
     void onItemActivated(QListWidgetItem * item);
 };

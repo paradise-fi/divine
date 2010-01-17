@@ -19,10 +19,13 @@
 
 class QTextDocument;
 
+/*!
+ * This class implements the syntax highlighting for LTL files.
+ */
 class LtlHighlighter : public QSyntaxHighlighter {
   Q_OBJECT
   public:
-    LtlHighlighter(bool macros, QTextDocument * parent);
+    LtlHighlighter(QTextDocument * parent);
     ~LtlHighlighter() {}
 
   public slots:
@@ -34,10 +37,8 @@ class LtlHighlighter : public QSyntaxHighlighter {
   private:
     enum HighlightStyle {
       hsDefault = 0,
-      hsNumber,
       hsDefinition,
       hsProperty,
-      hsMacro,
       hsLast
     };
 

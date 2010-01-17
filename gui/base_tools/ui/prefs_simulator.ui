@@ -101,14 +101,14 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QPushButton" name="highlightButton">
+       <widget class="QtColorPicker" name="highlightButton">
         <property name="text">
          <string/>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="normalButton">
+       <widget class="QtColorPicker" name="normalButton">
         <property name="text">
          <string/>
         </property>
@@ -132,6 +132,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QtColorPicker</class>
+   <extends>QPushButton</extends>
+   <header location="global">qtcolorpicker.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>stepsSpin</tabstop>
   <tabstop>delaySpin</tabstop>

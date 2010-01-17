@@ -20,21 +20,21 @@
 #include "mainform.h"
 #include "layout.h"
 
-#include "prefs_console.h"
+#include "prefs_output.h"
 #include "prefs_editor.h"
 #include "prefs_simulator.h"
 #include "prefs_trace.h"
-#include "console.h"
+#include "output.h"
 #include "trace.h"
 #include "watch.h"
 #include "transitions.h"
 #include "sequence.h"
 
-// console
-const bool defConsoleEFont = true;
-const bool defConsoleSysColours = true;
-const QColor defConsoleFore = QColor("#000");
-const QColor defConsoleBack = QColor("#fff");
+// output
+const bool defOutputEFont = true;
+const bool defOutputSysColors = true;
+const QColor defOutputFore = QColor("#000");
+const QColor defOutputBack = QColor("#fff");
 
 // trace
 const bool defTraceVars = true;
@@ -49,8 +49,8 @@ const QColor defTraceError = QColor("#d55");
 void BaseToolsPlugin::install(MainForm * root)
 {
   // preferences
-  PreferencesPage * page = new ConsolePreferences();
-  root->registerPreferences(QObject::tr("IDE"), QObject::tr("Console"), page);
+  PreferencesPage * page = new OutputPreferences();
+  root->registerPreferences(QObject::tr("IDE"), QObject::tr("Output"), page);
 
   page = new EditorPreferences();
   root->registerPreferences(QObject::tr("IDE"), QObject::tr("Editor"), page);
@@ -65,24 +65,24 @@ void BaseToolsPlugin::install(MainForm * root)
   QAction * action;
   Q_ASSERT(menu);
 
-  // console
-  ConsoleDock * console = new ConsoleDock(root);
-  console->setObjectName("consoleDock");
-  root->addDockWidget(Qt::BottomDockWidgetArea, console);
+  // output
+  OutputDock * output = new OutputDock(root);
+  output->setObjectName("outputDock");
+  root->addDockWidget(Qt::BottomDockWidgetArea, output);
 
-  connect(root, SIGNAL(message(const QString &)), console, SLOT(appendText(const QString &)));
-  connect(root, SIGNAL(settingsChanged()), console, SLOT(readSettings()));
+  connect(root, SIGNAL(message(const QString &)), output, SLOT(appendText(const QString &)));
+  connect(root, SIGNAL(settingsChanged()), output, SLOT(readSettings()));
 
-  action = console->toggleViewAction();
-  action->setText(QObject::tr("Log &console"));
-  action->setStatusTip(QObject::tr("Toggles the console panel"));
+  action = output->toggleViewAction();
+  action->setText(QObject::tr("&Output"));
+  action->setStatusTip(QObject::tr("Toggles the output panel"));
   menu->addAction(action);
 
   QMenu * tmenu = root->findChild<QMenu*>("toolsMenu");
   QAction * sep = root->findChild<QAction*>("toolsSeparator");
   Q_ASSERT(menu);
   Q_ASSERT(sep);
-  tmenu->addAction(tr("&Clear Console"), console, SLOT(clear()));
+  tmenu->addAction(tr("&Clear Output"), output, SLOT(clear()));
   sep->setVisible(true);
 
   // watch
@@ -111,8 +111,8 @@ void BaseToolsPlugin::install(MainForm * root)
           trace, SLOT(setSimulator(SimulatorProxy*)));
 
   action = trace->toggleViewAction();
-  action->setText(QObject::tr("&Trace stack"));
-  action->setStatusTip(QObject::tr("Toggles the trace stack panel"));
+  action->setText(QObject::tr("&Stack trace"));
+  action->setStatusTip(QObject::tr("Toggles the stack trace panel"));
   menu->addAction(action);
 
   root->layouts()->addWidget(trace, QStringList("debug"));

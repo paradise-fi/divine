@@ -36,7 +36,7 @@ DveHighlighter::DveHighlighter(bool macros, QTextDocument * parent)
                                      "const|async|accept|property)\\b"), hsKeyword));
   patterns_.append(qMakePair(QRegExp("\\b(byte|int)\\b"), hsDataType));
   patterns_.append(qMakePair(QRegExp("\\b(true|false)\\b"), hsKeyword));
-  patterns_.append(qMakePair(QRegExp("\\b(imply|and|or)\\b"), hsKeyword));
+  patterns_.append(qMakePair(QRegExp("\\b(imply|and|or|not)\\b"), hsKeyword));
   patterns_.append(qMakePair(QRegExp("->"), hsTransition));
   patterns_.append(qMakePair(QRegExp("\\b[0-9]+\\b"), hsNumber));
 
@@ -44,6 +44,7 @@ DveHighlighter::DveHighlighter(bool macros, QTextDocument * parent)
   readSettings();
 }
 
+//! Reloads settings.
 void DveHighlighter::readSettings(void)
 {
   QSettings & s = sSettings();

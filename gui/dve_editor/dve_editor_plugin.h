@@ -17,12 +17,14 @@
 
 #include "plugins.h"
 
-// document loader
-class DveBuilder : public EditorBuilder
+/*!
+ * Implements the EditorBuilder interface for DVE files.
+ */
+class DveEditorBuilder : public EditorBuilder
 {
     Q_OBJECT
   public:
-    DveBuilder(MainForm * root);
+    DveEditorBuilder(MainForm * root);
 
     void install(SourceEditor * editor);
     void uninstall(SourceEditor * editor);
@@ -31,7 +33,9 @@ class DveBuilder : public EditorBuilder
     MainForm * root_;
 };
 
-// plugin class
+/*!
+ * Main class of the dve_editor plugin.
+ */
 class DveEditorPlugin : public QObject, public AbstractPlugin
 {
     Q_OBJECT

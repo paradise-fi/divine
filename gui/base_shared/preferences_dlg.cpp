@@ -69,6 +69,7 @@ PreferencesDialog::~PreferencesDialog()
 {
 }
 
+//! Adds new group to the dialog.
 void PreferencesDialog::addGroup(const QString & group)
 {
   for (int i = 0; i < groups_->topLevelItemCount(); ++i) {
@@ -87,8 +88,14 @@ void PreferencesDialog::addGroup(const QString & group)
   item->setFlags(item->flags() ^ Qt::ItemIsSelectable);
 }
 
+/*!
+ * Registers given widget as a preferences page.
+ * \param group Group of the new page.
+ * \param tab Tab of the new page.
+ * \param page Page widget.
+ */
 void PreferencesDialog::addWidget
-(const QString & group, const QString & tab, PreferencesPage * page)
+(const QString & group, const QString & tab, QWidget * page)
 {
   Q_ASSERT(page);
 
@@ -127,6 +134,7 @@ void PreferencesDialog::addWidget
   connect(this, SIGNAL(accepted()), page, SLOT(writeSettings()));
 }
 
+//! Emits initialized signal.
 void PreferencesDialog::initialize(void)
 {
   emit initialized();
@@ -135,7 +143,7 @@ void PreferencesDialog::initialize(void)
 void PreferencesDialog::onTabChanged
 (QTreeWidgetItem * current, QTreeWidgetItem *)
 {
-  PreferencesPage * wdg = reinterpret_cast<PreferencesPage*>(
+  QWidget * wdg = reinterpret_cast<QWidget*>(
                             current->data(0, Qt::UserRole).value<void*>());
 
   if (wdg)

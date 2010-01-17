@@ -12,34 +12,35 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#ifndef PREFS_CONSOLE_H_
-#define PREFS_CONSOLE_H_
+#ifndef PREFS_OUTPUT_H_
+#define PREFS_OUTPUT_H_
 
 #include "plugins.h"
 
 namespace Ui {
-  class ConsolePreferences;
+  class OutputPreferences;
 }
 
-class ConsolePreferences : public PreferencesPage {
+/*!
+ * This class implements preferences page for the output window.
+ */
+class OutputPreferences : public PreferencesPage {
   Q_OBJECT
 
   public:
-    ConsolePreferences(QWidget * parent=NULL);
-    ~ConsolePreferences();
+    OutputPreferences(QWidget * parent=NULL);
+    ~OutputPreferences();
 
   public slots:
     void readSettings(void);
     void writeSettings(void);
 
   private:
-    Ui::ConsolePreferences * ui_;
+    Ui::OutputPreferences * ui_;
 
   private slots:
     void on_editorBox_stateChanged(int state);
     void on_syscolBox_stateChanged(int state);
-    void on_foreButton_clicked(void);
-    void on_backButton_clicked(void);
 };
 
 #endif

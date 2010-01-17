@@ -24,6 +24,11 @@
 #include "mainform.h"
 #include "combine_dlg.h"
 
+/*!
+ * Initializes the combine dialog.
+ * \param root Application's main window.
+ * \param path Path to the initial LTL file.
+ */
 CombineDialog::CombineDialog(MainForm * root, const QString & path)
   : QDialog(root), path_(path)
 {
@@ -36,14 +41,24 @@ CombineDialog::CombineDialog(MainForm * root, const QString & path)
       ui_->pathBox->addItem(str);
   }
   
+  sSettings().beginGroup("DiVinE");
+  
+  QString last = sSettings().value("combineLast", "").toString();
+  QFileInfo finfo(last);
+  
+  if (finfo.exists() && finfo.suffix() == "ltl")
+    ui_->pathBox->setEditText(last);
+  
+  sSettings().endGroup();
+  
   QCompleter * completer = new QCompleter(this);
   completer->setModel(new QDirModel(completer));
 
-  ui_->pathBox->setCompleter(completer);
-  
   sSettings().beginGroup("Combine");
   ui_->defsEdit->setText(sSettings().value(path, "").toString());
   sSettings().endGroup();
+  
+  ui_->pathBox->setCompleter(completer);
   
   connect(this, SIGNAL(accepted()), SLOT(onAccepted()));
 }
@@ -53,21 +68,24 @@ CombineDialog::~CombineDialog()
   delete ui_;
 }
 
+//! Gets the selected LTL file
 const QString CombineDialog::file(void) const
 {
   QFileInfo info(ui_->pathBox->currentText());
   
-  if(!info.isFile() || !info.isReadable() || (info.suffix() != "ltl" && info.suffix() != "mltl"))
+  if(!info.isFile() || !info.isReadable() || info.suffix() != "ltl")
     return QString();
   
   return info.absoluteFilePath();
 }
 
+//! Gets the number of the property selected by user.
 int CombineDialog::property(void) const
 {
   return ui_->formulaList->currentRow();
 }
 
+//! Gets a list of definitions specified by user.
 const QStringList CombineDialog::definitions(void) const
 {
   if(ui_->defsEdit->text().simplified().isEmpty())
@@ -128,6 +146,10 @@ void CombineDialog::on_pathBox_editTextChanged(const QString & text)
 
 void CombineDialog::onAccepted(void)
 {
+  sSettings().beginGroup("DiVinE");
+  sSettings().setValue("combineLast", ui_->pathBox->currentText());
+  sSettings().endGroup();
+  
   sSettings().beginGroup("Combine");
   sSettings().setValue(path_, ui_->defsEdit->text());
   sSettings().endGroup();

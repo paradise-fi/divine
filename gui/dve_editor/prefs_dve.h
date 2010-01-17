@@ -22,19 +22,22 @@ class QTreeWidgetItem;
 class QMenu;
 class QAction;
 
-struct HighlightInfo {
-  bool bold;
-  bool italic;
-  bool underline;
-  const char * foreground;
-  const char * background;
-};
-
-extern const HighlightInfo dveDefs[];
-
+/*!
+ * This class implements the preferences page for DVE syntax highlighting.
+ */
 class DvePreferences : public PreferencesPage {
   Q_OBJECT
 
+  public:
+    //! Contains highlighting information for one category.
+    struct HighlightInfo {
+      bool bold;                    //!< Use bold font.
+      bool italic;                  //!< Use italic font.
+      bool underline;               //!< Use underlined font.
+      const char * foreground;      //!< Foreground color.
+      const char * background;      //!< Background color.
+    };
+    
   public:
     DvePreferences(QWidget * parent=NULL);
     ~DvePreferences();
@@ -59,5 +62,7 @@ class DvePreferences : public PreferencesPage {
     void onResetForeground(void);
     void onResetBackground(void);
 };
+
+extern const DvePreferences::HighlightInfo dveDefs[];
 
 #endif

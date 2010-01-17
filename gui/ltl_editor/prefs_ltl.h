@@ -22,18 +22,21 @@ class QTreeWidgetItem;
 class QMenu;
 class QAction;
 
-struct HighlightInfo {
-  bool bold;
-  bool italic;
-  bool underline;
-  const char * foreground;
-  const char * background;
-};
-
-extern const HighlightInfo ltlDefs[];
-
+/*!
+ * This class implements the preferences page for LTL syntax highlighting.
+ */
 class LtlPreferences : public PreferencesPage {
   Q_OBJECT
+
+  public:
+    //! Contains highlighting information for one category.
+    struct HighlightInfo {
+      bool bold;                    //!< Use bold font.
+      bool italic;                  //!< Use italic font.
+      bool underline;               //!< Use underlined font.
+      const char * foreground;      //!< Foreground color.
+      const char * background;      //!< Background color.
+    };
 
   public:
     LtlPreferences(QWidget * parent=NULL);
@@ -59,5 +62,7 @@ class LtlPreferences : public PreferencesPage {
     void onResetForeground(void);
     void onResetBackground(void);
 };
+
+extern const LtlPreferences::HighlightInfo ltlDefs[];
 
 #endif

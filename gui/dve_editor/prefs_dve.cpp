@@ -26,7 +26,7 @@
 
 const wchar_t noneSymb[] = L"\u2014";
 
-const HighlightInfo dveDefs[] = {
+const DvePreferences::HighlightInfo dveDefs[] = {
   {false, false, false, "", ""},            // hsDefault
   {false, false, false, "darkblue", ""},    // hsNumber
   {false, false, false, "darkcyan", ""},    // hsDataType

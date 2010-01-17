@@ -23,6 +23,9 @@ namespace Ui
   class SearchDialog;
 }
 
+/*!
+ * The SearchDialog class implements the Find (and replace) dilaog window.
+ */
 class SearchDialog : public QDialog
 {
     Q_OBJECT
@@ -38,9 +41,9 @@ class SearchDialog : public QDialog
     QTextDocument::FindFlags flags(void) const;
     
   signals:
-    void findNext(void);
-    void replace(void);
-    void replaceAll(void);
+    void findNext(void);    //!< User has clicked the Find Next button.
+    void replace(void);     //!< User has clicked the Replace button.
+    void replaceAll(void);  //!< User has clicked the Replace All button.
     
   private:
     Ui::SearchDialog * ui_;

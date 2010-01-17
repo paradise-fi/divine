@@ -23,6 +23,9 @@ namespace Ui
   class DivinePreferences;
 }
 
+/*!
+ * This class implements the preferences page for the DiVinE tools.
+ */
 class DivinePreferences : public PreferencesPage
 {
     Q_OBJECT

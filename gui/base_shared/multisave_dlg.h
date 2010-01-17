@@ -24,6 +24,10 @@ namespace Ui
 
 class SourceEditor;
 
+/*!
+ * The MultiSaveDialog class implements the dialog window asking the user
+ * to save multiple files.
+ */
 class MultiSaveDialog : public QDialog
 {
     Q_OBJECT

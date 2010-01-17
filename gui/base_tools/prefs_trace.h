@@ -21,6 +21,9 @@ namespace Ui {
   class TracePreferences;
 }
 
+/*!
+ * This class implements the preferences page for the stack trace window.
+ */
 class TracePreferences : public PreferencesPage {
   Q_OBJECT
 
@@ -39,8 +42,6 @@ class TracePreferences : public PreferencesPage {
     void on_variableBox_stateChanged(int state);
     void on_processBox_stateChanged(int state);
     void on_channelBox_stateChanged(int state);
-    void on_deadButton_clicked(void);
-    void on_errorButton_clicked(void);
 };
 
 #endif

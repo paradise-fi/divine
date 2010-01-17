@@ -21,6 +21,7 @@
 #include "multisave_dlg.h"
 #include "editor.h"
 
+//! Initializes the dialog with given set of files.
 MultiSaveDialog::MultiSaveDialog
 (const QList<SourceEditor*> & files, QWidget * parent)
 {
@@ -46,6 +47,7 @@ MultiSaveDialog::~MultiSaveDialog()
   delete ui_;
 }
 
+//! Returns a list of editor the user decided to save.
 const QList<SourceEditor*> MultiSaveDialog::selection(void) const
 {
   QList<SourceEditor*> res;

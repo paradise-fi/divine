@@ -21,6 +21,9 @@ namespace Ui {
   class EditorPreferences;
 }
 
+/*!
+ * The EditorPreferences class implements preferences page for text editors.
+ */
 class EditorPreferences : public PreferencesPage {
   public:
     EditorPreferences(QWidget * parent=NULL);

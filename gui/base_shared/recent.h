@@ -18,6 +18,9 @@
 #include <QMenu>
 #include <QStringList>
 
+/*!
+ * The RecentFilesMenu class implements the Recent Files menu.
+ */
 class RecentFilesMenu : public QMenu
 {
     Q_OBJECT
@@ -28,6 +31,10 @@ class RecentFilesMenu : public QMenu
     void addFile(const QString & fileName);
 
   signals:
+    /*!
+     * Menu entry was triggered.
+     * \param fileName The triggered file.
+     */
     void triggered(const QString & fileName);
 
   private:

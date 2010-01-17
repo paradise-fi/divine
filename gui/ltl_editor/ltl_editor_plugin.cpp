@@ -21,27 +21,21 @@
 #include "mainform.h"
 #include "editor.h"
 
-LtlBuilder::LtlBuilder(MainForm * root) : EditorBuilder(root), root_(root)
+LtlEditorBuilder::LtlEditorBuilder(MainForm * root) : EditorBuilder(root), root_(root)
 {
 }
 
-void LtlBuilder::install(SourceEditor * editor)
+void LtlEditorBuilder::install(SourceEditor * editor)
 {
   QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
   
-  LtlHighlighter * highlight = new LtlHighlighter(url.scheme() == "mltl", editor->document());
+  LtlHighlighter * highlight = new LtlHighlighter(editor->document());
   highlight->setObjectName("ltlHighlighter");
   
-  connect(root_, SIGNAL(settingsChanged()), highlight, SLOT(readSettings()));
-  
-  QStringList wordList;
-  wordList << "accept" << "and" << "assert" << "async" << "byte" << "channel"
-           << "commit" << "const" << "effect" << "false" << "guard" << "int"
-           << "imply" << "init" << "or" << "process" << "property" << "state"
-           << "sync" << "system" << "trans" << "true";
+  connect(root_, SIGNAL(settingsChanged()), highlight, SLOT(readSettings()));                                                                             
 }
 
-void LtlBuilder::uninstall(SourceEditor * editor)
+void LtlEditorBuilder::uninstall(SourceEditor * editor)
 {
   LtlHighlighter * highlight = editor->document()->findChild<LtlHighlighter*>("ltlHighlighter");
   Q_ASSERT(highlight);
@@ -51,9 +45,8 @@ void LtlBuilder::uninstall(SourceEditor * editor)
 void LtlEditorPlugin::install(MainForm * root)
 {
   // document loaders
-  EditorBuilder * loader = new LtlBuilder(root);
+  EditorBuilder * loader = new LtlEditorBuilder(root);
   root->registerDocument("ltl", tr("LTL files (*.ltl)"), loader);
-  root->registerDocument("mltl", tr("MLTL files (*.mltl)"), loader);
   
   // preferences
   PreferencesPage * page = new LtlPreferences();

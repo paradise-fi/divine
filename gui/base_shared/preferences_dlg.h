@@ -23,6 +23,9 @@ class QTreeWidgetItem;
 class QStackedWidget;
 class PreferencesPage;
 
+/*!
+ * The PreferencesDialog class implements the application preferences dialog.
+ */
 class PreferencesDialog: public QDialog
 {
     Q_OBJECT
@@ -32,11 +35,12 @@ class PreferencesDialog: public QDialog
     ~PreferencesDialog();
 
     void addGroup(const QString & group);
-    void addWidget(const QString & group, const QString & tab, PreferencesPage * page);
+    void addWidget(const QString & group, const QString & tab, QWidget * page);
 
-    void initialize(void);  /// read settings and setup widgets
+    void initialize(void);
 
   signals:
+    //! Sends initialization request to registered pages.
     void initialized();
 
   private:

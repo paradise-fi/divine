@@ -35,6 +35,9 @@ namespace
 
 }
 
+/*!
+ * This class implements the side bar with accepting cycle and line numbers.
+ */
 class CycleBar : public QWidget
 {
   public:
@@ -51,6 +54,7 @@ CycleBar::CycleBar(TraceWidget * parent) : QWidget(parent), stack_(parent)
 {
 }
 
+//! Forwards the paint event to the TraceWidget class.
 void CycleBar::paintEvent(QPaintEvent * event)
 {
   stack_->sideBarPaintEvent(event);
@@ -63,6 +67,7 @@ TraceWidget::TraceWidget(QWidget * parent)
   cbar_ = new CycleBar(this);
 }
 
+//! Set the displayed accepting cycle.
 void TraceWidget::setAcceptingCycle(const QPair<int, int> & cycle)
 {
   if (cycle != cycle_) {
@@ -71,6 +76,7 @@ void TraceWidget::setAcceptingCycle(const QPair<int, int> & cycle)
   }
 }
 
+//! Reimplements QListView::resizeEvent.
 void TraceWidget::resizeEvent(QResizeEvent * event)
 {
   QListWidget::resizeEvent(event);
@@ -88,6 +94,7 @@ void TraceWidget::resizeEvent(QResizeEvent * event)
   cbar_->setGeometry(visual);
 }
 
+//! Reimplements QAbstractScrollArea::scrollContentsBy.
 void TraceWidget::scrollContentsBy(int dx, int dy)
 {
   QListWidget::scrollContentsBy(dx, dy);
@@ -178,7 +185,7 @@ void TraceWidget::sideBarPaintEvent(QPaintEvent * event)
 }
 
 TraceDock::TraceDock(QWidget * parent)
-    : QDockWidget(tr("Trace stack"), parent), sim_(NULL)
+    : QDockWidget(tr("Stack trace"), parent), sim_(NULL)
 {
   trace_ = new TraceWidget(this);
   setWidget(trace_);
@@ -189,6 +196,7 @@ TraceDock::TraceDock(QWidget * parent)
           SLOT(onItemActivated(QListWidgetItem*)));
 }
 
+//! Reload settings.
 void TraceDock::readSettings(void)
 {
   QSettings & s = sSettings();
@@ -208,9 +216,10 @@ void TraceDock::readSettings(void)
   s.endGroup();
 
   if (sim_)
-    onSimulatorStateReset();
+    onSimulatorStarted();
 }
 
+//! Update current simulator.
 void TraceDock::setSimulator(SimulatorProxy * sim)
 {
   if (sim_ == sim)
@@ -219,8 +228,8 @@ void TraceDock::setSimulator(SimulatorProxy * sim)
   sim_ = sim;
 
   if (sim_) {
-    connect(sim_->simulator(), SIGNAL(stateReset()), SLOT(onSimulatorStateReset()));
-    connect(sim_->simulator(), SIGNAL(stateChanged()), SLOT(onSimulatorStateChanged()));
+    connect(sim_, SIGNAL(started()), SLOT(onSimulatorStarted()));
+    connect(sim_, SIGNAL(stateChanged()), SLOT(onSimulatorStateChanged()));
   } else {
     trace_->clear();
     trace_->setAcceptingCycle(qMakePair(-1, -1));
@@ -285,7 +294,13 @@ void TraceDock::updateTraceItem(int state)
         text.append(": ");
       }
 
-      text.append(simulator->enumProcessStates(i).at(simulator->processState(i, state)));
+      // NOTE: Divine reports invalid state value for errorneous processes
+      QStringList state_lst = simulator->enumProcessStates(i);
+      const int sid = simulator->processState(i, state);
+      if (sid >= 0 && sid < state_lst.size())
+        text.append(state_lst.at(sid));
+      else
+        text.append(tr("-Err-"));
 
       if (variable_) {
         text.append("[");
@@ -332,20 +347,20 @@ void TraceDock::updateTraceItem(int state)
   }
 }
 
-void TraceDock::onSimulatorStateReset(void)
+void TraceDock::onSimulatorStarted(void)
 {
   Q_ASSERT(sim_);
 
   const Simulator * simulator = sim_->simulator();
 
   // equalize item count - remove items
-  while (trace_->count() > simulator->traceDepth()) {
+  while (trace_->count() > simulator->stackDepth()) {
     QListWidgetItem * item = trace_->takeItem(trace_->count() - 1);
     delete item;
   }
 
   // add items
-  while (trace_->count() < simulator->traceDepth()) {
+  while (trace_->count() < simulator->stackDepth()) {
     trace_->addItem("");
   }
 
@@ -367,20 +382,19 @@ void TraceDock::onSimulatorStateChanged(void)
   const Simulator * simulator = sim_->simulator();
 
   // equalize item count - remove items
-
-  while (trace_->count() > simulator->traceDepth()) {
+  while (trace_->count() > simulator->stackDepth()) {
     QListWidgetItem * item = trace_->takeItem(trace_->count() - 1);
     delete item;
   }
 
   // add items
-  while (trace_->count() < simulator->traceDepth()) {
+  while (trace_->count() < simulator->stackDepth()) {
     trace_->addItem("");
     updateTraceItem(trace_->count() - 1);
   }
 
   // unmark previous active state
-  Q_ASSERT(state_ < simulator->traceDepth());
+  Q_ASSERT(state_ < simulator->stackDepth());
 
   QListWidgetItem * item = trace_->item(state_);
 
@@ -403,5 +417,5 @@ void TraceDock::onSimulatorStateChanged(void)
 void TraceDock::onItemActivated(QListWidgetItem * item)
 {
   if (sim_)
-    sim_->backtrace(trace_->row(item));
+    sim_->backstep(trace_->row(item));
 }

@@ -23,6 +23,9 @@ namespace Ui
   class SimulatorPreferences;
 }
 
+/*!
+ * This class implements preferences page for generic simulator.
+ */
 class SimulatorPreferences : public PreferencesPage
 {
     Q_OBJECT
@@ -40,8 +43,6 @@ class SimulatorPreferences : public PreferencesPage
 
   private slots:
     void on_randomBox_stateChanged(int state);
-    void on_normalButton_clicked(void);
-    void on_highlightButton_clicked(void);
 };
 
 #endif

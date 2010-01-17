@@ -87,7 +87,10 @@ MainForm::~MainForm()
 {
 }
 
-// this function should be called after all plugins are loaded
+/*!
+ * Finishes initialization of the main window. It should be
+ * called after all plugins are loaded.
+ */
 void MainForm::initialize(void)
 {
   // read app settings (recent files etc.)
@@ -97,6 +100,12 @@ void MainForm::initialize(void)
   layman_->switchLayout("edit");
 }
 
+/*!
+ * Registers EditorBuilder instance for given document type.
+ * \param suffix Document suffix.
+ * \param filter Filter for file dialogs.
+ * \param builder EditorBuilder instance.
+ */
 void MainForm::registerDocument
 (const QString & suffix, const QString & filter, EditorBuilder * builder)
 {
@@ -112,31 +121,52 @@ void MainForm::registerDocument
   qSort(docBuilders_.begin(), docBuilders_.end());
 }
 
-void MainForm::registerSimulator(const QString & suffix, SimulatorLoader * loader)
+/*!
+ * Registers SimulatorFactory instance for given document type.
+ * \param suffix Document suffix.
+ * \param factory SimulatorFactory instance.
+ */
+void MainForm::registerSimulator(const QString & suffix, SimulatorFactory * factory)
 {
   // no such thing as default simulator or null loader
-  if (suffix.isEmpty() || !loader)
+  if (suffix.isEmpty() || !factory)
     return;
 
   // same behaviour as doc loaders
   if (simLoaders_.contains(suffix))
     return;
 
-  simLoaders_.insert(suffix, loader);
+  simLoaders_.insert(suffix, factory);
 }
 
+/*!
+ * Registers a widget as a preferences page.
+ * \param group Settings group.
+ * \param tab Tab name.
+ * \param page New page.
+ * \see PreferencesDialog
+ * \see PreferencesPage
+ */
 void MainForm::registerPreferences
-(const QString & group, const QString & tab, PreferencesPage * page)
+(const QString & group, const QString & tab, QWidget * page)
 {
   preferences_->addWidget(group, tab, page);
 }
 
+//! Returns number of open editors.
+int MainForm::editorCount(void)
+{
+  return pageArea_->count();
+}
+
+//! Returns active editor.
 SourceEditor * MainForm::activeEditor(void)
 {
   return qobject_cast<SourceEditor*>(pageArea_->currentWidget());
 }
 
-SourceEditor * MainForm::editor(const QString & file)
+//! Returns editor with given file.
+SourceEditor * MainForm::editor(const QString & path)
 {
   SourceEditor * editor;
 
@@ -145,13 +175,14 @@ SourceEditor * MainForm::editor(const QString & file)
 
     QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
 
-    if (url.path() == QFileInfo(file).absoluteFilePath())
+    if (url.path() == QFileInfo(path).absoluteFilePath())
       return editor;
   }
 
   return NULL;
 }
 
+//! Returns editor with given id.
 SourceEditor * MainForm::editor(int index)
 {
   if (index < 0 || index >= pageArea_->count())
@@ -162,6 +193,7 @@ SourceEditor * MainForm::editor(int index)
   return editor;
 }
 
+//! Returns list of opened files. Ignores unnamed (fresh new) files.
 const QStringList MainForm::openedFiles(void) const
 {
   QStringList res;
@@ -172,12 +204,18 @@ const QStringList MainForm::openedFiles(void) const
 
     QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
 
-    res << url.path();
+    if(!url.path().isEmpty())
+      res << url.path();
   }
 
   return res;
 }
 
+/*!
+ * If there is a running simulation, attempts to stop it.
+ * Notifies user of the operation (and allows him to abort it).
+ * \return Success if the operation wasn't cancelled by the user.
+ */
 bool MainForm::maybeStop(void)
 {
   const Simulator * simulator = simProxy_ ? simProxy_->simulator() : NULL;
@@ -198,6 +236,11 @@ bool MainForm::maybeStop(void)
   return true;
 }
 
+/*!
+ * Attempts to automatically save given editor. If the editor is new (untitled)
+ * asks user for a new name.
+ * \return Success if the operation wasn't cancelled by the user.
+ */
 bool MainForm::maybeSave(SourceEditor * editor)
 {
   if (!editor->document()->isModified())
@@ -218,6 +261,12 @@ bool MainForm::maybeSave(SourceEditor * editor)
   return true;
 }
 
+/*!
+ * Attempts to automatically save given editors. If the editor is new (untitled)
+ * asks user for a new name.
+ * \return Success if the operation wasn't cancelled by the user.
+ * \see MultiSaveDialog
+ */
 bool MainForm::maybeSave(const QList<SourceEditor*> & editors)
 {
   QList<SourceEditor*> tabs;
@@ -251,6 +300,10 @@ bool MainForm::maybeSave(const QList<SourceEditor*> & editors)
   return true;
 }
 
+/*!
+ * Attempts to automatically save all open editors.
+ * \return Success if the operation wasn't cancelled by the user.
+ */
 bool MainForm::maybeSaveAll(void)
 {
   QList<SourceEditor*> tabs;
@@ -262,6 +315,11 @@ bool MainForm::maybeSaveAll(void)
   return maybeSave(tabs);
 }
 
+/*!
+ * Creates new file. Has no contents and no type, unless explicitly specified.
+ * \param hint Document type of the initial contents (file suffix).
+ * \param text Initial contents.
+ */
 void MainForm::newFile(const QString & hint, const QByteArray & text)
 {
   SourceEditor * editor = new SourceEditor(this);
@@ -305,15 +363,19 @@ void MainForm::newFile(const QString & hint, const QByteArray & text)
     onDocumentModified(editor, true);
 }
 
-void MainForm::openFile(const QString & fileName)
+/*!
+ * Opens file specified by given path. If the file is already open, then
+ * switches to it's editor.
+ */
+void MainForm::openFile(const QString & path)
 {
-  if (fileName.isEmpty())
+  if (path.isEmpty())
     return;
 
-  QFileInfo finfo(fileName);
+  QFileInfo finfo(path);
 
   if (!finfo.exists()) {
-    QMessageBox::warning(this, tr("DiVinE IDE"), tr("File '%1' doesn't exist.").arg(fileName));
+    QMessageBox::warning(this, tr("DiVinE IDE"), tr("File '%1' doesn't exist.").arg(path));
     return;
   }
 
@@ -333,7 +395,7 @@ void MainForm::openFile(const QString & fileName)
   // open the document fileDropped
   SourceEditor * editor = new SourceEditor(this);
 
-  if (!editor->loadFile(fileName)) {
+  if (!editor->loadFile(path)) {
     delete editor;
     return;
   }
@@ -351,7 +413,7 @@ void MainForm::openFile(const QString & fileName)
   connect(editor, SIGNAL(copyAvailable(bool)), copyAct_, SLOT(setEnabled(bool)));
 
   // update recent files
-  recentMenu_->addFile(fileName);
+  recentMenu_->addFile(path);
 
   // create highlighter
   EditorBuilder * builder = getBuilder(finfo.suffix());
@@ -376,6 +438,7 @@ void MainForm::openFile(const QString & fileName)
   pageArea_->setCurrentIndex(tab + 1);
 }
 
+//! Starts the interactive simulation.
 void MainForm::startSimulation(void)
 {
   Q_ASSERT(!simProxy_);
@@ -402,10 +465,10 @@ void MainForm::startSimulation(void)
   editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
   url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
   
-  SimulatorLoader * loader = simLoaders_[url.scheme()];
-  Q_ASSERT(loader);
+  SimulatorFactory * factory = simLoaders_[url.scheme()];
+  Q_ASSERT(factory);
 
-  Simulator * simulator = loader->load(url.path(), this);
+  Simulator * simulator = factory->load(url.path(), this);
 
   if (!simulator)
     return;
@@ -417,7 +480,7 @@ void MainForm::startSimulation(void)
   }
   
   // check for errors
-  if(!simulator->isOpen()) {
+  if(!simulator->isReady()) {
     checkSyntaxErrors(simulator);
     
     delete simulator;
@@ -426,18 +489,18 @@ void MainForm::startSimulation(void)
 
   layman_->switchLayout("debug");
 
-  // setup actions
-  connect(restartAct_, SIGNAL(triggered()), simulator, SLOT(restart()));
-  connect(stopAct_, SIGNAL(triggered()), simulator, SLOT(stop()));
-  connect(stepBackAct_, SIGNAL(triggered()), simulator, SLOT(undo()));
-  connect(stepForeAct_, SIGNAL(triggered()), simulator, SLOT(redo()));
-
-  connect(simulator, SIGNAL(stateReset()), SLOT(updateSimulator()));
-  connect(simulator, SIGNAL(stateChanged()), SLOT(updateSimulator()));
-  connect(simulator, SIGNAL(stopped()), SLOT(onSimulatorStopped()));
-
   simProxy_ = new SimulatorProxy(simulator, this);
-
+  
+  // setup actions
+  connect(restartAct_, SIGNAL(triggered()), simProxy_, SLOT(start()));
+  connect(stopAct_, SIGNAL(triggered()), simProxy_, SLOT(stop()));
+  connect(stepBackAct_, SIGNAL(triggered()), simProxy_, SLOT(undo()));
+  connect(stepForeAct_, SIGNAL(triggered()), simProxy_, SLOT(redo()));
+  
+  connect(simProxy_, SIGNAL(message(QString)), SIGNAL(message(QString)));
+  connect(simProxy_, SIGNAL(started()), SLOT(onSimulatorStarted()));
+  connect(simProxy_, SIGNAL(stateChanged()), SLOT(updateSimulator()));
+  connect(simProxy_, SIGNAL(stopped()), SLOT(onSimulatorStopped()));
   connect(simProxy_, SIGNAL(locked(bool)), SLOT(updateSimulator()));
 
   emit message(tr("=== Starting simulation ==="));
@@ -473,6 +536,7 @@ void MainForm::startSimulation(void)
   updateWorkspace();
 }
 
+//! Updates window title according to the active editor.
 void MainForm::updateWindowTitle(void)
 {
   SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
@@ -489,6 +553,7 @@ void MainForm::updateWindowTitle(void)
   }
 }
 
+//! Updates basic actions according to the active editor.
 void MainForm::updateWorkspace(void)
 {
   SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
@@ -525,6 +590,7 @@ void MainForm::updateWorkspace(void)
   numbersAct_->setEnabled(editor);
 }
 
+//! Updates basic actions according to the active simulator.
 void MainForm::updateSimulator(void)
 {
   SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
@@ -554,6 +620,7 @@ void MainForm::updateSimulator(void)
   
 }
 
+//! Updates status label in the lower right corner of the window.
 void MainForm::updateStatusLabel()
 {
   SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
@@ -568,6 +635,7 @@ void MainForm::updateStatusLabel()
   }
 }
 
+//! Updates modification notifications on given editor
 void MainForm::onDocumentModified(SourceEditor * editor, bool state)
 {
   int tab = pageArea_->indexOf(editor);
@@ -578,6 +646,7 @@ void MainForm::onDocumentModified(SourceEditor * editor, bool state)
     setWindowModified(state);
 }
 
+//! Reimplements QWidget::closeEvent.
 void MainForm::closeEvent(QCloseEvent * event)
 {
   if (maybeStop() && maybeSaveAll()) {
@@ -593,6 +662,7 @@ void MainForm::closeEvent(QCloseEvent * event)
   }
 }
 
+//! Reimplements QWidget::dragEnterEvent.
 void MainForm::dragEnterEvent(QDragEnterEvent * event)
 {
   if (event->mimeData()->hasUrls())
@@ -601,6 +671,7 @@ void MainForm::dragEnterEvent(QDragEnterEvent * event)
     QMainWindow::dragEnterEvent(event);
 }
 
+//! Reimplements QWidget::dropEvent.
 void MainForm::dropEvent(QDropEvent * event)
 {
   if (event->mimeData()->hasUrls()) {
@@ -767,11 +838,13 @@ void MainForm::createActions(void)
 
   startAct_ = new QAction(QIcon(":/icons/sim/start"), tr("&Start"), this);
   startAct_->setObjectName("startAct");
+  startAct_->setShortcut(tr("F5"));
   startAct_->setStatusTip(tr("Start simulation"));
   connect(startAct_, SIGNAL(triggered()), SLOT(startSimulation()));
 
   stopAct_ = new QAction(QIcon(":/icons/sim/stop"), tr("Sto&p"), this);
   stopAct_->setObjectName("stopAct");
+  stopAct_->setShortcut(tr("Shift+F5"));
   stopAct_->setStatusTip(tr("Stop the simulation"));
 
   restartAct_ = new QAction(QIcon(":/icons/sim/restart"),
@@ -779,23 +852,27 @@ void MainForm::createActions(void)
   restartAct_->setObjectName("restartAct");
   restartAct_->setStatusTip(tr("Return to the initial state"));
 
-  stepBackAct_ = new QAction(QIcon(":/icons/sim/undo"), tr("Step b&ack"), this);
+  stepBackAct_ = new QAction(QIcon(":/icons/sim/undo"), tr("Step B&ack"), this);
   stepBackAct_->setObjectName("stepBackAct");
+  stepBackAct_->setShortcut(tr("F6"));
   stepBackAct_->setStatusTip(tr("Undo last transition"));
 
   stepForeAct_ = new QAction(QIcon(":/icons/sim/redo"),
-                             tr("Step &forward"), this);
+                             tr("Step &Forward"), this);
   stepForeAct_->setObjectName("stepForeAct");
+  stepForeAct_->setShortcut(tr("F7"));
   stepForeAct_->setStatusTip(tr("Redo last transition"));
 
   stepRandomAct_ = new QAction(QIcon(":/icons/sim/random"),
-                               tr("Ran&dom step"), this);
+                               tr("Ran&dom Step"), this);
   stepRandomAct_->setObjectName("stepRandomAct");
+  stepRandomAct_->setShortcut(tr("F8"));
   stepRandomAct_->setStatusTip(tr("Choose and execute random transition"));
   connect(stepRandomAct_, SIGNAL(triggered()), SLOT(randomStep()));
 
-  randomRunAct_ = new QAction(tr("&Random run..."), this);
+  randomRunAct_ = new QAction(tr("&Random Run..."), this);
   randomRunAct_->setObjectName("randomRunAct");
+  stepRandomAct_->setShortcut(tr("Ctrl+F8"));
   connect(randomRunAct_, SIGNAL(triggered()), SLOT(randomRun()));
   
   importAct_ = new QAction(tr("&Import..."), this);
@@ -813,7 +890,7 @@ void MainForm::createActions(void)
   syntaxAct_->setStatusTip(tr("Check model syntax"));
   connect(syntaxAct_, SIGNAL(triggered()), SLOT(checkSyntax()));
   
-  helpAct_ = new QAction(tr("&Show help"), this);
+  helpAct_ = new QAction(tr("&Show Help"), this);
   helpAct_->setObjectName("helpAct");
   helpAct_->setShortcut(tr("F1"));
   helpAct_->setStatusTip(tr("Show the help window"));
@@ -1078,7 +1155,7 @@ void MainForm::open()
 
   filters << tr("All files (*)");
 
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open file"),
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
                      "", filters.join(";;"));
 
   openFile(fileName);
@@ -1117,26 +1194,75 @@ bool MainForm::saveAs(SourceEditor * editor)
     return true;
 
   QStringList filters;
+  QString defFilter;
 
+  QUrl old_url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
+  
   foreach(BuilderList::value_type itr, docBuilders_) {
     filters << itr.first.second;
+    
+    if(itr.first.first == QFileInfo(old_url.path()).suffix())
+      defFilter = itr.first.second;
   }
 
   filters << tr("All files (*)");
-
-  QUrl old_url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
-  QString fileName = QFileDialog::getSaveFileName(this, tr("Open file"),
-                     "", filters.join(";;"));
-
-  if (fileName.isEmpty() || !editor->saveFile(fileName))
+  
+  QFileDialog dlg(this, tr("Save File"), "", filters.join(";;"));
+  dlg.setAcceptMode(QFileDialog::AcceptSave);
+  
+  // select current suffix as default filter
+  if(!defFilter.isEmpty())
+    dlg.selectFilter(defFilter);
+  
+  // open the save dialog
+  if(!dlg.exec())
     return false;
-
-  // update recent files
-  recentMenu_->addFile(fileName);
-
-  QFileInfo finfo(fileName);
+  
+  QString fileName = dlg.selectedFiles().at(0);
+  
+  // append suffix if none provided
+  if(QFileInfo(fileName).suffix().isEmpty()) {
+    for(int i = 0; i < docBuilders_.size(); ++i) {
+      if(docBuilders_[i].first.second ==  dlg.selectedFilter()) {
+        fileName.append(".");
+        fileName.append(docBuilders_[i].first.first);
+        break;
+      }
+    }
+  }
 
   QUrl url;
+  QFileInfo finfo(fileName);
+  
+  qDebug("%s",finfo.absoluteFilePath().toAscii().data());
+  
+  // check for new duplicities
+  for(int i = 0; i < pageArea_->count();) {
+    SourceEditor * ed2 = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+    Q_ASSERT(ed2);
+    
+    if(ed2 == editor) {
+      ++i;
+      continue;
+    }
+    
+    url = ed2->document()->metaInformation(QTextDocument::DocumentUrl);
+    qDebug("%d %s",i,url.path().toAscii().data());
+    // file is already opened
+    if(finfo.absoluteFilePath() == url.path()) {
+      if(!closeFile(ed2))
+        return false;
+    } else {
+      ++i;
+    }
+  }
+  
+  if(!editor->saveFile(fileName))
+     return false;
+  
+  // update recent files
+  recentMenu_->addFile(fileName);
+  
   url.setScheme(finfo.suffix());
   url.setPath(finfo.absoluteFilePath());
   
@@ -1232,13 +1358,13 @@ void MainForm::preview()
   dlg.exec();
 }
 
-void MainForm::closeFile(SourceEditor * editor)
+bool MainForm::closeFile(SourceEditor * editor)
 {
   if (!editor)
     editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
 
   if (!editor)
-    return;
+    return false;
 
   // check if we are not closing the last file of the simulation
   QStringList files;
@@ -1259,7 +1385,7 @@ void MainForm::closeFile(SourceEditor * editor)
   QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
 
   if (cnt == 1 && files.contains(url.path()) && !maybeStop())
-    return;
+    return false;
 
   if (maybeSave(editor)) {
     // remove from watcher
@@ -1269,7 +1395,9 @@ void MainForm::closeFile(SourceEditor * editor)
     pageArea_->removeTab(pageArea_->indexOf(editor));
 
     editor->deleteLater();
+    return true;
   }
+  return false;
 }
 
 void MainForm::closeAll(void)
@@ -1283,6 +1411,7 @@ void MainForm::closeAll(void)
   }
 }
 
+//! Displays the search dialog.
 void MainForm::showFindDialog()
 {
   QString hint;
@@ -1305,6 +1434,7 @@ void MainForm::showFindDialog()
   search_->raise();
 }
 
+//! Displays the search and replace dialog.
 void MainForm::showReplaceDialog()
 {
   QString hint;
@@ -1325,6 +1455,7 @@ void MainForm::showReplaceDialog()
   search_->raise();
 }
 
+//! Shows the references dialog.
 void MainForm::showPreferences(void)
 {
   preferences_->initialize();
@@ -1342,7 +1473,13 @@ void MainForm::help(void)
 //       ar.append('\0');
 //       helpProc_->write(ar);
   } else {
-    helpProc_->start(QString("%1 -enableRemoteControl -collectionFile divine-ide.qhc").arg(ASSISTANT_BIN),
+    const char * envPlugins = getenv("DIVINE_GUI_HELP_PATH");
+    QString helpdir("help");
+
+    if(envPlugins)
+      helpdir = envPlugins;
+    
+    helpProc_->start(QString("%1 -enableRemoteControl -collectionFile %2/divine-ide.qhc").arg(ASSISTANT_BIN, helpdir),
                      QIODevice::WriteOnly);
     helpProc_->waitForStarted();
 
@@ -1352,6 +1489,7 @@ void MainForm::help(void)
   }
 }
 
+//! Displays the application's about box
 void MainForm::about(void)
 {
   QMessageBox::about(this, tr("About DiVinE IDE"),
@@ -1392,9 +1530,13 @@ void MainForm::randomRun(void)
   
   sSettings().endGroup();
   
+  bool ok;
   steps = QInputDialog::getInteger(this, tr("Random run"),
-    tr("Select number of steps to run:"), steps, 1, 800);
+    tr("Select number of steps to run:"), steps, 1, 800, 1, &ok);
 
+  if (!ok)
+    return;
+    
   if(delay == 0) {
     for(int i = 0; i < steps && simulator->transitionCount() > 0; ++i)
       randomStep();
@@ -1511,10 +1653,10 @@ void MainForm::checkSyntax()
   editor = qobject_cast<SourceEditor*>(pageArea_->currentWidget());
   url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
   
-  SimulatorLoader * loader = simLoaders_[url.scheme()];
-  Q_ASSERT(loader);
+  SimulatorFactory * factory = simLoaders_[url.scheme()];
+  Q_ASSERT(factory);
 
-  Simulator * simulator = loader->load(url.path(), this);
+  Simulator * simulator = factory->load(url.path(), this);
 
   if (!simulator)
     return;
@@ -1632,6 +1774,24 @@ void MainForm::onPrintRequested(QPrinter * printer)
   editor->print(printer);
 }
 
+void MainForm::onSimulatorStarted(void)
+{
+  // stop random runner
+  if(randomTimer_->isActive()) {
+    disconnect(randomTimer_, SIGNAL(timeout()), this, SLOT(randomTimeout()));
+    randomTimer_->stop();
+    simProxy_->release(this);
+    
+    // clear highlighting
+    for (int i = 0; i < pageArea_->count(); ++i) {
+      SourceEditor * editor = qobject_cast<SourceEditor*>(pageArea_->widget(i));
+      editor->resetHighlighting();
+    }
+  }
+  
+  updateSimulator();
+}
+
 void MainForm::onSimulatorStopped(void)
 {
   if (!simProxy_)
@@ -1652,17 +1812,15 @@ void MainForm::onSimulatorStopped(void)
   
   layman_->switchLayout("edit");
 
-  const Simulator * simulator = simProxy_->simulator();
-
   // disconnect actions
-  stopAct_->disconnect(simulator);
-  restartAct_->disconnect(simulator);
-  stepBackAct_->disconnect(simulator);
-  stepForeAct_->disconnect(simulator);
+  stopAct_->disconnect(simProxy_);
+  restartAct_->disconnect(simProxy_);
+  stepBackAct_->disconnect(simProxy_);
+  stepForeAct_->disconnect(simProxy_);
 
-  disconnect(simulator, SIGNAL(stateReset()), this, SLOT(updateSimulator()));
-  disconnect(simulator, SIGNAL(stateChanged()), this, SLOT(updateSimulator()));
-  disconnect(simulator, SIGNAL(stopped()), this, SLOT(onSimulatorStopped()));
+  disconnect(simProxy_, SIGNAL(started()), this, SLOT(onSimulatorStarted()));
+  disconnect(simProxy_, SIGNAL(stateChanged()), this, SLOT(updateSimulator()));
+  disconnect(simProxy_, SIGNAL(stopped()), this, SLOT(onSimulatorStopped()));
   disconnect(simProxy_, SIGNAL(locked(bool)), this, SLOT(updateSimulator()));
 
   // disable read-only modes

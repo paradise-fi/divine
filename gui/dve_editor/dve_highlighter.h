@@ -19,6 +19,9 @@
 
 class QTextDocument;
 
+/*!
+ * This class provides syntax highlighting for DVE files.
+ */
 class DveHighlighter : public QSyntaxHighlighter {
   Q_OBJECT
   public:

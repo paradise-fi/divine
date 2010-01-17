@@ -66,7 +66,7 @@ DveSimulator::~DveSimulator()
   instance_ = NULL;
 }
 
-bool DveSimulator::openFile(const QString & fileName)
+bool DveSimulator::loadFile(const QString & path)
 {
   clearSimulation();
   
@@ -76,9 +76,9 @@ bool DveSimulator::openFile(const QString & fileName)
   dve_debug_system_t * newsys = new dve_debug_system_t(err_);
   newsys->setAllocator(generator_);
   
-  fileName_ = fileName;
+  path_ = path;
   
-  if(newsys->read(fileName.toAscii().data()) != 0) {
+  if(newsys->read(path.toAscii().data()) != 0) {
     delete newsys;
     return false;
   }  
@@ -90,15 +90,18 @@ bool DveSimulator::openFile(const QString & fileName)
   return true;
 }
 
-bool DveSimulator::loadTrail(const QString & fileName)
+bool DveSimulator::loadTrail(const QString & path)
 {
-  QFile trail(fileName);
+  QFile trail(path);
   if(!trail.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Unable to open trail '%1'!").arg(fileName));
+    QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Unable to open trail '%1'!").arg(path));
     return false;
   }
 
-  restart();
+  start();
+
+  if(!isRunning())
+    return false;
 
   // load state stack quietly
   blockSignals(true);
@@ -130,11 +133,11 @@ bool DveSimulator::loadTrail(const QString & fileName)
   return true;
 }
 
-bool DveSimulator::saveTrail(const QString & fileName) const
+bool DveSimulator::saveTrail(const QString & path) const
 {
-  QFile trail(fileName);
+  QFile trail(path);
   if(!trail.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Unable to save trail '%1'!").arg(fileName));
+    QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Unable to save trail '%1'!").arg(path));
     return false;
   }
   
@@ -160,7 +163,7 @@ const SyntaxErrorList DveSimulator::errors(void)
   int x1, y1, x2, y2;
   
   SyntaxError tmp_err;
-  tmp_err.file = fileName_;
+  tmp_err.file = path_;
   
   for(int i = 0; i < err_.count(); ++i) {
     tmp_err.message = QString((*err_.string(i)).c_str()).simplified();
@@ -181,7 +184,7 @@ const SyntaxErrorList DveSimulator::errors(void)
   return res;
 }
 
-int DveSimulator::traceDepth(void) const
+int DveSimulator::stackDepth(void) const
 {
   return stack_.size();
 }
@@ -279,7 +282,7 @@ const DveSimulator::TransitionList DveSimulator::transitionSource(int tid, int s
   TransitionList res;
   TransitionPair pair;
 
-  pair.first = fileName_;
+  pair.first = path_;
   
   divine::dve_enabled_trans_t trans;
   system_->get_enabled_ith_trans(stack_[state], tid, trans);
@@ -609,6 +612,7 @@ void DveSimulator::setVariableValue(int pid, int vid, const QVariant & val)
   emit stateChanged();
 }
 
+//! Processes occured errors.
 void DveSimulator::errorHandler(void)
 {
   QString str;
@@ -637,15 +641,6 @@ void DveSimulator::start(void)
   updateAcceptingCycle();
   
   emit started();
-  emit stateReset();
-}
-
-void DveSimulator::restart(void)
-{
-  if(!isRunning())
-    return;
-
-  start();
 }
 
 void DveSimulator::stop(void)
@@ -661,13 +656,13 @@ void DveSimulator::stop(void)
 void DveSimulator::undo(void)
 {
   if(canUndo())
-    backtrace(state_ - 1);
+    backstep(state_ - 1);
 }
 
 void DveSimulator::redo(void)
 {
   if(canRedo())
-    backtrace(state_ + 1);
+    backstep(state_ + 1);
 }
 
 void DveSimulator::step(int id)
@@ -683,7 +678,7 @@ void DveSimulator::step(int id)
 
   // advance "in" stack, if possible
   if(state_ < stack_.size() - 1 && stack_[state_ + 1] == next) {
-    backtrace(state_ + 1);
+    backstep(state_ + 1);
     return;
   }
 
@@ -697,7 +692,7 @@ void DveSimulator::step(int id)
   emit stateChanged();
 }
 
-void DveSimulator::backtrace(int state)
+void DveSimulator::backstep(int state)
 {
   if(!system_ || !isRunning())
     return;

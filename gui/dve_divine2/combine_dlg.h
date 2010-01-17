@@ -25,6 +25,9 @@ namespace Ui {
   class CombineDialog;
 }
 
+/*!
+ * This class implements the combine dialog.
+ */
 class CombineDialog: public QDialog {
   Q_OBJECT
 

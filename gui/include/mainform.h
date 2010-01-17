@@ -40,8 +40,11 @@ class SimulatorProxy;
 class Simulator;
 class SourceEditor;
 class EditorBuilder;
-class SimulatorLoader;
+class SimulatorFactory;
 
+/*!
+ * The MainForm implements the main window of the application.
+ */
 class BASE_SHARED_EXPORT MainForm : public QMainWindow
 {
     Q_OBJECT
@@ -55,17 +58,21 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
 
     // API for plugins
     void registerDocument(const QString & suffix,
-                          const QString & filter, EditorBuilder * loader);
-    void registerSimulator(const QString & docType, SimulatorLoader * loader);
+                          const QString & filter, EditorBuilder * builder);
+    void registerSimulator(const QString & suffix, SimulatorFactory * loader);
     void registerPreferences(const QString & group,
-                             const QString & tab, PreferencesPage * page);
+                             const QString & tab, QWidget * page);
 
+    //! Provides access to the layout manager
     LayoutManager * layouts() {return layman_;}
+    
+    //! Provides access to the current simulator
     SimulatorProxy * simulator() {return simProxy_;}
 
     // editor access
+    int editorCount(void);
     SourceEditor * activeEditor(void);
-    SourceEditor * editor(const QString & file);
+    SourceEditor * editor(const QString & path);
     SourceEditor * editor(int index);
     const QStringList openedFiles(void) const;
     
@@ -77,7 +84,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     
   public slots:
     void newFile(const QString & hint = QString(), const QByteArray & text = QByteArray());
-    void openFile(const QString & fileName);
+    void openFile(const QString & path);
 
     void startSimulation(void);
     
@@ -89,11 +96,25 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     void onDocumentModified(SourceEditor * editor, bool state);
 
   signals:
+    //! Notifies plugins that application settings have been changed.
     void settingsChanged();
+    
+    /*!
+     * User has either switched to another tab or closed the current one.
+     * \param editor New active editor.
+     */
     void editorChanged(SourceEditor * editor);
+    
+    /*!
+     * Instance of the Simulator class has been changed (created, destroyed).
+     * \param simulator The new simulator (or NULL).
+     */
     void simulatorChanged(SimulatorProxy * simulator);
+    
+    //! Forwards message signals from other components.
     void message(const QString & msg);
     
+    //! Forwards request for highlighting specified transition.
     void highlightTransition(int id);
 
   protected:
@@ -144,7 +165,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     QAction * aboutQtAct_;
     
     QTabWidget * pageArea_;
-    QLabel * statusLabel_;       /// label showing cursor position (row / col)
+    QLabel * statusLabel_;       //!< label showing cursor position (row / col)
 
     // current simulator
     SimulatorProxy * simProxy_;
@@ -156,7 +177,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     typedef QPair<QString, QString> DocTypeInfo; // suffix, filter
     typedef QPair<DocTypeInfo, EditorBuilder*> BuilderPair;
     typedef QList<BuilderPair> BuilderList;
-    typedef QHash<QString, SimulatorLoader*> SimulatorHash;
+    typedef QHash<QString, SimulatorFactory*> SimulatorHash;
 
     BuilderList docBuilders_;
     SimulatorHash simLoaders_;
@@ -193,7 +214,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     void reloadAll();
     void print();
     void preview();
-    void closeFile(SourceEditor * editor = NULL);
+    bool closeFile(SourceEditor * editor = NULL);
     void closeAll();
     void showFindDialog();
     void showReplaceDialog();
@@ -215,6 +236,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
     void replaceAll(void);
     
     void onPrintRequested(QPrinter * printer);
+    void onSimulatorStarted(void);
     void onSimulatorStopped(void);
     void onOverwriteToggled(bool checked);
     void onWordWrapToggled(bool checked);

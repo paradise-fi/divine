@@ -22,11 +22,11 @@
 #include "mainform.h"
 #include "editor.h"
 
-DveBuilder::DveBuilder(MainForm * root) : EditorBuilder(root), root_(root)
+DveEditorBuilder::DveEditorBuilder(MainForm * root) : EditorBuilder(root), root_(root)
 {
 }
 
-void DveBuilder::install(SourceEditor * editor)
+void DveEditorBuilder::install(SourceEditor * editor)
 {
   QUrl url(editor->document()->metaInformation(QTextDocument::DocumentUrl));
   
@@ -45,7 +45,7 @@ void DveBuilder::install(SourceEditor * editor)
   editor->setCompleter(completer);
 }
 
-void DveBuilder::uninstall(SourceEditor * editor)
+void DveEditorBuilder::uninstall(SourceEditor * editor)
 {
   DveHighlighter * highlight = editor->document()->findChild<DveHighlighter*>("dveHighlighter");
   Q_ASSERT(highlight);
@@ -57,7 +57,7 @@ void DveBuilder::uninstall(SourceEditor * editor)
 void DveEditorPlugin::install(MainForm * root)
 {
   // document loaders
-  EditorBuilder * loader = new DveBuilder(root);
+  EditorBuilder * loader = new DveEditorBuilder(root);
   root->registerDocument("dve", tr("DVE files (*.dve)"), loader);
   root->registerDocument("mdve", tr("MDVE files (*.mdve)"), loader);
   
