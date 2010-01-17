@@ -1,0 +1,984 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt.css" media="screen, tv, projection" title="Default" />
+
+    <title>DiVinE Case Studies</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE</h1>
+          <div class="headerSubTitle">Distributed and Parallel Verification Environment</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+  <!-- ##### Main Copy ##### -->
+    
+   <div id="main-copy"> <h1 id="alt-layout">Experimental evaluation of DiVinE Tools</h1>
+    
+   <p>The overall goal of DiVinE is to efficiently utilize available
+   computational resoururces to complete its verification task or complete it
+   sooner. The efficiency of selected DiVinE Tools is reported in the following
+   several case studies.  </p>
+
+      <hr>
+      <h2 id="divinecluster"> DiVinE Cluster on DAS-3 </h2>
+      
+      <p>In this experiment we evaluated performance of algorithms MAP and OWCTY
+      as implemented in <b>DiVinE Cluster</b>. Our primary aim was to show that the
+      tool can scale up to 256 CPU cores. Our performance evaluation was done on
+      the Distributed ASCI Supercomputer (DAS-3), a wide-area distributed system
+      for Computer Science research in the Netherlands. The casestudy was done
+      by Kees Verstoep from VU University, Amsterdam.  </p>
+
+      <h3> Distributed ASCI Supercomputer (DAS-3) </h3>
+
+      <p>DAS-3 consists of five clusters distributed over four sites. It uses
+      Myri-10G networking technology from Myricom both as an internal high-speed
+      interconnect as well as an interface to remote DAS-3 clusters. DAS-3 is
+      largely homogeneous: every cluster uses dual-CPU AMD Opteron nodes, but
+      with different clock speeds and/or number of CPU cores.  For the purpose
+      of this experiment we employ DAS-3 cluster at VU University, which has the
+      largest number of compute nodes and cores (85 nodes with a dual-cpu,
+      dual-core 2.4 GHz AMD Opterons).</p>
+
+      
+      <p> Intitial experiments on DAS-3 were performed with DiVinE Cluster
+      version 0.7.2 that contained several performance flaws due to which an
+      efficient usage of the tool was limited to clusters with small number of
+      nodes (less than 20). However, we succeed to optimize the tool to
+      efficently employ much larger number of cores that were available on DAS-3
+      system. The optimized implementation reffered below corresponds to the
+      DiVinE Cluster version 0.8 (will be released shortly).  </p>
+
+      <h3> Experiments on Scalability and Efficiency</h3>
+
+      <p>First, we show graphs depicting the scalability of unoptimized and
+      optimized implementations. For the purpose of this experiment, we run
+      DiVinE Cluster on <tt>anderson.8.prop.dve</tt> model from <a
+      href="http://anna.fi.muni.cz/models">BEEM</a> database.  Each line in the
+      graphs below shows scalability for the given number of nodes when using 1
+      core per node, 2 cores per node, and 4 cores per node.  </p>
+
+      <p>
+      <font size="+1">
+      <table align=center>
+     <td> <b>MAP Scalability</b></td> 
+     <td width=50px></td>
+     <td> <b> OWCTY Scalability</b> </td></tr>
+      
+      <tr> <td valign=center> <img src="pics/anderson-time-scale-MAP.png" width=400 height=300> </td>
+           <td width=50px></td>
+           <td valign=center> <img src="pics/anderson-time-scale-OWCTY.png" width=400 height=300> </td>
+      </tr>
+      </table>
+      </font>
+
+      <p> To get an estimate on the efficiency of MAP and OWCTY, we ran
+      single-core versions on a special DAS-3/VU node equipped with 16GB memory
+      (the regular compute nodes have 4GB, which is insufficient to store the
+      state space there). The efficiencies of optimized implementations are
+      quite good even for 256 cores. In particular, MAP on a single core took
+      1052.5 sec; the runtimes on 64, 128, and 256 cores are 23.0, 13.1, and 8.9
+      sec, giving efficiencies of 72%, 63% and 46%, respectively.  OWCTY on a
+      single core took 631.7 sec; the runtime on 64, 128, and 256 cores are
+      13.3, 7.4 and 5.0 sec, giving efficiencies of 74%, 67% and 49%,
+      respectively.  The results are shown in the two following tables.  </p>      
+
+      <font size="+1">
+      <table align=center>
+      <tr> 
+      <td> <b>MAP Efficiency</b></td> 
+      <td width=50px></td>
+      <td> <b> OWCTY Efficiency</b> </td></tr>
+      
+      <tr> <td>     
+      <table rules=all frame>
+      <tr><td> Cores </td><td> Runtime (sec) </td><td> Efficiency </td></tr>
+      <tr><td>1   </td><td> 1052.5 </td><td> 100% </td></tr>
+      <tr><td>64  </td><td>   23.0 </td><td>  72% </td></tr>
+      <tr><td>128 </td><td>   13.1 </td><td>  63% </td></tr>
+      <tr><td>256 </td><td>    8.9 </td><td>  46% </td></tr>
+      </table></td>
+
+      <td></td>
+
+      <td>      <table rules=all frame>
+      <tr><td> Cores </td><td> Runtime (sec) </td><td> Efficiency </td></tr>
+      <tr><td>1   </td><td>  631.7 </td><td> 100% </td></tr>
+      <tr><td>64  </td><td>   13.3 </td><td>  74% </td></tr>
+      <tr><td>128 </td><td>    7.4 </td><td>  67% </td></tr>
+      <tr><td>256 </td><td>    5.0 </td><td>  49% </td></tr>
+      </table></td>
+      </tr>
+      </table>
+      </font>
+
+      <br/>
+
+      <h3> Measuring Network Throughput </h3>
+
+      <p> The following graphs illustrate the effect of the improvements on the
+      applications' throughput as a function of their runtime.  In this case a
+      larger instance of the Anderson problem was used to obtain a higher
+      resolution graph.
+
+      <p>
+      <font size="+1">
+      <table align=center>
+      <td> <b>MAP Throughput</b></td> 
+      <td width=50px></td>
+      <td> <b> OWCTY Throughput</b> </td></tr>
+      
+      <tr> <td valign=center> 
+           <img src="pics/anderson-throughput-MAP.png" width=400 height=300> </td>
+           <td width=50px></td>
+           <td valign=center> 
+	   <img src="pics/anderson-throughput-OWCTY.png" width=400 height=300> </td>
+      </tr>
+      </table>
+      </font>
+
+      <br/><br/>
+      <br/><br/>
+
+      <hr>
+      <h2 id="divinemc"> DiVinE Multi-Core Performance Evaluation </h2>
+
+      <p> The following tables reports on selected runtimes for Reachability and
+      LTL model checking verification tasks performed using <b>DiVinE Multi-Core
+      version 1.1</b>. You may also be interested in the table with <a
+      href="http://anna.fi.muni.cz/~xbarnat/experiments/index.php">all
+      experiments</a>.
+
+      <p> Reported runtimes are in seconds (rounded). All models come from the
+      <a href="http://anna.fi.muni.cz/models">BEEM database</a>. The
+      meassurements were performed for two different architectures:
+
+      <table cellpadding=3> 
+      <tr><td> <b>manwe</b>: <td> 8x Dual Core AMD Opteron(tm) Processor 885
+      <tr><td> <b>pheme</b>: <td> 2x Intel Xeon CPU 5130 @ 2.00GHz
+      </table>
+      </p>
+
+      <p> The value <font color=red><b>X</b></font> denotes that the
+      corresponding experiment didn't complete (memory overflow).<br/> The value
+      <font color=blue> <b>--</b> </font> denotes that the corresponding
+      experiment was not performed.<br/> The <b><font color="green">!</font></b>
+      next to time means that a counterexample has been found before exploring
+      full state space of the model.<br/> 
+      </p>
+      
+      <h3> Reachability (generation of all reachable states)</h3>
+
+      <table width="100%" frame=1 rules=all cellpadding=3> <tr><td align=left
+      width=100px><b> Model </b><td width=1pt><td align=center><b>divine @
+      manwe_64bit</b><br/><br/><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1 core</td><td align=center
+      width="20%">2 cores</td><td align=center width="20%">4 cores</td><td
+      align=center width="20%">8 cores</td><td align=center width="20%">16
+      cores</td></tr></table><td width=1pt><td align=center><b>divine @
+      pheme_64bit</b><br/><br/><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1 core</td><td align=center
+      width="25%">2 cores</td><td align=center width="25%">3 cores</td><td
+      align=center width="25%">4 cores</td></tr></table></tr>
+      
+      <tr><td><table width="100%"><td align=left>anderson.6</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:29</td><td align=center
+      width="20%">1:22</td><td align=center width="20%">1:05</td><td
+      align=center width="20%">27</td><td align=center
+      width="20%">16</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">2:11</td><td align=center
+      width="25%">1:11</td><td align=center width="25%">51</td><td align=center
+      width="25%">55</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>at.6</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">25:40</td><td align=center
+      width="20%">14:08</td><td align=center width="20%">7:55</td><td
+      align=center width="20%">4:12</td><td align=center
+      width="20%">2:16</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">20:04</td><td align=center
+      width="25%">11:29</td><td align=center width="25%">8:44</td><td
+      align=center width="25%">6:42</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>at.7</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:49:29 <font
+      color=red><b>X</b></font></td><td align=center width="20%">25:28 <font
+      color=red><b>X</b></font></td><td align=center width="20%">16:28 <font
+      color=red><b>X</b></font></td><td align=center width="20%">11:44 <font
+      color=red><b>X</b></font></td><td align=center width="20%">13:18 <font
+      color=red><b>X</b></font></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">34:52 <font color=red><b>X</b></font></td><td
+      align=center width="25%">5:14 <font color=red><b>X</b></font></td><td
+      align=center width="25%">3:17 <font color=red><b>X</b></font></td><td
+      align=center width="25%">2:48 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>bakery.6</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:35</td><td align=center
+      width="20%">44</td><td align=center width="20%">23</td><td align=center
+      width="20%">14</td><td align=center width="20%">8</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1:16</td><td align=center
+      width="25%">37</td><td align=center width="25%">26</td><td align=center
+      width="25%">20</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>blocks.4</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">16:29</td><td align=center
+      width="20%">9:13</td><td align=center width="20%">4:44</td><td
+      align=center width="20%">2:39</td><td align=center
+      width="20%">1:25</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">13:05</td><td align=center
+      width="25%">7:15</td><td align=center width="25%">4:56</td><td
+      align=center width="25%">4:01</td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>cambridge.7</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">3:07</td><td align=center
+      width="20%">1:41</td><td align=center width="20%"><font color=blue>
+      <b>--</b> </font></td><td align=center width="20%">33</td><td align=center
+      width="20%">22</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">2:46</td><td align=center
+      width="25%">1:29</td><td align=center width="25%">1:26</td><td
+      align=center width="25%">58</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>elevator.5</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">30:39</td><td align=center
+      width="20%">24:29</td><td align=center width="20%">18:22</td><td
+      align=center width="20%">19:17</td><td align=center
+      width="20%">18:46</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">24:17 <font color=red><b>X</b></font></td><td
+      align=center width="25%">18:40 <font color=red><b>X</b></font></td><td
+      align=center width="25%">14:20 <font color=red><b>X</b></font></td><td
+      align=center width="25%">14:08 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>elevator_planning.2</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:17</td><td align=center
+      width="20%">1:08</td><td align=center width="20%">33</td><td align=center
+      width="20%">16</td><td align=center width="20%">9</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">2:02</td><td align=center
+      width="25%">1:01</td><td align=center width="25%">42</td><td align=center
+      width="25%">31</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>firewire_link.6</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:15:04 <font
+      color=red><b>X</b></font></td><td align=center width="20%">1:52:44 <font
+      color=red><b>X</b></font></td><td align=center width="20%">30:47 <font
+      color=red><b>X</b></font></td><td align=center width="20%">12:53 <font
+      color=red><b>X</b></font></td><td align=center width="20%">5:19 <font
+      color=red><b>X</b></font></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">34:43 <font color=red><b>X</b></font></td><td
+      align=center width="25%">20:05 <font color=red><b>X</b></font></td><td
+      align=center width="25%">7:21 <font color=red><b>X</b></font></td><td
+      align=center width="25%">6:51 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>frogs.5</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">51:13</td><td align=center
+      width="20%">19:59</td><td align=center width="20%">10:19</td><td
+      align=center width="20%">5:15</td><td align=center
+      width="20%">3:06</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">35:03</td><td align=center
+      width="25%">15:06</td><td align=center width="25%">11:03</td><td
+      align=center width="25%">8:14</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>iprotocol.7</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">7:41</td><td align=center
+      width="20%">4:11</td><td align=center width="20%">2:11</td><td
+      align=center width="20%">1:12</td><td align=center
+      width="20%">40</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">6:34</td><td align=center width="25%"><font
+      color=blue> <b>--</b> </font></td><td align=center
+      width="25%">3:11</td><td align=center
+      width="25%">2:17</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lamport.8</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">9:07</td><td align=center
+      width="20%">4:51</td><td align=center width="20%">2:30</td><td
+      align=center width="20%">1:23</td><td align=center
+      width="20%">43</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">7:23</td><td align=center
+      width="25%">4:04</td><td align=center width="25%">2:44</td><td
+      align=center width="25%">2:12</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lann.7</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">35:50</td><td align=center
+      width="20%">18:18</td><td align=center width="20%">9:38</td><td
+      align=center width="20%">5:16</td><td align=center
+      width="20%">2:46</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">29:04</td><td align=center
+      width="25%">14:45</td><td align=center width="25%">10:37</td><td
+      align=center width="25%">10:48</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lann.8</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:12:03 <font
+      color=red><b>X</b></font></td><td align=center width="20%">32:43 <font
+      color=red><b>X</b></font></td><td align=center width="20%">15:50 <font
+      color=red><b>X</b></font></td><td align=center width="20%">0 <font
+      color=red><b>X</b></font></td><td align=center width="20%">5:11 <font
+      color=red><b>X</b></font></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">24:23 <font color=red><b>X</b></font></td><td
+      align=center width="25%">8:05 <font color=red><b>X</b></font></td><td
+      align=center width="25%">4:59 <font color=red><b>X</b></font></td><td
+      align=center width="25%">4:06 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>leader_filters.6</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">25:03</td><td align=center
+      width="20%">12:40</td><td align=center width="20%">5:53</td><td
+      align=center width="20%">3:09</td><td align=center
+      width="20%">1:43</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">17:40 <font color=red><b>X</b></font></td><td
+      align=center width="25%">8:31 <font color=red><b>X</b></font></td><td
+      align=center width="25%">6:53</td><td align=center width="25%">4:24 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>loyd.3</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:04:03</td><td
+      align=center width="20%">30:03</td><td align=center
+      width="20%">13:49</td><td align=center width="20%">7:20</td><td
+      align=center width="20%">3:33</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">41:42</td><td align=center
+      width="25%">11:37 <font color=red><b>X</b></font></td><td align=center
+      width="25%">5:38 <font color=red><b>X</b></font></td><td align=center
+      width="25%">6:47 <font color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>peg_solitaire.3</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">15:06:33 <font
+      color=red><b>X</b></font></td><td align=center width="20%">3:30:19 <font
+      color=red><b>X</b></font></td><td align=center width="20%">1:12:51 <font
+      color=red><b>X</b></font></td><td align=center width="20%">31:56 <font
+      color=red><b>X</b></font></td><td align=center width="20%">13:04 <font
+      color=red><b>X</b></font></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">2:22:41 <font color=red><b>X</b></font></td><td
+      align=center width="25%">34:44 <font color=red><b>X</b></font></td><td
+      align=center width="25%">19:48 <font color=red><b>X</b></font></td><td
+      align=center width="25%">14:44 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>peterson.7</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">24:00</td><td align=center
+      width="20%">11:38</td><td align=center width="20%">6:14</td><td
+      align=center width="20%">3:11</td><td align=center
+      width="20%">1:48</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">19:06</td><td align=center
+      width="25%">9:22</td><td align=center width="25%">6:41</td><td
+      align=center width="25%">5:21</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>phils.8</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">14:10</td><td align=center
+      width="20%">7:55</td><td align=center width="20%">4:13</td><td
+      align=center width="20%">2:28</td><td align=center
+      width="20%">1:41</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">11:04</td><td align=center width="25%">4:40 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:25 <font
+      color=red><b>X</b></font></td><td align=center width="25%">1:41 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>sokoban.3</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">13:55</td><td align=center
+      width="20%">12:22</td><td align=center width="20%">12:24</td><td
+      align=center width="20%">12:24</td><td align=center
+      width="20%">13:42</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">10:09 <font color=red><b>X</b></font></td><td
+      align=center width="25%">10:16 <font color=red><b>X</b></font></td><td
+      align=center width="25%">10:09 <font color=red><b>X</b></font></td><td
+      align=center width="25%">10:15 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>szymanski.5</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">13:05</td><td align=center
+      width="20%">6:19</td><td align=center width="20%">4:44</td><td
+      align=center width="20%">3:08</td><td align=center
+      width="20%">2:23</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">11:08</td><td align=center
+      width="25%">5:35</td><td align=center width="25%">6:11</td><td
+      align=center width="25%">4:21</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>telephony.5</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:53:48</td><td
+      align=center width="20%">43:39 <font color=red><b>X</b></font></td><td
+      align=center width="20%">32:26</td><td align=center
+      width="20%">17:33</td><td align=center
+      width="20%">9:20</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">40:07 <font color=red><b>X</b></font></td><td
+      align=center width="25%">6:18 <font color=red><b>X</b></font></td><td
+      align=center width="25%">3:41 <font color=red><b>X</b></font></td><td
+      align=center width="25%">3:34 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>train-gate.7</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">6:00</td><td align=center
+      width="20%">5:02</td><td align=center width="20%">1:56</td><td
+      align=center width="20%">1:09</td><td align=center
+      width="20%">36</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">5:09</td><td align=center
+      width="25%">2:46</td><td align=center width="25%"><font color=blue>
+      <b>--</b> </font></td><td align=center
+      width="25%">2:18</td></tr></table></tr>
+
+</table>
+<br/>
+
+      <h3> LTL Model checking </h3>
+
+      <table width="100%" frame=1 rules=all cellpadding=3> 
+
+      <tr><td align=left width=100px><b> Model </b><td width=1pt><td
+      align=center><b>divine @ manwe_64bit</b><br/><br/><table width="100%"
+      rules=all cellpadding=1><tr><td align=center width="20%">1 core</td><td
+      align=center width="20%">2 cores</td><td align=center width="20%">4
+      cores</td><td align=center width="20%">8 cores</td><td align=center
+      width="20%">16 cores</td></tr></table><td width=1pt><td
+      align=center><b>divine @ pheme_64bit</b><br/><br/><table width="100%"
+      rules=all cellpadding=1><tr><td align=center width="25%">1 core</td><td
+      align=center width="25%">2 cores</td><td align=center width="25%">3
+      cores</td><td align=center width="25%">4 cores</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>anderson.6.prop2<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">8:40</td><td align=center
+      width="20%">4:57</td><td align=center width="20%">3:30</td><td
+      align=center width="20%">2:10</td><td align=center
+      width="20%">1:30</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">7:14</td><td align=center
+      width="25%">4:05</td><td align=center width="25%">3:07</td><td
+      align=center width="25%">2:52</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>anderson.6.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">11:41</td><td align=center
+      width="20%">6:27</td><td align=center width="20%">4:46</td><td
+      align=center width="20%">2:45</td><td align=center
+      width="20%">1:56</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">9:39</td><td align=center
+      width="25%">5:23</td><td align=center width="25%">4:10</td><td
+      align=center width="25%">3:56</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>elevator.5.prop3<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">49:21</td><td align=center
+      width="20%">38:16</td><td align=center width="20%">29:56</td><td
+      align=center width="20%">30:45</td><td align=center
+      width="20%">32:04</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">16:35 <font color=red><b>X</b></font></td><td
+      align=center width="25%">10:44 <font color=red><b>X</b></font></td><td
+      align=center width="25%">7:05 <font color=red><b>X</b></font></td><td
+      align=center width="25%">7:15 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>elevator2.3.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">9:27</td><td align=center
+      width="20%">5:40</td><td align=center width="20%">3:28</td><td
+      align=center width="20%">2:07</td><td align=center
+      width="20%">1:35</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">8:18</td><td align=center
+      width="25%">4:51</td><td align=center width="25%">3:50</td><td
+      align=center width="25%">3:05</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>elevator2.3a.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:29</td><td align=center
+      width="20%">56</td><td align=center width="20%">35</td><td align=center
+      width="20%">21</td><td align=center width="20%">14</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1:18</td><td align=center
+      width="25%">47</td><td align=center width="25%">34</td><td align=center
+      width="25%">29</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lamport.7.prop4<td align=right>
+      (<span style="color: green;">valid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">23:12</td><td align=center
+      width="20%">13:23</td><td align=center width="20%">8:10</td><td
+      align=center width="20%">5:16</td><td align=center
+      width="20%">3:39</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">19:41</td><td align=center
+      width="25%">10:58</td><td align=center width="25%">8:28</td><td
+      align=center width="25%">6:49</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lann.8.prop2<td align=right>
+      (n/a)</table><td width=1pt><td align=center bgcolor="#FFFFFF"><table
+      width="100%" rules=all cellpadding=1><tr><td align=center
+      width="20%">1:26:43 <font color=red><b>X</b></font></td><td align=center
+      width="20%">20:32 <font color=red><b>X</b></font></td><td align=center
+      width="20%">10:03 <font color=red><b>X</b></font></td><td align=center
+      width="20%">6:04 <font color=red><b>X</b></font></td><td align=center
+      width="20%">0 <font color=red><b>X</b></font></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">21:17 <font
+      color=red><b>X</b></font></td><td align=center width="25%">5:13 <font
+      color=red><b>X</b></font></td><td align=center width="25%">3:16 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:40 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>lann.8.prop3<td align=right>
+      (n/a)</table><td width=1pt><td align=center bgcolor="#FFFFFF"><table
+      width="100%" rules=all cellpadding=1><tr><td align=center
+      width="20%">1:32:48 <font color=red><b>X</b></font></td><td align=center
+      width="20%">20:01 <font color=red><b>X</b></font></td><td align=center
+      width="20%">9:46 <font color=red><b>X</b></font></td><td align=center
+      width="20%">6:00 <font color=red><b>X</b></font></td><td align=center
+      width="20%">3:09 <font color=red><b>X</b></font></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">22:49 <font
+      color=red><b>X</b></font></td><td align=center width="25%">5:10 <font
+      color=red><b>X</b></font></td><td align=center width="25%">3:07 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:36 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>leader_election.5.prop2<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">4:45</td><td align=center
+      width="20%">3:34</td><td align=center width="20%">2:09</td><td
+      align=center width="20%">1:11</td><td align=center
+      width="20%">47</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">4:17</td><td align=center width="25%"><font
+      color=blue> <b>--</b> </font></td><td align=center
+      width="25%">2:01</td><td align=center
+      width="25%">1:53</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>leader_election.6.prop2<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">43:00</td><td align=center
+      width="20%"><font color=blue> <b>--</b> </font></td><td align=center
+      width="20%">16:16</td><td align=center width="20%">10:49</td><td
+      align=center width="20%">8:28</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">38:36</td><td align=center
+      width="25%">12:08 <font color=red><b>X</b></font></td><td align=center
+      width="25%">5:40 <font color=red><b>X</b></font></td><td align=center
+      width="25%">6:13 <font color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>leader_filters.6.prop2<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:06:16</td><td
+      align=center width="20%">37:05</td><td align=center
+      width="20%">21:42</td><td align=center width="20%">15:54</td><td
+      align=center width="20%">11:06</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">12:35 <font
+      color=red><b>X</b></font></td><td align=center width="25%">5:03 <font
+      color=red><b>X</b></font></td><td align=center width="25%">3:16 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:33 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>leader_filters.7.prop2<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">9:04</td><td align=center
+      width="20%">5:10</td><td align=center width="20%">3:08</td><td
+      align=center width="20%">2:25</td><td align=center
+      width="20%">1:45</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">7:34</td><td align=center width="25%"><font
+      color=blue> <b>--</b> </font></td><td align=center
+      width="25%">3:23</td><td align=center
+      width="25%">2:53</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>mcs.5.prop4<td align=right>
+      (<span style="color: green;">valid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">36:36</td><td align=center
+      width="20%">22:42</td><td align=center width="20%">13:27</td><td
+      align=center width="20%">8:36</td><td align=center
+      width="20%">6:14</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">31:06</td><td align=center width="25%">10:53
+      <font color=red><b>X</b></font></td><td align=center width="25%">8:56
+      <font color=red><b>X</b></font></td><td align=center width="25%">7:26
+      <font color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>peterson.5.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:38:18</td><td
+      align=center width="20%">52:58</td><td align=center
+      width="20%">32:12</td><td align=center width="20%">20:20</td><td
+      align=center width="20%">13:35</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">26:06 <font
+      color=red><b>X</b></font></td><td align=center width="25%">4:27 <font
+      color=red><b>X</b></font></td><td align=center width="25%">3:09 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:45 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>peterson.7.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:51:46</td><td
+      align=center width="20%">58:48</td><td align=center
+      width="20%">36:18</td><td align=center width="20%">22:40</td><td
+      align=center width="20%">15:41</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">26:22 <font
+      color=red><b>X</b></font></td><td align=center width="25%">7:49 <font
+      color=red><b>X</b></font></td><td align=center width="25%">5:55 <font
+      color=red><b>X</b></font></td><td align=center width="25%">4:19 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>public_subscribe.5.prop1<td
+      align=right> (n/a)</table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="20%">1:20:41 <font color=red><b>X</b></font></td><td
+      align=center width="20%">22:36 <font color=red><b>X</b></font></td><td
+      align=center width="20%">10:17 <font color=red><b>X</b></font></td><td
+      align=center width="20%">5:13 <font color=red><b>X</b></font></td><td
+      align=center width="20%">2:41 <font
+      color=red><b>X</b></font></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">20:30 <font color=red><b>X</b></font></td><td
+      align=center width="25%">5:41 <font color=red><b>X</b></font></td><td
+      align=center width="25%">3:29 <font color=red><b>X</b></font></td><td
+      align=center width="25%">2:37 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>rether.5.prop5<td align=right>
+      (<span style="color: green;">valid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:27</td><td align=center
+      width="20%">1:00</td><td align=center width="20%">32</td><td align=center
+      width="20%">22</td><td align=center width="20%">20</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1:15</td><td align=center
+      width="25%"><font color=blue> <b>--</b> </font></td><td align=center
+      width="25%">39</td><td align=center width="25%">28</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>rether.7.prop5<td align=right>
+      (<span style="color: green;">valid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:22</td><td align=center
+      width="20%">1:12</td><td align=center width="20%">58</td><td align=center
+      width="20%">38</td><td align=center width="20%">27</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">2:06</td><td align=center
+      width="25%">1:05</td><td align=center width="25%">58</td><td align=center
+      width="25%">55</td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>szymanski.4.prop4<td
+      align=right> (<span style="color: green;">valid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:20</td><td align=center
+      width="20%">51</td><td align=center width="20%">39</td><td align=center
+      width="20%">33</td><td align=center width="20%">28</td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1:09</td><td align=center
+      width="25%">43</td><td align=center width="25%">39</td><td align=center
+      width="25%">35</td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>anderson.3.prop2<td
+      align=right> (<span style="color: red;">invalid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">35:57</td><td align=center
+      width="20%"><font color=blue> <b>--</b> </font></td><td align=center
+      width="20%">14:34</td><td align=center width="20%">10:26</td><td
+      align=center width="20%">8:20</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%"><font color=blue> <b>--</b>
+      </font></td><td align=center width="25%"><font color=blue> <b>--</b>
+      </font></td><td align=center width="25%"><font color=blue> <b>--</b>
+      </font></td><td align=center width="25%"><font color=blue> <b>--</b>
+      </font></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>at.4.prop2<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">3:33</td><td align=center
+      width="20%">14 <b><font color="green">!</font></b></td><td align=center
+      width="20%">3 <b><font color="green">!</font></b></td><td align=center
+      width="20%">2 <b><font color="green">!</font></b></td><td align=center
+      width="20%">1 <b><font color="green">!</font></b></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">2:50</td><td align=center
+      width="25%">12 <b><font color="green">!</font></b></td><td align=center
+      width="25%">2 <b><font color="green">!</font></b></td><td align=center
+      width="25%">0 <b><font color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>bakery.5.prop2<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">4:00</td><td align=center
+      width="20%"><font color=blue> <b>--</b> </font></td><td align=center
+      width="20%">1:31</td><td align=center width="20%">1:02</td><td
+      align=center width="20%">43</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">3:18</td><td align=center
+      width="25%">1:49</td><td align=center width="25%">1:21</td><td
+      align=center width="25%">1:10</td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>bakery.6.prop2<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">7:06</td><td align=center
+      width="20%">10 <b><font color="green">!</font></b></td><td align=center
+      width="20%">1 <b><font color="green">!</font></b></td><td align=center
+      width="20%">0 <b><font color="green">!</font></b></td><td align=center
+      width="20%">3 <b><font color="green">!</font></b></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">5:46</td><td align=center
+      width="25%">9 <b><font color="green">!</font></b></td><td align=center
+      width="25%">1 <b><font color="green">!</font></b></td><td align=center
+      width="25%">2 <b><font color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>elevator.5.prop2<td
+      align=right> (<span style="color: red;">invalid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:28:30</td><td
+      align=center width="20%">1:12:42</td><td align=center width="20%">2:48
+      <b><font color="green">!</font></b></td><td align=center width="20%">1:08
+      <b><font color="green">!</font></b></td><td align=center width="20%">4
+      <b><font color="green">!</font></b></td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">17:07 <font
+      color=red><b>X</b></font></td><td align=center width="25%">7:29 <font
+      color=red><b>X</b></font></td><td align=center width="25%">6:22 <font
+      color=red><b>X</b></font></td><td align=center width="25%">2:23 <b><font
+      color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>iprotocol.4.prop4<td
+      align=right> (<span style="color: red;">invalid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">3:09</td><td align=center
+      width="20%">2:11</td><td align=center width="20%">1:29</td><td
+      align=center width="20%">10 <b><font color="green">!</font></b></td><td
+      align=center width="20%">54</td></tr></table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">2:36</td><td align=center
+      width="25%">1:34</td><td align=center width="25%">1:20</td><td
+      align=center width="25%">1:11</td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>lamport.6.prop2<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">2:06 <b><font
+      color="green">!</font></b></td><td align=center width="20%">8 <b><font
+      color="green">!</font></b></td><td align=center width="20%">0 <b><font
+      color="green">!</font></b></td><td align=center width="20%">0 <b><font
+      color="green">!</font></b></td><td align=center width="20%">0 <b><font
+      color="green">!</font></b></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">1:41 <b><font color="green">!</font></b></td><td
+      align=center width="25%">7 <b><font color="green">!</font></b></td><td
+      align=center width="25%">0 <b><font color="green">!</font></b></td><td
+      align=center width="25%">0 <b><font
+      color="green">!</font></b></td></tr></table></tr>
+
+
+
+      <tr><td><table width="100%"><td align=left>lann.6.prop3<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:57:49</td><td
+      align=center width="20%">24:56 <b><font color="green">!</font></b></td><td
+      align=center width="20%">39:44</td><td align=center
+      width="20%">26:21</td><td align=center
+      width="20%">19:18</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">25:22 <font color=red><b>X</b></font></td><td
+      align=center width="25%">7:05 <font color=red><b>X</b></font></td><td
+      align=center width="25%">5:33 <font color=red><b>X</b></font></td><td
+      align=center width="25%">4:20 <font
+      color=red><b>X</b></font></td></tr></table></tr>
+
+      <tr><td><table width="100%"><td align=left>peterson.5.prop2<td
+      align=right> (<span style="color: red;">invalid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:43:02</td><td
+      align=center width="20%">14:20 <b><font color="green">!</font></b></td><td
+      align=center width="20%">36:16</td><td align=center
+      width="20%">23:49</td><td align=center
+      width="20%">17:14</td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">27:27 <font color=red><b>X</b></font></td><td
+      align=center width="25%">4:23 <font color=red><b>X</b></font></td><td
+      align=center width="25%">2:21 <b><font color="green">!</font></b></td><td
+      align=center width="25%">1:40 <b><font
+      color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>phils.6.prop2<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">6:46</td><td align=center
+      width="20%">2:39 <b><font color="green">!</font></b></td><td align=center
+      width="20%">52 <b><font color="green">!</font></b></td><td align=center
+      width="20%">3 <b><font color="green">!</font></b></td><td align=center
+      width="20%">0 <b><font color="green">!</font></b></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">5:42</td><td align=center
+      width="25%">2:21 <b><font color="green">!</font></b></td><td align=center
+      width="25%">1:16 <b><font color="green">!</font></b></td><td align=center
+      width="25%">50 <b><font color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>szymanski.5.prop2<td
+      align=right> (<span style="color: red;">invalid</span>)</table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:00:52</td><td
+      align=center width="20%">7:34 <b><font color="green">!</font></b></td><td
+      align=center width="20%">1:20 <b><font color="green">!</font></b></td><td
+      align=center width="20%">8 <b><font color="green">!</font></b></td><td
+      align=center width="20%">3 <b><font
+      color="green">!</font></b></td></tr></table><td width=1pt><td align=center
+      bgcolor="#FFFFFF"><table width="100%" rules=all cellpadding=1><tr><td
+      align=center width="25%">23:59 <font color=red><b>X</b></font></td><td
+      align=center width="25%">6:32 <b><font color="green">!</font></b></td><td
+      align=center width="25%">3:36 <b><font color="green">!</font></b></td><td
+      align=center width="25%">54 <b><font
+      color="green">!</font></b></td></tr></table></tr>
+
+
+      <tr><td><table width="100%"><td align=left>rether.5.prop6<td align=right>
+      (<span style="color: red;">invalid</span>)</table><td width=1pt><td
+      align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="20%">1:34</td><td align=center
+      width="20%">2 <b><font color="green">!</font></b></td><td align=center
+      width="20%">0 <b><font color="green">!</font></b></td><td align=center
+      width="20%">0 <b><font color="green">!</font></b></td><td align=center
+      width="20%">0 <b><font color="green">!</font></b></td></tr></table><td
+      width=1pt><td align=center bgcolor="#FFFFFF"><table width="100%" rules=all
+      cellpadding=1><tr><td align=center width="25%">1:20</td><td align=center
+      width="25%">2 <b><font color="green">!</font></b></td><td align=center
+      width="25%">0 <b><font color="green">!</font></b></td><td align=center
+      width="25%">0 <b><font color="green">!</font></b></td></tr></table></tr>
+
+
+</table>
+      
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Tuesday, 7-Oct-2008 12:40 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

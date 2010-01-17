@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt.css" media="screen, tv, projection" title="Default" />
+
+    <title>Divine Cluster</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE CLUSTER</h1>
+          <div class="headerSubTitle">Parallel Distributed-Memory LTL Model Checker</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+ 
+    <!-- ##### Main Copy ##### -->
+
+      <div id="main-copy">
+      
+      <h1>DiVinE Cluster</h1>
+
+      <h2> Description </h2>
+
+      <p> DiVinE Cluster is a parallel, distributed-memory enumerative
+      LTL model-checking tool for verification of concurrent systems. The tool can
+      employ aggregate power of network-interconnected workstations or clusters
+      to verify systems whose verification is beyond capabilities of sequential
+      tools. As a standard model-checker, DiVinE Cluster can be used to prove
+      correctness of verification models as well as to detect early design
+      errors.  </p>
+
+
+      <p> DiVinE Cluster accepts models written in <a
+      href="language.html">DiVinE native modeling language - DVE</a>,
+      and verifies them against specification formalized in Linear Temporal
+      Logic. Moreover, DiVinE Cluster provides means for the detection of
+      unreachable code, assertion violation, or deadlock.
+
+      <p>DiVinE Cluster has also limited support for ProMeLa, that is the
+      modeling language of the verification tool SPIN. This capability makes
+      DiVinE Tool an ideal alternative to SPIN's users whose models cannot be
+      directly verified with SPIN because of insufficient memory resources of a
+      single computer. The restrictions for using DiVinE Cluster with ProMeLa
+      models are incapability of generating counterexamples, performing Partial
+      Order Reduction, verifying unreachable code and assertion violation.
+
+<h2>Algorithms</h2>
+
+<p>DiVinE comes up with <b>new algorithms</b> for parallel accepting cycle
+detection problem which work on the graph that is partitioned into disjoint
+parts. Currently, DiVinE implements the following LTL parallel algorithms (for
+detailed references see <a href="publications.html">Publications</a>):
+
+<ul>
+                  
+<li><a
+href="http://anna.fi.muni.cz/papers/src/public/8e583540bbfaef57032bb33e14e2c733.pdf"
+class="localLink">
+                           Algorithm based on dependency structure</a>.
+
+<p>[Barnat and L. Brim and J.
+                 Stribrna: 
+Distributed LTL Model-Checking 
+                 in SPIN. 
+Proc. SPIN Workshop on Model Checking of Software, Springer, 2001, volume
+2057 of LNCS, 200 - 216.]</p>
+
+<p>The algorithm performs partitioned
+depth-first search of the state space and is augmented with an additional data
+structure that keeps the global DFS postorder. 
+                     </p> 
+                     
+ </li>
+<li><a href="../publications/fsttcs01.pdf" class="localLink"> 
+                           Algorithm based on negative cycles</a>
+                     	
+<p>The LTL model checking problem is reduced to the negative cycle problem. The
+idea is to introduce an additional edge labeling function that assigns value -1
+to edges outgoing from accepting states and value 0 to all other edges. In this
+way, accepting cycles coincide with negative cycles. A single source shortest
+path algorithm is than engaged to identify negative cycles.
+                     </p>
+</li>
+
+<li><a href="../publications/vcl02.pdf" class="localLink">
+
+                           Property Driven Nested DFS</a>
+                     
+<p>The algorithm effectively uses the decomposition of the formula automaton
+into strongly connected components to achieve more efficient parallelization of
+nested depth-first search procedure.</p>
+                     
+</li>
+<li><a href="../publications/spin03.pdf" class="localLink"> 
+                           SCC-based algorithm</a> (OWCTY)
+                     
+<p>The algorithm manipulates strongly connected components. A SCC decomposition
+is replaced by an iterative process in which non-perspective components (i.e.,
+those which do not contain any accepting cycle) are removed from the state
+space.  </p> </li>
+
+<li><a href="../publications/ase03.pdf" class="localLink"> 
+                           Algorithm based on back-level edges</a>
+                     	
+<p>A completely different algorithmic solution based on breadth-first search
+(BFS) is presented in [ <a href="../publications/ase03.pdf"
+class="localLink">barnat03parallel</a>, <a href="../publications/fmics04.pdf"
+class="localLink">bc04fmics</a>]. It is based on a back-level edge
+concept. Back-level edge is any edge which does not increase the breadth-first
+search distance from the initial state. BFS is used to identify all back-level
+edges. As every cycle contains at least oneback-level edge, these can be used as
+triggers for detecting cycles.</p>
+</li>
+
+<li><a href="../publications/fmcad04.pdf" class="localLink"> 
+                           Algorithm based on maximal accepting predecessors</a> (MAP)
+
+                     	
+<p>The algorithm introduces an ordering on accepting states and relies on fact
+that there is a maximal accepting state on each accepting cycle. The algorithm
+computes and propagates the value of maximal accepting predecessor. Once an
+accepting state is propagated to itself, an accepting cycle is
+revealed. Otherwise the set of accepting states is modified and a new iteration
+is started.  </p> </li> </ul>
+
+ <h2 id="download"> Download </h2>
+               
+ <p>The latest release of DiVinE Cluster and install instructions can be found
+ <a href="http://divine.fi.muni.cz/page.php?page=download"> here</a>.
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Wednesday, 3-Sep-2008 16:40 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

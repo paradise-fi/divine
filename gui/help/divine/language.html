@@ -1,0 +1,537 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt-maruku.css" media="screen, tv, projection" title="Default" />
+
+    <title>Specification Language</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE</h1>
+          <div class="headerSubTitle">Distributed and Parallel Verification Environment</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+
+    <!-- ##### Main Copy ##### -->
+
+     <div id="main-copy">
+
+<h1 id='table_of_contents'>Table Of Contents</h1>
+<div class='maruku_toc'><ul style=''><li><a href='#quick_guide_through_the_dve_specification_language'>Quick Guide Through the DVE Specification Language</a><ul style=''><li><a href='#philosophy_of_dve_language'>Philosophy of DVE language</a></li><li><a href='#uniqueness_of_identifiers'>Uniqueness of identifiers</a></li><li><a href='#syntax_elements'>Syntax elements</a><ul style=''><li><a href='#processes'>Processes</a></li><li><a href='#variables'>Variables</a></li><li><a href='#constants'>Constants</a></li><li><a href='#process_states'>Process states</a></li><li><a href='#transitions'>Transitions</a></li><li><a href='#expressions'>Expressions</a></li><li><a href='#channels'>Channels</a></li><li><a href='#type_of_a_system'>Type of a system</a></li><li><a href='#assertions'>Assertions</a></li></ul></li></ul></li><li><a href='#dve_modelling_tutorial'>DVE Modelling Tutorial</a><ul style=''><li><a href='#the_petersons_algorithm'>The Peterson&#8217;s algorithm</a></li><li><a href='#model_processes_transitions'>Model, Processes, Transitions</a></li><li><a href='#variables_guards_effects'>Variables, Guards, Effects</a></li><li><a href='#arrays_back_to_peterson'>Arrays, back to Peterson</a></li></ul></li><li><a href='#probdve_extension'>PROBDVE extension</a></li><li><a href='#dve_language_reference_and_semantics'>DVE Language Reference and Semantics</a></li><li><a href='#table_of_contents'>Table Of Contents</a></li></ul></div>
+
+
+      <!--
+      <h1 id="alt-layout">DiVinE Specification Language</h1>
+
+      <p>If you have comments or questions about DiVinE
+      please email <a href="mailto:divine@fi.muni.cz">DiVinE Development Team
+      </a>. If you want to file a bug report or a request for
+      enhancement, please use the .</p>
+      -->
+
+      <h1 id='quick_guide_through_the_dve_specification_language'>Quick Guide Through the DVE Specification Language</h1>
+
+<p>DVE specification language has been created as a language that is both easy to interpret and sufficiently powerful to express interesting problems for the purpose of model checking.</p>
+
+<p>A set of &#8220;case studies&#8221; is available, in the form of DVE source code, in the <code>examples</code> subdirectory of the DiVinE distribution.</p>
+
+<h2 id='philosophy_of_dve_language'>Philosophy of DVE language</h2>
+
+<p>The basic modelling unit in DVE is a system, which is composed of processes. Processes can go from one process state to another through transitions, which can be guarded by a condition &#8211; this condition, also called a &#8220;guard&#8221; determines whether the transition can be activated.</p>
+
+<p>Transitions can be synchronised through (named) channels. Only exactly 2 processes can be synchronised in one &#8220;moment&#8221; (in a single step). When more than 2 processes would be able to synchronise at the same time on a single channel, any combination of pairs can be picked at that time nondeterministically, however always just 2 of them in one moment. Through the synchronisation on a channel, a value can be optionally transmitted from one process to the other.</p>
+
+<p>The transitions have so-called &#8220;effects&#8221;. Effects are generally assignments to local or global variables. Two processes undergoing a synchronisation should not be able to assign to the same variable &#8211; that would be a modelling error.</p>
+
+<p>A system may be synchronous or asynchronous.</p>
+
+<h2 id='uniqueness_of_identifiers'>Uniqueness of identifiers</h2>
+
+<p>There is a single common namespace for channels, variables, processes and states. Identifiers have to be unique in any given scope of visibility. It means that e.g. when variable <strong>A</strong> is declared in the process <strong>P1</strong>, then there cannot be a variable <strong>A</strong>, a state <strong>A</strong> in that process or a global variable <strong>A</strong>, nor a channel or a process <strong>A</strong>. The only other <strong>A</strong> variable may occur in a different process, eg. <strong>P2</strong>.</p>
+
+<h2 id='syntax_elements'>Syntax elements</h2>
+
+<h3 id='processes'>Processes</h3>
+
+<p>Declaration - short example:</p>
+
+<pre><code>process My_really_nice_process
+{ &lt;code of a process&gt; }</code></pre>
+
+<h3 id='variables'>Variables</h3>
+
+<p>Variables can be global (declared at the beginning of DVE source) or local (declared at the beginning of a process). They can be of <code>byte</code> or <code>int</code> type. E.g.:</p>
+
+<pre><code>byte A[9];
+int i,j;</code></pre>
+
+<h3 id='constants'>Constants</h3>
+
+<p>Constants can be declared identically as variables using the keyword <code>const</code>:</p>
+
+<pre><code>const byte k = 3;</code></pre>
+
+<p>This time constants cannot be used as parameters in declarations of arrays. For example this construct is erroneous:</p>
+
+<pre><code>byte field[k];</code></pre>
+
+<h3 id='process_states'>Process states</h3>
+
+<p>Declared after declaration of variables. You also have to write which of declared process states is the initial one. You can also optionally write which of them are accepting (but you probably will not need this feature at this moment). E.g.:</p>
+
+<pre><code>state start, run, reading_input, writing_output;
+init start;
+accept reading_input, writing_output;</code></pre>
+
+<p>For purposes of modelling atomic actions, there are so called <em>committed states</em>.</p>
+
+<p><strong>Committed state of a process</strong> = state declared as committed &#8211; e.g. in the following code states <code>reading_input</code> and <code>writing_output</code> are committed:</p>
+
+<pre><code>state start, run, reading_input, writing_output;
+init start;
+commit reading_input, writing_output;</code></pre>
+
+<p><strong>Committed state of a system</strong> = state of a system, where at least one process is in a committed state. If the system is in a committed state, then only processes in committed states can transit to another state. It means that the sequence of transitions beginning with a transition leading to a committed state and ending with a transition leading to a non-committed state cannot be interlaced with other transitions leading from non-committed states.</p>
+
+<p>Synchronization between processes in committed states and non-committed states is ignored. Synchronization between processes (both) in committed states is permitted (but it is probably very rare).</p>
+
+<h3 id='transitions'>Transitions</h3>
+
+<p>Transitions are written as a transitions from one process state to another (e.g. <code>run -&gt; writing_output</code>). The transition can be executed only if the process in the initial process state of a transition (in the above mentioned example in a state run). You should also define an additional condition when the transition can be executed (keyword guard ) and sometimes also a channel to synchronize through (keyword <code>sync</code> with followed by the channel name and <code>!</code> or <code>?</code>). There can synchronize only transitions with the same channel name and opposite operators <code>!</code> and <code>?</code>. When you want to transmit a value through the channel, you can write a value after <code>!</code> and a variable (where the value will be transmitted) after <code>?</code>. The last but not least element of transitions are effects &#8211; they are simple assignments to the variables.</p>
+
+<p>Example:</p>
+
+<pre><code>process Sender {
+  byte value, sab, retry;
+  state ready, sending, wait_ack, failed;
+  init ready;
+  trans
+    ready -&gt; sending {sync send?value; effect sab = 1 -sab; },
+    sending -&gt; wait_ack {sync toK!(value*2+sab); effect retry = 1;},
+    wait_ack -&gt; wait_ack {guard retry &lt;2; sync toK!(value*2+sab); effect retry = retry+1;},
+    wait_ack -&gt; ready {sync fromL?;},
+    wait_ack -&gt; failed { guard retry == 2;};
+}</code></pre>
+
+<h3 id='expressions'>Expressions</h3>
+
+<p>In assignments, guards and synchronization values you can write arithmetic expressions. They can contain:</p>
+
+<ul>
+<li>constants: numbers, <code>true</code>, <code>false</code></li>
+
+<li>parentheses: (, )</li>
+
+<li>variable identifiers</li>
+
+<li>unary operators <code>-</code>, <code>~</code> (= negation of bits) and <code>not</code> (= boolean negation)</li>
+
+<li>binary operators (ordered by precedence - higher line means a lower precedence):<br /><code>imply</code>,<br /><code>or</code>,<br /><code>and</code>,<br /><code>|</code>,<br /><code>^</code>,<br /><code>&amp;</code>,<br /><code>==</code>, <code>!=</code>,<br /><code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>,<br /><code>&lt;&lt;</code>, <code>&gt;&gt;</code>,<br /><code>-</code>, <code>+</code>,<br /><code>/</code>, <code>*</code>, <code>%</code><br />their semantics is the same as in C programming language except for boolean operators <code>and</code>, <code>or</code> and <code>imply</code> (but their meaning is obvious).</li>
+
+<li>question on a state of some process (e.g. <code>Sender.ready</code> is equal to <code>1</code>, iff process <code>Sender</code> is in a state <code>ready</code>. Otherwise it is equal to <code>0</code>).</li>
+</ul>
+
+<h3 id='channels'>Channels</h3>
+
+<p>Declarations of channels follow declarations of global variables. For example:</p>
+
+<pre><code>byte i_am_a_variable;
+channel send, receive, toK, fromK, toL, fromL; // untyped unbuffered channels
+channel {byte} b_send[0], b_receive[0]; // typed unbuffered channels
+channel {byte,int} bi_send[0], bi_receive[0]; // typed unbuffered channels (transmitting 2 values simultaneously)
+channel {byte,int} buf_bi_send[4], buf_bi_receive[1]; // typed buffered channels</code></pre>
+
+<p>There is a big difference between buffered and unbuffered channels: * unbuffered channels can be untyped and they do not need to transmit values (they can play a role of handshake communication)</p>
+
+<ul>
+<li>buffered channels have to be always typed</li>
+
+<li>value transmission or handshake using unbuffered channel is synchronous &#8211; i.e. both sending and receiving processes execute their transitions in the same transition of a system</li>
+
+<li>value transmission using buffered channel is asynchronous &#8211; i.e. If the buffer is not full, value can be sent. If the buffer is not empty, value can be received. But this happens always in different transitions of a system.</li>
+</ul>
+
+<p><strong>Be aware:</strong> <code>channel xxx</code> and <code>channel {byte} xxx[0]</code> are both unbuffered channels and they behave almost the same way, but the second declaration is typed and the transmitted value is type casted (in this case to byte) before its transmission.</p>
+
+<h3 id='type_of_a_system'>Type of a system</h3>
+
+<p>Synchronous:</p>
+
+<pre><code>system sync;</code></pre>
+
+<p>or asynchronous</p>
+
+<pre><code>system async;</code></pre>
+
+<p>This declaration should be written at the end of a DVE source.</p>
+
+<h3 id='assertions'>Assertions</h3>
+
+<p>Assertions can be written in every process just before transitions definitions. Assertion can be understood as an expression, which should be valid (evaluated to non-zero value) in a given process state. Example:</p>
+
+<pre><code>process My_really_nice_process
+{
+    byte hello = 1;
+    state one, two, three;
+    init one;
+    assert one: hello &gt;= 1,
+	   two: hello &lt;  1,
+	   one: hello &lt;  6;
+    trans
+	...
+    ;
+}</code></pre>
+
+<h1 id='dve_modelling_tutorial'>DVE Modelling Tutorial</h1>
+
+<p>This tutorial will guide you through the creation of a model of the Peterson&#8217;s mutual exclusion algorithm for <code>n</code> processes. This will help you understand the following concepts:</p>
+
+<ul>
+<li>processes, transitions,</li>
+
+<li>global and local variables,</li>
+
+<li>guards, effects.</li>
+</ul>
+
+<h2 id='the_petersons_algorithm'>The Peterson&#8217;s algorithm</h2>
+
+<p>First, let us show you the algorithm itself as a C code snippet:</p>
+
+<pre><code>volatile int q[n] = { 0 };
+volatile int turn[n] = { 0 };
+
+void enter_critical_section(int i) {
+    int j, k;
+
+    for (j = 1; j &lt; n; j++) {
+	q[i] = j;
+	turn[j] = i;
+
+	for (k = 0; k &lt; n; k++)
+	    while (k != i &amp;&amp; (q[k] &gt;= j &amp;&amp; turn[j] == i));
+    }
+
+    q[i] = n;
+}
+
+void leave_critical_section(int i) {
+    q[i] = 0;
+}
+
+void process(int process_id) {
+    for (;;) {
+	enter_critical_section(process_id);
+	/* do work */
+	leave_critical_section(process_id);
+    }
+}</code></pre>
+
+<p>We will create a model of the <code>process</code> procedure and, using <em>m4</em> macro language, make the model parametric.</p>
+
+<h2 id='model_processes_transitions'>Model, Processes, Transitions</h2>
+
+<p>A model in DVE consists of several processes, each of which is an extended finite state automaton. These are (usually) asynchronously composed to become an automaton of the model. The last line of an asynchronous model in DVE reads:</p>
+
+<pre><code>system async;</code></pre>
+
+<p>Let&#8217;s just put this line at the end of each model, for now. Synchronous models aren&#8217;t well supported yet.</p>
+
+<p>A process declaration looks like this (the order of things is important):</p>
+
+<pre><code>process P1 {
+    variables
+    states
+    assertions
+    transitions
+}</code></pre>
+
+<p>As an example, we declare a process which alternates between two states: inside a critical section, and outside it.</p>
+
+<pre><code>process P1 {
+    state outCS, inCS;
+    init outCS;
+    trans
+        outCS -&gt; inCS {},
+	inCS -&gt; outCS {};
+}</code></pre>
+
+<p>The process starts in state <code>outCS</code> and there&#8217;s one transition from <code>outCS</code> to <code>inCS</code> and one from <code>inCS</code> to <code>outCS</code>, neither of them having any guards or effects. Indeed, performing a reachability analysis using DiVinE tells us that two states are reachable.</p>
+
+<p>If we omit one of the transitions, we create a <em>deadlock</em> state &#8211; the automaton is stuck in it, not able to proceed. DiVinE is able to detect and describe such states.</p>
+
+<p>Next, we&#8217;d like to have multiple similar processes, all described by one automaton but each having a different name and, possibly, some process number constant. In order to do this, we use the <em>m4</em> macro language like this:</p>
+
+<pre><code>define(P, `process P_$1 {
+    state outCS, inCS;
+    init outCS;
+    trans
+        outCS -&gt; inCS {},
+	inCS -&gt; outCS {};
+} &#39;)
+
+P(0)
+P(1)
+P(2)</code></pre>
+
+<p>If we process this definition with the <code>m4</code> command, we get a model with three processes. Reachability analysis would tell us that we have 8 states, by the way.</p>
+
+<p>To make the model parametric, we shall use some predefined <em>m4</em> macros. Filename of the source of such model should end with the <code>.mdve</code> extension; usage of such files is described in the <a href='tool.html'>Tool guide</a>. Finally, we get this parametric source:</p>
+
+<pre><code>default(N,3)
+
+define(P, `process P_$1 {
+    state outCS, inCS;
+    init outCS;
+    trans
+        outCS -&gt; inCS {},
+	inCS -&gt; outCS {};
+} &#39;)
+
+forloop(i,0,N - 1, `P(i)&#39;)
+
+system async;</code></pre>
+
+<h2 id='variables_guards_effects'>Variables, Guards, Effects</h2>
+
+<p>In DVE, you may define global and process-local <em>variables</em>. There are two types: <code>byte</code> and <code>int</code>, and you may define one-dimensional arrays using the C syntax. These variables can be modified using transition <em>effects</em> and transitions are enabled/disabled based on variable values using <em>guards</em>.</p>
+
+<p>The variable declarations are similar to the C syntax, you&#8217;ll easily understand that from the following examples. We&#8217;ve already shown where process-local variable declarations go. Global variables are declared at the beginning of a DVE source.</p>
+
+<p>Guards and effects go into the curly braces after a transition, like this:</p>
+
+<pre><code>trans
+    q0 -&gt; q1 { guard (x == 1) &amp;&amp; (y == 2);
+               effect x = x + 1, y = y - 1; };</code></pre>
+
+<p>For a quick overview, let&#8217;s say the two functions are a bit simpler (and wrong indeed):</p>
+
+<pre><code>volatile int mutex = 0;
+
+void enter_critical_section(int i) {
+    while (lock == 1) /* wait */;
+    lock = 1;
+}
+
+void leave_critical_section(int i) {
+    lock = 0;
+}</code></pre>
+
+<p>We shall declare a global variable <code>mutex</code> in the model as well (a <code>byte</code> type is enough, though).</p>
+
+<pre><code>byte lock = 0;</code></pre>
+
+<p>The <code>leave_critical_section</code> function is simple, it just resets the <code>lock</code> variable when leaving the critical section. We&#8217;ll model this as an effect on the <code>inCS -&gt; outCS</code> edge:</p>
+
+<pre><code>trans
+    ...
+    inCS -&gt; outCS { effect lock = 0; };</code></pre>
+
+<p>To model the <code>enter_critical_section</code> function, we&#8217;ll have to add a couple of states: a &#8220;waiting for <code>lock</code> becoming 0&#8221; state and a &#8221;<code>lock</code> has just become 0&#8221; state. We&#8217;ll model the while loop as a cycle around the waiting state, and the assignment as a transition from the other state to <code>inCS</code>. It is very important to distinguish these two states since two processes may both reach the &#8221;<code>lock = 1</code>&#8221; line at the same time; if we modelled the assignment as a transition from the waiting state, the model would not allow such behaviour.</p>
+
+<p>The whole model of this faulty lock looks like this:</p>
+
+<pre><code>default(N,3)
+
+byte lock = 0;
+
+define(P, `process P_$1 {
+    state outCS, inCS, waiting, lockit;
+    init outCS;
+    trans
+        outCS -&gt; waiting {},
+	waiting -&gt; waiting { guard lock == 1; },
+	waiting -&gt; lockit { guard lock == 0; },
+	lockit -&gt; inCS { effect lock = 1; },
+        inCS -&gt; outCS { effect lock = 0; };
+} &#39;)
+
+forloop(i,0,N - 1, `P(i)&#39;)
+
+system async;</code></pre>
+
+<p>Now, you may want DiVinE to tell you if it is possible to get to a state where two processes are both in a critical section. An LTL property claiming that it is not is this:</p>
+
+<pre><code>#define c0 (P_0.inCS)
+#define c1 (P_1.inCS)
+#property !F (c0 &amp;&amp; c1)</code></pre>
+
+<p>If we find a counterexample to this property then it is possible to reach such state and the lock is faulty. DiVinE finds such counterexample indeed. For information about using <code>divine-mc.combine</code> and <code>divine-mc owcty</code> to perform the check, please see the <a href='tool.html'>Tool guide</a>.</p>
+
+<h2 id='arrays_back_to_peterson'>Arrays, back to Peterson</h2>
+
+<p>We&#8217;ve shown how to create a DVE model of a simple lock in C. Let&#8217;s go back to our example model of Peterson&#8217;s algorithm now. You already know the needed syntax; let me repeat the way we transform a C source into a DVE model:</p>
+
+<ul>
+<li>while loops in C are modelled as cycles around a state; for loops may be transformed to while loops easily,</li>
+
+<li>each memory read and write should have its own transition &#8211; this way we model the possibility of being interrupted by some other process,</li>
+
+<li>global and local variables are often used without change (we usually use the smallest type that&#8217;s enough, though, to save memory).</li>
+</ul>
+
+<p>Now we will carefully rewrite the C source to DVE. Let&#8217;s start by defining the global variables:</p>
+
+<pre><code>byte q[N];
+byte turn[N];</code></pre>
+
+<p>These arrays contain zeros in the initial state, you may count on that. To start with simple things, we shall model the <code>leave_critical_section</code> function:</p>
+
+<pre><code>define(P, `process P_$1 {
+    state outCS, inCS;
+    init outCS;
+    trans
+        inCS -&gt; outCS { effect q[$1] = 0; };
+} &#39;)</code></pre>
+
+<p>Next, we&#8217;ll create an outline of the <code>enter_critical_section</code>. We will need to add some local variables as well.</p>
+
+<pre><code>byte j, k;
+...
+trans
+    outCS -&gt; for_j { effect j = 1; },
+    for_j -&gt; inCS { guard j == N; effect q[$1] = N; },
+    ...</code></pre>
+
+<p>We have just modelled the initialization of the outer for loop, the end of it and the <em>locking</em> itself (<code>q[i] = n</code> means that process <code>i</code> is in the critical section). Let&#8217;s go to the inside of the loop:</p>
+
+<pre><code>trans
+    ...
+    for_j -&gt; j1 { guard j &lt; N; effect q[$1] = j; },
+    j1 -&gt; for_k { effect turn[j] = $1, k = 0; },
+    /* for_k ... */
+    for_k -&gt; for_j { guard k == N; effect j = j + 1; };</code></pre>
+
+<p>We combined two memory writes into one transition: <code>turn[j] = $1</code> and <code>k = 0</code> even though we said we should not. It&#8217;s ok here because the <code>k</code> variable is not shared. Okay, let&#8217;s finish it by defining the <code>for_k</code> transitions as well:</p>
+
+<pre><code>trans
+    ...
+    for_k -&gt; while { guard k &lt; N; },
+    while -&gt; while { guard k != $1 &amp;&amp; q[k] &gt;= j &amp;&amp; turn[j] == $1; },
+    while -&gt; for_k { guard k == $1 || q[k] &lt;  j || turn[j] != $1;
+		     effect k = k + 1; };</code></pre>
+
+<p>Note that there are two transitions going from a loop state, the guards of which are negations of each other (in a for loop with +1 increments, we usually have <code>j &lt; N</code> and <code>j == N</code>, since that works too).</p>
+
+<p>Okay, we have completed the model. Let me repeat the whole thing for you:</p>
+
+<pre><code>default(N,3)
+
+byte q[N];
+byte turn[N];
+
+define(P, `process P_$1 {
+    byte j, k;
+    state outCS, inCS, for_j, j1, for_k, while;
+    init outCS;
+
+    trans
+        /* enter_critical_section */
+        outCS -&gt; for_j { effect j = 1; },
+        for_j -&gt; j1 { guard j &lt; N; effect q[$1] = j; },
+        j1 -&gt; for_k { effect turn[j] = $1, k = 0; },
+        for_k -&gt; while { guard k &lt; N; },
+        while -&gt; while { guard k != $1 &amp;&amp; q[k] &gt;= j &amp;&amp; turn[j] == $1; },
+        while -&gt; for_k { guard k == $1 || q[k] &lt;  j || turn[j] != $1;
+		         effect k = k + 1; },
+        for_k -&gt; for_j { guard k == N; effect j = j + 1; },
+        for_j -&gt; inCS { guard j == N; effect q[$1] = N; },
+        /* leave_critical_section: */
+        inCS -&gt; outCS { effect q[$1] = 0; };
+} &#39;)
+
+forloop(i,0,N - 1, `P(i)&#39;)
+
+system async;</code></pre>
+
+<p>This model satisfies the before mentioned property indeed. That means a state where two processes are both in a critical section is not reachable. Now, proceed to the <a href='tool.html'>Tool guide</a> to see how to combine the model with the property and how to run the model checker on the result.</p>
+
+<h1 id='probdve_extension'>PROBDVE extension</h1>
+
+<p>PROBDVE extends the DVE language with probabilistic transitions, making it possible to model Markov Decision Processes. Let us describe the syntax of such transitions on an example process:</p>
+
+<pre><code>process P {
+    byte x;
+    state q0, p1, p2, q3, q4;
+    init q0;
+
+    trans
+        q0 =&gt; { p1:1, p2:2 },               /* (0) */
+	q0 -&gt; q3 { guard x == 0; },         /* (1) */
+	q0 -&gt; q4 { effect x = x + 1; };     /* (2) */
+}</code></pre>
+
+<p>Suppose this process is in state <code>q0</code>. First, we nondeterministically choose which of the three &#8211; (0), (1) or (2) &#8211; transitions we use. If it is (1) or (2), the behaviour is the same as in DVE. If it is (0), the process gets to state <code>p1</code> with probability 1/3 and to state <code>p2</code> with probability 2/3.</p>
+
+<h1 id='dve_language_reference_and_semantics'>DVE Language Reference and Semantics</h1>
+
+<p>The complete DVE language reference and semantics is given in Chapter 2 of the Master Thesis of Pavel Simecek, which is available in PDF format <a href='dve.pdf'>here</a>.</p>
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Sunday, 5-Oct-2008 15:17 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

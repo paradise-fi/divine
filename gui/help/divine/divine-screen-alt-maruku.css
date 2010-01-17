@@ -1,0 +1,75 @@
+@import url("divine-screen-alt.css");
+
+/* ignore 2rd level of TOC */
+#side-bar ul {
+	display: none;
+}
+
+#main-copy p {
+  line-height: 1.5em;
+  margin: 0.5em 0 0.5em 0;
+  padding: 0;
+}
+
+#main-copy h1,
+#main-copy h2,
+#main-copy h3,
+#main-copy h4,
+#main-copy h5 {
+    color: rgb(40,87,19);
+    background-color: inherit;
+    font-size: 100%;
+    font-weight: normal;
+    margin: 0 0 1em 0;
+    padding: 0.5em 0 0 0;
+    border-bottom: 1px solid rgb(40,87,19);
+    clear: left;
+}
+
+/* special headlines */
+#main-copy h1 {font-size: 180%; font-weight: bold;}
+#main-copy h2 {font-size: 160%; font-weight: bold; }
+#main-copy h3 {font-size: 140%; font-weight: bold;}
+#main-copy h4 {font-size: 120%; border-bottom: none; font-weight: bold;}
+#main-copy h5 {font-size: 100%; border-bottom: none; font-weight: bold;}
+
+/* unordered lists */
+#main-copy ul {
+  line-height: 1.5em;
+  list-style-type: square;
+  list-style-image: none;
+  margin: 0 0 0.5em 1.5em;
+  color: rgb(40,87,19);
+}
+
+/* ordered lists */
+#main-copy ol {
+  line-height: 1.5em;
+  list-style-image: none;
+  margin: 0 0 0.5em 1.5em;
+  color: rgb(40,87,19);
+  font-weight: bold;
+}
+
+/* the list items overriding the ul/ol definition */
+#main-copy li {
+  color: black;
+  font-weight: normal;
+}
+
+#main-copy ol {list-style-type: decimal}
+#main-copy ol ol {list-style-type: upper-roman}
+#main-copy ol ol ol {list-style-type: lower-alpha}
+#main-copy ol ol ol ol {list-style-type: lower-greek}
+
+#main-copy pre {
+  font-size: 100%;
+  padding: 0.5em;
+  border: 1px dashed black;
+  color: black;
+  overflow: auto;
+}
+
+#main-copy pre {
+  background-color: #f7f9fa;
+}

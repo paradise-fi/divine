@@ -1,0 +1,290 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt-maruku.css" media="screen, tv, projection" title="Default" />
+
+    <title>DiVinE CUDA</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE-CUDA</h1>
+          <div class="headerSubTitle">CUDA Accelerated LTL Model Checker</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+  
+    <!-- ##### Main Copy ##### -->
+
+      <div id="main-copy">
+      <h1 id="alt-layout">DiVinE CUDA </h1>
+      <h2 id="divine-cuda">CUDA Accelerated LTL Model Checker </h2>
+               
+               <p><span class="firstLetter">D</span>iVinE CUDA is an extensible
+               open source tool for formal verification of concurrent
+               systems. DiVinE CUDA is a standalone verification tool that
+               supplements DiVinE verification tool chain with CUDA accelerated
+               LTL model checking ability.</p>
+
+               
+               <p><span class="firstLetter">D</span>iVinE CUDA builds upon MAP
+	       algorithm reformulated in terms of repeated matrix-vector
+	       product. The tool first generate state space of the model under
+	       inspection, stores it in a form of a matrix, and then employs
+	       CUDA architecture to solve the accepting cycle detection problem
+	       on the graph represented with the matrix.</p>
+
+               <h2 id="download"> Download and install instruction</h2>
+
+               <p>
+               <span class="firstLetter">P</span>rerequisites: 
+                  <ul>
+                     <li>Linux-based workstation equipped with GPU supporting CUDA .</li>
+                     
+                     <li>Recent GNU C++ compiler with support of POSIX Threads.</li>
+
+                     <li>Properly installed DiVinE Cluster package [<a href="http://divine.fi.muni.cz/page.php?page=download">DiVinE download page</a>] </li>
+
+                     <li> DiVinE CUDA package [<a href="divine-cuda.tar.gz" class="localLink">divine-cuda.tar.gz</a>] </li>
+
+                     <li>CUDA driver [<a href="http://www.nvidia.com/object/cuda_get.html" class="httpLink">http://www.nvidia.com/object/cuda_get.html</a>] </li>
+
+                     <li>CUDA Toolkit version 2.0 [<a href="http://www.nvidia.com/object/cuda_get.html" class="httpLink">http://www.nvidia.com/object/cuda_get.html</a>] </li>
+
+                     <li>CUDA SDK 2.0 [<a href="http://www.nvidia.com/object/cuda_get.html" class="httpLink">http://www.nvidia.com/object/cuda_get.html</a>] </li>
+
+                 
+                  </ul>
+
+                </p>
+
+               <p>
+               <span class="firstLetter">I</span>nstall instructions: 
+                  <ul>
+                     <li>Unzip DiVinE CUDA package in the project directory of CUDA SDK 2.0 and enter the newly created directory.
+                             <pre><code><span class="firstLetter"></span>tar xvzf divine-cuda.tar.gz
+cd divine-cuda </code></pre>
+                           	
+                        </p>
+                     </li>
+                     
+                     <li> Now compile the package:
+                        <pre><code> make </code></pre>
+                     </li> 
+
+                     <li> If succesfully compiled the binary file divine-cuda is created in bin/linux/realse directory of CUDA SDK 2.0.</li>
+                  </ul>
+                </p>
+
+               <h2 id="usage"> Using the tool</h2>
+                                           
+               <p><span class="firstLetter"></span><ul>
+                     
+                     <li>Before using the tool, make sure your PATH environment
+                     variable contains path DiVinE binaries.  
+
+             <pre><code>export PATH=:path_to_divine</code></pre>
+                          
+                     </li>
+                     
+                     
+                     <li> Write your model in a DVE language and store it in a
+                     file with extension <tt>.dve</tt>. <span
+                     class="firstLetter">F</span>or details on DVE language see
+                     our <a class="httpLink"
+                     href="language.html"> DVE
+                     language guide</a>.
+                        
+                     </li>
+                     	
+                     
+                     <li> Express the properties you want to verify and store
+                        	them in a file with extension <tt>.ltl</tt>.
+                        	<br>Rules for writing <tt>.ltl</tt> files are as
+                        	follows.
+                        	 
+                        
+                        <ul>
+
+                           	     
+                           
+                           <li> Only lines starting with <tt>#</tt> are processed, the rest is ignored. 
+                              
+                           </li>
+                           	     
+                           
+                           <li> Atomic propositions are specified using the standard keyword <tt>#define</tt>, e.g.: 
+                              
+                              <pre><code>#define hungry (hungry==1)</code></pre>
+                              
+                           </li>
+                           	     
+                           
+                           <li> Individual properties are specified using keyword <tt>#property</tt> , e.g.: 
+                              
+                              <pre><code>#property GF(hungry)</code></pre>
+                              
+                           </li>
+
+                           	     
+                           
+                           <li> More LTL properties can be specified in a single file.</li>
+                           	     
+                           
+                           <li> Syntax of an LTL formula is given by the following rule. All temporal operators follow the standard semantics.
+                              		
+                              
+                              <pre><code><span class="firstLetter">f</span> ::= !f | Xf | Ff | Gf | fUf | fVf | f&amp;&amp;f | f||f | f-&gt;f | a | true | false </code></pre>
+                                 
+                              
+                              		
+                              
+                           </li>	
+                           	 
+                           
+                        </ul>
+                        	
+                        
+                     </li>
+
+                     
+                     
+                     <li> <b>Important!</b> Combine your model file with the ltl
+                        	file using <tt>divine.combine</tt> script to
+                        	produce models with LTL specification. DiVinE
+                        	CUDA tool will not work on models that contain
+                        	no LTL specification or property process.                        	
+                        
+                        <pre><code>divine.combine model.dve specification.ltl</code></pre>
+                                
+                                This will
+                        	produce as many files as there are properties in
+                        	<tt>specification.ltl</tt>. Newly created files
+                        	will be named <br>                        	
+                        
+                           <pre><code>model.prop1.dve
+model.prop2.dve
+model.prop3.dve
+...
+                              	</code></pre>                                                
+                     </li>                                          
+                     		
+                     <li> 
+                         <b>Important!</b> Precompile your model with LTL specification using 
+                         <tt>divine.precompile</tt> to produce compiled representation of the model (file with <tt>.dveC</tt> extension). DiVinE
+                        	CUDA tool will not work on non-compiled DVE models.
+  
+                           <pre><code>$ divine.precompile model.prop1.dve</code></pre>
+
+                     </li>
+                     <li> Run the algorithm to verify the model.
+                        
+                     <pre><code>$ divine-cuda model.prop1.dveC</code></pre>
+                        
+                     The tool outputs whether the there was an accepting cycle found
+                     (LTL formula is not satisfied) 
+                       <pre><code>$ divine-cuda elevator2.prop2.dveC
+Computing with MaxToMin numbering
+Start generating
+Size: 3314381, blockdim.x: 6474, threaddim.x: 512. Inner iterations: 42 (last took 913.658020 ms). 
+Outer iterations 1 (last took 21.247986 ms). CUDA time: 0 minutes 0 seconds (982.206970 ms)
+Generating not finnished: Ap Size: 3521190, Aj Size: 33751128, m Size: 3569181,
+All States: 6814344, Used States: 3521187, All Edges: 77262797 Used Edges: 33751128
+Reachability time: 0 minutes 35 seconds (35847.054688 ms)
+============================
+
+Accepting cycle found
+
+============================</code></pre>
+
+                     or whether there were no accepting
+                     cycles in the graph (LTL formula is satisfied).
+
+ <pre><code>$ divine-cuda elevator2.prop1.dveC
+Computing with MaxToMin numbering
+Start generating
+Generating finnished: Ap Size: 1722347, Aj Size: 20483544, m Size: 1722346,
+All States: 5015528, Used States: 1722344, All Edges: 63110616 Used Edges: 20483544
+Reachability time: 0 minutes 26 seconds (26855.355469 ms)
+<tt>Size: 1722347, blockdim.x: 3364, threaddim.x: 512. Inner iterations: 539 (last took 17.462891 ms). 
+Outer iterations 14 (last took 17.244141 ms). CUDA time: 0 minutes 9 seconds (9093.107422 ms).
+==============================
+
+Accepting cycle NOT found
+
+==============================</code></pre>
+
+
+
+                       
+                     </li>
+                  </ul>
+			               </p>
+               
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Thursday, 6-Aug-2009 11:35 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,3 @@
+<b>DiVinE IDE</b> is a development environment for DiViNE LTL model
+checking system.<br><br>Project web page:
+<a href=\"http://divine.fi.muni.cz\">http://divine.fi.muni.cz</a>

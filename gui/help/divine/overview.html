@@ -1,0 +1,275 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt.css" media="screen, tv, projection" title="Default" />
+
+    <title>Overview</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE</h1>
+          <div class="headerSubTitle">Distributed and Parallel Verification Environment</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+
+    <!-- ##### Main Copy ##### -->
+
+    <div id="main-copy">
+
+<h2 id="divine">Why DiVinE ?</h2>
+
+<p>
+
+The computing power of computers has increased by a factor of a million over the
+past couple of decades. As a matter of fact, the development effort, both in
+industry and in academia, has gone into developing bigger, more powerful and
+more complex applications.  In the next few decades we may still expect a
+similar rate of growth, due to various factors such as continuing
+miniaturization, parallel and distributed computing. 
+</p>
+
+<p>
+With the increase in complexity of computer systems, it becomes even more
+important to develop formal methods for ensuring their quality and reliability.
+Various techniques for automated and semi-automated analysis and verification
+have been successfully applied to real-life computer systems. However, these
+techniques are computationally demanding and memory-intensive in general and their
+applicability to extremely large and complex systems routinely seen in practice
+these days is limited. The major hampering factor is the state space explosion
+problem due to which large industrial models cannot be efficiently handled
+unless we use more sophisticated and scalable methods and a balance of
+the usual trade-off between run-time, memory requirements, and precision of a
+method.
+</p>
+
+<p>
+A lot of attention has been paid to the development of approaches to battle the
+state space explosion problem. Many techniques, such as abstraction, state
+compression, state space reduction, symbolic state representation, etc., are
+used to reduce the size of the problem to be handled allowing thus a single
+old-fashioned single-processor computer to process larger systems. All these
+methods can be therefore characterized as <i>reduction</i> techniques.
+</p>
+
+<p>Verification and analysis methods that are tailored to exploit the
+capabilities of the new hardware architectures are slowly appearing as well.
+These <b>platform-dependent</b> techniques focus on increasing the amount of
+available computational power.  These are, for example, techniques to fight
+memory limits with efficient utilisation of external I/O devices, techniques
+that introduce cluster-based algorithms to employ aggregate power of
+network-interconnected computers, or techniques to speed-up the verification on
+multi-core processors.
+</p>
+
+<p>
+The idea of exploiting hard disks or parallel computers in verification already appeared
+ in the very early years of the formal verification era. However,
+inaccessibility of cheap parallel computers with sufficiently fast external
+memory together with negative theoretical complexity results excluded these
+approaches from the main stream in formal verification. The situation changed
+dramatically during the past several years.  The computer progress over the past
+two decades has measured several orders of magnitude with respect to various
+physical parameters such as computing power, memory size at all hierarchy levels
+from caches to disk, power consumption, physical size and cost.  In particular,
+the focus of novel computer architectures in parallel and distributed computing
+has shifted away from unique massively parallel systems competing for world
+records towards smaller and more cost effective systems built from personal
+computer parts.  In addition, recent shift in the emphasis of research on
+parallel algorithms to pragmatic issues has provided practically efficient
+algorithms for solving computationally hard problems. As a matter of fact,
+interest in platform-depended verification has been revived and DiVinE was born.
+</p>
+
+
+      <h2 id="about">About DiVinE</h2>
+
+      <p>DiVinE is an open source and extensible system for platform-dependent
+formal verification of computer systems. DiVinE is in fact a <b>set of tools</b>
+each of them tailored to a particular platform, like distributed-memory (<a
+href="divine-cluster.html">DiVinE Cluster</a>), shared-memory (<a
+href="divine-mc.html">DiVinE Multi-Core</a>), external hard disks
+(DiVinE I-O) etc.  DiVinE in its current development phase offers mainly tools
+for platform-depended model checking of finite state systems against
+specification formulated in <a
+href="http://en.wikipedia.org/wiki/Linear_temporal_logic">linear temporal logics
+(LTL)</a>. Special DiVinE <b>branches</b> focus on model-checking of
+probabilistic systems (<a
+href="http://en.wikipedia.org/wiki/Markov_decision_process">Markov decision
+processes</a>) - <a href="probdivine.html">ProbDiVinE</a> and on
+analyzis of complex biological systems BioDiVinE (under development).
+
+</p>
+
+<p>LTL model checking algorithms in DiVinE follow the <i>automata-based
+approach</i>. Algorithms find accepting cycles in the product of the system model
+and a Buchi automaton for the negation of the formula.</p>
+
+<p>In most sequential LTL model checkers Nested Depth-First Search and Tarjan's
+decomposition into strongly connected components are used for accepting cycle
+detection. Unfortunately, both algorithms strongly rely on depth-first search
+postorder which computation is known to be inherently sequential. Therefore,
+these algorithms are unsuitable for being used in parallel setting.
+DiVinE implements <b>new algorithms</b> for parallel accepting cycle detection problem.
+These are briefly described on the respective tool pages.
+
+<h2 id="tools">DiVinE Tools and Branches</h2>
+      <p>DiVinE tools differ in the platforms they are supposed to be run on,
+while DiVinE branches are domain specific tools.  </p>
+
+
+
+<table border="4" cellpadding="7" bgcolor=#399111>
+<tr>
+  <th colspan="5" align="center" bgcolor=#285713><font color="white">DiVinE
+BRANCHES</font></th>
+
+</tr><tr>
+  <th rowspan="5"  bgcolor=#285713><font color="white">DiVinE TOOLS</font></th>
+  <th ></th>
+  <th  align="center" width="30%"><font color="white">Concurrent Systems</font></th>
+  <th  align="center" width="30%"><font color="white">Probabilistic Systems</font></th>
+  <th  align="center" width="30%"><font color="white">Biological Systems</font></th>
+</tr>
+
+<tr>
+<th><font color="white">Clusters (distributed-memory)</font></th>
+  <td  bgcolor=#EFEFEF><a
+href="divine-cluster.html"><b>DiVinE CLUSTER</b></a><br /> is a <i>parallel
+distributed-memory</i> enumerative model-checking tool for verification of
+concurrent systems. The tool can employ aggregate power of
+network-interconnected workstations to verify systems whose verification is
+beyond capabilities of sequential tools. As a standard model-checker, DiVinE
+Cluster can be used to prove correctness of verification models as well as to
+detect early design errors.</td>
+
+<td bgcolor=#EFEFEF onClick="top.location='probdivine.html';" style="cursor:hand;"><a
+href="probdivine.html"><b>ProbDiVinE</b></a><br /> is an enumerative
+model-checking tool for verification of probabilistic systems represented as
+Markov decision processes. The tool supports qualitative LTL model-checking of
+MDPs and is supposed to be run on clusters of workstations. </td>
+
+<td bgcolor=#EFEFEF><b>BioDiVinE</b> (under development)<br /> is a tool for
+exploring dicrete models of biological systems, predicting outcomes of
+experiments, and verifying specific properties at the model, based on techniques
+for scalable qualitative simulation and analyzis of integrated regulatory
+networks dymamics.</td> </tr> 
+
+
+<tr>
+<th><font color="white">Multi-cores (shared-memory)</font></th>
+  <td  bgcolor=#EFEFEF><a
+href="divine-mc.html"><b>DiVinE
+MULTI-CORE</b></a><br /> is a
+<i>parallel shared-memory</i> enumerative model-checking tool for verification
+of concurrent systems. The tool can employ full power of modern 64-bit multi-core
+architectures. Similarly to DiVinE Cluster, it can be used to prove correctness
+of verification models as well as to detect early design errors. </td>
+  <td bgcolor=#EFEFEF><a href="probdivine.html"><b>ProbDiVinE
+MC</b></a> is an enumerative shared-memory model-checking tool for verification
+of probabilistic systems represented as Markov decision processes. The tool
+supports both qualitative as well as quantitative approaches to LTL
+model-checking of MDPs. </td>
+  <td bgcolor=#EFEFEF></td>
+
+</tr>   
+<tr>
+<th><font color="white">GPUs</font></th>
+  <td  bgcolor=#EFEFEF><a
+href="divine-cuda.html"><b>DiVinE
+CUDA</b></a><br />  is an open source standalone 
+verification tool that supplements DiVinE verification tool chain with GPU accelerated LTL model checking of concurrent 
+systems.
+DiVinE CUDA builds upon the MAP algorithm reformulated in terms of repeated matrix-vector product. The tool first 
+generates 
+state space of the model under inspection, stores it in the form of a matrix, and then it employs CUDA architecture to 
+solve 
+the accepting cycle detection problem on the graph represented with the matrix.
+
+</td>
+  <td bgcolor=#EFEFEF></td>
+  <td bgcolor=#EFEFEF></td>
+</tr>
+
+
+<tr>
+<th><font color="white">Hard Disks</font></th>
+  <td bgcolor=#EFEFEF><b>DiVinE I-O</b> (under development)<br /> is a
+distributed-memory enumerative model-checking tool for verification of
+concurrent systems on external memory devices. The tool implements I/O efficient
+LTL model-checking algorithms, where the goal is to reduce the number of
+expensive I/O. This is because the access to information stored on an external
+device is orders of magnitude slower than the access to information stored in
+main memory.  It can be used both to prove correctness of verification models as
+well as to detect early design errors.  </td>
+  <td bgcolor=#EFEFEF></td>
+  <td bgcolor=#EFEFEF></td>
+</tr> </table>
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Tuesday, 11-Aug-2009 11:20 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

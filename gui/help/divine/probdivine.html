@@ -1,0 +1,346 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt.css" media="screen, tv, projection" title="Default" />
+
+    <title>ProbDiVinE</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">PROB-DIVINE</h1>
+          <div class="headerSubTitle">LTL Model Checker for Probabilistic Systems</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+  
+    <!-- ##### Main Copy ##### -->
+
+      <div id="main-copy">
+      <h1 id="alt-layout">ProbDiVinE </h1>
+      <h2 id="probdivine-mc">A Parallel Qualitative and Quantitative LTL Model Checker </h2>
+               
+               <p><span class="firstLetter">P</span>robDiVinE-MC is an
+               extensible open source system for parallel and/or distributed
+               formal verification of concurrent probabilistic
+               systems. ProbDiVinE-MC is an integral part of the distributed
+               verification tool DiVinE and as such can be viewed both as an
+               analyser and prototyping environment.                  
+               </p>
+               
+               <p><span class="firstLetter"></span> <span
+                  class="firstLetter">P</span>robDiVinE-MC supports both
+                  qualitative and quantitative LTL model checking of Markov
+                  Decision Processes (MDPs) -- models supporting both
+                  probability and non-determinism expressed in PROBDVE language
+                  (see section "Usage"). Current version works in shared memory
+                  environment.  </p>
+               
+               
+               <p><span class="firstLetter">T</span>he main difference in
+                  comparison to previous version (see section download) is that
+                  ProbDiVinE-MC supports also quantitative verification and does
+                  not require distributed memory environment.  </p>
+               
+               
+               <p><span class="firstLetter">P</span>robDiVinE-MC uses the
+                  automata-theoretic approach where qualitative LTL model
+                  checking of MDPs is reduced to the question whether the
+                  product automaton for a given MDP with a Buchi acceptance
+                  condition contains an accepting end component (AEC). The
+                  problem of quantitative LTL model checking is to determine
+                  minimal or maximal probability the formula is satisfied,
+                  i.e. we try to find minimal or maximal probability an AEC is
+                  reachable from initial state, which is done via building and
+                  solving linear programming problem.                                   
+               </p>
+                             
+               
+               <p><span class="firstLetter">T</span>he tool implements a
+                  parallel adaptations of the algorithm of de Alfaro <a
+                  href="http://dblp.uni-trier.de/rec/bibtex/conf/fsttcs/BiancoA95">[dA95]</a>. It
+                  computes the set of states, from which probability of reaching
+                  accepting end component is 1.  In particular, the algorithm
+                  maintains approximation set of states that may belong to an
+                  AEC or probability of reaching AEC from them is 1. The
+                  algorithm repeatedly refines the approximation set by locating
+                  and removing states from which AEC cannot be reached with
+                  probability 1, we call this a pruning step.  The core of the
+                  algorithm are conditions determining the states to prune.
+                  
+               </p>
+               
+               <p><span class="firstLetter"></span> <span
+                  class="firstLetter">A</span>fter determinig states with
+                  probability 1, linear programming problem is built and
+                  solved. Size of LP problem is crucial, thus several parallel
+                  optimization techniques to reduce number of inequations were
+                  developed and implemented. The techniques:
+                  
+                  <ul> 
+		  <li> prune the graph, from which inequations are
+		   generated</li> 
+
+		  <li> allow to divide LP problem to a sequence of LP
+		   subproblems via parallel decomposition into strongly
+		   connected component (SCC) graph </li>
+                     
+                  <li> allow to solve some LP subproblems corresponding to SCCs,
+                  independently or at least iteratively (in parallel)</li>                     
+                 </ul>                                     
+               </p>                              
+               
+               <p><span class="firstLetter">P</span>robDiVinE-MC is built on the
+                  top of the DiVinE library that offers common functions needed
+                  to develop a parallel or distributed enumerative model
+                  checker. The only extension to the library that was necessary,
+                  was the extension of the state generator to a probabilistic
+                  state generator, hence, it can handle probabilistic
+                  transitions of PROBDVE as introduced in section "Usage".                  
+               </p>
+                                            
+               <p><span class="firstLetter">P</span>robDiVinE-MC is currently
+                  operated in command-line mode. The input is the model given as
+                  a .probdve file and the LTL formula given as an .ltl
+                  file. Further parameters include type of verification, number
+                  of threads involved in the computation etc. See section
+                  "Usage" .  </p>
+                              
+               <h2 id="usage"> Using the tool</h2>
+               
+               
+               
+               <p><span class="firstLetter"></span><ul>
+                     
+                     <li>Before using the tool, make sure your PATH environment
+                     variable contains paths to both DiVinE and ProbDiVinE
+                     binaries.  
+
+             <p style="margin-left: 20pt"><tt>export PATH=:path_to_probdivine:path_to_divine</tt>
+                          </p>
+                     </li>
+                     
+                     	
+                     
+                     <li> Write your model in a PROBDVE language and store it in a file with extension <tt>.probdve</tt>.
+                        
+                        <p><span class="firstLetter"></span> 
+                           PROBDVE is
+                           a slightly modified <a class="httpLink" href="language.html">
+                              DVE specification language</a> as used in DiVinE. A system is modeled
+                           as a composition of processes, which can change their states via probabilistic
+                           (<i>=&gt;</i>) or non-probabilistic (<i>-&gt;</i>) transitions and can synchronize
+                           using channels. A non-probabilistic transition may have a <i>guard</i> (a
+                           condition which has to be satisfied for the transition to be enabled), an
+                           <i>effect</i> (assignment to a variable), and a <i>sync</i> expression (for
+                           synchronization with another transition via channel).  A probabilistic
+                           transition just determines probability of resulting state, which is given by
+                           weights assigned to states. For example, <i>s=&gt;{s:3, t:2, u:2}</i> means that
+                           from the state <i>s</i> the system evolves in the state <i>s</i>
+
+                           with probability 3/7, in the state <i>t</i> with probability 2/7, as well as in
+                           the state <i>u</i>.
+                           
+                        </p>
+                        
+                        
+                     </li>
+                     	
+                     
+                     <li> Express the properties you want to verify and store them in a file with extension <tt>.ltl</tt>. 
+                        	<br>Rules for writing <tt>.ltl</tt> files are as follows.
+                        	 
+                        
+                        <ul>
+
+                           	     
+                           
+                           <li> Only lines starting with <tt>#</tt> are processed, the rest is ignored. 
+                              
+                           </li>
+                           	     
+                           
+                           <li> Atomic propositions are specified using the standard keyword <tt>#define</tt>, e.g.: 
+                              
+                              <p><tt>#define hungry (hungry==1)</tt></p> 
+                              
+                           </li>
+                           	     
+                           
+                           <li> Individual properties are specified using keyword <tt>#property</tt> , e.g.: 
+                              
+                              <p><tt>#property GF(hungry)</tt></p> 
+                              
+                           </li>
+
+                           	     
+                           
+                           <li> More LTL properties can be specified in a single file.</li>
+                           	     
+                           
+                           <li> Syntax of an LTL formula is given by the following rule. All temporal operators follow the standard semantics.
+                              		
+                              
+                              <p style="margin-left: 20pt"><span class="firstLetter">f</span> ::= !f | Xf | Ff | Gf | fUf | fVf | f&amp;&amp;f | f||f | f-&gt;f | a | true | false 
+                                 
+                              </p>
+                              		
+                              
+                           </li>	
+                           	 
+                           
+                        </ul>
+                        	
+                        
+                     </li>
+
+                     
+                     
+                     <li> <b>Important!</b> Combine your model file with the ltl file using
+                        	<tt>divine.combine</tt> script to produce models with LTL specification and use <tt>-d</tt> to obtain a product with semi-deterministic Buchi automaton. Only these can be used as input files to the probabilistic model
+                        	checker. Tools(algorithms) will not work on models that contain no LTL
+                        	specification or property process.
+                        	
+                        
+                        <p style="margin-left: 20pt"><tt>divine.combine -d model.probdve specification.ltl</tt></p> 
+                        	This will produce as many files as there are properties in <tt>specification.ltl</tt>. Newly created files will be named <br>
+
+                        	
+                        
+                        <p style="margin-left: 20pt"><tt> model.prop1.probdve<br>
+                              		model.prop2.probdve<br>
+                              		model.prop3.probdve<br>
+                              		...<br>
+                              	</tt></p>
+                        
+                        
+                     </li>
+
+                     
+                     
+                     <h3 style="margin-left: -10pt">ProbDiVinE-MC: </h3>  
+                     		     
+                     <li> Run the algorithm to verify the model. <tt>NNN</tt>
+		     stands for the number of threads required to perform the
+		     computation. In case of quantitative verification, we
+		     obtain minimal probability the formula holds:
+                        
+                     <p style="margin-left: 20pt"><tt>divine-mc.probabilistic -n
+                     NNN -t model.prop1.probdve</tt></p>
+                        
+                     If you run qualitative verification only, the algorithm
+                     outputs whether the LTL formula is satisfied with
+                     probability one or not.
+                        
+                     <p style="margin-left: 20pt"><tt>divine-mc.probabilistic -n NNN -l model.prop1.probdve</tt></p>
+                     </li>
+                  </ul>
+                  
+                  <h3 style="margin-left: -10pt">ProbDiVinE-1.0: </h3>  
+                  <p style="margin-left: 20pt"><span class="firstLetter"></span><ul>
+                        
+                        <li> Run any of the algortihms to detect the presence of AEC. If
+                           	   an AEC is present in the state space graph, the verifed
+                           property does not hold true with probability one. The presence
+                           	   of AEC is reported by the algorithms to the standard output.
+                           	   <br><br>
+                           
+                           	   Algorithm <tt>probdivine.AECdetection</tt> is an MPI application and
+                           	   must be executed with appropriate way. The particular ways differ according to
+                           	   individual implementations of MPI standard. The following sequences of commands
+                           	   relate to the two most used MPI implementations: mpich and
+                           	  LAM/MPI. Note that <tt>NNN</tt> stands for the number of network
+                           	   nodes required to perform the computation.
+                           		
+                           
+                           <p style="margin-left: 20pt"><span class="firstLetter">m</span>pich:<br><tt>mpirun -np NNN probdivine.AECdetection model.prop1.probdve</tt></p>
+
+                           		
+                           
+                           <p style="margin-left: 20pt"><span class="firstLetter">L</span>AM/MPI:<br><tt> lamboot<br>
+                                 			mpirun -np NNN probdivine.AECdetection model.prop1.probdve<br>
+                                 			lamhalt<br>
+                                 		   </tt></p>
+                           	   
+                           	   Algorithms <tt>probdivine.CY</tt> and
+                           	   <tt>probdivine.CY_eliminate</tt> are standard serial algorithms that
+                           	   are executed outside MPI environment. 
+                           	   
+                           <p style="margin-left: 20pt"><tt>probdivine.CY model.prop1.probdve</tt></p>
+                        </li>
+                     </ul>
+                  </p>
+               </p>
+
+ <h2 id="download"> Download </h2>
+               
+ <p>The latest release of ProbDiVinE and install instructions can be found at
+ <a href="http://divine.fi.muni.cz/page.php?page=download"> DiVinE download page</a>.
+
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Wednesday, 24-Sep-2008 15:05 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

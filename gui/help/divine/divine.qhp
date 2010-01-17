@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<QtHelpProject version="1.0">
+  <namespace>divine.web.base</namespace>
+  <virtualFolder>doc</virtualFolder>
+  <customFilter name="DiVinE">
+    <filterAttribute>divine</filterAttribute>
+  </customFilter>
+  <filterSection>
+    <filterAttribute>divine</filterAttribute>
+    <toc>
+      <section title="DiVinE Manual" ref="index.html"/>
+      <section title="Overview" ref="overview.html"/>
+      <section title="Specification Language" ref="language.html"/>
+      <section title="Tool Guide" ref="tool.html"/>
+      <section title="Publications" ref="publications.html"/>
+      <section title="Case Studies" ref="casestudies.html"/>
+      <section title="DiVinE Cluster" ref="divine-cluster.html"/>
+      <section title="DiVinE CUDA" ref="divine-cuda.html"/>
+      <section title="DiVinE Multi-Core" ref="divine-mc.html"/>
+      <section title="ProbDiVinE" ref="probdivine.html"/>
+      <section title="Contact" ref="contact.html"/>
+    </toc>
+    <keywords>
+<!--      <keyword name="foo" id="MyApplication::foo" ref="doc.html#foo"/>
+      <keyword name="bar" ref="doc.html#bar"/>
+      <keyword id="MyApplication::foobar" ref="doc.html#foobar"/>-->
+    </keywords>
+    <files>
+      <file>pics/divine-logo.png</file>
+      
+      <file>pics/anderson-throughput-MAP.png</file>
+      <file>pics/anderson-throughput-OWCTY.png</file>
+      <file>pics/anderson-time-scale-MAP.png</file>
+      <file>pics/anderson-time-scale-OWCTY.png</file>
+      <file>pics/barnat.jpeg</file>
+      <file>pics/brim.jpeg</file>
+      <file>pics/cerna.jpeg</file>
+      <file>pics/ceska.jpeg</file>
+      <file>pics/chaloupka.jpeg</file>
+      <file>pics/janousek.jpeg</file>
+      <file>pics/moravec.jpeg</file>
+      <file>pics/rockai.jpeg</file>
+      <file>pics/simecek.jpeg</file>
+      <file>pics/tumova.jpeg</file>
+      <file>pics/vanessa.jpg</file>
+      <file>pics/Verstoep_Kees.jpg</file>
+      <file>pics/weber.jpeg</file>
+      
+      <file>divine-screen.css</file>
+      <file>divine-screen-alt.css</file>
+      <file>divine-screen-alt-maruku.css</file>
+      
+      <file>index.html</file>
+      
+      <file>casestudies.html</file>
+      <file>contact.html</file>
+      <file>divine-cluster.html</file>
+      <file>divine-cuda.html</file>
+      <file>divine-mc.html</file>
+      <file>language.html</file>
+      <file>overview.html</file>
+      <file>probdivine.html</file>
+      <file>publications.html</file>
+      <file>tool.html</file>
+    </files>
+  </filterSection>
+</QtHelpProject>

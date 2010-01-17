@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt-maruku.css" media="screen, tv, projection" title="Default" />
+
+    <title>Tool Guide</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE</h1>
+          <div class="headerSubTitle">Distributed and Parallel Verification Environment</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+
+    <!-- ##### Main Copy ##### -->
+
+    <div id="main-copy">
+        <h1 id='tool_guide'>Tool Guide</h1>
+
+<p>This section will give you a quick overview on using DiVinE MC for verification purposes. Please note that we use DiVinE Multi-Core for practical examples of command invocations. Commands for <a href='divine-cluster.html'>DiVinE Cluster</a> are slightly different, although the differences are quite superficial. Overview of differences is summarised below.</p>
+
+<h2 id='using_the_tool'>Using the Tool</h2>
+
+<p>First and foremost, the model needs to be specified in <a href='language.html'>DVE modelling language</a> and the property needs to be specified either as an LTL formula or as a Büchi automaton. We will present usage of the tool on a simple example of a mutual exclusion protocol. Source code of a single process of such a model looks like this:</p>
+
+<pre><code>process P_$1 {
+byte j=0, k=0;
+state NCS, CS, wait, q2, q3;
+init NCS;
+trans
+ NCS -&gt; wait { effect j = 1, active = $1, waiting[$1] = 1; },
+ wait -&gt; q2 { guard j &lt; N;
+              effect pos[$1] = j, active = $1; },
+ q2 -&gt; q3 { effect step[j-1] = $1, k = 0, active = $1; },
+ q3 -&gt; q3 { guard (k == $1 || pos[k]&lt; j) &amp;&amp; k &lt; N;
+            effect k = k+1, active = $1; },
+ q3 -&gt; wait { guard step[j-1] != $1 || k == N;
+              effect j = j+1, active = $1; },
+ wait -&gt; CS { guard j == N;
+              effect in_critical = in_critical+1,
+              active = $1, waiting[$1] = 0; },
+ CS -&gt; NCS { effect pos[$1] = 0, in_critical = in_critical-1,
+             active = $1; };
+}</code></pre>
+
+<p>For a more elaborate discussion on how to prepare models for DiVinE, please see the <a href='language.html'>Language Guide</a>. The first LTL property we will use is</p>
+
+<pre><code>GF c0 and GF c1</code></pre>
+
+<p>which is a naive formulation of the idea that the two processes are infinitely often in the critical section. An improved version of the formula that enforces fairness will be</p>
+
+<pre><code>GF(a0 and w0) -&gt; GF c0 and (GF a1 and w1) -&gt; GF c1</code></pre>
+
+<p>The propositions <code>a</code> and <code>w</code> mean that the given process is active (when <code>a</code> holds) and that it is waiting (when <code>w</code> holds). First of these formulae is invalid (and the tool produces a counterexample), whereas the second one will be shown to hold for the model presented.</p>
+
+<p>An example invocation of the tool for the model with 3 processes (and the formulae extended to 3 processes straightforwardly) looks like this:</p>
+
+<pre><code>$ divine-mc owcty mutex_peterson.naive.dve 
+ initialize...             |S| = 81219
+------------- iteration 0 ------------- 
+ reachability...           |S| = 81219
+ elimination &amp; reset...    |S| = 59736
+------------- iteration 1 ------------- 
+ reachability...           |S| = 59736
+ elimination &amp; reset...    |S| = 59736
+ ===================================== 
+         Accepting cycle FOUND         
+ ===================================== 
+ generating counterexample...      done</code></pre>
+
+<p>The counterexample could be browsed by running <code>divine-mc.simulator</code> on the produced <code>mutex_peterson.naive.trail</code>. The simulator is currently fairly rudimentary, but it still serves the purpose. When the same verifier command is used on the second formula, no counterexample is generated and the tool declares that an accepting cycle has not been found, which means that the LTL property holds.</p>
+
+<p>It can be seen that the input file to the verifier is a single DVE file that already contains a property process. Such a file could be written by hand (when the property has been specified as a Büchi automaton) or produced by <code>divine-mc.combine</code>, which takes a set of LTL formulae as input (in an <code>.ltl</code> file containing definitions of atomic propositions and the formulae. For example, such file containing the 2 discussed properties looks like this:</p>
+
+<pre><code>#define a_0 (active == 0)
+#define a_1 (active == 1)
+
+#define w_0 (waiting[0] == 1)
+#define w_1 (waiting[1] == 1)
+
+#define c_0 (P_0.CS)
+#define c_1 (P_1.CS)
+
+#property G(F(c_0)) &amp;&amp; G(F(c_1))
+#property ((GF(a_0 &amp;&amp; w_0)) -&gt; GF(c_0)) &amp;&amp; ((GF(a_1 &amp;&amp; w_1)) -&gt; GF(c_1))</code></pre>
+
+<p>The <code>divine-mc.combine</code> program will produce a single DVE file for each property, which can then be used as an input for the verifier.</p>
+
+<h2 id='using_divine_cluster'>Using DiVinE Cluster</h2>
+
+<p>The <code>divine-mc.combine</code> command is called <code>divine.combine</code>. When running <code>divine-mc owcty</code>, in cluster, you would instead use <code>divine.owcty</code>, and you cannot run it directly &#8211; please consult your MPI implementation manual how to run MPI programs in your cluster: This usually involves using <code>mpiexec</code>.</p>
+
+    </div>
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Saturday, 18-Oct-2008 9:47 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

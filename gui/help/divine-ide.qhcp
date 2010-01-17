@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<QHelpCollectionProject version="1.0">
+  <assistant>
+    <title>DiVinE IDE Help</title>
+    <startPage>qthelp://divine.ide.base/doc/index.html</startPage>
+    <homePage>qthelp://divine.ide.base/doc/index.html</homePage>
+    <!-- <currentFilter>filter</currentFilter> -->
+    <applicationIcon>divine/pics/divine-ico.png</applicationIcon>
+    <enableFilterFunctionality>false</enableFilterFunctionality>
+    <enableDocumentationManager>false</enableDocumentationManager>
+    <!--<enableAddressBar visible="false">false</enableAddressBar>-->
+    <cacheDirectory>ParaDiSe/DiVinE IDE</cacheDirectory>
+    <aboutMenuText>
+      <text>About</text>
+    </aboutMenuText>
+    <aboutDialog>
+      <file>about.txt</file>
+      <icon>divine/pics/divine-logo.png</icon>
+    </aboutDialog>
+  </assistant>
+
+  <docFiles>
+    <generate>
+      <file>
+        <input>divine/divine.qhp</input>
+        <output>divine.qch</output>
+      </file>
+    </generate>
+    <register>
+      <file>divine.qch</file>
+    </register>
+  </docFiles>
+</QHelpCollectionProject>

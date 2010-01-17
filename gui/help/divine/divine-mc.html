@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-AU">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <meta name="author" content="Lubos Brim" />
+    <meta name="generator" content="GNU Emacs" />
+    <link rel="icon" href="pics/divine-ico.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="divine-screen-alt.css" media="screen, tv, projection" title="Default" />
+
+    <title>DiVinE Multi-Core</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <span>Quick Links:</span>
+        <a href="http://www.fi.muni.cz/paradise/" title="ParaDiSe laboratories">PARADISE LABS</a> |
+        <a href="divine-cluster.html" title="Divine Cluster pages">DIVINE CLUSTER</a> |
+  <a href="divine-mc.html" title="Divine Multi-Core pages">DIVINE MULTI-CORE</a> |
+  <a href="divine-cuda.html" title="Divine CUDA pages">DIVINE CUDA</a> |
+  DIVINE I-O  <!-- <a href="page.php?page=divine-io" title="Divine External-Memory pages">DIVINE I-O</a>  --> |
+        <a href="probdivine.html" title="ProbDivine pages">PROB-DIVINE</a> |
+  BIO-DIVINE  <!-- <a href="page.php?page=biodivine" title="BioDivine pages">BIO-DIVINE</a> -->
+      </div>
+
+      <div class="midHeader">
+          <h1 class="headerTitle">DIVINE MULTI-CORE</h1>
+          <div class="headerSubTitle">Parallel Shared-Memory LTL Model-Checker</div>
+
+        <br class="doNotDisplay doNotPrint" />
+        <div class="headerLinks">
+	</div>
+      </div>
+      <div class="subHeader">
+        <span class="doNotDisplay">Navigation:</span>
+        <a href="index.html">Main Page</a> |
+        <a href="overview.html">DiVinE Overview</a> |
+        <a href="language.html">Language Guide</a> |
+        <a href="tool.html">Tool Guide</a> |
+        <a href="publications.html">Publications</a> |
+        <a href="casestudies.html">Experiments</a> |
+        Benchmarking  <!-- <a href="page.php?page=benchmark">Benchmarking</a> --> | 
+        <a href="http://divine.fi.muni.cz/page.php?page=download">Download</a> |
+        <a href="contact.html">Contact us</a>
+      </div>
+    </div>
+
+    <!-- ##### Main Copy ##### -->
+
+      <div id="main-copy">
+      <h1 id="about">Welcome to DIVINE Multi-Core!</h1>
+
+<p>The tool is based on automata-theoretic approach to LTL model checking. The
+input language allows for specification of processes in terms of extended
+finite automata and the verified system is then obtained as an asynchronous
+parallel composition of these processes. This system is in turn synchronously
+composed with a property process (negative claim automaton) obtained from the
+verified LTL formula through a Büchi automaton construction.</p>
+
+<p>The resulting finite product automaton is then checked for presence of accepting
+cycles (fair cycles), indicating nonemptiness of its accepted language -- which
+in turn indicates invalidity of the verified LTL property.</p>
+
+               <p>Based on proven DiVinE LTL model checking system, DiVinE
+                  Multi-Core brings parallel verification to contemporary
+                  high-powered multi-core architectures. DiVinE Multi-Core
+                  exploits full power of modern x86 hardware and reduces
+                  unnecessary delays in workflow.  Employing
+                  state-of-the-art parallel liveness checking algorithm,
+                  DiVinE Multi-Core offers unmatched scalability on shared
+                  memory platforms in the range of 2- to 16-core
+                  machines. Moreover, the tool supports 64-bit platforms out
+                  of the box, allowing it to leverage all the memory
+                  available in contemporary systems (and systems of the
+                  upcoming years).  </p>
+
+               <p>In the current DiVinE Multi-Core release, input is
+                     provided in <a
+                     href="language.html" class="localLink"> DVE format -- an industry-strength
+                     specification language</a>, as used in original <a
+                     href="http://divine.fi.muni.cz"
+                     class="httpLink">DiVinE</a>, with plenty of diverse
+                     example models, ranging from simple toys to complex
+                     real-world models. An extensive model database is
+                     available at <a href="http://anna.fi.muni.cz/models/"
+                     class="httpLink">BEEM database</a>.
+                  
+               </p>
+
+               <p>Moreover, DiVinE can read models specified in ProMeLa (as
+                  used in the SPIN tool), in addition to its native DVE
+                  format. However, the capabilities of the tool on ProMeLa
+                  models is currently limited by inability to produce
+                  counterexamples: you can only obtain a yes/no answer.</p>
+
+
+<h2>DiVinE-MC Algortihm</h2>
+
+<p>The algorithm employed for accepting cycle detection is OWCTY augmented with a
+heuristic for on-the-fly cycle detection inspired by the MAP algorithm. It is
+not the purpose of this tool paper to go into details of the algorithm, so for
+in-depth description, we refer the reader to the two cited papers.</p>
+
+<p>The main idea behind the OWCTY algorithm is to use topological sort for cycle
+detection -- an algorithm that does not depend on DFS postorder and can be thus
+parallelized reasonably well. Detection of cycles in this way is linear, but
+since we do accepting cycle detection, provisions for removing non-accepting
+cycles need to be added.  This makes the algorithm quadratic in the worst case
+for general LTL properties, although for a significant subset of formulae
+(those that translate to weak Büchi automata) the algorithm runs in linear time
+in the size of the product automaton.</p>
+
+<p>The MAP algorithm uses maximal accepting predecessors to identify accepting
+cycles in the product automaton. The main idea is based on the fact that each
+accepting vertex lying on an accepting cycle is its own predecessor.  Instead
+of expensively computing and storing all accepting predecessors for each
+accepting vertex (which would be sufficient to conclude the presence of an
+accepting cycle), the algorithm computes only a single representative accepting
+predecessor for each vertex -- the maximal one in a suitable ordering. Clearly,
+if an accepting vertex is its own maximal accepting predecessor then it lies on
+an accepting cycle. This condition is used as the heuristic mentioned
+above. Note that the opposite direction does not hold in general. It can happen
+that the maximal accepting predecessor for an accepting vertex on a cycle does
+not lie on the cycle and the original MAP algorithm employs additional
+techniques to handle such a case.</p>
+
+<p>If the heuristic fails, the OWCTY run will still detect accepting cycles if
+present. The heuristic does not interfere in any way when there are no
+accepting cycles -- OWCTY will detect that condition by itself. The cost of the
+heuristic is a very slight increase in per-state memory usage, and a small
+runtime penalty in the first phase of the first iteration of OWCTY. Overall, it
+does not increase the time complexity compared to OWCTY and in a number of
+cases it detects property violation without generating the entire state space,
+which makes the combined algorithm on-the-fly.</p>
+
+<p>However, even though the algorithm is not asymptotically optimal, in practice
+it is hardly a problem when it comes to performance -- the bottlenecks can be
+found elsewhere.</p>
+
+               <h2 id="usage"> Usage </h2>
+
+               <p>Please refer to the <a href="tool.html">Tool
+               Guide</a> for an overview of tool usage.</p>
+
+               <h2 id="download"> Download </h2>
+
+               <p>The latest release of DiVinE Multi-Core and install
+               instructions can be found on the <a
+               href="http://divine.fi.muni.cz/page.php?page=download">download page</a>.
+
+               </p>
+
+    </div>
+
+
+    <!-- ##### Footer ##### -->
+    <div id="footer">
+<span>Copyright &copy; 2002-2008 ParaDiSe Labs, Faculty of Informatics, Masaryk
+University, Brno, Czech Republic</span><br />
+      <strong>Updated &raquo;</strong>Wednesday, 3-Sep-2008 16:40 CEST<br />
+    </div>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
