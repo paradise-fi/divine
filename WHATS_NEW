@@ -1,3 +1,14 @@
+DiVinE 2.1
+==========
+
+- A new DVE to C (to native binary) compiler available as `divine compile'.
+- Fixed handling of error states in interpreted DVE.
+- The GUI can now be compiled & used on Windows.
+- A number of GUI improvements and usability fixes.
+
+KNOWN ISSUES: Error state handling is not consistent between interpreted and
+compiled DVE. The profiled build (-DPROFILE=ON) is currently broken.
+
 DiVinE 2.0
 ==========
 
