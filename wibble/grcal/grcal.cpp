@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#include <wibble/sys/macros.h>
 #include <wibble/grcal/grcal.h>
 #include <wibble/exception.h>
 #include <ctime>
@@ -297,6 +298,7 @@ void fromtm(const struct tm& src, int* dst, int count)
 	dst[5] = count < 6 ? -1 : src.tm_sec;
 }
 
+#ifdef POSIX
 void today(int* dst)
 {
 	time_t now = time(NULL);
@@ -312,6 +314,7 @@ void now(int* dst)
 	gmtime_r(&now, &t);
 	fromtm(t, dst);
 }
+#endif
 
 std::string tostring(const int* val)
 {
