@@ -15,8 +15,11 @@ namespace sig {
  */
 struct ProcMask
 {
+#ifdef POSIX
 	sigset_t oldset;
-
+#else
+#define SIG_BLOCK 0 // FIXME, is this reasonable?
+#endif
 	ProcMask(const sigset_t& newset, int how = SIG_BLOCK)
 	{
 #ifdef POSIX
@@ -38,7 +41,9 @@ struct ProcMask
 struct Action
 {
 	int signum;
+#ifdef POSIX
 	struct sigaction oldact;
+#endif
 
 	Action(int signum, const struct sigaction& act) : signum(signum)
 	{
