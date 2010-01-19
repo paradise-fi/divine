@@ -1,6 +1,7 @@
 #ifndef WIBBLE_SYS_LOCKFILE_H
 #define WIBBLE_SYS_LOCKFILE_H
 
+#include <wibble/sys/macros.h>
 #include <string>
 
 namespace wibble {

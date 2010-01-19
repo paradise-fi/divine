@@ -1,4 +1,7 @@
 #include <wibble/sys/lockfile.h>
+
+#ifdef POSIX
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -42,3 +45,5 @@ Lockfile::~Lockfile()
 }
 
 // vim:set ts=4 sw=4:
+
+#endif
