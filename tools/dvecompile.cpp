@@ -2078,11 +2078,37 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
   ostr << space << " }" <<endl;
   ostr << space << "}" <<endl;
 
+  ostr<<endl;
+
+  ostr << "extern "<< '"' << "C" << '"' << " bool is_accepting(char* state, int size)" <<endl; // only Buchi acceptance condition
+  ostr << " {"<<endl;
+  if(sytem_with_property)
+  {
+    ostr << space << "state_struct_t *p_state_struct = reinterpret_cast<state_struct_t*>(state);"<<endl;
+    ostr << space << "state_struct_t "<<state_name<<" = *p_state_struct;"<<endl;
+    for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_state_count(); i++)
+    {
+      if (dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_acceptance(i, 0, 1) )
+      {
+         ostr << space << "if(" << state_name << "." << get_symbol_table()->get_process(this->get_property_gid())->get_name() << ".state == " 
+              <<  i  <<" ) return true;" << endl;
+      }
+    }
+    ostr << space << "return false;" << endl;
+  }
+  else{
+  ostr << "    return false;"<<endl;
+  }
+  ostr << " }"<<endl;
+
+  ostr<<endl;
 
   ostr << "extern "<< '"' << "C" << '"' << " int get_state_size()" <<endl;
   ostr << " {"<<endl;
   ostr << "   return state_size; "<<endl;
   ostr << " }"<<endl;
+
+  ostr<<endl;
 
   ostr << "extern "<< '"' << "C" << '"' << " void get_initial_state(char* to)" <<endl;
   ostr << " {"<<endl;
