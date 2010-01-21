@@ -19,17 +19,19 @@ struct Custom : Common {
     typedef void (*dl_get_initial_state_t)(char *);
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
+    typedef bool (*dl_is_accepting_t)(char *, int);
     typedef void (*dl_get_many_successors_t)(char *, char *, char *, char *);
 
     struct Dl {
         void *handle;
         dl_get_initial_state_t get_initial_state;
         dl_get_successor_t get_successor;
+        dl_is_accepting_t is_accepting;
         dl_get_state_size_t get_state_size;
         dl_get_many_successors_t get_many_successors;
         size_t size;
 
-        Dl() : get_initial_state( 0 ), get_successor( 0 ),
+        Dl() : get_initial_state( 0 ), get_successor( 0 ), is_accepting( 0 ),
                get_state_size( 0 ), get_many_successors( 0 ),
                size( 0 ) {}
     } dl;
@@ -131,6 +133,8 @@ struct Custom : Common {
                                dlsym(dl.handle, "get_initial_state");
         dl.get_successor = (dl_get_successor_t)
                            dlsym(dl.handle, "get_successor");
+        dl.is_accepting = (dl_is_accepting_t)
+                           dlsym(dl.handle, "is_accepting");
         dl.get_state_size = (dl_get_state_size_t)
                             dlsym(dl.handle, "get_state_size");
         dl.get_many_successors = (dl_get_many_successors_t)
@@ -152,7 +156,15 @@ struct Custom : Common {
 
     bool isDeadlock( Node s ) { return false; } // XXX
     bool isGoal( Node s ) { return false; } // XXX
-    bool isAccepting( Node s ) { return false; } // XXX
+
+    bool isAccepting( Node s ) {
+        if ( dl.is_accepting )
+            return dl.is_accepting( s.data() + alloc._slack,
+                                    s.size() - alloc._slack );
+        else
+            return false;
+    }
+
     std::string showNode( Node s ) { return "Foo."; } // XXX
 
     void release( Node s ) { s.free( pool() ); }
