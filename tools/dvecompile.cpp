@@ -1619,7 +1619,7 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
   bool some_commited_state = false;
   ostr << "extern "<< '"' << "C" << '"' << " int get_successor(int next_state, char* from, char* to)" <<endl;
   ostr << " {"<<endl;
-  ostr << space << "bool processes_in_deadlock = true;"<<endl;
+  ostr << space << "bool processes_in_deadlock = false;"<<endl;
   ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)from;"<<endl;
   ostr << space << "state_struct_t "<<state_name<<" = *p_state_struct;"<<endl;
   ostr << space << "goto switch_state ;"<<endl;
@@ -1746,7 +1746,6 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
                    ostr <<"true )"<<endl;
                  ostr << space << "          {" <<endl;
 
-                 ostr << space << "             processes_in_deadlock = false;" <<endl;
                  ostr << space << "             state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
                  ostr << space << "             (*p_new_c_state) = c_state;"<<endl;
                  //synchronization effect
@@ -2072,7 +2071,10 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
   ostr << space << "switch(next_state)" <<endl;
   ostr << space << " {" <<endl;  
   for(int i=1; i<=label; i++)
-   ostr<< space << "  case " << i << " : goto l" << i << ";" << endl; 
+   if (i==1)
+    ostr<< space << "  case " << i << " : {processes_in_deadlock = true; goto l" << i << ";}" << endl;
+   else
+    ostr<< space << "  case " << i << " : goto l" << i << ";" << endl; 
   ostr << space << " }" <<endl;
   ostr << space << "}" <<endl;
 
