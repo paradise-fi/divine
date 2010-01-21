@@ -7,3 +7,10 @@ grep "^Finished: Yes" report
 grep "^Error-State-Count: 0" report
 grep "^States-Visited:" report
 grep "^States-Visited: 94062" report
+
+# test reachability as well, which has additional per-state data
+divine reachability --report peterson-naive.dve.so > report
+grep "^Finished: Yes" report
+grep "^Error-State-Count: 0" report
+grep "^States-Visited:" report
+grep "^States-Visited: 94062" report
