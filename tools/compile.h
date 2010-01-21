@@ -24,7 +24,7 @@ struct Compile {
         compiler.print_initial_state( out );
         compiler.print_DiVinE2_generator( out );
         std::stringstream cmd;
-        cmd << "g++ -O2 -shared -o " << str::basename( in ) + ".so" << " " << outfile;
+        cmd << "g++ -O2 -shared -fPIC -o " << str::basename( in ) + ".so" << " " << outfile;
         system( cmd.str().c_str() );
     }
 
