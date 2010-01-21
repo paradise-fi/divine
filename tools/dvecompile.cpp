@@ -92,6 +92,7 @@ void dve_compiler::print_test_header(ostream & ostr)
   ostr << endl;
   //ostr << "#define EXPLICIT_STORAGE_HASH_SEED 0xBA9A9ABA"<<endl;
   ostr << endl;
+  ostr << "#define c_state (*p_state_struct)" <<endl; 
   ostr << "typedef uint64_t ulong_long_int_t;" <<endl; 
   ostr << "typedef int64_t slong_long_int_t;" <<endl; 
   ostr << "typedef uint32_t ulong_int_t;" <<endl; 
@@ -670,8 +671,6 @@ void dve_compiler::print_DVE_compiler(ostream & ostr)
              else
                ostr <<"true )"<<endl;
              ostr << space << "          {" <<endl;
-
-             ostr << space << "             state_struct_t new_c_state = "<<state_name<<";"<<endl;
 
              //synchronization effect
              if(iter_ext_transition_vector->synchronized)
@@ -1621,7 +1620,8 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
   ostr << " {"<<endl;
   ostr << space << "bool processes_in_deadlock = false;"<<endl;
   ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)from;"<<endl;
-  ostr << space << "state_struct_t "<<state_name<<" = *p_state_struct;"<<endl;
+  ostr << space << "state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
+  ostr << space << "*p_new_c_state = c_state;"<<endl;
   ostr << space << "goto switch_state ;"<<endl;
  
   ostr << space << "l"<<label << ": if( ";
@@ -1746,8 +1746,6 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
                    ostr <<"true )"<<endl;
                  ostr << space << "          {" <<endl;
 
-                 ostr << space << "             state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
-                 ostr << space << "             (*p_new_c_state) = c_state;"<<endl;
                  //synchronization effect
                  if(iter_ext_transition_vector->synchronized)
                  {
@@ -1943,8 +1941,6 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
              ostr << space << "          {" <<endl;
 
              ostr << space << "             processes_in_deadlock = false;" <<endl;
-             ostr << space << "             state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
-             ostr << space << "             (*p_new_c_state) = c_state;"<<endl;
              //synchronization effect
              if(iter_ext_transition_vector->synchronized)
              {
@@ -2056,8 +2052,6 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
         ostr << " )"<<endl;
 
         ostr << space << "    {" <<endl;
-        ostr << space << "      state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
-        ostr << space << "      (*p_new_c_state) = c_state;"<<endl;
         ostr << space << "      (*p_new_c_state)."<<get_symbol_table()->get_process((*iter_property_transitions)->get_process_gid())->get_name()
                     << ".state = "<< (*iter_property_transitions)->get_state2_lid()<< ";" <<endl;
         ostr << space << "      return " <<label <<";"<<endl;
@@ -2084,13 +2078,12 @@ void dve_compiler::print_DiVinE2_generator(ostream & ostr)
   ostr << " {"<<endl;
   if(sytem_with_property)
   {
-    ostr << space << "state_struct_t *p_state_struct = reinterpret_cast<state_struct_t*>(state);"<<endl;
-    ostr << space << "state_struct_t "<<state_name<<" = *p_state_struct;"<<endl;
+    ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)state;"<<endl;
     for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_state_count(); i++)
     {
       if (dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_acceptance(i, 0, 1) )
       {
-         ostr << space << "if(" << state_name << "." << get_symbol_table()->get_process(this->get_property_gid())->get_name() << ".state == " 
+         ostr << space << "if(p_state_struct->" << get_symbol_table()->get_process(this->get_property_gid())->get_name() << ".state == " 
               <<  i  <<" ) return true;" << endl;
       }
     }
