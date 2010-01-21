@@ -19,10 +19,10 @@ struct Compile {
         compiler.read( in.c_str() );
         std::string outfile = str::basename( in ) + ".c";
         std::ofstream out( outfile.c_str() );
-        compiler.print_test_header( out );
+        compiler.print_header( out );
         compiler.print_state_struct( out );
         compiler.print_initial_state( out );
-        compiler.print_DiVinE2_generator( out );
+        compiler.print_generator( out );
         std::stringstream cmd;
         cmd << "g++ -O2 -shared -fPIC -o " << str::basename( in ) + ".so" << " " << outfile;
         system( cmd.str().c_str() );

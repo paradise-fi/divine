@@ -37,15 +37,9 @@ struct dve_compiler: public dve_explicit_system_t
     virtual ~dve_compiler() {}
 
     void write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name);
-    void print_DVE_compiler(std::ostream & ostr);
-    void print_test_generator(std::ostream & ostr);
-    void print_DiVinE2_generator(ostream & ostr);
+
+    void print_header(std::ostream & ostr);
     void print_state_struct(std::ostream & ostr);
-    void print_state_t(std::ostream & ostr);
-    void print_duplicate_state(std::ostream & ostr);
-    void print_new_state(std::ostream & ostr);
-    void print_include(std::ostream & ostr);
-    void print_test_header(std::ostream & ostr);
-    void print_main(std::ostream & ostr);
     void print_initial_state(std::ostream & ostr);
+    void print_generator(ostream & ostr);
 };
