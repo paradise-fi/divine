@@ -64,6 +64,8 @@ struct Custom : Common {
             handle = custom->dl.get_successor(
                 handle,
                 custom->nodeData( _from ), custom->nodeData( my ) );
+            if ( handle == 0 )
+                custom->release( my );
         }
 
         Node head() {
