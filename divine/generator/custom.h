@@ -63,8 +63,7 @@ struct Custom : Common {
             my = custom->alloc.new_blob( custom->dl.size );
             handle = custom->dl.get_successor(
                 handle,
-                _from.data() + custom->alloc._slack,
-                my.data() + custom->alloc._slack );
+                custom->nodeData( _from ), custom->nodeData( my ) );
         }
 
         Node head() {
@@ -103,9 +102,17 @@ struct Custom : Common {
             fillCircularTedious( *this, in, out );
     }
 
+    char *nodeData( Blob b ) {
+        return b.data() + alloc._slack;
+    }
+
+    int nodeSize( Blob b ) {
+        return b.size() - alloc._slack;
+    }
+
     Node initial() {
         Blob b = alloc.new_blob( dl.size );
-        dl.get_initial_state( b.data() );
+        dl.get_initial_state( nodeData( b ) );
         return b;
     }
 
@@ -159,8 +166,7 @@ struct Custom : Common {
 
     bool isAccepting( Node s ) {
         if ( dl.is_accepting )
-            return dl.is_accepting( s.data() + alloc._slack,
-                                    s.size() - alloc._slack );
+            return dl.is_accepting( nodeData( s ), nodeSize( s ) );
         else
             return false;
     }
