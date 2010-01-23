@@ -1,7 +1,7 @@
 #include <divine/context.sha1.h>
 
 // Set the version information here.
-#define DIVINE_VERSION_ID "2.1"
+#define DIVINE_VERSION_ID "2.1.1"
 #define DIVINE_BRANCH "dev"
 #define DIVINE_RELEASE
 
