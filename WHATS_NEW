@@ -1,3 +1,14 @@
+DiVinE 2.1.1
+============
+
+- Fixed a number of issues with compiled DVE models.
+- Bugfixes in the custom model loader.
+- Improved performance of compiled DVE.
+- Fixed Windows build.
+
+KNOWN ISSUES: Error state handling is not consistent between interpreted and
+compiled DVE. The profiled build (-DPROFILE=ON) is currently broken.
+
 DiVinE 2.1
 ==========
 
@@ -5,9 +16,6 @@ DiVinE 2.1
 - Fixed handling of error states in interpreted DVE.
 - The GUI can now be compiled & used on Windows.
 - A number of GUI improvements and usability fixes.
-
-KNOWN ISSUES: Error state handling is not consistent between interpreted and
-compiled DVE. The profiled build (-DPROFILE=ON) is currently broken.
 
 DiVinE 2.0
 ==========
