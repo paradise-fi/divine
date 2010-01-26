@@ -1,8 +1,6 @@
 set -vex
 not () { "$@" && exit 1 || return 0; }
 
-if echo $OS | grep -iq windows; then exit 200; fi
-
 divine compile peterson-naive.dve
 divine metrics --report peterson-naive.dve.so > report
 grep "^Finished: Yes" report
