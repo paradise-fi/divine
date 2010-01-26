@@ -1,6 +1,6 @@
 Files under divine/ are copyright (c) 2007, 2008, 2009 by ParaDiSe Laboratory
 member Petr Rockai <me@mornfall.net>, with exception of files under
-divine/legacy and divine/ltl2ba, see below.
+divine/legacy, divine/ltl2ba and files divine/dlfcn-win32.{h,c}, see below.
 
 Files under gui/ are copyright (c) 2009 by ParaDiSe Laboratory member Martin
 Moráček <xmoracek@fi.muni.cz>.
@@ -39,6 +39,8 @@ Petr Rockai, Pavel Simecek. Portions of the code are copyright (c)
 2003-2007 Michael Weber.
 
 HOARD is (c) 1998-2007 by Emery Berger <emery@cs.umass.edu>.
+
+The files divine/dlfcn-win32.{h,c} are (c) 2007 Ramiro Polla.
 
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991

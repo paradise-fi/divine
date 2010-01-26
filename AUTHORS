@@ -16,5 +16,6 @@ Michael Weber
 
 HOARD (1998-2007) by Emery Berger <emery@cs.umass.edu>.
 LPSOLVE by Michel Berkelaar, Kjell Eikland, Peter Notebaert.
+dlfcn-win32 by Ramiro Polla
 
 See COPYING for authoritative copyright and licence information.
