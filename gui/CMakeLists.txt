@@ -39,7 +39,7 @@ add_subdirectory(help)
 if(WIN32)
   find_path(GUI_QTCORE_DLL QtCore4.dll)
   find_path(GUI_QTGUI_DLL QtGui4.dll)
-  find_file(MINGW_LIB libmingwm10.dll)
+  find_file(MINGW_LIB mingwm10.dll)
 
   install(FILES ${GUI_QTCORE_DLL}/QtCore4.dll DESTINATION ${GUI_BIN_DEST} COMPONENT qt)
   install(FILES ${GUI_QTGUI_DLL}/QtGui4.dll DESTINATION ${GUI_BIN_DEST} COMPONENT qt)
