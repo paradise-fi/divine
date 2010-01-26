@@ -4,6 +4,8 @@
 
 #ifdef POSIX
 #include <dlfcn.h>
+#elif defined _WIN32
+#include <divine/dlfcn-win32.h>
 #endif
 
 #ifndef DIVINE_GENERATOR_CUSTOM_H
@@ -126,9 +128,6 @@ struct Custom : Common {
     }
 
     void read( std::string path ) {
-#ifdef _WIN32
-        assert_die();
-#else
         // dlopen does not like path-less shared objects outside lib locations
         if ( wibble::str::basename( path ) == path )
             path = "./" + path;
@@ -160,7 +159,6 @@ struct Custom : Common {
 
         std::cerr << path << " loaded [state size = "
                   << dl.size << "]..." << std::endl;
-#endif
     }
 
     bool isDeadlock( Node s ) { return false; } // XXX

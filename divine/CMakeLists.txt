@@ -14,6 +14,11 @@ file( GLOB H_GEN generator/*.h )
 
 file( GLOB testh *.test.h )
 
+set( SRC_DLFCN "" )
+if( WIN32 )
+    set( SRC_DLFCN dlfcn-win32.c )
+endif( WIN32 )
+
 set( CONTEXT ${divine_BINARY_DIR}/divine/context.sha1 )
 set( UPDATE_CONTEXT ${divine_SOURCE_DIR}/divine/update-context.sh )
 
@@ -28,7 +33,7 @@ include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
-    ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 
