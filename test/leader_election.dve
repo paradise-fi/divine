@@ -1,0 +1,100 @@
+// maximal number of processes is 64
+    
+channel {byte} ch_0[6];
+channel {byte} ch_1[6];
+channel {byte} ch_2[6];
+byte nr_leaders;
+byte nmbr[3];     // used to random initialization
+process Init {
+ byte i=1;
+ state start,ready;
+ init start;
+ trans 
+  start->start {guard nmbr[0]==0 && i<4; effect nmbr[0]=i,i=i+1;},
+  start->start {guard nmbr[1]==0 && i<4; effect nmbr[1]=i,i=i+1;},
+  start->start {guard nmbr[2]==0 && i<4; effect nmbr[2]=i,i=i+1;},
+  start->ready {guard i==4;};
+}
+process Node_0 {
+byte max, number, neigh;
+byte know=0, active=1;
+state start, wait, got_msg, q1, q1a, q1n, q2, q2a, q2n, qw, qwcheck;
+init start;
+trans 
+ start -> wait { guard Init.ready; sync ch_1!(1*64+nmbr[0]); effect max=nmbr[0];},
+ wait -> got_msg { sync ch_0?number; },
+ got_msg -> q1 { guard number/64 == 1; effect number = number%64; },
+ got_msg -> q2 { guard number/64 == 2; effect number = number%64; },
+ got_msg -> qwcheck { guard number/64 == 0; effect number = number%64; },
+ 
+ q1 -> q1a { guard active; },
+ q1 -> q1n { guard active==0; },
+ q1n -> wait { sync ch_1!(1*64+number); },
+ q1a -> wait { guard number != max; sync ch_1!(2*64+number); effect neigh = number; },
+ q1a -> wait { guard number == max; sync ch_1!(0*64+number); effect know = 1; },
+ q2 -> q2a { guard active; },
+ q2 -> q2n { guard active==0; },
+ q2n -> wait { sync ch_1!(2*64+number); },
+ q2a -> wait { guard neigh > number && neigh > max; sync ch_1!(1*64+neigh); effect max = neigh; },
+ q2a -> wait { guard not (neigh > number && neigh > max); effect active = 0; },
+ qwcheck -> qw { guard number == nmbr[0]; effect nr_leaders = nr_leaders+1; }, //I am the leader
+ qwcheck -> qw { guard number != nmbr[0];}, 
+ qw -> wait { guard know; },
+ qw -> wait { guard know==0; sync ch_1!(0*64+number); };
+}
+process Node_1 {
+byte max, number, neigh;
+byte know=0, active=1;
+state start, wait, got_msg, q1, q1a, q1n, q2, q2a, q2n, qw, qwcheck;
+init start;
+trans 
+ start -> wait { guard Init.ready; sync ch_2!(1*64+nmbr[1]); effect max=nmbr[1];},
+ wait -> got_msg { sync ch_1?number; },
+ got_msg -> q1 { guard number/64 == 1; effect number = number%64; },
+ got_msg -> q2 { guard number/64 == 2; effect number = number%64; },
+ got_msg -> qwcheck { guard number/64 == 0; effect number = number%64; },
+ 
+ q1 -> q1a { guard active; },
+ q1 -> q1n { guard active==0; },
+ q1n -> wait { sync ch_2!(1*64+number); },
+ q1a -> wait { guard number != max; sync ch_2!(2*64+number); effect neigh = number; },
+ q1a -> wait { guard number == max; sync ch_2!(0*64+number); effect know = 1; },
+ q2 -> q2a { guard active; },
+ q2 -> q2n { guard active==0; },
+ q2n -> wait { sync ch_2!(2*64+number); },
+ q2a -> wait { guard neigh > number && neigh > max; sync ch_2!(1*64+neigh); effect max = neigh; },
+ q2a -> wait { guard not (neigh > number && neigh > max); effect active = 0; },
+ qwcheck -> qw { guard number == nmbr[1]; effect nr_leaders = nr_leaders+1; }, //I am the leader
+ qwcheck -> qw { guard number != nmbr[1];}, 
+ qw -> wait { guard know; },
+ qw -> wait { guard know==0; sync ch_2!(0*64+number); };
+}
+process Node_2 {
+byte max, number, neigh;
+byte know=0, active=1;
+state start, wait, got_msg, q1, q1a, q1n, q2, q2a, q2n, qw, qwcheck;
+init start;
+trans 
+ start -> wait { guard Init.ready; sync ch_0!(1*64+nmbr[2]); effect max=nmbr[2];},
+ wait -> got_msg { sync ch_2?number; },
+ got_msg -> q1 { guard number/64 == 1; effect number = number%64; },
+ got_msg -> q2 { guard number/64 == 2; effect number = number%64; },
+ got_msg -> qwcheck { guard number/64 == 0; effect number = number%64; },
+ 
+ q1 -> q1a { guard active; },
+ q1 -> q1n { guard active==0; },
+ q1n -> wait { sync ch_0!(1*64+number); },
+ q1a -> wait { guard number != max; sync ch_0!(2*64+number); effect neigh = number; },
+ q1a -> wait { guard number == max; sync ch_0!(0*64+number); effect know = 1; },
+ q2 -> q2a { guard active; },
+ q2 -> q2n { guard active==0; },
+ q2n -> wait { sync ch_0!(2*64+number); },
+ q2a -> wait { guard neigh > number && neigh > max; sync ch_0!(1*64+neigh); effect max = neigh; },
+ q2a -> wait { guard not (neigh > number && neigh > max); effect active = 0; },
+ qwcheck -> qw { guard number == nmbr[2]; effect nr_leaders = nr_leaders+1; }, //I am the leader
+ qwcheck -> qw { guard number != nmbr[2];}, 
+ qw -> wait { guard know; },
+ qw -> wait { guard know==0; sync ch_0!(0*64+number); };
+}
+system async;
+
