@@ -1,13 +1,16 @@
 #!/usr/bin/perl
 
-my $in, $set, %tests, %prefix, %filename;
+my $set, %tests, %prefix, %filename;
 
 my $mode = $ARGV[0];
 shift @ARGV;
 
 sub process() {
     $file = shift;
-    $in = `cat $file`;
+    my $in;
+    open IN, "$file";
+    $in .= $_ while (<IN>);
+    close IN;
 
     $set = "not defined";
     my $nest = 0, $depth = 0;
