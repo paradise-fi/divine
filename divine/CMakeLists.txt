@@ -20,21 +20,21 @@ if( WIN32 )
     set( SRC_DLFCN dlfcn-win32.c )
 endif( WIN32 )
 
-set( CONTEXT ${divine_BINARY_DIR}/divine/context.sha1 )
-set( UPDATE_CONTEXT ${divine_SOURCE_DIR}/divine/update-context.sh )
+set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
+set( UPDATE_SHA1 ${divine_SOURCE_DIR}/divine/update-sha1.sh )
 
 add_custom_command(
-  COMMAND sh ${UPDATE_CONTEXT} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${CONTEXT}"
-  OUTPUT ${CONTEXT}.bwah
+  COMMAND sh ${UPDATE_SHA1} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${SHA1}"
+  OUTPUT "${SHA1}.cpp.fake"
 )
+set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
 
-set_source_files_properties( ${CONTEXT}.bwah PROPERTIES SYMBOLIC ON )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} ${CONTEXT}.bwah )
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} "${SHA1}.cpp.fake" )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 

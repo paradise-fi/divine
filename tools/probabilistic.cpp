@@ -5202,7 +5202,7 @@ void version()
 {
   cout <<"----------------------------------------------------------------------------"<<endl;
   cout <<"  ProbDiVinE-MC: A Parallel Qualitative and Quantitative LTL Model Checker  "<<endl;
-  cout <<"  " DIVINE_VERSION " (" DIVINE_BUILD_DATE << ")" << endl;
+  cout <<"  " << divine::versionString() << " (" << divine::buildDateString() << ")" << endl;
   cout <<"----------------------------------------------------------------------------"<<endl;
 }
 

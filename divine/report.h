@@ -261,8 +261,8 @@ struct Report : wibble::sys::Thread
         config.dump( o );
         o << std::endl;
         o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
-        o << "Version: " << DIVINE_VERSION << std::endl;
-        o << "Build-Date: " << DIVINE_BUILD_DATE << std::endl;
+        o << "Version: " << versionString() << std::endl;
+        o << "Build-Date: " << buildDateString() << std::endl;
         o << "Architecture: " << architecture() << std::endl;
 #ifdef NDEBUG
         o << "Debug: disabled" << std::endl;
