@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
+#include <divine/circular.h>
 
 #include <deque>
 
@@ -54,45 +55,6 @@ fillCircular( G &g, C1 &in, C2 &out )
 {
     return fillCircularTedious( g, in, out );
 }
-
-template< typename T, int _size >
-struct Circular {
-    int __size, // for non-C++ access
-        _count, _first;
-    T items[ _size ];
-
-    T *start() { return items; }
-    T *nth( int i ) { return items + (_first + i) % _size; }
-    T *first() { return nth( 0 ); }
-    T *last() { return nth( _count - 1 ); }
-    T &operator[]( int i ) { return *nth( i ); }
-
-    void add( T t ) {
-        assert( _count < _size );
-        ++ _count;
-        *last() = t;
-    }
-
-    int count() { return _count; }
-    int space() { return _size - _count; }
-    int size() { return _size; }
-    bool full() { return _count == _size; }
-    bool empty() { return !_count; }
-    void clear() { drop( count() ); }
-
-    void drop( int n ) {
-        assert( n <= _count );
-        _first += n;
-        _count -= n;
-        _first %= _size;
-    }
-
-    void unadd( int n ) {
-        _count -= n;
-    }
-
-    Circular() : __size( _size ), _count( 0 ), _first( 0 ) {}
-};
 
 template< typename Graph >
 struct Queue {

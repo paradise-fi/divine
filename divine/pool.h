@@ -3,6 +3,12 @@
 #include <vector>
 #include <iostream>
 
+#ifndef assert_eq
+#define assert_eq(a,b) assert(a == b)
+#define assert_neq(a,b) assert(a != b)
+#define assert_die() assert(false)
+#endif
+
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
 

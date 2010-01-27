@@ -29,13 +29,24 @@ add_custom_command(
 )
 set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
 
+macro( stringify file )
+  string( REPLACE "." "_" fileu "${file}" )
+  add_custom_command(
+    OUTPUT ${fileu}_str.cpp
+    DEPENDS ${file}
+    COMMAND sed -e '1i namespace divine { const char *${fileu}_str = \"\\\\' -e 's,\",\\\\\",' -e 's,$$,\\\\n\\\\,' -e 's,wibble/test.h,cassert,' -e '$$a \"\\; }' < ${CMAKE_CURRENT_SOURCE_DIR}/${file} > ${fileu}_str.cpp
+    )
+endmacro( stringify )
+
+stringify( pool.h )
+stringify( circular.h )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} "${SHA1}.cpp"
-    "${SHA1}.cpp.fake" )
+    "${SHA1}.cpp.fake" pool_h_str.cpp circular_h_str.cpp )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 

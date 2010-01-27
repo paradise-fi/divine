@@ -72,6 +72,10 @@ void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::st
  //DEBFUNC(cerr << "END of dve_expression_t::write_C" << endl;)
 }
 
+namespace divine {
+extern const char *pool_h_str;
+extern const char *circular_h_str;
+}
 
 void dve_compiler::print_header(ostream & ostr)
 {
@@ -93,6 +97,13 @@ void dve_compiler::print_header(ostream & ostr)
   ostr << "typedef uint8_t ubyte_t;" <<endl; 
   ostr << "typedef int8_t sbyte_t;" <<endl; 
   ostr << "typedef size_t size_int_t;" <<endl;
+  ostr << endl;
+  ostr << divine::pool_h_str;
+  ostr << endl;
+  ostr << divine::circular_h_str;
+  ostr << endl;
+  ostr << "static inline char *pool_alloc( char *p, int size ) { \n\
+                 return reinterpret_cast< divine::Pool * >( p )->allocate( size ); }";
   ostr << endl;
 }
 
