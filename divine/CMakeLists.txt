@@ -11,6 +11,7 @@ file( GLOB SRC_BA ltl2ba/*.cc )
 file( GLOB H_BA ltl2ba/*.hh )
 
 file( GLOB H_GEN generator/*.h )
+file( GLOB H_ALG algorithm/*.h )
 
 file( GLOB testh *.test.h )
 
@@ -55,4 +56,5 @@ install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
 install( FILES ${H_TOP} DESTINATION include/divine COMPONENT divine_dev )
 install( FILES ${H_LEGACY} DESTINATION include/divine/legacy COMPONENT divine_dev )
 install( FILES ${H_BA} DESTINATION include/divine/ltl2ba COMPONENT divine_dev )
-install( FILES ${H_GEN} DESTINATION include/divine/generators COMPONENT divine_dev )
+install( FILES ${H_GEN} DESTINATION include/divine/generator COMPONENT divine_dev )
+install( FILES ${H_ALG} DESTINATION include/divine/algorithm COMPONENT divine_dev )
