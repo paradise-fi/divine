@@ -2,8 +2,6 @@
 
 #include <divine/pool.h>
 
-using namespace wibble::sys;
-
 namespace divine {
 
 #ifndef DISABLE_POOLS

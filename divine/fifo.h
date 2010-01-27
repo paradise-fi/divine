@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#include <wibble/sys/mutex.h>
 #include <divine/blob.h> // for blobby fifos
+#include <deque>
 
 #ifndef DIVINE_FIFO_H
 #define DIVINE_FIFO_H
