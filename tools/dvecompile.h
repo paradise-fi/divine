@@ -19,6 +19,7 @@ struct ext_transition_t
 struct dve_compiler: public dve_explicit_system_t
 {
     int current_size;
+    bool have_property;
     map<size_int_t,map<size_int_t,vector<ext_transition_t> > > transition_map;
     map<size_int_t,vector<dve_transition_t*> > channel_map;
 
@@ -35,6 +36,8 @@ struct dve_compiler: public dve_explicit_system_t
         : explicit_system_t(evect), dve_explicit_system_t(evect), current_size(0)
     {}
     virtual ~dve_compiler() {}
+
+    void analyse();
 
     void write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name);
 

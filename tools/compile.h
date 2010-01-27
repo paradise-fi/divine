@@ -17,6 +17,7 @@ struct Compile {
     void compileDve( std::string in ) {
         dve_compiler compiler;
         compiler.read( in.c_str() );
+        compiler.analyse();
         std::string outfile = str::basename( in ) + ".c";
         std::ofstream out( outfile.c_str() );
         compiler.print_header( out );

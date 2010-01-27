@@ -246,12 +246,10 @@ void dve_compiler::print_initial_state(ostream & ostr)
   ostr<<endl;
 }
 
-void dve_compiler::print_generator(ostream & ostr)
+void dve_compiler::analyse()
 {
-  string state_name = "c_state";
-
   dve_transition_t * transition;
-  bool sytem_with_property = this->get_with_property();
+  have_property = this->get_with_property();
 
   // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
   for(size_int_t i = 0; i < this->get_trans_count(); i++)
@@ -271,7 +269,7 @@ void dve_compiler::print_generator(ostream & ostr)
       }
     }
 
-    if(sytem_with_property && transition->get_process_gid() == this->get_property_gid())
+    if(have_property && transition->get_process_gid() == this->get_property_gid())
     {
       property_transitions.push_back(transition);
     }
@@ -281,7 +279,7 @@ void dve_compiler::print_generator(ostream & ostr)
   for(size_int_t i = 0; i < this->get_trans_count(); i++)
   {
     transition = dynamic_cast<dve_transition_t*>(this->get_transition(i));
-    if(!transition->is_sync_exclaim() && (!sytem_with_property || transition->get_process_gid() != this->get_property_gid()) )
+    if(!transition->is_sync_exclaim() && (!have_property || transition->get_process_gid() != this->get_property_gid()) )
     {
        // not syncronized sender without buffer and not a property transition
       iter_transition_map = transition_map.find(transition->get_process_gid());
@@ -293,7 +291,7 @@ void dve_compiler::print_generator(ostream & ostr)
          if(!transition->is_sync_ask())
          {
            // transition not of type SYNC_ASK
-           if(!sytem_with_property)
+           if(!have_property)
            {
              // no properties, just add to ext_transition vector
              ext_transition_t ext_transition;
@@ -330,7 +328,7 @@ void dve_compiler::print_generator(ostream & ostr)
              {
                if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
                {
-                 if(!sytem_with_property)
+                 if(!have_property)
                  {
                    // system has no properties, so add only once without property
                    ext_transition_t ext_transition;
@@ -372,7 +370,7 @@ void dve_compiler::print_generator(ostream & ostr)
            if(!transition->is_sync_ask())
            {
              // transition is not SYNC_ASK
-             if(!sytem_with_property)
+             if(!have_property)
              {
                // no properties
                ext_transition_t ext_transition;
@@ -405,7 +403,7 @@ void dve_compiler::print_generator(ostream & ostr)
                {
                  if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
                  {
-                   if(!sytem_with_property)
+                   if(!have_property)
                    {
                      // no properties, just add all transitions that fill the channel
                      ext_transition_t ext_transition;
@@ -440,7 +438,7 @@ void dve_compiler::print_generator(ostream & ostr)
            if(!transition->is_sync_ask())
            {
              // NOT SYNC_ASK
-             if(!sytem_with_property)
+             if(!have_property)
              { 
                // no properties, just add transition
                ext_transition_t ext_transition;
@@ -474,7 +472,7 @@ void dve_compiler::print_generator(ostream & ostr)
                {
                  if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
                  {
-                   if(!sytem_with_property)
+                   if(!have_property)
                    {
                      // no property, just add transition * all transitions with SYNC_EXCLAIM
                      ext_transition_t ext_transition;
@@ -504,8 +502,11 @@ void dve_compiler::print_generator(ostream & ostr)
       }
     }
   }
+}
 
-  // get_succ
+void dve_compiler::print_generator(ostream & ostr)
+{
+  string state_name = "c_state";
   string space = "   ";
   int label = 1;
   bool some_commited_state = false;
@@ -540,7 +541,7 @@ void dve_compiler::print_generator(ostream & ostr)
 
    for(size_int_t i = 0; i < this->get_process_count(); i++)
    {
-     if(!sytem_with_property || i != this->get_property_gid())
+     if(!have_property || i != this->get_property_gid())
      {
        //ostr << space <<"switch ( "<< state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state )" <<endl;
        //ostr << space <<" {"<<endl;
@@ -614,7 +615,7 @@ void dve_compiler::print_generator(ostream & ostr)
                      ostr << ") ";
                    }
                  }
-                 if(sytem_with_property)
+                 if(have_property)
                  {
                    if(has_guard)
                      ostr <<" && "; 
@@ -716,7 +717,7 @@ void dve_compiler::print_generator(ostream & ostr)
                       ostr <<";"<< endl;
                    }
                  }
-                 if(sytem_with_property) //change of the property process state
+                 if(have_property) //change of the property process state
                  {
                    ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
                         << ".state = "<< iter_ext_transition_vector->property->get_state2_lid()<< ";" <<endl;
@@ -741,7 +742,7 @@ void dve_compiler::print_generator(ostream & ostr)
 
    for(size_int_t i = 0; i < this->get_process_count(); i++)
    {
-     if(!sytem_with_property || i != this->get_property_gid())
+     if(!have_property || i != this->get_property_gid())
      {
        if(transition_map.find(i) != transition_map.end())
          for(iter_process_transition_map = transition_map.find(i)->second.begin();
@@ -808,7 +809,7 @@ void dve_compiler::print_generator(ostream & ostr)
                  ostr << ") ";
                }
              }
-             if(sytem_with_property)
+             if(have_property)
              {
                if(has_guard)
                  ostr <<" && "; 
@@ -911,7 +912,7 @@ void dve_compiler::print_generator(ostream & ostr)
                   ostr <<";"<< endl;
                }
              }
-             if(sytem_with_property) //change of the property process state
+             if(have_property) //change of the property process state
              {
                ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
                     << ".state = "<< iter_ext_transition_vector->property->get_state2_lid()<< ";" <<endl;
@@ -969,7 +970,7 @@ void dve_compiler::print_generator(ostream & ostr)
 
   ostr << "extern "<< '"' << "C" << '"' << " bool is_accepting(char* state, int size)" <<endl; // only Buchi acceptance condition
   ostr << " {"<<endl;
-  if(sytem_with_property)
+  if(have_property)
   {
     ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)state;"<<endl;
     for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_state_count(); i++)
