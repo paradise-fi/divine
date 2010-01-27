@@ -248,18 +248,6 @@ void dve_compiler::print_initial_state(ostream & ostr)
 
 void dve_compiler::print_generator(ostream & ostr)
 {
-  map<size_int_t,map<size_int_t,vector<ext_transition_t> > > transition_map;
-  map<size_int_t,vector<dve_transition_t*> > channel_map;
-
-  vector<dve_transition_t*> property_transitions;
-  vector<dve_transition_t*>::iterator iter_property_transitions;
-
-  map<size_int_t,vector<dve_transition_t*> >::iterator iter_channel_map;
-  vector<dve_transition_t*>::iterator iter_transition_vector;
-  map<size_int_t,vector<ext_transition_t> >::iterator iter_process_transition_map;
-  map<size_int_t,map<size_int_t,vector<ext_transition_t> > >::iterator iter_transition_map;
-  vector<ext_transition_t>::iterator iter_ext_transition_vector;
-
   string state_name = "c_state";
 
   dve_transition_t * transition;
