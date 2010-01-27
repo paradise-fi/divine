@@ -28,6 +28,7 @@ add_custom_command(
   OUTPUT "${SHA1}.cpp.fake"
 )
 set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
+set_source_files_properties( "${SHA1}.cpp" PROPERTIES GENERATED ON )
 
 macro( stringify file )
   string( REPLACE "." "_" fileu "${file}" )
