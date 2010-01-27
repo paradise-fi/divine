@@ -34,7 +34,8 @@ include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} "${SHA1}.cpp.fake" )
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} "${SHA1}.cpp"
+    "${SHA1}.cpp.fake" )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 
