@@ -359,9 +359,9 @@ struct Main {
 
     void noMC() {
         if ( opts.foundCommand() == compile.cmd_compile )
-            return compile.main();
+            compile.main();
         if ( opts.foundCommand() == combine.cmd_combine )
-            return compile.main();
+            combine.main();
     }
 
 };
