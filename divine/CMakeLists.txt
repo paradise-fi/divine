@@ -35,7 +35,8 @@ macro( stringify file )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
     DEPENDS ${file}
-    COMMAND sed -e '1i namespace divine { const char *${fileu}_str = \"\\\\' -e 's,\",\\\\\",' -e 's,$$,\\\\n\\\\,' -e 's,wibble/test.h,cassert,' -e '$$a \"\\; }' < ${CMAKE_CURRENT_SOURCE_DIR}/${file} > ${fileu}_str.cpp
+    COMMAND sed -e "1i namespace divine { const char *${fileu}_str = \"\\\\" -e "s,\",\\\\\"," -e "s,$,\\\\n\\\\," -e "s,wibble/test.h,cassert," -e "$a \"\; }" < ${CMAKE_CURRENT_SOURCE_DIR}/${file} > ${fileu}_str.cpp
+    VERBATIM
     )
 endmacro( stringify )
 
