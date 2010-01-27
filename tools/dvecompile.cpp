@@ -1,4 +1,7 @@
 #include <tools/dvecompile.h>
+#include <divine/generator/common.h>
+
+using namespace wibble::str;
 
 void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name)
 {
@@ -72,77 +75,91 @@ void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::st
     //DEBFUNC(cerr << "END of dve_expression_t::write_C" << endl;)
 }
 
+std::string dve_compiler::cexpr( dve_expression_t & expr, std::string state )
+{
+    std::stringstream str;
+    str << "(";
+    write_C( expr, str, state.c_str() );
+    str << ")";
+    return str.str();
+}
+
 namespace divine {
 extern const char *pool_h_str;
 extern const char *circular_h_str;
 }
 
-void dve_compiler::print_header(ostream & ostr)
+void dve_compiler::print_header()
 {
-    ostr << "#include <stdio.h>" <<endl;
-    ostr << "#include <stdint.h>" <<endl;
-    ostr << "#include <string.h>" <<endl;
-    //ostr << "#include "<<'"' <<"hash_kernel.cu"<<'"'<<endl;
-    ostr << endl;
-    //ostr << "#define EXPLICIT_STORAGE_HASH_SEED 0xBA9A9ABA"<<endl;
-    ostr << endl;
-    ostr << "#define c_state (*p_state_struct)" <<endl;
-    ostr << "typedef uint64_t ulong_long_int_t;" <<endl;
-    ostr << "typedef int64_t slong_long_int_t;" <<endl;
-    ostr << "typedef uint32_t ulong_int_t;" <<endl;
-    ostr << "typedef int32_t slong_int_t;" <<endl;
-    ostr << "typedef uint16_t ushort_int_t;" <<endl;
-    ostr << "typedef int16_t sshort_int_t;" <<endl;
-    ostr << "typedef uint8_t byte_t;" <<endl;
-    ostr << "typedef uint8_t ubyte_t;" <<endl;
-    ostr << "typedef int8_t sbyte_t;" <<endl;
-    ostr << "typedef size_t size_int_t;" <<endl;
-    ostr << endl;
-    ostr << divine::pool_h_str;
-    ostr << endl;
-    ostr << divine::circular_h_str;
-    ostr << endl;
-    ostr << "static inline char *pool_alloc( char *p, int size ) { \n\
-                 return reinterpret_cast< divine::Pool * >( p )->allocate( size ); }";
-    ostr << endl;
+    line( "#include <stdio.h>" );
+    line( "#include <string.h>" );
+    line( "#include <stdint.h>" );
+    line();
+
+    line( "typedef uint64_t ulong_long_int_t;" );
+    line( "typedef int64_t slong_long_int_t;" );
+    line( "typedef uint32_t ulong_int_t;" );
+    line( "typedef int32_t slong_int_t;" );
+    line( "typedef uint16_t ushort_int_t;" );
+    line( "typedef int16_t sshort_int_t;" );
+    line( "typedef uint8_t byte_t;" );
+    line( "typedef uint8_t ubyte_t;" );
+    line( "typedef int8_t sbyte_t;" );
+    line( "typedef size_t size_int_t;" );
+    line();
+
+    line( divine::pool_h_str );
+    line();
+
+    line( divine::circular_h_str );
+    line();
+
+    line( "static inline char *pool_alloc( char *p, int size ) {" );
+    line( "     return reinterpret_cast< divine::Pool * >( p )->allocate( size ); }" );
+    line();
 }
 
-void dve_compiler::print_state_struct(ostream & ostr)
+void dve_compiler::print_state_struct()
 {
     for (size_int_t i=0; i!=glob_var_count; i++)
     {
         dve_symbol_t * var = get_symbol_table()->get_variable(get_global_variable_gid(i));
         if (var->is_const())
         {
-            ostr << "const ";
-            if (var->is_byte()) ostr << "byte_t ";
-            else ostr << "sshort_int_t ";
-            ostr << var->get_name();
+            append( "const " );
+            if ( var->is_byte() )
+                append( "byte_t " );
+            else
+                append( "sshort_int_t " );
+
+            append( var->get_name() );
+
             if (var->is_vector())
             {
-                ostr << "[" << var->get_vector_size() << "]";
-                if (var->get_init_expr_count()) ostr << " = {";
+                append( "[" + fmt( var->get_vector_size() ) + "]" );
+
+                if ( var->get_init_expr_count() ) append( " = {" );
                 for (size_int_t j=0; j!=var->get_init_expr_count(); j++)
                 {
-                    ostr << var->get_init_expr(j)->to_string();
-                    if (j!=(var->get_init_expr_count()-1)) ostr << ", ";
-                    else ostr << "}";
+                    append( var->get_init_expr(j)->to_string() );
+                    if (j!=(var->get_init_expr_count()-1))
+                        append( ", " );
+                    else
+                        append( "}" );
                 }
+            } else if ( var->get_init_expr() ) {
+                append( string( " = " ) + var->get_init_expr()->to_string() );
             }
-            else if (var->get_init_expr())
-            { ostr << " = " << var->get_init_expr()->to_string(); }
-            ostr << ";" << endl;
+            line( ";" );
         }
     }
-    ostr << endl;
+    line();
 
     bool global = true;
-    string spaces = "  ";
-    string orig_spaces = spaces;
     string name;
     string process_name = "UNINITIALIZED";
-    ostr << "struct state_struct_t" << endl;
-    ostr << " {" << endl;
+    line( "struct state_struct_t" );
+    block_begin();
     for (size_int_t i=0; i!=state_creators_count; ++i)
     {
         switch (state_creators[i].type)
@@ -153,18 +170,18 @@ void dve_compiler::print_state_struct(ostream & ostr)
                 if (state_creators[i].array_size)
                 {
                     if (state_creators[i].var_type==VAR_BYTE)
-                        ostr << spaces << "byte_t ";
+                        append( "byte_t " );
                     else if (state_creators[i].var_type==VAR_INT)
-                        ostr << spaces << "sshort_int_t ";
+                        append( "sshort_int_t " );
                     else gerr << "Unexpected error" << thr();
-                    ostr << name << "[" <<state_creators[i].array_size<< "];" << endl;
+                    line( name + "[" + fmt( state_creators[i].array_size ) + "];" );
                 }
                 else
                 {
                     if (state_creators[i].var_type==VAR_BYTE)
-                        ostr << spaces << "byte_t " << name << ";" << endl;
+                        line( "byte_t " + name + ";" );
                     else if (state_creators[i].var_type==VAR_INT)
-                        ostr << spaces << "sshort_int_t " << name << ";" << endl;
+                        line( "sshort_int_t" + name + ";" );
                     else gerr << "Unexpected error" << thr();
                 }
             }
@@ -173,40 +190,43 @@ void dve_compiler::print_state_struct(ostream & ostr)
             {
                 if (global)
                 {
-                    spaces += "  ";
                     global = false;
                 }
                 else
                 {
-                    ostr << orig_spaces << " } __attribute__((__packed__)) " << process_name << ";" << endl;
+                    block_end();
+                    line( "__attribute__((__packed__)) " + process_name + ";" );
                 }
-                ostr << orig_spaces << "struct" << endl;
-                ostr << orig_spaces << " {" << endl;
+                line( "struct" );
+                block_begin();
+
                 process_name=
                     get_symbol_table()->get_process(state_creators[i].gid)->get_name();
-                ostr << spaces << "ushort_int_t state;" << endl;
+                line( "ushort_int_t state;" );
             }
             break;
             case state_creator_t::CHANNEL_BUFFER:
             {
                 name=get_symbol_table()->get_channel(state_creators[i].gid)->get_name();
-                ostr << spaces << "struct" << endl;
-                ostr << spaces << " {" << endl;
-                ostr << spaces << "  ushort_int_t number_of_items;" << endl;
-                ostr << spaces << "  struct" << endl;
-                ostr << spaces << "   {" << endl;
-                string extra_spaces = spaces + "    ";
+                line( "struct" );
+                block_begin();
+                line( "ushort_int_t number_of_items;" );
+                line( "struct" );
+                block_begin();
                 dve_symbol_t * symbol =
                     get_symbol_table()->get_channel(state_creators[i].gid);
                 size_int_t item_count = symbol->get_channel_type_list_size();
+
                 for (size_int_t j=0; j<item_count; ++j)
                     if (symbol->get_channel_type_list_item(j)==VAR_BYTE)
-                        ostr << extra_spaces << "byte_t x" << j << ";" << endl;
+                        line( "byte_t x" + fmt( j ) + ";" );
                     else if (symbol->get_channel_type_list_item(j)==VAR_INT)
-                        ostr << extra_spaces << "sshort_int_t x" << j << ";" << endl;
+                        line( "sshort_int_t x" + fmt( j ) + ";" );
                     else gerr << "Unexpected error" << thr();
-                ostr << spaces << "   } __attribute__((__packed__)) content["<< symbol->get_channel_buffer_size() << "];"<< endl;
-                ostr << spaces << " } __attribute__((__packed__)) " << name << ";" <<endl;
+                block_end();
+                line( "content[" + fmt( symbol->get_channel_buffer_size() ) + "];" );
+                block_end();
+                line( "__attribute__((__packed__)) " + name + ";" );
             }
             break;
             default: gerr << "Unexpected error" << thr();
@@ -215,35 +235,30 @@ void dve_compiler::print_state_struct(ostream & ostr)
     }
     if (!global)
     {
-        ostr << orig_spaces << " } __attribute__((__packed__)) " << process_name << ";" << endl;
+        block_end();
+        line( "__attribute__((__packed__)) " + process_name + ";" );
     }
-    ostr << " } __attribute__((__packed__));" << endl;
-    ostr << endl;
-    ostr << "int state_size = sizeof(state_struct_t);" << endl;
-    ostr << endl ;
+    block_end();
+    line( "__attribute__((__packed__));" );
+
+    line( "int state_size = sizeof(state_struct_t);" );
+    line();
 }
 
 
-struct MyStateAllocator : StateAllocator {
-    virtual state_t duplicate_state( const state_t &state ) {};
-    virtual state_t new_state( std::size_t size ) { state_t x; x.ptr = new char[size]; x.size = size; memset(x.ptr,0,size); return x; }
-    virtual void delete_state( state_t &st ) {};
-    virtual ~MyStateAllocator() {}
-};
-
-void dve_compiler::print_initial_state(ostream & ostr)
+void dve_compiler::print_initial_state()
 {
-    setAllocator(new MyStateAllocator);
+    setAllocator( new generator::Allocator );
     state_t initial_state =  dve_explicit_system_t::get_initial_state();
-    ostr << "char initial_state[] = {";
+    append( "char initial_state[] = {" );
     for(int i = 0; i < initial_state.size; i++)
     {
-        ostr << (unsigned int)(unsigned char)initial_state.ptr[i];
+        append( fmt( (unsigned int)(unsigned char)initial_state.ptr[i] ) );
         if(i != initial_state.size - 1)
-            ostr << ", ";
+            append( ", " );
     }
-    ostr<<"};"<<endl;
-    ostr<<endl;
+    line( "};" );
+    line();
 }
 
 void dve_compiler::analyse()
@@ -504,56 +519,54 @@ void dve_compiler::analyse()
     }
 }
 
-void dve_compiler::print_generator(ostream & ostr)
+void dve_compiler::print_generator()
 {
-    string state_name = "c_state";
-    string space = "   ";
-    int label = 1;
+    string in = "(*in)", out = "(*out)", space = "";
+    int current_label = 1;
     bool some_commited_state = false;
-    ostr << "extern "<< '"' << "C" << '"' << " int get_successor(int next_state, char* from, char* to)" <<endl;
-    ostr << " {"<<endl;
-    ostr << space << "bool processes_in_deadlock = false;"<<endl;
-    ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)from;"<<endl;
-    ostr << space << "state_struct_t *p_new_c_state = (state_struct_t*)to;"<<endl;
-    ostr << space << "*p_new_c_state = c_state;"<<endl;
-    ostr << space << "goto switch_state ;"<<endl;
 
-    ostr << space << "l"<<label << ": if( ";
-    label++;
+    line( "#define p_new_c_state out" );
+    line( "#define p_state_struct in" );
+    line();
+
+    line( "extern \"C\" int get_successor(int next_state, char* from, char* to) " );
+    block_begin();
+    line( "bool system_in_deadlock = false;" );
+    line( "state_struct_t *in = (state_struct_t*)from;" );
+    line( "state_struct_t *out = (state_struct_t*)to;" );
+    line( "*out = *in;" );
+    line( "goto switch_state;" );
+
+    label( current_label );
+    if_begin( true );
+
+    current_label++;
+
     for(size_int_t i = 0; i < this->get_process_count(); i++)
         for(size_int_t j = 0; j < dynamic_cast<dve_process_t*>(this->get_process(i))->get_state_count(); j++)
-        {
             if(dynamic_cast<dve_process_t*>(this->get_process(i))->get_commited(j))
-            {
-                if(some_commited_state)
-                    ostr << " || ";
-                else
-                    some_commited_state = true;
-                ostr << state_name << "." << get_symbol_table()->get_process(i)->get_name() << ".state" << " == "<<j;
-            }
-        }
-    if(some_commited_state)
-        ostr << " )" << endl;
-    else
-        ostr << "false )" << endl;
-    ostr << space << " { " << endl;  // in commited state
-    space = space + "    ";
+                if_clause( in_state( i, j, in ) );
+
+    if_end(); block_begin();
 
     for(size_int_t i = 0; i < this->get_process_count(); i++)
     {
         if(!have_property || i != this->get_property_gid())
         {
-            //ostr << space <<"switch ( "<< state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state )" <<endl;
-            //ostr << space <<" {"<<endl;
             if(transition_map.find(i) != transition_map.end())
                 for(iter_process_transition_map = transition_map.find(i)->second.begin();
                     iter_process_transition_map != transition_map.find(i)->second.end();iter_process_transition_map++)
                 {
                     if(dynamic_cast<dve_process_t*>(this->get_process(i))->get_commited(iter_process_transition_map->first))
                     {
-                        ostr << space <<"l"<< label << ": if( " << state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state == " <<iter_process_transition_map->first<<" )"<<endl;
-                        label++;
-                        ostr << space << "  {"<<endl;
+                        label( current_label );
+                        current_label++;
+
+                        if_begin( true );
+                        if_clause( in_state( i, iter_process_transition_map->first, in ) );
+
+                        if_end(); block_begin();
+
                         for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
                             iter_ext_transition_vector != iter_process_transition_map->second.end();iter_ext_transition_vector++)
                         {
@@ -561,184 +574,113 @@ void dve_compiler::print_generator(ostream & ostr)
                                 dynamic_cast<dve_process_t*>(this->get_process(iter_ext_transition_vector->second->get_process_gid()))->
                                 get_commited(iter_ext_transition_vector->second->get_state1_lid()) ) // !! jak je to s property synchronizaci v comitted stavech !!
                             {
-                                ostr << space << "        if( ";
-                                bool has_guard = false;
-                                if(iter_ext_transition_vector->first->get_guard()!= 0 )
-                                {
-                                    ostr << "( ";
-                                    write_C(*iter_ext_transition_vector->first->get_guard(), ostr, state_name);
-                                    has_guard = true;
-                                    ostr << ") ";
-                                }
+                                if_begin( false );
+                                if_cexpr_clause( iter_ext_transition_vector->first->get_guard(), in );
+
                                 if(iter_ext_transition_vector->synchronized)
                                 {
-                                    if(has_guard)
-                                        ostr <<" && ";
-                                    else
-                                        has_guard = true;
-                                    ostr << state_name << "." << get_symbol_table()->get_process(iter_ext_transition_vector->second->get_process_gid())->get_name()
-                                         << ".state == "<< iter_ext_transition_vector->second->get_state1_lid();
-                                    if(iter_ext_transition_vector->second->get_guard()!= 0 )
-                                    {
-                                        if(has_guard)
-                                            ostr <<" && ";
-                                        else
-                                            has_guard = true;
-                                        ostr << "( ";
-                                        write_C(*iter_ext_transition_vector->second->get_guard(), ostr, state_name);
-                                        ostr << ") ";
-                                    }
+                                    if_clause( in_state( iter_ext_transition_vector->second->get_process_gid(),
+                                                         iter_ext_transition_vector->second->get_state1_lid(), in ) );
+                                    if_cexpr_clause( iter_ext_transition_vector->second->get_guard(), in );
                                 }
                                 else
                                 {
                                     if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
                                     {
-                                        if(has_guard)
-                                            ostr <<" && ";
-                                        else
-                                            has_guard = true;
-                                        ostr << "( ";
-                                        ostr << state_name << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                             << "." <<"number_of_items != "
-                                             << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_channel_buffer_size();
-                                        ostr << ") ";
+                                        std::stringstream str;
+                                        str << in << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
+                                            << "." <<"number_of_items != "
+                                            << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_channel_buffer_size();
+                                        if_clause( str.str() );
                                     }
                                     if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
                                     {
-                                        if(has_guard)
-                                            ostr <<" && ";
-                                        else
-                                            has_guard = true;
-                                        ostr << "( ";
-                                        ostr << state_name << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
+                                        std::stringstream str;
+                                        str << in << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
                                              << "." <<"number_of_items != 0";
-                                        ostr << ") ";
+                                        if_clause( str.str() );
                                     }
                                 }
                                 if(have_property)
                                 {
-                                    if(has_guard)
-                                        ostr <<" && ";
-                                    else
-                                        has_guard = true;
-                                    ostr << state_name << "." << get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
-                                         << ".state == "<< iter_ext_transition_vector->property->get_state1_lid();
-                                    if(iter_ext_transition_vector->property->get_guard()!= 0 )
-                                    {
-                                        if(has_guard)
-                                            ostr <<" && ";
-                                        else
-                                            has_guard = true;
-                                        ostr << "( ";
-                                        write_C(*iter_ext_transition_vector->property->get_guard(), ostr, state_name);
-                                        ostr << ") ";
-                                    }
+                                    if_clause( in_state( iter_ext_transition_vector->property->get_process_gid(),
+                                                         iter_ext_transition_vector->property->get_state1_lid(), in ) );
+                                    if_cexpr_clause( iter_ext_transition_vector->property->get_guard(), in );
                                 }
-                                if(has_guard)
-                                    ostr <<" )"<<endl;
-                                else
-                                    ostr <<"true )"<<endl;
-                                ostr << space << "          {" <<endl;
+
+                                if_end(); block_begin();
 
                                 //synchronization effect
                                 if(iter_ext_transition_vector->synchronized)
                                 {
                                     for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
                                     {
-                                        ostr << space << "             ";
-                                        write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(*p_new_c_state)");
-                                        ostr << " = ";
-                                        write_C(*iter_ext_transition_vector->second->get_sync_expr_list_item(s), ostr, "(c_state)");
-                                        ostr << ";" <<endl;
+                                        assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
+                                                cexpr( *iter_ext_transition_vector->second->get_sync_expr_list_item(s), in ) );
                                     }
                                 }
                                 else
                                 {
+                                    int chan = iter_ext_transition_vector->first->get_channel_gid();
                                     if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
                                     {
                                         for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                        {
-                                            ostr << space << "             ";
-                                            ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                                 << ".content[(c_state)."<< get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                                 << ".number_of_items - 1].x" << s << " = ";
-                                            write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(c_state)");
-                                            ostr << ";" << endl;
-                                        }
-                                        ostr << space << "             ";
-                                        ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                             << ".number_of_items++;"<<endl;
+                                            assign( channel_item_at( chan, channel_items( chan, in ) + " - 1", s, out ),
+                                                    cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), in ) );
+
+                                        line( channel_items( chan, out ) + "++;" );
                                     }
+
                                     if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
                                     {
                                         for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
                                         {
-                                            ostr << space << "             ";
-                                            write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(*p_new_c_state)");
-                                            ostr << " = (c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                                 << ".content[0].x" << s <<";" <<endl;
+                                            assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
+                                                    channel_item_at( chan, "0", s, in ) );
                                         }
-                                        ostr << space << "             ";
-                                        ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                             << ".number_of_items--;"<<endl;
-                                        ostr << space << "             ";
-                                        ostr << "for(size_int_t i = 1 ; i <= (*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                             << ".number_of_items; i++)"<<endl;
-                                        ostr << space << "               {" <<endl;
+                                        line( channel_items( chan, out ) + "--;" );
+
+                                        line( "for(size_int_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
+                                        block_begin();
+
                                         for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
                                         {
-                                            ostr << space << "                 ";
-                                            ostr <<  "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i-1].x" << s
-                                                 << " = (c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i].x" << s << ";" <<endl;
-                                            ostr << space << "                 ";
-                                            ostr <<  "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i].x" << s
-                                                 << " = 0;" <<endl;
+                                            assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
+                                            assign( channel_item_at( chan, "i", s, out ), "0" );
                                         }
-                                        ostr << space << "               }" <<endl;
+                                        block_end();
                                     }
                                 }
                                 //first transition effect
-                                ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->first->get_process_gid())->get_name()
-                                     << ".state = "<< iter_ext_transition_vector->first->get_state2_lid()<< ";" <<endl;
+                                assign( process_state( iter_ext_transition_vector->first->get_process_gid(), out ),
+                                        fmt( iter_ext_transition_vector->first->get_state2_lid() ) );
+
                                 for(size_int_t e = 0;e < iter_ext_transition_vector->first->get_effect_count();e++)
-                                {
-                                    ostr << space << "             ";
-                                    write_C(*iter_ext_transition_vector->first->get_effect(e), ostr, "(*p_new_c_state)");
-                                    ostr <<";"<< endl;
-                                }
+                                    print_cexpr( *iter_ext_transition_vector->first->get_effect(e), out );
+
                                 if(iter_ext_transition_vector->synchronized) //second transiton effect
                                 {
-                                    ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->second->get_process_gid())->get_name()
-                                         << ".state = "<< iter_ext_transition_vector->second->get_state2_lid()<< ";" <<endl;
+                                    assign( process_state( iter_ext_transition_vector->second->get_process_gid(), out ),
+                                            fmt( iter_ext_transition_vector->second->get_state2_lid() ) );
                                     for(size_int_t e = 0;e < iter_ext_transition_vector->second->get_effect_count();e++)
-                                    {
-                                        ostr << space << "             ";
-                                        write_C(*iter_ext_transition_vector->second->get_effect(e), ostr, "(*p_new_c_state)");
-                                        ostr <<";"<< endl;
-                                    }
+                                        print_cexpr( *iter_ext_transition_vector->second->get_effect(e), out );
                                 }
                                 if(have_property) //change of the property process state
-                                {
-                                    ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
-                                         << ".state = "<< iter_ext_transition_vector->property->get_state2_lid()<< ";" <<endl;
-                                }
-                                ostr << space << "          }" <<endl;
+                                    assign( process_state( iter_ext_transition_vector->property->get_process_gid(), out ),
+                                            fmt( iter_ext_transition_vector->property->get_state2_lid() ) );
+                                block_end();
                             }
                         }
-                        ostr << space << "        return " << label << ";"<<endl;
-                        ostr << space << "      }"<<endl;
+                        line( "return" + fmt( current_label ) + ";" );
+                        block_end();
                     }
                 }
-            //ostr << space <<" }"<<endl;
         }
     }
-    space = "   ";
-    ostr << space << " } " <<endl;
 
-
-    ostr << space << " else" << endl; // no in commited state
-    ostr << space << " {" << endl;
-    space = space + "    ";
+    block_end();
+    line( "else" );
+    block_begin();
 
     for(size_int_t i = 0; i < this->get_process_count(); i++)
     {
@@ -748,257 +690,184 @@ void dve_compiler::print_generator(ostream & ostr)
                 for(iter_process_transition_map = transition_map.find(i)->second.begin();
                     iter_process_transition_map != transition_map.find(i)->second.end();iter_process_transition_map++)
                 {
-                    ostr << space << "l"<<label << ": if( " << state_name <<"." << get_symbol_table()->get_process(i)->get_name() << ".state == " <<iter_process_transition_map->first<<" )"<<endl;
-                    label++;
-                    ostr << space << "    {"<<endl;
+                    label( current_label );
+                    if_begin( true );
+                    if_clause( in_state( i, iter_process_transition_map->first, in ) );
+
+                    if_end(); block_begin();
+
+                    current_label++;
+
                     for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
                         iter_ext_transition_vector != iter_process_transition_map->second.end();iter_ext_transition_vector++)
                     {
-                        ostr << space << "l" <<label << ":     if( ";
-                        label++;
-                        bool has_guard = false;
-                        if(iter_ext_transition_vector->first->get_guard()!= 0 )
-                        {
-                            ostr << "( ";
-                            write_C(*iter_ext_transition_vector->first->get_guard(), ostr, state_name);
-                            has_guard = true;
-                            ostr << " ) ";
-                        }
+                        label( current_label );
+                        current_label++;
+                        if_begin( false );
+                        if_cexpr_clause( iter_ext_transition_vector->first->get_guard(), in );
+
                         if(iter_ext_transition_vector->synchronized)
                         {
-                            if(has_guard)
-                                ostr <<" && ";
-                            else
-                                has_guard = true;
-                            ostr << state_name << "." << get_symbol_table()->get_process(iter_ext_transition_vector->second->get_process_gid())->get_name()
-                                 << ".state == "<< iter_ext_transition_vector->second->get_state1_lid();
-                            if(iter_ext_transition_vector->second->get_guard()!= 0 )
-                            {
-                                if(has_guard)
-                                    ostr <<" && ";
-                                else
-                                    has_guard = true;
-                                ostr << "( ";
-                                write_C(*iter_ext_transition_vector->second->get_guard(), ostr, state_name);
-                                ostr << ") ";
-                            }
+                            if_clause( in_state( iter_ext_transition_vector->second->get_process_gid(),
+                                                 iter_ext_transition_vector->second->get_state1_lid(), in ) );
+                            if_cexpr_clause( iter_ext_transition_vector->second->get_guard(), in );
                         }
                         else
                         {
+                            int chan = iter_ext_transition_vector->first->get_channel_gid();
                             if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                            {
-                                if(has_guard)
-                                    ostr <<" && ";
-                                else
-                                    has_guard = true;
-                                ostr << "( ";
-                                ostr << state_name << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                     << "." <<"number_of_items != "
-                                     << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_channel_buffer_size();
-                                ostr << ") ";
-                            }
+                                if_clause( relate( channel_items( chan, in ), "!=", fmt( channel_capacity( chan ) ) ) );
+
                             if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                            {
-                                if(has_guard)
-                                    ostr <<" && ";
-                                else
-                                    has_guard = true;
-                                ostr << "( ";
-                                ostr << state_name << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                     << "." <<"number_of_items != 0";
-                                ostr << ") ";
-                            }
+                                if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
                         }
                         if(have_property)
                         {
-                            if(has_guard)
-                                ostr <<" && ";
-                            else
-                                has_guard = true;
-                            ostr << state_name << "." << get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
-                                 << ".state == "<< iter_ext_transition_vector->property->get_state1_lid();
-                            if(iter_ext_transition_vector->property->get_guard()!= 0 )
-                            {
-                                if(has_guard)
-                                    ostr <<" && ";
-                                else
-                                    has_guard = true;
-                                ostr << "( ";
-                                write_C(*iter_ext_transition_vector->property->get_guard(), ostr, state_name);
-                                ostr << ") ";
-                            }
+                            if_clause( in_state( iter_ext_transition_vector->property->get_process_gid(),
+                                                 iter_ext_transition_vector->property->get_state1_lid(), in ) );
+                            if_cexpr_clause( iter_ext_transition_vector->property->get_guard(), in );
                         }
-                        if(has_guard)
-                            ostr <<" )"<<endl;
-                        else
-                            ostr <<"true )"<<endl;
-                        ostr << space << "          {" <<endl;
 
-                        ostr << space << "             processes_in_deadlock = false;" <<endl;
+                        if_end(); block_begin();
+
+                        line( "system_in_deadlock = false;" );
+
                         //synchronization effect
                         if(iter_ext_transition_vector->synchronized)
                         {
                             for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                            {
-                                ostr << space << "             ";
-                                write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(*p_new_c_state)");
-                                ostr << " = ";
-                                write_C(*iter_ext_transition_vector->second->get_sync_expr_list_item(s), ostr, "(c_state)");
-                                ostr << ";" <<endl;
-                            }
+                                assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
+                                        cexpr( *iter_ext_transition_vector->second->get_sync_expr_list_item(s), in ) );
                         }
                         else
                         {
+                            int chan = iter_ext_transition_vector->first->get_channel_gid();
                             if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
                             {
                                 for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
                                 {
-                                    ostr << space << "             ";
-                                    ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                         << ".content[(c_state)."<< get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                         << ".number_of_items].x" << s << " = ";
-                                    write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(c_state)");
-                                    ostr << ";" << endl;
+                                    assign( channel_item_at( chan, channel_items( chan, in ), s, out ),
+                                            cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item( s ), in ) );
                                 }
-                                ostr << space << "             ";
-                                ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                     << ".number_of_items++;"<<endl;
+                                line( channel_items( chan, out ) + "++;" );
                             }
                             if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
                             {
                                 for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                {
-                                    ostr << space << "             ";
-                                    write_C(*iter_ext_transition_vector->first->get_sync_expr_list_item(s), ostr, "(*p_new_c_state)");
-                                    ostr << " = (c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                         << ".content[0].x" << s <<";" <<endl;
-                                }
-                                ostr << space << "             ";
-                                ostr << "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                     << ".number_of_items--;"<<endl;
-                                ostr << space << "             ";
-                                ostr << "for(size_int_t i = 1 ; i <= (*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                     << ".number_of_items; i++)"<<endl;
-                                ostr << space << "               {" <<endl;
+                                    assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
+                                            channel_item_at( chan, "0", s, in ) );
+                                line( channel_items( chan, out ) + "--;" );
+
+                                line( "for(size_int_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
+                                block_begin();
                                 for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
                                 {
-                                    ostr << space << "                 ";
-                                    ostr <<  "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i-1].x" << s
-                                         << " = (c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i].x" << s << ";" <<endl;
-                                    ostr << space << "                 ";
-                                    ostr <<  "(*p_new_c_state)." << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name() << ".content[i].x" << s
-                                         << " = 0;" <<endl;
+                                    assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
+                                    assign( channel_item_at( chan, "i", s, out ), "0" );
                                 }
-                                ostr << space << "               }" <<endl;
+                                block_end();
                             }
                         }
+
                         //first transition effect
-                        ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->first->get_process_gid())->get_name()
-                             << ".state = "<< iter_ext_transition_vector->first->get_state2_lid()<< ";" <<endl;
+                        assign( process_state( iter_ext_transition_vector->first->get_process_gid(), out ),
+                                fmt( iter_ext_transition_vector->first->get_state2_lid() ) );
+
                         for(size_int_t e = 0;e < iter_ext_transition_vector->first->get_effect_count();e++)
-                        {
-                            ostr << space << "             ";
-                            write_C(*iter_ext_transition_vector->first->get_effect(e), ostr, "(*p_new_c_state)");
-                            ostr <<";"<< endl;
-                        }
+                            print_cexpr( *iter_ext_transition_vector->first->get_effect(e), out );
+
                         if(iter_ext_transition_vector->synchronized) //second transiton effect
                         {
-                            ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->second->get_process_gid())->get_name()
-                                 << ".state = "<< iter_ext_transition_vector->second->get_state2_lid()<< ";" <<endl;
+                            assign( process_state( iter_ext_transition_vector->second->get_process_gid(), out ),
+                                    fmt( iter_ext_transition_vector->second->get_state2_lid() ) );
                             for(size_int_t e = 0;e < iter_ext_transition_vector->second->get_effect_count();e++)
-                            {
-                                ostr << space << "             ";
-                                write_C(*iter_ext_transition_vector->second->get_effect(e), ostr, "(*p_new_c_state)");
-                                ostr <<";"<< endl;
-                            }
+                                print_cexpr( *iter_ext_transition_vector->second->get_effect(e), out );
                         }
+
                         if(have_property) //change of the property process state
-                        {
-                            ostr << space << "             (*p_new_c_state)."<<get_symbol_table()->get_process(iter_ext_transition_vector->property->get_process_gid())->get_name()
-                                 << ".state = "<< iter_ext_transition_vector->property->get_state2_lid()<< ";" <<endl;
-                        }
-                        //ostr << space << "              print_state(*p_new_c_state,cout);"<<endl;
-                        ostr << space << "              return " <<label <<";"<<endl;
-                        ostr << space << "          }" <<endl;
+                            assign( process_state( iter_ext_transition_vector->property->get_process_gid(), out ),
+                                    fmt( iter_ext_transition_vector->property->get_state2_lid() ) );
+
+                        line( "return " + fmt( current_label ) + ";" );
+                        block_end();
                     }
-                    ostr << space << "      }"<<endl;
+                    block_end();
                 }
-            //ostr << space <<" }"<<endl;
         }
     }
-    ostr << space <<" }"<<endl;
-    ostr << space << "l" << label << ": if( processes_in_deadlock )" <<endl;
-    label++;
-    ostr << space << " {" <<endl;
+    block_end();
+
+    label( current_label ); current_label ++;
+
+    if_begin( true );
+    if_clause( "system_in_deadlock" );
+    if_end(); block_begin();
+
     for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
         iter_property_transitions++)
     {
-        ostr << space << "l" << label << ": if( ";
-        label++;
-        ostr << state_name << "." << get_symbol_table()->get_process((*iter_property_transitions)->get_process_gid())->get_name()
-             << ".state == "<< (*iter_property_transitions)->get_state1_lid();
-        if( (*iter_property_transitions)->get_guard()!= 0 )
-        {
-            ostr << space << " && ( ";
-            write_C(*(*iter_property_transitions)->get_guard(), ostr, state_name);
-            ostr << " )"<<endl;
-        }
-        ostr << " )"<<endl;
+        label( current_label ); current_label ++;
+        if_begin( false );
 
-        ostr << space << "    {" <<endl;
-        ostr << space << "      (*p_new_c_state)."<<get_symbol_table()->get_process((*iter_property_transitions)->get_process_gid())->get_name()
-             << ".state = "<< (*iter_property_transitions)->get_state2_lid()<< ";" <<endl;
-        ostr << space << "      return " <<label <<";"<<endl;
-        ostr << space << "    }"<<endl;
+        if_clause( in_state( (*iter_property_transitions)->get_process_gid(),
+                             (*iter_property_transitions)->get_state1_lid(), in ) );
+        if_cexpr_clause( (*iter_property_transitions)->get_guard(), in );
+
+        if_end(); block_begin();
+
+        assign( process_state( (*iter_property_transitions)->get_process_gid(), in ),
+                fmt( (*iter_property_transitions)->get_state2_lid() ) );
+
+        line( "return " + fmt( current_label ) + ";" );
+        block_end();
     }
-    ostr << space << " }" <<endl;
+    block_end();
 
+    label( current_label );
+    line( "return 0;" );
 
-    ostr << space << "l" << label << ": return 0;" <<endl;
-    ostr << "  switch_state :"<<endl;
-    ostr << space << "switch(next_state)" <<endl;
-    ostr << space << " {" <<endl;
-    for(int i=1; i<=label; i++)
+    line( "switch_state: switch( next_state )" );
+    block_begin();
+
+    for(int i=1; i<=current_label; i++)
         if (i==1)
-            ostr<< space << "  case " << i << " : {processes_in_deadlock = true; goto l" << i << ";}" << endl;
+            line( "case " + fmt( i ) + ": system_in_deadlock = true; goto l" + fmt( i ) + ";" );
         else
-            ostr<< space << "  case " << i << " : goto l" << i << ";" << endl;
-    ostr << space << " }" <<endl;
-    ostr << space << "}" <<endl;
+            line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
+    block_end();
+    block_end();
 
-    ostr<<endl;
+    line();
 
-    ostr << "extern "<< '"' << "C" << '"' << " bool is_accepting(char* state, int size)" <<endl; // only Buchi acceptance condition
-    ostr << " {"<<endl;
     if(have_property)
     {
-        ostr << space << "state_struct_t *p_state_struct = (state_struct_t*)state;"<<endl;
+        line( "extern \"C\" bool is_accepting( char *_state, int size )" );
+        block_begin();
+
+        line( "state_struct_t &state = * (state_struct_t*) _state;" );
         for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_state_count(); i++)
         {
             if (dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_acceptance(i, 0, 1) )
             {
-                ostr << space << "if(p_state_struct->" << get_symbol_table()->get_process(this->get_property_gid())->get_name() << ".state == "
-                     <<  i  <<" ) return true;" << endl;
+                if_begin( true );
+                if_clause( in_state( get_property_gid(), i, "state" ) );
+                if_end();
+                line( "    return true;" );
             }
         }
-        ostr << space << "return false;" << endl;
+        line( "return false;" );
+        block_end();
     }
-    else{
-        ostr << "    return false;"<<endl;
-    }
-    ostr << " }"<<endl;
 
-    ostr<<endl;
+    line();
 
-    ostr << "extern "<< '"' << "C" << '"' << " int get_state_size()" <<endl;
-    ostr << " {"<<endl;
-    ostr << "   return state_size; "<<endl;
-    ostr << " }"<<endl;
+    line( "extern \"C\" int get_state_size() {" );
+    line( "    return state_size;" );
+    line( "}" );
 
-    ostr<<endl;
+    line();
 
-    ostr << "extern "<< '"' << "C" << '"' << " void get_initial_state(char* to)" <<endl;
-    ostr << " {"<<endl;
-    ostr << "   memcpy(to,initial_state,state_size); "<<endl;
-    ostr << " }"<<endl;
+    line( "extern \"C\" void get_initial_state( char *to ) {" );
+    line( "    memcpy(to, initial_state, state_size);" );
+    line( "}" );
 }

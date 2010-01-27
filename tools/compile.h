@@ -18,12 +18,16 @@ struct Compile {
         dve_compiler compiler;
         compiler.read( in.c_str() );
         compiler.analyse();
+
         std::string outfile = str::basename( in ) + ".c";
         std::ofstream out( outfile.c_str() );
-        compiler.print_header( out );
-        compiler.print_state_struct( out );
-        compiler.print_initial_state( out );
-        compiler.print_generator( out );
+        compiler.setOutput( out );
+
+        compiler.print_header();
+        compiler.print_state_struct();
+        compiler.print_initial_state();
+        compiler.print_generator();
+
         std::stringstream cmd;
         cmd << "g++ -O2 -shared -fPIC -o " << str::basename( in ) + ".so" << " " << outfile;
         system( cmd.str().c_str() );
