@@ -412,6 +412,37 @@ void dve_compiler::analyse()
     }
 }
 
+void dve_compiler::transition_guard( ext_transition_t *et, std::string in )
+{
+    if_begin( false );
+    if_cexpr_clause( et->first->get_guard(), in );
+
+    if( et->synchronized )
+    {
+        if_clause( in_state( et->second->get_process_gid(),
+                             et->second->get_state1_lid(), in ) );
+        if_cexpr_clause( et->second->get_guard(), in );
+    }
+    else
+    {
+        int chan = et->first->get_channel_gid();
+        if(et->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
+            if_clause( relate( channel_items( chan, in ), "!=",
+                               fmt( channel_capacity( chan ) ) ) );
+
+        if(et->first->get_sync_mode() == SYNC_ASK_BUFFER)
+            if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
+    }
+    if(have_property)
+    {
+        if_clause( in_state( et->property->get_process_gid(),
+                             et->property->get_state1_lid(), in ) );
+        if_cexpr_clause( et->property->get_guard(), in );
+    }
+
+    if_end();
+}
+
 void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std::string out )
 {
     if(et->synchronized)
@@ -507,7 +538,8 @@ void dve_compiler::print_generator()
                 iter_process_transition_map != transition_map.find(i)->second.end();
                 iter_process_transition_map++)
             {
-                if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(iter_process_transition_map->first))
+                if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(
+                       iter_process_transition_map->first))
                 {
                     label( current_label );
                     current_label++;
@@ -521,37 +553,14 @@ void dve_compiler::print_generator()
                         iter_ext_transition_vector != iter_process_transition_map->second.end();
                         iter_ext_transition_vector++)
                     {
+                        // !! jak je to s property synchronizaci v comitted stavech !!
                         if( !iter_ext_transition_vector->synchronized ||
-                            dynamic_cast<dve_process_t*>(get_process(iter_ext_transition_vector->second->get_process_gid()))->
-                            get_commited(iter_ext_transition_vector->second->get_state1_lid()) ) // !! jak je to s property synchronizaci v comitted stavech !!
+                            dynamic_cast<dve_process_t*>(
+                                get_process(iter_ext_transition_vector->second->get_process_gid()))->
+                            get_commited(iter_ext_transition_vector->second->get_state1_lid()) )
                         {
-                            if_begin( false );
-                            if_cexpr_clause( iter_ext_transition_vector->first->get_guard(), in );
-
-                            if(iter_ext_transition_vector->synchronized)
-                            {
-                                if_clause( in_state( iter_ext_transition_vector->second->get_process_gid(),
-                                                     iter_ext_transition_vector->second->get_state1_lid(), in ) );
-                                if_cexpr_clause( iter_ext_transition_vector->second->get_guard(), in );
-                            }
-                            else
-                            {
-                                int chan = iter_ext_transition_vector->first->get_channel_gid();
-                                if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                                    if_clause( relate( channel_items( chan, in ), "!=",
-                                                       fmt( channel_capacity( chan ) ) ) );
-
-                                if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                                    if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
-                            }
-                            if(have_property)
-                            {
-                                if_clause( in_state( iter_ext_transition_vector->property->get_process_gid(),
-                                                     iter_ext_transition_vector->property->get_state1_lid(), in ) );
-                                if_cexpr_clause( iter_ext_transition_vector->property->get_guard(), in );
-                            }
-
-                            if_end(); block_begin();
+                            transition_guard( &*iter_ext_transition_vector, in );
+                            block_begin();
                             transition_effect( &*iter_ext_transition_vector, in, out );
                             block_end();
                         }
@@ -587,37 +596,13 @@ void dve_compiler::print_generator()
                 {
                     label( current_label );
                     current_label++;
-                    if_begin( false );
-                    if_cexpr_clause( iter_ext_transition_vector->first->get_guard(), in );
 
-                    if(iter_ext_transition_vector->synchronized)
-                    {
-                        if_clause( in_state( iter_ext_transition_vector->second->get_process_gid(),
-                                             iter_ext_transition_vector->second->get_state1_lid(), in ) );
-                        if_cexpr_clause( iter_ext_transition_vector->second->get_guard(), in );
-                    }
-                    else
-                    {
-                        int chan = iter_ext_transition_vector->first->get_channel_gid();
-                        if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                            if_clause( relate( channel_items( chan, in ), "!=", fmt( channel_capacity( chan ) ) ) );
+                    transition_guard( &*iter_ext_transition_vector, in );
 
-                        if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                            if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
-                    }
-                    if(have_property)
-                    {
-                        if_clause( in_state( iter_ext_transition_vector->property->get_process_gid(),
-                                             iter_ext_transition_vector->property->get_state1_lid(), in ) );
-                        if_cexpr_clause( iter_ext_transition_vector->property->get_guard(), in );
-                    }
-
-                    if_end(); block_begin();
-
+                    block_begin();
                     transition_effect( &*iter_ext_transition_vector, in, out );
                     line( "system_in_deadlock = false;" );
                     line( "return " + fmt( current_label ) + ";" );
-
                     block_end();
                 }
                 block_end();
@@ -631,7 +616,8 @@ void dve_compiler::print_generator()
     if_clause( "system_in_deadlock" );
     if_end(); block_begin();
 
-    for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
+    for(iter_property_transitions = property_transitions.begin();
+        iter_property_transitions != property_transitions.end();
         iter_property_transitions++)
     {
         label( current_label ); current_label ++;
