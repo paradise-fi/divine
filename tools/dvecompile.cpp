@@ -5,74 +5,107 @@ using namespace wibble::str;
 
 void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name)
 {
-    //DEBFUNC(cerr << "BEGIN of dve_expression_t::write" << endl;)
+    std::map< int, const char * > op;
+
+    op[ T_LT ] = "<"; op[ T_LEQ ] = "<=";
+    op[ T_EQ ] = "=="; op[ T_NEQ ] = "!=";
+    op[ T_GT ] = ">"; op[ T_GEQ ] = ">=";
+
+    op[ T_PLUS ] = "+"; op[ T_MINUS ] = "-";
+    op[ T_MULT ] = "*"; op[ T_DIV ] = "/"; op[ T_MOD ] = "%";
+
+    op[ T_AND ] = "&"; op[ T_OR ] = "|"; op[ T_XOR ] = "^";
+    op[ T_LSHIFT ] = "<<"; op[ T_RSHIFT ] = ">>";
+
+    op[ T_BOOL_AND ] = "&&"; op[ T_BOOL_OR ] = "||";
+
+    op[ T_ASSIGNMENT ] = "=";
+
     dve_symbol_table_t * parent_table = expr.get_symbol_table();
     if (!parent_table) gerr << "Writing expression: Symbol table not set" << thr();
     switch (expr.get_operator())
     {
         case T_ID:
-        { ostr<<state_name<<".";
+            ostr<<state_name<<".";
             if(parent_table->get_variable(expr.get_ident_gid())->get_process_gid() != NO_ID)
             {
-                ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->get_process_gid())->get_name(); //name of process
+                ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
+                                                  get_process_gid())->get_name(); //name of process
                 ostr<<".";
             }
             ostr << parent_table->get_variable(expr.get_ident_gid())->get_name();
-            break; }
+            break;
         case T_FOREIGN_ID:
-        { ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->get_process_gid())->get_name(); //name of process
+            ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
+                                              get_process_gid())->get_name(); //name of process
             ostr<<"->";
             ostr << parent_table->get_variable(expr.get_ident_gid())->get_name();
-            break; }
+            break;
         case T_NAT:
-            ostr << expr.get_value(); break;
+            ostr << expr.get_value();
+            break;
         case T_PARENTHESIS:
-        { ostr << "("; write_C(*expr.left(), ostr, state_name); ostr << ")"; break; }
+            ostr << "(";
+            write_C(*expr.left(), ostr, state_name);
+            ostr << ")";
+            break;
         case T_SQUARE_BRACKETS:
-        { ostr<<state_name<<".";
+            ostr<<state_name<<".";
             if(parent_table->get_variable(expr.get_ident_gid())->get_process_gid() != NO_ID)
             {
-                ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->get_process_gid())->get_name(); //name of process
+                ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
+                                                  get_process_gid())->get_name(); //name of process
                 ostr<<".";
             }
             ostr << parent_table->get_variable(expr.get_ident_gid())->
-                get_name(); ostr<<"["; write_C(*expr.left(), ostr, state_name); ostr<<"]" ;break; }
+                get_name(); ostr<<"["; write_C(*expr.left(), ostr, state_name); ostr<<"]" ;
+            break;
         case T_FOREIGN_SQUARE_BRACKETS:
-        { ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->get_process_gid())->get_name(); //name of preocess
+            ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
+                                              get_process_gid())->get_name(); //name of preocess
             ostr<<"->";
             ostr << parent_table->get_variable(expr.get_ident_gid())->get_name();
-            ostr<<"["; write_C(*expr.left(), ostr, state_name); ostr<<"]" ;break; }
-        case T_LT: { write_C(*expr.left(), ostr, state_name); ostr<<"<"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_LEQ: { write_C(*expr.left(), ostr, state_name); ostr<<"<="; write_C(*expr.right(), ostr, state_name); break; }
-        case T_EQ: { write_C(*expr.left(), ostr, state_name); ostr<<"=="; write_C(*expr.right(), ostr, state_name); break; }
-        case T_NEQ: { write_C(*expr.left(), ostr, state_name); ostr<<"!="; write_C(*expr.right(), ostr, state_name); break; }
-        case T_GT: { write_C(*expr.left(), ostr, state_name); ostr<<">"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_GEQ: { write_C(*expr.left(), ostr, state_name); ostr<<">="; write_C(*expr.right(), ostr, state_name); break; }
-        case T_PLUS: { write_C(*expr.left(), ostr, state_name); ostr<<"+"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_MINUS: { write_C(*expr.left(), ostr, state_name); ostr<<"-"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_MULT: { write_C(*expr.left(), ostr, state_name); ostr<<"*"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_DIV: { write_C(*expr.left(), ostr, state_name); ostr<<"/"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_MOD: { write_C(*expr.left(), ostr, state_name); ostr<<"%"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_AND: { write_C(*expr.left(), ostr, state_name); ostr<<"&"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_OR: { write_C(*expr.left(), ostr, state_name); ostr<<"|"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_XOR: { write_C(*expr.left(), ostr, state_name); ostr<<"^"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_LSHIFT: { write_C(*expr.left(), ostr, state_name); ostr<<"<<"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_RSHIFT: { write_C(*expr.left(), ostr, state_name); ostr<<">>"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_BOOL_AND: {write_C(*expr.left(), ostr, state_name); ostr<<" && ";write_C(*expr.right(), ostr, state_name); break;}
-        case T_BOOL_OR: {write_C(*expr.left(), ostr, state_name); ostr<<" || "; write_C(*expr.right(), ostr, state_name); break;}
+            ostr<<"["; write_C(*expr.left(), ostr, state_name); ostr<<"]";
+            break;
+
+        case T_LT: case T_LEQ: case T_EQ: case T_NEQ: case T_GT: case T_GEQ:
+        case T_PLUS: case T_MINUS: case T_MULT: case T_DIV: case T_MOD:
+        case T_AND: case T_OR: case T_XOR: case T_LSHIFT: case T_RSHIFT:
+        case T_BOOL_AND: case T_BOOL_OR: case T_ASSIGNMENT:
+            write_C( *expr.left(), ostr, state_name );
+            ostr << " " << op[ expr.get_operator() ] << " ";
+            write_C( *expr.right(), ostr, state_name );
+            break;
+
         case T_DOT:
-        { ostr<<state_name<<".";
-            ostr<<parent_table->get_process(parent_table->get_state(expr.get_ident_gid())->get_process_gid())->get_name(); ostr<<".state"<<" == ";
-            ostr<<parent_table->get_state(expr.get_ident_gid())->get_lid(); break; }
-        case T_IMPLY: { write_C(*expr.left(), ostr, state_name); ostr<<" -> "; write_C(*expr.right(), ostr, state_name); break; }
-        case T_UNARY_MINUS: { ostr<<"-"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_TILDE: { ostr<<"~"; write_C(*expr.right(), ostr, state_name); break; }
-        case T_BOOL_NOT: { ostr<<" ! ("; write_C(*expr.right(), ostr, state_name); ostr<< " )"; break; }
-        case T_ASSIGNMENT: { write_C(*expr.left(), ostr, state_name); ostr<<" = "; write_C(*expr.right(), ostr, state_name); break; }
-        default: { gerr << "Problem in expression - unknown operator"
-                " number " << expr.get_operator() << psh(); }
+            ostr<<state_name<<".";
+            ostr<<parent_table->get_process(parent_table->get_state(expr.get_ident_gid())->
+                                            get_process_gid())->get_name(); ostr<<".state"<<" == ";
+            ostr<<parent_table->get_state(expr.get_ident_gid())->get_lid();
+            break;
+
+        case T_IMPLY:
+            write_C(*expr.left(), ostr, state_name);
+            ostr<<" -> "; // FIXME this looks wrong, -> in C is dereference
+            write_C(*expr.right(), ostr, state_name);
+            break;
+        case T_UNARY_MINUS:
+            ostr<<"-";
+            write_C(*expr.right(), ostr, state_name);
+            break;
+        case T_TILDE:
+            ostr<<"~";
+            write_C(*expr.right(), ostr, state_name);
+            break;
+        case T_BOOL_NOT:
+            ostr<<" ! (";
+            write_C(*expr.right(), ostr, state_name);
+            ostr<< " )";
+            break;
+        default:
+            gerr << "Problem in expression - unknown operator"
+                 << " number " << expr.get_operator() << psh();
     }
-    //DEBFUNC(cerr << "END of dve_expression_t::write_C" << endl;)
 }
 
 std::string dve_compiler::cexpr( dve_expression_t & expr, std::string state )
