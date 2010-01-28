@@ -412,6 +412,64 @@ void dve_compiler::analyse()
     }
 }
 
+void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std::string out )
+{
+    if(et->synchronized)
+    {
+        for(size_int_t s = 0;s < et->first->get_sync_expr_list_size();s++)
+            assign( cexpr( *et->first->get_sync_expr_list_item(s), out ),
+                    cexpr( *et->second->get_sync_expr_list_item(s), in ) );
+    }
+    else
+    {
+        int chan = et->first->get_channel_gid();
+        if(et->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
+        {
+            for(size_int_t s = 0;s < et->first->get_sync_expr_list_size();s++)
+            {
+                assign( channel_item_at( chan, channel_items( chan, in ), s, out ),
+                        cexpr( *et->first->get_sync_expr_list_item( s ), in ) );
+            }
+            line( channel_items( chan, out ) + "++;" );
+        }
+        if(et->first->get_sync_mode() == SYNC_ASK_BUFFER)
+        {
+            for(size_int_t s = 0;s < et->first->get_sync_expr_list_size();s++)
+                assign( cexpr( *et->first->get_sync_expr_list_item(s), out ),
+                        channel_item_at( chan, "0", s, in ) );
+            line( channel_items( chan, out ) + "--;" );
+
+            line( "for(size_int_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
+            block_begin();
+            for(size_int_t s = 0;s < et->first->get_sync_expr_list_size();s++)
+            {
+                assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
+                assign( channel_item_at( chan, "i", s, out ), "0" );
+            }
+            block_end();
+        }
+    }
+
+    //first transition effect
+    assign( process_state( et->first->get_process_gid(), out ),
+            fmt( et->first->get_state2_lid() ) );
+
+    for(size_int_t e = 0;e < et->first->get_effect_count();e++)
+        print_cexpr( *et->first->get_effect(e), out );
+
+    if(et->synchronized) //second transiton effect
+    {
+        assign( process_state( et->second->get_process_gid(), out ),
+                fmt( et->second->get_state2_lid() ) );
+        for(size_int_t e = 0;e < et->second->get_effect_count();e++)
+            print_cexpr( *et->second->get_effect(e), out );
+    }
+
+    if(have_property) //change of the property process state
+        assign( process_state( et->property->get_process_gid(), out ),
+                fmt( et->property->get_state2_lid() ) );
+}
+
 void dve_compiler::print_generator()
 {
     string in = "(*in)", out = "(*out)", space = "";
@@ -494,65 +552,7 @@ void dve_compiler::print_generator()
                             }
 
                             if_end(); block_begin();
-
-                            //synchronization effect
-                            if(iter_ext_transition_vector->synchronized)
-                            {
-                                for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                {
-                                    assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
-                                            cexpr( *iter_ext_transition_vector->second->get_sync_expr_list_item(s), in ) );
-                                }
-                            }
-                            else
-                            {
-                                int chan = iter_ext_transition_vector->first->get_channel_gid();
-                                if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                                {
-                                    for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                        assign( channel_item_at( chan, channel_items( chan, in ) + " - 1", s, out ),
-                                                cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), in ) );
-
-                                    line( channel_items( chan, out ) + "++;" );
-                                }
-
-                                if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                                {
-                                    for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                    {
-                                        assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
-                                                channel_item_at( chan, "0", s, in ) );
-                                    }
-                                    line( channel_items( chan, out ) + "--;" );
-
-                                    line( "for(size_int_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
-                                    block_begin();
-
-                                    for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                    {
-                                        assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
-                                        assign( channel_item_at( chan, "i", s, out ), "0" );
-                                    }
-                                    block_end();
-                                }
-                            }
-                            //first transition effect
-                            assign( process_state( iter_ext_transition_vector->first->get_process_gid(), out ),
-                                    fmt( iter_ext_transition_vector->first->get_state2_lid() ) );
-
-                            for(size_int_t e = 0;e < iter_ext_transition_vector->first->get_effect_count();e++)
-                                print_cexpr( *iter_ext_transition_vector->first->get_effect(e), out );
-
-                            if(iter_ext_transition_vector->synchronized) //second transiton effect
-                            {
-                                assign( process_state( iter_ext_transition_vector->second->get_process_gid(), out ),
-                                        fmt( iter_ext_transition_vector->second->get_state2_lid() ) );
-                                for(size_int_t e = 0;e < iter_ext_transition_vector->second->get_effect_count();e++)
-                                    print_cexpr( *iter_ext_transition_vector->second->get_effect(e), out );
-                            }
-                            if(have_property) //change of the property process state
-                                assign( process_state( iter_ext_transition_vector->property->get_process_gid(), out ),
-                                        fmt( iter_ext_transition_vector->property->get_state2_lid() ) );
+                            transition_effect( &*iter_ext_transition_vector, in, out );
                             block_end();
                         }
                     }
@@ -582,7 +582,8 @@ void dve_compiler::print_generator()
                 current_label++;
 
                 for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
-                    iter_ext_transition_vector != iter_process_transition_map->second.end();iter_ext_transition_vector++)
+                    iter_ext_transition_vector != iter_process_transition_map->second.end();
+                    iter_ext_transition_vector++)
                 {
                     label( current_label );
                     current_label++;
@@ -613,65 +614,10 @@ void dve_compiler::print_generator()
 
                     if_end(); block_begin();
 
+                    transition_effect( &*iter_ext_transition_vector, in, out );
                     line( "system_in_deadlock = false;" );
-
-                    //synchronization effect
-                    if(iter_ext_transition_vector->synchronized)
-                    {
-                        for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                            assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
-                                    cexpr( *iter_ext_transition_vector->second->get_sync_expr_list_item(s), in ) );
-                    }
-                    else
-                    {
-                        int chan = iter_ext_transition_vector->first->get_channel_gid();
-                        if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                        {
-                            for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                            {
-                                assign( channel_item_at( chan, channel_items( chan, in ), s, out ),
-                                        cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item( s ), in ) );
-                            }
-                            line( channel_items( chan, out ) + "++;" );
-                        }
-                        if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                        {
-                            for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                                assign( cexpr( *iter_ext_transition_vector->first->get_sync_expr_list_item(s), out ),
-                                        channel_item_at( chan, "0", s, in ) );
-                            line( channel_items( chan, out ) + "--;" );
-
-                            line( "for(size_int_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
-                            block_begin();
-                            for(size_int_t s = 0;s < iter_ext_transition_vector->first->get_sync_expr_list_size();s++)
-                            {
-                                assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
-                                assign( channel_item_at( chan, "i", s, out ), "0" );
-                            }
-                            block_end();
-                        }
-                    }
-
-                    //first transition effect
-                    assign( process_state( iter_ext_transition_vector->first->get_process_gid(), out ),
-                            fmt( iter_ext_transition_vector->first->get_state2_lid() ) );
-
-                    for(size_int_t e = 0;e < iter_ext_transition_vector->first->get_effect_count();e++)
-                        print_cexpr( *iter_ext_transition_vector->first->get_effect(e), out );
-
-                    if(iter_ext_transition_vector->synchronized) //second transiton effect
-                    {
-                        assign( process_state( iter_ext_transition_vector->second->get_process_gid(), out ),
-                                fmt( iter_ext_transition_vector->second->get_state2_lid() ) );
-                        for(size_int_t e = 0;e < iter_ext_transition_vector->second->get_effect_count();e++)
-                            print_cexpr( *iter_ext_transition_vector->second->get_effect(e), out );
-                    }
-
-                    if(have_property) //change of the property process state
-                        assign( process_state( iter_ext_transition_vector->property->get_process_gid(), out ),
-                                fmt( iter_ext_transition_vector->property->get_state2_lid() ) );
-
                     line( "return " + fmt( current_label ) + ";" );
+
                     block_end();
                 }
                 block_end();

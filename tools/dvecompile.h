@@ -137,6 +137,8 @@ struct dve_compiler: public dve_explicit_system_t
         return get_symbol_table()->get_channel( i )->get_channel_buffer_size();
     }
 
+    void transition_effect( ext_transition_t *, std::string, std::string );
+
     bool is_property( int i ) {
         return get_with_property() && i == get_property_gid();
     }
