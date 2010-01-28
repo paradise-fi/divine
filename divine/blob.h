@@ -255,29 +255,27 @@ struct Blob
         {
         case 11: c += *reinterpret_cast< const uint32_t * >( ptr + 8 )
                  & uint32_t( 0x00FFFFFF ); goto word;
-        case 10: c += *reinterpret_cast< const uint32_t * >( ptr + 8 )
-                 & uint32_t( 0x0000FFFF ); goto word;
-        case  9: c += *reinterpret_cast< const uint32_t * >( ptr + 8 )
-                 & uint32_t( 0x000000FF );
+        case 10: c += *reinterpret_cast< const uint16_t * >( ptr + 8 ); goto word;
+        case  9: c += *reinterpret_cast< const uint16_t * >( ptr + 8 )
+                 & uint16_t( 0x00FF );
             /* the first byte of c is reserved for the length */
 
         word:
         case  8: b += *reinterpret_cast< const uint32_t * >( ptr + 4 ); goto word2;
         case  7: b += *reinterpret_cast< const uint32_t * >( ptr + 4 )
                  & uint32_t( 0x00FFFFFF ); goto word2;
-        case  6: b += *reinterpret_cast< const uint32_t * >( ptr + 4 )
-                 & uint32_t( 0x0000FFFF ); goto word2;
-        case  5: b += *reinterpret_cast< const uint32_t * >( ptr + 4 )
-                 & uint32_t( 0x000000FF );
+        case  6: b += *reinterpret_cast< const uint16_t * >( ptr + 4 ); goto word2;
+        case  5: b += *reinterpret_cast< const uint16_t * >( ptr + 4 )
+                 & uint16_t( 0x00FF );
 
         word2:
         case  4: a += *reinterpret_cast< const uint32_t * >( ptr + 0 ); goto done;
         case  3: a += *reinterpret_cast< const uint32_t * >( ptr + 0 )
                  & uint32_t( 0x00FFFFFF ); goto done;
-        case  2: a += *reinterpret_cast< const uint32_t * >( ptr + 0 )
-                 & uint32_t( 0x0000FFFF ); goto done;
-        case  1: a += *reinterpret_cast< const uint32_t * >( ptr + 0 )
-                 & uint32_t( 0x000000FF );
+
+        case  2: a += *reinterpret_cast< const uint16_t * >( ptr + 0 );
+        case  1: a += *reinterpret_cast< const uint16_t * >( ptr + 0 )
+                 & uint16_t( 0x00FF );
         case 0:
         done:;
         }
