@@ -264,12 +264,12 @@ void dve_compiler::print_initial_state()
 void dve_compiler::analyse()
 {
     dve_transition_t * transition;
-    have_property = this->get_with_property();
+    have_property = get_with_property();
 
     // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
-    for(size_int_t i = 0; i < this->get_trans_count(); i++)
+    for(size_int_t i = 0; i < get_trans_count(); i++)
     {
-        transition = dynamic_cast<dve_transition_t*>(this->get_transition(i));
+        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
         if(transition->is_sync_exclaim())
         {
             iter_channel_map = channel_map.find(transition->get_channel_gid());
@@ -284,17 +284,17 @@ void dve_compiler::analyse()
             }
         }
 
-        if(have_property && transition->get_process_gid() == this->get_property_gid())
+        if(have_property && transition->get_process_gid() == get_property_gid())
         {
             property_transitions.push_back(transition);
         }
     }
 
     // obtain map of transitions
-    for(size_int_t i = 0; i < this->get_trans_count(); i++)
+    for(size_int_t i = 0; i < get_trans_count(); i++)
     {
-        transition = dynamic_cast<dve_transition_t*>(this->get_transition(i));
-        if(!transition->is_sync_exclaim() && (!have_property || transition->get_process_gid() != this->get_property_gid()) )
+        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
+        if(!transition->is_sync_exclaim() && (!have_property || transition->get_process_gid() != get_property_gid()) )
         {
             // not syncronized sender without buffer and not a property transition
             iter_transition_map = transition_map.find(transition->get_process_gid());
@@ -542,9 +542,9 @@ void dve_compiler::print_generator()
 
     current_label++;
 
-    for(size_int_t i = 0; i < this->get_process_count(); i++)
-        for(size_int_t j = 0; j < dynamic_cast<dve_process_t*>(this->get_process(i))->get_state_count(); j++)
-            if(dynamic_cast<dve_process_t*>(this->get_process(i))->get_commited(j))
+    for(size_int_t i = 0; i < get_process_count(); i++)
+        for(size_int_t j = 0; j < dynamic_cast<dve_process_t*>(get_process(i))->get_state_count(); j++)
+            if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(j))
                 if_clause( in_state( i, j, in ) );
 
     if_end(); block_begin();
@@ -557,7 +557,7 @@ void dve_compiler::print_generator()
                 for(iter_process_transition_map = transition_map.find(i)->second.begin();
                     iter_process_transition_map != transition_map.find(i)->second.end();iter_process_transition_map++)
                 {
-                    if(dynamic_cast<dve_process_t*>(this->get_process(i))->get_commited(iter_process_transition_map->first))
+                    if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(iter_process_transition_map->first))
                     {
                         label( current_label );
                         current_label++;
@@ -571,7 +571,7 @@ void dve_compiler::print_generator()
                             iter_ext_transition_vector != iter_process_transition_map->second.end();iter_ext_transition_vector++)
                         {
                             if( !iter_ext_transition_vector->synchronized ||
-                                dynamic_cast<dve_process_t*>(this->get_process(iter_ext_transition_vector->second->get_process_gid()))->
+                                dynamic_cast<dve_process_t*>(get_process(iter_ext_transition_vector->second->get_process_gid()))->
                                 get_commited(iter_ext_transition_vector->second->get_state1_lid()) ) // !! jak je to s property synchronizaci v comitted stavech !!
                             {
                                 if_begin( false );
@@ -682,9 +682,9 @@ void dve_compiler::print_generator()
     line( "else" );
     block_begin();
 
-    for(size_int_t i = 0; i < this->get_process_count(); i++)
+    for(size_int_t i = 0; i < get_process_count(); i++)
     {
-        if(!have_property || i != this->get_property_gid())
+        if(!have_property || i != get_property_gid())
         {
             if(transition_map.find(i) != transition_map.end())
                 for(iter_process_transition_map = transition_map.find(i)->second.begin();
@@ -845,9 +845,9 @@ void dve_compiler::print_generator()
         block_begin();
 
         line( "state_struct_t &state = * (state_struct_t*) _state;" );
-        for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_state_count(); i++)
+        for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_state_count(); i++)
         {
-            if (dynamic_cast<dve_process_t*>(this->get_process((this->get_property_gid())))->get_acceptance(i, 0, 1) )
+            if (dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_acceptance(i, 0, 1) )
             {
                 if_begin( true );
                 if_clause( in_state( get_property_gid(), i, "state" ) );
