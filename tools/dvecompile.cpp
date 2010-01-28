@@ -480,7 +480,8 @@ void dve_compiler::print_generator()
                             {
                                 int chan = iter_ext_transition_vector->first->get_channel_gid();
                                 if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                                    if_clause( relate( channel_items( chan, in ), "!=", channel_capacity( chan ) ) );
+                                    if_clause( relate( channel_items( chan, in ), "!=",
+                                                       fmt( channel_capacity( chan ) ) ) );
 
                                 if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
                                     if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
