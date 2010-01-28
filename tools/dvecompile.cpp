@@ -261,48 +261,10 @@ void dve_compiler::print_initial_state()
     line();
 }
 
-void dve_compiler::analyse()
+void dve_compiler::analyse_transition(
+    dve_transition_t * transition,
+    vector<ext_transition_t> &ext_transition_vector )
 {
-    dve_transition_t * transition;
-    have_property = get_with_property();
-
-    // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
-    for(size_int_t i = 0; i < get_trans_count(); i++)
-    {
-        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
-        if(transition->is_sync_exclaim())
-        {
-            iter_channel_map = channel_map.find(transition->get_channel_gid());
-            if(iter_channel_map == channel_map.end()) //new channel
-            {
-                vector<dve_transition_t*> transition_vector;
-                transition_vector.push_back(transition);
-                channel_map.insert(pair<size_int_t,vector<dve_transition_t*> >(transition->get_channel_gid(),transition_vector));
-            }
-            else{
-                iter_channel_map->second.push_back(transition);
-            }
-        }
-
-        if(have_property && transition->get_process_gid() == get_property_gid())
-        {
-            property_transitions.push_back(transition);
-        }
-    }
-
-    // obtain map of transitions
-    for(size_int_t i = 0; i < get_trans_count(); i++)
-    {
-        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
-        if(!transition->is_sync_exclaim() && (!have_property || transition->get_process_gid() != get_property_gid()) )
-        {
-            // not syncronized sender without buffer and not a property transition
-            iter_transition_map = transition_map.find(transition->get_process_gid());
-            if( iter_transition_map == transition_map.end()) //new process it means that new state in process is also new
-            {
-                // new process, add to transition map
-                map<size_int_t,vector<ext_transition_t> >  process_transition_map;
-                vector<ext_transition_t> ext_transition_vector;
                 if(!transition->is_sync_ask())
                 {
                     // transition not of type SYNC_ASK
@@ -335,11 +297,13 @@ void dve_compiler::analyse()
                     iter_channel_map = channel_map.find(transition->get_channel_gid());
                     if(iter_channel_map != channel_map.end())
                     {
-                        // channel of this transition is found (strange test, no else part for if statement)
+                        // channel of this transition is found
+                        // (strange test, no else part for if statement)
                         // assume: channel should always be present
                         // forall transitions that also use this channel, add to ext_transitions
-                        for(iter_transition_vector = iter_channel_map->second.begin();iter_transition_vector !=
-                                                     iter_channel_map->second.end();iter_transition_vector++)
+                        for(iter_transition_vector  = iter_channel_map->second.begin();
+                            iter_transition_vector != iter_channel_map->second.end();
+                            iter_transition_vector++)
                         {
                             if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
                             {
@@ -371,149 +335,76 @@ void dve_compiler::analyse()
                         }
                     }
                 }
-                // for this process state, add the ext transitions
-                process_transition_map.insert(pair<size_int_t,vector<ext_transition_t> >(transition->get_state1_lid(),ext_transition_vector));
-                // then add this vector to the transition map for this process
-                transition_map.insert(pair<size_int_t,map<size_int_t,vector<ext_transition_t> > >(transition->get_process_gid(),process_transition_map));
+}
+
+void dve_compiler::analyse()
+{
+    dve_transition_t * transition;
+    have_property = get_with_property();
+
+    // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
+    for(size_int_t i = 0; i < get_trans_count(); i++)
+    {
+        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
+        if(transition->is_sync_exclaim())
+        {
+            iter_channel_map = channel_map.find(transition->get_channel_gid());
+            if(iter_channel_map == channel_map.end()) //new channel
+            {
+                vector<dve_transition_t*> transition_vector;
+                transition_vector.push_back(transition);
+                channel_map.insert(pair<size_int_t,vector<dve_transition_t*> >(
+                                       transition->get_channel_gid(),transition_vector));
             }
             else{
+                iter_channel_map->second.push_back(transition);
+            }
+        }
+
+        if( is_property( transition->get_process_gid() ) )
+            property_transitions.push_back(transition);
+    }
+
+    // obtain map of transitions
+    for(size_int_t i = 0; i < get_trans_count(); i++)
+    {
+        transition = dynamic_cast<dve_transition_t*>(get_transition(i));
+        if(!transition->is_sync_exclaim() && !is_property( transition->get_process_gid() ) )
+        {
+            // not syncronized sender without buffer and not a property transition
+            iter_transition_map = transition_map.find(transition->get_process_gid());
+
+            //new process it means that new state in process is also new
+            if( iter_transition_map == transition_map.end())
+            {
+                // new process, add to transition map
+                map<size_int_t,vector<ext_transition_t> >  process_transition_map;
+                vector<ext_transition_t> ext_transition_vector;
+
+                analyse_transition( transition, ext_transition_vector );
+
+                // for this process state, add the ext transitions
+                process_transition_map.insert(pair<size_int_t,vector<ext_transition_t> >(
+                                                  transition->get_state1_lid(),ext_transition_vector));
+                // then add this vector to the transition map for this process
+                transition_map.insert(pair<size_int_t,map<size_int_t,vector<ext_transition_t> > >(
+                                          transition->get_process_gid(),process_transition_map));
+            } else {
                 // existing process, find process_transition_map
-                iter_process_transition_map = iter_transition_map->second.find(transition->get_state1_lid());
-                if( iter_process_transition_map == iter_transition_map->second.end()) //new state in current process
+                iter_process_transition_map =
+                    iter_transition_map->second.find(transition->get_state1_lid());
+
+                //new state in current process
+                if( iter_process_transition_map == iter_transition_map->second.end())
                 {
                     vector<ext_transition_t> ext_transition_vector;
-                    if(!transition->is_sync_ask())
-                    {
-                        // transition is not SYNC_ASK
-                        if(!have_property)
-                        {
-                            // no properties
-                            ext_transition_t ext_transition;
-                            ext_transition.synchronized = false;
-                            ext_transition.first = transition;
-                            ext_transition_vector.push_back(ext_transition);
-                        }
-                        else
-                        {
-                            // forall properties, add this transition
-                            for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
-                                iter_property_transitions++)
-                            {
-                                ext_transition_t ext_transition;
-                                ext_transition.synchronized = false;
-                                ext_transition.first = transition;
-                                ext_transition.property = (*iter_property_transitions);
-                                ext_transition_vector.push_back(ext_transition);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // transition is SYNC_ASK -> add all transitions that fill the channel
-                        iter_channel_map = channel_map.find(transition->get_channel_gid());
-                        if(iter_channel_map != channel_map.end())
-                        {
-                            for(iter_transition_vector = iter_channel_map->second.begin();iter_transition_vector !=
-                                                         iter_channel_map->second.end();iter_transition_vector++)
-                            {
-                                if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
-                                {
-                                    if(!have_property)
-                                    {
-                                        // no properties, just add all transitions that fill the channel
-                                        ext_transition_t ext_transition;
-                                        ext_transition.synchronized = true;
-                                        ext_transition.first = transition;
-                                        ext_transition.second = (*iter_transition_vector);
-                                        ext_transition_vector.push_back(ext_transition);
-                                    }
-                                    else
-                                    {
-                                        // for all properties, add the transitions that fill the channel
-                                        for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
-                                            iter_property_transitions++)
-                                        {
-                                            ext_transition_t ext_transition;
-                                            ext_transition.synchronized = true;
-                                            ext_transition.first = transition;
-                                            ext_transition.second = (*iter_transition_vector);
-                                            ext_transition.property = (*iter_property_transitions);
-                                            ext_transition_vector.push_back(ext_transition);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    analyse_transition( transition, ext_transition_vector );
+
                     // and reinsert result
-                    iter_transition_map->second.insert(pair<size_int_t,vector<ext_transition_t> >(transition->get_state1_lid(),ext_transition_vector));
-                }
-                else{
-                    // existing state
-                    if(!transition->is_sync_ask())
-                    {
-                        // NOT SYNC_ASK
-                        if(!have_property)
-                        {
-                            // no properties, just add transition
-                            ext_transition_t ext_transition;
-                            ext_transition.synchronized = false;
-                            ext_transition.first = transition;
-                            iter_process_transition_map->second.push_back(ext_transition);
-                        }
-                        else{
-                            // forall properties, add transition
-                            for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
-                                iter_property_transitions++)
-                            {
-                                ext_transition_t ext_transition;
-                                ext_transition.synchronized = false;
-                                ext_transition.first = transition;
-                                ext_transition.property = (*iter_property_transitions);
-                                iter_process_transition_map->second.push_back(ext_transition);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // lookup channel in channel_map
-                        iter_channel_map = channel_map.find(transition->get_channel_gid());
-                        if(iter_channel_map != channel_map.end())
-                        {
-                            // assume channel is found
-                            // forall transitions with SYNC_EXCLAIM (in channel_map)
-                            for(iter_transition_vector = iter_channel_map->second.begin();iter_transition_vector !=
-                                                         iter_channel_map->second.end();iter_transition_vector++)
-                            {
-                                if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
-                                {
-                                    if(!have_property)
-                                    {
-                                        // no property, just add transition * all transitions with SYNC_EXCLAIM
-                                        ext_transition_t ext_transition;
-                                        ext_transition.synchronized = true;
-                                        ext_transition.first = transition;
-                                        ext_transition.second = (*iter_transition_vector);
-                                        iter_process_transition_map->second.push_back(ext_transition);
-                                    }
-                                    else{
-                                        // system has properties, forall properties, add transition * all transitions with SYNC_EXCLAIM
-                                        for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
-                                            iter_property_transitions++)
-                                        {
-                                            ext_transition_t ext_transition;
-                                            ext_transition.synchronized = true;
-                                            ext_transition.first = transition;
-                                            ext_transition.second = (*iter_transition_vector);
-                                            ext_transition.property = (*iter_property_transitions);
-                                            iter_process_transition_map->second.push_back(ext_transition);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                    iter_transition_map->second.insert(
+                        pair<size_int_t,vector<ext_transition_t> >(
+                            transition->get_state1_lid(),ext_transition_vector) );
+                } else analyse_transition( transition, iter_process_transition_map->second );
             }
         }
     }

@@ -60,6 +60,8 @@ struct dve_compiler: public dve_explicit_system_t
     {}
     virtual ~dve_compiler() {}
 
+    void analyse_transition( dve_transition_t * transition,
+                             vector<ext_transition_t> &ext_transition_vector );
     void analyse();
 
     void write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name);
@@ -133,6 +135,10 @@ struct dve_compiler: public dve_explicit_system_t
 
     int channel_capacity( int i ) {
         return get_symbol_table()->get_channel( i )->get_channel_buffer_size();
+    }
+
+    bool is_property( int i ) {
+        return get_with_property() && i == get_property_gid();
     }
 
     std::string cexpr( dve_expression_t &expr, std::string state );
