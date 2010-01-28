@@ -569,7 +569,8 @@ void dve_compiler::print_generator()
     {
         if(transition_map.find(i) != transition_map.end() && !is_property( i ))
             for(iter_process_transition_map = transition_map.find(i)->second.begin();
-                iter_process_transition_map != transition_map.find(i)->second.end();iter_process_transition_map++)
+                iter_process_transition_map != transition_map.find(i)->second.end();
+                iter_process_transition_map++)
             {
                 label( current_label );
                 if_begin( true );
