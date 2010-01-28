@@ -478,21 +478,12 @@ void dve_compiler::print_generator()
                             }
                             else
                             {
+                                int chan = iter_ext_transition_vector->first->get_channel_gid();
                                 if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_EXCLAIM_BUFFER)
-                                {
-                                    std::stringstream str;
-                                    str << in << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                        << "." <<"number_of_items != "
-                                        << get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_channel_buffer_size();
-                                    if_clause( str.str() );
-                                }
+                                    if_clause( relate( channel_items( chan, in ), "!=", channel_capacity( chan ) ) );
+
                                 if(iter_ext_transition_vector->first->get_sync_mode() == SYNC_ASK_BUFFER)
-                                {
-                                    std::stringstream str;
-                                    str << in << "." <<get_symbol_table()->get_channel(iter_ext_transition_vector->first->get_channel_gid())->get_name()
-                                        << "." <<"number_of_items != 0";
-                                    if_clause( str.str() );
-                                }
+                                    if_clause( relate( channel_items( chan, in ), "!=", "0" ) );
                             }
                             if(have_property)
                             {
