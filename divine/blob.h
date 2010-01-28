@@ -244,7 +244,7 @@ struct Blob
         {
             a += *reinterpret_cast< const uint32_t * >( ptr );
             b += *reinterpret_cast< const uint32_t * >( ptr + 4 );
-            b += *reinterpret_cast< const uint32_t * >( ptr + 8 );
+            c += *reinterpret_cast< const uint32_t * >( ptr + 8 );
             MIX(a,b,c);
             ptr += 12; len -= 12;
         }
