@@ -265,76 +265,78 @@ void dve_compiler::analyse_transition(
     dve_transition_t * transition,
     vector<ext_transition_t> &ext_transition_vector )
 {
-                if(!transition->is_sync_ask())
+    if(!transition->is_sync_ask())
+    {
+        // transition not of type SYNC_ASK
+        if(!have_property)
+        {
+            // no properties, just add to ext_transition vector
+            ext_transition_t ext_transition;
+            ext_transition.synchronized = false;
+            ext_transition.first = transition;
+            ext_transition_vector.push_back(ext_transition);
+        }
+        else
+        {
+            // this transition is not a property, but there are properties
+            // forall properties, add this transition to ext_transition_vector
+            for(iter_property_transitions = property_transitions.begin();
+                iter_property_transitions != property_transitions.end();
+                iter_property_transitions++)
+            {
+                ext_transition_t ext_transition;
+                ext_transition.synchronized = false;
+                ext_transition.first = transition;
+                ext_transition.property = (*iter_property_transitions);
+                ext_transition_vector.push_back(ext_transition);
+            }
+        }
+    }
+    else
+    {
+        // transition of type SYNC_ASK
+        iter_channel_map = channel_map.find(transition->get_channel_gid());
+        if(iter_channel_map != channel_map.end())
+        {
+            // channel of this transition is found
+            // (strange test, no else part for if statement)
+            // assume: channel should always be present
+            // forall transitions that also use this channel, add to ext_transitions
+            for(iter_transition_vector  = iter_channel_map->second.begin();
+                iter_transition_vector != iter_channel_map->second.end();
+                iter_transition_vector++)
+            {
+                if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
                 {
-                    // transition not of type SYNC_ASK
                     if(!have_property)
                     {
-                        // no properties, just add to ext_transition vector
+                        // system has no properties, so add only once without property
                         ext_transition_t ext_transition;
-                        ext_transition.synchronized = false;
+                        ext_transition.synchronized = true;
                         ext_transition.first = transition;
+                        ext_transition.second = (*iter_transition_vector);
                         ext_transition_vector.push_back(ext_transition);
                     }
                     else
                     {
-                        // this transition is not a property, but there are properties
-                        // forall properties, add this transition to ext_transition_vector
-                        for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
+                        // system has properties, so forall properties, add the combination if this transition,
+                        // the transition that also uses this channel and the property
+                        for(iter_property_transitions = property_transitions.begin();
+                            iter_property_transitions != property_transitions.end();
                             iter_property_transitions++)
                         {
                             ext_transition_t ext_transition;
-                            ext_transition.synchronized = false;
+                            ext_transition.synchronized = true;
                             ext_transition.first = transition;
+                            ext_transition.second = (*iter_transition_vector);
                             ext_transition.property = (*iter_property_transitions);
                             ext_transition_vector.push_back(ext_transition);
                         }
                     }
                 }
-                else
-                {
-                    // transition of type SYNC_ASK
-                    iter_channel_map = channel_map.find(transition->get_channel_gid());
-                    if(iter_channel_map != channel_map.end())
-                    {
-                        // channel of this transition is found
-                        // (strange test, no else part for if statement)
-                        // assume: channel should always be present
-                        // forall transitions that also use this channel, add to ext_transitions
-                        for(iter_transition_vector  = iter_channel_map->second.begin();
-                            iter_transition_vector != iter_channel_map->second.end();
-                            iter_transition_vector++)
-                        {
-                            if (transition->get_process_gid() != (*iter_transition_vector)->get_process_gid() ) //not synchronize with yourself
-                            {
-                                if(!have_property)
-                                {
-                                    // system has no properties, so add only once without property
-                                    ext_transition_t ext_transition;
-                                    ext_transition.synchronized = true;
-                                    ext_transition.first = transition;
-                                    ext_transition.second = (*iter_transition_vector);
-                                    ext_transition_vector.push_back(ext_transition);
-                                }
-                                else
-                                {
-                                    // system has properties, so forall properties, add the combination if this transition,
-                                    // the transition that also uses this channel and the property
-                                    for(iter_property_transitions = property_transitions.begin();iter_property_transitions != property_transitions.end();
-                                        iter_property_transitions++)
-                                    {
-                                        ext_transition_t ext_transition;
-                                        ext_transition.synchronized = true;
-                                        ext_transition.first = transition;
-                                        ext_transition.second = (*iter_transition_vector);
-                                        ext_transition.property = (*iter_property_transitions);
-                                        ext_transition_vector.push_back(ext_transition);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            }
+        }
+    }
 }
 
 void dve_compiler::analyse()
