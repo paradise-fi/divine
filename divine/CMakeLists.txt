@@ -22,6 +22,7 @@ endif( WIN32 )
 
 set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
 set( UPDATE_SHA1 ${divine_SOURCE_DIR}/divine/update-sha1.sh )
+set( STRINGIFY ${divine_SOURCE_DIR}/divine/stringify.sh )
 
 add_custom_command(
   COMMAND sh ${UPDATE_SHA1} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${SHA1}"
@@ -34,8 +35,8 @@ macro( stringify file )
   string( REPLACE "." "_" fileu "${file}" )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
-    DEPENDS ${file}
-    COMMAND sed -e "1i namespace divine { const char *${fileu}_str = \"\\\\" -e "s,\",\\\\\"," -e "s,$,\\\\n\\\\," -e "s,wibble/test.h,cassert," -e "$a \"\; }" < ${CMAKE_CURRENT_SOURCE_DIR}/${file} > ${fileu}_str.cpp
+    DEPENDS ${file} ${STRINGIFY}
+    COMMAND sh ${STRINGIFY} "${fileu}" "${CMAKE_CURRENT_SOURCE_DIR}/${file}"
     VERBATIM
     )
 endmacro( stringify )
