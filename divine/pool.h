@@ -71,6 +71,9 @@ struct Pool {
     Pool( const Pool & );
     ~Pool();
 
+    // ignore assignments
+    Pool &operator=( const Pool & ) { return *this; }
+
     void newBlock( Group *g )
     {
         Block b;
