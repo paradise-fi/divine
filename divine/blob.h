@@ -19,6 +19,7 @@ struct BlobHeader {
     uint16_t size:14;
     uint16_t permanent:1;
     uint16_t heap:1;
+    uint16_t align; // ...
 };
 
 /**
