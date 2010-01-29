@@ -4,25 +4,14 @@
 #include <stdint.h>
 #include <cstring> // size_t ... d'oh
 #include <wibble/test.h> // for assert*
+#ifndef BLOB_NO_HASH
+#include <divine/hash.h>
+#endif
 
 #ifndef DIVINE_BLOB_H
 #define DIVINE_BLOB_H
 
 namespace divine {
-
-// from src/common/hash_function.cc
-#define MIX(a,b,c) \
-{ \
-  a -= b; a -= c; a ^= (c>>13); \
-  b -= c; b -= a; b ^= (a<<8);  \
-  c -= a; c -= b; c ^= (b>>13); \
-  a -= b; a -= c; a ^= (c>>12); \
-  b -= c; b -= a; b ^= (a<<16); \
-  c -= a; c -= b; c ^= (b>>5);  \
-  a -= b; a -= c; a ^= (c>>3);  \
-  b -= c; b -= a; b ^= (a<<10); \
-  c -= a; c -= b; c ^= (b>>15); \
-}
 
 typedef uint32_t hash_t;
 
@@ -217,6 +206,7 @@ struct Blob
         return 0;
     }
 
+#ifndef BLOB_NO_HASH
     hash_t hash() const
     {
         return hash( 0, size() );
@@ -224,9 +214,7 @@ struct Blob
 
     hash_t hash( int from, int to ) const
     {
-        // jenkins hash from common/hash_function.cc
-
-        uint32_t a, b, c, len, total;
+        uint32_t len, total;
         const char *ptr;
 
         if ( !valid() || from == to )
@@ -234,59 +222,15 @@ struct Blob
 
         assert_leq( from, to );
 
-        a = b = 0x9e3779b9; // magic
-        len = c = to - from;
         ptr = data() + from;
+        len = to - from;
         total = len;
 
-        while (len >= 12)
-        {
-            a += *reinterpret_cast< const uint32_t * >( ptr );
-            b += *reinterpret_cast< const uint32_t * >( ptr + 4 );
-            c += *reinterpret_cast< const uint32_t * >( ptr + 8 );
-            MIX(a,b,c);
-            ptr += 12; len -= 12;
-        }
-
-        c += total;
-        // handle the remaining bytes (there are at most 11 left)
-        switch(len)
-        {
-        case 11: c += *reinterpret_cast< const uint32_t * >( ptr + 8 )
-                 & uint32_t( 0x00FFFFFF ); goto word;
-        case 10: c += *reinterpret_cast< const uint16_t * >( ptr + 8 ); goto word;
-        case  9: c += *reinterpret_cast< const uint16_t * >( ptr + 8 )
-                 & uint16_t( 0x00FF );
-            /* the first byte of c is reserved for the length */
-
-        word:
-        case  8: b += *reinterpret_cast< const uint32_t * >( ptr + 4 ); goto word2;
-        case  7: b += *reinterpret_cast< const uint32_t * >( ptr + 4 )
-                 & uint32_t( 0x00FFFFFF ); goto word2;
-        case  6: b += *reinterpret_cast< const uint16_t * >( ptr + 4 ); goto word2;
-        case  5: b += *reinterpret_cast< const uint16_t * >( ptr + 4 )
-                 & uint16_t( 0x00FF );
-
-        word2:
-        case  4: a += *reinterpret_cast< const uint32_t * >( ptr + 0 ); goto done;
-        case  3: a += *reinterpret_cast< const uint32_t * >( ptr + 0 )
-                 & uint32_t( 0x00FFFFFF ); goto done;
-
-        case  2: a += *reinterpret_cast< const uint16_t * >( ptr + 0 );
-        case  1: a += *reinterpret_cast< const uint16_t * >( ptr + 0 )
-                 & uint16_t( 0x00FF );
-        case 0:
-        done:;
-        }
-
-        MIX(a,b,c);
-
-        return c;
+        return jenkins3( ptr, len, 0 );
     }
+#endif
 
 };
-
-#undef MIX
 
 template< typename N >
 inline N unblob( const N &n ) {

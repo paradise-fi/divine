@@ -146,6 +146,7 @@ void dve_compiler::gen_header()
     line( "#define assert_neq(a,b) assert(a != b)" );
     line( "#define assert_leq(a,b) assert(a <= b)" );
     line( "#define assert_die() assert(false)" );
+    line( "#define BLOB_NO_HASH" );
 
     line( divine::pool_h_str );
     line();
