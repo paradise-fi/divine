@@ -11,6 +11,7 @@
 // configuration stuff, may need refactoring later
 struct Config {
     int m_workers;
+    int m_initialTable;
     bool m_verbose, m_ce, m_report;
 
     std::string m_algorithm, m_generator;
@@ -22,6 +23,9 @@ struct Config {
 
     void setWorkers( int t ) { m_workers = t; }
     int workers() { return m_workers; }
+
+    int initialTableSize() { return m_initialTable; }
+    void setInitialTableSize( int it ) { m_initialTable = it; }
 
     void setInput( std::string in ) { m_input = in; }
 
@@ -82,7 +86,7 @@ struct Config {
         m_ce = e;
     }
 
-    Config() : m_workers( 2 ),
+    Config() : m_workers( 2 ), m_initialTable( 4096 ),
                m_verbose( false ), m_ce( true ),
                m_trailStream( 0 ), m_ceStream( 0 )
     {}

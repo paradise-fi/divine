@@ -68,7 +68,7 @@ struct Main {
         *cmd_metrics, *cmd_compile;
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy;
-    IntOption *o_workers, *o_mem;
+    IntOption *o_workers, *o_mem, *o_initable;
     StringOption *o_trail;
 
     bool dummygen;
@@ -185,6 +185,11 @@ struct Main {
             "dummy", '\0', "dummy", "",
             "use a \"dummy\" benchmarking model instead of a real input" );
 
+        o_initable = common->add< IntOption >(
+            "initial-table", 'i', "initial-table", "",
+            "set initial hash table size to 2^n [default = 19]" );
+        o_initable ->setValue( 19 );
+
         cmd_metrics->add( common );
         cmd_reachability->add( common );
         cmd_owcty->add( common );
@@ -231,6 +236,7 @@ struct Main {
             die( "FATAL: no command specified" );
 
         config.setWorkers( o_workers->intValue() );
+        config.setInitialTableSize( 2 << (o_initable->intValue()) );
         config.setInput( input );
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );

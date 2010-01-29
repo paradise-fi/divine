@@ -55,6 +55,8 @@ struct Algorithm
     Table *m_table;
     Result m_result;
 
+    int *m_initialTable, m_initialTable_;
+
     Result &result() { return m_result; }
 
     bool want_ce;
@@ -67,7 +69,7 @@ struct Algorithm
     Table &table() {
         if ( !m_table )
             m_table = new Table( hasher, divine::valid< Node >(), equal,
-                                 4096, 2 ); // FIXME configurable?
+                                 *m_initialTable, 2 );
         return *m_table;
     }
 
@@ -100,6 +102,8 @@ struct Algorithm
     Algorithm( Config *c = 0, int slack = 0 )
         : m_config( c ), m_slack( slack ), m_table( 0 )
     {
+        m_initialTable_ = 4096;
+        m_initialTable = &m_initialTable_;
         hasher.setSlack( slack );
         equal.setSlack( slack );
         if ( c ) {

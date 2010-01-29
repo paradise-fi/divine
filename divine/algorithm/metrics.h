@@ -32,11 +32,13 @@ struct _MpiId< Metrics< G > >
 
     template< typename O >
     static void writeShared( typename Metrics< G >::Shared s, O o ) {
+        *o++ = s.initialTable;
         s.stats.write( o );
     }
 
     template< typename I >
     static I readShared( typename Metrics< G >::Shared &s, I i ) {
+        s.initialTable = *i++;
         return s.stats.read( i );
     }
 };
@@ -129,11 +131,11 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
     struct Shared {
         Statistics< G > stats;
         G g;
+        int initialTable;
     } shared;
     Domain< Metrics< G > > m_domain;
     Domain< Metrics< G > > &domain() { return m_domain; }
 
-    typedef HashMap< Node, Unit, Hasher > Table;
     Hasher hasher;
 
     // TODO error & deadlock states
@@ -150,17 +152,20 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
     }
 
     void _visit() { // parallel
+        m_initialTable = &shared.initialTable; // XXX find better place for this
         typedef visitor::Setup< G, Metrics< G >, Table > VisitorSetup;
         visitor::Parallel< VisitorSetup, Metrics< G >, Hasher >
-            vis( shared.g, *this, *this, hasher, new Table( hasher ) );
+            vis( shared.g, *this, *this, hasher, &table() );
         vis.exploreFrom( shared.g.initial() );
     }
 
     Metrics( Config *c = 0 )
         : m_domain( &shared, workerCount( c ) )
     {
-        if ( c )
+        if ( c ) {
             shared.g.read( c->input() );
+            shared.initialTable = c->initialTableSize();
+        }
     }
 
     Result run() {
