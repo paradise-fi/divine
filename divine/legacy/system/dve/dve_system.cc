@@ -153,7 +153,8 @@ void dve_system_t::write(std::ostream & outs)
     outs << "(";
     for (size_int_t j=0; j!=p_channel->get_channel_type_list_size(); ++j)
      {
-      if (p_channel->get_channel_type_list_item(j)==T_BYTE) outs << "byte";
+         if (p_channel->get_channel_type_list_item(j)==(dve_var_type_t)T_BYTE)
+             outs << "byte";
       else outs << "int";
       if (j!=p_channel->get_channel_type_list_size()-1) outs << ",";
      }
