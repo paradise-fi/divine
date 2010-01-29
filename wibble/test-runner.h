@@ -48,10 +48,10 @@ struct RunAll {
 
     void runSuite( RunSuite &s, int fromTest, int suite, int suiteCount )
     {
-        feedback->status( wibble::str::fmt(
+        feedback->status( wibble::str::fmtf(
             "s/s: (%d/%d) %s", suite + 1, suiteCount, s.name ) );
         for ( int i = fromTest; i < s.testCount; ++i ) {
-            feedback->status( wibble::str::fmt(
+            feedback->status( wibble::str::fmtf(
                 "t/s: (%d/%d) %s", i, s.testCount, s.tests[i].name ) );
             feedback->waitForAck();
             s.tests[i].run();

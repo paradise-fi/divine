@@ -16,7 +16,7 @@ struct TestString {
     {
         assert_eq(str::fmt(5), "5");
         assert_eq(str::fmt(5.123), "5.123");
-        assert_eq(str::fmt("ciao"), "ciao");
+        assert_eq(str::fmtf("ciao"), "ciao");
     }
 
     Test fmtSet()
