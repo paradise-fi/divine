@@ -7,10 +7,10 @@ divine metrics --report ../examples/BenchmarkHs.so > report
 grep "^Finished: Yes" report
 grep "^Error-State-Count: 0" report
 grep "^States-Visited:" report
-grep "^States-Visited: 1050624" report
+grep "^States-Visited: 16640" report
 
 divine reachability --report ../examples/BenchmarkHs.so > report
 grep "^Finished: Yes" report
 grep "^Error-State-Count: 0" report
 grep "^States-Visited:" report
-grep "^States-Visited: 1050624" report
+grep "^States-Visited: 16640" report

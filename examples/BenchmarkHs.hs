@@ -39,12 +39,12 @@ instance StorableM Q where
 -}
 
 instance Process P where
-    successors (P i) = if i > 1024 then [] else [P (i + 1)]
+    successors (P i) = if i > 128 then [] else [P (i + 1)]
     initial = P 0
 
 instance Process Q where
     initial = Q 0 0
-    successors (Q a b) | a < 1024 && b < 1024 =
+    successors (Q a b) | a < 128 && b < 128 =
                            [Q (a + 1) b, Q a (b + 1)]
                        | otherwise = []
     {-# INLINE successors #-}
