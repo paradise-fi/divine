@@ -39,6 +39,7 @@ struct _MpiId< Reachability< G > >
 
     template< typename O >
     static void writeShared( typename Reachability< G >::Shared s, O o ) {
+        *o++ = s.initialTable;
         o = s.stats.write( o );
         *o++ = s.goal.valid();
         if ( s.goal.valid() )
@@ -47,6 +48,7 @@ struct _MpiId< Reachability< G > >
 
     template< typename I >
     static I readShared( typename Reachability< G >::Shared &s, I i ) {
+        s.initialTable = *i++;
         i = s.stats.read( i );
         bool valid = *i++;
         if ( valid ) {
@@ -72,6 +74,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         Statistics< G > stats;
         G g;
         CeShared< Node > ce;
+        int initialTable;
     } shared;
 
     Domain< Reachability< G > > &domain() {
@@ -114,6 +117,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
     void _visit() { // parallel
         typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
 
+        m_initialTable = &shared.initialTable;
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
         vis.exploreFrom( shared.g.initial() );

@@ -36,11 +36,13 @@ struct _MpiId< Map< G > >
 
     template< typename O >
     static void writeShared( typename Map< G >::Shared s, O o ) {
+        *o++ = s.initialTable;
         *o++ = s.iteration;
     }
 
     template< typename I >
     static I readShared( typename Map< G >::Shared &s, I i ) {
+        s.initialTable = *i++;
         s.iteration = *i++;
         return i;
     }
@@ -62,6 +64,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     struct Shared {
         int expanded, eliminated, accepting;
         int iteration;
+        int initialTable;
         G g;
         CeShared< Node > ce;
     } shared;
@@ -181,6 +184,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
 
         shared.expanded = 0;
         shared.eliminated = 0;
+        m_initialTable = &shared.initialTable;
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         if ( visitor.owner( shared.g.initial() ) == this->globalId() )
