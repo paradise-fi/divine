@@ -47,6 +47,7 @@ struct _MpiId< Owcty< G > >
 
     template< typename O >
     static void writeShared( typename Owcty< G >::Shared s, O o ) {
+        *o++ = s.initialTable;
         *o++ = s.size;
         *o++ = s.oldsize;
         *o++ = s.iteration;
@@ -59,6 +60,7 @@ struct _MpiId< Owcty< G > >
 
     template< typename I >
     static I readShared( typename Owcty< G >::Shared &s, I i ) {
+        s.initialTable = *i++;
         s.size = *i++;
         s.oldsize = *i++;
         s.iteration = *i++;
@@ -101,6 +103,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         int iteration;
         G g;
         CeShared< Node > ce;
+        int initialTable;
     } shared;
 
     struct Extension {
@@ -275,6 +278,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
             &Owcty< G >::initExpansion > Setup;
         typedef visitor::Parallel< Setup, Owcty< G >, Hasher > Visitor;
 
+        m_initialTable = &shared.initialTable; // XXX find better place for this
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
         visitor.exploreFrom( shared.g.initial() );
@@ -478,6 +482,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         shared.size = 0;
         if ( c ) {
             becomeMaster( &shared, workerCount( c ) );
+            shared.initialTable = c->initialTableSize();
         }
     }
 };
