@@ -141,6 +141,11 @@ void dve_compiler::print_header()
     line( "typedef size_t size_int_t;" );
     line();
 
+    line( "#define assert_eq(a,b) assert(a == b)" );
+    line( "#define assert_neq(a,b) assert(a != b)" );
+    line( "#define assert_leq(a,b) assert(a <= b)" );
+    line( "#define assert_die() assert(false)" );
+
     line( divine::pool_h_str );
     line();
 
