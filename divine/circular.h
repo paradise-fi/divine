@@ -14,21 +14,21 @@ struct Circular {
     T items[ _size ];
 
     T *start() { return items; }
-    T *nth( int i ) { return items + (_first + i) % _size; }
+    T *nth( int i ) { return items + (_first + i) % size(); }
     T *first() { return nth( 0 ); }
     T *last() { return nth( _count - 1 ); }
     T &operator[]( int i ) { return *nth( i ); }
 
     void add( T t ) {
-        assert( _count < _size );
+        assert( _count < size() );
         ++ _count;
         *last() = t;
     }
 
     int count() { return _count; }
-    int space() { return _size - _count; }
-    int size() { return _size; }
-    bool full() { return _count == _size; }
+    int space() { return size() - _count; }
+    int size() { return __size; }
+    bool full() { return _count == size(); }
     bool empty() { return !_count; }
     void clear() { drop( count() ); }
 
@@ -36,7 +36,7 @@ struct Circular {
         assert( n <= _count );
         _first += n;
         _count -= n;
-        _first %= _size;
+        _first %= size();
     }
 
     void unadd( int n ) {
