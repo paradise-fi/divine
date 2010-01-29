@@ -133,8 +133,10 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
         G g;
         int initialTable;
     } shared;
-    Domain< Metrics< G > > m_domain;
-    Domain< Metrics< G > > &domain() { return m_domain; }
+
+    Domain< Metrics< G > > &domain() {
+        return DomainWorker< Metrics< G > >::domain();
+    }
 
     Hasher hasher;
 
@@ -160,10 +162,11 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
     }
 
     Metrics( Config *c = 0 )
-        : m_domain( &shared, workerCount( c ) )
+        : Algorithm( c, 0 )
     {
+        initGraph( shared.g );
         if ( c ) {
-            shared.g.read( c->input() );
+            becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTableSize();
         }
     }
