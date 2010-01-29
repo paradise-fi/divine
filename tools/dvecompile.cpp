@@ -544,6 +544,7 @@ void dve_compiler::new_output_state() {
     if ( many ) {
         line( "divine::Blob blob_out( *pool, slack + state_size );" );
         line( "state_struct_t *out = (state_struct_t *)(blob_out.data() + slack);" );
+        line( "blob_out.clear( 0, slack );" );
         line( "*out = *in;" );
     }
 }
