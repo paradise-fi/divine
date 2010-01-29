@@ -22,10 +22,6 @@ struct Compile {
         std::string outfile = str::basename( in ) + ".c";
         std::ofstream out( outfile.c_str() );
         compiler.setOutput( out );
-
-        compiler.print_header();
-        compiler.print_state_struct();
-        compiler.print_initial_state();
         compiler.print_generator();
 
         std::stringstream cmd;

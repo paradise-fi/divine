@@ -19,7 +19,8 @@ struct ext_transition_t
 
 struct dve_compiler: public dve_explicit_system_t
 {
-    int current_size;
+    int current_label;
+
     bool have_property;
     map<size_int_t,map<size_int_t,vector<ext_transition_t> > > transition_map;
     map<size_int_t,vector<dve_transition_t*> > channel_map;
@@ -56,7 +57,7 @@ struct dve_compiler: public dve_explicit_system_t
     }
 
     dve_compiler(error_vector_t & evect=gerr)
-        : explicit_system_t(evect), dve_explicit_system_t(evect), current_size(0), m_indent( 0 )
+        : explicit_system_t(evect), dve_explicit_system_t(evect), current_label(0), m_indent( 0 )
     {}
     virtual ~dve_compiler() {}
 
@@ -150,8 +151,9 @@ struct dve_compiler: public dve_explicit_system_t
         line( cexpr( expr, state ) + ";" );
     }
 
-    void label( int l ) {
-        append( std::string( "l" ) + wibble::str::fmt( l ) + ": " );
+    void new_label() {
+        append( std::string( "l" ) + wibble::str::fmt( current_label ) + ": " );
+        current_label ++;
     }
 
     void block_begin() { line( "{" ); indent(); }
@@ -165,8 +167,11 @@ struct dve_compiler: public dve_explicit_system_t
         m_output = &o;
     }
 
-    void print_header();
-    void print_state_struct();
-    void print_initial_state();
+    void gen_successors();
+    void gen_is_accepting();
+    void gen_header();
+    void gen_state_struct();
+    void gen_initial_state();
+
     void print_generator();
 };

@@ -120,9 +120,10 @@ std::string dve_compiler::cexpr( dve_expression_t & expr, std::string state )
 namespace divine {
 extern const char *pool_h_str;
 extern const char *circular_h_str;
+extern const char *blob_h_str;
 }
 
-void dve_compiler::print_header()
+void dve_compiler::gen_header()
 {
     line( "#include <stdio.h>" );
     line( "#include <string.h>" );
@@ -152,12 +153,11 @@ void dve_compiler::print_header()
     line( divine::circular_h_str );
     line();
 
-    line( "static inline char *pool_alloc( char *p, int size ) {" );
-    line( "     return reinterpret_cast< divine::Pool * >( p )->allocate( size ); }" );
+    line( divine::blob_h_str );
     line();
 }
 
-void dve_compiler::print_state_struct()
+void dve_compiler::gen_state_struct()
 {
     for (size_int_t i=0; i!=glob_var_count; i++)
     {
@@ -284,7 +284,7 @@ void dve_compiler::print_state_struct()
 }
 
 
-void dve_compiler::print_initial_state()
+void dve_compiler::gen_initial_state()
 {
     setAllocator( new generator::Allocator );
     state_t initial_state =  dve_explicit_system_t::get_initial_state();
@@ -539,28 +539,13 @@ void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std:
                 fmt( et->property->get_state2_lid() ) );
 }
 
-void dve_compiler::print_generator()
+void dve_compiler::gen_successors()
 {
     string in = "(*in)", out = "(*out)", space = "";
-    int current_label = 1;
     bool some_commited_state = false;
 
-    line( "#define p_new_c_state out" );
-    line( "#define p_state_struct in" );
-    line();
-
-    line( "extern \"C\" int get_successor(int next_state, char* from, char* to) " );
-    block_begin();
-    line( "bool system_in_deadlock = false;" );
-    line( "state_struct_t *in = (state_struct_t*)from;" );
-    line( "state_struct_t *out = (state_struct_t*)to;" );
-    line( "*out = *in;" );
-    line( "goto switch_state;" );
-
-    label( current_label );
+    new_label();
     if_begin( true );
-
-    current_label++;
 
     for(size_int_t i = 0; i < get_process_count(); i++)
         for(size_int_t j = 0; j < dynamic_cast<dve_process_t*>(get_process(i))->get_state_count(); j++)
@@ -579,12 +564,10 @@ void dve_compiler::print_generator()
                 if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(
                        iter_process_transition_map->first))
                 {
-                    label( current_label );
-                    current_label++;
+                    new_label();
 
                     if_begin( true );
                     if_clause( in_state( i, iter_process_transition_map->first, in ) );
-
                     if_end(); block_begin();
 
                     for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
@@ -620,23 +603,19 @@ void dve_compiler::print_generator()
                 iter_process_transition_map != transition_map.find(i)->second.end();
                 iter_process_transition_map++)
             {
-                label( current_label );
+                new_label();
                 if_begin( true );
                 if_clause( in_state( i, iter_process_transition_map->first, in ) );
 
                 if_end(); block_begin();
 
-                current_label++;
-
                 for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
                     iter_ext_transition_vector != iter_process_transition_map->second.end();
                     iter_ext_transition_vector++)
                 {
-                    label( current_label );
-                    current_label++;
+                    new_label();
 
                     transition_guard( &*iter_ext_transition_vector, in );
-
                     block_begin();
                     transition_effect( &*iter_ext_transition_vector, in, out );
                     line( "system_in_deadlock = false;" );
@@ -648,7 +627,7 @@ void dve_compiler::print_generator()
     }
     block_end();
 
-    label( current_label ); current_label ++;
+    new_label();
 
     if_begin( true );
     if_clause( "system_in_deadlock" );
@@ -658,7 +637,7 @@ void dve_compiler::print_generator()
         iter_property_transitions != property_transitions.end();
         iter_property_transitions++)
     {
-        label( current_label ); current_label ++;
+        new_label();
         if_begin( false );
 
         if_clause( in_state( (*iter_property_transitions)->get_process_gid(),
@@ -674,52 +653,75 @@ void dve_compiler::print_generator()
         block_end();
     }
     block_end();
+}
 
-    label( current_label );
-    line( "return 0;" );
+void dve_compiler::gen_is_accepting()
+{
+    // not compulsory, so don't bother if not needed
+    if(!have_property)
+        return;
 
-    line( "switch_state: switch( next_state )" );
+    line( "extern \"C\" bool is_accepting( char *_state, int size )" );
     block_begin();
 
-    for(int i=1; i<=current_label; i++)
-        if (i==1)
-            line( "case " + fmt( i ) + ": system_in_deadlock = true; goto l" + fmt( i ) + ";" );
-        else
-            line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
-    block_end();
-    block_end();
-
-    line();
-
-    if(have_property)
+    line( "state_struct_t &state = * (state_struct_t*) _state;" );
+    for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_state_count(); i++)
     {
-        line( "extern \"C\" bool is_accepting( char *_state, int size )" );
-        block_begin();
-
-        line( "state_struct_t &state = * (state_struct_t*) _state;" );
-        for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_state_count(); i++)
+        if (dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_acceptance(i, 0, 1) )
         {
-            if (dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_acceptance(i, 0, 1) )
-            {
-                if_begin( true );
-                if_clause( in_state( get_property_gid(), i, "state" ) );
-                if_end();
-                line( "    return true;" );
-            }
+            if_begin( true );
+            if_clause( in_state( get_property_gid(), i, "state" ) );
+            if_end();
+            line( "    return true;" );
         }
-        line( "return false;" );
-        block_end();
     }
+    line( "return false;" );
+    block_end();
 
     line();
+}
+
+void dve_compiler::print_generator()
+{
+    gen_header();
+    gen_state_struct();
+    gen_initial_state();
 
     line( "extern \"C\" int get_state_size() {" );
     line( "    return state_size;" );
     line( "}" );
-
     line();
 
     line( "extern \"C\" void get_initial_state( char *to ) {" );
     line( "    memcpy(to, initial_state, state_size);" );
     line( "}" );
+    line();
+
+    current_label = 0;
+
+    gen_is_accepting();
+
+    line( "extern \"C\" int get_successor( int next_state, char* from, char* to ) " );
+    block_begin();
+    line( "state_struct_t *in = (state_struct_t*)from;" );
+    line( "state_struct_t *out = (state_struct_t*)to;" );
+    line( "*out = *in;" );
+    line( "bool system_in_deadlock = false;" );
+    line( "goto switch_state;" );
+
+    gen_successors();
+
+    new_label();
+    line( "return 0;" );
+
+    line( "switch_state: switch( next_state )" );
+    block_begin();
+    for(int i=1; i < current_label; i++)
+        if (i==1)
+            line( "case " + fmt( i ) + ": system_in_deadlock = true; goto l" + fmt( i ) + ";" );
+        else
+            line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
+    block_end();
+
+    block_end();
 }
