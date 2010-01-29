@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <cstring> // size_t ... d'oh
 #include <wibble/test.h> // for assert*
-#include <divine/pool.h> // for Allocator
 
 #ifndef DIVINE_BLOB_H
 #define DIVINE_BLOB_H
