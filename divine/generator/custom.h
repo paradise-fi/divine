@@ -22,7 +22,7 @@ struct Custom : Common {
     typedef size_t (*dl_get_state_size_t)();
     typedef int (*dl_get_successor_t)(int, char *, char *);
     typedef bool (*dl_is_accepting_t)(char *, int);
-    typedef void (*dl_get_many_successors_t)(char *, char *, char *, char *);
+    typedef void (*dl_get_many_successors_t)(int, char *, char *, char *, char *);
 
     struct Dl {
         void *handle;
@@ -99,7 +99,8 @@ struct Custom : Common {
 #ifndef DISABLE_POOLS
         if ( dl.get_many_successors ) {
             Pool *p = &pool();
-            dl.get_many_successors( (char *) p, (char *) &(p->m_groups.front()),
+            dl.get_many_successors( alloc._slack, (char *) p,
+                                    (char *) &(p->m_groups.front()),
                                     (char *) &in, (char *) &out );
         } else
 #endif

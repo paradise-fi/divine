@@ -542,8 +542,8 @@ void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std:
 
 void dve_compiler::new_output_state() {
     if ( many ) {
-        line( "divine::Blob blob_out( *pool, state_size );" );
-        line( "state_struct_t *out = (state_struct_t *)blob_out.data();" );
+        line( "divine::Blob blob_out( *pool, slack + state_size );" );
+        line( "state_struct_t *out = (state_struct_t *)(blob_out.data() + slack);" );
         line( "*out = *in;" );
     }
 }
@@ -757,7 +757,7 @@ void dve_compiler::print_generator()
     many = true;
     current_label = 0;
 
-    line( "extern \"C\" void get_many_successors( char *_pool, char *," );
+    line( "extern \"C\" void get_many_successors( int slack, char *_pool, char *," );
     line( "                                       char *_buf_in, char *_buf_out ) " );
     block_begin();
     line( "divine::Pool *pool = (divine::Pool *) _pool;" );
@@ -771,7 +771,7 @@ void dve_compiler::print_generator()
     line( "next:" );
     line( "system_in_deadlock = true;" );
     line( "states_emitted = 0;" );
-    line( "in = (state_struct_t*) (*buf_in)[ 0 ].data();" );
+    line( "in = (state_struct_t*) ((*buf_in)[ 0 ].data() + slack);" );
     gen_successors();
     line( "buf_in->drop( 1 );" );
     line( "if ( buf_in->empty() ) return;" );

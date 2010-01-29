@@ -54,8 +54,9 @@ type My = Q -- PComp P P
 get_state_size = ffi_getStateSize (initial :: My)
 get_initial_state t = ffi_initialState ((castPtr t) :: Ptr My)
 get_successor h f t = ffi_getSuccessor h ((castPtr f) :: Ptr My) (castPtr t)
-get_many_successors p g f t = ffi_getManySuccessors (initial :: My)
-                                (castPtr p) (castPtr g) (castPtr f) (castPtr t)
+get_many_successors sl p g f t = ffi_getManySuccessors (initial :: My)
+                                   (fromIntegral sl)
+                                   (castPtr p) (castPtr g) (castPtr f) (castPtr t)
 foreign export ccall
     get_state_size :: IO CSize
 foreign export ccall
@@ -63,4 +64,4 @@ foreign export ccall
 foreign export ccall
     get_successor :: CInt -> CString -> CString -> IO CInt
 foreign export ccall
-    get_many_successors :: CString -> CString -> CString -> CString -> IO ()
+    get_many_successors :: CInt -> CString -> CString -> CString -> CString -> IO ()

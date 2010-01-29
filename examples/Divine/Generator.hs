@@ -65,10 +65,10 @@ ffi_getSuccessor handle from to = do
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 
-ffi_getManySuccessors :: forall p. (Process p, StorableM p) => p -> Ptr () ->
+ffi_getManySuccessors :: forall p. (Process p, StorableM p) => p -> Int -> Ptr () ->
                          Ptr P.Group -> Ptr (C.Circular Blob) ->
                          Ptr (C.Circular Blob) -> IO ()
-ffi_getManySuccessors _ p g from to = do
+ffi_getManySuccessors _ slack p g from to = do
   pool <- P.get p g
   fromQ :: C.Circular Blob <- peek from
   toQ :: C.Circular Blob <- peek to
@@ -78,11 +78,11 @@ ffi_getManySuccessors _ p g from to = do
       end = start + count
       gen i = do
         from' :: Blob <- C.peekNth fromQ (fromIntegral $ i `mod` size)
-        fromSt :: p <- peekBlob from'
+        fromSt :: p <- peekBlob from' slack
         let succs = successors fromSt
             inner :: [p] -> IO ()
             inner [] = return ()
-            inner (x:xs) = do b <- poolBlob pool x
+            inner (x:xs) = do b <- poolBlob pool slack x
                               C.add from' to
                               C.add b to
                               inner xs
