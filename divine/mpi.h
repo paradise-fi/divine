@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/test.h>
+#include <divine/pool.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
