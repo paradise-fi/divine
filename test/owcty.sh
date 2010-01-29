@@ -7,16 +7,15 @@ divine owcty --report peterson-naive.dve 2> progress | tee report
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: No" report
 
-grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
-cat > numbers-right <<EOF
+if ! grep -q "MAP: cycle found" progress;  then
+    grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
+    cat > numbers-right <<EOF
 66566
 66566
 47598
 47598
 47598
 EOF
-
-if ! grep -q "MAP: cycle found" progress;  then
     diff -u numbers-right numbers
 fi
 
