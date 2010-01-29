@@ -19,6 +19,7 @@ struct ext_transition_t
 
 struct dve_compiler: public dve_explicit_system_t
 {
+    bool many;
     int current_label;
 
     bool have_property;
@@ -152,6 +153,8 @@ struct dve_compiler: public dve_explicit_system_t
     }
 
     void new_label() {
+        if (many)
+            return;
         append( std::string( "l" ) + wibble::str::fmt( current_label ) + ": " );
         current_label ++;
     }
@@ -166,6 +169,9 @@ struct dve_compiler: public dve_explicit_system_t
     void setOutput( std::ostream &o ) {
         m_output = &o;
     }
+
+    void yield_state();
+    void new_output_state();
 
     void gen_successors();
     void gen_is_accepting();

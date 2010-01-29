@@ -540,6 +540,28 @@ void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std:
                 fmt( et->property->get_state2_lid() ) );
 }
 
+void dve_compiler::new_output_state() {
+    if ( many ) {
+        line( "divine::Blob blob_out( *pool, state_size );" );
+        line( "state_struct_t *out = (state_struct_t *)blob_out.data();" );
+        line( "*out = *in;" );
+    }
+}
+
+void dve_compiler::yield_state() {
+    if ( many ) {
+        line( "if (buf_out->space() < 2) {" );
+        line( "    buf_out->unadd( states_emitted );" );
+        line( "    return;" );
+        line( "}");
+        line( "buf_out->add( (*buf_in)[ 0 ] );" );
+        line( "buf_out->add( blob_out );" );
+        line( "++states_emitted;" );
+    } else {
+        line( "return " + fmt( current_label ) + ";" );
+    }
+}
+
 void dve_compiler::gen_successors()
 {
     string in = "(*in)", out = "(*out)", space = "";
@@ -571,6 +593,8 @@ void dve_compiler::gen_successors()
                     if_clause( in_state( i, iter_process_transition_map->first, in ) );
                     if_end(); block_begin();
 
+                    new_output_state();
+
                     for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
                         iter_ext_transition_vector != iter_process_transition_map->second.end();
                         iter_ext_transition_vector++)
@@ -587,7 +611,8 @@ void dve_compiler::gen_successors()
                             block_end();
                         }
                     }
-                    line( "return" + fmt( current_label ) + ";" );
+
+                    yield_state();
                     block_end();
                 }
             }
@@ -618,9 +643,10 @@ void dve_compiler::gen_successors()
 
                     transition_guard( &*iter_ext_transition_vector, in );
                     block_begin();
+                    new_output_state();
                     transition_effect( &*iter_ext_transition_vector, in, out );
                     line( "system_in_deadlock = false;" );
-                    line( "return " + fmt( current_label ) + ";" );
+                    yield_state();
                     block_end();
                 }
                 block_end();
@@ -646,11 +672,12 @@ void dve_compiler::gen_successors()
         if_cexpr_clause( (*iter_property_transitions)->get_guard(), in );
 
         if_end(); block_begin();
+        new_output_state();
 
         assign( process_state( (*iter_property_transitions)->get_process_gid(), in ),
                 fmt( (*iter_property_transitions)->get_state2_lid() ) );
 
-        line( "return " + fmt( current_label ) + ";" );
+        yield_state();
         block_end();
     }
     block_end();
@@ -698,6 +725,7 @@ void dve_compiler::print_generator()
     line( "}" );
     line();
 
+    many = false;
     current_label = 0;
 
     gen_is_accepting();
@@ -724,5 +752,29 @@ void dve_compiler::print_generator()
             line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
     block_end();
 
+    block_end();
+
+    many = true;
+    current_label = 0;
+
+    line( "extern \"C\" void get_many_successors( char *_pool, char *," );
+    line( "                                       char *_buf_in, char *_buf_out ) " );
+    block_begin();
+    line( "divine::Pool *pool = (divine::Pool *) _pool;" );
+    line( "typedef divine::Circular< divine::Blob, 0 > Buffer;" );
+    line( "Buffer *buf_in = (Buffer *) _buf_in;" );
+    line( "Buffer *buf_out = (Buffer *) _buf_out;" );
+    line( "int states_emitted;" );
+    line( "bool system_in_deadlock;" );
+    line( "state_struct_t *in;" );
+
+    line( "next:" );
+    line( "system_in_deadlock = true;" );
+    line( "states_emitted = 0;" );
+    line( "in = (state_struct_t*) (*buf_in)[ 0 ].data();" );
+    gen_successors();
+    line( "buf_in->drop( 1 );" );
+    line( "if ( buf_in->empty() ) return;" );
+    line( "goto next;" );
     block_end();
 }
