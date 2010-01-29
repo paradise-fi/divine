@@ -262,6 +262,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         initGraph( shared.g );
         if ( c ) {
             becomeMaster( &shared, workerCount( c ) );
+            shared.initialTable = c->initialTableSize();
         }
     }
 

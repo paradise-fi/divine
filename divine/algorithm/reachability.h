@@ -127,8 +127,10 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         : Algorithm( c, sizeof( Extension ) )
     {
         initGraph( shared.g );
-        if ( c )
+        if ( c ) {
             becomeMaster( &shared, workerCount( c ) );
+            shared.initialTable = c->initialTableSize();
+        }
     }
 
     void _parentTrace() {
