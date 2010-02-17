@@ -1,19 +1,10 @@
 if test -n "$1"; then
     name="$1"
 else
-    ver=$(grep "^#define DIVINE_VERSION_ID" divine/version.h)
-    bra=$(grep "^#define DIVINE_BRANCH " divine/version.h)
-    date=$(date -u "+%Y%m%d%H%M")
-    ver1=$(echo $ver | sed -e 's,#define DIVINE_VERSION_ID "\([^"]*\)",\1,')
-    bra1=$(echo $bra | sed -e 's,#define DIVINE_BRANCH "\([^"]*\)",\1,')
-    test -n "$bra1" && bra1="$bra1+"
+    ver=$(grep "^#define DIVINE_VERSION" divine/version.cpp)
+    ver1=$(echo $ver | sed -e 's,#define DIVINE_VERSION "\([^"]*\)",\1,')
     #version="$ver1$bra1$date"
-    if grep -q '^#define DIVINE_RELEASE' divine/version.h; then
-        name="divine-$ver1"
-    else
-        ver1="$ver1~"
-        name="divine-$ver1$bra1$date"
-    fi
+    name="divine-$ver1"
 fi
 if test -e "$name"; then
     echo "$name already exists!"
