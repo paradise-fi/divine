@@ -27,8 +27,10 @@ struct Compile {
         std::stringstream cmd;
         cmd << "g++ -O2 -shared -fPIC -o " << str::basename( in ) + ".so" << " " << outfile;
         int status = system( cmd.str().c_str() );
+#ifdef POSIX
         if ( status != -1 && WEXITSTATUS( status ) != 0 )
             die( "Error compiling intermediate C++ code." );
+#endif
     }
 
     void main() {
