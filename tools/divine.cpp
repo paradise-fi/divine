@@ -82,7 +82,7 @@ struct Main {
 
     Main( int _argc, const char **_argv )
         : dummygen( false ), argc( _argc ), argv( _argv ),
-          opts( argv[ 0 ], versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
+          opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
           compile( opts )
     {
