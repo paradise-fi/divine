@@ -12,6 +12,7 @@ if(NOT QT_QCOLLECTIONGENERATOR_EXECUTABLE)
   endif(WIN32)
 endif()
 
+if( QT_QCOLLECTIONGENERATOR_EXECUTABLE )
 add_custom_command(OUTPUT help_collection
                    COMMAND ${QT_QCOLLECTIONGENERATOR_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/divine-ide.qhcp
                    DEPENDS ${HELP_SOURCE}
@@ -22,6 +23,8 @@ add_custom_target(base_help ALL
 )
 
 install(FILES divine-ide.qhc divine.qch DESTINATION ${GUI_HELP_DEST} COMPONENT help)
+
+endif()
 
 if(WIN32)
   find_path(GUI_ASSISTANT_EXECUTABLE assistant.exe)
