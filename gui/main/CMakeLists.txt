@@ -25,5 +25,5 @@ set(PLUGIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_PLUGIN_DEST})
 set(HELP_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_HELP_DEST})
 
 install(TARGETS divine.ide DESTINATION ${GUI_LIBEXEC_DEST} COMPONENT gui_tools)
-install(CODE "file(WRITE ${BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${PLUGIN_PATH}'\nexport DIVINE_GUI_HELP_PATH='${HELP_PATH}'\n${LIBEXEC_PATH}/divine.ide\n\") ")
-install(CODE "execute_process(COMMAND chmod a+x ${BIN_PATH}/divine.ide)")
+install(CODE "file(WRITE \$ENV{DESTDIR}\${BIN_PATH}/divine.ide \"#!/bin/sh\nexport LD_LIBRARY_PATH='${LIB_PATH}':$LD_LIBRARY_PATH\nexport DIVINE_GUI_PLUGIN_PATH='${PLUGIN_PATH}'\nexport DIVINE_GUI_HELP_PATH='${HELP_PATH}'\n${LIBEXEC_PATH}/divine.ide\n\") ")
+install(CODE "execute_process(COMMAND chmod a+x \$ENV{DESTDIR}\${BIN_PATH}/divine.ide)")
