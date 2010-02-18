@@ -220,7 +220,7 @@ void dve_compiler::gen_state_struct()
                     if (state_creators[i].var_type==VAR_BYTE)
                         line( "byte_t " + name + ";" );
                     else if (state_creators[i].var_type==VAR_INT)
-                        line( "sshort_int_t" + name + ";" );
+                        line( "sshort_int_t " + name + ";" );
                     else gerr << "Unexpected error" << thr();
                 }
             }
