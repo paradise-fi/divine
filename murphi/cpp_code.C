@@ -4722,6 +4722,8 @@ int generate_ruleset()
   The main program
  ******************************/
 
+#include "support.h"
+
 char *program::generate_code()
 {
   int count;
@@ -4764,11 +4766,28 @@ char *program::generate_code()
     fprintf(codefile, "#define DSTRB_ONLY\n");
   /* IM<e> */
   fprintf(codefile, "\n");
-  
+
   // include prolog
   fprintf(codefile,"/********************\n  Include\n");
   fprintf(codefile," ********************/\n");
-  fprintf(codefile,"#include \"mu_prolog.inc\"\n");
+  fprintf(codefile,"#include <iostream>\n");
+  fprintf(codefile,"using namespace std;\n");
+  fprintf(codefile,"#define BUFFER_SIZE 1024\n");
+  fprintf(codefile,"#define OLD_GPP(arg)\n");
+  fprintf(codefile,"#define gPercentActiveStates 0.1\n");
+  fprintf(codefile,"#define DEF_LOOPMAX 1000\n");
+  fprintf(codefile,"#define DEFAULT_MEM 8000000\n");
+  fprintf(codefile,"#define DEFAULT_MAX_ERRORS 100\n");
+  fprintf(codefile,"#define INCLUDE_FILE_VERSION \"Murphi Release 3.1\"\n");
+  fprintf(codefile,"#define INCLUDE_FILE_DATE \"Nov 26 1996\"\n");
+
+  fprintf(codefile, "%s", murphi::mu_verifier_h_str);
+  fprintf(codefile, "%s", murphi::mu_statecl_h_str);
+  fprintf(codefile, "%s", murphi::mu_sym_h_str);
+  fprintf(codefile, "%s", murphi::mu_util_h_str);
+  fprintf(codefile, "%s", murphi::mu_io_h_str);
+  fprintf(codefile, "%s", murphi::mu_system_h_str);
+  fprintf(codefile, "%s", murphi::mu_state_h_str);
   
   /* generate dependent stuff. */
   fprintf(codefile,"\n/********************\n  Decl declaration\n");
@@ -4870,10 +4889,13 @@ char *program::generate_code()
   fprintf(codefile,"\n/********************\n  Include\n");
   fprintf(codefile," ********************/\n");
   
-  /* I\'ve decided to just #include it, so that I can foist off the problem
-   * of finding the file to be included on the c++ compiler. */
-  /* But the filename still should not be hardcoded. */
-  fprintf(codefile,"#include \"mu_epilog.inc\"\n");
+  fprintf(codefile, "%s", murphi::mu_util_dep_h_str);
+  fprintf(codefile, "%s", murphi::mu_state_C_str);
+  fprintf(codefile, "%s", murphi::mu_verifier_C_str);
+  fprintf(codefile, "%s", murphi::mu_sym_C_str);
+  fprintf(codefile, "%s", murphi::mu_util_C_str);
+  fprintf(codefile, "%s", murphi::mu_io_C_str);
+  fprintf(codefile, "%s", murphi::mu_system_C_str);
   
   return "ERROR!";
 }

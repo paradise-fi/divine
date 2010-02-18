@@ -52,11 +52,7 @@ extern \"C\" int get_successor( int h, char *from, char *to ) {\n\
     return rule + 2;\n\
 }\n" );
 
-    if ( !getenv( "MU_INCLUDE_PATH") )
-        die( "FATAL: MU_INCLUDE_PATH environment variable not set." );
-
-    gplusplus( outfile, str::basename( in ) + ".so",
-               std::string( "-Wno-write-strings -I" ) + getenv( "MU_INCLUDE_PATH" ) );
+    gplusplus( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
 }
 
 }
