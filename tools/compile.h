@@ -3,6 +3,7 @@
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include "dvecompile.h"
+#include <wibble/sys/fs.h>
 
 namespace divine {
 
