@@ -41,6 +41,7 @@ struct _MpiId< Map< G > >
         *o++ = s.accepting;
         *o++ = s.expanded;
         *o++ = s.eliminated;
+        o = s.ce.write( o );
     }
 
     template< typename I >
@@ -50,6 +51,7 @@ struct _MpiId< Map< G > >
         s.accepting = *i++;
         s.expanded = *i++;
         s.eliminated = *i++;
+        i = s.ce.read( i );
         return i;
     }
 };
