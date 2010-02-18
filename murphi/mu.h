@@ -112,7 +112,7 @@
 
 union YYSTYPE;
 
-#include "muparser.hpp"
+#include "muparser.h"
 
 /********************
   boolean constants

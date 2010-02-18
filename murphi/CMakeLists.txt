@@ -4,6 +4,9 @@ find_package( FLEX )
 set( LEX ${CMAKE_CURRENT_BINARY_DIR}/mulexer.cpp )
 set( PARSE ${CMAKE_CURRENT_BINARY_DIR}/muparser.cpp )
 
+find_program( BYACC "byacc" )
+set( BISON_EXECUTABLE ${BYACC} ) # ZOMG HACK!
+
 file( GLOB code *.C )
 bison_target( muparser mu.y ${PARSE} )
 flex_target( mulexer mu.l ${LEX} )
