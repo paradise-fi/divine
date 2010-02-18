@@ -236,7 +236,8 @@ struct Main {
             die( "FATAL: no command specified" );
 
         config.setWorkers( o_workers->intValue() );
-        config.setInitialTableSize( 2 << (o_initable->intValue()) );
+        config.setInitialTableSize(
+            ( 2 << (o_initable->intValue()) ) / o_workers->intValue() );
         config.setInput( input );
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );
