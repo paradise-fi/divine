@@ -69,13 +69,50 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         CeShared< Node > ce;
     } shared;
 
+    struct NodeId {
+        uintptr_t ptr;
+        short owner;
+
+        bool operator<( const NodeId other ) const {
+            if ( owner < other.owner )
+                return true;
+            if ( owner > other.owner )
+                return false;
+            return ptr < other.ptr;
+        }
+
+        bool operator!=( const NodeId other ) const {
+            return ptr != other.ptr || owner != other.owner;
+        }
+
+        bool operator==( const NodeId other ) const {
+            return ptr == other.ptr && owner == other.owner;
+        }
+
+        bool valid() const {
+            return ptr != 0;
+        }
+
+        friend std::ostream &operator<<( std::ostream &o, NodeId i ) {
+            return o << "(" << i.owner << ", " << i.ptr << "[" << i.ptr % 1024 << "])";
+        }
+    } __attribute__((packed));
+
+    NodeId makeId( Node n ) {
+        NodeId ret;
+        ret.ptr = reinterpret_cast< intptr_t >( n.data() );
+        ret.owner = this->globalId();
+        return ret;
+    }
+
     struct Extension {
         Blob parent;
-        unsigned id:30;
-        unsigned elim:2;
-        unsigned map:30;
-        unsigned oldmap:30;
-        unsigned iteration;
+        bool seen:1;
+        short iteration:14;
+        // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
+        short elim:2;
+        NodeId map;
+        NodeId oldmap;
     };
 
     LtlCE< G, Shared, Extension > ce;
@@ -104,44 +141,22 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             visitor::ForgetTransition;
     }
 
+    bool isAccepting( Node st ) {
+        if ( !shared.g.isAccepting ( st ) )
+            return false;
+        if ( extension( st ).elim == 2 )
+            return false;
+        return true;
+    }
 
     visitor::ExpansionAction expansion( Node st )
     {
         ++ shared.expanded;
-        if ( shared.g.isAccepting ( st ) ) {
-            if ( !extension( st ).id ) { // first encounter
-                extension( st ).id = reinterpret_cast< intptr_t >( st.ptr );
-                ++ shared.accepting;
-            }
-            if ( extension( st ).id == extension( st ).map ) {
-                // found accepting cycle
-                shared.ce.initial = st;
-                return visitor::TerminateOnState;
-            }
+        if ( shared.g.isAccepting ( st ) && !extension( st ).seen ) {
+            extension( st ).seen = true;
+            ++ shared.accepting;
         }
         return visitor::ExpandState;
-    }
-
-    std::pair< int, bool > map( Node f, Node st )
-    {
-        int map;
-        bool elim = false;
-        if ( extension( f ).oldmap != 0 && extension( st ).oldmap != 0 )
-            if ( extension( f ).oldmap != extension( st ).oldmap )
-                return std::make_pair( -1, false );
-
-        if ( extension( f ).map < extension( f ).id ) {
-            if ( extension( f ).elim == 2 )
-                map = extension( f ).map;
-            else {
-                map = extension( f ).id;
-                if ( extension( f ).elim != 1 )
-                    elim = true;
-            }
-        } else
-            map = extension( f ).map;
-
-        return std::make_pair( map, elim );
     }
 
     visitor::TransitionAction transition( Node f, Node t )
@@ -151,26 +166,27 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             return updateIteration( t );
         }
 
-        if ( extension( f ).id == 0 )
-            assert( !shared.g.isAccepting( f ) );
-        if ( shared.g.isAccepting( f ) )
-            assert( extension( f ).id > 0 );
-
         if ( !extension( t ).parent.valid() )
             extension( t ).parent = f;
 
-        std::pair< int, bool > a = map( f, t );
-        int map = a.first;
-        bool elim = a.second;
+        if ( isAccepting( t ) && extension( f ).map == makeId( t ) ) {
+            shared.ce.initial = t;
+            return visitor::TerminateOnTransition;
+        }
 
-        if ( map == -1 )
-            return updateIteration( t );
+        if ( extension( f ).oldmap.valid() && extension( t ).oldmap.valid() )
+            if ( extension( f ).oldmap != extension( t ).oldmap )
+                return updateIteration( t );
+
+        if ( isAccepting( t ) )
+            extension( t ).map = std::max( extension( t ).map, makeId( t ) );
+        NodeId map = std::max( extension( f ).map, extension( t ).map );
 
         if ( extension( t ).map < map ) {
-            if ( elim ) {
-                ++ shared.eliminated;
-                extension( f ).elim = 1;
-            }
+            // we are *not* the MAP of our successors anymore, so not a
+            // candidate for elimination (shrinking), remove from set
+            if ( isAccepting( t ) && extension( t ).elim )
+                extension( t ).elim = 1;
             extension( t ).map = map;
             return visitor::ExpandTransition;
         }
@@ -195,9 +211,16 @@ struct Map : Algorithm, DomainWorker< Map< G > >
             Node st = table()[ i ].key;
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
-                extension( st ).map = 0;
-                if ( extension( st ).elim == 1 )
-                    extension( st ).elim = 2;
+                extension( st ).map = NodeId();
+                if ( isAccepting( st ) ) {
+                    /* elim == 1 means NOT to be eliminated (!) */
+                    if ( extension( st ).elim == 1 )
+                        extension( st ).elim = 0;
+                    else {
+                        extension( st ).elim = 2;
+                        ++ shared.eliminated;
+                    }
+                }
             }
         }
     }
@@ -239,7 +262,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
                       << expanded << " expanded" << std::endl;
             ++ shared.iteration;
             valid = !cycleNode().valid();
-        } while ( d_eliminated > 0 && valid );
+        } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
 
