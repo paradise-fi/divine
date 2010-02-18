@@ -38,12 +38,18 @@ struct _MpiId< Map< G > >
     static void writeShared( typename Map< G >::Shared s, O o ) {
         *o++ = s.initialTable;
         *o++ = s.iteration;
+        *o++ = s.accepting;
+        *o++ = s.expanded;
+        *o++ = s.eliminated;
     }
 
     template< typename I >
     static I readShared( typename Map< G >::Shared &s, I i ) {
         s.initialTable = *i++;
         s.iteration = *i++;
+        s.accepting = *i++;
+        s.expanded = *i++;
+        s.eliminated = *i++;
         return i;
     }
 };
