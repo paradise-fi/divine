@@ -1,5 +1,6 @@
 set -vex
-not () { "$@" && exit 1 || return 0; }
+not() { "$@" && exit 1 || return 0; }
+ndfs() { divine nested-dfs --report "$@" > report; }
 
 check_valid() {
     grep "^Finished: Yes" report
@@ -11,20 +12,12 @@ check_invalid() {
     grep "^LTL-Property-Holds: No" report
 }
 
-divine nested-dfs --report test1.dve > report 2> progress
-check_invalid
+for t in 1 4 5 6; do
+    ndfs test$t.dve
+    check_invalid
+done
 
-divine nested-dfs --report test2.dve > report 2> progress
-check_valid
-
-divine nested-dfs --report test3.dve > report 2> progress
-check_valid
-
-divine nested-dfs --report test4.dve > report 2> progress
-check_invalid
-
-divine nested-dfs --report test5.dve > report 2> progress
-check_invalid
-
-divine nested-dfs --report test6.dve > report 2> progress
-check_invalid
+for t in 2 3; do
+    ndfs test$t.dve
+    check_valid
+done

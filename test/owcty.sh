@@ -1,11 +1,19 @@
-set -vex
-set -o pipefail
+set -vex -o pipefail
+trap "cat progress" EXIT
 not () { "$@" && exit 1 || return 0; }
 
-divine owcty --report peterson-naive.dve 2> progress | tee report
+check_valid() {
+    grep "^Finished: Yes" report
+    grep "^LTL-Property-Holds: Yes" report
+}
 
-grep "^Finished: Yes" report
-grep "^LTL-Property-Holds: No" report
+check_invalid() {
+    grep "^Finished: Yes" report
+    grep "^LTL-Property-Holds: No" report
+}
+
+divine owcty --report peterson-naive.dve 2> progress | tee report
+check_invalid
 
 if ! grep -q "MAP: cycle found" progress;  then
     grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
@@ -20,9 +28,7 @@ EOF
 fi
 
 divine owcty --report peterson-liveness.dve 2> progress | tee report
-
-grep "^Finished: Yes" report
-grep "^LTL-Property-Holds: Yes" report
+check_valid
 
 grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
 cat > numbers-right <<EOF
@@ -48,3 +54,12 @@ cat > numbers-right <<EOF
 EOF
 diff -u numbers-right numbers
 
+for t in 1 4 5 6; do
+    divine owcty --report test$t.dve > report 2> progress
+    check_invalid
+done
+
+for t in 2 3; do
+    divine owcty --report test$t.dve > report 2> progress
+    check_valid
+done
