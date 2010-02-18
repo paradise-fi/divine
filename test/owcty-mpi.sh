@@ -1,10 +1,28 @@
-set -vex
-set -o pipefail
+set -vex -o pipefail
+trap "cat progress" EXIT
+
 not () { "$@" && exit 1 || return 0; }
+
+# TODO there are some issues with counterexamples and MPI, apparently
+mpiowcty() {
+    $MPIEXEC -H localhost,localhost divine owcty --no-counterexample \
+        --report "$@" 2> progress | tee report
+}
+
+check_valid() {
+    grep "^Finished: Yes" report
+    grep "^LTL-Property-Holds: Yes" report
+}
+
+check_invalid() {
+    grep "^Finished: Yes" report
+    grep "^LTL-Property-Holds: No" report
+}
 
 test -x "`which $MPIEXEC`" || exit 200
 
-$MPIEXEC -H localhost,localhost divine owcty --report peterson-naive.dve 2> progress | tee report
+mpiowcty peterson-naive.dve
+check_invalid
 
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: No" report
@@ -21,10 +39,8 @@ EOF
     diff -u numbers-right numbers
 fi
 
-$MPIEXEC -H localhost,localhost divine owcty --report peterson-liveness.dve 2> progress | tee report
-
-grep "^Finished: Yes" report
-grep "^LTL-Property-Holds: Yes" report
+mpiowcty peterson-liveness.dve
+check_valid
 
 grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
 cat > numbers-right <<EOF
@@ -50,3 +66,12 @@ cat > numbers-right <<EOF
 EOF
 diff -u numbers-right numbers
 
+for t in 1 4 5 6; do
+    mpiowcty test$t.dve
+    check_invalid
+done
+
+for t in 2 3; do
+    mpiowcty test$t.dve
+    check_valid
+done
