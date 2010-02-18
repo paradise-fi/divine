@@ -277,11 +277,12 @@ struct Map : Algorithm, DomainWorker< Map< G > >
         livenessBanner( valid );
 
         if ( !valid && want_ce ) {
-            std::cerr << " generating counterexample..." << std::endl;
+            std::cerr << " generating counterexample...     " << std::flush;
             assert( cycleNode().valid() );
             shared.ce.initial = cycleNode();
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
+            std::cerr << "done" << std::endl;
         }
 
         return result();
