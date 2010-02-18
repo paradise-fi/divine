@@ -14,7 +14,7 @@ check_invalid() {
 }
 
 mpimap() {
-    $MPIEXEC -H localhost,localhost divine map --report "$@" | tee report
+    $MPIEXEC -H localhost,localhost divine map --no-counterexample --report "$@" | tee report
 }
 
 mpimap peterson-naive.dve
