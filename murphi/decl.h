@@ -272,7 +272,7 @@ public:
     // right = rt-shift; 
     right = rt;
     numbits = CeilLog2(right - left + 2);
-    if (args->no_compression) {
+    if (no_compression) {
 	bitsalloc = BYTES(numbits);
 	if (numbits>8 || right > 254) {
 	  mu_type = "mu__long";

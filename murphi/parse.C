@@ -65,7 +65,7 @@
   variable declarations
   ********************/
 int gLineNum = 1;
-char *gFileName;
+const char *gFileName;
 extern char *yytext; /* lex\'s token matched. */
 int offset = 0;
 

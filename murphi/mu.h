@@ -248,8 +248,15 @@ int new_int();
 /********************
   extern variable
   ********************/
-extern char *gFileName;  /* file support. */
+extern const char *gFileName;  /* file support. */
 extern FILE *codefile;   /* name of the file currently being compiled. */
+
+// FIXME hardcoded parameters?
+const bool no_compression = true;
+const bool hash_compression = false;
+const bool dstrb_only = false;
+const bool parallel = false;
+const bool hash_cache = false;
 
 /********************
   Class lexid and lexlist

@@ -156,7 +156,7 @@ enumtypedecl::enumtypedecl(int l, int r)
 
   // 0 is used for undefined value --> 0. lb, ... . ub
   numbits = CeilLog2( right - left + 2);
-  if (!args->no_compression) {
+  if (!no_compression) {
     bitsalloc = numbits;
   }
   else {
@@ -177,7 +177,7 @@ subrangetypedecl::subrangetypedecl(int left, int right, typedecl *parent)
 {
   // 0 is used for undefined value --> 0. lb, ... . ub
   numbits = CeilLog2( right - left + 2);
-  if (!args->no_compression) {
+  if (!no_compression) {
     bitsalloc = numbits;
   }
   else {
@@ -208,7 +208,7 @@ subrangetypedecl::subrangetypedecl( expr *left, expr *right)
       this->left = 0;
       this->right = 1;
       this->numbits = 1;
-      if (!args->no_compression) {
+      if (!no_compression) {
 	this->bitsalloc = this->numbits;
       }
       else {
@@ -225,7 +225,7 @@ subrangetypedecl::subrangetypedecl( expr *left, expr *right)
       this->numbits = CeilLog2( right->getvalue() - left->getvalue() + 2);
       if (this->numbits>31) 
 	  Error.Error("Internal error, range is too large");
-      if (!args->no_compression) {
+      if (!no_compression) {
 	this->bitsalloc = this->numbits;
       }
       else {
@@ -297,7 +297,7 @@ multisettypedecl::multisettypedecl(bool interleaved,
 					),
 			   elementtype );
 
-  if (!args->no_compression) {
+  if (!no_compression) {
     numbits = maximum_size * elementtype->getbitsalloc()
       + maximum_size * 2;
   }
@@ -381,7 +381,7 @@ scalarsettypedecl::scalarsettypedecl( expr *l, int lb )
       left = lb;
       right = lb;
       numbits = 1;
-      if (!args->no_compression) {
+      if (!no_compression) {
 	bitsalloc = numbits;
       }
       else {
@@ -406,7 +406,7 @@ scalarsettypedecl::scalarsettypedecl( expr *l, int lb )
       numbits = CeilLog2( l->getvalue() + 1); 
       left = lb;
       right = left+size-1;
-      if (!args->no_compression) {
+      if (!no_compression) {
 	bitsalloc = numbits;
       }
       else {
@@ -471,7 +471,7 @@ uniontypedecl::uniontypedecl(stelist * unionmembers)
 
   // 0 is used for undefined value --> 0. lb, ... . ub
   numbits = CeilLog2( size + 1);
-  if (!args->no_compression) {
+  if (!no_compression) {
     bitsalloc = numbits;
   }
   else {
@@ -527,7 +527,7 @@ vardecl::vardecl(typedecl *type)
 			   type );
   offset = ::offset;
   ::offset += type->getbitsalloc();
-  if (args->no_compression) {
+  if (no_compression) {
     if (type->getbitsalloc() % 8 != 0)
 	Error.Error("Internal error, byte aligned allocation failed.");
   }

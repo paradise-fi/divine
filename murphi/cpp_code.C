@@ -1133,7 +1133,7 @@ char *multisettypedecl::generate_decl()
         elementtype->getbitsalloc(), /* second arg to set_self */
         elementtype->getbitsalloc(), /* second arg to set_self */
         maximum_size); /* for loop bound */
-    if (!args->no_compression)
+    if (!no_compression)
       fprintf(codefile,
           "    valid[i].set_self(\"\", i * 2 + k);\n"
           "};\n");
@@ -1704,7 +1704,7 @@ char *uniontypedecl::generate_decl()
       /* args for third constructor */
 
       //
-      if (args->no_compression)
+      if (no_compression)
     {
       fprintf(codefile,
           "  int indexvalue()\n"
@@ -3694,7 +3694,7 @@ char *simplerule::generate_code()
 
   // generate NextRule(r)
   /* IM<b> */
-  if (args->dstrb_only)
+  if (dstrb_only)
   fprintf(codefile,
       "  void NextRule(unsigned short & what_rule)\n"
       "  {\n"
@@ -4564,7 +4564,7 @@ int generate_ruleset()
   // generate SetNextEnableRule(r)
   i = 0; r = 0;
   /* IM<b> */
-  if (args->dstrb_only)
+  if (dstrb_only)
   fprintf(codefile,
       "void SetNextEnabledRule(unsigned short & what_rule)\n"
       "{\n"
@@ -4728,7 +4728,7 @@ char *program::generate_code()
 
   // header  
   fprintf(codefile,"/******************************\n");
-  fprintf(codefile,"  Program \"%s\" compiled by \"%s\"\n", args->filename, MURPHI_VERSION );
+  fprintf(codefile,"  Program \"%s\" compiled by \"%s\"\n", gFileName, MURPHI_VERSION );
   fprintf(codefile, "\n");
   fprintf(codefile,"  Murphi Last Modefied Date: \"%s\"\n", LAST_DATE);
   fprintf(codefile,"  Murphi Last Compiled date: \"%s\"\n", __DATE__);
@@ -4740,7 +4740,7 @@ char *program::generate_code()
   fprintf(codefile," ********************/\n");
   /* IM<b> */
   /*if (args->hash_cache)  //gdp*/
-  if (args->hash_cache || args->parallel || args->dstrb_only)
+  if (hash_cache || parallel || dstrb_only)
   /* IM<e> */
     fprintf(codefile,"#define MURPHI_VERSION \"%s\"\n", MURPHI_VERSION );
   else
@@ -4748,19 +4748,19 @@ char *program::generate_code()
     
   fprintf(codefile,"#define MURPHI_DATE \"%s\"\n", LAST_DATE);
   fprintf(codefile, "#define PROTOCOL_NAME \"");   // added by Uli
-  for (int i=0, l=strlen(args->filename)-2; i<l; i++)
-    fputc(args->filename[i], codefile);
+  for (int i=0, l=strlen(gFileName)-2; i<l; i++)
+    fputc(gFileName[i], codefile);
   fprintf(codefile, "\"\n#define BITS_IN_WORLD %d\n", bits_in_world);
-  if (args->no_compression)
+  if (no_compression)
     fprintf(codefile, "#define ALIGN\n");
-  if (args->hash_compression)
+  if (hash_compression)
     fprintf(codefile, "#define HASHC\n");
-  if (args->hash_cache)
+  if (hash_cache)
     fprintf(codefile, "#define CACHED_MURPHI\n");
   /* IM<b> */
-  if (args->parallel)
+  if (parallel)
     fprintf(codefile, "#define PARALLEL\n");
-  if (args->dstrb_only)
+  if (dstrb_only)
     fprintf(codefile, "#define DSTRB_ONLY\n");
   /* IM<e> */
   fprintf(codefile, "\n");
@@ -4805,7 +4805,7 @@ char *program::generate_code()
 
   count = generate_ruleset();
   /* IM<b> */
-  if (args->dstrb_only)
+  if (dstrb_only)
     fprintf(codefile, "const unsigned short numrules = %d;\n", count );
   else
   /* IM<e> */
