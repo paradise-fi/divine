@@ -1,16 +1,23 @@
 #include "compile.h"
 #include <wibble/string.h>
+#include <wibble/sys/fs.h>
+
+bool mucompile( const char *, const char * );
 
 namespace divine {
 
 using namespace wibble;
 
 void Compile::compileMurphi( std::string in ) {
-    std::string outfile = std::string( in, 0, in.length() - 2 ) + ".C"; // ick
-    run( "mu " + in );
+    std::string outfile = str::basename( in ) + ".cpp";
+    if (!mucompile( in.c_str(), outfile.c_str() ))
+        die( "FATAL: Error in murphi compilation. Please consult above messages." );
 
-    ofstream c( outfile.c_str(), ios_base::app );
-    c << "\
+    std::string mu = sys::fs::readFile( outfile );
+    sys::fs::deleteIfExists( outfile );
+
+    sys::fs::writeFile( outfile, "\
+" + mu + "\
 StartStateGenerator startgen; // FIXME\n\
 NextStateGenerator nextgen; // FIXME\n\
 \n\
@@ -43,8 +50,10 @@ extern \"C\" int get_successor( int h, char *from, char *to ) {\n\
     workingstate->Normalize();\n\
     StateCopy( (state *)to, workingstate );\n\
     return rule + 2;\n\
-}\n" << std::endl;
-    c.close();
+}\n" );
+
+    if ( !getenv( "MU_INCLUDE_PATH") )
+        die( "FATAL: MU_INCLUDE_PATH environment variable not set." );
 
     gplusplus( outfile, str::basename( in ) + ".so",
                std::string( "-Wno-write-strings -I" ) + getenv( "MU_INCLUDE_PATH" ) );

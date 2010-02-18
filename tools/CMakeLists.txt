@@ -1,6 +1,6 @@
 include_directories( ${DIVINE_INCLUDES} )
 
-link_libraries( libdivine wibble )
+link_libraries( libdivine wibble murphi )
 
 if( NOT WIN32 )
   link_libraries( libdivine pthread )
