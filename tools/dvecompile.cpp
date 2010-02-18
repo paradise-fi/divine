@@ -26,7 +26,8 @@ void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::st
     switch (expr.get_operator())
     {
         case T_ID:
-            ostr<<state_name<<".";
+            if (!(parent_table->get_variable(expr.get_ident_gid())->is_const()))
+                ostr<<state_name<<".";
             if(parent_table->get_variable(expr.get_ident_gid())->get_process_gid() != NO_ID)
             {
                 ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
@@ -50,7 +51,8 @@ void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::st
             ostr << ")";
             break;
         case T_SQUARE_BRACKETS:
-            ostr<<state_name<<".";
+            if (!(parent_table->get_variable(expr.get_ident_gid())->is_const()))
+                ostr<<state_name<<".";
             if(parent_table->get_variable(expr.get_ident_gid())->get_process_gid() != NO_ID)
             {
                 ostr << parent_table->get_process(parent_table->get_variable(expr.get_ident_gid())->
