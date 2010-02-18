@@ -1,6 +1,4 @@
 set -vex -o pipefail
-trap "cat progress" EXIT
-
 not () { "$@" && exit 1 || return 0; }
 
 # TODO there are some issues with counterexamples and MPI, apparently
@@ -20,6 +18,7 @@ check_invalid() {
 }
 
 test -x "`which $MPIEXEC`" || exit 200
+trap "cat progress" EXIT
 
 mpiowcty peterson-naive.dve
 check_invalid
