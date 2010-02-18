@@ -55,6 +55,5 @@ add_custom_command(
   VERBATIM
 )
 
-message( "SUPPORT: ${SUPPORT}" )
 add_library( murphi STATIC ${code} ${PARSE} ${LEX} ${SUPPORT} support.h )
 
