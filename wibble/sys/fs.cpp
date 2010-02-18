@@ -103,7 +103,6 @@ void writeFile( const std::string &file, const std::string &data )
     out << data;
 }
 
-#ifdef POSIX
 bool deleteIfExists(const std::string& file)
 {
 	if (unlink(file.c_str()) != 0)
@@ -115,6 +114,7 @@ bool deleteIfExists(const std::string& file)
 		return true;
 }
 
+#ifdef POSIX
 Directory::const_iterator Directory::begin()
 {
 	DIR* dir = opendir(m_path.c_str());
