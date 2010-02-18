@@ -2,6 +2,7 @@
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 
+#ifdef HAVE_MURPHI
 bool mucompile( const char *, const char * );
 
 namespace divine {
@@ -56,3 +57,13 @@ extern \"C\" int get_successor( int h, char *from, char *to ) {\n\
 }
 
 }
+#else
+
+namespace divine {
+
+void Compile::compileMurphi( std::string ) {
+    die( "FATAL: This binary does not support compiling murphi models." );
+}
+
+}
+#endif
