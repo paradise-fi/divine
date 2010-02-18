@@ -1,6 +1,3 @@
-find_package( BISON )
-find_package( FLEX )
-
 set( LEX ${CMAKE_CURRENT_BINARY_DIR}/mulexer.cpp )
 set( PARSE ${CMAKE_CURRENT_BINARY_DIR}/muparser.cpp )
 

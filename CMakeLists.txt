@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.4.7)
 project( divine )
 
+set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
+
 if(COMMAND cmake_policy)
   cmake_policy(SET CMP0002 OLD) # FIXME
   cmake_policy(SET CMP0003 NEW)
@@ -148,7 +150,10 @@ endif( HOARD )
 add_subdirectory( lpsolve )
 
 find_program( BYACC "byacc" )
-if( MURPHI AND BYACC )
+find_package( FLEX )
+find_package( BISON )
+
+if( MURPHI AND FLEX_FOUND AND BISON_FOUND AND BYACC )
 add_subdirectory( murphi )
 add_definitions( -DHAVE_MURPHI )
 else()
