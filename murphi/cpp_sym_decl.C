@@ -250,7 +250,7 @@ void multisettypedecl::generate_permute_function()
   fprintf(codefile,
           "void %s::Permute(PermSet& Perm, int i)\n"
           "{\n"
-          "  static %s temp(\"Permute_%s\",-1);\n"
+          "  %s temp(\"Permute_%s\",-1);\n"
           "  int j;\n"
           "  for (j=0; j<%d; j++)\n"
           "    array[j].Permute(Perm, i);\n",
@@ -271,7 +271,7 @@ void arraytypedecl::generate_permute_function()
   fprintf(codefile,
           "void %s::Permute(PermSet& Perm, int i)\n"
           "{\n"
-          "  static %s temp(\"Permute_%s\",-1);\n"
+          "  %s temp(\"Permute_%s\",-1);\n"
           "  int j;\n"
           "  for (j=0; j<%d; j++)\n"
           "    array[j].Permute(Perm, i);\n",
@@ -2292,7 +2292,7 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  // sorting\n"
               "  int count_%s;\n"
 	      "  int compare;\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n"
@@ -2304,7 +2304,7 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  int size_%s[%d];\n"
               "  int start_%s[%d];\n"
               "  // canonicalization\n"
-              "  static %s temp;\n",
+              "  %s temp;\n",
               mu_name, // %s::Canonicalize
               indextype->mu_name, // count_%s
               elementtype->mu_name, indextype->getsize(), // %s value[%d]
@@ -2329,7 +2329,7 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  // indexes\n"
               "  int i,j,k,z;\n"
               "  // sorting\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
 	      "  int compare;\n"
               "  // limit\n"
               "  bool exists;\n"
@@ -2338,7 +2338,7 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  int start;\n"
               "  int class_size;\n"
               "  // canonicalization\n"
-              "  static %s temp;\n",
+              "  %s temp;\n",
               mu_name, // %s::Canonicalize
               elementtype->mu_name, indextype->getsize(), // %s value[%d]
               mu_name  // static %s temp
@@ -2708,7 +2708,7 @@ void arraytypedecl::generate_array_limit_function(symmetryclass& symmetry)
               "  // sorting\n"
               "  int count_%s;\n"
 	      "  int compare;\n" 
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n"
@@ -2737,7 +2737,7 @@ void arraytypedecl::generate_array_limit_function(symmetryclass& symmetry)
               "  int i,j,k,z;\n"
               "  // sorting\n"
 	      "  int compare;\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
@@ -2903,7 +2903,7 @@ void arraytypedecl::generate_limit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
@@ -3035,7 +3035,7 @@ void arraytypedecl::generate_limit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
@@ -3803,7 +3803,7 @@ void multisettypedecl::generate_multisetlimit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  static %s value[%d];\n"
+              "  %s value[%d];\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",

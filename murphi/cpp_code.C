@@ -998,7 +998,7 @@ char *multisettypedecl::generate_decl()
          "  void print_diff(state *prevstate)\n"
          "  {\n"
          "    bool prevvalid;\n"
-         "    static state temp;\n"
+         "    state temp;\n"
          "    StateCopy(&temp, workingstate);\n"
          "    for (int i = 0; i < %d; i++)\n"
          "      {\n"
@@ -1052,7 +1052,7 @@ char *multisettypedecl::generate_decl()
      fprintf(codefile,        
          "  void MultisetSort()\n"
          "  {\n"
-         "    static %s temp;\n"
+         "    %s temp;\n"
          "\n"   
          "    // compact\n"
          "    int i,j;\n"
@@ -3135,7 +3135,7 @@ void generate_rule_params_assignment(ste *enclosures)
 //      }
       if ( enclosures->getvalue()->getclass() == decl::Choose )
         fprintf(codefile,
-            "    static %s_id %s;\n"
+            "    %s_id %s;\n"
             "    %s.unionassign( r %% %d );\n"
             "    r = r / %d;\n",
             ((multisetidtypedecl *)enclosures->getvalue()->gettype())
@@ -3147,7 +3147,7 @@ void generate_rule_params_assignment(ste *enclosures)
             );
       if ( enclosures->getvalue()->getclass() == decl::Quant )
         fprintf(codefile,
-            "    static %s %s;\n"
+            "    %s %s;\n"
             "    %s.unionassign(r %% %d);\n"
             "    r = r / %d;\n",
             enclosures->getvalue()->gettype()->generate_code(),
@@ -3161,7 +3161,7 @@ void generate_rule_params_assignment(ste *enclosures)
     {
       if ( enclosures->getvalue()->getclass() == decl::Choose )
         fprintf(codefile,
-            "    static %s_id %s;\n"
+            "    %s_id %s;\n"
             "    %s.value((r %% %d) + %d);\n"
             "    r = r / %d;\n",
             ((multisetidtypedecl *)enclosures->getvalue()->gettype())
@@ -3174,7 +3174,7 @@ void generate_rule_params_assignment(ste *enclosures)
             );
       if ( enclosures->getvalue()->getclass() == decl::Quant )
         fprintf(codefile,
-            "    static %s %s;\n"
+            "    %s %s;\n"
             "    %s.value((r %% %d) + %d);\n"
             "    r = r / %d;\n",
             enclosures->getvalue()->gettype()->generate_code(),
