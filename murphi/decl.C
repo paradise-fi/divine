@@ -91,7 +91,7 @@ decl::decl()
 { }
 
 decl::decl(char *name)
-: TNode(), name(name), mu_name(NULL), declared(FALSE)
+: TNode(), name(name), mu_name(NULL), declared(FALSE), global( false )
 { 
   mu_name = tsprintf("mu_%s",name);
 }

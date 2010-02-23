@@ -1865,16 +1865,21 @@ char *constdecl::generate_decl()
  ********************/
 char *vardecl::generate_decl()
 {
-  if (!declared) {
+  if (declared)
+      return "ERROR!";
+  if (global) {
     fprintf(codefile,
-        "/*** Variable declaration ***/\n"
-        "%s %s(\"%s\",%d);\n\n",
-        type->generate_code(),
-        mu_name,
-        name,
-        offset);
-    declared = TRUE;
+        "/*** Variable declaration (global) ***/\n"
+            "#define %s (MuGlobal::get().variables->%s)\n",
+            mu_name, mu_name );
+  } else {
+    fprintf(codefile,
+        "/*** Variable declaration (local) ***/\n"
+         "%s %s(\"%s\",%d);\n\n",
+         type->generate_code(),
+         mu_name, name, offset );
   }
+  declared = TRUE;
   return "ERROR!";
 }
 
@@ -4724,6 +4729,16 @@ int generate_ruleset()
 
 #include "support.h"
 
+void declare_global(vardecl *d) {
+    d->global = true;
+    fprintf(stderr, "marking %s as global\n", d->mu_name );
+    fprintf(codefile, "%s %s;\n", d->gettype()->mu_name, d->mu_name);
+}
+
+void init_global(vardecl *d) {
+    fprintf(codefile, "%s( \"%s\", %d),\n", d->mu_name, d->name, d->getoffset());
+}
+
 char *program::generate_code()
 {
   int count;
@@ -4793,11 +4808,18 @@ char *program::generate_code()
   fprintf(codefile,"\n/********************\n  Decl declaration\n");
   fprintf(codefile," ********************/\n\n");
   // typedecl declaration -- added to fixed a bug
+
   if (typedecl::origin != NULL) typedecl::origin->generate_all_decl();
-  // globals->generate_decls() gets done by procedures->generate_decls
+
+  fprintf(codefile, "/* globals */ struct MuGlobalVars {\nint dummy;");
+  map_vars(globals, declare_global);
+  fprintf(codefile, "MuGlobalVars() : \n");
+  map_vars(globals, init_global);
+  fprintf(codefile, "dummy(0) {} };\n");
+
   procedures->generate_decls();
   fprintf(codefile,"\n\n\n");
-  
+
   // generate the world
   fprintf(codefile,"\n/********************\n  The world\n");
   fprintf(codefile," ********************/\n");

@@ -84,6 +84,7 @@
   int main(int argc, char **argv)
   ****************************************/
 
+#if 0
 int main(int argc, char **argv)
 {
   args = new argclass(argc, argv);
@@ -128,6 +129,7 @@ int main(int argc, char **argv)
 #endif
   exit(0);
 }
+#endif
 
 /****************************************
   * 8 Feb 94 Norris Ip:

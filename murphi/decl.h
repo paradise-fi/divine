@@ -74,6 +74,7 @@ protected:
 public:
   // variables
   bool declared; // whether the item has been declared in the generated code.
+  bool global;
   char *name;    // What the object\'s name is
   char *mu_name; // the object's name in the generated code
   

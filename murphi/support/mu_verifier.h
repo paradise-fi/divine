@@ -201,11 +201,40 @@ extern AlgorithmManager *Algorithm;    // manager for all algorithm related issu
 
 extern Error_handler Error;       // general error handler.
 extern argclass *args;            // the record of the arguments.
-extern state *curstate;        // current state at the beginning of the rule-firing
-extern state *const workingstate;   // Uli: this pointer points to a working-
+// extern state *curstate;        // current state at the beginning of the rule-firing
+// extern state *const workingstate;   // Uli: this pointer points to a working-
                                     //      buffer
-extern world_class theworld;          // the set of global variables.
+// extern world_class theworld;          // the set of global variables.
 extern int category;                  // working on startstate, rule or invariant
+
+struct NextStateGenerator;
+struct StartStateGenerator;
+struct MuGlobalVars;
+struct SymmetryClass;
+
+struct MuGlobal {
+    static pthread_key_t key;
+    static MuGlobal &get();
+    static void init() {
+        pthread_key_create( &key, 0 ); // FIXME destructor
+    }
+
+public:
+    state *working;
+    world_class *world;
+    StartStateGenerator *startgen;
+    NextStateGenerator *nextgen;
+    Error_handler *error;
+    MuGlobalVars *variables;
+    SymmetryClass *symmetry;
+
+    MuGlobal();
+};
+
+pthread_key_t MuGlobal::key;
+
+#define workingstate (MuGlobal::get().working)
+#define theworld (*MuGlobal::get().world)
 
 
 /****************************************

@@ -204,9 +204,9 @@ AlgorithmManager *Algorithm;    // manager for all algorithm related issue
 Error_handler Error;       // general error handler.
 argclass *args;            // the record of the arguments.
 state *curstate;        // current state at the beginning of the rule-firing
-state *const workingstate = new state;   // Uli: buffer for doing all state
-                                         //      manipulation
-world_class theworld;          // the set of global variables.
+//state *const workingstate = new state;   // Uli: buffer for doing all state
+                                           //      manipulation
+//world_class theworld;          // the set of global variables.
 int category;                  // working on startstate, rule or invariant
 
 #ifdef HASHC
@@ -214,7 +214,16 @@ TraceFileManager* TraceFile;   // Uli: manager for trace info file
 #endif
 unsigned long NumCurState;     // Uli: number of the current state for trace 
                                //      info file
- 
+
+inline MuGlobal &MuGlobal::get() {
+    MuGlobal *instance = (MuGlobal *)pthread_getspecific( key );
+    if ( !instance ) {
+        instance = new MuGlobal;
+        pthread_setspecific( key, instance );
+        instance->world->to_state( NULL );
+    }
+    return *instance;
+}
 
 /********************
   $Log: mu_system.h,v $
