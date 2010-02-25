@@ -1,10 +1,8 @@
 set( LEX ${CMAKE_CURRENT_BINARY_DIR}/mulexer.cpp )
 set( PARSE ${CMAKE_CURRENT_BINARY_DIR}/muparser.cpp )
 
-set( BISON_EXECUTABLE ${BYACC} ) # ZOMG HACK!
-
 file( GLOB code *.C )
-bison_target( muparser mu.y ${PARSE} )
+byacc_target( muparser mu.y ${PARSE} )
 flex_target( mulexer mu.l ${LEX} )
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )

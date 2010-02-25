@@ -151,9 +151,9 @@ add_subdirectory( lpsolve )
 
 find_program( BYACC "byacc" )
 find_package( FLEX )
-find_package( BISON )
+find_package( BYACC )
 
-if( MURPHI AND FLEX_FOUND AND BISON_FOUND AND BYACC )
+if( MURPHI AND FLEX_FOUND AND BYACC_FOUND AND BYACC )
 add_subdirectory( murphi )
 add_definitions( -DHAVE_MURPHI )
 else()
