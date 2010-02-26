@@ -47,6 +47,7 @@ struct _MpiId< Owcty< G > >
 
     template< typename O >
     static void writeShared( typename Owcty< G >::Shared s, O o ) {
+        o = s.stats.write( o );
         *o++ = s.initialTable;
         *o++ = s.size;
         *o++ = s.oldsize;
@@ -60,6 +61,7 @@ struct _MpiId< Owcty< G > >
 
     template< typename I >
     static I readShared( typename Owcty< G >::Shared &s, I i ) {
+        i = s.stats.read( i );
         s.initialTable = *i++;
         s.size = *i++;
         s.oldsize = *i++;
@@ -104,6 +106,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         G g;
         CeShared< Node > ce;
         int initialTable;
+        Statistics< G > stats;
     } shared;
 
     struct Extension {
@@ -269,6 +272,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     {
         extension( st ).inF = extension( st ).inS = shared.g.isAccepting( st );
         shared.size += extension( st ).inS;
+        shared.stats.addNode( shared.g, st );
         return visitor::ExpandState;
     }
 
@@ -431,6 +435,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
                   << " ------------- " << std::endl;
     }
 
+    void updateResult() {
+        for ( int i = 0; i < domain().peers(); ++i )
+            shared.stats.merge( domain().shared( i ).stats );
+        shared.stats.updateResult( result() );
+        shared.stats = Statistics< G >();
+    }
+
     Result run()
     {
         size_t oldsize = 0;
@@ -438,7 +449,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         std::cerr << " initialise...\t\t" << std::flush;
         shared.size = 0;
         initialise();
-        printSize();
+        printSize(); updateResult();
 
         shared.iteration = 1;
 
@@ -450,13 +461,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
 
                 std::cerr << " reachability...\t" << std::flush;
                 reachability();
-                printSize();
+                printSize(); updateResult();
 
                 ++shared.iteration;
 
                 std::cerr << " elimination & reset...\t" << std::flush;
                 elimination();
-                printSize();
+                printSize(); updateResult();
 
                 ++shared.iteration;
 

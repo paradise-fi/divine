@@ -72,9 +72,9 @@ struct Statistics {
     }
 
     void updateResult( Result &res ) {
-        res.visited = res.expanded = states;
-        res.deadlocks = deadlocks;
-        res.goals = goals;
+        res.visited += states;
+        res.deadlocks += deadlocks;
+        res.expanded += expansions;
     }
 
     void print( std::ostream &o ) {
