@@ -39,8 +39,8 @@ struct _MpiId< Reachability< G > >
 
     template< typename O >
     static void writeShared( typename Reachability< G >::Shared s, O o ) {
-        *o++ = s.initialTable;
         o = s.stats.write( o );
+        *o++ = s.initialTable;
         *o++ = s.goal.valid();
         if ( s.goal.valid() )
             o = s.goal.write32( o );
@@ -48,8 +48,8 @@ struct _MpiId< Reachability< G > >
 
     template< typename I >
     static I readShared( typename Reachability< G >::Shared &s, I i ) {
-        s.initialTable = *i++;
         i = s.stats.read( i );
+        s.initialTable = *i++;
         bool valid = *i++;
         if ( valid ) {
             FakePool fp;
