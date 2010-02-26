@@ -70,7 +70,28 @@ struct Queue {
 
     void pop() {
         m_head = m_head.tail();
-        checkHead();
+        if ( m_head.empty() && !m_queue.empty() ) {
+            m_head = g.successors( m_queue.front() );
+            m_queue.pop_front();
+        }
+    }
+
+    // Only useful after a pop()!
+    bool deadlocked() {
+        return m_head.empty();
+    }
+
+    bool removeDeadlocked() { // returns true if there was a deadlock to remove
+        assert( m_head.empty() );
+        if ( m_queue.empty() )
+            return false;
+        m_head = g.successors( m_queue.front() );
+        m_queue.pop_front();
+        return true;
+    }
+
+    Node nextFrom() {
+        return m_head.from();
     }
 
     void checkHead() {
@@ -213,6 +234,12 @@ struct Stack {
     void clear() { while ( !empty() ) pop(); }
 
     Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
+
+    bool deadlocked() { return false; }
+    bool removeDeadlocked() { return false; }
+    Node nextFrom() {
+        return m_stack.back().from();
+    }
 };
 
 template< typename T >

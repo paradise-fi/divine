@@ -15,7 +15,8 @@
 namespace divine {
 namespace visitor {
 
-enum TransitionAction { ExpandTransition, // force expansion on the target state
+enum TransitionAction { TerminateOnTransition,
+                        ExpandTransition, // force expansion on the target state
                         FollowTransition, // expand the target state if it's
                                           // not been expanded yet
                         ForgetTransition, // do not act upon this transition;
@@ -24,10 +25,10 @@ enum TransitionAction { ExpandTransition, // force expansion on the target state
                                           // exist; this also means that the
                                           // target state of the transition is
                                           // NOT FREED
-                        TerminateOnTransition
 };
 
-enum ExpansionAction { ExpandState, TerminateOnState };
+enum ExpansionAction { TerminateOnState, ExpandState };
+enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
 
 template< typename T >
 inline bool alias( T a, T b ) {
@@ -68,6 +69,7 @@ struct Setup {
     }
 
     static void finished( Notify &, Node n ) {}
+    static DeadlockAction deadlocked( Notify &, Node n ) { return IgnoreDeadlock; }
 
     static TransitionAction transitionHint( Notify &n, Node a, Node b ) {
         return FollowTransition;
@@ -122,6 +124,13 @@ struct Common {
                 return;
             std::pair< Node, Node > c = m_queue.next();
             m_queue.pop();
+            while ( m_queue.deadlocked() ) {
+                Node dead = m_queue.nextFrom();
+                if ( !m_queue.removeDeadlocked() )
+                    break;
+                if ( S::deadlocked( m_notify, dead ) == TerminateOnDeadlock )
+                    return terminate();
+            }
             edge( c.first, c.second );
         }
     }
@@ -164,7 +173,11 @@ struct Common {
             m_graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
-            clearQueue();
+            terminate();
+    }
+
+    void terminate() {
+        clearQueue();
     }
 
     void clearQueue() {
@@ -186,10 +199,10 @@ struct Common {
 };
 
 template< typename S >
-struct BFV : Common< BufferedQueue, S > {
+struct BFV : Common< Queue, S > {
     typedef typename S::Seen Seen;
     BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0 )
-        : Common< BufferedQueue, S >( g, n, s ) {}
+        : Common< Queue, S >( g, n, s ) {}
 };
 
 template< typename S >
@@ -276,6 +289,10 @@ struct Parallel {
                 return visitor::IgnoreTransition;
             }
             return visitor::FollowTransition;
+        }
+
+        static DeadlockAction deadlocked( P &p, Node n ) {
+            return S::deadlocked( p.notify, n );
         }
     };
 
