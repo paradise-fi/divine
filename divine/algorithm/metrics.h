@@ -71,6 +71,10 @@ struct Statistics {
         ++ transitions;
     }
 
+    void addDeadlock() {
+        ++ deadlocks;
+    }
+
     void updateResult( Result &res ) {
         res.visited += states;
         res.deadlocks += deadlocks;
@@ -153,9 +157,15 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
         return visitor::FollowTransition;
     }
 
+    struct VisitorSetup : visitor::Setup< G, Metrics< G >, Table > {
+        static visitor::DeadlockAction deadlocked( Metrics< G > &r, Node n ) {
+            r.shared.stats.addDeadlock();
+            return visitor::IgnoreDeadlock;
+        }
+    };
+
     void _visit() { // parallel
         m_initialTable = &shared.initialTable; // XXX find better place for this
-        typedef visitor::Setup< G, Metrics< G >, Table > VisitorSetup;
         visitor::Parallel< VisitorSetup, Metrics< G >, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
         vis.exploreFrom( shared.g.initial() );
