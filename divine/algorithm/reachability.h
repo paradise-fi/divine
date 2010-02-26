@@ -114,9 +114,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         return visitor::FollowTransition;
     }
 
-    void _visit() { // parallel
-        typedef visitor::Setup< G, Reachability< G >, Table > VisitorSetup;
+    struct VisitorSetup : visitor::Setup< G, Reachability< G >, Table > {
+        static visitor::DeadlockAction deadlocked( Reachability< G > &r, Node n ) {
+            r.shared.goal = n;
+            r.shared.stats.addDeadlock();
+            return visitor::TerminateOnDeadlock;
+        }
+    };
 
+    void _visit() { // parallel
         m_initialTable = &shared.initialTable;
         visitor::Parallel< VisitorSetup, Reachability< G >, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
