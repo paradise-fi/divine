@@ -47,6 +47,11 @@ namespace sys {
  */
 class Mutex
 {
+private:
+	// Disallow copy
+	Mutex(const Mutex&);
+	Mutex& operator=(const Mutex&);
+
 protected:
 #ifdef POSIX
 	pthread_mutex_t mutex;
@@ -196,7 +201,7 @@ public:
 template< typename Mutex >
 class MutexLockT
 {
-public:
+protected:
 	Mutex& mutex;
         bool locked;
         bool yield;
@@ -247,6 +252,11 @@ typedef MutexLockT< Mutex > MutexLock;
  */
 class Condition
 {
+private:
+	// Disallow copy
+	Condition(const Condition&);
+	Condition& operator=(const Condition&);
+
 protected:
 #ifdef POSIX
   pthread_cond_t cond;
