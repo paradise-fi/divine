@@ -8,6 +8,12 @@ if(COMMAND cmake_policy)
   cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+if(NOT CMAKE_BUILD_TYPE)
+ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+     "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
+     FORCE)
+endif(NOT CMAKE_BUILD_TYPE)
+
 macro(appendFlag flags value)
   foreach( F ${flags} )
     set( CMAKE_${F}_FLAGS "${CMAKE_${F}_FLAGS} ${value}" )
