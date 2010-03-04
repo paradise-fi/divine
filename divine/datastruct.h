@@ -62,35 +62,32 @@ struct Queue {
     typedef typename Graph::Node Node;
     std::deque< Node > m_queue;
     typename Graph::Successors m_head;
-    bool is_empty;
+    bool maybe_deadlock;
 
     void pushSuccessors( const Node &t )
     {
         m_queue.push_back( t );
-        is_empty = false;
     }
 
     void pop() {
         m_head = m_head.tail();
-        if ( m_head.empty() ) {
-            if ( !m_queue.empty() )
-                dropEmptyHead();
-            else
-                is_empty = true;
-        }
+        maybe_deadlock = false;
+        if ( m_head.empty() && !m_queue.empty() )
+            dropEmptyHead();
     }
 
-    // Only useful after a pop()!
     bool deadlocked() {
-        return !is_empty && m_head.empty();
+        if (m_head.empty() && !m_queue.empty() && !maybe_deadlock)
+            dropEmptyHead();
+        return maybe_deadlock && m_head.empty();
     }
 
     void removeDeadlocked() {
         assert( m_head.empty() );
         if ( !m_queue.empty() )
             dropEmptyHead();
-        if ( m_queue.empty() )
-            is_empty = true;
+        else
+            maybe_deadlock = false;
     }
 
     Node nextFrom() {
@@ -105,6 +102,7 @@ struct Queue {
     void dropEmptyHead() {
         assert( m_head.empty() && !m_queue.empty() );
         m_head = g.successors( m_queue.front() );
+        maybe_deadlock = true;
         m_queue.pop_front();
     }
 
@@ -125,7 +123,7 @@ struct Queue {
     void popFinished() {}
     Node from() { return Node(); }
 
-    Queue( Graph &_g ) : g( _g ) {}
+    Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ) {}
 };
 
 template< typename Graph >

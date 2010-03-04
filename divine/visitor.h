@@ -114,22 +114,31 @@ struct Common {
         processQueue();
     }
 
-    void processQueue() {
-        while ( true ) {
+    void processDeadlocks() {
+        while ( m_queue.deadlocked() ) {
+            Node dead = m_queue.nextFrom();
+            m_queue.removeDeadlocked();
+            if ( S::deadlocked( m_notify, dead ) == TerminateOnDeadlock )
+                return terminate();
+        }
+    }
+
+    void processFinished() {
             while ( m_queue.finished() ) {
                 S::finished( m_notify, m_queue.from() );
                 m_queue.popFinished();
             }
+    }
+
+    void processQueue() {
+        while ( true ) {
+            processFinished();
+            processDeadlocks();
             if ( m_queue.empty() )
                 return;
             std::pair< Node, Node > c = m_queue.next();
             m_queue.pop();
-            while ( m_queue.deadlocked() ) {
-                Node dead = m_queue.nextFrom();
-                m_queue.removeDeadlocked();
-                if ( S::deadlocked( m_notify, dead ) == TerminateOnDeadlock )
-                    return terminate();
-            }
+            processDeadlocks();
             edge( c.first, c.second );
         }
     }
