@@ -53,18 +53,21 @@ struct _MpiId< Metrics< G > >
  */
 template< typename G >
 struct Statistics {
-    int states, transitions, accepting, goals, deadlocks;
+    int states, transitions, accepting, deadlocks, expansions;
 
-    Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), goals( 0 ), deadlocks( 0 ) {}
+    Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), deadlocks( 0 ), expansions( 0 ) {}
 
     void addNode( G &g, typename G::Node n ) {
         ++states;
         if ( g.isAccepting( n ) )
             ++ accepting;
+        addExpansion();
         if ( g.isDeadlock( n ) )
             ++ deadlocks;
-        if ( g.isGoal( n ) )
-            ++ goals;
+    }
+
+    void addExpansion() {
+        ++expansions;
     }
 
     void addEdge() {
@@ -96,7 +99,7 @@ struct Statistics {
         *o++ = states;
         *o++ = transitions;
         *o++ = accepting;
-        *o++ = goals;
+        *o++ = expansions;
         *o++ = deadlocks;
         return o;
     }
@@ -106,7 +109,7 @@ struct Statistics {
         states = *i++;
         transitions = *i++;
         accepting = *i++;
-        goals = *i++;
+        expansions = *i++;
         deadlocks = *i++;
         return i;
     }
@@ -116,7 +119,7 @@ struct Statistics {
         states += other.states;
         transitions += other.transitions;
         accepting += other.accepting;
-        goals += other.goals;
+        expansions += other.expansions;
         deadlocks += other.deadlocks;
     }
 

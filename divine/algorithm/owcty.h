@@ -199,6 +199,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         assert( extension( st ).predCount > 0 );
         assert( extension( st ).inS );
         ++ shared.size;
+        shared.stats.addExpansion();
         return visitor::ExpandState;
     }
 
@@ -303,6 +304,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         extension( st ).inS = false;
         if ( extension( st ).inF )
             shared.size ++;
+        shared.stats.addExpansion();
         return visitor::ExpandState;
     }
 

@@ -106,7 +106,6 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G > >
         shared.stats.addEdge();
 
         if ( shared.g.isGoal( t ) ) {
-            shared.stats.goals ++;
             shared.goal = t;
             return visitor::TerminateOnTransition;
         }
