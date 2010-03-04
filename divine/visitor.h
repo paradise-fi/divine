@@ -126,8 +126,7 @@ struct Common {
             m_queue.pop();
             while ( m_queue.deadlocked() ) {
                 Node dead = m_queue.nextFrom();
-                if ( !m_queue.removeDeadlocked() )
-                    break;
+                m_queue.removeDeadlocked();
                 if ( S::deadlocked( m_notify, dead ) == TerminateOnDeadlock )
                     return terminate();
             }

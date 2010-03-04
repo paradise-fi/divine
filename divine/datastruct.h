@@ -62,32 +62,35 @@ struct Queue {
     typedef typename Graph::Node Node;
     std::deque< Node > m_queue;
     typename Graph::Successors m_head;
+    bool is_empty;
 
     void pushSuccessors( const Node &t )
     {
         m_queue.push_back( t );
+        is_empty = false;
     }
 
     void pop() {
         m_head = m_head.tail();
-        if ( m_head.empty() && !m_queue.empty() ) {
-            m_head = g.successors( m_queue.front() );
-            m_queue.pop_front();
+        if ( m_head.empty() ) {
+            if ( !m_queue.empty() )
+                dropEmptyHead();
+            else
+                is_empty = true;
         }
     }
 
     // Only useful after a pop()!
     bool deadlocked() {
-        return m_head.empty();
+        return !is_empty && m_head.empty();
     }
 
-    bool removeDeadlocked() { // returns true if there was a deadlock to remove
+    void removeDeadlocked() {
         assert( m_head.empty() );
+        if ( !m_queue.empty() )
+            dropEmptyHead();
         if ( m_queue.empty() )
-            return false;
-        m_head = g.successors( m_queue.front() );
-        m_queue.pop_front();
-        return true;
+            is_empty = true;
     }
 
     Node nextFrom() {
@@ -95,10 +98,14 @@ struct Queue {
     }
 
     void checkHead() {
-        while ( m_head.empty() && !m_queue.empty() ) {
-            m_head = g.successors( m_queue.front() );
-            m_queue.pop_front();
-        }
+        while ( m_head.empty() && !m_queue.empty() )
+            dropEmptyHead();
+    }
+
+    void dropEmptyHead() {
+        assert( m_head.empty() && !m_queue.empty() );
+        m_head = g.successors( m_queue.front() );
+        m_queue.pop_front();
     }
 
     std::pair< Node, Node > next() {
