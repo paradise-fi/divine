@@ -7,12 +7,13 @@ import Data.Int
 import Data.Storable
 import Foreign.Ptr
 import Divine.Generator
+import Divine.Blob
 
 -- import Data.DeriveTH
 -- import qualified Data.Derive.Storable
 
 data P = P Int16
-data Q = Q Int16 Int16
+data Q = Q Int16 Int16 deriving Show
 
 instance StorableM Q where
     sizeOfM (Q a b) = do sizeOfM a
@@ -51,17 +52,10 @@ instance Process Q where
 
 type My = Q -- PComp P P
 
-get_state_size = ffi_getStateSize (initial :: My)
-get_initial_state t = ffi_initialState ((castPtr t) :: Ptr My)
-get_successor h f t = ffi_getSuccessor h ((castPtr f) :: Ptr My) (castPtr t)
-get_many_successors sl p g f t = ffi_getManySuccessors (initial :: My)
-                                   (fromIntegral sl)
-                                   (castPtr p) (castPtr g) (castPtr f) (castPtr t)
+get_initial = ffi_initialState (undefined :: My)
+get_successor = ffi_getSuccessor (undefined :: My)
+
 foreign export ccall
-    get_state_size :: IO CSize
+    get_initial :: Ptr Setup -> Ptr Blob -> IO ()
 foreign export ccall
-    get_initial_state :: CString -> IO ()
-foreign export ccall
-    get_successor :: CInt -> CString -> CString -> IO CInt
-foreign export ccall
-    get_many_successors :: CInt -> CString -> CString -> CString -> CString -> IO ()
+    get_successor :: Ptr Setup -> CInt -> Blob -> Ptr Blob -> IO CInt

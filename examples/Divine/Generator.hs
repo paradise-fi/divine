@@ -7,6 +7,7 @@ module Divine.Generator (
     CString,
     CSize,
     CInt,
+    Setup,
     ffi_initialState,
     ffi_getSuccessor,
     ffi_getManySuccessors,
@@ -50,18 +51,44 @@ instance forall p q. (Storable p, Storable q) => Storable (PComp p q) where
 -- FFI interface
 --
 
+data Setup = Setup P.Pool Int
+
+instance Storable Setup where
+  sizeOf _ = 2 * (sizeOf (undefined :: CInt)) + 2 * (sizeOf (undefined :: Ptr ()))
+  alignment _ = 4
+  peek ptr = do p' <- peekByteOff ptr 0
+                p <- peek p'
+                s <- peekByteOff ptr (2 * sizeOf (undefined :: Ptr ()))
+                return $ Setup p s
+
 ffi_getStateSize :: forall p. (StorableM p) => p -> IO CSize
 ffi_getStateSize s = return $ fromIntegral $ sizeOfV s
 
-ffi_initialState :: (Process p, StorableM p) => Ptr p -> IO ()
-ffi_initialState out = pokeV out initial
+newBlob :: forall x. (StorableM x) => Ptr Setup -> x -> IO Blob
+newBlob setup v = do Setup pool slack <- peek setup
+                     blob <- poolBlob pool slack v
+                     pokeBlob blob slack v
+                     return blob
+{-# INLINE newBlob #-}
+
+fromBlob :: forall x. (StorableM x) => Ptr Setup -> Blob -> IO x
+fromBlob setup blob = do Setup _ slack <- peek setup
+                         peekBlob blob slack
+
+ffi_initialState :: forall p. (Process p, StorableM p) => p -> Ptr Setup -> Ptr Blob -> IO ()
+ffi_initialState _ setup to = do
+  to' <- newBlob setup (initial :: p)
+  poke to to'
 {-# INLINE ffi_initialState #-}
 
-ffi_getSuccessor :: (Process p, StorableM p) => CInt -> Ptr p -> Ptr p -> IO CInt
-ffi_getSuccessor handle from to = do
-  from' <- peekV from
+ffi_getSuccessor :: forall p. (Show p, Process p, StorableM p) =>
+                    p -> Ptr Setup -> CInt -> Blob -> Ptr Blob -> IO CInt
+ffi_getSuccessor _ setup handle from to = do
+  from' :: p <- fromBlob setup from
   let (res, i) = (numerate' $ successors) from' (fromIntegral handle)
-  unless (i == 0) $ pokeV to res
+  unless (i == 0) $ do to' <- newBlob setup res
+                       poke to to'
+  to' <- peek to
   return $ fromIntegral i
 {-# INLINE ffi_getSuccessor #-}
 

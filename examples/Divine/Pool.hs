@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables #-}
 module Divine.Pool ( Pool, Group, get, alloc, ccall_alloc ) where
 
 import Prelude hiding ( last )
@@ -18,14 +18,20 @@ data Group = Group { -- item :: !CSize, used :: !CSize, total :: !CSize,
                      current :: !(Ptr ()),
                      last :: !(Ptr ()) }
 
-type Pool = (Ptr (), Ptr Group)
+data Pool = Pool (Ptr ()) (Ptr Group) deriving Show
 
 sz_ptr = sizeOf (undefined :: Ptr ())
 sz_size = sizeOf (undefined :: CSize)
 
+instance Storable Pool where
+  sizeOf _ = 2 * sz_size + sz_ptr -- just the FFI "header" part
+  peek p = do n :: CSize <- peekByteOff p sz_size
+              g <- peekByteOff p (2 * sz_size)
+              return $ Pool (castPtr p) g
+
+-- This sort of depends on representation of std::vector...
 instance Storable Group where
-    sizeOf _ = 3 * sizeOf (undefined :: CSize) +
-                     2 * 3 * sizeOf (undefined :: Ptr ())
+    sizeOf _ = 3 * sz_size + 2 * 3 * sz_ptr
     peek p = do f <- peekByteOff (castPtr p) (3 * sz_size)
                 c <- peekByteOff (castPtr p) (3 * sz_size + sz_ptr)
                 l <- peekByteOff (castPtr p) (3 * sz_size + 2 * sz_ptr)
@@ -43,11 +49,11 @@ pokeFree :: Ptr Group -> Ptr (Ptr ()) -> IO ()
 pokeFree p fr = pokeByteOff (castPtr p) (3 * sz_size) fr
 
 get :: Ptr () -> Ptr Group -> IO Pool
-get pool grp = return (pool, grp)
+get pool grp = return $ Pool pool grp
 {-# INLINE get #-}
 
-groups = snd
-ptr = fst
+groups (Pool _ g) = g
+ptr (Pool p _) = p
 groupCount :: Pool -> IO CInt
 groupCount p = peek (castPtr $ ptr p)
 
