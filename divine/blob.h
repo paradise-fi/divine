@@ -49,6 +49,7 @@ struct Blob
         header().size = size;
         header().permanent = 0;
         header().heap = 0;
+        assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
     explicit Blob( int size ) {
@@ -57,11 +58,15 @@ struct Blob
         header().size = size;
         header().permanent = 0;
         header().heap = 1;
+        assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
     explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
     explicit Blob( char *s, bool s_is_data = false )
-        : ptr( s_is_data ? s - sizeof( BlobHeader ) : s ) {}
+        : ptr( s_is_data ? s - sizeof( BlobHeader ) : s )
+    {
+        assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
+    }
 
     template< typename A >
     void free( A &a ) {
