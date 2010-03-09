@@ -27,10 +27,6 @@ struct LegacyCommon : Common {
         Node _from;
         LegacyCommon *parent;
 
-        int result() {
-            return 0;
-        }
-
         bool empty() const {
             if ( !_from.valid() )
                 return true;

@@ -24,10 +24,6 @@ struct Dummy : Common {
         mutable Node _from;
         int nth;
 
-        int result() {
-            return 0;
-        }
-
         bool empty() const {
             if ( !_from.valid() )
                 return true;

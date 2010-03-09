@@ -47,10 +47,6 @@ struct Custom : Common {
         mutable int handle;
         Custom *custom;
 
-        int result() {
-            return 0;
-        }
-
         bool empty() const {
             if ( !_from.valid() )
                 return true;
