@@ -39,11 +39,11 @@ struct Result
 {
     enum R { Yes, No, Unknown };
     R ltlPropertyHolds, fullyExplored;
-    uint64_t visited, expanded, deadlocks;
+    uint64_t visited, expanded, deadlocks, transitions;
     std::string iniTrail, cycleTrail;
     Result() :
         ltlPropertyHolds( Unknown ), fullyExplored( Unknown ),
-        visited( 0 ), expanded( 0 ), deadlocks( 0 ),
+        visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ),
         iniTrail( "-" ), cycleTrail( "-" )
     {}
 };
@@ -301,6 +301,7 @@ struct Report : wibble::sys::Thread
         o << std::endl;
         o << "States-Visited: " << res.visited << std::endl;
         o << "States-Expanded: " << res.expanded << std::endl;
+        o << "Transition-Count: " << res.transitions << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
         o << std::endl;
         o << "Trail-Init: " << res.iniTrail << std::endl;

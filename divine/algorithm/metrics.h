@@ -82,6 +82,7 @@ struct Statistics {
         res.visited += states;
         res.deadlocks += deadlocks;
         res.expanded += expansions;
+        res.transitions += transitions;
     }
 
     void print( std::ostream &o ) {
