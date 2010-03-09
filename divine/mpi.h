@@ -21,6 +21,7 @@ namespace divine {
 #define TAG_INTERRUPT   7
 #define TAG_RING_RUN    8
 #define TAG_RING_DONE   9
+#define TAG_SOLICIT_SHARED 10
 
 #define TAG_ID           100
 
@@ -138,8 +139,12 @@ struct Mpi {
     }
 
     void collectSharedBits() {
+        if (!master())
+            return;
+
         MPI::Status status;
         std::vector< int32_t > shbits;
+        notifySlaves( TAG_SOLICIT_SHARED, 0 );
         for ( int i = 0; i < size(); ++ i ) {
             if ( i == rank() )
                 continue;
@@ -258,6 +263,9 @@ struct Mpi {
             case TAG_RUN:
                 run( id );
                 break;
+            case TAG_SOLICIT_SHARED:
+                returnSharedBits( status.Get_source() );
+                break;
             default:
                 assert( 0 );
         }
@@ -337,7 +345,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
         if ( one.first == two.first && two.first == two.second ) {
             m_domain.mpi.notifySlaves( TAG_DONE, 0 );
-            m_domain.mpi.collectSharedBits();
 
             if ( m_domain.barrier().idle( this ) )
                 return true;
@@ -393,7 +400,6 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                                       status.Get_source(), TAG_GIVE_COUNTS );
                 return false;
             case TAG_DONE:
-                m_domain.mpi.returnSharedBits( status.Get_source() );
                 return m_domain.barrier().idle( this );
             case TAG_INTERRUPT:
                 ++ recv;
@@ -497,6 +503,7 @@ struct Mpi {
     int rank() { return 0; }
     int size() { return 1; }
     void notifySlaves( int, int ) {}
+    void collectSharedBits() {}
 
     template< typename Shared, typename F >
     void runOnSlaves( Shared, F ) {}

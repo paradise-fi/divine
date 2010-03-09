@@ -329,6 +329,7 @@ struct Domain {
             m_domain->mpi.runOnSlaves( sh, f );
 
             this->runThreads();
+            m_domain->mpi.collectSharedBits(); // wait for shared stuff
             m_domain->barrier().clear();
         }
 
