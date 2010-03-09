@@ -60,10 +60,11 @@ struct Custom : Common {
         Node from() { return _from; }
 
         void force() const {
-            if ( my.valid() ) return;
+            if ( my.valid() || !handle ) return;
             char *state;
             handle = parent->dl.get_successor( &(parent->setup), handle, _from.pointer(), &state );
-            my = Blob( state );
+            if ( handle )
+                my = Blob( state );
         }
 
         Node head() {
