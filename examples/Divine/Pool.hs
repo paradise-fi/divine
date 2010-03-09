@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables #-}
+{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables, PatternSignatures #-}
 module Divine.Pool ( Pool, Group, get, alloc, ccall_alloc ) where
 
 import Prelude hiding ( last )
