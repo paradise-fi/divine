@@ -14,38 +14,41 @@
 namespace divine {
 namespace generator {
 
+#include <divine/generator/custom-api.h>
+
+/**
+ * A binary model loader. The model is expected to be a shared object (i.e. .so
+ * on ELF systems, and a .dll on win32).
+ */
+
 struct Custom : Common {
     typedef Blob Node;
     std::string file;
 
-    typedef void (*dl_get_initial_state_t)(char *);
-    typedef size_t (*dl_get_state_size_t)();
-    typedef int (*dl_get_successor_t)(int, char *, char *);
-    typedef bool (*dl_is_accepting_t)(char *, int);
-    typedef void (*dl_get_many_successors_t)(int, char *, char *, char *, char *);
+    typedef void (*dl_setup_t)(CustomSetup *);
+    typedef void (*dl_get_initial_t)(CustomSetup *, char **);
+    typedef int (*dl_get_successor_t)(CustomSetup *, int, char *, char **);
+    typedef bool (*dl_is_accepting_t)(CustomSetup *, char *, int);
+    typedef void (*dl_cache_successors_t)(CustomSetup *, SuccessorCache *);
 
     struct Dl {
         void *handle;
-        dl_get_initial_state_t get_initial_state;
+        dl_get_initial_t get_initial;
         dl_get_successor_t get_successor;
         dl_is_accepting_t is_accepting;
-        dl_get_state_size_t get_state_size;
-        dl_get_many_successors_t get_many_successors;
-        size_t size;
+        dl_setup_t setup;
+        dl_cache_successors_t cache_successors;
 
-        Dl() : get_initial_state( 0 ), get_successor( 0 ), is_accepting( 0 ),
-               get_state_size( 0 ), get_many_successors( 0 ),
-               size( 0 ) {}
+        Dl() : get_initial( 0 ), get_successor( 0 ), is_accepting( 0 ),
+               setup( 0 ), cache_successors( 0 ) {}
     } dl;
-
-    typedef wibble::Unit CircularSupport;
 
     struct Successors {
         typedef Node Type;
         Node _from;
         mutable Node my;
         mutable int handle;
-        Custom *custom;
+        Custom *parent;
 
         bool empty() const {
             if ( !_from.valid() )
@@ -58,12 +61,9 @@ struct Custom : Common {
 
         void force() const {
             if ( my.valid() ) return;
-            my = custom->alloc.new_blob( custom->dl.size );
-            handle = custom->dl.get_successor(
-                handle,
-                custom->nodeData( _from ), custom->nodeData( my ) );
-            if ( handle == 0 )
-                custom->release( my );
+            char *state;
+            handle = parent->dl.get_successor( &(parent->setup), handle, _from.pointer(), &state );
+            my = Blob( state );
         }
 
         Node head() {
@@ -79,32 +79,14 @@ struct Custom : Common {
         }
     };
 
+    CustomSetup setup;
+
     Successors successors( Node s ) {
         Successors succ;
         succ._from = s;
-        succ.custom = this;
+        succ.parent = this;
         succ.handle = 1;
         return succ;
-    }
-
-    template< typename C1, typename C2 >
-    void fillCircular( C1 &in, C2 &out )
-    {
-        if ( in.empty() )
-            return;
-#ifndef DISABLE_POOLS
-        if ( dl.get_many_successors ) {
-            Pool *p = &pool();
-            dl.get_many_successors( alloc._slack, (char *) p,
-                                    (char *) &(p->m_groups.front()),
-                                    (char *) &in, (char *) &out );
-        } else
-#endif
-            fillCircularTedious( *this, in, out );
-    }
-
-    char *nodeData( Blob b ) {
-        return b.data() + alloc._slack;
     }
 
     int nodeSize( Blob b ) {
@@ -112,9 +94,10 @@ struct Custom : Common {
     }
 
     Node initial() {
-        Blob b = alloc.new_blob( dl.size );
-        dl.get_initial_state( nodeData( b ) );
-        return b;
+        char *state;
+        assert_eq( setup.pool, &pool() );
+        dl.get_initial( &setup, &state );
+        return Blob( state );
     }
 
     void die( const char *fmt, ... ) __attribute__((noreturn)) {
@@ -134,28 +117,32 @@ struct Custom : Common {
         if( !dl.handle )
             die( "FATAL: Error loading \"%s\".\n%s", path.c_str(), dlerror() );
 
-        dl.get_initial_state = (dl_get_initial_state_t)
-                               dlsym(dl.handle, "get_initial_state");
-        dl.get_successor = (dl_get_successor_t)
-                           dlsym(dl.handle, "get_successor");
-        dl.is_accepting = (dl_is_accepting_t)
-                           dlsym(dl.handle, "is_accepting");
-        dl.get_state_size = (dl_get_state_size_t)
-                            dlsym(dl.handle, "get_state_size");
-        dl.get_many_successors = (dl_get_many_successors_t)
-                                 dlsym(dl.handle, "get_many_successors");
+        dl.get_initial = (dl_get_initial_t) dlsym(dl.handle, "get_initial");
+        dl.setup = (dl_setup_t) dlsym(dl.handle, "setup");
+        dl.get_successor = (dl_get_successor_t) dlsym(dl.handle, "get_successor");
+        dl.is_accepting = (dl_is_accepting_t) dlsym(dl.handle, "is_accepting");
+        dl.cache_successors = (dl_cache_successors_t) dlsym(dl.handle, "cache_successors");
 
-        if( !dl.get_initial_state )
-            die( "FATAL: Could not resolve get_initial_state." );
-        if( !dl.get_state_size )
-            die( "FATAL: Could not resolve get_state_size." );
-        if( !dl.get_successor && !dl.get_many_successors )
-            die( "FATAL: Could not resolve neither of get_successor/get_many_successors." );
+        if( !dl.get_initial )
+            die( "FATAL: Could not resolve get_initial." );
+        if( !dl.get_successor )
+            die( "FATAL: Could not resolve get_successor." );
 
-        dl.size = dl.get_state_size();
+        setup.slack = alloc._slack;
+        setup.pool = &pool();
+        if ( dl.setup )
+            dl.setup( &setup );
+    }
 
-        std::cerr << path << " loaded [state size = "
-                  << dl.size << "]..." << std::endl;
+    Custom &operator=( const Custom &other ) {
+        dl = other.dl;
+        setup = other.setup;
+
+        setup.pool = &pool();
+        if ( dl.setup )
+            dl.setup( &setup );
+
+        return *this;
     }
 
 
@@ -163,7 +150,7 @@ struct Custom : Common {
 
     bool isAccepting( Node s ) {
         if ( dl.is_accepting )
-            return dl.is_accepting( nodeData( s ), nodeSize( s ) );
+            return dl.is_accepting( &setup, s.pointer(), nodeSize( s ) );
         else
             return false;
     }

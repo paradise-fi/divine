@@ -63,8 +63,12 @@ struct Pool {
         {}
     };
 
+    // for FFI
+    size_t m_groupCount;
+    size_t m_groupStructSize;
+    Group *m_groupArray;
+
     typedef std::vector< Group > Groups;
-    size_t m_groupCount; // for FFI
     Groups m_groups;
 
     Pool();
@@ -108,6 +112,11 @@ struct Pool {
             return 0;
     }
 
+    void ffi_update() {
+        m_groupCount = m_groups.size();
+        m_groupArray = &m_groups.front();
+    }
+
     Group *createGroup( size_t bytes )
     {
         assert( bytes % 4 == 0 );
@@ -121,7 +130,9 @@ struct Pool {
         g.last = b.start + b.size;
         g.total = b.size;
         m_groups.resize( std::max( bytes / 4 + 1, m_groups.size() ), Group() );
-        m_groupCount = m_groups.size();
+
+        ffi_update();
+
         assert_eq( m_groups[ bytes / 4 ].total, 0 );
         m_groups[ bytes / 4 ] = g;
         assert_neq( g.total, 0 );
