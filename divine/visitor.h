@@ -274,13 +274,16 @@ struct Parallel {
                     }
                     return;
                 }
-                Node f, t;
-                f = worker.fifo.next();
-                worker.fifo.remove();
-                t = worker.fifo.next( true );
-                worker.fifo.remove();
 
-                bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                while ( !worker.fifo.empty() ) {
+                    Node f, t;
+                    f = worker.fifo.next();
+                    worker.fifo.remove();
+                    t = worker.fifo.next( true );
+                    worker.fifo.remove();
+                    bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                }
+
                 bfv.processQueue();
             }
         }
