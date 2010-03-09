@@ -58,7 +58,7 @@ struct dve_compiler: public dve_explicit_system_t
     }
 
     dve_compiler(error_vector_t & evect=gerr)
-        : explicit_system_t(evect), dve_explicit_system_t(evect), current_label(0), m_indent( 0 )
+        : explicit_system_t(evect), dve_explicit_system_t(evect), current_label(1), m_indent( 0 )
     {}
     virtual ~dve_compiler() {}
 

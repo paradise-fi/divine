@@ -741,7 +741,7 @@ void dve_compiler::print_generator()
     line();
 
     many = false;
-    current_label = 0;
+    current_label = 1;
 
     gen_is_accepting();
 
