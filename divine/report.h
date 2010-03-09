@@ -300,7 +300,7 @@ struct Report : wibble::sys::Thread
         o << "Full-State-Space: " << res.fullyExplored << std::endl;
         o << std::endl;
         o << "States-Visited: " << res.visited << std::endl;
-        o << "State-Expansions: " << res.expanded << std::endl;
+        o << "States-Expanded: " << res.expanded << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
         o << std::endl;
         o << "Trail-Init: " << res.iniTrail << std::endl;
