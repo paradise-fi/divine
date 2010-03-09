@@ -583,7 +583,7 @@ void dve_compiler::gen_successors()
             if(dynamic_cast<dve_process_t*>(get_process(i))->get_commited(j))
                 if_clause( in_state( i, j, in ) );
 
-    if_end(); block_begin();
+    if_end(); block_begin(); // committed states
 
     for(size_int_t i = 0; i < this->get_process_count(); i++)
     {
@@ -601,7 +601,6 @@ void dve_compiler::gen_successors()
                     if_clause( in_state( i, iter_process_transition_map->first, in ) );
                     if_end(); block_begin();
 
-                    new_output_state();
 
                     for(iter_ext_transition_vector = iter_process_transition_map->second.begin();
                         iter_ext_transition_vector != iter_process_transition_map->second.end();
@@ -613,18 +612,24 @@ void dve_compiler::gen_successors()
                                 get_process(iter_ext_transition_vector->second->get_process_gid()))->
                             get_commited(iter_ext_transition_vector->second->get_state1_lid()) )
                         {
+                            new_label();
+
                             transition_guard( &*iter_ext_transition_vector, in );
                             block_begin();
+                            new_output_state();
                             transition_effect( &*iter_ext_transition_vector, in, out );
+                            yield_state();
                             block_end();
                         }
                     }
 
-                    yield_state();
                     block_end();
                 }
             }
     }
+
+    new_label(); // Trick. : - )
+    line( ";" );
 
     block_end();
     line( "else" );
