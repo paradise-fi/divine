@@ -38,7 +38,7 @@ struct Compile {
         compiler.read( in.c_str() );
         compiler.analyse();
 
-        std::string outfile = str::basename( in ) + ".c";
+        std::string outfile = str::basename( in ) + ".cpp";
         std::ofstream out( outfile.c_str() );
         compiler.setOutput( out );
         compiler.print_generator();
