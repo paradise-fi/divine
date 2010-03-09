@@ -30,5 +30,5 @@ grep FOUND progress
 grep "^Finished: Yes" report
 
 divine compile haoEEDM.dve
-divine metrics --report haoEEDM.dve > report
+divine metrics --report haoEEDM.dve.so > report
 grep "^States-Visited: 502" report
