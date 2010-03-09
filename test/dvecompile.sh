@@ -19,7 +19,11 @@ grep "^States-Visited:" report
 grep "^States-Visited: 181450" report
 
 divine compile leader_election.dve
-divine reachability --report leader_election.dve.so > report
+divine metrics --report leader_election.dve.so > report
 grep "^Finished: Yes" report
 grep "^States-Visited:" report
 grep "^States-Visited: 2152" report
+
+divine reachability --report leader_election.dve.so > report 2> progress
+grep FOUND progress
+grep "^Finished: Yes" report
