@@ -29,7 +29,16 @@ struct Compile {
 
     void gplusplus( std::string in, std::string out, std::string flags = "" ) {
         std::stringstream cmd;
-        cmd << "g++ -O2 -shared -fPIC " << flags << " -o " << out << " " << in;
+        std::string multiarch =
+#if defined(USE_GCC_M32)
+            "-m32 "
+#elif defined(USE_GCC_M64)
+            "-m64 "
+#else
+            ""
+#endif
+            ;
+        cmd << "g++ -O2 -shared -fPIC " << multiarch << flags << " -o " << out << " " << in;
         run( cmd.str() );
     }
 

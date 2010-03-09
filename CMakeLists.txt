@@ -40,10 +40,12 @@ endif( PROFILE )
 
 if( USE64 )
   appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m64" )
+  add_definitions( -DUSE_GCC_M64 )
 endif( USE64 )
 
 if( USE32 )
   appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m32" )
+  add_definitions( -DUSE_GCC_M32 )
 endif( USE32 )
 
 if( NOT POOLS )
