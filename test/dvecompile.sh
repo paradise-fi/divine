@@ -4,6 +4,7 @@ not () { "$@" && exit 1 || return 0; }
 rm -f peterson-naive.dve.so
 rm -f leader_election.dve.so
 rm -f shuffle.dve.so
+rm -f haoEEDM.dve.so
 
 divine compile peterson-naive.dve
 divine metrics --report peterson-naive.dve.so > report
@@ -27,3 +28,7 @@ grep "^States-Visited: 2152" report
 divine reachability --report leader_election.dve.so > report 2> progress
 grep FOUND progress
 grep "^Finished: Yes" report
+
+divine compile haoEEDM.dve
+divine metrics --report haoEEDM.dve > report
+grep "^States-Visited: 502" report

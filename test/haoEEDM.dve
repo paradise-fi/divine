@@ -1,0 +1,97 @@
+//This is the timed model of Mutual Exclusion protocol [1] attributed to Mike Fischer.
+// timing constraints are expressed by EEDM.
+// To know exactly when a trasition happens, after a lowerbound, the signal[i] set to 1 indicating that timer should decrement by 1 each time, signal[i] will be reset to 0 when reaching upperbound
+// Adding a constant M, indicating mode, 0 means jumping, 1 means 1by1
+//
+//[1] L. Lamport. A fast mutual exclusion algorithm. ACM Transactions on Computer Systems, 5(1):1-11, 1987.
+//
+//
+/////////////Constant Definitions////////////////
+//  number of threads
+
+
+
+//  number of time units for Delta
+
+//  number of time units for Epsilon
+
+//  number of time units for upperbound of Epsilon
+
+
+//  number of time units for infinity (for time upperbound)
+
+
+//  indicate jumping mode (0) or 1by1 mode (1)
+
+
+////////////Global Variables/////////////////////
+
+/////  the global variable in the MUX protocol
+byte x = 0;  // indicate who is in critical section
+byte c = 0;  // indicate how many process(es) are in critical section
+
+/////  the global variable for time
+
+//  ubTimers for all thread processes
+int timer[2] = {255 , 255 };
+
+//	signals for all thread processes
+byte signal[2] = {0 , 0 };
+
+////////////Process Definition///////////////////
+
+/////  The Tick process
+process P_Tick {
+  int l_min, l_ctr;
+  
+	state s_init, s_min;
+	commit s_min;
+	init s_init;
+	
+	trans 
+		s_init -> s_min { 
+				guard  signal[0]==0  && signal[1]==0   &&  timer[0]>1  && timer[1]>1   && ( timer[0]!=255  || timer[1]!=255  ); 
+				effect l_min=timer[0], l_ctr=2-1;},
+		s_min -> s_min { guard l_ctr>0; 
+				effect l_min=((l_min<=timer[l_ctr])*l_min)|((l_min>timer[l_ctr])*timer[l_ctr]), l_ctr=l_ctr-1; },
+		s_min -> s_init { guard l_ctr==0; 
+				effect timer[0]=(timer[0]-l_min)|((timer[0]==255)*255) , timer[1]=(timer[1]-l_min)|((timer[1]==255)*255) ;},
+		s_init -> s_init {
+				guard ( signal[0]==1  || signal[1]==1   ||  timer[0]==1  || timer[1]==1  ) &&  timer[0]>0  && timer[1]>0   && ( timer[0]!=255  || timer[1]!=255  );
+				effect timer[0]=(timer[0]-1)|((timer[0]==255)*255) , timer[1]=(timer[1]-1)|((timer[1]==255)*255) ;};
+}
+
+/////  The Thread process
+
+
+process P0 {
+	byte l_ctr;
+	
+	state s_ncs, s_a, s_b, s_c, s_cs;
+	init s_ncs;
+	
+	trans
+		s_ncs -> s_a { guard x == 0; effect timer[0]= 4, signal[0]=1; },
+		s_a -> s_b { effect x=0+1, timer[0]=4, signal[0]=0; },
+		s_b -> s_c { guard timer[0]==0; effect timer[0]=4-4, signal[0]=1*((4-4)>0); },
+		s_c -> s_ncs { guard x != 0+1; effect timer[0]=255, signal[0]=0; },
+		s_c -> s_cs { guard x == 0+1; effect c=c+1, timer[0]=0; },
+		s_cs -> s_ncs { effect x=0, c=c-1, timer[0]=255, signal[0]=0; };	
+}
+process P1 {
+	byte l_ctr;
+	
+	state s_ncs, s_a, s_b, s_c, s_cs;
+	init s_ncs;
+	
+	trans
+		s_ncs -> s_a { guard x == 0; effect timer[1]= 4, signal[1]=1; },
+		s_a -> s_b { effect x=1+1, timer[1]=4, signal[1]=0; },
+		s_b -> s_c { guard timer[1]==0; effect timer[1]=4-4, signal[1]=1*((4-4)>0); },
+		s_c -> s_ncs { guard x != 1+1; effect timer[1]=255, signal[1]=0; },
+		s_c -> s_cs { guard x == 1+1; effect c=c+1, timer[1]=0; },
+		s_cs -> s_ncs { effect x=0, c=c-1, timer[1]=255, signal[1]=0; };	
+}
+
+
+system async;
