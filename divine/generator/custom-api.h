@@ -30,6 +30,7 @@ static inline CPoolGroup *pool_group( CPool *pool, int n ) {
 
 CPoolGroup *pool_extend( CPool *pool, int sz );
 void *pool_allocate( CPool *pool, int sz );
+void *pool_allocate_blob( CPool *pool, int sz );
 
 #else
 typedef Blob CBlob;
