@@ -20,14 +20,14 @@ struct Dummy : Common {
 
     struct Successors {
         typedef Node Type;
-        Allocator *alloc;
         mutable Node _from;
         int nth;
+        Dummy *parent;
 
         bool empty() const {
             if ( !_from.valid() )
                 return true;
-            Content f = _from.get< Content >( alloc->_slack );
+            Content f = _from.get< Content >( parent->alloc._slack );
             if ( f.first == 1024 || f.second == 1024 )
                 return true;
             return nth == 3;
@@ -42,22 +42,22 @@ struct Dummy : Common {
         }
 
         Node head() {
-            Node ret = alloc->new_blob( sizeof( Content ) );
-            ret.get< Content >( alloc->_slack ) =
-                _from.get< Content >( alloc->_slack );
+            Node ret = parent->alloc.new_blob( sizeof( Content ) );
+            ret.get< Content >( parent->alloc._slack ) =
+                _from.get< Content >( parent->alloc._slack );
             if ( nth == 1 )
-                ret.get< Content >( alloc->_slack ).first ++;
+                ret.get< Content >( parent->alloc._slack ).first ++;
             if ( nth == 2 )
-                ret.get< Content >( alloc->_slack ).second ++;
+                ret.get< Content >( parent->alloc._slack ).second ++;
             return ret;
         }
     };
 
     Successors successors( Node st ) {
         Successors ret;
-        ret.alloc = &alloc;
         ret._from = st;
         ret.nth = 1;
+        ret.parent = this;
         return ret;
     }
 
