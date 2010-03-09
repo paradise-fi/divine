@@ -77,7 +77,6 @@ struct LegacyCommon : Common {
         return legacy_system()->is_accepting( alloc.legacy_state( s ) );
     }
 
-    bool isDeadlock( State s ) { return false; } // XXX
     bool isGoal( State s ) { return false; } // XXX
     std::string showNode( State s ) {
         if ( !s.valid() )

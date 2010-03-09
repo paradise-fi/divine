@@ -62,8 +62,6 @@ struct Statistics {
         if ( g.isAccepting( n ) )
             ++ accepting;
         addExpansion();
-        if ( g.isDeadlock( n ) )
-            ++ deadlocks;
     }
 
     void addExpansion() {

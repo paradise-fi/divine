@@ -65,7 +65,6 @@ struct Dummy : Common {
         s.free( pool() );
     }
 
-    bool isDeadlock( Node s ) { return false; }
     bool isGoal( Node s ) {
         Content f = s.get< Content >( alloc._slack );
         return f.first == 512;

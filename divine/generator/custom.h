@@ -158,7 +158,7 @@ struct Custom : Common {
                   << dl.size << "]..." << std::endl;
     }
 
-    bool isDeadlock( Node s ) { return false; } // XXX
+
     bool isGoal( Node s ) { return false; } // XXX
 
     bool isAccepting( Node s ) {
