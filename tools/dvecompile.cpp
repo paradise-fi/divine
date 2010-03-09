@@ -120,6 +120,7 @@ std::string dve_compiler::cexpr( dve_expression_t & expr, std::string state )
 }
 
 namespace divine {
+extern const char *generator_custom_api_h_str;
 extern const char *pool_h_str;
 extern const char *circular_h_str;
 extern const char *blob_h_str;
@@ -157,6 +158,11 @@ void dve_compiler::gen_header()
     line();
 
     line( divine::blob_h_str );
+    line();
+
+    line( "using namespace divine;" );
+
+    line( divine::generator_custom_api_h_str );
     line();
 }
 
@@ -543,12 +549,10 @@ void dve_compiler::transition_effect( ext_transition_t *et, std::string in, std:
 }
 
 void dve_compiler::new_output_state() {
-    if ( many ) {
-        line( "divine::Blob blob_out( *pool, slack + state_size );" );
-        line( "state_struct_t *out = (state_struct_t *)(blob_out.data() + slack);" );
-        line( "blob_out.clear( 0, slack );" );
-        line( "*out = *in;" );
-    }
+    line( "divine::Blob blob_out( *(setup->pool), setup->slack + state_size );" );
+    line( "state_struct_t *out = &blob_out.get< state_struct_t >( setup->slack );" );
+    line( "blob_out.clear( 0, setup->slack );" );
+    line( "*out = *in;" );
 }
 
 void dve_compiler::yield_state() {
@@ -561,6 +565,7 @@ void dve_compiler::yield_state() {
         line( "buf_out->add( blob_out );" );
         line( "++states_emitted;" );
     } else {
+        line( "*to = blob_out;" );
         line( "return " + fmt( current_label ) + ";" );
     }
 }
@@ -692,10 +697,10 @@ void dve_compiler::gen_is_accepting()
     if(!have_property)
         return;
 
-    line( "extern \"C\" bool is_accepting( char *_state, int size )" );
+    line( "extern \"C\" bool is_accepting( CustomSetup *setup, Blob b, int size )" );
     block_begin();
 
-    line( "state_struct_t &state = * (state_struct_t*) _state;" );
+    line( "state_struct_t &state = b.get< state_struct_t >( setup->slack );" );
     for(size_int_t i = 0; i < dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_state_count(); i++)
     {
         if (dynamic_cast<dve_process_t*>(get_process((get_property_gid())))->get_acceptance(i, 0, 1) )
@@ -723,8 +728,10 @@ void dve_compiler::print_generator()
     line( "}" );
     line();
 
-    line( "extern \"C\" void get_initial_state( char *to ) {" );
-    line( "    memcpy(to, initial_state, state_size);" );
+    line( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out ) {" );
+    line( "    Blob b( *(setup->pool), state_size + setup->slack );" );
+    line( "    memcpy(b.data() + setup->slack, initial_state, state_size);" );
+    line( "    *out = b;" );
     line( "}" );
     line();
 
@@ -733,11 +740,9 @@ void dve_compiler::print_generator()
 
     gen_is_accepting();
 
-    line( "extern \"C\" int get_successor( int next_state, char* from, char* to ) " );
+    line( "extern \"C\" int get_successor( CustomSetup *setup, int next_state, Blob from, Blob *to ) " );
     block_begin();
-    line( "state_struct_t *in = (state_struct_t*)from;" );
-    line( "state_struct_t *out = (state_struct_t*)to;" );
-    line( "*out = *in;" );
+    line( "state_struct_t *in = &from.get< state_struct_t >( setup->slack );" );
     line( "bool system_in_deadlock = false;" );
     line( "goto switch_state;" );
 
@@ -757,11 +762,11 @@ void dve_compiler::print_generator()
 
     block_end();
 
-    many = true;
-    current_label = 0;
-
+    // many = true;
+    // current_label = 0;
+#if 0
     line( "extern \"C\" void get_many_successors( int slack, char *_pool, char *," );
-    line( "                                       char *_buf_in, char *_buf_out ) " );
+    line( "                                       char *_buf_in, char *_buf_outf, char *_buf_outs ) " );
     block_begin();
     line( "divine::Pool *pool = (divine::Pool *) _pool;" );
     line( "typedef divine::Circular< divine::Blob, 0 > Buffer;" );
@@ -780,4 +785,5 @@ void dve_compiler::print_generator()
     line( "if ( buf_in->empty() ) return;" );
     line( "goto next;" );
     block_end();
+#endif
 }
