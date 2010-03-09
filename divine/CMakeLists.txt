@@ -33,6 +33,8 @@ set_source_files_properties( "${SHA1}.cpp" PROPERTIES GENERATED ON )
 
 macro( stringify file )
   string( REPLACE "." "_" fileu "${file}" )
+  string( REPLACE "/" "_" fileu "${fileu}" )
+  string( REPLACE "-" "_" fileu "${fileu}" )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
     DEPENDS ${file} ${STRINGIFY}
