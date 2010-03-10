@@ -72,7 +72,7 @@ int offset = 0;
 /********************
   void yyerror(char *s)
   ********************/
-void yyerror(char *s)
+void yyerror(const char *s)
 {
   Error.Error("%s. Last token read was \'%s\'",s,yytext);
 }
