@@ -3,8 +3,7 @@ not () { "$@" && exit 1 || return 0; }
 
 # TODO there are some issues with counterexamples and MPI, apparently
 mpiowcty() {
-    $MPIEXEC -H localhost,localhost divine owcty --no-counterexample \
-        --report "$@" 2> progress | tee report
+    $MPIEXEC -H localhost,localhost divine owcty --report "$@" 2> progress | tee report
 }
 
 check_valid() {
