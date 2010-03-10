@@ -84,7 +84,7 @@ struct rule:public TNode
   virtual rule_class getclass() const =0;
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -136,7 +136,7 @@ struct simplerule: rule
   virtual rule_class getclass() const {return Simple; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 
   int CountSize(ste * enclosures);
 
@@ -166,7 +166,7 @@ struct startstate: simplerule
   virtual rule_class getclass() const {return Startstate; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -188,7 +188,7 @@ struct invariant: simplerule
   virtual rule_class getclass() const {return Invar; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -205,7 +205,7 @@ struct fairness: simplerule
   virtual void set_name( char *name )
     { this->name = name != NULL ? name : tsprintf("Fairness %d", fairnessnum++);}
   virtual rule_class getclass() const {return Fair; };
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -229,7 +229,7 @@ struct liveness : rule
   virtual void set_name(char *name)
     { this->name = name != NULL ? name : tsprintf("Liveness %d", livenessnum++);}
   virtual rule_class getclass() const {return Live; };
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -246,7 +246,7 @@ struct quantrule: rule
   virtual rule_class getclass() const {return Quant; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -264,7 +264,7 @@ struct chooserule: rule
   virtual rule_class getclass() const {return Choose; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -280,7 +280,7 @@ struct aliasrule: rule
   virtual rule_class getclass() const {return Alias; };
 
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************

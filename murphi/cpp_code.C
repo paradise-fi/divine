@@ -158,13 +158,13 @@
 /********************
   code for decl
   ********************/
-char *decl::generate_decl()
+const char *decl::generate_decl()
 {
   Error.Error("Internal:  decl::generate_decl() should not have been called.");
   return "ERROR!";
 }
 
-char *decl::generate_code()
+const char *decl::generate_code()
 {
   return mu_name;
 }
@@ -172,7 +172,7 @@ char *decl::generate_code()
 /********************
   code for typedecl
  ********************/
-char *typedecl::generate_decl()
+const char *typedecl::generate_decl()
 {
   Error.Error("Internal:  typedecl::generate_code() should never have been called.");
   return "ERROR!";
@@ -203,7 +203,7 @@ void make_enum_idvalues(ste *idvalues, typedecl *thistype)
     }
 }
 
-char *enumtypedecl::generate_decl()
+const char *enumtypedecl::generate_decl()
 {
   if (!declared) { 
     /* Invent a name for the object, and a "mu_name" for
@@ -279,7 +279,7 @@ char *enumtypedecl::generate_decl()
   code for subrangetypedecl
  ********************/
 
-char *subrangetypedecl::generate_decl()
+const char *subrangetypedecl::generate_decl()
 {
   /* if decl has not already been generated... */
   if (!declared) { 
@@ -396,7 +396,7 @@ void make_elt_with_union(stelist * unionmembers, int numbits)
     Error.Error("funny element in union");
 }
 
-char *arraytypedecl::generate_decl()
+const char *arraytypedecl::generate_decl()
 {
   if (!declared) {
     if ( name == NULL ) {
@@ -761,12 +761,12 @@ char *arraytypedecl::generate_decl()
 /********************
   code for multisettypedecl
  ********************/
-char *multisetidtypedecl::generate_decl()
+const char *multisetidtypedecl::generate_decl()
 {
    return "ERROR!";
 }
 
-char *multisettypedecl::generate_decl()
+const char *multisettypedecl::generate_decl()
 {
   if (!declared) {
 
@@ -1194,7 +1194,7 @@ void multisetremovelist::generate_procedure()
  /********************
    code for recordtypedecl
   ********************/
-char *recordtypedecl::generate_decl()
+const char *recordtypedecl::generate_decl()
 {
   ste *f;
   if (!declared)
@@ -1445,7 +1445,7 @@ char *recordtypedecl::generate_decl()
      }
  }
  
-char *scalarsettypedecl::generate_decl()
+const char *scalarsettypedecl::generate_decl()
 {
   if (!declared)
     {
@@ -1659,7 +1659,7 @@ int make_bit_compacted_value(stelist *unionmembers)
 //   return base + t->getsize();
 // }  
  
-char *uniontypedecl::generate_decl()
+const char *uniontypedecl::generate_decl()
 {
   if (!declared)
     {
@@ -1850,7 +1850,7 @@ char *uniontypedecl::generate_decl()
 /********************
   code for constdecl
  ********************/
-char *constdecl::generate_decl()
+const char *constdecl::generate_decl()
 {
   if (!declared) {
     fprintf(codefile, "const int %s = %d;\n", mu_name, value);
@@ -1863,7 +1863,7 @@ char *constdecl::generate_decl()
 /********************
   code for vardecl
  ********************/
-char *vardecl::generate_decl()
+const char *vardecl::generate_decl()
 {
   if (declared)
       return "ERROR!";
@@ -1887,7 +1887,7 @@ char *vardecl::generate_decl()
   code for aliasdecl
  ********************/
 
-char *aliasdecl::generate_decl()
+const char *aliasdecl::generate_decl()
 {
   if (!declared) {
     if (!ref->islvalue() && ref->gettype()->issimple()) {
@@ -1911,7 +1911,7 @@ char *aliasdecl::generate_decl()
 /********************
   code for choosedecl
  ********************/
-char *choosedecl::generate_decl()
+const char *choosedecl::generate_decl()
 /* Should never actually get called. */
 {
   Error.Error("Internal: choosedecl::generate_decl() should not have been called.");
@@ -1921,7 +1921,7 @@ char *choosedecl::generate_decl()
 /********************
   code for quantdecl
  ********************/
-char *quantdecl::generate_decl()
+const char *quantdecl::generate_decl()
 /* Should never actually get called. */
 {
   Error.Error("Internal: quantdecl::generate_decl() should not have been called.");
@@ -2030,13 +2030,13 @@ void quantdecl::make_for()
 /********************
   code for parameter
  ********************/
-char *param::generate_decl()
+const char *param::generate_decl()
 {
   Error.Error("Internal: param::generate_decl()");
   return "ERROR!";
 }
 
-char *varparam::generate_decl()
+const char *varparam::generate_decl()
 {
   if (!declared) {
     fprintf(codefile,
@@ -2048,7 +2048,7 @@ char *varparam::generate_decl()
   return "ERROR!";
 }
 
-char *valparam::generate_decl()
+const char *valparam::generate_decl()
 {
   if (!declared) {
     fprintf(codefile,"%s %s",
@@ -2076,7 +2076,7 @@ char *valparam::generate_decl()
  * We do need the const for simple types, since otherwise,
  * we won\'t get any automatic conversion from C++.
  */
-char *constparam::generate_decl()
+const char *constparam::generate_decl()
 {
   if (!declared) {
     if ( type->issimple() )
@@ -2094,7 +2094,7 @@ char *constparam::generate_decl()
 /********************
   code for procdecl
  ********************/
-char *procdecl::generate_decl()
+const char *procdecl::generate_decl()
 {
   if (!declared) {
     /* the declaration. */
@@ -2135,7 +2135,7 @@ char *procdecl::generate_decl()
 /* Norris: fixed by adding an error at the very end... so that user will
    know and go back and fix the function */
 
-char *funcdecl::generate_decl()
+const char *funcdecl::generate_decl()
 {
   if (!declared) {
     /* the declaration. */
@@ -2193,7 +2193,7 @@ char *funcdecl::generate_decl()
 /********************
   code for expr
  ********************/
-char *expr::generate_code()
+const char *expr::generate_code()
 {
   if (constval)
     return tsprintf("%d",value);
@@ -2206,7 +2206,7 @@ char *expr::generate_code()
 /********************
   code for boolexpr
  ********************/
-char *boolexpr::generate_code()
+const char *boolexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2245,7 +2245,7 @@ char *boolexpr::generate_code()
 /********************
   code for notexpr
  ********************/
-char *notexpr::generate_code()
+const char *notexpr::generate_code()
 {
   return tsprintf("!(%s)", left->generate_code() );
 }
@@ -2253,7 +2253,7 @@ char *notexpr::generate_code()
 /********************
   code for equalexpr
  ********************/
-char *equalexpr::generate_code()
+const char *equalexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2280,7 +2280,7 @@ char *equalexpr::generate_code()
 /********************
   code for compexpr
  ********************/
-char *compexpr::generate_code()
+const char *compexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2312,7 +2312,7 @@ char *compexpr::generate_code()
 /********************
   code for arithexpr
  ********************/
-char *arithexpr::generate_code()
+const char *arithexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2336,7 +2336,7 @@ char *arithexpr::generate_code()
 /********************
   code for unexpr
  ********************/
-char *unexpr::generate_code()
+const char *unexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2357,7 +2357,7 @@ char *unexpr::generate_code()
 /********************
   code for mulexpr
  ********************/
-char *mulexpr::generate_code()
+const char *mulexpr::generate_code()
 {
   if (constval)
     return tsprintf("%d", value);
@@ -2385,7 +2385,7 @@ char *mulexpr::generate_code()
 /********************
   code for condexpr
  ********************/
-char *condexpr::generate_code()
+const char *condexpr::generate_code()
 {
   return tsprintf("(%s) ? (%s) : (%s)",
           test->generate_code(),
@@ -2413,7 +2413,7 @@ void make_quant_closes(ste *quants)
   }
 }
 
-char *quantexpr::generate_code()
+const char *quantexpr::generate_code()
 {
   int num = new_int();
   char *temp = tsprintf("mu__quant%d", num );
@@ -2445,7 +2445,7 @@ char *quantexpr::generate_code()
 /********************
   code for designator
  ********************/
-char *designator::generate_code()
+const char *designator::generate_code()
 {
   switch (dclass) {
   case Base:
@@ -2471,7 +2471,7 @@ char *designator::generate_code()
 /********************
   code for exprlist
  ********************/
-char *exprlist::generate_code(char *name, ste *formals)
+const char *exprlist::generate_code(char *name, ste *formals)
 {
   exprlist *ex = this;
   if (this == NULL ) {
@@ -2543,7 +2543,7 @@ char *exprlist::generate_code(char *name, ste *formals)
 /* BUG: Caution: is there any way the generated statement can end up in
    the middle of an expression? */
 
-char *funccall::generate_code()
+const char *funccall::generate_code()
 {
   funcdecl *f = (funcdecl *) func->getvalue();
   return 
@@ -2562,7 +2562,7 @@ char *funccall::generate_code()
 /********************
   code for isundefined
   ********************/
-char *isundefined::generate_code()
+const char *isundefined::generate_code()
 {
   return tsprintf("%s.isundefined()", left->generate_code());
 }
@@ -2570,7 +2570,7 @@ char *isundefined::generate_code()
 /********************
   code for ismember
   ********************/
-char *ismember::generate_code()
+const char *ismember::generate_code()
 {
   return tsprintf("(%s>=%d && %s<=%d)",
           left->generate_code(),t->getleft(),
@@ -2595,7 +2595,7 @@ void multisetcount::generate_decl(multisettypedecl * mset)
 void multisetcount::generate_procedure()
 {
 }
-char *multisetcount::generate_code()
+const char *multisetcount::generate_code()
 {
       /* set->gettype()->getelementtype()->generate_code(), /* element type */
       /* set->gettype()->generate_code(), /* multiset type */
@@ -2658,7 +2658,7 @@ char *multisetcount::generate_code()
 /********************
   code for stmt
  ********************/
-char *stmt::generate_code()
+const char *stmt::generate_code()
 {
   /* There now is the null statement--
    * it is legal to call stmt::generate_code();
@@ -2671,7 +2671,7 @@ char *stmt::generate_code()
 /********************
   code for assignment
  ********************/
-char *assignment::generate_code()
+const char *assignment::generate_code()
 {
   if (src->isdesignator() 
       && src->gettype()->issimple()
@@ -2703,7 +2703,7 @@ char *assignment::generate_code()
 /********************
   code for whilestmt
  ********************/
-char *whilestmt::generate_code()
+const char *whilestmt::generate_code()
 {
   char *counter = tsprintf("mu__counter_%d", new_int() );
   char *while_expr = tsprintf("mu__while_expr_%d", new_int() );
@@ -2752,7 +2752,7 @@ char *whilestmt::generate_code()
 /********************
   code for ifstmt
  ********************/
-char *ifstmt::generate_code()
+const char *ifstmt::generate_code()
 {
   fprintf(codefile,
       "if ( %s )\n"
@@ -2777,7 +2777,7 @@ char *ifstmt::generate_code()
 /********************
   code for caselist
  ********************/
-char *caselist::generate_code()
+const char *caselist::generate_code()
 {
   for ( exprlist *v = values; v != NULL; v = v->next )
     fprintf(codefile,
@@ -2793,7 +2793,7 @@ char *caselist::generate_code()
 /********************
   code for switchstmt
  ********************/
-char *switchstmt::generate_code()
+const char *switchstmt::generate_code()
 {
   fprintf(codefile, "switch ((int) %s) {\n", switchexpr->generate_code() );
   /* The explicit cast seems to be necessary to allow things like
@@ -2815,7 +2815,7 @@ char *switchstmt::generate_code()
 /********************
   code for forstmt
  ********************/
-char *forstmt::generate_code()
+const char *forstmt::generate_code()
 {
   fprintf(codefile,"{\n");
   make_quant_fors(index);
@@ -2829,7 +2829,7 @@ char *forstmt::generate_code()
 /********************
   code for proccall
  ********************/
-char *proccall::generate_code()
+const char *proccall::generate_code()
 {
   procdecl *p = (procdecl *) procedure->getvalue();
   fprintf(codefile,"%s ( %s );\n",
@@ -2849,7 +2849,7 @@ char *proccall::generate_code()
 /********************
   code for clearstmt
  ********************/
-char *clearstmt::generate_code()
+const char *clearstmt::generate_code()
 {
   // Gotta figure this one out--
   // current best idea: give every object a clear method.
@@ -2862,7 +2862,7 @@ char *clearstmt::generate_code()
 /********************
   code for undefinestmt
   ********************/
-char *undefinestmt::generate_code()
+const char *undefinestmt::generate_code()
 {
   fprintf(codefile,"%s.undefine();\n",
       target->generate_code() );
@@ -2872,7 +2872,7 @@ char *undefinestmt::generate_code()
 /********************
   code for multisetaddstmt
   ********************/
-char *multisetaddstmt::generate_code()
+const char *multisetaddstmt::generate_code()
 {
   fprintf(codefile,"%s.multisetadd(%s);\n",
       target->generate_code(), element->generate_code() );
@@ -2898,7 +2898,7 @@ void multisetremovestmt::generate_procedure()
 {
 }
 
-char *multisetremovestmt::generate_code()
+const char *multisetremovestmt::generate_code()
 {
   if (matchingchoose)
     {
@@ -2950,7 +2950,7 @@ char *multisetremovestmt::generate_code()
 /********************
   code for errorstmt
  ********************/
-char *errorstmt::generate_code()
+const char *errorstmt::generate_code()
 {
   fprintf(codefile,"Error.Error(\"Error: %s\");\n",string);
   return "ERROR!";
@@ -2959,7 +2959,7 @@ char *errorstmt::generate_code()
 /********************
   code for assertstmt
  ********************/
-char *assertstmt::generate_code()
+const char *assertstmt::generate_code()
 {
   fprintf(codefile,"if ( !(%s) ) Error.Error(\"Assertion failed: %s\");\n",
       test->generate_code(),
@@ -2970,7 +2970,7 @@ char *assertstmt::generate_code()
 /********************
   code for putstmt
  ********************/
-char *putstmt::generate_code()
+const char *putstmt::generate_code()
 {
   if ( putexpr != NULL ) {
     if (putexpr->islvalue())
@@ -2987,7 +2987,7 @@ char *putstmt::generate_code()
 /********************
   code for alias
  ********************/
-char *alias::generate_code()
+const char *alias::generate_code()
      /* not used right now. */
 {
   return "ERROR!";
@@ -2996,7 +2996,7 @@ char *alias::generate_code()
 /********************
   code for aliasstmt
  ********************/
-char *aliasstmt::generate_code()
+const char *aliasstmt::generate_code()
 {
   fprintf(codefile,"{\n");
   aliases->generate_decls();
@@ -3009,7 +3009,7 @@ char *aliasstmt::generate_code()
 /********************
   code for returnstmt
  ********************/
-char *returnstmt::generate_code()
+const char *returnstmt::generate_code()
 {
   // Uli: the return expression is not converted to int. Therefore, the
   // copy constructor is used to create a temporary object for the return
@@ -3366,7 +3366,7 @@ void generate_rule_params_name(ste *enclosures)
   generate_rule_aliases
   -- extract "Alias" from enclosure and generate the code for it
  ********************/
-static char *generate_rule_aliases( ste *enclosures )
+static const char *generate_rule_aliases( ste *enclosures )
 /* generate alias declarations for the rule. */
 {
   if ( enclosures != NULL &&
@@ -3636,7 +3636,7 @@ static void generate_rules(ste *enclosures, simplerule *therule)
   -- rules produce some code,
   -- but also update the rules/startst/invariant list.
  ********************/
-char *rule::generate_code()
+const char *rule::generate_code()
 {
   return "ERROR!";
 }
@@ -3644,7 +3644,7 @@ char *rule::generate_code()
 /********************
   code for simplerule
  ********************/
-char *simplerule::generate_code()
+const char *simplerule::generate_code()
 {
   fprintf(codefile,
       "/******************** RuleBase%d ********************/\n"
@@ -3808,7 +3808,7 @@ char *simplerule::generate_code()
 /********************
   code for startstate
  ********************/
-char *startstate::generate_code()
+const char *startstate::generate_code()
 {
   fprintf(codefile,
       "/******************** StartStateBase%d ********************/\n"
@@ -3874,7 +3874,7 @@ char *startstate::generate_code()
 /********************
   code for invariant
  ********************/
-char *invariant::generate_code()
+const char *invariant::generate_code()
 {
   int rule_int = new_int();
   condname = tsprintf("mu__invariant_%d", rule_int );
@@ -3906,7 +3906,7 @@ char *invariant::generate_code()
 /********************
   code for fairness
  ********************/
-char *fairness::generate_code()
+const char *fairness::generate_code()
 {
   
   int rule_int = new_int();
@@ -4054,7 +4054,7 @@ static void generate_liverules(ste *enclosures, liveness *thelive )
 }
 
 
-char *liveness::generate_code()
+const char *liveness::generate_code()
 {
   /* generate the parameters to the function for the rule. */
   char *params;
@@ -4100,7 +4100,7 @@ char *liveness::generate_code()
 /********************
   code for quantrule
  ********************/
-char *quantrule::generate_code()
+const char *quantrule::generate_code()
 {
   // generate each rule within the quantifier
   for ( rule *r = rules; r != NULL; r = r->next )
@@ -4111,7 +4111,7 @@ char *quantrule::generate_code()
 /********************
   code for chooserule
  ********************/
-char *chooserule::generate_code()
+const char *chooserule::generate_code()
 {
   // generate each rule within the quantifier
   for ( rule *r = rules; r != NULL; r = r->next )
@@ -4122,7 +4122,7 @@ char *chooserule::generate_code()
 /********************
   code for aliasrule
  ********************/
-char *aliasrule::generate_code()
+const char *aliasrule::generate_code()
 {
   // generate each rule within the alias
   for ( rule *r = rules; r != NULL; r = r->next )
@@ -4135,7 +4135,7 @@ char *aliasrule::generate_code()
  ******************************/
 
 /* process a list of ste\'s in reverse order. */
-char *ste::generate_decls()
+const char *ste::generate_decls()
 {
   if ( this != NULL ) {
       if ( next != NULL && next->scope == scope )
@@ -4739,7 +4739,7 @@ void init_global(vardecl *d) {
     fprintf(codefile, "%s( \"%s\", %d),\n", d->mu_name, d->name, d->getoffset());
 }
 
-char *program::generate_code()
+const char *program::generate_code()
 {
   int count;
 

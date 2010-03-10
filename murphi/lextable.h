@@ -72,18 +72,18 @@ class lextable
 {
   lexid *table[ LEXTABLESIZE ];       // table for user defined words
   lexid *rtable[ RESERVETABLESIZE ];  // table for reserved words
-  int hash(char *str) const;          // hash a string into an integer. 
+  int hash(const char *str) const;          // hash a string into an integer. 
   int rehash(int h) const;            // if table[h] is taken, compute a new value. 
  public:
   // initializer
   lextable(void);
 
   // supporting routines
-  lexid *enter(char *str, int lextype = ID ); 
+  lexid *enter(const char *str, int lextype = ID ); 
           // return a pointer to the id lexid associated with str, creating the
           // lexid if necessary.
-  bool reserved(char *str);  // check to see if it is a reserved word
-  lexid *enter_reserved(char *str, int lextype = ID ); 
+  bool reserved(const char *str);  // check to see if it is a reserved word
+  lexid *enter_reserved(const char *str, int lextype = ID ); 
           // return a pointer to the id lexid associated with str, creating the
           // lexid if necessary.
 };

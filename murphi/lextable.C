@@ -90,7 +90,7 @@
   class lexid
   -- from mu.h
   ********************/
-lexid::lexid(char *name, int lextype)
+lexid::lexid(const char *name, int lextype)
 {
   this->name = new char[ strlen(name) + 1]; // +1 for the '\0'.
   strcpy(this->name,name);
@@ -100,7 +100,7 @@ lexid::lexid(char *name, int lextype)
 /********************
   utilities
   ********************/
-char *my_strtolower(char * str)
+char *my_strtolower(const char * str)
 {
   char *ret;
 
@@ -114,7 +114,7 @@ char *my_strtolower(char * str)
 /********************
   class lextable
   ********************/
-int lextable::hash(char *str) const
+int lextable::hash(const char *str) const
 /* This returns an integer hash value for a string. */
 {
   char c;
@@ -131,7 +131,7 @@ int lextable::rehash(int h) const
   return(h +1);
 }
 
-bool lextable::reserved(char *str)
+bool lextable::reserved(const char *str)
 {
   // in order to allow at least and at most one entry
   // of reserved words in the main lex table,
@@ -161,7 +161,7 @@ bool lextable::reserved(char *str)
   }
 }
 
-lexid *lextable::enter_reserved(char *str, int lextype )
+lexid *lextable::enter_reserved(const char *str, int lextype )
 {
   int h;
   char *lowerstr;
@@ -187,7 +187,7 @@ lexid *lextable::enter_reserved(char *str, int lextype )
   }
 }
 
-lexid *lextable::enter(char *str, int lextype )
+lexid *lextable::enter(const char *str, int lextype )
 {
   int h = hash(str);
   while (1) {

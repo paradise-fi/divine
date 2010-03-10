@@ -75,12 +75,12 @@ public:
   // variables
   bool declared; // whether the item has been declared in the generated code.
   bool global;
-  char *name;    // What the object\'s name is
+  const char *name;    // What the object\'s name is
   char *mu_name; // the object's name in the generated code
   
   // initializer
   decl();
-  decl(char *name);
+  decl(const char *name);
   
   // subclass identifier
   enum decl_class {Type, Const, Var, Alias, Quant, Choose, Param, Proc, Func, Error_decl};
@@ -92,8 +92,8 @@ public:
   virtual designator *getdesignator(ste *origin) const;
   
   // code generation
-  virtual char *generate_code();
-  virtual char *generate_decl();
+  virtual const char *generate_code();
+  virtual const char *generate_decl();
   
   // base routines declarations for subclass routines
   virtual int getoffset() const // for vardecl
@@ -134,7 +134,7 @@ public:
 
   // initializer
   typedecl();
-  typedecl(char *name);
+  typedecl(const char *name);
   
   // subclass identifier
   enum typeclass {Enum, Range, Array, MultiSet, MultiSetID, Record, Scalarset, Union, Error_type };
@@ -149,9 +149,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
   void generate_all_decl();
   void generate_all_symmetry_decl(symmetryclass& symmetry);
   
@@ -199,7 +199,7 @@ public:
   virtual bool HasMultisetOfScalarset() const
   { Error.Error("Internal: typedecl::HasMultisetOfScalarset().\n"); return FALSE; };
   
-  char * structurestring() const 
+  const char * structurestring() const 
   {
     switch (structure) {
     case NoScalarset:
@@ -290,9 +290,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 
   // classify scalarset types as useful or useless
   virtual void setusefulness() {}
@@ -343,9 +343,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 
   // classify scalarset types as useful or useless
   virtual void setusefulness() {}
@@ -391,25 +391,25 @@ class arraytypedecl: public typedecl
 
   virtual int get_num_limit_locals(typedecl * e);
   virtual void generate_limit_step1(int limit_strategy);
-  virtual void generate_limit_step2(typedecl * d, char * var, typedecl * e, int local_num, int limit_strategy);
-  virtual void generate_limit_step3(typedecl * d, char * var, typedecl * e, int limit_strategy, bool isunion);
+  virtual void generate_limit_step2(typedecl * d, const char * var, typedecl * e, int local_num, int limit_strategy);
+  virtual void generate_limit_step3(typedecl * d, const char * var, typedecl * e, int limit_strategy, bool isunion);
 
-  virtual void generate_limit3(char * var, typedecl * e);
-  virtual void generate_limit3(typedecl * d, char * var, typedecl * e);
-  virtual void generate_limit3(int size, char * name, char * var, int left);
+  virtual void generate_limit3(const char * var, typedecl * e);
+  virtual void generate_limit3(typedecl * d, const char * var, typedecl * e);
+  virtual void generate_limit3(int size, const char * name, const char * var, int left);
 
   virtual void generate_while(charlist * scalarsetlist);
   virtual void generate_while_guard(charlist * scalarsetlist);
 
-  virtual void generate_limit4(char * var, typedecl * e);
-  virtual void generate_limit4(typedecl * d, char * var, typedecl * e);
-  virtual void generate_limit4(int size, char * name, char * var, int left, bool isunion );
+  virtual void generate_limit4(const char * var, typedecl * e);
+  virtual void generate_limit4(typedecl * d, const char * var, typedecl * e);
+  virtual void generate_limit4(int size, const char * name, const char * var, int left, bool isunion );
 
-  virtual void generate_limit5(char * var, typedecl * e);
-  virtual void generate_limit5(typedecl * d, char * var, typedecl * e);
-  virtual void generate_limit5(char * name1, int size1, int left1,
-			       char * var,
-			       char * name2, int size2, int left2, bool isunion);
+  virtual void generate_limit5(const char * var, typedecl * e);
+  virtual void generate_limit5(typedecl * d, const char * var, typedecl * e);
+  virtual void generate_limit5(const char * name1, int size1, int left1,
+			       const char * var,
+			       const char * name2, int size2, int left2, bool isunion);
 
   virtual void generate_range(int size, char * name);
   virtual void generate_canonicalize();
@@ -441,9 +441,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
   virtual void generate_assign();
 
   // classify scalarset types as useful or useless
@@ -560,10 +560,10 @@ class multisettypedecl: public typedecl
 
   int get_num_limit_locals(typedecl * e);   // added by Uli
   void generate_limit_step1(int limit_strategy);
-  void generate_limit_step2(char * var, typedecl * e, int local_num, int limit_strategy);
-  void generate_limit_step3(char * var, typedecl * e, int limit_strategy, bool isunion);
-  void generate_multiset_limit5(char *var, typedecl * e);
-  void generate_multiset_limit5(char *var, char * name2, int size2, int left2, bool isunion);
+  void generate_limit_step2(const char * var, typedecl * e, int local_num, int limit_strategy);
+  void generate_limit_step3(const char * var, typedecl * e, int limit_strategy, bool isunion);
+  void generate_multiset_limit5(const char *var, typedecl * e);
+  void generate_multiset_limit5(const char *var, const char * name2, int size2, int left2, bool isunion);
 
   void generate_multiset_while_guard(charlist * scalarsetlist);
 
@@ -634,9 +634,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
   virtual void generate_assign();
 
   // classify scalarset types as useful or useless
@@ -670,12 +670,12 @@ public:
   virtual int getleft() const { return left; };
   virtual int getright() const { return right; };
   virtual typedecl* getparenttype() const { return parent->gettype(); };
-  virtual char * getparentname() const { return parent->generate_code(); };
+  virtual const char * getparentname() const { return parent->generate_code(); };
   virtual typeclass gettypeclass() const { return MultiSetID; };
   virtual bool issimple() const { return TRUE; }
   
   // code generation
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 
   // classify scalarset types as useful or useless
   virtual void setusefulness() {}
@@ -725,9 +725,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
   virtual void generate_assign();
 
   // classify scalarset types as useful or useless
@@ -839,9 +839,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 
   // classify scalarset types as useful or useless
   virtual void setusefulness() { if (named) useless = FALSE; }
@@ -896,9 +896,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 
   // classify scalarset types as useful or useless
   virtual void setusefulness() 
@@ -938,7 +938,7 @@ public:
 class errortypedecl: public typedecl
 {
 public:
-  errortypedecl(char *name) : typedecl(name) {} ;
+  errortypedecl(const char *name) : typedecl(name) {} ;
 
   virtual typeclass gettypeclass() const { return Error_type; };
   virtual bool issimple() const { return TRUE; /* don\'t report an error. */ };
@@ -971,9 +971,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1000,9 +1000,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 
@@ -1033,9 +1033,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1062,9 +1062,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1095,9 +1095,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
   void make_for();  // make the for statement for the 
   //evaluation of the quantifier. in cpp_code.C.
   
@@ -1123,9 +1123,9 @@ public:
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1138,9 +1138,9 @@ public:
   virtual param_class getparamclass( void ) const { return Value; };
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1153,9 +1153,9 @@ public:
   virtual param_class getparamclass( void ) const { return Var; };
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 /********************
@@ -1171,9 +1171,9 @@ public:
   };
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 
@@ -1201,9 +1201,9 @@ struct procdecl: public decl
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 
@@ -1233,9 +1233,9 @@ struct funcdecl: public procdecl
   // code generation
 #ifdef GENERATE_DECL_CODE
   // used in no_code.C
-  virtual char *generate_code();
+  virtual const char *generate_code();
 #endif
-  virtual char *generate_decl();
+  virtual const char *generate_decl();
 };
 
 
@@ -1246,7 +1246,7 @@ class error_decl: public decl
 {
 protected:
 public:
-  error_decl(char *name) : decl(name) {};
+  error_decl(const char *name) : decl(name) {};
   virtual decl_class getclass() const { return Error_decl; }; 
   virtual typedecl *gettype(void) const; /* every type of decl
 					    has a type defined. */

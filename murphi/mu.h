@@ -128,7 +128,7 @@ class TNode
 {
  public:
   TNode() { };
-  virtual char *generate_code(void) { return NULL; };
+  virtual const char *generate_code(void) { return NULL; };
 //  virtual ~TNode() {};
 };
 
@@ -266,7 +266,7 @@ class lexid {
   char *name;
   int lextype;
  public:
-  lexid(char *name, int lextype);
+  lexid(const char *name, int lextype);
   char *getname() const { return name; };
   int getlextype() const { return lextype; };
 };
@@ -334,7 +334,7 @@ public:
   // code generation
   // generate\'s declarations for all the things in a list of ste\'s,
   // in reverse order.
-  char *generate_decls();
+  const char *generate_decls();
 };
 
 /********************
@@ -488,7 +488,7 @@ struct rulerec
 	  char * bodyname,
 	  bool unfair)
   : rulename(rulename), conditionname(conditionname), bodyname(bodyname),
-    next(NULL), unfair(unfair) {};
+    unfair(unfair), next(NULL) {};
   int print_rules(); /* print out a list of rulerecs. */
 };
 
@@ -541,7 +541,7 @@ struct program :TNode
     invariantlist(NULL), fairnesslist(NULL), livenesslist(NULL)
   {}
   void make_state(int bits_in_world);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************

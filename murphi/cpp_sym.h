@@ -101,12 +101,12 @@ bool is_simple_scalarset(typedecl * t);
 class charlist
 {
 public:
-  char * string;
+  const char * string;
   charlist * next;
   typedecl * e; 
 
-  charlist(char * str, charlist * nxt) : string(str), next(nxt) {}
-  charlist(char * str, typedecl * e, charlist * nxt) : string(str), next(nxt), e(e) {}
+  charlist(const char * str, charlist * nxt) : string(str), next(nxt) {}
+  charlist(const char * str, typedecl * e, charlist * nxt) : string(str), next(nxt), e(e) {}
   virtual ~charlist() { delete string; delete next; }
 
 };

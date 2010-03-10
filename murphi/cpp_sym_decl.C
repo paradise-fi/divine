@@ -784,7 +784,7 @@ void arraytypedecl::generate_limit_step1(int limit_strategy)
     }
 }
 
-void arraytypedecl::generate_limit_step2(typedecl * d, char * var, typedecl * e, int local_num, int limit_strategy)
+void arraytypedecl::generate_limit_step2(typedecl * d, const char * var, typedecl * e, int local_num, int limit_strategy)
 {
   stelist * t;
   ste * f;
@@ -876,7 +876,7 @@ void arraytypedecl::generate_limit_step2(typedecl * d, char * var, typedecl * e,
 	}
     }
 }
-void arraytypedecl::generate_limit_step3(typedecl * d, char * var, typedecl * e, int limit_strategy, bool isunion)
+void arraytypedecl::generate_limit_step3(typedecl * d, const char * var, typedecl * e, int limit_strategy, bool isunion)
 {
   switch (limit_strategy) {
   case 3:
@@ -894,7 +894,7 @@ void arraytypedecl::generate_limit_step3(typedecl * d, char * var, typedecl * e,
   }
 }
 
-void arraytypedecl::generate_limit3(char * var, typedecl * e)
+void arraytypedecl::generate_limit3(const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d;  
@@ -916,7 +916,7 @@ void arraytypedecl::generate_limit3(char * var, typedecl * e)
     }
 }
 
-void arraytypedecl::generate_limit3(typedecl * d, char * var, typedecl * e)
+void arraytypedecl::generate_limit3(typedecl * d, const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d2;  
@@ -935,7 +935,7 @@ void arraytypedecl::generate_limit3(typedecl * d, char * var, typedecl * e)
 	}
     }
 }
-void arraytypedecl::generate_limit3(int size, char * name, char * var, int left)
+void arraytypedecl::generate_limit3(int size, const char * name, const char * var, int left)
 {
   // please make sure that i,j,k can be modified
   fprintf(codefile,
@@ -1096,7 +1096,7 @@ void arraytypedecl::generate_limit3(int size, char * name, char * var, int left)
 //           );
 // }
 
-void arraytypedecl::generate_limit4(char * var, typedecl * e)
+void arraytypedecl::generate_limit4(const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d;  
@@ -1116,7 +1116,7 @@ void arraytypedecl::generate_limit4(char * var, typedecl * e)
         }
     }
 }
-void arraytypedecl::generate_limit4(typedecl * d, char * var, typedecl * e)
+void arraytypedecl::generate_limit4(typedecl * d, const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d2;  
@@ -1227,7 +1227,8 @@ void arraytypedecl::generate_limit4(typedecl * d, char * var, typedecl * e)
 	}
     }
 }
-void arraytypedecl::generate_limit4(int size, char * name, char * var, int left, bool isunion)
+void arraytypedecl::generate_limit4(int size, const char * name,
+                                    const char * var, int left, bool isunion)
 {
   if (isunion) 
     fprintf(codefile,
@@ -1409,7 +1410,7 @@ void arraytypedecl::generate_limit4(int size, char * name, char * var, int left,
 	    name  // count_%s
 	    );
 }
-void arraytypedecl::generate_limit5(char * var, typedecl * e)
+void arraytypedecl::generate_limit5(const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d;  
@@ -1429,7 +1430,7 @@ void arraytypedecl::generate_limit5(char * var, typedecl * e)
         }
     }
 }
-void arraytypedecl::generate_limit5(typedecl * d, char * var, typedecl * e)
+void arraytypedecl::generate_limit5(typedecl * d, const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d2;  
@@ -1579,9 +1580,9 @@ void arraytypedecl::generate_limit5(typedecl * d, char * var, typedecl * e)
         }
     }
 }
-void arraytypedecl::generate_limit5(char * name1, int size1, int left1,
-				    char * var,
-				    char * name2, int size2, int left2, bool isunion)
+void arraytypedecl::generate_limit5(const char * name1, int size1, int left1,
+				    const char * var,
+				    const char * name2, int size2, int left2, bool isunion)
 {
   if (isunion)
     fprintf(codefile,
@@ -3342,7 +3343,7 @@ void multisettypedecl::generate_limit_step1(int limit_strategy)
 {
   generate_limit_step2("",elementtype,0,limit_strategy);
 }
-void multisettypedecl::generate_limit_step2(char * var, typedecl * e, int local_num, int limit_strategy)
+void multisettypedecl::generate_limit_step2(const char * var, typedecl * e, int local_num, int limit_strategy)
 {
   stelist * t;
   ste * f;
@@ -3428,13 +3429,13 @@ void multisettypedecl::generate_limit_step2(char * var, typedecl * e, int local_
 	}
     }
 }
-void multisettypedecl::generate_limit_step3(char * var, typedecl * e, int limit_strategy, bool isunion)
+void multisettypedecl::generate_limit_step3(const char * var, typedecl * e, int limit_strategy, bool isunion)
 {
   if (limit_strategy == 5)
     generate_multiset_limit5(var, e->mu_name, e->getsize(), e->getleft(), isunion);
 }
 
-void multisettypedecl::generate_multiset_limit5(char * var, typedecl * e)
+void multisettypedecl::generate_multiset_limit5(const char * var, typedecl * e)
 {
   stelist * t;
   typedecl * d2;  
@@ -3568,7 +3569,7 @@ void multisettypedecl::generate_multiset_limit5(char * var, typedecl * e)
         }
     }
 }
-void multisettypedecl::generate_multiset_limit5(char *var, char * name2, int size2, int left2, bool isunion)
+void multisettypedecl::generate_multiset_limit5(const char *var, const char * name2, int size2, int left2, bool isunion)
 {
   if (isunion)
     fprintf(codefile,

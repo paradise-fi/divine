@@ -90,7 +90,7 @@ decl::decl()
 : TNode(), name(NULL), declared(FALSE)
 { }
 
-decl::decl(char *name)
+decl::decl(const char *name)
 : TNode(), name(name), mu_name(NULL), declared(FALSE), global( false )
 { 
   mu_name = tsprintf("mu_%s",name);
@@ -126,7 +126,7 @@ typedecl::typedecl()
   origin = this;
 };
 
-typedecl::typedecl(char *name)
+typedecl::typedecl(const char *name)
 : decl(name), scalarsetlist(NULL), structure(NoScalarset),
   bitsalloc(0),
   already_generated_permute_function(FALSE)

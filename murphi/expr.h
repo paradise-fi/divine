@@ -103,7 +103,7 @@ public:
   virtual stecoll* used_stes() const { return new stecoll; };
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -126,7 +126,7 @@ public:
   }
   
   // code generation
-  virtual char *generate_code()=0;
+  virtual const char *generate_code()=0;
 };
 
 /********************
@@ -153,7 +153,7 @@ public:
   }
   
   // code generation
-  virtual char *generate_code()=0;
+  virtual const char *generate_code()=0;
 };
 
 /********************
@@ -167,7 +167,7 @@ public:
   boolexpr(int op, expr *left, expr *right);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -181,7 +181,7 @@ public:
   notexpr(expr *left);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -195,7 +195,7 @@ public:
   equalexpr(int op, expr *left, expr *right);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -209,7 +209,7 @@ public:
   compexpr(int op, expr *left, expr *right);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -223,7 +223,7 @@ public:
   arithexpr(int op, expr *left, expr *right);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -238,7 +238,7 @@ public:
   unexpr(int op, expr *left);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -252,7 +252,7 @@ public:
   mulexpr(int op, expr *left, expr *right);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -282,7 +282,7 @@ public:
   }
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -314,7 +314,7 @@ public:
   }
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -357,7 +357,7 @@ public:
   virtual stecoll* used_stes() const;
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -387,7 +387,7 @@ friend bool matchparams(ste *formals, exprlist *actuals);
   }
   
   // code generation
-  virtual char *generate_code(char *name, ste *formals);
+  virtual const char *generate_code(char *name, ste *formals);
 };
 
 /********************
@@ -407,7 +407,7 @@ struct funccall: public expr
   }
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -419,7 +419,7 @@ struct isundefined: public unaryexpr
   isundefined(expr *left);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -434,7 +434,7 @@ struct ismember: public unaryexpr
   ismember(expr *left, typedecl *type);
   
   // code generation
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -471,7 +471,7 @@ public:
   // code generation
   virtual void generate_decl(multisettypedecl * mset);
   virtual void generate_procedure();
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************

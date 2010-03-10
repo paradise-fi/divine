@@ -68,7 +68,7 @@ class stmt: public TNode
   stmt *next;
   stmt(void)
   :next(NULL) { };
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
@@ -94,7 +94,7 @@ struct assignment:stmt
   designator *target;
   expr *src;
   assignment(designator *target, expr *src);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -103,7 +103,7 @@ struct whilestmt: stmt
   expr *test;
   stmt *body;
   whilestmt(expr *test, stmt *body);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct ifstmt: stmt
@@ -112,7 +112,7 @@ struct ifstmt: stmt
   stmt *body;
   stmt *elsecode;
   ifstmt (expr *test, stmt *body, stmt *elsecode = NULL);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -124,7 +124,7 @@ struct caselist
   caselist(exprlist *values,
 	   stmt *body,
 	   caselist *next = NULL);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct switchstmt: stmt
@@ -135,7 +135,7 @@ struct switchstmt: stmt
   switchstmt(expr *switchexpr,
 	     caselist *cases,
 	     stmt *elsecode);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -144,7 +144,7 @@ struct forstmt: stmt
   ste *index;
   stmt *body;
   forstmt(ste *index, stmt *body);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 
   // special for loop restriction for scalarset quantified loop
   // not yet implemented
@@ -156,7 +156,7 @@ struct proccall: stmt
   ste *procedure;
   exprlist *actuals;
   proccall(ste *procedure, exprlist *actuals);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -164,14 +164,14 @@ struct clearstmt: stmt
 {
   designator *target;
   clearstmt( designator *target);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct undefinestmt: stmt
 {
   designator *target;
   undefinestmt( designator *target);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct multisetaddstmt: stmt
@@ -179,7 +179,7 @@ struct multisetaddstmt: stmt
   designator *element;
   designator *target;
   multisetaddstmt(designator *element,  designator *target);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 class multisettypedecl;
@@ -198,14 +198,14 @@ struct multisetremovestmt: stmt
   multisetremovestmt(expr * criterion, designator *target);
   virtual void generate_decl(multisettypedecl * mset);
   virtual void generate_procedure();
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct errorstmt: stmt
 {
   char *string;
   errorstmt (char *string);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -213,7 +213,7 @@ struct assertstmt: errorstmt
 {
   expr *test;
   assertstmt (expr *test, char *string);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 struct putstmt: stmt
@@ -222,7 +222,7 @@ struct putstmt: stmt
   char *putstring;
   putstmt (expr *putexpr);
   putstmt (char *putstring);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -232,7 +232,7 @@ struct alias: public TNode
   designator *target;
   alias *next;
   alias (ste *name, designator *target, alias *next =NULL);
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -241,7 +241,7 @@ struct aliasstmt: stmt
   ste *aliases;
   stmt *body;
   aliasstmt ( ste *aliases, stmt *body );
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 
@@ -249,7 +249,7 @@ struct returnstmt: stmt
 {
   expr *retexpr;
   returnstmt( expr *returnexpr = NULL );
-  virtual char *generate_code();
+  virtual const char *generate_code();
 };
 
 /********************
