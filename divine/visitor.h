@@ -238,7 +238,7 @@ struct Parallel {
     }
 
     void queue( Node from, Node to ) {
-        Fifo< Blob, NoopMutex > &fifo
+        Fifo< Blob > &fifo
             = worker.queue( worker.globalId(), owner( to ) );
         fifo.push( unblob< Node >( from ) );
         fifo.push( unblob< Node >( to ) );

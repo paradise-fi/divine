@@ -157,7 +157,7 @@ template< typename T >
 struct FifoVector
 {
     int m_last;
-    typedef divine::Fifo< T, NoopMutex > Fifo;
+    typedef divine::Fifo< T > Fifo;
     std::vector< Fifo > m_vector;
 
     bool empty() {
@@ -207,7 +207,7 @@ struct FifoVector
  */
 template< typename T >
 struct DomainWorker {
-    typedef divine::Fifo< Blob, NoopMutex > Fifo;
+    typedef divine::Fifo< Blob > Fifo;
 
     typedef wibble::Unit IsDomainWorker;
 
@@ -312,7 +312,7 @@ struct DomainWorker {
  */
 template< typename T >
 struct Domain {
-    typedef divine::Fifo< Blob, NoopMutex > Fifo;
+    typedef divine::Fifo< Blob > Fifo;
 
     struct Parallel : divine::Parallel< T, BarrierThread >
     {

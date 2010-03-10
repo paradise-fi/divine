@@ -13,26 +13,17 @@ using namespace wibble::sys;
 
 const int cacheLine = 64;
 
-struct NoopMutex {
-    void lock() {}
-    void unlock() {}
-};
-
 /**
  * A simple queue (First-In, First-Out). Concurrent access to the ends of the
  * queue is supported -- a thread may write to the queue while another is
- * reading. Concurrent access to a single end is not supported. By default, the
- * write end is protected by a mutex (to prevent multiple writers from
- * accessing a given queue concurrently), but this can be disabled by setting
- * the WM template parameter to NoopMutex. For the NoopMutex case, care has to
- * be taken to avoid concurrent access by other means.
+ * reading. Concurrent access to a single end is, however, not supported.
  *
  * The NodeSize parameter defines a size of single block of objects. By
  * default, we make the node a page-sized object -- this seems to work well in
  * practice. We rely on the allocator to align the allocated blocks reasonably
  * to give good cache usage.
  */
-template< typename T, typename WM = Mutex,
+template< typename T,
           int NodeSize = (4096 - cacheLine - sizeof(int)
                           - sizeof(void*)) / sizeof(T) >
 struct Fifo {
@@ -64,9 +55,6 @@ protected:
     char _padding3[cacheLine-2*sizeof(Node*)];
 
 public:
-    typedef WM WriteMutex;
-    WM writeMutex;
-
     Fifo() {
         head = tail = new Node();
         assert( empty() );
@@ -88,10 +76,8 @@ public:
         delete head;
     }
 
-    void push( const MutexLockT< WriteMutex > &l, const T&x ) {
+    void push( const T&x ) {
         Node *t;
-        assert( l.locked );
-        assert( &l.mutex == &writeMutex );
         if ( tail->write == NodeSize )
             t = new Node();
         else
@@ -104,11 +90,6 @@ public:
             tail->next = t;
             tail = t;
         }
-    }
-
-    void push( const T& x ) {
-        MutexLockT< WriteMutex > __l( writeMutex );
-        push( __l, x );
     }
 
     bool empty() {
@@ -152,14 +133,14 @@ public:
 };
 
 template< typename N >
-inline void push( Fifo< Blob, NoopMutex > &fifo, const N &n ) {
+inline void push( Fifo< Blob > &fifo, const N &n ) {
     Blob b( sizeof( N ) );
     b.template get< N >() = n;
     fifo.push( b );
 }
 
 template<>
-inline void push< Blob >( Fifo< Blob, NoopMutex > &fifo, const Blob &b ) {
+inline void push< Blob >( Fifo< Blob > &fifo, const Blob &b ) {
     fifo.push( b );
 }
 

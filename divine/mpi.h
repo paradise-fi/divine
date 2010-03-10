@@ -532,7 +532,7 @@ struct Mpi {
 template< typename D >
 struct MpiThread : wibble::sys::Thread {
     struct Fifos {
-        Fifo< Blob, NoopMutex > &operator[]( int ) __attribute__((noreturn)) {
+        Fifo< Blob > &operator[]( int ) __attribute__((noreturn)) {
             assert_die();
         }
     };
