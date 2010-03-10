@@ -77,12 +77,14 @@ struct Mpi {
     Shared *master_shared;
     std::vector< Shared > m_shared;
 
+    wibble::sys::Mutex m_mutex;
+
     D &domain() {
         assert( m_domain );
         return *m_domain;
     }
 
-    Mpi( Shared *sh, D *d ) : master_shared( sh )
+    Mpi( Shared *sh, D *d ) : master_shared( sh ), m_mutex( true )
     {
         m_domain = d;
         is_master = false;
@@ -142,6 +144,8 @@ struct Mpi {
         if (!master())
             return;
 
+        wibble::sys::MutexLock _lock( m_mutex );
+
         MPI::Status status;
         std::vector< int32_t > shbits;
         notifySlaves( TAG_SOLICIT_SHARED, 0 );
@@ -188,6 +192,8 @@ struct Mpi {
         if ( rank() != 0 ) return;
         if ( size() <= 1 ) return;
 
+        wibble::sys::MutexLock _lock( m_mutex );
+
         is_master = false;
         notifyOne( 1, TAG_RING_RUN,
                    algorithm::_MpiId< Algorithm >::to_id( f ) );
@@ -201,6 +207,9 @@ struct Mpi {
     void runOnSlaves( Shared sh, F f ) {
         if ( !master() ) return;
         if ( size() <= 1 ) return; // master_shared can be NULL otherwise
+
+        wibble::sys::MutexLock _lock( m_mutex );
+
         notifySlaves( TAG_RUN,
                       algorithm::_MpiId< Algorithm >::to_id( f ) );
         for ( int i = 0; i < size(); ++i ) {
@@ -416,6 +425,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     bool loop() {
+        wibble::sys::MutexLock _lock( m_domain.mpi.m_mutex );
         MPI::Status status;
 
         // Fill outgoing buffers from the incoming FIFO queues...
