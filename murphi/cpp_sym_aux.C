@@ -406,8 +406,6 @@ void symmetryclass::generate_permutation_class()
                );
       fprintf( codefile, 
                "  void GenPerm%d(%s* perm, int size, unsigned long& index);\n",
-               i, t->mu_name,
-               i, t->mu_name,
                i, t->mu_name
                );
       fprintf( codefile,"\n");
@@ -515,15 +513,15 @@ void symmetryclass::generate_permutation_class()
           "  ********************/\n"
 	  );
   fprintf( codefile, 
-	   "  in = new bool[%d];\n",
+	   "  in = new bool[%lu];\n",
 	   size_of_set);
   for (i=0, member = scalarsetlist;
        member != NULL;
        i++, member = member->next)
     fprintf( codefile, 
-	     " in_%s = new int[%d];\n"
-	     " perm_%s = new arr_%s[%d];\n"
-	     " revperm_%s = new arr_%s[%d];\n",
+	     " in_%s = new int[%lu];\n"
+	     " perm_%s = new arr_%s[%lu];\n"
+	     " revperm_%s = new arr_%s[%lu];\n",
 	     member->s->getvalue()->mu_name, size_of_set,
 	     member->s->getvalue()->mu_name, member->s->getvalue()->mu_name, factorialsize[i],
 	     member->s->getvalue()->mu_name, member->s->getvalue()->mu_name, factorialsize[i]
@@ -546,9 +544,9 @@ void symmetryclass::generate_permutation_class()
 	       "        Perm%d[0].value(i);\n"
 	       "        GenPerm%d(Perm%d, 1, count);\n"
 	       "      }\n"
-	       "    if (count!=%d)\n"
+	       "    if (count!=%lu)\n"
 	       "      Error.Error( \"unable to initialize PermSet\");\n"
-	       "    for (i=0; i<%d; i++)\n"
+	       "    for (i=0; i<%lu; i++)\n"
 	       "      for (j=%d; j<=%d; j++)\n"
 	       "        for (k=%d; k<=%d; k++)\n"
 	       "          if (revperm_%s[i][k-%d]==j)   // k - base \n"
@@ -590,9 +588,9 @@ void symmetryclass::generate_permutation_class()
     }
 
   fprintf( codefile,
-	   "    size = %d;\n"
-	   "    count = %d;\n"
-	   "    for (i=0; i<%d; i++)\n"
+	   "    size = %lu;\n"
+	   "    count = %lu;\n"
+	   "    for (i=0; i<%lu; i++)\n"
 	   "      {\n"
 	   "        carry = 1;\n"
 	   "        in[i]= TRUE;\n",
@@ -607,7 +605,7 @@ void symmetryclass::generate_permutation_class()
       fprintf( codefile, 
 	       "      in_%s[i] = i_%s;\n"
 	       "      i_%s += carry;\n"
-	       "      if (i_%s >= %d) { i_%s = 0; carry = 1; } \n"
+	       "      if (i_%s >= %lu) { i_%s = 0; carry = 1; } \n"
 	       "      else { carry = 0; } \n",
 	       t->mu_name, t->mu_name,
 	       t->mu_name, 
@@ -706,7 +704,7 @@ void symmetryclass::generate_permutation_class()
     fprintf( codefile, 
 	     "void PermSet::ResetToExplicit()\n"
 	     "{\n"
-	     "  for (int i=0; i<%d; i++) in[i] = TRUE;\n"
+	     "  for (int i=0; i<%lu; i++) in[i] = TRUE;\n"
 	     "  Presentation = Explicit;\n"
 	     "}\n",
 	     size_of_set
@@ -737,7 +735,7 @@ void symmetryclass::generate_permutation_class()
 	fprintf( codefile, 
 		 "  int start_%s[%d];\n"
 		 "  int size_%s[%d];\n"
-		 "  bool should_be_in_%s[%d];\n",
+		 "  bool should_be_in_%s[%lu];\n",
 		 member->s->getvalue()->mu_name, size[i],
 		 member->s->getvalue()->mu_name, size[i],
 		 member->s->getvalue()->mu_name, factorialsize[i]
@@ -788,9 +786,9 @@ void symmetryclass::generate_permutation_class()
 	{
 	  t = (scalarsettypedecl *) member->s->getvalue();
 	  fprintf( codefile,
-		   "  for (i=0; i<%d; i++) // set up\n"
+		   "  for (i=0; i<%lu; i++) // set up\n"
 		   "    should_be_in_%s[i] = TRUE;\n"
-		   "  for (i=0; i<%d; i++) // to be in or not to be\n"
+		   "  for (i=0; i<%lu; i++) // to be in or not to be\n"
 		   "    for (k=0; k<%d; k++) // step through class_mu_1_pid[k]\n"
 		   "      if (! (perm_%s[i][k]-%d >=start_%s[k] \n"
 		   "	     && perm_%s[i][k]-%d < start_%s[k] + size_%s[k]) )\n"
@@ -812,7 +810,7 @@ void symmetryclass::generate_permutation_class()
 	       "\n"
 	       "  // setup explicit representation \n"
 	       "  // Set perm and revperm\n"
-	       "  for (i=0; i<%d; i++)\n"
+	       "  for (i=0; i<%lu; i++)\n"
 	       "    {\n"
 	       "      in[i] = TRUE;\n",
 	       size_of_set
