@@ -363,6 +363,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     }
 
     void interrupt() {
+        wibble::sys::MutexLock _lock( m_domain.mpi.m_mutex );
         m_domain.mpi.notify( TAG_INTERRUPT, 0 );
         sent += m_domain.mpi.size() - 1;
     }
