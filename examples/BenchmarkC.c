@@ -10,7 +10,7 @@ struct state {
 static inline struct state *make( CustomSetup *setup, char **to ) {
     int size = sizeof( struct state ) + setup->slack;
     *to = pool_allocate_blob( setup->pool, size );
-    return (*to) + setup->slack + 4; // FIXME
+    return (struct state *) ((*to) + setup->slack + 4); // FIXME
 }
 
 void get_initial( CustomSetup *setup, char **to )
@@ -30,9 +30,8 @@ int get_successor( CustomSetup *setup, int handle, char *from, char **to )
         case 1: out->a ++; return 2;
         case 2: out->b ++; return 3;
         }
-    } else {
-        return 0;
     }
+    return 0;
 }
 
 void setup( CustomSetup *s ) {
