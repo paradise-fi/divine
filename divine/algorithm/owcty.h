@@ -135,6 +135,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     bool cycleFound() {
+        if ( shared.cycle_found )
+            return true;
         for ( int i = 0; i < domain().peers(); ++i ) {
             if ( domain().shared( i ).cycle_found )
                 return true;
@@ -143,10 +145,18 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
     }
 
     Node cycleNode() {
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            if ( domain().shared( i ).cycle_found )
-                return domain().shared( i ).cycle_node;
+        if ( shared.cycle_found ) {
+            assert( shared.cycle_node.valid() );
+            return shared.cycle_node;
         }
+
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            if ( domain().shared( i ).cycle_found ) {
+                assert( domain().shared( i ).cycle_node.valid() );
+                return domain().shared( i ).cycle_node;
+            }
+        }
+
         assert_die();
     }
 
