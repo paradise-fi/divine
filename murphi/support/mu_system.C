@@ -56,7 +56,6 @@
 /************************************************************/
 /* StateManager */
 /************************************************************/
-#if 0
 StateManager::StateManager(bool createqueue, unsigned long NumStates)
 : NumStates(NumStates),
   statesCurrentLevel(0), statesNextLevel(0), currentLevel(0),
@@ -197,7 +196,6 @@ void StateManager::PrintProb()
 }
 
 #endif
-
 // -------------------------------------------------------------------------
 
 void StateManager::print_capacity()
@@ -997,7 +995,6 @@ AlgorithmManager::simulate()
       curstate = Rules->RandomNextState();
     }
 }
-#endif
 
 MuGlobal::MuGlobal() {
     working = new state;
