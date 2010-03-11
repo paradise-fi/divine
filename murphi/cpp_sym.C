@@ -196,7 +196,7 @@ void symmetryclass::generate_symmetry_class()
   for ( stelist * var = varlist; var != NULL; var = var->next )
     fprintf( codefile, 
 	     "        %s.MultisetSort();\n",
-             var->s->getvalue()->mu_name
+             var->s->getvalue()->generate_code()
              );
   fprintf(codefile,
 	  "}\n"
@@ -281,8 +281,8 @@ void symmetryclass::generate_match_function()   // changes by Uli
 	     "              %s.Permute(Perm,i);\n"
 	     "              if (args->multiset_reduction.value)\n"
 	     "                %s.MultisetSort();\n",
-             var->s->getvalue()->mu_name,
-             var->s->getvalue()->mu_name
+             var->s->getvalue()->generate_code(),
+             var->s->getvalue()->generate_code()
              );
   fprintf( codefile,
 	   "            if (p.compare(workingstate)) {\n"
@@ -312,8 +312,8 @@ void symmetryclass::generate_match_function()   // changes by Uli
 	     "          %s.Permute(Perm,0);\n"
 	     "          if (args->multiset_reduction.value)\n"
 	     "            %s.MultisetSort();\n",
-             var->s->getvalue()->mu_name,
-             var->s->getvalue()->mu_name
+             var->s->getvalue()->generate_code(),
+             var->s->getvalue()->generate_code()
              );
   fprintf( codefile, 
 	   "        if (p.compare(workingstate)) {\n"   // changed by Uli
@@ -334,8 +334,8 @@ void symmetryclass::generate_match_function()   // changes by Uli
 	     "              %s.Permute(Perm,0);\n"
 	     "              if (args->multiset_reduction.value)\n"
 	     "                %s.MultisetSort();\n",
-             var->s->getvalue()->mu_name,
-             var->s->getvalue()->mu_name
+             var->s->getvalue()->generate_code(),
+             var->s->getvalue()->generate_code()
              );
   fprintf( codefile, 
 	   "            if (p.compare(workingstate)) {\n"   // changed by Uli
@@ -362,7 +362,7 @@ void symmetryclass::generate_match_function()   // changes by Uli
   for ( var = varlist; var != NULL; var = var->next )
     fprintf( codefile, 
 	     "      %s.MultisetSort();\n",
-             var->s->getvalue()->mu_name
+             var->s->getvalue()->generate_code()
              );
   fprintf( codefile, 
 	   "      if (p.compare(workingstate)) {\n"   // changed by Uli
@@ -416,8 +416,8 @@ void symmetryclass::generate_exhaustive_fast_canonicalization()
             "      }\n"
             "  StateCopy(workingstate, &BestPermutedState);\n"
             "\n",
-            var->s->getvalue()->mu_name,
-            var->s->getvalue()->mu_name
+            var->s->getvalue()->generate_code(),
+            var->s->getvalue()->generate_code()
             );
   fprintf(codefile,
 	  "};\n"); 
@@ -458,7 +458,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
       fprintf(codefile, 
 	      "  %s.SimpleCanonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
   
   
@@ -470,7 +470,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
       fprintf(codefile, 
 	      "  %s.Canonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // multiset
@@ -479,7 +479,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
       fprintf(codefile, 
 	      "  %s.MultisetSort();\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // if they are inside more complicated structure, only do a limit
@@ -493,7 +493,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
 	      "    %s.SimpleLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
   for ( var = varlist; var != NULL; var = var->next )
     if (var->s->getvalue()->gettype()->HasScalarsetArrayOfFree()
@@ -505,7 +505,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
 	      "    %s.ArrayLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // refine Permutation set by checking graph structure of scalarset array of Scalarset
@@ -516,7 +516,7 @@ void symmetryclass::generate_heuristic_fast_normalization()
 	      "    %s.Limit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // checking if we need to change simple to one
@@ -544,10 +544,10 @@ void symmetryclass::generate_heuristic_fast_normalization()
 	      "  if (args->multiset_reduction.value)\n"
 	      "    %s.MultisetSort();\n" 
 	      "\n",
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code(),
+              var->s->getvalue()->generate_code(),
+              var->s->getvalue()->generate_code(),
+              var->s->getvalue()->generate_code()
 	      );
 
   fprintf(codefile,
@@ -593,7 +593,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
       fprintf(codefile, 
 	      "  %s.SimpleCanonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // simple scalarset array
@@ -604,7 +604,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
       fprintf(codefile, 
 	      "  %s.Canonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // multiset
@@ -613,7 +613,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
       fprintf(codefile, 
 	      "  %s.MultisetSort();\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // if they are inside more complicated structure, only do a limit
@@ -627,7 +627,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
 	      "    %s.SimpleLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
   for ( var = varlist; var != NULL; var = var->next )
     if (var->s->getvalue()->gettype()->HasScalarsetArrayOfFree()
@@ -639,7 +639,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
 	      "    %s.ArrayLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // refine Permutation set by checking graph structure of multiset array of Scalarset
@@ -650,7 +650,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
 	      "    %s.MultisetLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // refine Permutation set by checking graph structure of scalarset array of Scalarset
@@ -661,7 +661,7 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
 	      "    %s.Limit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // checking if we need to change simple to explicit
@@ -691,8 +691,8 @@ void symmetryclass::generate_heuristic_fast_canonicalization()
 	      "      }\n"
 	      "  StateCopy(workingstate, &BestPermutedState);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code(),
+              var->s->getvalue()->generate_code()
 	      );
       
   fprintf(codefile,
@@ -740,7 +740,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
       fprintf(codefile, 
 	      "  %s.SimpleCanonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // simple scalarset array
@@ -751,7 +751,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
       fprintf(codefile, 
 	      "  %s.Canonicalize(Perm);\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // multiset
@@ -760,7 +760,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
       fprintf(codefile, 
 	      "  %s.MultisetSort();\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // if they are inside more complicated structure, only do a limit
@@ -774,7 +774,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "    %s.SimpleLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
   for ( var = varlist; var != NULL; var = var->next )
     if (var->s->getvalue()->gettype()->HasScalarsetArrayOfFree()
@@ -786,7 +786,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "    %s.ArrayLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+              var->s->getvalue()->generate_code()
 	      );
 
   // refine Permutation set by checking graph structure of multiset array of Scalarset
@@ -797,7 +797,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "    %s.MultisetLimit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+	      var->s->getvalue()->generate_code()
 	      );
 
   // refine Permutation set by checking graph structure of scalarset array of Scalarset
@@ -808,7 +808,7 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "    %s.Limit(Perm);\n"
 	      "  }\n"
 	      "\n",
-	      var->s->getvalue()->mu_name
+	      var->s->getvalue()->generate_code()
 	      );
 
   // checking if we need to change simple to explicit
@@ -837,8 +837,8 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "  %s.Permute(Perm,0);\n"
 	      "  if (args->multiset_reduction.value)\n"
 	      "    %s.MultisetSort();\n",
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name
+	      var->s->getvalue()->generate_code(),
+	      var->s->getvalue()->generate_code()
 	      );
       
   if (!no_need_for_perm)
@@ -863,8 +863,8 @@ void symmetryclass::generate_heuristic_small_mem_canonicalization()
 	      "      %s.Permute(Perm,0);\n"
 	      "      if (args->multiset_reduction.value)\n"
 	      "        %s.MultisetSort();\n",
-	      var->s->getvalue()->mu_name,
-	      var->s->getvalue()->mu_name
+	      var->s->getvalue()->generate_code(),
+	      var->s->getvalue()->generate_code()
 	      );
       
   if (!no_need_for_perm)

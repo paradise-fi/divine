@@ -1863,15 +1863,23 @@ const char *constdecl::generate_decl()
 /********************
   code for vardecl
  ********************/
+const char *vardecl::generate_code()
+{
+    if (global) {
+        char *ret;
+        asprintf( &ret, "(MuGlobal::get().variables->%s)", mu_name );
+        return ret;
+    } else
+        return decl::generate_code();
+}
+
 const char *vardecl::generate_decl()
 {
   if (declared)
       return "ERROR!";
   if (global) {
     fprintf(codefile,
-        "/*** Variable declaration (global) ***/\n"
-            "#define %s (MuGlobal::get().variables->%s)\n",
-            mu_name, mu_name );
+            "/*** Variable declaration (global) for %s (NOOP) ***/\n", mu_name );
   } else {
     fprintf(codefile,
         "/*** Variable declaration (local) ***/\n"

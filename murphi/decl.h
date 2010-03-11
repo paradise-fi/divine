@@ -998,10 +998,8 @@ public:
   { return new designator(origin, type, TRUE, FALSE, TRUE); }
   
   // code generation
-#ifdef GENERATE_DECL_CODE
   // used in no_code.C
   virtual const char *generate_code();
-#endif
   virtual const char *generate_decl();
 };
 
