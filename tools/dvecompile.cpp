@@ -1,7 +1,17 @@
+#include <tools/compile.h>
 #include <tools/dvecompile.h>
 #include <divine/generator/common.h>
 
 using namespace wibble::str;
+
+namespace divine {
+const char *compile_defines_str = "\
+#define assert_eq(a,b) assert(a == b)\n\
+#define assert_neq(a,b) assert(a != b);\n\
+#define assert_leq(a,b) assert(a <= b);\n\
+#define assert_die() assert(false);\n\
+#define BLOB_NO_HASH\n";
+}
 
 void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name)
 {
@@ -119,13 +129,6 @@ std::string dve_compiler::cexpr( dve_expression_t & expr, std::string state )
     return str.str();
 }
 
-namespace divine {
-extern const char *generator_custom_api_h_str;
-extern const char *pool_h_str;
-extern const char *circular_h_str;
-extern const char *blob_h_str;
-}
-
 void dve_compiler::gen_header()
 {
     line( "#include <stdio.h>" );
@@ -145,11 +148,7 @@ void dve_compiler::gen_header()
     line( "typedef size_t size_int_t;" );
     line();
 
-    line( "#define assert_eq(a,b) assert(a == b)" );
-    line( "#define assert_neq(a,b) assert(a != b)" );
-    line( "#define assert_leq(a,b) assert(a <= b)" );
-    line( "#define assert_die() assert(false)" );
-    line( "#define BLOB_NO_HASH" );
+    line( compile_defines_str );
 
     line( divine::pool_h_str );
     line();

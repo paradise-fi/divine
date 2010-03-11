@@ -6,6 +6,9 @@
 #include <vector>
 #include <wibble/string.h>
 
+#ifndef TOOLS_DVECOMPILE_H
+#define TOOLS_DVECOMPILE_H
+
 using namespace divine;
 using namespace std;
 
@@ -181,3 +184,5 @@ struct dve_compiler: public dve_explicit_system_t
 
     void print_generator();
 };
+
+#endif

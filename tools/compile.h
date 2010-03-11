@@ -7,6 +7,12 @@
 
 namespace divine {
 
+extern const char *generator_custom_api_h_str;
+extern const char *pool_h_str;
+extern const char *circular_h_str;
+extern const char *blob_h_str;
+extern const char *compile_defines_str;
+
 using namespace wibble;
 
 struct Compile {

@@ -213,10 +213,20 @@ struct MuGlobalVars;
 struct SymmetryClass;
 
 struct MuGlobal {
+    static bool initialised;
     static pthread_key_t key;
+    static pthread_mutex_t mutex;
     static MuGlobal &get();
-    static void init() {
+    static bool init() {
+        pthread_mutex_lock( &mutex );
+        if ( initialised ) {
+            pthread_mutex_unlock( &mutex );
+            return false;
+        }
         pthread_key_create( &key, 0 ); // FIXME destructor
+        initialised = true;
+        pthread_mutex_unlock( &mutex );
+        return true;
     }
 
 public:
@@ -232,6 +242,8 @@ public:
 };
 
 pthread_key_t MuGlobal::key;
+pthread_mutex_t MuGlobal::mutex = PTHREAD_MUTEX_INITIALIZER;
+bool MuGlobal::initialised = false;
 
 #define workingstate (MuGlobal::get().working)
 #define theworld (*MuGlobal::get().world)
