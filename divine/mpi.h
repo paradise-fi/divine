@@ -199,6 +199,7 @@ struct Mpi {
                    algorithm::_MpiId< Algorithm >::to_id( f ) );
         sendSharedBits( 1, *master_shared );
 
+        _lock.drop();
         while( slaveLoop() ); // wait (and serve) till the ring is done
         is_master = true;
     }
