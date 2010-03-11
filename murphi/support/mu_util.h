@@ -440,7 +440,7 @@ public:
   mu__long(const mu__long &src)
   :mu__int(src)
   {
-    value(int(src));
+      value(src.value());
   };
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
