@@ -107,6 +107,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         CeShared< Node > ce;
         int initialTable;
         Statistics< G > stats;
+
+        Shared() : cycle_found( false ) {}
     } shared;
 
     struct Extension {
@@ -491,7 +493,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G > >
         : Algorithm( c, sizeof( Extension ) )
     {
         initGraph( shared.g );
-        shared.cycle_found = false;
         shared.size = 0;
         if ( c ) {
             becomeMaster( &shared, workerCount( c ) );
