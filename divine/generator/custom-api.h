@@ -33,8 +33,8 @@ void *pool_allocate( CPool *pool, int sz );
 void *pool_allocate_blob( CPool *pool, int sz );
 
 #else
-typedef Blob CBlob;
-typedef Pool CPool;
+typedef divine::Blob CBlob;
+typedef divine::Pool CPool;
 #endif
 
 
