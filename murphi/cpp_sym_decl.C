@@ -250,12 +250,13 @@ void multisettypedecl::generate_permute_function()
   fprintf(codefile,
           "void %s::Permute(PermSet& Perm, int i)\n"
           "{\n"
-          "  %s temp(\"Permute_%s\",-1);\n"
+          "  static PerThread< %s > temp_( %s( \"Permute_%s\",-1 ) );\n"
+          "  %s &temp = temp_.get();\n"
           "  int j;\n"
           "  for (j=0; j<%d; j++)\n"
           "    array[j].Permute(Perm, i);\n",
           mu_name,              // %s::Permute
-          mu_name, mu_name,     // %s temp("Permute_%s"...
+          mu_name, mu_name, mu_name,    // %s temp("Permute_%s"...
           maximum_size // j-for
           );
   fprintf(codefile,"};\n");
@@ -271,12 +272,13 @@ void arraytypedecl::generate_permute_function()
   fprintf(codefile,
           "void %s::Permute(PermSet& Perm, int i)\n"
           "{\n"
-          "  %s temp(\"Permute_%s\",-1);\n"
+          "  static PerThread< %s > temp_( %s(\"Permute_%s\",-1) );\n"
+          "  %s &temp = temp_.get();\n"
           "  int j;\n"
           "  for (j=0; j<%d; j++)\n"
           "    array[j].Permute(Perm, i);\n",
-          mu_name,              // %s::Permute
-          mu_name, mu_name,     // %s temp("Permute_%s"...
+          mu_name, // %s::Permute
+          mu_name, mu_name, mu_name, mu_name,     // %s temp("Permute_%s"...
           indextype->getsize() // j-for
           );
   
@@ -2293,7 +2295,8 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  // sorting\n"
               "  int count_%s;\n"
 	      "  int compare;\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n"
@@ -2305,15 +2308,15 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  int size_%s[%d];\n"
               "  int start_%s[%d];\n"
               "  // canonicalization\n"
-              "  %s temp;\n",
+              "  static PerThread< %s > temp_; %s &temp = temp_.get();\n",
               mu_name, // %s::Canonicalize
               indextype->mu_name, // count_%s
-              elementtype->mu_name, indextype->getsize(), // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name, // %s value[%d]
               indextype->mu_name, indextype->getsize(), // bool goodset_%s[%d]
               indextype->mu_name, indextype->getsize(), indextype->getsize(), // pos
               indextype->mu_name, indextype->getsize(), // size_%s[%d]
               indextype->mu_name, indextype->getsize(), // start_%s[%d]
-              mu_name  // static %s temp
+              mu_name, mu_name  // static %s temp
               );
       generate_simple_sort();
       generate_limit();
@@ -2330,7 +2333,8 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  // indexes\n"
               "  int i,j,k,z;\n"
               "  // sorting\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
 	      "  int compare;\n"
               "  // limit\n"
               "  bool exists;\n"
@@ -2339,10 +2343,10 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
               "  int start;\n"
               "  int class_size;\n"
               "  // canonicalization\n"
-              "  %s temp;\n",
+              "  static PerThread< %s > temp_; %s &temp = temp_.get();\n",
               mu_name, // %s::Canonicalize
-              elementtype->mu_name, indextype->getsize(), // %s value[%d]
-              mu_name  // static %s temp
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name, // %s value[%d]
+              mu_name, mu_name  // static %s temp
               );
       
       for(t=((uniontypedecl *)indextype)->getunionmembers();
@@ -2709,7 +2713,8 @@ void arraytypedecl::generate_array_limit_function(symmetryclass& symmetry)
               "  // sorting\n"
               "  int count_%s;\n"
 	      "  int compare;\n" 
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n"
@@ -2717,7 +2722,7 @@ void arraytypedecl::generate_array_limit_function(symmetryclass& symmetry)
               "  bool pos_%s[%d][%d];\n",
               mu_name, // %s::Limit
               indextype->mu_name, // count_%s
-              elementtype->mu_name, indextype->getsize(), // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name, // %s value[%d]
               indextype->mu_name, indextype->getsize(), // bool goodset_%s[%d]
               indextype->mu_name, indextype->getsize(), indextype->getsize() // pos
               );
@@ -2738,12 +2743,13 @@ void arraytypedecl::generate_array_limit_function(symmetryclass& symmetry)
               "  int i,j,k,z;\n"
               "  // sorting\n"
 	      "  int compare;\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
               mu_name, // %s::Canonicalize
-              elementtype->mu_name, indextype->getsize() // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name // %s value[%d]
               );
       
       for(t=((uniontypedecl *)indextype)->getunionmembers();
@@ -2904,12 +2910,13 @@ void arraytypedecl::generate_limit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
               mu_name, // %s::Canonicalize
-              elementtype->mu_name, indextype->getsize() // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name  // %s value[%d]
               );
 
       // get a list for all scalarsets that may appear
@@ -3036,12 +3043,13 @@ void arraytypedecl::generate_limit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
               mu_name, // %s::Limit
-              elementtype->mu_name, indextype->getsize() // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, indextype->getsize(), elementtype->mu_name  // %s value[%d]
               );
 
       // get a list for all scalarsets that may appear
@@ -3238,7 +3246,7 @@ void multisettypedecl::generate_multiset_simple_sort()
   // but use CompareWeight instead of Compare,
   // ignoring the part of elements with scalarset
   fprintf(codefile, 	      
-	  "  %s temp;\n"
+	  "  PerThread< %s > temp_; %s &temp = temp_.get();\n"
 	  "\n"   
 	  "  // compact\n"
 	  "  for (i = 0, j = 0; i < %d; i++)\n"
@@ -3266,6 +3274,7 @@ void multisettypedecl::generate_multiset_simple_sort()
 	  "          array[i] = array[j];\n"
 	  "          array[j] = temp;\n"
 	  "        }\n",
+	  elementtype->generate_code(),
 	  elementtype->generate_code(),
 	  maximum_size,
 	  maximum_size,
@@ -3804,12 +3813,13 @@ void multisettypedecl::generate_multisetlimit_function(symmetryclass& symmetry)
 	      "  // while guard\n"
 	      "  bool while_guard, while_guard_temp;\n"
               "  // sorting\n"
-              "  %s value[%d];\n"
+              "  static PerThread< std::vector< %s > > value_( std::vector< %s >( %d ) );\n"
+              "  std::vector< %s > &value = value_.get();\n"
               "  // limit\n"
               "  bool exists;\n"
               "  bool split;\n",
               mu_name, // %s::Canonicalize
-              elementtype->mu_name, maximum_size // %s value[%d]
+              elementtype->mu_name, elementtype->mu_name, maximum_size, elementtype->mu_name // %s value[%d]
               );
 
       // get a list for all scalarsets that may appear

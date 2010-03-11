@@ -1052,7 +1052,7 @@ const char *multisettypedecl::generate_decl()
      fprintf(codefile,        
          "  void MultisetSort()\n"
          "  {\n"
-         "    %s temp;\n"
+         "    static PerThread< %s > temp_; %s &temp = temp_.get();\n"
          "\n"   
          "    // compact\n"
          "    int i,j;\n"
@@ -1082,6 +1082,7 @@ const char *multisettypedecl::generate_decl()
          "            array[j] = temp;\n"
          "          }\n"
          "  }\n",
+         elementtype->generate_code(),
          elementtype->generate_code(),
          maximum_size,
          maximum_size,
@@ -3132,7 +3133,7 @@ void generate_rule_params_assignment(ste *enclosures)
     {
       generate_rule_params_assignment(enclosures->getnext() );
       if (enclosures->getvalue()->gettype()->gettypeclass() == typedecl::Union)
-    {
+      {
 //    if ( enclosures->getvalue()->getclass() == decl::Choose )
 //      {
 //        fprintf(codefile,
@@ -3146,58 +3147,65 @@ void generate_rule_params_assignment(ste *enclosures)
 //          enclosures->getvalue()->gettype()->getsize()
 //          );
 //      }
-      if ( enclosures->getvalue()->getclass() == decl::Choose )
-        fprintf(codefile,
-            "    %s_id %s;\n"
-            "    %s.unionassign( r %% %d );\n"
-            "    r = r / %d;\n",
-            ((multisetidtypedecl *)enclosures->getvalue()->gettype())
-            ->getparenttype()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->gettype()->getsize(),
-            enclosures->getvalue()->gettype()->getsize()
-            );
-      if ( enclosures->getvalue()->getclass() == decl::Quant )
-        fprintf(codefile,
-            "    %s %s;\n"
-            "    %s.unionassign(r %% %d);\n"
-            "    r = r / %d;\n",
-            enclosures->getvalue()->gettype()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->gettype()->getsize(),
-            enclosures->getvalue()->gettype()->getsize()
-            );
-    }
-      else
-    {
-      if ( enclosures->getvalue()->getclass() == decl::Choose )
-        fprintf(codefile,
-            "    %s_id %s;\n"
-            "    %s.value((r %% %d) + %d);\n"
-            "    r = r / %d;\n",
-            ((multisetidtypedecl *)enclosures->getvalue()->gettype())
-            ->getparenttype()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->gettype()->getsize(),
-            enclosures->getvalue()->gettype()->getleft(),
-            enclosures->getvalue()->gettype()->getsize()
-            );
-      if ( enclosures->getvalue()->getclass() == decl::Quant )
-        fprintf(codefile,
-            "    %s %s;\n"
-            "    %s.value((r %% %d) + %d);\n"
-            "    r = r / %d;\n",
-            enclosures->getvalue()->gettype()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->generate_code(),
-            enclosures->getvalue()->gettype()->getsize(),
-            enclosures->getvalue()->gettype()->getleft(),
-            enclosures->getvalue()->gettype()->getsize()
-            );
-    }
+          if ( enclosures->getvalue()->getclass() == decl::Choose ) {
+              const char *type =
+                  ((multisetidtypedecl *)enclosures->getvalue()->gettype())
+                  ->getparenttype()->generate_code();
+              const char *name = enclosures->getvalue()->generate_code();
+              fprintf(codefile,
+                      "    static PerThread< %s_id > %s_; %s_id &%s = %s_.get();\n"
+                      "    %s.unionassign( r %% %d );\n"
+                      "    r = r / %d;\n",
+                      type, name, type, name, name, name,
+                      enclosures->getvalue()->gettype()->getsize(),
+                      enclosures->getvalue()->gettype()->getsize()
+                  );
+          }
+          if ( enclosures->getvalue()->getclass() == decl::Quant ) {
+              const char *type = enclosures->getvalue()->gettype()->generate_code();
+              const char *name = enclosures->getvalue()->generate_code();
+              fprintf(codefile,
+                      "    static PerThread< %s > %s_; %s &%s = %s_.get();\n"
+                      "    %s.unionassign(r %% %d);\n"
+                      "    r = r / %d;\n",
+                      type, name, type, name, name,
+                      enclosures->getvalue()->generate_code(),
+                      enclosures->getvalue()->generate_code(),
+                      enclosures->getvalue()->gettype()->getsize(),
+                      enclosures->getvalue()->gettype()->getsize()
+                  );
+          }
+        } else {
+            if ( enclosures->getvalue()->getclass() == decl::Choose ) {
+                const char *type = ((multisetidtypedecl *)enclosures->getvalue()->gettype())
+                        ->getparenttype()->generate_code();
+                const char *name = enclosures->getvalue()->generate_code();
+                fprintf(codefile,
+                        "    static PerThread< %s_id > %s_; %s_id &%s = %s_.get();\n"
+                        "    %s.value((r %% %d) + %d);\n"
+                        "    r = r / %d;\n",
+                        type, name, type, name, name,
+                        enclosures->getvalue()->generate_code(),
+                        enclosures->getvalue()->gettype()->getsize(),
+                        enclosures->getvalue()->gettype()->getleft(),
+                        enclosures->getvalue()->gettype()->getsize()
+                    );
+            }
+            if ( enclosures->getvalue()->getclass() == decl::Quant ) {
+                const char *type = enclosures->getvalue()->gettype()->generate_code();
+                const char *name = enclosures->getvalue()->generate_code();
+                fprintf(codefile,
+                        "    static PerThread< %s > %s_; %s &%s = %s_.get();\n"
+                        "    %s.value((r %% %d) + %d);\n"
+                        "    r = r / %d;\n",
+                        type, name, type, name, name,
+                        enclosures->getvalue()->generate_code(),
+                        enclosures->getvalue()->gettype()->getsize(),
+                        enclosures->getvalue()->gettype()->getleft(),
+                        enclosures->getvalue()->gettype()->getsize()
+                    );
+            }
+        }
     }
 }
 

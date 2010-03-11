@@ -71,6 +71,7 @@
 #include <new>    /* for new_handler stuff. */
 #include <signal.h> /* To trap division by zero. */
 #include <assert.h>
+#include <vector>
 
 
 /****************************************   // added by Uli
@@ -248,6 +249,25 @@ bool MuGlobal::initialised = false;
 #define workingstate (MuGlobal::get().working)
 #define theworld (*MuGlobal::get().world)
 
+template< typename T >
+struct PerThread {
+    T initial;
+    pthread_key_t key;
+    T &get() {
+        T *x = (T *)pthread_getspecific( key );
+        if (!x) {
+            x = new T;
+            *x = initial;
+            pthread_setspecific( key, x );
+        }
+        return *x;
+    }
+    PerThread( const T &ini = T() )
+    {
+        initial = ini;
+        pthread_key_create( &key, 0 );
+    }
+};
 
 /****************************************
   * 8 March 94 Norris Ip:
