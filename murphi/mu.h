@@ -510,8 +510,9 @@ struct liverec
           char * rightconditionname,
           live_type livetype)
   : rulename(rulename), preconditionname(preconditionname),
-    livetype(livetype), leftconditionname(leftconditionname),
-    rightconditionname(rightconditionname), next(NULL) {};
+    leftconditionname(leftconditionname),
+    rightconditionname(rightconditionname),
+    livetype(livetype), next(NULL) {};
   int print_liverules();
 };
 

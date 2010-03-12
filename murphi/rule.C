@@ -78,8 +78,8 @@ simplerule::simplerule(ste *enclosures,
 		       stmt *body,
 		       bool unfair,
                        int priority)
-:rule(), name( name ), enclosures(enclosures),  condition(condition),
- locals(locals), body(body), condname(NULL), rulename(NULL), unfair(unfair),
+:rule(), name( name ), condname(NULL), rulename(NULL), enclosures(enclosures),  condition(condition),
+ locals(locals), body(body), unfair(unfair),
  priority(priority)
 {
   if ( condition != NULL && body != NULL )
@@ -265,9 +265,9 @@ fairness::fairness(ste *enclosures, expr *test)
 int livenessnum = 0;
 liveness::liveness(ste *enclosures, expr *ptest, expr *ltest, expr *rtest,
                         live_type livetype)
-:enclosures(enclosures), precondname(NULL), rightcondname(NULL),
- leftcondname(NULL), precondition(ptest), leftcondition(ltest),
- rightcondition(rtest), livetype(livetype) , name(NULL) {};
+ : name(NULL), precondname(NULL), leftcondname(NULL), rightcondname(NULL),
+ enclosures(enclosures), precondition(ptest), leftcondition(ltest),
+ rightcondition(rtest), livetype(livetype) {};
 
 
 /********************
