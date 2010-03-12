@@ -22,7 +22,7 @@ void Compile::compileMurphi( std::string in ) {
 \n\
 using namespace divine;\n\
 extern \"C\" void setup( CustomSetup *s ) {\n\
-    if ( !MuGlobal::init() ) return;\n\
+    if ( !MuGlobal::init_once() ) return;\n\
     args = new argclass( 0, NULL ); // FIXME\n\
     std::cerr << \"symmetry: \" << args->symmetry_reduction.value << \", \"\n\
               << args->multiset_reduction.value << \", \"\n\

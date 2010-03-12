@@ -215,16 +215,14 @@ struct SymmetryClass;
 
 struct MuGlobal {
     static bool initialised;
-    static pthread_key_t key;
     static pthread_mutex_t mutex;
     static MuGlobal &get();
-    static bool init() {
+    static bool init_once() {
         pthread_mutex_lock( &mutex );
         if ( initialised ) {
             pthread_mutex_unlock( &mutex );
             return false;
         }
-        pthread_key_create( &key, 0 ); // FIXME destructor
         initialised = true;
         pthread_mutex_unlock( &mutex );
         return true;
@@ -242,7 +240,6 @@ public:
     MuGlobal();
 };
 
-pthread_key_t MuGlobal::key;
 pthread_mutex_t MuGlobal::mutex = PTHREAD_MUTEX_INITIALIZER;
 bool MuGlobal::initialised = false;
 
@@ -252,20 +249,22 @@ bool MuGlobal::initialised = false;
 template< typename T >
 struct PerThread {
     T initial;
-    pthread_key_t key;
+    int i;
+
     T &get() {
-        T *x = (T *)pthread_getspecific( key );
-        if (!x) {
-            x = new T;
-            *x = initial;
-            pthread_setspecific( key, x );
-        }
-        return *x;
+        static __thread std::vector< T > *x = 0;
+        if (!x)
+            x = new std::vector< T >;
+        if (x->size() <= i)
+            x->resize( i + 1, initial );
+        return (*x)[i];
     }
+
     PerThread( const T &ini = T() )
     {
+        static __thread int last_i = 0;
         initial = ini;
-        pthread_key_create( &key, 0 );
+        i = ++last_i;
     }
 };
 

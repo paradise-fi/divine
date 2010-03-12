@@ -216,10 +216,9 @@ unsigned long NumCurState;     // Uli: number of the current state for trace
                                //      info file
 
 inline MuGlobal &MuGlobal::get() {
-    MuGlobal *instance = (MuGlobal *)pthread_getspecific( key );
+    static __thread MuGlobal *instance = 0;
     if ( !instance ) {
         instance = new MuGlobal;
-        pthread_setspecific( key, instance );
         instance->world->to_state( NULL );
     }
     return *instance;
