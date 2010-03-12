@@ -16,9 +16,9 @@ using namespace divine;
 
 void compacted_t::create_gid(int _op, size_int_t _gid) const
 {
-  ptr = static_cast<compacted_viewer_t*>
-    (malloc(sizeof(compacted_viewer_t) + sizeof(size_int_t)));
-  ptr->size = sizeof(compacted_viewer_t) + sizeof(size_int_t);
+  size_t size = sizeof(compacted_viewer_t) + sizeof(size_int_t);
+  ptr = static_cast<compacted_viewer_t*>( operator new( size ) );
+  ptr->size = size;
   ptr->op = _op;
   ptr->arity = 0;
   ptr->r_offset = 0;  
@@ -29,9 +29,9 @@ void compacted_t::create_gid(int _op, size_int_t _gid) const
 
 void compacted_t::create_val(int _op, all_values_t _value) const
 {
-  ptr =  static_cast<compacted_viewer_t*>
-    (malloc(sizeof(compacted_viewer_t) + sizeof(all_values_t)));
-  ptr->size = sizeof(compacted_viewer_t) + sizeof(all_values_t);
+  size_t size = sizeof(compacted_viewer_t) + sizeof(size_int_t);
+  ptr = static_cast<compacted_viewer_t*>( operator new( size ) );
+  ptr->size = size;
   ptr->op = _op;
   ptr->arity = 0;
   ptr->r_offset = 0;  
@@ -50,7 +50,7 @@ void compacted_t::join(int _op, compacted_viewer_t* _left, compacted_viewer_t* _
       new_size += _right->size;
     }
   
-  ptr = static_cast<compacted_viewer_t*>(malloc(new_size));
+  ptr = static_cast<compacted_viewer_t*>( operator new( new_size ) );
   ptr->size=new_size;
   ptr->op=_op;
   if (_right == 0)
@@ -179,7 +179,7 @@ dve_parser_t dve_expression_t::expr_parser(*pexpr_terr, (dve_expression_t *)(0))
 template< typename T >
 void safe_free(T *&ptr) {
     if (ptr != NULL) {
-        free(ptr);
+        delete ptr;
         ptr = NULL;
     }
 }
@@ -224,7 +224,7 @@ void dve_expression_t::compaction()
       c.join(expr_op,tmp,left()->get_p_compact());
       safe_free(p_compact);
       p_compact = c.ptr;
-      free (tmp);
+      delete tmp;
       return;
     }
   
@@ -291,7 +291,7 @@ dve_expression_t::~dve_expression_t()
 {
   DEBFUNC(cerr << "Destructor of dve_expression_t" << endl;);
   if (p_compact)
-    free (p_compact);
+    delete p_compact;
   p_compact=0;
 }
 
@@ -314,10 +314,10 @@ void dve_expression_t::assign(const expression_t & expr)
 
  if (p_compact!=0) //apply compact stuff only if compacted
    {
-     free (p_compact);
+     delete p_compact;
      p_compact=0;   
      size_t auxsize = *((size_t *)(dve_expr->get_p_compact()));
-     p_compact = static_cast<compacted_viewer_t*>(malloc(auxsize));
+     p_compact = static_cast<compacted_viewer_t*>(operator new( auxsize ));
      memcpy (p_compact,dve_expr->get_p_compact(),auxsize);
    }
 }

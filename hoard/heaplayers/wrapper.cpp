@@ -62,6 +62,8 @@
 #include <errno.h>
 #endif
 
+#define CUSTOM_PREFIX(n) hoard_ ## n
+
 #if !defined(CUSTOM_PREFIX)
 #define CUSTOM_PREFIX(n) n
 #endif

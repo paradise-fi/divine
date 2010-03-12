@@ -26,12 +26,12 @@ namespace divine { //We want Doxygen not to see namespace `dve'
    {
     DEBFUNC(std::cerr << "BEGIN of destructor of token_vector_t" << std::endl;)
     for (dve_token_vector_t::iterator i = this->begin();i != this->end(); ++i)
-    free(*i);
+    delete[] (*i);
     DEBFUNC(std::cerr << "END of destructor of token_vector_t" << std::endl;)
    }
   const char * save_token(const char * const token)
    {
-    char * aux = (char *)(malloc(MAXLEN));
+    char * aux = new char[ MAXLEN ];
     strncpy(aux,token,MAXLEN);
     this->push_back(aux);
     return aux;

@@ -1856,24 +1856,20 @@ static int yy_flex_strlen (yyconst char * s )
 
 static void *yyalloc (yy_size_t  size )
 {
-	return (void *) malloc( size );
+    return operator new( size );
 }
 
 static void *yyrealloc  (void * ptr, yy_size_t  size )
 {
-	/* The cast to (char *) in the following accommodates both
-	 * implementations that use char* generic pointers, and those
-	 * that use void* generic pointers.  It works with the latter
-	 * because both ANSI C and C++ allow castless assignment from
-	 * any pointer type to void*, and deal with argument conversions
-	 * as though doing an assignment.
-	 */
-	return (void *) realloc( (char *) ptr, size );
+    void *tmp = operator new( size );
+    memcpy( tmp, ptr, size ); /* reads past the end of ptr : - ( */
+    delete ptr;
+    return tmp;
 }
 
 static void yyfree (void * ptr )
 {
-	free( (char *) ptr );	/* see yyrealloc() for (char *) cast */
+    delete ptr;
 }
 
 #define YYTABLES_NAME "yytables"
