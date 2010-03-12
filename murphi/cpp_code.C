@@ -748,8 +748,7 @@ const char *arraytypedecl::generate_decl()
         // "    delete[ OLD_GPP(strlen(array[i].name) +1) ] array[i].name; // Should be delete[] \n"
         "}\n",
         mu_name,
-        mu_name,
-        indextype->getsize());
+        mu_name);
 
     fprintf(codefile, "/*** end array declaration ***/\n");
     fprintf(codefile, "%s %s_undefined_var;\n\n", mu_name, mu_name);
@@ -3168,9 +3167,7 @@ void generate_rule_params_assignment(ste *enclosures)
                       "    static PerThread< %s > %s_; %s &%s = %s_.get();\n"
                       "    %s.unionassign(r %% %d);\n"
                       "    r = r / %d;\n",
-                      type, name, type, name, name,
-                      enclosures->getvalue()->generate_code(),
-                      enclosures->getvalue()->generate_code(),
+                      type, name, type, name, name, name,
                       enclosures->getvalue()->gettype()->getsize(),
                       enclosures->getvalue()->gettype()->getsize()
                   );
@@ -3184,8 +3181,7 @@ void generate_rule_params_assignment(ste *enclosures)
                         "    static PerThread< %s_id > %s_; %s_id &%s = %s_.get();\n"
                         "    %s.value((r %% %d) + %d);\n"
                         "    r = r / %d;\n",
-                        type, name, type, name, name,
-                        enclosures->getvalue()->generate_code(),
+                        type, name, type, name, name, name,
                         enclosures->getvalue()->gettype()->getsize(),
                         enclosures->getvalue()->gettype()->getleft(),
                         enclosures->getvalue()->gettype()->getsize()
@@ -3198,8 +3194,7 @@ void generate_rule_params_assignment(ste *enclosures)
                         "    static PerThread< %s > %s_; %s &%s = %s_.get();\n"
                         "    %s.value((r %% %d) + %d);\n"
                         "    r = r / %d;\n",
-                        type, name, type, name, name,
-                        enclosures->getvalue()->generate_code(),
+                        type, name, type, name, name, name,
                         enclosures->getvalue()->gettype()->getsize(),
                         enclosures->getvalue()->gettype()->getleft(),
                         enclosures->getvalue()->gettype()->getsize()
