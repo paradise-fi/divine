@@ -261,9 +261,9 @@ struct PerThread {
     }
 
     PerThread( const T &ini = T() )
+        : initial( ini )
     {
         static __thread int last_i = 0;
-        initial = ini;
         i = ++last_i;
     }
 };
