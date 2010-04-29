@@ -68,7 +68,7 @@ struct Main {
         *cmd_metrics, *cmd_compile;
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy;
-    IntOption *o_workers, *o_mem, *o_initable;
+    IntOption *o_workers, *o_mem, *o_time, *o_initable;
     StringOption *o_trail;
 
     bool dummygen;
@@ -165,6 +165,10 @@ struct Main {
             "max-memory", '\0', "max-memory", "",
             "maximum memory to use in MB (default: 0 = unlimited)" );
 
+        o_time = common->add< IntOption >(
+            "max-time", '\0', "max-time", "",
+            "maximum wall time to use in seconds (default: 0 = unlimited)" );
+
         o_pool = common->add< BoolOption >(
             "disable-pool", '\0', "disable-pool", "",
             "disable pooled allocation (use HOARD for all allocation)" );
@@ -197,6 +201,38 @@ struct Main {
         cmd_ndfs->add( common );
         cmd_verify->add( common );
     }
+
+    void setupLimits() {
+        if ( o_time->intValue() != 0 ) {
+            if ( o_mem->intValue() < 0 ) {
+                die( "FATAL: cannot have negative time limit" );
+            }
+            alarm( o_time->intValue() );
+        }
+
+        if ( o_mem->intValue() != 0 ) {
+            if ( o_mem->intValue() < 0 ) {
+                die( "FATAL: cannot have negative memory limit" );
+            }
+            if ( o_mem->intValue() < 16 ) {
+                die( "FATAL: we really need at least 16M of memory" );
+            }
+#ifdef POSIX
+            struct rlimit limit;
+            limit.rlim_cur = limit.rlim_max = o_mem->intValue() * 1024 * 1024;
+            if (setrlimit( RLIMIT_AS, &limit ) != 0) {
+                int err = errno;
+                std::cerr << "WARNING: Could not set memory limit to "
+                          << o_mem->intValue() << "MB. System said: "
+                          << strerror(err) << std::endl;
+            }
+#else
+            std::cerr << "WARNING: Setting memory limit not supported "
+                      << "on this platform."  << std::endl;
+#endif
+        }
+    }
+
 
     enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
     bool m_noMC;
@@ -243,27 +279,7 @@ struct Main {
         config.setReport( o_report->boolValue() );
         config.setGenerateCounterexample( !o_noCe->boolValue() );
 
-        if ( o_mem->intValue() != 0 ) {
-            if ( o_mem->intValue() < 0 ) {
-                die( "FATAL: cannot have negative memory limit" );
-            }
-            if ( o_mem->intValue() < 16 ) {
-                die( "FATAL: we really need at least 16M of memory" );
-            }
-#ifdef POSIX
-            struct rlimit limit;
-            limit.rlim_cur = limit.rlim_max = o_mem->intValue() * 1024 * 1024;
-            if (setrlimit( RLIMIT_AS, &limit ) != 0) {
-                int err = errno;
-                std::cerr << "WARNING: Could not set memory limit to "
-                          << o_mem->intValue() << "MB. System said: "
-                          << strerror(err) << std::endl;
-            }
-#else
-            std::cerr << "WARNING: Setting memory limit not supported "
-                      << "on this platform."  << std::endl;
-#endif
-        }
+        setupLimits();
 
         if ( o_trail->boolValue() ) {
             if ( o_trail->stringValue() == "" ) {
