@@ -96,6 +96,8 @@ struct Main {
         }
 
         Report rep( config );
+        Statistics::global().resize( config.workers() );
+        Statistics::global().start();
         report = &rep;
         rep.start();
         rep.finished( selectAlgorithm() );

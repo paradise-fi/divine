@@ -2,6 +2,7 @@
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
 #include <divine/circular.h>
+#include <divine/statistics.h>
 
 #include <deque>
 
@@ -64,8 +65,11 @@ struct Queue {
     typename Graph::Successors m_head;
     bool maybe_deadlock;
 
+    int id;
+
     void pushSuccessors( const Node &t )
     {
+        Statistics::global().enqueue( id );
         m_queue.push_back( t );
     }
 
@@ -101,6 +105,7 @@ struct Queue {
 
     void dropEmptyHead() {
         assert( m_head.empty() && !m_queue.empty() );
+        Statistics::global().dequeue( id );
         m_head = g.successors( m_queue.front() );
         maybe_deadlock = true;
         m_queue.pop_front();
@@ -123,7 +128,7 @@ struct Queue {
     void popFinished() {}
     Node from() { return Node(); }
 
-    Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ) {}
+    Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ), id( 0 ) {}
 };
 
 template< typename Graph >

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 
+#include <divine/statistics.h>
 #include <divine/hashmap.h>
 #include <divine/pool.h>
 #include <divine/blob.h>
@@ -238,8 +239,9 @@ struct Parallel {
     }
 
     void queue( Node from, Node to ) {
-        Fifo< Blob > &fifo
-            = worker.queue( worker.globalId(), owner( to ) );
+        int _to = owner( to ), _from = worker.globalId();
+        Fifo< Blob > &fifo = worker.queue( _from, _to );
+        Statistics::global().sent( _from, _to );
         fifo.push( unblob< Node >( from ) );
         fifo.push( unblob< Node >( to ) );
     }
@@ -281,6 +283,7 @@ struct Parallel {
                     worker.fifo.remove();
                     t = worker.fifo.next( true );
                     worker.fifo.remove();
+                    Statistics::global().received( owner( f ), worker.globalId() );
                     bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
                 }
 
@@ -309,6 +312,7 @@ struct Parallel {
 
     void exploreFrom( Node initial ) {
         BFV< Ours > bfv( graph, *this, m_seen );
+        bfv.m_queue.id = worker.globalId();
         if ( owner( initial ) == worker.globalId() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
         }
@@ -317,6 +321,7 @@ struct Parallel {
 
     void processQueue() {
         BFV< Ours > bfv( graph, *this, m_seen );
+        bfv.m_queue.id = worker.globalId();
         run( bfv );
     }
 
