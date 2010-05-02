@@ -283,7 +283,8 @@ struct Parallel {
                     worker.fifo.remove();
                     t = worker.fifo.next( true );
                     worker.fifo.remove();
-                    Statistics::global().received( owner( f ), worker.globalId() );
+                    // FIXME m_last?
+                    Statistics::global().received( worker.fifo.m_last - 1, worker.globalId() );
                     bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
                 }
 
