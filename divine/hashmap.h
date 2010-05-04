@@ -277,9 +277,10 @@ struct HashMap
         assert_eq( m_keys.size(), m_values.size() );
         assert( factor > 1 );
 
-        // +1 to keep the table size away from 2^n
-        keys.resize( factor * m_keys.size() + 1, Key() );
-        values.resize( factor * m_values.size() + 1, Value() );
+        Statistics::global().hashsize( id, factor * m_keys.size() );
+
+        keys.resize( factor * m_keys.size(), Key() );
+        values.resize( factor * m_values.size(), Value() );
         assert( keys.size() > size() );
         for ( size_t i = 0; i < m_keys.size(); ++i ) {
             if ( valid( m_keys[ i ] ) )
