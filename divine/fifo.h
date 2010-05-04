@@ -32,16 +32,13 @@ protected:
     // them sharing a cache line, since they are always written from
     // different threads
     struct Node {
-        int read;
+        T *read;
         char padding[ cacheLine - sizeof(int) ];
         T buffer[ NodeSize ];
-        // TODO? we can save some multiplication instructions by using
-        // pointers/iterators here, where we can work with addition
-        // instead which is very slightly cheaper
-        volatile int write;
+        T * volatile write;
         Node *next;
         Node() {
-            read = write = 0;
+            read = write = buffer;
             next = 0;
         }
     };
@@ -78,12 +75,12 @@ public:
 
     void push( const T&x ) {
         Node *t;
-        if ( tail->write == NodeSize )
+        if ( tail->write == tail->buffer + NodeSize )
             t = new Node();
         else
             t = tail;
 
-        t->buffer[ t->write ] = x;
+        *t->write = x;
         ++ t->write;
 
         if ( tail != t ) {
@@ -106,14 +103,14 @@ public:
     void pop() {
         assert( !empty() );
         ++ head->read;
-        if ( head->read == NodeSize ) {
+        if ( head->read == head->buffer + NodeSize ) {
             if ( head->next != 0 ) {
                 dropHead();
             }
         }
         // the following can happen when head->next is 0 even though head->read
         // has reached NodeSize, *and* no front() has been called in the meantime
-        if ( head->read > NodeSize ) {
+        if ( head->read > head->buffer + NodeSize ) {
             dropHead();
             pop();
         }
@@ -125,10 +122,10 @@ public:
         assert( !empty() );
         // last pop could have left us with empty queue exactly at an
         // edge of a block, which leaves head->read == NodeSize
-        if ( head->read == NodeSize ) {
+        if ( head->read == head->buffer + NodeSize ) {
             dropHead();
         }
-        return head->buffer[ head->read ];
+        return *head->read;
     }
 };
 
