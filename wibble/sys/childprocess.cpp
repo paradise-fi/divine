@@ -266,15 +266,15 @@ void ChildProcess::waitForSuccess() {
     if ( WIFEXITED( r ) ) {
         if ( WEXITSTATUS( r ) )
             throw exception::Generic(
-                str::fmtf( "Subprocess terminated with error %d.",
-                           WEXITSTATUS( r ) ) );
+                str::fmt( "Subprocess terminated with error %d.",
+                          WEXITSTATUS( r ) ) );
         else
             return;
     }
     if ( WIFSIGNALED( r ) )
         throw exception::Generic(
-            str::fmtf( "Subprocess terminated by signal %d.",
-                       WTERMSIG( r ) ) );
+            str::fmt( "Subprocess terminated by signal %d.",
+                      WTERMSIG( r ) ) );
     throw exception::Generic( "Error waiting for subprocess." );
 }
 
