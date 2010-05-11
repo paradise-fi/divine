@@ -201,7 +201,12 @@ public:
 template< typename Mutex >
 class MutexLockT
 {
-protected:
+private:
+	// Disallow copy
+	MutexLockT(const MutexLockT&);
+	MutexLockT& operator=(const MutexLockT&);
+
+public:
 	Mutex& mutex;
         bool locked;
         bool yield;
