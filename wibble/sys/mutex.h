@@ -49,7 +49,6 @@ class Mutex
 {
 private:
 	// Disallow copy
-	Mutex(const Mutex&);
 	Mutex& operator=(const Mutex&);
 
 protected:
@@ -259,7 +258,6 @@ class Condition
 {
 private:
 	// Disallow copy
-	Condition(const Condition&);
 	Condition& operator=(const Condition&);
 
 protected:
