@@ -1030,8 +1030,8 @@ bool LTL_formul_t::is_pure_event()
 				obsah.o1->arg2->is_pure_event());
 			break;
 		case op_U:
-			return(obsah.o1->arg1->is_pure_event());
-			// na druhem argumentu nezalezi
+		        return(obsah.o1->arg2->is_pure_event());
+			// na prvnim argumentu nezalezi !!! (NESPRAVNE BYLO: na druhem arg. nezalezi [chyba v clanku])
 			break;
 		case op_V:
 			if (is_G())
