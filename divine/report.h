@@ -3,7 +3,6 @@
 #include <iomanip>
 #include <sstream>
 
-#include <wibble/sys/thread.h>
 #include <wibble/regexp.h>
 #include <divine/config.h>
 #include <divine/version.h>
@@ -54,7 +53,7 @@ static inline std::ostream &operator<<( std::ostream &o, Result::R v )
                  (v == Result::Yes ? "Yes" : "No" ) );
 }
 
-struct Report : wibble::sys::Thread
+struct Report
 {
     Config &config;
 #ifdef POSIX
@@ -98,39 +97,16 @@ struct Report : wibble::sys::Thread
     }
 #endif
 
-    void *main() {
-        if ( !config.report() )
-            return 0;
-        while ( true ) {
-#ifdef POSIX
-            sleep( 1 );
-#elif defined(_WIN32)
-	    Sleep( 1 );
-#endif
-            if ( m_finished )
-                return 0;
-        }
-    }
-
-    void stop() {
-        try {
-            cancel();
-            join();
-        } catch (...) {} // hopefully nothing fatal...
-    }
-
-    void signal( int s ) 
+    void signal( int s )
     {
         m_finished = false;
         sig = s;
-        stop();
     }
 
-    void finished( Result r ) 
+    void finished( Result r )
     {
         m_finished = true;
         res = r;
-        stop();
     }
 
     struct timeval zeroTime() {
