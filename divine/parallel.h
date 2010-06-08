@@ -51,13 +51,8 @@ struct Parallel {
     typedef typename T::Shared Shared;
     std::vector< T > m_instances;
     std::vector< R< T > > m_threads;
-    std::vector< wibble::sys::Thread * > m_extra;
 
     int n;
-
-    void addExtra( wibble::sys::Thread *t ) {
-        m_extra.push_back( t );
-    }
 
     T &instance( int i ) {
         assert( i < n );
@@ -91,12 +86,8 @@ struct Parallel {
     void runThreads() {
         for ( int i = 0; i < n; ++i )
             thread( i ).start();
-        for ( int i = 0; i < m_extra.size(); ++i )
-            m_extra[ i ]->start();
         for ( int i = 0; i < n; ++i )
             thread( i ).join();
-        for ( int i = 0; i < m_extra.size(); ++i )
-            m_extra[ i ]->join();
     }
 
     template< typename F >
@@ -317,7 +308,7 @@ struct Domain {
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
         Domain< T > *m_domain;
-        MpiThread< Domain< T > > mpiThread;
+        MpiWorker< Domain< T > > mpiWorker;
 
         template< typename Shared, typename F >
         void run( Shared &sh, F f ) {
@@ -327,7 +318,8 @@ struct Domain {
                 this->thread( i ).setBarrier( m_domain->barrier() );
 
             m_domain->mpi.runOnSlaves( sh, f );
-
+            if (m_domain->mpi.size() > 1 )
+                mpiWorker.start();
             this->runThreads();
             m_domain->mpi.collectSharedBits(); // wait for shared stuff
             m_domain->barrier().clear();
@@ -349,10 +341,8 @@ struct Domain {
 
         Parallel( Domain< T > &dom, int _n )
             : divine::Parallel< T, BarrierThread >( _n ),
-              m_domain( &dom ), mpiThread( dom )
+              m_domain( &dom ), mpiWorker( dom )
         {
-            if ( dom.mpi.size() > 1 )
-                addExtra( &mpiThread );
         }
     };
 
@@ -387,10 +377,14 @@ struct Domain {
         return *m_parallel;
     }
 
+    void setupIds() {
+        minId = lastId = n * mpi.rank();
+        maxId = (n * (mpi.rank() + 1)) - 1;
+    }
+
     int obtainId( DomainWorker< T > &t ) {
         if ( !lastId ) {
-            minId = lastId = n * mpi.rank();
-            maxId = (n * (mpi.rank() + 1)) - 1;
+            setupIds();
         }
 
         if ( !m_ids.count( &t ) )
@@ -417,7 +411,7 @@ struct Domain {
         for ( int i = 0; i < parallel().n; ++i )
             parallel().instance( i ).interrupt( true );
         if ( !from_mpi )
-            parallel().mpiThread.interrupt();
+            parallel().mpiWorker.interrupt();
     }
 
     Fifo &queue( int from, int to )
@@ -426,7 +420,7 @@ struct Domain {
             barrier().wakeup( &parallel().thread( to - minId ) );
             return parallel().instance( to - minId ).fifo[ from + 1 ];
         } else
-            return parallel().mpiThread.fifo[ from + to * peers() ];
+            return parallel().mpiWorker.fifo[ from + to * peers() ];
     }
 
     Domain( typename T::Shared *shared = 0, int _n = 4 )

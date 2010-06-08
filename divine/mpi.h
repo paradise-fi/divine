@@ -2,6 +2,8 @@
 
 #include <wibble/test.h>
 #include <divine/pool.h>
+#include <divine/blob.h>
+#include <divine/barrier.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
@@ -52,7 +54,62 @@ struct _MpiId
 
 }
 
+enum Loop { Continue, Done };
+
 #ifdef HAVE_MPI
+
+struct MpiMonitor {
+    // Called when a message with a matching tag has been received. The status
+    // object for the message is handed in.
+    virtual Loop process( wibble::sys::MutexLock &, MPI::Status & ) = 0;
+
+    // Called whenever there is a pause in incoming traffic (i.e. a nonblocking
+    // probe fails). A blocking probe will follow each call to progress().
+    virtual Loop progress() { return Continue; }
+};
+
+struct MpiBase {
+    wibble::sys::Mutex m_mutex;
+
+    MpiMonitor * m_progress;
+    std::vector< MpiMonitor * > m_monitor;
+
+    bool is_master; // the master token
+    bool m_initd;
+    int m_rank, m_size;
+
+    void send( const void *buf, int count, const MPI::Datatype &dt, int dest, int tag ) {
+        wibble::sys::MutexLock _lock( m_mutex );
+        send( _lock, buf, count, dt, dest, tag );
+    }
+
+    void send( wibble::sys::MutexLock &, const void *buf, int count,
+               const MPI::Datatype &dt, int dest, int tag ) {
+        MPI::COMM_WORLD.Send( buf, count, dt, dest, tag );
+    }
+
+    void registerProgress( MpiMonitor &m ) {
+        m_progress = &m;
+    }
+
+    void registerMonitor( int tag, MpiMonitor &m ) {
+        m_monitor.resize( std::max( size_t( tag ) + 1, m_monitor.size() ) );
+        m_monitor[ tag ] = &m;
+    }
+
+    int rank() { if ( m_initd ) return m_rank; else return 0; }
+    int size() { if ( m_initd ) return m_size; else return 1; }
+
+    bool master() { return is_master; }
+
+    MpiBase() : m_mutex( true ), m_progress( 0 ) {}
+
+    std::ostream &mpidebug() {
+        static struct : std::streambuf {} buf;
+        static std::ostream null(&buf);
+        return null; // std::cerr << "MPI[" << rank() << "]: ";
+    }
+};
 
 /**
  * A global per-mpi-node structure that manages the low-level aspects of MPI
@@ -62,53 +119,57 @@ struct _MpiId
  * setting up MPI. However, on slave (non-master) nodes, it seizes the control
  * and never returns. The slave nodes then wait for commands from the master.
  *
- * The MpiThread (see below) is designed to plug into the Domain framework (see
+ * The MpiWorker (see below) is designed to plug into the Domain framework (see
  * parallel.h) and to relay the parallel-start and the termination detection
  * over MPI to the slave nodes.
  */
 template< typename Algorithm, typename D >
-struct Mpi {
+struct Mpi : MpiBase {
 
-    bool m_started;
-    bool is_master; // the master token
-    int m_rank, m_size;
     D *m_domain;
     typedef typename Algorithm::Shared Shared;
     Shared *master_shared;
     std::vector< Shared > m_shared;
-
-    wibble::sys::Mutex m_mutex;
 
     D &domain() {
         assert( m_domain );
         return *m_domain;
     }
 
-    Mpi( Shared *sh, D *d ) : master_shared( sh ), m_mutex( true )
+    Mpi( Shared *sh, D *d ) : master_shared( sh )
     {
         m_domain = d;
         is_master = false;
-        m_started = false;
+        m_initd = false;
     }
 
     Shared &shared( int i ) {
         return m_shared[ i ];
     }
 
-    void start() {
-        m_started = true;
+    void init() {
+        if (m_initd)
+            return;
+
+        m_initd = true;
         MPI::Init();
         m_size = MPI::COMM_WORLD.Get_size();
         m_rank = MPI::COMM_WORLD.Get_rank();
 
         m_shared.resize( domain().peers() );
 
+        domain().setupIds();
+
         if ( m_rank == 0 )
             is_master = true;
+    }
+
+    void start() {
+        init();
 
         if ( !master() )
             while ( true )
-                slaveLoop();
+                loop();
     }
 
     void notifyOne( int i, int tag, int id ) {
@@ -147,6 +208,9 @@ struct Mpi {
         wibble::sys::MutexLock _lock( m_mutex );
 
         MPI::Status status;
+
+        mpidebug() << "collecting bits collected" << std::endl;
+
         std::vector< int32_t > shbits;
         notifySlaves( TAG_SOLICIT_SHARED, 0 );
         for ( int i = 0; i < size(); ++ i ) {
@@ -163,6 +227,7 @@ struct Mpi {
             }
             assert( it == shbits.end() ); // sanity check
         }
+        mpidebug() << "shared bits collected" << std::endl;
     }
 
     Shared obtainSharedBits() {
@@ -182,6 +247,7 @@ struct Mpi {
         std::vector< int32_t > shbits;
         algorithm::_MpiId< Algorithm >::writeShared(
             sh, std::back_inserter( shbits ) );
+        mpidebug() << "sending shared bits..." << std::endl;
         MPI::COMM_WORLD.Send( &shbits.front(),
                               shbits.size() * 4,
                               MPI::BYTE, to, TAG_SHARED );
@@ -200,7 +266,7 @@ struct Mpi {
         sendSharedBits( 1, *master_shared );
 
         _lock.drop();
-        while( slaveLoop() ); // wait (and serve) till the ring is done
+        while( loop() == Continue ); // wait (and serve) till the ring is done
         is_master = true;
     }
 
@@ -220,24 +286,22 @@ struct Mpi {
     }
 
     ~Mpi() {
-        if ( m_started && master() ) {
+        mpidebug() << "ALL DONE" << std::endl;
+        if ( m_initd && master() ) {
             notifySlaves( TAG_ALL_DONE, 0 );
             MPI::Finalize();
         }
     }
 
-    int rank() { if ( m_started ) return m_rank; else return 0; }
-    int size() { if ( m_started ) return m_size; else return 1; }
-
-    bool master() { return is_master; }
-
     // Default copy and assignment is fine for us.
 
-    void runSerial( int id ) {
+    void runSerial( wibble::sys::MutexLock &_lock, int id ) {
         is_master = true;
         *master_shared = obtainSharedBits();
+        _lock.drop();
         domain().parallel().runInRing(
             *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
+        _lock.reclaim();
         is_master = false;
         if ( rank() < size() - 1 )
             notifyOne( rank() + 1, TAG_RING_RUN, id );
@@ -252,9 +316,13 @@ struct Mpi {
             sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
     }
 
-    bool slaveLoop() {
-        MPI::Status status;
+    Loop slave( wibble::sys::MutexLock &_lock, MPI::Status &status ) {
+        assert_eq( status.Get_count( MPI::INT ), 1 );
+
         int id;
+
+        mpidebug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
+
         MPI::COMM_WORLD.Recv( &id, 1, /* one integer per message */
                               MPI::INT,
                               MPI::ANY_SOURCE, /* anyone can become a master these days */
@@ -264,13 +332,15 @@ struct Mpi {
                 MPI::Finalize();
                 exit( 0 ); // after a fashion...
             case TAG_RING_RUN:
-                runSerial( id );
+                runSerial( _lock, id );
                 break;
             case TAG_RING_DONE:
                 assert( master_shared );
                 *master_shared = obtainSharedBits();
-                return false;
+                mpidebug() << "RING DONE" << std::endl;
+                return Done;
             case TAG_RUN:
+                _lock.drop();
                 run( id );
                 break;
             case TAG_SOLICIT_SHARED:
@@ -279,7 +349,37 @@ struct Mpi {
             default:
                 assert( 0 );
         }
-        return true;
+
+        return Continue;
+    }
+
+    Loop loop() {
+
+        MPI::Status status;
+
+        wibble::sys::MutexLock _lock( m_mutex );
+        // And process incoming MPI traffic.
+        while ( MPI::COMM_WORLD.Iprobe(
+                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
+        {
+            int tag = status.Get_tag();
+            if ( m_monitor.size() >= tag && m_monitor[ tag ] ) {
+                if ( m_monitor[ tag ]->process( _lock, status ) == Done )
+                    return Done;
+            } else if ( slave( _lock, status ) == Done )
+                return Done;
+        }
+
+        sched_yield();
+
+        if ( m_progress )
+            return m_progress->progress();
+
+        /* wait for messages */
+        /* MPI::COMM_WORLD.Probe(
+            MPI::ANY_SOURCE, MPI::ANY_TAG ); */
+
+        return Continue;
     }
 
 };
@@ -287,11 +387,11 @@ struct Mpi {
 /**
  * A high-level MPI bridge. This structure is designed to integrate into the
  * Domain framework (see parallel.h). The addExtra mechanism of Parallel can be
- * used to plug in the MpiThread into a Parallel setup. The MpiThread then
+ * used to plug in the MpiWorker into a Parallel setup. The MpiWorker then
  * takes care to relay
  */
 template< typename D >
-struct MpiThread : wibble::sys::Thread, Terminable {
+struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
     D &m_domain;
     int recv, sent;
     typedef typename D::Fifo Fifo;
@@ -302,7 +402,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
     std::vector< std::pair< bool, MPI::Request > > requests;
     std::vector< int32_t > in_buffer;
 
-    MpiThread( D &d ) : m_domain( d ) {
+    MpiWorker( D &d ) : m_domain( d ) {
         fifo.resize( d.peers() * d.peers() );
         buffers.resize( d.mpi.size() );
         requests.resize( d.mpi.size() );
@@ -365,6 +465,7 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
     void interrupt() {
         wibble::sys::MutexLock _lock( m_domain.mpi.m_mutex );
+        mpidebug() << "INTERRUPTED (local)" << std::endl;
         m_domain.mpi.notify( TAG_INTERRUPT, 0 );
         sent += m_domain.mpi.size() - 1;
     }
@@ -396,8 +497,15 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         ++ recv;
     }
 
-    bool receiveControlMessage( MPI::Status &status ) {
+    Loop process( wibble::sys::MutexLock &, MPI::Status &status ) {
         int id;
+        bool ret;
+
+        if ( status.Get_tag() == TAG_ID ) {
+            receiveDataMessage( status );
+            return Continue;
+        }
+
         MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
                               status.Get_source(),
                               status.Get_tag(), status );
@@ -409,13 +517,15 @@ struct MpiThread : wibble::sys::Thread, Terminable {
                 cnt[2] = recv;
                 MPI::COMM_WORLD.Send( cnt, 3, MPI::INT,
                                       status.Get_source(), TAG_GIVE_COUNTS );
-                return false;
+                return Continue;
             case TAG_DONE:
-                return m_domain.barrier().idle( this );
+                mpidebug() << "DONE" << std::endl;
+                return m_domain.barrier().idle( this ) ? Done : Continue;
             case TAG_INTERRUPT:
+                mpidebug() << "INTERRUPTED (remote)" << std::endl;
                 ++ recv;
                 m_domain.interrupt( true );
-                return false;
+                return Continue;
             default:
                 assert_die();
         }
@@ -426,10 +536,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
         return r;
     }
 
-    bool loop() {
-        wibble::sys::MutexLock _lock( m_domain.mpi.m_mutex );
-        MPI::Status status;
+    std::ostream &mpidebug() {
+        return m_domain.mpi.mpidebug();
+    }
 
+    Loop progress() {
         // Fill outgoing buffers from the incoming FIFO queues...
         for ( int i = 0; i < fifo.size(); ++i ) {
             int to = i / m_domain.peers(),
@@ -441,6 +552,11 @@ struct MpiThread : wibble::sys::Thread, Terminable {
 
             // Build up linear buffers for MPI send. We only do that on
             // buffers that are not currently in-flight (request not busy).
+
+            // FIXME the pairing of messages is necessary because we currently
+            // do not maintain FIFO order for messages between a pair of
+            // endpoints (threads)... when this is addressed, the limitation
+            // here can be lifted
             while ( !fifo[ i ].empty() && !requests[ rank ].first )
             {
                 buffers[ rank ].push_back( to );
@@ -478,32 +594,31 @@ struct MpiThread : wibble::sys::Thread, Terminable {
             ++ sent;
         }
 
-        // And process incoming MPI traffic.
-        while ( MPI::COMM_WORLD.Iprobe(
-                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
-        {
-            if ( status.Get_tag() < TAG_ID ) {
-                if ( receiveControlMessage( status ) )
-                    return false;
-            } else
-                receiveDataMessage( status );
-        }
-
         // NB. The call to lastMan() here is first, since it needs to be done
         // by non-master nodes, to wake up sleeping workers that have received
         // messages from network. Ugly, yes.
         if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
             if ( termination() ) {
-                return false;
+                mpidebug() << "TERMINATED" << std::endl;
+                return Done;
             }
         }
 
-        return true;
+        return Continue;
     }
 
     void *main() {
+        mpidebug() << "WORKER START" << std::endl;
         m_domain.barrier().started( this );
-        while ( loop() );
+        m_domain.mpi.registerProgress( *this );
+        m_domain.mpi.registerMonitor( TAG_ID, *this );
+        m_domain.mpi.registerMonitor( TAG_GET_COUNTS, *this );
+        m_domain.mpi.registerMonitor( TAG_DONE, *this );
+        m_domain.mpi.registerMonitor( TAG_INTERRUPT, *this );
+
+        while ( m_domain.mpi.loop() == Continue );
+
+        mpidebug() << "WORKER DONE" << std::endl;
         return 0;
     }
 };
@@ -531,7 +646,7 @@ struct Mpi {
 };
 
 template< typename D >
-struct MpiThread : wibble::sys::Thread {
+struct MpiWorker {
     struct Fifos {
         Fifo< Blob > &operator[]( int ) __attribute__((noreturn)) {
             assert_die();
@@ -542,11 +657,7 @@ struct MpiThread : wibble::sys::Thread {
 
     void interrupt() {}
 
-    void *main() {
-        assert_die();
-    }
-
-    MpiThread( D& ) {}
+    MpiWorker( D& ) {}
 };
 
 #endif
