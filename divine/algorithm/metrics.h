@@ -13,31 +13,33 @@
 namespace divine {
 namespace algorithm {
 
-template< typename > struct Metrics;
+template< typename, typename > struct Metrics;
 
 // MPI function-to-number-and-back-again drudgery... To be automated.
-template< typename G >
-struct _MpiId< Metrics< G > >
+template< typename G, typename S >
+struct _MpiId< Metrics< G, S > >
 {
-    static int to_id( void (Metrics< G >::*f)() ) {
-        assert_eq( f, &Metrics< G >::_visit );
+    typedef Metrics< G, S > A;
+
+    static int to_id( void (A::*f)() ) {
+        assert_eq( f, &A::_visit );
         return 0;
     }
 
-    static void (Metrics< G >::*from_id( int n ))()
+    static void (A::*from_id( int n ))()
     {
         assert_eq( n, 0 );
-        return &Metrics< G >::_visit;
+        return &A::_visit;
     }
 
     template< typename O >
-    static void writeShared( typename Metrics< G >::Shared s, O o ) {
+    static void writeShared( typename A::Shared s, O o ) {
         *o++ = s.initialTable;
         s.stats.write( o );
     }
 
     template< typename I >
-    static I readShared( typename Metrics< G >::Shared &s, I i ) {
+    static I readShared( typename A::Shared &s, I i ) {
         s.initialTable = *i++;
         return s.stats.read( i );
     }
@@ -129,19 +131,20 @@ struct Statistics {
  * space, keeping simple numeric statistics (see the Statistics template
  * above).
  */
-template< typename G >
-struct Metrics : Algorithm, DomainWorker< Metrics< G > >
+template< typename G, typename Statistics >
+struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
 {
+    typedef Metrics< G, Statistics > This;
     typedef typename G::Node Node;
 
     struct Shared {
-        Statistics< G > stats;
+        algorithm::Statistics< G > stats;
         G g;
         int initialTable;
     } shared;
 
-    Domain< Metrics< G > > &domain() {
-        return DomainWorker< Metrics< G > >::domain();
+    Domain< This > &domain() {
+        return DomainWorker< This >::domain();
     }
 
     Hasher hasher;
@@ -159,8 +162,8 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
         return visitor::FollowTransition;
     }
 
-    struct VisitorSetup : visitor::Setup< G, Metrics< G >, Table > {
-        static visitor::DeadlockAction deadlocked( Metrics< G > &r, Node n ) {
+    struct VisitorSetup : visitor::Setup< G, This, Table, Statistics > {
+        static visitor::DeadlockAction deadlocked( This &r, Node n ) {
             r.shared.stats.addDeadlock();
             return visitor::IgnoreDeadlock;
         }
@@ -168,7 +171,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
 
     void _visit() { // parallel
         m_initialTable = &shared.initialTable; // XXX find better place for this
-        visitor::Parallel< VisitorSetup, Metrics< G >, Hasher >
+        visitor::Parallel< VisitorSetup, This, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
         vis.exploreFrom( shared.g.initial() );
     }
@@ -185,7 +188,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G > >
 
     Result run() {
         std::cerr << "  exploring... \t\t\t\t" << std::flush;
-        domain().parallel().run( shared, &Metrics< G >::_visit );
+        domain().parallel().run( shared, &This::_visit );
         std::cerr << "   done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {

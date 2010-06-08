@@ -49,29 +49,18 @@ void handler( int s ) {
     raise( s );
 }
 
-template< typename T >
-typename T::IsDomainWorker mpiSetup( Preferred, Report *r, T &t ) {
-    t.domain().mpi.start();
-    report->mpiInfo( t.domain().mpi );
-    return wibble::Unit();
-}
-
-template< typename T >
-wibble::Unit mpiSetup( NotPreferred, Report *, T & ) {
-    return wibble::Unit();
-}
-
 struct Main {
     Config config;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile;
     OptionGroup *common;
-    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy;
+    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     StringOption *o_trail;
 
     bool dummygen;
+    bool statistics;
 
     int argc;
     const char **argv;
@@ -81,7 +70,7 @@ struct Main {
     Compile compile;
 
     Main( int _argc, const char **_argv )
-        : dummygen( false ), argc( _argc ), argv( _argv ),
+        : dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
           compile( opts )
@@ -96,11 +85,14 @@ struct Main {
         }
 
         Report rep( config );
-        Statistics::global().resize( config.workers() );
-        Statistics::global().start();
         report = &rep;
-        rep.start();
-        rep.finished( selectAlgorithm() );
+        Result res;
+
+        if ( statistics )
+            res = selectAlgorithm< Statistics >();
+        else
+            res = selectAlgorithm< NoStatistics >();
+        rep.finished( res );
         rep.final( std::cout );
     }
 
@@ -191,6 +183,10 @@ struct Main {
             "dummy", '\0', "dummy", "",
             "use a \"dummy\" benchmarking model instead of a real input" );
 
+        o_statistics = common->add< BoolOption >(
+            "statistics", 's', "statistics", "",
+            "track communication and hash table load statistics" );
+
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
             "set initial hash table size to 2^n [default = 19]" );
@@ -280,6 +276,7 @@ struct Main {
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );
         config.setGenerateCounterexample( !o_noCe->boolValue() );
+        statistics = o_statistics->boolValue();
 
         setupLimits();
 
@@ -332,53 +329,66 @@ struct Main {
         }
     }
 
+    template< typename Stats >
     Result selectAlgorithm()
     {
         switch ( m_run ) {
             case RunReachability:
                 config.setAlgorithm( "Reachability" );
-                return selectGraph< algorithm::Reachability >();
+                return selectGraph< algorithm::Reachability, Stats >();
             case RunMetrics:
                 config.setAlgorithm( "Metrics" );
-                return selectGraph< algorithm::Metrics >();
+                return selectGraph< algorithm::Metrics, Stats >();
             case RunOwcty:
                 config.setAlgorithm( "OWCTY" );
-                return selectGraph< algorithm::Owcty >();
+                return selectGraph< algorithm::Owcty, Stats >();
             case RunMap:
                 config.setAlgorithm( "MAP" );
-                return selectGraph< algorithm::Map >();
+                return selectGraph< algorithm::Map, Stats >();
             case RunNdfs:
                 config.setAlgorithm( "NestedDFS" );
-                return selectGraph< algorithm::NestedDFS >();
+                return selectGraph< algorithm::NestedDFS, Stats >();
             default:
                 die( "FATAL: Internal error choosing algorithm." );
         }
     }
 
-    template< template< typename > class Algorithm >
+    template< template< typename, typename > class Algorithm, typename Stats >
     Result selectGraph()
     {
         if ( str::endsWith( config.input(), ".dve" ) ) {
             config.setGenerator( "DVE" );
-            return run< Algorithm< generator::NDve > >();
+            return run< Algorithm< generator::NDve, Stats >, Stats >();
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
-            return run< Algorithm< generator::NBymoc > >();
+            return run< Algorithm< generator::NBymoc, Stats >, Stats >();
         } else if ( str::endsWith( config.input(), ".so" ) ) {
             config.setGenerator( "Custom" );
-            return run< Algorithm< generator::Custom > >();
+            return run< Algorithm< generator::Custom, Stats >, Stats >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
-            return run< Algorithm< generator::Dummy > >();
+            return run< Algorithm< generator::Dummy, Stats >, Stats >();
         } else
 	    die( "FATAL: Unknown input file extension." );
     }
 
-    template< typename A >
-    Result run() {
-        A alg( &config );
+    template< typename Stats, typename T >
+    typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
+        Stats::global().start();
+        t.domain().mpi.start();
+        report->mpiInfo( t.domain().mpi );
+        return wibble::Unit();
+    }
 
-        mpiSetup( Preferred(), report, alg );
+    template< typename Stats, typename T >
+    wibble::Unit setupParallel( NotPreferred, Report *, T &t ) {
+        return wibble::Unit();
+    }
+
+    template< typename Algorithm, typename Stats >
+    Result run() {
+        Algorithm alg( &config );
+        setupParallel< Stats >( Preferred(), report, alg );
         return alg.run();
     }
 

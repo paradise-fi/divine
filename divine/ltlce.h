@@ -112,7 +112,7 @@ struct LtlCE {
 
     template< typename Worker, typename Hasher, typename Table >
     void _traceCycle( Worker &w, Hasher &h, Table &t ) {
-        typedef visitor::Setup< G, Us, Table,
+        typedef visitor::Setup< G, Us, Table, NoStatistics,
             &Us::cycleTransition,
             &Us::cycleExpansion > Setup;
         typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;

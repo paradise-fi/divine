@@ -53,6 +53,7 @@ template<
     typename G, // graph
     typename N, // notify
     typename S = HashMap< typename G::Node, Unit >,
+    typename _Statistics = NoStatistics,
     TransitionAction (N::*tr)(typename G::Node, typename G::Node) = &N::transition,
     ExpansionAction (N::*exp)(typename G::Node) = &N::expansion >
 struct Setup {
@@ -60,6 +61,7 @@ struct Setup {
     typedef N Notify;
     typedef S Seen;
     typedef typename Graph::Node Node;
+    typedef _Statistics Statistics;
 
     static TransitionAction transition( Notify &n, Node a, Node b ) {
         return (n.*tr)( a, b );
@@ -79,17 +81,20 @@ struct Setup {
 };
 
 template<
-    template< typename > class Queue, typename S >
+    template< typename, typename > class Queue, typename S >
 struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
     typedef typename S::Notify Notify;
     typedef typename Graph::Successors Successors;
     typedef typename S::Seen Seen;
+    typedef typename S::Statistics Statistics;
     Graph &m_graph;
     Notify &m_notify;
     Seen *m_seen;
-    Queue< Graph > m_queue;
+    Queue< Graph, Statistics > m_queue;
+
+    int id;
 
     Seen &seen() {
         return *m_seen;
@@ -200,7 +205,7 @@ struct Common {
     }
 
     Common( Graph &g, Notify &n, Seen *s ) :
-        m_graph( g ), m_notify( n ), m_seen( s ), m_queue( g )
+        m_graph( g ), m_notify( n ), m_seen( s ), m_queue( g ), id( 0 )
     {
         if ( !m_seen )
             m_seen = new Seen();
@@ -230,6 +235,7 @@ struct Parallel {
     typename S::Notify &notify;
     typename S::Graph &graph;
     typedef typename S::Seen Seen;
+    typedef typename S::Statistics Statistics;
 
     _Hash hash;
     Seen *m_seen;
@@ -294,7 +300,7 @@ struct Parallel {
     }
 
     typedef Parallel< S, Worker, _Hash > P;
-    struct Ours : Setup< typename S::Graph, P, Seen >
+    struct Ours : Setup< typename S::Graph, P, Seen, Statistics >
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
         static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
@@ -311,9 +317,15 @@ struct Parallel {
         }
     };
 
+    template< typename T >
+    void setIds( T &bfv ) {
+        bfv.id = worker.globalId();
+        bfv.m_queue.id = worker.globalId();
+    }
+
     void exploreFrom( Node initial ) {
         BFV< Ours > bfv( graph, *this, m_seen );
-        bfv.m_queue.id = worker.globalId();
+        setIds( bfv );
         if ( owner( initial ) == worker.globalId() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
         }
@@ -322,7 +334,7 @@ struct Parallel {
 
     void processQueue() {
         BFV< Ours > bfv( graph, *this, m_seen );
-        bfv.m_queue.id = worker.globalId();
+        setIds( bfv );
         run( bfv );
     }
 

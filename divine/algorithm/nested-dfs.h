@@ -10,9 +10,10 @@
 namespace divine {
 namespace algorithm {
 
-template< typename G >
+template< typename G, typename Statistics >
 struct NestedDFS : Algorithm
 {
+    typedef NestedDFS< G, Statistics > This;
     G g;
     typedef typename G::Node Node;
     Node seed;
@@ -26,8 +27,8 @@ struct NestedDFS : Algorithm
         return n.template get< Extension >();
     }
 
-    struct OuterVisit : visitor::Setup< G, NestedDFS< G >, Table > {
-        static void finished( NestedDFS< G > &dfs, Node n ) {
+    struct OuterVisit : visitor::Setup< G, This, Table > {
+        static void finished( This &dfs, Node n ) {
             dfs.inner( n );
         }
     };
@@ -36,8 +37,8 @@ struct NestedDFS : Algorithm
         if ( !g.isAccepting( n ) )
             return;
         seed = n;
-        typedef visitor::Setup< G, NestedDFS< G >, Table,
-            &NestedDFS< G >::innerTransition > Setup;
+        typedef visitor::Setup< G, This, Table, Statistics,
+            &This::innerTransition > Setup;
         visitor::DFV< Setup > inner( g, *this, &table() );
         inner.exploreFrom( n );
     }

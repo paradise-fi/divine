@@ -57,7 +57,7 @@ fillCircular( G &g, C1 &in, C2 &out )
     return fillCircularTedious( g, in, out );
 }
 
-template< typename Graph >
+template< typename Graph, typename Statistics >
 struct Queue {
     Graph &g;
     typedef typename Graph::Node Node;
@@ -185,7 +185,7 @@ struct BufferedQueue {
     BufferedQueue( Graph &_g ) : g( _g ) {}
 };
 
-template< typename Graph >
+template< typename Graph, typename Statistics >
 struct Stack {
     Graph &g;
     typedef typename Graph::Node Node;

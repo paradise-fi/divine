@@ -9,33 +9,35 @@
 namespace divine {
 namespace algorithm {
 
-template< typename > struct Map;
+template< typename, typename > struct Map;
 
 // ------------------------------------------
 // -- Some drudgery for MPI's sake
 // --
-template< typename G >
-struct _MpiId< Map< G > >
+template< typename G, typename S >
+struct _MpiId< Map< G, S > >
 {
-    static void (Map< G >::*from_id( int n ))()
+    typedef Map< G, S > A;
+
+    static void (Map< G, S >::*from_id( int n ))()
     {
         switch ( n ) {
-            case 0: return &Map< G >::_visit;
-            case 1: return &Map< G >::_parentTrace;
-            case 2: return &Map< G >::_traceCycle;
+            case 0: return &A::_visit;
+            case 1: return &A::_parentTrace;
+            case 2: return &A::_traceCycle;
             default: assert_die();
         }
     }
 
-    static int to_id( void (Map< G >::*f)() ) {
-        if( f == &Map< G >::_visit ) return 0;
-        if( f == &Map< G >::_parentTrace ) return 1;
-        if( f == &Map< G >::_traceCycle ) return 2;
+    static int to_id( void (A::*f)() ) {
+        if( f == &A::_visit ) return 0;
+        if( f == &A::_parentTrace ) return 1;
+        if( f == &A::_traceCycle ) return 2;
         assert_die();
     }
 
     template< typename O >
-    static void writeShared( typename Map< G >::Shared s, O o ) {
+    static void writeShared( typename A::Shared s, O o ) {
         *o++ = s.initialTable;
         *o++ = s.iteration;
         *o++ = s.accepting;
@@ -45,7 +47,7 @@ struct _MpiId< Map< G > >
     }
 
     template< typename I >
-    static I readShared( typename Map< G >::Shared &s, I i ) {
+    static I readShared( typename A::Shared &s, I i ) {
         s.initialTable = *i++;
         s.iteration = *i++;
         s.accepting = *i++;
@@ -64,10 +66,11 @@ struct _MpiId< Map< G > >
  * Computer-Aided Design (FM-CAD'04), volume 3312 of LNCS, pages
  * 352–366. Springer-Verlag, 2004.
  */
-template< typename G >
-struct Map : Algorithm, DomainWorker< Map< G > >
+template< typename G, typename _Statistics >
+struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 {
     typedef typename G::Node Node;
+    typedef Map< G, _Statistics > This;
 
     struct Shared {
         int expanded, eliminated, accepting;
@@ -125,8 +128,8 @@ struct Map : Algorithm, DomainWorker< Map< G > >
 
     LtlCE< G, Shared, Extension > ce;
 
-    Domain< Map< G > > &domain() {
-        return DomainWorker< Map< G > >::domain();
+    Domain< This > &domain() {
+        return DomainWorker< This >::domain();
     }
 
     Extension &extension( Node n ) {
@@ -203,8 +206,8 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     }
 
     void _visit() {
-        typedef visitor::Setup< G, Map< G >, Table > Setup;
-        typedef visitor::Parallel< Setup, Map< G >, Hasher > Visitor;
+        typedef visitor::Setup< G, This, typename This::Table, _Statistics > Setup;
+        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
 
         shared.expanded = 0;
         shared.eliminated = 0;
@@ -234,7 +237,7 @@ struct Map : Algorithm, DomainWorker< Map< G > >
     }
 
     void visit() {
-        domain().parallel().run( shared, &Map< G >::_visit );
+        domain().parallel().run( shared, &This::_visit );
     }
 
     void _parentTrace() {

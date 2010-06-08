@@ -9,6 +9,24 @@
 
 namespace divine {
 
+struct NoStatistics {
+    void enqueue( int ) {}
+    void dequeue( int ) {}
+    void hashsize( int, int ) {}
+    void hashadded( int ) {}
+    void sent( int, int ) {}
+    void received( int, int ) {}
+
+    static NoStatistics &global() {
+        static NoStatistics *g = new NoStatistics;
+        return *g;
+    }
+
+    template< typename D >
+    void useDomain( D &d ) {}
+    void start() {}
+};
+
 struct Statistics : wibble::sys::Thread {
     struct PerThread {
         std::vector< int > sent;
