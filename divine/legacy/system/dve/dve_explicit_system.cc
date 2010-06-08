@@ -654,7 +654,7 @@ int dve_explicit_system_t::get_async_enabled_trans
    p_enabled_trans->set_next_begin(process_index,p_enabled_trans->size());
   }
  
- if (p_enabled_trans->size()==0)
+ if (p_enabled_trans->size()==0) {
    if (get_with_property())
     {
      //systems with property are in deadlock only if property process
@@ -681,6 +681,7 @@ int dve_explicit_system_t::get_async_enabled_trans
      //when system is does nto contain property, then 
      //`p_enabled_trans->size()==0' implies deadlock
      result |= SUCC_DEADLOCK; 
+ }
  
  
  return result;
