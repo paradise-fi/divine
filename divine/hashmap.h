@@ -277,8 +277,6 @@ struct HashMap
         assert_eq( m_keys.size(), m_values.size() );
         assert( factor > 1 );
 
-        Statistics::global().hashsize( id, factor * m_keys.size() );
-
         keys.resize( factor * m_keys.size(), Key() );
         values.resize( factor * m_values.size(), Value() );
         assert( keys.size() > size() );
