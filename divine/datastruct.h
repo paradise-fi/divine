@@ -131,7 +131,7 @@ struct Queue {
     Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ), id( 0 ) {}
 };
 
-template< typename Graph >
+template< typename Graph, typename Statistics >
 struct BufferedQueue {
     typedef typename Graph::Node Node;
     Circular< Node, 256 > m_in;

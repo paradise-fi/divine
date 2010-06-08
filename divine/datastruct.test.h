@@ -32,10 +32,10 @@ struct TestDatastruct {
         assert_eq( *circ.last(), 7 );
     }
 
-    template< template< typename > class Q >
+    template< template< typename, typename > class Q >
     void _queue() {
         generator::Dummy d;
-        Q< generator::Dummy > q( d );
+        Q< generator::Dummy, NoStatistics > q( d );
         assert( q.empty() );
         q.pushSuccessors( d.initial() );
         assert( !q.empty() );
@@ -82,7 +82,7 @@ struct TestDatastruct {
 
     Test stack() {
         generator::Dummy d;
-        Stack< generator::Dummy > q( d );
+        Stack< generator::Dummy, NoStatistics > q( d );
         assert( q.empty() );
         q.pushSuccessors( d.initial() );
         assert( !q.finished() );
