@@ -4,6 +4,7 @@
 #include <divine/pool.h>
 #include <divine/blob.h>
 #include <divine/barrier.h>
+#include <divine/fifo.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
@@ -625,12 +626,17 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
 
 #else
 
-template< typename M, typename D >
-struct Mpi {
+struct MpiMonitor {};
+
+struct MpiBase {
     int rank() { return 0; }
     int size() { return 1; }
+    bool master() { return true; }
     void notifySlaves( int, int ) {}
     void collectSharedBits() {}
+
+    void registerProgress( MpiMonitor & ) {}
+    void registerMonitor( int, MpiMonitor & ) {}
 
     template< typename Shared, typename F >
     void runOnSlaves( Shared, F ) {}
@@ -638,7 +644,12 @@ struct Mpi {
     template< typename F >
     void runInRing( F f ) {}
 
+    void init() {}
     void start() {}
+};
+
+template< typename M, typename D >
+struct Mpi : MpiBase {
     typename M::Shared &shared( int i ) {
         assert_die();
     }
@@ -656,6 +667,7 @@ struct MpiWorker {
     Fifos fifo;
 
     void interrupt() {}
+    void start() {}
 
     MpiWorker( D& ) {}
 };

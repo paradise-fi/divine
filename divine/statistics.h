@@ -140,6 +140,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             std::cerr << std::endl;
     }
 
+#ifdef HAVE_MPI
     void send() {
         std::vector< int > data;
         data.push_back( localmin );
@@ -178,6 +179,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         return Continue;
         // TODO
     }
+#else
+    void send() {}
+#endif
 
     void *main() {
         int i = 0;
