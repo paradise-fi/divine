@@ -375,6 +375,7 @@ struct Main {
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
+        Stats::global().useDomain( t.domain() );
         Stats::global().start();
         t.domain().mpi.start();
         report->mpiInfo( t.domain().mpi );

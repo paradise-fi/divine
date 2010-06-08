@@ -172,6 +172,7 @@ struct Common {
 
         tact = S::transition( m_notify, from, to );
         if ( tact != IgnoreTransition && !had ) {
+            Statistics::global().hashadded( id );
             seen().insert( to, hint );
             setPermanent( to );
         }
