@@ -65,7 +65,7 @@ public:
             pthread_mutexattr_t attr;
             pthread_mutexattr_init( &attr );
             if ( recursive ) {
-#ifdef __APPLE__
+#if (__APPLE__ || __xlC__)
                 pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
 #else
                 pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE_NP );
