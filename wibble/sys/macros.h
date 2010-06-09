@@ -5,4 +5,7 @@
 #ifdef __unix__
 #define POSIX
 #endif
+#ifdef __xlC__
+#define POSIX
+#endif
 #endif
