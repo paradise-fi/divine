@@ -160,7 +160,7 @@ inline bool endsWith(const std::string& str, const std::string& part)
 	return str.substr(str.size() - part.size()) == part;
 }
 
-#if ! __GNUC__ || __GNUC__ >= 4
+#if !__xlC__ && (! __GNUC__ || __GNUC__ >= 4)
 /**
  * Return the substring of 'str' without all leading and trailing characters
  * for which 'classifier' returns true.

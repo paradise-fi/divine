@@ -30,7 +30,7 @@ using namespace std;
 namespace wibble {
 namespace str {
 
-#ifdef _WIN32
+#if _WIN32 || __xlC__
 int vasprintf (char **result, const char *format, va_list args)
 {
   const char *p = format;
