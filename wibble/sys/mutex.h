@@ -228,10 +228,10 @@ public:
             if ( yield )
 #ifdef POSIX
                 sched_yield();
-#endif
-
-#ifdef _WIN32
+#elif _WIN32
                 Sleep(0);
+#else
+		;
 #endif
         }
 
