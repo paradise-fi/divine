@@ -37,6 +37,7 @@ wibblesys_HEADERS = \
     sys/thread.h \
     sys/process.h \
     sys/netbuffer.h \
+    sys/macros.h \
     sys/mutex.h \
     sys/fs.test.h \
     sys/buffer.h \
