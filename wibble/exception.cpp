@@ -29,7 +29,7 @@
 #include <sstream>
 #include <iostream>
 
-#ifdef POSIX
+#if defined(POSIX) && ! defined(__xlC__)
 #include <execinfo.h>
 #endif
 
@@ -40,7 +40,7 @@ namespace exception {
 
 std::vector< std::string > *AddContext::s_context = 0;
 
-#ifdef POSIX
+#if defined(POSIX) && ! defined(__xlC__)
 void DefaultUnexpected()
 {
 	try {
@@ -64,6 +64,12 @@ void DefaultUnexpected()
 		cerr << "Exception was an unknown object" << endl;
 		throw;
 	}
+}
+#else
+void DefaultUnexpected()
+{
+	cerr << "Caught unexpected exception.";
+	throw;
 }
 #endif
 
