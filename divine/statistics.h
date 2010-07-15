@@ -187,11 +187,11 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         int i = 0;
         while ( true ) {
             if ( !mpi || mpi->master() ) {
-                sleep( 1 );
+                wibble::sys::sleep( 1 );
                 print();
             }
             if ( mpi && !mpi->master() ) {
-                usleep( 200 * 1000 );
+                wibble::sys::usleep( 200 * 1000 );
                 send();
             }
         }
