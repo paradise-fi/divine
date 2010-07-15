@@ -202,10 +202,14 @@ struct Main {
 
     void setupLimits() {
         if ( o_time->intValue() != 0 ) {
+#ifdef POSIX
             if ( o_mem->intValue() < 0 ) {
                 die( "FATAL: cannot have negative time limit" );
             }
             alarm( o_time->intValue() );
+#else
+            die( "FATAL: --max-time is not supported on win32." );
+#endif
         }
 
         if ( o_mem->intValue() != 0 ) {
