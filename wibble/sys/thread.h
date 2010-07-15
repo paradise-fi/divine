@@ -1,7 +1,4 @@
-#ifndef WIBBLE_SYS_THREAD_H
-#define WIBBLE_SYS_THREAD_H
-
-/*
+/* -*- C++ -*-
  * OO encapsulation of Posix threads
  *
  * Copyright (C) 2003--2008  Enrico Zini <enrico@debian.org>
@@ -21,6 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#ifndef WIBBLE_SYS_THREAD_H
+#define WIBBLE_SYS_THREAD_H
+
 #include <wibble/sys/macros.h>
 #include <wibble/exception.h>
 #ifdef POSIX
@@ -35,6 +35,22 @@
 
 namespace wibble {
 namespace sys {
+
+static inline void sleep( int secs ) {
+#ifdef _WIN32
+    Sleep( secs * 1000 );
+#else
+    ::sleep( secs );
+#endif
+}
+
+static inline void usleep( int usecs ) {
+#ifdef _WIN32
+    Sleep( usecs / 1000 );
+#else
+    ::usleep( usecs );
+#endif
+}
 
 /**
  * Encapsulates a thread
