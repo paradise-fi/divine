@@ -70,14 +70,17 @@ struct Pipe {
     std::string nextLine() {
         Buffer::iterator nl =
             std::find( buffer.begin(), buffer.end(), '\n' );
-        while ( nl == buffer.end() && readMore() );
-        nl = std::find( buffer.begin(), buffer.end(), '\n' );
-        if ( nl == buffer.end() )
-            return "";
-
+        while ( nl == buffer.end() ) {
+            if ( !readMore() )
+                break;
+            nl = std::find( buffer.begin(), buffer.end(), '\n' );
+        }
         std::string line( buffer.begin(), nl );
-        ++ nl;
+
+        if ( nl != buffer.end() )
+            ++ nl;
         buffer.erase( buffer.begin(), nl );
+
         return line;
     }
 
