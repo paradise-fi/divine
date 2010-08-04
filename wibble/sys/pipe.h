@@ -35,7 +35,10 @@ struct Pipe {
     Pipe() : fd( -1 ), _eof( false ) {}
 
     void write( std::string what ) {
-        ::write( fd, what.c_str(), what.length() );
+        ssize_t wrote = 0;
+        do {
+            wrote += ::write( fd, what.c_str() + wrote, what.length() - wrote );
+        } while ( wrote < what.length() );
     }
 
     void close() {
