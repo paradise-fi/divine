@@ -82,7 +82,7 @@ slong_int_t dve_system_t::read(std::istream & ins)
    return err_type.id;
   }
  if (!parse_result) consolidate();
- return 0;
+ return parse_result;
 }
 
 slong_int_t dve_system_t::read(const char * const filename)

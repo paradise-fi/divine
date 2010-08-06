@@ -393,9 +393,13 @@ struct Main {
 
     template< typename Algorithm, typename Stats >
     Result run() {
-        Algorithm alg( &config );
-        setupParallel< Stats >( Preferred(), report, alg );
-        return alg.run();
+        try {
+            Algorithm alg( &config );
+            setupParallel< Stats >( Preferred(), report, alg );
+            return alg.run();
+        } catch (std::exception &e) {
+            die( std::string( "FATAL: " ) + e.what() );
+        }
     }
 
     void noMC() {

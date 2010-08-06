@@ -3,6 +3,7 @@
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
 #include <sstream>
+#include <stdexcept>
 
 #include <divine/generator/common.h>
 
@@ -65,8 +66,9 @@ struct LegacyCommon : Common {
     }
 
     void read( std::string path ) {
-        legacy_system()->read( path.c_str() );
         file = path;
+        if ( legacy_system()->read( file.c_str() ) ) // don't ask.
+            throw std::runtime_error( "Error reading input model." );
     }
 
     void print_state( State s, std::ostream &o = std::cerr ) {
@@ -90,9 +92,8 @@ struct LegacyCommon : Common {
         if ( !m_system ) {
             m_system = new system_t;
             m_system->setAllocator( &alloc );
-            if ( !file.empty() ) {
-                m_system->read( file.c_str() );
-            }
+            if ( !file.empty() )
+                read( file );
         }
         return m_system;
     }
