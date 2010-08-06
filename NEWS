@@ -1,3 +1,27 @@
+DiVinE 2.3
+==========
+
+- Basic support for Murphi model compilation and parallel verification.
+- Fix a bug in DVE compiler that made some models uncompilable.
+- Improved, distributed (MPI-enabled) MAP algorithm.
+- Track state space statistics in OWCTY (--report).
+- Proper deadlock detection (with traces) for all model types.
+- Improved --report output format consistency.
+- Fix handling of committed states in the DVE compiler.
+- Multiple stability and correctness fixes in distributed memory support (MPI).
+- Limit the override of global allocator to avoid occasional crashes in glibc.
+- Add an option to limit maximum verification runtime (--max-time, POSIX only).
+
+Furthermore, a new binary ABI is available in this release. There are two
+caveats though:
+
+  1) The ABI is NOT STABLE and should not be relied upon. It will be subject of
+  further changes in future releases.
+
+  2) The win32 support is somewhat limited, since some models may expect access
+  to symbols exported by the divine binary itself, which is not supported on
+  win32.
+
 DiVinE 2.2
 ==========
 
