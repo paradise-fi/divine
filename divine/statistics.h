@@ -205,7 +205,6 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     void resize( int s ) {
         s = std::max( size_t( s ), threads.size() );
-        std::cerr << ", using " << s << std::endl;
         threads.resize( s, 0 );
         for ( int i = 0; i < s; ++i ) {
             thread( i ).sent.resize( s, 0 );
