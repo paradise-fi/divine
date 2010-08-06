@@ -67,8 +67,7 @@ struct LegacyCommon : Common {
 
     void read( std::string path ) {
         file = path;
-        if ( legacy_system()->read( file.c_str() ) ) // don't ask.
-            throw std::runtime_error( "Error reading input model." );
+        legacy_system(); // force
     }
 
     void print_state( State s, std::ostream &o = std::cerr ) {
@@ -92,8 +91,10 @@ struct LegacyCommon : Common {
         if ( !m_system ) {
             m_system = new system_t;
             m_system->setAllocator( &alloc );
-            if ( !file.empty() )
-                read( file );
+            if ( !file.empty() ) {
+                if ( legacy_system()->read( file.c_str() ) ) // don't ask.
+                    throw std::runtime_error( "Error reading input model." );
+            }
         }
         return m_system;
     }
