@@ -28,10 +28,15 @@ option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( GUI "compile the Qt GUI" ON )
 option( MURPHI "enable Murphi model compiler" ON )
+option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
 
 if( NOT WIN32 )
   add_definitions( -DPOSIX )
 endif( NOT WIN32 )
+
+if( PERFORMANCE )
+  add_definitions( -DPERFORMANCE )
+endif( PERFORMANCE )
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )

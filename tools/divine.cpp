@@ -88,10 +88,14 @@ struct Main {
         report = &rep;
         Result res;
 
+#ifdef PERFORMANCE
         if ( statistics )
             res = selectAlgorithm< Statistics >();
         else
             res = selectAlgorithm< NoStatistics >();
+#else
+        res = selectAlgorithm< Statistics >();
+#endif
         rep.finished( res );
         rep.final( std::cout );
     }
