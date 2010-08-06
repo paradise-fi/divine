@@ -204,7 +204,6 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     }
 
     void resize( int s ) {
-        std::cerr << "statistics: requested " << s;
         s = std::max( size_t( s ), threads.size() );
         std::cerr << ", using " << s << std::endl;
         threads.resize( s, 0 );
