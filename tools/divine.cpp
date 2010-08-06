@@ -384,7 +384,8 @@ struct Main {
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
         Stats::global().useDomain( t.domain() );
-        Stats::global().start();
+        if ( statistics )
+            Stats::global().start();
         t.domain().mpi.start();
         report->mpiInfo( t.domain().mpi );
         return wibble::Unit();
