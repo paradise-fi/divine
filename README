@@ -67,6 +67,24 @@ repository.
 
 [1]: http://anna.fi.muni.cz/models
 
+To run DiVinE in a cluster, you can use the usual MPI tools, `mpirun` or
+`mpiexec`. For detailed info about these, please consult the documentation of
+your MPI implementation. You may also need to use a batch queue system like PBS
+to run DiVinE on your cluster -- please consult your cluster administrator
+about that.
+
+When running DiVinE on a cluster manually (without any queue management
+system), using machines node1 through node3, each of the nodes using 4 CPU
+cores, you could use the following command:
+
+    mpiexec -H node1,node2,node3 ./_build/tools/divine owcty -w 4 model.dve
+
+Please note that this assumes that both the divine binary and the model are
+available on all the mentioned cluster nodes, with the same paths (relative to
+your working directory). Your MPI implementation may support binary and input
+preloading, which would let you run DiVinE without a shared (NFS) filesystem as
+well.
+
 Graphical User Interface
 ------------------------
 
