@@ -57,7 +57,7 @@ above. The most useful invocations are these:
 
  * run reachability on 8 cores:
    `./_build/tools/divine reachability -w 8 input.dve`
- * run model checking on 4 cores:
+ * run LTL model checking on 4 cores:
    `./_build/tools/divine owcty -w 4 input-with-property.dve`
 
 There are several example inputs, mostly coming from [The BEEM Database] [1],
@@ -98,21 +98,6 @@ Please see online help for further information about using the interface. If
 you have chosen to install the tool, you should put it on your PATH, and then
 issue `divine.ide`.
 
-Known Issues
-------------
-
-Scalability on 64-bit platforms is inferior to scalability on 32-bit
-platforms. If you are running on x86_64 or other similar architecture
-which can run 32-bit binaries natively, you can compile DiVinE in
-32-bit mode:
-
-    $ CXXFLAGS=-m32 ./configure
-    $ make
-
-If you have previously run configure, you may need to delete or move
-the _build directory out of way. However, using 32-bit mode limits the
-size of verifiable models to roughly 3GB.
-
 Reporting Problems
 ------------------
 
@@ -124,15 +109,15 @@ already (in the latter case, please add a comment to the existing ticket, that
 you have encountered the issue, and if possible, any further details you may
 know about the problem). Thanks in advance.
 
-[1]: http://divine.fi.muni.cz/trac/newticket?version=2.0
+[1]: http://divine.fi.muni.cz/trac/newticket?version=2.3
 [2]: http://divine.fi.muni.cz/trac/
 
 Obtaining New Versions
 ----------------------
 
-The latest release is always available through [project pages] [1], section
+The latest release is always available through the [project pages] [1], section
 Download. You could also obtain the latest development snapshot through darcs
-(you need version 2.0 or later), which is used for version control:
+(you need darcs version 2.0 or later), which is used for version control:
 
     $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
