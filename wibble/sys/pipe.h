@@ -54,6 +54,8 @@ struct Pipe {
 
             if ( close )
                 ::close( fd );
+
+            return 0;
         }
 
         bool done() {
