@@ -10,6 +10,8 @@
 #include <cerrno>
 
 #include <wibble/exception.h>
+#include <wibble/sys/thread.h>
+#include <wibble/sys/mutex.h>
 
 #ifndef WIBBLE_SYS_PIPE_H
 #define WIBBLE_SYS_PIPE_H
