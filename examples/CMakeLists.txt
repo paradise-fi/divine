@@ -11,11 +11,13 @@ add_custom_target(
 )
 endmacro( haskell_so )
 
+add_custom_target( examples )
+
+if( NOT WIN32 ) # currently fails to build on windows
 add_library( BenchmarkC MODULE BenchmarkC.c )
 set_target_properties( BenchmarkC PROPERTIES EXCLUDE_FROM_ALL ON PREFIX "" )
-
-add_custom_target( examples )
 add_dependencies( examples BenchmarkC )
+endif()
 
 if( GHC )
   if( NOT USE64 AND NOT USE32 AND NOT WIN32 )
