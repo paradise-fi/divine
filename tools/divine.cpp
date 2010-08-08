@@ -306,6 +306,7 @@ struct Main {
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         if ( opts.foundCommand() == cmd_verify ) {
+            // FIXME this only works for DVE (!)
             std::string inf = fs::readFile( config.input() );
             if ( inf.find( "system async property" ) != std::string::npos ||
                  inf.find( "system sync property" ) != std::string::npos ) {
