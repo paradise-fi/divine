@@ -93,7 +93,9 @@ struct Algorithm
 
     template< typename G >
     void initGraph( G &g ) {
-        g.setSlack( m_slack );
+        int real = g.setSlack( m_slack );
+        hasher.setSlack( real );
+        equal.setSlack( real );
         if ( m_config ) { // this is the master instance
             g.read( m_config->input() );
         }
@@ -104,8 +106,6 @@ struct Algorithm
     {
         m_initialTable_ = 4096;
         m_initialTable = &m_initialTable_;
-        hasher.setSlack( slack );
-        equal.setSlack( slack );
         if ( c ) {
             want_ce = c->generateCounterexample();
         }
