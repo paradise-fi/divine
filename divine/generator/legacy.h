@@ -2,6 +2,8 @@
 
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
+#include <divine/legacy/por/por.hh>
+
 #include <sstream>
 #include <stdexcept>
 
@@ -20,6 +22,7 @@ struct LegacyCommon : Common {
 
     std::string file;
     system_t *m_system;
+    por_t *m_por;
 
     struct Successors {
         typedef Node Type;
@@ -58,6 +61,26 @@ struct LegacyCommon : Common {
         succ._from = s;
         state_t legacy = alloc.legacy_state( s );
         legacy_system()->get_succs( legacy, succ.m_succs );
+        return succ;
+    }
+
+    por_t &por() {
+        if ( !m_por ) {
+            m_por = new por_t;
+            m_por->init( legacy_system() );
+            m_por->set_choose_type( POR_SMALLEST ); // XXX
+        }
+        return *m_por;
+    }
+
+    Successors ample( State s ) {
+        Successors succ;
+        succ.parent = this;
+        succ._from = s;
+        state_t legacy = alloc.legacy_state( s );
+
+        size_t proc_gid; // output parameter, to be discarded
+        por().ample_set_succs( legacy, succ.m_succs, proc_gid );
         return succ;
     }
 
@@ -111,6 +134,7 @@ struct LegacyCommon : Common {
     LegacyCommon &operator=( const LegacyCommon &other ) {
         file = other.file;
         safe_delete( m_system );
+        safe_delete( m_por );
         legacy_system(); // FIXME, we force read here to keep
                          // dve_explicit_system::read() from happening in
                          // multiple threads at once, no matter the mutex...
@@ -118,11 +142,12 @@ struct LegacyCommon : Common {
     }
 
     LegacyCommon( const LegacyCommon &other )
-        : Common( other ), file( other.file ), m_system( 0 ) {}
-    LegacyCommon() : m_system( 0 ) {}
+        : Common( other ), file( other.file ), m_system( 0 ), m_por( 0 ) {}
+    LegacyCommon() : m_system( 0 ), m_por( 0 ) {}
 
     ~LegacyCommon() {
         safe_delete( m_system );
+        safe_delete( m_por );
     }
 };
 
