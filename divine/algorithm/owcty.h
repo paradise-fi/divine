@@ -323,7 +323,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
                 return;
             shared.need_expand = false;
             domain().parallel().runInRing( shared, &This::_por );
-            domain().parallel().run( shared, &This::_initialise );
+            if ( shared.need_expand )
+                domain().parallel().run( shared, &This::_initialise );
         } while ( shared.need_expand );
     }
 
