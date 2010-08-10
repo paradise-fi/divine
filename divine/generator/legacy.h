@@ -65,6 +65,11 @@ struct LegacyCommon : Common {
         return alloc.unlegacy_state( legacy_system()->get_initial_state() );
     }
 
+    template< typename Q >
+    void queueInitials( Q &q ) {
+        q.queue( State(), initial() );
+    }
+
     void read( std::string path ) {
         file = path;
         legacy_system(); // force

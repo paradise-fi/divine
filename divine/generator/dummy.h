@@ -18,6 +18,11 @@ struct Dummy : Common {
         return b;
     }
 
+    template< typename Q >
+    void queueInitials( Q &q ) {
+        q.queue( Node(), initial() );
+    }
+
     struct Successors {
         typedef Node Type;
         mutable Node _from;

@@ -246,6 +246,12 @@ struct Parallel {
     }
 
     void queue( Node from, Node to ) {
+        if ( owner( to ) != worker.globalId() )
+            return;
+        queueAny( from, to );
+    }
+
+    void queueAny( Node from, Node to ) {
         int _to = owner( to ), _from = worker.globalId();
         Fifo< Blob > &fifo = worker.queue( _from, _to );
         Statistics::global().sent( _from, _to );
@@ -307,7 +313,7 @@ struct Parallel {
         static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
             if ( n.owner( t ) != n.worker.globalId() ) {
                 assert_eq( n.owner( f ), n.worker.globalId() );
-                n.queue( f, t );
+                n.queueAny( f, t );
                 return visitor::IgnoreTransition;
             }
             return visitor::FollowTransition;

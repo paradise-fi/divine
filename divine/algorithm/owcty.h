@@ -189,7 +189,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
                     assert_eq( v.owner( st ), v.worker.globalId() );
-                    v.queue( Blob(), st );
+                    v.queueAny( Blob(), st ); // slightly faster maybe
                 }
             }
         }
@@ -301,7 +301,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         m_initialTable = &shared.initialTable; // XXX find better place for this
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
-        visitor.exploreFrom( shared.g.initial() );
+        shared.g.queueInitials( visitor );
+        visitor.processQueue();
     }
 
     void initialise() {
@@ -389,8 +390,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         Visitor visitor( shared.g, *this, *this,
                          Hasher( sizeof( Extension ) ), &table() );
         assert( shared.cycle_node.valid() );
-        if ( visitor.owner( shared.cycle_node ) == this->globalId() )
-            visitor.queue( Blob(), shared.cycle_node );
+        visitor.queue( Blob(), shared.cycle_node );
         visitor.processQueue();
     }
 

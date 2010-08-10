@@ -101,6 +101,11 @@ struct Custom : Common {
         return Blob( state );
     }
 
+    template< typename Q >
+    void queueInitials( Q &q ) {
+        q.queue( Node(), initial() );
+    }
+
     void die( const char *fmt, ... ) __attribute__((noreturn)) {
         va_list ap;
         va_start( ap, fmt );
