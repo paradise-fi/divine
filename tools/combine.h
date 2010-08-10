@@ -208,6 +208,13 @@ struct Combine {
         oG.to_one_initial();
         oG.optimize(oG1, 6);
 
+        if ( oG1.is_empty() )
+        {
+            // XXX warning?
+            oG1.clear();
+            oG1.set_initial( 1 );
+        }
+
         if ( probabilistic && !oG1.is_semideterministic() ) {
             DBA_graph_t DG;
             DG.semideterminization( oG1 );

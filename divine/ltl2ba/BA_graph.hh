@@ -109,6 +109,7 @@ public:
 	*/
 	int get_aut_type();
 
+        bool is_empty();
 };
 
 #ifndef DOXYGEN_PROCESSING

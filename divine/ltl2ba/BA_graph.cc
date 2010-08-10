@@ -560,3 +560,10 @@ bool BA_graph_t::is_semideterministic()
   return is_semiderministic; 
 }
 
+bool BA_graph_t::is_empty()
+{
+  list<KS_BA_node_t*> LN;
+  LN = get_init_nodes();
+  if (LN.size() == 0) return true;
+  return false;
+}
