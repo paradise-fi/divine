@@ -11,8 +11,26 @@ namespace algorithm {
 
 namespace list = wibble::list;
 
-template< typename G, typename Extension >
+template< typename G >
 struct NonPORGraph : generator::Extended< G > {
+    bool eliminate_done;
+
+    NonPORGraph() : eliminate_done( false ) {}
+
+    void porExpand( typename G::Node ) {}
+
+    template< typename Domain, typename Alg >
+    bool porEliminate( Domain &, Alg & ) {
+        eliminate_done = true;
+        return false;
+    }
+
+    template< typename Q >
+    void queueInitials( Q &q ) {
+        if ( eliminate_done )
+            return;
+        this->g().queueInitials( q );
+    }
 };
 
 // Implements a (parallel) check of the POR cycle proviso.
