@@ -13,11 +13,15 @@ namespace list = wibble::list;
 
 template< typename G >
 struct NonPORGraph : generator::Extended< G > {
+
+    typedef typename G::Node Node;
+
     bool eliminate_done;
 
     NonPORGraph() : eliminate_done( false ) {}
 
-    void porExpand( typename G::Node ) {}
+    void porExpansion( Node ) {}
+    void porTransition( Node, Node, void (*)( Node, int ) ) {}
 
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &, Alg & ) {
@@ -48,13 +52,13 @@ struct PORGraph : generator::Extended< G > {
         bool remove:1;
     };
 
-    typedef int &(*PredCount)( Node );
+    typedef void (*PredCount)( Node, int );
     PredCount _predCount;
 
-    void updatePredCount( Node &t, int v ) {
+    void updatePredCount( Node t, int v ) {
         extension( t ).predCount = v;
         if ( _predCount )
-            _predCount( t ) = v;
+            _predCount( t, v );
     }
 
     PORGraph() : _predCount( 0 ) {}
@@ -80,7 +84,7 @@ struct PORGraph : generator::Extended< G > {
 
     std::set< Node > to_check, to_expand;
 
-    void porExpand( Node n ) {
+    void porExpansion( Node n ) {
         to_check.insert( n );
     }
 
@@ -123,8 +127,8 @@ struct PORGraph : generator::Extended< G > {
     }
 
     template< typename Worker, typename Hasher, typename Table >
-    void _eliminate( Worker &w, Hasher &h, Table &t ) {
-        typedef PORGraph< G, Extension > Us;
+    void _porEliminate( Worker &w, Hasher &h, Table &t ) {
+        typedef PORGraph< G, Statistics > Us;
         typedef visitor::Setup< Us, Us, Table, Statistics,
             &Us::elimTransition,
             &Us::elimExpansion > Setup;
@@ -158,7 +162,7 @@ struct PORGraph : generator::Extended< G > {
         int checked = to_check.size();
 
         while ( !to_check.empty() ) {
-            d.parallel().run( a.shared, &Alg::_eliminate_worker );
+            d.parallel().run( a.shared, &Alg::_por_worker );
             /* std::cerr << "eliminate: " << to_check.size() << " nodes remaining, "
                << to_expand.size() << " to expand" << std::endl; */
 
