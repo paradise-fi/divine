@@ -22,6 +22,8 @@
 #include <divine/algorithm/map.h>
 #include <divine/algorithm/nested-dfs.h>
 
+#include <divine/porcp.h>
+
 #include <divine/report.h>
 
 #include <tools/combine.h>
@@ -56,6 +58,7 @@ struct Main {
         *cmd_metrics, *cmd_compile;
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
+    BoolOption *o_por;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     StringOption *o_trail;
 
@@ -190,6 +193,10 @@ struct Main {
         o_statistics = common->add< BoolOption >(
             "statistics", 's', "statistics", "",
             "track communication and hash table load statistics" );
+
+        o_por = common->add< BoolOption >(
+            "por", 'p', "por", "",
+            "enable partial order reduction" );
 
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
@@ -367,16 +374,21 @@ struct Main {
     {
         if ( str::endsWith( config.input(), ".dve" ) ) {
             config.setGenerator( "DVE" );
-            return run< Algorithm< generator::NDve, Stats >, Stats >();
+            if ( o_por->boolValue() ) {
+                return run< Algorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >,
+                            Stats >();
+            } else {
+                return run< Algorithm< algorithm::NonPORGraph< generator::NDve >, Stats >, Stats >();
+            }
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
-            return run< Algorithm< generator::NBymoc, Stats >, Stats >();
+            return run< Algorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >, Stats >();
         } else if ( str::endsWith( config.input(), ".so" ) ) {
             config.setGenerator( "Custom" );
-            return run< Algorithm< generator::Custom, Stats >, Stats >();
+            return run< Algorithm< algorithm::NonPORGraph< generator::Custom >, Stats >, Stats >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
-            return run< Algorithm< generator::Dummy, Stats >, Stats >();
+            return run< Algorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >, Stats >();
         } else
 	    die( "FATAL: Unknown input file extension." );
     }
