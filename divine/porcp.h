@@ -48,6 +48,17 @@ struct PORGraph : generator::Extended< G > {
         bool remove:1;
     };
 
+    typedef int &(*PredCount)( Node );
+    PredCount _predCount;
+
+    void updatePredCount( Node &t, int v ) {
+        extension( t ).predCount = v;
+        if ( _predCount )
+            _predCount( t ) = v;
+    }
+
+    PORGraph() : _predCount( 0 ) {}
+
     int setSlack( int s ) {
         m_algslack = s;
         return generator::Extended< G >::setSlack( s + sizeof( Extension ) );
@@ -55,6 +66,9 @@ struct PORGraph : generator::Extended< G > {
 
     Extension &extension( Node n ) {
         return n.template get< Extension >( m_algslack );
+    }
+    int predCount( Node n ) {
+        return extension( n ).predCount;
     }
 
     Successors successors( Node st ) {
@@ -70,8 +84,9 @@ struct PORGraph : generator::Extended< G > {
         to_check.insert( n );
     }
 
-    template< typename PC >
-    void porTransition( Node f, Node t, int *predcount ) {
+    void porTransition( Node f, Node t, PredCount _pc ) {
+        _predCount = _pc;
+
         if ( extension( t ).done )
             return; // ignore
 
@@ -80,11 +95,8 @@ struct PORGraph : generator::Extended< G > {
                   << showNode( f ) << " -> " << showNode( t ) << std::endl; */
 
         // increase predecessor count
-        if ( f.valid() ) {
-            if ( predcount )
-                ++ *predcount;
-            ++ extension( t ).predCount;
-        }
+        if ( f.valid() )
+            updatePredCount( t, predCount( t ) + 1 );
     }
 
     visitor::ExpansionAction elimExpansion( Node n ) {
@@ -100,10 +112,10 @@ struct PORGraph : generator::Extended< G > {
                   << extension( to ).predCount << "): "
                   << showNode( from ) << " -> " << showNode( to ) << std::endl; */
 
-        assert( extension( to ).predCount );
-        -- extension( to ).predCount;
+        assert( predCount( to ) );
+        updatePredCount( to, predCount( to ) - 1 );
         extension( to ).remove = true;
-        if ( extension( to ).predCount == 0 ) {
+        if ( predCount( to ) == 0 ) {
             extension( to ).done = true;
             return visitor::ExpandTransition;
         }
@@ -121,12 +133,12 @@ struct PORGraph : generator::Extended< G > {
         Visitor visitor( *this, w, *this, h, &t );
         for ( typename std::set< Node >::iterator j, i = to_check.begin(); i != to_check.end(); i = j ) {
             j = i; ++j;
-            if ( !extension( *i ).predCount || extension( *i ).remove ) {
-                if ( extension( *i ).predCount ) {
+            if ( !predCount( *i ) || extension( *i ).remove ) {
+                if ( predCount( *i ) ) {
                     // std::cerr << "to expand: " << showNode( *i ) << std::endl;
                     to_expand.insert( *i );
                 }
-                extension( *i ).predCount = 1; // ...
+                updatePredCount( *i, 1 ); // ...
                 visitor.queue( Blob(), *i );
                 to_check.erase( i );
             }
@@ -154,7 +166,7 @@ struct PORGraph : generator::Extended< G > {
                 break;
 
             // std::cerr << "breaking stalemate at: " << showNode( *to_check.begin() ) << std::endl;
-            extension( *to_check.begin() ).predCount = 0;
+            updatePredCount( *to_check.begin(), 0 );
             to_expand.insert( *to_check.begin() );
         }
         /* std::cerr << "eliminate: " << checked << " checked, "
