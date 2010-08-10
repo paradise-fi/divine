@@ -110,6 +110,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         CeShared< Node > ce;
         int initialTable;
         algorithm::Statistics< G > stats;
+        bool need_expand;
 
         Shared() : cycle_found( false ) {}
     } shared;
@@ -133,8 +134,12 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         return DomainWorker< This >::domain();
     }
 
-    Extension &extension( Node n ) {
+    static Extension &extension( Node n ) {
         return n.template get< Extension >();
+    }
+
+    static void updatePredCount( Node n, int p ) {
+        extension( n ).predCount = p;
     }
 
     bool cycleFound() {
@@ -281,6 +286,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
                 }
             }
         }
+        shared.g.porTransition( from, to, &updatePredCount );
         return visitor::FollowTransition;
     }
 
@@ -289,6 +295,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         extension( st ).inF = extension( st ).inS = shared.g.isAccepting( st );
         shared.size += extension( st ).inS;
         shared.stats.addNode( shared.g, st );
+        shared.g.porExpansion( st );
         return visitor::ExpandState;
     }
 
@@ -308,6 +315,22 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     void initialise() {
         domain().parallel().run( shared, &This::_initialise );
         shared.oldsize = shared.size = totalSize();
+        do {
+            if ( cycleFound() )
+                return;
+            shared.need_expand = false;
+            domain().parallel().runInRing( shared, &This::_por );
+            domain().parallel().run( shared, &This::_initialise );
+        } while ( shared.need_expand );
+    }
+
+    void _por_worker() {
+        shared.g._porEliminate( *this, hasher, table() );
+    }
+
+    void _por() {
+        if ( shared.g.porEliminate( domain(), *this ) )
+            shared.need_expand = true;
     }
 
     // -----------------------------------------------
