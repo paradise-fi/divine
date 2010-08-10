@@ -138,7 +138,9 @@ struct PORGraph : generator::Extended< G > {
         typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
 
         Visitor visitor( *this, w, *this, h, &t );
-        for ( typename std::set< Node >::iterator j, i = to_check.begin(); i != to_check.end(); i = j ) {
+        for ( typename std::set< Node >::iterator j, i = to_check.begin();
+              i != to_check.end(); i = j )
+        {
             j = i; ++j;
             if ( !predCount( *i ) || extension( *i ).remove ) {
                 if ( predCount( *i ) ) {
@@ -198,29 +200,26 @@ struct PORGraph : generator::Extended< G > {
     void fullexpand( Visitor &v, Node n ) {
         extension( n ).full = true;
         std::set< Node > all, ample, out;
-        // leak!
+        std::vector< Node > extra;
+
         list::output( this->g().successors( n ), std::inserter( all, all.begin() ) );
         list::output( this->g().ample( n ), std::inserter( ample, ample.begin() ) );
+
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );
+
+        // accumulate all the extra states we have generated
+        std::copy( ample.begin(), ample.end(), std::back_inserter( extra ) );
+        std::set_intersection( all.begin(), all.end(), ample.begin(), ample.end(),
+                               std::back_inserter( extra ) );
+
+        // release the states that we aren't going to use
+        for ( typename std::vector< Node >::iterator i = extra.begin(); i != extra.end(); ++i )
+            this->g().release( *i );
+
         for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
             const_cast< Blob* >( &*i )->header().permanent = 1;
             v.queue( n, *i );
-        }
-    }
-
-    template< typename O >
-    void fullexpand_stl( O o, Node n ) {
-        extension( n ).full = true;
-        std::set< Node > all, ample, out;
-        // leak!
-        list::output( this->g().successors( n ), std::inserter( all, all.begin() ) );
-        list::output( this->g().ample( n ), std::inserter( ample, ample.begin() ) );
-        std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
-                             std::inserter( out, out.begin() ) );
-        for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
-            const_cast< Blob* >( &*i )->header().permanent = 1;
-            *o++ = *i;
         }
     }
 };
