@@ -290,6 +290,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
                 }
             }
         }
+        shared.stats.addEdge();
         shared.g.porTransition( from, to, &updatePredCount );
         return visitor::FollowTransition;
     }
@@ -316,15 +317,22 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     }
 
     void initialise() {
-        domain().parallel().run( shared, &This::_initialise );
+        domain().parallel().run( shared, &This::_initialise ); updateResult();
         shared.oldsize = shared.size = totalSize();
         do {
-            if ( cycleFound() )
+            if ( cycleFound() ) {
+                result().fullyExplored = Result::No;
                 return;
+            }
             shared.need_expand = false;
+
             domain().parallel().runInRing( shared, &This::_por );
-            if ( shared.need_expand )
+            updateResult();
+
+            if ( shared.need_expand ) {
                 domain().parallel().run( shared, &This::_initialise );
+                updateResult();
+            }
         } while ( shared.need_expand );
     }
 
@@ -488,10 +496,11 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     {
         size_t oldsize = 0;
 
+        result().fullyExplored = Result::Yes;
         std::cerr << " initialise...\t\t" << std::flush;
         shared.size = 0;
         initialise();
-        printSize(); updateResult();
+        printSize();
 
         shared.iteration = 1;
 
@@ -523,7 +532,6 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             counterexample();
 
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
-        result().fullyExplored = shared.cycle_node.valid() ? Result::No : Result::Yes;
         return result();
     }
 
