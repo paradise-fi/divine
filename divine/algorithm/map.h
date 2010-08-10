@@ -38,6 +38,7 @@ struct _MpiId< Map< G, S > >
 
     template< typename O >
     static void writeShared( typename A::Shared s, O o ) {
+        o = s.stats.write( o );
         *o++ = s.initialTable;
         *o++ = s.iteration;
         *o++ = s.accepting;
@@ -48,6 +49,7 @@ struct _MpiId< Map< G, S > >
 
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
+        i = s.stats.read( i );
         s.initialTable = *i++;
         s.iteration = *i++;
         s.accepting = *i++;
@@ -78,6 +80,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         int initialTable;
         G g;
         CeShared< Node > ce;
+        algorithm::Statistics< G > stats;
     } shared;
 
     struct NodeId {
@@ -152,6 +155,13 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             visitor::ForgetTransition;
     }
 
+    void updateResult() {
+        for ( int i = 0; i < domain().peers(); ++i )
+            shared.stats.merge( domain().shared( i ).stats );
+        shared.stats.updateResult( result() );
+        shared.stats = algorithm::Statistics< G >();
+    }
+
     bool isAccepting( Node st ) {
         if ( !shared.g.isAccepting ( st ) )
             return false;
@@ -163,15 +173,22 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
     visitor::ExpansionAction expansion( Node st )
     {
         ++ shared.expanded;
-        if ( shared.g.isAccepting ( st ) && !extension( st ).seen ) {
+        if ( !extension( st ).seen ) {
             extension( st ).seen = true;
-            ++ shared.accepting;
-        }
+            if ( shared.g.isAccepting ( st ) )
+                ++ shared.accepting;
+            shared.stats.addNode( shared.g, st );
+        } else
+            shared.stats.addExpansion();
+
         return visitor::ExpandState;
     }
 
     visitor::TransitionAction transition( Node f, Node t )
     {
+        if ( shared.iteration == 1 )
+            shared.stats.addEdge();
+
         if ( !f.valid() ) {
             assert( equal( t, shared.g.initial() ) );
             return updateIteration( t );
@@ -272,6 +289,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             std::cerr << eliminated << " eliminated, "
                       << expanded << " expanded" << std::endl;
             ++ shared.iteration;
+            updateResult();
             valid = !cycleNode().valid();
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
