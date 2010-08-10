@@ -310,8 +310,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         typedef visitor::Parallel< Setup, This, Hasher > Visitor;
 
         m_initialTable = &shared.initialTable; // XXX find better place for this
-        Visitor visitor( shared.g, *this, *this,
-                         Hasher( sizeof( Extension ) ), &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
@@ -373,8 +372,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::elimExpansion > Setup;
         typedef visitor::Parallel< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this,
-                         Hasher( sizeof( Extension ) ), &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor );
         visitor.processQueue();
     }
@@ -414,8 +412,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::ccExpansion > Setup;
         typedef visitor::Parallel< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this,
-                         Hasher( sizeof( Extension ) ), &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &table() );
         assert( shared.cycle_node.valid() );
         visitor.queue( Blob(), shared.cycle_node );
         visitor.processQueue();
