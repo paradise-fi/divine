@@ -61,6 +61,37 @@ struct Common {
     Pool &pool() { return alloc.pool(); }
 };
 
+template< typename G >
+struct Extended {
+    G *_g;
+    typedef typename G::Node Node;
+    typedef typename G::Successors Successors;
+
+    G &g() { assert( _g ); return *_g; }
+
+    Node initial() { return g().initial(); }
+    Successors successors( Node st ) { return g().successors( st ); }
+    void release( Node s ) { g().release( s ); }
+    bool isDeadlock( Node s ) { return g().isDeadlock( s ); }
+    bool isGoal( Node s ) { return g().isGoal( s ); }
+    bool isAccepting( Node s ) { return g().isAccepting( s ); }
+    std::string showNode( Node s ) { return g().showNode( s ); }
+    void read( std::string path ) { g().read( path ); }
+
+    template< typename Q >
+    void queueInitials( Q &q ) {
+        g().queueInitials( q );
+    }
+
+    void setG( G &g ) { _g = &g; }
+
+    Extended() : _g( 0 ) {}
+    Extended( const Extended & ) : _g( 0 ) {} // no copy
+    Extended &operator=( const Extended &other ) { return *this; }
+
+    int setSlack( int s ) { return g().setSlack( s ); }
+};
+
 }
 }
 
