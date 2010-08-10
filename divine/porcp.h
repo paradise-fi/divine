@@ -11,52 +11,50 @@ namespace algorithm {
 
 namespace list = wibble::list;
 
-struct PorExt {
-    bool full:1;
-    bool done:1;
-    bool remove:1;
+template< typename G, typename Extension >
+struct NonPORGraph : generator::Extended< G > {
 };
 
 // Implements a (parallel) check of the POR cycle proviso.
-template< typename G, typename Extension >
-struct PorGraph : generator::Common {
-    G *_g;
+template< typename G, typename Statistics >
+struct PORGraph : generator::Extended< G > {
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
 
-    G &g() { assert( _g ); return *_g; }
+    int m_algslack;
+
+    struct Extension {
+        int predCount:29;
+        bool full:1;
+        bool done:1;
+        bool remove:1;
+    };
+
+    int setSlack( int s ) {
+        m_algslack = s;
+        return generator::Extended< G >::setSlack( s + sizeof( Extension ) );
+    }
+
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return n.template get< Extension >( m_algslack );
     }
 
-    Node initial() { return g().initial(); }
     Successors successors( Node st ) {
-        if ( extension( st ).por.full )
-            return g().successors( st );
+        if ( extension( st ).full )
+            return this->g().successors( st );
         else
-            return g().ample( st );
+            return this->g().ample( st );
     }
-
-    void release( Node s ) { g().release( s ); }
-    bool isDeadlock( Node s ) { return g().isDeadlock( s ); }
-    bool isGoal( Node s ) { return g().isGoal( s ); }
-    bool isAccepting( Node s ) { return g().isAccepting( s ); }
-    std::string showNode( Node s ) { return g().showNode( s ); }
-    void read( std::string path ) { g().read( path ); }
-
-    PorGraph() : _g( 0 ) {}
-    void setG( G &g ) { _g = &g; }
-    PorGraph &operator=( const PorGraph &other ) { return *this; }
-    PorGraph( const PorGraph & ) : _g( 0 ) {}
 
     std::set< Node > to_check, to_expand;
 
-    void expansion( Node n ) {
+    void porExpand( Node n ) {
         to_check.insert( n );
     }
 
-    void transition( Node f, Node t ) {
-        if ( extension( t ).por.done )
+    template< typename PC >
+    void porTransition( Node f, Node t, int *predcount ) {
+        if ( extension( t ).done )
             return; // ignore
 
         /* std::cerr << "transition ("
@@ -64,8 +62,11 @@ struct PorGraph : generator::Common {
                   << showNode( f ) << " -> " << showNode( t ) << std::endl; */
 
         // increase predecessor count
-        if ( f.valid() )
+        if ( f.valid() ) {
+            if ( predcount )
+                ++ *predcount;
             ++ extension( t ).predCount;
+        }
     }
 
     visitor::ExpansionAction elimExpansion( Node n ) {
@@ -74,7 +75,7 @@ struct PorGraph : generator::Common {
     }
 
     visitor::TransitionAction elimTransition( Node from, Node to ) {
-        if ( extension( to ).por.done )
+        if ( extension( to ).done )
             return visitor::ForgetTransition;
 
         /* std::cerr << "elimTransition ("
@@ -83,9 +84,9 @@ struct PorGraph : generator::Common {
 
         assert( extension( to ).predCount );
         -- extension( to ).predCount;
-        extension( to ).por.remove = true;
+        extension( to ).remove = true;
         if ( extension( to ).predCount == 0 ) {
-            extension( to ).por.done = true;
+            extension( to ).done = true;
             return visitor::ExpandTransition;
         }
         return visitor::ForgetTransition;
@@ -93,8 +94,8 @@ struct PorGraph : generator::Common {
 
     template< typename Worker, typename Hasher, typename Table >
     void _eliminate( Worker &w, Hasher &h, Table &t ) {
-        typedef PorGraph< G, Extension > Us;
-        typedef visitor::Setup< Us, Us, Table,
+        typedef PORGraph< G, Extension > Us;
+        typedef visitor::Setup< Us, Us, Table, Statistics,
             &Us::elimTransition,
             &Us::elimExpansion > Setup;
         typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
@@ -102,7 +103,7 @@ struct PorGraph : generator::Common {
         Visitor visitor( *this, w, *this, h, &t );
         for ( typename std::set< Node >::iterator j, i = to_check.begin(); i != to_check.end(); i = j ) {
             j = i; ++j;
-            if ( !extension( *i ).predCount || extension( *i ).por.remove ) {
+            if ( !extension( *i ).predCount || extension( *i ).remove ) {
                 if ( extension( *i ).predCount ) {
                     // std::cerr << "to expand: " << showNode( *i ) << std::endl;
                     to_expand.insert( *i );
@@ -116,14 +117,14 @@ struct PorGraph : generator::Common {
         for ( typename std::set< Node >::iterator j, i = to_check.begin();
               i != to_check.end(); i = j ) {
             j = i; ++j;
-            if ( extension ( *i ).por.done )
+            if ( extension ( *i ).done )
                 to_check.erase( i );
         }
     }
 
     // gives true iff there are nodes that need expanding
     template< typename Domain, typename Alg >
-    bool eliminate( Domain &d, Alg &a ) {
+    bool porEliminate( Domain &d, Alg &a ) {
         int checked = to_check.size();
 
         while ( !to_check.empty() ) {
@@ -145,7 +146,10 @@ struct PorGraph : generator::Common {
     }
 
     template< typename Visitor >
-    void queue( Visitor &v ) {
+    void queueInitials( Visitor &v ) {
+        if ( to_expand.size() == 0 )
+            this->g().queueInitials( v );
+
         for ( typename std::set< Node >::iterator i = to_expand.begin();
               i != to_expand.end(); ++i ) {
             fullexpand( v, *i );
@@ -155,11 +159,11 @@ struct PorGraph : generator::Common {
 
     template< typename Visitor >
     void fullexpand( Visitor &v, Node n ) {
-        extension( n ).por.full = true;
+        extension( n ).full = true;
         std::set< Node > all, ample, out;
         // leak!
-        list::output( g().successors( n ), std::inserter( all, all.begin() ) );
-        list::output( g().ample( n ), std::inserter( ample, ample.begin() ) );
+        list::output( this->g().successors( n ), std::inserter( all, all.begin() ) );
+        list::output( this->g().ample( n ), std::inserter( ample, ample.begin() ) );
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );
         for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
@@ -170,11 +174,11 @@ struct PorGraph : generator::Common {
 
     template< typename O >
     void fullexpand_stl( O o, Node n ) {
-        extension( n ).por.full = true;
+        extension( n ).full = true;
         std::set< Node > all, ample, out;
         // leak!
-        list::output( g().successors( n ), std::inserter( all, all.begin() ) );
-        list::output( g().ample( n ), std::inserter( ample, ample.begin() ) );
+        list::output( this->g().successors( n ), std::inserter( all, all.begin() ) );
+        list::output( this->g().ample( n ), std::inserter( ample, ample.begin() ) );
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );
         for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
