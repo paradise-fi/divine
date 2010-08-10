@@ -32,6 +32,8 @@ struct _MpiId< Owcty< G, S > >
             case 4: return &A::_checkCycle;
             case 5: return &A::_parentTrace;
             case 6: return &A::_traceCycle;
+            case 7: return &A::_por;
+            case 8: return &A::_por_worker;
             default: assert_die();
         }
     }
@@ -44,6 +46,8 @@ struct _MpiId< Owcty< G, S > >
         if( f == &A::_checkCycle) return 4;
         if( f == &A::_parentTrace) return 5;
         if( f == &A::_traceCycle) return 6;
+        if( f == &A::_por) return 7;
+        if( f == &A::_por_worker) return 8;
         assert_die();
     }
 
