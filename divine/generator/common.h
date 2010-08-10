@@ -63,11 +63,12 @@ struct Common {
 
 template< typename G >
 struct Extended {
-    G *_g;
+    G _g;
+
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
 
-    G &g() { assert( _g ); return *_g; }
+    G &g() { return _g; }
 
     Node initial() { return g().initial(); }
     Successors successors( Node st ) { return g().successors( st ); }
@@ -82,12 +83,6 @@ struct Extended {
     void queueInitials( Q &q ) {
         g().queueInitials( q );
     }
-
-    void setG( G &g ) { _g = &g; }
-
-    Extended() : _g( 0 ) {}
-    Extended( const Extended & ) : _g( 0 ) {} // no copy
-    Extended &operator=( const Extended &other ) { return *this; }
 
     int setSlack( int s ) { return g().setSlack( s ); }
 };
