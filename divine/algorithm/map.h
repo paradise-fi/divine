@@ -23,16 +23,22 @@ struct _MpiId< Map< G, S > >
     {
         switch ( n ) {
             case 0: return &A::_visit;
-            case 1: return &A::_parentTrace;
-            case 2: return &A::_traceCycle;
+            case 1: return &A::_cleanup;
+            case 2: return &A::_parentTrace;
+            case 3: return &A::_traceCycle;
+            case 7: return &A::_por;
+            case 8: return &A::_por_worker;
             default: assert_die();
         }
     }
 
     static int to_id( void (A::*f)() ) {
         if( f == &A::_visit ) return 0;
-        if( f == &A::_parentTrace ) return 1;
-        if( f == &A::_traceCycle ) return 2;
+        if( f == &A::_cleanup ) return 1;
+        if( f == &A::_parentTrace ) return 2;
+        if( f == &A::_traceCycle ) return 3;
+        if( f == &A::_por) return 7;
+        if( f == &A::_por_worker) return 8;
         assert_die();
     }
 
@@ -81,7 +87,14 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         G g;
         CeShared< Node > ce;
         algorithm::Statistics< G > stats;
+        bool need_expand;
     } shared;
+
+    int d_eliminated,
+        acceptingCount,
+        eliminated,
+        expanded;
+    Node cycle_node;
 
     struct NodeId {
         uintptr_t ptr;
@@ -139,14 +152,6 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         return n.template get< Extension >();
     }
 
-    Node cycleNode() {
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            if ( domain().shared( i ).ce.initial.valid() )
-                return domain().shared( i ).ce.initial;
-        }
-        return Node();
-    }
-
     visitor::TransitionAction updateIteration( Node t ) {
         int old = extension( t ).iteration;
         extension( t ).iteration = shared.iteration;
@@ -155,11 +160,21 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             visitor::ForgetTransition;
     }
 
-    void updateResult() {
+    void collect() {
         for ( int i = 0; i < domain().peers(); ++i )
             shared.stats.merge( domain().shared( i ).stats );
         shared.stats.updateResult( result() );
         shared.stats = algorithm::Statistics< G >();
+        for ( int i = 0; i < domain().peers(); ++ i ) {
+            if ( shared.iteration == 1 )
+                acceptingCount += domain().shared( i ).accepting;
+            d_eliminated += domain().shared( i ).eliminated;
+            expanded += domain().shared( i ).expanded;
+        }
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            if ( domain().shared( i ).ce.initial.valid() )
+                cycle_node = domain().shared( i ).ce.initial;
+        }
     }
 
     bool isAccepting( Node st ) {
@@ -177,6 +192,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             extension( st ).seen = true;
             if ( shared.g.isAccepting ( st ) )
                 ++ shared.accepting;
+            shared.g.porExpansion( st );
             shared.stats.addNode( shared.g, st );
         } else
             shared.stats.addExpansion();
@@ -186,8 +202,10 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( shared.iteration == 1 )
+        if ( shared.iteration == 1 ) {
+            shared.g.porTransition( f, t, 0 );
             shared.stats.addEdge();
+        }
 
         if ( !f.valid() ) {
             assert( equal( t, shared.g.initial() ) );
@@ -231,10 +249,11 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         m_initialTable = &shared.initialTable;
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
-        if ( visitor.owner( shared.g.initial() ) == this->globalId() )
-            visitor.queue( Blob(), shared.g.initial() );
+        shared.g.queueInitials( visitor );
         visitor.processQueue();
+    }
 
+    void _cleanup() {
         for ( size_t i = 0; i < table().size(); ++i ) {
             Node st = table()[ i ].key;
             if ( st.valid() ) {
@@ -253,8 +272,34 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         }
     }
 
+    void _por_worker() {
+        shared.g._porEliminate( *this, hasher, table() );
+    }
+
+    void _por() {
+        if ( shared.g.porEliminate( domain(), *this ) )
+            shared.need_expand = true;
+    }
+
     void visit() {
+        shared.need_expand = false;
+
         domain().parallel().run( shared, &This::_visit );
+        collect();
+
+        if ( !cycle_node.valid() && shared.iteration == 1 ) {
+            do {
+                std::cerr << " (running POR)" << std::flush;
+                domain().parallel().runInRing( shared, &This::_por );
+
+                if ( shared.need_expand ) {
+                    std::cerr << " (expanding)" << std::flush;
+                    domain().parallel().run( shared, &This::_visit );
+                    collect();
+                }
+            } while ( shared.need_expand );
+        }
+        domain().parallel().run( shared, &This::_cleanup );
     }
 
     void _parentTrace() {
@@ -269,7 +314,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
     Result run()
     {
         shared.iteration = 1;
-        int acceptingCount = 0, eliminated = 0, d_eliminated = 0, expanded = 0;
+        acceptingCount = eliminated = d_eliminated = expanded = 0;
         bool valid = true;
         do {
             std::cerr << " iteration " << std::setw( 3 ) << shared.iteration
@@ -278,19 +323,13 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             visit();
             d_eliminated = 0;
             expanded = 0;
-            for ( int i = 0; i < domain().peers(); ++ i ) {
-                if ( shared.iteration == 1 )
-                    acceptingCount += domain().shared( i ).accepting;
-                d_eliminated += domain().shared( i ).eliminated;
-                expanded += domain().shared( i ).expanded;
-            }
             eliminated += d_eliminated;
             assert_leq( eliminated, acceptingCount );
             std::cerr << eliminated << " eliminated, "
                       << expanded << " expanded" << std::endl;
+            valid = !cycle_node.valid();
+
             ++ shared.iteration;
-            updateResult();
-            valid = !cycleNode().valid();
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
@@ -299,8 +338,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
         if ( !valid && want_ce ) {
             std::cerr << " generating counterexample...     " << std::flush;
-            assert( cycleNode().valid() );
-            shared.ce.initial = cycleNode();
+            assert( cycle_node.valid() );
+            shared.ce.initial = cycle_node;
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
             std::cerr << "done" << std::endl;
