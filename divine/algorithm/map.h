@@ -291,11 +291,9 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
         if ( !cycle_node.valid() && shared.iteration == 1 ) {
             do {
-                std::cerr << " (running POR)" << std::flush;
                 domain().parallel().runInRing( shared, &This::_por );
 
                 if ( shared.need_expand ) {
-                    std::cerr << " (expanding)" << std::flush;
                     domain().parallel().run( shared, &This::_visit );
                     collect();
                 }
