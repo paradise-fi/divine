@@ -300,6 +300,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             } while ( shared.need_expand );
         }
         domain().parallel().run( shared, &This::_cleanup );
+        collect();
     }
 
     void _parentTrace() {
@@ -320,9 +321,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             std::cerr << " iteration " << std::setw( 3 ) << shared.iteration
                       << "...\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
+            expanded = d_eliminated = 0;
             visit();
-            d_eliminated = 0;
-            expanded = 0;
             eliminated += d_eliminated;
             assert_leq( eliminated, acceptingCount );
             std::cerr << eliminated << " eliminated, "
