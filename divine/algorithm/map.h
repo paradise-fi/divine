@@ -45,6 +45,7 @@ struct _MpiId< Map< G, S > >
     template< typename O >
     static void writeShared( typename A::Shared s, O o ) {
         o = s.stats.write( o );
+        *o++ = s.need_expand;
         *o++ = s.initialTable;
         *o++ = s.iteration;
         *o++ = s.accepting;
@@ -56,6 +57,7 @@ struct _MpiId< Map< G, S > >
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
         i = s.stats.read( i );
+        s.need_expand = *i++;
         s.initialTable = *i++;
         s.iteration = *i++;
         s.accepting = *i++;
