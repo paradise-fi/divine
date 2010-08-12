@@ -170,6 +170,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
                 acceptingCount += domain().shared( i ).accepting;
             d_eliminated += domain().shared( i ).eliminated;
             expanded += domain().shared( i ).expanded;
+            assert_eq( shared.eliminated, 0 );
+            assert_eq( shared.expanded, 0 );
         }
         for ( int i = 0; i < domain().peers(); ++i ) {
             if ( domain().shared( i ).ce.initial.valid() )
