@@ -174,10 +174,11 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             expanded += domain().shared( i ).expanded;
             assert_eq( shared.eliminated, 0 );
             assert_eq( shared.expanded, 0 );
-        }
-        for ( int i = 0; i < domain().peers(); ++i ) {
+
             if ( domain().shared( i ).ce.initial.valid() )
                 cycle_node = domain().shared( i ).ce.initial;
+            if ( domain().shared( i ).need_expand )
+                shared.need_expand = true;
         }
     }
 
@@ -286,14 +287,14 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
     }
 
     void visit() {
-        shared.need_expand = false;
-
         domain().parallel().run( shared, &This::_visit );
         collect();
 
         if ( !cycle_node.valid() && shared.iteration == 1 ) {
             do {
+                shared.need_expand = false;
                 domain().parallel().runInRing( shared, &This::_por );
+                collect();
 
                 if ( shared.need_expand ) {
                     domain().parallel().run( shared, &This::_visit );
