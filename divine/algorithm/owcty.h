@@ -488,8 +488,11 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     }
 
     void updateResult() {
-        for ( int i = 0; i < domain().peers(); ++i )
+        for ( int i = 0; i < domain().peers(); ++i ) {
             shared.stats.merge( domain().shared( i ).stats );
+            if ( domain().shared( i ).need_expand )
+                shared.need_expand = true;
+        }
         shared.stats.updateResult( result() );
         shared.stats = algorithm::Statistics< G >();
     }
