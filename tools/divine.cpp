@@ -61,6 +61,7 @@ struct Main {
     OptionGroup *common;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por;
+    BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     StringOption *o_trail;
 
@@ -136,6 +137,11 @@ struct Main {
         }
     }
 
+    void setupCurses() {
+        if ( o_curses->boolValue() )
+            Output::_output = makeCurses();
+    }
+
     void setupCommandline()
     {
         opts.usage = "<command> [command-specific options] <input file>";
@@ -162,6 +168,9 @@ struct Main {
 
         o_verbose = opts.add< BoolOption >(
             "verbose", 'v', "verbose", "", "more verbose operation" );
+        o_curses = opts.add< BoolOption >(
+            "curses", '\0', "curses", "", "use curses-based progress monitoring" );
+
         o_report = common->add< BoolOption >(
             "report", 'r', "report", "", "output standardised report" );
 
@@ -408,7 +417,7 @@ struct Main {
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
         if ( t.domain().mpi.master() )
-            Output::_output = makeCurses();
+            setupCurses();
         Stats::global().useDomain( t.domain() );
         if ( statistics )
             Stats::global().start();
@@ -419,6 +428,7 @@ struct Main {
 
     template< typename Stats, typename T >
     wibble::Unit setupParallel( NotPreferred, Report *, T &t ) {
+        setupCurses();
         return wibble::Unit();
     }
 
