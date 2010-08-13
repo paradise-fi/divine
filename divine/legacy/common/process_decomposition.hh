@@ -9,8 +9,8 @@
 namespace divine {
 #endif
   class explicit_system_t;
-  class state_t;  
-  
+  struct state_t;
+
   /*! This class is used to decompose a graph of a single process specified
    *  in a dve file into SCCs. The decomposition is not accesible directly
    *  but with member functions returning for a given state SCC id and

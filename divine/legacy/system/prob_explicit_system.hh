@@ -15,10 +15,10 @@ using std::cerr; using std::endl;
 #endif //DOXYGEN_PROCESSING
 
 
-class prob_succ_element_t;
+struct prob_succ_element_t;
 typedef std::vector< prob_succ_element_t > prob_succ_container_t;
 
-class prob_succ_container_t_;
+struct prob_succ_container_t_;
 
 //!Abstract interface of a class representing a state generator based
 //! on the model of \sys stored in prob_system_t
@@ -128,7 +128,7 @@ struct prob_succ_element_t
  * which is used to set the sufficient size of this constainer.
  * 
  * The main reason for this class is a better efficiency.*/
-class prob_succ_container_t_: public array_t<prob_succ_element_t>
+struct prob_succ_container_t_: public array_t<prob_succ_element_t>
 {
  public:
  //!A constructor (only calls a constructor of array_t<state_t> with
