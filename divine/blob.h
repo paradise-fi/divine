@@ -119,12 +119,10 @@ struct Blob
     template< typename Alloc, typename In >
     In read32( Alloc *a, In i )
     {
-        union {
-            int32_t raw[ sizeof( BlobHeader ) / 4 ];
-            BlobHeader hdr;
-        };
-        std::copy( i, i + 1, raw );
-        int size = hdr.size;
+        int hdr_cnt = allocationSize( 0 ) / 4;
+        int32_t hdr[ hdr_cnt ];
+        std::copy( i, i + hdr_cnt, hdr );
+        int size = reinterpret_cast< BlobHeader * >( hdr )->size;
 
         ptr = a->allocate( allocationSize( size ) );
         In end = i + allocationSize( size ) / 4;
