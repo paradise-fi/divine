@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm/common.h>
+#include <divine/algorithm/metrics.h>
 #include <divine/visitor.h>
 #include <divine/report.h>
 
@@ -18,6 +19,8 @@ struct NestedDFS : Algorithm
     typedef typename G::Node Node;
     Node seed;
     bool valid;
+
+    algorithm::Statistics< G > stats;
 
     struct Extension {
         bool nested:1;
@@ -38,7 +41,8 @@ struct NestedDFS : Algorithm
             return;
         seed = n;
         typedef visitor::Setup< G, This, Table, Statistics,
-            &This::innerTransition > Setup;
+                                &This::innerTransition,
+                                &This::innerExpansion > Setup;
         visitor::DFV< Setup > inner( g, *this, &table() );
         inner.exploreFrom( n );
     }
@@ -51,18 +55,28 @@ struct NestedDFS : Algorithm
         std::cerr << "done" << std::endl;
         livenessBanner( valid );
 
+        stats.updateResult( result() );
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
         result().fullyExplored = valid ? Result::Yes : Result::No;
         return result();
     }
 
-    visitor::ExpansionAction expansion( Node ) {
+    visitor::ExpansionAction expansion( Node st ) {
         if ( !valid )
             return visitor::TerminateOnState;
+        stats.addNode( g, st );
+        return visitor::ExpandState;
+    }
+
+    visitor::ExpansionAction innerExpansion( Node ) {
+        if ( !valid )
+            return visitor::TerminateOnState;
+        stats.addExpansion();
         return visitor::ExpandState;
     }
 
     visitor::TransitionAction transition( Node from, Node to ) {
+        stats.addEdge();
         return visitor::FollowTransition;
     }
 
