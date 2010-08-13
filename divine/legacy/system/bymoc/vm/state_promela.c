@@ -18,10 +18,9 @@
 #define STATE_OUT_DOTTY_LINE_END "\\l\\"
 
 
-// import functions as "extern" for unoptimized compilation
-#define STATE_INLINE extern
-#include "state_inline.h"
-#undef STATE_INLINE
+// mornfall: removed #include "state_inline.h" with STATE_INLINE set to extern,
+// changed the state.h include to say static inline to avoid duplicated symbols
+// (might be a clang bug, who knows)
 
 // *** helper functions ***
 

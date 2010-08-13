@@ -121,7 +121,7 @@ typedef struct t_global_state_header
 typedef st_global_state_header nipsvm_state_t;
 
 // inline functions as "extern inline" for optimized compilation
-#define STATE_INLINE extern inline
+#define STATE_INLINE static inline
 #include "state_inline.h"
 #undef STATE_INLINE
 
