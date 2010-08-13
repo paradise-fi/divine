@@ -61,9 +61,12 @@ if( GUI )
   find_package( Qt4 4.5.0 )
 endif( GUI )
 
-find_package( Curses )
-if( CURSES_FOUND )
-  add_definitions( -DHAVE_CURSES )
+if( NOT USE32 AND NOT USE64 )
+  # the curses package we'd find probably wouldn't work anyway
+  find_package( Curses )
+  if( CURSES_FOUND )
+    add_definitions( -DHAVE_CURSES )
+  endif()
 endif()
 
 # on some mingw32, regex.h is not on the default include path
