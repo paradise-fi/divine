@@ -103,7 +103,7 @@ struct Main {
         rep.final( std::cout );
     }
 
-    void die( std::string bla ) __attribute__((noreturn))
+    static void die( std::string bla ) __attribute__((noreturn))
     {
         std::cerr << bla << std::endl;
         exit( 1 );
