@@ -154,15 +154,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
     }
 
     Result run() {
-        std::cerr << "  searching... \t" << std::flush;
+        progress() << "  searching... \t" << std::flush;
 
         domain().parallel().run( shared, &This::_visit );
 
         for ( int i = 0; i < domain().peers(); ++i )
             shared.stats.merge( domain().shared( i ).stats );
 
-        std::cerr << shared.stats.states << " states, "
-                  << shared.stats.transitions << " edges" << std::endl;
+        progress() << shared.stats.states << " states, "
+                   << shared.stats.transitions << " edges" << std::endl;
 
         Node goal;
 

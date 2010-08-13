@@ -187,9 +187,9 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
     }
 
     Result run() {
-        std::cerr << "  exploring... \t\t\t\t" << std::flush;
+        progress() << "  exploring... \t\t\t\t" << std::flush;
         domain().parallel().run( shared, &This::_visit );
-        std::cerr << "   done" << std::endl;
+        progress() << "   done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {
             Shared &s = domain().shared( i );

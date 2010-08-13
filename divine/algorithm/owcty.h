@@ -458,10 +458,10 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
     void counterexample() {
         if ( !cycleFound() ) {
-            std::cerr << " obtaining counterexample...      " << std::flush;
+            progress() << " obtaining counterexample...      " << std::flush;
             domain().parallel().runInRing(
                 shared, &This::_counterexample );
-            std::cerr << "done" << std::endl;
+            progress() << "done" << std::endl;
         }
 
         shared.ce.initial = cycleNode();
@@ -477,14 +477,14 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
     void printSize() {
         if ( cycleFound() )
-            std::cerr << "   (MAP: cycle found)" << std::endl << std::flush;
+            progress() << "MAP/ET" << std::endl << std::flush;
         else
-            std::cerr << "   |S| = " << shared.size << std::endl << std::flush;
+            progress() << "|S| = " << shared.size << std::endl << std::flush;
     }
 
     void printIteration( int i ) {
-        std::cerr << "------------- iteration " << i
-                  << " ------------- " << std::endl;
+        progress() << "------------- iteration " << i
+                   << " ------------- " << std::endl;
     }
 
     void updateResult() {
@@ -500,7 +500,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         size_t oldsize = 0;
 
         result().fullyExplored = Result::Yes;
-        std::cerr << " initialise...\t\t" << std::flush;
+        progress() << " initialise...\t\t    " << std::flush;
         shared.size = 0;
         initialise();
         printSize();
@@ -513,13 +513,13 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
                 printIteration( 1 + shared.iteration / 2 );
 
-                std::cerr << " reachability...\t" << std::flush;
+                progress() << " reachability...\t    " << std::flush;
                 reachability();
                 printSize(); updateResult();
 
                 ++shared.iteration;
 
-                std::cerr << " elimination & reset...\t" << std::flush;
+                progress() << " elimination & reset...\t    " << std::flush;
                 elimination();
                 printSize(); updateResult();
 

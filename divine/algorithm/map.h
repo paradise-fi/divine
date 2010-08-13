@@ -320,15 +320,15 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         acceptingCount = eliminated = d_eliminated = expanded = 0;
         bool valid = true;
         do {
-            std::cerr << " iteration " << std::setw( 3 ) << shared.iteration
-                      << "...\t" << std::flush;
+            progress() << " iteration " << std::setw( 3 ) << shared.iteration
+                       << "...\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
             expanded = d_eliminated = 0;
             visit();
             eliminated += d_eliminated;
             assert_leq( eliminated, acceptingCount );
-            std::cerr << eliminated << " eliminated, "
-                      << expanded << " expanded" << std::endl;
+            progress() << eliminated << " eliminated, "
+                       << expanded << " expanded" << std::endl;
             valid = !cycle_node.valid();
 
             ++ shared.iteration;
@@ -339,12 +339,12 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         livenessBanner( valid );
 
         if ( !valid && want_ce ) {
-            std::cerr << " generating counterexample...     " << std::flush;
+            progress() << " generating counterexample...     " << std::flush;
             assert( cycle_node.valid() );
             shared.ce.initial = cycle_node;
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
-            std::cerr << "done" << std::endl;
+            progress() << "done" << std::endl;
         }
 
         return result();
