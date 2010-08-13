@@ -33,13 +33,13 @@ struct Location {
     assert_list_eq_fn( LOCATION( #x " == " #y ), \
                        sizeof( y ) / sizeof( y[0] ), x, y )
 #else
-#define assert(x)
-#define assert_pred(p, x)
-#define assert_eq(x, y)
-#define assert_leq(x, y)
-#define assert_eq_l(i, x, y)
-#define assert_neq(x, y)
-#define assert_list_eq(x, y)
+#define assert(x) ((void)0)
+#define assert_pred(p, x) ((void)0)
+#define assert_eq(x, y) ((void)0)
+#define assert_leq(x, y) ((void)0)
+#define assert_eq_l(i, x, y) ((void)0)
+#define assert_neq(x, y) ((void)0)
+#define assert_list_eq(x, y) ((void)0)
 #endif
 
 #define assert_die() assert_die_fn( LOCATION( "forbidden code path tripped" ) )
