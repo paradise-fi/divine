@@ -6,6 +6,8 @@
 #include <divine/mpi.h>
 #include <iomanip>
 
+#include <divine/output.h>
+
 #ifndef DIVINE_STATISTICS_H
 #define DIVINE_STATISTICS_H
 
@@ -89,71 +91,71 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     static int second( int, int b ) { return b; }
     static int diff( int a, int b ) { return a - b; }
 
-    void matrix( int (*what)(int, int) ) {
+    void matrix( std::ostream &o, int (*what)(int, int) ) {
         for ( int i = 0; i < threads.size(); ++i ) {
             int sum = 0;
             for ( int j = 0; j < threads.size(); ++j )
-                printv( 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
-            printv( 10, sum, 0 );
-            std::cerr << std::endl;
+                printv( o, 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
+            printv( o, 10, sum, 0 );
+            o << std::endl;
         }
     }
 
-    void printv( int width, int v, int *sum ) {
-        std::cerr << " " << std::setw( width ) << v;
+    void printv( std::ostream &o, int width, int v, int *sum ) {
+        o << " " << std::setw( width ) << v;
         if ( sum )
             *sum += v;
     }
 
-    void label( std::string text, bool d = true ) {
+    void label( std::ostream &o, std::string text, bool d = true ) {
         for ( int i = 0; i < threads.size() - 1; ++ i )
-            std::cerr << (d ? "=====" : "-----");
+            o << (d ? "=====" : "-----");
         for ( int i = 0; i < (10 - text.length()) / 2; ++i )
-            std::cerr << (d ? "=" : "-");
-        std::cerr << " " << text << " ";
+            o << (d ? "=" : "-");
+        o << " " << text << " ";
         for ( int i = 0; i < (10 - text.length()) / 2; ++i )
-            std::cerr << (d ? "=" : "-");
+            o << (d ? "=" : "-");
         for ( int i = 0; i < threads.size() - 1; ++ i )
-            std::cerr << (d ? "=====" : "-----");
-        std::cerr << (d ? " == SUM ==" : " ---------");
-        std::cerr << std::endl;
+            o << (d ? "=====" : "-----");
+        o << (d ? " == SUM ==" : " ---------");
+        o << std::endl;
     }
 
-    void print() {
-            label( "QUEUES" );
-            matrix( diff );
+    void print( std::ostream &o ) {
+        label( o, "QUEUES" );
+            matrix( o, diff );
 
-            label( " local", false );
+            label( o, " local", false );
             int sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                printv( 9, thread( i ).enq - thread( i ).deq, &sum );
-            printv( 10, sum, 0 );
-            std::cerr << std::endl;
+                printv( o, 9, thread( i ).enq - thread( i ).deq, &sum );
+            printv( o, 10, sum, 0 );
+            o << std::endl;
 
-            label( "totals", false );
+            label( o, "totals", false );
             sum = 0;
             for ( int j = 0; j < threads.size(); ++ j ) {
                 int t = thread( j ).enq - thread( j ).deq;
                 for ( int i = 0; i < threads.size(); ++ i ) {
                     t += thread( i ).sent[ j ] - thread( j ).received[ i ];
                 }
-                printv( 9, t, &sum );
+                printv( o, 9, t, &sum );
             }
-            printv( 10, sum, 0 );
-            std::cerr << std::endl;
+            printv( o, 10, sum, 0 );
+            o << std::endl;
 
-            label( "HASHTABLES" );
+            label( o, "HASHTABLES" );
             sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                printv( 9, thread( i ).hashused, &sum );
-            printv( 10, sum, 0 );
+                printv( o, 9, thread( i ).hashused, &sum );
+            printv( o, 10, sum, 0 );
 
-            std::cerr << std::endl;
+            o << std::endl;
             sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                printv( 9, thread( i ).hashsize, &sum );
-            printv( 10, sum, 0 );
-            std::cerr << std::endl;
+                printv( o, 9, thread( i ).hashsize, &sum );
+            printv( o, 10, sum, 0 );
+            o << std::endl;
     }
 
 #ifdef HAVE_MPI
@@ -218,8 +220,11 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         while ( true ) {
             if ( !mpi || mpi->master() ) {
                 wibble::sys::sleep( 1 );
-                print();
+                std::stringstream str;
+                print( str );
+                Output::output().statistics() << str.str() << std::flush;
             }
+
             if ( mpi && !mpi->master() ) {
                 wibble::sys::usleep( 200 * 1000 );
                 send();
@@ -246,11 +251,13 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     template< typename D >
     void useDomain( D &d ) {
-        resize( d.n * d.mpi.size() );
+        int threadcount = d.n * d.mpi.size();
+        resize( threadcount );
         mpi = &d.mpi;
         mpi->registerMonitor( TAG_STATISTICS, *this );
         pernode = d.n;
         localmin = d.minId;
+        Output::output().setStatsSize( threadcount * 10 + 11, threadcount + 8 );
     }
 
     static Statistics &global() {
