@@ -69,7 +69,7 @@ struct Algorithm
     Table &table() {
         if ( !m_table )
             m_table = new Table( hasher, divine::valid< Node >(), equal,
-                                 *m_initialTable, 2 );
+                                 *m_initialTable );
         return *m_table;
     }
 
