@@ -42,6 +42,14 @@ namespace str {
 
 using namespace wibble::operators;
 
+#ifdef _WIN32
+static int vasprintf (char **, const char *, va_list);
+#endif
+
+std::string fmt( const char* f, ... ) __attribute__ ((deprecated));
+std::string fmtf( const char* f, ... );
+template< typename T > inline std::string fmt(const T& val);
+
 // Formatting lists -- actually, we need to move list handling into wibble,
 // really.
 template< typename X >
@@ -60,13 +68,6 @@ inline typename TPair< std::ostream, typename X::Type >::First &operator<<(
     }
     return o << " ]";
 }
-
-#ifdef _WIN32
-static int vasprintf (char **, const char *, va_list);
-#endif
-
-std::string fmt( const char* f, ... ) __attribute__ ((deprecated));
-std::string fmtf( const char* f, ... );
 
 /// Format any value into a string using a std::stringstream
 template< typename T >
