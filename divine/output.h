@@ -1,10 +1,5 @@
 // -*- C++ -*- Copyright (c) 2010 Petr Rockai <me@mornfall.net>
 
-#include <curses.h>
-#include <iostream>
-#include <wibble/sys/mutex.h>
-#include <time.h>
-
 #ifndef DIVINE_OUTPUT_H
 #define DIVINE_OUTPUT_H
 

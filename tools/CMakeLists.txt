@@ -1,6 +1,6 @@
 include_directories( ${DIVINE_INCLUDES} )
 
-link_libraries( libdivine wibble ncurses )
+link_libraries( libdivine wibble )
 if( MURPHI )
     link_libraries( murphi )
 endif()

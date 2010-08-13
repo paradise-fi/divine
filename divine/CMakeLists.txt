@@ -61,6 +61,9 @@ if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
 endif( NOT WIN32 )
 
+if( CURSES_FOUND )
+  target_link_libraries( libdivine ${CURSES_LIBRARIES} )
+endif()
 target_link_libraries( libdivine ${MPI_LIBRARIES} )
 
 if( NOT WIN32 )

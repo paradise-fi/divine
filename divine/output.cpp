@@ -1,5 +1,14 @@
-#include <divine/output.h>
+#include <wibble/sys/mutex.h>
+#include <iostream>
+
 #include <fcntl.h>
+#include <time.h>
+
+#ifdef HAVE_CURSES
+#include <curses.h>
+#endif
+
+#include <divine/output.h>
 
 divine::Output *divine::Output::_output = 0;
 
@@ -92,6 +101,7 @@ struct StdIO : divine::Output, proxycall {
     }
 };
 
+#ifdef HAVE_CURSES
 struct Curses : divine::Output
 {
     wibble::sys::Mutex mutex;
@@ -166,6 +176,7 @@ struct Curses : divine::Output
     }
 
 };
+#endif
 
 namespace divine {
 
@@ -174,7 +185,13 @@ Output *makeStdIO( std::ostream &o ) {
 }
 
 Output *makeCurses() {
+#ifdef HAVE_CURSES
     return new Curses();
+#else
+    std::cerr << "WARNING: This binary has been compiled without CURSES support." << std::endl;
+    std::cerr << "Falling back to standard IO." << std::endl;
+    return makeStdIO( std::cerr );
+#endif
 }
 
 }

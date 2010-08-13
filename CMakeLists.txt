@@ -61,6 +61,11 @@ if( GUI )
   find_package( Qt4 4.5.0 )
 endif( GUI )
 
+find_package( Curses )
+if( CURSES_FOUND )
+  add_definitions( -DHAVE_CURSES )
+endif()
+
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
 include_directories( ${RX_PATH} )
