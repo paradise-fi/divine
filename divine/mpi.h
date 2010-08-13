@@ -6,6 +6,8 @@
 #include <divine/barrier.h>
 #include <divine/fifo.h>
 
+#include <divine/output.h>
+
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
 
@@ -106,9 +108,7 @@ struct MpiBase {
     MpiBase() : m_mutex( true ), m_progress( 0 ) {}
 
     std::ostream &mpidebug() {
-        static struct : std::streambuf {} buf;
-        static std::ostream null(&buf);
-        return null; // std::cerr << "MPI[" << rank() << "]: ";
+        return Output::output().debug() << "MPI[" << rank() << "]: ";
     }
 };
 
