@@ -544,7 +544,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         initGraph( shared.g );
         shared.size = 0;
         if ( c ) {
-            becomeMaster( &shared, workerCount( c ) );
+            this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTableSize();
         }
     }

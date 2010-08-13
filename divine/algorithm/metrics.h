@@ -181,7 +181,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
     {
         initGraph( shared.g );
         if ( c ) {
-            becomeMaster( &shared, workerCount( c ) );
+            this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTableSize();
         }
     }
