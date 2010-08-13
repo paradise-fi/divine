@@ -151,7 +151,7 @@ class array_of_abstract_t
    * extends the allocated memory. Therefore in that case it runs
    * in a time<i>O(n)</i>, where <i>n</i> is a number of items stored
    * in the container.*/
-  void push_back(T what)
+  void push_back(const T &what)
    {
     extend(1);
     (*array.back())=what;
