@@ -86,7 +86,7 @@ void chdir(const string& dir)
 std::string getcwd()
 {
 	size_t size = pathconf(".", _PC_PATH_MAX);
-	char buf[size];
+	char *buf = (char *)alloca( size );
 	if (::getcwd(buf, size) == NULL)
 		throw wibble::exception::System("getting the current working directory");
 	return buf;
