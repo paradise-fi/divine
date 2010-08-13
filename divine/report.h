@@ -17,6 +17,9 @@
 
 #ifdef HAVE_MPI
 #include <mpi.h>
+#ifdef OPEN_MPI
+#include <ompi/version.h>
+#endif
 #endif
 
 #ifdef _WIN32
@@ -156,7 +159,7 @@ struct Report
         return vmsz;
     }
 
-    std::string architecture() {
+    static std::string architecture() {
 #ifdef __linux
         wibble::ERegexp r( "model name[\t ]*: (.+)", 2 );
         if ( matchLine( "/proc/cpuinfo", r ) )
@@ -196,7 +199,7 @@ struct Report
       return "Unknown";
     }
 
-    bool matchLine( std::string file, wibble::ERegexp &r ) {
+    static bool matchLine( std::string file, wibble::ERegexp &r ) {
         std::string line;
         std::ifstream f( file.c_str() );
         while ( !f.eof() ) {
@@ -219,6 +222,30 @@ struct Report
 #endif
     }
 
+    static void about( std::ostream &o ) {
+        o << "Version: " << versionString() << std::endl;
+        o << "Build-Date: " << buildDateString() << std::endl;
+        o << "Architecture: " << architecture() << std::endl;
+        o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
+#ifdef NDEBUG
+        o << "Debug: disabled" << std::endl;
+#else
+        o << "Debug: enabled" << std::endl;
+#endif
+
+#ifdef HAVE_MPI
+        int vers, subvers;
+        std::string impl = "unknown implementation";
+        MPI::Get_version( vers, subvers );
+#ifdef OMPI_VERSION
+        impl = std::string( "OpenMPI " ) + OMPI_VERSION;
+#endif
+        o << "MPI-Version: " << vers << "." << subvers << " (" << impl << ")" << std::endl;
+#else
+        o << "MPI-Vesrion: n/a" << std::endl;
+#endif
+    }
+
     void final( std::ostream &o ) {
         if ( !config.report() || m_dumped )
             return;
@@ -231,28 +258,12 @@ struct Report
 #endif
 
 #ifdef _WIN32
-	      GetLocalTime(&stFinish);
-	      GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
+        GetLocalTime(&stFinish);
+        GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
 #endif
+        about( o );
         config.dump( o );
         o << std::endl;
-        o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
-        o << "Version: " << versionString() << std::endl;
-        o << "Build-Date: " << buildDateString() << std::endl;
-        o << "Architecture: " << architecture() << std::endl;
-#ifdef NDEBUG
-        o << "Debug: disabled" << std::endl;
-#else
-        o << "Debug: enabled" << std::endl;
-#endif
-
-#ifdef HAVE_MPI
-        int vers, subvers;
-        MPI::Get_version( vers, subvers );
-        o << "MPI-Version: " << vers << "." << subvers << std::endl;
-#else
-        o << "MPI-Vesrion: n/a" << std::endl;
-#endif
         o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
 #ifdef POSIX

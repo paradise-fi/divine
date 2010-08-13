@@ -255,8 +255,11 @@ struct Main {
         std::string input;
 
         try {
-            if ( opts.parse( argc, argv ) )
+            if ( opts.parse( argc, argv ) ) {
+                if ( opts.version->boolValue() )
+                    Report::about( std::cout ); // print extra version info
                 exit( 0 ); // built-in command executed
+            }
 
             if ( opts.foundCommand() == combine.cmd_combine
                  || opts.foundCommand() == compile.cmd_compile ) {
