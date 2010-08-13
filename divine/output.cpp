@@ -10,8 +10,6 @@
 
 #include <divine/output.h>
 
-divine::Output *divine::Output::_output = 0;
-
 struct proxycall {
     virtual void flush( std::string ) = 0;
     virtual void partial( std::string ) = 0;
@@ -195,4 +193,7 @@ Output *makeCurses() {
 }
 
 }
+
+StdIO defoutput( std::cerr );
+divine::Output *divine::Output::_output = &defoutput;
 
