@@ -177,8 +177,6 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
             if ( domain().shared( i ).ce.initial.valid() )
                 cycle_node = domain().shared( i ).ce.initial;
-            if ( domain().shared( i ).need_expand )
-                shared.need_expand = true;
         }
     }
 
