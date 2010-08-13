@@ -273,6 +273,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
                 }
             }
         }
+        this->idle();
     }
 
     void _por_worker() {

@@ -206,14 +206,14 @@ struct DomainWorker {
     bool is_master;
     FifoVector< Blob > fifo;
     int m_id;
-    bool m_interrupt;
+    bool m_interrupt, m_busy;
 
     DomainWorker()
-        : m_domain( 0 ), is_master( false ), m_interrupt( false )
+        : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
     DomainWorker( const DomainWorker &o )
-        : m_domain( 0 ), is_master( false ), m_interrupt( false )
+        : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
     template< typename Shared >
@@ -244,13 +244,18 @@ struct DomainWorker {
         return master().n * master().mpi.size();
     }
 
+    void busy() {
+        m_busy = true;
+    }
+
     bool idle() {
+        m_busy = false;
         m_interrupt = false;
         return master().barrier().idle( terminable() );
     }
 
     bool workWaiting() {
-        return !this->fifo.empty();
+        return m_busy || !this->fifo.empty();
     }
 
     int globalId() {
@@ -276,6 +281,7 @@ struct DomainWorker {
     /// Restart (i.e. continue) computation (after termination has happened).
     void restart() {
         m_interrupt = false;
+        m_busy = true;
         master().parallel().m_threads[ localId() ].m_barrier->started( terminable() );
     }
 
