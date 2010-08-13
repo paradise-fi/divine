@@ -212,6 +212,7 @@ private:
 private:
 
   double _dummy; // for alignment
+  int32_t _dummy2;
 };
 
 };
