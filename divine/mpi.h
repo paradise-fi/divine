@@ -417,7 +417,7 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         return true;
     }
 
-    bool busy() { return true; }
+    bool isBusy() { return true; }
 
     bool workWaiting() {
         return !outgoingEmpty();
