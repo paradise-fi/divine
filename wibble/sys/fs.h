@@ -97,6 +97,7 @@ public:
 			const_iterator* wi = const_cast<const_iterator*>(&i);
 			wi->dir = 0;
 			wi->d = 0;
+                        return *this;
 		}
 
 		const_iterator& operator++()
