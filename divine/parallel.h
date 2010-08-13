@@ -318,7 +318,7 @@ struct Domain {
 
         template< typename Shared, typename F >
         void run( Shared &sh, F f ) {
-            initThreads( sh, f );
+            this->initThreads( sh, f );
 
             for ( int i = 0; i < this->n; ++i )
                 this->thread( i ).setBarrier( m_domain->barrier() );
