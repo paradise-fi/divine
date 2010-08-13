@@ -66,7 +66,7 @@ MMap::MMap(const MMap& mmap)
 MMap& MMap::operator=(const MMap& mmap)
 {
 	// Handle assignment to self
-	if (this == &mmap);
+	if (this == &mmap)
 		return *this;
 	
 	if (fd) unmap();
