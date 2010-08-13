@@ -134,6 +134,10 @@ struct Custom : Common {
         if( !dl.get_successor )
             die( "FATAL: Could not resolve get_successor." );
 
+#ifdef DISABLE_POOLS
+        die( "FATAL: Pool support is required for the custom generator." );
+#endif
+
         setup.slack = alloc._slack;
         setup.pool = &pool();
         if ( dl.setup )
