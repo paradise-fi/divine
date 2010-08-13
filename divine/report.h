@@ -262,8 +262,8 @@ struct Report
         GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
 #endif
         about( o );
-        config.dump( o );
         o << std::endl;
+        config.dump( o );
         o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
 #ifdef POSIX

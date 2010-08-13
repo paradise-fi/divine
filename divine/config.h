@@ -39,11 +39,11 @@ struct Config {
     bool generateCounterexample() { return m_ce; }
 
     std::ostream &dump( std::ostream &o ) {
+        o << "Input-File: " << input() << std::endl;
+        o << "Trail-File: " << m_trailFile << std::endl;
         o << "Algorithm: " << m_algorithm << std::endl;
         o << "Generator: " << m_generator << std::endl;
         o << "Workers: " << workers() << std::endl;
-        o << "Input-File: " << input() << std::endl;
-        o << "Trail-File: " << m_trailFile << std::endl;
         return o;
     }
 
