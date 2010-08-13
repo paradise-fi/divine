@@ -12,6 +12,7 @@ namespace divine {
 // class. This is however not a requirement of Barrier itself.
 struct Terminable {
     virtual bool workWaiting() = 0;
+    virtual bool isBusy() = 0;
     bool sleeping;
 
     Terminable() : sleeping( false ) {}
@@ -85,7 +86,9 @@ struct Barrier {
         if ( done ) {
             for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
             {
-                if ( i->first->workWaiting() ) {
+                if ( (i->first != who && i->first->isBusy()) ||
+                     i->first->workWaiting() )
+                {
                     busy.insert( i->first );
                     done = false;
                 }

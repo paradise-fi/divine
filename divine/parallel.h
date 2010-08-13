@@ -127,6 +127,8 @@ struct BarrierThread : RunThread< T >, Terminable {
         return this->t->workWaiting();
     }
 
+    bool isBusy() { return this->t->isBusy(); }
+
     BarrierThread( T &_t, typename RunThread< T >::F _f )
         : RunThread< T >( _t, _f ), m_barrier( 0 )
     {
@@ -244,18 +246,18 @@ struct DomainWorker {
         return master().n * master().mpi.size();
     }
 
-    void busy() {
-        m_busy = true;
-    }
-
     bool idle() {
         m_busy = false;
         m_interrupt = false;
-        return master().barrier().idle( terminable() );
+        bool res = master().barrier().idle( terminable() );
+        m_busy = true;
+        return res;
     }
 
+    bool isBusy() { return m_busy; }
+
     bool workWaiting() {
-        return m_busy || !this->fifo.empty();
+        return !this->fifo.empty();
     }
 
     int globalId() {
