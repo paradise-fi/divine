@@ -19,6 +19,7 @@ struct TestBarrier {
             busy = (i % 3) != 1;
             return busy;
         }
+        bool isBusy() { return false; }
 
         void *main() {
             busy = true;
