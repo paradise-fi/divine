@@ -89,20 +89,6 @@ set( DIVINE_INCLUDES
   ${MPI_INCLUDE_PATH}
   ${divine_SOURCE_DIR}/divine/legacy )
 
-include( CheckCXXSourceCompiles )
-check_cxx_source_compiles(
- "template< typename T > struct A {
-	static const int x = sizeof( T );
-  };
-  struct B {
-        A< B > a;
-  };
-  int main() { return 0; }" TMPL_SIZEOF_WORKS )
-
-if( NOT TMPL_SIZEOF_WORKS )
-  message( FATAL_ERROR "Your C++ compiler apparently does not support language features required by DiVinE. It is recommended that you compile with G++ 4.1 or 4.2." )
-endif( NOT TMPL_SIZEOF_WORKS )
-
 find_program( SHA1SUM sha1sum )
 
 if( NOT SHA1SUM )
