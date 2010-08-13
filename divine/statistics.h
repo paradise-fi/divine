@@ -73,16 +73,16 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         PerThread &f = thread( from );
         if ( f.sent.size() <= to )
             f.sent.resize( to + 1, 0 );
-            ++ f.sent[ to ];
+        ++ f.sent[ to ];
     }
 
     void received( int from, int to ) {
-        assert( from >= 0 );
+        assert_leq( 0, from );
 
         PerThread &t = thread( to );
         if ( t.received.size() <= from )
             t.received.resize( from + 1, 0 );
-            ++ t.received[ from ];
+        ++ t.received[ from ];
     }
 
     static int first( int a, int ) { return a; }
@@ -91,12 +91,18 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     void matrix( int (*what)(int, int) ) {
         for ( int i = 0; i < threads.size(); ++i ) {
-            for ( int j = 0; j < threads.size(); ++j ) {
-                std::cerr << " " << std::setw( 9 )
-                          << what( thread( i ).sent[ j ], thread( j ).received[ i ] );
-            }
+            int sum = 0;
+            for ( int j = 0; j < threads.size(); ++j )
+                printv( 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
+            printv( 10, sum, 0 );
             std::cerr << std::endl;
         }
+    }
+
+    void printv( int width, int v, int *sum ) {
+        std::cerr << " " << std::setw( width ) << v;
+        if ( sum )
+            *sum += v;
     }
 
     void label( std::string text, bool d = true ) {
@@ -109,6 +115,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             std::cerr << (d ? "=" : "-");
         for ( int i = 0; i < threads.size() - 1; ++ i )
             std::cerr << (d ? "=====" : "-----");
+        std::cerr << (d ? " == SUM ==" : " ---------");
         std::cerr << std::endl;
     }
 
@@ -116,27 +123,36 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             label( "QUEUES" );
             matrix( diff );
 
-            label( "local", false );
+            label( " local", false );
+            int sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                std::cerr << " " << std::setw( 9 ) << thread( i ).enq - thread( i ).deq;
+                printv( 9, thread( i ).enq - thread( i ).deq, &sum );
+            printv( 10, sum, 0 );
             std::cerr << std::endl;
 
             label( "totals", false );
+            sum = 0;
             for ( int j = 0; j < threads.size(); ++ j ) {
                 int t = thread( j ).enq - thread( j ).deq;
                 for ( int i = 0; i < threads.size(); ++ i ) {
                     t += thread( i ).sent[ j ] - thread( j ).received[ i ];
                 }
-                std::cerr << " " << std::setw( 9 ) << t;
+                printv( 9, t, &sum );
             }
+            printv( 10, sum, 0 );
             std::cerr << std::endl;
 
             label( "HASHTABLES" );
+            sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                std::cerr << " " << std::setw( 9 ) << thread( i ).hashused;
+                printv( 9, thread( i ).hashused, &sum );
+            printv( 10, sum, 0 );
+
             std::cerr << std::endl;
+            sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
-                std::cerr << " " << std::setw( 9 ) << thread( i ).hashsize;
+                printv( 9, thread( i ).hashsize, &sum );
+            printv( 10, sum, 0 );
             std::cerr << std::endl;
     }
 
@@ -151,6 +167,10 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
                        std::back_inserter( data ) );
             std::copy( t.received.begin(), t.received.end(),
                        std::back_inserter( data ) );
+            data.push_back( t.enq );
+            data.push_back( t.deq );
+            data.push_back( t.hashsize );
+            data.push_back( t.hashused );
         }
 
         mpi->send( &data.front(), data.size(), MPI::INT, 0, TAG_STATISTICS );
@@ -160,20 +180,30 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     Loop process( wibble::sys::MutexLock &, MPI::Status &status )
     {
         std::vector< int > data;
-        data.resize( pernode * threads.size() * 2 + 1 );
+        int sendrecv = threads.size() * 2,
+               local = 4;
+        data.resize( 1 /* localmin */ + pernode * (sendrecv + local) );
 
         MPI::COMM_WORLD.Recv( &data.front(), data.size(),
                               MPI::INT, status.Get_source(), status.Get_tag() );
         mpi->mpidebug() << "stats received: " << wibble::str::fmt( data ) << std::endl;
 
         int min = data.front();
+        std::vector< int >::iterator iter = data.begin() + 1;
 
         for ( int i = 0; i < pernode; ++i ) {
+            PerThread &t = thread( i + min );
             int n = threads.size();
             std::vector< int > sent, received;
-            std::vector< int >::iterator first = data.begin() + 1 + i * n * 2;
-            std::copy( first, first + n, thread( min + i ).sent.begin() );
-            std::copy( first + n, first + 2 * n, thread( min + i ).received.begin() );
+            std::copy( iter, iter + n, t.sent.begin() );
+            std::copy( iter + n, iter + sendrecv, t.received.begin() );
+
+            iter += sendrecv;
+
+            t.enq = *iter++;
+            t.deq = *iter++;
+            t.hashsize = *iter++;
+            t.hashused = *iter++;
         }
 
         return Continue;

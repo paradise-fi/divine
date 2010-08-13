@@ -173,6 +173,7 @@ struct Common {
         tact = S::transition( m_notify, from, to );
         if ( tact != IgnoreTransition && !had ) {
             Statistics::global().hashadded( id );
+            Statistics::global().hashsize( id, seen().size() );
             seen().insert( to, hint );
             setPermanent( to );
         }
@@ -296,8 +297,10 @@ struct Parallel {
                     worker.fifo.remove();
                     t = worker.fifo.next( true );
                     worker.fifo.remove();
-                    // FIXME m_last?
-                    Statistics::global().received( worker.fifo.m_last - 1, worker.globalId() );
+                    int from_id = worker.fifo.m_last - 1; // FIXME m_last?
+                    if ( from_id < 0 )
+                        from_id = owner( f );
+                    Statistics::global().received( from_id, worker.globalId() );
                     bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
                 }
 
