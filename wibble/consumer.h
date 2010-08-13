@@ -46,7 +46,8 @@ struct ConsumerMorph : Morph< ConsumerMorph< T, W >, W, ConsumerInterface< T > >
 template< typename T, typename Self >
 struct ConsumerMixin : mixin::Comparable< Self >
 {
-    Self &self() { return *static_cast< const Self * >( this ); }
+    Self &self() { return *static_cast< Self * >( this ); }
+    const Self &self() const { return *static_cast< const Self * >( this ); }
     typedef std::output_iterator_tag iterator_category;
     typedef T ConsumedType;
 
