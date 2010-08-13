@@ -44,6 +44,7 @@ Report *report = 0;
 
 void handler( int s ) {
     signal( s, SIG_DFL );
+    Output::output().cleanup();
     if ( report ) {
         report->signal( s );
         report->final( std::cout );
@@ -53,6 +54,7 @@ void handler( int s ) {
 
 struct Main {
     Config config;
+    Output *output;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile;
@@ -72,12 +74,18 @@ struct Main {
     Combine combine;
     Compile compile;
 
+    ~Main() {
+        delete Output::_output; // to clean up after ourselves
+    }
+
     Main( int _argc, const char **_argv )
         : dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
           compile( opts )
     {
+        Output::_output = makeStdIO( std::cerr );
+
         setupSignals();
         setupCommandline();
         parseCommandline();
@@ -399,6 +407,8 @@ struct Main {
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
+        if ( t.domain().mpi.master() )
+            Output::_output = makeCurses();
         Stats::global().useDomain( t.domain() );
         if ( statistics )
             Stats::global().start();
