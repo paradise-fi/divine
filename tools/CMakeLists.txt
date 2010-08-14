@@ -27,6 +27,7 @@ set( NIPS_ASM "${CMAKE_CURRENT_SOURCE_DIR}/compile-pml.pl" )
 
 add_executable( divine divine.cpp dvecompile.cpp compile.cpp combine.h ${COMBINE_M4_H} )
 add_executable( divine.simulate simulator.cpp )
+add_executable( divine.simple simple.cpp )
 
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )
