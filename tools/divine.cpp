@@ -398,6 +398,8 @@ struct Main {
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
             }
+        } else if ( o_por->boolValue() ) {
+            die( "FATAL: Partial order reduction is not supported for this input type." );
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
             return selectAlgorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >();
