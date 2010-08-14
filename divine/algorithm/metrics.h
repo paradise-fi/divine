@@ -193,7 +193,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
             shared.stats.merge( s.stats );
         }
 
-        shared.stats.print( std::cerr );
+        shared.stats.print( progress() );
 
         result().fullyExplored = Result::Yes;
         shared.stats.updateResult( result() );
