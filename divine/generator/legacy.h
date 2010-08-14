@@ -136,6 +136,7 @@ struct LegacyCommon : Common {
     }
 
     LegacyCommon &operator=( const LegacyCommon &other ) {
+        Common::operator=( other );
         file = other.file;
         safe_delete( m_system );
         safe_delete( m_por );

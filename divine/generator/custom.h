@@ -150,6 +150,7 @@ struct Custom : Common {
     }
 
     Custom &operator=( const Custom &other ) {
+        Common::operator=( other );
         dl = other.dl;
         setup = other.setup;
 
