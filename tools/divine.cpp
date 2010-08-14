@@ -37,9 +37,6 @@ using namespace divine;
 using namespace wibble;
 using namespace commandline;
 
-struct Preferred {};
-struct NotPreferred { NotPreferred( Preferred ) {} };
-
 Report *report = 0;
 
 void handler( int s ) {
