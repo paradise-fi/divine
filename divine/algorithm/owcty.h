@@ -335,21 +335,22 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     void initialise() {
         domain().parallel().run( shared, &This::_initialise ); updateResult();
         shared.oldsize = shared.size = totalSize();
-        do {
+        while ( true ) {
             if ( cycleFound() ) {
                 result().fullyExplored = Result::No;
                 return;
             }
-            shared.need_expand = false;
 
+            shared.need_expand = false;
             domain().parallel().runInRing( shared, &This::_por );
             updateResult();
 
             if ( shared.need_expand ) {
                 domain().parallel().run( shared, &This::_initialise );
                 updateResult();
-            }
-        } while ( shared.need_expand );
+            } else
+                break;
+        };
     }
 
     void _por_worker() {
