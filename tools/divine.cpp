@@ -429,6 +429,8 @@ struct Main {
     template< typename Stats, typename T >
     wibble::Unit setupParallel( NotPreferred, Report *, T &t ) {
         setupCurses();
+        if ( statistics )
+            Stats::global().start();
         return wibble::Unit();
     }
 
