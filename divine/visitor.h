@@ -74,7 +74,7 @@ struct Setup {
     static void finished( Notify &, Node n ) {}
     static DeadlockAction deadlocked( Notify &, Node n ) { return IgnoreDeadlock; }
 
-    static TransitionAction transitionHint( Notify &n, Node a, Node b ) {
+    static TransitionAction transitionHint( Notify &n, Node a, Node b, hash_t hint ) {
         return FollowTransition;
     }
 
@@ -156,7 +156,7 @@ struct Common {
         bool had = true;
         hash_t hint = seen().hash( _to );
 
-        if ( S::transitionHint( m_notify, from, _to ) == IgnoreTransition )
+        if ( S::transitionHint( m_notify, from, _to, hint ) == IgnoreTransition )
             return;
 
         Node to = seen().get( _to, hint ).key;
@@ -242,18 +242,21 @@ struct Parallel {
     _Hash hash;
     Seen *m_seen;
 
-    int owner( Node n ) const {
-        return hash( n ) % worker.peers();
+    int owner( Node n, hash_t hint = 0 ) const {
+        if ( !hint )
+            return hash( n ) % worker.peers();
+        else
+            return hint % worker.peers();
     }
 
-    void queue( Node from, Node to ) {
-        if ( owner( to ) != worker.globalId() )
+    void queue( Node from, Node to, hash_t hint = 0 ) {
+        if ( owner( to, hint ) != worker.globalId() )
             return;
-        queueAny( from, to );
+        queueAny( from, to, hint );
     }
 
-    void queueAny( Node from, Node to ) {
-        int _to = owner( to ), _from = worker.globalId();
+    void queueAny( Node from, Node to, hash_t hint = 0 ) {
+        int _to = owner( to, hint ), _from = worker.globalId();
         Fifo< Blob > &fifo = worker.queue( _from, _to );
         Statistics::global().sent( _from, _to );
         fifo.push( unblob< Node >( from ) );
@@ -313,10 +316,10 @@ struct Parallel {
     struct Ours : Setup< typename S::Graph, P, Seen, Statistics >
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
-        static TransitionAction transitionHint( Notify &n, Node f, Node t ) {
-            if ( n.owner( t ) != n.worker.globalId() ) {
+        static TransitionAction transitionHint( Notify &n, Node f, Node t, hash_t hint ) {
+            if ( n.owner( t, hint ) != n.worker.globalId() ) {
                 assert_eq( n.owner( f ), n.worker.globalId() );
-                n.queueAny( f, t );
+                n.queueAny( f, t, hint );
                 return visitor::IgnoreTransition;
             }
             return visitor::FollowTransition;
