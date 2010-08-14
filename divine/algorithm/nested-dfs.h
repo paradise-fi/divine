@@ -103,8 +103,14 @@ struct NestedDFS : Algorithm
         progress() << "done" << std::endl;
         livenessBanner( valid );
 
-        if ( !valid )
-            counterexample();
+        if ( !valid ) {
+            if ( parallel )
+                std::cerr << "Sorry, but counterexamples are not implemented in Parallel Nested DFS."
+                          << std::endl
+                          << "Please re-run with -w 1 to obtain a counterexample." << std::endl;
+            else
+                counterexample();
+        }
 
         stats.updateResult( result() );
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
