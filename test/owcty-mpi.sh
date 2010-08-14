@@ -25,7 +25,7 @@ check_invalid
 grep "^Finished: Yes" report
 grep "^LTL-Property-Holds: No" report
 
-if ! grep -q "MAP: cycle found" progress; then
+if ! grep -q "MAP/ET" progress; then
     grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
     cat > numbers-right <<EOF
 66566
