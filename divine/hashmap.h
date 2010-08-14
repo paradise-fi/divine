@@ -123,7 +123,7 @@ struct HashMap
 
     int m_used;
     int m_bits;
-    int m_maxsize;
+    size_t m_maxsize;
 
     Hash hash;
     Valid valid;
@@ -313,6 +313,7 @@ struct HashMap
         : hash( h ), valid( v ), equal( eq )
     {
         m_used = 0;
+        m_maxsize = -1;
         setSize( initial );
 
         // assert that default key is invalid, this is assumed
