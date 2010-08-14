@@ -228,7 +228,7 @@ struct Main {
     void setupLimits() {
         if ( o_time->intValue() != 0 ) {
 #ifdef POSIX
-            if ( o_mem->intValue() < 0 ) {
+            if ( o_time->intValue() < 0 ) {
                 die( "FATAL: cannot have negative time limit" );
             }
             alarm( o_time->intValue() );
