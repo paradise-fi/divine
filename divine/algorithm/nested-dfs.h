@@ -20,6 +20,7 @@ struct NestedDFS : Algorithm
     typedef typename G::Node Node;
     Node seed;
     bool valid;
+    bool parallel, finished;
 
     std::deque< Node > ce_stack;
     std::deque< Node > ce_lasso;
@@ -36,13 +37,31 @@ struct NestedDFS : Algorithm
         return n.template get< Extension >();
     }
 
-    void inner( Node n ) {
+    void runInner( G &graph, Node n ) {
         if ( !g.isAccepting( n ) )
             return;
         seed = n;
-        visitor::DFV< InnerVisit > inner( g, *this, &table() );
-        inner.exploreFrom( n );
+        visitor::DFV< InnerVisit > visitor( graph, *this, &table() );
+        visitor.exploreFrom( n );
     }
+
+    struct : wibble::sys::Thread {
+        Fifo< Node > process;
+        NestedDFS< G, Statistics > *outer;
+        G graph;
+
+        void *main() {
+            while ( !outer->finished ) {
+                if ( !process.empty() ) {
+                    Node n = process.front();
+                    process.pop();
+                    outer->runInner( graph, n ); // run the inner loop
+                } else
+                    sched_yield();
+            }
+            return 0;
+        }
+    } inner;
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
@@ -61,6 +80,10 @@ struct NestedDFS : Algorithm
 
     Result run() {
         progress() << " searching...\t\t\t" << std::flush;
+
+        if ( parallel )
+            inner.start();
+
         visitor::DFV< OuterVisit > visitor( g, *this, &table() );
         visitor.exploreFrom( g.initial() );
 
@@ -69,6 +92,10 @@ struct NestedDFS : Algorithm
                 g.fullexpand( *this, toexpand.front() );
             toexpand.pop_front();
         }
+
+        finished = true;
+        if ( parallel )
+            inner.join();
 
         progress() << "done" << std::endl;
         livenessBanner( valid );
@@ -123,7 +150,11 @@ struct NestedDFS : Algorithm
 
     struct OuterVisit : visitor::Setup< G, This, Table, Statistics > {
         static void finished( This &dfs, Node n ) {
-            dfs.inner( n );
+            if ( dfs.parallel )
+                dfs.inner.process.push( n );
+            else
+                dfs.runInner( dfs.g, n );
+
             if ( !dfs.ce_stack.empty() ) {
                 assert_eq( n.pointer(), dfs.ce_stack.front().pointer() );
                 dfs.ce_stack.pop_front();
@@ -148,6 +179,17 @@ struct NestedDFS : Algorithm
     {
         valid = true;
         initGraph( g );
+        parallel = c->workers() > 1;
+        *m_initialTable = c->initialTableSize();
+        if ( parallel ) {
+            progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
+            progress() << "Current size " << c->initialTableSize()
+                       << ", please use -i to override" << std::endl;
+            table().m_maxsize = c->initialTableSize();
+        }
+        finished = false;
+        inner.outer = this;
+        inner.graph = g;
     }
 
 };
