@@ -249,13 +249,13 @@ struct Parallel {
             return hint % worker.peers();
     }
 
-    void queue( Node from, Node to, hash_t hint = 0 ) {
+    inline void queue( Node from, Node to, hash_t hint = 0 ) {
         if ( owner( to, hint ) != worker.globalId() )
             return;
         queueAny( from, to, hint );
     }
 
-    void queueAny( Node from, Node to, hash_t hint = 0 ) {
+    inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
         int _to = owner( to, hint ), _from = worker.globalId();
         Fifo< Blob > &fifo = worker.queue( _from, _to );
         Statistics::global().sent( _from, _to );
@@ -316,7 +316,7 @@ struct Parallel {
     struct Ours : Setup< typename S::Graph, P, Seen, Statistics >
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
-        static TransitionAction transitionHint( Notify &n, Node f, Node t, hash_t hint ) {
+        static inline TransitionAction transitionHint( Notify &n, Node f, Node t, hash_t hint ) {
             if ( n.owner( t, hint ) != n.worker.globalId() ) {
                 assert_eq( n.owner( f ), n.worker.globalId() );
                 n.queueAny( f, t, hint );
