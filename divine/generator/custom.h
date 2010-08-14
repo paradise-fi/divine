@@ -138,10 +138,15 @@ struct Custom : Common {
         die( "FATAL: Pool support is required for the custom generator." );
 #endif
 
+        setup.has_property = 0;
         setup.slack = alloc._slack;
         setup.pool = &pool();
         if ( dl.setup )
             dl.setup( &setup );
+    }
+
+    bool hasProperty() {
+        return setup.has_property;
     }
 
     Custom &operator=( const Custom &other ) {

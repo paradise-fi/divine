@@ -59,6 +59,7 @@ struct Common {
     Allocator alloc;
     int setSlack( int s ) { alloc.setSlack( s ); return s; }
     Pool &pool() { return alloc.pool(); }
+    bool hasProperty() { return false; }
 };
 
 template< typename G >
@@ -78,6 +79,7 @@ struct Extended {
     bool isAccepting( Node s ) { return g().isAccepting( s ); }
     std::string showNode( Node s ) { return g().showNode( s ); }
     void read( std::string path ) { g().read( path ); }
+    bool hasProperty() { return g().hasProperty(); }
 
     template< typename Q >
     void queueInitials( Q &q ) {

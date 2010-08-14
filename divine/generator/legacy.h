@@ -98,6 +98,10 @@ struct LegacyCommon : Common {
         legacy_system(); // force
     }
 
+    bool hasProperty() {
+        return legacy_system()->get_with_property();
+    }
+
     void print_state( State s, std::ostream &o = std::cerr ) {
         legacy_system()->print_state( legacy_state( s ), o );
     }

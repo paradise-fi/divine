@@ -86,7 +86,9 @@ typedef struct CustomSetup {
     void *custom; // per-instance data; never touched by DiVinE
 
     int slack; // state data starts at this offset. Set by DiVinE!
-    int state_size; // The shared object fills this in. Use -1 for variable.
+    int state_size; // The shared object fills this in. Use 0 for variable.
+    int has_property; // set to 1 if this is a Buchi automaton (has accepting
+                      // states and we are looking for cycles)
 } CustomSetup;
 
 #endif
