@@ -11,6 +11,35 @@ namespace algorithm {
 
 template< typename, typename > struct Map;
 
+struct VertexId {
+    uintptr_t ptr;
+    short owner;
+
+    bool operator<( const VertexId other ) const {
+        if ( owner < other.owner )
+            return true;
+        if ( owner > other.owner )
+            return false;
+        return ptr < other.ptr;
+    }
+
+    bool operator!=( const VertexId other ) const {
+        return ptr != other.ptr || owner != other.owner;
+    }
+
+    bool operator==( const VertexId other ) const {
+            return ptr == other.ptr && owner == other.owner;
+    }
+
+    bool valid() const {
+        return ptr != 0;
+    }
+
+    friend std::ostream &operator<<( std::ostream &o, VertexId i ) {
+        return o << "(" << i.owner << ", " << i.ptr << "[" << i.ptr % 1024 << "])";
+    }
+} __attribute__((packed));
+
 // ------------------------------------------
 // -- Some drudgery for MPI's sake
 // --
@@ -98,37 +127,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         expanded;
     Node cycle_node;
 
-    struct NodeId {
-        uintptr_t ptr;
-        short owner;
-
-        bool operator<( const NodeId other ) const {
-            if ( owner < other.owner )
-                return true;
-            if ( owner > other.owner )
-                return false;
-            return ptr < other.ptr;
-        }
-
-        bool operator!=( const NodeId other ) const {
-            return ptr != other.ptr || owner != other.owner;
-        }
-
-        bool operator==( const NodeId other ) const {
-            return ptr == other.ptr && owner == other.owner;
-        }
-
-        bool valid() const {
-            return ptr != 0;
-        }
-
-        friend std::ostream &operator<<( std::ostream &o, NodeId i ) {
-            return o << "(" << i.owner << ", " << i.ptr << "[" << i.ptr % 1024 << "])";
-        }
-    } __attribute__((packed));
-
-    NodeId makeId( Node n ) {
-        NodeId ret;
+    VertexId makeId( Node n ) {
+        VertexId ret;
         ret.ptr = reinterpret_cast< intptr_t >( n.data() );
         ret.owner = this->globalId();
         return ret;
@@ -140,8 +140,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         short iteration:14;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
         short elim:2;
-        NodeId map;
-        NodeId oldmap;
+        VertexId map;
+        VertexId oldmap;
     };
 
     LtlCE< G, Shared, Extension > ce;
@@ -229,7 +229,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
         if ( isAccepting( t ) )
             extension( t ).map = std::max( extension( t ).map, makeId( t ) );
-        NodeId map = std::max( extension( f ).map, extension( t ).map );
+        VertexId map = std::max( extension( f ).map, extension( t ).map );
 
         if ( extension( t ).map < map ) {
             // we are *not* the MAP of our successors anymore, so not a
@@ -261,7 +261,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
             Node st = table()[ i ].key;
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
-                extension( st ).map = NodeId();
+                extension( st ).map = VertexId();
                 if ( isAccepting( st ) ) {
                     /* elim == 1 means NOT to be eliminated (!) */
                     if ( extension( st ).elim == 1 )

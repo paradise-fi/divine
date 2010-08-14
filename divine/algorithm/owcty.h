@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm/common.h>
+#include <divine/algorithm/map.h> // for VertexId
 #include <divine/ltlce.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
@@ -123,11 +124,14 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
     struct Extension {
         Blob parent;
-        uintptr_t map;
-        size_t predCount:15;
-        size_t iteration:15;
+        uintptr_t map:(8 * sizeof(uintptr_t) - 2);
         bool inS:1;
         bool inF:1;
+
+        // ... the last word is a bit crammed, so consider just extending this
+        size_t predCount:14; // up to 16k predecessors per node
+        size_t iteration:9; // handle up to 512 iterations
+        unsigned map_owner:9; // handle up to 512 MPI nodes
     };
 
     LtlCE< G, Shared, Extension > ce;
@@ -206,8 +210,23 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         }
     }
 
-    uintptr_t mapId( Node t ) {
-        return reinterpret_cast< uintptr_t >( t.ptr );
+    VertexId makeId( Node t ) {
+        VertexId r;
+        r.ptr = reinterpret_cast< uintptr_t >( t.ptr ) >> 2;
+        r.owner = this->globalId();
+        return r;
+    }
+
+    VertexId getMap( Node t ) {
+        VertexId r;
+        r.ptr = extension( t ).map;
+        r.owner = extension( t ).map_owner;
+        return r;
+    }
+
+    void setMap( Node t, VertexId id ) {
+        extension( t ).map = id.ptr;
+        extension( t ).map_owner = id.owner;
     }
 
     bool updateIteration( Node t ) {
@@ -268,28 +287,23 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         if ( !extension( to ).parent.valid() )
             extension( to ).parent = from;
         if ( from.valid() ) {
-            uintptr_t fromMap = extension( from ).map;
-            uintptr_t fromId = mapId( from );
-            if ( fromMap > extension( to ).map )
-                extension( to ).map = fromMap;
+            VertexId fromMap = getMap( from );
+            VertexId fromId = makeId( from );
+            if ( getMap( to ) < fromMap )
+                setMap( to, fromMap  );
             if ( shared.g.isAccepting( from ) ) {
                 if ( from.pointer() == to.pointer() ) {
                     shared.cycle_node = to;
                     shared.cycle_found = true;
                     return visitor::TerminateOnTransition;
                 }
-                if ( fromId > extension( to ).map )
-                    extension( to ).map = fromId;
+                if ( getMap( to ) < fromId )
+                    setMap( to, fromId );
             }
-            if ( mapId( to ) == fromMap ) {
-                // FIXME until we get unique state IDs that work with MPI, this
-                // heuristic is incorrect, as it may find a cycle where there
-                // is none
-                if ( domain().mpi.size() == 1 ) {
-                    shared.cycle_node = to;
-                    shared.cycle_found = true;
-                    return visitor::TerminateOnTransition;
-                }
+            if ( makeId( to ) == fromMap ) {
+                shared.cycle_node = to;
+                shared.cycle_found = true;
+                return visitor::TerminateOnTransition;
             }
         }
         shared.stats.addEdge();
