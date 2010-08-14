@@ -126,16 +126,94 @@ struct LtlCE {
         visitor.processQueue();
     }
 
+    template< typename Alg >
+    static int successorNum( Alg &a, G &_g, Node current, Node next )
+    {
+        typename G::Successors succ = _g.successors( current );
+        int edge = 0;
+        while ( !succ.empty() ) {
+            ++ edge;
+            if ( a.equal( succ.head(), next ) )
+                break;
+            _g.release( succ.head() ); // not it
+            succ = succ.tail();
+            assert( !succ.empty() ); // we'd hope the node is actually there!
+        }
+
+        while ( !succ.empty() ) {
+            _g.release( succ.head() );
+            succ = succ.tail();
+        }
+
+        assert_leq( 1, edge );
+        return edge;
+    }
+
+    // Obtaining CE output
+
+    template< typename Alg, typename T >
+    static std::vector< int > numericTrace( Alg &a, G &_g, T trace )
+    {
+        std::vector< int > result;
+        while ( !trace.empty() ) {
+            Node current = trace.back();
+            trace.pop_back();
+
+            if ( trace.empty() )
+                break;
+
+            result.push_back( successorNum( a, _g, current, trace.back() ) );
+        }
+        return result;
+    }
+
+    template< typename Alg, typename T >
+    static std::string generateTrace( Alg &a, G &_g, T trace )
+    {
+        std::stringstream o_tr_str;
+        std::ostream &o_ce = a.config().ceStream(),
+                     &o_tr = a.config().trailStream();
+
+        std::vector< int > ntrace = numericTrace( a, _g, trace );
+
+        while ( !trace.empty() ) {
+            o_ce << _g.showNode( trace.back() ) << std::endl;
+            _g.release( trace.back() );
+            trace.pop_back();
+        }
+
+        for ( int i = 0; i < ntrace.size(); ++i ) {
+            o_tr << ntrace[ i ] << std::endl;
+            o_tr_str << ntrace[ i ] << ",";
+        }
+
+        // drop trailing comma
+        return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );
+    }
+
+    template< typename Alg, typename T >
+    static void generateLinear( Alg &a, G &_g, T trace ) {
+        a.config().ceStream() << std::endl << "===== Trace from initial ====="
+                              << std::endl << std::endl;
+        a.config().trailStream() << "# from initial" << std::endl;
+        a.result().iniTrail = generateTrace( a, _g, trace );
+    }
+
+    template< typename Alg, typename T >
+    static void generateLasso( Alg &a, G &_g, T trace ) {
+        a.config().ceStream() << std::endl << "===== The cycle ====="
+                              << std::endl << std::endl;
+        a.config().trailStream() << "# cycle" << std::endl;
+        a.result().cycleTrail = generateTrace( a, _g, trace );
+    }
+
     // ------------------------------------------------
     // -- Lasso counterexample generation
     // --
 
     template< typename Domain, typename Alg >
-    std::string parentTrace( Domain &d, Alg &a, Node stop, bool cycle = 0 ) {
+    std::vector< Node > parentTrace( Domain &d, Alg &a, Node stop ) {
         std::vector< Node > trace;
-        std::stringstream o_tr_str;
-        std::ostream &o_ce = a.config().ceStream(),
-                     &o_tr = a.config().trailStream();
         shared().ce.current = shared().ce.initial;
         do {
             shared().ce.current_updated = false;
@@ -143,41 +221,16 @@ struct LtlCE {
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
         } while ( !a.equal( shared().ce.current, stop ) );
+
         trace.push_back( shared().ce.current );
 
-        while ( !trace.empty() ) {
-            Node current = trace.back();
-            trace.pop_back();
-            o_ce << g().showNode( current ) << std::endl;
-            if ( trace.empty() ) {
-                g().release( current );
-                break;
-            }
-
-            typename G::Successors succ = g().successors( current );
-            int edge = 0;
-            while ( !succ.empty() ) {
-                ++ edge;
-                if ( a.equal( succ.head(), trace.back() ) )
-                    break;
-                succ = succ.tail();
-            }
-            assert_leq( 1, edge );
-            o_tr << edge << std::endl;
-            o_tr_str << edge << ",";
-
-            g().release( current );
-        }
-        // drop trailing comma
-        return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );
+        return trace;
     }
 
     template< typename Domain, typename Alg >
-    void linear( Domain &d, Alg &a ) {
-        a.config().ceStream() << std::endl << "===== Trace from initial ====="
-                              << std::endl << std::endl;
-        a.config().trailStream() << "# from initial" << std::endl;
-        a.result().iniTrail = parentTrace( d, a, g().initial(), false );
+    void linear( Domain &d, Alg &a )
+    {
+        generateLinear( a, g(), parentTrace( d, a, g().initial() ) );
     }
 
     template< typename Domain, typename Alg >
@@ -186,10 +239,7 @@ struct LtlCE {
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        a.config().ceStream() << std::endl << "===== The cycle ====="
-                              << std::endl << std::endl;
-        a.config().trailStream() << "# cycle" << std::endl;
-        a.result().cycleTrail = parentTrace( d, a, shared().ce.initial, true );
+        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial ) );
     }
 
 };
