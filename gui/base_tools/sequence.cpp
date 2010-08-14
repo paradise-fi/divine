@@ -697,7 +697,7 @@ void SequenceWidget::paintEvent(QPaintEvent * event)
     }
   }
 
-  const QPen pen_msg(QColor(Qt::red));
+  const QPen pen_msg = QPen(QColor(Qt::red));
   const QColor current_col("#a5bfdc");
 
   QPainter painter(viewport());
