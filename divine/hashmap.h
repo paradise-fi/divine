@@ -99,7 +99,7 @@ struct HashMap
 
     typedef std::pair< Key, Value > Item;
 
-    int maxcollision() { return 512; }
+    int maxcollision() { return 65536; }
     int growthreshold() { return 75; } // percent
 
     struct Reference {
@@ -123,6 +123,7 @@ struct HashMap
 
     int m_used;
     int m_bits;
+    int m_maxsize;
 
     Hash hash;
     Valid valid;
@@ -195,14 +196,21 @@ struct HashMap
                               << ", maxcollision() = " << maxcollision()
                               << std::endl;
                 }
-                grow();
+                if ( 2 * size() <= m_maxsize )
+                    grow();
+                else {
+                    std::cerr << "Sorry, ran out of space in the hash table!" << std::endl;
+                    abort();
+                }
                 continue;
             }
 
             m_used += r.second;
 
-            if ( r.second > 0 && usage() > (size() * growthreshold()) / 100 )
-                grow();
+            if ( r.second > 0 && usage() > (size() * growthreshold()) / 100 ) {
+                if ( 2 * size() <= m_maxsize )
+                    grow();
+            }
 
             return r.first;
         }
