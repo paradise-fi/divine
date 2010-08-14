@@ -81,7 +81,7 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
 
             shared.stats.addEdge();
             if ( !table().valid( in_table ) ) {
-                table().insert( to );
+                table().insert( to, hint );
                 to.header().permanent = 1; // don't ever release this
                 localqueue.push_back( shared.g.successors( to ) );
                 shared.stats.addNode( shared.g, to );
