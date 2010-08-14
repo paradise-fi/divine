@@ -289,18 +289,17 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         domain().parallel().run( shared, &This::_visit );
         collect();
 
-        if ( !cycle_node.valid() && shared.iteration == 1 ) {
-            do {
-                shared.need_expand = false;
-                domain().parallel().runInRing( shared, &This::_por );
-                collect();
+        while ( !cycle_node.valid() && shared.iteration == 1 ) {
+            shared.need_expand = false;
+            domain().parallel().runInRing( shared, &This::_por );
 
-                if ( shared.need_expand ) {
-                    domain().parallel().run( shared, &This::_visit );
-                    collect();
-                }
-            } while ( shared.need_expand );
+            if ( shared.need_expand ) {
+                domain().parallel().run( shared, &This::_visit );
+                collect();
+            } else
+                break;
         }
+
         domain().parallel().run( shared, &This::_cleanup );
         collect();
     }
