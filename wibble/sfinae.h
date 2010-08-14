@@ -86,6 +86,10 @@ struct TPair {
     typedef B Second;
 };
 
+struct Preferred {};
+struct NotPreferred { NotPreferred( Preferred ) {} };
+
+
 }
 
 #endif
