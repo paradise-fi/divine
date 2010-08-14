@@ -99,11 +99,11 @@ struct Main {
 
 #ifdef PERFORMANCE
         if ( statistics )
-            res = selectAlgorithm< Statistics >();
+            res = selectGraph< Statistics >();
         else
-            res = selectAlgorithm< NoStatistics >();
+            res = selectGraph< NoStatistics >();
 #else
-        res = selectAlgorithm< Statistics >();
+        res = selectGraph< Statistics >();
 #endif
         rep.finished( res );
         rep.final( std::cout );
@@ -261,7 +261,7 @@ struct Main {
     }
 
 
-    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty } m_run;
+    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -330,19 +330,7 @@ struct Main {
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         if ( opts.foundCommand() == cmd_verify ) {
-            // FIXME this only works for DVE (!)
-            std::string inf = fs::readFile( config.input() );
-            if ( inf.find( "system async property" ) != std::string::npos ||
-                 inf.find( "system sync property" ) != std::string::npos ) {
-                // we have a property automaton --> LTL
-                if ( config.workers() > 1 ) {
-                    m_run = RunOwcty;
-                } else {
-                    m_run = RunNdfs;
-                }
-            } else {
-                m_run = RunReachability; // no property
-            }
+            m_run = RunVerify;
         } else if ( opts.foundCommand() == cmd_ndfs )
             m_run = RunNdfs;
         else if ( opts.foundCommand() == cmd_owcty )
@@ -362,50 +350,63 @@ struct Main {
         }
     }
 
-    template< typename Stats >
+    template< typename Graph, typename Stats >
     Result selectAlgorithm()
     {
+        if ( m_run == RunVerify ) {
+            Graph temp;
+            temp.read( config.input() );
+
+            if ( temp.hasProperty() && config.workers() > 1 )
+                m_run = RunOwcty;
+            else {
+                if ( temp.hasProperty() )
+                    m_run = RunNdfs;
+                else
+                    m_run = RunReachability;
+            }
+        }
+
         switch ( m_run ) {
             case RunReachability:
                 config.setAlgorithm( "Reachability" );
-                return selectGraph< algorithm::Reachability, Stats >();
+                return run< algorithm::Reachability< Graph, Stats >, Stats >();
             case RunMetrics:
                 config.setAlgorithm( "Metrics" );
-                return selectGraph< algorithm::Metrics, Stats >();
+                return run< algorithm::Metrics< Graph, Stats >, Stats >();
             case RunOwcty:
                 config.setAlgorithm( "OWCTY" );
-                return selectGraph< algorithm::Owcty, Stats >();
+                return run< algorithm::Owcty< Graph, Stats >, Stats >();
             case RunMap:
                 config.setAlgorithm( "MAP" );
-                return selectGraph< algorithm::Map, Stats >();
+                return run< algorithm::Map< Graph, Stats >, Stats >();
             case RunNdfs:
                 config.setAlgorithm( "NestedDFS" );
-                return selectGraph< algorithm::NestedDFS, Stats >();
+                return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
             default:
                 die( "FATAL: Internal error choosing algorithm." );
         }
     }
 
-    template< template< typename, typename > class Algorithm, typename Stats >
+    template< typename Stats >
     Result selectGraph()
     {
         if ( str::endsWith( config.input(), ".dve" ) ) {
             config.setGenerator( "DVE" );
             if ( o_por->boolValue() ) {
-                return run< Algorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >,
-                            Stats >();
+                return selectAlgorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >();
             } else {
-                return run< Algorithm< algorithm::NonPORGraph< generator::NDve >, Stats >, Stats >();
+                return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
             }
         } else if ( str::endsWith( config.input(), ".b" ) ) {
             config.setGenerator( "NIPS" );
-            return run< Algorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >, Stats >();
+            return selectAlgorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >();
         } else if ( str::endsWith( config.input(), ".so" ) ) {
             config.setGenerator( "Custom" );
-            return run< Algorithm< algorithm::NonPORGraph< generator::Custom >, Stats >, Stats >();
+            return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
         } else if ( dummygen ) {
             config.setGenerator( "Dummy" );
-            return run< Algorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >, Stats >();
+            return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
         } else
 	    die( "FATAL: Unknown input file extension." );
     }
