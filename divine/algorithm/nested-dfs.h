@@ -51,13 +51,16 @@ struct NestedDFS : Algorithm
         G graph;
 
         void *main() {
-            while ( !outer->finished ) {
+            while ( true ) {
                 if ( !process.empty() ) {
                     Node n = process.front();
                     process.pop();
                     outer->runInner( graph, n ); // run the inner loop
-                } else
+                } else {
+                    if ( outer->finished )
+                        return 0;
                     sched_yield();
+                }
             }
             return 0;
         }
