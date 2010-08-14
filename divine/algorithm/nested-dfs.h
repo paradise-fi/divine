@@ -2,6 +2,7 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
+#include <divine/porcp.h>
 #include <divine/visitor.h>
 #include <divine/report.h>
 
@@ -22,11 +23,13 @@ struct NestedDFS : Algorithm
 
     std::deque< Node > ce_stack;
     std::deque< Node > ce_lasso;
+    std::deque< Node > toexpand;
 
     algorithm::Statistics< G > stats;
 
     struct Extension {
         bool nested:1;
+        bool on_stack:1;
     };
 
     Extension &extension( Node n ) {
@@ -49,10 +52,23 @@ struct NestedDFS : Algorithm
         progress() << "done" << std::endl;
     }
 
+    // this is the entrypoint for full expansion... I know the name isn't best,
+    // but that's what PORGraph uses
+    void queue( Node from, Node to ) {
+        visitor::DFV< OuterVisit > visitor( g, *this, &table() );
+        visitor.exploreFrom( to );
+    }
+
     Result run() {
         progress() << " searching...\t\t\t" << std::flush;
         visitor::DFV< OuterVisit > visitor( g, *this, &table() );
         visitor.exploreFrom( g.initial() );
+
+        while ( valid && !toexpand.empty() ) {
+            if ( !g.full( toexpand.front() ) )
+                g.fullexpand( *this, toexpand.front() );
+            toexpand.pop_front();
+        }
 
         progress() << "done" << std::endl;
         livenessBanner( valid );
@@ -71,6 +87,7 @@ struct NestedDFS : Algorithm
             return visitor::TerminateOnState;
         stats.addNode( g, st );
         ce_stack.push_front( st );
+        extension( st ).on_stack = true;
         return visitor::ExpandState;
     }
 
@@ -84,6 +101,8 @@ struct NestedDFS : Algorithm
 
     visitor::TransitionAction transition( Node from, Node to ) {
         stats.addEdge();
+        if ( from.valid() && !g.full( from ) && !g.full( to ) && extension( to ).on_stack )
+            toexpand.push_back( from );
         return visitor::FollowTransition;
     }
 

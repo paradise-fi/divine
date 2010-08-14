@@ -22,6 +22,10 @@ struct NonPORGraph : generator::Extended< G > {
 
     void porExpansion( Node ) {}
     void porTransition( Node, Node, void (*)( Node, int ) ) {}
+    bool full( Node ) { return true; }
+
+    template< typename Visitor >
+    void fullexpand( Visitor &v, Node n ) {}
 
     template< typename Worker, typename Hasher, typename Table >
     void _porEliminate( Worker &w, Hasher &h, Table &t ) {}
@@ -74,8 +78,13 @@ struct PORGraph : generator::Extended< G > {
     Extension &extension( Node n ) {
         return n.template get< Extension >( m_algslack );
     }
+
     int predCount( Node n ) {
         return extension( n ).predCount;
+    }
+
+    bool full( Node n ) {
+        return extension( n ).full;
     }
 
     Successors successors( Node st ) {
