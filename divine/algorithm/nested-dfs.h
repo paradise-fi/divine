@@ -50,11 +50,11 @@ struct NestedDFS : Algorithm
     }
 
     Result run() {
-        std::cerr << " searching...\t\t\t" << std::flush;
+        progress() << " searching...\t\t\t" << std::flush;
         visitor::DFV< OuterVisit > visitor( g, *this, &table() );
         visitor.exploreFrom( g.initial() );
 
-        std::cerr << "done" << std::endl;
+        progress() << "done" << std::endl;
         livenessBanner( valid );
 
         if ( !valid )
