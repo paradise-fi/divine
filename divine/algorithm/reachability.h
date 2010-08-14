@@ -23,10 +23,10 @@ struct _MpiId< Reachability< G, S > >
     typedef Reachability< G, S > A;
 
     static int to_id( void (A::*f)() ) {
-        if( f == &A::_visit )
-            return 0;
-        if( f == &A::_parentTrace )
-            return 1;
+        if( f == &A::_visit ) return 0;
+        if( f == &A::_parentTrace ) return 1;
+        if( f == &A::_por) return 7;
+        if( f == &A::_por_worker) return 8;
         assert_die();
     }
 
@@ -35,6 +35,8 @@ struct _MpiId< Reachability< G, S > >
         switch ( n ) {
             case 0: return &A::_visit;
             case 1: return &A::_parentTrace;
+            case 7: return &A::_por;
+            case 8: return &A::_por_worker;
             default: assert_die();
         }
     }
@@ -78,7 +80,10 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
         G g;
         CeShared< Node > ce;
         int initialTable;
+        bool need_expand;
     } shared;
+
+    Node goal;
 
     Domain< This > &domain() {
         return DomainWorker< This >::domain();
@@ -97,6 +102,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
     visitor::ExpansionAction expansion( Node st )
     {
         shared.stats.addNode( shared.g, st );
+        shared.g.porExpansion( st );
         return visitor::ExpandState;
     }
 
@@ -113,6 +119,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
             return visitor::TerminateOnTransition;
         }
 
+        shared.g.porTransition( f, t, 0 );
         return visitor::FollowTransition;
     }
 
@@ -130,6 +137,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
             visitor( shared.g, *this, *this, hasher, &table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
+    }
+
+    void _por_worker() {
+        shared.g._porEliminate( *this, hasher, table() );
+    }
+
+    void _por() {
+        if ( shared.g.porEliminate( domain(), *this ) )
+            shared.need_expand = true;
     }
 
     Reachability( Config *c = 0 )
@@ -153,26 +169,34 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
         ce.linear( domain(), *this );
     }
 
+    void collect() {
+        for ( int i = 0; i < domain().peers(); ++i ) {
+            Shared &s = domain().shared( i );
+            shared.stats.merge( s.stats );
+            if ( s.goal.valid() )
+                goal = s.goal;
+        }
+    }
+
     Result run() {
         progress() << "  searching... \t" << std::flush;
 
         domain().parallel().run( shared, &This::_visit );
+        collect();
 
-        for ( int i = 0; i < domain().peers(); ++i )
-            shared.stats.merge( domain().shared( i ).stats );
+        while ( !goal.valid() ) {
+            shared.need_expand = false;
+            domain().parallel().runInRing( shared, &This::_por );
+
+            if ( shared.need_expand ) {
+                domain().parallel().run( shared, &This::_visit );
+                collect();
+            } else
+                break;
+        }
 
         progress() << shared.stats.states << " states, "
                    << shared.stats.transitions << " edges" << std::endl;
-
-        Node goal;
-
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            if ( s.goal.valid() ) {
-                goal = s.goal;
-                break;
-            }
-        }
 
         safetyBanner( !goal.valid() );
         if ( goal.valid() )
