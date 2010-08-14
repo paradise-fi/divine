@@ -49,7 +49,7 @@ struct NestedDFS : Algorithm
         G graph;
 
         void *main() {
-            while ( true ) {
+            while ( outer->valid ) {
                 if ( !process.empty() ) {
                     Node n = process.front();
                     process.pop();
