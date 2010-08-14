@@ -31,7 +31,7 @@ struct LegacyCommon : Common {
         Node _from;
         LegacyCommon *parent;
 
-        bool empty() const {
+        bool empty() const __attribute__((pure)) {
             if ( !_from.valid() )
                 return true;
             if ( parent->legacy_system()->is_erroneous( parent->alloc.legacy_state( _from ) ) )
