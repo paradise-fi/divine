@@ -142,7 +142,7 @@ struct NestedDFS : Algorithm
 
     visitor::TransitionAction innerTransition( Node from, Node to )
     {
-        if ( to == seed ) {
+        if ( to.pointer() == seed.pointer() ) {
             valid = false;
             return visitor::TerminateOnTransition;
         }
