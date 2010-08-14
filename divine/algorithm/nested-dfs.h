@@ -20,6 +20,9 @@ struct NestedDFS : Algorithm
     Node seed;
     bool valid;
 
+    std::deque< Node > ce_stack;
+    std::deque< Node > ce_lasso;
+
     algorithm::Statistics< G > stats;
 
     struct Extension {
@@ -30,21 +33,20 @@ struct NestedDFS : Algorithm
         return n.template get< Extension >();
     }
 
-    struct OuterVisit : visitor::Setup< G, This, Table > {
-        static void finished( This &dfs, Node n ) {
-            dfs.inner( n );
-        }
-    };
-
     void inner( Node n ) {
         if ( !g.isAccepting( n ) )
             return;
         seed = n;
-        typedef visitor::Setup< G, This, Table, Statistics,
-                                &This::innerTransition,
-                                &This::innerExpansion > Setup;
-        visitor::DFV< Setup > inner( g, *this, &table() );
+        visitor::DFV< InnerVisit > inner( g, *this, &table() );
         inner.exploreFrom( n );
+    }
+
+    void counterexample() {
+        progress() << "generating counterexample... " << std::flush;
+        typedef LtlCE< G, Unit, Unit > CE;
+        CE::generateLinear( *this, g, ce_stack );
+        CE::generateLasso( *this, g, ce_lasso );
+        progress() << "done" << std::endl;
     }
 
     Result run() {
@@ -54,6 +56,9 @@ struct NestedDFS : Algorithm
 
         std::cerr << "done" << std::endl;
         livenessBanner( valid );
+
+        if ( !valid )
+            counterexample();
 
         stats.updateResult( result() );
         result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
@@ -65,13 +70,15 @@ struct NestedDFS : Algorithm
         if ( !valid )
             return visitor::TerminateOnState;
         stats.addNode( g, st );
+        ce_stack.push_front( st );
         return visitor::ExpandState;
     }
 
-    visitor::ExpansionAction innerExpansion( Node ) {
+    visitor::ExpansionAction innerExpansion( Node st ) {
         if ( !valid )
             return visitor::TerminateOnState;
         stats.addExpansion();
+        ce_lasso.push_front( st );
         return visitor::ExpandState;
     }
 
@@ -94,6 +101,28 @@ struct NestedDFS : Algorithm
 
         return visitor::FollowTransition;
     }
+
+    struct OuterVisit : visitor::Setup< G, This, Table, Statistics > {
+        static void finished( This &dfs, Node n ) {
+            dfs.inner( n );
+            if ( !dfs.ce_stack.empty() ) {
+                assert_eq( n.pointer(), dfs.ce_stack.front().pointer() );
+                dfs.ce_stack.pop_front();
+            }
+        }
+    };
+
+    struct InnerVisit : visitor::Setup< G, This, Table, Statistics,
+                                        &This::innerTransition,
+                                        &This::innerExpansion >
+    {
+        static void finished( This &dfs, Node n ) {
+            if ( !dfs.ce_lasso.empty() ) {
+                assert_eq( n.pointer(), dfs.ce_lasso.front().pointer() );
+                dfs.ce_lasso.pop_front();
+            }
+        }
+    };
 
     NestedDFS( Config *c = 0 )
         : Algorithm( c, sizeof( Extension ) )
