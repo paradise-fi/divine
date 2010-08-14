@@ -147,9 +147,6 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
         return DomainWorker< This >::domain();
     }
 
-    Hasher hasher;
-
-    // TODO error & deadlock states
     visitor::ExpansionAction expansion( Node st )
     {
         shared.stats.addNode( shared.g, st );
