@@ -13,11 +13,15 @@ check_invalid() {
 }
 
 for t in 1 4 5 6; do
-    ndfs test$t.dve
+    ndfs -w 1 test$t.dve
+    check_invalid
+    ndfs -w 2 test$t.dve
     check_invalid
 done
 
 for t in 2 3; do
-    ndfs test$t.dve
+    ndfs -w 1 test$t.dve
+    check_valid
+    ndfs -w 2 test$t.dve
     check_valid
 done
