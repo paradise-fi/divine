@@ -38,8 +38,6 @@ struct NestedDFS : Algorithm
     }
 
     void runInner( G &graph, Node n ) {
-        if ( !g.isAccepting( n ) )
-            return;
         seed = n;
         visitor::DFV< InnerVisit > visitor( graph, *this, &table() );
         visitor.exploreFrom( n );
@@ -159,10 +157,13 @@ struct NestedDFS : Algorithm
 
     struct OuterVisit : visitor::Setup< G, This, Table, Statistics > {
         static void finished( This &dfs, Node n ) {
-            if ( dfs.parallel )
-                dfs.inner.process.push( n );
-            else
-                dfs.runInner( dfs.g, n );
+
+            if ( dfs.g.isAccepting( n ) ) { // run the nested search
+                if ( dfs.parallel )
+                    dfs.inner.process.push( n );
+                else
+                    dfs.runInner( dfs.g, n );
+            }
 
             if ( !dfs.ce_stack.empty() ) {
                 assert_eq( n.pointer(), dfs.ce_stack.front().pointer() );
