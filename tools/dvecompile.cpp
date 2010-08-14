@@ -732,6 +732,11 @@ void dve_compiler::print_generator()
     line( "}" );
     line();
 
+    line( "extern \"C\" int setup( CustomSetup *setup ) {" );
+    line( "    setup->state_size = state_size;" );
+    line( "    setup->has_property = " + fmt( get_with_property() ) + ";" );
+    line( "}" );
+
     line( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out ) {" );
     line( "    Blob b( *(setup->pool), state_size + setup->slack );" );
     line( "    memcpy(b.data() + setup->slack, initial_state, state_size);" );
