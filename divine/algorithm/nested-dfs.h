@@ -193,8 +193,8 @@ struct NestedDFS : Algorithm
         *m_initialTable = c->initialTableSize();
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
-            progress() << "Current size " << c->initialTableSize()
-                       << ", please use -i to override" << std::endl;
+            progress() << "Using table size " << c->initialTableSize()
+                       << ", please use -i to override." << std::endl;
             table().m_maxsize = c->initialTableSize();
         }
         finished = false;
