@@ -560,7 +560,8 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
             // do not maintain FIFO order for messages between a pair of
             // endpoints (threads)... when this is addressed, the limitation
             // here can be lifted
-            while ( !fifo[ i ].empty() && !requests[ rank ].first )
+            while ( !fifo[ i ].empty() && !requests[ rank ].first &&
+                    buffers[ rank ].size() < 100 * 1024)
             {
                 buffers[ rank ].push_back( to );
 
