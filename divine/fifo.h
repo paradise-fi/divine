@@ -24,7 +24,7 @@ const int cacheLine = 64;
  * to give good cache usage.
  */
 template< typename T,
-          int NodeSize = (4096 - cacheLine - sizeof(int)
+          int NodeSize = (32 * 4096 - cacheLine - sizeof(int)
                           - sizeof(void*)) / sizeof(T) >
 struct Fifo {
 protected:
