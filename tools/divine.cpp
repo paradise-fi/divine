@@ -348,7 +348,7 @@ struct Main {
             die( "FATAL: Internal error in commandline parser." );
 
         config.setInitialTableSize(
-            ( 2 << (o_initable->intValue()) ) / config.workers() );
+            ( 1L << (o_initable->intValue()) ) / config.workers() );
 
         if ( config.verbose() ) {
             std::cerr << " === configured options ===" << std::endl;
