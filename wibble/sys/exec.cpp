@@ -22,6 +22,7 @@
 
 #include <string.h>			// strdup
 #include <unistd.h>			// execve
+#include <malloc.h> // alloca on win32 seems to live there
 #include <iostream>
 
 extern char **environ;
