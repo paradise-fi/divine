@@ -57,7 +57,9 @@ struct NestedDFS : Algorithm
                 } else {
                     if ( outer->finished )
                         return 0;
+#ifdef POSIX // uh oh...
                     sched_yield();
+#endif
                 }
             }
             return 0;
