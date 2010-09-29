@@ -1,5 +1,5 @@
-DiVinE 2.3
-==========
+DiVinE 2.3 (8.8.2010)
+=====================
 
 - Basic support for Murphi model compilation and parallel verification.
 - Fix a bug in DVE compiler that made some models uncompilable.
@@ -22,8 +22,8 @@ caveats though:
   to symbols exported by the divine binary itself, which is not supported on
   win32.
 
-DiVinE 2.2
-==========
+DiVinE 2.2 (17.2.2010)
+======================
 
 - Further optimisations in compiled DVE.
 - Improved overall performance of the verifier.
@@ -41,24 +41,24 @@ KNOWN ISSUES: Error state handling is not consistent between interpreted and
 compiled DVE. The profiled build (-DPROFILE=ON) is currently broken. (Both
 issues exist since version 2.1.)
 
-DiVinE 2.1.1
-============
+DiVinE 2.1.1 (26.1.2010)
+========================
 
 - Fixed a number of issues with compiled DVE models.
 - Bugfixes in the custom model loader.
 - Improved performance of compiled DVE.
 - Fixed Windows build.
 
-DiVinE 2.1
-==========
+DiVinE 2.1 (17.1.2010)
+======================
 
 - A new DVE to C (to native binary) compiler available as `divine compile'.
 - Fixed handling of error states in interpreted DVE.
 - The GUI can now be compiled & used on Windows.
 - A number of GUI improvements and usability fixes.
 
-DiVinE 2.0
-==========
+DiVinE 2.0 (19.11.2009)
+=======================
 
 - This version is a major rewrite of the parallel framework and algorithms.
 - MPI is now partially supported in addition to shared memory parallelism
@@ -70,8 +70,8 @@ DiVinE 2.0
 - More data available in --report (including machine-readable counterexample).
 - The divine.combine binary has been removed, use "divine combine" instead.
 
-DiVinE Multi-Core 1.4
-=====================
+DiVinE Multi-Core 1.4 (23.4.2009)
+=================================
 
 - Unfortunately, an incorrect implementation of Nested DFS has slipped into the
   1.3 release. Version 1.4 fixes this problem.
@@ -79,8 +79,8 @@ DiVinE Multi-Core 1.4
   self-loops are now detected on-the-fly, and early termination is now more
   efficient.
 
-DiVinE Multi-Core 1.3
-=====================
+DiVinE Multi-Core 1.3 (17.11.2008)
+==================================
 
 - Improved and newly included algorithms:
   - MAP: improved progress reports, early termination and counterexamples
@@ -93,16 +93,16 @@ DiVinE Multi-Core 1.3
   This has been fixed.
 - A few other user experience fixes: improved warnings and overall robustness.
 
-DiVinE Multi-Core 1.2.1
-=======================
+DiVinE Multi-Core 1.2.1 (1.11.2008)
+===================================
 
 - Fix compilation with g++ 4.3.
 - Update the bundled version of HOARD to 3.7.1.
 - Include some updates to the bundled version of wibble (no major impact on
   DiVinE itself).
 
-DiVinE Multi-Core 1.2
-=====================
+DiVinE Multi-Core 1.2 (15.5.2008)
+=================================
 
 - A few minor bugfixes.
 - The divine-mc.combine utility can now handle .mdve and .mprobdve files.
