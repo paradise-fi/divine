@@ -14,6 +14,7 @@ DiVinE 2.4 (29.9.2010)
 - Counterexamples in (single-threaded) nested DFS.
 - Enable on-the-fly heuristic in distributed (MPI) OWCTY.
 - Make "divine verify" work with non-DVE inputs correctly.
+- Fix BA translation of F((F a) U b) form formulae (J. Strejcek &c.)
 
 DiVinE 2.3 (8.8.2010)
 =====================
