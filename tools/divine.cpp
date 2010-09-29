@@ -174,7 +174,6 @@ struct Main {
         o_workers = common->add< IntOption >(
             "workers", 'w', "workers", "",
             "number of worker threads (default: 2)" );
-        o_workers ->setValue( 2 );
 
         o_mem = common->add< IntOption >(
             "max-memory", '\0', "max-memory", "",
@@ -301,9 +300,11 @@ struct Main {
         if ( !opts.foundCommand() )
             die( "FATAL: no command specified" );
 
-        config.setWorkers( o_workers->intValue() );
-        config.setInitialTableSize(
-            ( 2 << (o_initable->intValue()) ) / o_workers->intValue() );
+        if ( o_workers->boolValue() )
+            config.setWorkers( o_workers->intValue() );
+        else
+            config.setWorkers( 2 );
+
         config.setInput( input );
         config.setVerbose( o_verbose->boolValue() );
         config.setReport( o_report->boolValue() );
@@ -331,9 +332,11 @@ struct Main {
 
         if ( opts.foundCommand() == cmd_verify ) {
             m_run = RunVerify;
-        } else if ( opts.foundCommand() == cmd_ndfs )
+        } else if ( opts.foundCommand() == cmd_ndfs ) {
             m_run = RunNdfs;
-        else if ( opts.foundCommand() == cmd_owcty )
+            if ( !o_workers->boolValue() )
+                config.setWorkers( 1 );
+        } else if ( opts.foundCommand() == cmd_owcty )
             m_run = RunOwcty;
         else if ( opts.foundCommand() == cmd_reachability )
             m_run = RunReachability;
@@ -343,6 +346,9 @@ struct Main {
             m_run = RunMetrics;
         else
             die( "FATAL: Internal error in commandline parser." );
+
+        config.setInitialTableSize(
+            ( 2 << (o_initable->intValue()) ) / config.workers() );
 
         if ( config.verbose() ) {
             std::cerr << " === configured options ===" << std::endl;
