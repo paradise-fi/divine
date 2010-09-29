@@ -210,7 +210,7 @@ struct Mpi : MpiBase {
 
         MPI::Status status;
 
-        mpidebug() << "collecting bits collected" << std::endl;
+        mpidebug() << "collecting shared bits" << std::endl;
 
         std::vector< int32_t > shbits;
         notifySlaves( TAG_SOLICIT_SHARED, 0 );
