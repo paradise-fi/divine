@@ -80,7 +80,7 @@ struct Queue {
             dropEmptyHead();
     }
 
-    bool deadlocked() {
+    inline bool deadlocked() {
         if (m_head.empty() && !m_queue.empty() && !maybe_deadlock)
             dropEmptyHead();
         return maybe_deadlock && m_head.empty();
