@@ -86,13 +86,12 @@ struct Statistics {
     }
 
     void print( std::ostream &o ) {
-        o << " ================================================ " << std::endl;
-        o << std::setw( 12 ) << states << " states    | "
-          << std::setw( 11 ) << transitions << " transitions" << std::endl;
-
-        o << std::setw( 12 ) << accepting << " accepting | "
-          << std::setw( 11 ) << deadlocks << " deadlocks " << std::endl;
-        o << " ================================================ " << std::endl;
+        o << " ===================================== " << std::endl
+          << std::setw( 12 ) << states << " states" << std::endl
+          << std::setw( 12 ) << transitions << " transitions" << std::endl
+          << std::setw( 12 ) << accepting << " accepting" << std::endl
+          << std::setw( 12 ) << deadlocks << " deadlocks " << std::endl
+          << " ===================================== " << std::endl;
     }
 
     template< typename O >
@@ -184,9 +183,9 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
     }
 
     Result run() {
-        progress() << "  exploring... \t\t\t\t" << std::flush;
+        progress() << "  exploring... \t\t\t " << std::flush;
         domain().parallel().run( shared, &This::_visit );
-        progress() << "   done" << std::endl;
+        progress() << "done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {
             Shared &s = domain().shared( i );
