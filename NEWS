@@ -1,3 +1,20 @@
+DiVinE 2.4 (29.9.2010)
+======================
+
+- C3 check for parallel partial order reduction.
+- Partial order reduction for (interpreted) DVE (--por).
+- Real-time hashtable & queue statistics (--statistics).
+- Custom generators are not allowed with pool-less builds.
+- Further optimisations to the exploration engine (hash table, FIFOs, MPI).
+- Better --version output.
+- In addition to G++, DiVinE can be compiled with Clang now.
+- More fixes in MPI.
+- A curses-based interface for observing runtime algorithm behaviour.
+- Dual-threaded nested DFS (Holzmann '07).
+- Counterexamples in (single-threaded) nested DFS.
+- Enable on-the-fly heuristic in distributed (MPI) OWCTY.
+- Make "divine verify" work with non-DVE inputs correctly.
+
 DiVinE 2.3 (8.8.2010)
 =====================
 
