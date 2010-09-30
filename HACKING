@@ -8,11 +8,15 @@ divine binary and other components of the tool set work.
 
 The development work is co-ordinated through the `divine` at `fi.muni.cz`
 mailing list, and through a [trac instance] [1] which has (most importantly)
-our [issue tracker] [2] and also a [source code browser] [3].
+our [issue tracker] [2] and also a [source code browser] [3]. Our automated
+[build and test server] [4] (running buildbot) is another useful developer
+resource (see the [waterfall page] [5] for quick overview of current status).
 
 [1]: http://divine.fi.muni.cz/trac
 [2]: http://divine.fi.muni.cz/trac/report/6
 [3]: http://divine.fi.muni.cz/trac/browser
+[4]: http://divine.fi.muni.cz/buildbot
+[5]: http://divine.fi.muni.cz/buildbot/waterfall
 
 Using Darcs
 ===========
@@ -67,11 +71,11 @@ reviewed and added to the repository as appropriate.
     $ darcs send
 
 Alternatively, you can publish your darcs repository (e.g. using a public http
-hosting service, or you can try [patch-tag] [4] or [darcsden] [5]). Then
+hosting service, or you can try [patch-tag] [6] or [darcsden] [7]). Then
 contact the maintainer and ask them to merge your changes into mainline.
 
-[4]: http://www.patch-tag.com
-[5]: http://darcsden.com
+[6]: http://www.patch-tag.com
+[7]: http://darcsden.com
 
 Over time, the mainline will accumulate some changes, and you will probably
 want to stay in sync with those. It is advisable that before merging from
