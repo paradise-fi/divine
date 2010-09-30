@@ -1,24 +1,27 @@
 Introduction
 ============
 
-This document is intended for people writing algorithms or working on
-the framework itself. The source code is currently layed out like this:
+This document is intended for divine developers, writing algorithms, backends
+or working on the framework itself. Before starting with divine, it is
+advisable that you first compile the tool (see README) and find out how the
+divine binary and other components of the tool set work.
 
-* divine/ is sources and headers of the framework and algorithms
-  * divine/legacy/ contains code from original DiVinE library, among
-    others the DVE state space generator and utilities it requires
-* tools/ is for binaries
-  * tools/divine-mc.cpp is the main user-level entrypoint of the tool
+The development work is co-ordinated through the `divine` at `fi.muni.cz`
+mailing list, and through a [trac instance] [1] which has (most importantly)
+our [issue tracker] [2] and also a [source code browser] [3].
 
-It is advisable, that you first compile the tool on the user level
-(see README) and find out how the divine-mc binary works.
+[1]: http://divine.fi.muni.cz/trac
+[2]: http://divine.fi.muni.cz/trac/report/6
+[3]: http://divine.fi.muni.cz/trac/browser
 
 Using Darcs
 ===========
 
-Preferably, you should use darcs 2.x (see <http://www.darcs.net>) for version
-control. After installing darcs, there is a single "main" branch, which you
-should use as a base for your work. Get it by issuing:
+The source tree of divine is kept in the darcs revision control system.
+
+You need a darcs 2.x binary (see <http://www.darcs.net>) to check out the
+source and to record patches. After installing darcs, there is a single "main"
+branch, which you should use as a base for your work. Get a copy by issuing:
 
     $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
@@ -50,25 +53,28 @@ Another important command is:
 
 This will let you browse the recent changes, with summary of changed files in
 each. You can hit `v` in the interactive prompt to inspect the change in
-detail.
+detail. Use spacebar to advance to the next older patch.
 
 When you record a change you don't like, you can use `darcs unrecord` to remove
 the recorded patch. Note however, that the changes will be kept in the working
-copy, so you can `darcs record` them again, or `darcs revert` them, if you
-don't like them, after all.
+copy, so you can `darcs record` them again, or `darcs revert` them, if you are
+sure you want to remove them forever.
 
-If you have changes, that you would like to have included within the main
-divine branch, it is probably best to send those changes by mail. They will be
-reviewed and if suitable, added to the repository.
+If you have changes that you would like to have included within the main divine
+branch, it is probably best to send those changes by mail. They will be
+reviewed and added to the repository as appropriate.
 
     $ darcs send
 
-Alternatively, you can publish your darcs repository at a place the maintainer
-can reach it (eg. public http service or otherwise). Then contact the
-maintainer and ask them to merge your changes into mainline.
+Alternatively, you can publish your darcs repository (e.g. using a public http
+hosting service, or you can try [patch-tag] [4] or [darcsden] [5]). Then
+contact the maintainer and ask them to merge your changes into mainline.
+
+[4]: http://www.patch-tag.com
+[5]: http://darcsden.com
 
 Over time, the mainline will accumulate some changes, and you will probably
-want to stay in sync with those. It is advisable, that before merging from
+want to stay in sync with those. It is advisable that before merging from
 mainline, you record all your unrecorded changes. Then, you may issue:
 
     $ darcs pull
@@ -82,58 +88,138 @@ get` a new copy of the mainline repository and use `darcs pull` to move your
 local changes from your previous copy. This means that some patches have been
 removed from the mainline, although this happens only very rarely.
 
-Compiling from Darcs
-====================
-
-The configure script contained in the source tree is intended for distribution
-tarballs only. When you are using development version, it is recommended that
-you create a build directory and run cmake manually:
-
-    $ mkdir _build
-    $ cd _build
-    $ cmake ..
-    $ make
-
-The binaries etc. are in the same places, as they would be when using
-./configure (see README for details on usage).
+You can build divine the same way as you would when using distribution
+tarballs, although you may need to `chmod +x ./configure` first. Please see
+README for further details.
 
 Source Code Overview
 ====================
 
-There is a number of toplevel source directories in the repository. The most
-interesting ones are `divine`, `tools` and `gui`.
+The source code is currently laid out like this:
 
-Moreover, there is a toplevel directory named `wibble`, which is a
-general-purpose utility library for C++. DiVinE uses the Thread abstraction
-provided in this library, as well as the commandline parser, and the unit
-testing framework.
+* **divine/** contains sources and headers of the verification & state space
+  generation framework and actual model checking algorithms
 
-The directory `divine` contains the divine library: (1) a parallel programming
-toolkit (`parallel.h`, `barrier.h`, `fifo.h`, `hashmap.h`, `blob.h`, `pool.h`,
-`mpi.h`), parallel graph traversal utilities (`visitor.h`, `datastruct.h`), an
-LTL to Büchi conversion algorithm (the `ltl2ba` directory), a DVE language
-interpreter (the `divine/legacy/system` subdirectory) and the model-checking
-algorithms (`metrics.h`, `reachability.h`, `ndfs.h`, `owcty.h`, `map.h`) and a
-few other utility units. (The `.test.h` files contain unit tests for the
-respective unit defined in the corresponding `.h` file.)
+  * **divine/legacy/** contains code from original DiVinE library, among
+    others the DVE state space generator and utilities it requires
+  * **divine/algorithm/** contains model checking algorithm implementations (the
+    model checking frontend)
+  * **divine/generator/** contains the implementations of state space generators (the
+    backends)
+  * **divine/ltl2ba/** contains an implementation of the LTL to Büchi translator
 
-The directory `tools` contains the commandline interface of the tool --
-`divine.cpp`, a ProMeLa/NIPS compiler (`compile-pml.pl`, `packjars.pl`), a
-standalone probabilistic model checker (`probabilistic.cpp`) and a legacy DVE
-simulator (`simulator.cpp`). It also contains the code for the `divine combine`
-command, in `combine.h`.
+* **tools/** is for binaries
 
-Finally, the `gui` directory contains the sources of a graphical user interface
-for the DiVinE tool, based on Qt 4.x.
+  * **tools/divine.cpp** is the main user-level entry point of the tool
+  * **tools/simple.cpp** is the entry point of the Simple algorithm (see also
+    divine/algorithm/simple.h)
+
+* **murphi/** has the core of the murphi compiler for divine
+* **hoard/** is Emery Berger's HOARD multi-threaded allocator
+* **wibble/** is the wibble C++ library used for threading, command line
+  parsing and a couple of other utilities used throughout the code
+* **gui/** is the Qt graphical interface of divine
+
+The following sections talk about various parts of the source code in more
+detail.
+
+Wibble
+------
+
+Divine uses libwibble, a general-purpose utility library for C++ for several
+things. Most importantly, the threading abstraction is provided by this library
+and comes with a pthread-based and a win32-based implementation.
+
+Parallel Programming Toolkit
+----------------------------
+
+There are a number of modules in the divine library that implement fairly
+general-purpose concepts, often particularly suited for parallel
+high-performance computing. These are:
+
+* **parallel.h**: A simple parallel work domain using shared memory and
+  threads. Used as a basic building block for parallel sections of other code.
+* **barrier.h**: A termination-detecting barrier for a bunch of threads. Used
+  in the implementation of parallel.h.
+* **fifo.h**: A simple one-way communication primitive for shared memory,
+  without locking. Used by parallel.h to implement inter-thread communication.
+* **hashmap.h**: An older implementation of a hash table, possibly with
+  associated values. *Currently not used.*
+* **hashset.h**: The current implementation of a hash table for use as a
+  set. Primarily intended to use with **Blob** objects.
+* **blob.h**: A semi-smart pointer. Addresses an object with known size and a
+  couple of flag bits. No reference counting.
+* **pool.h**: A very fast, simple allocator, suitable for allocating huge
+  numbers of objects that only come in a small number of different sizes.
+* **mpi.h**: Implementation of the MPI layer, built on top of the work domain
+  implementation available in parallel.h.
+
+Graph Traversal
+---------------
+
+Another set of modules of the divine library implements parallel graph
+traversal utilities. These are:
+
+* **datastruct.h**: Implements the data structures for graph traversal, a BFS
+  queue and a DFS stack, tailored for use with the generic graph visitor.
+* **visitor.h**: A number of generic graph exploration algorithms. Both
+  breadth-first and depth-first sequential visitors are available as building
+  blocks, and a single static-partitioning parallel one (breadth-first based,
+  but without layer synchronisation).
+
+Algorithms
+----------
+
+TBD.
+
+Generators
+----------
+
+TBD
+
+Tools
+-----
+
+This directory hosts parts of the divine source that comprise the command line
+interface. These files are not part of the divine library, although certain
+modules may move to the library over time.
+
+* **divine.cpp**: This is the main entrypoint of the divine CLI. It implements
+  command line parsing and based on the command line calls into the library or
+  into other tools (model compiler, combine).
+* **compile.h**, **compile.cpp**: Entry point of the model compiler. Calls into
+  either the DVE or the Murphi compiler to generate C++ code and executes an
+  external C++ compiler on the result.
+* **dvecompile.cpp**: Implementation of a DVE to C++ compiler.
+* **compile-pml.pl**, **packjars.pl**: Parts of an external Java-based ProMeLa
+  compiler. Currently not part of `divine compile`, only available as a
+  standalone tool.
+* **combine.h**: Implementation of `divine combine`. Calls out to (external)
+  `cpp`, `m4` and into the ltl2ba part of the divine library to translate
+  dve/mdve/ltl files into raw DVE.
+* **simple.cpp**: A stand-alone implementation of a very simple parallel,
+  shared-memory reachability. Mainly useful for pedagogical purposes.
+* **probabilistic.cpp**: A standalone shared-memory probabilistic model
+  checker, for the ProbDVE language. **Unmaintained.**
+* **simulator.cpp**: A legacy DVE simulator. **Unmaintained.**
+
+GUI
+---
+
+Finally, the **gui** directory contains the sources of a graphical user
+interface for the DiVinE tool, based on Qt 4.x. Comes with a DVE simulator and
+counterexample browser.
 
 Debugging
 =========
 
-When debugging DiVinE with gdb, no special precautions are usually needed. You
-however probably want a build with debugging enabled and optimisations
-disabled: pass -DCMAKE_BUILD_TYPE=Debug to obtain such a build. This also
-enables assertion checking, which is definitely useful for debugging.
+When debugging DiVinE with **`gdb`**, no special precautions are usually
+needed. You however probably want a build with debugging enabled and
+optimisations disabled: pass `-DCMAKE_BUILD_TYPE=Debug` to obtain such a
+build. This also enables assertion checking, which is definitely useful for
+debugging.
 
-Moreover, when using valgrind to hunt down leaks and/or memory corruption, it
-is often desirable do disable custom memory management: pass -DHOARD=OFF and
--DPOOLS=OFF (in addition to the above) at configure time to achieve this.
+Moreover, when using **`valgrind`** to hunt down leaks and/or memory
+corruption, it is often desirable do disable custom memory management: pass
+`-DHOARD=OFF` and `-DPOOLS=OFF` (in addition to the above) at configure time to
+achieve this.
