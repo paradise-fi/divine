@@ -32,7 +32,7 @@ struct Draw : algorithm::Algorithm
     Node initial;
     int drawn, maxdist, serial;
 
-    std::string dot, output, trace;
+    std::string dot, output, render, trace;
     Table *intrace;
 
     Extension &extension( Node n ) {
@@ -136,10 +136,14 @@ struct Draw : algorithm::Algorithm
 
     void graphviz() {
         if ( output.empty() ) {
-            PipeThrough p( "dot -Tx11" );
+            if ( render.empty() )
+                render = "dot -Tx11";
+            PipeThrough p( render );
             p.run( dot );
         } else {
-            PipeThrough p( "dot -Tpdf" );
+            if ( render.empty() )
+                render = "dot -Tpdf";
+            PipeThrough p( render );
             wibble::sys::fs::writeFile( output, p.run( dot ) );
         }
     }
@@ -150,6 +154,7 @@ struct Draw : algorithm::Algorithm
         initGraph( g );
         maxdist = c->maxDistance;
         output = c->output;
+        render = c->render;
         trace = c->drawTrace;
         drawn = 0;
         serial = 1;

@@ -17,6 +17,7 @@ struct Config {
     int maxDistance;
     std::string output;
     std::string drawTrace;
+    std::string render;
 
     std::string m_algorithm, m_generator;
 

@@ -62,7 +62,7 @@ struct Main {
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
-    StringOption *o_drawTrace, *o_output;
+    StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail;
 
     bool dummygen;
@@ -235,6 +235,9 @@ struct Main {
         o_output = drawing->add< StringOption >(
             "output", 'o', "output", "",
             "the output file name (display to X11 if not specified)" );
+        o_render = drawing->add< StringOption >(
+            "render", 'r', "render", "",
+            "command to render the graphviz description [default=dot -Tx11]" );
 
         cmd_metrics->add( common );
         cmd_reachability->add( common );
@@ -335,6 +338,7 @@ struct Main {
 
         config.maxDistance = o_distance->intValue();
         config.output = o_output->stringValue();
+        config.render= o_render->stringValue();
         config.drawTrace = o_drawTrace->stringValue();
 
         setupLimits();
