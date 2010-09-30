@@ -402,6 +402,16 @@ Take< List > take( int t, List l )
     return Take< List >( l, t );
 }
 
+template< typename List >
+List drop( int t, List l )
+{
+    while ( t > 0 ) {
+        l = l.tail();
+        -- t;
+    }
+    return l;
+}
+
 template< typename List, typename Out >
 void output( List l, Out it ) {
     std::copy( ListIterator< List >( l ), ListIterator< List >(), it );
