@@ -65,10 +65,14 @@ struct Algorithm
         return *m_config;
     }
 
+    Table *makeTable() {
+        return new Table( hasher, divine::valid< Node >(), equal,
+                          *m_initialTable );
+    }
+
     Table &table() {
         if ( !m_table )
-            m_table = new Table( hasher, divine::valid< Node >(), equal,
-                                 *m_initialTable );
+            m_table= makeTable();
         return *m_table;
     }
 
