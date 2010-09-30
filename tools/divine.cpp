@@ -335,6 +335,7 @@ struct Main {
 
         config.maxDistance = o_distance->intValue();
         config.output = o_output->stringValue();
+        config.drawTrace = o_drawTrace->stringValue();
 
         setupLimits();
 
