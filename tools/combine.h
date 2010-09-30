@@ -98,9 +98,7 @@ struct PipeThrough
             std::string ret;
             while ( !out.eof() ) {
                 std::string line = out.nextLineBlocking();
-                if ( line[0] != '#' )
-                    ret += line + "\n";
-                // std::cerr << "got line: " << line << std::endl;
+                ret += line + "\n";
             }
             return ret;
         }
@@ -168,7 +166,7 @@ struct Combine {
 
     std::string cpp( std::string in )
     {
-        PipeThrough p( "cpp -E" );
+        PipeThrough p( "cpp -E -P" );
         return p.run( in );
     }
 
