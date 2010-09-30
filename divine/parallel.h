@@ -144,7 +144,7 @@ template< typename > struct Domain;
  * instances are relatively cheap to instantiate.
  *
  * This class in itself is a single row of such a matrix, representing
- * *incoming* queues for a single thread. See also Domain and DomaniWorker.
+ * *incoming* queues for a single thread. See also Domain and DomainWorker.
  */
 template< typename T >
 struct FifoVector
