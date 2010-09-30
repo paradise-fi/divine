@@ -100,8 +100,8 @@ struct PipeThrough
             in.close();
             std::string ret;
             while ( !out.eof() ) {
-                std::string line = out.nextLineBlocking();
-                ret += line + "\n";
+                out.wait();
+                ret += out.nextChunk();
             }
             return ret;
         }
