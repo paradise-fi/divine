@@ -133,6 +133,12 @@ struct Pipe {
         return r;
     }
 
+    std::string nextChunk() {
+        std::string line( buffer.begin(), buffer.end() );
+        buffer.clear();
+        return line;
+    }
+
     std::string nextLine() {
         assert( valid() );
         Buffer::iterator nl =
@@ -151,10 +157,22 @@ struct Pipe {
         return line;
     }
 
-    std::string nextLineBlocking() {
+    /* Only returns on eof() or when data is buffered. */
+    void wait() {
         assert( valid() );
         fd_set fds;
         FD_ZERO( &fds );
+        while ( buffer.empty() && !eof() ) {
+            if ( readMore() )
+                return;
+            if ( eof() )
+                return;
+            FD_SET( fd, &fds );
+            select( fd + 1, &fds, 0, 0, 0 );
+        }
+    }
+    std::string nextLineBlocking() {
+        assert( valid() );
         std::string l;
         while ( !eof() ) {
             l = nextLine();
@@ -162,8 +180,7 @@ struct Pipe {
                 return l;
             if ( eof() )
                 return std::string( buffer.begin(), buffer.end() );
-            FD_SET( fd, &fds );
-            select( fd + 1, &fds, 0, 0, 0 );
+            wait();
         }
         return l;
     }
