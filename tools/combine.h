@@ -19,6 +19,9 @@
 #include <sys/socket.h>
 #endif
 
+#ifndef DIVINE_COMBINE_H
+#define DIVINE_COMBINE_H
+
 #include "tools/combine.m4.h"
 
 int ltl2buchi( int argc, char **argv );
@@ -342,3 +345,5 @@ struct Combine {
     }
 
 };
+
+#endif
