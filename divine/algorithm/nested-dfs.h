@@ -5,6 +5,7 @@
 #include <divine/porcp.h>
 #include <divine/visitor.h>
 #include <divine/report.h>
+#include <wibble/sfinae.h> // Unit
 
 #ifndef DIVINE_NDFS_H
 #define DIVINE_NDFS_H
@@ -68,7 +69,7 @@ struct NestedDFS : Algorithm
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        typedef LtlCE< G, Unit, Unit > CE;
+        typedef LtlCE< G, wibble::Unit, wibble::Unit > CE;
         CE::generateLinear( *this, g, ce_stack );
         CE::generateLasso( *this, g, ce_lasso );
         progress() << "done" << std::endl;

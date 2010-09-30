@@ -3,7 +3,7 @@
 #include <divine/config.h>
 #include <divine/report.h>
 #include <divine/blob.h>
-#include <divine/hashmap.h>
+#include <divine/hashset.h>
 #include <divine/visitor.h>
 
 #ifndef DIVINE_ALGORITHM_H
@@ -45,8 +45,7 @@ struct Algorithm
 {
     typedef Blob Node; // Umm.
 
-    typedef HashMap< Node, Unit, Hasher,
-                     divine::valid< Node >, Equal > Table;
+    typedef HashSet< Node, Hasher, divine::valid< Node >, Equal > Table;
 
     Config *m_config;
     int m_slack;

@@ -198,7 +198,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     template< typename V >
     void queueAll( V &v, bool reset = false ) {
         for ( size_t i = 0; i < table().size(); ++i ) {
-            Node st = table()[ i ].key;
+            Node st = table()[ i ];
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
@@ -451,7 +451,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
                 shared.cycle_found = true;
                 return;
             }
-            Node st = shared.cycle_node = table()[ i ].key;
+            Node st = shared.cycle_node = table()[ i ];
             if ( !st.valid() )
                 continue;
             if ( extension( st ).iteration == shared.iteration )

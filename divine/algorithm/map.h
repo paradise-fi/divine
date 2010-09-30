@@ -258,7 +258,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
     void _cleanup() {
         for ( size_t i = 0; i < table().size(); ++i ) {
-            Node st = table()[ i ].key;
+            Node st = table()[ i ];
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = VertexId();

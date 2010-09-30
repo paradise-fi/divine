@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <divine/statistics.h>
-#include <divine/hashmap.h>
+#include <divine/hashset.h>
 #include <divine/pool.h>
 #include <divine/blob.h>
 #include <divine/fifo.h>
@@ -52,7 +52,7 @@ template<> inline void setPermanent( Blob b ) {
 template<
     typename G, // graph
     typename N, // notify
-    typename S = HashMap< typename G::Node, Unit >,
+    typename S = HashSet< typename G::Node >,
     typename _Statistics = NoStatistics,
     TransitionAction (N::*tr)(typename G::Node, typename G::Node) = &N::transition,
     ExpansionAction (N::*exp)(typename G::Node) = &N::expansion >
@@ -110,7 +110,7 @@ struct Common {
         TransitionAction tact;
         ExpansionAction eact;
 
-        Node initial = seen().insert( _initial ).key;
+        Node initial = seen().insert( _initial );
         setPermanent( initial );
         m_graph.release( _initial );
 
@@ -159,7 +159,7 @@ struct Common {
         if ( S::transitionHint( m_notify, from, _to, hint ) == IgnoreTransition )
             return;
 
-        Node to = seen().get( _to, hint ).key;
+        Node to = seen().getHinted( _to, hint );
 
         if ( alias( _to, to ) )
             assert( seen().valid( to ) );
@@ -174,7 +174,7 @@ struct Common {
         if ( tact != IgnoreTransition && !had ) {
             Statistics::global().hashadded( id );
             Statistics::global().hashsize( id, seen().size() );
-            seen().insert( to, hint );
+            seen().insertHinted( to, hint );
             setPermanent( to );
         }
 

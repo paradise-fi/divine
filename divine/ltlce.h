@@ -82,7 +82,7 @@ struct LtlCE {
         if ( shared().ce.current_updated )
             return;
         if ( owner( h, w, shared().ce.current ) == w.globalId() ) {
-            Node n = t.get( shared().ce.current ).key;
+            Node n = t.get( shared().ce.current );
             assert( n.valid() );
             shared().ce.current = extension( n ).parent;
             assert( shared().ce.current.valid() );
@@ -120,7 +120,7 @@ struct LtlCE {
         Visitor visitor( g(), w, *this, h, &t );
         assert( shared().ce.initial.valid() );
         if ( visitor.owner( shared().ce.initial ) == w.globalId() ) {
-            shared().ce.initial = t.get( shared().ce.initial ).key;
+            shared().ce.initial = t.get( shared().ce.initial );
             visitor.queue( Blob(), shared().ce.initial );
         }
         visitor.processQueue();

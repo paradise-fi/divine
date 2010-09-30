@@ -77,7 +77,7 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
             fifo.push( from );
             fifo.push( to );
         } else { // we own this node, so let's process it
-            Node in_table = table().get( to, hint ).key;
+            Node in_table = table().getHinted( to, hint );
 
             shared.stats.addEdge();
             if ( !table().valid( in_table ) ) {
