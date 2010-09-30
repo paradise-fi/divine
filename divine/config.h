@@ -14,6 +14,9 @@ struct Config {
     int m_initialTable;
     bool m_verbose, m_ce, m_report;
 
+    int maxDistance;
+    std::string output;
+
     std::string m_algorithm, m_generator;
 
     void setAlgorithm( std::string p ) { m_algorithm = p; }

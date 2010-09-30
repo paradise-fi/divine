@@ -26,6 +26,7 @@
 
 #include <divine/report.h>
 
+#include <tools/draw.h>
 #include <tools/combine.h>
 #include <tools/compile.h>
 
@@ -54,12 +55,14 @@ struct Main {
     Output *output;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile;
-    OptionGroup *common;
+        *cmd_metrics, *cmd_compile, *cmd_draw;
+    OptionGroup *common, *drawing;
     BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
+    IntOption *o_distance;
+    StringOption *o_drawTrace, *o_output;
     StringOption *o_trail;
 
     bool dummygen;
@@ -161,7 +164,12 @@ struct Main {
                                   "maximum accepting predecessor "
                                   "cycle detection" );
 
+        cmd_draw = opts.addEngine( "draw",
+                                   "<input>",
+                                   "draw (part of) the state space" );
+
         common = opts.createGroup( "Common Options" );
+        drawing = opts.createGroup( "Drawing Options" );
 
         o_verbose = opts.add< BoolOption >(
             "verbose", 'v', "verbose", "", "more verbose operation" );
@@ -216,12 +224,26 @@ struct Main {
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
 
+        o_distance = drawing->add< IntOption >(
+            "distance", '\0', "distance", "",
+            "set maximum BFS distance from initial state [default = 32]" );
+        o_distance ->setValue( 32 );
+
+        o_drawTrace = drawing->add< StringOption >(
+            "draw-trace", '\0', "draw-trace", "",
+            "draw and highlight a particular trace in the output" );
+        o_output = drawing->add< StringOption >(
+            "output", 'o', "output", "",
+            "the output file name (display to X11 if not specified)" );
+
         cmd_metrics->add( common );
         cmd_reachability->add( common );
         cmd_owcty->add( common );
         cmd_map->add( common );
         cmd_ndfs->add( common );
         cmd_verify->add( common );
+
+        cmd_draw->add( drawing );
     }
 
     void setupLimits() {
@@ -260,7 +282,7 @@ struct Main {
     }
 
 
-    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify } m_run;
+    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify, RunDraw } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -311,6 +333,9 @@ struct Main {
         config.setGenerateCounterexample( !o_noCe->boolValue() );
         statistics = o_statistics->boolValue();
 
+        config.maxDistance = o_distance->intValue();
+        config.output = o_output->stringValue();
+
         setupLimits();
 
         if ( o_trail->boolValue() ) {
@@ -330,7 +355,10 @@ struct Main {
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
-        if ( opts.foundCommand() == cmd_verify ) {
+        if ( opts.foundCommand() == cmd_draw ) {
+            config.setWorkers( 1 ); // never runs in parallel
+            m_run = RunDraw;
+        } else if ( opts.foundCommand() == cmd_verify ) {
             m_run = RunVerify;
         } else if ( opts.foundCommand() == cmd_ndfs ) {
             m_run = RunNdfs;
@@ -374,6 +402,9 @@ struct Main {
         }
 
         switch ( m_run ) {
+            case RunDraw:
+                config.setAlgorithm( "Draw" );
+                return run< Draw< Graph >, Stats >();
             case RunReachability:
                 config.setAlgorithm( "Reachability" );
                 return run< algorithm::Reachability< Graph, Stats >, Stats >();
