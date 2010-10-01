@@ -75,10 +75,6 @@ struct Main {
     Combine combine;
     Compile compile;
 
-    ~Main() {
-        delete Output::_output; // to clean up after ourselves
-    }
-
     Main( int _argc, const char **_argv )
         : dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
@@ -109,6 +105,7 @@ struct Main {
         res = selectGraph< Statistics >();
 #endif
         rep.finished( res );
+        Output::output().cleanup();
         rep.final( std::cout );
     }
 
