@@ -10,7 +10,7 @@ namespace log {
 struct FileSender : public Sender
 {
 protected:
-	void* out;
+	int out;
 	std::string name;
 
 public:

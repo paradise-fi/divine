@@ -1,61 +1,43 @@
 #include <wibble/sys/macros.h>
+#include <wibble/sys/filelock.h>
 #include <wibble/log/file.h>
 #include <wibble/exception.h>
-#include <stdio.h>
-#ifdef POSIX
-#include <time.h>
-#endif
 
-#ifdef _WIN32
-#include <ctime>
-#endif
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 namespace wibble {
 namespace log {
 
-FileSender::FileSender(const std::string& filename) : out(0), name(filename)
+FileSender::FileSender(const std::string& filename) : out(-1), name(filename)
 {
-	out = fopen(filename.c_str(), "at");
-	if (!out)
+	out = open(filename.c_str(), O_APPEND | O_CREAT, 0666);
+	if (out < 0)
 		throw wibble::exception::File(filename, "opening logfile for append");
 }
 
 FileSender::~FileSender()
 {
-	if (out) fclose((FILE*)out);
+	if (out >= 0) close(out);
 }
 
 void FileSender::send(Level level, const std::string& msg)
 {
-	time_t now = time(NULL);
-#ifdef POSIX
-	struct tm pnow;
-	localtime_r(&now, &pnow);
-#endif
+	// Write it all in a single write(2) so multiple processes can log to
+	// the same file
+	sys::fs::FileLock lock(out, F_WRLCK);
 
-#ifdef _WIN32
-	struct tm * pnow;
-	pnow = localtime(&now);
-#endif
-	char timebuf[20];
-	/*
-	 * Strftime specifiers used here:
-	 *	%b      The abbreviated month name according to the current locale.
-	 *	%d      The day of the month as a decimal number (range 01 to 31).
-	 *	%e      Like %d, the day of the month as a decimal number, but a
-	 *			leading zero is replaced by a space. (SU)
-	 *	%T      The time in 24-hour notation (%H:%M:%S). (SU)
-	 */
-#ifdef POSIX
-	strftime(timebuf, 20, "%b %e %T", &pnow);
-	fprintf((FILE*)out, "%s: %s\n", timebuf, msg.c_str());
-#endif
-
-#ifdef _WIN32
-	fprintf((FILE*)out, "%s: %s\n",  asctime(pnow), msg.c_str());
-#endif
-	if (level >= WARN)
-		fflush((FILE*)out);
+	// Write it all out
+	size_t done = 0;
+	while (done < msg.size())
+	{
+		ssize_t res = write(out, msg.data() + done, msg.size() - done);
+		if (res < 0)
+			throw wibble::exception::File(name, "writing to file");
+		done += res;
+	}
 }
 	
 }

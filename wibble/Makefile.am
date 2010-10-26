@@ -54,7 +54,8 @@ wibblelog_HEADERS = \
     log/null.h \
     log/syslog.h \
     log/ostream.h \
-    log/file.h
+    log/file.h \
+    log/filters.h
 
 wibblecommandline_HEADERS = \
     commandline/core.h \
@@ -106,6 +107,7 @@ libwibble_la_SOURCES = \
     log/stream.cpp \
     log/ostream.cpp \
     log/syslog.cpp \
+    log/filters.cpp \
     commandline/core.cpp \
     commandline/options.cpp \
     commandline/doc.cpp \
