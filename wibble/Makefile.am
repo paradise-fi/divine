@@ -47,6 +47,7 @@ wibblesys_HEADERS = \
     sys/fs.h \
     sys/signal.h \
     sys/lockfile.h
+    sys/filelock.h
 
 wibblelog_HEADERS = \
     log/stream.h \
@@ -92,6 +93,7 @@ libwibble_la_SOURCES = \
     tests.cpp \
     sys/fs.cpp \
     sys/lockfile.cpp \
+    sys/filelock.cpp \
     sys/buffer.cpp \
     sys/mmap.cpp \
     sys/process.cpp \
