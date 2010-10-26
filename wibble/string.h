@@ -160,6 +160,18 @@ inline bool endsWith(const std::string& str, const std::string& part)
 	return str.substr(str.size() - part.size()) == part;
 }
 
+inline std::string replace(const std::string& str, char from, char to)
+{
+	std::string res;
+	res.reserve(str.size());
+	for (std::string::const_iterator i = str.begin(); i != str.end(); ++i)
+		if (*i == from)
+			res.append(1, to);
+		else
+			res.append(1, *i);
+	return res;
+}
+
 #if !__xlC__ && (! __GNUC__ || __GNUC__ >= 4)
 /**
  * Return the substring of 'str' without all leading and trailing characters
