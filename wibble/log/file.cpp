@@ -42,6 +42,16 @@ void FileSender::send(Level level, const std::string& msg)
 			throw wibble::exception::File(name, "writing to file");
 		done += res;
 	}
+
+    // Write trailing newline
+    while (true)
+    {
+        ssize_t res = write(out, "\n", 1);
+        if (res < 0)
+            throw wibble::exception::File(name, "writing to file");
+        if (res > 0)
+            break;
+    }
 }
 	
 }
