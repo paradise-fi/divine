@@ -16,7 +16,7 @@ FileLock::FileLock(int fd, short l_type, short l_whence, off_t l_start, off_t l_
 	lock.l_whence = l_whence;
 	lock.l_start = l_start;
 	lock.l_len = l_len;
-	if (fcntl(fd, F_SETLK, &lock) == -1)
+	if (fcntl(fd, F_SETLKW, &lock) == -1)
 		throw wibble::exception::System("locking file");
 }
 

@@ -13,7 +13,7 @@ namespace log {
 
 FileSender::FileSender(const std::string& filename) : out(-1), name(filename)
 {
-	out = open(filename.c_str(), O_APPEND | O_CREAT, 0666);
+	out = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
 	if (out < 0)
 		throw wibble::exception::File(filename, "opening logfile for append");
 }
@@ -28,6 +28,10 @@ void FileSender::send(Level level, const std::string& msg)
 	// Write it all in a single write(2) so multiple processes can log to
 	// the same file
 	sys::fs::FileLock lock(out, F_WRLCK);
+
+    // Seek to end of file
+    if (lseek(out, 0, SEEK_END) < 0)
+        throw wibble::exception::File(name, "moving to end of file");
 
 	// Write it all out
 	size_t done = 0;
