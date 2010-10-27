@@ -13,6 +13,7 @@ wibbletestdir = $(includedir)/wibble/tests
 wibbletextdir = $(includedir)/wibble/text
 wibblegrcaldir = $(includedir)/wibble/grcal
 wibblestreamdir = $(includedir)/wibble/stream
+wibblenetdir = $(includedir)/wibble/net
 
 wibble_HEADERS = \
     amorph.h \
@@ -80,6 +81,10 @@ wibblegrcal_HEADERS = \
 wibblestream_HEADERS = \
     stream/posix.h
 
+wibblenet_HEADERS = \
+    net/mime.h \
+    net/server.h
+
 lib_LTLIBRARIES = libwibble.la
 
 else
@@ -114,7 +119,9 @@ libwibble_la_SOURCES = \
     commandline/parser.cpp \
     commandline/engine.cpp \
     text/wordwrap.cpp \
-    grcal/grcal.cpp
+    grcal/grcal.cpp \
+    net/mime.cpp \
+    net/server.cpp
 
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
@@ -149,6 +156,8 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     sys/lockfile.test.h \
     sys/signal.test.h \
     grcal/grcal.test.h \
-    stream/posix.test.h
+    stream/posix.test.h \
+    net/mime.test.h \
+    net/server.test.h
 
 # vim:set ts=4 sw=4:

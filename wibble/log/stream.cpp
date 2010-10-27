@@ -10,6 +10,11 @@ Streambuf::Streambuf(Sender* s) : level(defaultLevel), sender(s) {}
 
 Streambuf::~Streambuf()
 {
+    send_partial_line();
+}
+
+void Streambuf::send_partial_line()
+{
 	if (!line.empty())
 		send();
 }

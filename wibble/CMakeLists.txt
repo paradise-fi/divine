@@ -9,6 +9,7 @@ file( GLOB WSRC_LOG log/*.cpp )
 file( GLOB WSRC_TEXT text/*.cpp )
 file( GLOB WSRC_GRCAL grcal/*.cpp )
 file( GLOB WSRC_STREAM stream/*.cpp )
+file( GLOB WSRC_NET net/*.cpp )
 file( GLOB H_TOP *.h )
 file( GLOB H_CMDL commandline/*.h )
 file( GLOB H_SYS sys/*.h )
@@ -16,12 +17,13 @@ file( GLOB H_LOG log/*.h )
 file( GLOB H_TEXT text/*.h )
 file( GLOB H_GRCAL grcal/*.h )
 file( GLOB H_STREAM stream/*.h )
+file( GLOB H_NET net/*.h )
 file( GLOB H_TESTS tests/*.h )
 file( GLOB TCC_TOP *.tcc )
 file( GLOB testh *.test.h commandline/*.test.h sys/*.test.h
-                 log/*.test.h text/*.test.h grcal/*.test.h stream/*.test.h )
+                 log/*.test.h text/*.test.h grcal/*.test.h stream/*.test.h net/*.test.h )
 
-set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} ${WSRC_GRCAL} ${WSRC_STREAM})
+set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} ${WSRC_GRCAL} ${WSRC_STREAM} ${WSRC_NET})
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
@@ -61,24 +63,16 @@ configure_file( ${wibble_SOURCE_DIR}/libwibble.pc.in
 # make install
 install( TARGETS wibble DESTINATION lib COMPONENT wibble_dev )
 
-if( NOT WIN32 )
-install( FILES ${wibble_BINARY_DIR}/libwibble.pc DESTINATION lib/pkgconfig COMPONENT wibble_dev )
-install( FILES libwibble.m4 DESTINATION share/aclocal COMPONENT wibble_dev )
-install( FILES wibble-test-genrunner.1 DESTINATION share/man/man1 COMPONENT wibble_dev )
-endif( NOT WIN32 )
-
-install( FILES ${H_TOP} DESTINATION include/wibble COMPONENT wibble_dev )
-install( FILES ${TCC_TOP} DESTINATION include/wibble COMPONENT wibble_dev )
-install( FILES ${H_CMDL} DESTINATION include/wibble/commandline COMPONENT wibble_dev )
-install( FILES ${H_SYS} DESTINATION include/wibble/sys COMPONENT wibble_dev )
-install( FILES ${H_LOG} DESTINATION include/wibble/log COMPONENT wibble_dev )
-install( FILES ${H_TEXT} DESTINATION include/wibble/text COMPONENT wibble_dev )
-install( FILES ${H_GRCAL} DESTINATION include/wibble/grcal COMPONENT wibble_dev )
-install( FILES ${H_STREAM} DESTINATION include/wibble/stream COMPONENT wibble_dev )
-install( FILES ${H_TESTS} DESTINATION include/wibble/tests COMPONENT wibble_dev )
-
-if( NOT WIN32 )
-install( FILES test.cmake DESTINATION share/wibble COMPONENT wibble_dev )
+install( FILES ${H_TOP} DESTINATION include/wibble )
+install( FILES ${TCC_TOP} DESTINATION include/wibble )
+install( FILES ${H_CMDL} DESTINATION include/wibble/commandline )
+install( FILES ${H_SYS} DESTINATION include/wibble/sys )
+install( FILES ${H_LOG} DESTINATION include/wibble/log )
+install( FILES ${H_TEXT} DESTINATION include/wibble/text )
+install( FILES ${H_GRCAL} DESTINATION include/wibble/grcal )
+install( FILES ${H_STREAM} DESTINATION include/wibble/stream )
+install( FILES ${H_TESTS} DESTINATION include/wibble/tests )
+install( FILES test.cmake DESTINATION share/wibble )
 install( FILES test-genrunner.pl
   RENAME wibble-test-genrunner
   DESTINATION bin COMPONENT wibble_dev 

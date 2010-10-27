@@ -62,6 +62,9 @@ public:
 	Streambuf(Sender* s);
 	virtual ~Streambuf();
 
+    /// If there is a partial line, send it out
+    void send_partial_line();
+
 	/// Set/change the sender to use for this streambuf
 	void setSender(Sender* s);
 
