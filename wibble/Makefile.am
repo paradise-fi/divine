@@ -83,7 +83,8 @@ wibblestream_HEADERS = \
 
 wibblenet_HEADERS = \
     net/mime.h \
-    net/server.h
+    net/server.h \
+    net/http.h
 
 lib_LTLIBRARIES = libwibble.la
 
@@ -121,7 +122,8 @@ libwibble_la_SOURCES = \
     text/wordwrap.cpp \
     grcal/grcal.cpp \
     net/mime.cpp \
-    net/server.cpp
+    net/server.cpp \
+    net/http.cpp
 
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
@@ -158,6 +160,7 @@ EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
     grcal/grcal.test.h \
     stream/posix.test.h \
     net/mime.test.h \
-    net/server.test.h
+    net/server.test.h \
+    net/http.test.h
 
 # vim:set ts=4 sw=4:
