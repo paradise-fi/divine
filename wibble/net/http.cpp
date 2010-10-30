@@ -21,13 +21,13 @@
 #include <wibble/net/http.h>
 #include <wibble/exception.h>
 #include <wibble/string.h>
+#include <wibble/stream/posix.h>
 #include <sstream>
 #include <ctime>
 #include <cerrno>
-
-#include "config.h"
-
-#define SERVER_SOFTWARE PACKAGE_NAME "/" PACKAGE_VERSION
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -67,7 +67,7 @@ void error404::send(Request& req)
 }
 
 Request::Request()
-    : space_splitter("[[:blank:]]+", REG_EXTENDED)
+    : server_software("wibble"), space_splitter("[[:blank:]]+", REG_EXTENDED)
 {
 }
 
@@ -160,7 +160,7 @@ void Request::set_cgi_env()
     // Set CGI server-specific variables
 
     // SERVER_SOFTWARE — name/version of HTTP server.
-    setenv("SERVER_SOFTWARE", SERVER_SOFTWARE, 1);
+    setenv("SERVER_SOFTWARE", server_software.c_str(), 1);
     // SERVER_NAME — host name of the server, may be dot-decimal IP address.
     setenv("SERVER_NAME", server_name.c_str(), 1);
     // GATEWAY_INTERFACE — CGI/version.
@@ -250,7 +250,7 @@ void Request::send_status_line(int code, const std::string& msg, const std::stri
 void Request::send_server_header()
 {
     stringstream buf;
-    buf << "Server: " << SERVER_SOFTWARE << "\r\n";
+    buf << "Server: " << server_software << "\r\n";
     send(buf.str());
 }
 
@@ -297,6 +297,336 @@ void Request::discard_input()
             if (res == 0) break;
         }
     }
+}
+
+Param::~Param() {}
+
+void ParamSingle::parse(const std::string& str)
+{
+    assign(str);
+}
+
+void ParamMulti::parse(const std::string& str)
+{
+    push_back(str);
+}
+
+FileParam::~FileParam() {}
+
+bool FileParam::FileInfo::read(
+        net::mime::Reader& mime_reader,
+        map<string, string> headers,
+        const std::string& outdir,
+        const std::string& fname_blacklist,
+        const std::string& client_fname,
+        int sock,
+        const std::string& boundary,
+        size_t inputsize)
+{
+    int openflags = O_CREAT | O_WRONLY;
+
+    // Store the client provided pathname
+    this->client_fname = client_fname;
+
+    // Generate the output file name
+    if (fname.empty())
+    {
+        fname = client_fname;
+        openflags |= O_EXCL;
+    }
+    string preferred_fname = str::basename(fname);
+
+    // Replace blacklisted chars
+    if (!fname_blacklist.empty())
+        for (string::iterator i = preferred_fname.begin(); i != preferred_fname.end(); ++i)
+            if (fname_blacklist.find(*i) != string::npos)
+                *i = '_';
+
+    preferred_fname = str::joinpath(outdir, preferred_fname);
+
+    fname = preferred_fname;
+
+    // Create the file
+    int outfd;
+    for (unsigned i = 1; ; ++i)
+    {
+        outfd = open(fname.c_str(), openflags, 0600);
+        if (outfd >= 0) break;
+        if (errno != EEXIST)
+            throw wibble::exception::File(fname, "creating file");
+        // Alter the file name and try again
+        fname = preferred_fname + str::fmtf(".%u", i);
+    }
+
+    // Wrap output FD into a stream, which will take care of
+    // closing it
+    wibble::stream::PosixBuf posixBuf(outfd);
+    ostream out(&posixBuf);
+
+    // Read until boundary, sending data to temp file
+
+    bool has_part = mime_reader.read_until_boundary(sock, boundary, out, inputsize);
+
+    return has_part;
+}
+
+FileParamSingle::FileParamSingle(const std::string& fname)
+{
+    info.fname = fname;
+}
+
+bool FileParamSingle::read(
+        net::mime::Reader& mime_reader,
+        map<string, string> headers,
+        const std::string& outdir,
+        const std::string& fname_blacklist,
+        const std::string& client_fname,
+        int sock,
+        const std::string& boundary,
+        size_t inputsize)
+{
+    return info.read(mime_reader, headers, outdir, fname_blacklist, client_fname, sock, boundary, inputsize);
+}
+
+bool FileParamMulti::read(
+        net::mime::Reader& mime_reader,
+        map<string, string> headers,
+        const std::string& outdir,
+        const std::string& fname_blacklist,
+        const std::string& client_fname,
+        int sock,
+        const std::string& boundary,
+        size_t inputsize)
+{
+    files.push_back(FileInfo());
+    return files.back().read(mime_reader, headers, outdir, fname_blacklist, client_fname, sock, boundary, inputsize);
+}
+
+Params::Params()
+{
+    conf_max_input_size = 20 * 1024 * 1024;
+    conf_max_field_size = 1024 * 1024;
+    conf_accept_unknown_fields = false;
+    conf_accept_unknown_file_fields = false;
+}
+
+Params::~Params()
+{
+    for (iterator i = begin(); i != end(); ++i)
+        delete i->second;
+    for (std::map<std::string, FileParam*>::iterator i = files.begin(); i != files.end(); ++i)
+        delete i->second;
+}
+
+void Params::add(const std::string& name, Param* param)
+{
+    iterator i = find(name);
+    if (i != end())
+    {
+        delete i->second;
+        i->second = param;
+    } else
+        insert(make_pair(name, param));
+}
+
+void Params::add(const std::string& name, FileParam* param)
+{
+    std::map<std::string, FileParam*>::iterator i = files.find(name);
+    if (i != files.end())
+    {
+        delete i->second;
+        i->second = param;
+    } else
+        files.insert(make_pair(name, param));
+}
+
+Param* Params::obtain_field(const std::string& name)
+{
+    iterator i = find(name);
+    if (i != end())
+        return i->second;
+    if (!conf_accept_unknown_fields)
+        return NULL;
+    pair<iterator, bool> res = insert(make_pair(name, new ParamMulti));
+    return res.first->second;
+}
+
+FileParam* Params::obtain_file_field(const std::string& name)
+{
+    std::map<std::string, FileParam*>::iterator i = files.find(name);
+    if (i != files.end())
+        return i->second;
+    if (!conf_accept_unknown_file_fields)
+        return NULL;
+    pair<std::map<std::string, FileParam*>::iterator, bool> res =
+        files.insert(make_pair(name, new FileParamMulti));
+    return res.first->second;
+}
+
+Param* Params::field(const std::string& name)
+{
+    iterator i = find(name);
+    if (i != end())
+        return i->second;
+    return NULL;
+}
+
+FileParam* Params::file_field(const std::string& name)
+{
+    std::map<std::string, FileParam*>::iterator i = files.find(name);
+    if (i != files.end())
+        return i->second;
+    return NULL;
+}
+
+void Params::parse_get_or_post(net::http::Request& req)
+{
+    if (req.method == "GET")
+    {
+        size_t pos = req.url.find('?');
+        if (pos != string::npos)
+            parse_urlencoded(req.url.substr(pos + 1));
+    }
+    else if (req.method == "POST")
+        parse_post(req);
+    else
+        throw wibble::exception::Consistency("cannot parse parameters from \"" + req.method + "\" request");
+}
+
+void Params::parse_urlencoded(const std::string& qstring)
+{
+    // Split on &
+    str::Split splitter("&", qstring);
+    for (str::Split::const_iterator i = splitter.begin();
+            i != splitter.end(); ++i)
+    {
+        if (i->empty()) continue;
+
+        // Split on =
+        size_t pos = i->find('=');
+        if (pos == string::npos)
+        {
+            // foo=
+            Param* p = obtain_field(str::urldecode(*i));
+            if (p != NULL)
+                p->parse(string());
+        }
+        else
+        {
+            // foo=bar
+            Param* p = obtain_field(str::urldecode(i->substr(0, pos)));
+            if (p != NULL)
+                p->parse(str::urldecode(i->substr(pos+1)));
+        }
+    }
+}
+
+void Params::parse_multipart(net::http::Request& req, size_t inputsize, const std::string& content_type)
+{
+    net::mime::Reader mime_reader;
+
+    // Get the mime boundary
+    size_t pos = content_type.find("boundary=");
+    if (pos == string::npos)
+        throw net::http::error400("no boundary in content-type");
+    // TODO: strip boundary of leading and trailing "
+    string boundary = "--" + content_type.substr(pos + 9);
+
+    // Read until first boundary, discarding data
+    mime_reader.discard_until_boundary(req.sock, boundary);
+
+    boundary = "\r\n" + boundary;
+
+    // Content-Disposition: form-data; name="submit-name"
+    //wibble::ERegexp re_disposition(";%s*([^%s=]+)=\"(.-)\"", 2);
+    wibble::Splitter cd_splitter("[[:blank:]]*;[[:blank:]]*", REG_EXTENDED);
+    wibble::ERegexp cd_parm("([^=]+)=\"([^\"]+)\"", 3);
+
+    bool has_part = true;
+    while (has_part)
+    {
+        // Read mime headers for this part
+        map<string, string> headers;
+        if (!mime_reader.read_headers(req.sock, headers))
+            throw net::http::error400("request truncated at MIME headers");
+
+        // Get name and (optional) filename from content-disposition
+        map<string, string>::const_iterator i = headers.find("content-disposition");
+        if (i == headers.end())
+            throw net::http::error400("no Content-disposition in MIME headers");
+        wibble::Splitter::const_iterator j = cd_splitter.begin(i->second);
+        if (j == cd_splitter.end())
+            throw net::http::error400("incomplete content-disposition header");
+        if (*j != "form-data")
+            throw net::http::error400("Content-disposition is not \"form-data\"");
+        string name;
+        string filename;
+        for (++j; j != cd_splitter.end(); ++j)
+        {
+            if (!cd_parm.match(*j)) continue;
+            string key = cd_parm[1];
+            if (key == "name")
+            {
+                name = cd_parm[2];
+            } else if (key == "filename") {
+                filename = cd_parm[2];
+            }
+        }
+
+        if (!filename.empty())
+        {
+            // Get a file param
+            FileParam* p = conf_outdir.empty() ? NULL : obtain_file_field(name);
+            if (p != NULL)
+                has_part = p->read(mime_reader, headers, conf_outdir, conf_fname_blacklist, filename, req.sock, boundary, inputsize);
+            else
+                has_part = mime_reader.discard_until_boundary(req.sock, boundary);
+        } else {
+            // Read until boundary, storing data in string
+            stringstream value;
+            has_part = mime_reader.read_until_boundary(req.sock, boundary, value, conf_max_field_size);
+
+            // Store the field value
+            Param* p = obtain_field(name);
+            if (p != NULL)
+                p->parse(value.str());
+        }
+    }
+}
+
+void Params::parse_post(net::http::Request& req)
+{
+    // Get the supposed size of incoming data
+    map<string, string>::const_iterator i = req.headers.find("content-length");
+    if (i == req.headers.end())
+        throw wibble::exception::Consistency("no Content-Length: found in request header");
+    // Validate the post size
+    size_t inputsize = strtoul(i->second.c_str(), 0, 10);
+    if (inputsize > conf_max_input_size)
+    {
+        // Discard all input
+        req.discard_input();
+        throw wibble::exception::Consistency(str::fmtf(
+            "Total size of incoming data (%zdb) exceeds configured maximum (%zdb)",
+            inputsize, conf_max_input_size));
+    }
+
+    // Get the content type
+    i = req.headers.find("content-type");
+    if (i == req.headers.end())
+        throw wibble::exception::Consistency("no Content-Type: found in request header");
+    if (i->second.find("x-www-form-urlencoded") != string::npos)
+    {
+        string line;
+        req.read_buf(line, inputsize);
+        parse_urlencoded(line);
+    }
+    else if (i->second.find("multipart/form-data") != string::npos)
+    {
+        parse_multipart(req, inputsize, i->second);
+    }
+    else
+        throw wibble::exception::Consistency("unsupported Content-Type: " + i->second);
 }
 
 }

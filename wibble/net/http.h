@@ -74,6 +74,8 @@ struct Request
     std::string server_port;
     std::string script_name;
     std::string path_info;
+    /// String to use as server software "NAME/version"
+    std::string server_software;
 
     std::string method;
     std::string url;
@@ -137,6 +139,220 @@ struct Request
     // Discard all input from the socket
     void discard_input();
 };
+
+/// Base interface for GET or POST parameters
+struct Param
+{
+    virtual ~Param();
+
+    /**
+     * Parse the value of this parameter from the given unescaped string value.
+     *
+     * This can be called more than once, if the value is found multiple
+     * times. It can also never be called, if the value is never found.
+     */
+    virtual void parse(const std::string& str) = 0;
+};
+
+/// Single-valued parameter
+struct ParamSingle : public std::string, public Param
+{
+    virtual void parse(const std::string& str);
+};
+
+/// Multi-valued parameter
+struct ParamMulti : public std::vector<std::string>, public Param
+{
+    virtual void parse(const std::string& str);
+};
+
+/**
+ * File upload parameter
+ */
+struct FileParam
+{
+    /// Infomation about one uploaded file
+    struct FileInfo
+    {
+        /// File pathname on the local file system
+        std::string fname;
+        /// File pathname provided by the client
+        std::string client_fname;
+
+        /**
+         * Handle a file upload from a multipart/form-data file upload part
+         */
+        bool read(net::mime::Reader& mime_reader,
+              std::map<std::string, std::string> headers,
+              const std::string& outdir,
+              const std::string& fname_blacklist,
+              const std::string& client_fname,
+              int sock,
+              const std::string& boundary,
+              size_t inputsize);
+    };
+
+    virtual ~FileParam();
+
+    /**
+     * Handle a file upload from a multipart/form-data file upload part
+     */
+    virtual bool read(
+            net::mime::Reader& mime_reader,
+            std::map<std::string, std::string> headers,
+            const std::string& outdir,
+            const std::string& fname_blacklist,
+            const std::string& client_fname,
+            int sock,
+            const std::string& boundary,
+            size_t inputsize) = 0;
+};
+
+/**
+ * Single file upload field
+ */
+struct FileParamSingle : public FileParam
+{
+    FileInfo info;
+
+    /**
+     * If a file name is given, use its base name for storing the file;
+     * else, use the file name given by the client, without path
+     */
+    FileParamSingle(const std::string& fname=std::string());
+
+    virtual bool read(
+            net::mime::Reader& mime_reader,
+            std::map<std::string, std::string> headers,
+            const std::string& outdir,
+            const std::string& fname_blacklist,
+            const std::string& client_fname,
+            int sock,
+            const std::string& boundary,
+            size_t inputsize);
+};
+
+/**
+ * Multiple file uploads with the same name
+ */
+struct FileParamMulti : public FileParam
+{
+    std::vector<FileInfo> files;
+
+    virtual bool read(
+            net::mime::Reader& mime_reader,
+            std::map<std::string, std::string> headers,
+            const std::string& outdir,
+            const std::string& fname_blacklist,
+            const std::string& client_fname,
+            int sock,
+            const std::string& boundary,
+            size_t inputsize);
+};
+
+/**
+ * Parse and store HTTP query parameters
+ *
+ * It is preconfigured by manipulating the various conf_* fields and using the
+ * add() methods, before calling one of the parse_* methods.
+ */
+struct Params : public std::map<std::string, Param*>
+{
+    /// File parameters
+    std::map<std::string, FileParam*> files;
+
+    /// Maximum size of POST input data
+    size_t conf_max_input_size;
+
+    /// Maximum size of field data for one non-file field
+    size_t conf_max_field_size;
+
+    /**
+     * Whether to accept unknown fields.
+     *
+     * If true, unkown fields are stored as ParamMulti
+     *
+     * If false, unknown fields are ignored.
+     */
+    bool conf_accept_unknown_fields;
+
+    /**
+     * Whether to accept unknown file upload fields.
+     *
+     * If true, unkown fields are stored as FileParamMulti
+     *
+     * If false, unknown file upload fields are ignored.
+     */
+    bool conf_accept_unknown_file_fields;
+
+    /**
+     * Directory where we write uploaded files
+     *
+     * @warning: if it is not set to anything, it ignores all file uploads
+     */
+    std::string conf_outdir;
+
+    /**
+     * String containing blacklist characters that are replaced with "_" in
+     * the file name. If empty, nothing is replaced.
+     *
+     * This only applies to the basename: the pathname is ignored when
+     * building the local file name.
+     */
+    std::string conf_fname_blacklist;
+
+
+    Params();
+    ~Params();
+
+    /// Universal, automatic add method
+    template<typename TYPE>
+    TYPE* add(const std::string& name)
+    {
+        TYPE* res = new TYPE;
+        add(name, res);
+        return res;
+    }
+
+    /// Add a normal parameter to be parsed from the request
+    void add(const std::string& name, Param* param);
+
+    /// Add a file upload parameter to be parsed from the request
+    void add(const std::string& name, FileParam* param);
+
+    /**
+     * Get a normal fileld during form parsing. Depending on the value of
+     * conf_accept_unknown_fields, when handling a field that has not been
+     * added before it will either create it if missing, or just return NULL.
+     */
+    Param* obtain_field(const std::string& name);
+
+    /**
+     * Get a normal fileld during form parsing. Depending on the value of
+     * conf_accept_unknown_file_fields, when handling a field that has not been
+     * added before it will either create it if missing, or just return NULL.
+     */
+    FileParam* obtain_file_field(const std::string& name);
+
+    /// Get a field by name
+    Param* field(const std::string& name);
+
+    /// Get a file field by name
+    FileParam* file_field(const std::string& name);
+
+    /// Parse parameters as GET or POST according to request method
+    void parse_get_or_post(net::http::Request& req);
+
+    /// Parse parameters from urlencoded form data
+    void parse_urlencoded(const std::string& qstring);
+
+    /// Parse parameters from multipart/form-data
+    void parse_multipart(net::http::Request& req, size_t inputsize, const std::string& content_type);
+
+    /// Parse parameters from HTTP POST input
+    void parse_post(net::http::Request& req);
+};
+
 
 }
 }
