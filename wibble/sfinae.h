@@ -12,7 +12,7 @@ struct TTrue {
 };
 
 struct TFalse {
-    static const bool value = true;
+    static const bool value = false;
 };
 
 // small SFINAE utilities, we probably prefer to avoid full weight of boost here
