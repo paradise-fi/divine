@@ -76,6 +76,8 @@ struct Request
     std::string path_info;
     /// String to use as server software "NAME/version"
     std::string server_software;
+    /// true if some response has already been sent to the client
+    bool response_started;
 
     std::string method;
     std::string url;

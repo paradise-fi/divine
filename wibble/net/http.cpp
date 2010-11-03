@@ -67,7 +67,9 @@ void error404::send(Request& req)
 }
 
 Request::Request()
-    : server_software("wibble"), space_splitter("[[:blank:]]+", REG_EXTENDED)
+    : server_software("wibble"),
+      response_started(false),
+      space_splitter("[[:blank:]]+", REG_EXTENDED)
 {
 }
 
@@ -245,6 +247,7 @@ void Request::send_status_line(int code, const std::string& msg, const std::stri
     stringstream buf;
     buf << version << " " << code << " " << msg << "\r\n";
     send(buf.str());
+    response_started = true;
 }
 
 void Request::send_server_header()
