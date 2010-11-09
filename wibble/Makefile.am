@@ -47,7 +47,7 @@ wibblesys_HEADERS = \
     sys/exec.h \
     sys/fs.h \
     sys/signal.h \
-    sys/lockfile.h
+    sys/lockfile.h \
     sys/filelock.h
 
 wibblelog_HEADERS = \
