@@ -76,7 +76,7 @@ sub dumpmain() {
             print "void run_${set}_$_();\n";
         }
         
-        print "RunTest run_${set}[] = {\n";
+        print "RunTest run_${set}"."[] = {\n";
         print "\t{ \"$_\", run_${set}_$_ },\n" for (@{$tests{$set}});
         print "};\n";
     }
