@@ -88,8 +88,65 @@ bool Request::read_request()
     // Read request headers
     read_headers();
 
+    // Parse the url
+    script_name = "/";
+    size_t pos = url.find('?');
+    if (pos == string::npos)
+    {
+        path_info = url;
+        query_string.clear();
+    }
+    else
+    {
+        path_info = url.substr(0, pos);
+        query_string = url.substr(pos);
+    }
+
     // Message body is not read here
     return true;
+}
+
+std::string Request::path_info_head()
+{
+    size_t beg = path_info.find_first_not_of('/');
+    if (beg == string::npos)
+        return string();
+    else
+    {
+        size_t end = path_info.find('/', beg);
+        if (end == string::npos)
+            return path_info.substr(beg);
+        else
+            return path_info.substr(beg, end-beg);
+    }
+}
+
+std::string Request::pop_path_info()
+{
+    // Strip leading /
+    size_t beg = path_info.find_first_not_of('/');
+    if (beg == string::npos)
+    {
+        path_info.clear();
+        return string();
+    }
+    else
+    {
+        size_t end = path_info.find('/', beg);
+        string first;
+        if (end == string::npos)
+        {
+            first = path_info.substr(beg);
+            path_info.clear();
+        }
+        else
+        {
+            first = path_info.substr(beg, end-beg);
+            path_info = path_info.substr(end);
+        }
+        script_name = str::joinpath(script_name, first);
+        return first;
+    }
 }
 
 bool Request::read_buf(std::string& res, size_t size)
@@ -177,6 +234,8 @@ void Request::set_cgi_env()
     // TODO: is it really needed?
     // PATH_TRANSLATED — corresponding full path as supposed by server, if PATH_INFO is present.
     unsetenv("PATH_TRANSLATED");
+    // QUERY_STRING — the part of URL after ? character. Must be composed of name=value pairs separated with ampersands (such as var1=val1&var2=val2…) and used when form data are transferred via GET method.
+    setenv("QUERY_STRING", query_string.c_str(), 1);
     // SERVER_PORT — TCP port (decimal).
     setenv("SERVER_PORT", server_port.c_str(), 1);
     // REMOTE_HOST — host name of the client, unset if server did not perform such lookup.
@@ -187,12 +246,6 @@ void Request::set_cgi_env()
     setenv("SERVER_PROTOCOL", version.c_str(), 1);
     // REQUEST_METHOD — name of HTTP method (see above).
     setenv("REQUEST_METHOD", method.c_str(), 1);
-    // QUERY_STRING — the part of URL after ? character. Must be composed of name=value pairs separated with ampersands (such as var1=val1&var2=val2…) and used when form data are transferred via GET method.
-    size_t pos = url.find('?');
-    if (pos == string::npos)
-        setenv("QUERY_STRING", "", 1);
-    else
-        setenv("QUERY_STRING", url.substr(pos+1).c_str(), 1);
     // AUTH_TYPE — identification type, if applicable.
     unsetenv("AUTH_TYPE");
     // REMOTE_USER used for certain AUTH_TYPEs.

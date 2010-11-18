@@ -74,6 +74,7 @@ struct Request
     std::string server_port;
     std::string script_name;
     std::string path_info;
+    std::string query_string;
     /// String to use as server software "NAME/version"
     std::string server_software;
     /// true if some response has already been sent to the client
@@ -94,6 +95,11 @@ struct Request
      *
      * Sock will be positioned at the beginning of the request body, after the
      * empty line that follows the header.
+     *
+     * The request URL will be parsed in script_name, path_info and
+     * query_string. At the start, script_name is always / and path_info is the
+     * rest of the path in the url. One can move path components from path_info
+     * to script_name as the request is processed.
      *
      * @returns true if the request has been read, false if EOF was found
      * before the end of the headers.
@@ -119,27 +125,44 @@ struct Request
      */
     bool read_headers();
 
-    // Set the CGI environment variables for the current process using this
-    // request
+    /**
+     * Set the CGI environment variables for the current process using this
+     * request
+     */
     void set_cgi_env();
 
-    // Send the content of buf, verbatim, to the client
+    /// Send the content of buf, verbatim, to the client
     void send(const std::string& buf);
 
-    // Send the HTTP status line
+    /// Send the HTTP status line
     void send_status_line(int code, const std::string& msg, const std::string& version = "HTTP/1.0");
 
-    // Send the HTTP server header
+    /// Send the HTTP server header
     void send_server_header();
 
-    // Send the HTTP date header
+    /// Send the HTTP date header
     void send_date_header();
 
-    // Send a string as result
+    /// Send a string as result
     void send_result(const std::string& content, const std::string& content_type="text/html; charset=utf-8", const std::string& filename=std::string());
 
-    // Discard all input from the socket
+    /// Discard all input from the socket
     void discard_input();
+
+    /**
+     * Remove the first component from path_info, append it to script_name and
+     * return it.
+     *
+     * If path_info if empty or only consisting of '/', returns the empty string.
+     */
+    std::string pop_path_info();
+
+    /**
+     * Return the first component from path_info
+     *
+     * If path_info if empty or only consisting of '/', returns the empty string.
+     */
+    std::string path_info_head();
 };
 
 /// Base interface for GET or POST parameters
