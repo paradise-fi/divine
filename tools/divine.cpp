@@ -110,6 +110,8 @@ struct Main {
         res = selectGraph< Statistics >();
 #endif
         rep.finished( res );
+        if ( statistics )
+            Statistics::global().snapshot();
         Output::output().cleanup();
         rep.final( std::cout );
     }
