@@ -105,7 +105,6 @@ endif( NOT SHA1SUM )
 
 add_custom_target( check )
 add_custom_target( unit )
-add_custom_target( lcovd-unit )
 
 if( PROFILE )
   find_program( LCOV lcov )
@@ -116,33 +115,24 @@ if( PROFILE )
 endif( PROFILE )
 
 if( LCOV )
-  set( LCOV_RDIR "${divine_BINARY_DIR}/lcov-report" )
-  add_custom_target( lcov-clean
-    COMMAND mkdir -p ${LCOV_RDIR}
-    COMMAND ${LCOV} -d ${divine_SOURCE_DIR} -z
-    COMMAND ${LCOV} -c -i -d ${divine_SOURCE_DIR} -o ${LCOV_RDIR}/base.info
-  )
-
-  macro( lcov_collect id )
-    add_custom_target( lcov-collect-${id}
-      COMMAND mkdir -p ${LCOV_RDIR}
-      COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR} -c
-                      -o ${LCOV_RDIR}/collect-${id}.info || true
-      COMMAND ${LCOV} -d ${divine_SOURCE_DIR} --zerocounters || true
-    )
-  endmacro( lcov_collect )
+  set( LCOV_BIN "${LCOV}" )
+  set( LCOV_IN "${divine_BINARY_DIR}" )
+  set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
+  configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
+  execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
+  set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
 
   add_custom_target( lcov-report
-    COMMAND mkdir -p ${LCOV_RDIR}
+    COMMAND mkdir -p ${LCOV_OUT}
     COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
-                    -a ${LCOV_RDIR}/base.info
-                    -a ${LCOV_RDIR}/collect-1.info
-                    -a ${LCOV_RDIR}/collect-2.info
-                    -o ${LCOV_RDIR}/overall.info
+                    -a ${LCOV_OUT}/base.info
+                    -a ${LCOV_OUT}/collect-1.info
+                    -a ${LCOV_OUT}/collect-2.info
+                    -a ${LCOV_OUT}/collect-3.info
+                    -o ${LCOV_OUT}/overall.info
     COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-      ${LCOV_RDIR}/overall.info
+      ${LCOV_OUT}/overall.info
   )
-  add_dependencies( check lcov-clean )
 endif( LCOV )
 
 add_subdirectory( wibble )
@@ -174,15 +164,7 @@ if( GUI )
   endif()
 endif( GUI )
 
-add_dependencies( lcovd-unit unit )
-
-if( LCOV )
-  lcov_collect( "1" )
-  add_dependencies( lcovd-unit lcov-collect-1 )
-  add_dependencies( lcov-collect-1 unit )
-endif( LCOV )
-
-add_dependencies( check lcovd-unit )
+add_dependencies( check unit )
 add_dependencies( check functional )
 
 add_subdirectory( test )
