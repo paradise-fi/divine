@@ -25,10 +25,11 @@ struct BlobHeader {
 /**
  * A pointer to an adorned memory area. Basically an array of bytes which knows
  * its size and allows convenient (albeit type-unsafe) access to contents. The
- * array can be up to 2^14 (16k) bytes, the header is 2 bytes. Copies of the
- * Blob object share the array (i.e. this really behaves as a pointer). Users
- * are expected to manage associated memory explicitly (no reference counting
- * is done, for performance reasons).
+ * array can be up to 2^14 (16k) bytes, the header is 2 bytes (but occupies 4
+ * due to alignment anyway). Copies of the Blob object share the array
+ * (i.e. this really behaves as a pointer). Users are expected to manage
+ * associated memory explicitly (no reference counting is done, for performance
+ * reasons).
  *
  * This structure also provides convenient hashing and comparison. The equality
  * operator (==) is implemented in terms of the array contents, not in terms of

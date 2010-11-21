@@ -50,17 +50,15 @@ struct hash< int > {
 };
 
 /**
- * An implementation of high-performance hash table. May be used both as an
- * associative array and as an unordered set. To use a set, use Unit for the
- * _Value type parameter (in this case, the value storage is completely
- * optimised away, only memory for the keys is ever allocated).
+ * An implementation of high-performance hash table, used as a set. It's an
+ * open-hashing implementation with a combination of linear and quadratic
+ * probing. It also uses a hash-compacted prefilter to avoid fetches when
+ * looking up an item and the item stored at the current lookup position is
+ * distinct (a collision).
  *
- * The implementation is based on a dynamically growing hashtable with
- * quadratic probing for collision resolution. The initial size may be provided
- * to improve performance in cases where it is known there will be many
- * elements. Table growth is exponential, the default base is 2 and is
- * controlled by both collision rate and load ratio (see maxcollision and
- * growthreshold).
+ * An initial size may be provided to improve performance in cases where it is
+ * known there will be many elements. Table growth is exponential with base 2
+ * and is triggered at 75% load. (See maxcollision().)
  */
 template< typename _Item,
           typename _Hash = divine::hash< _Item >,
@@ -132,7 +130,6 @@ struct HashSet
 
     Item getCell( Cell c ) // const (bleh)
     {
-        // std::cerr << "get: " << c.hash << std::endl;
         size_t idx;
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( c.hash, i );
@@ -155,7 +152,6 @@ struct HashSet
 
     inline Item insertCell( Cell c, Table &table, int &used )
     {
-        // std::cerr << "insert: " << c.hash << std::endl;
         assert( valid( c.item ) ); // ensure key validity
 
         if ( !growing && m_used > (size() / 100) * 75 )
@@ -182,7 +178,6 @@ struct HashSet
     }
 
     void grow() {
-        // std::cerr << "grow..." << std::endl;
         if ( 2 * size() >= m_maxsize ) {
             std::cerr << "Sorry, ran out of space in the hash table!" << std::endl;
             abort();
