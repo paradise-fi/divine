@@ -127,7 +127,7 @@ struct dve_compiler: public dve_explicit_system_t
     }
 
     std::string process_state( int i, std::string state ) {
-        return state + "." + process_name( i ) + ".state";
+        return state + "._control." + process_name( i );
     }
 
     std::string channel_items( int i, std::string state ) {

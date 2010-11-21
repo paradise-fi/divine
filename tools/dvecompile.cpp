@@ -90,10 +90,9 @@ void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::st
             break;
 
         case T_DOT:
-            ostr<<state_name<<".";
-            ostr<<parent_table->get_process(parent_table->get_state(expr.get_ident_gid())->
-                                            get_process_gid())->get_name(); ostr<<".state"<<" == ";
-            ostr<<parent_table->get_state(expr.get_ident_gid())->get_lid();
+            ostr << in_state(
+                parent_table->get_state(expr.get_ident_gid())->get_process_gid(),
+                parent_table->get_state(expr.get_ident_gid())->get_lid(), state_name );
             break;
 
         case T_IMPLY:
@@ -206,6 +205,21 @@ void dve_compiler::gen_state_struct()
     string process_name = "UNINITIALIZED";
     line( "struct state_struct_t" );
     block_begin();
+
+    line( "struct" ); block_begin();
+    for ( size_int_t i=0; i!=state_creators_count; ++i )
+        if ( state_creators[i].type == state_creator_t::PROCESS_STATE ) {
+            dve_symbol_t *sym = get_symbol_table()->get_process(state_creators[i].gid);
+            dve_process_t *proc =
+                dynamic_cast< dve_process_t * >( get_process(state_creators[i].gid) );
+            int max = proc->get_state_count();
+            int bits = 1;
+            while ( max /= 2 ) ++ bits;
+            line( std::string( "uint32_t " ) + sym->get_name() + ":" + fmt( bits ) + ";" );
+        }
+    block_end();
+    line( "__attribute__((__packed__)) _control;" );
+
     for (size_int_t i=0; i!=state_creators_count; ++i)
     {
         switch (state_creators[i].type)
@@ -248,7 +262,6 @@ void dve_compiler::gen_state_struct()
 
                 process_name=
                     get_symbol_table()->get_process(state_creators[i].gid)->get_name();
-                line( "ushort_int_t state;" );
             }
             break;
             case state_creator_t::CHANNEL_BUFFER:
