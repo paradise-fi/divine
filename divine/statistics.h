@@ -23,6 +23,9 @@ struct NoStatistics {
     void sent( int, int ) {}
     void received( int, int ) {}
 
+    std::ostream *output;
+    bool gnuplot;
+
     static NoStatistics &global() {
         static NoStatistics *g = new NoStatistics;
         return *g;
@@ -45,6 +48,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     std::vector< PerThread * > threads;
     divine::MpiBase *mpi;
     int pernode, localmin;
+
+    bool gnuplot;
+    std::ostream *output;
 
     void enqueue( int id ) {
         thread( id ).enq ++;
@@ -96,7 +102,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             int sum = 0;
             for ( int j = 0; j < threads.size(); ++j )
                 printv( o, 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
-            printv( o, 10, sum, 0 );
+            if ( !gnuplot )
+                printv( o, 10, sum, 0 );
             o << std::endl;
         }
     }
@@ -108,6 +115,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     }
 
     void label( std::ostream &o, std::string text, bool d = true ) {
+        if ( gnuplot )
+            return;
+
         for ( int i = 0; i < threads.size() - 1; ++ i )
             o << (d ? "=====" : "-----");
         for ( int i = 0; i < (10 - text.length()) / 2; ++i )
@@ -121,10 +131,11 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         o << std::endl;
     }
 
-    void print( std::ostream &o ) {
+    void format( std::ostream &o ) {
         label( o, "QUEUES" );
-            matrix( o, diff );
+        matrix( o, diff );
 
+        if ( !gnuplot ) {
             label( o, " local", false );
             int sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
@@ -156,6 +167,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
                 printv( o, 9, thread( i ).hashsize, &sum );
             printv( o, 10, sum, 0 );
             o << std::endl;
+        }
     }
 
 #ifdef HAVE_MPI
@@ -215,14 +227,23 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     void send() {}
 #endif
 
+    void snapshot() {
+        std::stringstream str;
+        format( str );
+        if ( gnuplot )
+            str << std::endl;
+        if ( output )
+            *output << str.str() << std::flush;
+        else
+            Output::output().statistics() << str.str() << std::flush;
+    }
+
     void *main() {
         int i = 0;
         while ( true ) {
             if ( !mpi || mpi->master() ) {
                 wibble::sys::sleep( 1 );
-                std::stringstream str;
-                print( str );
-                Output::output().statistics() << str.str() << std::flush;
+                snapshot();
             }
 
             if ( mpi && !mpi->master() ) {
@@ -235,6 +256,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     Statistics() : mpi( 0 ), pernode( 1 ), localmin( 0 )
     {
+        output = 0;
+        gnuplot = false;
         resize( 1 );
     }
 

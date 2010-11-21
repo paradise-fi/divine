@@ -63,7 +63,7 @@ struct Main {
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
     StringOption *o_drawTrace, *o_output, *o_render;
-    StringOption *o_trail;
+    StringOption *o_trail, *o_gnuplot;
 
     bool dummygen;
     bool statistics;
@@ -95,6 +95,11 @@ struct Main {
         Report rep( config );
         report = &rep;
         Result res;
+
+        if ( o_gnuplot->boolValue() ) {
+            Statistics::global().gnuplot = true;
+            Statistics::global().output = new std::ofstream( o_gnuplot->stringValue().c_str() );
+        }
 
 #ifdef PERFORMANCE
         if ( statistics )
@@ -211,6 +216,9 @@ struct Main {
         o_statistics = common->add< BoolOption >(
             "statistics", 's', "statistics", "",
             "track communication and hash table load statistics" );
+        o_gnuplot= common->add< StringOption >(
+            "gnuplot-statistics", '\0', "gnuplot-statistics", "",
+            "output statistics in a gnuplot-friendly format" );
 
         o_por = common->add< BoolOption >(
             "por", 'p', "por", "",
