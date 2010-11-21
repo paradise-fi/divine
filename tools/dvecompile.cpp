@@ -164,6 +164,61 @@ void dve_compiler::gen_header()
     line();
 }
 
+void push_bytes( std::vector< char > &vec, dve_var_type_t t, int value ) {
+    if ( t == VAR_BYTE ) {
+        vec.push_back( value );
+        return;
+    }
+    if ( t == VAR_INT ) {
+        union {
+            char bytes[2];
+            sshort_int_t v;
+        };
+        v = value;
+        std::copy( bytes, bytes + 2, std::back_inserter( vec ) );
+    }
+}
+
+const char *typeOf( int tid ) {
+    if ( tid == 0 ) return "byte_t";
+    if ( tid == 1 ) return "sshort_int_t";
+    return 0;
+}
+
+int sizeOf( int tid ) {
+    if ( tid == 0 ) return sizeof(byte_t);
+    if ( tid == 1 ) return sizeof(sshort_int_t);
+    return 0;
+}
+
+void dve_compiler::push_initials( state_creator_t &creator )
+{
+    if ( creator.type == state_creator_t::VARIABLE ) {
+        if ( creator.array_size ) {
+            int elem;
+            for ( elem = 0; elem < initial_values_counts[creator.gid]; ++ elem )
+                push_bytes( initial_state, creator.var_type,
+                            initial_values[creator.gid].all_values[elem] );
+            for (; elem < creator.array_size; ++ elem )
+                push_bytes( initial_state, creator.var_type, 0 );
+        } else {
+            int v = initial_values_counts[creator.gid] ?
+                    initial_values[creator.gid].all_value : 0;
+            push_bytes( initial_state, creator.var_type, v );
+        }
+    }
+
+    if ( creator.type == state_creator_t::CHANNEL_BUFFER ) {
+        dve_symbol_t * symbol = get_symbol_table()->get_channel(creator.gid);
+        int size = 0;
+        push_bytes( initial_state, VAR_INT, 0 ); // the counter
+        for ( int j = 0; j < symbol->get_channel_type_list_size(); ++j )
+            size += sizeOf( symbol->get_channel_type_list_item( j ) );
+        for ( int i = 0; i < symbol->get_channel_buffer_size() * size; ++i )
+            initial_state.push_back( 0 );
+    }
+}
+
 void dve_compiler::gen_state_struct()
 {
     for (size_int_t i=0; i!=glob_var_count; i++)
@@ -172,11 +227,8 @@ void dve_compiler::gen_state_struct()
         if (var->is_const())
         {
             append( "const " );
-            if ( var->is_byte() )
-                append( "byte_t " );
-            else
-                append( "sshort_int_t " );
-
+            append( typeOf( var->get_var_type() ) );
+            append( " " );
             append( var->get_name() );
 
             if (var->is_vector())
@@ -207,6 +259,7 @@ void dve_compiler::gen_state_struct()
     block_begin();
 
     line( "struct" ); block_begin();
+    int total_bits = 0;
     for ( size_int_t i=0; i!=state_creators_count; ++i )
         if ( state_creators[i].type == state_creator_t::PROCESS_STATE ) {
             dve_symbol_t *sym = get_symbol_table()->get_process(state_creators[i].gid);
@@ -215,35 +268,34 @@ void dve_compiler::gen_state_struct()
             int max = proc->get_state_count();
             int bits = 1;
             while ( max /= 2 ) ++ bits;
-            line( std::string( "uint32_t " ) + sym->get_name() + ":" + fmt( bits ) + ";" );
+            total_bits += bits;
+            line( std::string( "uint16_t " ) + sym->get_name() + ":" + fmt( bits ) + ";" );
         }
+    int control_bytes = total_bits / 8;
+    if ( total_bits % 8 ) ++ control_bytes;
+
+    for ( int i = 0; i < control_bytes; ++i )
+        initial_state.push_back( 0 );
+
     block_end();
     line( "__attribute__((__packed__)) _control;" );
 
     for (size_int_t i=0; i!=state_creators_count; ++i)
     {
+        int gid = state_creators[i].gid;
+        push_initials( state_creators[ i ] );
+
         switch (state_creators[i].type)
         {
             case state_creator_t::VARIABLE:
             {
-                name=get_symbol_table()->get_variable(state_creators[i].gid)->get_name();
+                name=get_symbol_table()->get_variable(gid)->get_name();
+                append( typeOf( state_creators[i].var_type ) );
+                append( " " );
+                append( name );
                 if (state_creators[i].array_size)
-                {
-                    if (state_creators[i].var_type==VAR_BYTE)
-                        append( "byte_t " );
-                    else if (state_creators[i].var_type==VAR_INT)
-                        append( "sshort_int_t " );
-                    else gerr << "Unexpected error" << thr();
-                    line( name + "[" + fmt( state_creators[i].array_size ) + "];" );
-                }
-                else
-                {
-                    if (state_creators[i].var_type==VAR_BYTE)
-                        line( "byte_t " + name + ";" );
-                    else if (state_creators[i].var_type==VAR_INT)
-                        line( "sshort_int_t " + name + ";" );
-                    else gerr << "Unexpected error" << thr();
-                }
+                    append( "[" + fmt( state_creators[i].array_size ) + "]" );
+                line( ";" );
             }
             break;
             case state_creator_t::PROCESS_STATE:
@@ -261,27 +313,25 @@ void dve_compiler::gen_state_struct()
                 block_begin();
 
                 process_name=
-                    get_symbol_table()->get_process(state_creators[i].gid)->get_name();
+                    get_symbol_table()->get_process(gid)->get_name();
             }
             break;
             case state_creator_t::CHANNEL_BUFFER:
             {
-                name=get_symbol_table()->get_channel(state_creators[i].gid)->get_name();
+                name=get_symbol_table()->get_channel(gid)->get_name();
                 line( "struct" );
                 block_begin();
                 line( "ushort_int_t number_of_items;" );
                 line( "struct" );
                 block_begin();
                 dve_symbol_t * symbol =
-                    get_symbol_table()->get_channel(state_creators[i].gid);
+                    get_symbol_table()->get_channel(gid);
                 size_int_t item_count = symbol->get_channel_type_list_size();
 
-                for (size_int_t j=0; j<item_count; ++j)
-                    if (symbol->get_channel_type_list_item(j)==VAR_BYTE)
-                        line( "byte_t x" + fmt( j ) + ";" );
-                    else if (symbol->get_channel_type_list_item(j)==VAR_INT)
-                        line( "sshort_int_t x" + fmt( j ) + ";" );
-                    else gerr << "Unexpected error" << thr();
+                for (size_int_t j=0; j<item_count; ++j) {
+                    append( typeOf( symbol->get_channel_type_list_item(j) ) );
+                    line( " x" + fmt( j ) + ";" );
+                }
                 block_end();
                 line( "content[" + fmt( symbol->get_channel_buffer_size() ) + "];" );
                 block_end();
@@ -297,6 +347,7 @@ void dve_compiler::gen_state_struct()
         block_end();
         line( "__attribute__((__packed__)) " + process_name + ";" );
     }
+
     block_end();
     line( "__attribute__((__packed__));" );
 
@@ -308,12 +359,11 @@ void dve_compiler::gen_state_struct()
 void dve_compiler::gen_initial_state()
 {
     setAllocator( new generator::Allocator );
-    state_t initial_state =  dve_explicit_system_t::get_initial_state();
-    append( "char initial_state[] = {" );
-    for(int i = 0; i < initial_state.size; i++)
+    append( "char initial_state[] = { " );
+    for(int i = 0; i < initial_state.size(); i++)
     {
-        append( fmt( (unsigned int)(unsigned char)initial_state.ptr[i] ) );
-        if(i != initial_state.size - 1)
+        append( fmt( (unsigned int)(unsigned char)initial_state[i] ) );
+        if(i != initial_state.size() - 1)
             append( ", " );
     }
     line( "};" );
@@ -752,6 +802,7 @@ void dve_compiler::print_generator()
 
     line( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out ) {" );
     line( "    Blob b( *(setup->pool), state_size + setup->slack );" );
+    line( "    b.clear();" );
     line( "    memcpy(b.data() + setup->slack, initial_state, state_size);" );
     line( "    *out = b;" );
     line( "}" );
