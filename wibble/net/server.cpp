@@ -32,8 +32,6 @@
 #include <cstring>
 #include <cerrno>
 
-#include "config.h"
-
 using namespace std;
 
 namespace wibble {
