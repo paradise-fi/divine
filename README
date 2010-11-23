@@ -25,9 +25,10 @@ Build Instructions
 ------------------
 
 This package requires pthreads and a recent g++ (4.1 or later, tested under
-4.3.4). You will also need cmake (www.cmake.org, tested with 2.6 -- however,
-the configure script could download and compile it for you, just run configure
-and answer the question(s)).
+4.3.4). Alternatively, you can use the development versions of Clang, part of
+the LLVM project. You will also need cmake (www.cmake.org, tested with 2.6 --
+however, the configure script could download and compile it for you, just run
+configure and answer the question(s)).
 
 After unpacking the tarball, compile the source (the build system
 should give you fairly clear indication what's wrong in case of
