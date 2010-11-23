@@ -129,9 +129,16 @@ if( LCOV )
                     -a ${LCOV_OUT}/collect-1.info
                     -a ${LCOV_OUT}/collect-2.info
                     -a ${LCOV_OUT}/collect-3.info
+                    -o ${LCOV_OUT}/overall_everything.info
+    COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
+                    ${divine_SOURCE_DIR}/divine/*
+                    ${divine_SOURCE_DIR}/examples/*
+                    ${divine_SOURCE_DIR}/murphi/*
+                    ${divine_SOURCE_DIR}/tools/*
                     -o ${LCOV_OUT}/overall.info
     COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
       ${LCOV_OUT}/overall.info
+    VERBATIM
   )
 endif( LCOV )
 
