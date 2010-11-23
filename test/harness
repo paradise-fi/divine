@@ -26,6 +26,9 @@ tests="$@"
 
 for t_ in $tests; do
     t=`basename $t_`
+    test -n "$T" && {
+        echo $t | grep -q $T || continue
+    }
     printf "Running %-40s" "$t ..."
     out=`bash $t_ 2>&1`
     ret=$?
