@@ -280,6 +280,10 @@ void ChildProcess::waitForSuccess() {
 
 void ChildProcess::kill(int signal)
 {
+    if (_pid == -1)
+        throw wibble::exception::Consistency(
+                "killing child process",
+                "child process has not been started");
 	if (::kill(_pid, signal) == -1)
 	{
 		stringstream str;

@@ -60,9 +60,15 @@ public:
 	/// non-null, create a pipe connected to the corresponding file descriptor
 	/// of the child process and store the parent end in the std*fd variable.
 	pid_t forkAndRedirect(int* stdinfd = 0, int* stdoutfd = 0, int* stderrfd = 0);
-	
-	/// Get the pid of the child process or (pid_t)-1 if no child is running
-	pid_t pid() const { return _pid; }
+
+    /**
+     * Get the pid of the child process or (pid_t)-1 if no child is running
+     *
+     * Note: while ChildProcess::kill() has a safeguard against killing pid -1,
+     * if you are going to run ::kill on the output of pid() make sure to check
+     * what is the semanthics of kill() when pid is -1.
+     */
+    pid_t pid() const { return _pid; }
 
 	/// Wait for the child to finish, returing its exit status.  Return -1 if
 	/// no child is running.
