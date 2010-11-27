@@ -9,7 +9,7 @@ struct state {
 
 static inline struct state *make( CustomSetup *setup, char **to ) {
     int size = sizeof( struct state ) + setup->slack;
-    *to = pool_allocate_blob( setup->pool, size );
+    *to = pool_allocate_blob( setup->cpool, size );
     return (struct state *) ((*to) + setup->slack + 4); // FIXME
 }
 

@@ -87,10 +87,14 @@ struct SuccessorCache {
 };
 
 typedef struct CustomSetup {
+#ifdef __cplusplus
     union {
+#endif
         CPool *cpool; // the pool to obtain memory for new states from
+#ifdef __cplusplus
         divine::Pool *pool;
     };
+#endif
     void *custom; // per-instance data; never touched by DiVinE
 
     int slack; // state data starts at this offset. Set by DiVinE!
