@@ -11,10 +11,10 @@
 #ifndef DIVINE_GENERATOR_CUSTOM_H
 #define DIVINE_GENERATOR_CUSTOM_H
 
+#include <divine/generator/custom-api.h>
+
 namespace divine {
 namespace generator {
-
-#include <divine/generator/custom-api.h>
 
 /**
  * A binary model loader. The model is expected to be a shared object (i.e. .so

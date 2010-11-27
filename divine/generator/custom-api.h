@@ -7,7 +7,6 @@
 
 #define HINTCOUNT 128
 
-#ifndef __cplusplus
 typedef char *CBlob;
 
 typedef struct CPoolGroup
@@ -28,15 +27,21 @@ static inline CPoolGroup *pool_group( CPool *pool, int n ) {
     return (CPoolGroup *)(pool->group_array + n * pool->group_struct_size);
 }
 
-CPoolGroup *pool_extend( CPool *pool, int sz );
-void *pool_allocate( CPool *pool, int sz );
-void *pool_allocate_blob( CPool *pool, int sz );
-
-#else
-typedef divine::Blob CBlob;
-typedef divine::Pool CPool;
+#ifdef __cplusplus
+namespace divine {
+    struct Pool;
+};
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+    CPoolGroup *pool_extend( CPool *pool, int sz );
+    void *pool_allocate( CPool *pool, int sz );
+    void *pool_allocate_blob( CPool *pool, int sz );
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * The C-based interface for cached state generation. Caching in this context
@@ -82,7 +87,10 @@ struct SuccessorCache {
 };
 
 typedef struct CustomSetup {
-    CPool *pool; // the pool to obtain memory for new states from
+    union {
+        CPool *cpool; // the pool to obtain memory for new states from
+        divine::Pool *pool;
+    };
     void *custom; // per-instance data; never touched by DiVinE
 
     int slack; // state data starts at this offset. Set by DiVinE!
