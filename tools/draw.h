@@ -33,6 +33,7 @@ struct Draw : algorithm::Algorithm
     int drawn, maxdist, serial;
 
     std::string dot, output, render, trace;
+    bool labels;
     Table *intrace;
 
     Extension &extension( Node n ) {
@@ -74,6 +75,22 @@ struct Draw : algorithm::Algorithm
         }
     }
 
+    std::string escape( std::string s ) {
+        char buf[ s.length() * 2 ];
+        int i = 0, j = 0;
+        while ( i < s.length() ) {
+            char c = s[ i ++ ];
+            if ( c == '\\' || c == '\n' || c == '"' )
+                buf[ j++ ] = '\\';
+            if ( c == '\n' )
+                buf[ j++ ] = 'n';
+            else
+                buf[ j++ ] = c;
+        }
+        buf[ j ] = 0;
+        return buf;
+    }
+
     void dotNode( Node n, std::string color = "", bool dashed = false ) {
         stringstream str;
         str << extension( n ).serial << " [";
@@ -85,6 +102,10 @@ struct Draw : algorithm::Algorithm
             str << "shape=circle ";
         if ( dashed )
             str << "style=dashed ";
+
+        if ( labels )
+            str << "label=\"" << escape( g.showNode( n ) ) << "\"";
+
         str << "]\n";
         dot += str.str();
     }
@@ -156,6 +177,7 @@ struct Draw : algorithm::Algorithm
         output = c->output;
         render = c->render;
         trace = c->drawTrace;
+        labels = c->labels;
         drawn = 0;
         serial = 1;
     }

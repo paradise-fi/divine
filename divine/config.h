@@ -18,6 +18,7 @@ struct Config {
     std::string output;
     std::string drawTrace;
     std::string render;
+    bool labels;
 
     std::string m_algorithm, m_generator;
 

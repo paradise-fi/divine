@@ -62,6 +62,7 @@ struct Main {
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
+    BoolOption *o_labels;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
 
@@ -245,6 +246,8 @@ struct Main {
         o_render = drawing->add< StringOption >(
             "render", 'r', "render", "",
             "command to render the graphviz description [default=dot -Tx11]" );
+        o_labels = drawing->add< BoolOption >(
+            "labels", 'l', "labels", "", "draw state labels" );
 
         cmd_metrics->add( common );
         cmd_reachability->add( common );
@@ -346,6 +349,7 @@ struct Main {
         config.maxDistance = o_distance->intValue();
         config.output = o_output->stringValue();
         config.render= o_render->stringValue();
+        config.labels = o_labels->boolValue();
         config.drawTrace = o_drawTrace->stringValue();
 
         setupLimits();
