@@ -29,6 +29,7 @@ struct Custom : Common {
     typedef void (*dl_get_initial_t)(CustomSetup *, char **);
     typedef int (*dl_get_successor_t)(CustomSetup *, int, char *, char **);
     typedef bool (*dl_is_accepting_t)(CustomSetup *, char *, int);
+    typedef char *(*dl_show_node_t)(CustomSetup *, char *, int);
     typedef void (*dl_cache_successors_t)(CustomSetup *, SuccessorCache *);
 
     struct Dl {
@@ -36,10 +37,11 @@ struct Custom : Common {
         dl_get_initial_t get_initial;
         dl_get_successor_t get_successor;
         dl_is_accepting_t is_accepting;
+        dl_show_node_t show_node;
         dl_setup_t setup;
         dl_cache_successors_t cache_successors;
 
-        Dl() : get_initial( 0 ), get_successor( 0 ), is_accepting( 0 ),
+        Dl() : get_initial( 0 ), get_successor( 0 ), is_accepting( 0 ), show_node( 0 ),
                setup( 0 ), cache_successors( 0 ) {}
     } dl;
 
@@ -127,6 +129,7 @@ struct Custom : Common {
         dl.setup = (dl_setup_t) dlsym(dl.handle, "setup");
         dl.get_successor = (dl_get_successor_t) dlsym(dl.handle, "get_successor");
         dl.is_accepting = (dl_is_accepting_t) dlsym(dl.handle, "is_accepting");
+        dl.show_node = (dl_show_node_t) dlsym(dl.handle, "show_node");
         dl.cache_successors = (dl_cache_successors_t) dlsym(dl.handle, "cache_successors");
 
         if( !dl.get_initial )
@@ -171,7 +174,15 @@ struct Custom : Common {
             return false;
     }
 
-    std::string showNode( Node s ) { return "Foo."; } // XXX
+    std::string showNode( Node s ) {
+        if ( dl.show_node ) {
+            char *fmt = dl.show_node( &setup, s.pointer(), nodeSize( s ) );
+            std::string s( fmt );
+            ::free( fmt );
+            return s;
+        } else
+            return "()";
+    }
 
     void release( Node s ) { s.free( pool() ); }
 };
