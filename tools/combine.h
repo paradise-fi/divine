@@ -255,7 +255,8 @@ struct Combine {
             if ( o_propId->intValue() && o_propId->intValue() != id )
                 continue;
 
-            std::string dve = cpp( ltl_defs + "\n" + in_data + "\n" + buchi( *i ) + "\n" + system );
+            std::string prop = cpp( ltl_defs + "\n" + buchi( *i ) );
+            std::string dve = cpp( in_data + "\n" + prop + "\n" + system );
             output( id, dve, *i );
         }
     }
