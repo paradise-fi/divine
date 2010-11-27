@@ -188,7 +188,7 @@ endif( WIN32 )
 install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
 install(FILES COPYING RENAME COPYING.txt DESTINATION ./ COMPONENT sys)
 install(FILES AUTHORS RENAME AUTHORS.txt DESTINATION ./ COMPONENT sys)
-install(FILES WHATS_NEW RENAME WHATS_NEW.txt DESTINATION ./ COMPONENT sys)        
+install(FILES NEWS RENAME NEWS.txt DESTINATION ./ COMPONENT sys)        
 
 set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "DiViNE Distributed and Parallel Verification Environment" )
 set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
@@ -206,7 +206,7 @@ if(WIN32)
                             "./README.txt" "README"
                             "./COPYING.txt" "COPYING"
                             "./AUTHORS.txt" "AUTHORS"
-                            "./WHATS_NEW.txt" "WHATS_NEW")
+                            "./NEWS.txt" "NEWS")
   set(CPACK_PACKAGE_EXECUTABLES "" "")
   set(CPACK_NSIS_MODIFY_PATH ON)
 endif(WIN32)
