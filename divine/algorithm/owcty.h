@@ -560,7 +560,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         shared.size = 0;
         if ( c ) {
             this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTableSize();
+            shared.initialTable = c->initialTable;
         }
     }
 };

@@ -15,7 +15,7 @@ namespace algorithm {
 inline int workerCount( Config *c ) {
     if ( !c )
         return 1;
-    return c->workers();
+    return c->workers;
 }
 
 struct Hasher {
@@ -44,8 +44,8 @@ struct Equal {
 struct Algorithm
 {
     typedef Blob Node; // Umm.
-
     typedef HashSet< Node, Hasher, divine::valid< Node >, Equal > Table;
+    typedef divine::Config Config;
 
     Config *m_config;
     int m_slack;
@@ -104,7 +104,7 @@ struct Algorithm
         hasher.setSlack( real );
         equal.setSlack( real );
         if ( m_config ) { // this is the master instance
-            g.read( m_config->input() );
+            g.read( m_config->input );
         }
     }
 
@@ -114,7 +114,7 @@ struct Algorithm
         m_initialTable_ = 4096;
         m_initialTable = &m_initialTable_;
         if ( c ) {
-            want_ce = c->generateCounterexample();
+            want_ce = c->wantCe;
         }
     }
 

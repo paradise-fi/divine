@@ -16,12 +16,22 @@ namespace divine {
 
 template< typename > struct Simple;
 
+struct DrawConfig {
+    divine::Config *super;
+    int maxDistance;
+    std::string output;
+    std::string drawTrace;
+    std::string render;
+    bool labels;
+};
+
 template< typename G >
 struct Draw : algorithm::Algorithm
 {
     typedef Draw< G > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
+    typedef DrawConfig Config;
 
     struct Extension {
         int distance;
@@ -169,8 +179,8 @@ struct Draw : algorithm::Algorithm
         }
     }
 
-    Draw( Config *c = 0 )
-        : Algorithm( c, sizeof( Extension ) )
+    Draw( DrawConfig *c = 0 )
+        : Algorithm( c->super, sizeof( Extension ) )
     {
         initGraph( g );
         maxdist = c->maxDistance;

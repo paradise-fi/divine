@@ -355,7 +355,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         initGraph( shared.g );
         if ( c ) {
             this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTableSize();
+            shared.initialTable = c->initialTable;
         }
     }
 

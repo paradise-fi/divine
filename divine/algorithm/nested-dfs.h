@@ -69,9 +69,9 @@ struct NestedDFS : Algorithm
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        typedef LtlCE< G, wibble::Unit, wibble::Unit > CE;
-        CE::generateLinear( *this, g, ce_stack );
-        CE::generateLasso( *this, g, ce_lasso );
+        LtlCE< G, wibble::Unit, wibble::Unit > ce;
+        ce.generateLinear( *this, g, ce_stack );
+        ce.generateLasso( *this, g, ce_lasso );
         progress() << "done" << std::endl;
     }
 
@@ -192,13 +192,13 @@ struct NestedDFS : Algorithm
     {
         valid = true;
         initGraph( g );
-        parallel = c->workers() > 1;
-        *m_initialTable = c->initialTableSize();
+        parallel = c->workers > 1;
+        *m_initialTable = c->initialTable;
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
-            progress() << "Using table size " << c->initialTableSize()
+            progress() << "Using table size " << c->initialTable
                        << ", please use -i to override." << std::endl;
-            table().m_maxsize = c->initialTableSize();
+            table().m_maxsize = c->initialTable;
         }
         finished = false;
         inner.outer = this;

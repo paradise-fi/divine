@@ -76,6 +76,9 @@ struct Report
     bool m_finished;
     bool m_dumped;
     std::string mpi_info;
+    std::string algorithm;
+    std::string generator;
+    std::vector< std::string > reductions;
 
     Report( Config &c ) : config( c ),
                           sig( 0 ),
@@ -222,6 +225,16 @@ struct Report
 #endif
     }
 
+    std::string reduction_info() {
+        if ( reductions.empty() )
+            return "None";
+        std::stringstream str;
+        for ( std::vector< std::string >::iterator i = reductions.begin();
+              i != reductions.end(); ++i )
+            str << *i << ", ";
+        return std::string( str.str(), 0, str.str().length() - 2 );
+    }
+
     static void about( std::ostream &o ) {
         o << "Version: " << versionString() << std::endl;
         o << "Build-Date: " << buildDateString() << std::endl;
@@ -247,7 +260,7 @@ struct Report
     }
 
     void final( std::ostream &o ) {
-        if ( !config.report() || m_dumped )
+        if ( m_dumped )
             return;
         m_dumped = true;
 
@@ -263,7 +276,9 @@ struct Report
 #endif
         about( o );
         o << std::endl;
-        config.dump( o );
+        o << "Algorithm: " << algorithm << std::endl;
+        o << "Generator: " << generator << std::endl;
+        o << "Reductions: " << reduction_info() << std::endl;
         o << "MPI: " << mpi_info << std::endl;
         o << std::endl;
 #ifdef POSIX

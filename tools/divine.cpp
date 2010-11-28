@@ -52,12 +52,14 @@ void handler( int s ) {
 
 struct Main {
     Config config;
+    DrawConfig drawConfig;
     Output *output;
+    Report *report;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw;
     OptionGroup *common, *drawing;
-    BoolOption *o_verbose, *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
+    BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
@@ -77,7 +79,8 @@ struct Main {
     Compile compile;
 
     Main( int _argc, const char **_argv )
-        : dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
+        : report( 0 ),
+          dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
           compile( opts )
@@ -95,6 +98,7 @@ struct Main {
 
         Report rep( config );
         report = &rep;
+        ::report = &rep;
         Result res;
 
         if ( o_gnuplot->boolValue() ) {
@@ -124,12 +128,6 @@ struct Main {
     }
 
     void FIXME( std::string x ) __attribute__((noreturn)) { die( x ); }
-
-    void verbose( std::string bla )
-    {
-        if ( config.verbose() )
-            std::cerr << bla << std::endl;
-    }
 
     void setupSignals()
     {
@@ -176,8 +174,6 @@ struct Main {
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
 
-        o_verbose = opts.add< BoolOption >(
-            "verbose", 'v', "verbose", "", "more verbose operation" );
         o_curses = opts.add< BoolOption >(
             "curses", '\0', "curses", "", "use curses-based progress monitoring" );
 
@@ -237,6 +233,7 @@ struct Main {
             "set maximum BFS distance from initial state [default = 32]" );
         o_distance ->setValue( 32 );
 
+        // drawing options
         o_drawTrace = drawing->add< StringOption >(
             "draw-trace", '\0', "draw-trace", "",
             "draw and highlight a particular trace in the output" );
@@ -336,21 +333,18 @@ struct Main {
             die( "FATAL: no command specified" );
 
         if ( o_workers->boolValue() )
-            config.setWorkers( o_workers->intValue() );
-        else
-            config.setWorkers( 2 );
+            config.workers = o_workers->intValue();
+        // else default (currently set to 2)
 
-        config.setInput( input );
-        config.setVerbose( o_verbose->boolValue() );
-        config.setReport( o_report->boolValue() );
-        config.setGenerateCounterexample( !o_noCe->boolValue() );
+        config.input = input;
+        config.wantCe = !o_noCe->boolValue();
         statistics = o_statistics->boolValue();
 
-        config.maxDistance = o_distance->intValue();
-        config.output = o_output->stringValue();
-        config.render= o_render->stringValue();
-        config.labels = o_labels->boolValue();
-        config.drawTrace = o_drawTrace->stringValue();
+        drawConfig.maxDistance = o_distance->intValue();
+        drawConfig.output = o_output->stringValue();
+        drawConfig.render= o_render->stringValue();
+        drawConfig.labels = o_labels->boolValue();
+        drawConfig.drawTrace = o_drawTrace->stringValue();
 
         setupLimits();
 
@@ -359,27 +353,27 @@ struct Main {
                 std::string t = std::string( input, 0,
                                              input.rfind( '.' ) );
                 t += ".trail";
-                config.setTrailFile( t );
+                config.trailFile = t;
             } else
-                config.setTrailFile( o_trail->stringValue() );
+                config.trailFile = o_trail->stringValue();
         }
 
         if ( o_dispCe->boolValue() ) {
-            config.setCeFile( "-" );
+            config.ceFile = "-";
         }
 
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         if ( opts.foundCommand() == cmd_draw ) {
-            config.setWorkers( 1 ); // never runs in parallel
+            config.workers = 1; // never runs in parallel
             m_run = RunDraw;
         } else if ( opts.foundCommand() == cmd_verify ) {
             m_run = RunVerify;
         } else if ( opts.foundCommand() == cmd_ndfs ) {
             m_run = RunNdfs;
             if ( !o_workers->boolValue() )
-                config.setWorkers( 1 );
+                config.workers = 1;
         } else if ( opts.foundCommand() == cmd_owcty )
             m_run = RunOwcty;
         else if ( opts.foundCommand() == cmd_reachability )
@@ -391,13 +385,8 @@ struct Main {
         else
             die( "FATAL: Internal error in commandline parser." );
 
-        config.setInitialTableSize(
-            ( 1L << (o_initable->intValue()) ) / config.workers() );
-
-        if ( config.verbose() ) {
-            std::cerr << " === configured options ===" << std::endl;
-            config.dump( std::cerr );
-        }
+        config.initialTable =
+            ( 1L << (o_initable->intValue()) ) / config.workers;
     }
 
     template< typename Graph, typename Stats >
@@ -405,9 +394,9 @@ struct Main {
     {
         if ( m_run == RunVerify ) {
             Graph temp;
-            temp.read( config.input() );
+            temp.read( config.input );
 
-            if ( temp.hasProperty() && config.workers() > 1 )
+            if ( temp.hasProperty() && config.workers > 1 )
                 m_run = RunOwcty;
             else {
                 if ( temp.hasProperty() )
@@ -419,22 +408,22 @@ struct Main {
 
         switch ( m_run ) {
             case RunDraw:
-                config.setAlgorithm( "Draw" );
+                report->algorithm = "Draw";
                 return run< Draw< Graph >, Stats >();
             case RunReachability:
-                config.setAlgorithm( "Reachability" );
+                report->algorithm = "Reachability";
                 return run< algorithm::Reachability< Graph, Stats >, Stats >();
             case RunMetrics:
-                config.setAlgorithm( "Metrics" );
+                report->algorithm = "Metrics";
                 return run< algorithm::Metrics< Graph, Stats >, Stats >();
             case RunOwcty:
-                config.setAlgorithm( "OWCTY" );
+                report->algorithm = "OWCTY";
                 return run< algorithm::Owcty< Graph, Stats >, Stats >();
             case RunMap:
-                config.setAlgorithm( "MAP" );
+                report->algorithm = "MAP";
                 return run< algorithm::Map< Graph, Stats >, Stats >();
             case RunNdfs:
-                config.setAlgorithm( "NestedDFS" );
+                report->algorithm = "Nested DFS";
                 return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
             default:
                 die( "FATAL: Internal error choosing algorithm." );
@@ -444,23 +433,24 @@ struct Main {
     template< typename Stats >
     Result selectGraph()
     {
-        if ( str::endsWith( config.input(), ".dve" ) ) {
-            config.setGenerator( "DVE" );
+        if ( str::endsWith( config.input, ".dve" ) ) {
+            report->generator = "DVE";
             if ( o_por->boolValue() ) {
+                report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >();
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
             }
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );
-        } else if ( str::endsWith( config.input(), ".b" ) ) {
-            config.setGenerator( "NIPS" );
+        } else if ( str::endsWith( config.input, ".b" ) ) {
+            report->generator = "NIPS";
             return selectAlgorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >();
-        } else if ( str::endsWith( config.input(), ".so" ) ) {
-            config.setGenerator( "Custom" );
+        } else if ( str::endsWith( config.input, ".so" ) ) {
+            report->generator = "Custom";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
         } else if ( dummygen ) {
-            config.setGenerator( "Dummy" );
+            report->generator = "Dummy";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
         } else
 	    die( "FATAL: Unknown input file extension." );
@@ -487,10 +477,13 @@ struct Main {
         return wibble::Unit();
     }
 
+    template< typename C >
+    C *configure() { assert_die(); }
+
     template< typename Algorithm, typename Stats >
     Result run() {
         try {
-            Algorithm alg( &config );
+            Algorithm alg( configure< typename Algorithm::Config >() );
             setupParallel< Stats >( Preferred(), report, alg );
             return alg.run();
         } catch (std::exception &e) {
@@ -506,6 +499,13 @@ struct Main {
     }
 
 };
+
+template<> Config *Main::configure() { return &config; }
+template<> DrawConfig *Main::configure() {
+    drawConfig.super = &config;
+    return &drawConfig;
+}
+
 
 int main( int argc, const char **argv )
 {

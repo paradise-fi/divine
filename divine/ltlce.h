@@ -46,10 +46,18 @@ struct LtlCE {
     G *_g;
     Shared *_shared;
 
+    std::ostream *_o_ce, *_o_trail;
+
     G &g() { assert( _g ); return *_g; }
     Shared &shared() { assert( _shared ); return *_shared; }
 
-    LtlCE() : _g( 0 ), _shared( 0 ) {}
+    LtlCE() : _g( 0 ), _shared( 0 ), _o_ce( 0 ), _o_trail( 0 ) {}
+    ~LtlCE() {
+        if ( ( _o_ce != &std::cerr ) && ( _o_ce != &std::cout ) )
+            divine::safe_delete( _o_ce );
+        if ( ( _o_trail != &std::cerr ) && ( _o_trail != &std::cout ) )
+            divine::safe_delete( _o_trail );
+    }
 
     // XXX duplicated from visitor
     template< typename Hash, typename Worker >
@@ -127,7 +135,7 @@ struct LtlCE {
     }
 
     template< typename Alg >
-    static int successorNum( Alg &a, G &_g, Node current, Node next )
+    int successorNum( Alg &a, G &_g, Node current, Node next )
     {
         typename G::Successors succ = _g.successors( current );
         int edge = 0;
@@ -152,7 +160,7 @@ struct LtlCE {
     // Obtaining CE output
 
     template< typename Alg, typename T >
-    static std::vector< int > numericTrace( Alg &a, G &_g, T trace )
+    std::vector< int > numericTrace( Alg &a, G &_g, T trace )
     {
         std::vector< int > result;
         while ( !trace.empty() ) {
@@ -167,23 +175,38 @@ struct LtlCE {
         return result;
     }
 
+    std::ostream &filestream( std::ostream *&stream, std::string file ) {
+        if ( !stream ) {
+            if ( file.empty() )
+                stream = new std::stringstream();
+            else if ( file == "-" )
+                stream = &std::cerr;
+            else
+                stream = new std::ofstream( file.c_str() );
+        }
+        return *stream;
+    }
+
+    template < typename A >
+    std::ostream &o_ce( A &a ) { return filestream( _o_ce, a.config().ceFile ); }
+    template < typename A >
+    std::ostream &o_trail( A &a ) { return filestream( _o_trail, a.config().trailFile ); }
+
     template< typename Alg, typename T >
-    static std::string generateTrace( Alg &a, G &_g, T trace )
+    std::string generateTrace( Alg &a, G &_g, T trace )
     {
         std::stringstream o_tr_str;
-        std::ostream &o_ce = a.config().ceStream(),
-                     &o_tr = a.config().trailStream();
 
         std::vector< int > ntrace = numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
-            o_ce << _g.showNode( trace.back() ) << std::endl;
+            o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
             _g.release( trace.back() );
             trace.pop_back();
         }
 
         for ( int i = 0; i < ntrace.size(); ++i ) {
-            o_tr << ntrace[ i ] << std::endl;
+            o_trail( a ) << ntrace[ i ] << std::endl;
             o_tr_str << ntrace[ i ] << ",";
         }
 
@@ -192,18 +215,16 @@ struct LtlCE {
     }
 
     template< typename Alg, typename T >
-    static void generateLinear( Alg &a, G &_g, T trace ) {
-        a.config().ceStream() << std::endl << "===== Trace from initial ====="
-                              << std::endl << std::endl;
-        a.config().trailStream() << "# from initial" << std::endl;
+    void generateLinear( Alg &a, G &_g, T trace ) {
+        o_ce( a ) << std::endl << "===== Trace from initial =====" << std::endl << std::endl;
+        o_trail( a ) << "# from initial" << std::endl;
         a.result().iniTrail = generateTrace( a, _g, trace );
     }
 
     template< typename Alg, typename T >
-    static void generateLasso( Alg &a, G &_g, T trace ) {
-        a.config().ceStream() << std::endl << "===== The cycle ====="
-                              << std::endl << std::endl;
-        a.config().trailStream() << "# cycle" << std::endl;
+    void generateLasso( Alg &a, G &_g, T trace ) {
+        o_ce( a ) << std::endl << "===== The cycle =====" << std::endl << std::endl;
+        o_trail( a ) << "# cycle" << std::endl;
         a.result().cycleTrail = generateTrace( a, _g, trace );
     }
 
