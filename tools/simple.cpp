@@ -33,8 +33,8 @@ struct Main {
         Report report( config );
         Result res;
 
-        config.setAlgorithm( "Reachability" );
-        config.setGenerator( "DVE" );
+        report.algorithm = "Simple Reachability";
+        report.generator = "DVE";
 
         try {
             algorithm::Simple< generator::NDve > alg( &config );
@@ -95,11 +95,10 @@ struct Main {
             die( e.fullInfo() );
         }
 
-        config.setWorkers( o_workers->intValue() );
-        config.setInitialTableSize(
-            ( 2 << (o_initable->intValue()) ) / o_workers->intValue() );
-        config.setInput( input );
-        config.setReport( o_report->boolValue() );
+        config.workers = o_workers->intValue();
+        config.initialTable =
+            ( 2 << (o_initable->intValue()) ) / o_workers->intValue();
+        config.input = input;
 
         if ( access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );

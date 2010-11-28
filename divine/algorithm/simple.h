@@ -132,7 +132,7 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
         initGraph( shared.g );
         if ( c ) {
             this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTableSize();
+            shared.initialTable = c->initialTable;
         }
     }
 
