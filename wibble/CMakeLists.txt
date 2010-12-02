@@ -1,6 +1,18 @@
 project( wibble )
 include( test.cmake )
 
+include( CheckCXXSourceCompiles )
+check_cxx_source_compiles(
+ "#include <dirent.h>
+  int main() {
+      struct dirent *d;
+      (void)d->d_type;
+      return 0;
+  }" HAVE_STRUCT_DIRENT_D_TYPE )
+
+configure_file( ${wibble_SOURCE_DIR}/config.h.in ${wibble_BINARY_DIR}/config.h )
+add_definitions( -DHAVE_CONFIG_H )
+
 # glob through source files/headers
 file( GLOB WSRC_TOP *.cpp )
 file( GLOB WSRC_CMDL commandline/*.cpp )

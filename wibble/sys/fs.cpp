@@ -12,7 +12,7 @@
 /* Conditionally include config.h so there is a way of enabling the fast
  * Directory::isdir implementation if HAVE_STRUCT_DIRENT_D_TYPE is available
  */
-#include "config.h"
+#include <wibble/config.h>
 #endif
 
 namespace wibble {
