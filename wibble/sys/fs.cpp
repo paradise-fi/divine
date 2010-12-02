@@ -27,6 +27,11 @@ std::auto_ptr<struct stat> stat(const std::string& pathname)
 
 bool isDirectory(const std::string& pathname)
 {
+    return isdir(pathname);
+}
+
+bool isdir(const std::string& pathname)
+{
 	struct stat st;
 	if (::stat(pathname.c_str(), &st) == -1) {
 		if (errno == ENOENT)

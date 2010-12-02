@@ -68,7 +68,10 @@ void unlink(const std::string& fname);
  *
  * It also returns false if the pathname does not exist.
  */
-bool isDirectory(const std::string& pathname);
+bool isdir(const std::string& pathname);
+
+/// same as isdir, but with a legacy clumsy name
+bool isDirectory(const std::string& pathname) __attribute__ ((deprecated));
 
 /// Nicely wrap access to directories
 class Directory
