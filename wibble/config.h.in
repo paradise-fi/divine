@@ -1,3 +1,10 @@
 /* Define if there is a member named d_type in the struct describing directory
    headers. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
+
+/* autoconf macros that you can use with this config.h.in:
+ *
+ *  - HAVE_STRUCT_DIRENT_D_TYPE: gl_CHECK_TYPE_STRUCT_DIRENT_D_TYPE from gnulib
+ *
+ */
+
