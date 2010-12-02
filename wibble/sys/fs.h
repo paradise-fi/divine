@@ -57,6 +57,12 @@ void writeFile(const std::string &file, const std::string &data);
  */
 bool deleteIfExists(const std::string& file);
 
+/// Move \a src to \a dst, without raising exception if \a src does not exist
+void renameIfExists(const std::string& src, const std::string& dst);
+
+/// Delete the file
+void unlink(const std::string& fname);
+
 /**
  * Returns true if the given pathname is a directory, else false.
  *

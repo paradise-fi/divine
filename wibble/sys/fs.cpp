@@ -121,6 +121,20 @@ bool deleteIfExists(const std::string& file)
 		return true;
 }
 
+void renameIfExists(const std::string& src, const std::string& dst)
+{
+    int res = ::rename(src.c_str(), dst.c_str());
+    if (res < 0 && errno != ENOENT)
+        throw wibble::exception::System("moving " + src + " to " + dst);
+}
+
+void unlink(const std::string& fname)
+{
+    if (::unlink(fname.c_str()) < 0)
+        throw wibble::exception::File(fname, "cannot delete file");
+}
+
+
 #ifdef POSIX
 Directory::const_iterator Directory::begin()
 {
