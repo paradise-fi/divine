@@ -43,7 +43,10 @@ namespace wibble {
 namespace sys {
 
 /**
- * pthread mutex wrapper
+ * pthread mutex wrapper; WARNING: the class allows copying and assignment,
+ * but this is not always safe. You should never copy a locked mutex. It is
+ * however safe to copy when there is no chance of any of the running threads
+ * using the mutex.
  */
 class Mutex
 {
@@ -249,6 +252,9 @@ typedef MutexLockT< Mutex > MutexLock;
  * pthread condition wrapper.
  *
  * It works in association with a MutexLock.
+ *
+ * WARNING: the class allows copying and assignment; see Mutex: similar caveats
+ * apply. Do not copy or assign a Condition that may be in use.
  */
 class Condition
 {
