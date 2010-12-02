@@ -21,7 +21,10 @@ namespace fs {
 std::auto_ptr<struct stat> stat(const std::string& pathname);
 
 /// access() a filename
-bool access(const std::string &s, int m);
+bool access(const std::string& s, int m);
+
+/// Same as access(s, F_OK);
+bool exists(const std::string& s);
 
 /**
  * Get the absolute path of a file
@@ -41,8 +44,10 @@ void mkpath(const std::string& dir);
 /// The file itself will not get created.
 void mkFilePath(const std::string& file);
 
-/// Read file into memory. Throws exceptions on failure.
+/// Read whole file into memory. Throws exceptions on failure.
 std::string readFile(const std::string &file);
+
+/// Write \a data to \a file, replacing existing contents if it already exists
 void writeFile(const std::string &file, const std::string &data);
 
 /**

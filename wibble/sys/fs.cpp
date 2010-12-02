@@ -42,6 +42,11 @@ bool access(const std::string &s, int m)
 	return ::access(s.c_str(), m) == 0;
 }
 
+bool exists(const std::string& file)
+{
+    return sys::fs::access(file, F_OK);
+}
+
 std::string abspath(const std::string& pathname)
 {
 	if (pathname[0] == '/')
