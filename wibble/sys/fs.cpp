@@ -174,6 +174,23 @@ bool access(const std::string &s, int m)
 }
 #endif
 
+bool Directory::isdir(const const_iterator& i) const
+{
+#ifdef HAVE_STRUCT_DIRENT_D_TYPE
+	if (i->d_type == DT_DIR)
+		return true;
+	if (i->d_type != DT_UNKNOWN)
+		return false;
+#endif
+	// No d_type, we'll need to stat
+	std::auto_ptr<struct stat> st = stat(wibble::str::joinpath(m_path, *i));
+	if (st.get() == 0)
+		return false;
+	if (S_ISDIR(st->st_mode))
+		return true;
+    return false;
+}
+
 }
 }
 }

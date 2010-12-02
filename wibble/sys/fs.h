@@ -151,6 +151,9 @@ public:
 
 	/// End iterator
 	const_iterator end() const;
+
+    /// @return true if \a i points to a directory, else false
+    bool isdir(const const_iterator& i) const;
 };
 
 }
