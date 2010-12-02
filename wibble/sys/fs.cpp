@@ -8,6 +8,13 @@
 #include <errno.h>
 #include <malloc.h> // alloca on win32 seems to live there
 
+#ifdef HAVE_CONFIG_H
+/* Conditionally include config.h so there is a way of enabling the fast
+ * Directory::isdir implementation if HAVE_STRUCT_DIRENT_D_TYPE is available
+ */
+#include "config.h"
+#endif
+
 namespace wibble {
 namespace sys {
 namespace fs {
