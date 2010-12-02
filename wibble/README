@@ -17,6 +17,17 @@ a build dependency.
 Using embedded wibble
 =====================
 
+With autotools
+--------------
+
+You can embed wibble in an autotools project, following these instructions:
+
+ 1. add wibble to SUBDIRS in Makefile.am
+ 2. add AM_CONFIG_HEADER(wibble/config.h) to configure.ac
+ 3. you can use the gl_CHECK_TYPE_STRUCT_DIRENT_D_TYPE autoconf macro from
+    gnulib to define HAVE_STRUCT_DIRENT_D_TYPE: this will enable a faster
+    implementation of sys::fs::Directory::isdir on systems that support it
+
 Without darcs
 -------------
 
