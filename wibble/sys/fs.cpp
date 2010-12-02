@@ -117,7 +117,7 @@ void writeFile( const std::string &file, const std::string &data )
 
 bool deleteIfExists(const std::string& file)
 {
-	if (unlink(file.c_str()) != 0)
+	if (::unlink(file.c_str()) != 0)
 		if (errno != ENOENT)
 			throw wibble::exception::File(file, "removing file");
 		else
@@ -141,7 +141,7 @@ void unlink(const std::string& fname)
 
 void rmdir(const std::string& dirname)
 {
-    if (rmdir(dirname.c_str()) < 0)
+    if (::rmdir(dirname.c_str()) < 0)
         throw wibble::exception::System("cannot delete directory " + dirname);
 }
 
