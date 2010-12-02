@@ -63,6 +63,12 @@ void renameIfExists(const std::string& src, const std::string& dst);
 /// Delete the file
 void unlink(const std::string& fname);
 
+/// Remove the directory using rmdir(2)
+void rmdir(const std::string& dirname);
+
+/// Delete the directory \a dir and all its content
+void rmtree(const std::string& dir);
+
 /**
  * Returns true if the given pathname is a directory, else false.
  *

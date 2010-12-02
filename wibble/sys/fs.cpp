@@ -139,6 +139,25 @@ void unlink(const std::string& fname)
         throw wibble::exception::File(fname, "cannot delete file");
 }
 
+void rmdir(const std::string& dirname)
+{
+    if (rmdir(dirname.c_str()) < 0)
+        throw wibble::exception::System("cannot delete directory " + dirname);
+}
+
+void rmtree(const std::string& dir)
+{
+    Directory d(dir);
+    for (Directory::const_iterator i = d.begin(); i != d.end(); ++i)
+    {
+        if (*i == "." || *i == "..") continue;
+        if (d.isdir(i))
+            rmtree(str::joinpath(dir, *i));
+        else
+            unlink(str::joinpath(dir, *i));
+    }
+    rmdir(dir);
+}
 
 #ifdef POSIX
 Directory::const_iterator Directory::begin()
