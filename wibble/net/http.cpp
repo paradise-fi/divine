@@ -59,6 +59,7 @@ void error::send(Request& req)
     req.send_status_line(code, desc);
     req.send_date_header();
     req.send_server_header();
+    req.send_extra_response_headers();
     req.send("Content-Type: text/html; charset=utf-8\r\n");
     req.send(str::fmtf("Content-Length: %d\r\n", body.str().size()));
     req.send("\r\n");
@@ -337,11 +338,32 @@ void Request::send_date_header()
     send(buf.str());
 }
 
+void Request::send_extra_response_headers()
+{
+    stringstream buf;
+    for (map<string, string>::const_iterator i = extra_response_headers.begin();
+            i != extra_response_headers.end(); ++i)
+    {
+        // Truncate the body at the first newline
+        // FIXME: mangle in a better way
+        buf << i->first << ": ";
+        size_t pos = i->second.find('\n');
+        if (pos == string::npos)
+            buf << i->second;
+        else
+            buf << i->second.substr(0, pos);
+        buf << "\r\n";
+    }
+    if (!buf.str().empty())
+        send(buf.str());
+}
+
 void Request::send_result(const std::string& content, const std::string& content_type, const std::string& filename)
 {
     send_status_line(200, "OK");
     send_date_header();
     send_server_header();
+    send_extra_response_headers();
     send("Content-Type: " + content_type + "\r\n");
     if (!filename.empty())
         send("Content-Disposition: attachment; filename=" + filename + "\r\n");

@@ -91,6 +91,8 @@ struct Request
 
     wibble::net::mime::Reader mime_reader;
 
+    std::map<std::string, std::string> extra_response_headers;
+
     Request();
 
     /**
@@ -145,6 +147,9 @@ struct Request
 
     /// Send the HTTP date header
     void send_date_header();
+
+    /// Send headers in extra_response_headers
+    void send_extra_response_headers();
 
     /// Send a string as result
     void send_result(const std::string& content, const std::string& content_type="text/html; charset=utf-8", const std::string& filename=std::string());
