@@ -4,7 +4,7 @@
 /*
  * OO base class for process functions and child processes
  *
- * Copyright (C) 2003--2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003--2010  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -72,8 +72,6 @@ void setCoreSizeLimit(int value);
 
 /// Close stdin, stdout and stderr and detach from the tty
 void detachFromTTY();
-
-#endif
 
 }
 }

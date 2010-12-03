@@ -1,7 +1,7 @@
 /*
  * OO base class for process functions and child processes
  *
- * Copyright (C) 2003-2008  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003-2010  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,8 +33,11 @@
 #include <grp.h>			// getgr*, initgroups
 #include <errno.h>
 
+#include <cstring>
 #include <cstdlib>
 #include <sstream>
+
+extern char** environ;
 
 namespace wibble {
 namespace sys {
@@ -318,6 +321,84 @@ void setDataMemoryLimit(int value) { setLimit(RLIMIT_DATA, value); }
 void setCoreSizeLimit(int value) { setLimit(RLIMIT_CORE, value); }
 void setChildrenLimit(int value) { setLimit(RLIMIT_NPROC, value); }
 void setOpenFilesLimit(int value) { setLimit(RLIMIT_NOFILE, value); }
+
+#ifdef __linux__
+// Working setproctitle implementation for Linux
+
+static char** global_argv = NULL;
+static size_t global_argv_max_size = 0;
+
+void initproctitle(int argc, char **argv)
+{
+    // Make initproctitle idempotent
+    if (global_argv != NULL)
+        return;
+
+    // Count the number of items in the environment
+    size_t envc = 0;
+    for (char** e = environ; *e; ++e)
+        ++envc;
+
+    // At first, set things up so we only reuse argv
+    global_argv = argv;
+    global_argv_max_size = argv[argc-1] + strlen(argv[argc-1]) - argv[0];
+
+    if (!envc) return;
+
+    // There is an environment: try to move it so we can use even more space
+
+    // Total size of the environment
+    size_t env_size = environ[envc-1] + strlen(environ[envc-1]) - environ[0];
+
+    // Allocate and fall back to only_reuse_argv if it fails
+    char* env_copy = new char[env_size];
+    if (!env_copy)
+        return;
+
+    char** envp_copy = new char*[envc+1];
+    if (!envp_copy)
+    {
+        delete[] env_copy;
+        return;
+    }
+
+    // Copy of the whole environment string table
+    memcpy(env_copy, environ, env_size);
+
+    // Copy of the environment string pointers
+    envp_copy[0] = env_copy;
+    for (size_t i = 1; i < envc; ++i)
+        envp_copy[i] = envp_copy[i-1] + (environ[i] - environ[i-1]);
+
+    // Increase max_size to also use the environment space
+    global_argv_max_size += env_size;
+}
+
+void setproctitle(const std::string& title)
+{
+    if (!global_argv) return;
+
+    size_t size = title.size() + 1;
+    if (size > global_argv_max_size)
+        size = global_argv_max_size;
+
+    memcpy(global_argv[0], title.data(), size);
+    global_argv[0][size-1] = 0;
+    global_argv[1] = 0;
+}
+
+#else
+// If we are not on Linux we don't do anything
+
+/*
+ * FIXME: BSD systems have a native setproctitle() function that we could use,
+ * but I'd like a BSD programmer to take care of writing autotools and cmake
+ * tests for it and to test it.
+ */
+
+void initproctitle (int argc, char **argv) {}
+void setproctitle(const std::string& title) {}
+#endif
 
 }
 }
