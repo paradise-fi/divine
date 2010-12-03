@@ -35,6 +35,12 @@ namespace wibble {
 namespace net {
 namespace http {
 
+const char* error::what() const throw ()
+{
+    if (!msg.empty()) return msg.c_str();
+    return desc.c_str();
+}
+
 void error::send(Request& req)
 {
     stringstream body;

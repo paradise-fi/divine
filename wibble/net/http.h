@@ -26,6 +26,7 @@
 #include <wibble/regexp.h>
 #include <wibble/net/mime.h>
 #include <iosfwd>
+#include <stdexcept>
 
 namespace wibble {
 namespace net {
@@ -33,7 +34,7 @@ namespace http {
 
 struct Request;
 
-struct error
+struct error : public std::exception
 {
     int code;
     std::string desc;
@@ -43,9 +44,11 @@ struct error
         : code(code), desc(desc) {}
     error(int code, const std::string& desc, const std::string& msg)
         : code(code), desc(desc), msg(msg) {}
+    virtual ~error() throw () {}
+
+    virtual const char* what() const throw ();
 
     virtual void send(Request& req);
-
 };
 
 struct error400 : public error
