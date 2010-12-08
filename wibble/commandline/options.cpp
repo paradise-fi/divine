@@ -25,6 +25,7 @@ bool Bool::parse(const std::string& val)
 bool Bool::toBool(const bool& val) { return val; }
 int Bool::toInt(const value_type& val) { return val ? 1 : 0; }
 std::string Bool::toString(const value_type& val) { return val ? "true" : "false"; }
+bool Bool::init_val = false;
 
 int Int::parse(const std::string& val)
 {
@@ -37,6 +38,7 @@ int Int::parse(const std::string& val)
 bool Int::toBool(const int& val) { return static_cast<bool>(val); }
 int Int::toInt(const int& val) { return val; }
 std::string Int::toString(const int& val) { return str::fmt(val); }
+int Int::init_val = 0;
 
 std::string String::parse(const std::string& val)
 {
@@ -45,6 +47,7 @@ std::string String::parse(const std::string& val)
 bool String::toBool(const std::string& val) { return !val.empty(); }
 int String::toInt(const std::string& val) { return strtoul(val.c_str(), NULL, 10); }
 std::string String::toString(const std::string& val) { return val; }
+std::string String::init_val = std::string();
 
 #ifdef POSIX
 std::string ExistingFile::parse(const std::string& val)
@@ -55,6 +58,7 @@ std::string ExistingFile::parse(const std::string& val)
 }
 #endif
 std::string ExistingFile::toString(const std::string& val) { return val; }
+std::string ExistingFile::init_val = std::string();
 
 static string fmtshort(char c, const std::string& usage)
 {
@@ -64,12 +68,14 @@ static string fmtshort(char c, const std::string& usage)
 		return string("-") + c + " " + usage;
 }
 
-static string fmtlong(const std::string& c, const std::string& usage)
+static string fmtlong(const std::string& c, const std::string& usage, bool optional=false)
 {
-	if (usage.empty())
-		return string("--") + c;
-	else
-		return string("--") + c + "=" + usage;
+    if (usage.empty())
+        return string("--") + c;
+    else if (optional)
+        return string("--") + c + "[=" + usage + "]";
+    else
+        return string("--") + c + "=" + usage;
 }
 
 static string manfmtshort(char c, const std::string& usage)
@@ -80,12 +86,14 @@ static string manfmtshort(char c, const std::string& usage)
 		return string("\\-") + c + " \\fI" + usage + "\\fP";
 }
 
-static string manfmtlong(const std::string& c, const std::string& usage)
+static string manfmtlong(const std::string& c, const std::string& usage, bool optional=false)
 {
-	if (usage.empty())
-		return string("\\-\\-") + c;
-	else
-		return string("\\-\\-") + c + "=\\fI" + usage + "\\fP";
+    if (usage.empty())
+        return string("\\-\\-") + c;
+    else if (optional)
+        return string("\\-\\-") + c + "[=\\fI" + usage + "\\fP]";
+    else
+        return string("\\-\\-") + c + "=\\fI" + usage + "\\fP";
 }
 
 Option::Option() : hidden(false) {}
@@ -107,7 +115,7 @@ const std::string& Option::fullUsage() const
 		{
 			if (!m_fullUsage.empty())
 				m_fullUsage += ", ";
-			m_fullUsage += fmtlong(*i, usage);
+			m_fullUsage += fmtlong(*i, usage, arg_is_optional());
 		}
 	}
 	return m_fullUsage;
@@ -128,7 +136,7 @@ std::string Option::fullUsageForMan() const
 			i != longNames.end(); i++)
 	{
 		if (!res.empty()) res += ", ";
-		res += manfmtlong(*i, usage);
+		res += manfmtlong(*i, usage, arg_is_optional());
 	}
 
 	return res;

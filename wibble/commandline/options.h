@@ -18,6 +18,7 @@ struct Bool
 	static bool toBool(const value_type& val);
 	static int toInt(const value_type& val);
 	static std::string toString(const value_type& val);
+    static bool init_val;
 };
 
 struct Int
@@ -28,6 +29,7 @@ struct Int
 	static bool toBool(const value_type& val);
 	static int toInt(const value_type& val);
 	static std::string toString(const value_type& val);
+    static int init_val;
 };
 
 struct String
@@ -38,6 +40,7 @@ struct String
 	static bool toBool(const value_type& val);
 	static int toInt(const value_type& val);
 	static std::string toString(const value_type& val);
+    static std::string init_val;
 };
 
 struct ExistingFile
@@ -45,6 +48,7 @@ struct ExistingFile
 	typedef std::string value_type;
 	static std::string parse(const std::string& val);
 	static std::string toString(const value_type& val);
+    static std::string init_val;
 };
 
 /// Interface for a parser for one commandline option
@@ -90,6 +94,15 @@ protected:
 	 */
 	virtual bool parse(const std::string& param) = 0;
 
+    /**
+     * Notify that the option is present in the command line, but has no
+     * arguments
+     */
+    virtual void parse_noarg() = 0;
+
+    /// Return true if the argument to this function can be omitted
+    virtual bool arg_is_optional() const { return false; }
+
 public:
 	Option();
 	virtual ~Option() {}
@@ -132,8 +145,9 @@ protected:
 			const std::string& description = std::string())
 		: Option(name, shortName, longName, usage, description), m_value(false) {}
 
-	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { m_isset = true; m_value = true; return begin; }
-	virtual bool parse(const std::string&) { m_isset = true; m_value = true; return false; }
+	virtual ArgList::iterator parse(ArgList&, ArgList::iterator begin) { parse_noarg(); return begin; }
+	virtual bool parse(const std::string&) { parse_noarg(); return false; }
+	virtual void parse_noarg() { m_isset = true; m_value = true; }
 
 public:
 	bool boolValue() const { return m_value; }
@@ -150,7 +164,7 @@ protected:
 	typename T::value_type m_value;
 
 	SingleOption(const std::string& name)
-		: Option(name)
+		: Option(name), m_value(T::init_val)
 	{
 		usage = "<val>";
 	}
@@ -168,7 +182,7 @@ protected:
 	ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
 	{
 		if (begin == list.end())
-			throw exception::BadOption("no string argument found");
+			throw exception::BadOption("option requires an argument");
 		m_value = T::parse(*begin);
 		m_isset = true;
 		// Remove the parsed element
@@ -180,11 +194,15 @@ protected:
 		m_isset = true;
 		return true;
 	}
+    void parse_noarg()
+    {
+        throw exception::BadOption("option requires an argument");
+    }
 
 public:
-        void setValue( const typename T::value_type &a ) {
-            m_value = a;
-        }
+    void setValue( const typename T::value_type &a ) {
+        m_value = a;
+    }
 
 	typename T::value_type value() const { return m_value; }
 
@@ -197,35 +215,90 @@ public:
 	friend class Engine;
 };
 
+/**
+ * Single option whose value can be or not be specified.
+ *
+ * It works for long option style only: short options with an optional argument
+ * would be ambiguous.
+ */
+template<typename T>
+class SingleOptvalOption : public Option
+{
+protected:
+    typename T::value_type m_value;
+    bool m_hasval;
+
+    SingleOptvalOption(const std::string& name)
+        : Option(name)
+    {
+        usage = "<val>";
+    }
+    SingleOptvalOption(const std::string& name,
+            char shortName,
+            const std::string& longName,
+            const std::string& usage = std::string(),
+            const std::string& description = std::string())
+        : Option(name, 0, longName, usage, description)
+    {
+        if (shortName != 0)
+            throw wibble::exception::Consistency(
+                    "creating option " + name + " with optional value"
+                    "short options with optional values are not allowed");
+        if (usage.empty())
+            this->usage = "<val>";
+    }
+
+    ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+    {
+        throw wibble::exception::Consistency(
+                "parsing option with optional value"
+                "short options with optional values are not allowed");
+    }
+    bool parse(const std::string& param)
+    {
+        m_value = T::parse(param);
+        m_isset = true;
+        m_hasval = true;
+        return true;
+    }
+    void parse_noarg()
+    {
+        m_isset = true;
+        m_hasval = false;
+    }
+
+    virtual bool arg_is_optional() const { return true; }
+
+public:
+    bool hasValue() const { return m_hasval; }
+
+    void setValue( const typename T::value_type &a ) {
+        m_value = a;
+    }
+
+    typename T::value_type value() const { return m_value; }
+
+    friend class OptionGroup;
+    friend class Engine;
+};
+
 // Option needing a compulsory string value
 typedef SingleOption<String> StringOption;
 
-// Option needing a compulsory int value
-struct IntOption : public SingleOption<Int>
-{
-protected:
-	IntOption(const std::string& name) : SingleOption<Int>(name)
-	{
-		m_value = 0;
-	}
-	IntOption(const std::string& name,
-			char shortName,
-			const std::string& longName,
-			const std::string& usage = std::string(),
-			const std::string& description = std::string())
-		: SingleOption<Int>(name, shortName, longName, usage, description)
-	{
-		m_value = 0;
-	}
-public:
-	friend class OptionGroup;
-	friend class Engine;
-};
+// Option with an optional string value
+typedef SingleOptvalOption<String> OptvalStringOption;
 
-/**
- * Commandline option with a mandatory argument naming a file which must exist.
- */
+// Option needing a compulsory int value
+typedef SingleOption<Int> IntOption;
+
+// Option with an optional int value
+typedef SingleOptvalOption<Int> OptvalIntOption;
+
+/// Commandline option with a mandatory argument naming a file which must exist.
 typedef SingleOption<ExistingFile> ExistingFileOption;
+
+/// Commandline option with an optional argument naming a file which must exist.
+typedef SingleOptvalOption<ExistingFile> OptvalExistingFileOption;
 
 
 // Option that can be specified multiple times
@@ -266,6 +339,10 @@ protected:
 		m_values.push_back(T::parse(param));
 		return true;
 	}
+    void parse_noarg()
+    {
+        throw exception::BadOption("option requires an argument");
+    }
 
 public:
 	bool boolValue() const { return !m_values.empty(); }

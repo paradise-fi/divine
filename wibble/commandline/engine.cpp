@@ -101,19 +101,25 @@ std::pair<ArgList::iterator, bool> Engine::parseFirstIfKnown(ArgList& list, ArgL
 		// Split option and argument from "--foo=bar"
 		size_t sep = opt.find('=');
 		string name, arg;
+        bool has_arg;
 		if (sep == string::npos)
 		{
 			// No argument
 			name = opt.substr(2);
+            has_arg = false;
 		} else {
 			name = opt.substr(2, sep - 2);
 			arg = opt.substr(sep + 1);
+            has_arg = true;
 		}
 
 		map<string, Option*>::const_iterator engine = m_long.find(name);
 		if (engine == m_long.end())
 			return make_pair(begin, false);
-		engine->second->parse(arg);
+        if (has_arg)
+            engine->second->parse(arg);
+        else
+            engine->second->parse_noarg();
 
 		// Remove the parsed element
 		list.eraseAndAdvance(begin);
