@@ -10,7 +10,6 @@
 #include "system/explicit_system.hh"
 #include "system/dve/dve_explicit_system.hh"
 #include "common/bit_string.hh"
-#include "por/spor.hh"
 
 using namespace std;
 namespace divine { //We want Doxygen not to see namespace `dve'
