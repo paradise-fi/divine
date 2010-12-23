@@ -128,7 +128,7 @@ libwibble_la_SOURCES = \
 #libwibble_la_LIBADD = 
 #libwibble_la_LDFLAGS = -no-undefined
 
-EXTRA_DIST = README.repo libwibble.m4 libwibble.pc.in \
+EXTRA_DIST = README libwibble.m4 libwibble.pc.in \
     amorph.test.h \
     consumer.test.h \
     empty.test.h \
