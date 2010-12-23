@@ -382,7 +382,7 @@ void setproctitle(const std::string& title)
     if (size > global_argv_max_size)
         size = global_argv_max_size;
 
-    memcpy(global_argv[0], title.data(), size);
+    memcpy(global_argv[0], title.c_str(), size);
     global_argv[0][size-1] = 0;
     global_argv[1] = 0;
 }
