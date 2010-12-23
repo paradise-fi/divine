@@ -307,9 +307,9 @@ std::string decodeBase64(const std::string& str);
  *
  * Example code:
  * \code
- *   str::Split splitter("/");
+ *   str::Split splitter("/", myString);
  *   vector<string> split;
- *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
+ *   std::copy(splitter.begin(), splitter.end(), back_inserter(split));
  * \endcode
  */
 class Split
