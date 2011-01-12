@@ -255,7 +255,7 @@ struct Report
 #endif
         o << "MPI-Version: " << vers << "." << subvers << " (" << impl << ")" << std::endl;
 #else
-        o << "MPI-Vesrion: n/a" << std::endl;
+        o << "MPI-Version: n/a" << std::endl;
 #endif
     }
 
