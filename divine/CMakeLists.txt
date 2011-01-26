@@ -7,6 +7,8 @@ file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
                       legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
 file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
 
+file( GLOB SRC_COIN generator/coin/*.cc generator/coin/*.c generator/coin/parse/*.cc generator/coin/parse/*.c)
+
 file( GLOB SRC_BA ltl2ba/*.cc )
 file( GLOB H_BA ltl2ba/*.hh )
 
@@ -52,7 +54,7 @@ include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_BA} "${SHA1}.cpp"
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_COIN} ${SRC_BA} "${SHA1}.cpp"
     "${SHA1}.cpp.fake" pool_h_str.cpp circular_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )

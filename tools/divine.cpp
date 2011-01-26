@@ -14,6 +14,7 @@
 #include <divine/generator/dummy.h>
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
+#include <divine/generator/coin/coingenerator.h>
 
 // The algorithms.
 #include <divine/algorithm/reachability.h>
@@ -440,6 +441,18 @@ struct Main {
                 return selectAlgorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >();
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
+            }
+        } else if ( str::endsWith( config.input, ".coin" ) ) {
+#ifdef LCA
+            report->generator = "CoIn-LCA";
+#else
+	    report->generator = "CoIn";
+#endif
+            if ( o_por->boolValue() ) {
+                report->reductions.push_back( "POR" );
+                return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();
+            } else {
+                return selectAlgorithm< algorithm::NonPORGraph< generator::Coin >, Stats >();
             }
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );

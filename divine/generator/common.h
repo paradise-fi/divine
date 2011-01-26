@@ -60,6 +60,7 @@ struct Common {
     int setSlack( int s ) { alloc.setSlack( s ); return s; }
     Pool &pool() { return alloc.pool(); }
     bool hasProperty() { return false; }
+    void initPOR() {}
 };
 
 template< typename G >

@@ -68,7 +68,9 @@ struct PORGraph : generator::Extended< G > {
             _predCount( t, v );
     }
 
-    PORGraph() : _predCount( 0 ) {}
+    PORGraph() : _predCount( 0 ) {
+        this->g().initPOR();
+    }
 
     int setSlack( int s ) {
         m_algslack = s;
