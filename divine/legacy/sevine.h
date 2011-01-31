@@ -50,7 +50,6 @@
 #include "common/sysinfo.hh"
 #include "common/reporter.hh"
 #include "common/process_decomposition.hh"
-#include "por/spor.hh"
 #include "por/por.hh"
 #include "common/deb.hh"
 
