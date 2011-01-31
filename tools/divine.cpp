@@ -99,7 +99,8 @@ struct Main {
 
         Report rep( config );
         report = &rep;
-        ::report = &rep;
+        if ( o_report->boolValue() )
+            ::report = &rep;
         Result res;
 
         if ( o_gnuplot->boolValue() ) {
@@ -119,7 +120,8 @@ struct Main {
         if ( statistics )
             Statistics::global().snapshot();
         Output::output().cleanup();
-        rep.final( std::cout );
+        if ( o_report->boolValue() )
+            rep.final( std::cout );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
