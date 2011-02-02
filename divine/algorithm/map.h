@@ -218,6 +218,13 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
         if ( !extension( t ).parent.valid() )
             extension( t ).parent = f;
 
+        /* self loop */
+        if ( shared.g.isAccepting( f ) && f.pointer() == t.pointer() ) {
+            shared.ce.initial = t;
+            return visitor::TerminateOnTransition;
+        }
+
+        /* MAP arrived to its origin */
         if ( isAccepting( t ) && extension( f ).map == makeId( t ) ) {
             shared.ce.initial = t;
             return visitor::TerminateOnTransition;
