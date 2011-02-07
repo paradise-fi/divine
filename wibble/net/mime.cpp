@@ -1,7 +1,7 @@
 /*
  * net/mime - MIME utilities
  *
- * Copyright (C) 2010  Enrico Zini <enrico@enricozini.org>
+ * Copyright (C) 2010--2011  Enrico Zini <enrico@enricozini.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
