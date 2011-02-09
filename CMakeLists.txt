@@ -27,6 +27,7 @@ option( POOLS "use pool allocation for graph vertices" ON )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
+option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
 option( GUI "compile the Qt GUI" ON )
 option( MURPHI "enable Murphi model compiler" ON )
 option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
@@ -85,6 +86,20 @@ find_path( RX_PATH regex.h )
 include_directories( ${RX_PATH} )
 link_directories( ${RX_PATH} )
 
+if( LLVM )
+include( FindLLVM )
+endif()
+
+if( LLVM AND NOT LLVM_FOUND )
+    message( "-- WARNING: Could not find LLVM. Disabling LLVM support." )
+    set( LLVM OFF )
+else()
+  add_definitions( -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS )
+  add_definitions( -DHAVE_LLVM )
+  link_directories( ${LLVM_LIBRARY_DIRS} )
+endif()
+
+
 if( MPI AND NOT WIN32 )
 include( FindMPI )
 endif( MPI AND NOT WIN32 )
@@ -114,6 +129,7 @@ set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
   ${divine_BINARY_DIR}
   ${MPI_INCLUDE_PATH}
+  ${LLVM_INCLUDE_DIRS}
   ${divine_SOURCE_DIR}/divine/legacy )
 
 find_program( SHA1SUM sha1sum )

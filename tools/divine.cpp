@@ -15,6 +15,7 @@
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
 #include <divine/generator/coin/coingenerator.h>
+#include <divine/generator/llvm.h>
 
 // The algorithms.
 #include <divine/algorithm/reachability.h>
@@ -458,6 +459,13 @@ struct Main {
             }
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );
+        } else if ( str::endsWith( config.input, ".ll" ) ) {
+            report->generator = "LLVM";
+#ifdef HAVE_LLVM
+            return selectAlgorithm< algorithm::NonPORGraph< generator::LLVM >, Stats >();
+#else
+	    die( "FATAL: This binary was built without LLVM support." );
+#endif
         } else if ( str::endsWith( config.input, ".b" ) ) {
             report->generator = "NIPS";
             return selectAlgorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >();
