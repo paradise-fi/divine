@@ -30,6 +30,7 @@
 #include <divine/legacy/storage/explicit_storage.hh>
 #include <divine/legacy/system/dve/dve_prob_explicit_system.hh>
 #include <divine/legacy/common/sysinfo.hh>
+#include <divine/legacy/common/stateallocator.hh>
 //#include <divine/legacy/sevine.h>
 #include <divine/version.h>
 #include <pthread.h>
@@ -49,6 +50,19 @@ const int WHEN_TERMINATING = 5;
 
 char mode; // mode of runnig
 char type; // type of verification
+
+// Original allocator
+struct LegacyAllocator : StateAllocator {
+	virtual state_t duplicate_state( const state_t &state ) {
+		return divine::duplicate_state( state );
+	}
+	virtual state_t new_state( std::size_t size ) {
+		return divine::new_state( size );
+	}
+	virtual void delete_state( state_t &st ) {
+		return divine::delete_state( st );
+	}
+};
 
 // non-blocking FIFO
 
@@ -428,6 +442,8 @@ void *thread_function( void *ptr )
   state_ref_t pred_ref; //predecessors ref
   thread_state_ref_t thread_state_ref;
   dve_prob_explicit_system_t* sys = inicialization_info->sys;
+  LegacyAllocator allocator;
+  sys->setAllocator(&allocator);
 
   /* initialization ... */
   if(mode == 'd')
