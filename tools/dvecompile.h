@@ -169,7 +169,7 @@ struct dve_compiler: public dve_explicit_system_t
     void block_end() { deindent(); line( "}" ); }
 
     std::string in_state( int process, int state, std::string from_state ) {
-        return process_state( process, from_state ) + " == " + wibble::str::fmt( state );
+        return "(" + process_state( process, from_state ) + " == " + wibble::str::fmt( state ) + ")";
     }
 
     void setOutput( std::ostream &o ) {
