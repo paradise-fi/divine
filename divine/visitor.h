@@ -257,10 +257,9 @@ struct Parallel {
 
     inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
         int _to = owner( to, hint ), _from = worker.globalId();
-        Fifo< Blob > &fifo = worker.queue( _from, _to );
         Statistics::global().sent( _from, _to );
-        fifo.push( unblob< Node >( from ) );
-        fifo.push( unblob< Node >( to ) );
+        worker.submit( _from, _to, unblob< Node >( from ) );
+        worker.submit( _from, _to, unblob< Node >( to ) );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
@@ -282,32 +281,36 @@ struct Parallel {
     void run( BFV &bfv ) {
         worker.restart();
         while ( true ) {
-            if ( worker.fifo.empty() ) {
-                if ( worker.idle() )
-                    return;
-            } else {
+            if ( worker.workWaiting() ) {
+
+                int to = worker.globalId();
+
                 if ( worker.interrupted() ) {
                     while ( !worker.idle() ) {
-                        while ( !worker.fifo.empty() )
-                            worker.fifo.remove();
+                        for ( int from = 0; from < worker.peers(); ++from ) {
+                            while ( worker.comms().pending( from, to ) )
+                                worker.comms().take( from, to );
+                        }
                     }
                     return;
                 }
 
-                while ( !worker.fifo.empty() ) {
-                    Node f, t;
-                    f = worker.fifo.next();
-                    worker.fifo.remove();
-                    t = worker.fifo.next( true );
-                    worker.fifo.remove();
-                    int from_id = worker.fifo.m_last - 1; // FIXME m_last?
-                    if ( from_id < 0 )
-                        from_id = owner( f );
-                    Statistics::global().received( from_id, worker.globalId() );
-                    bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                for ( int from = 0; from < worker.peers(); ++from ) {
+                    while ( worker.comms().pending( from, to ) ) {
+                        Node f, t;
+                        f = worker.comms().take( from, to );
+                        while ( !worker.comms().pending( from, to ) ); /* wait a bit */
+                        t = worker.comms().take( from, to );
+                        Statistics::global().received( from, to );
+                        bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                    }
                 }
 
                 bfv.processQueue();
+
+            } else {
+                if ( worker.idle() )
+                    return;
             }
         }
     }

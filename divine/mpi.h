@@ -385,35 +385,54 @@ struct Mpi : MpiBase {
 
 };
 
+template< typename T >
+struct Matrix {
+    std::vector< std::vector< T > > matrix;
+
+    void resize( int x, int y ) {
+        matrix.resize( x );
+        for ( int i = 0; i < x; ++i )
+            matrix[ i ].resize( y );
+    }
+
+    std::vector< T > &operator[]( int i ) {
+        return matrix[ i ];
+    }
+};
+
+template< typename T > struct FifoMatrix;
+
 /**
  * A high-level MPI bridge. This structure is designed to integrate into the
  * Domain framework (see parallel.h). The addExtra mechanism of Parallel can be
  * used to plug in the MpiWorker into a Parallel setup. The MpiWorker then
  * takes care to relay
  */
-template< typename D >
+template< typename D, typename Comms = FifoMatrix< Blob > >
 struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
     D &m_domain;
     int recv, sent;
-    typedef typename D::Fifo Fifo;
 
     Pool pool;
-    std::vector< Fifo > fifo;
-    std::vector< std::vector< int32_t > > buffers;
-    std::vector< std::pair< bool, MPI::Request > > requests;
+    Matrix< std::vector< int32_t > > buffers;
+    Matrix< std::pair< bool, MPI::Request > >  requests;
     std::vector< int32_t > in_buffer;
 
     MpiWorker( D &d ) : m_domain( d ) {
-        fifo.resize( d.peers() * d.peers() );
-        buffers.resize( d.mpi.size() );
-        requests.resize( d.mpi.size() );
+        buffers.resize( d.peers(), d.peers() );
+        requests.resize( d.peers(), d.peers() );
         sent = recv = 0;
     }
 
     bool outgoingEmpty() {
-        for ( int i = 0; i < fifo.size(); ++i )
-            if ( !fifo[ i ].empty() )
-                return false;
+        for ( int from = 0; from < m_domain.peers(); ++from )
+            for ( int to = 0; to < m_domain.peers(); ++to ) {
+                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+                    continue;
+
+                if ( comms().pending( from, to ) )
+                    return false;
+            }
         return true;
     }
 
@@ -475,8 +494,7 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
 
     void receiveDataMessage( MPI::Status &status )
     {
-        Blob b;
-        int target;
+        typename Comms::T b;
 
         in_buffer.resize( status.Get_count( MPI::BYTE ) / 4 );
         MPI::COMM_WORLD.Recv( &in_buffer.front(), in_buffer.size() * 4,
@@ -485,17 +503,14 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
                               status.Get_tag(), status );
         std::vector< int32_t >::const_iterator i = in_buffer.begin();
 
-        // FIXME. This here hardcoding of pairwise blob relationship is rather
-        // evil, but necessary for correctness with regards to parallel visitor
-        // implementation. It is however a modularity violation and this whole
-        // pairing mess needs to be addressed somehow.
+        int from = *i++;
+        int to = *i++;
+        mpidebug() << "DATA: " << from << " -> " << to << std::endl;
+        assert_pred( m_domain.isLocalId, to );
+
         while ( i != in_buffer.end() ) {
-            target = *i++;
-            assert_pred( m_domain.isLocalId, target );
             i = b.read32( &pool, i );
-            m_domain.queue( -1, target ).push( b );
-            i = b.read32( &pool, i );
-            m_domain.queue( -1, target ).push( b );
+            m_domain.submit( from, to, b );
         }
         ++ recv;
     }
@@ -543,59 +558,66 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         return m_domain.mpi.mpidebug();
     }
 
+    Comms &comms() {
+        return m_domain.comms;
+    }
+
     Loop progress() {
         // Fill outgoing buffers from the incoming FIFO queues...
-        for ( int i = 0; i < fifo.size(); ++i ) {
-            int to = i / m_domain.peers(),
-              rank = to / m_domain.n;
-            if ( m_domain.isLocalId( to ) ) {
-                assert( fifo[ i ].empty() );
-                continue;
-            }
+        for ( int from = 0; from < m_domain.peers(); ++from ) {
+            for ( int to = 0; to < m_domain.peers(); ++to ) {
 
-            // Build up linear buffers for MPI send. We only do that on
-            // buffers that are not currently in-flight (request not busy).
+                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+                    continue;
 
-            // FIXME the pairing of messages is necessary because we currently
-            // do not maintain FIFO order for messages between a pair of
-            // endpoints (threads)... when this is addressed, the limitation
-            // here can be lifted
-            while ( !fifo[ i ].empty() && !requests[ rank ].first &&
-                    buffers[ rank ].size() < 100 * 1024)
-            {
-                buffers[ rank ].push_back( to );
+                /* initialise the buffer with from/to information */
+                if ( buffers[ from ][ to ].empty() ) {
+                    buffers[ from ][ to ].push_back( from );
+                    buffers[ from ][ to ].push_back( to );
+                }
 
-                Blob b = fifo[ i ].front();
-                fifo[ i ].pop();
-                b.write32( std::back_inserter( buffers[ rank ] ) );
-                b.free( pool );
-
-                b = fifo[ i ].front( true );
-                fifo[ i ].pop();
-                b.write32( std::back_inserter( buffers[ rank ] ) );
-                b.free( pool );
+                // Build up linear buffers for MPI send. We only do that on
+                // buffers that are not currently in-flight (request not busy).
+                while ( comms().pending( from, to ) && !requests[ from ][ to ].first &&
+                        buffers[ from ][ to ].size() < 100 * 1024 )
+                {
+                    typename Comms::T b = comms().take( from, to );
+                    b.write32( std::back_inserter( buffers[ from ][ to ] ) );
+                    b.free( pool );
+                }
             }
         }
 
         // ... and flush the buffers.
-        for ( int to = 0; to < buffers.size(); ++ to ) {
-            if ( requests[ to ].first ) {
-                if ( requests[ to ].second.Test() ) {
-                    buffers[ to ].clear();
-                    requests[ to ].first = false;
+        for ( int from = 0; from < m_domain.peers(); ++from ) {
+            for ( int to = 0; to < m_domain.peers(); ++to ) {
+
+                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+                    continue;
+
+                if ( requests[ from ][ to ].first ) {
+                    if ( requests[ from ][ to ].second.Test() ) {
+                        buffers[ from ][ to ].clear();
+                        requests[ from ][ to ].first = false;
+                    }
+                    continue;
                 }
-                continue;
+
+                /* the first 2 elements are the from/to designation */
+                if ( buffers[ from ][ to ].size() <= 2 )
+                    continue;
+
+                mpidebug() << "SENDING: " << from << " -> " << to << std::endl;
+                mpidebug() << "BUFFER: " << buffers[ from ][ to ][ 0 ] << ", "
+                           << buffers[ from ][ to ][ 1 ] << " ... " << std::endl;
+                int rank = to / m_domain.n;
+                requests[ from ][ to ].first = true;
+                requests[ from ][ to ].second = MPI::COMM_WORLD.Isend(
+                    &buffers[ from ][ to ].front(),
+                    buffers[ from ][ to ].size() * 4,
+                    MPI::BYTE, rank, TAG_ID );
+                ++ sent;
             }
-
-            if ( buffers[ to ].empty() )
-                continue;
-
-            requests[ to ].first = true;
-            requests[ to ].second = MPI::COMM_WORLD.Isend(
-                    &buffers[ to ].front(),
-                    buffers[ to ].size() * 4,
-                    MPI::BYTE, to, TAG_ID );
-            ++ sent;
         }
 
         // NB. The call to lastMan() here is first, since it needs to be done
@@ -661,14 +683,6 @@ struct Mpi : MpiBase {
 
 template< typename D >
 struct MpiWorker {
-    struct Fifos {
-        Fifo< Blob > &operator[]( int ) __attribute__((noreturn)) {
-            assert_die();
-        }
-    };
-
-    Fifos fifo;
-
     void interrupt() {}
     void start() {}
 

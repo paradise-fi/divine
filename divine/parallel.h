@@ -135,7 +135,7 @@ struct BarrierThread : RunThread< T >, Terminable {
     }
 };
 
-template< typename > struct Domain;
+template< typename, typename > struct Domain;
 
 /**
  * A building block of two-dimensional communication matrix primitive. The
@@ -146,44 +146,40 @@ template< typename > struct Domain;
  * This class in itself is a single row of such a matrix, representing
  * *incoming* queues for a single thread. See also Domain and DomainWorker.
  */
-template< typename T >
-struct FifoVector
+template< typename _T >
+struct FifoMatrix
 {
-    int m_last;
+    typedef _T T;
     typedef divine::Fifo< T > Fifo;
-    std::vector< Fifo > m_vector;
+    std::vector< std::vector< Fifo > > m_matrix;
 
-    bool empty() {
-        for ( int i = 0; i < m_vector.size(); ++i ) {
-            Fifo &fifo = m_vector[ (m_last + i) % m_vector.size() ];
-            if ( !fifo.empty() )
-                return false;
-        }
-        return true;
+    void validate( int from, int to ) {
+        assert_leq( from, m_matrix.size() - 1 );
+        assert_leq( to, m_matrix[ from ].size() - 1 );
+    }
+
+    bool pending( int from, int to ) {
+        validate( from, to );
+        return !m_matrix[ from ][ to ].empty();
     };
 
-    T &next( bool wait = false ) {
-        if ( wait )
-            return m_vector[ m_last ].front( wait );
-
-        while ( m_vector[ m_last ].empty() )
-            m_last = (m_last + 1) % m_vector.size();
-        return m_vector[ m_last ].front( wait );
+    void submit( int from, int to, T value ) {
+        validate( from, to );
+        m_matrix[ from ][ to ].push( value );
     }
 
-    Fifo &operator[]( int i ) {
-        assert_leq( i, m_vector.size() );
-        return m_vector[ i ];
+    T take( int from, int to ) {
+        validate( from, to );
+        T r = m_matrix[ from ][ to ].front();
+        m_matrix[ from ][ to ].pop();
+        return r;
     }
 
-    void remove() {
-        while ( m_vector[ m_last ].empty() )
-            m_last = (m_last + 1) % m_vector.size();
-        m_vector[ m_last ].pop();
+    void resize( int size ) {
+        m_matrix.resize( size );
+        for ( int i = 0; i < size; ++i )
+            m_matrix[ i ].resize( size );
     }
-
-    void resize( int i ) { m_vector.resize( i, Fifo() ); }
-    FifoVector() : m_last( 0 ) {}
 };
 
 /**
@@ -198,15 +194,13 @@ struct FifoVector
  * parallel sections as needed, using domain().parallel().run( ... ). The
  * master is expected to call becomeMaster( ... ) in its constructor.
  */
-template< typename T >
+template< typename T, typename Comms = FifoMatrix< Blob > >
 struct DomainWorker {
     typedef divine::Fifo< Blob > Fifo;
-
     typedef wibble::Unit IsDomainWorker;
 
-    Domain< T > *m_domain;
+    Domain< T, Comms > *m_domain;
     bool is_master;
-    FifoVector< Blob > fifo;
     int m_id;
     bool m_interrupt, m_busy;
 
@@ -222,24 +216,22 @@ struct DomainWorker {
     void becomeMaster( Shared *shared = 0, int n = 4 ) {
         is_master = true;
         assert( !m_domain );
-        m_domain = new Domain< T >( shared, n );
+        m_domain = new Domain< T, Comms >( shared, n );
     }
 
-    Domain< T > &master() {
+    Domain< T, Comms > &master() {
         return domain();
     }
 
-    Domain< T > &domain() {
+    Domain< T, Comms > &domain() {
         assert( m_domain );
         return *m_domain;
     }
 
-    void connect( Domain< T > &dom ) {
+    void connect( Domain< T, Comms > &dom ) {
         assert( !m_domain );
         m_domain = &dom;
         m_id = dom.obtainId( *this );
-        // FIXME this whole fifo allocation business is an ugly hack...
-        fifo.resize( peers() + 1 );
     }
 
     int peers() {
@@ -257,7 +249,10 @@ struct DomainWorker {
     bool isBusy() { return m_busy; }
 
     bool workWaiting() {
-        return !this->fifo.empty();
+        for ( int from = 0; from < peers(); ++from )
+            if ( master().comms.pending( from, globalId() ) )
+                return true;
+        return false;
     }
 
     int globalId() {
@@ -292,10 +287,14 @@ struct DomainWorker {
         return &master().parallel().m_threads[ localId() ];
     }
 
-    /// Find a queue used for passing messages between a pair of workers.
-    Fifo &queue( int from, int to ) {
+    /// Submit a message.
+    void submit( int from, int to, typename Comms::T value ) {
         assert( from < peers() );
-        return master().queue( from, to );
+        return master().submit( from, to, value );
+    }
+
+    Comms &comms() {
+        return master().comms;
     }
 
     ~DomainWorker() {
@@ -309,9 +308,10 @@ struct DomainWorker {
  * the master. Cf. DomainWorker. You should not need to instantiate this
  * manually.
  */
-template< typename T >
+template< typename T, typename _Comms = FifoMatrix< Blob > >
 struct Domain {
-    typedef divine::Fifo< Blob > Fifo;
+    typedef _Comms Comms;
+    Comms comms;
 
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
@@ -386,6 +386,9 @@ struct Domain {
     }
 
     void setupIds() {
+        comms.resize( peers() ); // FIXME kinda out of place, here, but in the
+                                 // ctor we don't have the right peers() figure
+                                 // yet :(
         minId = lastId = n * mpi.rank();
         maxId = (n * (mpi.rank() + 1)) - 1;
     }
@@ -422,13 +425,8 @@ struct Domain {
             parallel().mpiWorker.interrupt();
     }
 
-    Fifo &queue( int from, int to )
-    {
-        if ( isLocalId( to ) ) {
-            barrier().wakeup( &parallel().thread( to - minId ) );
-            return parallel().instance( to - minId ).fifo[ from + 1 ];
-        } else
-            return parallel().mpiWorker.fifo[ from + to * peers() ];
+    void submit( int from, int to, typename Comms::T value ) {
+        comms.submit( from, to, value );
     }
 
     Domain( typename T::Shared *shared = 0, int _n = 4 )
