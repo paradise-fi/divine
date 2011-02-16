@@ -28,7 +28,9 @@ int yylex();
 #include <string>
 #include <queue>
 #include <set>
+#ifdef LCA
 #include <tr1/unordered_set>
+#endif
 #include <iostream>
 
 #include "../bit_set.h"

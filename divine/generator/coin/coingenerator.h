@@ -6,7 +6,9 @@
 #include <stdexcept>
 #include <list>
 #include <sstream>
+#ifdef LCA
 #include <tr1/unordered_set>
+#endif
 
 #include "../common.h"
 #include "state.h"
@@ -39,7 +41,9 @@ struct label_hasher {
 /**
  * unordered set from the C++0x STL proposal.
  */
+#ifdef LCA
 typedef std::tr1::unordered_set<label_t, label_hasher> label_set;
+#endif
 
 class Coin: public Common {
 
