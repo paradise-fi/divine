@@ -9,6 +9,13 @@
 using namespace divine;
 using namespace wibble;
 
+template< typename N >
+inline Blob blob( const N &n ) {
+    Blob b( sizeof( N ) );
+    b.template get< N >() = n;
+    return b;
+}
+
 struct TestVisitor {
     struct NMTree {
         typedef int Node;
@@ -134,7 +141,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->globalId() ) {
-                push( this->queue( this->globalId(), t % this->peers() ), t );
+                this->submit( this->globalId(), t % this->peers(), blob( t ) );
                 return visitor::IgnoreTransition;
             }
             shared.trans ++;
@@ -156,21 +163,21 @@ struct TestVisitor {
                 bfv.exploreFrom( shared.initial );
             }
             while ( shared.seen != shared.n / this->peers() ) {
-                if ( this->fifo.empty() )
+                if ( !this->comms().pending( this->globalId() ) )
                     continue;
-                assert_eq( this->fifo.next().template get< int >()
-                             % this->peers(),
+
+                Blob next = this->comms().take( this->globalId() );
+                assert_eq( next.template get< int >() % this->peers(),
                            this->globalId() );
                 shared.trans ++;
-                bfv.expand( unblob< Node >( this->fifo.next() ) );
-                this->fifo.remove();
+                bfv.expand( unblob< Node >( next ) );
             }
         }
 
         void _finish() { // parallel
-            while ( !this->fifo.empty() ) {
+            while ( this->comms().pending( this->globalId() ) ) {
                 shared.trans ++;
-                this->fifo.remove();
+                this->comms().take( this->globalId() );
             }
         }
 
@@ -220,7 +227,7 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( owner( t ) != this->globalId() ) {
-                push( this->queue( this->globalId(), owner( t ) ), t );
+                this->submit( this->globalId(), owner( t ), blob( t ) );
                 return visitor::IgnoreTransition;
             }
             assert_eq( owner( t ), this->globalId() );
@@ -247,15 +254,16 @@ struct TestVisitor {
                 bfv.exploreFrom( unblob< Node >( shared.initial ) );
             }
             while ( true ) {
-                if ( this->fifo.empty() ) {
+                if ( this->comms().pending( this->globalId() ) ) {
+                    Blob next = this->comms().take( this->globalId() );
+
+                    assert_eq( owner( unblob< Node >( next ) /*.template get< int >() % this->peers()*/ ),
+                               this->globalId() );
+                    shared.trans ++;
+                    bfv.expand( unblob< Node >( next ) );
+                } else {
                     if ( this->idle() )
                         return;
-                } else {
-                    assert_eq( this->fifo.next().template get< int >()
-                            % this->peers(), this->globalId() );
-                    shared.trans ++;
-                    bfv.expand( unblob< Node >( this->fifo.next() ) );
-                    this->fifo.remove();
                 }
             }
         }

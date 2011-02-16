@@ -163,6 +163,13 @@ struct FifoMatrix
         return !m_matrix[ from ][ to ].empty();
     };
 
+    bool pending( int to ) {
+        for ( int from = 0; from < m_matrix.size(); ++from )
+            if ( pending( from, to ) )
+                return true;
+        return false;
+    }
+
     void submit( int from, int to, T value ) {
         validate( from, to );
         m_matrix[ from ][ to ].push( value );
@@ -173,6 +180,13 @@ struct FifoMatrix
         T r = m_matrix[ from ][ to ].front();
         m_matrix[ from ][ to ].pop();
         return r;
+    }
+
+    T take( int to ) {
+        for ( int from = 0; from < m_matrix.size(); ++from )
+            if ( pending( from, to ) )
+                return take( from, to );
+        assert_die();
     }
 
     void resize( int size ) {
