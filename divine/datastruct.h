@@ -11,52 +11,6 @@
 
 namespace divine {
 
-template< typename T, typename Enable = wibble::Unit >
-struct HasCircular {
-    static const bool value = false;
-};
-
-template< typename T >
-struct HasCircular< T, typename T::CircularSupport > {
-    static const bool value = true;
-};
-
-template< typename G, typename C1, typename C2 >
-wibble::Unit fillCircularTedious( G &g, C1 &in, C2 &out )
-{
-    assert_eq( out.space(), out.size() );
-    while ( !in.empty() ) {
-        int i = 0;
-        typename G::Successors s = g.successors( in[ 0 ] );
-        while ( !s.empty() ) {
-            if ( out.space() < 2 ) {
-                out.unadd( i );
-                return wibble::Unit();
-            }
-            out.add( s.from() );
-            out.add( s.head() );
-            s = s.tail();
-            i += 2;
-        }
-        in.drop( 1 );
-    }
-    return wibble::Unit();
-}
-
-template< typename G, typename C1, typename C2 >
-typename wibble::EnableIf< HasCircular< G > >::T
-fillCircular( G &g, C1 &in, C2 &out ) {
-    g.fillCircular( in, out );
-    return wibble::Unit();
-}
-
-template< typename G, typename C1, typename C2 >
-typename wibble::EnableIf< wibble::TNot< HasCircular< G > > >::T
-fillCircular( G &g, C1 &in, C2 &out )
-{
-    return fillCircularTedious( g, in, out );
-}
-
 template< typename Graph, typename Statistics >
 struct Queue {
     Graph &g;
@@ -129,60 +83,6 @@ struct Queue {
     Node from() { return Node(); }
 
     Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ), id( 0 ) {}
-};
-
-template< typename Graph, typename Statistics >
-struct BufferedQueue {
-    typedef typename Graph::Node Node;
-    Circular< Node, 256 > m_in;
-    Circular< Node, 4096 > m_out;
-    std::deque< Node > m_queue;
-    Graph &g;
-
-    void pushSuccessors( const Node &t )
-    {
-        if ( !m_in.full() ) {
-            m_in.add( t );
-        } else {
-            m_queue.push_back( t );
-        }
-    }
-
-    void checkFilled() {
-        if ( m_out.count() >= 2 )
-            return;
-        while ( !m_in.full() && !m_queue.empty() ) {
-            m_in.add( m_queue.front() );
-            m_queue.pop_front();
-        }
-        fillCircular( g, m_in, m_out );
-    }
-
-    std::pair< Node, Node > next() {
-        checkFilled();
-        Node a = m_out[0],
-             b = m_out[1];
-        return std::make_pair( a, b );
-    }
-
-    bool empty() {
-        checkFilled();
-        return m_out.empty();
-    }
-
-    void pop() {
-        checkFilled();
-        m_out.drop( 2 );
-        checkFilled();
-    }
-
-    void clear() { while ( !empty() ) pop(); }
-
-    bool finished() { return false; }
-    void popFinished() {}
-    Node from() { return Node(); }
-
-    BufferedQueue( Graph &_g ) : g( _g ) {}
 };
 
 template< typename Graph, typename Statistics >
