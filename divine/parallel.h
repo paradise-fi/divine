@@ -329,8 +329,8 @@ struct Domain {
 
     struct Parallel : divine::Parallel< T, BarrierThread >
     {
-        Domain< T > *m_domain;
-        MpiWorker< Domain< T > > mpiWorker;
+        Domain< T, Comms > *m_domain;
+        MpiWorker< Domain< T, Comms >, Comms > mpiWorker;
 
         template< typename Shared, typename F >
         void run( Shared &sh, F f ) {
@@ -361,19 +361,18 @@ struct Domain {
             m_domain->mpi.runInRing( f );
         }
 
-        Parallel( Domain< T > &dom, int _n )
+        Parallel( Domain< T, Comms > &dom, int _n )
             : divine::Parallel< T, BarrierThread >( _n ),
               m_domain( &dom ), mpiWorker( dom )
         {
         }
     };
 
-
-    Mpi< T, Domain< T > > mpi;
+    Mpi< T, Domain< T, Comms > > mpi;
     Barrier< Terminable > m_barrier;
 
     int minId, maxId, lastId;
-    std::map< DomainWorker< T >*, int > m_ids;
+    std::map< DomainWorker< T, Comms >*, int > m_ids;
     Parallel *m_parallel;
 
     int n;
@@ -407,7 +406,7 @@ struct Domain {
         maxId = (n * (mpi.rank() + 1)) - 1;
     }
 
-    int obtainId( DomainWorker< T > &t ) {
+    int obtainId( DomainWorker< T, Comms > &t ) {
         if ( !lastId ) {
             setupIds();
         }
