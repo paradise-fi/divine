@@ -104,6 +104,18 @@ struct Blob
         return *reinterpret_cast< T * >( data() + off );
     }
 
+    template< typename T >
+    int get( int off, T &t ) {
+        t = *reinterpret_cast< T * >( data() + off );
+        return off + sizeof( T );
+    }
+
+    template< typename T >
+    int put( int off, T t ) {
+        *reinterpret_cast< T * >( data() + off ) = t;
+        return off + sizeof( T );
+    }
+
     void copyTo( Blob &where ) const
     {
         assert_eq( where.size(), size() );
