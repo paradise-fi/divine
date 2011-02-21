@@ -16,10 +16,10 @@ namespace divine {
 typedef uint32_t hash_t;
 
 struct BlobHeader {
-    uint16_t size:14;
-    uint16_t permanent:1;
-    uint16_t heap:1;
-    uint16_t align; // ...
+    uint32_t size:24;
+    uint32_t permanent:1;
+    uint32_t heap:1;
+    uint32_t align:6;
 };
 
 /**
