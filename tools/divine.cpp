@@ -36,6 +36,10 @@
 #include <sys/resource.h>
 #endif
 
+#ifdef HAVE_LLVM
+#include <llvm/Support/Threading.h>
+#endif
+
 using namespace divine;
 using namespace wibble;
 using namespace commandline;
@@ -462,6 +466,9 @@ struct Main {
         } else if ( str::endsWith( config.input, ".ll" ) ) {
             report->generator = "LLVM";
 #ifdef HAVE_LLVM
+            if ( config.workers > 1 && !::llvm::llvm_start_multithreaded() )
+                die( "FATAL: This binary is linked to single-threaded LLVM.\n"
+                     "Multi-threaded LLVM is required for parallel algorithms." );
             return selectAlgorithm< algorithm::NonPORGraph< generator::LLVM >, Stats >();
 #else
 	    die( "FATAL: This binary was built without LLVM support." );
