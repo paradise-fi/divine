@@ -123,7 +123,7 @@ struct Pool {
         Group g;
         g.item = bytes;
         Block b;
-        b.size = 4096 * bytes;
+        b.size = std::min( std::max( size_t( 1024 * 1024 ), bytes ), 4096 * bytes );
         b.start = new char[ b.size ];
         g.blocks.push_back( b );
         g.current = b.start;
