@@ -282,6 +282,7 @@ struct BadCast : public Consistency
     }
 };
 
+#ifndef NO_RTTI
 template< typename From, typename To >
 struct BadCastExt : public BadCast
 {
@@ -294,6 +295,7 @@ struct BadCastExt : public BadCast
                                                        + " to "
                                                        + typeid( To ).name(); }
 };
+#endif
 
 /**
  * Exception thrown when some value is out of range
