@@ -5,6 +5,7 @@
 #ifdef POSIX
 #include <fcntl.h>
 #include <sys/select.h>
+#endif
 
 #include <deque>
 #include <cerrno>
@@ -45,8 +46,12 @@ struct Pipe {
                 }
 
                 if ( wrote == -1 ) {
-                    if ( errno == EAGAIN || errno == EWOULDBLOCK )
+                    if ( blocking( errno ) )
+#ifdef POSIX
                         sched_yield();
+#else
+                        ;
+#endif
                     else
                         throw wexcept::System( "writing to pipe" );
                 }
@@ -91,8 +96,10 @@ struct Pipe {
     {
         if ( p == -1 )
             return;
+#ifdef POSIX
         if ( fcntl( fd, F_SETFL, O_NONBLOCK ) == -1 )
             throw wexcept::System( "fcntl on a pipe" );
+#endif
     }
     Pipe() : fd( -1 ), _eof( false ) {}
 
@@ -118,11 +125,19 @@ struct Pipe {
         return _eof;
     }
 
+    static bool blocking( int err ) {
+#ifdef POSIX
+        return err == EAGAIN || err == EWOULDBLOCK;
+#else
+	return err == EAGAIN;
+#endif
+    }
+
     int readMore() {
         assert( valid() );
         char _buffer[1024];
         int r = ::read( fd, _buffer, 1023 );
-        if ( r == -1 && errno != EAGAIN && errno != EWOULDBLOCK )
+        if ( r == -1 && !blocking( errno ) )
             throw wexcept::System( "reading from pipe" );
         else if ( r == -1 )
             return 0;
@@ -159,6 +174,7 @@ struct Pipe {
 
     /* Only returns on eof() or when data is buffered. */
     void wait() {
+#ifdef POSIX
         assert( valid() );
         fd_set fds;
         FD_ZERO( &fds );
@@ -170,6 +186,9 @@ struct Pipe {
             FD_SET( fd, &fds );
             select( fd + 1, &fds, 0, 0, 0 );
         }
+#else
+        sleep( 1 );
+#endif
     }
     std::string nextLineBlocking() {
         assert( valid() );
@@ -189,5 +208,4 @@ struct Pipe {
 
 }
 }
-#endif
 #endif
