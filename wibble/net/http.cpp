@@ -218,6 +218,7 @@ void Request::set_cgi_env()
 {
     // Set CGI server-specific variables
 
+#ifdef POSIX // FIXME
     // SERVER_SOFTWARE — name/version of HTTP server.
     setenv("SERVER_SOFTWARE", server_software.c_str(), 1);
     // SERVER_NAME — host name of the server, may be dot-decimal IP address.
@@ -281,6 +282,7 @@ void Request::set_cgi_env()
                 name.append(1, '_');
         setenv(name.c_str(), i->second.c_str(), 1);
     }
+#endif
 }
 
 void Request::send(const std::string& buf)
@@ -314,7 +316,11 @@ void Request::send_date_header()
 {
     time_t now = time(NULL);
     struct tm t;
+#ifdef POSIX
     gmtime_r(&now, &t);
+#else
+    t = *gmtime(&now);
+#endif
     char tbuf[256];
     size_t size = strftime(tbuf, 256, "%a, %d %b %Y %H:%M:%S GMT", &t);
     if (size == 0)

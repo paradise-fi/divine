@@ -1,6 +1,10 @@
 #ifndef WIBBLE_SYS_FILELOCK_H
 #define WIBBLE_SYS_FILELOCK_H
 
+#include <wibble/sys/macros.h>
+
+#ifdef POSIX
+
 #include <fcntl.h>
 
 namespace wibble {
@@ -45,4 +49,5 @@ private:
 }
 
 // vim:set ts=4 sw=4:
+#endif
 #endif

@@ -22,6 +22,8 @@
 #include <wibble/exception.h>
 #include <wibble/string.h>
 
+#ifdef POSIX
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -224,4 +226,6 @@ int TCPServer::accept_loop()
 
 }
 }
+
+#endif
 // vim:set ts=4 sw=4:

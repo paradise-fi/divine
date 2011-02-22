@@ -152,6 +152,7 @@ void rmdir(const std::string& dirname)
         throw wibble::exception::System("cannot delete directory " + dirname);
 }
 
+#ifdef POSIX
 void rmtree(const std::string& dir)
 {
     Directory d(dir);
@@ -166,7 +167,6 @@ void rmtree(const std::string& dir)
     rmdir(dir);
 }
 
-#ifdef POSIX
 Directory::const_iterator Directory::begin()
 {
 	DIR* dir = opendir(m_path.c_str());
@@ -191,14 +191,6 @@ bool Directory::valid()
 		return false;
 	return true;
 }
-#endif
-
-#ifdef _WIN32
-bool access(const std::string &s, int m)
-{
-	return 1; /* FIXME */
-}
-#endif
 
 bool Directory::isdir(const const_iterator& i) const
 {
@@ -216,6 +208,15 @@ bool Directory::isdir(const const_iterator& i) const
 		return true;
     return false;
 }
+
+#endif
+
+#ifdef _WIN32
+bool access(const std::string &s, int m)
+{
+	return 1; /* FIXME */
+}
+#endif
 
 }
 }

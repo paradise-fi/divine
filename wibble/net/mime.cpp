@@ -21,6 +21,7 @@
 #include <wibble/net/mime.h>
 #include <wibble/exception.h>
 #include <wibble/string.h>
+#include <unistd.h>
 
 using namespace std;
 

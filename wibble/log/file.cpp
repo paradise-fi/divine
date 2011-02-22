@@ -25,9 +25,11 @@ FileSender::~FileSender()
 
 void FileSender::send(Level level, const std::string& msg)
 {
+#ifdef POSIX // FIXME
 	// Write it all in a single write(2) so multiple processes can log to
 	// the same file
 	sys::fs::FileLock lock(out, F_WRLCK);
+#endif
 
     // Seek to end of file
     if (lseek(out, 0, SEEK_END) < 0)
