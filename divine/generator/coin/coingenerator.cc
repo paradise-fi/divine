@@ -214,10 +214,12 @@ Coin::Successors Coin::ample(Node compressed_state) {
             if (tr->is_sync()) {
                 if ((!tree_nodes[tr->get_automaton()]->in_composition)
                         && (!tree_nodes[tr->get_automaton2()]->in_composition)) {
+                    delete tr;
                     continue;
                 }
             } else {
                 if (!tree_nodes[tr->get_automaton()]->in_composition) {
+                    delete tr;
                     continue;
                 }
             }
