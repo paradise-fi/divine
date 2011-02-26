@@ -24,12 +24,13 @@
 #include <wibble/sys/macros.h>
 #include <wibble/exception.h>
 
-#ifdef POSIX
 #include <sys/types.h>
 
 namespace wibble {
 namespace sys {
 namespace process {
+
+#ifdef POSIX
 
 /// Pretty-print the return value of a process into a string
 std::string formatStatus(int status);
@@ -72,11 +73,11 @@ void setCoreSizeLimit(int value);
 /// Close stdin, stdout and stderr and detach from the tty
 void detachFromTTY();
 
-}
-}
-}
-
 #endif
+
+}
+}
+}
 
 // vim:set ts=4 sw=4:
 #endif
