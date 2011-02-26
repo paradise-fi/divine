@@ -47,7 +47,7 @@ endmacro( stringify )
 
 stringify( generator/custom-api.h )
 stringify( pool.h )
-stringify( circular.h )
+#stringify( circular.h )
 stringify( blob.h )
 
 include_directories( ${DIVINE_INCLUDES} )
@@ -55,7 +55,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} )
 
 add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_COIN} ${SRC_BA} "${SHA1}.cpp"
-    "${SHA1}.cpp.fake" pool_h_str.cpp circular_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
+    "${SHA1}.cpp.fake" pool_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
 

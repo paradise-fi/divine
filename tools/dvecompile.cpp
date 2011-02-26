@@ -152,9 +152,6 @@ void dve_compiler::gen_header()
     line( divine::pool_h_str );
     line();
 
-    line( divine::circular_h_str );
-    line();
-
     line( divine::blob_h_str );
     line();
 

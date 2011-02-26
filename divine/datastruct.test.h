@@ -50,10 +50,6 @@ struct TestDatastruct {
         _queue< Queue >();
     }
 
-    Test bufferedQueue() {
-        _queue< BufferedQueue >();
-    }
-
     Test stack() {
         generator::Dummy d;
         Stack< generator::Dummy, NoStatistics > q( d );

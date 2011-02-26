@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
-#include <divine/circular.h>
 #include <divine/statistics.h>
 
 #include <deque>
