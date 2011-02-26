@@ -2,16 +2,20 @@
    (c) 2007 Enrico Zini <enrico@enricozini.org> */
 #include <wibble/sys/childprocess.h>
 
-#ifdef POSIX
 #include <wibble/sys/process.h>
 #include <wibble/sys/exec.h>
 #include <cstdlib>
+#include <unistd.h>
 #include <iostream>
 
 #include <wibble/test.h>
 
 using namespace std;
 using namespace wibble::sys;
+
+#ifdef _WIN32
+#define sleep Sleep
+#endif
 
 class EndlessChild : public ChildProcess
 {
@@ -54,6 +58,7 @@ struct TestChildprocess {
 
     // Try running the child process and kill it
     Test kill() {
+#ifdef POSIX
         EndlessChild child;
 
         // Start the child
@@ -71,10 +76,12 @@ struct TestChildprocess {
         // Check that it was indeed terminated by signal 2
         assert(WIFSIGNALED(res));
         assert_eq(WTERMSIG(res), 2);
+#endif
     }
 
     // Try getting the output of the child process
     Test output() {
+#ifdef POSIX
         TestChild child;
         int out;
 
@@ -87,6 +94,7 @@ struct TestChildprocess {
 
         // Wait for the child to terminate
         assert_eq(child.wait(), 0);
+#endif
     }
 
     Test redirect() {
@@ -121,5 +129,4 @@ struct TestChildprocess {
     }
 
 };
-#endif
 // vim:set ts=4 sw=4:
