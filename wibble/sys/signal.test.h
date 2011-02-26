@@ -16,6 +16,7 @@ static void test_signal_action(int signum)
 
 struct TestSignal {
     Test sigAction() {
+#ifdef POSIX
 	    struct sigaction a;
 	    a.sa_handler = test_signal_action;
 	    sigemptyset(&a.sa_mask);
@@ -26,9 +27,11 @@ struct TestSignal {
 	    sig::Action act(SIGUSR1, a);
 	    kill(getpid(), SIGUSR1);
 	    assert_eq(counter, 1);
+#endif
     }
 
     Test sigProcMask() {
+#ifdef POSIX
 	    sigset_t blocked;
 	    struct sigaction a;
 	    a.sa_handler = test_signal_action;
@@ -47,6 +50,7 @@ struct TestSignal {
 		    assert_eq(counter, 0);
 	    }
 	    assert_eq(counter, 1);
+#endif
     }
 };
 

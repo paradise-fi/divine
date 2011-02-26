@@ -13,11 +13,15 @@ struct TestLockfile {
 	// Cannot test the locks without forking, as reacquiring the lock from the
 	// same process is just an update of the previous lock
     Test readlock() {
+#ifdef POSIX
 		Lockfile lk1("testlock", false);
+#endif
     }
 
     Test writelock() {
+#ifdef POSIX
 		Lockfile lk1("testlock", true);
+#endif
     }
 };
 

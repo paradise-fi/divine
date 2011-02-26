@@ -19,7 +19,6 @@
  */
 #include <wibble/sys/mmap.h>
 
-#ifdef POSIX
 #include <wibble/test.h>
 #include <string.h>
 
@@ -28,6 +27,7 @@ using namespace wibble::sys;
 
 struct TestMMap {
     Test simple() {
+#ifdef POSIX
         MMap map;
         assert_eq(map.filename, string());
         assert_eq(map.fd, -1);
@@ -62,7 +62,7 @@ struct TestMMap {
         assert_eq(map1.fd, -1);
         assert_eq(map1.size, 0u);
         assert_eq(map1.buf, (const char*)0);
+#endif
     }
 };
-#endif
 // vim:set ts=4 sw=4:

@@ -43,6 +43,7 @@ struct TestException {
 
     Test system() 
     {
+#ifdef POSIX
         try {
             assert_eq(access("does-not-exist", F_OK), -1);
             throw wex::System("checking for existance of nonexisting file");
@@ -59,6 +60,7 @@ struct TestException {
             assert_eq(e.code(), ENOENT);
             assert(e.fullInfo().find("does-not-exist") != string::npos);
         }
+#endif
     }
 
     Test badCast()
