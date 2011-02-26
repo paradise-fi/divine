@@ -33,7 +33,6 @@ struct RunFeedback {
     virtual void waitForAck() = 0;
 };
 
-#ifdef POSIX
 struct RunAll {
     RunSuite *suites;
     int suiteCount;
@@ -83,4 +82,3 @@ struct RunAll {
         }
     }
 };
-#endif

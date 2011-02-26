@@ -1,12 +1,14 @@
 // -*- C++ -*-
 #include <wibble/sys/macros.h>
 
-#ifdef POSIX
-
 #include <unistd.h>
+
+#ifdef POSIX
 #include <sys/wait.h>
-#include <cstring>
 #include <sys/socket.h>
+#endif
+
+#include <cstring>
 #include <cstdio>
 
 #include <wibble/sys/pipe.h>
@@ -77,6 +79,7 @@ struct Main : RunFeedback {
         exit( 0 );
     }
 
+#ifdef POSIX
     void testDied()
     {
         /* std::cerr << "test died: " << test << "/"
@@ -99,16 +102,19 @@ struct Main : RunFeedback {
         test_ok = 0;
         suite_failed ++;
     }
+#endif
 
     void processStatus( std::string line ) {
         // std::cerr << line << std::endl;
         if ( line == "done" ) { // finished
+#ifdef POSIX
             if ( want_fork ) {
                 finished = waitpid( pid, &status_code, 0 );
                 assert_eq( pid, finished );
                 assert( WIFEXITED( status_code ) );
                 assert_eq( WEXITSTATUS( status_code ), 0 );
             }
+#endif
             std::cout << "overall " << total_ok << "/"
                       << total_ok + total_failed
                       << " ok" << std::endl;
@@ -154,6 +160,7 @@ struct Main : RunFeedback {
         }
     }
 
+#ifdef POSIX
     void parent() {
         close( status_fds[1] );
         close( confirm_fds[0] );
@@ -176,13 +183,16 @@ struct Main : RunFeedback {
             processStatus( line );
         }
     }
+#endif
 
     void status( std::string line ) {
         // std::cerr << "status: " << line << std::endl;
+#ifdef POSIX
         if ( want_fork ) {
             line += "\n";
             ::write( status_fds[ 1 ], line.c_str(), line.length() );
         } else
+#endif
             processStatus( line );
     }
 
@@ -207,9 +217,14 @@ struct Main : RunFeedback {
         all.suiteCount = sizeof(suites)/sizeof(RunSuite);
         all.suites = suites;
         all.feedback = this;
+#ifdef POSIX
         want_fork = argc <= 2;
+#else
+	want_fork = false;
+#endif
 
         while (true) {
+#ifdef POSIX
             if ( socketpair( PF_UNIX,SOCK_STREAM, 0, status_fds ) )
                 return 1;
             if ( socketpair( PF_UNIX,SOCK_STREAM, 0, confirm_fds ) )
@@ -224,6 +239,7 @@ struct Main : RunFeedback {
                     parent();
                 }
             } else
+#endif
                 child();
         }
     }
@@ -233,12 +249,3 @@ int main( int argc, char **argv ) {
     return Main().main( argc, argv );
 }
 
-#else
-#include <iostream>
-
-int main( int argc, char **argv ) {
-    std::cerr << "Sorry, test runner not implemented on this non-POSIX platform." << std::endl;
-    return 0;
-}
-
-#endif
