@@ -16,6 +16,7 @@ using namespace wibble::stream;
 struct TestStreamPosix {
 
     Test basicMatch() {
+#ifdef POSIX // no /dev/null otherwise
 		int fd = open("/dev/null", O_WRONLY);
 		assert(fd != -1);
 
@@ -25,6 +26,7 @@ struct TestStreamPosix {
 		os << "Foo";
 		os << "Bar";
 		os << endl;
+#endif
     }
 
 };

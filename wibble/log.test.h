@@ -100,7 +100,7 @@ struct TestLog {
 
 // Test the FileSender
     Test fileSender() {
-
+#ifdef POSIX // there's no /dev/null on win32
         // We send to /dev/null, so we cannot test the results.
 
         log::FileSender ns("/dev/null");
@@ -118,12 +118,14 @@ struct TestLog {
         
         // Ensure that log messages are only sent after a newline
         o << "should eventually appear";
+#endif
     }
 
 // Test the OstreamSender
     Test ostreamSender() {
         // We send to /dev/null, so we cannot test the results.
 
+#ifdef POSIX // there's no /dev/null on win32
         std::ofstream null("/dev/null", std::ios::out);
         assert(!null.fail());
 
@@ -142,6 +144,7 @@ struct TestLog {
         
         // Ensure that log messages are only sent after a newline
         o << "should eventually appear";
+#endif
     }
     
 };
