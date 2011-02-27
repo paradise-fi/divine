@@ -56,12 +56,10 @@ else( WIN32 )
 target_link_libraries( wibble pthread )
 endif( WIN32 )
 
-if( NOT WIN32 )
 # make check
 wibble_add_test( wibble-test ${testh} )
 target_link_libraries( wibble-test wibble )
 wibble_check_target( wibble-test )
-endif( NOT WIN32 )
 
 set( prefix "${CMAKE_INSTALL_PREFIX}" )
 set( exec_prefix "${prefix}/bin" )
