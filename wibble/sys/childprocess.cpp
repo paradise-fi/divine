@@ -19,20 +19,22 @@
  */
 #include <wibble/sys/childprocess.h>
 
-#ifdef POSIX
-
 #include <stdlib.h>		// EXIT_FAILURE
 #include <sys/types.h>		// fork, waitpid, kill, open, getpw*, getgr*, initgroups
 #include <sys/stat.h>		// open
-#include <sys/resource.h>	// getrlimit, setrlimit
 #include <unistd.h>			// fork, dup2, pipe, close, setsid, _exit, chdir
 #include <fcntl.h>			// open
+
+#ifdef POSIX
+#include <sys/resource.h>	// getrlimit, setrlimit
 #include <sys/wait.h>		// waitpid
 #include <signal.h>			// kill
-#include <stdio.h>			// flockfile, funlockfile
-#include <ctype.h>			// is*
 #include <pwd.h>			// getpw*
 #include <grp.h>			// getgr*, initgroups
+#endif
+
+#include <stdio.h>			// flockfile, funlockfile
+#include <ctype.h>			// is*
 #include <errno.h>
 
 #include <sstream>
@@ -41,200 +43,227 @@ namespace wibble {
 namespace sys {
 
 using namespace std;
+namespace wexcept = wibble::exception;
 
-pid_t ChildProcess::fork()
-{
-	flockfile(stdin);
-	flockfile(stdout);
-	flockfile(stderr);
-
-	pid_t pid;
-	if ((pid = ::fork()) == 0)
-	{
-		// Tell the logging system we're in a new process
-		//Log::Logger::instance()->setupForkedChild();
-
-		// Child process
-		try {
-			// no need to funlockfile here, since the library resets the stream
-			// locks in the child after a fork
-
-			// Call the process main function and return the exit status
-			_exit(main());
-		} catch (std::exception& e) {
-			//log_err(string(e.type()) + ": " + e.desc());
-		}
-		_exit(EXIT_FAILURE);
-	} else if (pid < 0) {
-		funlockfile(stdin);
-		funlockfile(stderr);
-		funlockfile(stdout);
-		throw wibble::exception::System("trying to fork the child process to run action script");
-	} else {
-		funlockfile(stdin);
-		funlockfile(stderr);
-		funlockfile(stdout);
-
-		// Parent process
-		return _pid = pid;
-	}
+void ChildProcess::spawnChild() {
+    assert_die();
 }
 
-pid_t ChildProcess::forkAndRedirect(int* stdinfd, int* stdoutfd, int* stderrfd)
+#ifndef POSIX
+void funlockfile( FILE * ) {}
+void flockfile( FILE * ) {}
+#endif
+
+#ifdef POSIX
+pid_t ChildProcess::fork()
 {
-	int pipes[3][2];
+    flockfile(stdin);
+    flockfile(stdout);
+    flockfile(stderr);
 
-	if (stdinfd)
-	{
-		if (pipe(pipes[0]) == -1)
-			throw wibble::exception::System("trying to create the pipe to connect to child standard input");
-		*stdinfd = pipes[0][1];
-	}
-	if (stdoutfd)
-	{
-		if (pipe(pipes[1]) == -1)
-			throw wibble::exception::System("trying to create the pipe to connect to child standard output");
-		*stdoutfd = pipes[1][0];
-		if (stderrfd == stdoutfd)
-			*stderrfd = pipes[1][0];
-	}
-	
-	if (stderrfd && stderrfd != stdoutfd)
-	{
-		if (pipe(pipes[2]) == -1)
-			throw wibble::exception::System("trying to create the pipe to connect to child standard error");
-		*stderrfd = pipes[2][0];
-	}
+    setupPrefork();
 
-	flockfile(stdin);
-	flockfile(stdout);
-	flockfile(stderr);
+    pid_t pid;
+    if ((pid = ::fork()) == 0)
+    {
+        // Tell the logging system we're in a new process
+        //Log::Logger::instance()->setupForkedChild();
 
-	pid_t pid;
-	if ((pid = ::fork()) == 0)
-	{
-		// Tell the logging system we're in a new process
-		//Log::Logger::instance()->setupForkedChild();
+        // Child process
+        try {
+            setupChild();
 
-		// Child process
-		try {
-			if (stdinfd)
-			{
-				// Redirect input from the parent to stdin
-				if (close(pipes[0][1]) == -1)
-					throw wibble::exception::System("closing write end of parent stdin pipe");
-				if (dup2(pipes[0][0], 0) == -1)
-					throw wibble::exception::System("dup2-ing parent stdin pipe to stdin");
-				if (close(pipes[0][0]) == -1)
-					throw wibble::exception::System("closing original read end of parent stdin pipe");
-			}
+            // no need to funlockfile here, since the library resets the stream
+            // locks in the child after a fork
 
-			if (stdoutfd)
-			{
-				// Redirect output to the parent stdout fd
-				if (close(pipes[1][0]) == -1)
-					throw wibble::exception::System("closing read end of parent stdout pipe");
-				if (dup2(pipes[1][1], 1) == -1)
-					throw wibble::exception::System("dup2-ing stdout to parent stdout pipe");
-				if (stderrfd == stdoutfd)
-					if (dup2(pipes[1][1], 2) == -1)
-						throw wibble::exception::System("dup2-ing stderr to parent stdout/stderr pipe");
-				if (close(pipes[1][1]) == -1)
-					throw wibble::exception::System("closing original write end of parent stdout pipe");
-			}
+            // Call the process main function and return the exit status
+            _exit(main());
+        } catch (std::exception& e) {
+            //log_err(string(e.type()) + ": " + e.desc());
+        }
+        _exit(EXIT_FAILURE);
 
-			if (stderrfd && stderrfd != stdoutfd)
-			{
-				// Redirect all output to the parent
-				if (close(pipes[2][0]) == -1)
-					throw wibble::exception::System("closing read end of parent stderr pipe");
-				if (dup2(pipes[2][1], 2) == -1)
-					throw wibble::exception::System("dup2-ing stderr to parent stderr pipe");
-				if (close(pipes[2][1]) == -1)
-					throw wibble::exception::System("closing original write end of parent stderr pipe");
-			}
+    } else if (pid < 0) {
 
-			// Call the process main function and return the exit status
-			_exit(main());
-		} catch (std::exception& e) {
-			//log_err(string(e.type()) + ": " + e.desc());
-		}
-		_exit(EXIT_FAILURE);
-	} else if (pid < 0) {
-		funlockfile(stdin);
-		funlockfile(stderr);
-		funlockfile(stdout);
-		if (stdinfd)
-		{
-			close(pipes[0][0]);
-			close(pipes[0][1]);
-		}
-		if (stdoutfd)
-		{
-			close(pipes[1][0]);
-			close(pipes[1][1]);
-		}
-		if (stderrfd && stderrfd != stdoutfd)
-		{
-			close(pipes[2][0]);
-			close(pipes[2][1]);
-		}
-		throw wibble::exception::System("trying to fork the child process to run action script");
-	} else {
-		funlockfile(stdin);
-		funlockfile(stderr);
-		funlockfile(stdout);
+        funlockfile(stdin);
+        funlockfile(stderr);
+        funlockfile(stdout);
+        throw wexcept::System("trying to fork a child process");
 
-		// Parent process
-		_pid = pid;
-		try {
-			if (stdinfd)
-				if (close(pipes[0][0]) == -1)
-					throw wibble::exception::System("closing read end of stdin child pipe");
-			if (stdoutfd)
-				if (close(pipes[1][1]) == -1)
-					throw wibble::exception::System("closing write end of stdout child pipe");
-			if (stderrfd && stderrfd != stdoutfd)
-				if (close(pipes[2][1]) == -1)
-					throw wibble::exception::System("closing write end of stderr child pipe");
-			return pid;
-		} catch (wibble::exception::System& e) {
-			// Try to kill the child process if any errors occurs here
-			::kill(pid, 15);
-			throw e;
-		}
-	}
+    } else {
+        funlockfile(stdin);
+        funlockfile(stderr);
+        funlockfile(stdout);
+
+        _pid = pid;
+        setupParent();
+
+        // Parent process
+        return _pid;
+    }
+}
+#elif defined _WIN32
+
+pid_t ChildProcess::fork() {
+    setupPrefork();
+
+    /* Copy&paste from MSDN... I don't want to know. */
+
+    ZeroMemory( &si, sizeof(si) );
+    si.cb = sizeof(si);
+
+    ZeroMemory( &pi, sizeof(pi) );
+
+    spawnChild();
+
+    /* End of MSDN. */
+    std::cerr << "child spawned, setting up parent..." << std::endl;
+
+    setupParent();
+    return 1; // FIXME
+}
+#endif
+
+void mkpipe( int *fds, int *infd, int *outfd, const char *err )
+{
+#ifdef POSIX
+    if (pipe(fds) == -1)
+#elif defined _WIN32
+    if (_pipe(fds, 1000, _O_BINARY) == -1)
+#endif
+        throw wexcept::System( err );
+    std::cerr << "made pipe: " << fds[0] << " / " << fds[1] << std::endl;
+    if (infd)
+        *infd = fds[0];
+    if (outfd)
+        *outfd = fds[1];
+}
+
+void renamefd( int _old, int _new, const char *err = "..." )
+{
+    if ( dup2( _old, _new ) == -1 )
+        throw wexcept::System( err );
+    if ( close( _old ) == -1 )
+        throw wexcept::System( err );
+}
+
+void ChildProcess::setupRedirects(int* _stdinfd, int* _stdoutfd, int* _stderrfd) {
+    _stdin = _stdinfd;
+    _stdout = _stdoutfd;
+    _stderr = _stderrfd;
+
+    if (_stdin)
+        mkpipe( pipes[0], 0, _stdin,
+                "trying to create the pipe to connect to child standard input" );
+
+    if (_stdout)
+        mkpipe( pipes[1], _stdout, 0,
+                "trying to create the pipe to connect to child standard output" );
+
+    if (_stderr && _stderr != _stdout)
+        mkpipe( pipes[2], _stderr, 0,
+                "trying to create the pipe to connect to child standard output" );
+
+}
+
+void ChildProcess::setupPrefork()
+{
+#ifdef _WIN32
+    if (_stdin) {
+        std::cerr << "redirecting stdin: " << pipes[0][0] << " -> " << STDIN_FILENO << std::endl;
+        std::cerr << "writing end: " << pipes[0][1] << std::endl;
+        backups[0] = dup( STDIN_FILENO );
+        SetHandleInformation( (HANDLE)_get_osfhandle( pipes[0][1] ), HANDLE_FLAG_INHERIT, 0 );
+        dup2( pipes[0][0], STDIN_FILENO );
+    }
+
+    if (_stdout) {
+        std::cerr << "redirecting stdout: " << pipes[1][1] << " -> " << STDOUT_FILENO << std::endl;
+        std::cerr << "reading end: " << pipes[1][0] << std::endl;
+        backups[1] = dup( STDOUT_FILENO );
+        SetHandleInformation( (HANDLE)_get_osfhandle( pipes[1][0] ), HANDLE_FLAG_INHERIT, 0 );
+        dup2( pipes[1][1], STDOUT_FILENO );
+    }
+
+    if ( _stderr ) {
+        std::cerr << "redirecting stderr: " << pipes[2][1] << " -> " << STDERR_FILENO << std::endl;
+        std::cerr << "reading end: " << pipes[2][0] << std::endl;
+        backups[2] = dup( STDERR_FILENO );
+        SetHandleInformation( (HANDLE)_get_osfhandle( pipes[2][0] ), HANDLE_FLAG_INHERIT, 0 );
+        dup2( pipes[2][1], STDERR_FILENO );
+    }
+#endif
+}
+
+void ChildProcess::setupChild() {
+    if (_stdin) {
+        // Redirect input from the parent to _stdin
+        if (close(pipes[0][1]) == -1)
+            throw wexcept::System("closing write end of parent _stdin pipe");
+
+        renamefd( pipes[0][0], STDIN_FILENO, "renaming parent _stdin pipe fd" );
+    }
+
+    if (_stdout) {
+        // Redirect output to the parent _stdout fd
+        if (close(pipes[1][0]) == -1)
+            throw wexcept::System("closing read end of parent _stdout pipe");
+
+        if (_stderr == _stdout)
+            if (dup2(pipes[1][1], STDERR_FILENO) == -1)
+                throw wexcept::System( "dup2-ing _stderr to parent _stdout/_stderr pipe");
+        renamefd( pipes[1][1], STDOUT_FILENO, "renaming parent _stdout pipe" );
+    }
+
+    if (_stderr && _stderr != _stdout) {
+        // Redirect all output to the parent
+        if (close(pipes[2][0]) == -1)
+            throw wexcept::System("closing read end of parent _stderr pipe");
+
+        renamefd( pipes[2][1], STDERR_FILENO, "renaming parent _stderr pipe" );
+    }
+}
+
+void ChildProcess::setupParent() {
+    funlockfile(stdin);
+    funlockfile(stderr);
+    funlockfile(stdout);
+
+    if (_stdin && close(pipes[0][0]) == -1)
+        throw wexcept::System("closing read end of _stdin child pipe");
+    if (_stdout && close(pipes[1][1]) == -1)
+        throw wexcept::System("closing write end of _stdout child pipe");
+    if (_stderr && _stderr != _stdout && close(pipes[2][1]) == -1)
+        throw wexcept::System("closing write end of _stderr child pipe");
+
+#ifdef _WIN32
+    if (_stdin)
+        dup2( backups[0], STDIN_FILENO );
+
+    if (_stdout)
+        dup2( backups[1], STDOUT_FILENO );
+
+    if ( _stderr )
+        dup2( backups[2], STDERR_FILENO );
+#endif
 }
 
 void ChildProcess::waitError() {
     if (errno == EINTR)
-        throw wibble::exception::Interrupted("waiting for child termination");
+        throw wexcept::Interrupted("waiting for child termination");
     else
-        throw wibble::exception::System("waiting for child termination");
-}
-
-int ChildProcess::wait()
-{
-	if (_pid == -1)
-	{
-		//log_debug("Child already finished");
-		return -1;		// FIXME: for lack of better ideas
-	}
-
-	if (waitpid(_pid, &m_status, 0) == -1)
-            waitError();
-	_pid = -1;
-	return m_status;
+        throw wexcept::System("waiting for child termination");
 }
 
 bool ChildProcess::running()
 {
+#ifdef POSIX
     if ( _pid == -1 ) {
         return false;
     }
 
     int res = waitpid(_pid, &m_status, WNOHANG);
-        
+
     if ( res == -1 ) {
         waitError();
     }
@@ -244,25 +273,31 @@ bool ChildProcess::running()
     }
 
     return false;
+#else
+    assert_die();
+#endif
 }
 
 int ChildProcess::wait(struct rusage* ru)
 {
-	if (_pid == -1)
-	{
-		//log_debug("Child already finished");
-		return -1;		// FIXME: for lack of better ideas
-	}
+#ifdef POSIX
+    if (_pid == -1)
+        return -1; // FIXME: for lack of better ideas
 
-	if (wait4(_pid, &m_status, 0, ru) == -1)
-            waitError();
+    if (wait4(_pid, &m_status, 0, ru) == -1)
+        waitError();
+#else
+    m_status = 0; // FIXME
+    WaitForSingleObject( pi.hProcess, INFINITE );
+#endif
 
-	_pid = -1;
-	return m_status;
+    _pid = -1;
+    return m_status;
 }
 
 void ChildProcess::waitForSuccess() {
     int r = wait();
+#ifdef POSIX
     if ( WIFEXITED( r ) ) {
         if ( WEXITSTATUS( r ) )
             throw exception::Generic(
@@ -276,23 +311,27 @@ void ChildProcess::waitForSuccess() {
             str::fmtf( "Subprocess terminated by signal %d.",
                        WTERMSIG( r ) ) );
     throw exception::Generic( "Error waiting for subprocess." );
+#endif
 }
 
 void ChildProcess::kill(int signal)
 {
+#ifdef POSIX
     if (_pid == -1)
-        throw wibble::exception::Consistency(
-                "killing child process",
-                "child process has not been started");
-	if (::kill(_pid, signal) == -1)
-	{
-		stringstream str;
-		str << "killing process " + _pid;
-		throw wibble::exception::System(str.str());
-	}
+        throw wexcept::Consistency(
+            "killing child process",
+            "child process has not been started");
+    if (::kill(_pid, signal) == -1)
+    {
+        stringstream str;
+        str << "killing process " + _pid;
+        throw wibble::exception::System(str.str());
+    }
+#else
+    assert_die();
+#endif
 }
 
 }
 }
-#endif
 // vim:set ts=4 sw=4:

@@ -38,6 +38,7 @@ protected:
 	 * ChildProcess::fork functions is called. Simply calls exec()
 	 */
 	virtual int main();
+	virtual void spawnChild();
 
 public:
 	virtual ~Exec() {}
@@ -96,7 +97,12 @@ public:
 class ShellCommand : public Exec
 {
 public:
-	ShellCommand(const std::string& cmd) : Exec("/bin/sh")
+	ShellCommand(const std::string& cmd) :
+#ifdef POSIX
+                Exec("/bin/sh")
+#elif defined _WIN32
+                Exec("bash") // let's hope for the best...
+#endif
 	{
 		args.push_back("-c");
 		args.push_back(cmd);

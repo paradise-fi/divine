@@ -98,7 +98,7 @@ struct TestChildprocess {
     }
 
     Test redirect() {
-        Exec child("/bin/echo");
+        Exec child("echo");
         child.args.push_back("antani");
         int out;
 	
@@ -123,6 +123,38 @@ struct TestChildprocess {
 
         // Read the child output
         assert_eq(suckFd(out), "antani\n");
+
+        // Wait for the child to terminate
+        assert_eq(child.wait(), 0);
+    }
+
+    Test windows() {
+        Exec child("echo antani");
+        int out;
+	
+        // Fork the child redirecting its stdout
+        pid_t pid = child.forkAndRedirect(0, &out, 0);
+        // assert(pid != 0);
+
+        // Read the child output
+        assert_eq(suckFd(out), "antani\n");
+
+        // Wait for the child to terminate
+        assert_eq(child.wait(), 0);
+    }
+
+    Test windows2() {
+        Exec child("cat");
+        int in, out;
+	
+        // Fork the child redirecting its stdout
+        pid_t pid = child.forkAndRedirect(&in, &out, 0);
+        // assert(pid != 0);
+        write(in, "hello\n", 6);
+        close(in);
+
+        // Read the child output
+        assert_eq(suckFd(out), "hello\n");
 
         // Wait for the child to terminate
         assert_eq(child.wait(), 0);

@@ -46,6 +46,17 @@ void Exec::importEnv()
 		env.push_back(*s);
 }
 
+void Exec::spawnChild()
+{
+#ifdef _WIN32
+    std::string cmd = pathname;
+    for ( int i = 1; i < args.size(); ++i )
+        cmd += " \"" + args[i] + "\""; // FIXME: quoting...
+    std::cerr << "CreateProcess: " << cmd << std::endl;
+    CreateProcess( NULL, (char*)cmd.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi );
+#endif
+}
+
 void Exec::exec()
 {
 	// Prepare the argument list
