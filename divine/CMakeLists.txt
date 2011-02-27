@@ -68,12 +68,12 @@ if( CURSES_FOUND )
 endif()
 target_link_libraries( libdivine ${MPI_LIBRARIES} )
 
+target_link_libraries( divine-test libdivine wibble )
+
 if( NOT WIN32 )
   target_link_libraries( libdivine dl )
+  wibble_check_target( divine-test )
 endif( NOT WIN32 )
-
-target_link_libraries( divine-test libdivine wibble )
-wibble_check_target( divine-test )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
 
