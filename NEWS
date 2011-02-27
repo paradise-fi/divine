@@ -1,3 +1,16 @@
+DiVinE 2.5 (28.2.2011)
+======================
+
+- A faster hash table implementation.
+- A new tool, "divine draw", for state space visualisation (using graphviz).
+- More compact state representation in the DVE compiler.
+- Fix a bug in MAP where self-loops could be missed.
+- Support for a new input language, CoIN, available with all algorithms.
+- Fix a couple of bugs in the DVE compiler. The binary models could cause
+  infinite loops in DiVinE or lead to incorrect state spaces.
+- Add support for "divine combine" on Windows.
+- A new option, --gnuplot-statistics, for machine-readable queue size stats.
+
 DiVinE 2.4 (29.9.2010)
 ======================
 
