@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #endif
+#include <unistd.h>
 
 #include <deque>
 #include <cerrno>
@@ -174,21 +175,23 @@ struct Pipe {
 
     /* Only returns on eof() or when data is buffered. */
     void wait() {
-#ifdef POSIX
         assert( valid() );
+#ifdef POSIX
         fd_set fds;
         FD_ZERO( &fds );
+#endif
         while ( buffer.empty() && !eof() ) {
             if ( readMore() )
                 return;
             if ( eof() )
                 return;
+#ifdef POSIX
             FD_SET( fd, &fds );
             select( fd + 1, &fds, 0, 0, 0 );
-        }
 #else
-        sleep( 1 );
+            sleep( 1 );
 #endif
+        }
     }
     std::string nextLineBlocking() {
         assert( valid() );
