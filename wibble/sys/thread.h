@@ -97,6 +97,7 @@ protected:
 #endif
 
 #ifdef _WIN32
+  void *_result;
   unsigned int thread;
   HANDLE hThread;
 #endif

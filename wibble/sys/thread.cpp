@@ -37,6 +37,7 @@ void* Thread::Starter(void* parm)
 unsigned __stdcall Thread::Starter(void* parm)
 {
 	void* vptemp = ((Thread*)parm)->main();
+        ((Thread*)parm)->_result = vptemp;
 	return (unsigned)vptemp;
 }
 #endif
@@ -93,6 +94,7 @@ void* Thread::join()
 	{
 	  res = 0;
       CloseHandle(hThread);
+          result = _result;
 	}
 #endif
 	
