@@ -72,7 +72,11 @@ struct PipeThrough
     std::string run( std::string data ) {
         int _in, _out;
 
+#ifdef _WIN32
         Exec exec(cmd);
+#elif defined POSIX
+        ShellCommand exec(cmd);
+#endif
 
         exec.setupRedirects( &_in, &_out, 0 );
         exec.fork();
