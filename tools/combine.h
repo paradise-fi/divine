@@ -7,17 +7,13 @@
 #include <wibble/sys/fs.h>
 #include <wibble/regexp.h>
 #include <wibble/sys/pipe.h>
+#include <wibble/sys/exec.h>
 
 #include <divine/ltl2ba/ltl.hh>
 #include <divine/ltl2ba/alt_graph.hh>
 #include <divine/ltl2ba/formul.hh>
 #include <divine/ltl2ba/support_dve.hh>
 #include <divine/ltl2ba/DBA_graph.hh>
-
-#ifdef POSIX
-#include <sys/types.h>
-#include <sys/socket.h>
-#endif
 
 #ifndef DIVINE_COMBINE_H
 #define DIVINE_COMBINE_H
@@ -74,39 +70,23 @@ struct PipeThrough
     }
 
     std::string run( std::string data ) {
-#ifdef _WIN32
-        assert_die();
-#else
-        int socks_in[2], socks_out[2];
-        if ( socketpair( PF_UNIX, SOCK_STREAM, 0, socks_in ) )
-            throw wibble::exception::System( "creating socket pair" );
-        if ( socketpair( PF_UNIX, SOCK_STREAM, 0, socks_out ) )
-            throw wibble::exception::System( "creating socket pair" );
-        pid_t pid;
-        pid = fork();
-        if ( pid == 0 ) {
-            dup2( socks_in[0], STDIN_FILENO );
-            close( socks_in[1] );
-            dup2( socks_out[0], STDOUT_FILENO );
-            close( socks_out[1] );
-            execl( "/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL );
-            throw wibble::exception::System( "exec failed" );
+        int _in, _out;
+
+        Exec exec(cmd);
+
+        exec.setupRedirects( &_in, &_out, 0 );
+        exec.fork();
+
+        Pipe in( _in ), out( _out );
+
+        in.write( data );
+        in.close();
+        std::string ret;
+        while ( !out.eof() ) {
+            out.wait();
+            ret += out.nextChunk();
         }
-        close( socks_in[0] );
-        close( socks_out[0] );
-        if ( pid > 0 ) {
-            Pipe in( socks_in[1] ), out( socks_out[1] );
-            in.write( data );
-            in.close();
-            std::string ret;
-            while ( !out.eof() ) {
-                out.wait();
-                ret += out.nextChunk();
-            }
-            return ret;
-        }
-        throw wibble::exception::System( "fork failed" );
-#endif
+        return ret;
     }
 };
 
