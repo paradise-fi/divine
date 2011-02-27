@@ -108,19 +108,15 @@ pid_t ChildProcess::fork() {
     setupPrefork();
 
     /* Copy&paste from MSDN... I don't want to know. */
-
     ZeroMemory( &si, sizeof(si) );
     si.cb = sizeof(si);
-
     ZeroMemory( &pi, sizeof(pi) );
+    /* End of MSDN. */
 
     spawnChild();
-
-    /* End of MSDN. */
-    std::cerr << "child spawned, setting up parent..." << std::endl;
-
     setupParent();
-    return 1; // FIXME
+
+    return 1; // FIXME is there anything like a pid on win32?
 }
 #endif
 
@@ -132,7 +128,6 @@ void mkpipe( int *fds, int *infd, int *outfd, const char *err )
     if (_pipe(fds, 1000, _O_BINARY) == -1)
 #endif
         throw wexcept::System( err );
-    std::cerr << "made pipe: " << fds[0] << " / " << fds[1] << std::endl;
     if (infd)
         *infd = fds[0];
     if (outfd)
@@ -170,24 +165,18 @@ void ChildProcess::setupPrefork()
 {
 #ifdef _WIN32
     if (_stdin) {
-        std::cerr << "redirecting stdin: " << pipes[0][0] << " -> " << STDIN_FILENO << std::endl;
-        std::cerr << "writing end: " << pipes[0][1] << std::endl;
         backups[0] = dup( STDIN_FILENO );
         SetHandleInformation( (HANDLE)_get_osfhandle( pipes[0][1] ), HANDLE_FLAG_INHERIT, 0 );
         dup2( pipes[0][0], STDIN_FILENO );
     }
 
     if (_stdout) {
-        std::cerr << "redirecting stdout: " << pipes[1][1] << " -> " << STDOUT_FILENO << std::endl;
-        std::cerr << "reading end: " << pipes[1][0] << std::endl;
         backups[1] = dup( STDOUT_FILENO );
         SetHandleInformation( (HANDLE)_get_osfhandle( pipes[1][0] ), HANDLE_FLAG_INHERIT, 0 );
         dup2( pipes[1][1], STDOUT_FILENO );
     }
 
     if ( _stderr ) {
-        std::cerr << "redirecting stderr: " << pipes[2][1] << " -> " << STDERR_FILENO << std::endl;
-        std::cerr << "reading end: " << pipes[2][0] << std::endl;
         backups[2] = dup( STDERR_FILENO );
         SetHandleInformation( (HANDLE)_get_osfhandle( pipes[2][0] ), HANDLE_FLAG_INHERIT, 0 );
         dup2( pipes[2][1], STDERR_FILENO );
