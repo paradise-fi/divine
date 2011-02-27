@@ -1,0 +1,32 @@
+
+// peterson mutual exclusion protocol for N processes
+
+default(N,3)
+default(LOOPS,0)
+default(ERROR,0)
+
+byte pos[N];
+byte step[N];
+byte in_critical = 0;
+
+define(P, `process P_$1 {
+byte j=0, k=0;
+state NCS, CS, wait ,q2,q3;
+init NCS;
+trans
+ ifelse(LOOPS, 1, `NCS -> NCS {},',`')
+ NCS -> wait { effect j = 1; },
+ wait -> q2  { guard j < N; effect pos[$1] = j; },
+ q2 -> q3 { effect step[j-1] = $1, k = 0; },
+ ifelse(ERROR, 0, `q3 -> q3 { guard k < N && (k == $1 || pos[k]< j); effect k = k+1; },',
+	ERROR, 1, `q3 -> q3 { guard k < N && (k == $1 || pos[k]<= j); effect k = k+1; },')
+ q3 -> wait { guard step[j-1] != $1 || k == N; effect j = j+1, k=0; },
+ wait -> CS { guard j == N; effect in_critical = in_critical+1;},
+ CS -> NCS { effect pos[$1] = 0, in_critical = in_critical-1, j=0;};
+}
+')
+
+forloop(i,0,decr(N), `P(i)')
+
+system async;
+

@@ -1,0 +1,16 @@
+Atomic propositions
+-------------------
+#define p0cs P_0.CS
+#define someoneincs (in_critical==1)
+
+Verified properties
+-------------------
+(1) if P_0 is in CS then it will leave it eventually
+#property G(p0cs->F(!p0cs))
+
+(2) if P_0 isn't in CS then it will eventually reach it
+#property G((!p0cs)->Fp0cs)
+
+(3) infinitely many times someone critical section
+#property GFsomeoneincs
+
