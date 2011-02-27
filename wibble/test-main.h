@@ -44,8 +44,10 @@ struct Main : RunFeedback {
     }
 
     void child() {
+#ifdef POSIX
         close( status_fds[0] );
         close( confirm_fds[1] );
+#endif
         p_confirm = wibble::sys::Pipe( confirm_fds[0] );
         if ( argc > 1 ) {
             RunSuite *s = all.findSuite( argv[1] );
