@@ -210,12 +210,10 @@ struct HashSet
 
     void setSize( size_t s )
     {
-        m_table.resize( s, Cell() );
         m_bits = 0;
-        int origs = s;
         while ((s = s >> 1))
             m_bits |= s;
-        assert_eq( origs - 1, m_bits );
+        m_table.resize( m_bits + 1, Cell() );
     }
 
     void clear() {
