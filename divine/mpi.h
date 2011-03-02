@@ -681,7 +681,7 @@ struct Mpi : MpiBase {
     Mpi( typename M::Shared *, D * ) {}
 };
 
-template< typename D >
+template< typename D, typename C >
 struct MpiWorker {
     void interrupt() {}
     void start() {}
