@@ -37,7 +37,6 @@ struct dve_compiler: public dve_explicit_system_t
     map<size_int_t,vector<ext_transition_t> >::iterator iter_process_transition_map;
     map<size_int_t,map<size_int_t,vector<ext_transition_t> > >::iterator iter_transition_map;
     vector<ext_transition_t>::iterator iter_ext_transition_vector;
-    vector<char> initial_state;
 
     string m_line;
     ostream *m_output;

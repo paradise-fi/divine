@@ -161,21 +161,6 @@ void dve_compiler::gen_header()
     line();
 }
 
-void push_bytes( std::vector< char > &vec, dve_var_type_t t, int value ) {
-    if ( t == VAR_BYTE ) {
-        vec.push_back( value );
-        return;
-    }
-    if ( t == VAR_INT ) {
-        union {
-            char bytes[2];
-            sshort_int_t v;
-        };
-        v = value;
-        std::copy( bytes, bytes + 2, std::back_inserter( vec ) );
-    }
-}
-
 const char *typeOf( int tid ) {
     if ( tid == 0 ) return "byte_t";
     if ( tid == 1 ) return "sshort_int_t";
@@ -186,34 +171,6 @@ int sizeOf( int tid ) {
     if ( tid == 0 ) return sizeof(byte_t);
     if ( tid == 1 ) return sizeof(sshort_int_t);
     return 0;
-}
-
-void dve_compiler::push_initials( state_creator_t &creator )
-{
-    if ( creator.type == state_creator_t::VARIABLE ) {
-        if ( creator.array_size ) {
-            int elem;
-            for ( elem = 0; elem < initial_values_counts[creator.gid]; ++ elem )
-                push_bytes( initial_state, creator.var_type,
-                            initial_values[creator.gid].all_values[elem] );
-            for (; elem < creator.array_size; ++ elem )
-                push_bytes( initial_state, creator.var_type, 0 );
-        } else {
-            int v = initial_values_counts[creator.gid] ?
-                    initial_values[creator.gid].all_value : 0;
-            push_bytes( initial_state, creator.var_type, v );
-        }
-    }
-
-    if ( creator.type == state_creator_t::CHANNEL_BUFFER ) {
-        dve_symbol_t * symbol = get_symbol_table()->get_channel(creator.gid);
-        int size = 0;
-        push_bytes( initial_state, VAR_INT, 0 ); // the counter
-        for ( int j = 0; j < symbol->get_channel_type_list_size(); ++j )
-            size += sizeOf( symbol->get_channel_type_list_item( j ) );
-        for ( int i = 0; i < symbol->get_channel_buffer_size() * size; ++i )
-            initial_state.push_back( 0 );
-    }
 }
 
 void dve_compiler::gen_state_struct()
@@ -271,16 +228,12 @@ void dve_compiler::gen_state_struct()
     int control_bytes = total_bits / 8;
     if ( total_bits % 8 ) ++ control_bytes;
 
-    for ( int i = 0; i < control_bytes; ++i )
-        initial_state.push_back( 0 );
-
     block_end();
     line( "__attribute__((__packed__)) _control;" );
 
     for (size_int_t i=0; i!=state_creators_count; ++i)
     {
         int gid = state_creators[i].gid;
-        push_initials( state_creators[ i ] );
 
         switch (state_creators[i].type)
         {
@@ -352,31 +305,44 @@ void dve_compiler::gen_state_struct()
     line();
 }
 
-
 void dve_compiler::gen_initial_state()
 {
     setAllocator( new generator::Allocator );
-    append( "char initial_state[] = { " );
-    for(int i = 0; i < initial_state.size(); i++)
-    {
-        append( fmt( (unsigned int)(unsigned char)initial_state[i] ) );
-        if(i != initial_state.size() - 1)
-            append( ", " );
-    }
-    line( "};" );
-    line();
 
     append( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out )" );
 
     block_begin();
     line( "Blob b( *(setup->pool), state_size + setup->slack );" );
-    line( "memcpy(b.data() + setup->slack, initial_state, state_size);" );
+    line( "b.clear();" );
     line( "state_struct_t &_out = b.get< state_struct_t >( setup->slack );");
-    for ( size_int_t i=0; i!=state_creators_count; ++i )
-        if ( state_creators[i].type == state_creator_t::PROCESS_STATE ) {
-            assign( process_state( state_creators[i].gid, "_out" ),
-                    fmt( initial_states[state_creators[i].gid] ) );
-        }
+
+    std::string process = "_out";
+    for ( size_int_t i=0; i!=state_creators_count; ++i ) {
+        state_creator_t &creator = state_creators[i];
+        int gid = creator.gid;
+        std::string var;
+        switch (creator.type)
+        {
+            case state_creator_t::VARIABLE:
+                var = process + "." + get_symbol_table()->get_variable(gid)->get_name();
+                if ( creator.array_size ) {
+                    for ( int i = 0; i < initial_values_counts[gid]; ++ i )
+                        assign( var + "[" + fmt(i) + "]", fmt( initial_values[gid].all_values[i] ) );
+                    // the remaining items are 0
+                } else {
+                    if ( initial_values_counts[gid] )
+                        assign( var, fmt( initial_values[gid].all_value ) );
+                    // 0 otherwise
+                }
+                break;
+            case state_creator_t::PROCESS_STATE:
+                process = std::string( "_out." ) +
+                          get_symbol_table()->get_process(gid)->get_name();
+                assign( process_state( gid, "_out" ), fmt( initial_states[gid] ) );
+                break;
+            case state_creator_t::CHANNEL_BUFFER: break; /* channels are empty */
+           }
+    }
     line( "*out = b;" );
     block_end();
 
