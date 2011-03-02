@@ -73,9 +73,8 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
         int owner = hint % this->peers();
 
         if ( owner != this->globalId() ) { // send to remote
-            divine::Fifo< Node > &fifo = this->queue( this->globalId(), owner );
-            fifo.push( from );
-            fifo.push( to );
+            this->comms().submit( this->globalId(), owner, from );
+            this->comms().submit( this->globalId(), owner, to );
         } else { // we own this node, so let's process it
             Node in_table = table().getHinted( to, hint );
 
@@ -105,13 +104,12 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
 
         do {
             // process incoming stuff from other workers
-            while ( !this->fifo.empty() ) {
-                Node f, t;
-                f = this->fifo.next();
-                this->fifo.remove();
-                t = this->fifo.next( true );
-                this->fifo.remove();
-                edge( f, t );
+            for ( int from = 0; from < this->peers(); ++from ) {
+                while ( this->comms().pending( from, this->globalId() ) ) {
+                    Node f = this->comms().take( from, this->globalId() ),
+                         t = this->comms().take( from, this->globalId() );
+                    edge( f, t );
+                }
             }
 
             // process local queue
