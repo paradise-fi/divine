@@ -365,6 +365,22 @@ void dve_compiler::gen_initial_state()
     }
     line( "};" );
     line();
+
+    append( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out )" );
+
+    block_begin();
+    line( "Blob b( *(setup->pool), state_size + setup->slack );" );
+    line( "memcpy(b.data() + setup->slack, initial_state, state_size);" );
+    line( "state_struct_t &_out = b.get< state_struct_t >( setup->slack );");
+    for ( size_int_t i=0; i!=state_creators_count; ++i )
+        if ( state_creators[i].type == state_creator_t::PROCESS_STATE ) {
+            assign( process_state( state_creators[i].gid, "_out" ),
+                    fmt( initial_states[state_creators[i].gid] ) );
+        }
+    line( "*out = b;" );
+    block_end();
+
+    line();
 }
 
 void dve_compiler::analyse_transition(
@@ -796,14 +812,6 @@ void dve_compiler::print_generator()
     line( "    setup->state_size = state_size;" );
     line( "    setup->has_property = " + fmt( get_with_property() ) + ";" );
     line( "}" );
-
-    line( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out ) {" );
-    line( "    Blob b( *(setup->pool), state_size + setup->slack );" );
-    line( "    b.clear();" );
-    line( "    memcpy(b.data() + setup->slack, initial_state, state_size);" );
-    line( "    *out = b;" );
-    line( "}" );
-    line();
 
     many = false;
     current_label = 1;
