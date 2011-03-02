@@ -41,8 +41,7 @@ struct dve_compiler: public dve_explicit_system_t
     string m_line;
     ostream *m_output;
     int m_indent;
-
-    void push_initials( state_creator_t &creator );
+    bool in_process, process_empty;
 
     void indent() { ++m_indent; }
     void deindent() { --m_indent; }
@@ -62,8 +61,13 @@ struct dve_compiler: public dve_explicit_system_t
         outline();
     }
 
+    void start_process();
+    void ensure_process();
+    void end_process( std::string name );
+
     dve_compiler(error_vector_t & evect=gerr)
-        : explicit_system_t(evect), dve_explicit_system_t(evect), current_label(1), m_indent( 0 )
+        : explicit_system_t(evect), dve_explicit_system_t(evect), current_label(1), m_indent( 0 ),
+          in_process( false ), process_empty( true )
     {}
     virtual ~dve_compiler() {}
 
@@ -114,6 +118,12 @@ struct dve_compiler: public dve_explicit_system_t
 
     void assign( std::string left, std::string right ) {
         line( left + " = " + right + ";" );
+    }
+
+    void declare( std::string type, std::string name, int array = 0 ) {
+        line( type + " " + name +
+              ( array ? ("[" + wibble::str::fmt( array ) + "]") : "" ) +
+              ";" );
     }
 
     std::string relate( std::string left, std::string op, std::string right ) {

@@ -207,10 +207,29 @@ void dve_compiler::gen_constants()
     line();
 }
 
+void dve_compiler::ensure_process() {
+    if ( !in_process || !process_empty )
+        return;
+    line( "struct" );
+    block_begin();
+    process_empty = false;
+}
+
+void dve_compiler::start_process() {
+    in_process = true;
+    process_empty = true;
+}
+
+void dve_compiler::end_process( std::string name ) {
+    in_process = false;
+    if ( process_empty )
+        return;
+    block_end();
+    line( "__attribute__((__packed__)) " + name + ";" );
+}
 
 void dve_compiler::gen_state_struct()
 {
-    bool global = true;
     string name;
     string process_name = "UNINITIALIZED";
     line( "struct state_struct_t" );
@@ -227,10 +246,8 @@ void dve_compiler::gen_state_struct()
             int bits = 1;
             while ( max /= 2 ) ++ bits;
             total_bits += bits;
-            line( std::string( "uint16_t " ) + sym->get_name() + ":" + fmt( bits ) + ";" );
+            declare( "uint16_t", std::string( sym->get_name() ) + ":" + fmt( bits ) );
         }
-    int control_bytes = total_bits / 8;
-    if ( total_bits % 8 ) ++ control_bytes;
 
     block_end();
     line( "__attribute__((__packed__)) _control;" );
@@ -243,39 +260,27 @@ void dve_compiler::gen_state_struct()
         {
             case state_creator_t::VARIABLE:
             {
+                ensure_process();
                 name=get_symbol_table()->get_variable(gid)->get_name();
-                append( typeOf( state_creators[i].var_type ) );
-                append( " " );
-                append( name );
-                if (state_creators[i].array_size)
-                    append( "[" + fmt( state_creators[i].array_size ) + "]" );
-                line( ";" );
+                declare( typeOf( state_creators[i].var_type ), name,
+                         state_creators[i].array_size );
             }
             break;
             case state_creator_t::PROCESS_STATE:
             {
-                if (global)
-                {
-                    global = false;
-                }
-                else
-                {
-                    block_end();
-                    line( "__attribute__((__packed__)) " + process_name + ";" );
-                }
-                line( "struct" );
-                block_begin();
-
-                process_name=
+                end_process( process_name );
+                process_name =
                     get_symbol_table()->get_process(gid)->get_name();
+                start_process();
             }
             break;
             case state_creator_t::CHANNEL_BUFFER:
             {
+                ensure_process();
                 name=get_symbol_table()->get_channel(gid)->get_name();
                 line( "struct" );
                 block_begin();
-                line( "ushort_int_t number_of_items;" );
+                declare( "ushort_int_t",  "number_of_items" );
                 line( "struct" );
                 block_begin();
                 dve_symbol_t * symbol =
@@ -283,8 +288,7 @@ void dve_compiler::gen_state_struct()
                 size_int_t item_count = symbol->get_channel_type_list_size();
 
                 for (size_int_t j=0; j<item_count; ++j) {
-                    append( typeOf( symbol->get_channel_type_list_item(j) ) );
-                    line( " x" + fmt( j ) + ";" );
+                    declare( typeOf( symbol->get_channel_type_list_item(j) ), "x" + fmt( j ) );
                 }
                 block_end();
                 line( "content[" + fmt( symbol->get_channel_buffer_size() ) + "];" );
@@ -296,11 +300,8 @@ void dve_compiler::gen_state_struct()
                 break;
         };
     }
-    if (!global)
-    {
-        block_end();
-        line( "__attribute__((__packed__)) " + process_name + ";" );
-    }
+
+    end_process( process_name );
 
     block_end();
     line( "__attribute__((__packed__));" );
