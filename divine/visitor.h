@@ -286,22 +286,22 @@ struct Partitioned {
                 int to = worker.globalId();
 
                 if ( worker.interrupted() ) {
-                    while ( !worker.idle() ) {
-                        for ( int from = 0; from < worker.peers(); ++from ) {
-                            while ( worker.comms().pending( from, to ) )
-                                worker.comms().take( from, to );
-                        }
-                    }
+                    while ( !worker.idle() )
+                        while ( worker.comms().pending( to ) )
+                            worker.comms().take( to );
                     return;
                 }
 
+                /* Here, we need to pick out 2 items from the *same* queue. */
                 for ( int from = 0; from < worker.peers(); ++from ) {
                     while ( worker.comms().pending( from, to ) ) {
                         Node f, t;
                         f = worker.comms().take( from, to );
-                        while ( !worker.comms().pending( from, to ) ); /* wait a bit */
+                        /* wait a bit, if need be */
+                        while ( !worker.comms().pending( from, to ) );
                         t = worker.comms().take( from, to );
                         Statistics::global().received( from, to );
+
                         bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
                     }
                 }
