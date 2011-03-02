@@ -230,7 +230,7 @@ struct DFV : Common< Stack, S > {
 
 template< typename S, typename Worker,
           typename _Hash = divine::hash< typename S::Node > >
-struct Parallel {
+struct Partitioned {
     typedef typename S::Node Node;
 
     Worker &worker;
@@ -315,7 +315,7 @@ struct Parallel {
         }
     }
 
-    typedef Parallel< S, Worker, _Hash > P;
+    typedef Partitioned< S, Worker, _Hash > P;
     struct Ours : Setup< typename S::Graph, P, Seen, Statistics >
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
@@ -354,8 +354,8 @@ struct Parallel {
         run( bfv );
     }
 
-    Parallel( typename S::Graph &g, Worker &w,
-              typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0 )
+    Partitioned( typename S::Graph &g, Worker &w,
+                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0 )
         : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s )
     {}
 };

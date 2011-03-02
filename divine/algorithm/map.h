@@ -252,7 +252,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
     void _visit() {
         typedef visitor::Setup< G, This, typename This::Table, _Statistics > Setup;
-        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         shared.expanded = 0;
         shared.eliminated = 0;

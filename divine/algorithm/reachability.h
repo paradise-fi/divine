@@ -133,7 +133,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
 
     void _visit() { // parallel
         m_initialTable = &shared.initialTable;
-        visitor::Parallel< VisitorSetup, This, Hasher >
+        visitor::Partitioned< VisitorSetup, This, Hasher >
             visitor( shared.g, *this, *this, hasher, &table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();

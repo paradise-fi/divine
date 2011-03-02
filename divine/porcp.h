@@ -146,7 +146,7 @@ struct PORGraph : generator::Extended< G > {
         typedef visitor::Setup< Us, Us, Table, Statistics,
             &Us::elimTransition,
             &Us::elimExpansion > Setup;
-        typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
 
         Visitor visitor( *this, w, *this, h, &t );
         for ( typename std::set< Node >::iterator j, i = to_check.begin();

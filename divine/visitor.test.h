@@ -433,7 +433,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             typedef visitor::Setup< G, SimpleParReach< G > > VisitorSetup;
-            visitor::Parallel< VisitorSetup, SimpleParReach< G > >
+            visitor::Partitioned< VisitorSetup, SimpleParReach< G > >
                 vis( shared.g, *this, *this );
             vis.exploreFrom( shared.initial );
         }

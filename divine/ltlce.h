@@ -123,7 +123,7 @@ struct LtlCE {
         typedef visitor::Setup< G, Us, Table, NoStatistics,
             &Us::cycleTransition,
             &Us::cycleExpansion > Setup;
-        typedef visitor::Parallel< Setup, Worker, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
 
         Visitor visitor( g(), w, *this, h, &t );
         assert( shared().ce.initial.valid() );

@@ -265,7 +265,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         typedef visitor::Setup< G, This, Table, Statistics,
             &This::reachTransition,
             &This::reachExpansion > Setup;
-        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor, true );
@@ -324,7 +324,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         typedef visitor::Setup< G, This, Table, Statistics,
             &This::initTransition,
             &This::initExpansion > Setup;
-        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         m_initialTable = &shared.initialTable; // XXX find better place for this
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
@@ -396,7 +396,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         typedef visitor::Setup< G, This, Table, Statistics,
             &This::elimTransition,
             &This::elimExpansion > Setup;
-        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         queueAll( visitor );
@@ -436,7 +436,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
         typedef visitor::Setup< G, This, Table, Statistics,
             &This::ccTransition,
             &This::ccExpansion > Setup;
-        typedef visitor::Parallel< Setup, This, Hasher > Visitor;
+        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         Visitor visitor( shared.g, *this, *this, hasher, &table() );
         assert( shared.cycle_node.valid() );

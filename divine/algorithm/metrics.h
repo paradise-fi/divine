@@ -167,7 +167,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
 
     void _visit() { // parallel
         m_initialTable = &shared.initialTable; // XXX find better place for this
-        visitor::Parallel< VisitorSetup, This, Hasher >
+        visitor::Partitioned< VisitorSetup, This, Hasher >
             vis( shared.g, *this, *this, hasher, &table() );
         vis.exploreFrom( shared.g.initial() );
     }
