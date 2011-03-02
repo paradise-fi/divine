@@ -16,6 +16,11 @@ inline Blob blob( const N &n ) {
     return b;
 }
 
+template<>
+inline Blob blob( const Blob &b ) {
+    return b;
+}
+
 struct TestVisitor {
     struct NMTree {
         typedef int Node;
