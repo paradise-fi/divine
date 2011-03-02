@@ -178,6 +178,7 @@ struct dve_compiler: public dve_explicit_system_t
     void yield_state();
     void new_output_state();
 
+    void gen_constants();
     void gen_successors();
     void gen_is_accepting();
     void gen_header();

@@ -173,39 +173,43 @@ int sizeOf( int tid ) {
     return 0;
 }
 
-void dve_compiler::gen_state_struct()
+void dve_compiler::gen_constants()
 {
     for (size_int_t i=0; i!=glob_var_count; i++)
     {
         dve_symbol_t * var = get_symbol_table()->get_variable(get_global_variable_gid(i));
-        if (var->is_const())
+        if (!var->is_const())
+            continue;
+
+        append( "const " );
+        append( typeOf( var->get_var_type() ) );
+        append( " " );
+        append( var->get_name() );
+
+        if (var->is_vector())
         {
-            append( "const " );
-            append( typeOf( var->get_var_type() ) );
-            append( " " );
-            append( var->get_name() );
+            append( "[" + fmt( var->get_vector_size() ) + "]" );
 
-            if (var->is_vector())
+            if ( var->get_init_expr_count() ) append( " = {" );
+            for (size_int_t j=0; j!=var->get_init_expr_count(); j++)
             {
-                append( "[" + fmt( var->get_vector_size() ) + "]" );
-
-                if ( var->get_init_expr_count() ) append( " = {" );
-                for (size_int_t j=0; j!=var->get_init_expr_count(); j++)
-                {
-                    append( var->get_init_expr(j)->to_string() );
-                    if (j!=(var->get_init_expr_count()-1))
-                        append( ", " );
-                    else
-                        append( "}" );
-                }
-            } else if ( var->get_init_expr() ) {
-                append( string( " = " ) + var->get_init_expr()->to_string() );
+                append( var->get_init_expr(j)->to_string() );
+                if (j!=(var->get_init_expr_count()-1))
+                    append( ", " );
+                else
+                    append( "}" );
             }
-            line( ";" );
+        } else if ( var->get_init_expr() ) {
+            append( string( " = " ) + var->get_init_expr()->to_string() );
         }
+        line( ";" );
     }
     line();
+}
 
+
+void dve_compiler::gen_state_struct()
+{
     bool global = true;
     string name;
     string process_name = "UNINITIALIZED";
@@ -766,6 +770,7 @@ void dve_compiler::gen_is_accepting()
 void dve_compiler::print_generator()
 {
     gen_header();
+    gen_constants();
     gen_state_struct();
     gen_initial_state();
 
