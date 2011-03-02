@@ -2,6 +2,7 @@ module Divine.Blob ( Blob, poolBlob, mallocBlob, pokeBlob, peekBlob ) where
 
 import qualified Divine.Pool as P
 import Data.Storable
+import Data.Word
 import Foreign.Storable
 import Foreign.Ptr
 import Foreign.C.Types
@@ -11,7 +12,7 @@ type Blob = Ptr ()
 
 mkBlob :: (StorableM x) => (Int -> IO Blob) -> Int -> x -> IO Blob
 mkBlob alloc slack a = do m <- alloc $ size + header
-                          poke (castPtr m) (fromIntegral size :: CShort)
+                          poke (castPtr m) (fromIntegral size :: Word32)
                           pokeBlob m slack a
                           return m
     where size = sizeOfV a + slack
