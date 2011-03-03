@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifdef HAVE_LLVM
 #define DEBUG_TYPE "interpreter"
 
 #include <divine/llvm/interpreter.h>
@@ -1346,3 +1347,5 @@ DEBUG(
 #endif
   }
 }
+
+#endif

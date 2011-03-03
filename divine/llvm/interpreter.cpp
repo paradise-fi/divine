@@ -13,6 +13,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifdef HAVE_LLVM
+
 #include <divine/llvm/interpreter.h>
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/DerivedTypes.h"
@@ -111,3 +113,5 @@ std::ostream &operator<<( std::ostream &ostr, Location l ) {
     return ostr << "<" << l.function->getNameStr() << ", " << l.insn->getNameStr() << ">";
 }
 } }
+
+#endif
