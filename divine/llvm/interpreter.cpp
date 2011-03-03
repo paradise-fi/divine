@@ -13,33 +13,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Interpreter.h"
+#include <divine/llvm/interpreter.h>
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Module.h"
 #include <cstring>
 using namespace llvm;
-
-namespace {
-
-static struct RegisterInterp {
-  RegisterInterp() { Interpreter::Register(); }
-} InterpRegistrator;
-
-}
-
-extern "C" void LLVMLinkInInterpreter() { }
-
-/// create - Create a new interpreter object.  This can never fail.
-///
-ExecutionEngine *Interpreter::create(Module *M, std::string* ErrStr) {
-  // Tell this Module to materialize everything and release the GVMaterializer.
-  if (M->MaterializeAllPermanently(ErrStr))
-    // We got an error, just return 0
-    return 0;
-
-  return new Interpreter(M);
-}
+using namespace divine::llvm;
 
 //===----------------------------------------------------------------------===//
 // Interpreter ctor - Initialize stuff
@@ -51,8 +31,10 @@ Interpreter::Interpreter(Module *M)
   setTargetData(&TD);
   // Initialize the "backend"
   initializeExecutionEngine();
-  initializeExternalFunctions();
+  // initializeExternalFunctions();
   emitGlobals();
+
+  buildIndex( M );
 
   IL = new IntrinsicLowering(TD);
 }
@@ -96,3 +78,36 @@ Interpreter::runFunction(Function *F,
 
   return ExitValue;
 }
+
+void Interpreter::buildIndex( Module *module ) {
+    int i = 0;
+    for ( Module::iterator function = module->begin(); function != module->end(); ++function ) {
+        for ( Function::iterator block = function->begin(); block != function->end(); ++block ) {
+            BasicBlock::iterator insn;
+            for ( insn = block->begin(); insn != block->end(); ++insn ) {
+                locationIndex.insert( i++, Location( function, block, insn ) );
+                valueIndex.insert( i, &*insn );
+            }
+            /* we also insert the end() iterator, because it is intermittently
+             * stored at the end of basic blocks */
+            locationIndex.insert( i++, Location( function, block, insn ) );
+            for ( Function::arg_iterator arg = function->arg_begin();
+                  arg != function->arg_end(); ++arg )
+                valueIndex.insert( i++, arg );
+        }
+    }
+}
+
+Location Interpreter::location( ExecutionContext &SF ) {
+    return locationIndex.right( SF.pc );
+}
+
+void Interpreter::setLocation( ExecutionContext &SF, Location l ) {
+    SF.pc = locationIndex.left( l );
+}
+
+namespace divine { namespace llvm {
+std::ostream &operator<<( std::ostream &ostr, Location l ) {
+    return ostr << "<" << l.function->getNameStr() << ", " << l.insn->getNameStr() << ">";
+}
+} }

@@ -23,6 +23,11 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/raw_ostream.h"
+
+#define NO_RTTI
+
+#include <divine/llvm/arena.h>
+
 namespace llvm {
 
 class IntrinsicLowering;
@@ -31,69 +36,205 @@ template<typename T> class generic_gep_type_iterator;
 class ConstantExpr;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 
+}
 
-// AllocaHolder - Object to track all of the blocks of memory allocated by
-// alloca.  When the function returns, this object is popped off the execution
-// stack, which causes the dtor to be run, which frees all the alloca'd memory.
-//
-class AllocaHolder {
-  friend class AllocaHolderHandle;
-  std::vector<void*> Allocations;
-  unsigned RefCnt;
-public:
-  AllocaHolder() : RefCnt(0) {}
-  void add(void *mem) { Allocations.push_back(mem); }
-  ~AllocaHolder() {
-    for (unsigned i = 0; i < Allocations.size(); ++i)
-      free(Allocations[i]);
+namespace divine {
+namespace llvm {
+
+using namespace ::llvm;
+
+typedef std::vector<GenericValue> ValuePlaneTy;
+
+template< typename A, typename B >
+struct BiMap {
+    std::map< A, B > _left;
+    std::map< B, A > _right;
+
+    void insert( A a, B b ) {
+        std::cerr << "bimap: adding (" << a << ", " << b << ")" << std::endl;
+        _left.insert( std::make_pair( a, b ) );
+        _right.insert( std::make_pair( b, a ) );
+    }
+
+    A left( B b ) {
+        assert( _right.count( b ) );
+        std::cerr << "bimap: getting (" << _right.find( b )->second << " <- " << b << ")" << std::endl;
+        return _right.find( b )->second;
+    }
+
+    B right( A a ) {
+        assert( _left.count( a ) );
+        std::cerr << "bimap: getting (" << a << " -> " << _left.find( a )->second << ")" << std::endl;
+        return _left.find( a )->second;
   }
 };
 
-// AllocaHolderHandle gives AllocaHolder value semantics so we can stick it into
-// a vector...
-//
-class AllocaHolderHandle {
-  AllocaHolder *H;
-public:
-  AllocaHolderHandle() : H(new AllocaHolder()) { H->RefCnt++; }
-  AllocaHolderHandle(const AllocaHolderHandle &AH) : H(AH.H) { H->RefCnt++; }
-  ~AllocaHolderHandle() { if (--H->RefCnt == 0) delete H; }
+struct Location {
+    Function             *function; // The currently executing function
+    BasicBlock           *block;    // The currently executing BB
+    BasicBlock::iterator  insn;     // The next instruction to execute
+    bool operator<( Location l ) const {
+        if ( function < l.function )
+            return true;
+        if ( function > l.function )
+            return false;
+        if ( block < l.block )
+            return true;
+        if ( block > l.block )
+            return false;
+        if ( &*insn < &*l.insn )
+            return true;
+        return false;
+    }
 
-  void add(void *mem) { H->add(mem); }
+    Location( Function *f, BasicBlock *b, BasicBlock::iterator i )
+        : function( f ), block( b ), insn( i ) {}
 };
 
-typedef std::vector<GenericValue> ValuePlaneTy;
+std::ostream &operator<<( std::ostream &ostr, Location );
 
 // ExecutionContext struct - This struct represents one stack frame currently
 // executing.
 //
 struct ExecutionContext {
-  Function             *CurFunction;// The currently executing function
-  BasicBlock           *CurBB;      // The currently executing BB
-  BasicBlock::iterator  CurInst;    // The next instruction to execute
-  std::map<Value *, GenericValue> Values; // LLVM values used in this invocation
-  std::vector<GenericValue>  VarArgs; // Values passed through an ellipsis
-  CallSite             Caller;     // Holds the call that called subframes.
+    typedef std::map<int, GenericValue> Values;
+    typedef std::vector<Arena::Index> Allocas;
+    typedef std::vector<GenericValue> VarArgs;
+
+    int pc;          // program counter
+    Values values;   // LLVM values used in this invocation
+    VarArgs varArgs; // Values passed through an ellipsis
+    CallSite caller; // Holds the call that called subframes.
                                    // NULL if main func or debugger invoked fn
-  AllocaHolderHandle    Allocas;    // Track memory allocated by alloca
+    Allocas allocas;
+
+    int size() {
+        return sizeof( int ) +
+               sizeof( size_t ) * 3 +
+               sizeof( GenericValue ) * varArgs.size() +
+               sizeof( GenericValue ) * values.size() +
+               sizeof( int ) * values.size() +
+               sizeof( Arena::Index ) * allocas.size();
+    }
+
+    int put( int o, Blob b ) {
+        o = b.put( o, pc );
+        o = b.put( o, values.size() );
+        for ( Values::iterator i = values.begin(); i != values.end(); ++i ) {
+            o = b.put( o, i->first );
+            o = b.put( o, i->second );
+        }
+        o = b.put( o, varArgs.size() );
+        for ( VarArgs::iterator i = varArgs.begin(); i != varArgs.end(); ++i )
+            o = b.put( o, *i );
+        o = b.put( o, allocas.size() );
+        for ( Allocas::iterator i = allocas.begin(); i != allocas.end(); ++i )
+            o = b.put( o, *i );
+        return o;
+    }
+
+    int get( int o, Blob b ) {
+        varArgs.clear();
+        values.clear();
+        allocas.clear();
+
+        size_t count;
+        o = b.get( o, pc );
+        o = b.get( o, count );
+        for ( int i = 0; i < count; ++i ) {
+            int k; GenericValue v;
+            o = b.get( o, k );
+            o = b.get( o, v );
+            values[ k ] = v;
+        }
+        o = b.get( o, count );
+        for ( int i = 0; i < count; ++i ) {
+            GenericValue v;
+            o = b.get( o, v );
+            varArgs.push_back( v );
+        }
+        o = b.get( o, count );
+        for ( int i = 0; i < count; ++i ) {
+            Arena::Index v;
+            o = b.get( o, v );
+            allocas.push_back( v );
+        }
+        return o;
+    }
 };
 
 // Interpreter - This class represents the entirety of the interpreter.
 //
-class Interpreter : public ExecutionEngine, public InstVisitor<Interpreter> {
+class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<Interpreter> {
   GenericValue ExitValue;          // The return value of the called function
   TargetData TD;
   IntrinsicLowering *IL;
 
+    Arena arena;
+    BiMap< int, Location > locationIndex;
+    BiMap< int, Value * > valueIndex;
+
   // The runtime stack of executing code.  The top of the stack is the current
   // function record.
-  std::vector<ExecutionContext> ECStack;
+    std::vector<ExecutionContext> stack;
+
+    void leave() {
+        for ( std::vector< Arena::Index >::iterator i = SF().allocas.begin();
+              i != SF().allocas.end(); ++i )
+            arena.free( *i );
+        // arena.free( stack.back() );
+        stack.pop_back();
+    }
+
+    ExecutionContext &enter() {
+        stack.push_back( ExecutionContext() );
+        return SF();
+    }
+
+    ExecutionContext &SF() {
+        return stack.back(); // *(ExecutionContext *) arena.translate( stack.back() );
+    }
+
+    ExecutionContext &SFat( int i ) {
+        return stack[ i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
+    }
 
   // AtExitHandlers - List of functions to call when the program exits,
   // registered with the atexit() library function.
   std::vector<Function*> AtExitHandlers;
+  void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
 
 public:
+
+    Blob snapshot( int extra, Pool &p ) {
+        int need = 4;
+        for ( int i = 0; i < stack.size(); ++i )
+            need += SFat( i ).size();
+
+        Blob b = arena.compact( extra + need, p );
+
+        int offset = extra;
+        offset = b.put( offset, stack.size() );
+
+        for ( int i = 0; i < stack.size(); ++i )
+            offset = SFat( i ).put( offset, b );
+
+        // std::cerr << "snapshotted LLVM: stack at " << extra << ", arena at " << offset << ", total " << b.size() << std::endl;
+        return b;
+    }
+
+    void restore( Blob b, int extra ) {
+        int depth;
+        int offset = b.get( extra, depth );
+        stack.resize( depth );
+        for ( int i = 0; i < depth; ++i )
+            offset = stack[ i ].get( offset, b );
+        std::cerr << "expanding LLVM: stack at " << extra << ", arena at " << offset << ", total " << b.size() << std::endl;
+        arena.expand( b, offset );
+    }
+
+    void buildIndex( Module *m );
+
   explicit Interpreter(Module *M);
   ~Interpreter();
 
@@ -102,10 +243,6 @@ public:
   ///
   void runAtExitHandlers();
 
-  static void Register() {
-    InterpCtor = create;
-  }
-  
   /// create - Create an interpreter ExecutionEngine. This can never fail.
   ///
   static ExecutionEngine *create(Module *M, std::string *ErrorStr = 0);
@@ -130,6 +267,13 @@ public:
   // Place a call on the stack
   void callFunction(Function *F, const std::vector<GenericValue> &ArgVals);
   void run();                // Execute instructions until nothing left to do
+  void step();               // Execute the next instruction
+  bool done();               // Is there anything left to do?
+
+    Location location( ExecutionContext & );
+    void setLocation( ExecutionContext &, Location );
+    void setInstruction( ExecutionContext &, BasicBlock::iterator );
+    Instruction &nextInstruction();
 
   // Opcode Implementations
   void visitReturnInst(ReturnInst &I);
@@ -178,8 +322,8 @@ public:
     llvm_unreachable("Instruction not interpretable yet!");
   }
 
-  GenericValue callExternalFunction(Function *F,
-                                    const std::vector<GenericValue> &ArgVals);
+    // GenericValue callExternalFunction(Function *F,
+    //                                 const std::vector<GenericValue> &ArgVals);
   void exitCalled(GenericValue GV);
 
   void addAtExitHandler(Function *F) {
@@ -187,7 +331,7 @@ public:
   }
 
   GenericValue *getFirstVarArg () {
-    return &(ECStack.back ().VarArgs[0]);
+      return &(SF().varArgs[0]);
   }
 
 private:  // Helper functions
@@ -204,7 +348,7 @@ private:  // Helper functions
   void *getPointerToBasicBlock(BasicBlock *BB) { return (void*)BB; }
 
   void initializeExecutionEngine() { }
-  void initializeExternalFunctions();
+    // void initializeExternalFunctions();
   GenericValue getConstantExprValue(ConstantExpr *CE, ExecutionContext &SF);
   GenericValue getOperandValue(Value *V, ExecutionContext &SF);
   GenericValue executeTruncInst(Value *SrcVal, const Type *DstTy,
@@ -237,6 +381,7 @@ private:  // Helper functions
 
 };
 
-} // End llvm namespace
+}
+}
 
 #endif

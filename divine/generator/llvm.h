@@ -12,10 +12,10 @@
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/ExecutionEngine/Interpreter.h>
 #include <llvm/Support/system_error.h>
 
 #include <divine/generator/common.h>
+#include <divine/llvm/interpreter.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H
@@ -27,12 +27,17 @@ using namespace llvm;
 
 struct LLVM : Common {
     typedef Blob Node;
+    divine::llvm::Interpreter *_interpreter;
+    OwningPtr< MemoryBuffer > *_input;
+    LLVMContext *ctx;
+    std::string file;
+    Node _initial;
 
     Node initial() {
-        assert_die();
-        /* Blob b = alloc.new_blob( sizeof( Content ) );
-        b.get< Content >( alloc._slack ) = std::make_pair( 0, 0 );
-        return b; */
+        interpreter();
+        dbgs() << "initial: " << interpreter().nextInstruction() << "\n";
+        assert( _initial.valid() );
+        return _initial;
     }
 
     template< typename Q >
@@ -42,41 +47,44 @@ struct LLVM : Common {
 
     struct Successors {
         typedef Node Type;
-        mutable Node _from;
-        int nth;
-        LLVM *parent;
+        Node _from, _this;
+        bool _empty;
 
         bool empty() const {
-            /* if ( !_from.valid() )
-                return true;
-            Content f = _from.get< Content >( parent->alloc._slack );
-            if ( f.first == 1024 || f.second == 1024 )
-            return true; */
-            return true;
+            return _empty;
         }
 
         Node from() { return _from; }
 
         Successors tail() const {
             Successors s = *this;
-            s.nth ++;
+            s._empty = true;
             return s;
         }
 
         Node head() {
-            assert_die();
-            /* Node ret = parent->alloc.new_blob( sizeof( Content ) );
-            ret.get< Content >( parent->alloc._slack ) =
-                _from.get< Content >( parent->alloc._slack );
-                return ret; */
+            return _this;
         }
+
+        Successors() : _empty( true ) {}
     };
 
     Successors successors( Node st ) {
         Successors ret;
+        interpreter().restore( st, alloc._slack );
+        dbgs() << "successors: " << interpreter().nextInstruction() << "; tid = "
+               << pthread_self() << "\n";
+
         ret._from = st;
-        ret.nth = 1;
-        ret.parent = this;
+        if (interpreter().done()) {
+            dbgs() << "successors: done\n";
+            ret._empty = true;
+        } else {
+            ret._empty = false;
+            interpreter().step();
+            ret._this = interpreter().snapshot( alloc._slack, pool() );
+            assert( ret._this.valid() );
+        }
         return ret;
     }
 
@@ -91,13 +99,7 @@ struct LLVM : Common {
     bool isAccepting( Node s ) { return false; }
 
     std::string showNode( Node s ) {
-        return "[]";
-        /* if ( !s.valid() )
-           return "[]";
-        Content f = s.get< Content >( alloc._slack );
-        std::stringstream stream;
-        stream << "[" << f.first << ", " << f.second << "]";
-        return stream.str(); */
+        return "[?]";
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
@@ -105,30 +107,36 @@ struct LLVM : Common {
         exit( 1 );
     }
 
-    void read( std::string file ) {
-        LLVMContext ctx;
-        OwningPtr< MemoryBuffer > input;
-        MemoryBuffer::getFile( file, input );
-        Module *m = ParseBitcodeFile( &*input, ctx );
+    void read( std::string _file ) {
+        file = _file;
+    }
+
+    divine::llvm::Interpreter &interpreter() {
+        if (_interpreter)
+            return *_interpreter;
+
+        _input = new OwningPtr< MemoryBuffer >();
+        ctx = new LLVMContext();
+        MemoryBuffer::getFile( file, *_input );
+        Module *m = ParseBitcodeFile( &**_input, *ctx );
 
         assert( m );
         std::string err;
-        ExecutionEngine *engine = EngineBuilder( m ).setEngineKind( EngineKind::Interpreter )
-                                  .setErrorStr( &err ).create();
 
-        if ( !engine )
-            die( err );
-
-        Interpreter *inter = static_cast< Interpreter * >( engine );
-        assert( inter );
+        _interpreter = new Interpreter( m );
 
         std::vector<llvm::GenericValue> args;
 
         Function *f = m->getFunction( "main" );
         assert( f );
-        inter->callFunction( f, args );
+        _interpreter->callFunction( f, args );
         std::cerr << "loaded LLVM bitcode file " << file << "..." << std::endl;
+
+        _initial = _interpreter->snapshot( alloc._slack, pool() );
+        return *_interpreter;
     }
+
+    LLVM() : _interpreter( 0 ) {}
 
 };
 
