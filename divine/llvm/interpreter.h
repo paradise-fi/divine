@@ -66,7 +66,7 @@ struct BiMap {
         assert( _left.count( a ) );
         std::cerr << "bimap: getting (" << a << " -> " << _left.find( a )->second << ")" << std::endl;
         return _left.find( a )->second;
-  }
+    }
 };
 
 struct Location {
@@ -105,7 +105,7 @@ struct ExecutionContext {
     Values values;   // LLVM values used in this invocation
     VarArgs varArgs; // Values passed through an ellipsis
     CallSite caller; // Holds the call that called subframes.
-                                   // NULL if main func or debugger invoked fn
+                     // NULL if main func or debugger invoked fn
     Allocas allocas;
 
     int size() {
@@ -166,16 +166,16 @@ struct ExecutionContext {
 // Interpreter - This class represents the entirety of the interpreter.
 //
 class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<Interpreter> {
-  GenericValue ExitValue;          // The return value of the called function
-  TargetData TD;
-  IntrinsicLowering *IL;
+    GenericValue ExitValue;          // The return value of the called function
+    TargetData TD;
+    IntrinsicLowering *IL;
 
     Arena arena;
     BiMap< int, Location > locationIndex;
     BiMap< int, Value * > valueIndex;
 
-  // The runtime stack of executing code.  The top of the stack is the current
-  // function record.
+    // The runtime stack of executing code.  The top of the stack is the current
+    // function record.
     std::vector<ExecutionContext> stack;
 
     void leave() {
@@ -235,8 +235,8 @@ public:
 
     void buildIndex( Module *m );
 
-  explicit Interpreter(Module *M);
-  ~Interpreter();
+    explicit Interpreter(Module *M);
+    ~Interpreter();
 
   /// runAtExitHandlers - Run any functions registered by the program's calls to
   /// atexit(3), which we intercept and store in AtExitHandlers.

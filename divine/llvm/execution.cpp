@@ -562,7 +562,7 @@ void Interpreter::visitSelectInst(SelectInst &I) {
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
     GenericValue Src3 = getOperandValue(I.getOperand(2), SF());
-  GenericValue R = executeSelectInst(Src1, Src2, Src3);
+    GenericValue R = executeSelectInst(Src1, Src2, Src3);
     SetValue(&I, R, SF());
 }
 
@@ -577,8 +577,8 @@ void Interpreter::exitCalled(GenericValue GV) {
   // the stack before interpreting atexit handlers.
     while (!stack.empty())
         leave();
-  runAtExitHandlers();
-  exit(GV.IntVal.zextOrTrunc(32).getZExtValue());
+    runAtExitHandlers();
+    exit(GV.IntVal.zextOrTrunc(32).getZExtValue());
 }
 
 /// Pop the last stack frame off of ECStack and then copy the result
@@ -594,23 +594,23 @@ void Interpreter::popStackAndReturnValueToCaller(const Type *RetTy,
     leave();
 
     if (stack.empty()) {  // Finished main.  Put result into exit code...
-    if (RetTy && !RetTy->isVoidTy()) {          // Nonvoid return type?
-      ExitValue = Result;   // Capture the exit value of the program
+        if (RetTy && !RetTy->isVoidTy()) {          // Nonvoid return type?
+            ExitValue = Result;   // Capture the exit value of the program
+        } else {
+            memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
+        }
     } else {
-      memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
-    }
-  } else {
-    // If we have a previous stack frame, and we have a previous call,
-    // fill in the return value...
+        // If we have a previous stack frame, and we have a previous call,
+        // fill in the return value...
         if (Instruction *I = SF().caller.getInstruction()) {
-      // Save result...
+            // Save result...
             if (!SF().caller.getType()->isVoidTy())
                 SetValue(I, Result, SF());
-      if (InvokeInst *II = dyn_cast<InvokeInst> (I))
+            if (InvokeInst *II = dyn_cast<InvokeInst> (I))
                 SwitchToNewBasicBlock (II->getNormalDest (), SF());
             SF().caller = CallSite();          // We returned from the call...
+        }
     }
-  }
 }
 
 void Interpreter::visitReturnInst(ReturnInst &I) {
@@ -632,7 +632,7 @@ void Interpreter::visitUnwindInst(UnwindInst &I) {
   do {
       leave();
       if (stack.empty())
-      report_fatal_error("Empty stack during unwind!");
+          report_fatal_error("Empty stack during unwind!");
       Inst = SF().caller.getInstruction();
   } while (!(Inst && isa<InvokeInst>(Inst)));
 
@@ -661,18 +661,18 @@ void Interpreter::visitBranchInst(BranchInst &I) {
 
 void Interpreter::visitSwitchInst(SwitchInst &I) {
     GenericValue CondVal = getOperandValue(I.getOperand(0), SF());
-  const Type *ElTy = I.getOperand(0)->getType();
+    const Type *ElTy = I.getOperand(0)->getType();
 
-  // Check to see if any of the cases match...
-  BasicBlock *Dest = 0;
-  for (unsigned i = 2, e = I.getNumOperands(); i != e; i += 2)
+    // Check to see if any of the cases match...
+    BasicBlock *Dest = 0;
+    for (unsigned i = 2, e = I.getNumOperands(); i != e; i += 2)
         if (executeICMP_EQ(CondVal, getOperandValue(I.getOperand(i), SF()), ElTy)
-        .IntVal != 0) {
-      Dest = cast<BasicBlock>(I.getOperand(i+1));
-      break;
-    }
+            .IntVal != 0) {
+            Dest = cast<BasicBlock>(I.getOperand(i+1));
+            break;
+        }
 
-  if (!Dest) Dest = I.getDefaultDest();   // No cases matched: use default
+    if (!Dest) Dest = I.getDefaultDest();   // No cases matched: use default
     SwitchToNewBasicBlock(Dest, SF());
 }
 
@@ -699,25 +699,25 @@ void Interpreter::SwitchToNewBasicBlock(BasicBlock *Dest, ExecutionContext &SF){
 
     if (!isa<PHINode>(next.insn)) return;  // Nothing fancy to do
 
-  // Loop over all of the PHI nodes in the current block, reading their inputs.
-  std::vector<GenericValue> ResultValues;
+    // Loop over all of the PHI nodes in the current block, reading their inputs.
+    std::vector<GenericValue> ResultValues;
 
     for (; PHINode *PN = dyn_cast<PHINode>(next.insn); ++next.insn) {
-    // Search for the value corresponding to this previous bb...
+        // Search for the value corresponding to this previous bb...
         int i = PN->getBasicBlockIndex(previous.block);
-    assert(i != -1 && "PHINode doesn't contain entry for predecessor??");
-    Value *IncomingValue = PN->getIncomingValue(i);
+        assert(i != -1 && "PHINode doesn't contain entry for predecessor??");
+        Value *IncomingValue = PN->getIncomingValue(i);
 
-    // Save the incoming value for this PHI node...
-    ResultValues.push_back(getOperandValue(IncomingValue, SF));
-  }
+        // Save the incoming value for this PHI node...
+        ResultValues.push_back(getOperandValue(IncomingValue, SF));
+    }
 
-  // Now loop over all of the PHI nodes setting their values...
+    // Now loop over all of the PHI nodes setting their values...
     next.insn = next.block->begin();
     for (unsigned i = 0; isa<PHINode>(next.insn); ++next.insn, ++i) {
         PHINode *PN = cast<PHINode>(next.insn);
-    SetValue(PN, ResultValues[i], SF);
-  }
+        SetValue(PN, ResultValues[i], SF);
+    }
     setLocation( SF, next );
 }
 
@@ -726,29 +726,29 @@ void Interpreter::SwitchToNewBasicBlock(BasicBlock *Dest, ExecutionContext &SF){
 //===----------------------------------------------------------------------===//
 
 void Interpreter::visitAllocaInst(AllocaInst &I) {
-  const Type *Ty = I.getType()->getElementType();  // Type to be allocated
+    const Type *Ty = I.getType()->getElementType();  // Type to be allocated
 
-  // Get the number of elements being allocated by the array...
-  unsigned NumElements = 
+    // Get the number of elements being allocated by the array...
+    unsigned NumElements =
         getOperandValue(I.getOperand(0), SF()).IntVal.getZExtValue();
 
-  unsigned TypeSize = (size_t)TD.getTypeAllocSize(Ty);
+    unsigned TypeSize = (size_t)TD.getTypeAllocSize(Ty);
 
-  // Avoid malloc-ing zero bytes, use max()...
-  unsigned MemToAlloc = std::max(1U, NumElements * TypeSize);
+    // Avoid malloc-ing zero bytes, use max()...
+    unsigned MemToAlloc = std::max(1U, NumElements * TypeSize);
 
-  // Allocate enough memory to hold the type...
+    // Allocate enough memory to hold the type...
     Arena::Index Memory = arena.allocate(MemToAlloc);
 
-  DEBUG(dbgs() << "Allocated Type: " << *Ty << " (" << TypeSize << " bytes) x " 
-               << NumElements << " (Total: " << MemToAlloc << ") at "
-               << uintptr_t(Memory) << '\n');
+    DEBUG(dbgs() << "Allocated Type: " << *Ty << " (" << TypeSize << " bytes) x " 
+          << NumElements << " (Total: " << MemToAlloc << ") at "
+          << uintptr_t(Memory) << '\n');
 
     GenericValue Result = PTOGV(reinterpret_cast< void * >( intptr_t( Memory ) ));
-  assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
+    assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
     SetValue(&I, Result, SF());
 
-  if (I.getOpcode() == Instruction::Alloca)
+    if (I.getOpcode() == Instruction::Alloca)
         SF().allocas.push_back(Memory);
 }
 
@@ -802,20 +802,20 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
 void Interpreter::visitLoadInst(LoadInst &I) {
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
     GenericValue *Ptr = (GenericValue*)arena.translate(intptr_t(GVTOP(SRC)));
-  GenericValue Result;
-  LoadValueFromMemory(Result, Ptr, I.getType());
+    GenericValue Result;
+    LoadValueFromMemory(Result, Ptr, I.getType());
     SetValue(&I, Result, SF());
-  if (I.isVolatile() && PrintVolatile)
-    dbgs() << "Volatile load " << I;
+    if (I.isVolatile() && PrintVolatile)
+        dbgs() << "Volatile load " << I;
 }
 
 void Interpreter::visitStoreInst(StoreInst &I) {
     GenericValue Val = getOperandValue(I.getOperand(0), SF());
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
     StoreValueToMemory(Val, (GenericValue *)arena.translate(intptr_t(GVTOP(SRC))),
-                     I.getOperand(0)->getType());
-  if (I.isVolatile() && PrintVolatile)
-    dbgs() << "Volatile store: " << I;
+                       I.getOperand(0)->getType());
+    if (I.isVolatile() && PrintVolatile)
+        dbgs() << "Volatile store: " << I;
 }
 
 void Interpreter::setInstruction( ExecutionContext &SF, BasicBlock::iterator i ) {
@@ -829,100 +829,100 @@ void Interpreter::setInstruction( ExecutionContext &SF, BasicBlock::iterator i )
 //===----------------------------------------------------------------------===//
 
 void Interpreter::visitCallSite(CallSite CS) {
-  // Check to see if this is an intrinsic function call...
-  Function *F = CS.getCalledFunction();
-  if (F && F->isDeclaration())
-    switch (F->getIntrinsicID()) {
-    case Intrinsic::not_intrinsic:
-      break;
-    case Intrinsic::vastart: { // va_start
-      GenericValue ArgIndex;
+    // Check to see if this is an intrinsic function call...
+    Function *F = CS.getCalledFunction();
+    if (F && F->isDeclaration())
+        switch (F->getIntrinsicID()) {
+            case Intrinsic::not_intrinsic:
+                break;
+            case Intrinsic::vastart: { // va_start
+                GenericValue ArgIndex;
                 ArgIndex.UIntPairVal.first = stack.size() - 1;
-      ArgIndex.UIntPairVal.second = 0;
+                ArgIndex.UIntPairVal.second = 0;
                 SetValue(CS.getInstruction(), ArgIndex, SF());
-      return;
-    }
-    case Intrinsic::vaend:    // va_end is a noop for the interpreter
-      return;
-    case Intrinsic::vacopy:   // va_copy: dest = src
+                return;
+            }
+            case Intrinsic::vaend:    // va_end is a noop for the interpreter
+                return;
+            case Intrinsic::vacopy:   // va_copy: dest = src
                 SetValue(CS.getInstruction(), getOperandValue(*CS.arg_begin(), SF()), SF());
-      return;
-    default:
-      // If it is an unknown intrinsic function, use the intrinsic lowering
-      // class to transform it into hopefully tasty LLVM code.
-      //
+                return;
+            default:
+                // If it is an unknown intrinsic function, use the intrinsic lowering
+                // class to transform it into hopefully tasty LLVM code.
+                //
                 assert_die(); /* TODO: the new locations need to be indexed */
-      BasicBlock::iterator me(CS.getInstruction());
-      BasicBlock *Parent = CS.getInstruction()->getParent();
-      bool atBegin(Parent->begin() == me);
-      if (!atBegin)
-        --me;
-      IL->LowerIntrinsicCall(cast<CallInst>(CS.getInstruction()));
+                BasicBlock::iterator me(CS.getInstruction());
+                BasicBlock *Parent = CS.getInstruction()->getParent();
+                bool atBegin(Parent->begin() == me);
+                if (!atBegin)
+                    --me;
+                IL->LowerIntrinsicCall(cast<CallInst>(CS.getInstruction()));
 
-      // Restore the CurInst pointer to the first instruction newly inserted, if
-      // any.
-      if (atBegin) {
+                // Restore the CurInst pointer to the first instruction newly inserted, if
+                // any.
+                if (atBegin) {
                     setInstruction( SF(), Parent->begin() );
-      } else {
+                } else {
                     BasicBlock::iterator me_next = me;
                     ++ me_next;
                     setInstruction( SF(), me_next );
-      }
-      return;
-    }
+                }
+                return;
+        }
 
 
     SF().caller = CS;
-  std::vector<GenericValue> ArgVals;
+    std::vector<GenericValue> ArgVals;
     const unsigned NumArgs = SF().caller.arg_size();
-  ArgVals.reserve(NumArgs);
-  uint16_t pNum = 1;
+    ArgVals.reserve(NumArgs);
+    uint16_t pNum = 1;
     for (CallSite::arg_iterator i = SF().caller.arg_begin(),
                                 e = SF().caller.arg_end(); i != e; ++i, ++pNum) {
-    Value *V = *i;
+        Value *V = *i;
         ArgVals.push_back(getOperandValue(V, SF()));
-  }
+    }
 
-  // To handle indirect calls, we must get the pointer value from the argument
-  // and treat it as a function pointer.
+    // To handle indirect calls, we must get the pointer value from the argument
+    // and treat it as a function pointer.
     GenericValue SRC = getOperandValue(SF().caller.getCalledValue(), SF());
     std::cerr << "processing call at " << location( SF() ) << std::endl;
-  callFunction((Function*)GVTOP(SRC), ArgVals);
+    callFunction((Function*)GVTOP(SRC), ArgVals);
 }
 
 void Interpreter::visitShl(BinaryOperator &I) {
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
-  GenericValue Dest;
-  if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
-    Dest.IntVal = Src1.IntVal.shl(Src2.IntVal.getZExtValue());
-  else
-    Dest.IntVal = Src1.IntVal;
-  
+    GenericValue Dest;
+    if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
+        Dest.IntVal = Src1.IntVal.shl(Src2.IntVal.getZExtValue());
+    else
+        Dest.IntVal = Src1.IntVal;
+
     SetValue(&I, Dest, SF());
 }
 
 void Interpreter::visitLShr(BinaryOperator &I) {
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
-  GenericValue Dest;
-  if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
-    Dest.IntVal = Src1.IntVal.lshr(Src2.IntVal.getZExtValue());
-  else
-    Dest.IntVal = Src1.IntVal;
-  
+    GenericValue Dest;
+    if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
+        Dest.IntVal = Src1.IntVal.lshr(Src2.IntVal.getZExtValue());
+    else
+        Dest.IntVal = Src1.IntVal;
+
     SetValue(&I, Dest, SF());
 }
 
 void Interpreter::visitAShr(BinaryOperator &I) {
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
-  GenericValue Dest;
-  if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
-    Dest.IntVal = Src1.IntVal.ashr(Src2.IntVal.getZExtValue());
-  else
-    Dest.IntVal = Src1.IntVal;
-  
+    GenericValue Dest;
+    if (Src2.IntVal.getZExtValue() < Src1.IntVal.getBitWidth())
+        Dest.IntVal = Src1.IntVal.ashr(Src2.IntVal.getZExtValue());
+    else
+        Dest.IntVal = Src1.IntVal;
+
     SetValue(&I, Dest, SF());
 }
 
@@ -1132,28 +1132,28 @@ void Interpreter::visitBitCastInst(BitCastInst &I) {
    case Type::TY##TyID: Dest.TY##Val = Src.TY##Val; break
 
 void Interpreter::visitVAArgInst(VAArgInst &I) {
-  // Get the incoming valist parameter.  LLI treats the valist as a
-  // (ec-stack-depth var-arg-index) pair.
+    // Get the incoming valist parameter.  LLI treats the valist as a
+    // (ec-stack-depth var-arg-index) pair.
     GenericValue VAList = getOperandValue(I.getOperand(0), SF());
-  GenericValue Dest;
+    GenericValue Dest;
     GenericValue Src = SFat(VAList.UIntPairVal.first)
                        .varArgs[VAList.UIntPairVal.second];
-  const Type *Ty = I.getType();
-  switch (Ty->getTypeID()) {
-    case Type::IntegerTyID: Dest.IntVal = Src.IntVal;
-    IMPLEMENT_VAARG(Pointer);
-    IMPLEMENT_VAARG(Float);
-    IMPLEMENT_VAARG(Double);
-  default:
-    dbgs() << "Unhandled dest type for vaarg instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
-  }
+    const Type *Ty = I.getType();
+    switch (Ty->getTypeID()) {
+        case Type::IntegerTyID: Dest.IntVal = Src.IntVal;
+            IMPLEMENT_VAARG(Pointer);
+            IMPLEMENT_VAARG(Float);
+            IMPLEMENT_VAARG(Double);
+        default:
+            dbgs() << "Unhandled dest type for vaarg instruction: " << *Ty << "\n";
+            llvm_unreachable(0);
+    }
 
-  // Set the Value of this Instruction.
+    // Set the Value of this Instruction.
     SetValue(&I, Dest, SF());
 
-  // Move the pointer to the next vararg.
-  ++VAList.UIntPairVal.second;
+    // Move the pointer to the next vararg.
+    ++VAList.UIntPairVal.second;
 }
 
 GenericValue Interpreter::getConstantExprValue (ConstantExpr *CE,
@@ -1242,13 +1242,13 @@ GenericValue Interpreter::getConstantExprValue (ConstantExpr *CE,
 GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
       std::cerr << "get constant expression" << std::endl;
-    return getConstantExprValue(CE, SF);
+      return getConstantExprValue(CE, SF);
   } else if (Constant *CPV = dyn_cast<Constant>(V)) {
       std::cerr << "get constant" << std::endl;
-    return getConstantValue(CPV);
+      return getConstantValue(CPV);
   } else if (GlobalValue *GV = dyn_cast<GlobalValue>(V)) {
       std::cerr << "get global" << std::endl;
-    return PTOGV(getPointerToGlobal(GV));
+      return PTOGV(getPointerToGlobal(GV));
   } else {
       GenericValue ret = SF.values[valueIndex.left( V )];
       std::cerr << "get value " << valueIndex.left( V ) << ": " << GVTOP(ret) << std::endl;
@@ -1267,34 +1267,34 @@ void Interpreter::callFunction(Function *F,
                                const std::vector<GenericValue> &ArgVals) {
     assert((stack.empty() || SF().caller.getInstruction() == 0 ||
             SF().caller.arg_size() == ArgVals.size()) &&
-         "Incorrect number of arguments passed into function call!");
-  // Make a new stack frame... and fill it in.
+           "Incorrect number of arguments passed into function call!");
+    // Make a new stack frame... and fill it in.
     enter();
 
-  // Special handling for external functions.
-  if (F->isDeclaration()) {
+    // Special handling for external functions.
+    if (F->isDeclaration()) {
         assert_die();
         // GenericValue Result = callExternalFunction (F, ArgVals);
-    // Simulate a 'ret' instruction of the appropriate type.
+        // Simulate a 'ret' instruction of the appropriate type.
         // popStackAndReturnValueToCaller (F->getReturnType (), Result);
         // return;
-  }
+    }
 
     Location next( F, F->begin(), F->begin()->begin() );
     setLocation( SF(), next );
 
-  // Run through the function arguments and initialize their values...
-  assert((ArgVals.size() == F->arg_size() ||
-         (ArgVals.size() > F->arg_size() && F->getFunctionType()->isVarArg()))&&
-         "Invalid number of values passed to function invocation!");
+    // Run through the function arguments and initialize their values...
+    assert((ArgVals.size() == F->arg_size() ||
+            (ArgVals.size() > F->arg_size() && F->getFunctionType()->isVarArg()))&&
+           "Invalid number of values passed to function invocation!");
 
-  // Handle non-varargs arguments...
-  unsigned i = 0;
-  for (Function::arg_iterator AI = F->arg_begin(), E = F->arg_end(); 
-       AI != E; ++AI, ++i)
+    // Handle non-varargs arguments...
+    unsigned i = 0;
+    for (Function::arg_iterator AI = F->arg_begin(), E = F->arg_end(); 
+         AI != E; ++AI, ++i)
         SetValue(AI, ArgVals[i], SF());
 
-  // Handle varargs arguments...
+    // Handle varargs arguments...
     SF().varArgs.assign(ArgVals.begin()+i, ArgVals.end());
 }
 
