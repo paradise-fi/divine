@@ -1,5 +1,6 @@
 #include <wibble/test.h>
 
+namespace wibble {
 int assertFailure = 0;
 
 void assert_die_fn( Location l )
@@ -10,3 +11,4 @@ void assert_die_fn( Location l )
 #endif
 }
 
+}

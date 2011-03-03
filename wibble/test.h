@@ -7,6 +7,8 @@
 #ifndef WIBBLE_TEST_H
 #define WIBBLE_TEST_H
 
+namespace wibble {
+
 // TODO use TLS
 extern int assertFailure;
 
@@ -18,10 +20,10 @@ struct Location {
         : file( f ), line( l ), iteration( iter ), stmt( st ) {}
 };
 
-#define LOCATION(stmt) Location( __FILE__, __LINE__, stmt )
+#define LOCATION(stmt) ::wibble::Location( __FILE__, __LINE__, stmt )
 
 #ifndef NDEBUG
-#define LOCATION_I(stmt, i) Location( __FILE__, __LINE__, stmt, i )
+#define LOCATION_I(stmt, i) ::wibble::Location( __FILE__, __LINE__, stmt, i )
 #define assert(x) assert_fn( LOCATION( #x ), x )
 #define assert_pred(p, x) assert_pred_fn( \
         LOCATION( #p "( " #x " )" ), x, p( x ) )
@@ -163,6 +165,8 @@ struct ExpectFailure {
     ExpectFailure() { beginAssertFailure(); }
     ~ExpectFailure() { endAssertFailure(); }
 };
+
+}
 
 typedef void Test;
 
