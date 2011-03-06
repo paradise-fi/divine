@@ -1,27 +1,29 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
+#ifndef DIVINE_STATISTICS_H
+#define DIVINE_STATISTICS_H
+
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
 #include <wibble/string.h>
+#include <wibble/regexp.h>
 #include <divine/mpi.h>
+#include <divine/report.h>
 #include <iomanip>
 
 #include <divine/output.h>
-
-#ifndef DIVINE_STATISTICS_H
-#define DIVINE_STATISTICS_H
 
 #define TAG_STATISTICS 128
 
 namespace divine {
 
 struct NoStatistics {
-    void enqueue( int ) {}
-    void dequeue( int ) {}
-    void hashsize( int, int ) {}
-    void hashadded( int ) {}
-    void sent( int, int ) {}
-    void received( int, int ) {}
+    void enqueue( int , int) {}
+    void dequeue( int , int) {}
+    void hashsize( int, int, int) {}
+    void hashadded( int , int) {}
+    void sent( int, int, int ) {}
+    void received( int, int, int ) {}
 
     std::ostream *output;
     bool gnuplot;
@@ -43,6 +45,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         int enq, deq;
         int hashsize;
         int hashused;
+        long memNodes;
+        long memTable;
     };
 
     std::vector< PerThread * > threads;
@@ -52,20 +56,24 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     bool gnuplot;
     std::ostream *output;
 
-    void enqueue( int id ) {
+    void enqueue( int id , int nodeSize) {
         thread( id ).enq ++;
+        thread( id ).memNodes += nodeSize;
     }
 
-    void dequeue( int id ) {
+    void dequeue( int id , int nodeSize) {
         thread( id ).deq ++;
+        thread( id ).memNodes -= nodeSize;
     }
 
-    void hashsize( int id, int s ) {
+    void hashsize( int id, int s , int entrySize) {
         thread( id ).hashsize = s;
+        thread( id ).memTable = s * entrySize;
     }
 
-    void hashadded( int id ) {
+    void hashadded( int id , int nodeSize) {
         thread( id ).hashused ++;
+        thread( id ).memNodes += nodeSize;
     }
 
     PerThread &thread( int id ) {
@@ -75,22 +83,24 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         return *threads[ id ];
     }
 
-    void sent( int from, int to ) {
+    void sent( int from, int to, int nodeSize) {
         assert( to >= 0 );
 
         PerThread &f = thread( from );
         if ( f.sent.size() <= to )
             f.sent.resize( to + 1, 0 );
         ++ f.sent[ to ];
+        f.memNodes += nodeSize;
     }
 
-    void received( int from, int to ) {
+    void received( int from, int to, int nodeSize) {
         assert_leq( 0, from );
 
         PerThread &t = thread( to );
         if ( t.received.size() <= from )
             t.received.resize( from + 1, 0 );
         ++ t.received[ from ];
+        thread( from ).memNodes -= nodeSize;
     }
 
     static int first( int a, int ) { return a; }
@@ -167,8 +177,47 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
                 printv( o, 9, thread( i ).hashsize, &sum );
             printv( o, 10, sum, 0 );
             o << std::endl;
+            
+            label( o, "MEMORY" );
+            long memSum = 0;
+            sum = 0;
+            for ( int i = 0; i < threads.size(); ++ i )
+            	printv( o, 9, thread( i ).memNodes / 1024, &sum);
+            printv( o, 10, sum, 0);
+            o << std::endl;
+            sum = 0;
+            for ( int i = 0; i < threads.size(); ++ i ) {
+            	printv(o, 9, thread( i ).memTable / 1024, &sum);
+                memSum += thread( i ).memNodes + thread( i ).memTable;
+            }
+            printv( o, 10, sum, 0 );
+            o << std::endl;
+            o << std::setw(10 * threads.size()) <<  "Estimated:"
+                << std::setw(11) << (memSum/1024) << std::endl;
+            o << std::setw(10 * threads.size()) << "Used:"
+                << std::setw(11) << memUsed() << std::endl;
         }
     }
+
+    static int memUsed() {
+        int vmsz = 0;
+#ifdef __linux
+        std::stringstream file;
+        file << "/proc/" << uint64_t( getpid() ) << "/status";
+        wibble::ERegexp r( "VmSize:[\t ]*([0-9]+)", 2 );
+        if ( divine::Report::matchLine( file.str(), r ) ) {
+            vmsz = atoi( r[1].c_str() );
+        }
+#endif
+  
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (hProcess != NULL && GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
+      vmsz = pmc.WorkingSetSize/(1024);
+#endif
+        return vmsz;
+    }
+    
 
 #ifdef HAVE_MPI
     void send() {
@@ -288,6 +337,16 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         return *g;
     }
 };
+
+template <typename Ty>
+int memSize(Ty x) {
+    return sizeof(x);
+}
+
+template <>
+inline int memSize<Blob>(Blob x) {
+    return x.valid() ? (x.size() + sizeof(BlobHeader)) : 0;
+}
 
 }
 

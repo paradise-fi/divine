@@ -22,7 +22,7 @@ struct Queue {
 
     void pushSuccessors( const Node &t )
     {
-        Statistics::global().enqueue( id );
+        Statistics::global().enqueue( id , memSize(t) );
         m_queue.push_back( t );
     }
 
@@ -58,7 +58,7 @@ struct Queue {
 
     void dropEmptyHead() {
         assert( m_head.empty() && !m_queue.empty() );
-        Statistics::global().dequeue( id );
+        Statistics::global().dequeue( id, memSize(m_queue.front()) );
         m_head = g.successors( m_queue.front() );
         maybe_deadlock = true;
         m_queue.pop_front();

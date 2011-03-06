@@ -172,8 +172,8 @@ struct Common {
 
         tact = S::transition( m_notify, from, to );
         if ( tact != IgnoreTransition && !had ) {
-            Statistics::global().hashadded( id );
-            Statistics::global().hashsize( id, seen().size() );
+            Statistics::global().hashadded( id , memSize(to) );
+            Statistics::global().hashsize( id, seen().size(), sizeof(typename Seen::Cell) );
             seen().insertHinted( to, hint );
             setPermanent( to );
         }
@@ -257,7 +257,7 @@ struct Partitioned {
 
     inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
         int _to = owner( to, hint ), _from = worker.globalId();
-        Statistics::global().sent( _from, _to );
+        Statistics::global().sent( _from, _to, memSize(from) + memSize(to) );
         worker.submit( _from, _to, unblob< Node >( from ) );
         worker.submit( _from, _to, unblob< Node >( to ) );
     }
@@ -300,7 +300,7 @@ struct Partitioned {
                         /* wait a bit, if need be */
                         while ( !worker.comms().pending( from, to ) );
                         t = worker.comms().take( from, to );
-                        Statistics::global().received( from, to );
+                        Statistics::global().received( from, to, memSize(f) +  memSize(t));
 
                         bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
                     }
