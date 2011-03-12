@@ -87,16 +87,15 @@ include_directories( ${RX_PATH} )
 link_directories( ${RX_PATH} )
 
 if( LLVM )
-include( FindLLVM )
-endif()
-
-if( LLVM AND NOT LLVM_FOUND )
+  include( FindLLVM )
+  if( NOT LLVM_FOUND )
     message( "-- WARNING: Could not find LLVM. Disabling LLVM support." )
     set( LLVM OFF )
-else()
-  add_definitions( -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS )
-  add_definitions( -DHAVE_LLVM )
-  link_directories( ${LLVM_LIBRARY_DIRS} )
+  else()
+    add_definitions( -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS )
+    add_definitions( -DHAVE_LLVM )
+    link_directories( ${LLVM_LIBRARY_DIRS} )
+  endif()
 endif()
 
 
