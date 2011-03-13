@@ -29,7 +29,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 --
 
-The files under divine/legacy, divine/ltl2ba and hoard/ are copyrighted by
+The files under divine/legacy, divine/ltl2ba, ltl2dstar/, ltl2ba/ and hoard/ are copyrighted by
 their respective authors and covered by the GNU General Public License version
 2, as reproduced below.
 
@@ -39,6 +39,10 @@ Petr Rockai, Pavel Simecek. Portions of the code are copyright (c)
 2003-2007 Michael Weber.
 
 HOARD is (c) 1998-2007 by Emery Berger <emery@cs.umass.edu>.
+
+ltl2ba is (c) 2001-2007 by Denis Oddoux and Paul Gastin
+
+ltl2dstar is (c) 2005-2007 by Joachim Klein <j.klein@ltl2dstar.de>
 
 The files divine/dlfcn-win32.{h,c} are (c) 2007 Ramiro Polla.
 

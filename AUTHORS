@@ -1,5 +1,6 @@
-DiVinE (2003-2009), by members of the ParaDiSe Laboratory:
+DiVinE (2003-2011), by members of the ParaDiSe Laboratory:
 
+Jiri Appl
 Jiri Barnat
 Petr Bauch
 Lubos Brim
@@ -19,5 +20,7 @@ LPSOLVE by Michel Berkelaar, Kjell Eikland, Peter Notebaert.
 dlfcn-win32 by Ramiro Polla
 Murphi (1990-1999) by David Dill, Andreas Drexler, Alan Hu, Han Yang,
        Norris Ip, Ralph Melton, Seungjoon Park, Ulrich Stern
+ltl2dstar (2005-2007) by Joachim Klein <j.klein@ltl2dstar.de>
+ltl2ba (2001-2007) by Denis Oddoux, Paul Gastin
 
 See COPYING for authoritative copyright and licence information.
