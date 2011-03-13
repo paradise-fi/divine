@@ -133,6 +133,9 @@ private:
 		LTL_formul_t& FV);
 	void rewrite2_X(LTL_formul_t *F1, LTL_formul_t& FV);
 
+	/// Recusively accumulates LTL formula into stringstream (ltl2dstar altered syntax)
+	void writePrefixNotation(std::ostringstream& str);
+
 public:
 	LTL_formul_t(); // constructor
 	LTL_formul_t(const LTL_formul_t& a); // copy constructor
@@ -169,10 +172,12 @@ public:
 	void rewrite(LTL_formul_t& F); // variant 1
 	void rewrite2(LTL_formul_t& F); // variant 2
 
+	/// Dumps LTL formula in altered prefix notation to string (ltl2dstar altered syntax)
+	std::string prefixNotation();
+
 	/* Syntactic comparsion of formulae: */
 	bool operator==(const LTL_formul_t& a) const;
 	bool operator!=(const LTL_formul_t& a) const;
-
 
 	LTL_formul_t& operator=(const LTL_formul_t& a);
 

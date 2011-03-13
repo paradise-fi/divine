@@ -202,6 +202,48 @@ ostream& LTL_formul_t::vypis(ostream& vystup)
 	return vystup;
 }
 
+/// Dumps LTL formula in altered prefix notation to string (ltl2dstar altered syntax)
+std::string LTL_formul_t::prefixNotation()
+{
+	std::ostringstream str;
+	writePrefixNotation(str);
+	return str.str();
+}
+
+/// Recusively accumulates LTL formula into stringstream (ltl2dstar altered syntax)
+void LTL_formul_t::writePrefixNotation(std::ostringstream& str)
+{
+	switch (what) 
+	{
+		case LTL_LITERAL:
+			if (! obsah.o2->negace) str << LTL_OUT_NOT << " ";
+			str << obsah.o2->predikat << " ";
+			break;
+		case LTL_BIN_OP:
+			switch (obsah.o1->op) 
+			{
+				case op_and: str << "& "; break; //LTL_OUT_AND
+				case op_or: str << "| "; break; //LTL_OUT_OR
+				case op_U: str << "U "; break; //LTL_OUT_U
+				case op_V: str << "V "; break; //LTL_OUT_V (Release)
+			}
+			obsah.o1->arg1->writePrefixNotation(str);
+			obsah.o1->arg2->writePrefixNotation(str);
+			break;
+		case LTL_BOOL:
+			if (obsah.o3)
+				str << "t"; //true
+			else
+				str << "f"; //false
+			str << " ";
+			break;
+		case LTL_NEXT_OP:
+			str << "X "; //LTL_OUT_X
+			obsah.o4->writePrefixNotation(str);
+			break;
+	}
+}
+
 LTL_formul_t::LTL_formul_t():what(LTL_EMPTY)
 { }
 

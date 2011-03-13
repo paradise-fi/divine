@@ -182,6 +182,9 @@ if( HOARD )
 endif( HOARD )
 add_subdirectory( lpsolve )
 
+add_subdirectory( ltl2ba )
+add_subdirectory( ltl2dstar )
+
 find_program( BYACC "byacc" )
 find_package( FLEX )
 find_package( BYACC )

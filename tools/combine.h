@@ -21,6 +21,7 @@
 #include "tools/combine.m4.h"
 
 int ltl2buchi( int argc, char **argv );
+int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out);
 
 using namespace wibble;
 using namespace commandline;
@@ -66,8 +67,7 @@ struct PipeThrough
 {
     std::string cmd;
 
-    PipeThrough( std::string _cmd ) : cmd( _cmd ) {
-    }
+    PipeThrough( const std::string& _cmd ) : cmd( _cmd ) {}
 
     std::string run( std::string data ) {
         int _in, _out;
@@ -97,8 +97,8 @@ struct PipeThrough
 struct Combine {
     Engine *cmd_combine;
     IntOption *o_propId;
-    BoolOption *o_stdout, *o_quiet, *o_help, *o_version,  *o_det;
-    StringOption *o_formula;
+    BoolOption *o_stdout, *o_quiet, *o_help, *o_version, *o_det;
+    StringOption *o_formula, *o_condition;
     commandline::StandardParserWithMandatoryCommand &opts;
 
     bool have_ltl;
@@ -143,6 +143,9 @@ struct Combine {
         o_quiet = cmd_combine->add< BoolOption >(
             "quiet", 'q', "quiet", "",
             "suppress normal output" );
+        o_condition = cmd_combine->add< StringOption >(
+            "condition", 'c', "condition", "",
+            "acceptance condition type: NBA | DRA (default: NBA)" );
     }
 
     std::string m4( std::string in )
@@ -178,11 +181,11 @@ struct Combine {
         std::ostringstream str;
         LTL_parse_t L;
         LTL_formul_t F;
-	ALT_graph_t G;
+        ALT_graph_t G;
         BA_opt_graph_t oG, oG1;
         L.nacti( ltl );
         if ( !L.syntax_check( F ) )
-	    std::cerr << "Error: Syntax error in LTL formula." << std::endl;
+            std::cerr << "Error: Syntax error in LTL formula." << std::endl;
         F = F.negace();
         G.create_graph( F );
         G.transform_vwaa();
@@ -210,6 +213,27 @@ struct Combine {
         return str.str();
     }
 
+    /// Translates ltl formula to automaton specified by acceptanceConditionType using external translator
+    std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string& ltl ) {
+        // ltl2dstar expects the ltl formula to be in the prefix form
+        LTL_parse_t ltlParse( ltl );
+        LTL_formul_t ltlFormula;
+        if ( !ltlParse.syntax_check( ltlFormula ) ) {
+            std::cerr << "Syntax error in LTL formula: " << ltl << endl;
+            return "";
+        }
+        ltlFormula = ltlFormula.negace();
+        std::string ltlInPrefixNotation = ltlFormula.prefixNotation();
+
+        const std::string ac("--automata=" + acceptanceConditionType);
+        const char *argv[] = { "ltl2dstar", "--ltl2nba=spinint:ltl2ba", ac.c_str(), 
+          "--output=plugin:DVE_Process", "--plugin=DVE_Process", "-", "-" };
+        std::stringstream ltlStream, automatonStream;
+        ltlStream << ltlInPrefixNotation;
+        main_ltl2dstar( 7, argv, ltlStream, automatonStream ); 
+        return automatonStream.str();
+    }
+
     void output( int id, std::string data, std::string prop_descr ) {
         if ( !o_quiet->boolValue() && !o_stdout->boolValue() )
             std::cerr << outFile( id ) << ": " << prop_descr << std::endl;
@@ -219,15 +243,13 @@ struct Combine {
             std::cout << data;
     }
 
-    void combine()
-    {
+    void combine() {
         wibble::Splitter lines( "\n", 0 );
         wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
         wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
 
         std::vector< std::string >::iterator i;
-        for ( Splitter::const_iterator ln = lines.begin( ltl_data ); ln != lines.end(); ++ln )
-        {
+        for ( Splitter::const_iterator ln = lines.begin( ltl_data ); ln != lines.end(); ++ln ) {
             if ( prop.match( *ln ) )
                 ltl_formulae.push_back( prop[1] );
             if ( def.match( *ln ) )
@@ -239,8 +261,20 @@ struct Combine {
             if ( o_propId->intValue() && o_propId->intValue() != id )
                 continue;
 
-            std::string prop = cpp( ltl_defs + "\n" + buchi( *i ) );
+            std::string automaton;
+            if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
+                automaton = buchi( *i );
+            // this can also handle NBA, Streett, etc.
+            else if ( o_condition->stringValue() == "DRA" ) {
+                automaton = ltl2dstarTranslation( "rabin", *i );
+
+                // something bad happened
+                if (automaton.empty())
+                    continue;
+            }
+            std::string prop = cpp( ltl_defs + "\n" + automaton );
             std::string dve = cpp( in_data + "\n" + prop + "\n" + system );
+
             output( id, dve, *i );
         }
     }

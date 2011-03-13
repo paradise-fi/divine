@@ -29,6 +29,8 @@ add_executable( divine divine.cpp dvecompile.cpp compile.cpp combine.h ${COMBINE
 add_executable( divine.simulate simulator.cpp )
 add_executable( divine.simple simple.cpp )
 
+target_link_libraries( divine ltl2dstar )
+
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )
 else( WIN32 )
