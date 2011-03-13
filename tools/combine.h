@@ -21,7 +21,9 @@
 #include "tools/combine.m4.h"
 
 int ltl2buchi( int argc, char **argv );
+#ifdef LTL2DSTAR
 int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out);
+#endif
 
 using namespace wibble;
 using namespace commandline;
@@ -98,7 +100,10 @@ struct Combine {
     Engine *cmd_combine;
     IntOption *o_propId;
     BoolOption *o_stdout, *o_quiet, *o_help, *o_version, *o_det;
-    StringOption *o_formula, *o_condition;
+    StringOption *o_formula;
+#ifdef LTL2DSTAR
+    StringOption *o_condition;
+#endif
     commandline::StandardParserWithMandatoryCommand &opts;
 
     bool have_ltl;
@@ -143,9 +148,11 @@ struct Combine {
         o_quiet = cmd_combine->add< BoolOption >(
             "quiet", 'q', "quiet", "",
             "suppress normal output" );
+#ifdef LTL2DSTAR
         o_condition = cmd_combine->add< StringOption >(
             "condition", 'c', "condition", "",
             "acceptance condition type: NBA | DRA (default: NBA)" );
+#endif
     }
 
     std::string m4( std::string in )
@@ -213,6 +220,7 @@ struct Combine {
         return str.str();
     }
 
+#ifdef LTL2DSTAR
     /// Translates ltl formula to automaton specified by acceptanceConditionType using external translator
     std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string ltl ) {
         // ltl2dstar expects the ltl formula to be in the prefix form
@@ -233,6 +241,7 @@ struct Combine {
         main_ltl2dstar( 7, argv, ltlStream, automatonStream ); 
         return automatonStream.str();
     }
+#endif
 
     void output( int id, std::string data, std::string prop_descr ) {
         if ( !o_quiet->boolValue() && !o_stdout->boolValue() )
@@ -262,8 +271,11 @@ struct Combine {
                 continue;
 
             std::string automaton;
+#ifdef LTL2DSTAR
             if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
+#endif
                 automaton = buchi( *i );
+#ifdef LTL2DSTAR
             // this can also handle NBA, Streett, etc.
             else if ( o_condition->stringValue() == "DRA" ) {
                 automaton = ltl2dstarTranslation( "rabin", *i );
@@ -272,6 +284,7 @@ struct Combine {
                 if (automaton.empty())
                     continue;
             }
+#endif
             std::string prop = cpp( ltl_defs + "\n" + automaton );
             std::string dve = cpp( in_data + "\n" + prop + "\n" + system );
 
