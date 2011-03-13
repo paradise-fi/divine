@@ -214,7 +214,7 @@ struct Combine {
     }
 
     /// Translates ltl formula to automaton specified by acceptanceConditionType using external translator
-    std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string& ltl ) {
+    std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string ltl ) {
         // ltl2dstar expects the ltl formula to be in the prefix form
         LTL_parse_t ltlParse( ltl );
         LTL_formul_t ltlFormula;
