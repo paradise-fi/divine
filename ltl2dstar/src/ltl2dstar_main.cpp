@@ -84,7 +84,7 @@ public:
   bool stuttercheck_print;
 
   /** Print usage information or errormessage */
-  int usage(char *programname, const std::string& errormsg="") {
+  int usage(const char *programname, const std::string& errormsg="") {
       std::cerr << 
 	"ltl2dstar v." << LTL2DSTAR_VERSION << "  Copyright (C) 2005-2007 Joachim Klein <j.klein@ltl2dstar.de>\n\n";
 
@@ -305,7 +305,7 @@ public:
   /** 
    * Main function. Parse command line and perform actions.
    */
-  int main(int argc, char *argv[]) { 
+  int main(int argc, const char *argv[], std::istream& in, std::ostream& out) { 
     try {
       std::map<std::string, std::string> defaults;
       defaults["--ltl2nba"]="--ltl2nba=spin:ltl2ba";
@@ -438,19 +438,13 @@ public:
 	  // ---
 	  // The external LTL-to-Buechi translator
 	  // ---
-	  if (arg_value.compare(0, 5, "lbtt:")==0 &&
-	      arg_value.length()>=6) {
-	    path_argument_pair pa=parse_path(arg_name, arg_value.substr(5));
-	    //	    std::cerr << pa.first << std::endl;
-	    ltl2nba.reset(new LTL2NBA_LBTT<NBA_t>(pa.first,
-						  pa.second));
-	  } else if (arg_value.compare(0, 5, "spin:")==0 &&
-		     arg_value.length()>=6) {
-	    path_argument_pair pa=parse_path(arg_name, arg_value.substr(5));
+		if (arg_value.compare(0, 8, "spinint:")==0 &&
+		     arg_value.length()>=9) {
+	    path_argument_pair pa=parse_path(arg_name, arg_value.substr(8));
 	    //      std::cerr << pa.first << std::endl;
-	    ltl2nba.reset(new LTL2NBA_SPIN<NBA_t>(pa.first,
-						  pa.second));						    
+	    ltl2nba.reset(new LTL2NBA_SPINint<NBA_t>(pa.first, pa.second));
 	  } else {
+		  
 	    throw CmdLineException("Illegal argument for '"+arg_name+"'");
 	  }
 
@@ -570,29 +564,6 @@ public:
 	}
       }
     
-      std::auto_ptr<std::istream> in_(0);
-      std::auto_ptr<std::ostream> out_(0);
-
-      char *infilename=argv[argi++];
-      char *outfilename=argv[argi++];
-
-      if (strcmp(infilename, "-")!=0) {
-	in_.reset(new std::ifstream(infilename));
-	if (in_->fail()) {
-	  THROW_EXCEPTION(Exception, "Couldn't open infile!");
-	}
-      }
-
-      if (strcmp(outfilename, "-")!=0) {
-	out_.reset(new std::ofstream(outfilename));
-	if (out_->fail()) {
-	  THROW_EXCEPTION(Exception, "Couldn't open outfile!");
-	}
-      }
-
-      std::istream& in = (in_.get()==0 ? std::cin : *in_);
-      std::ostream& out = (out_.get()==0 ? std::cout : *out_);
-
       std::string ltl_string=getLine(in);
       LTLFormula_ptr ltl=LTLPrefixParser::parse(ltl_string);
       APSet_cp ap_set=ltl->getAPSet();
@@ -685,10 +656,14 @@ public:
 
 };
 
+// We need to have it included
+#include "plugins/DVE_Process.hpp"
+
 /**
  * Main function, generate LTL2DSTAR_Main and call main() for that.
  */
-int main(int argc, char **argv) {
+int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out) {
   LTL2DSTAR_Main ltl2dstar_main;
-  return ltl2dstar_main.main(argc, argv);
+  DVEProcessPlugin dve_process_plugin;
+  return ltl2dstar_main.main(argc, argv, in, out);
 }

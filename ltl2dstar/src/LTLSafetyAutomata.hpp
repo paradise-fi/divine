@@ -27,7 +27,6 @@
 #include "APSet.hpp"
 #include "LTLFormula.hpp"
 #include "DBA2DRA.hpp"
-#include "common/RunProgram.hpp"
 #include "common/TempFile.hpp"
 #include "common/Exceptions.hpp"
 #include "parsers/parser_interface.hpp"
@@ -108,68 +107,9 @@ private:
    * @param only_syn don't use check for pathological formulas
    * @return a shared_ptr to the generated DRA (on failure returns a ptr to 0)
    */
-  NBA_t *ltl2dba(LTLFormula& ltl, 
-		 const std::string& scheck_path,
-		 bool only_syn=true) {
-    AnonymousTempFile scheck_outfile;
-    AnonymousTempFile scheck_infile;
-    std::vector<std::string> arguments;
-    arguments.push_back("-d");
-
-    if (only_syn) {
-      arguments.push_back("-s");
-    } else {
-      THROW_EXCEPTION(Exception, "Checking for pathological safety not yet supported!");
-      //      arguments.push_back("-p");
-      //      arguments.push_back( --path-to-lbtt-type-ltl2nba-translator-- );
-    }
-
-
-    // Create canonical APSet (with 'p0', 'p1', ... as AP)
-    LTLFormula_ptr ltl_canonical=ltl.copy();
-    APSet_cp canonical_apset(ltl.getAPSet()->createCanonical());
-    ltl_canonical->switchAPSet(canonical_apset);
-    
-    std::ostream& so=scheck_infile.getOStream();
-    so << ltl_canonical->toStringPrefix() << std::endl;
-    so.flush();
-    
-    const char *program_path=scheck_path.c_str();
-    
-    RunProgram scheck(program_path,
-		      arguments,
-		      false,
-		      &scheck_infile,
-		      &scheck_outfile,
-		      0);
-    
-    int rv=scheck.waitForTermination();
-    if (rv==0) {
-      FILE *f=scheck_outfile.getInFILEStream();
-      if (f==NULL) {
-	throw Exception("");
-      }
-      
-      std::auto_ptr<NBA_t> 
-	nba_result(new NBA_t(ltl_canonical->getAPSet()));
-      
-      int rc=nba_parser_lbtt::parse(f, nba_result.get());
-      fclose(f);
-
-      if (rc!=0) {
-	THROW_EXCEPTION(Exception, "scheck: Couldn't parse LBTT file!");
-      }
-      
-      // switch back to original APSet
-      nba_result->switchAPSet(ltl.getAPSet());
-
-      // release auto_ptr so the NBA is not deleted,
-      // return pointer to it to calling function
-      return nba_result.release();
-    } else {
-      std::cerr << "scheck error code: "<< rv << std::endl;
-      return 0;
-    }
+  NBA_t *ltl2dba(LTLFormula& ltl, const std::string& scheck_path, bool only_syn=true) {
+    THROW_EXCEPTION(Exception, "Unsupported code path, please use the original source.");
+    return 0;
   }
   
 };

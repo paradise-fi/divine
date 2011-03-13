@@ -35,7 +35,6 @@
 #include "StutterSensitivenessInformation.hpp"
 
 #include "common/TempFile.hpp"
-#include "common/RunProgram.hpp"
 #include "common/Exceptions.hpp"
 
 #include <typeinfo>
