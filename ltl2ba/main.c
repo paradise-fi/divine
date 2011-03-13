@@ -156,7 +156,7 @@ tl_main(int argc, char *argv[])
 }
 
 int
-main(int argc, char *argv[])
+main_ltl2ba(int argc, char *argv[], FILE* outFile)
 {	int i;
 	tl_out = stdout;
 
@@ -201,9 +201,14 @@ main(int argc, char *argv[])
                 fclose(tl_out);
         } else 
 	{
-                if (argc > 0)
-                        exit(tl_main(2, add_ltl));
-		usage();
+            if (argc > 0) 
+            {
+                tl_out = outFile;
+                tl_main(2, add_ltl);
+                fclose(outFile);
+            }
+            else
+                usage();
 	}
 }
 

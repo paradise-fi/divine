@@ -38,7 +38,7 @@ static Symbol	*symtab[Nhash+1];
 static int	tl_lex(void);
 
 extern YYSTYPE	tl_yylval;
-char	yytext[2048];
+char	yytext_ltl2ba[2048];
 
 #define Token(y)        tl_yylval = tl_nn(y,ZN,ZN); return y
 
@@ -64,10 +64,10 @@ static void
 getword(int first, int (*tst)(int))
 {	int i=0; char c;
 
-	yytext[i++]= (char ) first;
+	yytext_ltl2ba[i++]= (char ) first;
 	while (tst(c = tl_Getchar()))
-		yytext[i++] = c;
-	yytext[i] = '\0';
+		yytext_ltl2ba[i++] = c;
+	yytext_ltl2ba[i] = '\0';
 	tl_UnGetchar();
 }
 
@@ -101,8 +101,8 @@ tl_lex(void)
 
 	do {
 		c = tl_Getchar();
-		yytext[0] = (char ) c;
-		yytext[1] = '\0';
+		yytext_ltl2ba[0] = (char ) c;
+		yytext_ltl2ba[1] = '\0';
 
 		if (c <= 0)
 		{	Token(';');
@@ -112,14 +112,14 @@ tl_lex(void)
 
 	if (islower(c))
 	{	getword(c, isalnum_);
-		if (strcmp("true", yytext) == 0)
+		if (strcmp("true", yytext_ltl2ba) == 0)
 		{	Token(TRUE);
 		}
-		if (strcmp("false", yytext) == 0)
+		if (strcmp("false", yytext_ltl2ba) == 0)
 		{	Token(FALSE);
 		}
 		tl_yylval = tl_nn(PREDICATE,ZN,ZN);
-		tl_yylval->sym = tl_lookup(yytext);
+		tl_yylval->sym = tl_lookup(yytext_ltl2ba);
 		return PREDICATE;
 	}
 	if (c == '<')
