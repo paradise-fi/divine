@@ -775,11 +775,6 @@ void dve_compiler::print_generator()
     gen_state_struct();
     gen_initial_state();
 
-    line( "extern \"C\" int get_state_size() {" );
-    line( "    return state_size;" );
-    line( "}" );
-    line();
-
     line( "extern \"C\" int setup( CustomSetup *setup ) {" );
     line( "    setup->state_size = state_size;" );
     line( "    setup->has_property = " + fmt( get_with_property() ) + ";" );
