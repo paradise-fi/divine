@@ -29,8 +29,8 @@ struct Custom : public Common< Blob > {
     typedef void (*dl_setup_t)(CustomSetup *);
     typedef void (*dl_get_initial_t)(CustomSetup *, char **);
     typedef int (*dl_get_successor_t)(CustomSetup *, int, char *, char **);
-    typedef bool (*dl_is_accepting_t)(CustomSetup *, char *, int);
-    typedef char *(*dl_show_node_t)(CustomSetup *, char *, int);
+    typedef bool (*dl_is_accepting_t)(CustomSetup *, char *);
+    typedef char *(*dl_show_node_t)(CustomSetup *, char *);
     typedef void (*dl_cache_successors_t)(CustomSetup *, SuccessorCache *);
 
     struct Dl {
@@ -91,10 +91,6 @@ struct Custom : public Common< Blob > {
         succ.parent = this;
         succ.handle = 1;
         return succ;
-    }
-
-    int nodeSize( Blob b ) {
-        return b.size() - alloc._slack;
     }
 
     Node initial() {
@@ -171,14 +167,14 @@ struct Custom : public Common< Blob > {
 
     bool isAccepting( Node s ) {
         if ( dl.is_accepting )
-            return dl.is_accepting( &setup, s.pointer(), nodeSize( s ) );
+            return dl.is_accepting( &setup, s.pointer() );
         else
             return false;
     }
 
     std::string showNode( Node s ) {
         if ( dl.show_node ) {
-            char *fmt = dl.show_node( &setup, s.pointer(), nodeSize( s ) );
+            char *fmt = dl.show_node( &setup, s.pointer() );
             std::string s( fmt );
             ::free( fmt );
             return s;

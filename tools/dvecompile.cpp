@@ -747,7 +747,7 @@ void dve_compiler::gen_is_accepting()
     if(!have_property)
         return;
 
-    line( "extern \"C\" bool is_accepting( CustomSetup *setup, Blob b, int size )" );
+    line( "extern \"C\" bool is_accepting( CustomSetup *setup, Blob b )" );
     block_begin();
 
     line( "state_struct_t &state = b.get< state_struct_t >( setup->slack );" );
