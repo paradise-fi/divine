@@ -93,6 +93,16 @@ public:
         return head == tail && head->read >= head->write;
     }
 
+    int size() {
+    	int size = 0;
+    	Node *n = head;
+    	do {
+            size += n->write - n->read;
+            n = n->next;
+        } while (n);
+        return size;
+    }
+
     void dropHead() {
         Node *old = head;
         head = head->next;

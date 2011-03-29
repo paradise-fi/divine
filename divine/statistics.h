@@ -20,7 +20,7 @@ namespace divine {
 struct NoStatistics {
     void enqueue( int , int) {}
     void dequeue( int , int) {}
-    void hashsize( int, int, int) {}
+    void hashsize( int , int) {}
     void hashadded( int , int) {}
     void sent( int, int, int ) {}
     void received( int, int, int ) {}
@@ -45,8 +45,10 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         int enq, deq;
         int hashsize;
         int hashused;
-        long memNodes;
-        long memTable;
+        int memQueue;
+        int memHashes;
+        std::vector< int > memSent;
+        std::vector< int > memReceived;
     };
 
     std::vector< PerThread * > threads;
@@ -56,24 +58,23 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     bool gnuplot;
     std::ostream *output;
 
-    void enqueue( int id , int nodeSize) {
+    void enqueue( int id , int size ) {
         thread( id ).enq ++;
-        thread( id ).memNodes += nodeSize;
+        thread( id ).memQueue += size;
     }
 
-    void dequeue( int id , int nodeSize) {
+    void dequeue( int id , int size ) {
         thread( id ).deq ++;
-        thread( id ).memNodes -= nodeSize;
+        thread( id ).memQueue -= size;
     }
 
-    void hashsize( int id, int s , int entrySize) {
+    void hashsize( int id , int s) {
         thread( id ).hashsize = s;
-        thread( id ).memTable = s * entrySize;
     }
 
     void hashadded( int id , int nodeSize) {
         thread( id ).hashused ++;
-        thread( id ).memNodes += nodeSize;
+        thread( id ).memHashes += nodeSize;
     }
 
     PerThread &thread( int id ) {
@@ -90,7 +91,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         if ( f.sent.size() <= to )
             f.sent.resize( to + 1, 0 );
         ++ f.sent[ to ];
-        f.memNodes += nodeSize;
+        f.memSent[ to ] += nodeSize;
     }
 
     void received( int from, int to, int nodeSize) {
@@ -100,7 +101,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         if ( t.received.size() <= from )
             t.received.resize( from + 1, 0 );
         ++ t.received[ from ];
-        thread( from ).memNodes -= nodeSize;
+        t.memReceived[ from ] += nodeSize;
     }
 
     static int first( int a, int ) { return a; }
@@ -133,7 +134,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         for ( int i = 0; i < (10 - text.length()) / 2; ++i )
             o << (d ? "=" : "-");
         o << " " << text << " ";
-        for ( int i = 0; i < (10 - text.length()) / 2; ++i )
+        for ( int i = 0; i < (11 - text.length()) / 2; ++i )
             o << (d ? "=" : "-");
         for ( int i = 0; i < threads.size() - 1; ++ i )
             o << (d ? "=====" : "-----");
@@ -146,7 +147,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         matrix( o, diff );
 
         if ( !gnuplot ) {
-            label( o, " local", false );
+            label( o, "local", false );
             int sum = 0;
             for ( int i = 0; i < threads.size(); ++ i )
                 printv( o, 9, thread( i ).enq - thread( i ).deq, &sum );
@@ -178,24 +179,19 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             printv( o, 10, sum, 0 );
             o << std::endl;
             
-            label( o, "MEMORY" );
+            label( o, "MEMORY EST" );
             long memSum = 0;
-            sum = 0;
-            for ( int i = 0; i < threads.size(); ++ i )
-            	printv( o, 9, thread( i ).memNodes / 1024, &sum);
-            printv( o, 10, sum, 0);
-            o << std::endl;
-            sum = 0;
-            for ( int i = 0; i < threads.size(); ++ i ) {
-            	printv(o, 9, thread( i ).memTable / 1024, &sum);
-                memSum += thread( i ).memNodes + thread( i ).memTable;
+            for ( int j = 0; j < threads.size(); ++ j ) {
+                PerThread &th = thread( j );
+            	long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(hash_t);
+                for ( int i = 0; i < threads.size(); ++ i)
+                    threadMem += thread( i ).memSent[ j ] - thread( j ).memReceived[ i ];
+                memSum += threadMem;
+                printv(o, 9, threadMem / 1024, 0 );
             }
-            printv( o, 10, sum, 0 );
-            o << std::endl;
-            o << std::setw(10 * threads.size()) <<  "Estimated:"
-                << std::setw(11) << (memSum/1024) << std::endl;
-            o << std::setw(10 * threads.size()) << "Used:"
-                << std::setw(11) << memUsed() << std::endl;
+            printv( o, 10, memSum / 1024, 0 );
+            o << std::endl << std::setw(10 * threads.size())
+            	<< "> Used: " << std::setw(11) << memUsed() << std::endl;
         }
     }
 
@@ -230,10 +226,16 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
                        std::back_inserter( data ) );
             std::copy( t.received.begin(), t.received.end(),
                        std::back_inserter( data ) );
+            std::copy( t.memSent.begin(), t.memSent.end(),
+                       std::back_inserter( data ) );
+            std::copy( t.memReceived.begin(), t.memReceived.end(),
+                       std::back_inserter( data ) );
             data.push_back( t.enq );
             data.push_back( t.deq );
             data.push_back( t.hashsize );
             data.push_back( t.hashused );
+            data.push_back( t.memQueue );
+            data.push_back( t.memHashes );
         }
 
         mpi->send( &data.front(), data.size(), MPI::INT, 0, TAG_STATISTICS );
@@ -243,8 +245,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     Loop process( wibble::sys::MutexLock &, MPI::Status &status )
     {
         std::vector< int > data;
-        int sendrecv = threads.size() * 2,
-               local = 4;
+        int n = threads.size();
+        int sendrecv = n * 4,
+               local = 6;
         data.resize( 1 /* localmin */ + pernode * (sendrecv + local) );
 
         MPI::COMM_WORLD.Recv( &data.front(), data.size(),
@@ -256,10 +259,10 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
         for ( int i = 0; i < pernode; ++i ) {
             PerThread &t = thread( i + min );
-            int n = threads.size();
-            std::vector< int > sent, received;
             std::copy( iter, iter + n, t.sent.begin() );
-            std::copy( iter + n, iter + sendrecv, t.received.begin() );
+            std::copy( iter + n, iter + 2*n, t.received.begin() );
+            std::copy( iter + 2*n, iter + 3*n, t.memSent.begin() );
+            std::copy( iter + 3*n, iter + 4*n, t.memReceived.begin() );
 
             iter += sendrecv;
 
@@ -267,6 +270,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
             t.deq = *iter++;
             t.hashsize = *iter++;
             t.hashused = *iter++;
+            t.memQueue = *iter++;
+            t.memHashes = *iter++;
         }
 
         return Continue;
@@ -314,10 +319,14 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         s = std::max( size_t( s ), threads.size() );
         threads.resize( s, 0 );
         for ( int i = 0; i < s; ++i ) {
-            thread( i ).sent.resize( s, 0 );
-            thread( i ).received.resize( s, 0 );
-            thread( i ).enq = thread( i ).deq = 0;
-            thread( i ).hashsize = thread( i ).hashused = 0;
+        	PerThread &th = thread( i );
+            th.sent.resize( s, 0 );
+            th.received.resize( s, 0 );
+            th.enq = th.deq = 0;
+            th.hashsize = th.hashused = 0;
+            th.memHashes = th.memQueue = 0;
+            th.memSent.resize( s, 0 );
+            th.memReceived.resize( s, 0 );
         }
     }
 
@@ -329,7 +338,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         mpi->registerMonitor( TAG_STATISTICS, *this );
         pernode = d.n;
         localmin = d.minId;
-        Output::output().setStatsSize( threadcount * 10 + 11, threadcount + 8 );
+        Output::output().setStatsSize( threadcount * 10 + 11, threadcount + 11 );
     }
 
     static Statistics &global() {
@@ -345,7 +354,7 @@ int memSize(Ty x) {
 
 template <>
 inline int memSize<Blob>(Blob x) {
-    return x.valid() ? (x.size() + sizeof(BlobHeader)) : 0;
+    return sizeof(Blob) + (x.valid() ? x.size() + sizeof(BlobHeader) : 0);
 }
 
 }
