@@ -381,6 +381,15 @@ struct TestVisitor {
             return s;
         }
 
+        template< typename Hash, typename Worker >
+        int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+            assert( n.valid() );
+            if ( !hint )
+                return hash( n ) % worker.peers();
+            else
+                return hint % worker.peers();
+        }
+
         BlobNMTree( int _n, int _m ) : n( _n ), m( _m ) {}
         BlobNMTree() : n( 0 ), m( 0 ) {}
     };

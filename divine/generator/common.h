@@ -72,6 +72,17 @@ struct Common {
     void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
                         const unsigned peersCount = 1 ) {}
 
+    /// Returns an owner id of the state n
+    template< typename Hash, typename Worker >
+    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+        assert( n.valid() );
+
+        if ( !hint )
+            return hash( n ) % worker.peers();
+        else
+            return hint % worker.peers();
+    }
+
     /// Default storage for visited states, can be overriden by the generator
     typedef HashSet< Node, algorithm::Hasher, divine::valid< Node >, algorithm::Equal > Table;
 };
@@ -106,6 +117,12 @@ struct Extended {
     }
 
     int setSlack( int s ) { return g().setSlack( s ); }
+
+    /// Returns an owner id of the state n
+    template< typename Hash, typename Worker >
+    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+        return g().owner( hash, worker, n, hint );
+    }
 };
 
 }

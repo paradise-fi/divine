@@ -243,10 +243,7 @@ struct Partitioned {
     Seen *m_seen;
 
     int owner( Node n, hash_t hint = 0 ) const {
-        if ( !hint )
-            return hash( n ) % worker.peers();
-        else
-            return hint % worker.peers();
+        return graph.owner( hash, worker, n, hint );
     }
 
     inline void queue( Node from, Node to, hash_t hint = 0 ) {

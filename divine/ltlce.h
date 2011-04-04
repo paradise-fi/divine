@@ -59,10 +59,9 @@ struct LtlCE {
             divine::safe_delete( _o_trail );
     }
 
-    // XXX duplicated from visitor
     template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n ) const {
-        return hash( n ) % worker.peers();
+    int owner( Hash &hash, Worker &worker, Node n ) {
+        return g().owner( hash, worker, n );
     }
 
     void setup( G &g, Shared &s )
