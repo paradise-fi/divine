@@ -7,8 +7,8 @@
 
 #include <iomanip>
 
-#ifndef DIVINE_METRICS_H
-#define DIVINE_METRICS_H
+#ifndef DIVINE_ALGORITHM_METRICS_H
+#define DIVINE_ALGORITHM_METRICS_H
 
 namespace divine {
 namespace algorithm {

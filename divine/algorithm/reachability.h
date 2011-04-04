@@ -8,8 +8,8 @@
 #include <divine/parallel.h>
 #include <divine/report.h>
 
-#ifndef DIVINE_REACHABILITY_H
-#define DIVINE_REACHABILITY_H
+#ifndef DIVINE_ALGORITHM_REACHABILITY_H
+#define DIVINE_ALGORITHM_REACHABILITY_H
 
 namespace divine {
 namespace algorithm {

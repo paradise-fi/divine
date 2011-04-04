@@ -6,8 +6,8 @@
 #include <divine/parallel.h>
 #include <divine/report.h>
 
-#ifndef DIVINE_SIMPLE_H
-#define DIVINE_SIMPLE_H
+#ifndef DIVINE_ALGORITHM_SIMPLE_H
+#define DIVINE_ALGORITHM_SIMPLE_H
 
 namespace divine {
 namespace algorithm {

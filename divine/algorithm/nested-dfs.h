@@ -7,8 +7,8 @@
 #include <divine/report.h>
 #include <wibble/sfinae.h> // Unit
 
-#ifndef DIVINE_NDFS_H
-#define DIVINE_NDFS_H
+#ifndef DIVINE_ALGORITHM_NDFS_H
+#define DIVINE_ALGORITHM_NDFS_H
 
 namespace divine {
 namespace algorithm {

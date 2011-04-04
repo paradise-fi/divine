@@ -7,8 +7,8 @@
 #include <divine/parallel.h>
 #include <divine/report.h>
 
-#ifndef DIVINE_OWCTY_H
-#define DIVINE_OWCTY_H
+#ifndef DIVINE_ALGORITHM_OWCTY_H
+#define DIVINE_ALGORITHM_OWCTY_H
 
 namespace divine {
 namespace algorithm {

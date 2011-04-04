@@ -3,8 +3,8 @@
 #include <divine/algorithm/common.h>
 #include <divine/ltlce.h>
 
-#ifndef DIVINE_MAP_H
-#define DIVINE_MAP_H
+#ifndef DIVINE_ALGORITHM_MAP_H
+#define DIVINE_ALGORITHM_MAP_H
 
 namespace divine {
 namespace algorithm {
