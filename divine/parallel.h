@@ -344,6 +344,8 @@ struct Domain {
                 mpiWorker.start();
             this->runThreads();
             m_domain->mpi.collectSharedBits(); // wait for shared stuff
+            if (m_domain->mpi.size() > 1 )
+                mpiWorker.join();
             m_domain->barrier().clear();
         }
 
