@@ -106,8 +106,9 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
             // process incoming stuff from other workers
             for ( int from = 0; from < this->peers(); ++from ) {
                 while ( this->comms().pending( from, this->globalId() ) ) {
-                    Node f = this->comms().take( from, this->globalId() ),
-                         t = this->comms().take( from, this->globalId() );
+                    Node f = this->comms().take( from, this->globalId() );
+                    while ( !this->comms().pending( from, this->globalId() ) );
+                    Node t = this->comms().take( from, this->globalId() );
                     edge( f, t );
                 }
             }
