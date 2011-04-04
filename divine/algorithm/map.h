@@ -106,7 +106,7 @@ struct _MpiId< Map< G, S > >
  * 352–366. Springer-Verlag, 2004.
  */
 template< typename G, typename _Statistics >
-struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
+struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Statistics > >
 {
     typedef typename G::Node Node;
     typedef Map< G, _Statistics > This;
@@ -256,16 +256,16 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
         shared.expanded = 0;
         shared.eliminated = 0;
-        m_initialTable = &shared.initialTable;
+        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
 
-        Visitor visitor( shared.g, *this, *this, hasher, &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
 
     void _cleanup() {
-        for ( size_t i = 0; i < table().size(); ++i ) {
-            Node st = table()[ i ];
+        for ( size_t i = 0; i < this->table().size(); ++i ) {
+            Node st = this->table()[ i ];
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = VertexId();
@@ -284,7 +284,7 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, table() );
+        shared.g._porEliminate( *this, hasher, this->table() );
     }
 
     void _por() {
@@ -313,11 +313,11 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
 
     void _parentTrace() {
         ce.setup( shared.g, shared );
-        ce._parentTrace( *this, hasher, equal, table() );
+        ce._parentTrace( *this, hasher, equal, this->table() );
     }
 
     void _traceCycle() {
-        ce._traceCycle( *this, hasher, table() );
+        ce._traceCycle( *this, hasher, this->table() );
     }
 
     Result run()
@@ -359,8 +359,8 @@ struct Map : Algorithm, DomainWorker< Map< G, _Statistics > >
     Map( Config *c = 0 )
         : Algorithm( c, sizeof( Extension ) )
     {
-        initGraph( shared.g );
         if ( c ) {
+            this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
         }

@@ -16,9 +16,11 @@ namespace divine {
 namespace generator {
 
 template< typename _State, typename system_t >
-struct LegacyCommon : Common {
+struct LegacyCommon : Common< _State > {
     typedef _State State;
     typedef State Node;
+    typedef generator::Common< _State > Common;
+    typedef LegacyCommon< _State, system_t > Graph;
 
     std::string file;
     system_t *m_system;
@@ -59,7 +61,7 @@ struct LegacyCommon : Common {
         Successors succ;
         succ.parent = this;
         succ._from = s;
-        state_t legacy = alloc.legacy_state( s );
+        state_t legacy = this->alloc.legacy_state( s );
         legacy_system()->get_succs( legacy, succ.m_succs );
         return succ;
     }
@@ -77,7 +79,7 @@ struct LegacyCommon : Common {
         Successors succ;
         succ.parent = this;
         succ._from = s;
-        state_t legacy = alloc.legacy_state( s );
+        state_t legacy = this->alloc.legacy_state( s );
 
         size_t proc_gid; // output parameter, to be discarded
         por().ample_set_succs( legacy, succ.m_succs, proc_gid );
@@ -85,7 +87,7 @@ struct LegacyCommon : Common {
     }
 
     State initial() {
-        return alloc.unlegacy_state( legacy_system()->get_initial_state() );
+        return this->alloc.unlegacy_state( legacy_system()->get_initial_state() );
     }
 
     template< typename Q >
@@ -107,7 +109,7 @@ struct LegacyCommon : Common {
     }
 
     bool isAccepting( State s ) {
-        return legacy_system()->is_accepting( alloc.legacy_state( s ) );
+        return legacy_system()->is_accepting( this->alloc.legacy_state( s ) );
     }
 
     bool isGoal( State s ) { return false; } // XXX
@@ -115,14 +117,14 @@ struct LegacyCommon : Common {
         if ( !s.valid() )
             return "[]";
         std::stringstream o;
-        legacy_system()->print_state( alloc.legacy_state( s ), o );
+        legacy_system()->print_state( this->alloc.legacy_state( s ), o );
         return o.str();
     }
 
     explicit_system_t *legacy_system() {
         if ( !m_system ) {
             m_system = new system_t;
-            m_system->setAllocator( &alloc );
+            m_system->setAllocator( &this->alloc );
             if ( !file.empty() ) {
                 if ( legacy_system()->read( file.c_str() ) ) // don't ask.
                     throw std::runtime_error( "Error reading input model." );
@@ -132,7 +134,7 @@ struct LegacyCommon : Common {
     }
 
     void release( State s ) {
-        s.free( pool() );
+        s.free( this->pool() );
     }
 
     LegacyCommon &operator=( const LegacyCommon &other ) {

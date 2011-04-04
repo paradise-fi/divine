@@ -21,8 +21,9 @@ namespace generator {
  * on ELF systems, and a .dll on win32).
  */
 
-struct Custom : Common {
+struct Custom : public Common< Blob > {
     typedef Blob Node;
+    typedef generator::Common< Blob > Common;
     std::string file;
 
     typedef void (*dl_setup_t)(CustomSetup *);

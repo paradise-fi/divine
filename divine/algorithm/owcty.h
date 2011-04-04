@@ -99,10 +99,11 @@ struct _MpiId< Owcty< G, S > >
  * Methods, LNCS. Springer-Verlag, 2009.  To appear.
  */
 template< typename G, typename Statistics >
-struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
+struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, Statistics > >
 {
     typedef Owcty< G, Statistics > This;
     typedef typename G::Node Node;
+	typedef typename AlgorithmUtils< G >::Table Table;
 
     // -------------------------------
     // -- Some useful types
@@ -197,8 +198,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
     template< typename V >
     void queueAll( V &v, bool reset = false ) {
-        for ( size_t i = 0; i < table().size(); ++i ) {
-            Node st = table()[ i ];
+        for ( size_t i = 0; i < this->table().size(); ++i ) {
+            Node st = this->table()[ i ];
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
@@ -267,7 +268,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::reachExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         queueAll( visitor, true );
         visitor.processQueue();
     }
@@ -326,8 +327,8 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::initExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        m_initialTable = &shared.initialTable; // XXX find better place for this
-        Visitor visitor( shared.g, *this, *this, hasher, &table() );
+        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
+        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
@@ -354,7 +355,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, table() );
+        shared.g._porEliminate( *this, hasher, this->table() );
     }
 
     void _por() {
@@ -398,7 +399,7 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::elimExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         queueAll( visitor );
         visitor.processQueue();
     }
@@ -438,20 +439,20 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
             &This::ccExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &table() );
+        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         assert( shared.cycle_node.valid() );
         visitor.queue( Blob(), shared.cycle_node );
         visitor.processQueue();
     }
 
     void _counterexample() {
-        for ( int i = 0; i < table().size(); ++i ) {
+        for ( int i = 0; i < this->table().size(); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
                 return;
             }
-            Node st = shared.cycle_node = table()[ i ];
+            Node st = shared.cycle_node = this->table()[ i ];
             if ( !st.valid() )
                 continue;
             if ( extension( st ).iteration == shared.iteration )
@@ -464,11 +465,11 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
 
     void _parentTrace() {
         ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
-        ce._parentTrace( *this, hasher, equal, table() );
+        ce._parentTrace( *this, hasher, equal, this->table() );
     }
 
     void _traceCycle() {
-        ce._traceCycle( *this, hasher, table() );
+        ce._traceCycle( *this, hasher, this->table() );
     }
 
     void counterexample() {
@@ -556,9 +557,9 @@ struct Owcty : Algorithm, DomainWorker< Owcty< G, Statistics > >
     Owcty( Config *c = 0 )
         : Algorithm( c, sizeof( Extension ) )
     {
-        initGraph( shared.g );
         shared.size = 0;
         if ( c ) {
+            this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
         }

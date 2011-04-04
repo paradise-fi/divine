@@ -8,7 +8,7 @@
 namespace divine {
 namespace generator {
 
-struct Dummy : Common {
+struct Dummy : Common< Blob > {
     typedef std::pair< short, short > Content;
     typedef Blob Node;
 

@@ -25,7 +25,7 @@ namespace generator {
 
 using namespace llvm;
 
-struct LLVM : Common {
+struct LLVM : Common< Blob > {
     typedef Blob Node;
     divine::llvm::Interpreter *_interpreter;
     OwningPtr< MemoryBuffer > *_input;

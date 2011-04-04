@@ -45,10 +45,12 @@ struct label_hasher {
 typedef std::tr1::unordered_set<label_t, label_hasher> label_set;
 #endif
 
-class Coin: public Common {
+class Coin: public Common< Blob > {
 
 public:
     typedef Blob Node;
+    typedef Coin Graph;
+    typedef generator::Common< Blob > Common;
 
     struct Successors {
         typedef Node Type;

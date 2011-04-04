@@ -69,7 +69,7 @@ struct _MpiId< Reachability< G, S > >
  * about here.
  */
 template< typename G, typename Statistics >
-struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
+struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reachability< G, Statistics > >
 {
     typedef Reachability< G, Statistics > This;
     typedef typename G::Node Node;
@@ -123,7 +123,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
         return visitor::FollowTransition;
     }
 
-    struct VisitorSetup : visitor::Setup< G, This, Table, Statistics > {
+    struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
         static visitor::DeadlockAction deadlocked( This &r, Node n ) {
             r.shared.goal = n;
             r.shared.stats.addDeadlock();
@@ -132,15 +132,15 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
     };
 
     void _visit() { // parallel
-        m_initialTable = &shared.initialTable;
+        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            visitor( shared.g, *this, *this, hasher, &table() );
+            visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, table() );
+        shared.g._porEliminate( *this, hasher, this->table() );
     }
 
     void _por() {
@@ -151,8 +151,8 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
     Reachability( Config *c = 0 )
         : Algorithm( c, sizeof( Extension ) )
     {
-        initGraph( shared.g );
         if ( c ) {
+            this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
         }
@@ -160,7 +160,7 @@ struct Reachability : Algorithm, DomainWorker< Reachability< G, Statistics > >
 
     void _parentTrace() {
         ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
-        ce._parentTrace( *this, hasher, equal, table() );
+        ce._parentTrace( *this, hasher, equal, this->table() );
     }
 
     void counterexample( Node n ) {

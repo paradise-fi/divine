@@ -46,7 +46,7 @@ struct _MpiId< Simple< G > >
 // END MPI drudgery
 
 template< typename G >
-struct Simple : Algorithm, DomainWorker< Simple< G > >
+struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G > >
 {
     typedef Simple< G > This;
     typedef typename G::Node Node;
@@ -69,18 +69,18 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
     }
 
     void edge( Node from, Node to ) {
-        hash_t hint = table().hash( to );
+        hash_t hint = this->table().hash( to );
         int owner = hint % this->peers();
 
         if ( owner != this->globalId() ) { // send to remote
             this->comms().submit( this->globalId(), owner, from );
             this->comms().submit( this->globalId(), owner, to );
         } else { // we own this node, so let's process it
-            Node in_table = table().getHinted( to, hint );
+            Node in_table = this->table().getHinted( to, hint );
 
             shared.stats.addEdge();
-            if ( !table().valid( in_table ) ) {
-                table().insertHinted( to, hint );
+            if ( !this->table().valid( in_table ) ) {
+                this->table().insertHinted( to, hint );
                 to.header().permanent = 1; // don't ever release this
                 localqueue.push_back( shared.g.successors( to ) );
                 shared.stats.addNode( shared.g, to );
@@ -94,7 +94,7 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
     }
 
     void _visit() { // parallel
-        m_initialTable = &shared.initialTable; // XXX find better place for this
+        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         Node initial = shared.g.initial();
         if ( owner( initial ) == this->globalId() ) {
             shared.stats.addNode( shared.g, initial );
@@ -127,8 +127,8 @@ struct Simple : Algorithm, DomainWorker< Simple< G > >
     Simple( Config *c = 0 )
         : Algorithm( c, 0 )
     {
-        initGraph( shared.g );
         if ( c ) {
+            this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
         }

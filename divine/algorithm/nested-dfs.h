@@ -14,11 +14,13 @@ namespace divine {
 namespace algorithm {
 
 template< typename G, typename Statistics >
-struct NestedDFS : Algorithm
+struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 {
     typedef NestedDFS< G, Statistics > This;
-    G g;
     typedef typename G::Node Node;
+    typedef typename AlgorithmUtils< G >::Table Table;
+
+    G g;
     Node seed;
     bool valid;
     bool parallel, finished;
@@ -40,7 +42,7 @@ struct NestedDFS : Algorithm
 
     void runInner( G &graph, Node n ) {
         seed = n;
-        visitor::DFV< InnerVisit > visitor( graph, *this, &table() );
+        visitor::DFV< InnerVisit > visitor( graph, *this, &this->table() );
         visitor.exploreFrom( n );
     }
 
@@ -78,7 +80,7 @@ struct NestedDFS : Algorithm
     // this is the entrypoint for full expansion... I know the name isn't best,
     // but that's what PORGraph uses
     void queue( Node from, Node to ) {
-        visitor::DFV< OuterVisit > visitor( g, *this, &table() );
+        visitor::DFV< OuterVisit > visitor( g, *this, &this->table() );
         visitor.exploreFrom( to );
     }
 
@@ -88,7 +90,7 @@ struct NestedDFS : Algorithm
         if ( parallel )
             inner.start();
 
-        visitor::DFV< OuterVisit > visitor( g, *this, &table() );
+        visitor::DFV< OuterVisit > visitor( g, *this, &this->table() );
         visitor.exploreFrom( g.initial() );
 
         while ( valid && !toexpand.empty() ) {
@@ -191,14 +193,13 @@ struct NestedDFS : Algorithm
         : Algorithm( c, sizeof( Extension ) )
     {
         valid = true;
-        initGraph( g );
+        this->initPeer( &g, &c->initialTable, 0 ); // only one peer
         parallel = c->workers > 1;
-        *m_initialTable = c->initialTable;
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
             progress() << "Using table size " << c->initialTable
                        << ", please use -i to override." << std::endl;
-            table().m_maxsize = c->initialTable;
+            this->table().m_maxsize = c->initialTable;
         }
         finished = false;
         inner.outer = this;

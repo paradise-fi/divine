@@ -2,6 +2,8 @@
 
 #include <divine/stateallocator.h>
 #include <divine/blob.h>
+#include <divine/hashset.h>
+#include <divine/algorithm/common.h>
 
 #ifndef DIVINE_GENERATOR_COMMON_H
 #define DIVINE_GENERATOR_COMMON_H
@@ -55,12 +57,23 @@ struct Allocator : StateAllocator {
     }
 };
 
+/// Superclass of all graph generators
+template< typename _Node >
 struct Common {
+    typedef _Node Node;
+
     Allocator alloc;
     int setSlack( int s ) { alloc.setSlack( s ); return s; }
     Pool &pool() { return alloc.pool(); }
     bool hasProperty() { return false; }
     void initPOR() {}
+
+    /// Sets information about domain geometry
+    void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
+                        const unsigned peersCount = 1 ) {}
+
+    /// Default storage for visited states, can be overriden by the generator
+    typedef HashSet< Node, algorithm::Hasher, divine::valid< Node >, algorithm::Equal > Table;
 };
 
 template< typename G >
@@ -69,6 +82,7 @@ struct Extended {
 
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
+    typedef G Graph;
 
     G &g() { return _g; }
 
@@ -81,6 +95,10 @@ struct Extended {
     std::string showNode( Node s ) { return g().showNode( s ); }
     void read( std::string path ) { g().read( path ); }
     bool hasProperty() { return g().hasProperty(); }
+    void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
+                        const unsigned peersCount = 1 ) {
+        g().setDomainSize( mpiRank, mpiSize, peersCount );
+    }
 
     template< typename Q >
     void queueInitials( Q &q ) {

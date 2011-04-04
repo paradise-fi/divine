@@ -131,7 +131,7 @@ struct Statistics {
  * above).
  */
 template< typename G, typename Statistics >
-struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
+struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< G, Statistics > >
 {
     typedef Metrics< G, Statistics > This;
     typedef typename G::Node Node;
@@ -158,7 +158,7 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
         return visitor::FollowTransition;
     }
 
-    struct VisitorSetup : visitor::Setup< G, This, Table, Statistics > {
+    struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
         static visitor::DeadlockAction deadlocked( This &r, Node n ) {
             r.shared.stats.addDeadlock();
             return visitor::IgnoreDeadlock;
@@ -166,17 +166,17 @@ struct Metrics : Algorithm, DomainWorker< Metrics< G, Statistics > >
     };
 
     void _visit() { // parallel
-        m_initialTable = &shared.initialTable; // XXX find better place for this
+        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            vis( shared.g, *this, *this, hasher, &table() );
+            vis( shared.g, *this, *this, hasher, &this->table() );
         vis.exploreFrom( shared.g.initial() );
     }
 
     Metrics( Config *c = 0 )
         : Algorithm( c, 0 )
     {
-        initGraph( shared.g );
         if ( c ) {
+            this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
         }

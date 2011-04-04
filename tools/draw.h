@@ -26,12 +26,13 @@ struct DrawConfig {
 };
 
 template< typename G >
-struct Draw : algorithm::Algorithm
+struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 {
     typedef Draw< G > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
     typedef DrawConfig Config;
+	typedef typename algorithm::AlgorithmUtils< G >::Table Table;
 
     struct Extension {
         int distance;
@@ -127,7 +128,7 @@ struct Draw : algorithm::Algorithm
     }
 
     void drawTrace() {
-        intrace = makeTable();
+        intrace = this->makeTable();
 
         if ( trace.empty() )
             return;
@@ -159,7 +160,7 @@ struct Draw : algorithm::Algorithm
         drawTrace();
 
         visitor::BFV< visitor::Setup< G, This, Table > >
-            visitor( g, *this, &table() );
+            visitor( g, *this, &this->table() );
         visitor.exploreFrom( initial );
 
         dot += "}";
@@ -182,7 +183,7 @@ struct Draw : algorithm::Algorithm
     Draw( DrawConfig *c = 0 )
         : Algorithm( c->super, sizeof( Extension ) )
     {
-        initGraph( g );
+        this->initPeer( &g, NULL, 0 ); // only one peer
         maxdist = c->maxDistance;
         output = c->output;
         render = c->render;

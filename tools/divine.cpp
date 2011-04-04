@@ -489,6 +489,7 @@ struct Main {
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
+        t.init( &t.domain() );
         if ( t.domain().mpi.master() )
             setupCurses();
         Stats::global().useDomain( t.domain() );
@@ -501,6 +502,7 @@ struct Main {
 
     template< typename Stats, typename T >
     wibble::Unit setupParallel( NotPreferred, Report *, T &t ) {
+        t.init();
         setupCurses();
         if ( statistics )
             Stats::global().start();

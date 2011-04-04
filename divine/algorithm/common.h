@@ -43,15 +43,12 @@ struct Equal {
 
 struct Algorithm
 {
-    typedef Blob Node; // Umm.
-    typedef HashSet< Node, Hasher, divine::valid< Node >, Equal > Table;
     typedef divine::Config Config;
 
     Config *m_config;
     int m_slack;
     Hasher hasher;
     Equal equal;
-    Table *m_table;
     Result m_result;
 
     int *m_initialTable, m_initialTable_;
@@ -63,17 +60,6 @@ struct Algorithm
     Config &config() {
         assert( m_config );
         return *m_config;
-    }
-
-    Table *makeTable() {
-        return new Table( hasher, divine::valid< Node >(), equal,
-                          *m_initialTable );
-    }
-
-    Table &table() {
-        if ( !m_table )
-            m_table= makeTable();
-        return *m_table;
     }
 
     std::ostream &progress() {
@@ -98,18 +84,39 @@ struct Algorithm
                    << " ===================================== " << std::endl;
     }
 
-    template< typename G >
-    void initGraph( G &g ) {
-        int real = g.setSlack( m_slack );
+    /// Sets the offset for generator part of state data
+    template < typename G >
+    void setSlack( G *g ) {
+        int real = g->setSlack( m_slack );
         hasher.setSlack( real );
         equal.setSlack( real );
+    }
+
+    /**
+     * Initializes the graph generator by reading a file, used
+     * in parallel/distributed environment on master peer.
+     */
+    template< typename G, typename D >
+    void initGraph( G *g, D *domain ) {
+        assert( g );
+        assert( domain );
+        assert( m_config ); // this is the master instance
+        g->setDomainSize( domain->mpi.rank(), domain->mpi.size(), domain->peers() );
+        g->read( m_config->input );
+    }
+
+    /// Initializes the graph generator by reading a file
+    template< typename G >
+    void initGraph( G *g ) {
+        assert( g );
         if ( m_config ) { // this is the master instance
-            g.read( m_config->input );
+            setSlack( g );
+            g->read( m_config->input );
         }
     }
 
     Algorithm( Config *c = 0, int slack = 0 )
-        : m_config( c ), m_slack( slack ), m_table( 0 )
+        : m_config( c ), m_slack( slack )
     {
         m_initialTable_ = 4096;
         m_initialTable = &m_initialTable_;
@@ -117,9 +124,59 @@ struct Algorithm
             want_ce = c->wantCe;
         }
     }
+};
 
-    ~Algorithm() {
+template< typename G >
+struct AlgorithmUtilsCommon : public virtual Algorithm {
+
+    typedef typename G::Graph::Table Table;
+
+    G* m_g;
+    Table *m_table;
+    int peerId;
+
+    template< typename D >
+    void init( D *domain ) { initGraph( m_g, domain ); }
+
+    void init() { initGraph( m_g ); }
+
+    /**
+     * Initializes algorithm with used generator, a size of the table and peer id.
+     * Size of the table and peerId need to be specified only outside of the master peer.
+     */
+    void initPeer( G* g, int* initialTable = NULL, int peerId = -1 ) {
+        assert( g );
+        if ( initialTable != NULL )
+            m_initialTable = initialTable;
+        m_g = g;
+        this->peerId = peerId;
+        setSlack( g );
+    }
+
+    Table &table() {
+        if ( !this->m_table )
+            this->m_table = makeTable();
+        return *this->m_table;
+    }
+
+    virtual Table* makeTable() = 0;
+
+    AlgorithmUtilsCommon() : m_table( NULL ) {}
+
+    ~AlgorithmUtilsCommon() {
         safe_delete( m_table );
+    }
+};
+
+/// HashSet specialization: HashSet is used as a storage of visited states
+template< typename G, typename DefaultTable = typename G::Graph::Table >
+struct AlgorithmUtils : public AlgorithmUtilsCommon< G >{
+
+    typedef typename G::Graph::Table Table;
+
+    Table *makeTable() {
+        return new Table( this->hasher, divine::valid< typename G::Node >(),
+                          this->equal, *this->m_initialTable );
     }
 };
 

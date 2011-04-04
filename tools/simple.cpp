@@ -39,6 +39,7 @@ struct Main {
         try {
             algorithm::Simple< generator::NDve > alg( &config );
             alg.domain().mpi.init();
+            alg.init( &alg.domain() );
             alg.domain().mpi.start();
             report.mpiInfo( alg.domain().mpi );
 
