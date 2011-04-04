@@ -97,6 +97,8 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         Node initial = shared.g.initial();
         if ( owner( initial ) == this->globalId() ) {
+            this->table().insert( initial );
+            initial.header().permanent = 1;
             shared.stats.addNode( shared.g, initial );
             localqueue.push_back( shared.g.successors( initial ) );
         } else
