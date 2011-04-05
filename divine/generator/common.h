@@ -145,6 +145,30 @@ struct Extended {
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
         return g().owner( hash, worker, n, hint );
     }
+
+    /// Returns a position between 1 and n
+    template< typename Alg >
+    int successorNum( Alg &a, Node current, Node next )
+    {
+        typename G::Successors succ = g().successors( current );
+        int edge = 0;
+        while ( !succ.empty() ) {
+            ++ edge;
+            if ( a.equal( succ.head(), next ) )
+                break;
+            g().release( succ.head() ); // not it
+            succ = succ.tail();
+            assert( !succ.empty() ); // we'd hope the node is actually there!
+        }
+
+        while ( !succ.empty() ) {
+            g().release( succ.head() );
+            succ = succ.tail();
+        }
+
+        assert_leq( 1, edge );
+        return edge;
+    }
 };
 
 }

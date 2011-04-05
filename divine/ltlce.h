@@ -133,29 +133,6 @@ struct LtlCE {
         visitor.processQueue();
     }
 
-    template< typename Alg >
-    int successorNum( Alg &a, G &_g, Node current, Node next )
-    {
-        typename G::Successors succ = _g.successors( current );
-        int edge = 0;
-        while ( !succ.empty() ) {
-            ++ edge;
-            if ( a.equal( succ.head(), next ) )
-                break;
-            _g.release( succ.head() ); // not it
-            succ = succ.tail();
-            assert( !succ.empty() ); // we'd hope the node is actually there!
-        }
-
-        while ( !succ.empty() ) {
-            _g.release( succ.head() );
-            succ = succ.tail();
-        }
-
-        assert_leq( 1, edge );
-        return edge;
-    }
-
     // Obtaining CE output
 
     template< typename Alg, typename T >
@@ -169,7 +146,7 @@ struct LtlCE {
             if ( trace.empty() )
                 break;
 
-            result.push_back( successorNum( a, _g, current, trace.back() ) );
+            result.push_back( _g.successorNum( a, current, trace.back() ) );
         }
         return result;
     }

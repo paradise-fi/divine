@@ -19,6 +19,10 @@ struct Config {
     std::string input;
     std::string trailFile, ceFile;
 
+    // compact options
+    std::string compactFile;
+    bool findBackEdges, textFormat;
+
     std::ostream &dump( std::ostream &o ) {
         o << "Input-File: " << input << std::endl;
         o << "Trail-File: " << trailFile << std::endl;

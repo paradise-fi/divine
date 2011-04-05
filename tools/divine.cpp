@@ -24,6 +24,7 @@
 #include <divine/algorithm/metrics.h>
 #include <divine/algorithm/map.h>
 #include <divine/algorithm/nested-dfs.h>
+#include <divine/algorithm/compact.h>
 
 #include <divine/porcp.h>
 
@@ -64,8 +65,8 @@ struct Main {
     Report *report;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile, *cmd_draw;
-    OptionGroup *common, *drawing, *ce;
+        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
+    OptionGroup *common, *drawing, *compact, *ce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por;
     BoolOption *o_curses;
@@ -74,6 +75,8 @@ struct Main {
     BoolOption *o_labels;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
+    BoolOption *o_findBackEdges, *o_textFormat;
+    StringOption *o_compactOutput;
 
     bool dummygen;
     bool statistics;
@@ -179,9 +182,13 @@ struct Main {
         cmd_draw = opts.addEngine( "draw",
                                    "<input>",
                                    "draw (part of) the state space" );
+        cmd_compact = opts.addEngine( "compact",
+                                      "<input>",
+                                      "compact state space representation" ); 
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
+        compact = opts.createGroup( "Compact Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -257,6 +264,17 @@ struct Main {
         o_labels = drawing->add< BoolOption >(
             "labels", 'l', "labels", "", "draw state labels" );
 
+        // compact options
+        o_findBackEdges = compact->add< BoolOption >(
+            "find-back-transitions", 'b', "find-back-transitions", "",
+            "find also backward transitions" );
+        o_textFormat = compact->add< BoolOption >(
+            "text-format", 't', "text-format", "",
+            "output compact state space in plaintext format" );
+        o_compactOutput = compact->add< StringOption >(
+            "compact-output", 'm', "compact-output", "",
+            "where to output the compacted state space (default: ./input-file.compact, -: stdout)" );
+
         cmd_metrics->add( common );
 
         cmd_reachability->add( common );
@@ -273,6 +291,9 @@ struct Main {
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
+
+        cmd_compact->add( common );
+        cmd_compact->add( compact );
 
         cmd_draw->add( drawing );
     }
@@ -313,7 +334,8 @@ struct Main {
     }
 
 
-    enum { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify, RunDraw } m_run;
+    enum RunAlgorithm { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify,
+        RunDraw, RunCompact } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -359,6 +381,8 @@ struct Main {
 
         config.input = input;
         config.wantCe = !o_noCe->boolValue();
+        config.textFormat = o_textFormat->boolValue();
+        config.findBackEdges = o_findBackEdges->boolValue();
         statistics = o_statistics->boolValue();
 
         drawConfig.maxDistance = o_distance->intValue();
@@ -377,6 +401,16 @@ struct Main {
                 config.trailFile = t;
             } else
                 config.trailFile = o_trail->stringValue();
+        }
+
+        if ( o_compactOutput->stringValue() == "" ) {
+            std::string t = std::string( input, 0, input.rfind( '.' ) );
+            t += ".compact";
+            config.compactFile = str::basename( t );
+        } else if ( o_compactOutput->stringValue() == "-" ) {
+            config.compactFile = "";
+        } else {
+            config.compactFile = o_compactOutput->stringValue();
         }
 
         if ( o_dispCe->boolValue() ) {
@@ -403,6 +437,8 @@ struct Main {
             m_run = RunMap;
         else if ( opts.foundCommand() == cmd_metrics )
             m_run = RunMetrics;
+        else if ( opts.foundCommand() == cmd_compact )
+            m_run = RunCompact;
         else
             die( "FATAL: Internal error in commandline parser." );
 
@@ -447,6 +483,9 @@ struct Main {
             case RunNdfs:
                 report->algorithm = "Nested DFS";
                 return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
+            case RunCompact:
+                report->algorithm = "Compact";
+                return run< algorithm::Compact< Graph, Stats >, Stats >();
             default:
                 die( "FATAL: Internal error choosing algorithm." );
         }
