@@ -121,11 +121,13 @@ struct HashSet
 
     bool has( Item i ) { return valid( get( i ) ); }
     Item get( Item i ) { return getHinted( i, hash( i ) ); }
-    Item getHinted( Item i, hash_t h ) {
+    Item getHinted( Item i, hash_t h, bool* has = NULL ) {
         Cell c;
         c.item = i;
         c.hash = h;
-        return getCell( c );
+        const Item& item = getCell( c );
+        if ( has != NULL ) *has = valid( item );
+        return item;
     }
 
     Item getCell( Cell c ) // const (bleh)

@@ -159,14 +159,14 @@ struct Common {
         if ( S::transitionHint( m_notify, from, _to, hint ) == IgnoreTransition )
             return;
 
-        Node to = seen().getHinted( _to, hint );
+        Node to = seen().getHinted( _to, hint, &had );
 
         if ( alias( _to, to ) )
             assert( seen().valid( to ) );
 
         if ( !seen().valid( to ) ) {
             assert( !alias( _to, to ) );
-            had = false;
+            assert( !had );
             to = _to;
         }
 

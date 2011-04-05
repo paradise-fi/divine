@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
 #include <sstream>
+#include <utility>
 
 #ifndef DIVINE_LTLCE_H
 #define DIVINE_LTLCE_H
@@ -12,6 +13,8 @@ template< typename Node >
 struct CeShared {
     Node initial;
     Node current;
+    Node successor;
+    unsigned successorPos;
     bool current_updated;
     template< typename I >
     I read( I i ) {
@@ -21,6 +24,13 @@ struct CeShared {
             i = initial.read32( &fp, i );
         if ( *i++ )
             i = current.read32( &fp, i );
+        else
+            current = Node();
+        if ( *i++ )
+            i = successor.read32( &fp, i );
+        else
+            successor = Node();
+        successorPos = *i++;
         current_updated = *i++;
         return i;
     }
@@ -33,6 +43,10 @@ struct CeShared {
         *o++ = current.valid();
         if ( current.valid() )
             o = current.write32( o );
+        *o++ = successor.valid();
+        if ( successor.valid() )
+            o = successor.write32( o );
+        *o++ = successorPos;
         *o++ = current_updated;
         return o;
     }
@@ -91,8 +105,13 @@ struct LtlCE {
         if ( owner( h, w, shared().ce.current ) == w.globalId() ) {
             Node n = t.get( shared().ce.current );
             assert( n.valid() );
+
+            if ( shared().ce.successor.valid() )
+                shared().ce.successorPos = g().successorNum( w, n, shared().ce.successor );
+            shared().ce.successor = n;
+
             shared().ce.current = extension( n ).parent;
-            assert( shared().ce.current.valid() );
+
             shared().ce.current_updated = true;
         }
     }
@@ -135,10 +154,14 @@ struct LtlCE {
 
     // Obtaining CE output
 
+    typedef std::vector< unsigned > NumericTrace;
+    typedef std::vector< Node > Trace;
+    typedef std::pair< Trace, NumericTrace > Traces;
+
     template< typename Alg, typename T >
-    std::vector< int > numericTrace( Alg &a, G &_g, T trace )
+    NumericTrace numericTrace( Alg &a, G &_g, T trace )
     {
-        std::vector< int > result;
+        NumericTrace result;
         while ( !trace.empty() ) {
             Node current = trace.back();
             trace.pop_back();
@@ -168,12 +191,12 @@ struct LtlCE {
     template < typename A >
     std::ostream &o_trail( A &a ) { return filestream( _o_trail, a.config().trailFile ); }
 
+    /// Generates traces; when numTrace is null, computes a numeric trace sequentially in a single thread
     template< typename Alg, typename T >
-    std::string generateTrace( Alg &a, G &_g, T trace )
-    {
+    std::string generateTrace( Alg &a, G &_g, T trace, NumericTrace *numTrace = NULL ) {
         std::stringstream o_tr_str;
 
-        std::vector< int > ntrace = numericTrace( a, _g, trace );
+        NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
             o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
@@ -188,6 +211,11 @@ struct LtlCE {
 
         // drop trailing comma
         return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );
+    }
+
+    template< typename Alg >
+    std::string generateTrace( Alg &a, G &_g, Traces traces ) {
+        return generateTrace( a, _g, traces.first, &traces.second );
     }
 
     template< typename Alg, typename T >
@@ -209,19 +237,24 @@ struct LtlCE {
     // --
 
     template< typename Domain, typename Alg >
-    std::vector< Node > parentTrace( Domain &d, Alg &a, Node stop ) {
-        std::vector< Node > trace;
+    Traces parentTrace( Domain &d, Alg &a, Node stop, bool loop = false ) {
+        Trace trace;
+        NumericTrace numTrace;
         shared().ce.current = shared().ce.initial;
+        shared().ce.successor = Node(); // !valid()
+        shared().ce.successorPos = 0;
         do {
+            if ( shared().ce.successorPos ) numTrace.push_back( shared().ce.successorPos );
             shared().ce.current_updated = false;
             trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
-        } while ( !a.equal( shared().ce.current, stop ) );
+        // first condition is for the linear part, second for the cycle
+        } while ( shared().ce.current.valid() && ( !loop || !a.equal( shared().ce.current, stop ) ) );
 
-        trace.push_back( shared().ce.current );
+        if ( shared().ce.successorPos ) numTrace.push_back( shared().ce.successorPos );
 
-        return trace;
+        return std::make_pair( trace, numTrace );
     }
 
     template< typename Domain, typename Alg >
@@ -236,7 +269,7 @@ struct LtlCE {
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial ) );
+        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial, true ) );
     }
 
 };

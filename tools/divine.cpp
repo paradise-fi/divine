@@ -15,6 +15,7 @@
 #include <divine/generator/dummy.h>
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
+#include <divine/generator/compact.h>
 #include <divine/generator/coin/coingenerator.h>
 #include <divine/generator/llvm.h>
 
@@ -528,6 +529,9 @@ struct Main {
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
             }
+        } else if ( str::endsWith( config.input, ".compact" ) ) {
+            report->generator = "Compact";
+            return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
         } else if ( str::endsWith( config.input, ".coin" ) ) {
 #ifdef LCA
             report->generator = "CoIn-LCA";

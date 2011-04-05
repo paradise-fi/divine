@@ -4,7 +4,9 @@
 #include <divine/report.h>
 #include <divine/blob.h>
 #include <divine/hashset.h>
+#include <divine/bitset.h>
 #include <divine/visitor.h>
+#include <wibble/sfinae.h>
 
 #ifndef DIVINE_ALGORITHM_H
 #define DIVINE_ALGORITHM_H
@@ -177,6 +179,26 @@ struct AlgorithmUtils : public AlgorithmUtilsCommon< G >{
     Table *makeTable() {
         return new Table( this->hasher, divine::valid< typename G::Node >(),
                           this->equal, *this->m_initialTable );
+    }
+};
+
+#define BITSET BitSet< typename G::Graph, divine::valid< typename G::Node >, algorithm::Equal >
+
+/**
+ * BitSet specialization: BitSet with combination of generator::Compact
+ * is used as a storage of visited states.
+ */
+template< typename G >
+struct AlgorithmUtils< G, typename wibble::EnableIf<
+    wibble::TSame< typename G::Graph::Table, BITSET >, BITSET >::T >
+    : AlgorithmUtilsCommon< G > {
+
+    typedef typename G::Graph::Table Table;
+
+    Table *makeTable() {
+        assert( this->peerId >= 0 );
+        return new Table( &this->m_g->g(), this->peerId,
+                          divine::valid< typename G::Node >(), this->equal );
     }
 };
 
