@@ -64,7 +64,7 @@ struct Main {
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw;
-    OptionGroup *common, *drawing;
+    OptionGroup *common, *drawing, *ce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por;
     BoolOption *o_curses;
@@ -181,6 +181,7 @@ struct Main {
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
+        ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
             "curses", '\0', "curses", "", "use curses-based progress monitoring" );
@@ -203,18 +204,6 @@ struct Main {
         o_pool = common->add< BoolOption >(
             "disable-pool", '\0', "disable-pool", "",
             "disable pooled allocation (use HOARD for all allocation)" );
-
-        o_noCe = common->add< BoolOption >(
-            "no-counterexample", 'n', "no-counterexample", "",
-            "disable counterexample generation" );
-
-        o_dispCe = common->add< BoolOption >(
-            "display-counterexample", 'd', "display-counterexample", "",
-            "display the counterexample after finishing" );
-
-        o_trail = common->add< StringOption >(
-            "trail", 't', "trail", "",
-            "file to output trail to (default: input-file.trail)" );
 
         o_dummy = common->add< BoolOption >(
             "dummy", '\0', "dummy", "",
@@ -241,6 +230,19 @@ struct Main {
             "set maximum BFS distance from initial state [default = 32]" );
         o_distance ->setValue( 32 );
 
+        // counterexample options
+        o_noCe = ce->add< BoolOption >(
+            "no-counterexample", 'n', "no-counterexample", "",
+            "disable counterexample generation" );
+
+        o_dispCe = ce->add< BoolOption >(
+            "display-counterexample", 'd', "display-counterexample", "",
+            "display the counterexample after finishing" );
+
+        o_trail = ce->add< StringOption >(
+            "trail", 't', "trail", "",
+            "file to output trail to (default: input-file.trail)" );
+
         // drawing options
         o_drawTrace = drawing->add< StringOption >(
             "draw-trace", '\0', "draw-trace", "",
@@ -255,11 +257,22 @@ struct Main {
             "labels", 'l', "labels", "", "draw state labels" );
 
         cmd_metrics->add( common );
+        cmd_metrics->add( ce );
+
         cmd_reachability->add( common );
+        cmd_reachability->add( ce );
+
         cmd_owcty->add( common );
+        cmd_owcty->add( ce );
+
         cmd_map->add( common );
+        cmd_map->add( ce );
+
         cmd_ndfs->add( common );
+        cmd_ndfs->add( ce );
+
         cmd_verify->add( common );
+        cmd_verify->add( ce );
 
         cmd_draw->add( drawing );
     }
