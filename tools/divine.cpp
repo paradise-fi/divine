@@ -257,7 +257,6 @@ struct Main {
             "labels", 'l', "labels", "", "draw state labels" );
 
         cmd_metrics->add( common );
-        cmd_metrics->add( ce );
 
         cmd_reachability->add( common );
         cmd_reachability->add( ce );
