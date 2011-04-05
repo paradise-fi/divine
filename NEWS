@@ -1,3 +1,11 @@
+DiVinE 2.5.1 (5.4.2011)
+=======================
+
+- DVE compiler fixes: initial state in some models could be incorrect in
+  compiled DVE. When the system was in deadlock and LTL property had been
+  present, the resulting model could overwrite origin states, causing the model
+  checker to misbehave. Both these problems are fixed in this release.
+
 DiVinE 2.5 (28.2.2011)
 ======================
 
