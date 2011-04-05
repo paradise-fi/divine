@@ -11,6 +11,7 @@
 #include <wibble/sys/fs.h>
 
 #include <divine/config.h>
+#include <divine/generator/common.h>
 #include <divine/generator/dummy.h>
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
@@ -416,10 +417,10 @@ struct Main {
             Graph temp;
             temp.read( config.input );
 
-            if ( temp.hasProperty() && config.workers > 1 )
+            if ( temp.propertyType() != generator::AC_None && config.workers > 1 )
                 m_run = RunOwcty;
             else {
-                if ( temp.hasProperty() )
+                if ( temp.propertyType() != generator::AC_None )
                     m_run = RunNdfs;
                 else
                     m_run = RunReachability;

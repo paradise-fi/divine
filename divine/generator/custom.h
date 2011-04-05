@@ -149,8 +149,8 @@ struct Custom : public Common< Blob > {
             dl.setup( &setup );
     }
 
-    bool hasProperty() {
-        return setup.has_property;
+    PropertyType propertyType() {
+        return setup.has_property ? AC_Buchi : AC_None;
     }
 
     Custom &operator=( const Custom &other ) {

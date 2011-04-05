@@ -57,6 +57,9 @@ struct Allocator : StateAllocator {
     }
 };
 
+/// Types of acceptance condition
+enum PropertyType { AC_None, AC_Buchi, AC_GenBuchi, AC_Muller, AC_Rabin, AC_Streett };
+
 /// Superclass of all graph generators
 template< typename _Node >
 struct Common {
@@ -65,8 +68,22 @@ struct Common {
     Allocator alloc;
     int setSlack( int s ) { alloc.setSlack( s ); return s; }
     Pool &pool() { return alloc.pool(); }
-    bool hasProperty() { return false; }
     void initPOR() {}
+
+    /// Acceptance condition type. This should be overriden in subclasses.
+    PropertyType propertyType() { return AC_None; }
+
+    /// Is state s in accepting set? This should be overriden in subclasses.
+    bool isAccepting( Node s ) { return false; }
+
+    /// Is state s in accepting set? (non-buchi acceptance condition)
+    bool isInAccepting( Node s, const size_int_t acc_group ) { return false; }
+
+    /// Is state s in rejecting set? (non-buchi acceptance condition)
+    bool isInRejecting( Node s, const size_int_t acc_group ) { return false; }
+
+    /// Number of sets/pairs in acceptance condition. (non-buchi acceptance condition)
+    unsigned acceptingGroupCount() { return 0; }
 
     /// Sets information about domain geometry
     void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
@@ -105,11 +122,16 @@ struct Extended {
     bool isAccepting( Node s ) { return g().isAccepting( s ); }
     std::string showNode( Node s ) { return g().showNode( s ); }
     void read( std::string path ) { g().read( path ); }
-    bool hasProperty() { return g().hasProperty(); }
     void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
                         const unsigned peersCount = 1 ) {
         g().setDomainSize( mpiRank, mpiSize, peersCount );
     }
+
+    PropertyType propertyType() { g().propertyType(); }
+
+    bool isInAccepting( Node s, const size_int_t acc_group ) { return g().isInAccepting( s, acc_group ); }
+    bool isInRejecting( Node s, const size_int_t acc_group ) { return g().isInRejecting( s, acc_group ); }
+    unsigned acceptingGroupCount() { return g().acceptingGroupCount(); }
 
     template< typename Q >
     void queueInitials( Q &q ) {

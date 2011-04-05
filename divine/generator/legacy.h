@@ -100,16 +100,40 @@ struct LegacyCommon : Common< _State > {
         legacy_system(); // force
     }
 
-    bool hasProperty() {
-        return legacy_system()->get_with_property();
-    }
-
     void print_state( State s, std::ostream &o = std::cerr ) {
         legacy_system()->print_state( legacy_state( s ), o );
     }
 
     bool isAccepting( State s ) {
         return legacy_system()->is_accepting( this->alloc.legacy_state( s ) );
+    }
+
+    /// Is state s in acc_group set or accepting set of acc_group pair?
+    bool isInAccepting( State s, const size_int_t acc_group ) {
+        return legacy_system()->is_accepting( this->alloc.legacy_state( s ), acc_group, 1 );
+    }
+
+    /// Is state s in rejecting set of acc_group pair?
+    bool isInRejecting( State s, const size_int_t acc_group ) {
+        return legacy_system()->is_accepting( this->alloc.legacy_state( s ), acc_group, 2 );
+    }
+
+    /// Number of sets/pairs of acceptance condition
+    unsigned acceptingGroupCount() {
+        if ( !legacy_system()->get_with_property() ) return 0;
+        process_t* propertyProcess = legacy_system()->get_property_process();
+        return dynamic_cast< dve_process_t* >( propertyProcess )->get_accepting_group_count();
+    }
+
+    /// Type of acceptance condition
+    PropertyType propertyType() {
+        if ( legacy_system()->get_with_property() ) {
+            process_t* propertyProcess = legacy_system()->get_property_process();
+            return static_cast< PropertyType >( 
+                dynamic_cast< dve_process_t* >( propertyProcess )->get_accepting_type() );
+        }
+        else
+            return AC_None;
     }
 
     bool isGoal( State s ) { return false; } // XXX
