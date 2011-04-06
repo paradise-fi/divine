@@ -406,8 +406,9 @@ struct Main {
         else
             die( "FATAL: Internal error in commandline parser." );
 
-        config.initialTable =
-            ( 1L << (o_initable->intValue()) ) / config.workers;
+        config.initialTable = 1L << (o_initable->intValue());
+        if (opts.foundCommand() != cmd_ndfs) // ndfs uses shared table
+            config.initialTable /= config.workers;
     }
 
     template< typename Graph, typename Stats >
