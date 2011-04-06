@@ -207,9 +207,11 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 #endif
   
 #ifdef _WIN32
+    HANDLE hProcess = GetCurrentProcess();
     PROCESS_MEMORY_COUNTERS pmc;
     if (hProcess != NULL && GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
       vmsz = pmc.WorkingSetSize/(1024);
+    CloseHandle(hProcess);
 #endif
         return vmsz;
     }
