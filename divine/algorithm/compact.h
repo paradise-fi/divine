@@ -414,7 +414,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
         G& g() { return this->parent->shared.g; }
 
-        This::Shared& shared() { return this->parent->shared; }
+        typename This::Shared& shared() { return this->parent->shared; }
 
         TextWriter( This *alg ) : CompactWriter( alg ) {}
 
@@ -545,7 +545,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
         G& g() { return this->parent->shared.g; }
 
-        This::Shared& shared() { return this->parent->shared; }
+        typename This::Shared& shared() { return this->parent->shared; }
 
         BinaryWriter( This *alg ) : CompactWriter( alg ) {}
 
