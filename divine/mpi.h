@@ -685,6 +685,7 @@ template< typename D, typename C >
 struct MpiWorker {
     void interrupt() {}
     void start() {}
+    void* join() {}
 
     MpiWorker( D& ) {}
 };
