@@ -127,7 +127,7 @@ struct Extended {
         g().setDomainSize( mpiRank, mpiSize, peersCount );
     }
 
-    PropertyType propertyType() { g().propertyType(); }
+    PropertyType propertyType() { return g().propertyType(); }
 
     bool isInAccepting( Node s, const size_int_t acc_group ) { return g().isInAccepting( s, acc_group ); }
     bool isInRejecting( Node s, const size_int_t acc_group ) { return g().isInRejecting( s, acc_group ); }
