@@ -49,7 +49,7 @@ struct Main {
         }
 
         report.finished( res );
-        report.final( std::cout );
+        if ( o_report->boolValue() ) report.final( std::cout );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
