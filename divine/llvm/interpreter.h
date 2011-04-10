@@ -104,12 +104,12 @@ struct ExecutionContext {
     int pc;          // program counter
     Values values;   // LLVM values used in this invocation
     VarArgs varArgs; // Values passed through an ellipsis
-    CallSite caller; // Holds the call that called subframes.
+    int caller;      // Holds the call that called subframes.
                      // NULL if main func or debugger invoked fn
     Allocas allocas;
 
     int size() {
-        return sizeof( int ) +
+        return sizeof( int ) * 2 +
                sizeof( size_t ) * 3 +
                sizeof( GenericValue ) * varArgs.size() +
                sizeof( GenericValue ) * values.size() +
@@ -119,6 +119,7 @@ struct ExecutionContext {
 
     int put( int o, Blob b ) {
         o = b.put( o, pc );
+        o = b.put( o, caller );
         o = b.put( o, values.size() );
         for ( Values::iterator i = values.begin(); i != values.end(); ++i ) {
             o = b.put( o, i->first );
@@ -140,6 +141,7 @@ struct ExecutionContext {
 
         size_t count;
         o = b.get( o, pc );
+        o = b.get( o, caller );
         o = b.get( o, count );
         for ( int i = 0; i < count; ++i ) {
             int k; GenericValue v;
@@ -173,6 +175,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     Arena arena;
     BiMap< int, Location > locationIndex;
     BiMap< int, Value * > valueIndex;
+    BiMap< int, CallSite > csIndex;
 
     // The runtime stack of executing code.  The top of the stack is the current
     // function record.
@@ -188,6 +191,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
 
     ExecutionContext &enter() {
         stack.push_back( ExecutionContext() );
+        SF().caller = -1;
         return SF();
     }
 
@@ -271,6 +275,7 @@ public:
   bool done();               // Is there anything left to do?
 
     Location location( ExecutionContext & );
+    CallSite caller( ExecutionContext & );
     void setLocation( ExecutionContext &, Location );
     void setInstruction( ExecutionContext &, BasicBlock::iterator );
     Instruction &nextInstruction();

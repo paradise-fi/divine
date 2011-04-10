@@ -601,15 +601,16 @@ void Interpreter::popStackAndReturnValueToCaller(const Type *RetTy,
             memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
         }
     } else {
+        CallSite CS = caller( SF() );
         // If we have a previous stack frame, and we have a previous call,
         // fill in the return value...
-        if (Instruction *I = SF().caller.getInstruction()) {
+        if (Instruction *I = CS.getInstruction()) {
             // Save result...
-            if (!SF().caller.getType()->isVoidTy())
+            if (!CS.getType()->isVoidTy())
                 SetValue(I, Result, SF());
             if (InvokeInst *II = dyn_cast<InvokeInst> (I))
                 SwitchToNewBasicBlock (II->getNormalDest (), SF());
-            SF().caller = CallSite();          // We returned from the call...
+            SF().caller = -1;          // XXX? We returned from the call...
         }
     }
 }
@@ -634,11 +635,11 @@ void Interpreter::visitUnwindInst(UnwindInst &I) {
       leave();
       if (stack.empty())
           report_fatal_error("Empty stack during unwind!");
-      Inst = SF().caller.getInstruction();
+      Inst = caller( SF() ).getInstruction();
   } while (!(Inst && isa<InvokeInst>(Inst)));
 
   // Return from invoke
-  SF().caller = CallSite();
+  SF().caller = -1; // CallSite();
 
   // Go to exceptional destination BB of invoke instruction
   SwitchToNewBasicBlock(cast<InvokeInst>(Inst)->getUnwindDest(), SF());
@@ -872,22 +873,24 @@ void Interpreter::visitCallSite(CallSite CS) {
                 return;
         }
 
-
-    SF().caller = CS;
+    Location loc = location( SF() );
+    loc.insn = CS.getInstruction();
+    SF().caller = locationIndex.left( loc );
+    // std::cerr << "call: setting caller to " << SF().caller << std::endl;
     std::vector<GenericValue> ArgVals;
-    const unsigned NumArgs = SF().caller.arg_size();
+    const unsigned NumArgs = CS.arg_size();
     ArgVals.reserve(NumArgs);
     uint16_t pNum = 1;
-    for (CallSite::arg_iterator i = SF().caller.arg_begin(),
-                                e = SF().caller.arg_end(); i != e; ++i, ++pNum) {
+    for (CallSite::arg_iterator i = CS.arg_begin(),
+                                e = CS.arg_end(); i != e; ++i, ++pNum) {
         Value *V = *i;
         ArgVals.push_back(getOperandValue(V, SF()));
     }
 
     // To handle indirect calls, we must get the pointer value from the argument
     // and treat it as a function pointer.
-    GenericValue SRC = getOperandValue(SF().caller.getCalledValue(), SF());
-    std::cerr << "processing call at " << location( SF() ) << std::endl;
+    GenericValue SRC = getOperandValue(CS.getCalledValue(), SF());
+    // std::cerr << "processing call at " << location( SF() ) << std::endl;
     callFunction((Function*)GVTOP(SRC), ArgVals);
 }
 
@@ -1266,8 +1269,8 @@ GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
 //
 void Interpreter::callFunction(Function *F,
                                const std::vector<GenericValue> &ArgVals) {
-    assert((stack.empty() || SF().caller.getInstruction() == 0 ||
-            SF().caller.arg_size() == ArgVals.size()) &&
+    assert((stack.empty() || caller( SF() ).getInstruction() == 0 ||
+            caller( SF() ).arg_size() == ArgVals.size()) &&
            "Incorrect number of arguments passed into function call!");
     // Make a new stack frame... and fill it in.
     enter();
