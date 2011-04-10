@@ -145,8 +145,10 @@ struct Arena {
         int count = ( b.size() - extra ) / sizeof( Block );
         assert_eq( ( b.size() - extra ) % sizeof( Block ), 0 );
         blocks.resize( count );
-        for ( int n = 0; n < count; ++ n )
+        for ( int n = 0; n < count; ++ n ) {
             blocks[ n ] = b.get< Block >( extra + ( n * sizeof( Block ) ) );
+            sizes[ blocks[ n ].unit ] = n + 1;
+        }
     }
 };
 
