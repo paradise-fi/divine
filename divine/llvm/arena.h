@@ -25,6 +25,7 @@ struct Arena {
     static const size_t BB = 7;
 
     struct Index {
+        unsigned __align:7;
         bool valid:1;
         unsigned block:8;
         unsigned i:16; /* this is in bytes, so that pointer arithmetic &c. works */
@@ -46,14 +47,14 @@ struct Arena {
                 valid = 0;
         }
 
-        Index() : valid( false ) {}
-        Index( int g, int _i ) : valid( true ), block( g ), i( _i ) {}
+        Index() : __align( 0 ), valid( false ) {}
+        Index( int g, int _i ) : __align( 0 ), valid( true ), block( g ), i( _i ) {}
 
     } __attribute__((packed));
 
     struct Block {
         enum { Empty, Full };
-        int unit:16; // size of a single allocation
+        int unit; // maybe make 16 bits at some point, but better align for now
         Index free; /* current free cell of this size */
         word data[BS / sizeof(word)];
 
