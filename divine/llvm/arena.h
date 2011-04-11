@@ -21,6 +21,8 @@ namespace llvm {
  */
 struct Arena {
     typedef uint32_t word;
+    static const size_t BS = 128;
+    static const size_t BB = 7;
 
     struct Index {
         bool valid:1;
@@ -32,14 +34,14 @@ struct Arena {
             if ( !valid )
                 return 0;
             assert_leq( 1, block );
-            return (i | block << 16);
+            return (i | block << BB);
         }
 
         Index( intptr_t t ) {
             if ( t ) {
                 valid = 1;
-                i = t & 65535;
-                block = t >> 16;
+                i = t & (BS - 1);
+                block = t >> BB;
             } else
                 valid = 0;
         }
@@ -53,7 +55,7 @@ struct Arena {
         enum { Empty, Full };
         int unit:16; // size of a single allocation
         Index free; /* current free cell of this size */
-        word data[16384];
+        word data[BS / sizeof(word)];
 
         word &at( int i, int size ) {
             assert( size % 4 == 0 );
@@ -62,7 +64,7 @@ struct Arena {
         }
 
         Block() {
-            for ( int i = 0; i < 16384; ++i )
+            for ( int i = 0; i < BS / sizeof(word); ++i )
                 data[ i ] = 0;
         }
     };
@@ -76,7 +78,7 @@ struct Arena {
         Block &g = blocks.back();
         g.unit = size;
         int current = sizes[ size ] = blocks.size();
-        int slots = 65536 / size;
+        int slots = BS / size;
         g.free = Index( current, 0 );
         int slot = 0;
         for ( slot = 0; slot < slots - 1; ++slot )
