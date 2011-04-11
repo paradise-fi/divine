@@ -51,20 +51,17 @@ struct BiMap {
     std::map< B, A > _right;
 
     void insert( A a, B b ) {
-        std::cerr << "bimap: adding (" << a << ", " << b << ")" << std::endl;
         _left.insert( std::make_pair( a, b ) );
         _right.insert( std::make_pair( b, a ) );
     }
 
     A left( B b ) {
         assert( _right.count( b ) );
-        std::cerr << "bimap: getting (" << _right.find( b )->second << " <- " << b << ")" << std::endl;
         return _right.find( b )->second;
     }
 
     B right( A a ) {
         assert( _left.count( a ) );
-        std::cerr << "bimap: getting (" << a << " -> " << _left.find( a )->second << ")" << std::endl;
         return _left.find( a )->second;
     }
 };
@@ -223,7 +220,6 @@ public:
         for ( int i = 0; i < stack.size(); ++i )
             offset = SFat( i ).put( offset, b );
 
-        // std::cerr << "snapshotted LLVM: stack at " << extra << ", arena at " << offset << ", total " << b.size() << std::endl;
         return b;
     }
 
@@ -233,7 +229,6 @@ public:
         stack.resize( depth );
         for ( int i = 0; i < depth; ++i )
             offset = stack[ i ].get( offset, b );
-        std::cerr << "expanding LLVM: stack at " << extra << ", arena at " << offset << ", total " << b.size() << std::endl;
         arena.expand( b, offset );
     }
 

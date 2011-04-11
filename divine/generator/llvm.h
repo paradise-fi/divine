@@ -35,7 +35,6 @@ struct LLVM : Common< Blob > {
 
     Node initial() {
         interpreter();
-        dbgs() << "initial: " << interpreter().nextInstruction() << "\n";
         assert( _initial.valid() );
         return _initial;
     }
@@ -72,12 +71,8 @@ struct LLVM : Common< Blob > {
     Successors successors( Node st ) {
         Successors ret;
         interpreter().restore( st, alloc._slack );
-        dbgs() << "successors: " << interpreter().nextInstruction() << "; tid = "
-               << pthread_self() << "\n";
-
         ret._from = st;
         if (interpreter().done()) {
-            dbgs() << "successors: done\n";
             ret._empty = true;
         } else {
             ret._empty = false;
@@ -130,8 +125,6 @@ struct LLVM : Common< Blob > {
         Function *f = m->getFunction( "main" );
         assert( f );
         _interpreter->callFunction( f, args );
-        std::cerr << "loaded LLVM bitcode file " << file << "..." << std::endl;
-
         _initial = _interpreter->snapshot( alloc._slack, pool() );
         return *_interpreter;
     }

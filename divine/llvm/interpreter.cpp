@@ -105,7 +105,6 @@ Location Interpreter::location( ExecutionContext &SF ) {
 }
 
 CallSite Interpreter::caller( ExecutionContext &SF ) {
-    std::cerr << "caller at: " << SF.caller << std::endl;
     assert_leq( 0, SF.caller );
     return CallSite( locationIndex.right( SF.caller ).insn );
 }

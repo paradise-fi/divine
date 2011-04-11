@@ -45,7 +45,6 @@ static cl::opt<bool> PrintVolatile("interpreter-print-volatile", cl::Hidden,
 //===----------------------------------------------------------------------===//
 
 void Interpreter::SetValue(Value *V, GenericValue Val, ExecutionContext &SF) {
-    std::cerr << "set value " << valueIndex.left(V) << ": (" << GVTOP(Val) << ")" << std::endl;
     SF.values[valueIndex.left(V)] = Val;
 }
 
@@ -876,7 +875,6 @@ void Interpreter::visitCallSite(CallSite CS) {
     Location loc = location( SF() );
     loc.insn = CS.getInstruction();
     SF().caller = locationIndex.left( loc );
-    // std::cerr << "call: setting caller to " << SF().caller << std::endl;
     std::vector<GenericValue> ArgVals;
     const unsigned NumArgs = CS.arg_size();
     ArgVals.reserve(NumArgs);
@@ -890,7 +888,6 @@ void Interpreter::visitCallSite(CallSite CS) {
     // To handle indirect calls, we must get the pointer value from the argument
     // and treat it as a function pointer.
     GenericValue SRC = getOperandValue(CS.getCalledValue(), SF());
-    // std::cerr << "processing call at " << location( SF() ) << std::endl;
     callFunction((Function*)GVTOP(SRC), ArgVals);
 }
 
@@ -1245,17 +1242,13 @@ GenericValue Interpreter::getConstantExprValue (ConstantExpr *CE,
 
 GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
-      std::cerr << "get constant expression" << std::endl;
       return getConstantExprValue(CE, SF);
   } else if (Constant *CPV = dyn_cast<Constant>(V)) {
-      std::cerr << "get constant" << std::endl;
       return getConstantValue(CPV);
   } else if (GlobalValue *GV = dyn_cast<GlobalValue>(V)) {
-      std::cerr << "get global" << std::endl;
       return PTOGV(getPointerToGlobal(GV));
   } else {
       GenericValue ret = SF.values[valueIndex.left( V )];
-      std::cerr << "get value " << valueIndex.left( V ) << ": " << GVTOP(ret) << std::endl;
       return ret;
   }
 }
