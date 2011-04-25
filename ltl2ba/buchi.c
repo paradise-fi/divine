@@ -45,6 +45,12 @@ BState *bstack, *bstates, *bremoved;
 BScc *scc_stack;
 int accept, bstate_count = 0, btrans_count = 0, rank;
 
+void reinitBuchi() {
+    bstack = bstates = bremoved = NULL;
+    scc_stack = NULL;
+    accept = bstate_count = btrans_count = rank = 0;
+}
+
 /********************************************************************\
 |*        Simplification of the generalized Buchi automaton         *|
 \********************************************************************/

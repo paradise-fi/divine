@@ -44,6 +44,15 @@ struct timeval t_diff;
 int *final_set, node_id = 1, sym_id = 0, node_size, sym_size;
 int astate_count = 0, atrans_count = 0;
 
+void reinitAlternating() {
+    label = NULL;
+    sym_table = NULL;
+    transition = NULL;
+    final_set = NULL, node_id = 1, sym_id = 0;
+    node_size = sym_size = 0;
+    astate_count = 0, atrans_count = 0;
+}
+
 ATrans *build_alternating(Node *p);
 
 /********************************************************************\

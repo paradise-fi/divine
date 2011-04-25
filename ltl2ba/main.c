@@ -51,6 +51,47 @@ static char     **ltl_file = (char **)0;
 static char     **add_ltl  = (char **)0;
 static char     out1[64];
 
+void reinitParse();
+void reinitCache();
+void reinitMem();
+void reinitWrt();
+void reinitSet();
+void reinitTrans();
+void reinitGeneralized();
+void reinitLex();
+void reinitBuchi();
+void reinitAlternating();
+
+void reinit() {
+    reinitParse();
+    reinitCache();
+    reinitMem();
+    reinitWrt();
+    reinitSet();
+    reinitTrans();
+    reinitGeneralized();
+    reinitLex();
+    reinitBuchi();
+    reinitAlternating();
+    
+    tl_stats = 0;
+    tl_simp_log = 1;
+    tl_simp_diff = 1;
+    tl_simp_fly = 1;
+    tl_simp_scc = 1;
+    tl_fjtofj = 1;
+    tl_errs = 0;
+    tl_verbose = 0;
+    tl_terse = 0;
+    All_Mem = 0;
+
+    memset( uform, 0, 4096 );
+    hasuform=0, cnt=0;
+    ltl_file = (char **)0;
+    add_ltl  = (char **)0;
+    memset( out1, 0, 64 );
+}
+
 static void	tl_endstats(void);
 static void	non_fatal(char *, char *);
 
@@ -159,7 +200,7 @@ int
 main_ltl2ba(int argc, char *argv[], FILE* outFile)
 {	int i;
 	tl_out = stdout;
-
+    reinit();
 	while (argc > 1 && argv[1][0] == '-')
         {       switch (argv[1][1]) {
                 case 'F': ltl_file = (char **) (argv+2);

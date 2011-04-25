@@ -40,6 +40,10 @@ static int	tl_lex(void);
 extern YYSTYPE	tl_yylval;
 char	yytext_ltl2ba[2048];
 
+void reinitLex() {
+    memset( yytext_ltl2ba, 0, 2048 );
+}
+
 #define Token(y)        tl_yylval = tl_nn(y,ZN,ZN); return y
 
 int

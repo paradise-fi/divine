@@ -46,6 +46,16 @@ GScc *scc_stack;
 int init_size = 0, gstate_id = 1, gstate_count = 0, gtrans_count = 0;
 int *fin, *final, rank, scc_id, scc_size, *bad_scc;
 
+void reinitGeneralized() {
+    gstack = gremoved = gstates = NULL;
+    init = NULL;
+    scc_stack = NULL;
+    init_size = 0, gstate_id = 1, gstate_count = 0, gtrans_count = 0;
+    fin = final = NULL;
+    rank = scc_id = scc_size = 0;
+    bad_scc = NULL;
+}
+
 void print_generalized();
 
 /********************************************************************\

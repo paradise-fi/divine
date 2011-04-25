@@ -35,6 +35,9 @@ extern char **sym_table;
 
 int mod = 8 * sizeof(int);
 
+void reinitSet() {
+    mod = 8 * sizeof( int );
+}
 
 /* type = 2 for scc set, 1 for symbol sets, 0 for nodes sets */
 

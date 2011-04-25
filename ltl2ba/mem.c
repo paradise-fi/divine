@@ -67,6 +67,23 @@ static union M *freelist[A_LARGE];
 static long	req[A_LARGE];
 static long	event[NREVENT][A_LARGE];
 
+void reinitMem() {
+    atrans_list = (ATrans *)0;
+    gtrans_list = (GTrans *)0;
+    btrans_list = (BTrans *)0;
+
+    aallocs = 0, afrees = 0, apool = 0;
+    gallocs = 0, gfrees = 0, gpool = 0;
+    ballocs = 0, bfrees = 0, bpool = 0;
+
+    unsigned Msize = sizeof( void* );
+    if ( sizeof( long ) > Msize ) Msize = sizeof( long );
+    
+    memset( freelist, 0, /*sizeof( M )*/ Msize * A_LARGE );
+    memset( req, 0, sizeof( long ) * A_LARGE );
+    memset( event, 0, sizeof( long ) * NREVENT * A_LARGE );
+}
+
 void *
 tl_emalloc(int U)
 {	union M *m;

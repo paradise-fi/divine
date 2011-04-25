@@ -42,6 +42,11 @@ typedef struct Cache {
 static Cache	*stored = (Cache *) 0;
 static unsigned long	Caches, CacheHits;
 
+void reinitCache() {
+    stored = NULL;
+    Caches = CacheHits = 0;
+}
+
 static int	ismatch(Node *, Node *);
 extern void fatal(char *, char *);
 int	sameform(Node *, Node *);

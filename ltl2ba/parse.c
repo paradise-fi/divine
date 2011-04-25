@@ -38,6 +38,11 @@ extern int	tl_verbose, tl_simp_log;
 int	tl_yychar = 0;
 YYSTYPE	tl_yylval;
 
+void reinitParse() {
+    tl_yychar = 0;
+    tl_yylval = NULL;
+}
+
 static Node	*tl_formula(void);
 static Node	*tl_factor(void);
 static Node	*tl_level(int);
