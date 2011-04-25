@@ -139,7 +139,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         bool seen:1;
         short iteration:14;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
-        short elim:2;
+        unsigned short elim:2;
         VertexId map;
         VertexId oldmap;
     };
