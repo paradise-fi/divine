@@ -356,7 +356,7 @@ int memSize(Ty x) {
 
 template <>
 inline int memSize<Blob>(Blob x) {
-    return sizeof(Blob) + (x.valid() ? x.size() + sizeof(BlobHeader) : 0);
+    return sizeof(Blob) + (x.valid() ? Blob::allocationSize(x.size()) : 0);
 }
 
 }
