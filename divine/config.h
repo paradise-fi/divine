@@ -26,7 +26,10 @@ struct Config {
 
     // compact options
     std::string compactFile;
-    bool findBackEdges, textFormat;
+    bool findBackEdges, textFormat; //keepOriginal;
+
+    // probabilistic options
+    bool onlyQualitative, iterativeOptimization;
 
     std::ostream &dump( std::ostream &o ) {
         o << "Input-File: " << input << std::endl;

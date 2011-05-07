@@ -22,6 +22,11 @@ namespace divine
    state_t(); //!<A constructor (only sets ptr to 0).
    char *ptr; //!<Pointer to the piece of memory, where the state is stored in
    std::size_t size; //!<Variable that stores the size of the state
+   const state_t getState() const { return *this; }; //!<Returns the state
+   bool isProbabilistic() const { return false; } //!This successor is not on probabilistic transition (cf. prob_succ_element_t)
+   size_int_t probabilisticId() const { return 0; } //!Not defined for non-probabilistic transitions.
+   ulong_int_t probabilisticWeigth() const { return 0; } //!Not defined for non-probabilistic transitions.
+   ulong_int_t probabilisticSum() const { return 0; } //!Not defined for non-probabilistic transitions.
   };
  
  //THE MOST IMPORTANT OPERATIONS WITH STATES:

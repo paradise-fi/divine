@@ -3,6 +3,7 @@
 #include <divine/generator/common.h>
 #include <divine/algorithm/compact.h>
 #include <divine/compactstate.h>
+#include <divine/probabilistictransition.h>
 
 #include <algorithm>
 
@@ -17,9 +18,17 @@ struct Compact : public Common< Blob > {
     typedef BitSet< Compact, divine::valid< Node >, algorithm::Equal > Table; // used state storage
     typedef generator::Common< Blob > Common;
 
+    /// References a state by its id; additional information about transition can be encoded into flags
+    struct Successor {
+        StateId id:30;
+        bool flag:1;
+        bool flagDisabled:1;
+    };
+
     char *nodes; // stores states in blobs: BlobHeader, Algorithm specific extension, CompactState, StateId
-    std::vector< StateId > *forward; // stores forward transitions
-    std::vector< StateId > *backward; // stores backward transitions
+    std::vector< Successor > *forward; // stores forward transitions
+    std::vector< Successor > *backward; // stores backward transitions
+    std::vector< ProbabilisticTransition > *probabilistic; // stores probabilistic information about transitions
     StateId initialState; // stores id of the initial state
     PropertyType acPropertyType; // acceptance condition type
     unsigned acCount; // number of acceptance condition pairs/sets
@@ -53,17 +62,20 @@ struct Compact : public Common< Blob > {
                 delete forward;
                 if ( backward != NULL )
                     delete backward;
+                if ( probabilistic != NULL )
+                    delete probabilistic;
             }
         }
     }
 
-    /// Represents list of successors of one state
-    struct Successors { 
+    /// Represents list of some kind of successors of one state
+    template< typename T, typename S >
+    struct Successors_ { 
         typedef Node Type;
         Node _from;
         unsigned cur, end;
         Compact *parent;
-        std::vector< StateId >* trans;
+        std::vector< T >* trans;
 
         bool empty() const {
             if ( !_from.valid() ) 
@@ -73,21 +85,46 @@ struct Compact : public Common< Blob > {
 
         Node from() { return _from; }
 
-        Successors tail() const {
-            Successors s = *this;
+        S tail() const {
+            S s = *reinterpret_cast< const S* >( this );
             s.cur++;
             return s;
         }
+    };
 
+    /// Successors or predecessors of state
+    struct Successors : Successors_< Successor, Successors > {
         Node head() {
-            StateId stateId = ( *trans )[ cur ];
+            StateId stateId = ( *trans )[ cur ].id;
             assert( stateId );
-            if ( parent->belongsToUs( stateId ) )
-                return parent->getState( stateId );
-            else
-                return parent->getAnyState( stateId );
+            return parent->getAnyState( stateId );
+        }
+
+        Successor& headTransition() {
+            return ( *trans )[ cur ];
         }
     };
+
+    /// Probabilistic successors
+    struct ProbabilisticTransitions : Successors_< ProbabilisticTransition, ProbabilisticTransitions > {
+        ProbabilisticTransition& head() { return ( *trans )[ cur ]; }
+    };
+
+    /// Returns information about probabilistic forward transitions
+    ProbabilisticTransitions probabilisticTransitions( Node st ) {
+        assert( initialized );
+        assert( hasProbabilisticTransitions() );
+
+        ProbabilisticTransitions ret;
+        ret._from = st;
+        ret.trans = probabilistic;
+        CompactState &compactState = getCompactState( st );
+        ret.cur = compactState.forward;
+        CompactState &nextCompactState = getNextCompactState( st );
+        ret.end = nextCompactState.forward;
+        ret.parent = this;
+        return ret;
+    }
 
     /// Returns successors of state st
     Successors successors( Node st ) {
@@ -103,6 +140,28 @@ struct Compact : public Common< Blob > {
         ret.parent = this;
         return ret;
     }
+
+    /// Returns predecessors of state st
+    Successors predecessors( Node st ) {
+        assert( initialized );
+        assert( hasBackwardTransitions() );
+
+        Successors ret;
+        ret._from = st;
+        ret.trans = backward;
+        CompactState &compactState = getCompactState( st );
+        ret.cur = compactState.backward;
+        CompactState &nextCompactState = getNextCompactState( st );
+        ret.end = nextCompactState.backward;
+        ret.parent = this;
+        return ret;
+    }
+    
+    /// Returns true iff current model description contains backward transitions.
+    bool hasBackwardTransitions() { return backward; }
+    
+    /// Returns true iff current model description contains information about probabilistic transitions.
+    bool hasProbabilisticTransitions() { return probabilistic; }
 
     /// Returns CompactState of state with identifier i
     CompactState& getCompactState( unsigned i ) {
@@ -131,6 +190,7 @@ struct Compact : public Common< Blob > {
     /// Returns id of state st
     StateId& getStateId( Node st ) {
         assert( initialized );
+        assert( st.valid() );
 
         return st.get< StateId >( blobSize - sizeof( StateId ) );
     }
@@ -152,12 +212,19 @@ struct Compact : public Common< Blob > {
 
         if ( belongsToUs( id ) )
             return getState( id );
-        else {
-            Node fakeState( pool(), blobSize );
-            memset( fakeState.ptr + sizeof( BlobHeader ), 0, blobSize );
-            getStateId( fakeState ) = id;
-            return fakeState;
-        }
+        else
+            return createState( id );
+    }
+
+    /// Creates a new state if id belongs to a different generator instance
+    Node createState( const StateId id ) {
+        assert( initialized );
+        assert( !belongsToUs( id ) );
+
+        Node fakeState( pool(), blobSize );
+        memset( fakeState.ptr + sizeof( BlobHeader ), 0, blobSize );
+        getStateId( fakeState ) = id;
+        return fakeState;
     }
 
     /// Returns CompactState of state after st in the nodes array
@@ -276,7 +343,12 @@ struct Compact : public Common< Blob > {
 
     /// Releases memory used by state s
     void release( Node s ) { 
-        if ( !inCompactPool( s ) ) s.free( pool() );
+        if ( !inCompactPool( s ) ) {
+            if ( s.header().heap )
+                s.free();
+            else
+                s.free( pool() );
+        }
     }
 
     bool isGoal( Node s ) {
@@ -378,12 +450,15 @@ struct Compact : public Common< Blob > {
         }
 
         /// Allocates memory for storing transitions
-        void allocTransitions( const unsigned backwardCount, const unsigned forwardCount ) {
+        void allocTransitions( const unsigned backwardCount, const unsigned forwardCount, const bool probabilisticEnabled ) {
             parent->backward = backwardCount == 0 || !parent->slackInitialized ? NULL :
-                new std::vector< StateId >( backwardCount );
+                new std::vector< Successor >( backwardCount );
 
             parent->forward = !parent->slackInitialized ? NULL :
-                new std::vector< StateId >( forwardCount ); 
+                new std::vector< Successor >( forwardCount ); 
+
+            parent->probabilistic = !parent->slackInitialized || !probabilisticEnabled ? NULL :
+                new std::vector< ProbabilisticTransition >( forwardCount );
         }
 
         /// Allocates memory for states handled by this mpi process
@@ -432,11 +507,19 @@ struct Compact : public Common< Blob > {
         }
 
         /// Adds a transition to a state
-        void addTransition( std::vector< StateId> *transitions, unsigned i, StateId t ) {
+        void addTransition( std::vector< Successor > *transitions, unsigned i, StateId t ) {
             assert( parent->isValidId( t ) );
-            if ( i == transitions->size() ) transitions->resize( transitions->size() + 
-                parent->workerStatesCount );
-            ( *transitions )[ i ] = t;
+            if ( i == transitions->size() ) 
+                transitions->resize( transitions->size() + parent->workerStatesCount );
+            ( *transitions )[ i ].id = t;
+            ( *transitions )[ i ].flag = false;
+        }
+
+        /// Adds a probabilistic information about transition
+        void addProbabilisticTransition( unsigned i, ProbabilisticTransition pt ) {
+            if ( i == parent->probabilistic->size() ) 
+                parent->probabilistic->resize( parent->probabilistic->size() + parent->workerStatesCount );
+            ( *parent->probabilistic )[ i ] = pt;
         }
 
         /// Appends last indices to transition vectors
@@ -469,6 +552,10 @@ struct Compact : public Common< Blob > {
 
         /// Sets backward transitions
         void setBackward( std::ifstream &compactFile, unsigned &b ) {
+            std::string label;
+            compactFile >> label;
+            assert_eq( label, compact::cfBackward );
+
             StateId bt;
             while ( compactFile >> bt )
                 addTransition( parent->backward, b++, bt );
@@ -477,15 +564,47 @@ struct Compact : public Common< Blob > {
 
         /// Sets forward transitions
         void setForward( std::ifstream &compactFile, unsigned &f ) {
+            std::string label;
+            compactFile >> label;
+            assert_eq( label, compact::cfForward );
+            
             StateId ft;
             while ( compactFile >> ft )
                 addTransition( parent->forward, f++, ft );
             compactFile.clear();
         }
+        
+        /// Sets probabilistic information about transitions
+        void setProbabilistic( std::ifstream &compactFile, unsigned &f ) {
+            std::string label;
+            compactFile >> label;
+            assert_eq( label, compact::cfProbabilistic );
+            
+            ProbabilisticTransition pt;
+            bool isProbabilistic;
+            unsigned weight, sum, id;
+            while ( compactFile >> isProbabilistic ) {
+                pt.isProbabilistic = isProbabilistic;
+                if ( isProbabilistic ) {
+                    compactFile >> weight >> sum >> id;
+                    assert( weight <= 0xFF );
+                    assert( sum <= 0x7FFF );
+                    assert( id <= 0xFF );
+                    
+                    pt.weight = weight;
+                    pt.sum = sum;
+                    pt.id = id;
+                }
+                addProbabilisticTransition( f++, pt );
+            }
+            compactFile.clear();
+        }
 
         /// Allocates appropritate space for storing transitions
-        bool prepareTransitions( std::ifstream &compactFile ) {
+        void prepareTransitions( std::ifstream &compactFile, bool& backwardEnabled, bool& probabilisticEnabled ) {
             std::string label;
+            
+            probabilisticEnabled = fetchProbabilistic( compactFile );
 
             int backwardCount;
             compactFile >> label >> backwardCount;
@@ -496,12 +615,11 @@ struct Compact : public Common< Blob > {
             assert_eq( label, compact::cfForward );
 
             if ( backwardCount ) assert_eq( backwardCount, forwardCount );
+            backwardEnabled = backwardCount;
 
             // lets take a bit more than number of our states, resize later
-            allocTransitions( std::max( backwardCount, parent->workerStatesCount * 2 ), 
-                              std::max( forwardCount, parent->workerStatesCount * 2 ) );
-
-            return backwardCount;
+            allocTransitions( std::min( backwardCount, parent->workerStatesCount * 2 ),
+                              std::min( forwardCount, parent->workerStatesCount * 2 ), probabilisticEnabled );
         }
 
         /// Sets the initial state id
@@ -533,7 +651,20 @@ struct Compact : public Common< Blob > {
             assert_eq( label, compact::cfStates );
             assert( parent->statesCount );
         }
+        
+        /// Retrieves information about having probabilistic transitions
+        bool fetchProbabilistic( std::ifstream &compactFile ) {
+            std::string label;
+            
+            bool probabilistic;
 
+            compactFile >> label >> probabilistic;
+            assert_eq( label, compact::cfProbabilistic );
+            
+            return probabilistic;
+        }
+
+        /// Reads compact state space from file
         void readInput( std::ifstream& compactFile, bool abortAfterFetchingHeader ) {
             std::string label;
 
@@ -542,7 +673,8 @@ struct Compact : public Common< Blob > {
             // if we do not have enough states for this mpi process, we can abort
             if ( !allocMPIProcessStates() ) abortAfterFetchingHeader = true; 
 
-            bool backwardEnabled = prepareTransitions( compactFile );
+            bool backwardEnabled, probabilisticEnabled;
+            prepareTransitions( compactFile, backwardEnabled, probabilisticEnabled );
             fetchInitialState( compactFile );
             fetchAcceptanceCondition( compactFile );
 
@@ -575,19 +707,20 @@ struct Compact : public Common< Blob > {
                 setAC( compactState, compactFile );
 
                 // handle transitions
-                if ( backwardEnabled ) {
-                    compactFile >> label;
-                    assert_eq( label, compact::cfBackward );
-                    setBackward( compactFile, b );
-                }
+                if ( backwardEnabled ) setBackward( compactFile, b );
 
-                compactFile >> label;
-                assert_eq( label, compact::cfForward );
+                unsigned origF = f;
                 setForward( compactFile, f );
+                
+                if ( probabilisticEnabled ) {
+                    setProbabilistic( compactFile, origF );
+                    assert_eq( origF, f );
+                }
             }
 
             if ( backwardEnabled ) parent->backward->resize( b );
             parent->forward->resize( f );
+            if ( probabilisticEnabled ) parent->probabilistic->resize( f );
 
             setLastTransitionIndices( b, f );
         }
@@ -607,7 +740,7 @@ struct Compact : public Common< Blob > {
         }
 
         /// Size of binary header
-        unsigned binaryHeaderSize() { return 6 * sizeof( unsigned ); }
+        unsigned binaryHeaderSize() { return 6 * sizeof( unsigned ) + sizeof( bool ); }
 
         /// Offset of cumulative sum of transitions for state with id id
         unsigned binaryTransitionsOffset( StateId id, bool backwardEnabled ) { 
@@ -615,10 +748,11 @@ struct Compact : public Common< Blob > {
         }
 
         /// Offset of state data for state with id id
-        unsigned binaryStatesOffset( StateId id, bool backwardEnabled, unsigned transitionsBefore ) {
+        unsigned binaryStatesOffset( StateId id, bool backwardEnabled, unsigned backwardTransitionsBefore, unsigned forwardTransitionsBefore ) {
             return binaryTransitionsOffset( parent->statesCount + 1 + 1, backwardEnabled ) +
-                   transitionsBefore * sizeof( unsigned ) + ( id - 1 ) * 
-                   ( sizeof( AC ) + sizeof( unsigned ) * ( backwardEnabled ? 2 : 1 ) );
+                   backwardTransitionsBefore * sizeof( unsigned ) +
+                   forwardTransitionsBefore * ( sizeof( unsigned ) + ( parent->probabilistic ? sizeof( ProbabilisticTransition ) : 0 ) ) +
+                   ( id - 1 ) * ( sizeof( AC ) + sizeof( unsigned ) * ( backwardEnabled ? 2 : 1 ) );
         }
 
         /// Reads compact state space from file
@@ -627,6 +761,9 @@ struct Compact : public Common< Blob > {
             read( compactFile, parent->statesCount );
             // if we do not have enough states for this mpi process, we can abort
             if ( !allocMPIProcessStates() ) abortAfterFetchingHeader = true;
+            
+            bool probabilisticEnabled;
+            read( compactFile, probabilisticEnabled );
 
             unsigned totalForwardCount, totalBackwardCount;
             read( compactFile, totalBackwardCount );
@@ -659,11 +796,12 @@ struct Compact : public Common< Blob > {
             const unsigned backwardCount = backwardEndOffset - backwardOffset;
             const unsigned forwardCount = forwardEndOffset - forwardOffset;
 
-            allocTransitions( backwardCount, forwardCount );
+            allocTransitions( backwardCount, forwardCount, probabilisticEnabled );
 
             // move to first state handled by this instance
             compactFile.seekg( binaryStatesOffset( parent->fromStateId, backwardEnabled,
-                               backwardOffset + forwardOffset ), std::ios::beg );
+                               backwardOffset, forwardOffset ), std::ios::beg );
+
             // for each state
             for ( StateId i = parent->fromStateId; i <= parent->toStateId; i++ ) {
 
@@ -678,7 +816,6 @@ struct Compact : public Common< Blob > {
                 if ( backwardEnabled ) {
                     unsigned backwardCount;
                     read( compactFile, backwardCount );
-
                     for ( unsigned j = 0; j < backwardCount; j++ ) {
                         StateId bt;
                         read( compactFile, bt );
@@ -688,11 +825,21 @@ struct Compact : public Common< Blob > {
 
                 unsigned forwardCount;
                 read( compactFile, forwardCount );
+                unsigned origF = f;
 
                 for ( unsigned j = 0; j < forwardCount; j++ ) {
                     StateId ft;
                     read( compactFile, ft );
                     addTransition( parent->forward, f++, ft );
+                }
+                
+                if ( probabilisticEnabled ) {
+                    for ( unsigned j = 0; j < forwardCount; j++ ) {
+                        ProbabilisticTransition pt;
+                        read( compactFile, pt );
+                        addProbabilisticTransition( origF++, pt );
+                    }
+                    assert_eq( origF, f );
                 }
             }
 
@@ -713,7 +860,7 @@ struct Compact : public Common< Blob > {
 
         std::ifstream compactFile( path.c_str(), std::ios_base::in | std::ios_base::binary );
         const unsigned statesLabelSize = compact::cfStates.size();
-        char *possibleStatesLabel = new char[ statesLabelSize + 1 ];
+        char possibleStatesLabel[ statesLabelSize + 1 ];
         compactFile.read( possibleStatesLabel, statesLabelSize );
         possibleStatesLabel[ statesLabelSize ] = 0;
 

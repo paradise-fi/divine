@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
+#include <divine/legacy/system/dve/dve_prob_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
 #include <divine/legacy/por/por.hh>
 
@@ -15,12 +16,12 @@
 namespace divine {
 namespace generator {
 
-template< typename _State, typename system_t >
+template< typename _State, typename system_t, typename container_t >
 struct LegacyCommon : Common< _State > {
     typedef _State State;
     typedef State Node;
     typedef generator::Common< _State > Common;
-    typedef LegacyCommon< _State, system_t > Graph;
+    typedef LegacyCommon< _State, system_t, container_t > Graph;
 
     std::string file;
     system_t *m_system;
@@ -29,7 +30,7 @@ struct LegacyCommon : Common< _State > {
     struct Successors {
         typedef Node Type;
         int current;
-        succ_container_t m_succs;
+        container_t m_succs;
         Node _from;
         LegacyCommon *parent;
 
@@ -44,7 +45,21 @@ struct LegacyCommon : Common< _State > {
         Node from() { return _from; }
 
         State head() const {
-            return parent->alloc.unlegacy_state( m_succs[ current ] );
+            return parent->alloc.unlegacy_state( m_succs[ current ].getState() );
+        }
+
+        bool headIsProbabilistic() const { return m_succs[ current ].isProbabilistic(); }
+        size_int_t headProbabilisticId() const { 
+            assert( headIsProbabilistic() );
+            return m_succs[ current ].probabilisticId(); 
+        }
+        ulong_int_t headProbabilisticWeight() const { 
+            assert( headIsProbabilistic() );
+            return m_succs[ current ].probabilisticWeight(); 
+        }
+        ulong_int_t headProbabilisticSum() const { 
+            assert( headIsProbabilistic() );
+            return m_succs[ current ].probabilisticSum(); 
         }
 
         Successors tail() const {
@@ -182,7 +197,7 @@ struct LegacyCommon : Common< _State > {
         return o.str();
     }
 
-    explicit_system_t *legacy_system() {
+    system_t *legacy_system() {
         if ( !m_system ) {
             m_system = new system_t;
             m_system->setAllocator( &this->alloc );
@@ -219,11 +234,16 @@ struct LegacyCommon : Common< _State > {
     }
 };
 
-struct LegacyDve : LegacyCommon< Blob, dve_explicit_system_t >
+template< typename _State >
+struct Dve : LegacyCommon< _State, dve_explicit_system_t >
 {};
 
-struct LegacyBymoc : LegacyCommon< Blob, bymoc_explicit_system_t >
+template< typename _State >
+struct Bymoc : LegacyCommon< _State, bymoc_explicit_system_t >
 {};
+
+typedef Dve< Blob > NDve;
+typedef Bymoc< Blob > NBymoc;
 
 }
 }

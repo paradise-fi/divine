@@ -597,6 +597,9 @@ struct Main {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
 #endif
             }
+        } else if ( str::endsWith( config.input, ".probdve" ) ) {
+            report->generator = "ProbDVE";
+            return selectAlgorithm< algorithm::NonPORGraph< generator::NProbDve >, Stats >();
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();

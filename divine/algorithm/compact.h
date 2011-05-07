@@ -7,6 +7,9 @@
 #include <divine/parallel.h>
 #include <divine/report.h>
 #include <divine/compactstate.h>
+#include <divine/probabilistictransition.h>
+#include <divine/porcp.h>
+#include <divine/generator/legacy.h>
 
 #include <iostream>
 #include <fstream>
@@ -24,6 +27,7 @@ namespace compact {
     const std::string cfInitial = "initial:";
     const std::string cfAC = "ac:";
     const std::string cfState = "state:";
+    const std::string cfProbabilistic = "probabilistic:";
 }
 
 namespace algorithm {
@@ -109,10 +113,12 @@ struct _MpiId< Compact< G, S > >
  * Distributed compactization of the state space
  */
 template< typename G, typename Statistics >
-struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< G, Statistics > >
+struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< G, Statistics > >
 {
-    typedef Compact< G, Statistics > This;
+    typedef CompactCommon< G, Statistics > This;
+    typedef algorithm::Compact< G, Statistics > Compact;
     typedef typename G::Node Node;
+    typedef typename G::Successors Successors;
 
     /// Internal structure for computing final state index
     struct StateRef {
@@ -176,7 +182,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         bool findBackEdges; // find also backward transitions
         bool haveInitial; // signifies that this peer handles the initial state
 
-        Shared() : findBackEdges( false ), haveInitial( false ) {}
+        Shared() : haveInitial( false ), /*keepOriginal( false ),*/ findBackEdges( false ) {}
     } shared;
 
     std::deque< Node > states; // stores all states handled by this peer
@@ -186,8 +192,8 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
     bool plaintextFormat; // output compact state space in plaintext format
 
     /// Returns reference to the domain instance
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
+    Domain< Compact > &domain() {
+        return DomainWorker< Compact >::domain();
     }
 
     /// Algorithm Extension structure
@@ -196,6 +202,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         bool back:1; // internal helper, denotes state being sent back through original forward transition
         unsigned succsCount; // number of successors
         StateRef *succs; // references state successors
+        ProbabilisticTransition *probabilisticTransitions; // references probabilities of state successors
         std::vector< StateRef > *preds; // references state predecessors
     };
 
@@ -203,6 +210,12 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
     }
+
+    /// Is current model probabilistic?
+    virtual bool isProbabilistic() const = 0;
+
+    /// Information about probabilistic transition between succs.from() and succs.head()
+    virtual ProbabilisticTransition probabilisticTransition( Successors &succs ) const = 0;
 
     /// Adds new state to statistics
     void statsAddState( G &g, Node &node ) {
@@ -238,6 +251,21 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         return succsCount;
     }
 
+    /// Stores probabilistic information about forward transitions
+    void saveProbabilisticTransitions( Node st ) {
+        Extension &stExt = extension( st );
+        stExt.probabilisticTransitions = new ProbabilisticTransition[ stExt.succsCount ];
+        Successors succs = shared.g.successors( st );
+        for ( unsigned i = 0; i < stExt.succsCount; i++, succs = succs.tail() ) {
+            assert( !succs.empty() );
+
+            stExt.probabilisticTransitions[ i ] = probabilisticTransition( succs );
+
+            shared.g.release( succs.head() );
+        }
+        assert( succs.empty() );
+    }
+
     /// Expands state, handles incoming transitions (by sending notification to the owner)
     void updateNode( Node &from, Node &to ) {
         Extension &toExt = extension( to );
@@ -258,6 +286,8 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
             toExt.succsCount = countSuccessors( to );
             toExt.succs = new StateRef[ toExt.succsCount ];
+
+            if ( isProbabilistic() ) saveProbabilisticTransitions( to );
         }
 
         // add backward transition reference, send notification to from owner
@@ -268,7 +298,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
                 StateRef fromRef( extension( from ).index, fromOwner );
                 toExt.preds->push_back( fromRef );
             }
-            Node copy( shared.g.pool(), to.size() );
+            Node copy( shared.g.g().pool(), to.size() );
             to.copyTo( copy );
             extension( copy ).back = true;
             visitor->queueAny( copy, from, fromOwner ); // goes to the owner of from
@@ -295,7 +325,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
             StateRef originalToRef( extension( f ).index, visitor->owner( f ) );
 
             extension( t ).succs[ shared.g.successorNum( *this, t, f ) - 1 ] = originalToRef;
-            f.free( shared.g.pool() );
+            f.free( shared.g.g().pool() );
             return visitor::IgnoreTransition;
         }
 
@@ -474,6 +504,20 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
                 *this->out << std::endl;
                 delete[] targetExt.succs;
 
+                // store probabilistic information
+                if ( alg().isProbabilistic() ) {
+                    *this->out << compact::cfProbabilistic << " ";
+                    for ( ProbabilisticTransition *ptit = targetExt.probabilisticTransitions;
+                         ptit != targetExt.probabilisticTransitions + targetExt.succsCount; ++ptit ) {
+                        *this->out << ptit->isProbabilistic << " ";
+                        if ( ptit->isProbabilistic ) {
+                            *this->out << ptit->weight << " " << ptit->sum << " " << ptit->id << " ";
+                        }
+                    }
+                    *this->out << std::endl;
+                    delete[] targetExt.probabilisticTransitions;
+                }
+
                 it->header().permanent = false;
                 g().release( *it );
             }
@@ -486,6 +530,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
             this->prepareOutput();
             this->openOutput();
             *this->out << compact::cfStates << " " << alg().localStats.states << std::endl;
+            *this->out << compact::cfProbabilistic << " " << alg().isProbabilistic() << std::endl;
             *this->out << compact::cfBackward << " " << ( shared().findBackEdges ?
                     alg().localStats.incomingTransitions : 0 ) << std::endl;
             *this->out << compact::cfForward << " " <<
@@ -551,7 +596,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         BinaryWriter( This *alg ) : CompactWriter( alg ) {}
 
         /// Header size
-        unsigned binaryHeaderSize() { return 6 * sizeof( unsigned ); }
+        unsigned binaryHeaderSize() { return 6 * sizeof( unsigned ) + sizeof( bool ); }
 
         /// Offset of cumulative sum of transitions for particular peer
         unsigned binaryTransitionsOffset( unsigned idPeer ) {
@@ -563,8 +608,9 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         /// Offset of states of particular peer
         unsigned binaryStatesOffset( unsigned idPeer ) {
             return binaryTransitionsOffset( alg().peers() ) +
-                    ( shared().inTransitionsCountSums[ idPeer ] +
-                    shared().outTransitionsCountSums[ idPeer ] ) * sizeof( unsigned ) +
+                    shared().inTransitionsCountSums[ idPeer ] * sizeof( unsigned ) + 
+                    shared().outTransitionsCountSums[ idPeer ] * 
+                    ( sizeof( unsigned ) + ( alg().isProbabilistic() ? sizeof( ProbabilisticTransition ) : 0 ) ) +
                     shared().statesCountSums[ idPeer ] * ( sizeof( AC ) +
                     sizeof( unsigned ) * ( shared().findBackEdges ? 2 : 1 ) );
         }
@@ -641,6 +687,14 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
                     write( shared().statesCountSums[ fit->from ] + fit->index );
                 delete[] targetExt.succs;
 
+                // store probabilistic information
+                if ( alg().isProbabilistic() ) {
+                    for ( ProbabilisticTransition *ptit = targetExt.probabilisticTransitions;
+                          ptit != targetExt.probabilisticTransitions + targetExt.succsCount; ++ptit )
+                        write( *ptit );
+                    delete[] targetExt.probabilisticTransitions;
+                }
+
                 it->header().permanent = false;
                 g().release( *it );
             }
@@ -659,6 +713,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
             this->prepareOutput( true );
             this->openOutput( true );
             write( alg().localStats.states );
+            write( alg().isProbabilistic() );
             write( ( shared().findBackEdges ? alg().localStats.incomingTransitions : 0 ) );
             write( alg().localStats.outgoingTransitions );
             write( shared().statesCountSums[ alg().initialPeer ] + 1 );
@@ -742,7 +797,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
     }
 
     /// Constructs Compact algorithm
-    Compact( Config *c = 0 ) : Algorithm( c, sizeof( Extension ) ), 
+    CompactCommon( Config *c = 0 ) : Algorithm( c, sizeof( Extension ) ), 
         compactFile( "" ), initialPeer( 0 ) {
         if ( c ) {
             this->initPeer( &shared.g );
@@ -778,8 +833,8 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
     /// Runs the Compact algorithm. This is expected to run only once per instance.
     Result run() {
         // first we explore the original state space
-        do 
-        {
+        progress() << "Compacting...\t\t" << std::flush;
+        do {
             domain().parallel().run( shared, &This::_visit );
             collect();
             findInitial();
@@ -789,6 +844,8 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
         // then we construct compact representation
         initCompactRepresentation();
+
+        progress() << "done." << std::endl << "Dumping to file...\t" << std::flush;
 
         CompactWriter* writer;
 
@@ -800,10 +857,59 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         writer->writeOutput();
         delete writer;
 
+        progress() << "done." << std::endl;
+
         result().fullyExplored = Result::Yes;
         shared.stats.updateResult( result() );
         return result();
     }
+};
+
+/// algorithm::Compact for non-probabilistic models
+template< typename G, typename Statistics >
+struct Compact : CompactCommon< G, Statistics > 
+{
+    typedef algorithm::CompactCommon< G, Statistics > CompactCommon;
+
+    /// This model is not probabilistic
+    bool isProbabilistic() const { return false; }
+
+    /// No probabilistic transitions
+    ProbabilisticTransition probabilisticTransition( typename CompactCommon::Successors &succs ) const {
+        return ProbabilisticTransition();
+    }
+
+    Compact( Config *c = 0 ) : Algorithm( c, sizeof( typename CompactCommon::Extension ) ), CompactCommon( c ) {}
+};
+
+#define PROBABILISTIC algorithm::NonPORGraph< generator::NProbDve >, Statistics
+
+/// algorithm::Compact for probabilistic models (currently ProbDVE is supported)
+template< typename Statistics >
+struct Compact< PROBABILISTIC > : CompactCommon< PROBABILISTIC >
+{
+    typedef algorithm::CompactCommon< PROBABILISTIC > CompactCommon;
+
+    /// This model is probabilistic
+    bool isProbabilistic() const { return true; }
+
+    /// Information about probabilistic transitions
+    ProbabilisticTransition probabilisticTransition( typename CompactCommon::Successors &succs ) const {
+        ProbabilisticTransition pt;
+        if ( succs.headIsProbabilistic() ) {
+            assert( succs.headProbabilisticId() <= 0xFF );
+            assert( succs.headProbabilisticWeight() <= 0xFF );
+            assert( succs.headProbabilisticSum() <= 0x7FFF );
+
+            pt.isProbabilistic = true;
+            pt.weight = succs.headProbabilisticWeight();
+            pt.sum = succs.headProbabilisticSum();
+            pt.id = succs.headProbabilisticId();
+        }
+        return pt;
+    }
+
+    Compact( Config *c = 0 ) : Algorithm( c, sizeof( typename CompactCommon::Extension ) ), CompactCommon( c ) {}
 };
 
 }

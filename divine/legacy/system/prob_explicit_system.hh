@@ -74,7 +74,7 @@ class prob_explicit_system_t: public virtual explicit_system_t,
   */
  virtual int get_succs(state_t state, prob_succ_container_t & succs, enabled_trans_container_t & etc) = 0;
 
-}; //END of class explicit_system_t
+}; //END of class prob_explicit_system_t
 
 
 //!Duple of transitions GIDs denoting probabilistic transition of the system
@@ -120,6 +120,11 @@ struct prob_succ_element_t
   ulong_int_t weight; //!<Weight of a transition used for generation of a successor
   ulong_int_t sum; //!<Sum of weights of transitions contained in  probabilistic transition with \GID `prob_and_property_trans.prob_trans_gid'
   prob_and_property_trans_t prob_and_property_trans; //!<\GID of probabilistic transition and \GID of property transition used for generation of a successor
+  const state_t getState() const { return state; } //!Returns the state
+  bool isProbabilistic() const { return prob_and_property_trans.prob_trans_gid != NO_ID; } //!Returns true if this transition to this successor is probabilistic
+  size_int_t probabilisticId() const { return prob_and_property_trans.prob_trans_gid; } //!Returns id of this probabilistic transition
+  ulong_int_t probabilisticWeight() const { return weight; } //!Returns weight of this probabilistic transition
+  ulong_int_t probabilisticSum() const { return sum; } //!Returns sum of weights of this group of probabilistic transitions
 };
 
 //!Class determined to store probabilistic successors of some state

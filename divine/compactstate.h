@@ -11,8 +11,7 @@ typedef unsigned StateId;
 typedef std::bitset< sizeof( unsigned long ) > AC;
 
 /// Represents a state in compact representation
-struct CompactState
-{
+struct CompactState {
     unsigned forward; // index in forward transitions array of the first forward transition
     unsigned backward; // index in backward transitions array of the first backward transition
     AC ac; // acceptance condition
