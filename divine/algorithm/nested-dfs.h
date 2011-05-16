@@ -87,8 +87,10 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     Result run() {
         progress() << " searching...\t\t\t" << std::flush;
 
-        if ( parallel )
+        if ( parallel ) {
+            inner.graph = g;
             inner.start();
+        }
 
         visitor::DFV< OuterVisit > visitor( g, *this, &this->table() );
         visitor.exploreFrom( g.initial() );
@@ -206,7 +208,6 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
         finished = false;
         inner.outer = this;
-        inner.graph = g;
     }
 
 };
