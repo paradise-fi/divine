@@ -20,7 +20,7 @@ macro(appendFlag flags value)
   endforeach( F )
 endmacro(appendFlag)
 
-option( COIN_LCA "use LCA-based algorithm for CoIn" OFF )
+option( COIN_LCA "use LCA-based algorithm for CoIn" ON )
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
 option( POOLS "use pool allocation for graph vertices" ON )
