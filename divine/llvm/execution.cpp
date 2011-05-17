@@ -1270,11 +1270,10 @@ void Interpreter::callFunction(Function *F,
 
     // Special handling for external functions.
     if (F->isDeclaration()) {
-        assert_die();
-        // GenericValue Result = callExternalFunction (F, ArgVals);
+        GenericValue Result = callExternalFunction (F, ArgVals);
         // Simulate a 'ret' instruction of the appropriate type.
-        // popStackAndReturnValueToCaller (F->getReturnType (), Result);
-        // return;
+        popStackAndReturnValueToCaller(F->getReturnType(), Result);
+        return;
     }
 
     Location next( F, F->begin(), F->begin()->begin() );

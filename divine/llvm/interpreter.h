@@ -322,8 +322,8 @@ public:
     llvm_unreachable("Instruction not interpretable yet!");
   }
 
-    // GenericValue callExternalFunction(Function *F,
-    //                                 const std::vector<GenericValue> &ArgVals);
+  GenericValue callExternalFunction(Function *F,
+                                    const std::vector<GenericValue> &ArgVals);
   void exitCalled(GenericValue GV);
 
   void addAtExitHandler(Function *F) {
