@@ -27,6 +27,7 @@
 #include <divine/algorithm/map.h>
 #include <divine/algorithm/nested-dfs.h>
 #include <divine/algorithm/compact.h>
+#include <divine/algorithm/probabilistic.h>
 
 #include <divine/porcp.h>
 #include <divine/fairgraph.h>
@@ -45,9 +46,10 @@
 #include <llvm/Support/Threading.h>
 #endif
 
-using namespace divine;
 using namespace wibble;
 using namespace commandline;
+
+namespace divine {
 
 Report *report = 0;
 
@@ -88,8 +90,8 @@ struct Main {
     Report *report;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info;
-    OptionGroup *common, *drawing, *compact, *ce, *reduce;
+        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
+    OptionGroup *common, *drawing, *compact, *ce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair;
@@ -103,6 +105,7 @@ struct Main {
     StringOption *o_property;
     BoolOption *o_findBackEdges, *o_textFormat;
     StringOption *o_compactOutput;
+    BoolOption *o_onlyQualitative, *o_disableIterativeOptimization, *o_simpleOutput; // probabilistic options
 
     bool dummygen;
     bool statistics;
@@ -210,7 +213,10 @@ struct Main {
                                    "draw (part of) the state space" );
         cmd_compact = opts.addEngine( "compact",
                                       "<input>",
-                                      "compact state space representation" ); 
+                                      "compact state space representation" );
+        cmd_probabilistic = opts.addEngine( "probabilistic",
+                                      "<input>",
+                                      "qualitative/quantitative analysis" );
 
         cmd_info = opts.addEngine( "info",
                                    "<input>",
@@ -219,7 +225,6 @@ struct Main {
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
         compact = opts.createGroup( "Compact Options" );
-        reduce = opts.createGroup( "Reduction Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -327,6 +332,21 @@ struct Main {
             "compact-output", 'm', "compact-output", "",
             "where to output the compacted state space (default: ./input-file.compact, -: stdout)" );
 
+        // probabilistic options
+        o_onlyQualitative = probabilistic->add< BoolOption >(
+            "qualitative", 'l', "qualitative", "",
+            "only qualitative analysis (default: quantitative)" );
+
+        o_disableIterativeOptimization = probabilistic->add< BoolOption >(
+            "non-iterative", 'd', "non-iterative", "",
+            "disable iterative optimization for quantitative analysis" );
+
+        o_simpleOutput = probabilistic->add< BoolOption >(
+            "simple-output", 's', "simple-output", "",
+            "disable verbose output" );
+        probabilisticCommon->add( o_workers );
+        probabilisticCommon->add( o_report );
+
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
 
@@ -353,6 +373,9 @@ struct Main {
         cmd_compact->add( common );
         cmd_compact->add( compact );
         cmd_compact->add( reduce );
+
+        cmd_probabilistic->add( probabilisticCommon );
+        cmd_probabilistic->add( probabilistic );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -396,7 +419,7 @@ struct Main {
 
 
     enum RunAlgorithm { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify,
-                        RunDraw, RunInfo, RunCompact } m_run;
+        RunDraw, RunCompact } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -449,10 +472,6 @@ struct Main {
         config.findGoals = !o_noGoals->boolValue();
         statistics = o_statistics->boolValue();
 
-        /* No point in generating counterexamples just to discard them. */
-        if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )
-            config.wantCe = false;
-
         drawConfig.maxDistance = o_distance->intValue();
         drawConfig.output = o_output->stringValue();
         drawConfig.render= o_render->stringValue();
@@ -473,9 +492,7 @@ struct Main {
         }
 
         if ( o_compactOutput->stringValue() == "" ) {
-            std::string t = std::string( input, 0, input.rfind( '.' ) );
-            t += ".compact";
-            config.compactFile = str::basename( t );
+            config.compactFile = str::basename( input + ".compact" );
         } else if ( o_compactOutput->stringValue() == "-" ) {
             config.compactFile = "";
         } else {
@@ -514,6 +531,8 @@ struct Main {
             m_run = RunMetrics;
         else if ( opts.foundCommand() == cmd_compact )
             m_run = RunCompact;
+        else if ( opts.foundCommand() == cmd_probabilistic )
+            m_run = RunProbabilistic;
         else
             die( "FATAL: Internal error in commandline parser." );
 
@@ -602,6 +621,7 @@ struct Main {
             return selectAlgorithm< algorithm::NonPORGraph< generator::NProbDve >, Stats >();
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
+            if ( m_run == RunProbabilistic ) return runProbabilistic();
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
 #ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
@@ -643,6 +663,25 @@ struct Main {
 	    die( "FATAL: Unknown input file extension." );
 
         die( "FATAL: Internal error choosing generator." );
+    }
+
+    Result runProbabilistic() {
+        report->algorithm = "Probabilistic";
+        try {
+            assert( config.input.substr( config.input.rfind( '.' ) ) == ".compact" );
+
+            algorithm::Probabilistic< algorithm::NonPORGraph< generator::Compact > > alg( &config );
+            alg.domain().mpi.init();
+            alg.init( &alg.domain() );
+            alg.domain().mpi.start();
+            report->mpiInfo( alg.domain().mpi );
+
+            return alg.run();
+        } catch ( std::exception &e ) {
+            die( std::string( "FATAL: " ) + e.what() );
+        } catch ( const char* s ) {
+            die( std::string( "FATAL: " ) + s );
+        }
     }
 
     template< typename Stats, typename T >
@@ -697,9 +736,10 @@ template<> DrawConfig *Main::configure() {
     return &drawConfig;
 }
 
+}
 
 int main( int argc, const char **argv )
 {
-    Main m( argc, argv );
+    divine::Main m( argc, argv );
     return 0;
 }

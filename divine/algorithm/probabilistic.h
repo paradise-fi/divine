@@ -288,6 +288,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     std::set< unsigned > readySlices; // new unprocessed slices created by OBF
     std::map< unsigned, unsigned > originalRangeSliceCount; // original sizes of RANGE sets indexed by slice ids
     std::set< unsigned > activeSlices; // set of active slices in OBF
+    bool simpleOutput; // !verbose output
 
     /// Every OBFR call requires additional OFFSETDELTA sets of states
     #define OFFSETDELTA 3
@@ -2366,7 +2367,8 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 } else
                     result[ shared.g.g().initialState ] = get_objective( lp[ i ] );
             } else {
-                progress() << "Beware, a partial solution is not optimal." << std::endl;
+//                 progress() << "Beware, a partial solution is not optimal." << std::endl;
+                throw "Beware, a partial solution is not optimal.";
                 write_LP( lp[ i ], stdout );
                 assert_die();
             }
@@ -2568,6 +2570,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             shared.initialTable = c->initialTable;
             shared.onlyQualitative = c->onlyQualitative;
             shared.iterativeOptimization = c->iterativeOptimization;
+            simpleOutput = c->simpleOutput;
         }
     }
 
@@ -2575,16 +2578,22 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         for ( typename std::vector< Table* >::iterator it = tables.begin(); it != tables.end(); ++it )
             safe_delete( *it );
     }
+    
+    std::ostream &progress( bool forceOutput = false ) {
+        Algorithm::progress().clear( !simpleOutput || forceOutput ? std::ios_base::goodbit : std::ios_base::badbit );
+        return Algorithm::progress();
+    }
 
     Result run() {
         if ( !shared.g.g().hasBackwardTransitions() ) throw "Compact model does not contain backward transitions.";
+        if ( !shared.g.g().hasProbabilisticTransitions() ) throw "Compact model does not contain probabilistic transitions.";
 
         progress() << "Qualitative analysis started...\t\t" << std::flush;
         initObfr();
         obfr();
         progress() << "done." << std::endl;
 
-        if ( shared.g.g().hasProbabilisticTransitions() && !shared.onlyQualitative ) {
+        if ( /*shared.g.g().hasProbabilisticTransitions() &&*/ !shared.onlyQualitative ) {
             progress() << "Quantitative analysis started." << std::endl;
             REAL probability = 0;
             if ( initialInsideAEC )
@@ -2595,11 +2604,17 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 if ( AECStates )
                     probability = lp_solve();
             }
-            progress() << " The maximal probability that the system does not satisfy the given LTL formula is: " << probability << "." << std::endl;
+            progress() << " The maximal probability that the system does not satisfy the given LTL formula is: ";
+            progress( true ) << probability;
+            progress() << "." << std::endl;
+            progress() << " The minimal probability that the system satisfies the given LTL formula is: " << ( 1 - probability ) << "." << std::endl;
             progress() << "Quantitative analysis completed." << std::endl;
         }
         if ( shared.onlyQualitative ) {
             progress() << "AEC is " << ( foundAEC ? "" : "not " ) << "reachable from the initial state." << std::endl;
+            progress() << "The probability that the system does not satisfy the given LTL formula is: ";
+            progress( true ) << ( foundAEC ? ">0" : "=0" );
+            progress() << "." << std::endl;
         }
 
         result().fullyExplored = Result::Yes;

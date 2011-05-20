@@ -29,7 +29,7 @@ struct Config {
     bool findBackEdges, textFormat; //keepOriginal;
 
     // probabilistic options
-    bool onlyQualitative, iterativeOptimization;
+    bool onlyQualitative, iterativeOptimization, simpleOutput;
 
     std::ostream &dump( std::ostream &o ) {
         o << "Input-File: " << input << std::endl;
