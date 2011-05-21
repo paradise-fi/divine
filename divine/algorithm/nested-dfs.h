@@ -199,7 +199,6 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         parallel = c->workers > 1;
         if (c->workers > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;
-        *m_initialTable = c->initialTable;
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
             progress() << "Using table size " << c->initialTable
