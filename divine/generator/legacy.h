@@ -66,6 +66,43 @@ struct LegacyCommon : Common< _State > {
         return succ;
     }
 
+    /// Finds successors of transitions involving specified process (or every process except that one)
+    Successors processSuccessors( State s , int pid, bool include = true ) {
+        assert( s.valid() );
+        // works only with dve_explicit_system_t
+        dve_explicit_system_t* system = dynamic_cast< dve_explicit_system_t* >( legacy_system() );
+        Successors succs;
+        succs.parent = this;
+        succs._from = s;
+        state_t legacy = this->alloc.legacy_state( s );
+
+        enabled_trans_container_t enabled_trans( *system );
+        legacy_system()->get_enabled_trans( legacy, enabled_trans );
+        int proc_gid = pid;
+        if ( system->get_with_property() && proc_gid >= system->get_property_gid() )
+            proc_gid++; // skip property process
+        for ( std::size_t i=0; i != enabled_trans.size(); i++ ) {
+            dve_transition_t * const trans = system->get_sending_or_normal_trans( enabled_trans[i] );
+	        dve_transition_t * const recv_trans = system->get_receiving_trans( enabled_trans[i] );
+	        // test if given process participates on this transition
+	        bool involved = trans->get_process_gid() == proc_gid ||
+                    (recv_trans && recv_trans->get_process_gid() == proc_gid);
+            if ( involved == include ) {
+                state_t succ;
+                system->get_ith_succ( legacy, i, succ );
+                succs.m_succs.push_back( succ );
+            }
+        }
+
+        return succs;
+    }
+
+    /// Count processes and ignore property process
+    int processCount() {
+        int count = legacy_system()->get_process_count();
+        return ( legacy_system()->get_with_property() ? count - 1 : count );
+    }
+
     por_t &por() {
         if ( !m_por ) {
             m_por = new por_t;
@@ -101,7 +138,7 @@ struct LegacyCommon : Common< _State > {
     }
 
     void print_state( State s, std::ostream &o = std::cerr ) {
-        legacy_system()->print_state( legacy_state( s ), o );
+        legacy_system()->print_state( this->alloc.legacy_state( s ), o );
     }
 
     bool isAccepting( State s ) {

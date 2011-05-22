@@ -27,6 +27,7 @@
 #include <divine/algorithm/compact.h>
 
 #include <divine/porcp.h>
+#include <divine/fairgraph.h>
 
 #include <divine/report.h>
 
@@ -68,7 +69,7 @@ struct Main {
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
     OptionGroup *common, *drawing, *compact, *ce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
-    BoolOption *o_por;
+    BoolOption *o_por, *o_fair;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
@@ -227,6 +228,10 @@ struct Main {
         o_por = common->add< BoolOption >(
             "por", 'p', "por", "",
             "enable partial order reduction" );
+
+        o_fair = common->add< BoolOption >(
+            "fairness", 'f', "fair", "",
+            "consider only weakly fair executions" );
 
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
@@ -496,6 +501,12 @@ struct Main {
     {
         if ( str::endsWith( config.input, ".dve" ) ) {
             report->generator = "DVE";
+            if ( o_fair->boolValue() ) {
+                if ( o_por->boolValue() )
+                    std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
+                report->reductions.push_back( "FAIRNESS" );
+                return selectAlgorithm< algorithm::FairGraph< generator::NDve >, Stats >();
+            }
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >();
