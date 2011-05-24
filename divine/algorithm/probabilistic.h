@@ -899,6 +899,11 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                     for ( unsigned g = 0; g < shared.g.acceptingGroupCount(); g++ ) { // are we an accepting non-rejecting state?
                         if ( shared.g.isInAccepting( to, g ) && !shared.g.isInRejecting( to, g ) ) { // we are an AEC
                             appendToPOneEdge( Node(), to ); // it has probability == 1
+                            
+                            // eliminate to
+                            getTable( REACHED ).remove( to );
+                            getTable( RANGE ).remove( to, extension( to ).sliceId );
+                            
                             shared.flag = shared.onlyQualitative || shared.g.g().getStateId( to ) == shared.g.g().initialState;
                             return shared.flag;
                         }
@@ -936,7 +941,9 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     bool owctyElimination() {
         shared.flag = false;
         domain().parallel().run( shared, &This::_owcty );
-        return shared.flag; // is true if we found an AEC (qualitative analysis) or the initial state inside an AEC (quantitative analysis)
+        for ( unsigned p = 0; p < this->peers(); p++ )
+            if ( domain().shared( p ).flag ) return true;
+        return false; // is true if we found an AEC (qualitative analysis) or the initial state inside an AEC (quantitative analysis)
     }
 
     //-------------------
@@ -2529,7 +2536,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             restoreSeeds();
             storeRangeSize();
             while ( !rangeEmpty() ) {
-                if ( owctyElimination() ) {
+                if ( owctyElimination() && detectEC ) {
                     if ( shared.onlyQualitative )
                         foundAEC = true;
                     else
