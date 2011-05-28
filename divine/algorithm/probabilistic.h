@@ -60,7 +60,7 @@ struct _MpiId< Probabilistic< G > >
         if ( f == &A::_postOBF ) return 28;
         if ( f == &A::_poneSize ) return 29;
         if ( f == &A::_markBorderStates ) return 30;
-        
+
         if ( f == &A::_removeSCCs ) return 31;
         if ( f == &A::_restoreSeeds ) return 32;
         if ( f == &A::_addReadySlices ) return 33;
@@ -104,7 +104,7 @@ struct _MpiId< Probabilistic< G > >
             case 28: return &A::_postOBF;
             case 29: return &A::_poneSize;
             case 30: return &A::_markBorderStates;
-            
+
             case 31: return &A::_removeSCCs;
             case 32: return &A::_restoreSeeds;
             case 33: return &A::_addReadySlices;
@@ -129,7 +129,7 @@ struct _MpiId< Probabilistic< G > >
             *o++ = it->first;
             *o++ = it->second;
         }
-        
+
         *o++ = s.emptySCCs.size();
         for ( std::set< SCCId >::const_iterator it = s.emptySCCs.begin(); it != s.emptySCCs.end(); ++it )
             *o++ = *it;
@@ -163,7 +163,7 @@ struct _MpiId< Probabilistic< G > >
             const SCCId id = *i++;
             s.visitedSCCs[ id ] = *i++;
         }
-        
+
         unsigned emptySCCsSize = *i++;
         s.emptySCCs.clear();
         for ( unsigned j = 0; j < emptySCCsSize; j++ )
@@ -294,6 +294,8 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     #define OFFSETDELTA 3
 
     #define STARTINGOFFSET 5
+
+// #define OBFFIRST
 
     enum TableId {
         V, RANGE, SEEDS, B, // Every OBFR call requires these sets (V corresponds to B of previous call)
@@ -1265,7 +1267,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     void resetEliminate( Node n ) {
         extension( n ).eliminateState = ELIMINATE_STATE_NONE;
     }
-    
+
     /// Set n to eliminate at least from outside state
     void setEliminateOutside( Node n ) {
         if ( extension( n ).eliminateState == ELIMINATE_STATE_NONE )
@@ -1278,7 +1280,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     }
 
     //-------------------
-    
+
     void initAEC() { domain().parallel().run( shared, &This::_initAEC ); }
 
     /// Mark state to to not to be eliminated
@@ -1295,13 +1297,16 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             if ( shared.g.isInRejecting( to, shared.testGroup ) ) { // eliminate state if it is rejecting
                 setEliminateInsideOutside( to );
                 getTable( ELIMINATE ).insert( to );
-            } else
+            }
+#ifdef OBFFIRST
+            else
                 localqueue.push_back( successors( to ) );
         } else {
             if ( extension( from ).sliceId != extension( to ).sliceId || !getTable( B ).has( to ) ) { // out of slice
                 setEliminateOutside( to ); // eliminate incoming transitions
                 getTable( ELIMINATE ).insert( to );
             }
+#endif
         }
         return false;
     }
@@ -1319,10 +1324,18 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         this->restart();
 
         oldSizes.clear();
+#ifdef OBFFIRST
         setTableCopy( TEMP, B ); // TEMP contains current approximating sets
+#else
+        setTableCopy( B, V );
+        setTableCopy( TEMP, V );
+#endif
         getTable( REACHED ).clear();
         getTable( ELIMINATE ).clear();
 
+#ifndef OBFFIRST
+        if ( shared.testGroup > 0 ) // second run and so on
+#endif
         processInitials( B, &This::resetAECEdge, true ); // reset elimination states
         processInitials( B, &This::initAECEdge, true );
         visit( &This::initAECEdge );
@@ -1330,7 +1343,10 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
     //-------------------
 
-    void closure() { domain().parallel().run( shared, &This::_closure ); }
+    void closure( bool postReachability = true ) { 
+        shared.flag = postReachability;
+        domain().parallel().run( shared, &This::_closure ); 
+    }
 
     /**
      * Approximating graph identification function
@@ -1343,14 +1359,25 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     void _closure() { // parallel
         this->restart();
 
-        processInitials( ELIMINATE, &This::closureEdge );
+#ifndef OBFFIRST // TODO fix for OBFFIRST
+        if ( shared.flag )
+            processInitials( ELIMINATE, &This::postReachabilityClosureEdge );
+        else
+#endif
+            processInitials( ELIMINATE, &This::closureEdge );
         visit( &This::closureEdge );
+    }
+    
+    bool postReachabilityClosureEdge( Node from, Node to ) {
+        assert( !from.valid() );
+        setEliminateOutside( to );
+        return closureEdge( from, to );
     }
 
     /// Handles a transition during Closure.
     bool closureEdge( Node from, Node to ) {
         if ( from.valid() && extension( to ).sliceId != extension( from ).sliceId && extension( from ).eliminateState != ELIMINATE_OUTGOING_TO_FROM ) return false; // FIXME // out of slice unless we know about it
-        
+
         if ( !getTable( TEMP ).has( to ) || !from.valid() && extension( to ).eliminateState == ELIMINATE_STATE_OUT ) { // removes outgoing edges of approximating graph
             if ( !from.valid() && ( !getTable( B ).has( to ) || extension( to ).eliminateState == ELIMINATE_STATE_OUT ) ) {
                 Node t = shared.g.copyState( to );
@@ -1364,8 +1391,9 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             const bool onlyOutside =  extension( from ).eliminateState == ELIMINATE_OUTGOING_TO_FROM; // TODO fix me
             const unsigned fromSliceId = extension( from ).sliceId;
             const unsigned toSliceId = extension( to ).sliceId;
+#ifdef OBFFIRST // TODO fix for OBFFIRST, same slice, states removed by lreach
             if ( onlyOutside && fromSliceId == toSliceId ) return false; // we are inside a slice, however only outside transitions should be eliminated
-
+#endif
             const StateId fromId = shared.g.g().getStateId( from );
             bool found = false;
             // remove all to->from forward transitions of to
@@ -1547,9 +1575,9 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     void _appendToPOne() {
         this->restart();
         Node initial = shared.g.initial();
-        if ( owner( initial ) == this->globalId() && getTable( TEMP ).has( initial ) )
+        if ( owner( initial ) == this->globalId() && getTable( TEMP ).has( initial ) ) {
             shared.flag = true; // found initial
-        else
+        } else
             processInitials( TEMP, &This::appendToPOneEdge, true );
         shared.g.release( initial );
 
@@ -1563,13 +1591,13 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
      *
      * Detects if current SCCs stored in B contain AECs.
      */
-    bool detectAEC( std::map< unsigned, unsigned > sccSlices ) {
+    bool detectAEC( /*std::map< unsigned, unsigned > sccSlices*/ ) {
         bool found = false; // no AEC found yet
         // at this point B has only states in SCCs
         for ( unsigned g = 0; g < shared.g.acceptingGroupCount(); g++ ) { // for every pair in acceptance condition
             shared.testGroup = g;
             initAEC();
-            closure();
+            closure( false );
             while ( !isEmpty() && !isSame() ) {
                 lreachability();
                 closure();
@@ -1613,6 +1641,9 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         assert( from.valid() || getTable( PONE ).has( to ) );
 
         if ( from.valid() ) {
+// #ifndef OBFFIRST BEWARE FIXME changes the original
+            if ( !getTable( ELIMINATE ).has( to ) ) extension( to ).count = 0;
+// #endif
             extension( to ).count++; // update successors count
             enableSuccessor( to, from ); // unable this successor
             if ( extension( to ).componentId ) { // nontrivial component
@@ -2041,7 +2072,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         domain().parallel().runInRing( shared, &This::_collectEmptySCCs ); // find SCCs ready to be solved by lp_solve
 
         assert_eq( shared.toProcessSCCs.size(), 0 );
-        
+
         for ( std::set< SCCId >::const_iterator it = shared.emptySCCs.begin(); it != shared.emptySCCs.end(); ++it ) {
             tempVisitedSCCs.erase( *it );
             assert( sizeSCCs.count( *it ) );
@@ -2198,7 +2229,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
     /// Repartitions SCC which only partly belong to MG
     void fixSCCsInMG() {
-        domain().parallel().run( shared, &This::_reinitOBF );
+        domain().parallel().run( shared, &This::_reinitOBF ); // initializes V
         shared.offset = STARTINGOFFSET + OFFSETDELTA;
         obfr( false );
         shared.offset = STARTINGOFFSET;
@@ -2208,14 +2239,21 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     /// Handles a transition during _reinitOBF
     bool reinitOBFEdge( Node from, Node to ) {
         if ( getTable( B ).has( to ) || from.valid() && getTable( PONE ).has( to ) ) return false; // if it has been already processed or it has probability 1
-
+#ifdef OBFFIRST
         if ( from.valid() && extension( from ).componentId != extension( to ).componentId ) return false; // if it goes out of the SCC
+#else
+        if ( !getTable( RANGE ).has( to ) ) return false;
+#endif
 
         if ( !getTable( PONE ).has( to ) ) getTable( B ).insert( to ); // make it processed, if it is not a part of PONE
 
+#ifdef OBFFIRST
         Node copy = shared.g.copyState( to );
         localqueue.push_back( predecessors( copy ) );
         extension( to ).componentId = 0; // reset component
+#else
+        localqueue.push_back( predecessors( to ) );
+#endif
         return false;
     }
 
@@ -2230,6 +2268,10 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
         processInitials( SEEDS, &This::reinitOBFEdge, true );
         visit( &This::reinitOBFEdge );
+
+#ifndef OBFFIRST
+        getTable( B ).sliceCount[ 0 ] = getTable( B ).statesCount();
+#endif
 
         // prepare for run of OBFR
         shared.offset = STARTINGOFFSET + OFFSETDELTA;
@@ -2521,6 +2563,17 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             shared.probability = 0;
         return shared.size;
     }
+    
+//      void _vSize() {
+//         shared.size += getTable( V ).statesCount();
+//     }
+// 
+//     /// Returns a number of states in AECs
+//     unsigned vSize() {
+//         shared.size = 0;
+//         domain().parallel().runInRing( shared, &This::_vSize );
+//         return shared.size;
+//     }
 
     //-------------------
 
@@ -2536,7 +2589,10 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             restoreSeeds();
             storeRangeSize();
             while ( !rangeEmpty() ) {
-                if ( owctyElimination() && detectEC ) {
+#ifdef OBFFIRST
+                if ( detectEC )
+#endif
+                if ( owctyElimination() ) {
                     if ( shared.onlyQualitative )
                         foundAEC = true;
                     else
@@ -2545,14 +2601,19 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 }
                 bwd();
                 sccSlices = isSCC();
+#ifdef OBFFIRST
                 if ( detectEC && sccSlices.size() ) {
                     if ( shared.g.g().hasProbabilisticTransitions() ) {
                         setIdOfSCC( sccSlices ); // and removes nonSCC states from B
-                        if ( ( foundAEC = detectAEC( sccSlices ) ) && ( shared.onlyQualitative || initialInsideAEC ) ) return;
+                        if ( ( foundAEC = detectAEC( /*sccSlices*/ ) ) && ( shared.onlyQualitative || initialInsideAEC ) ) return;
                     } else
                         this->progress() << "Compact model does not contain probabilistic transitions, AEC detection disabled." << std::endl;
                     removeSCCs( sccSlices ); // and restores B
                 }
+#else
+                setIdOfSCC( sccSlices );
+                removeSCCs( sccSlices );
+#endif
                 seeds();
                 prepareNewSlices();
             }
@@ -2582,10 +2643,13 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     }
 
     ~Probabilistic() {
+#ifdef OBFFIRST
         for ( typename std::vector< Table* >::iterator it = tables.begin(); it != tables.end(); ++it )
             safe_delete( *it );
+#endif
+        // TODO fix me, something is released twice
     }
-    
+
     std::ostream &progress( bool forceOutput = false ) {
         Algorithm::progress().clear( !simpleOutput || forceOutput ? std::ios_base::goodbit : std::ios_base::badbit );
         return Algorithm::progress();
@@ -2597,7 +2661,11 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
         progress() << "Qualitative analysis started...\t\t" << std::flush;
         initObfr();
+#ifdef OBFFIRST
         obfr();
+#else
+        foundAEC = detectAEC();
+#endif
         progress() << "done." << std::endl;
 
         if ( /*shared.g.g().hasProbabilisticTransitions() &&*/ !shared.onlyQualitative ) {
@@ -2607,9 +2675,8 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 probability = 1;
             else {
                 const unsigned AECStates = poneSize();
-                progress() << " Found " << AECStates << " states in accepting end components." << std::endl;
-                if ( AECStates )
-                    probability = lp_solve();
+//                 progress() << " Found " << AECStates << " states in accepting end components." << std::endl;
+                if ( AECStates ) probability = lp_solve();
             }
             progress() << " The maximal probability that the system does not satisfy the given LTL formula is: ";
             progress( true ) << probability;
