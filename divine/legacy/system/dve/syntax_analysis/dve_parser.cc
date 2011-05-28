@@ -646,6 +646,8 @@ void dve_parser_t::state_accept(const char * name)
       accepting_sets.push_back(new_set);
     }
   new_accepting_set = false;
+  
+  if ( name == NULL ) return;
 
   DEB(cerr << "Accepting state: " << name << endl;)
     size_int_t found_symb = psymbol_table->find_symbol(name,current_process);
@@ -685,12 +687,14 @@ void dve_parser_t::accept_rabin_streett_pair_complete()
 {
   DEB(cerr<<"pair complete"<<endl;)
   accepting_groups++;
+  if ( new_accepting_set ) state_accept( NULL );
   new_accepting_set = true;
 }
 
 void dve_parser_t::accept_rabin_streett_first_complete()
 {
   DEB(cerr<<"pair half-complete"<<endl;)
+  if ( new_accepting_set ) state_accept( NULL );
   new_accepting_set = true;
 }
 

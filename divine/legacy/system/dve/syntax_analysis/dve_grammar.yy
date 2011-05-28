@@ -330,12 +330,12 @@ AcceptListGenBuchiMullerSetNotEmpty:
 	;
 
 AcceptListRabinStreett:
-	AcceptListRabinStreettPair ';' { CALL(@1,@1,accept_rabin_streett_pair_complete()); }
-	|AcceptListRabinStreettPair ',' AcceptListRabinStreett { CALL(@1,@1,accept_rabin_streett_pair_complete()); }
+	AcceptListRabinStreettPair ';' 
+	|AcceptListRabinStreettPair ',' AcceptListRabinStreett 
 	;
 	
 AcceptListRabinStreettPair:
-	AcceptListRabinStreettFirst AcceptListRabinStreettSecond
+	AcceptListRabinStreettFirst AcceptListRabinStreettSecond { CALL(@1,@1,accept_rabin_streett_pair_complete()); }
 	;
 
 AcceptListRabinStreettFirst:
