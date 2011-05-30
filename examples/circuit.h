@@ -120,6 +120,13 @@ struct System : Clock
 {
     typedef std::vector< Stateful * > Elements;
     Elements elements;
+    void *_circuit;
+
+    template< typename T >
+    T *circuit() {
+        return static_cast< T * >( _circuit );
+    }
+
     virtual void tick() {
         for ( Elements::iterator i = elements.begin(); i != elements.end(); ++i )
             (*i)->tick();

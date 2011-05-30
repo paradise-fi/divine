@@ -89,6 +89,16 @@ System &system( CustomSetup *setup )
     return *(System *)setup->custom;
 }
 
+extern "C" bool prop_limit_active( CustomSetup *setup, char *state ) {
+    System &sys = system( setup );
+    char *in = state + setup->slack + 4;
+    sys.read( in );
+    Example2 *ex = sys.circuit< Example2 >();
+    if (ex->limit.get() == ex->add.get())
+        return true;
+    return false;
+}
+
 extern "C" void get_initial( CustomSetup *setup, char **to )
 {
     char *v = make( setup, to );
@@ -127,6 +137,7 @@ extern "C" void setup( CustomSetup *setup )
     ex->limit = 30;
 
     System *sys = new System();
+    sys->_circuit = ex;
     sys->add( ex->d1 ).add( ex->d2 );
 
     setup->state_size = sys->size();
