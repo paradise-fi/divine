@@ -76,12 +76,16 @@ struct Delay : virtual Value< T >, virtual Clock, virtual Stateful {
 
 // An input *block* (not a port).
 template< typename T >
-struct Input : virtual Value< T >, virtual In< T > {
+struct Input : virtual Value< T >, virtual In< T >, virtual Stateful {
     T value;
     virtual T get() { return value; }
     Input() : value() {}
     Input( T t ) : value( t ) {}
     Input< T > &operator=( T t ) { value = t; return *this; }
+    void tick() {}
+    void read( char *from ) {
+        value = *(T *)from;
+    }
 };
 
 // A simple output *block*.

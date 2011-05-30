@@ -107,15 +107,20 @@ extern "C" void get_initial( CustomSetup *setup, char **to )
 
 extern "C" int get_successor( CustomSetup *setup, int handle, char *from, char **to )
 {
-    if ( handle > 1 )
+    /* a in 0-5, limit in 0-5 */
+    if ( handle > 6 )
         return 0;
 
     char *in = from + setup->slack + 4;
     system( setup ).read( in );
     char *v = make( setup, to );
     system( setup ).tick();
+    Example2 *ex = system( setup ).circuit< Example2 >();
+    ex->a = handle / 2;
+    ex->limit = handle % 2;
     system( setup ).write( v );
-    return 2;
+
+    return handle + 1;
 }
 
 extern "C" char *show_node( CustomSetup *setup, char *from, int )
@@ -138,7 +143,7 @@ extern "C" void setup( CustomSetup *setup )
 
     System *sys = new System();
     sys->_circuit = ex;
-    sys->add( ex->d1 ).add( ex->d2 );
+    sys->add( ex->d1 ).add( ex->d2 ).add( ex->a ).add( ex->limit );
 
     setup->state_size = sys->size();
     setup->custom = sys;
