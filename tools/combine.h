@@ -15,10 +15,12 @@
 #include <divine/ltl2ba/support_dve.hh>
 #include <divine/ltl2ba/DBA_graph.hh>
 
+#include "compile.h"
+
 #ifndef DIVINE_COMBINE_H
 #define DIVINE_COMBINE_H
 
-#include "tools/combine.m4.h"
+extern const char *combine_m4;
 
 int ltl2buchi( int argc, char **argv );
 #ifdef LTL2DSTAR
@@ -31,7 +33,7 @@ using namespace sys;
 using namespace divine;
 
 // paste from ltl2ba.cc
-void copy_graph(const ALT_graph_t& aG, BA_opt_graph_t& oG)
+static void copy_graph(const ALT_graph_t& aG, BA_opt_graph_t& oG)
 {
 	std::list<ALT_ba_node_t*> node_list, init_nodes, accept_nodes;
 	std::list<ALT_ba_node_t*>::const_iterator n_b, n_e, n_i;
@@ -64,6 +66,8 @@ void copy_graph(const ALT_graph_t& aG, BA_opt_graph_t& oG)
 		oG.set_accept((*n_i)->name);
 	}
 }
+
+std::string graph_to_cpp(const BA_opt_graph_t &g);
 
 struct PipeThrough
 {
@@ -108,6 +112,7 @@ struct Combine {
 
     bool have_ltl;
     bool probabilistic;
+    bool compiled;
 
     std::string input, ltl, defs;
     std::string in_data, ltl_data, ltl_defs, system;
@@ -307,6 +312,21 @@ struct Combine {
         output( id, dve, ltl );
     }
 
+    void ltl_to_cpp( int id, std::string ltl ) {
+        announce( id, ltl );
+        std::string filename = outFile( id, ".cpp" );
+        std::ofstream f( filename.c_str() );
+        f << "#include <malloc.h>" << std::endl;
+        f << "#include <algorithm>" << std::endl;
+        f << divine::compile_defines_str << std::endl;
+        f << divine::generator_custom_api_h_str << std::endl;
+        f << divine::blob_h_str << std::endl;
+        f << "using namespace divine;" << std::endl;
+        f << graph_to_cpp( buchi( ltl ) );
+        f.close();
+        Compile::gplusplus( filename + " " + input, outFile( id ) );
+    }
+
     void parseOptions() {
         try {
             if ( !opts.hasNext() )
@@ -331,20 +351,23 @@ struct Combine {
     int main() {
         parseOptions();
 
+        compiled = str::endsWith( input, ".o" );
         probabilistic = str::endsWith( input, "probdve" );
-        if ( probabilistic )
+        if ( compiled )
+            ext = ".so";
+        else if ( probabilistic )
             ext = ".probdve";
         else if ( str::endsWith( input, "dve" ) )
             ext = ".dve";
         else
-            die( "FATAL: Input file extension has to be either "
-                 ".[m]dve or .[m]probdve." );
-
+            die( "FATAL: Input file extension has to be one of "
+                 ".o, .[m]dve or .[m]probdve." );
 
         if ( !fs::access( input, R_OK ) )
             die( "FATAL: Can't open '" + input + "' for reading." );
 
-        in_data = fs::readFile( input ) + "\n";
+        if ( !compiled )
+            in_data = fs::readFile( input ) + "\n";
 
         if ( have_ltl ) {
             if ( !fs::access( ltl, R_OK ) )
@@ -368,6 +391,19 @@ struct Combine {
                die( "FATAL: Nothing to do." );
         }
 
+        if ( compiled )
+            combine_compiled();
+        else
+            combine_dve();
+
+        return 0;
+    }
+
+    void combine_compiled() {
+        process_ltl( &Combine::ltl_to_cpp );
+    }
+
+    void combine_dve() {
         int off = in_data.find( "system async" );
         if ( off != std::string::npos )
             system = "system async property LTL_property;\n";
