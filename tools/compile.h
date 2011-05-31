@@ -22,13 +22,13 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    void die( std::string bla ) __attribute__((noreturn))
+    static void die( std::string bla ) __attribute__((noreturn))
     {
         std::cerr << bla << std::endl;
         exit( 1 );
     }
 
-    void run( std::string command ) {
+    static void run( std::string command ) {
         int status = system( command.c_str() );
 #ifdef POSIX
         if ( status != -1 && WEXITSTATUS( status ) != 0 )
@@ -36,7 +36,7 @@ struct Compile {
 #endif
     }
 
-    void gplusplus( std::string in, std::string out, std::string flags = "" ) {
+    static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
         std::stringstream cmd;
         std::string multiarch =
 #if defined(USE_GCC_M32)
