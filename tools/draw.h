@@ -108,9 +108,13 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         if ( !color.empty() )
             str << " fillcolor = " << color << " style=filled ";
         if ( g.isAccepting( n ) )
-            str << "shape=doublecircle ";
+            str << "peripheries=2 ";
+
+        if ( labels )
+            str << "shape=ellipse ";
         else
             str << "shape=circle ";
+
         if ( dashed )
             str << "style=dashed ";
 
