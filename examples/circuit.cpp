@@ -99,13 +99,13 @@ extern "C" bool prop_limit_active( CustomSetup *setup, char *state ) {
     return false;
 }
 
-extern "C" void get_initial( CustomSetup *setup, char **to )
+extern "C" void get_system_initial( CustomSetup *setup, char **to )
 {
     char *v = make( setup, to );
     system( setup ).write( v );
 }
 
-extern "C" int get_successor( CustomSetup *setup, int handle, char *from, char **to )
+extern "C" int get_system_successor( CustomSetup *setup, int handle, char *from, char **to )
 {
     /* a in 0-5, limit in 0-5 */
     if ( handle > 6 )
@@ -123,7 +123,7 @@ extern "C" int get_successor( CustomSetup *setup, int handle, char *from, char *
     return handle + 1;
 }
 
-extern "C" char *show_node( CustomSetup *setup, char *from, int )
+extern "C" char *system_show_node( CustomSetup *setup, char *from, int )
 {
     char *in = from + setup->slack + 4;
     system( setup ).read( in );
@@ -134,7 +134,7 @@ extern "C" char *show_node( CustomSetup *setup, char *from, int )
     return ret;
 }
 
-extern "C" void setup( CustomSetup *setup )
+extern "C" void system_setup( CustomSetup *setup )
 {
     Example2 *ex = new Example2();
 
