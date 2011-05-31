@@ -258,7 +258,8 @@ struct Combine {
             std::cout << data;
     }
 
-    void combine() {
+    template< typename F >
+    void process_ltl( F each ) {
         wibble::Splitter lines( "\n", 0 );
         wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
         wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
@@ -276,30 +277,34 @@ struct Combine {
             if ( o_propId->intValue() && o_propId->intValue() != id )
                 continue;
 
-            std::string automaton;
-            std::stringstream automaton_str;
-#ifdef LTL2DSTAR
-            if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
-#endif
-                {
-                    divine::output( buchi( ltl ), automaton_str );
-                    automaton = automaton_str.str();
-                }
-#ifdef LTL2DSTAR
-            // this can also handle NBA, Streett, etc.
-            else if ( o_condition->stringValue() == "DRA" ) {
-                automaton = ltl2dstarTranslation( "rabin", *i );
-
-                // something bad happened
-                if (automaton.empty())
-                    continue;
-            }
-#endif
-            std::string prop = cpp( ltl_defs + "\n" + automaton );
-            std::string dve = cpp( in_data + "\n" + prop + "\n" + system );
-
-            output( id, dve, *i );
+            (this->*each)( id, *i );
         }
+    }
+
+    void ltl_to_dve( int id, std::string ltl ) {
+        std::string automaton;
+        std::stringstream automaton_str;
+#ifdef LTL2DSTAR
+        if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
+#endif
+        {
+            divine::output( buchi( ltl ), automaton_str );
+            automaton = automaton_str.str();
+        }
+#ifdef LTL2DSTAR
+        // this can also handle NBA, Streett, etc.
+        else if ( o_condition->stringValue() == "DRA" ) {
+            automaton = ltl2dstarTranslation( "rabin", ltl );
+
+            // something bad happened
+            if (automaton.empty())
+                return;
+        }
+#endif
+        std::string prop = cpp( ltl_defs + "\n" + automaton );
+        std::string dve = cpp( in_data + "\n" + prop + "\n" + system );
+
+        output( id, dve, ltl );
     }
 
     void parseOptions() {
@@ -381,9 +386,7 @@ struct Combine {
         }
         in_data = std::string( in_data, 0, off );
 
-        combine();
-
-        return 0;
+        process_ltl( &Combine::ltl_to_dve );
     }
 
 };
