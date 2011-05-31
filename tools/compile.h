@@ -5,6 +5,9 @@
 #include "dvecompile.h"
 #include <wibble/sys/fs.h>
 
+#ifndef DIVINE_COMPILE_H
+#define DIVINE_COMPILE_H
+
 namespace divine {
 
 extern const char *generator_custom_api_h_str;
@@ -87,3 +90,5 @@ struct Compile {
 };
 
 }
+
+#endif
