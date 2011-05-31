@@ -246,9 +246,13 @@ struct Combine {
     }
 #endif
 
-    void output( int id, std::string data, std::string prop_descr ) {
+    void announce( int id, std::string descr ) {
         if ( !o_quiet->boolValue() && !o_stdout->boolValue() )
-            std::cerr << outFile( id ) << ": " << prop_descr << std::endl;
+            std::cerr << outFile( id ) << ": " << descr << std::endl;
+    }
+
+    void output( int id, std::string data, std::string prop_descr ) {
+        announce( id, prop_descr );
         if ( !o_stdout->boolValue() )
             fs::writeFile( outFile( id ), data );
         else
