@@ -167,8 +167,11 @@ struct Combine {
         return p.run( in );
     }
 
-    std::string outFile( int i )
+    std::string outFile( int i, std::string extension = "" )
     {
+        if ( extension.empty() )
+            extension = ext;
+
         std::ostringstream str;
         int a = input.rfind( '.' );
         if ( a == std::string::npos )
@@ -179,7 +182,7 @@ struct Combine {
             str << ".prop";
             str << i;
         }
-        str << ext;
+        str << extension;
         return str.str();
     }
 
