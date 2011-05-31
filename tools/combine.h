@@ -186,7 +186,7 @@ struct Combine {
         return str.str();
     }
 
-    std::string buchi( std::string ltl )
+    BA_opt_graph_t buchi( std::string ltl )
     {
         std::ostringstream str;
         LTL_parse_t L;
@@ -219,8 +219,7 @@ struct Combine {
             oG1 = DG.transform();
         }
 
-        divine::output(oG1, str);
-        return str.str();
+        return oG1;
     }
 
 #ifdef LTL2DSTAR
@@ -278,10 +277,14 @@ struct Combine {
                 continue;
 
             std::string automaton;
+            std::stringstream automaton_str;
 #ifdef LTL2DSTAR
             if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
 #endif
-                automaton = buchi( *i );
+                {
+                    divine::output( buchi( ltl ), automaton_str );
+                    automaton = automaton_str.str();
+                }
 #ifdef LTL2DSTAR
             // this can also handle NBA, Streett, etc.
             else if ( o_condition->stringValue() == "DRA" ) {
