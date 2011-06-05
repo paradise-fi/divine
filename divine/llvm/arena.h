@@ -21,8 +21,8 @@ namespace llvm {
  */
 struct Arena {
     typedef uint32_t word;
-    static const size_t BS = 128;
-    static const size_t BB = 7;
+    static const size_t BS = 1024;
+    static const size_t BB = 10;
 
     struct Index {
         unsigned __align:7;
