@@ -169,7 +169,6 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     TargetData TD;
     IntrinsicLowering *IL;
 
-    Arena arena;
     BiMap< int, Location > locationIndex;
     BiMap< int, Value * > valueIndex;
     BiMap< int, CallSite > csIndex;
@@ -206,6 +205,10 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
   void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
 
 public:
+    /* needs to be accessible to the external functions that are not our
+     * members; see external.cpp */
+    int _alternative;
+    Arena arena;
 
     Blob snapshot( int extra, Pool &p ) {
         int need = 4;
@@ -264,10 +267,11 @@ public:
 
   // Methods used to execute code:
   // Place a call on the stack
-  void callFunction(Function *F, const std::vector<GenericValue> &ArgVals);
-  void run();                // Execute instructions until nothing left to do
-  void step();               // Execute the next instruction
-  bool done();               // Is there anything left to do?
+    void callFunction(Function *F, const std::vector<GenericValue> &ArgVals);
+    void run(); // Execute instructions until nothing left to do
+    void step( int alternative = 0 );
+    bool done(); // Is there anything left to do?
+    bool alternatives( int alternative = 0 );
 
     Location location( ExecutionContext & );
     CallSite caller( ExecutionContext & );

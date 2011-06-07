@@ -37,6 +37,7 @@ Interpreter::Interpreter(Module *M)
   emitGlobals();
 
   buildIndex( M );
+  _alternative = 0;
 
   IL = new IntrinsicLowering(TD);
 }

@@ -39,6 +39,13 @@ static GenericValue builtin_malloc(Interpreter *, const FunctionType *, const Ar
     assert_die();
 }
 
+static GenericValue builtin_amb(Interpreter *interp, const FunctionType *, const Args &args)
+{
+    GenericValue GV;
+    GV.IntVal = APInt(32, interp->_alternative);
+    return GV;
+}
+
 static GenericValue builtin_free(Interpreter *, const FunctionType *, const Args &args)
 {
     // XXX see builtin_malloc; this should never "fail"
@@ -167,6 +174,7 @@ static struct {
     const char *name;
     Builtin fun;
 } builtins[] = {
+    { "__divine_builtin_amb", builtin_amb },
     { "__divine_builtin_exit", builtin_exit },
     { "__divine_builtin_trace", builtin_trace },
     { "__divine_builtin_assert", builtin_assert },
@@ -197,5 +205,3 @@ GenericValue Interpreter::callExternalFunction(
 
     return GenericValue();
 }
-
-#endif

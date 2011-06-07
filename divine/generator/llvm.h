@@ -46,40 +46,44 @@ struct LLVM : Common< Blob > {
 
     struct Successors {
         typedef Node Type;
-        Node _from, _this;
-        bool _empty;
+        LLVM *_parent;
+        Node _from;
+        int _alternative;
+
+        divine::llvm::Interpreter &interpreter() const {
+            assert( _parent );
+            return _parent->interpreter();
+        }
 
         bool empty() const {
-            return _empty;
+            if (!_from.valid())
+                return true;
+            interpreter().restore( _from, _parent->alloc._slack );
+            return interpreter().done() || !interpreter().alternatives( _alternative );
         }
 
         Node from() { return _from; }
 
         Successors tail() const {
             Successors s = *this;
-            s._empty = true;
+            ++ s._alternative;
             return s;
         }
 
         Node head() {
-            return _this;
+            interpreter().restore( _from, _parent->alloc._slack );
+            interpreter().step( _alternative );
+            return interpreter().snapshot( _parent->alloc._slack, _parent->pool() );
         }
 
-        Successors() : _empty( true ) {}
+        Successors() {}
     };
 
     Successors successors( Node st ) {
         Successors ret;
-        interpreter().restore( st, alloc._slack );
         ret._from = st;
-        if (interpreter().done()) {
-            ret._empty = true;
-        } else {
-            ret._empty = false;
-            interpreter().step();
-            ret._this = interpreter().snapshot( alloc._slack, pool() );
-            assert( ret._this.valid() );
-        }
+        ret._parent = this;
+        ret._alternative = 0;
         return ret;
     }
 

@@ -892,6 +892,7 @@ void Interpreter::visitCallSite(CallSite CS) {
 }
 
 void Interpreter::visitShl(BinaryOperator &I) {
+    assert_eq( _alternative, 0 );
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
     GenericValue Dest;
@@ -904,6 +905,7 @@ void Interpreter::visitShl(BinaryOperator &I) {
 }
 
 void Interpreter::visitLShr(BinaryOperator &I) {
+    assert_eq( _alternative, 0 );
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
     GenericValue Dest;
@@ -916,6 +918,7 @@ void Interpreter::visitLShr(BinaryOperator &I) {
 }
 
 void Interpreter::visitAShr(BinaryOperator &I) {
+    assert_eq( _alternative, 0 );
     GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
     GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
     GenericValue Dest;
@@ -929,6 +932,7 @@ void Interpreter::visitAShr(BinaryOperator &I) {
 
 GenericValue Interpreter::executeTruncInst(Value *SrcVal, const Type *DstTy,
                                            ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   const IntegerType *DITy = cast<IntegerType>(DstTy);
   unsigned DBitWidth = DITy->getBitWidth();
@@ -938,6 +942,7 @@ GenericValue Interpreter::executeTruncInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeSExtInst(Value *SrcVal, const Type *DstTy,
                                           ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   const IntegerType *DITy = cast<IntegerType>(DstTy);
   unsigned DBitWidth = DITy->getBitWidth();
@@ -947,6 +952,7 @@ GenericValue Interpreter::executeSExtInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeZExtInst(Value *SrcVal, const Type *DstTy,
                                           ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   const IntegerType *DITy = cast<IntegerType>(DstTy);
   unsigned DBitWidth = DITy->getBitWidth();
@@ -956,6 +962,7 @@ GenericValue Interpreter::executeZExtInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeFPTruncInst(Value *SrcVal, const Type *DstTy,
                                              ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(SrcVal->getType()->isDoubleTy() && DstTy->isFloatTy() &&
          "Invalid FPTrunc instruction");
@@ -965,6 +972,7 @@ GenericValue Interpreter::executeFPTruncInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeFPExtInst(Value *SrcVal, const Type *DstTy,
                                            ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(SrcVal->getType()->isFloatTy() && DstTy->isDoubleTy() &&
          "Invalid FPTrunc instruction");
@@ -974,6 +982,7 @@ GenericValue Interpreter::executeFPExtInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeFPToUIInst(Value *SrcVal, const Type *DstTy,
                                             ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   const Type *SrcTy = SrcVal->getType();
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -988,6 +997,7 @@ GenericValue Interpreter::executeFPToUIInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeFPToSIInst(Value *SrcVal, const Type *DstTy,
                                             ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   const Type *SrcTy = SrcVal->getType();
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1002,6 +1012,7 @@ GenericValue Interpreter::executeFPToSIInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeUIToFPInst(Value *SrcVal, const Type *DstTy,
                                             ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(DstTy->isFloatingPointTy() && "Invalid UIToFP instruction");
 
@@ -1014,6 +1025,7 @@ GenericValue Interpreter::executeUIToFPInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeSIToFPInst(Value *SrcVal, const Type *DstTy,
                                             ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(DstTy->isFloatingPointTy() && "Invalid SIToFP instruction");
 
@@ -1027,6 +1039,7 @@ GenericValue Interpreter::executeSIToFPInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executePtrToIntInst(Value *SrcVal, const Type *DstTy,
                                               ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(SrcVal->getType()->isPointerTy() && "Invalid PtrToInt instruction");
@@ -1037,6 +1050,7 @@ GenericValue Interpreter::executePtrToIntInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeIntToPtrInst(Value *SrcVal, const Type *DstTy,
                                               ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(DstTy->isPointerTy() && "Invalid PtrToInt instruction");
 
@@ -1050,6 +1064,7 @@ GenericValue Interpreter::executeIntToPtrInst(Value *SrcVal, const Type *DstTy,
 
 GenericValue Interpreter::executeBitCastInst(Value *SrcVal, const Type *DstTy,
                                              ExecutionContext &SF) {
+    assert_eq( _alternative, 0 );
   
   const Type *SrcTy = SrcVal->getType();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1270,10 +1285,15 @@ void Interpreter::callFunction(Function *F,
 
     // Special handling for external functions.
     if (F->isDeclaration()) {
+        /* This traps into the "externals": functions that may be provided by
+         * our own runtime (these may be nondeterministic), or, possibly (TODO)
+         * into external, native library code  */
         GenericValue Result = callExternalFunction (F, ArgVals);
         // Simulate a 'ret' instruction of the appropriate type.
         popStackAndReturnValueToCaller(F->getReturnType(), Result);
         return;
+    } else { // a normal "call" instruction is deterministic
+        assert_eq( _alternative, 0 );
     }
 
     Location next( F, F->begin(), F->begin()->begin() );
@@ -1302,7 +1322,8 @@ Instruction &Interpreter::nextInstruction() {
     return *locationIndex.right( SF().pc ).insn;
 }
 
-void Interpreter::step() {
+void Interpreter::step( int alternative ) {
+    _alternative = alternative;
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;
     setLocation( SF(), loc );
