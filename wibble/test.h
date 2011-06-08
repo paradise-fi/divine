@@ -24,6 +24,8 @@ struct Location {
 
 #ifndef NDEBUG
 #define LOCATION_I(stmt, i) ::wibble::Location( __FILE__, __LINE__, stmt, i )
+
+#undef assert // silence a gcc warning if we had assert.h included
 #define assert(x) assert_fn( LOCATION( #x ), x )
 #define assert_pred(p, x) assert_pred_fn( \
         LOCATION( #p "( " #x " )" ), x, p( x ) )
