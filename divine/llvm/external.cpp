@@ -215,3 +215,39 @@ GenericValue Interpreter::callExternalFunction(
 
     return GenericValue();
 }
+
+bool Interpreter::alternatives( int alt )
+{
+    Function *F;
+    Instruction &I = nextInstruction();
+
+    /* non-call/invoke insns are deterministic */
+    if (!isa<CallInst>(I) && !isa<InvokeInst>(I))
+        return alt < 1;
+    else { // extract the function
+        CallSite cs(&I);
+        F = cs.getCalledFunction();
+    }
+
+    assert( F );
+    if (!F->isDeclaration())
+        return alt < 1; // not a builtin, deterministic
+
+    std::string plain = "__divine_builtin_" + F->getNameStr();
+    for ( int i = 0; builtins[i].name; ++i ) {
+        if ( plain == builtins[i].name ) {
+            if (builtins[i].fun == builtin_malloc)
+                return alt < 2; /* malloc has 2 different returns */
+            if (builtins[i].fun == builtin_amb)
+                return alt < 2; /* amb has 2 different returns (0 and 1) */
+
+            // everything else is deterministic as well
+            return alt < 1;
+        }
+    }
+
+    std::cerr << "WARNING: failed to resolve symbol " << plain << std::endl;
+    return alt < 1;
+}
+
+#endif
