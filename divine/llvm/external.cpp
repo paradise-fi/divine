@@ -55,10 +55,11 @@ static GenericValue builtin_amb(Interpreter *interp, const FunctionType *, const
     return GV;
 }
 
-static GenericValue builtin_free(Interpreter *, const FunctionType *, const Args &args)
+static GenericValue builtin_free(Interpreter *interp, const FunctionType *, const Args &args)
 {
-    // XXX see builtin_malloc; this should never "fail"
-    assert_die();
+    Arena::Index idx = intptr_t(GVTOP(args[0]));
+    interp->arena.free(idx);
+    return GenericValue();
 }
 
 static GenericValue builtin_thread_create(Interpreter *, const FunctionType *, const Args &args)
