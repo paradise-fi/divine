@@ -136,6 +136,14 @@ struct Arena {
 
     // Store away the state of the memory arena in a single monolithic memory
     // block. Use "expand" to restore the state of the arena from that point.
+
+    // TODO: we want to "forget" any memory that is not currently allocated,
+    // but not *moving* anything, since pointers need to be persisted;
+
+    // TODO a scheme that would heuristically rearrange the arena, shuffling
+    // pointers in it is a far-off state space reduction technique; it would
+    // also need all pointers to be tagged (or otherwise tracked), which may be
+    // tricky to achieve with LLVM in full generality.
     divine::Blob compact( int extra, divine::Pool &p ) {
         divine::Blob b( p, extra + blocks.size() * sizeof( Block ) );
         b.clear();

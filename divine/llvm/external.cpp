@@ -31,11 +31,20 @@ static GenericValue builtin_assert(Interpreter *, const FunctionType *, const Ar
     return GenericValue();
 }
 
-static GenericValue builtin_malloc(Interpreter *, const FunctionType *, const Args &args)
+static GenericValue builtin_malloc(Interpreter *interp, const FunctionType *, const Args &args)
 {
-    // XXX this should yield two different successors, one with a NULL return
-    // and another where the memory was actually allocated in the heap; there
-    // is no "heap" implementation for divine+llvm so far, though
+    // This yields two different successors, one with a NULL return and another
+    // where the memory was actually allocated (the alloca/malloc arenas are
+    // actually shared, (TODO) at least for now)
+    switch (interp->_alternative) {
+        case 0: { // normal allocation here
+            int size = args[0].IntVal.getZExtValue();
+            Arena::Index mem = interp->arena.allocate(size);
+            return PTOGV( reinterpret_cast< void * >( intptr_t( mem ) ) );
+        }
+        case 1:
+            return PTOGV( 0 );
+    }
     assert_die();
 }
 
