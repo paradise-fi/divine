@@ -486,7 +486,6 @@ const QStringList DveSimulator::enumProcessStates(int pid) const
   divine::dve_symbol_t * smb;
   
   divine::dve_process_t * proc = dynamic_cast<divine::dve_process_t*>(system_->get_process(pid));
-  uint gid;
 
   QStringList res;
   

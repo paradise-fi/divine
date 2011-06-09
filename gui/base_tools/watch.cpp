@@ -425,8 +425,6 @@ void WatchDock::onItemChanged(QTreeWidgetItem * item, int)
   Q_ASSERT(sim_);
   SignalLock lock(tree_);
 
-  const Simulator * simulator = sim_->simulator();
-
   if (item->type() == 0) {
     const int pid = item->data(0, Qt::UserRole).toInt();
 

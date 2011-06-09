@@ -167,8 +167,6 @@ void SequenceModel::updateModel(void)
 {
   Q_ASSERT(sim_);
 
-  const int sd = sim_->stackDepth();
-
   // equalize item count
   if (depth_ < sim_->stackDepth()) {
     beginInsertRows(QModelIndex(), depth_, sim_->stackDepth() - 1);
