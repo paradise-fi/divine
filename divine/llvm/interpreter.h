@@ -175,28 +175,28 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
 
     // The runtime stack of executing code.  The top of the stack is the current
     // function record.
-    std::vector<ExecutionContext> stack;
+    std::vector< std::vector< ExecutionContext > > stacks;
 
     void leave() {
         for ( std::vector< Arena::Index >::iterator i = SF().allocas.begin();
               i != SF().allocas.end(); ++i )
             arena.free( *i );
         // arena.free( stack.back() );
-        stack.pop_back();
+        stack().pop_back();
     }
 
     ExecutionContext &enter() {
-        stack.push_back( ExecutionContext() );
+        stack().push_back( ExecutionContext() );
         SF().caller = -1;
         return SF();
     }
 
     ExecutionContext &SF() {
-        return stack.back(); // *(ExecutionContext *) arena.translate( stack.back() );
+        return stack().back(); // *(ExecutionContext *) arena.translate( stack.back() );
     }
 
-    ExecutionContext &SFat( int i ) {
-        return stack[ i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
+    ExecutionContext &SFat( int i, int c = -1 ) {
+        return stack( c )[ i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
     }
 
   // AtExitHandlers - List of functions to call when the program exits,
@@ -208,30 +208,52 @@ public:
     /* needs to be accessible to the external functions that are not our
      * members; see external.cpp */
     int _alternative;
+    int _context;
     Arena arena;
+
+    std::vector<ExecutionContext> &stack( int c = -1 ) {
+        if ( c < 0 )
+            c = _context;
+        assert_leq( c, stacks.size() - 1 );
+        return stacks[ c ];
+    }
 
     Blob snapshot( int extra, Pool &p ) {
         int need = 4;
-        for ( int i = 0; i < stack.size(); ++i )
-            need += SFat( i ).size();
+        for ( int c = 0; c < stacks.size(); ++c ) {
+            need += 4;
+            for ( int i = 0; i < stack( c ).size(); ++i )
+                need += SFat( i, c ).size();
+        }
 
         Blob b = arena.compact( extra + need, p );
-
         int offset = extra;
-        offset = b.put( offset, stack.size() );
 
-        for ( int i = 0; i < stack.size(); ++i )
-            offset = SFat( i ).put( offset, b );
+        offset = b.put( offset, stacks.size() );
+
+        for ( int c = 0; c < stacks.size(); ++c ) {
+            offset = b.put( offset, stack().size() );
+
+            for ( int i = 0; i < stack().size(); ++i )
+                offset = SFat( i, c ).put( offset, b );
+        }
 
         return b;
     }
 
     void restore( Blob b, int extra ) {
+        int contexts;
         int depth;
-        int offset = b.get( extra, depth );
-        stack.resize( depth );
-        for ( int i = 0; i < depth; ++i )
-            offset = stack[ i ].get( offset, b );
+        int offset = b.get( extra, contexts );
+        stacks.resize( contexts );
+
+        for ( int c = 0; c < contexts; ++c ) {
+            offset = b.get( offset, depth );
+            stack().resize( depth );
+            for ( int i = 0; i < depth; ++i )
+                offset = stack()[ i ].get( offset, b );
+        }
+
         arena.expand( b, offset );
     }
 
@@ -271,7 +293,11 @@ public:
     void run(); // Execute instructions until nothing left to do
     void step( int alternative = 0 );
     bool done(); // Is there anything left to do?
+
+    // do we have any alternative executions?
     bool alternatives( int alternative = 0 );
+    // do we have any alternative contexts to pursue?
+    bool contexts( int ctx = 0 );
 
     Location location( ExecutionContext & );
     CallSite caller( ExecutionContext & );

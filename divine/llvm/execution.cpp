@@ -575,7 +575,7 @@ void Interpreter::exitCalled(GenericValue GV) {
   // runAtExitHandlers() assumes there are no stack frames, but
   // if exit() was called, then it had a stack frame. Blow away
   // the stack before interpreting atexit handlers.
-    while (!stack.empty())
+    while (!stack().empty())
         leave();
     runAtExitHandlers();
     exit(GV.IntVal.zextOrTrunc(32).getZExtValue());
@@ -593,7 +593,7 @@ void Interpreter::popStackAndReturnValueToCaller(const Type *RetTy,
                                                  GenericValue Result) {
     leave();
 
-    if (stack.empty()) {  // Finished main.  Put result into exit code...
+    if (stack().empty()) {  // Finished main.  Put result into exit code...
         if (RetTy && !RetTy->isVoidTy()) {          // Nonvoid return type?
             ExitValue = Result;   // Capture the exit value of the program
         } else {
@@ -632,7 +632,7 @@ void Interpreter::visitUnwindInst(UnwindInst &I) {
   Instruction *Inst;
   do {
       leave();
-      if (stack.empty())
+      if (stack().empty())
           report_fatal_error("Empty stack during unwind!");
       Inst = caller( SF() ).getInstruction();
   } while (!(Inst && isa<InvokeInst>(Inst)));
@@ -838,7 +838,7 @@ void Interpreter::visitCallSite(CallSite CS) {
                 break;
             case Intrinsic::vastart: { // va_start
                 GenericValue ArgIndex;
-                ArgIndex.UIntPairVal.first = stack.size() - 1;
+                ArgIndex.UIntPairVal.first = stack().size() - 1;
                 ArgIndex.UIntPairVal.second = 0;
                 SetValue(CS.getInstruction(), ArgIndex, SF());
                 return;
@@ -1277,7 +1277,7 @@ GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
 //
 void Interpreter::callFunction(Function *F,
                                const std::vector<GenericValue> &ArgVals) {
-    assert((stack.empty() || caller( SF() ).getInstruction() == 0 ||
+    assert((stack().empty() || caller( SF() ).getInstruction() == 0 ||
             caller( SF() ).arg_size() == ArgVals.size()) &&
            "Incorrect number of arguments passed into function call!");
     // Make a new stack frame... and fill it in.
@@ -1315,7 +1315,7 @@ void Interpreter::callFunction(Function *F,
 }
 
 bool Interpreter::done() {
-    return stack.empty();
+    return stack().empty();
 }
 
 Instruction &Interpreter::nextInstruction() {

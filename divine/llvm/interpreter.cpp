@@ -37,6 +37,8 @@ Interpreter::Interpreter(Module *M)
   emitGlobals();
 
   buildIndex( M );
+  stacks.resize( 1 );
+  _context = 0;
   _alternative = 0;
 
   IL = new IntrinsicLowering(TD);
