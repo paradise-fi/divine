@@ -138,7 +138,7 @@ struct TestChildprocess {
         int in, out;
 	
         // Fork the child redirecting its stdout
-        pid_t pid = child.forkAndRedirect(&in, &out, 0);
+        child.forkAndRedirect(&in, &out, 0);
         // assert(pid != 0);
         write(in, "hello\n", 6);
         close(in);

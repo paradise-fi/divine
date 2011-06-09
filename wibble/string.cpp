@@ -269,8 +269,14 @@ std::string decodeBase64(const std::string& str)
 	}
 
 	// Remove trailing padding
-	for (size_t i = str.size() - 1; i >= 0 && str[i] == '='; --i)
-		res.resize(res.size() - 1);
+	if (str.size() > 0)
+		for (size_t i = str.size() - 1; str[i] == '='; --i)
+		{
+			if (res.size() > 0)
+				res.resize(res.size() - 1);
+			if (i == 0 || res.size() == 0 )
+				break;
+		}
 
 	return res;
 }

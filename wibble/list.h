@@ -351,7 +351,6 @@ size_t count( List l ) {
 
 template< typename List, typename F >
 void foreach( List l, F f ) {
-    size_t count = 0;
     while ( !l.empty() ) {
         f( l.head() );
         l = l.tail();
@@ -360,7 +359,6 @@ void foreach( List l, F f ) {
 
 template< typename List, template< typename > class F >
 void foreach( List l, F< typename List::Type > f ) {
-    size_t count = 0;
     while ( !l.empty() ) {
         f( l.head() );
         l = l.tail();

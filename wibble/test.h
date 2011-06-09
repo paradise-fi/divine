@@ -22,6 +22,8 @@ struct Location {
 
 #define LOCATION(stmt) ::wibble::Location( __FILE__, __LINE__, stmt )
 
+#undef assert
+
 #ifndef NDEBUG
 #define LOCATION_I(stmt, i) ::wibble::Location( __FILE__, __LINE__, stmt, i )
 
@@ -158,7 +160,7 @@ inline void beginAssertFailure() {
 }
 
 inline void endAssertFailure() {
-    int f = assertFailure;
+    const int f = assertFailure;
     assertFailure = 0;
     assert( f > 1 );
 }

@@ -89,11 +89,11 @@ struct TestFs {
     Test _isDirectory() {
 #ifdef POSIX
 	system("rm -rf testdir");
-	assert(!isDirectory("testdir"));
+	assert(!isdir("testdir"));
 	system("touch testdir");
-	assert(!isDirectory("testdir"));
+	assert(!isdir("testdir"));
 	system("rm testdir; mkdir testdir");
-	assert(isDirectory("testdir"));
+	assert(isdir("testdir"));
 #endif
     }
 };
