@@ -78,7 +78,7 @@ public:
    * @return string-ref with the name
    */
   const std::string& getAP(ap_index_t index) const {
-    if (index<0 || index >= array_size) {
+    if (index >= array_size) { // index is unsigned
       THROW_EXCEPTION(IndexOutOfBoundsException, "Index out of bounds!");
     }
 

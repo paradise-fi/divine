@@ -1,6 +1,6 @@
 project( ltl2dstar )
 
-add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} -fkeep-inline-functions -DINLINE_BITSET ) 
+add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} -fkeep-inline-functions -DINLINE_BITSET -w )
 
 include_directories( src )
 

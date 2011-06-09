@@ -82,7 +82,7 @@ class DRA : public DA<Label, EdgeContainer, RabinAcceptance> {
   /** Make this automaton into an never accepting automaton */
   void constructEmpty() {
     state_type* n=DA<Label,EdgeContainer,RabinAcceptance>::newState();
-    setStartState(n);
+    this->setStartState(n);
     
     for (APSet::element_iterator it_elem=
 	   DA<Label,EdgeContainer,RabinAcceptance>::getAPSet().all_elements_begin();

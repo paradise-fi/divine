@@ -43,7 +43,7 @@ public:
       return;
     }
 
-    while (pos>=0 && pos<s.length()) {
+    while (pos<s.length()) {
       pos=s.find(pattern, pos);
 
       if (pos==std::string::npos) {
