@@ -107,8 +107,9 @@ struct LLVM : Common< Blob > {
 
     bool isAccepting( Node s ) { return false; }
 
-    std::string showNode( Node s ) {
-        return "[?]";
+    std::string showNode( Node n ) {
+        interpreter().restore( n, alloc._slack );
+        return interpreter().describe();
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
