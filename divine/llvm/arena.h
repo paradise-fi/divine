@@ -113,6 +113,7 @@ struct Arena {
         assert( g.free.valid );
         Index use = g.free;
         g.free = static_cast< Index >( at( use ) );
+        memset( translate( use ), 0, size );
         return use;
     }
 
