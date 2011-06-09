@@ -38,16 +38,16 @@ struct Arena {
             return (i | block << BB);
         }
 
-        Index( intptr_t t ) {
+        Index( intptr_t t ) : __align( 0 ), valid( false ), block( 0 ), i( 0 )
+        {
             if ( t ) {
                 valid = 1;
                 i = t & (BS - 1);
                 block = t >> BB;
-            } else
-                valid = 0;
+            }
         }
 
-        Index() : __align( 0 ), valid( false ) {}
+        Index() : __align( 0 ), valid( false ), block( 0 ), i( 0 ) {}
         Index( int g, int _i ) : __align( 0 ), valid( true ), block( g ), i( _i ) {}
 
     } __attribute__((packed));
