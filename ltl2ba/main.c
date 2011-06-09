@@ -251,6 +251,7 @@ main_ltl2ba(int argc, char *argv[], FILE* outFile)
             else
                 usage();
 	}
+	return 0;
 }
 
 /* Subtract the `struct timeval' values X and Y, storing the result X-Y in RESULT.

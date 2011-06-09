@@ -116,7 +116,7 @@ int simplify_btrans() /* simplifies the transitions */
   if(tl_stats) {
     getrusage(RUSAGE_SELF, &tr_fin);
     timeval_subtract (&t_diff, &tr_fin.ru_utime, &tr_debut.ru_utime);
-    fprintf(tl_out, "\nSimplification of the Buchi automaton - transitions: %i.%06is",
+    fprintf(tl_out, "\nSimplification of the Buchi automaton - transitions: %ld.%06lds",
 		t_diff.tv_sec, t_diff.tv_usec);
     fprintf(tl_out, "\n%i transitions removed\n", changed);
 
@@ -231,7 +231,7 @@ int simplify_bstates() /* eliminates redundant states */
   if(tl_stats) {
     getrusage(RUSAGE_SELF, &tr_fin);
     timeval_subtract (&t_diff, &tr_fin.ru_utime, &tr_debut.ru_utime);
-    fprintf(tl_out, "\nSimplification of the Buchi automaton - states: %i.%06is",
+    fprintf(tl_out, "\nSimplification of the Buchi automaton - states: %ld.%06lds",
 		t_diff.tv_sec, t_diff.tv_usec);
     fprintf(tl_out, "\n%i states removed\n", changed);
   }
@@ -626,7 +626,7 @@ void mk_buchi()
   if(tl_stats) {
     getrusage(RUSAGE_SELF, &tr_fin);
     timeval_subtract (&t_diff, &tr_fin.ru_utime, &tr_debut.ru_utime);
-    fprintf(tl_out, "\nBuilding the Buchi automaton : %i.%06is",
+    fprintf(tl_out, "\nBuilding the Buchi automaton : %ld.%06lds",
 		t_diff.tv_sec, t_diff.tv_usec);
     fprintf(tl_out, "\n%i states, %i transitions\n", bstate_count, btrans_count);
   }
