@@ -745,7 +745,8 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
           << NumElements << " (Total: " << MemToAlloc << ") at "
           << uintptr_t(Memory) << '\n');
 
-    GenericValue Result = PTOGV(reinterpret_cast< void * >( intptr_t( Memory ) ));
+    GenericValue Result;
+    Result.PointerVal = reinterpret_cast< void * >( intptr_t( Memory ) );
     assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
     SetValue(&I, Result, SF());
 
