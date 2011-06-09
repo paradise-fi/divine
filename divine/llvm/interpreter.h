@@ -173,10 +173,6 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     BiMap< int, Value * > valueIndex;
     BiMap< int, CallSite > csIndex;
 
-    // The runtime stack of executing code.  The top of the stack is the current
-    // function record.
-    std::vector< std::vector< ExecutionContext > > stacks;
-
     void leave() {
         for ( std::vector< Arena::Index >::iterator i = SF().allocas.begin();
               i != SF().allocas.end(); ++i )
@@ -211,11 +207,34 @@ public:
     int _context;
     Arena arena;
 
+    // The runtime stack of executing code.  The top of the stack is the current
+    // function record.
+    std::vector< std::vector< ExecutionContext > > stacks;
+
     std::vector<ExecutionContext> &stack( int c = -1 ) {
         if ( c < 0 )
             c = _context;
         assert_leq( c, stacks.size() - 1 );
         return stacks[ c ];
+    }
+
+    void detach( std::vector< ExecutionContext > &s ) {
+        for ( std::vector< ExecutionContext >::iterator c = s.begin(); c != s.end(); ++c ) {
+            c->allocas.clear();
+            for ( ExecutionContext::Values::iterator i = c->values.begin();
+                  i != c->values.end(); ++i ) {
+                if ( i->second.IntVal.getBitWidth() == 2 ) { // this is an alloca, so let's clone it
+                    Arena::Index idx = intptr_t( GVTOP( i->second ) );
+                    int size = arena.size( idx );
+                    Arena::Index nieuw = arena.allocate( size );
+                    GenericValue newGV;
+                    i->second.PointerVal = reinterpret_cast< void * >( intptr_t( nieuw ) );
+                    i->second.IntVal = APInt(2, 0);
+                    c->allocas.push_back( nieuw );
+                    memcpy( arena.translate( nieuw ), arena.translate( idx ), size );
+                }
+            }
+        }
     }
 
     Blob snapshot( int extra, Pool &p ) {
@@ -232,9 +251,9 @@ public:
         offset = b.put( offset, stacks.size() );
 
         for ( int c = 0; c < stacks.size(); ++c ) {
-            offset = b.put( offset, stack().size() );
+            offset = b.put( offset, stack( c ).size() );
 
-            for ( int i = 0; i < stack().size(); ++i )
+            for ( int i = 0; i < stack( c ).size(); ++i )
                 offset = SFat( i, c ).put( offset, b );
         }
 
@@ -249,9 +268,9 @@ public:
 
         for ( int c = 0; c < contexts; ++c ) {
             offset = b.get( offset, depth );
-            stack().resize( depth );
+            stack( c ).resize( depth );
             for ( int i = 0; i < depth; ++i )
-                offset = stack()[ i ].get( offset, b );
+                offset = stack( c )[ i ].get( offset, b );
         }
 
         arena.expand( b, offset );
@@ -291,13 +310,10 @@ public:
   // Place a call on the stack
     void callFunction(Function *F, const std::vector<GenericValue> &ArgVals);
     void run(); // Execute instructions until nothing left to do
-    void step( int alternative = 0 );
-    bool done(); // Is there anything left to do?
+    void step( int ctx = 0, int alternative = 0 );
+    bool done( int ctx = 0 ); // Is there anything left to do?
 
-    // do we have any alternative executions?
-    bool alternatives( int alternative = 0 );
-    // do we have any alternative contexts to pursue?
-    bool contexts( int ctx = 0 );
+    bool viable( int ctx = 0, int alternative = 0 );
 
     Location location( ExecutionContext & );
     CallSite caller( ExecutionContext & );
@@ -364,6 +380,8 @@ public:
       return &(SF().varArgs[0]);
   }
 
+  void popStackAndReturnValueToCaller(const Type *RetTy, GenericValue Result);
+
 private:  // Helper functions
   GenericValue executeGEPOperation(Value *Ptr, gep_type_iterator I,
                                    gep_type_iterator E, ExecutionContext &SF);
@@ -407,7 +425,6 @@ private:  // Helper functions
                                   ExecutionContext &SF);
   GenericValue executeCastOperation(Instruction::CastOps opcode, Value *SrcVal, 
                                     const Type *Ty, ExecutionContext &SF);
-  void popStackAndReturnValueToCaller(const Type *RetTy, GenericValue Result);
 
 };
 

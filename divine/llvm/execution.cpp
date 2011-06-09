@@ -747,6 +747,7 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
     GenericValue Result;
     Result.PointerVal = reinterpret_cast< void * >( intptr_t( Memory ) );
+    Result.IntVal = APInt(2, 0); // XXX hack.
     assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
     SetValue(&I, Result, SF());
 
@@ -1315,15 +1316,16 @@ void Interpreter::callFunction(Function *F,
     SF().varArgs.assign(ArgVals.begin()+i, ArgVals.end());
 }
 
-bool Interpreter::done() {
-    return stack().empty();
+bool Interpreter::done( int ctx ) {
+    return stack( ctx ).empty();
 }
 
 Instruction &Interpreter::nextInstruction() {
     return *locationIndex.right( SF().pc ).insn;
 }
 
-void Interpreter::step( int alternative ) {
+void Interpreter::step( int ctx, int alternative ) {
+    _context = ctx;
     _alternative = alternative;
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;
@@ -1334,6 +1336,12 @@ void Interpreter::step( int alternative ) {
 
     /* dbgs() << "About to interpret: " << *loc.insn << "\n"; */
     visit(I);   // Dispatch to one of the visit* methods...
+
+    // remove the context if we are done with it
+    if ( done( ctx ) ) {
+        assert( (stacks.begin() + ctx)->empty() );
+        stacks.erase( stacks.begin() + ctx );
+    }
 }
 
 void Interpreter::run() {

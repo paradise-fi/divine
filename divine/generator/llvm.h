@@ -49,6 +49,7 @@ struct LLVM : Common< Blob > {
         LLVM *_parent;
         Node _from;
         int _alternative;
+        int _context;
 
         divine::llvm::Interpreter &interpreter() const {
             assert( _parent );
@@ -59,20 +60,28 @@ struct LLVM : Common< Blob > {
             if (!_from.valid())
                 return true;
             interpreter().restore( _from, _parent->alloc._slack );
-            return interpreter().done() || !interpreter().alternatives( _alternative );
+            bool empty = !interpreter().viable( _context, _alternative )
+                         && !interpreter().viable( _context + 1, 0 );
+            return empty;
         }
 
         Node from() { return _from; }
 
         Successors tail() const {
             Successors s = *this;
-            ++ s._alternative;
+            interpreter().restore( _from, _parent->alloc._slack );
+            if ( interpreter().viable( _context, _alternative + 1 ) ) {
+                ++ s._alternative;
+            } else {
+                ++ s._context;
+                s._alternative = 0;
+            }
             return s;
         }
 
         Node head() {
             interpreter().restore( _from, _parent->alloc._slack );
-            interpreter().step( _alternative );
+            interpreter().step( _context, _alternative );
             return interpreter().snapshot( _parent->alloc._slack, _parent->pool() );
         }
 
@@ -84,6 +93,7 @@ struct LLVM : Common< Blob > {
         ret._from = st;
         ret._parent = this;
         ret._alternative = 0;
+        ret._context = 0;
         return ret;
     }
 

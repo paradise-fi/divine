@@ -62,14 +62,25 @@ static GenericValue builtin_free(Interpreter *interp, const FunctionType *, cons
     return GenericValue();
 }
 
-static GenericValue builtin_thread_create(Interpreter *, const FunctionType *, const Args &args)
+static GenericValue builtin_thread_create(Interpreter *interp, const FunctionType *ty,
+                                          const Args &args)
 {
-    // XXX this should fork off a new thread, using a specified function as an
-    // entry point; the thread ceases to exist as soon as the supplied function
-    // exits; of course, before this can be implemented, the interpreter and
-    // its state vector need to be rigged with thread descriptors and ability
-    // to interleave thread execution nondeterministically
-    assert_die();
+    GenericValue New, Old;
+    New.IntVal = APInt( 32, 1 );
+    Old.IntVal = APInt( 32, 0 );
+
+    int old = interp->_context;
+    int nieuw = interp->stacks.size();
+
+    // Fork off a new thread, as a clone of the current thread.
+    interp->stacks.push_back( interp->stack( old ) );
+    interp->detach( interp->stack( nieuw ) );
+
+    interp->_context = nieuw; // switch to the new thread
+    // simulate a return in the new thread, yielding 1
+    interp->popStackAndReturnValueToCaller(ty->getReturnType(), New);
+    interp->_context = old;
+    return Old; // and in the current thread, return 0 and continue as usual
 }
 
 static GenericValue builtin_fork(Interpreter *, const FunctionType *, const Args &args)
@@ -217,8 +228,15 @@ GenericValue Interpreter::callExternalFunction(
 }
 
 
-bool Interpreter::alternatives( int alt )
+bool Interpreter::viable( int ctx, int alt )
 {
+    _context = ctx;
+
+    if ( _context >= stacks.size() )
+        return false;
+    if ( done( ctx ) )
+        return false;
+
     Function *F;
     Instruction &I = nextInstruction();
 
@@ -248,7 +266,7 @@ bool Interpreter::alternatives( int alt )
     }
 
     std::cerr << "WARNING: failed to resolve symbol " << plain << std::endl;
-    return alt < 1;
+    return false;
 }
 
 #endif
