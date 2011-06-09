@@ -139,7 +139,7 @@ public:
      * Get the value of the n-th component of the state packed in the Blob
      * using the provided slack space.
      */
-    const static value_t getPrimitiveState(Blob &b, int slack, size_t n) {
+    static value_t getPrimitiveState(Blob &b, int slack, size_t n) {
         data_t * data = &b.get<data_t> (slack);
         return getPrimitiveState(data, n);
     }
@@ -147,7 +147,7 @@ public:
     /**
      * Pack the current state into a provided Blob with the given slack space.
      */
-    const void pack(Blob &b, int slack) {
+    void pack(Blob &b, int slack) {
         data_t * data = &b.get<data_t> (slack);
         for (size_t i = 0; i < metrics.dimension; i++) {
             setPrimitiveState(data, i, product_state[i]);
@@ -171,7 +171,7 @@ public:
      * \param n     index
      * \return      offset of n-th element
      */
-    const static size_t getOffset(size_t n) {
+    static size_t getOffset(size_t n) {
         return metrics.offsets[n];
     }
 
@@ -181,7 +181,7 @@ public:
      * \param n     index
      * \return      size of n-th element
      */
-    const static size_t getSize(size_t n) {
+    static size_t getSize(size_t n) {
         return metrics.sizes[n];
     }
 
@@ -190,7 +190,7 @@ public:
      *
      * \return size of a state in bytes
      */
-    const static size_t totalSize() {
+    static size_t totalSize() {
         return metrics.size;
     }
 
@@ -199,7 +199,7 @@ public:
      *
      * \return  dimension of the state vector
      */
-    const static size_t length() {
+    static size_t length() {
         return metrics.dimension;
     }
 
@@ -236,7 +236,7 @@ private:
      * \param bytes     pointer to the data
      * \param count     the number of bytes to be converted
      */
-    const static value_t getInt(data_t *bytes, int count) {
+    static value_t getInt(data_t *bytes, int count) {
         value_t ret = 0;
         for (int i = 0; i < count; ++i) {
             ret |= (bytes[i] << (8 * i));
@@ -275,7 +275,7 @@ private:
      * \param buff      raw data
      * \param n         index
      */
-    const static value_t getPrimitiveState(data_t * buff, size_t n) {
+    static value_t getPrimitiveState(data_t * buff, size_t n) {
         return getInt(buff + getOffset(n), getSize(n));
     }
 

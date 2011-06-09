@@ -244,7 +244,7 @@ void DBA_graph_t::vypis(bool strict_output) const
 
  KS_BA_node_t* DBA_graph_t::add_node(int name)
  {
-  KS_BA_node_t* node;
+  KS_BA_node_t* node = NULL;
   return node;
  }
  void DBA_graph_t::transpose(KS_BA_graph_t& Gt) const{}

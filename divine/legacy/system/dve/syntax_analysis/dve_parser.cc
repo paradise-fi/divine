@@ -1122,7 +1122,7 @@ size_int_t dve_parser_t::add_process(const char * name,
     psymbol_table->add_process(aux_sym);
     if (mode==SYSTEM)
      {
-      dve_process_t * new_process;
+      dve_process_t * new_process = NULL;
       if (probabilistic)
        {
         prob_system_t * prob_system = dynamic_cast<prob_system_t*>(psystem);
@@ -1425,7 +1425,7 @@ void dve_parser_t::prob_trans_create(const char * name)
 {
  if (probabilistic)
   {
-   dve_prob_transition_t * prob_trans;
+   dve_prob_transition_t * prob_trans = NULL;
    if (mode==PROB_TRANSITION)
     {
      dve_prob_transition_to_fill->set_trans_count(prob_trans_parts.size());

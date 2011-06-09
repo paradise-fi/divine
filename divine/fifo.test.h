@@ -16,7 +16,6 @@ struct TestFifo {
         void *main()
         {
             int x[ n ];
-            int j = 0;
             for ( int i = 0; i < n; ++i )
                 x[ i ] = 0;
 
@@ -46,7 +45,6 @@ struct TestFifo {
 
     Test stress() {
         Checker< int > c;
-        int j = 0;
         for ( int j = 0; j < 5; ++j ) {
             c.start();
             for( int i = 0; i < 128 * 1024; ++i )
@@ -58,7 +56,6 @@ struct TestFifo {
 
     Test blobStress() {
         Checker< Blob > c;
-        int j = 0;
         for ( int j = 0; j < 5; ++j ) {
             c.start();
             for( int i = 0; i < 128 * 1024; ++i ) {

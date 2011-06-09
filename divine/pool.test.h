@@ -63,7 +63,6 @@ struct TestPool {
     Test stress() {
         std::vector< Checker > c;
         c.resize( 3 );
-        int j = 0;
         for ( int j = 0; j < 5; ++j ) {
             for ( int i = 0; i < c.size(); ++i )
                 c[ i ].start();

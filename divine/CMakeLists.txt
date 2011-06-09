@@ -1,3 +1,8 @@
+list( APPEND CMAKE_CXX_FLAGS "-Wall -Wno-overloaded-virtual" )
+list( APPEND CMAKE_C_FLAGS -Wall )
+add_definitions( -Wno-unused-variable -Wno-unused-function -Wextra 
+	-Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers )
+
 include( ../wibble/test.cmake )
 
 file( GLOB SRC_TOP *.cpp )

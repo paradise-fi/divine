@@ -1,3 +1,6 @@
+add_definitions( -Wall -Wno-unused-variable -Wno-unused-function -Wno-overloaded-virtual )
+add_definitions( -Wextra -Wno-unused-parameter -Wno-sign-compare )
+
 include_directories( ${DIVINE_INCLUDES} )
 
 link_libraries( libdivine wibble )

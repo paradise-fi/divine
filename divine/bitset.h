@@ -135,7 +135,7 @@ struct BitSet
      * generator::Compact) and peerId of peer using this bitset as a table
      */
     BitSet( G *g_, const int peerId, Valid v = Valid(), Equal eq = Equal() )
-        : m_g( g_ ), initialized( true ), valid( v ), equal( eq ), m_maxsize( -1 )
+        : valid( v ), equal( eq ), m_maxsize( -1 ), initialized( true ), m_g( g_ )
     {
         assert( g().initialized );
         assert( peerId >= 0 );

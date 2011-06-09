@@ -107,9 +107,6 @@ struct Common {
     }
 
     void exploreFrom( Node _initial ) {
-        TransitionAction tact;
-        ExpansionAction eact;
-
         Node initial = seen().insert( _initial );
         setPermanent( initial );
         m_graph.release( _initial );

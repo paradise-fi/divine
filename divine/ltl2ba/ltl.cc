@@ -393,8 +393,8 @@ bool LTL_parse_t::syntax_check(LTL_formul_t& F)
 {
 	int i, old_i, delka, stav;
 	string pred;
-	LTL_syntax_el_t elem;
-	synt_an_el an_elem, N;
+	LTL_syntax_el_t elem = static_cast< LTL_syntax_el_t >( 0 );
+	synt_an_el an_elem = static_cast< synt_an_el >( 0 ), N;
 	pol_zasobnik pom;
 	preved_zas prev_pom;
 	stack<pol_zasobnik> Z;

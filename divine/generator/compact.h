@@ -40,9 +40,8 @@ struct Compact : public Common< Blob > {
     static Compact* master; // poor man's reference counting
 
     /// Creates generator::Compact instance
-    Compact() : Common(), statesCount( 0 ), fromStateId( 0 ), toStateId( 0 ), peersCount( 1 ), 
-        initialized( false ), nodes( 0 ), slackInitialized( false ),
-        mpiRank( 0 ), mpiSize( 1 ) { }
+    Compact() : Common(), nodes( NULL ), fromStateId( 0 ), toStateId( 0 ), statesCount( 0 ), peersCount( 1 ),
+        mpiRank( 0 ), mpiSize( 1 ), initialized( false ), slackInitialized( false ) { }
 
     /// Destroys generator::Compact instance
     ~Compact() {

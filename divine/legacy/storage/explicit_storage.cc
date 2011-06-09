@@ -665,14 +665,14 @@ void* explicit_storage_t::app_by_ref(state_ref_t refer)
     {
       errvec <<"No appendix set. Cannot use app_by_ref()"
 	     <<psh(EXPLICIT_STORAGE_ERR_TYPE);
-      return 0;
+      return NULL;
     }
 
   if (!(storage.ht_base[refer.hres].col_table))
     {
       errvec <<"Invalid reference used in set_app_by_ref()."
 	     <<psh(EXPLICIT_STORAGE_ERR_TYPE);
-      return false;
+      return NULL;
     }
   else
     {
@@ -680,7 +680,7 @@ void* explicit_storage_t::app_by_ref(state_ref_t refer)
 	{
 	  errvec <<"Invalid reference used in set_app_by_ref()."
 		 <<psh(EXPLICIT_STORAGE_ERR_TYPE);
-	  return false;
+	  return NULL;
 	}
       else
 	{

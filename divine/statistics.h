@@ -295,7 +295,6 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     }
 
     void *main() {
-        int i = 0;
         while ( true ) {
             if ( !mpi || mpi->master() ) {
                 wibble::sys::sleep( 1 );

@@ -671,7 +671,7 @@ int por_t::generate_ample_sets(state_t s, bool *ample_sets, enabled_trans_contai
 
 std::size_t por_t::choose_ample_set(bool *ample_sets, enabled_trans_container_t *enabled_trans)
 { 
-  std::size_t proc_gid;
+  long int proc_gid;
   switch (choose_type)
     { 
     case POR_FIRST: 

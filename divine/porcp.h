@@ -175,7 +175,7 @@ struct PORGraph : generator::Extended< G > {
     // gives true iff there are nodes that need expanding
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &d, Alg &a ) {
-        int checked = to_check.size();
+        // int checked = to_check.size();
 
         while ( !to_check.empty() ) {
             d.parallel().run( a.shared, &Alg::_por_worker );

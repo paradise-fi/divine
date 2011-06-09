@@ -268,7 +268,7 @@ void BA_opt_graph_t::fix_form_ball_reduction(BA_opt_graph_t& G)
 	set<int> non_ball_nodes;
 	set<int>::iterator nb_b, nb_e, nb_i;
 
-	KS_BA_node_t *p_N, *p_N_new, *p_N_new1;
+	KS_BA_node_t *p_N = NULL, *p_N_new, *p_N_new1;
 	BA_node_t *p_bN, *p_bN1;
 
 	G.clear();

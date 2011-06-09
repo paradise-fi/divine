@@ -197,7 +197,7 @@ void ALT_graph_t::copy_GBA(const ALT_graph_t& G)
 	list<list<ALT_gba_trans_t*> >::const_iterator at_b, at_e, at_i;
 	list<ALT_gba_trans_t*>::const_iterator t_b, t_e, t_i;
 	list<ALT_gba_trans_t*>::iterator nt_b, nt_e, nt_i;
-	ALT_gba_trans_t *p_T;
+	ALT_gba_trans_t *p_T = NULL;
 	list<ALT_gba_trans_t*> LT;
 	int name;
 

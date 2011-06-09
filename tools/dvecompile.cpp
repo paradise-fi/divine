@@ -619,7 +619,6 @@ void dve_compiler::yield_state() {
 void dve_compiler::gen_successors()
 {
     string in = "(*in)", out = "(*out)", space = "";
-    bool some_commited_state = false;
 
     new_label();
     if_begin( true );

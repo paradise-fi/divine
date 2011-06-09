@@ -541,7 +541,7 @@ bool BA_graph_t::is_semideterministic()
 {
   KS_BA_node_t *node;
   list<KS_BA_node_t*> accepts;
-  bool is_semiderministic;
+  bool is_semiderministic = false;
 
   node_list_t::iterator n_b, n_e, n_i;
   n_b = node_list.begin(); n_e = node_list.end();

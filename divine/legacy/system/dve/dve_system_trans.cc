@@ -49,6 +49,7 @@ void dve_system_trans_t::create_from(const system_trans_t & second)
 }
 
 dve_enabled_trans_t::dve_enabled_trans_t(const dve_enabled_trans_t & second)
+	: enabled_trans_t(second), dve_system_trans_t(second)
 {
  const enabled_trans_t * enabled_trans = dynamic_cast<const enabled_trans_t*>(&second);
  dve_system_trans_t::create_from(*enabled_trans);

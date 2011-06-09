@@ -176,7 +176,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         bool findBackEdges; // find also backward transitions
         bool haveInitial; // signifies that this peer handles the initial state
 
-        Shared() : haveInitial( false ), /*keepOriginal( false ),*/ findBackEdges( false ) {}
+        Shared() : findBackEdges( false ), haveInitial( false ) {}
     } shared;
 
     std::deque< Node > states; // stores all states handled by this peer
@@ -342,9 +342,9 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
         /// Acceptance condition information
         void getAC( generator::PropertyType& acType, int& acCount, bool& acPair ) {
-            if ( acType = parent->shared.g.propertyType() ) {
-                if ( acType != generator::AC_None )
-                    acCount = parent->shared.g.acceptingGroupCount();
+            acType = parent->shared.g.propertyType();
+            if ( acType != generator::AC_None ) {
+                acCount = parent->shared.g.acceptingGroupCount();
                 if ( acType == generator::AC_Rabin || acType == generator::AC_Streett )
                     acPair = true;
             }
@@ -603,7 +603,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
             }
 
             // move to the block that should contain state data of this peer
-            openOutput( true, binaryStatesOffset( alg().globalId() ) );
+            this->openOutput( true, binaryStatesOffset( alg().globalId() ) );
 
             unsigned i = 0;
             // for each of our states
@@ -675,7 +675,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
 
         /// Appends the original model to the default output stream
         void appendOriginal() {
-            openOutput( true, binaryStatesOffset( alg().peers() ) );
+            this->openOutput( true, binaryStatesOffset( alg().peers() ) );
 
             std::string prefix = alg().m_config->input + ": ";
             this->out->write( prefix.c_str(), prefix.size() );

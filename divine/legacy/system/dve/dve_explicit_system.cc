@@ -743,7 +743,7 @@ void dve_explicit_system_t::set_state_creator_value_extended(
  
  //if it is not an array or array index doens't break the bounds
  size_int_t array_size = array_sizes[to_assign.get_ident_gid()];
- if ( array_size==0  ||  (array_index>=0 && array_index<array_size) )
+ if ( array_size==0  || array_index<array_size ) // array_index is unsigned
    error = error || //Lazy evaluation!!!
            set_state_creator_value(new_state,to_assign.get_ident_gid(),
                                    val,array_index);
@@ -1181,8 +1181,7 @@ bool dve_explicit_system_t::apply_effect(const state_t state,
  
  //if it is not an array or array index doens't break the bounds
  size_int_t array_size = array_sizes[assign_to.get_ident_gid()];
- if (array_size==0 ||
-     (array_index>=0 && array_index<array_size))
+ if (array_size==0 || array_index<array_size) // array_index is unsigned
    eval_err = eval_err || //Lazy evalution !!!
              set_state_creator_value(state,assign_to.get_ident_gid(),value,array_index);
  else

@@ -517,7 +517,6 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
 
     Loop process( wibble::sys::MutexLock &, MPI::Status &status ) {
         int id;
-        bool ret;
 
         if ( status.Get_tag() == TAG_ID ) {
             receiveDataMessage( status );

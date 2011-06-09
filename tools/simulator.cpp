@@ -520,7 +520,7 @@ int main(int argc, char * argv[])
   const std::size_t print_mode = ES_FMT_PRINT_VAR_NAMES |
                                  ES_FMT_PRINT_STATE_NAMES |  ES_FMT_PRINT_PROCESS_NAMES;
 
-  string *trans_name;
+  string *trans_name = NULL;
   int succs_result;
   do //main loop
   { 
@@ -568,7 +568,7 @@ int main(int argc, char * argv[])
         for (std::size_t info_index=0; info_index!=enabled_trans.size();
              info_index++, trans_nr--)
         { const dve_transition_t *trans,*strans,*ptrans;
-          std::size_t strans_proc_gid,ptrans_proc_gid;
+          std::size_t strans_proc_gid = 0, ptrans_proc_gid = 0;
           if (System.get_system_synchro()==SYSTEM_ASYNC && write_to_cout)
             if ((info_index==0)||(trans_nr==0))
              {

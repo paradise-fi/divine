@@ -95,7 +95,7 @@ int symtable<T>::find_id (name_t name)
 template<typename T>
 T * symtable<T>::get (unsigned int id)
 {
-  if (id >= 0 && id < table.size()) return table[id]; else return NULL;
+  if (id < table.size()) return table[id]; else return NULL;
 }
 
 
@@ -141,15 +141,15 @@ struct label_t {
     return compare(l2) == 1;
   } 
 
-  const bool isInput() {
+  bool isInput() {
     return this->fromc_id < 0;
   }
 
-  const bool isOutput() {
+  bool isOutput() {
     return this->toc_id < 0;
   }
 
-  const bool isInternal() {
+  bool isInternal() {
     return !this->isInput() && !this->isOutput();
   }
 
@@ -163,15 +163,15 @@ struct trans_t {
   label_t label;
   int tostate_id;
 
-  const bool isInput() {
+  bool isInput() {
       return label.isInput();
   }
 
-  const bool isOutput() {
+  bool isOutput() {
       return label.isOutput();
   }
 
-  const bool isInternal() {
+  bool isInternal() {
       return label.isInternal();
   }
 };
