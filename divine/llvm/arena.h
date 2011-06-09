@@ -124,6 +124,10 @@ struct Arena {
         g.free = i;
     }
 
+    int size( Index i ) {
+        return block( i.block ).unit;
+    }
+
     Block &block( int i ) { // blocks are indexed from 1; 0 is NULL
         assert_leq( 1, i );
         assert_leq( i, blocks.size() );
