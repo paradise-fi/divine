@@ -173,7 +173,7 @@ struct LegacyCommon : Common< _State > {
             return AC_None;
     }
 
-    bool isGoal( State s ) { return false; } // XXX
+    bool isGoal( State ) { return false; } // XXX
     std::string showNode( State s ) {
         if ( !s.valid() )
             return "[]";

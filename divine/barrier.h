@@ -98,7 +98,7 @@ struct Barrier {
         // certainly, there are at least as many sleepers as we could lock
         // out... there may be more, since they might have let gone of the
         // global mutex, but still haven't arrived to the condition wait
-        assert( m_sleeping >= locked.size() );
+        assert_leq( size_t( m_sleeping ), locked.size() );
 
         // we drop all locks (but we hold on to the global one)
         for ( typename Set::iterator i = locked.begin(); i != locked.end(); ++i ) {

@@ -36,7 +36,7 @@ struct BitSet
     std::vector< bool > m_table; // stores visited status of states in bit vector
 
     /// Dummy function to satisfy API
-    int hash( Item i ) { return 0; }
+    int hash( Item ) { return 0; }
 
     /// Size of underlying storage
     size_t size() const { return m_table.size(); }
@@ -53,7 +53,7 @@ struct BitSet
     }
 
     /// Inserts state into the table, wrapper to insert
-    inline Item insertHinted( Item i, hash_t h ) { return insert( i ); }
+    inline Item insertHinted( Item i, hash_t ) { return insert( i ); }
 
     /// Reports if requested state has been seen
     bool has( Item i ) {
@@ -70,7 +70,7 @@ struct BitSet
     }
 
     /// Returns requested state, marks its state in has (if it was visited)
-    inline Item getHinted( Item i, hash_t h, bool* has = NULL ) {
+    inline Item getHinted( Item i, hash_t, bool* has = NULL ) {
         if ( has != NULL ) *has = this->has( i );
         return get( i );
     }

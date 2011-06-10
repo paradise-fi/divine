@@ -41,7 +41,7 @@ struct FairGraph : NonPORGraph< G > {
         }
 
         bool empty() const {
-            return current >= parts.size();
+            return size_t( current ) >= parts.size();
         }
 
         Node head() const {

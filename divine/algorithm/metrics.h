@@ -152,14 +152,14 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
         return visitor::ExpandState;
     }
 
-    visitor::TransitionAction transition( Node f, Node t )
+    visitor::TransitionAction transition( Node, Node )
     {
         shared.stats.addEdge();
         return visitor::FollowTransition;
     }
 
     struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
-        static visitor::DeadlockAction deadlocked( This &r, Node n ) {
+        static visitor::DeadlockAction deadlocked( This &r, Node ) {
             r.shared.stats.addDeadlock();
             return visitor::IgnoreDeadlock;
         }

@@ -25,7 +25,7 @@ struct LegacyStateAllocator {
         return m_allocator->new_state( size );
     }
 
-    void delete_state( state_t &st ) {
+    void delete_state( state_t & ) {
         assert_die();
     }
 };

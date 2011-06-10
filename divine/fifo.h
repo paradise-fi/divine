@@ -58,7 +58,7 @@ public:
     }
 
     // copying a fifo is not allowed
-    Fifo( const Fifo &f ) {
+    Fifo( const Fifo & ) {
         head = tail = new Node();
         assert( empty() );
     }

@@ -164,7 +164,7 @@ struct FifoMatrix
     };
 
     bool pending( int to ) {
-        for ( int from = 0; from < m_matrix.size(); ++from )
+        for ( int from = 0; size_t( from ) < m_matrix.size(); ++from )
             if ( pending( from, to ) )
                 return true;
         return false;
@@ -183,7 +183,7 @@ struct FifoMatrix
     }
 
     T take( int to ) {
-        for ( int from = 0; from < m_matrix.size(); ++from )
+        for ( int from = 0; size_t( from ) < m_matrix.size(); ++from )
             if ( pending( from, to ) )
                 return take( from, to );
         assert_die();
@@ -222,7 +222,7 @@ struct DomainWorker {
         : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
-    DomainWorker( const DomainWorker &o )
+    DomainWorker( const DomainWorker & )
         : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 

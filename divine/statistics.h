@@ -78,17 +78,17 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     }
 
     PerThread &thread( int id ) {
-        assert( id <= threads.size() );
+        assert_leq( size_t( id ), threads.size() );
         if ( !threads[ id ] )
             threads[ id ] = new PerThread;
         return *threads[ id ];
     }
 
     void sent( int from, int to, int nodeSize) {
-        assert( to >= 0 );
+        assert_leq( 0, to );
 
         PerThread &f = thread( from );
-        if ( f.sent.size() <= to )
+        if ( f.sent.size() <= size_t( to ) )
             f.sent.resize( to + 1, 0 );
         ++ f.sent[ to ];
         f.memSent[ to ] += nodeSize;
@@ -98,7 +98,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         assert_leq( 0, from );
 
         PerThread &t = thread( to );
-        if ( t.received.size() <= from )
+        if ( t.received.size() <= size_t( from ) )
             t.received.resize( from + 1, 0 );
         ++ t.received[ from ];
         t.memReceived[ from ] += nodeSize;
@@ -109,9 +109,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     static int diff( int a, int b ) { return a - b; }
 
     void matrix( std::ostream &o, int (*what)(int, int) ) {
-        for ( int i = 0; i < threads.size(); ++i ) {
+        for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
             int sum = 0;
-            for ( int j = 0; j < threads.size(); ++j )
+            for ( int j = 0; size_t( j ) < threads.size(); ++j )
                 printv( o, 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
             if ( !gnuplot )
                 printv( o, 10, sum, 0 );
@@ -129,14 +129,14 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         if ( gnuplot )
             return;
 
-        for ( int i = 0; i < threads.size() - 1; ++ i )
+        for ( size_t i = 0; i < threads.size() - 1; ++ i )
             o << (d ? "=====" : "-----");
-        for ( int i = 0; i < (10 - text.length()) / 2; ++i )
+        for ( size_t i = 0; i < (10 - text.length()) / 2; ++i )
             o << (d ? "=" : "-");
         o << " " << text << " ";
-        for ( int i = 0; i < (11 - text.length()) / 2; ++i )
+        for ( size_t i = 0; i < (11 - text.length()) / 2; ++i )
             o << (d ? "=" : "-");
-        for ( int i = 0; i < threads.size() - 1; ++ i )
+        for ( size_t i = 0; i < threads.size() - 1; ++ i )
             o << (d ? "=====" : "-----");
         o << (d ? " == SUM ==" : " ---------");
         o << std::endl;

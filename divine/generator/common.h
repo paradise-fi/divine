@@ -86,8 +86,8 @@ struct Common {
     unsigned acceptingGroupCount() { return 0; }
 
     /// Sets information about domain geometry
-    void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
-                        const unsigned peersCount = 1 ) {}
+    void setDomainSize( unsigned /* mpiRank */ = 0, unsigned /* mpiSize */ = 1,
+                        unsigned /* peersCount */ = 1 ) {}
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >

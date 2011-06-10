@@ -167,7 +167,7 @@ struct Pool {
         return ret;
     }
 
-    size_t pointerSize( char *_ptr )
+    size_t pointerSize( char * )
     {
         assert_die();
         return 0; // replace with magic

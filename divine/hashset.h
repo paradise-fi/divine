@@ -156,7 +156,7 @@ struct HashSet
     {
         assert( valid( c.item ) ); // ensure key validity
 
-        if ( !growing && m_used > (size() / 100) * 75 )
+        if ( !growing && size_t( m_used ) > (size() / 100) * 75 )
             grow();
 
         int idx;

@@ -299,7 +299,7 @@ struct Compact : public Common< Blob > {
 
     /// Returns owner id of state n based on peersCount, overrides superclass implementation.
     template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+    int owner( Hash &, Worker &, Node n, hash_t = 0 ) {
         assert( n.valid() );
 
         return owner( n );

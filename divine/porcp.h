@@ -28,7 +28,7 @@ struct NonPORGraph : generator::Extended< G > {
     void fullexpand( Visitor &v, Node n ) {}
 
     template< typename Worker, typename Hasher, typename Table >
-    void _porEliminate( Worker &w, Hasher &h, Table &t ) {}
+    void _porEliminate( Worker &, Hasher &, Table & ) {}
 
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &, Alg & ) {

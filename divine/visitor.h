@@ -71,10 +71,10 @@ struct Setup {
         return (n.*exp)( a );
     }
 
-    static void finished( Notify &, Node n ) {}
-    static DeadlockAction deadlocked( Notify &, Node n ) { return IgnoreDeadlock; }
+    static void finished( Notify &, Node ) {}
+    static DeadlockAction deadlocked( Notify &, Node ) { return IgnoreDeadlock; }
 
-    static TransitionAction transitionHint( Notify &n, Node a, Node b, hash_t hint ) {
+    static TransitionAction transitionHint( Notify &, Node, Node, hash_t ) {
         return FollowTransition;
     }
 

@@ -99,7 +99,7 @@ struct LtlCE {
     // --
 
     template< typename Worker, typename Hasher, typename Equal, typename Table >
-    void _parentTrace( Worker &w, Hasher &h, Equal &eq, Table &t ) {
+    void _parentTrace( Worker &w, Hasher &h, Equal &, Table &t ) {
         if ( shared().ce.current_updated )
             return;
         if ( owner( h, w, shared().ce.current ) == w.globalId() ) {

@@ -89,7 +89,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     std::string escape( std::string s ) {
         char buf[ s.length() * 2 ];
         int i = 0, j = 0;
-        while ( i < s.length() ) {
+        while ( size_t( i ) < s.length() ) {
             char c = s[ i ++ ];
             if ( c == '\\' || c == '\n' || c == '"' )
                 buf[ j++ ] = '\\';
