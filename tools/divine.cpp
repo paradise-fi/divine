@@ -247,11 +247,6 @@ struct Main {
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
 
-        o_distance = drawing->add< IntOption >(
-            "distance", '\0', "distance", "",
-            "set maximum BFS distance from initial state [default = 32]" );
-        o_distance ->setValue( 32 );
-
         // counterexample options
         o_noCe = ce->add< BoolOption >(
             "no-counterexample", 'n', "no-counterexample", "",
@@ -266,6 +261,11 @@ struct Main {
             "file to output trail to (default: input-file.trail)" );
 
         // drawing options
+        o_distance = drawing->add< IntOption >(
+            "distance", '\0', "distance", "",
+            "set maximum BFS distance from initial state [default = 32]" );
+        o_distance ->setValue( 32 );
+
         o_drawTrace = drawing->add< StringOption >(
             "draw-trace", '\0', "draw-trace", "",
             "draw and highlight a particular trace in the output" );
