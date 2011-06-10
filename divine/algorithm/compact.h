@@ -710,7 +710,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
         BinaryWriter writer( this );
         writer.dumpCompactRepresentation();
 
-        while ( !this->idle() ); // let mpi know that we are finished here
+        while ( !this->idle() ) ; // let mpi know that we are finished here
     }
 
     /// Called from master. Initializes the compact state space representation.

@@ -141,7 +141,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         std::vector<int> trans;
         for( std::string each;
              std::getline( split, each, ',' );
-             trans.push_back( ::atoi( each.c_str() ) ) );
+             trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
         Node current = initial;
         for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {

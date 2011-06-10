@@ -13,6 +13,9 @@ struct TestBarrier {
         bool busy;
         TestBarrier *owner;
         bool sleeping;
+
+        Thread() : id( 0 ), busy( false ), sleeping( false ) {}
+
         bool workWaiting() {
             if ( busy )
                 return true;

@@ -109,7 +109,7 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
             for ( int from = 0; from < this->peers(); ++from ) {
                 while ( this->comms().pending( from, this->globalId() ) ) {
                     Node f = this->comms().take( from, this->globalId() );
-                    while ( !this->comms().pending( from, this->globalId() ) );
+                    while ( !this->comms().pending( from, this->globalId() ) ) ;
                     Node t = this->comms().take( from, this->globalId() );
                     edge( f, t );
                 }
@@ -124,7 +124,7 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
                 }
                 localqueue.pop_front();
             }
-        } while ( !this->idle() ); // until termination detection succeeds
+        } while ( !this->idle() ) ; // until termination detection succeeds
     }
 
     Simple( Config *c = 0 )

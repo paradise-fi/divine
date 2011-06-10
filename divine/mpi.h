@@ -267,7 +267,7 @@ struct Mpi : MpiBase {
         sendSharedBits( 1, *master_shared );
 
         _lock.drop();
-        while( loop() == Continue ); // wait (and serve) till the ring is done
+        while ( loop() == Continue ) ; // wait (and serve) till the ring is done
         is_master = true;
     }
 
@@ -642,7 +642,7 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         m_domain.mpi.registerMonitor( TAG_DONE, *this );
         m_domain.mpi.registerMonitor( TAG_INTERRUPT, *this );
 
-        while ( m_domain.mpi.loop() == Continue );
+        while ( m_domain.mpi.loop() == Continue ) ;
 
         mpidebug() << "WORKER DONE" << std::endl;
         return 0;

@@ -280,7 +280,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
                 }
             }
         }
-        while ( !this->idle() );
+        while ( !this->idle() ) ;
     }
 
     void _por_worker() {
