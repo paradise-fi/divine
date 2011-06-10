@@ -70,6 +70,7 @@ struct Main {
     OptionGroup *common, *drawing, *compact, *ce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por, *o_fair;
+    BoolOption *o_noDeadlocks, *o_noGoals;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
@@ -233,6 +234,14 @@ struct Main {
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
 
+        o_noGoals = cmd_reachability->add< BoolOption >(
+            "ignore-goals", '\0', "ignore-goals", "",
+            "ignore goal states" );
+
+        o_noDeadlocks = cmd_reachability->add< BoolOption >(
+            "ignore-deadlocks", '\0', "ignore-deadlocks", "",
+            "ignore deadlock states" );
+
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
             "set initial hash table size to 2^n [default = 19]" );
@@ -388,6 +397,8 @@ struct Main {
         config.wantCe = !o_noCe->boolValue();
         config.textFormat = o_textFormat->boolValue();
         config.findBackEdges = o_findBackEdges->boolValue();
+        config.findDeadlocks = !o_noDeadlocks->boolValue();
+        config.findGoals = !o_noGoals->boolValue();
         statistics = o_statistics->boolValue();
 
         drawConfig.maxDistance = o_distance->intValue();

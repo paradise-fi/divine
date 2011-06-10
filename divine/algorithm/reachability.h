@@ -82,6 +82,8 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         CeShared< Node > ce;
         int initialTable;
         bool need_expand;
+        bool find_deadlocks;
+        bool find_goals;
     } shared;
 
     Node goal;
@@ -116,7 +118,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         }
         shared.stats.addEdge();
 
-        if ( shared.g.isGoal( t ) ) {
+        if ( shared.find_goals && shared.g.isGoal( t ) ) {
             shared.goal = t;
             shared.deadlocked = false;
             return visitor::TerminateOnTransition;
@@ -128,6 +130,9 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
         static visitor::DeadlockAction deadlocked( This &r, Node n ) {
+            if ( !r.shared.find_deadlocks )
+                return visitor::IgnoreDeadlock;
+
             r.shared.goal = n;
             r.shared.stats.addDeadlock();
             r.shared.deadlocked = true;
@@ -159,6 +164,8 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
             this->initPeer( &shared.g );
             this->becomeMaster( &shared, workerCount( c ) );
             shared.initialTable = c->initialTable;
+            shared.find_deadlocks = c->findDeadlocks;
+            shared.find_goals = c->findGoals;
         }
     }
 

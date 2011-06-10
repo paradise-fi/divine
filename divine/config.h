@@ -16,6 +16,10 @@ struct Config {
     int initialTable;
     bool wantCe;
 
+    // for reachability
+    bool findDeadlocks;
+    bool findGoals;
+
     std::string input;
     std::string trailFile, ceFile;
 
