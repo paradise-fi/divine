@@ -447,7 +447,11 @@ struct Main {
                 config.workers = 1;
         } else if ( opts.foundCommand() == cmd_owcty )
             m_run = RunOwcty;
-        else if ( opts.foundCommand() == cmd_reachability )
+        else if ( opts.foundCommand() == cmd_reachability ) {
+            if ( !config.findGoals && !config.findDeadlocks )
+                std::cerr << "WARNING: Both deadlock and goal detection is disabled."
+                          << "Only state count " << std::endl << "statistics will be tracked "
+                          << "(\"divine metrics\" would have been more efficient)." << std::endl;
             m_run = RunReachability;
         else if ( opts.foundCommand() == cmd_map )
             m_run = RunMap;
