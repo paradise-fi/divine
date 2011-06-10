@@ -27,17 +27,21 @@ static GenericValue builtin_assert(Interpreter *interp, const FunctionType *, co
     return GenericValue();
 }
 
-static GenericValue builtin_malloc(Interpreter *interp, const FunctionType *, const Args &args)
+static GenericValue builtin_malloc_guaranteed(Interpreter *interp, const FunctionType *, const Args &args)
+{
+    int size = args[0].IntVal.getZExtValue();
+    Arena::Index mem = interp->arena.allocate(size);
+    return PTOGV( reinterpret_cast< void * >( intptr_t( mem ) ) );
+}
+
+static GenericValue builtin_malloc(Interpreter *interp, const FunctionType *ty, const Args &args)
 {
     // This yields two different successors, one with a NULL return and another
     // where the memory was actually allocated (the alloca/malloc arenas are
     // actually shared, (TODO) at least for now)
     switch (interp->_alternative) {
-        case 0: { // normal allocation here
-            int size = args[0].IntVal.getZExtValue();
-            Arena::Index mem = interp->arena.allocate(size);
-            return PTOGV( reinterpret_cast< void * >( intptr_t( mem ) ) );
-        }
+        case 0:
+            return builtin_malloc_guaranteed( interp, ty, args );
         case 1:
             return PTOGV( 0 );
     }
@@ -196,6 +200,7 @@ static struct {
     { "__divine_builtin_trace", builtin_trace },
     { "__divine_builtin_assert", builtin_assert },
     { "__divine_builtin_malloc", builtin_malloc },
+    { "__divine_builtin_malloc_guaranteed", builtin_malloc_guaranteed },
     { "__divine_builtin_free", builtin_free },
     { "__divine_builtin_thread_create", builtin_thread_create },
     { "__divine_builtin_fork", builtin_fork },
