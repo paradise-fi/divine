@@ -101,8 +101,9 @@ struct LLVM : Common< Blob > {
         s.free( pool() );
     }
 
-    bool isGoal( Node s ) {
-        return false;
+    bool isGoal( Node n ) {
+        interpreter().restore( n, alloc._slack );
+        return interpreter().assert_violated;
     }
 
     bool isAccepting( Node s ) { return false; }

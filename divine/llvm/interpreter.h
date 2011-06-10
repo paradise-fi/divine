@@ -206,6 +206,7 @@ public:
      * members; see external.cpp */
     int _alternative;
     int _context;
+    int32_t assert_violated; /* bool really */
     Arena arena;
 
     // The runtime stack of executing code.  The top of the stack is the current
@@ -239,7 +240,7 @@ public:
     }
 
     Blob snapshot( int extra, Pool &p ) {
-        int need = 4;
+        int need = 8;
         for ( int c = 0; c < stacks.size(); ++c ) {
             need += 4;
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -249,6 +250,7 @@ public:
         Blob b = arena.compact( extra + need, p );
         int offset = extra;
 
+        offset = b.put( offset, assert_violated );
         offset = b.put( offset, stacks.size() );
 
         for ( int c = 0; c < stacks.size(); ++c ) {
@@ -264,7 +266,10 @@ public:
     void restore( Blob b, int extra ) {
         int contexts;
         int depth;
-        int offset = b.get( extra, contexts );
+        int offset = extra;
+
+        offset = b.get( offset, assert_violated );
+        offset = b.get( offset, contexts );
         stacks.resize( contexts );
 
         for ( int c = 0; c < contexts; ++c ) {

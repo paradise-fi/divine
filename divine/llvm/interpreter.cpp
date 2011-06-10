@@ -40,6 +40,7 @@ Interpreter::Interpreter(Module *M)
   stacks.resize( 1 );
   _context = 0;
   _alternative = 0;
+  assert_violated = false;
 
   IL = new IntrinsicLowering(TD);
 }

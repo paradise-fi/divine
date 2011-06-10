@@ -20,14 +20,10 @@ static GenericValue builtin_exit(Interpreter *, const FunctionType *, const Args
     assert_die();
 }
 
-static GenericValue builtin_assert(Interpreter *, const FunctionType *, const Args &args)
+static GenericValue builtin_assert(Interpreter *interp, const FunctionType *, const Args &args)
 {
-    if (!args[0].IntVal) {
-        // XXX we should mark the current state with an "assertion failed" flag
-        // and make those goals, so we can use reachability to search for such
-        // states and generate corresponding counterexample traces
-        std::cerr << "assertion failed" << std::endl;
-    }
+    if (!args[0].IntVal)
+        interp->assert_violated = true;
     return GenericValue();
 }
 

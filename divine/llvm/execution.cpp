@@ -1327,6 +1327,8 @@ Instruction &Interpreter::nextInstruction() {
 void Interpreter::step( int ctx, int alternative ) {
     _context = ctx;
     _alternative = alternative;
+    assert_violated = false; // reset assert flag
+
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;
     setLocation( SF(), loc );
