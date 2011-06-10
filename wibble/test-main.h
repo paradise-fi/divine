@@ -244,6 +244,7 @@ struct Main : RunFeedback {
 #endif
                 child();
         }
+        return 0;
     }
 };
 
