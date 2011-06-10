@@ -453,7 +453,7 @@ struct Main {
                           << "Only state count " << std::endl << "statistics will be tracked "
                           << "(\"divine metrics\" would have been more efficient)." << std::endl;
             m_run = RunReachability;
-        else if ( opts.foundCommand() == cmd_map )
+        } else if ( opts.foundCommand() == cmd_map )
             m_run = RunMap;
         else if ( opts.foundCommand() == cmd_metrics )
             m_run = RunMetrics;
