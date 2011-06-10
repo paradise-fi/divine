@@ -295,7 +295,7 @@ struct Partitioned {
                         Node f, t;
                         f = worker.comms().take( from, to );
                         /* wait a bit, if need be */
-                        while ( !worker.comms().pending( from, to ) );
+                        while ( !worker.comms().pending( from, to ) ) ;
                         t = worker.comms().take( from, to );
                         Statistics::global().received( from, to, sizeof(f) +  memSize(t));
 

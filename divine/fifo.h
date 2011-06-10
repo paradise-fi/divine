@@ -127,7 +127,7 @@ public:
     }
 
     T &front( bool wait = false ) {
-        while ( wait && empty() );
+        while ( wait && empty() ) ;
         assert( head );
         assert( !empty() );
         // last pop could have left us with empty queue exactly at an
