@@ -76,6 +76,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     struct Shared {
         Node goal;
+        bool deadlocked;
         algorithm::Statistics< G > stats;
         G g;
         CeShared< Node > ce;
@@ -84,6 +85,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     } shared;
 
     Node goal;
+    bool deadlocked;
 
     Domain< This > &domain() {
         return DomainWorker< This >::domain();
@@ -116,6 +118,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
         if ( shared.g.isGoal( t ) ) {
             shared.goal = t;
+            shared.deadlocked = false;
             return visitor::TerminateOnTransition;
         }
 
@@ -127,6 +130,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         static visitor::DeadlockAction deadlocked( This &r, Node n ) {
             r.shared.goal = n;
             r.shared.stats.addDeadlock();
+            r.shared.deadlocked = true;
             return visitor::TerminateOnDeadlock;
         }
     };
@@ -170,11 +174,15 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     }
 
     void collect() {
+        deadlocked = false;
         for ( int i = 0; i < domain().peers(); ++i ) {
             Shared &s = domain().shared( i );
             shared.stats.merge( s.stats );
-            if ( s.goal.valid() )
+            if ( s.goal.valid() ) {
                 goal = s.goal;
+                if ( s.deadlocked )
+                    deadlocked = true;
+            }
         }
     }
 
@@ -196,7 +204,15 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         }
 
         progress() << shared.stats.states << " states, "
-                   << shared.stats.transitions << " edges" << std::endl;
+                   << shared.stats.transitions << " edges" << std::flush;
+
+        if ( goal.valid() ) {
+            if ( deadlocked )
+                progress() << ", DEADLOCK";
+            else
+                progress() << ", GOAL";
+        }
+        progress() << std::endl;
 
         safetyBanner( !goal.valid() );
         if ( goal.valid() )
