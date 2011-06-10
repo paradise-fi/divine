@@ -60,7 +60,8 @@ struct FairGraph : NonPORGraph< G > {
 
         // Adds succesor container and directs all contained states to given copy of the statespace
         void add( GenSuccs s, int copy ) {
-            if ( current == parts.size() && s.empty() ) current++;
+            if ( size_t( current ) == parts.size() && s.empty() )
+                current++;
             parts.push_back( make_pair< GenSuccs, int >( s, copy ) );
         }
 

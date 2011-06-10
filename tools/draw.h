@@ -144,7 +144,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
              trans.push_back( ::atoi( each.c_str() ) ) );
 
         Node current = initial;
-        for ( int i = 0; i < trans.size(); ++ i ) {
+        for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {
             intrace->insert( current );
             typename G::Successors s = wibble::list::drop( trans[ i ] - 1, g.successors( current ) );
             current = s.head();

@@ -364,7 +364,7 @@ struct Mpi : MpiBase {
                     MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
         {
             int tag = status.Get_tag();
-            if ( m_monitor.size() >= tag && m_monitor[ tag ] ) {
+            if ( m_monitor.size() >= size_t( tag ) && m_monitor[ tag ] ) {
                 if ( m_monitor[ tag ]->process( _lock, status ) == Done )
                     return Done;
             } else if ( slave( _lock, status ) == Done )

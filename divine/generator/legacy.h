@@ -38,7 +38,7 @@ struct LegacyCommon : Common< _State > {
                 return true;
             if ( parent->legacy_system()->is_erroneous( parent->alloc.legacy_state( _from ) ) )
                 return true;
-            return current == m_succs.size();
+            return size_t( current ) == m_succs.size();
         }
 
         Node from() { return _from; }
@@ -78,7 +78,7 @@ struct LegacyCommon : Common< _State > {
 
         enabled_trans_container_t enabled_trans( *system );
         legacy_system()->get_enabled_trans( legacy, enabled_trans );
-        int proc_gid = pid;
+        unsigned proc_gid = pid;
         if ( system->get_with_property() && proc_gid >= system->get_property_gid() )
             proc_gid++; // skip property process
         for ( std::size_t i=0; i != enabled_trans.size(); i++ ) {

@@ -56,7 +56,7 @@ struct Parallel {
 
     T &instance( int i ) {
         assert( i < n );
-        assert_eq( n, m_instances.size() );
+        assert_eq( size_t( n ), m_instances.size() );
         return m_instances[ i ];
     }
 
@@ -68,7 +68,7 @@ struct Parallel {
     /// Look up i-th thread (as opposed to i-th instance).
     R< T > &thread( int i ) {
         assert( i < n );
-        assert_eq( n, m_threads.size() );
+        assert_eq( size_t( n ), m_threads.size() );
         return m_threads[ i ];
     }
 
