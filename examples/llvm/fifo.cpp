@@ -1,0 +1,196 @@
+// -*- C++ -*- (c) 2008-2011 Petr Rockai <me@mornfall.net>
+
+/*
+ * This program is a simple test case for the divine intra-thread fifo, the
+ * tool's main shared-memory communication primitive. We fire off two threads,
+ * a writer and a reader. The writer pushes 3 values, while the reader checks
+ * that the values written match the values read, that the fifo is empty /
+ * non-empty at the right places &c. Compiling with -DBUG turns off "volatile"
+ * and with -O2 leads to assertion failures.
+ *
+ * Compile with: clang -c -emit-llvm -O2 [-DBUG] -o fifo.ll fifo.cpp
+ *
+ * NOTE: With -O0, the state space is probably too big to fit into memory of an
+ * average modern machine. The -O2 version without -DBUG has 18086 states,
+ * while the buggy one has 50446.
+ */
+
+#ifdef BUG
+#define volatile
+#endif
+
+/*
+ * Declarations of the divine builtins. Required in C++. Eventually should be
+ * provided in a header form by divine. Such a header should also provide
+ * new/delete based on the builtin malloc/free. When that is done, it should be
+ * possible to #include unmodified fifo.h here. We substitute malloc/free
+ * manually for now.
+ */
+
+extern "C" void *malloc( int );
+extern "C" void *malloc_guaranteed( int );
+extern "C" void free( void * );
+extern "C" int thread_create();
+extern "C" void assert( int );
+extern "C" void trace( const char *, ... );
+
+const int cacheLine = 64;
+
+/**
+ * A simple queue (First-In, First-Out). Concurrent access to the ends of the
+ * queue is supported -- a thread may write to the queue while another is
+ * reading. Concurrent access to a single end is, however, not supported.
+ *
+ * The NodeSize parameter defines a size of single block of objects. By
+ * default, we make the node a page-sized object -- this seems to work well in
+ * practice. We rely on the allocator to align the allocated blocks reasonably
+ * to give good cache usage.
+ */
+template< typename T,
+          int NodeSize = (512 - cacheLine - sizeof(int)
+                          - sizeof(void*)) / sizeof(T) >
+struct Fifo {
+protected:
+    // the Node layout puts read and write counters far apart to avoid
+    // them sharing a cache line, since they are always written from
+    // different threads
+    struct Node {
+        T * read;
+        char padding[ cacheLine - sizeof(int) ];
+        T buffer[ NodeSize ];
+        T * volatile write;
+        Node *next;
+        Node() {
+            read = write = buffer;
+            next = 0;
+        }
+    };
+
+    // pad the fifo object to ensure that head/tail pointers never
+    // share a cache line with anyone else
+    char _padding1[cacheLine-2*sizeof(Node*)];
+    Node * head;
+    char _padding2[cacheLine-2*sizeof(Node*)];
+    Node * volatile tail;
+    char _padding3[cacheLine-2*sizeof(Node*)];
+
+public:
+    Fifo() {
+        head = tail = mkNode();
+        assert( empty() );
+    }
+
+    // copying a fifo is not allowed
+    Fifo( const Fifo & ) {
+        head = tail = mkNode();
+        assert( empty() );
+    }
+
+    ~Fifo() {
+        while ( head != tail ) {
+            Node *next = head->next;
+            assert( next != 0 );
+            free(head);
+            head = next;
+        }
+        free(head);
+    }
+
+    Node *mkNode() {
+        Node *n = (Node *)malloc_guaranteed(sizeof (Node));
+        n->read = n->write = n->buffer;
+        n->next = 0;
+        return n;
+    }
+
+    void push( const T&x ) {
+        Node *t;
+        if ( tail->write == tail->buffer + NodeSize ) {
+            t = mkNode();
+        } else
+            t = tail;
+
+        *t->write = x;
+        ++ t->write;
+
+        if ( tail != t ) {
+            tail->next = t;
+            tail = t;
+        }
+    }
+
+    bool empty() {
+        return head == tail && head->read >= head->write;
+    }
+
+    int size() {
+    	int size = 0;
+    	Node *n = head;
+    	do {
+            size += n->write - n->read;
+            n = n->next;
+        } while (n);
+        return size;
+    }
+
+    void dropHead() {
+        Node *old = head;
+        head = head->next;
+        assert( !!head );
+        free(old);
+    }
+
+    void pop() {
+        assert( !empty() );
+        ++ head->read;
+        if ( head->read == head->buffer + NodeSize ) {
+            if ( head->next != 0 ) {
+                dropHead();
+            }
+        }
+        // the following can happen when head->next is 0 even though head->read
+        // has reached NodeSize, *and* no front() has been called in the meantime
+        if ( head->read > head->buffer + NodeSize ) {
+            dropHead();
+            pop();
+        }
+    }
+
+    T &front( bool wait = false ) {
+        while ( wait && empty() ) ;
+        assert( !!head );
+        assert( !empty() );
+        // last pop could have left us with empty queue exactly at an
+        // edge of a block, which leaves head->read == NodeSize
+        if ( head->read == head->buffer + NodeSize ) {
+            dropHead();
+        }
+        return *head->read;
+    }
+};
+
+void threads( Fifo< int > *f ) {
+    int id = thread_create();
+    if ( id ) {
+        for ( int i = 0; i < 3; ++i )
+            f->push( i );
+        while( true );
+    } else {
+        for ( int i = 0; i < 3; ++i ) {
+            int j = f->front( true );
+            assert( i == j );
+            assert( !f->empty() );
+            f->pop();
+        }
+        assert( f->empty() );
+        while ( true );
+    }
+}
+
+int main() {
+    Fifo< int > f;
+    Fifo< int > * volatile _f = &f;
+    threads( _f );
+    return 0;
+}
+
