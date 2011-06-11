@@ -88,7 +88,7 @@ public:
 			throw wibble::exception::System(res, "creating pthread mutex");
 	}
 
-  Mutex( const Mutex & m )
+  Mutex( const Mutex & )
 	{
     int res = 0;
 #ifdef POSIX
@@ -299,7 +299,7 @@ public:
 			throw wibble::exception::System(res, "creating pthread condition");
 	}
 
-  Condition( const Condition & con )
+  Condition( const Condition & )
 	{
 		int res = 0;
 #ifdef POSIX
