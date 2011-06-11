@@ -288,9 +288,12 @@ public:
     ~Interpreter();
 
     typedef std::pair< std::string, void * > Describe;
-    Describe describeAggregate( const Type *t, void *where );
-    Describe describeValue( const Type *t, void *where );
-    std::string describeGenericValue( int vindex, GenericValue vvalue );
+    typedef std::set< int > DescribeSeen;
+
+    Describe describeAggregate( const Type *t, void *where, DescribeSeen& );
+    Describe describeValue( const Type *t, void *where, DescribeSeen& );
+    std::string describePointer( const Type *t, int idx, DescribeSeen& );
+    std::string describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen * = 0 );
     std::string describe();
 
   /// runAtExitHandlers - Run any functions registered by the program's calls to
