@@ -287,8 +287,10 @@ public:
     explicit Interpreter(Module *M);
     ~Interpreter();
 
-    std::pair< std::string, int > describeAggregate( const Type *t, void *where );
-    std::string describeValue( int vindex, GenericValue vvalue );
+    typedef std::pair< std::string, void * > Describe;
+    Describe describeAggregate( const Type *t, void *where );
+    Describe describeValue( const Type *t, void *where );
+    std::string describeGenericValue( int vindex, GenericValue vvalue );
     std::string describe();
 
   /// runAtExitHandlers - Run any functions registered by the program's calls to
