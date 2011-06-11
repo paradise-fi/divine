@@ -57,20 +57,21 @@ std::string Interpreter::describePointer( const Type *t, int idx, DescribeSeen &
 Interpreter::Describe Interpreter::describeValue( const Type *t, void *where, DescribeSeen &seen ) {
     std::string res;
     if ( t->isIntegerTy() ) {
-        where += t->getPrimitiveSizeInBits() / 8;
         if ( t->isIntegerTy( 32 ) )
             res = wibble::str::fmt( *(int32_t*) where);
         if ( t->isIntegerTy( 8 ) )
             res = wibble::str::fmt( int( *(int8_t *) where ) );
+        where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isPointerTy() ) {
         res = describePointer( t, *(intptr_t*) where, seen );
-    } else if ( t->getPrimitiveSizeInBits() ) {
         where += t->getPrimitiveSizeInBits() / 8;
+    } else if ( t->getPrimitiveSizeInBits() ) {
         res = "?";
+        where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isAggregateType() ) {
         Describe sub = describeAggregate( t, where, seen );
-        where = sub.second;
         res = sub.first;
+        where = sub.second;
     }
     return std::make_pair( res, where );
 }
