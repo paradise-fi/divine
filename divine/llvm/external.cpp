@@ -31,7 +31,10 @@ static GenericValue builtin_malloc_guaranteed(Interpreter *interp, const Functio
 {
     int size = args[0].IntVal.getZExtValue();
     Arena::Index mem = interp->arena.allocate(size);
-    return PTOGV( reinterpret_cast< void * >( intptr_t( mem ) ) );
+    GenericValue GV;
+    GV.PointerVal = reinterpret_cast< void * >( intptr_t( mem ) );
+    GV.IntVal = APInt(3, 0); // XXX hack.
+    return GV;
 }
 
 static GenericValue builtin_malloc(Interpreter *interp, const FunctionType *ty, const Args &args)
