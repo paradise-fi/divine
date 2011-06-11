@@ -139,6 +139,16 @@ struct Arena {
         return block( p.block ).data + (p.i / sizeof(word));
     }
 
+    bool validate( Index p ) {
+        if ( !p.valid )
+            return false;
+        if ( p.block > blocks.size() )
+            return false;
+        if ( p.i >= BS )
+            return false;
+        return true;
+    }
+
     // Store away the state of the memory arena in a single monolithic memory
     // block. Use "expand" to restore the state of the arena from that point.
 

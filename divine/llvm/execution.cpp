@@ -802,8 +802,23 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
                                    gep_type_begin(I), gep_type_end(I), SF()), SF());
 }
 
+bool Interpreter::validatePointer(GenericValue GV) {
+    if ( GVTOP(GV) == 0 ) {
+        flags.null_dereference = true;
+        return false;
+    }
+    if ( !arena.validate( intptr_t( GVTOP(GV) ) ) ) {
+        flags.invalid_dereference = true;
+        return false;
+    }
+    return true;
+}
+
 void Interpreter::visitLoadInst(LoadInst &I) {
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
+    if ( !validatePointer( SRC ) )
+        return;
+
     GenericValue *Ptr = (GenericValue*)arena.translate(intptr_t(GVTOP(SRC)));
     GenericValue Result;
     LoadValueFromMemory(Result, Ptr, I.getType());
@@ -815,6 +830,9 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 void Interpreter::visitStoreInst(StoreInst &I) {
     GenericValue Val = getOperandValue(I.getOperand(0), SF());
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
+    if ( !validatePointer( SRC ) )
+        return;
+
     StoreValueToMemory(Val, (GenericValue *)arena.translate(intptr_t(GVTOP(SRC))),
                        I.getOperand(0)->getType());
     if (I.isVolatile() && PrintVolatile)
@@ -1327,7 +1345,7 @@ Instruction &Interpreter::nextInstruction() {
 void Interpreter::step( int ctx, int alternative ) {
     _context = ctx;
     _alternative = alternative;
-    assert_violated = false; // reset assert flag
+    flags.assert = false; // reset assert flag
 
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;

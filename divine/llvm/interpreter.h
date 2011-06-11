@@ -206,7 +206,11 @@ public:
      * members; see external.cpp */
     int _alternative;
     int _context;
-    int32_t assert_violated; /* bool really */
+    struct {
+        uint32_t assert:1;
+        uint32_t null_dereference:1;
+        uint32_t invalid_dereference:1;
+    } flags;
     Arena arena;
 
     // The runtime stack of executing code.  The top of the stack is the current
@@ -240,7 +244,7 @@ public:
     }
 
     Blob snapshot( int extra, Pool &p ) {
-        int need = 8;
+        int need = sizeof( stacks.size() ) + sizeof( flags );
         for ( int c = 0; c < stacks.size(); ++c ) {
             need += 4;
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -250,7 +254,7 @@ public:
         Blob b = arena.compact( extra + need, p );
         int offset = extra;
 
-        offset = b.put( offset, assert_violated );
+        offset = b.put( offset, flags );
         offset = b.put( offset, stacks.size() );
 
         for ( int c = 0; c < stacks.size(); ++c ) {
@@ -268,7 +272,7 @@ public:
         int depth;
         int offset = extra;
 
-        offset = b.get( offset, assert_violated );
+        offset = b.get( offset, flags );
         offset = b.get( offset, contexts );
         stacks.resize( contexts );
 
@@ -335,6 +339,8 @@ public:
     void setLocation( ExecutionContext &, Location );
     void setInstruction( ExecutionContext &, BasicBlock::iterator );
     Instruction &nextInstruction();
+
+    bool validatePointer( GenericValue );
 
   // Opcode Implementations
   void visitReturnInst(ReturnInst &I);

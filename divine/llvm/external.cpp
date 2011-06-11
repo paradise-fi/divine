@@ -23,7 +23,7 @@ static GenericValue builtin_exit(Interpreter *, const FunctionType *, const Args
 static GenericValue builtin_assert(Interpreter *interp, const FunctionType *, const Args &args)
 {
     if (!args[0].IntVal)
-        interp->assert_violated = true;
+        interp->flags.assert = true;
     return GenericValue();
 }
 
@@ -239,6 +239,9 @@ bool Interpreter::viable( int ctx, int alt )
     if ( _context >= stacks.size() )
         return false;
     if ( done( ctx ) )
+        return false;
+
+    if ( flags.null_dereference || flags.invalid_dereference )
         return false;
 
     Function *F;

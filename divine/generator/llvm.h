@@ -103,7 +103,9 @@ struct LLVM : Common< Blob > {
 
     bool isGoal( Node n ) {
         interpreter().restore( n, alloc._slack );
-        return interpreter().assert_violated;
+        return interpreter().flags.assert
+            || interpreter().flags.null_dereference
+            || interpreter().flags.invalid_dereference;
     }
 
     bool isAccepting( Node s ) { return false; }
