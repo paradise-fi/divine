@@ -1,0 +1,2 @@
+% DiVinE: The parallel & distributed model checker handbook
+% Luboš Brim; Jiří Barnat; Tomáš Janoušek; Petr Ročkai

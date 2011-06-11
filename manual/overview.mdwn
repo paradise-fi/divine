@@ -1,0 +1,72 @@
+Why DiVinE?
+===========
+
+The computing power of computers has increased by a factor of a million over the
+past couple of decades. As a matter of fact, the development effort, both in
+industry and in academia, has gone into developing bigger, more powerful and
+more complex applications.  In the next few decades we may still expect a
+similar rate of growth, due to various factors such as continuing
+miniaturization, parallel and distributed computing. 
+
+With the increase in complexity of computer systems, it becomes even more
+important to develop formal methods for ensuring their quality and reliability.
+Various techniques for automated and semi-automated analysis and verification
+have been successfully applied to real-life computer systems. However, these
+techniques are computationally demanding and memory-intensive in general and their
+applicability to extremely large and complex systems routinely seen in practice
+these days is limited. The major hampering factor is the state space explosion
+problem due to which large industrial models cannot be efficiently handled
+unless we use more sophisticated and scalable methods and a balance of
+the usual trade-off between run-time, memory requirements, and precision of a
+method.
+
+A lot of attention has been paid to the development of approaches to battle the
+state space explosion problem. Many techniques, such as abstraction, state
+compression, state space reduction, symbolic state representation, etc., are
+used to reduce the size of the problem to be handled allowing thus a single
+old-fashioned single-processor computer to process larger systems. All these
+methods can be therefore characterized as *reduction* techniques.
+
+Verification and analysis methods that are tailored to exploit the
+capabilities of the new hardware architectures are slowly appearing as well.
+These **platform-dependent** techniques focus on increasing the amount of
+available computational power.  These are, for example, techniques to fight
+memory limits with efficient utilisation of external I/O devices, techniques
+that introduce cluster-based algorithms to employ aggregate power of
+network-interconnected computers, or techniques to speed-up the verification on
+multi-core processors.
+
+The idea of exploiting hard disks or parallel computers in verification already
+appeared in the very early years of the formal verification era. However,
+inaccessibility of cheap parallel computers with sufficiently fast external
+memory together with negative theoretical complexity results excluded these
+approaches from the main stream in formal verification. The situation changed
+dramatically during the past several years.  The computer progress over the
+past two decades has measured several orders of magnitude with respect to
+various physical parameters such as computing power, memory size at all
+hierarchy levels from caches to disk, power consumption, physical size and
+cost.  In particular, the focus of novel computer architectures in parallel and
+distributed computing has shifted away from unique massively parallel systems
+competing for world records towards smaller and more cost effective systems
+built from personal computer parts.  In addition, recent shift in the emphasis
+of research on parallel algorithms to pragmatic issues has provided practically
+efficient algorithms for solving computationally hard problems. As a matter of
+fact, interest in platform-depended verification has been revived and DiVinE
+was born.
+
+
+About DiVinE
+============
+
+DiVinE is an open source tool for platform-dependent LTL model checking of
+computer systems. LTL model checking algorithms in DiVinE follow the
+*automata-based approach*. Algorithms find accepting cycles in the product of
+the system model and a Buchi automaton for the negation of the formula.
+
+In most sequential LTL model checkers Nested Depth-First Search and Tarjan's
+decomposition into strongly connected components are used for accepting cycle
+detection. Unfortunately, both algorithms strongly rely on depth-first search
+postorder which computation is known to be inherently sequential. Therefore,
+these algorithms are unsuitable for being used in parallel setting.  DiVinE
+implements **new algorithms** for parallel accepting cycle detection problem.
+These are briefly described on the respective tool pages.

@@ -1,0 +1,102 @@
+Tool Guide
+==========
+
+This section will give you a quick overview on using DiVinE for verification
+purposes. 
+
+Using the Tool
+--------------
+
+First and foremost, the model needs to be specified in [DVE modelling language] [1]
+and the property needs to be specified either as an LTL formula or as a
+Büchi automaton. We will present usage of the tool on a simple example of a
+mutual exclusion protocol. Source code of a single process of such a model
+looks like this:
+
+    process P_$1 {
+    byte j=0, k=0;
+    state NCS, CS, wait, q2, q3;
+    init NCS;
+    trans
+     NCS -> wait { effect j = 1, active = $1, waiting[$1] = 1; },
+     wait -> q2 { guard j < N;
+                  effect pos[$1] = j, active = $1; },
+     q2 -> q3 { effect step[j-1] = $1, k = 0, active = $1; },
+     q3 -> q3 { guard (k == $1 || pos[k]< j) && k < N;
+                effect k = k+1, active = $1; },
+     q3 -> wait { guard step[j-1] != $1 || k == N;
+                  effect j = j+1, active = $1; },
+     wait -> CS { guard j == N;
+                  effect in_critical = in_critical+1,
+                  active = $1, waiting[$1] = 0; },
+     CS -> NCS { effect pos[$1] = 0, in_critical = in_critical-1,
+                 active = $1; };
+    }
+
+For a more elaborate discussion on how to prepare models for DiVinE, please see
+the [Language Guide] [1]. The first LTL property we will use is
+
+    GF c0 and GF c1
+
+which is a naive formulation of the idea that the two processes are infinitely
+often in the critical section. An improved version of the formula that enforces
+fairness will be
+
+    GF(a0 and w0) -> GF c0 and (GF a1 and w1) -> GF c1
+
+The propositions `a` and `w` mean that the given process is active (when `a`
+holds) and that it is waiting (when `w` holds). First of these formulae is
+invalid (and the tool produces a counterexample), whereas the second one will
+be shown to hold for the model presented.
+
+An example invocation of the tool for the model with 3 processes (and the
+formulae extended to 3 processes straightforwardly) looks like this:
+
+    $ divine owcty mutex_peterson.naive.dve 
+     initialize...             |S| = 81219
+    ------------- iteration 0 ------------- 
+     reachability...           |S| = 81219
+     elimination & reset...    |S| = 59736
+    ------------- iteration 1 ------------- 
+     reachability...           |S| = 59736
+     elimination & reset...    |S| = 59736
+     ===================================== 
+             Accepting cycle FOUND         
+     ===================================== 
+     generating counterexample...      done
+
+To browse counterexamples, it is recommended to use the graphical user
+interface of DiVinE, divine.ide.  When the same verifier command is used on the
+second formula, no counterexample is generated and the tool declares that an
+accepting cycle has not been found, which means that the LTL property holds.
+
+It can be seen that the input file to the verifier is a single DVE file that
+already contains a property process. Such a file could be written by hand (when
+the property has been specified as a Büchi automaton) or produced by
+`divine combine`, which takes a set of LTL formulae as input (in an `.ltl`
+file containing definitions of atomic propositions and the formulae. For
+example, such file containing the 2 discussed properties looks like this:
+
+    #define a_0 (active == 0)
+    #define a_1 (active == 1)
+
+    #define w_0 (waiting[0] == 1)
+    #define w_1 (waiting[1] == 1)
+
+    #define c_0 (P_0.CS)
+    #define c_1 (P_1.CS)
+
+    #property G(F(c_0)) && G(F(c_1))
+    #property ((GF(a_0 && w_0)) -> GF(c_0)) && ((GF(a_1 && w_1)) -> GF(c_1))
+
+The `divine combine` command will produce a single DVE file for each property,
+which can then be used as an input for the verifier.
+
+[1]: language.html
+
+Graphical User Interface
+------------------------
+
+DiVinE provides a Qt-based graphical user interface for ease of use and for
+comfortable counterexample browsing and analysis. The basic interface provides
+a model editor, a simulator interface and a couple of verification buttons:
