@@ -551,11 +551,3 @@ Suppose this process is in state `q0`. First, we nondeterministically choose
 which of the three -- (0), (1) or (2) -- transitions we use. If it is (1) or
 (2), the behaviour is the same as in DVE. If it is (0), the process gets to
 state `p1` with probability 1/3 and to state `p2` with probability 2/3.
-
-# DVE Language Reference and Semantics
-
-The complete DVE language reference and semantics is given in Chapter 2 of the
-Master Thesis of Pavel Simecek, which is available in PDF format
-[here][langref].
-
-[langref]: dve.pdf

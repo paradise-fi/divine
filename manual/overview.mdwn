@@ -1,5 +1,8 @@
+Introduction
+============
+
 Why DiVinE?
-===========
+-----------
 
 The computing power of computers has increased by a factor of a million over the
 past couple of decades. As a matter of fact, the development effort, both in
@@ -56,7 +59,7 @@ was born.
 
 
 About DiVinE
-============
+------------
 
 DiVinE is an open source tool for platform-dependent LTL model checking of
 computer systems. LTL model checking algorithms in DiVinE follow the
