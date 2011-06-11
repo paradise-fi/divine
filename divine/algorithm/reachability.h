@@ -48,6 +48,7 @@ struct _MpiId< Reachability< G, S > >
         *o++ = s.goal.valid();
         if ( s.goal.valid() )
             o = s.goal.write32( o );
+        o = s.ce.write( o );
     }
 
     template< typename I >
@@ -59,6 +60,7 @@ struct _MpiId< Reachability< G, S > >
             FakePool fp;
             i = s.goal.read32( &fp, i );
         }
+        i = s.ce.read( i );
         return i;
     }
 };
