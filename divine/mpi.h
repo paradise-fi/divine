@@ -248,7 +248,7 @@ struct Mpi : MpiBase {
         std::vector< int32_t > shbits;
         algorithm::_MpiId< Algorithm >::writeShared(
             sh, std::back_inserter( shbits ) );
-        mpidebug() << "sending shared bits..." << std::endl;
+        mpidebug() << "sending shared bits to " << to << "..." << std::endl;
         MPI::COMM_WORLD.Send( &shbits.front(),
                               shbits.size() * 4,
                               MPI::BYTE, to, TAG_SHARED );
@@ -300,14 +300,19 @@ struct Mpi : MpiBase {
         is_master = true;
         *master_shared = obtainSharedBits();
         _lock.drop();
+        mpidebug() << "runSerial " << id << "..." << std::endl;
         domain().parallel().runInRing(
             *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
+        mpidebug() << "runSerial " << id << " locally done..." << std::endl;
         _lock.reclaim();
         is_master = false;
-        if ( rank() < size() - 1 )
+        if ( rank() < size() - 1 ) {
+            mpidebug() << "passing control to " << rank() + 1 << "..." << std::endl;
             notifyOne( rank() + 1, TAG_RING_RUN, id );
-        else
+        } else {
+            mpidebug() << "ring finished, passing control back to master..." << std::endl;
             notifyOne( 0, TAG_RING_DONE, 0 );
+        }
         sendSharedBits( ( rank() + 1 ) % size(), *master_shared );
     }
 
