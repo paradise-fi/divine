@@ -74,7 +74,7 @@ endif( NOT WIN32 )
 if( LLVM_FOUND )
   target_link_libraries( libdivine
     LLVMExecutionEngine LLVMBitReader LLVMInterpreter
-    LLVMTarget LLVMCore LLVMSupport LLVMCodeGen )
+    LLVMTarget LLVMCore LLVMSupport LLVMCodeGen LLVMAnalysis )
 endif()
 
 if( CURSES_FOUND )

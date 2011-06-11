@@ -287,29 +287,9 @@ public:
     explicit Interpreter(Module *M);
     ~Interpreter();
 
-    std::string describe() {
-        std::stringstream s;
-        for ( int c = 0; c < stacks.size(); ++c ) {
-            std::vector< std::string > vec;
-            for ( ExecutionContext::Values::iterator v = stack( c ).back().values.begin();
-                  v != stack( c ).back().values.end(); ++v ) {
-                Value *val = valueIndex.right( v->first );
-                if ( val->getValueName() ) {
-                    std::string str = std::string( val->getValueName()->getKey() ) + " = ";
-                    if ( v->second.IntVal.getBitWidth() == 2 ) { // XXX pointer hack
-                        str += "*" + wibble::str::fmt( v->second.PointerVal );
-                        Arena::Index idx = intptr_t( GVTOP( v->second ) );
-                        str += " (" + wibble::str::fmt( *(int*)arena.translate( idx ) ) + ")";
-                    } else { // assume intval for now
-                        str += v->second.IntVal.toString( 10, 1 );
-                    }
-                    vec.push_back( str );
-                }
-            }
-            s << wibble::str::fmt( vec ) << std::endl;
-        }
-        return s.str();
-    }
+    std::pair< std::string, int > describeAggregate( const Type *t, void *where );
+    std::string describeValue( int vindex, GenericValue vvalue );
+    std::string describe();
 
   /// runAtExitHandlers - Run any functions registered by the program's calls to
   /// atexit(3), which we intercept and store in AtExitHandlers.
