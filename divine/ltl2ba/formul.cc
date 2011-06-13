@@ -1110,7 +1110,7 @@ bool LTL_formul_t::is_pure_universal()
 				obsah.o1->arg2->is_pure_universal());
 			break;
 		case op_V:
-			return(obsah.o1->arg1->is_pure_universal());
+			return(obsah.o1->arg2->is_pure_universal());
 			break;
 		case op_U:
 			if (is_F())
