@@ -32,6 +32,7 @@ wibble_HEADERS = \
     sfinae.h \
     singleton.h \
     string.h \
+    test.h \
     tests.h
 
 wibblesys_HEADERS = \
