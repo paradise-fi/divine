@@ -72,11 +72,13 @@ void example1()
     std::cout << ex.output2.get() << std::endl;
 }
 
-/* int main() {
+#ifdef STANDALONE
+int main() {
     example1();
-    example2();
-} */
+}
+#endif
 
+#ifndef STANDALONE
 static inline char *make( CustomSetup *setup, char **to )
 {
     int total = setup->state_size + setup->slack;
@@ -148,3 +150,4 @@ extern "C" void system_setup( CustomSetup *setup )
     setup->state_size = sys->size();
     setup->custom = sys;
 }
+#endif
