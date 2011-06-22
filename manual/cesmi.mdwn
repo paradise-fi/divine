@@ -1,0 +1,22 @@
+Common Explicit-State Model Interface
+=====================================
+
+DiVinE provides an implementation for CESMI, which defines a simple common
+interface between a model-checking core and a module that generates the state
+space of the model in a demand-driven fashion.
+
+CESMI does not specifically demand any concrete implementation of the
+interface. DiVinE provides a C-runtime-compatible ABI conforming to the CESMI
+specification, as well as C (and C++) and Haskell APIs, which can then be
+translated to conform to the provided ABI using standard tools. Loading a
+compiled CESMI module is facilitated by using dynamic (shared) libraries on the
+target platform: ELF Shared Object files are supported on POSIX platforms, and
+Dynamically Linked Libraries (DLLs) on Win32 platforms.
+
+DiVinE currently provides two compilers to translate models in specific
+modelling formalisms to CESMI modules: a compiler for the DVE language (which
+is also supported directly through an interpreter) and a compiler for the
+MurPHI language, adapted from the original MurPHI model compiler.
+
+(XXX: We need to actually write down the specification, either here, or
+externally and put a link here)

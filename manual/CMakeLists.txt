@@ -1,6 +1,6 @@
 # TODO
 
-set( SOURCES title.mdwn overview.mdwn using.mdwn language.mdwn )
+set( SOURCES title.mdwn overview.mdwn using.mdwn language.mdwn cesmi.mdwn )
 
 add_custom_command(
   OUTPUT manual.pdf
