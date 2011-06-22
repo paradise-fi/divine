@@ -17,7 +17,7 @@
 
 #ifdef HAVE_MPI
 #include <mpi.h>
-#ifdef OPEN_MPI
+#ifdef HAVE_OMPI_VERSION
 #include <ompi/version.h>
 #endif
 #endif
