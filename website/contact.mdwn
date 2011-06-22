@@ -1,0 +1,20 @@
+Contact Information
+===================
+
+If you have comments or questions about DiVinE please email divine at
+fi.muni.cz.
+
+To file a bug report or an enhancement request, please use [our trac] [1].
+
+Address
+=======
+
+Faculty of Informatics &#47; ParaDiSe  
+Botanicka 68a  
+
+Brno, Czech Republic  
+Phone: +420 549 491 869  
+[www.fi.muni.cz/paradise] [2]
+
+[1]: http://divine.fi.muni.cz/trac
+[2]: http://www.fi.muni.cz/paradise

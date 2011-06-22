@@ -1,0 +1,109 @@
+Licence
+=======
+
+DiVinE is free software, distributed under GNU GPL and BSD licences. Detailed
+licence texts may be found in the COPYING file in the distribution tarball. The
+tool is a product of the ParaDiSe Laboratory, Faculty of Informatics of Masaryk
+University.
+
+This distribution includes freely redistributable third-party code. Please
+refer to AUTHORS and COPYING included in the distribution for copyright and
+licensing details.
+
+Download
+========
+
+The source code of the latest version of DiVinE is available for download.
+Binaries are only available for 32-bit Windows.  Please note that DiVinE
+Cluster and DiVinE Multi-Core have been discontinued and that ProbDiVinE is
+distributed as a part of the main DiVinE package.
+
+Download: **[divine-2.5.1.tar.gz] [1]**, see [what's new] [2].  An installer for
+32 bit windows: **[divine-2.5-win32.exe] [4]**. Windows binaries will be made
+available on demand: please [contact us] [3].
+
+[1]: divine-2.5.1.tar.gz
+[2]: whatsnew.html
+[3]: contact.html
+[4]: divine-2.5-win32.exe
+
+Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
+it directly from our version control system. If you have the [darcs] [1] system
+installed then the latest source code tarball can be obtained as follows:
+
+    darcs get http://divine.fi.muni.cz/darcs/mainline divine
+
+Archive of old releases
+-----------------------
+
+* [divine-2.4.tar.gz](divine-2.4.tar.gz)  
+  [divine-2.4-win32.exe](divine-2.4-win32.exe) (Windows installer)
+* [divine-2.3.tar.gz](divine-2.3.tar.gz)
+* [divine-2.2.tar.gz](divine-2.2.tar.gz)
+* [divine-2.1.1.tar.gz](divine-2.1.1.tar.gz)  
+  [divine-2.1.1.exe](divine-2.1.1.exe) (Windows CLI)  
+  [divine-2.1.1-win32.exe](divine-2.1.1-win32.exe) (Windows installer)
+* [divine-2.1.tar.gz](divine-2.1.tar.gz)
+* [divine-2.0.tar.gz](divine-2.0.tar.gz)
+
+DiVinE Multi-Core:
+
+* [divine-mc-1.4.tar.gz](divine-mc-1.4.tar.gz)
+* [divine-mc-1.3.1.tar.gz](divine-mc-1.3.1.tar.gz)
+* [divine-mc-1.3.tar.gz](divine-mc-1.3.tar.gz)
+* [divine-mc-1.2.1.tar.gz](divine-mc-1.2.1.tar.gz)
+* [divine-mc-1.1.tar.gz](divine-mc-1.1.tar.gz)
+* [divine-mc-1.0-beta1.tar.gz](divine-mc-1.0-beta1.tar.gz)
+
+DiVinE Cluster:
+
+* [divine-cluster-0.8.3.tar.gz](divine-cluster-0.8.3.tar.gz)
+* [divine-cluster-0.8.2.tar.gz](divine-cluster-0.8.2.tar.gz)
+* [divine-cluster-0.8.0.tar.gz](divine-cluster-0.8.0.tar.gz)
+* [divine-0.7.2.tar.gz](divine-0.7.2.tar.gz)
+* [divine-0.7.1.tar.gz](divine-0.7.1.tar.gz)
+* [divine-0.7.0.tar.gz](divine-0.7.0.tar.gz)
+
+Installation
+============
+
+If you are using the Windows installer, just execute the downloaded file and
+follow the installation wizard. The rest of this section is only relevant for
+installation from source.
+
+Prerequisites
+-------------
+
+* A POSIX-compatible operating system (tested on Linux).
+* Recent GNU C++ compiler with support of POSIX Threads.
+* Cmake \[[www.cmake.org](http://www.cmake.org)\]  
+  Note: If your computer is connected to the Internet during installation, the
+  configure script is able to download and compile cmake package for you.
+* One of the distribution tarballs as provided above.
+
+Instructions
+------------
+                  
+* Unzip the distribution tarball and enter the newly created directory
+
+      tar xvzf divine-2.5.tar.gz
+      cd divine-2.5
+                     
+* Now configure and compile the package:
+                        
+      ./configure
+      make
+
+* And test that the compilation succeeded.
+                        
+      cd _build/tools
+      ./divine help
+      ./divine reachability ../../examples/shuffle.dve
+      ./divine owcty ../../examples/peterson-liveness.dve
+      ./divine owcty ../../examples/peterson-naive.dve
+                     
+* There is no need to install the binary, it is self-contained. However,
+  if you like, you can install divine for more convenient access:
+                        
+       make install
+
