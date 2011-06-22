@@ -1,0 +1,358 @@
+body { font-family: sans-serif;
+       margin: auto;
+       margin-top: 3ex;
+       max-width: 65em;
+       padding: 0;
+       background: white; }
+
+body.trac { max-width: 75em; }
+
+.listing {
+     font: normal 13px Verdana,Arial,'Bitstream Vera Sans';
+}
+
+#metanav { text-align: right; }
+#metanav span { margin-left: 1em; font-size: small; }
+
+div#content { margin-left: 15em;
+              margin-bottom: 0;
+              margin-top: 1ex;
+              padding: 0ex 3em 4ex 1.5em;
+              border-left: 1px dotted gray;
+              min-height: 55ex;
+              background: white; }
+
+div#sidebar { font-family: sans-serif;
+              text-align: right;
+              width: 180px;
+              margin: 1.2ex 1em 2ex 1em;
+              padding: 1em;
+              padding-top: 1;
+
+              float: left;
+              top: 10ex; }
+
+#sidebar p { font-size: 83%;
+             text-align: center;
+             line-height: 115%;
+             padding: 0;
+             margin: 0; }
+
+#sidebar h1 { border-bottom: 1px solid gray;
+              padding: 0;
+              margin: 0; margin-top: 2ex;
+              margin-bottom: .5ex;
+              font-size: 83%;
+              text-align: center; }
+
+#sidebar h2 { border: none;
+              padding: 0;
+              margin: 0; }
+#sidebar ul { padding: 0;
+              margin: 0; }
+
+.noarchivedate span.archivedate { display: none; }
+
+div#header { background: white;
+             padding: 1ex;
+             background-image: url('divine-logo.png');
+             background-repeat: no-repeat;
+             background-position: right top;
+             border-bottom: solid 1px black;
+             margin: 0; }
+
+.trac div#header {
+    background-image: url('trac-logo.png');
+}
+
+div#footer { padding: .5ex;
+             padding-bottom: .8ex;
+             padding-left: 1em;
+             background: #202020;
+             text-align: center;
+             font-size: small;
+             font-weight: bold;
+             color: white;
+             margin: 0;
+             margin-top: 1ex;
+             margin-bottom: 1ex; }
+
+#header h1 { font-weight: bold;
+             display: inline;
+             font-size: 4ex;
+             margin: 0;
+             margin-bottom: 1ex;
+             margin-right: .7em; }
+
+#header h2 { font-weight: normal;
+             display: inline;
+             font-family: sans-serif;
+             font-size: 3ex;
+             margin: 2pt;
+             margin-left: 3em;
+             border: 0 none;
+             color: #202020; }
+
+#sidebar a { text-decoration: none;
+             margin: 4px;
+             display: block;
+             font-size: 80%;
+             font-weight: bold;
+             text-align: left;
+             padding: 2px;
+             padding-left: 8px;
+             min-width: 170px;
+             height: 18px;
+             background-image: url('button.png');
+             background-position: left center;
+             background-repeat: no-repeat; }
+
+#sidebar a:link { color: white; }
+#sidebar a:visited { color: white; }
+#sidebar a:active { color: white; }
+
+#sidebar a:hover { background-image: url('button-over.png'); }
+
+#header h1 a:link,
+#header h1 a:visited,
+#header h1 a:active { color: #B30000; }
+
+#header h1 a:link:hover,
+#header h1 a:visited:hover,
+#header h1 a:active:hover { text-decoration: none;
+                            color: #B30000; }
+
+#header h2 a:link:hover,
+#header h2 a:visited:hover,
+#header h2 a:active:hover { text-decoration: none;
+                            color: #B30000; }
+
+#trac { color: darkred; }
+#ctxtnav { text-align: right; font-size: 8pt; margin-top: 6px; }
+#ctxtnav > h2 { display: none; }
+#ctxtnav li { display: inline; padding-left: 1em;
+    padding-top: 3px; margin-top: 3px;
+    border-top: 1px black solid; }
+#ctxtnav hr { display: none; }
+
+a:link { text-decoration: none; color: darkred; }
+a:visited { text-decoration: none; color: darkred; }
+a:active { text-decoration: none; color: red; }
+a:link:hover { text-decoration: underline; color: darkred;  }
+a:visited:hover { text-decoration: underline; color: darkred; }
+a:active:hover { text-decoration: underline; color: darkred; }
+
+#content > h1 { font-family: sans-serif;
+                font-weight: bold;
+                font-size: 120%;
+                text-align: center;
+                padding-left: 0em; padding-top: 0;
+                margin-top: 3ex;
+                margin-bottom: 1.2ex;
+                color: black; }
+
+#content > h2,
+.inlinepage > h1 { font-family: sans-serif;
+                   font-weight: normal;
+                   font-size: 110%;
+                   text-align: center;
+                   padding-left: 0.2em;
+                   margin-left: .2em;
+                   margin-right: 0.1ex;
+                   margin-bottom: 0.4ex;
+                   margin-top: 2ex; }
+
+.inlinepage > h1 { display: none; }
+.inlinepage > h1.header { display: block; }
+
+.inlinepage > h2,
+#content > h3 { font-family: sans-serif;
+                font-size: 100%;
+                font-style: regular;
+                font-weight: bold;
+                padding-left: 0.6em; }
+
+strong { font-weight: bold; }
+
+b {
+    font-family: sans-serif;
+    font-weight: bold;
+}
+
+p {
+    text-align: justify;
+    /* padding: 0.3ex; */
+    padding-top: 0.3ex;
+    padding-bottom: 0.6ex;
+    /* padding-left: 1.2em; */
+    margin: 0;
+}
+
+ul {
+    margin-top: .2ex;
+}
+
+
+pre { text-align: left;
+      border: 1px dotted black;
+      padding: 0.8ex;
+      padding-bottom: 1ex;
+      margin: .8ex 1em .8ex 2em;
+}
+
+.note, .pageinfo { font-family: sans-serif;
+                   font-size: 83%;
+                   color: gray;
+                   padding-top: .5ex; padding-left: 0.8em; }
+
+.note a:link, .note a:visited, .note a:active { color: black; }
+
+img { left: -5em; position: relative; margin: 15px; }
+
+.disabled h2 { color: grey; }
+.disabled h3 { border-color: grey; }
+.disabled a { color: grey; }
+.disabled { color:grey; }
+
+div#actions { display: inline; }
+
+#actions ul {
+        display: inline;
+        font-size: 83%;
+	font-family: sans-serif;
+        color: gray;
+	padding-left: 0.8em;
+
+        margin: 0;
+	margin-top: -2.5ex;
+        padding: 6px;
+        list-style-type: none;
+        /* border-bottom: 1px solid #000; */
+}
+
+#actions li {
+        display: inline;
+	padding: 0;
+	margin: 0;
+	margin-left: .1em;
+	padding-left: .4em;
+	/* border-left: 1px grey solid; */
+}
+
+.feedbutton { float: right; }
+
+.inlinetitle .pageinfo { margin-left: 2em; font-size: 100%; }
+
+@media print {
+        a {
+                text-decoration: underline;
+        }
+        body {
+                background-color: transparent;
+        }
+        #sidebar, #footer {
+                display: none;
+        }
+        div#content {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                border-style: none;
+        }
+        div#header {
+                border-style: none;
+        }
+        #header h1, #header h2 {
+                font-size: 1.2em;
+        }
+}
+
+
+/* TRAC specific stuff follows */
+
+/* Styles for tabular listings such as those used for displaying directory
+   contents and report results. */
+table.listing {
+ border-bottom: 1px solid #d7d7d7;
+ border-collapse: collapse;
+ border-spacing: 0;
+ margin-top: 1em;
+ width: 100%;
+}
+table.listing th { text-align: left; padding: 0 1em .1em 0; font-size: 12px }
+table.listing thead { background: #f7f7f0 }
+table.listing thead th {
+ border: 1px solid #d7d7d7;
+ border-bottom-color: #999;
+ font-size: 11px;
+ font-weight: bold;
+ padding: 2px .5em;
+ vertical-align: bottom;
+}
+table.listing thead th :link:hover, table.listing thead th :visited:hover {
+ background-color: transparent;
+}
+table.listing thead th a { border: none; padding-right: 12px }
+table.listing th.asc a, table.listing th.desc a { font-weight: bold }
+table.listing th.asc a, table.listing th.desc a {
+ background-position: 100% 50%;
+ background-repeat: no-repeat;
+}
+table.listing th.asc a { background-image: url(../asc.png) }
+table.listing th.desc a { background-image: url(../desc.png) }
+table.listing tbody td, table.listing tbody th {
+ border: 1px dotted #ddd;
+ padding: .3em .5em;
+ vertical-align: top;
+}
+table.listing tbody td a:hover, table.listing tbody th a:hover {
+ background-color: transparent;
+}
+table.listing tbody tr { border-top: 1px solid #ddd }
+table.listing tbody tr.even { background-color: #fcfcfc }
+table.listing tbody tr.odd { background-color: #f7f7f7 }
+table.listing tbody tr:hover { background: #eed !important }
+table.listing tbody tr.focus { background: #ddf !important }
+
+#help {
+ clear: both;
+ color: #999;
+ font-size: 90%;
+ margin: 1em;
+ text-align: right;
+}
+
+/* Page preferences form */
+#prefs {
+ background: #f7f7f0;
+ border: 1px outset #998;
+ float: right;
+ font-size: 9px;
+ padding: .8em;
+ position: relative;
+ margin: 0 1em 1em;
+}
+* html #prefs { width: 26em } /* Set width only for IE */
+#prefs input, #prefs select { font-size: 9px; vertical-align: middle }
+#prefs fieldset {
+ background: transparent;
+ border: none;
+ margin: .5em;
+ padding: 0;
+}
+#prefs fieldset legend {
+ background: transparent;
+ color: #000;
+ font-size: 9px;
+ font-weight: normal;
+ margin: 0 0 0 -1.5em;
+ padding: 0;
+}
+#prefs .buttons { text-align: right }
+
+.milestone .info dl { clear: none !important; }
+#ticket table.properties { clear: none !important; }
+#preview { clear: none !important; }
+h1 .pathentry { float: none !important; }
+#jumprev, #jumploc { float: none !important; }
+#tabs { clear: none !important; float: none !important; position: absolute; }
