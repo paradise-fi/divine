@@ -234,9 +234,9 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             if ( extension( f ).oldmap != extension( t ).oldmap )
                 return updateIteration( t );
 
-        if ( isAccepting( t ) )
-            extension( t ).map = std::max( extension( t ).map, makeId( t ) );
         VertexId map = std::max( extension( f ).map, extension( t ).map );
+        if ( isAccepting( t ) )
+            map = std::max( map, makeId( t ) );
 
         if ( extension( t ).map < map ) {
             // we are *not* the MAP of our successors anymore, so not a
