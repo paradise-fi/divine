@@ -20,32 +20,42 @@ macro(appendFlag flags value)
   endforeach( F )
 endmacro(appendFlag)
 
+############################################
+## USER-LEVEL OPTIONS
+##
+
 option( COIN_LCA "use LCA-based algorithm for CoIn" ON )
-option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( HOARD "use HOARD SMP memory allocator" ON )
-option( POOLS "use pool allocation for graph vertices" ON )
-option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
-option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
+option( CURSES "link to curses library for nice statistics" ON )
+option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
+option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 option( GUI "compile the Qt GUI" ON )
 option( MURPHI "enable Murphi model compiler" ON )
-option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
 option( MANUAL "build pdf/html manual" ON )
+option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
 
-if( COIN_LCA )
-  include (CheckIncludeFileCXX)
-  CHECK_INCLUDE_FILE_CXX(tr1/unordered_set HAVE_UNORDERED_SET)
-  if( HAVE_UNORDERED_SET )
-    add_definitions( -DLCA )
-  else( HAVE_UNORDERED_SET )
-    message("-- WARNING: unordered_set not available. Using recursive algorithm for CoIn.")
-  endif( HAVE_UNORDERED_SET ) 
-endif( COIN_LCA )
+############################################
+## DEVELOPER-ORIENTED OPTIONS
+##
+
+option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
+option( PROFILE "generate profiling information for lcov coverage" OFF )
+option( POOLS "use pool allocation for graph vertices" ON )
+
+###############################################
+## MISC OPTION IMPLEMENTATION
+##
 
 if( NOT WIN32 )
   add_definitions( -DPOSIX )
 endif( NOT WIN32 )
+
+# on some mingw32, regex.h is not on the default include path
+find_path( RX_PATH regex.h )
+include_directories( ${RX_PATH} )
+link_directories( ${RX_PATH} )
 
 if( PERFORMANCE )
   add_definitions( -DPERFORMANCE )
@@ -70,11 +80,17 @@ if( NOT POOLS )
   add_definitions( "-DDISABLE_POOLS" )
 endif( NOT POOLS )
 
-if( GUI )
-  find_package( Qt4 4.5.0 )
-endif( GUI )
+find_program( SHA1SUM sha1sum )
 
-if( NOT USE32 AND NOT USE64 )
+if( NOT SHA1SUM )
+  message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
+endif( NOT SHA1SUM )
+
+#########################################
+## OPTIONAL FEATURES
+##
+
+if( CURSES AND NOT USE32 AND NOT USE64 )
   # the curses package we'd find probably wouldn't work anyway
   find_package( Curses )
   if( CURSES_FOUND )
@@ -82,10 +98,15 @@ if( NOT USE32 AND NOT USE64 )
   endif()
 endif()
 
-# on some mingw32, regex.h is not on the default include path
-find_path( RX_PATH regex.h )
-include_directories( ${RX_PATH} )
-link_directories( ${RX_PATH} )
+if( COIN_LCA )
+  include (CheckIncludeFileCXX)
+  CHECK_INCLUDE_FILE_CXX(tr1/unordered_set HAVE_UNORDERED_SET)
+  if( HAVE_UNORDERED_SET )
+    add_definitions( -DLCA )
+  else( HAVE_UNORDERED_SET )
+    message("-- WARNING: unordered_set not available. Using recursive algorithm for CoIn.")
+  endif( HAVE_UNORDERED_SET ) 
+endif( COIN_LCA )
 
 if( LLVM )
   include( FindLLVM )
@@ -102,38 +123,100 @@ endif()
 if( MANUAL )
   find_program( PANDOC pandoc )
   if ( PANDOC )
-    add_subdirectory( manual )
-    add_subdirectory( website )
+    # nothing to do
   else()
     message( "-- WARNING: Could not find pandoc, disabling pdf/html manual.")
     set( MANUAL OFF )
   endif()
 endif()
 
-if( MPI AND NOT WIN32 )
-include( FindMPI )
-endif( MPI AND NOT WIN32 )
-
-if( MPI AND MPI_FOUND )
-  add_definitions( "-DHAVE_MPI" )
-  foreach( path ${MPI_INCLUDE_PATH} )
-    set( MPI_INCLUDE_FLAGS "-I${path} ${MPI_INCLUDE_FLAGS}" )
-  endforeach()
-  include (CheckIncludeFileCXX)
-  check_include_file_cxx( "ompi/version.h" HAVE_OMPI_VERSION ${MPI_INCLUDE_FLAGS} )
-  if( HAVE_OMPI_VERSION )
-    add_definitions( "-DHAVE_OMPI_VERSION" )
-  endif()
-else()
-  set( MPI_INCLUDE_PATH "" )
-  set( MPI_LIBRARIES "" )
-  set( MPI_LIBRARY "" )
-  if( MPI )
+if( MPI AND NOT WIN32 ) # MPI not supported on win32
+  include( FindMPI )
+  if ( MPI_FOUND )
+    add_definitions( "-DHAVE_MPI" )
+    foreach( path ${MPI_INCLUDE_PATH} )
+      set( MPI_INCLUDE_FLAGS "-I${path} ${MPI_INCLUDE_FLAGS}" )
+    endforeach()
+    include (CheckIncludeFileCXX)
+    check_include_file_cxx( "ompi/version.h" HAVE_OMPI_VERSION ${MPI_INCLUDE_FLAGS} )
+    if( HAVE_OMPI_VERSION )
+      add_definitions( "-DHAVE_OMPI_VERSION" )
+    endif()
+  else()
     message( "-- WARNING: Could not find MPI. Disabling cluster support." )
-  endif( MPI )
-  set( MPI OFF )
-  set( MPIEXEC "" )
+    set( MPI OFF )
+    set( MPI_INCLUDE_PATH "" )
+    set( MPI_LIBRARIES "" )
+    set( MPI_LIBRARY "" )
+    set( MPIEXEC "" )
+  endif()
 endif()
+
+if( PROFILE )
+  find_program( LCOV lcov )
+  find_program( LCOV_GENHTML genhtml )
+
+  if( LCOV )
+    set( LCOV_BIN "${LCOV}" )
+    set( LCOV_IN "${divine_BINARY_DIR}" )
+    set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
+    configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
+    execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
+    set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
+
+    add_custom_target( lcov-report
+      COMMAND mkdir -p ${LCOV_OUT}
+      COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
+                      -a ${LCOV_OUT}/base.info
+                      -a ${LCOV_OUT}/collect-1.info
+                      -a ${LCOV_OUT}/collect-2.info
+                      -a ${LCOV_OUT}/collect-3.info
+                      -o ${LCOV_OUT}/overall_everything.info
+      COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
+                      ${divine_SOURCE_DIR}/divine/*
+                      ${divine_SOURCE_DIR}/examples/*
+                      ${divine_SOURCE_DIR}/murphi/*
+                      ${divine_SOURCE_DIR}/tools/*
+                      -o ${LCOV_OUT}/overall.info
+      COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
+        ${LCOV_OUT}/overall.info
+      VERBATIM
+    )
+  else()
+    message( "-- WARNING: Could not find LCOV, disabling coverage report generation." )
+    set( PROFILE OFF )
+  endif()
+endif()
+
+if( LTL2DSTAR )
+  find_package( Boost )
+  if( Boost_FOUND )
+    add_definitions( -DLTL2DSTAR )
+  else()
+    set( LTL2DSTAR OFF )
+  endif()
+endif()
+
+if( MURPHI )
+  find_program( BYACC "byacc" )
+  find_package( FLEX )
+  find_package( BYACC )
+  if ( FLEX_FOUND AND BYACC_FOUND AND BYACC )
+    add_definitions( -DHAVE_MURPHI )
+  else()
+    set( MURPHI OFF )
+  endif()
+endif()
+
+if( GUI )
+  find_package( Qt4 4.5.0 )
+  if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
+    # nothing to do
+  else()
+    message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
+    set( GUI OFF )
+  endif()
+endif( GUI )
 
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
@@ -142,74 +225,27 @@ set( DIVINE_INCLUDES
   ${LLVM_INCLUDE_DIRS}
   ${divine_SOURCE_DIR}/divine/legacy )
 
-find_program( SHA1SUM sha1sum )
-
-if( NOT SHA1SUM )
-  message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
-endif( NOT SHA1SUM )
+##########################################
+## SOURCE DIRECTORIES
+##
 
 add_custom_target( check )
 add_custom_target( unit )
 
-if( PROFILE )
-  find_program( LCOV lcov )
-  find_program( LCOV_GENHTML genhtml )
-  if( NOT LCOV )
-    message( "-- WARNING: Could not find LCOV, disabling coverage report generation." )
-  endif( NOT LCOV )
-endif( PROFILE )
-
-if( LCOV )
-  set( LCOV_BIN "${LCOV}" )
-  set( LCOV_IN "${divine_BINARY_DIR}" )
-  set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
-  configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
-  execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
-  set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
-
-  add_custom_target( lcov-report
-    COMMAND mkdir -p ${LCOV_OUT}
-    COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
-                    -a ${LCOV_OUT}/base.info
-                    -a ${LCOV_OUT}/collect-1.info
-                    -a ${LCOV_OUT}/collect-2.info
-                    -a ${LCOV_OUT}/collect-3.info
-                    -o ${LCOV_OUT}/overall_everything.info
-    COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
-                    ${divine_SOURCE_DIR}/divine/*
-                    ${divine_SOURCE_DIR}/examples/*
-                    ${divine_SOURCE_DIR}/murphi/*
-                    ${divine_SOURCE_DIR}/tools/*
-                    -o ${LCOV_OUT}/overall.info
-    COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-      ${LCOV_OUT}/overall.info
-    VERBATIM
-  )
-endif( LCOV )
-
 add_subdirectory( wibble )
+add_subdirectory( lpsolve )
+
 if( HOARD )
   add_subdirectory( hoard )
 endif( HOARD )
-add_subdirectory( lpsolve )
 
-find_package( Boost )
-if( Boost_FOUND )
-  add_definitions( -DLTL2DSTAR )
-  set( LTL2DSTAR ON )
+if( LTL2DSTAR )
   add_subdirectory( ltl2ba )
   add_subdirectory( ltl2dstar )
-endif( Boost_FOUND )
+endif()
 
-find_program( BYACC "byacc" )
-find_package( FLEX )
-find_package( BYACC )
-
-if( MURPHI AND FLEX_FOUND AND BYACC_FOUND AND BYACC )
-add_subdirectory( murphi )
-add_definitions( -DHAVE_MURPHI )
-else()
-set( MURPHI OFF )
+if( MURPHI )
+  add_subdirectory( murphi )
 endif()
 
 add_subdirectory( divine )
@@ -217,19 +253,33 @@ add_subdirectory( tools )
 add_subdirectory( examples )
 
 if( GUI )
-  if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
-    add_subdirectory( gui )
-  else()
-    message( "-- WARNING: Could not find Qt4 >= 4.5. Disabling GUI." )
-  endif()
+  add_subdirectory( gui )
 endif( GUI )
+
+if( MANUAL )
+  add_subdirectory( manual )
+  add_subdirectory( website )
+endif()
+
+###############################################
+## TESTING
+##
 
 add_dependencies( check unit )
 add_dependencies( check functional )
 
 add_subdirectory( test )
 
-# FIXME: better dependency detection
+###############################################
+## MAKE INSTALL
+##
+## FIXME: better dependency detection
+
+install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
+install(FILES COPYING RENAME COPYING.txt DESTINATION ./ COMPONENT sys)
+install(FILES AUTHORS RENAME AUTHORS.txt DESTINATION ./ COMPONENT sys)
+install(FILES NEWS RENAME NEWS.txt DESTINATION ./ COMPONENT sys)
+
 if( WIN32 )
   find_file( REGEX_LIB libgnurx-0.dll )
   find_file( GCC_SJL_LIB libgcc_s_sjlj-1.dll )
@@ -238,10 +288,9 @@ if( WIN32 )
   install(FILES ${GCC_SJL_LIB} DESTINATION ./ COMPONENT qt)
 endif( WIN32 )
 
-install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
-install(FILES COPYING RENAME COPYING.txt DESTINATION ./ COMPONENT sys)
-install(FILES AUTHORS RENAME AUTHORS.txt DESTINATION ./ COMPONENT sys)
-install(FILES NEWS RENAME NEWS.txt DESTINATION ./ COMPONENT sys)        
+########################################
+## BINARY INSTALLER
+##
 
 set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "DiViNE Distributed and Parallel Verification Environment" )
 set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
