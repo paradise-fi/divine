@@ -4,9 +4,8 @@
  *  Created on: 30.10.2010
  *      Author: Milan Krivanek
  */
-#include "coingenerator.h"
 
-
+#include <divine/generator/coin.h>
 
 namespace divine {
 namespace generator {

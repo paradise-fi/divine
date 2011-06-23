@@ -16,7 +16,7 @@
 #include <divine/generator/legacy.h>
 #include <divine/generator/custom.h>
 #include <divine/generator/compact.h>
-#include <divine/generator/coin/coingenerator.h>
+#include <divine/generator/coin.h>
 #include <divine/generator/llvm.h>
 
 // The algorithms.

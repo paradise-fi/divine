@@ -1,7 +1,6 @@
+// -*- C++ -*-
 #ifndef DIVINE_GENERATOR_COINGENERATOR_H
 #define DIVINE_GENERATOR_COINGENERATOR_H
-
-#include "parse/coin_common.hh"
 
 #include <stdexcept>
 #include <list>
@@ -10,10 +9,10 @@
 #include <tr1/unordered_set>
 #endif
 
-#include "../common.h"
-#include "state.h"
-
-#include "transition.h"
+#include <divine/coin/parse/coin_common.hh>
+#include <divine/generator/common.h>
+#include <divine/coin/state.h>
+#include <divine/coin/transition.h>
 
 extern FILE * yyin;
 
