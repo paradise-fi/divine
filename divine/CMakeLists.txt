@@ -16,8 +16,7 @@ file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
 
 file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
 file( GLOB SRC_LLVM llvm/*.cpp )
-
-file( GLOB SRC_BA ltl2ba/*.cc )
+file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
 file( GLOB SRC_GEN generator/*.cpp )
