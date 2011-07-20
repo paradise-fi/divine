@@ -3,7 +3,6 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
-#include <malloc.h>
 
 #ifndef WIBBLE_LIST_H
 #define WIBBLE_LIST_H
