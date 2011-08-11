@@ -8,8 +8,6 @@
 
 struct dirent;
 
-struct stat;
-
 namespace wibble {
 namespace sys {
 namespace fs {
