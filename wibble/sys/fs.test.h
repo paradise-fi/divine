@@ -38,13 +38,35 @@ struct TestFs {
             Directory dir("/");
             for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
                 if (*i == "etc")
+                {
                     assert(i.isdir());
+                    assert(!i.isreg());
+                }
         }
         {
             Directory dir("/etc");
             for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
                 if (*i == "passwd")
+                {
+                    assert(i.isreg());
                     assert(!i.isdir());
+                }
+        }
+        {
+            Directory dir("/dev");
+            for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
+            {
+                if (*i == "null")
+                {
+                    assert(i.ischr());
+                    assert(!i.isblk());
+                }
+                else if (*i == "sda")
+                {
+                    assert(i.isblk());
+                    assert(!i.ischr());
+                }
+            }
         }
     }
 

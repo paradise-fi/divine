@@ -80,6 +80,25 @@ void rmtree(const std::string& dir);
  */
 bool isdir(const std::string& pathname);
 
+/// Same as isdir but checks for block devices
+bool isblk(const std::string& pathname);
+
+/// Same as isdir but checks for character devices
+bool ischr(const std::string& pathname);
+
+/// Same as isdir but checks for FIFOs
+bool isfifo(const std::string& pathname);
+
+/// Same as isdir but checks for symbolic links
+bool islnk(const std::string& pathname);
+
+/// Same as isdir but checks for regular files
+bool isreg(const std::string& pathname);
+
+/// Same as isdir but checks for sockets
+bool issock(const std::string& pathname);
+
+
 /// Nicely wrap access to directories
 class Directory
 {
@@ -128,6 +147,24 @@ public:
 
         /// @return true if we refer to a directory, else false
         bool isdir() const;
+
+        /// @return true if we refer to a block device, else false
+        bool isblk() const;
+
+        /// @return true if we refer to a character device, else false
+        bool ischr() const;
+
+        /// @return true if we refer to a named pipe (FIFO).
+        bool isfifo() const;
+
+        /// @return true if we refer to a symbolic link.
+        bool islnk() const;
+
+        /// @return true if we refer to a regular file.
+        bool isreg() const;
+
+        /// @return true if we refer to a Unix domain socket.
+        bool issock() const;
     };
 
     Directory(const std::string& path);

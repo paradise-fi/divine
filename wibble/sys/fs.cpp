@@ -36,17 +36,52 @@ std::unique_ptr<struct stat> stat(const std::string& pathname)
 	return res;
 }
 
+#define common_stat_body(testfunc) \
+    struct stat st; \
+    if (::stat(pathname.c_str(), &st) == -1) { \
+        if (errno == ENOENT) \
+            return false; \
+        else \
+            throw wibble::exception::System("getting file information for " + pathname); \
+    } \
+    return testfunc(st.st_mode)
+
 bool isdir(const std::string& pathname)
 {
-	struct stat st;
-	if (::stat(pathname.c_str(), &st) == -1) {
-		if (errno == ENOENT)
-			return false;
-		else
-			throw wibble::exception::System("getting file information for " + pathname);
-        }
-	return S_ISDIR(st.st_mode);
+    common_stat_body(S_ISDIR);
 }
+
+bool isblk(const std::string& pathname)
+{
+    common_stat_body(S_ISBLK);
+}
+
+bool ischr(const std::string& pathname)
+{
+    common_stat_body(S_ISCHR);
+}
+
+bool isfifo(const std::string& pathname)
+{
+    common_stat_body(S_ISFIFO);
+}
+
+bool islnk(const std::string& pathname)
+{
+    common_stat_body(S_ISLNK);
+}
+
+bool isreg(const std::string& pathname)
+{
+    common_stat_body(S_ISREG);
+}
+
+bool issock(const std::string& pathname)
+{
+    common_stat_body(S_ISSOCK);
+}
+
+#undef common_stat_body
 
 bool access(const std::string &s, int m)
 {
