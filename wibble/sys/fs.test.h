@@ -1,6 +1,7 @@
 /* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
                (c) 2007 Enrico Zini <enrico@enricozini.org> */
 #include <wibble/sys/fs.h>
+#include <wibble/exception.h>
 #include <cstdlib>
 #include <set>
 #include <cstdlib>
@@ -21,7 +22,7 @@ struct TestFs {
         set<string> files;
         for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
             files.insert(*i);
-    
+
         assert(files.size() > 0);
         assert(files.find(".") != files.end());
         assert(files.find("..") != files.end());
@@ -31,15 +32,29 @@ struct TestFs {
 #endif
     }
 
+    Test directoryIsdir()
+    {
+        {
+            Directory dir("/");
+            for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
+                if (*i == "etc")
+                    assert(i.isdir());
+        }
+        {
+            Directory dir("/etc");
+            for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
+                if (*i == "passwd")
+                    assert(!i.isdir());
+        }
+    }
+
     // Ensure that nonexisting directories and files are reported as not valid
     Test invalidDirectories() {
-#ifdef POSIX
         Directory dir1("/antaniblindalasupercazzola123456");
         assert(!dir1.valid());
 
         Directory dir2("/etc/passwd");
         assert(!dir2.valid());
-#endif
     }
 
     Test _mkPath() {
@@ -79,12 +94,10 @@ struct TestFs {
     }
 
     Test _deleteIfExists() {
-#ifdef POSIX
 	system("rm -f does-not-exist");
 	assert(!deleteIfExists("does-not-exist"));
 	system("touch does-exist");
 	assert(deleteIfExists("does-exist"));
-#endif
     }
 
     Test _isDirectory() {

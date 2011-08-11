@@ -85,21 +85,23 @@ bool isDirectory(const std::string& pathname) __attribute__ ((deprecated));
 /// Nicely wrap access to directories
 class Directory
 {
-	std::string m_path;
+protected:
+    std::string m_path;
+    DIR* dir;
 
 public:
-	class const_iterator
-	{
-		DIR* dir;
-		struct dirent* d;
+    class const_iterator
+    {
+        Directory* dir;
+        struct dirent* d;
 
-	public:
-		// Create an end iterator
-		const_iterator() : dir(0), d(0) {}
-		// Create a begin iterator
-		const_iterator(DIR* dir) : dir(dir), d(0) { ++(*this); }
-		// Cleanup properly
-		~const_iterator() { if (dir) closedir(dir); }
+    public:
+        // Create an end iterator
+        const_iterator() : dir(0), d(0) {}
+        // Create a begin iterator
+        const_iterator(Directory& dir) : dir(&dir), d(0) { ++(*this); }
+        // Cleanup properly
+        ~const_iterator();
 
 		// auto_ptr style copy semantics
 		const_iterator(const const_iterator& i)
@@ -110,32 +112,11 @@ public:
 			wi->dir = 0;
 			wi->d = 0;
 		}
-		const_iterator& operator=(const const_iterator& i)
-		{
-			// Catch a = a
-			if (&i == this) return *this;
-			if (dir) closedir(dir);
-			dir = i.dir;
-			d = i.d;
-			const_iterator* wi = const_cast<const_iterator*>(&i);
-			wi->dir = 0;
-			wi->d = 0;
-                        return *this;
-		}
+        const_iterator& operator=(const const_iterator& i);
 
-		const_iterator& operator++()
-		{
-			if ((d = readdir(dir)) == 0)
-			{
-				closedir(dir);
-				dir = 0;
-			}
-			return *this;
-		}
+        const_iterator& operator++();
 
-		std::string operator*() const { return d->d_name; }
-		struct dirent* operator->() { return d; }
-		const struct dirent* operator->() const { return d; }
+        std::string operator*() const { return d->d_name; }
 
 		bool operator==(const const_iterator& iter) const
 		{
@@ -145,24 +126,22 @@ public:
 		{
 			return dir != iter.dir || d != iter.d;
 		}
-	};
 
-	Directory(const std::string& path) : m_path(path) {}
+        /// @return true if we refer to a directory, else false
+        bool isdir() const;
+    };
+
+    Directory(const std::string& path);
+    ~Directory();
 
 	/// Pathname of the directory
 	const std::string& path() const { return m_path; }
-
-	/// Check that the directory exists and is a directory
-	bool valid();
 
 	/// Begin iterator
 	const_iterator begin();
 
 	/// End iterator
 	const_iterator end() const;
-
-    /// @return true if \a i points to a directory, else false
-    bool isdir(const const_iterator& i) const;
 };
 
 }

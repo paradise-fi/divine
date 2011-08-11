@@ -162,7 +162,7 @@ void rmtree(const std::string& dir)
     for (Directory::const_iterator i = d.begin(); i != d.end(); ++i)
     {
         if (*i == "." || *i == "..") continue;
-        if (d.isdir(i))
+        if (i.isdir())
             rmtree(str::joinpath(dir, *i));
         else
             unlink(str::joinpath(dir, *i));
@@ -170,23 +170,29 @@ void rmtree(const std::string& dir)
     rmdir(dir);
 }
 
+#ifdef POSIX
 Directory::const_iterator Directory::begin()
 {
-	DIR* dir = opendir(m_path.c_str());
-	if (!dir)
-		throw wibble::exception::System("reading directory " + m_path);
-	return const_iterator(dir);
+    if (d) delete d;
 }
 
-Directory::const_iterator Directory::end() const
+Directory::const_iterator& Directory::const_iterator::operator=(const Directory::const_iterator& i)
 {
-	return const_iterator();
+    // Catch a = a
+    if (&i == this) return *this;
+    dir = i.dir;
+    d = i.d;
+    const_iterator* wi = const_cast<const_iterator*>(&i);
+    // Turn i into an end iterator
+    wi->dir = 0;
+    wi->d = 0;
+    return *this;
 }
 
-bool Directory::valid()
+Directory::const_iterator& Directory::const_iterator::operator++()
 {
 	// Check that the directory exists
-	std::unique_ptr<struct stat> st = stat(path());
+	std::auto_ptr<struct stat> st = stat(path());
 	if (st.get() == NULL)
 		return false;
 	// Check that it is a directory
@@ -194,23 +200,39 @@ bool Directory::valid()
 		return false;
 	return true;
 }
+#endif
 
-bool Directory::isdir(const const_iterator& i) const
+#ifdef _WIN32
+bool access(const std::string &s, int m)
 {
-#ifdef HAVE_STRUCT_DIRENT_D_TYPE
-	if (i->d_type == DT_DIR)
-		return true;
-	if (i->d_type != DT_UNKNOWN)
-		return false;
+	return 1; /* FIXME */
+}
+#endif
+
+Directory::~Directory()
+{
+    if (dir) closedir(dir);
+}
+
+Directory::const_iterator Directory::begin()
+{
+    return const_iterator(*this);
+}
+
+Directory::const_iterator Directory::end() const
+{
+    return const_iterator();
+}
 #endif
 	// No d_type, we'll need to stat
-	std::unique_ptr<struct stat> st = stat(wibble::str::joinpath(m_path, *i));
+	std::auto_ptr<struct stat> st = stat(wibble::str::joinpath(m_path, *i));
 	if (st.get() == 0)
 		return false;
 	if (S_ISDIR(st->st_mode))
 		return true;
     return false;
 }
+#endif
 
 std::string mkdtemp( std::string tmpl )
 {
