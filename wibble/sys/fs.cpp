@@ -36,11 +36,6 @@ std::unique_ptr<struct stat> stat(const std::string& pathname)
 	return res;
 }
 
-bool isDirectory(const std::string& pathname)
-{
-    return isdir(pathname);
-}
-
 bool isdir(const std::string& pathname)
 {
 	struct stat st;

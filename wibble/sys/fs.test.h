@@ -1,5 +1,5 @@
-/* -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
-               (c) 2007 Enrico Zini <enrico@enricozini.org> */
+/* -*- C++ -*- (c) 2007--2011 Petr Rockai <me@mornfall.net>
+               (c) 2007--2011 Enrico Zini <enrico@enricozini.org> */
 #include <wibble/sys/fs.h>
 #include <wibble/exception.h>
 #include <cstdlib>
@@ -101,14 +101,12 @@ struct TestFs {
     }
 
     Test _isDirectory() {
-#ifdef POSIX
 	system("rm -rf testdir");
-	assert(!isdir("testdir"));
+	assert(!isDirectory("testdir"));
 	system("touch testdir");
-	assert(!isdir("testdir"));
+	assert(!isDirectory("testdir"));
 	system("rm testdir; mkdir testdir");
-	assert(isdir("testdir"));
-#endif
+	assert(isDirectory("testdir"));
     }
 };
 
