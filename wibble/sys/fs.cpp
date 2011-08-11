@@ -18,7 +18,7 @@
 
 #ifdef HAVE_CONFIG_H
 /* Conditionally include config.h so there is a way of enabling the fast
- * Directory::isdir implementation if HAVE_STRUCT_DIRENT_D_TYPE is available
+ * Directory::const_iterator::isdir implementation if HAVE_STRUCT_DIRENT_D_TYPE is available
  */
 #include <wibble/config.h>
 #endif
