@@ -24,12 +24,12 @@ namespace sys {
 namespace fs {
 
 #ifdef POSIX
-std::unique_ptr<struct stat> stat(const std::string& pathname)
+std::auto_ptr<struct stat> stat(const std::string& pathname)
 {
-	std::unique_ptr<struct stat> res(new struct stat);
+	std::auto_ptr<struct stat> res(new struct stat);
 	if (::stat(pathname.c_str(), res.get()) == -1) {
 		if (errno == ENOENT)
-			return std::unique_ptr<struct stat>();
+			return std::auto_ptr<struct stat>();
 		else
 			throw wibble::exception::System("getting file information for " + pathname);
         }
