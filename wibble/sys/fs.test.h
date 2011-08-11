@@ -115,6 +115,39 @@ struct TestFs {
 #endif
     }
 
+    Test _mkdirIfMissing() {
+        // Creating works and is idempotent
+        {
+            system("rm -rf test-mkpath");
+            assert(!wibble::sys::fs::access("test-mkpath", F_OK));
+            wibble::sys::fs::mkdirIfMissing("test-mkpath");
+            assert(wibble::sys::fs::access("test-mkpath", F_OK));
+            wibble::sys::fs::mkdirIfMissing("test-mkpath");
+        }
+
+        // Creating fails if it exists and it is a file
+        {
+            system("rm -rf test-mkpath; touch test-mkpath");
+            try {
+                wibble::sys::fs::mkdirIfMissing("test-mkpath");
+                assert(false);
+            } catch (wibble::exception::Consistency& e) {
+                assert(string(e.what()).find("exists but it is not a directory") != string::npos);
+            }
+        }
+
+        // Deal with dangling symlinks
+        {
+            system("rm -rf test-mkpath; ln -s ./tmp/tmp/tmp/DOESNOTEXISTS test-mkpath");
+            try {
+                wibble::sys::fs::mkdirIfMissing("test-mkpath");
+                assert(false);
+            } catch (wibble::exception::Consistency& e) {
+                assert(string(e.what()).find("looks like a dangling symlink") != string::npos);
+            }
+        }
+    }
+
     Test _deleteIfExists() {
 	system("rm -f does-not-exist");
 	assert(!deleteIfExists("does-not-exist"));

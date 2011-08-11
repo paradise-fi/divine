@@ -38,7 +38,7 @@ std::string mkdtemp( std::string templ );
 /// Create the given directory, if it does not already exists.
 /// It will complain if the given pathname already exists but is not a
 /// directory.
-void mkdirIfMissing(const std::string& dir, mode_t mode);
+void mkdirIfMissing(const std::string& dir, mode_t mode = 0777);
 
 /// Create all the component of the given directory, including the directory
 /// itself.

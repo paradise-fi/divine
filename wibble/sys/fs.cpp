@@ -103,7 +103,7 @@ std::string abspath(const std::string& pathname)
 
 void mkdirIfMissing(const std::string& dir, mode_t mode)
 {
-	std::unique_ptr<struct stat> st = wibble::sys::fs::stat(dir);
+	std::auto_ptr<struct stat> st = wibble::sys::fs::stat(dir);
 	if (st.get() == NULL)
 	{
 		// If it does not exist, make it
