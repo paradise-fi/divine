@@ -47,7 +47,6 @@ using namespace wibble::operators;
 static int vasprintf (char **, const char *, va_list);
 #endif
 
-std::string fmt( const char* f, ... ) __attribute__ ((deprecated));
 std::string fmtf( const char* f, ... );
 template< typename T > inline std::string fmt(const T& val);
 
