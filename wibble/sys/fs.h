@@ -2,10 +2,11 @@
 #define WIBBLE_SYS_DIRECTORY_H
 
 #include <string>
-#include <dirent.h>		// opendir, closedir
-#include <memory>		// auto_ptr
-#include <sys/types.h>		// mode_t
-#include <sys/stat.h>		// struct stat
+#include <memory>       // auto_ptr
+#include <sys/types.h>  // mode_t
+#include <sys/stat.h>   // struct stat
+
+struct dirent;
 
 struct stat;
 
@@ -87,7 +88,8 @@ class Directory
 {
 protected:
     std::string m_path;
-    DIR* dir;
+    // DIR* pointer
+    void* dir;
 
 public:
     class const_iterator
@@ -116,7 +118,7 @@ public:
 
         const_iterator& operator++();
 
-        std::string operator*() const { return d->d_name; }
+        std::string operator*() const;
 
 		bool operator==(const const_iterator& iter) const
 		{

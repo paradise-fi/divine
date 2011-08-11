@@ -5,6 +5,7 @@
 #include <wibble/string.h>
 #include <wibble/exception.h>
 #include <fstream>
+#include <dirent.h> // opendir, closedir
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
@@ -211,7 +212,7 @@ bool access(const std::string &s, int m)
 
 Directory::~Directory()
 {
-    if (dir) closedir(dir);
+    if (dir) closedir((DIR*)dir);
 }
 
 Directory::const_iterator Directory::begin()
