@@ -37,6 +37,9 @@ inline namespace v1 {
  * Currently, this is only read-only.
  *
  * Copy semanthics are the same as auto_ptr
+ *
+ * Note: on 32bit systems, it is not possible to map files larger than 2G into
+ * memory.
  */
 struct MMap
 {
