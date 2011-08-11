@@ -18,20 +18,20 @@ namespace fs {
  */
 struct FileLock
 {
-	int fd;
-	struct flock lock;
+    int fd;
+    struct flock64 lock;
 
-	/**
-	 * Create the lockfile with the given name.
-	 *
-	 * \a lock will be initialised with the parameters and used to unlock
-	 * in the destructor. Please feel free to change the contents of the \a
-	 * lock structure if you need a different part to be unlocked.
-	 *
-	 * @param write
-	 *   If false, use a read lock, else a write lock.
-	 */
-	FileLock(int fd, short l_type, short l_whence=SEEK_SET, off_t l_start=0, off_t l_len=0);
+    /**
+     * Create the lockfile with the given name.
+     *
+     * \a lock will be initialised with the parameters and used to unlock
+     * in the destructor. Please feel free to change the contents of the \a
+     * lock structure if you need a different part to be unlocked.
+     *
+     * @param write
+     *   If false, use a read lock, else a write lock.
+     */
+    FileLock(int fd, short l_type, short l_whence=SEEK_SET, off64_t l_start=0, off64_t l_len=0);
 
 	/**
 	 * Unlocks using the values in \a lock
