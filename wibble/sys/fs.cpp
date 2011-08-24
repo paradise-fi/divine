@@ -1,3 +1,5 @@
+#include <wibble/config.h>
+
 #include <wibble/sys/fs.h>
 #include <wibble/sys/process.h>
 #include <wibble/string.h>
@@ -8,13 +10,6 @@
 #include <string.h>
 #include <errno.h>
 #include <malloc.h> // alloca on win32 seems to live there
-
-#ifdef _WIN32
-#include <io.h>
-#include <windows.h>
-#include <tchar.h>
-#include <shellapi.h>
-#endif
 
 #ifdef HAVE_CONFIG_H
 /* Conditionally include config.h so there is a way of enabling the fast
