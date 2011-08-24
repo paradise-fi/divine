@@ -1,1 +1,4 @@
 #cmakedefine HAVE_STRUCT_DIRENT_D_TYPE
+#cmakedefine _FILE_OFFSET_BITS
+#cmakedefine _LARGEFILE_SOURCE
+#cmakedefine _LARGE_FILES
