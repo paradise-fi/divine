@@ -1,5 +1,6 @@
 // -*- C++ -*-
 #include <cstdarg>
+#include <cassert>
 #include <vector>
 #include <sstream>
 
@@ -34,13 +35,14 @@ struct In {
     In() { p = 0; }
 };
 
-template< typename T >
+template< typename T, int Max >
 struct InSet {
     typedef std::vector< In< T > > Set;
     typedef typename Set::iterator iterator;
     Set set;
 
     In< T > &operator()( int idx ) {
+	assert( idx < Max );
         if ( set.size() <= idx )
             set.resize( idx + 1 );
         return set[ idx ];
@@ -178,11 +180,11 @@ struct System : Clock
 
 template< typename T >
 struct Sum : Value< T > {
-    InSet< T > in;
+    InSet< T, 4 > in;
 
     virtual T get() {
         T acc = 0;
-        for ( typename InSet< T >::iterator i = in.begin(); i != in.end(); ++i )
+        for ( typename InSet< T, 4 >::iterator i = in.begin(); i != in.end(); ++i )
             acc += (*i)->get();
         return acc;
     }
