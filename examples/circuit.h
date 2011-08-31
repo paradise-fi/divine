@@ -63,61 +63,11 @@ struct Stateful : virtual Clock, virtual Serialise {
     virtual void read( char *from ) = 0;
 };
 
-// Implementation of the delay block. This is an example of a stateful element.
-template< typename T >
-struct Delay : virtual Value< T >, virtual Clock, virtual Stateful {
-    In< T > in;
-    T last;
-    virtual T get() { return last; }
-    void tick() { last = in->get(); }
-    void read( char *from ) {
-        last = *(T *)from;
-    }
-    Delay() : last() {}
-};
-
-// An input *block* (not a port).
-template< typename T >
-struct Input : virtual Value< T >, virtual In< T >, virtual Stateful {
-    T value;
-    virtual T get() { return value; }
-    Input() : value() {}
-    Input( T t ) : value( t ) {}
-    Input< T > &operator=( T t ) { value = t; return *this; }
-    void tick() {}
-    void read( char *from ) {
-        value = *(T *)from;
-    }
-};
-
-// A simple output *block*.
-template< typename T >
-struct Output : Value< T > {
-    Value< T > *from;
-    virtual T get() { return from->get(); }
-};
-
-// A type-cast block.
-template< typename From, typename To >
-struct Cast : Value< To > {
-    In< From > in;
-
-    virtual To get() {
-        return static_cast< To >( in->get() );
-    }
-};
-
 // Connect a value-providing block to an input port.
 template< typename T >
 void connect( Value< T > &from, In< T > &to )
 {
     to.p = &from;
-}
-
-template< typename T >
-void connect( Value< T > &from, Output< T > &to )
-{
-    to.from = &from;
 }
 
 // This class wraps the complete system and provides a single synchronised
@@ -178,6 +128,52 @@ struct System : Clock
 
 // ------------ example block implementations -------------
 
+namespace example {
+
+// Implementation of the delay block. This is an example of a stateful element.
+template< typename T >
+struct Delay : virtual Value< T >, virtual Clock, virtual Stateful {
+    In< T > in;
+    T last;
+    virtual T get() { return last; }
+    void tick() { last = in->get(); }
+    void read( char *from ) {
+        last = *(T *)from;
+    }
+    Delay() : last() {}
+};
+
+// An input *block* (not a port).
+template< typename T >
+struct Input : virtual Value< T >, virtual In< T >, virtual Stateful {
+    T value;
+    virtual T get() { return value; }
+    Input() : value() {}
+    Input( T t ) : value( t ) {}
+    Input< T > &operator=( T t ) { value = t; return *this; }
+    void tick() {}
+    void read( char *from ) {
+        value = *(T *)from;
+    }
+};
+
+// A simple output *block*.
+template< typename T >
+struct Output : Value< T > {
+    Value< T > *from;
+    virtual T get() { return from->get(); }
+};
+
+// A type-cast block.
+template< typename From, typename To >
+struct Cast : Value< To > {
+    In< From > in;
+
+    virtual To get() {
+        return static_cast< To >( in->get() );
+    }
+};
+
 template< typename T >
 struct Sum : Value< T > {
     InSet< T, 4 > in;
@@ -234,4 +230,12 @@ struct MinMax : Value< T > {
         }
     }
 };
+
+}
+
+template< typename T >
+void connect( Value< T > &from, example::Output< T > &to )
+{
+    to.from = &from;
+}
 
