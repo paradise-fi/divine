@@ -4,6 +4,8 @@
 #include <cassert>
 #include <deque>
 #include <vector>
+#include <map>
+#include <queue>
 
 #include <wibble/regexp.h>
 
@@ -45,16 +47,32 @@ struct Token {
 
 };
 
+template< typename X, typename Y >
+inline std::ostream &operator<<( std::ostream &o, const std::pair< X, Y > &x ) {
+    return o << "(" << x.first << ", " << x.second << ")";
+}
+
+/*
+ * This is a SLOW lexer (at least compared to systems like lex/flex, which
+ * build a finite-state machine to make decisions per input character. We could
+ * do that in theory, but it would still be slow, since we would be in effect
+ * interpreting the FSM anyway, while (f)lex uses an optimising compiler like
+ * gcc. So while this is friendly and flexible, it won't give you a fast
+ * scanner.
+ */
 template< typename Token, typename Stream >
 struct Lexer {
     Stream &stream;
-    std::string _window;
+    typedef std::deque< char > Window;
+    Window _window;
     Position current;
+
+    Token _match;
 
     void shift() {
         assert( !stream.eof() );
-        char c = stream.remove();
-        _window = _window + c; // XXX inefficient
+        std::string r = stream.remove();
+        std::copy( r.begin(), r.end(), std::back_inserter( _window ) );
     }
 
     bool eof() {
@@ -62,9 +80,15 @@ struct Lexer {
     }
 
     std::string window( unsigned n ) {
-        while ( _window.length() < n && !stream.eof() )
+        ensure_window( n );
+        std::deque< char >::iterator b = _window.begin(), e = b;
+        e += n;
+        return std::string( b, e );
+    }
+
+    void ensure_window( unsigned n ) {
+        while ( _window.size() < n && !stream.eof() )
             shift();
-        return std::string( _window, 0, n );
     }
 
     void consume( int n ) {
@@ -75,57 +99,78 @@ struct Lexer {
             } else
                 current.column ++;
         }
-        _window = std::string( _window, n, _window.length() );
+        std::deque< char >::iterator b = _window.begin(), e = b;
+        e += n;
+        _window.erase( b, e );
     }
 
-    void consume( std::string s ) {
+    void consume( const std::string &s ) {
         consume( s.length() );
     }
 
-    void consume( Token t ) {
+    void consume( const Token &t ) {
+        // std::cerr << "consuming " << t << std::endl;
         consume( t.data );
     }
 
-    bool maybe( Token &t, std::string data, typename Token::Id id ) {
-        if ( t.valid() ) /* already found */
-            return false;
+    void keep( typename Token::Id id, const std::string &data ) {
+        Token t( id, data );
+        t.position = current;
+        if ( t.data.length() > _match.data.length() )
+            _match = t;
+    }
 
-        if ( window( data.length() ) == data ) {
-            t = Token( id, data );
-            consume( t );
-            return true;
+    template< typename I >
+    bool match( I begin, I end ) {
+        ensure_window( end - begin);
+        return std::equal( begin, end, _window.begin() );
+    }
+
+    void match( const std::string &data, typename Token::Id id ) {
+        if ( match( data.begin(), data.end() ) )
+            return keep( id, data );
+    }
+
+    void match( Regexp &r, typename Token::Id id ) {
+        unsigned n = 1, max = 0;
+        while ( r.match( window( n ) ) ) {
+            if ( max && max == r.matchLength( 0 ) )
+                return keep( id, window( max ) );
+            max = r.matchLength( 0 );
+            ++ n;
         }
-        return false;
     }
 
-    bool maybe( Token &t, Regexp r, typename Token::Id id ) {
-        if ( t.valid() )
-            return false;
-
+    void match( int (*first)(int), int (*rest)(int), typename Token::Id id )
+    {
         unsigned n = 1;
-        if ( !r.match( window( 1 ) ) )
-            return false;
 
-        while ( r.match( window( n ) ) && r.matchLength( 0 ) == n && !stream.eof() )
-            ++n;
+        ensure_window( 1 );
+        if ( !first( _window[0] ) )
+            return;
 
-        t = Token( id, window( n - 1 ) );
-        consume( t );
-
-        return true;
+        while ( true ) {
+            ++ n;
+            ensure_window( n );
+            if ( rest( _window[ n - 1 ] ) )
+                continue;
+            return keep( id, window( n - 1 ) );
+        }
     }
 
-    void continueTo( Token &t, std::string marker ) {
+    void match( const std::string &from, const std::string &to, typename Token::Id id ) {
+        if ( !match( from.begin(), from.end() ) )
+            return;
+
+        Window::iterator where = _window.begin();
+        int n = from.length();
+        where += n;
         while ( true ) {
-            std::string _marker = window( marker.length() );
-            if ( _marker == marker || stream.eof() ) {
-                t.data += _marker;
-                consume( _marker );
-                return;
-            } else {
-                t.data += window( 1 );
-                consume( 1 );
-            }
+            ensure_window( n + to.length() );
+            if ( std::equal( to.begin(), to.end(), where ) )
+                return keep( id, window( n + to.length() ) );
+            ++ where;
+            ++ n;
         }
     }
 
@@ -134,111 +179,89 @@ struct Lexer {
             consume( 1 );
     }
 
+    Token decide() {
+        Token t;
+        std::swap( t, _match );
+        consume( t );
+        return t;
+    }
+
     Lexer( Stream &s ) : stream( s ) {}
 };
 
 template< typename Token, typename Stream >
 struct ParseContext {
     Stream &stream;
-    std::deque< Token > done, todo;
+    std::deque< Token > window;
+    int window_pos;
     int position;
 
     struct Fail {
         int position;
-        std::string expected;
-        Token token;
+        const char *expected;
 
-        Fail( ParseContext &ctx, std::string err ) {
-            token = ctx.remove();
-            ctx.rewind( 1 );
+        bool operator<( const Fail &other ) const {
+            return position > other.position;
+        }
+
+        Fail( const char *err, int pos ) {
             expected = err;
+            position = pos;
         }
         ~Fail() throw () {}
     };
 
-    std::vector< Fail > failures;
-    int last_fork;
-    int maybe_nesting;
+    std::priority_queue< Fail > failures;
 
     void error( std::ostream &o, std::string prefix, const Fail &fail ) {
+        Token t = window[ fail.position ];
         o << prefix
           << "expected " << fail.expected
-          << " at line " << fail.token.position.line
-          << ", column " << fail.token.position.column
-          << ", but seen " << Token::tokenName[ fail.token.id ] << " '" << fail.token.data << "'"
+          << " at line " << t.position.line
+          << ", column " << t.position.column
+          << ", but seen " << Token::tokenName[ t.id ] << " '" << t.data << "'"
           << std::endl;
     }
 
     void errors( std::ostream &o ) {
-        purge_failures();
         if ( failures.empty() ) {
             o << "oops, no failures recorded!" << std::endl;
             return;
         }
 
+        std::string prefix;
         if ( failures.size() > 1 ) {
-            o << "parse error: " << failures.size() << " alternatives failed:" << std::endl;
-            for ( unsigned i = 0; i < failures.size(); ++i )
-                error( o, "    ", failures[i] );
-        } else
-            error( o, "", failures.front() );
+            o << "parse error: " << failures.size() << " rightmost alternatives:" << std::endl;
+            prefix = "    ";
+        }
+        while ( !failures.empty() ) {
+            error( o, prefix, failures.top() );
+            failures.pop();
+        }
     }
 
     Token remove() {
-        Token t;
-        if ( !todo.empty() ) {
-            t = todo.front();
-            todo.pop_front();
-        } else {
+        if ( window.size() <= window_pos ) {
+            Token t;
             do {
                 t = stream.remove();
-            } while ( t.id == Token::Comment );
+            } while ( t.id == Token::Comment ); // XXX
+            window.push_back( t );
         }
 
-        done.push_back( t );
+        ++ window_pos;
         ++ position;
-
-        return t;
+        return window[ window_pos - 1 ];
     }
 
     void rewind( int n ) {
         assert( n >= 0 );
-        for ( int i = 0; i < n; ++i ) {
-            todo.push_front( done.back() );
-            done.pop_back();
-            -- position;
-        }
+        assert( n <= window_pos );
+        window_pos -= n;
+        position -= n;
     }
 
-    int start_maybe() {
-        if ( !maybe_nesting )
-            last_fork = position;
-        ++ maybe_nesting;
-        return position;
-    }
-
-    void end_maybe( int fallback ) {
-        -- maybe_nesting;
-        if ( fallback != last_fork )
-            return;
-
-        purge_failures();
-    }
-
-    void purge_failures() {
-        for ( unsigned i = 0; i < failures.size(); ++i ) {
-            if ( failures[i].position < last_fork ) {
-                failures.erase( failures.begin() + i );
-                -- i;
-            }
-        }
-    }
-
-    void fail_maybe() {
-        -- maybe_nesting;
-    }
-
-    ParseContext( Stream &s ) : stream( s ), position( 0 ), maybe_nesting( 0 ) {}
+    ParseContext( Stream &s ) : stream( s ), window_pos( 0 ), position( 0 ) {}
 };
 
 template< typename Token, typename Stream >
@@ -261,9 +284,13 @@ struct Parser {
         return context().position;
     }
 
-    void fail( std::string what ) __attribute__((noreturn))
+    void fail( const char *what ) __attribute__((noreturn))
     {
-        throw Fail( context(), what );
+        Fail f( what, position() );
+        context().failures.push( f );
+        while ( context().failures.top().position < position() )
+            context().failures.pop();
+        throw f;
     }
 
     void semicolon() {
@@ -276,11 +303,11 @@ struct Parser {
     }
 
     Token eat( TokenId id ) {
-        Token t = eat();
+        Token t = eat( false );
         if ( t.id == id )
             return t;
         context().rewind( 1 );
-        fail( std::string( "#" ) + Token::tokenName[id] );
+        fail( Token::tokenName[id].c_str() );
     }
 
     template< typename F, typename G >
@@ -308,59 +335,54 @@ struct Parser {
 
     template< typename F >
     bool maybe( void (F::*f)() ) {
-        int fallback = context().start_maybe();
+        int fallback = position();
         try {
             (static_cast< F* >( this )->*f)();
-            context().end_maybe( fallback );
             return true;
         } catch ( Fail fail ) {
-            fail.position = fallback;
-            context().fail_maybe();
             context().rewind( position() - fallback );
-            context().failures.push_back( fail );
             return false;
         }
     }
 
-    template< typename T >
-    std::vector< T > many() {
-        int fallback;
-        std::vector< T > vec;
-        while ( true ) {
-            try {
+    template< typename T, typename I >
+    void many( I i ) {
+        int fallback = 0;
+        try {
+            while ( true ) {
                 fallback = position();
-                vec.push_back( T( context() ) );
-            } catch (Fail) {
-                context().rewind( position() - fallback );
-                return vec;
+                *i++ = T( context() );
             }
+        } catch (Fail) {
+            context().rewind( position() - fallback );
         }
     }
 
-    template< typename T >
-    std::vector< T > list( TokenId sep ) {
-        std::vector< T > vec;
-        while ( true ) {
-            vec.push_back( T( context() ) );
-            if ( !next( sep ) )
-                return vec;
-        }
+    template< typename T, typename I >
+    void list( I i, TokenId sep ) {
+        do {
+            *i++ = T( context() );
+        } while ( next( sep ) );
     }
 
-    template< typename T >
-    std::vector< T > list( TokenId first, TokenId sep, TokenId last ) {
+    template< typename T, typename I >
+    void list( I i, TokenId first, TokenId sep, TokenId last ) {
         eat( first );
-        std::vector< T > res = list< T >( sep );
+        list< T >( i, sep );
         eat( last );
-        return res;
     }
 
-    Token eat() {
-        return context().remove();
+    Token eat( bool _fail = true ) {
+        Token t = context().remove();
+        if ( _fail && !t.valid() ) {
+            context().rewind( 1 );
+            fail( "valid token" );
+        }
+        return t;
     }
 
     bool next( TokenId id ) {
-        Token t = eat();
+        Token t = eat( false );
         if ( t.id == id )
             return true;
         context().rewind( 1 );
