@@ -142,6 +142,11 @@ struct Custom : public Common< Blob > {
         die( "FATAL: Pool support is required for the custom generator." );
 #endif
 
+        call_setup();
+    }
+
+    void call_setup()
+    {
         setup.has_property = 0;
         setup.slack = alloc._slack;
         setup.pool = &pool();
@@ -157,11 +162,7 @@ struct Custom : public Common< Blob > {
         Common::operator=( other );
         dl = other.dl;
         setup = other.setup;
-
-        setup.pool = &pool();
-        if ( dl.setup )
-            dl.setup( &setup );
-
+        call_setup();
         return *this;
     }
 
