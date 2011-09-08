@@ -4,7 +4,11 @@
 #include <vector>
 #include <sstream>
 
-struct Serialise {
+struct Element {
+    virtual void _void() {};
+};
+
+struct Serialise : Element {
     virtual int size() = 0;
     virtual void write( char *where ) = 0;
     virtual std::string print() { return std::string(); }
@@ -29,10 +33,31 @@ struct Value : virtual Serialise {
 
 // An input *port*, for use within building blocks.
 template< typename T >
-struct In {
+struct In : Element {
     Value< T > *p;
     Value< T > *operator->() { return p; }
     In() { p = 0; }
+};
+
+struct Block : Element {
+    typedef std::pair< Element *, Element * > Connection;
+    std::vector< Connection > conns;
+
+    // Connect a value-providing block to an input port.
+    template< typename T >
+    void connect( Value< T > &from, Element &parent, In< T > &to )
+    {
+        to.p = &from;
+        conns.push_back( std::make_pair( &from, &parent ) );
+    }
+
+    // Connect a value-providing block to an input port.
+    template< typename S, typename T >
+    void connect( Value< S > &from, T &parent, int idx )
+    {
+        parent.in( idx ).p = &from;
+        conns.push_back( std::make_pair( &from, &parent ) );
+    }
 };
 
 template< typename T, int Max >
@@ -63,20 +88,13 @@ struct Stateful : virtual Clock, virtual Serialise {
     virtual void read( char *from ) = 0;
 };
 
-// Connect a value-providing block to an input port.
-template< typename T >
-void connect( Value< T > &from, In< T > &to )
-{
-    to.p = &from;
-}
-
 // This class wraps the complete system and provides a single synchronised
 // clock for all the stateful elements.
 struct System : Clock
 {
     typedef std::vector< Stateful * > Elements;
     Elements elements;
-    void *_circuit;
+    Block *_circuit;
 
     template< typename T >
     T *circuit() {
@@ -88,9 +106,29 @@ struct System : Clock
             (*i)->tick();
     }
 
-    System &add( Stateful &e ) {
-        elements.push_back( &e );
-        return *this;
+    System( Block &b ) {
+        int swaps;
+
+        /* TODO: There are probably better than cubic top-sort algorithms... */
+        for ( int iter = 0; iter < b.conns.size(); ++iter ) {
+            for ( int i = 0; i < b.conns.size(); ++i ) {
+                for ( int j = 0; j < i; ++j ) {
+                    if (b.conns[j].first == b.conns[i].second &&
+                        b.conns[j].first != b.conns[j].second) {
+                        std::swap(b.conns[j], b.conns[i]);
+                        ++ swaps;
+                    }
+                }
+            }
+        };
+
+        for ( int i = 0; i < b.conns.size(); ++i ) {
+            Stateful *s = dynamic_cast< Stateful * >( b.conns[i].first );
+            if ( s )
+                elements.push_back( s );
+        }
+
+        _circuit = &b;
     }
 
     int size() {
@@ -231,11 +269,5 @@ struct MinMax : Value< T > {
     }
 };
 
-}
-
-template< typename T >
-void connect( Value< T > &from, example::Output< T > &to )
-{
-    to.from = &from;
 }
 
