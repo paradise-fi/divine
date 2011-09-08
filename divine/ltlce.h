@@ -247,11 +247,12 @@ struct LtlCE {
             if ( a.equal( shared().ce.current, stop ) && !numTrace.empty() )
                 break;
             shared().ce.current_updated = false;
-            trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
-            if ( shared().ce.successorPos )
+            if ( shared().ce.successorPos ) {
+                trace.push_back( shared().ce.current );
                 numTrace.push_back( shared().ce.successorPos );
+            }
         }
 
 
