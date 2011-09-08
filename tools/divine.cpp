@@ -402,6 +402,10 @@ struct Main {
         config.findGoals = !o_noGoals->boolValue();
         statistics = o_statistics->boolValue();
 
+        /* No point in generating counterexamples just to discard them. */
+        if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )
+            config.wantCe = false;
+
         drawConfig.maxDistance = o_distance->intValue();
         drawConfig.output = o_output->stringValue();
         drawConfig.render= o_render->stringValue();
