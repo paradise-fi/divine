@@ -237,7 +237,7 @@ struct LtlCE {
     // --
 
     template< typename Domain, typename Alg >
-    Traces parentTrace( Domain &d, Alg &a, Node stop, bool loop = false ) {
+    Traces parentTrace( Domain &d, Alg &a, Node stop ) {
         Trace trace;
         NumericTrace numTrace;
         shared().ce.current = shared().ce.initial;
@@ -250,7 +250,7 @@ struct LtlCE {
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
         // first condition is for the linear part, second for the cycle
-        } while ( shared().ce.current.valid() && ( !loop || !a.equal( shared().ce.current, stop ) ) );
+        } while ( shared().ce.current.valid() && !a.equal( shared().ce.current, stop ) );
 
         if ( shared().ce.successorPos ) numTrace.push_back( shared().ce.successorPos );
 
@@ -269,7 +269,7 @@ struct LtlCE {
         ++ shared().iteration;
         d.parallel().run( shared(), &Alg::_traceCycle );
 
-        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial, true ) );
+        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial ) );
     }
 
 };
