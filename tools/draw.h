@@ -46,6 +46,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     std::string dot, output, render, trace;
     bool labels;
     Table *intrace;
+    std::set< std::pair< int, int > > intrace_trans;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -53,14 +54,18 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     visitor::ExpansionAction expansion( Node st )
     {
+        bool limit = extension( st ).distance > maxdist;
         if ( st == initial )
-            dotNode( st, "red" );
+            dotNode( st, "magenta", limit );
         else if ( intrace->has( st ) )
-            dotNode( st, "blue" );
+            dotNode( st, "red", limit );
         else
-            dotNode( st );
+            dotNode( st, "", limit );
 
-        return visitor::ExpandState;
+        if ( limit )
+            return visitor::IgnoreState;
+        else
+            return visitor::ExpandState;
     }
 
     visitor::TransitionAction transition( Node f, Node t )
@@ -72,18 +77,16 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
                 extension( t ) = extension( intrace->get( t ) );
         }
 
-        dotEdge( f, t );
+        std::string color;
+        if ( intrace_trans.count( std::make_pair( extension( f ).serial, extension( t ).serial ) ) )
+            color = "red";
+        dotEdge( f, t, color );
 
         if ( extension( t ).distance == 0 )
            extension( t ).distance = INT_MAX;
 
         extension( t ).distance = std::min( extension( t ).distance, extension( f ).distance + 1 );
-        if ( maxdist > extension( t ).distance )
-            return visitor::FollowTransition;
-        else {
-            dotNode( t, "", true );
-            return visitor::IgnoreTransition;
-        }
+        return visitor::FollowTransition;
     }
 
     std::string escape( std::string s ) {
@@ -125,13 +128,17 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         dot += str.str();
     }
 
-    void dotEdge( Node f, Node t ) {
+    void dotEdge( Node f, Node t, std::string color = "" ) {
         stringstream str;
-        str << extension( f ).serial << " -> " << extension( t ).serial << "\n";
+        str << extension( f ).serial << " -> " << extension( t ).serial;
+        if ( !color.empty() )
+            str << " [color = " << color << "]";
+        str << std::endl;
         dot += str.str();
     }
 
-    void drawTrace() {
+    // TODO: We leak some memory here, roughly linear to the trace size, i.e. not too bad
+    void loadTrace() {
         intrace = this->makeTable();
 
         if ( trace.empty() )
@@ -143,14 +150,25 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
              std::getline( split, each, ',' );
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
-        Node current = initial;
+        Node from = initial;
         for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {
-            intrace->insert( current );
-            typename G::Successors s = wibble::list::drop( trans[ i ] - 1, g.successors( current ) );
-            current = s.head();
-            // ^^ leak... : - (
-            extension( current ).serial = ++serial;
-            extension( current ).distance = 1;
+            Node from_seen = intrace->get( from );
+            if ( intrace->get( from ).valid() )
+                from = intrace->get( from );
+            else
+                intrace->insert( from );
+            typename G::Successors s = wibble::list::drop( trans[ i ] - 1, g.successors( from ) );
+            Node to = intrace->get( s.head() );
+            if ( !to.valid() ) {
+                to = s.head();
+                intrace->insert( to );
+            }
+            if ( !extension( to ).serial )
+                extension( to ).serial = ++serial;
+            extension( to ).distance = 1;
+            intrace_trans.insert( std::make_pair( extension( from ).serial,
+                                                  extension( to ).serial ) );
+            from = to;
         }
     }
 
@@ -161,7 +179,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         extension( initial ).serial = 1;
         extension( initial ).distance = 1;
 
-        drawTrace();
+        loadTrace();
 
         visitor::BFV< visitor::Setup< G, This, Table > >
             visitor( g, *this, &this->table() );
