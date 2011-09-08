@@ -480,11 +480,13 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             progress() << "done" << std::endl;
         }
 
+        progress() << " generating counterexample...      " << std::flush;
         shared.ce.initial = cycleNode();
         assert( cycleFound() );
 
         ce.setup( shared.g, shared );
         ce.lasso( domain(), *this );
+        progress() << "done" << std::endl;
     }
 
     // -------------------------------------------
