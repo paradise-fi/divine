@@ -204,7 +204,7 @@ struct LtlCE {
             trace.pop_back();
         }
 
-        for ( int i = ntrace.size() - 1; i > 0; --i ) {
+        for ( int i = ntrace.size() - 1; i >= 0; --i ) {
             o_trail( a ) << ntrace[ i ] << std::endl;
             o_tr_str << ntrace[ i ] << ",";
         }
