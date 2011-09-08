@@ -243,16 +243,17 @@ struct LtlCE {
         shared().ce.current = shared().ce.initial;
         shared().ce.successor = Node(); // !valid()
         shared().ce.successorPos = 0;
-        do {
-            if ( shared().ce.successorPos ) numTrace.push_back( shared().ce.successorPos );
+        while ( shared().ce.current.valid() ) {
+            if ( a.equal( shared().ce.current, stop ) && !numTrace.empty() )
+                break;
             shared().ce.current_updated = false;
             trace.push_back( shared().ce.current );
             d.parallel().runInRing( shared(), &Alg::_parentTrace );
             assert( shared().ce.current_updated );
-        // first condition is for the linear part, second for the cycle
-        } while ( shared().ce.current.valid() && !a.equal( shared().ce.current, stop ) );
+            if ( shared().ce.successorPos )
+                numTrace.push_back( shared().ce.successorPos );
+        }
 
-        if ( shared().ce.successorPos ) numTrace.push_back( shared().ce.successorPos );
 
         return std::make_pair( trace, numTrace );
     }
