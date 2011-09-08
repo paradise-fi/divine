@@ -28,7 +28,7 @@ enum TransitionAction { TerminateOnTransition,
                                           // NOT FREED
 };
 
-enum ExpansionAction { TerminateOnState, ExpandState };
+enum ExpansionAction { TerminateOnState, ExpandState, IgnoreState };
 enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
 
 template< typename T >
