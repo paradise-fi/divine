@@ -75,7 +75,7 @@ struct Main {
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
-    BoolOption *o_labels;
+    BoolOption *o_labels, *o_traceLabels;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
     BoolOption *o_findBackEdges, *o_textFormat;
@@ -278,6 +278,8 @@ struct Main {
             "command to render the graphviz description [default=dot -Tx11]" );
         o_labels = drawing->add< BoolOption >(
             "labels", 'l', "labels", "", "draw state labels" );
+        o_traceLabels = drawing->add< BoolOption >(
+            "trace-labels", '\0', "trace-labels", "", "draw state labels, in trace only" );
 
         // compact options
         o_findBackEdges = compact->add< BoolOption >(
@@ -410,6 +412,7 @@ struct Main {
         drawConfig.output = o_output->stringValue();
         drawConfig.render= o_render->stringValue();
         drawConfig.labels = o_labels->boolValue();
+        drawConfig.traceLabels = o_traceLabels->boolValue();
         drawConfig.drawTrace = o_drawTrace->stringValue();
 
         setupLimits();

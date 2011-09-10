@@ -23,6 +23,7 @@ struct DrawConfig {
     std::string drawTrace;
     std::string render;
     bool labels;
+    bool traceLabels;
 };
 
 template< typename G >
@@ -45,6 +46,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     std::string dot, output, render, trace;
     bool labels;
+    bool traceLabels;
     Table *intrace;
     std::set< std::pair< int, int > > intrace_trans;
 
@@ -55,12 +57,8 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     visitor::ExpansionAction expansion( Node st )
     {
         bool limit = extension( st ).distance > maxdist;
-        if ( st == initial )
-            dotNode( st, "magenta", limit );
-        else if ( intrace->has( st ) )
-            dotNode( st, "red", limit );
-        else
-            dotNode( st, "", limit );
+
+        dotNode( st, limit );
 
         if ( limit )
             return visitor::IgnoreState;
@@ -105,24 +103,40 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         return buf;
     }
 
-    void dotNode( Node n, std::string color = "", bool dashed = false ) {
+    std::string label( Node n ) {
+        if ( intrace->has( n ) && traceLabels )
+            return g.showNode( n );
+        if ( labels )
+            return g.showNode( n );
+        return "";
+    }
+
+    std::string color( Node n ) {
+        if ( n == initial )
+            return "magenta";
+        if ( intrace->has( n ) )
+            return "red";
+        return "";
+    }
+
+    void dotNode( Node n, bool dashed = false ) {
         stringstream str;
         str << extension( n ).serial << " [";
-        if ( !color.empty() )
-            str << " fillcolor = " << color << " style=filled ";
+        if ( !color( n ).empty() )
+            str << " fillcolor = " << color( n ) << " style=filled ";
         if ( g.isAccepting( n ) )
             str << "peripheries=2 ";
 
-        if ( labels )
-            str << "shape=ellipse ";
-        else
+        if ( label( n ).empty() )
             str << "shape=circle ";
+        else
+            str << "shape=ellipse ";
 
         if ( dashed )
             str << "style=dashed ";
 
-        if ( labels )
-            str << "label=\"" << escape( g.showNode( n ) ) << "\"";
+        if ( !label( n ).empty() )
+            str << "label=\"" << escape( label( n ) ) << "\"";
 
         str << "]\n";
         dot += str.str();
@@ -152,7 +166,6 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
         Node from = initial;
         for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {
-            Node from_seen = intrace->get( from );
             if ( intrace->get( from ).valid() )
                 from = intrace->get( from );
             else
@@ -211,6 +224,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         render = c->render;
         trace = c->drawTrace;
         labels = c->labels;
+        traceLabels = labels || c->traceLabels;
         drawn = 0;
         serial = 1;
     }
