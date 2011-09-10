@@ -210,6 +210,8 @@ struct SyncExpr : Parser {
 
         maybe( &SyncExpr::value );
     }
+
+    SyncExpr() {}
 };
 
 /*
@@ -292,7 +294,7 @@ struct Transition : Parser {
     Identifier from, to;
     std::vector< Expression > guards;
     std::vector< Assignment > effects;
-    std::vector< SyncExpr > syncs;
+    SyncExpr syncexpr;
 
     void guard() {
         eat( Token::Guard );
@@ -308,7 +310,7 @@ struct Transition : Parser {
 
     void sync() {
         eat( Token::Sync );
-        list< SyncExpr >( std::back_inserter( syncs ), Token::Comma );
+        syncexpr = SyncExpr( context() );
         semicolon();
     }
 

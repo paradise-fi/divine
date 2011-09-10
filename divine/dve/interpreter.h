@@ -327,6 +327,8 @@ struct LValue {
 struct Transition {
     Symbol process;
     Symbol from, to;
+    Symbol channel;
+    Transition *sync;
 
     std::vector< Expression > guards;
     typedef std::vector< std::pair< LValue, Expression > > Effect;
@@ -338,6 +340,8 @@ struct Transition {
         for ( int i = 0; i < guards.size(); ++i )
             if ( !guards[i].evaluate( ctx ) )
                 return false;
+        if ( sync && !sync->enabled( ctx ) )
+            return false;
         return true;
     }
 
@@ -345,10 +349,12 @@ struct Transition {
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
             i->first.set( ctx, i->second.evaluate( ctx ) );
         process.set( ctx.mem, 0, to.deref< short >() );
+        if ( sync )
+            sync->apply( ctx );
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc )
+        : process( proc ), sync( 0 )
     {
         for ( int i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
@@ -359,6 +365,9 @@ struct Transition {
         assert( from.valid() );
         to = sym.lookup( NS::State, t.to );
         assert( to.valid() );
+        if ( t.syncexpr.valid() )
+            channel = sym.lookup( NS::Channel, t.syncexpr.chan );
+
     }
 };
 
@@ -367,6 +376,9 @@ struct Process {
     SymTab symtab;
 
     std::vector< std::vector< Transition > > trans;
+
+    std::vector< Transition > readers;
+    std::vector< Transition > writers;
 
     template< typename I >
     I enabled( EvalContext &ctx, I i ) {
@@ -393,10 +405,32 @@ struct Process {
         assert_eq( states, proc.states.size() );
         trans.resize( proc.states.size() );
 
+
         for ( std::vector< parse::Transition >::const_iterator i = proc.trans.begin();
               i != proc.trans.end(); ++i ) {
             Symbol from = symtab.lookup( NS::State, i->from.name() );
-            trans[ from.deref< short >() ].push_back( Transition( symtab, id, *i ) );
+            Transition t( symtab, id, *i );
+            if ( i->syncexpr.valid() ) {
+                if ( i->syncexpr.write )
+                    writers.push_back( t );
+                else
+                    readers.push_back( t );
+            } else
+                trans[ from.deref< short >() ].push_back( t );
+        }
+    }
+
+    void setupSyncs( std::vector< Transition > &readers )
+    {
+        for ( int w = 0; w < writers.size(); ++ w ) {
+            Transition &tw = writers[w];
+            for ( int r = 0; r < readers.size(); ++r ) {
+                Transition &tr = readers[r];
+                if ( tw.channel == tr.channel ) {
+                    tw.sync = &tr;
+                    trans[ tw.from.deref< short >() ].push_back( tw );
+                }
+            }
         }
     }
 };
@@ -417,6 +451,15 @@ struct System {
               i != sys.processes.end(); ++i ) {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
             processes.push_back( Process( &symtab, id, *i ) );
+        }
+
+        // compute synchronisations
+        for ( int i = 0; i < processes.size(); ++ i ) {
+            for ( int j = 0; j < processes.size(); ++ j ) {
+                if ( i == j )
+                    continue;
+                processes[ i ].setupSyncs( processes[ j ].readers );
+            }
         }
     }
 
