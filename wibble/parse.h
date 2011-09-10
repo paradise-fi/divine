@@ -241,7 +241,7 @@ struct ParseContext {
     }
 
     Token remove() {
-        if ( window.size() <= window_pos ) {
+        if ( int( window.size() ) <= window_pos ) {
             Token t;
             do {
                 t = stream.remove();
