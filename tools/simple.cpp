@@ -37,7 +37,7 @@ struct Main {
         report.generator = "DVE";
 
         try {
-            algorithm::Simple< generator::NDve > alg( &config );
+            algorithm::Simple< generator::LegacyDve > alg( &config );
             alg.domain().mpi.init();
             alg.init( &alg.domain() );
             alg.domain().mpi.start();
