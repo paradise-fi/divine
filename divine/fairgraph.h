@@ -62,7 +62,7 @@ struct FairGraph : NonPORGraph< G > {
         void add( GenSuccs s, int copy ) {
             if ( size_t( current ) == parts.size() && s.empty() )
                 current++;
-            parts.push_back( make_pair< GenSuccs, int >( s, copy ) );
+            parts.push_back( make_pair( s, copy ) );
         }
 
         Successors() : current( 0 ) {}
