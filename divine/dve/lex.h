@@ -123,7 +123,7 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
     {}
 };
 
-std::ostream &operator<<( std::ostream &o, Token t ) {
+static inline std::ostream &operator<<( std::ostream &o, Token t ) {
     return o << "<" << t.position.source << ":" << t.position.line << ":" << t.position.column << ": #"
              << tokenName[ t.id ] << ", '" << t.data << "'>";
 }

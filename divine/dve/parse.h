@@ -39,6 +39,7 @@ typedef wibble::Parser< Token, Lexer< IOStream > > Parser;
 namespace parse {
 
 struct Constant : Parser {
+    Token token;
     int value;
 
     void sign() {
@@ -49,7 +50,7 @@ struct Constant : Parser {
     Constant( Context &c ) : Parser( c ) {
         value = 1;
         maybe( &Constant::sign );
-        Token token = eat( Token::Constant );
+        token = eat( Token::Constant );
 
         if ( token.data == "true" )
             value = 1;
@@ -62,9 +63,10 @@ struct Constant : Parser {
 };
 
 struct Identifier : Parser {
-    std::string name;
+    Token token;
+    std::string name() const { return token.data; }
     Identifier( Context &c ) : Parser( c ) {
-        name = eat( Token::Identifier ).data;
+        token = eat( Token::Identifier );
     }
     Identifier() {}
 };
