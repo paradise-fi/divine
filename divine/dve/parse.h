@@ -325,7 +325,7 @@ struct Transition : Parser {
     }
 };
 
-void declarations( Parser &p, std::vector< Declaration > &decls )
+static inline void declarations( Parser &p, std::vector< Declaration > &decls )
 {
     std::vector< Declarations > declss;
     p.many< Declarations >( std::back_inserter( declss ) );
