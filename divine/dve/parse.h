@@ -88,9 +88,11 @@ struct RValue : Parser {
         value = Constant( context() );
     }
 
-    RValue( Context &c ) : Parser( c ) {
+    RValue( Context &c ) : Parser( c ), idx( 0 ) {
         either( &RValue::reference, &RValue::constant );
     }
+
+    RValue() : idx( 0 ) {}
 };
 
 struct Expression : Parser {
