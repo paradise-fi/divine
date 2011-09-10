@@ -25,7 +25,7 @@ struct TI {
         Increment, Decrement,
         Init, State, Trans, Accept,
         Guard, Effect,
-        True, False, Assert,
+        Assert,
         System, Async, Sync, Process, Property,
         Streett, Muller, Rabin, Buchi, GenBuchi
     };
@@ -43,7 +43,7 @@ const std::string tokenName[] = {
     "++", "--",
     "init", "state", "trans", "accept",
     "guard", "effect",
-    "true", "false", "assert",
+    "assert",
     "system", "async", "sync", "process", "property",
     "streett", "muller", "rabin", "buchi", "genbuchi"
 };
@@ -99,6 +99,9 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
 
         this->match( frag( LC ), frag( EC ), Token::Comment );
         this->match( frag( SC ), frag( EOL ), Token::Comment );
+
+        this->match( "true", TI::Constant );
+        this->match( "false", TI::Constant );
 
         for ( TI::TokenId i = TI::IndexOpen; i < TI::GenBuchi; i = (TI::TokenId) (i + 1) )
             this->match( tokenName[i], i );

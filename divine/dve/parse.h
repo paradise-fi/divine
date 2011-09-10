@@ -49,8 +49,14 @@ struct Constant : Parser {
     Constant( Context &c ) : Parser( c ) {
         value = 1;
         maybe( &Constant::sign );
-        Token t = eat( Token::Constant );
-        value = value * atoi( t.data.c_str() );
+        Token token = eat( Token::Constant );
+
+        if ( token.data == "true" )
+            value = 1;
+        else if ( token.data == "false" )
+            value = 0;
+        else
+            value = value * atoi( token.data.c_str() );
     }
     Constant() {}
 };
