@@ -193,10 +193,15 @@ struct Assignment : Parser {
 struct SyncExpr : Parser {
     bool write;
     Identifier chan;
-    Expression val;
+    Expression expr;
+    LValue lval;
 
-    void value() {
-        val = Expression( context() );
+    void lvalue() {
+        lval = LValue( context() );
+    }
+
+    void expression() {
+        expr = Expression( context() );
     }
 
     SyncExpr( Context &c ) : Parser( c ) {
@@ -208,7 +213,10 @@ struct SyncExpr : Parser {
         else
             fail( "sync read/write mark: ! or ?" );
 
-        maybe( &SyncExpr::value );
+        if ( write )
+            maybe( &SyncExpr::expression );
+        else
+            maybe( &SyncExpr::lvalue );
     }
 
     SyncExpr() {}

@@ -200,6 +200,8 @@ struct Expression {
     };
 
     std::vector< Item > rpn;
+    bool _valid;
+    bool valid() { return _valid; }
 
     int binop( Token op, int a, int b ) {
         switch ( op.id ) {
@@ -296,9 +298,13 @@ struct Expression {
             rpn_push( ex.op, 0 );
     }
 
-    Expression( const SymTab &sym, const parse::Expression &ex ) {
+    Expression( const SymTab &sym, const parse::Expression &ex )
+        : _valid( ex.valid() )
+    {
         build( sym, ex );
     }
+
+    Expression() : _valid( false ) {}
 };
 
 namespace parse {
@@ -309,6 +315,9 @@ typedef std::vector< Declaration > Decls;
 struct LValue {
     Symbol symbol;
     Expression idx;
+    bool _valid;
+
+    bool valid() { return _valid; }
 
     template< typename T >
     void set( EvalContext &ctx, T value ) {
@@ -318,16 +327,20 @@ struct LValue {
     }
 
     LValue( const SymTab &tab, parse::LValue lv )
-        : idx( tab, lv.idx )
+        : idx( tab, lv.idx ), _valid( lv.valid() )
     {
         symbol = tab.lookup( NS::Variable, lv.ident.name() );
     }
+
+    LValue() : _valid( false ) {}
 };
 
 struct Transition {
     Symbol process;
     Symbol from, to;
-    Symbol channel;
+    Symbol sync_channel;
+    LValue sync_lval;
+    Expression sync_expr;
     Transition *sync;
 
     std::vector< Expression > guards;
@@ -349,8 +362,11 @@ struct Transition {
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
             i->first.set( ctx, i->second.evaluate( ctx ) );
         process.set( ctx.mem, 0, to.deref< short >() );
-        if ( sync )
+        if ( sync ) {
+            if (sync->sync_lval.valid() && sync_expr.valid() )
+                sync->sync_lval.set( ctx, sync_expr.evaluate( ctx ) );
             sync->apply( ctx );
+        }
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
@@ -365,9 +381,14 @@ struct Transition {
         assert( from.valid() );
         to = sym.lookup( NS::State, t.to );
         assert( to.valid() );
-        if ( t.syncexpr.valid() )
-            channel = sym.lookup( NS::Channel, t.syncexpr.chan );
 
+        if ( t.syncexpr.valid() ) {
+            sync_channel = sym.lookup( NS::Channel, t.syncexpr.chan );
+            if ( t.syncexpr.write )
+                sync_expr = Expression( sym, t.syncexpr.expr );
+            else
+                sync_lval = LValue( sym, t.syncexpr.lval );
+        }
     }
 };
 
@@ -426,7 +447,9 @@ struct Process {
             Transition &tw = writers[w];
             for ( int r = 0; r < readers.size(); ++r ) {
                 Transition &tr = readers[r];
-                if ( tw.channel == tr.channel ) {
+                if ( tw.sync_channel == tr.sync_channel ) {
+                    if ( tw.sync_expr.valid() != tr.sync_lval.valid() )
+                        throw "Booh";
                     tw.sync = &tr;
                     trans[ tw.from.deref< short >() ].push_back( tw );
                 }
