@@ -16,6 +16,7 @@ file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
 
 file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
 file( GLOB SRC_LLVM llvm/*.cpp )
+file( GLOB SRC_DVE dve/*.cpp )
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
@@ -63,7 +64,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_COIN} ${SRC_BA} ${SRC_LLVM}
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
     pool_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
 

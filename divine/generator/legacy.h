@@ -219,16 +219,11 @@ struct LegacyCommon : Common< _State > {
     }
 };
 
-template< typename _State >
-struct Dve : LegacyCommon< _State, dve_explicit_system_t >
+struct LegacyDve : LegacyCommon< Blob, dve_explicit_system_t >
 {};
 
-template< typename _State >
-struct Bymoc : LegacyCommon< _State, bymoc_explicit_system_t >
+struct LegacyBymoc : LegacyCommon< Blob, bymoc_explicit_system_t >
 {};
-
-typedef Dve< Blob > NDve;
-typedef Bymoc< Blob > NBymoc;
 
 }
 }

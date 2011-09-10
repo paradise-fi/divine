@@ -528,13 +528,13 @@ struct Main {
                 if ( o_por->boolValue() )
                     std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
                 report->reductions.push_back( "FAIRNESS" );
-                return selectAlgorithm< algorithm::FairGraph< generator::NDve >, Stats >();
+                return selectAlgorithm< algorithm::FairGraph< generator::LegacyDve >, Stats >();
             }
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
-                return selectAlgorithm< algorithm::PORGraph< generator::NDve, Stats >, Stats >();
+                return selectAlgorithm< algorithm::PORGraph< generator::LegacyDve, Stats >, Stats >();
             } else {
-                return selectAlgorithm< algorithm::NonPORGraph< generator::NDve >, Stats >();
+                return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
             }
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
@@ -565,7 +565,7 @@ struct Main {
 #endif
         } else if ( str::endsWith( config.input, ".b" ) ) {
             report->generator = "NIPS";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::NBymoc >, Stats >();
+            return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyBymoc >, Stats >();
         } else if ( str::endsWith( config.input, ".so" ) ) {
             report->generator = "Custom";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
