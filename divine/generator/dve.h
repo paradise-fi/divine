@@ -31,8 +31,8 @@ struct Dve : public Common< Blob > {
         Node from() { return _from; }
 
         Node head() {
-            Blob b = parent->alloc.new_blob( 100 ); // XXX
-            memcpy( parent->mem( b ), parent->mem( _from ), 100 );
+            Blob b = parent->alloc.new_blob( parent->stateSize() );
+            memcpy( parent->mem( b ), parent->mem( _from ), parent->stateSize() );
             parent->updateMem( b );
             parent->system->apply( parent->ctx, p );
             return b;
@@ -58,7 +58,7 @@ struct Dve : public Common< Blob > {
     }
 
     Node initial() {
-        Blob b = alloc.new_blob( 100 ); // XXX
+        Blob b = alloc.new_blob( stateSize() );
         return b;
     }
 
@@ -86,8 +86,12 @@ struct Dve : public Common< Blob > {
         return AC_None;
     }
 
-    // XXX
-    bool isGoal( Node s ) { return false; }
+    int stateSize() {
+        return system->symtab.context->offset;
+    }
+
+    bool isGoal( Node s ) { return false; } // XXX
+
     bool isAccepting( Node s ) {
         updateMem( s );
         return system->accepting( ctx );
