@@ -129,7 +129,7 @@ struct Process {
     }
 
     bool valid( EvalContext &ctx, int i ) {
-        return 1 <= i && i <= trans[ state( ctx ) ].size();
+        return i <= trans[ state( ctx ) ].size();
     }
 
     Transition &transition( EvalContext &ctx, int i ) {
