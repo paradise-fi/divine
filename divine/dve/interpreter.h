@@ -107,10 +107,13 @@ struct Process {
     std::vector< Transition > readers;
     std::vector< Transition > writers;
 
+    int state( EvalContext &ctx ) {
+        return id.deref< short >( ctx.mem );
+    }
+
     int enabled( EvalContext &ctx, int i ) {
-        int state = id.deref< short >( ctx.mem );
-        assert_leq( size_t( state + 1 ), trans.size() );
-        std::vector< Transition > &tr = trans[ state ];
+        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
+        std::vector< Transition > &tr = trans[ state( ctx ) ];
         for ( ; i < tr.size(); ++i ) {
             if ( tr[ i ].enabled( ctx ) )
                 break;
@@ -119,16 +122,14 @@ struct Process {
     }
 
     bool valid( EvalContext &ctx, int i ) {
-        int state = id.deref< short >( ctx.mem );
-        return 1 <= i && i <= trans[ state ].size();
+        return 1 <= i && i <= trans[ state( ctx ) ].size();
     }
 
     Transition &transition( EvalContext &ctx, int i ) {
-        int state = id.deref< short >( ctx.mem );
-        assert_leq( size_t( state + 1 ), trans.size() );
-        assert_leq( i, trans[ state ].size() );
+        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
+        assert_leq( i, trans[ state( ctx ) ].size() );
         assert_leq( 1, i );
-        return trans[ state ][ i - 1 ];
+        return trans[ state( ctx ) ][ i - 1 ];
     }
 
     Process( SymTab *parent, Symbol id, const parse::Process &proc )
@@ -186,6 +187,8 @@ struct System {
     std::vector< Process > processes;
     Process *property;
 
+    std::vector< bool > is_accepting;
+
     struct Continuation {
         unsigned process:16; // the process whose turn it is
         unsigned property:16; // active property transition; 0 = none
@@ -218,9 +221,22 @@ struct System {
         // find the property process
         if ( sys.property.valid() ) {
             Symbol propid = symtab.lookup( NS::Process, sys.property );
+            const parse::Process *propast = 0;
             for ( int i = 0; i < processes.size(); ++ i ) {
-                if ( processes[ i ].id == propid )
+                if ( processes[ i ].id == propid ) {
                     property = &processes[ i ];
+                    propast = &sys.processes[ i ];
+                }
+            }
+
+            assert( property );
+            assert( propast );
+
+            is_accepting.resize( propast->states.size(), false );
+            for ( int i = 0; i < is_accepting.size(); ++ i ) {
+                for ( int j = 0; j < propast->accepts.size(); ++ j )
+                    if ( propast->states[ i ].name() == propast->accepts[ j ].name() )
+                        is_accepting[i] = true;
             }
         }
     }
@@ -263,8 +279,14 @@ struct System {
             property->transition( ctx, c.property ).apply( ctx );
     }
 
-    bool invalid( Continuation c ) {
-        return c.process >= processes.size();
+    bool valid( Continuation c ) {
+        return c.process < processes.size();
+    }
+
+    bool accepting( EvalContext &ctx ) {
+        if ( property )
+            return is_accepting[ property->state( ctx ) ];
+        return false;
     }
 };
 

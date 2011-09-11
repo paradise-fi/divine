@@ -25,7 +25,7 @@ struct Dve : public Common< Blob > {
 
         bool empty() const {
             if( !parent ) return true;
-            return parent->system->invalid( p );
+            return !parent->system->valid( p );
         }
 
         Node from() { return _from; }
@@ -88,7 +88,10 @@ struct Dve : public Common< Blob > {
 
     // XXX
     bool isGoal( Node s ) { return false; }
-    bool isAccepting( Node s ) { return false; }
+    bool isAccepting( Node s ) {
+        updateMem( s );
+        return system->accepting( ctx );
+    }
 
     char *mem( Node s ) {
         return &s.get< char >( alloc._slack );
