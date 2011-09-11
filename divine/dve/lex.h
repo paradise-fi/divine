@@ -14,7 +14,7 @@ struct TI {
         Invalid,
         // the following 2 IDs are internal to the expression evaluator, which
         // reuses TokenId for representing operations
-        UnaryMinus, Subscript,
+        UnaryMinus, Subscript, Reference,
         Comment, Punctuation, Identifier, Constant,
         IndexOpen, IndexClose, BlockOpen, BlockClose, ParenOpen, ParenClose,
         Const, Int, Byte, Channel,
@@ -32,7 +32,7 @@ struct TI {
 };
 
 const std::string tokenName[] = {
-    "INVALID", "INVALID", "INVALID",
+    "INVALID", "MINUS", "SUBSCRIPT", "REFERENCE",
     "comment", "punctuation", "identifier", "constant",
     "[", "]", "{", "}", "(", ")",
     "const", "int", "byte", "channel",

@@ -236,6 +236,7 @@ struct Expression {
         switch (i.op.id) {
             case TI::Identifier:
                 ctx.push( i.arg.symbol.deref< int >( ctx.mem ) ); break;
+            case TI::Reference:
             case TI::Constant:
                 ctx.push( i.arg ); break;
             case TI::Subscript:
@@ -275,7 +276,10 @@ struct Expression {
             parse::RValue &v = *ex.rval;
             if ( v.ident.valid() ) {
                 Symbol ident = sym.lookup( SymTab::Variable, v.ident.name() );
-                rpn_push( v.ident.token, ident );
+                Token t = v.ident.token;
+                if ( v.idx )
+                    t.id = TI::Reference;
+                rpn_push( t, ident );
                 if ( v.idx ) {
                     build( sym, *v.idx );
                     rpn_push( Token( TI::Subscript, "<synthetic>" ), 0 );
