@@ -99,6 +99,12 @@ struct Transition {
     }
 };
 
+static inline void declare( SymTab &symtab, const parse::Decls &decls )
+{
+    for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i )
+        symtab.allocate( i->is_chan ? NS::Channel : NS::Variable, *i );
+}
+
 struct Process {
     Symbol id;
     SymTab symtab;
@@ -138,6 +144,8 @@ struct Process {
     {
         int states = 0;
         assert( id.valid() );
+
+        declare( symtab, proc.decls );
         for ( std::vector< parse::Identifier >::const_iterator i = proc.states.begin();
               i != proc.states.end(); ++i ) {
             symtab.constant( NS::State, i->name(), states++ );
@@ -176,12 +184,6 @@ struct Process {
         }
     }
 };
-
-void declare( SymTab &symtab, const parse::Decls &decls )
-{
-    for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i )
-        symtab.allocate( i->is_chan ? NS::Channel : NS::Variable, *i );
-}
 
 struct System {
     SymTab symtab;
