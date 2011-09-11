@@ -384,11 +384,12 @@ struct Process : Parser {
 struct System : Parser {
     std::vector< Declaration > decls;
     std::vector< Process > processes;
+    Identifier property;
     bool synchronous;
 
-    void property() {
+    void _property() {
         eat( Token::Property );
-        eat( Token::Identifier);
+        property = Identifier( context() );
     }
 
     System( Context &c ) : Parser( c )
@@ -404,7 +405,7 @@ struct System : Parser {
         else
             fail( "sync or async" );
 
-        maybe( &System::property );
+        maybe( &System::_property );
         semicolon();
     }
 };

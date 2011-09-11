@@ -20,7 +20,7 @@ struct Dve : public Common< Blob > {
         typedef Node Type;
 
         Node _from;
-        std::pair< int, int > p;
+        dve::System::Continuation p;
         Dve* parent;
 
         bool empty() const {
@@ -34,7 +34,7 @@ struct Dve : public Common< Blob > {
             Blob b = parent->alloc.new_blob( 100 ); // XXX
             memcpy( parent->mem( b ), parent->mem( _from ), 100 );
             parent->updateMem( b );
-            parent->system->transition( parent->ctx, p ).apply( parent->ctx );
+            parent->system->apply( parent->ctx, p );
             return b;
         }
 
@@ -52,7 +52,7 @@ struct Dve : public Common< Blob > {
         Successors succ;
         succ._from = s;
         updateMem( s );
-        succ.p = system->enabled( ctx, std::make_pair( 0, 0 ) );
+        succ.p = system->enabled( ctx, dve::System::Continuation() );
         succ.parent = this;
         return succ;
     }

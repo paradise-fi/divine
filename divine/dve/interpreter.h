@@ -42,9 +42,11 @@ struct LValue {
 struct Transition {
     Symbol process;
     Symbol from, to;
+
     Symbol sync_channel;
     LValue sync_lval;
     Expression sync_expr;
+
     Transition *sync;
 
     std::vector< Expression > guards;
@@ -105,28 +107,20 @@ struct Process {
     std::vector< Transition > readers;
     std::vector< Transition > writers;
 
-    template< typename I >
-    I enabled( EvalContext &ctx, I i ) {
-        int state = id.deref< short >( ctx.mem );
-        assert_leq( size_t( state + 1 ), trans.size() );
-        std::vector< Transition > &tr = trans[ state ];
-        for ( size_t j = 0; j < tr.size(); ++j ) {
-            if ( tr[ j ].enabled( ctx ) )
-                *i++ = tr[ j ];
-        }
-        return i;
-    }
-
     int enabled( EvalContext &ctx, int i ) {
         int state = id.deref< short >( ctx.mem );
         assert_leq( size_t( state + 1 ), trans.size() );
         std::vector< Transition > &tr = trans[ state ];
         for ( ; i < tr.size(); ++i ) {
             if ( tr[ i ].enabled( ctx ) )
-                return i + 1;
+                break;
         }
-        // std::cerr << "no further enabled transitions" << std::endl;
-        return 0;
+        return i + 1;
+    }
+
+    bool valid( EvalContext &ctx, int i ) {
+        int state = id.deref< short >( ctx.mem );
+        return 1 <= i && i <= trans[ state ].size();
     }
 
     Transition &transition( EvalContext &ctx, int i ) {
@@ -149,7 +143,6 @@ struct Process {
 
         assert_eq( states, proc.states.size() );
         trans.resize( proc.states.size() );
-
 
         for ( std::vector< parse::Transition >::const_iterator i = proc.trans.begin();
               i != proc.trans.end(); ++i ) {
@@ -191,11 +184,24 @@ void declare( SymTab &symtab, const parse::Decls &decls )
 struct System {
     SymTab symtab;
     std::vector< Process > processes;
+    Process *property;
 
-    System( const parse::System &sys ) {
+    struct Continuation {
+        unsigned process:16; // the process whose turn it is
+        unsigned property:16; // active property transition; 0 = none
+        unsigned transition:32; // active process transition; 0 = none
+        Continuation() : process( 0 ), property( 0 ), transition( 0 ) {}
+    };
+
+    System( const parse::System &sys )
+        : property( 0 )
+    {
+        assert( !sys.synchronous ); // XXX
+
         declare( symtab, sys.decls );
         for ( parse::Procs::const_iterator i = sys.processes.begin();
-              i != sys.processes.end(); ++i ) {
+              i != sys.processes.end(); ++i )
+        {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
             processes.push_back( Process( &symtab, id, *i ) );
         }
@@ -208,31 +214,57 @@ struct System {
                 processes[ i ].setupSyncs( processes[ j ].readers );
             }
         }
-    }
 
-    template< typename I >
-    I enabled( EvalContext &ctx, I i ) {
-        for ( size_t j = 0; j < processes.size(); ++j )
-            i = processes[ j ].enabled( ctx, i );
-        return i;
-    }
-
-    std::pair< int, int > enabled( EvalContext &ctx, std::pair< int, int > cont ) {
-        for ( ; cont.first < processes.size(); ++cont.first ) {
-            cont.second = processes[ cont.first ].enabled( ctx, cont.second );
-            if ( cont.second )
-                return cont;
+        // find the property process
+        if ( sys.property.valid() ) {
+            Symbol propid = symtab.lookup( NS::Process, sys.property );
+            for ( int i = 0; i < processes.size(); ++ i ) {
+                if ( processes[ i ].id == propid )
+                    property = &processes[ i ];
+            }
         }
-        return cont; // make_pair( processes.size(), 0 );
     }
 
-    Transition &transition( EvalContext &ctx, std::pair< int, int > p ) {
-        assert_leq( p.first + 1, processes.size() );
-        return processes[ p.first ].transition( ctx, p.second );
+    Continuation enabled( EvalContext &ctx, Continuation cont ) {
+        for ( ; cont.process < processes.size(); ++cont.process ) {
+            Process &p = processes[ cont.process ];
+
+            if ( &p == property ) // property process cannot progress alone
+                continue;
+
+            // try other property transitions first
+            if ( cont.transition && property && property->valid( ctx, cont.property ) ) {
+                cont.property = property->enabled( ctx, cont.property );
+                if ( property->valid( ctx, cont.property ) )
+                    return cont;
+            }
+
+            cont.transition = p.enabled( ctx, cont.transition );
+
+            // is the result a valid transition?
+            if ( p.valid( ctx, cont.transition ) ) {
+                if ( !property )
+                    return cont;
+                cont.property = property->enabled( ctx, 0 );
+                if ( property->valid( ctx, cont.property ) )
+                    return cont;
+            }
+
+            // no more enabled transitions from this process
+            cont.transition = 0;
+        }
+        return cont;
     }
 
-    bool invalid( std::pair< int, int > p ) {
-        return p.first >= processes.size();
+    void apply( EvalContext &ctx, Continuation c ) {
+        assert_leq( c.process + 1, processes.size() );
+        processes[ c.process ].transition( ctx, c.transition ).apply( ctx );
+        if ( property )
+            property->transition( ctx, c.property ).apply( ctx );
+    }
+
+    bool invalid( Continuation c ) {
+        return c.process >= processes.size();
     }
 };
 
