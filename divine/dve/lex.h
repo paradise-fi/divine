@@ -71,6 +71,10 @@ struct Token : wibble::Token< TI::TokenId >, TI {
             return id == Bool_And || id == Bool_Or || id == Imply;
         return false;
     }
+
+    bool unary() const {
+        return id == Bool_Not || id == Tilde || id == UnaryMinus;
+    }
 };
 
 const std::string __fragments[] = {

@@ -147,7 +147,7 @@ struct Expression : Parser {
             fail( "expression" );
 
         /* simplify expressions */
-        if ( lhs && !rhs && !op.precedence( prec ) ) {
+        if ( lhs && !rhs && !op.precedence( prec ) && !op.unary() ) {
             Expression ex = *lhs;
             delete lhs;
             *this = ex;
