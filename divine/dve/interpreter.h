@@ -34,6 +34,7 @@ struct LValue {
         : idx( tab, lv.idx ), _valid( lv.valid() )
     {
         symbol = tab.lookup( NS::Variable, lv.ident.name() );
+        assert( symbol.valid() );
     }
 
     LValue() : _valid( false ) {}
@@ -92,7 +93,7 @@ struct Transition {
             sync_channel = sym.lookup( NS::Channel, t.syncexpr.chan );
             if ( t.syncexpr.write )
                 sync_expr = Expression( sym, t.syncexpr.expr );
-            else
+            else if ( t.syncexpr.lval.valid() )
                 sync_lval = LValue( sym, t.syncexpr.lval );
         }
     }
