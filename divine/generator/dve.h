@@ -20,40 +20,40 @@ struct Dve : public Common< Blob > {
         typedef Node Type;
 
         Node _from;
-        mutable int idx;
-        std::vector< dve::Transition > enabled;
+        std::pair< int, int > p;
         Dve* parent;
 
         bool empty() const {
-            return idx >= enabled.size();
+            if( !parent ) return true;
+            return parent->system->invalid( p );
         }
 
         Node from() { return _from; }
 
         Node head() {
-            assert( idx < enabled.size() );
             Blob b = parent->alloc.new_blob( 100 ); // XXX
             memcpy( parent->mem( b ), parent->mem( _from ), 100 );
             parent->updateMem( b );
-            enabled[ idx ].apply( parent->ctx );
+            parent->system->transition( parent->ctx, p ).apply( parent->ctx );
             return b;
         }
 
         Successors tail() {
             Successors s = *this;
-            s.idx = idx + 1;
+            parent->updateMem( _from );
+            s.p = parent->system->enabled( parent->ctx, p );
             return s;
         }
+
+        Successors() : parent( 0 ) {}
     };
 
     Successors successors( Node s ) {
         Successors succ;
         succ._from = s;
         updateMem( s );
-        system->enabled( ctx, std::back_inserter( succ.enabled ) );
-        std::cerr << showNode( s ) << " has " << succ.enabled.size() << " successors" << std::endl;
+        succ.p = system->enabled( ctx, std::make_pair( 0, 0 ) );
         succ.parent = this;
-        succ.idx = 0;
         return succ;
     }
 

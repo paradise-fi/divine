@@ -203,7 +203,7 @@ struct Expression {
     bool _valid;
     bool valid() { return _valid; }
 
-    int binop( Token op, int a, int b ) {
+    inline int binop( const Token &op, int a, int b ) {
         switch ( op.id ) {
             case TI::Bool_Or: return a || b;
             case TI::Bool_And: return a && b;
@@ -417,6 +417,26 @@ struct Process {
         return i;
     }
 
+    int enabled( EvalContext &ctx, int i ) {
+        int state = id.deref< short >( ctx.mem );
+        assert_leq( size_t( state + 1 ), trans.size() );
+        std::vector< Transition > &tr = trans[ state ];
+        for ( ; i < tr.size(); ++i ) {
+            if ( tr[ i ].enabled( ctx ) )
+                return i + 1;
+        }
+        // std::cerr << "no further enabled transitions" << std::endl;
+        return 0;
+    }
+
+    Transition &transition( EvalContext &ctx, int i ) {
+        int state = id.deref< short >( ctx.mem );
+        assert_leq( size_t( state + 1 ), trans.size() );
+        assert_leq( i, trans[ state ].size() );
+        assert_leq( 1, i );
+        return trans[ state ][ i - 1 ];
+    }
+
     Process( SymTab *parent, Symbol id, const parse::Process &proc )
         : id( id ), symtab( parent )
     {
@@ -495,6 +515,24 @@ struct System {
         for ( size_t j = 0; j < processes.size(); ++j )
             i = processes[ j ].enabled( ctx, i );
         return i;
+    }
+
+    std::pair< int, int > enabled( EvalContext &ctx, std::pair< int, int > cont ) {
+        for ( ; cont.first < processes.size(); ++cont.first ) {
+            cont.second = processes[ cont.first ].enabled( ctx, cont.second );
+            if ( cont.second )
+                return cont;
+        }
+        return cont; // make_pair( processes.size(), 0 );
+    }
+
+    Transition &transition( EvalContext &ctx, std::pair< int, int > p ) {
+        assert_leq( p.first + 1, processes.size() );
+        return processes[ p.first ].transition( ctx, p.second );
+    }
+
+    bool invalid( std::pair< int, int > p ) {
+        return p.first >= processes.size();
     }
 };
 
