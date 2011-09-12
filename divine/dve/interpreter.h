@@ -197,6 +197,9 @@ struct System {
         unsigned property:16; // active property transition; 0 = none
         unsigned transition:32; // active process transition; 0 = none
         Continuation() : process( 0 ), property( 0 ), transition( 0 ) {}
+        bool operator==( const Continuation &o ) const {
+            return process == o.process && property == o.property && transition == o.transition;
+        }
     };
 
     System( const parse::System &sys )
@@ -250,6 +253,8 @@ struct System {
     }
 
     Continuation enabled( EvalContext &ctx, Continuation cont ) {
+        bool system_deadlock = cont == Continuation() || cont.process >= processes.size();
+
         for ( ; cont.process < processes.size(); ++cont.process ) {
             Process &p = processes[ cont.process ];
 
@@ -277,18 +282,26 @@ struct System {
             // no more enabled transitions from this process
             cont.transition = 0;
         }
+
+        if ( system_deadlock && property )
+            cont.property = property->enabled( ctx, cont.property );
+
         return cont;
     }
 
     void apply( EvalContext &ctx, Continuation c ) {
-        assert_leq( c.process + 1, processes.size() );
-        processes[ c.process ].transition( ctx, c.transition ).apply( ctx );
+        if ( c.process < processes.size() )
+            processes[ c.process ].transition( ctx, c.transition ).apply( ctx );
         if ( property )
             property->transition( ctx, c.property ).apply( ctx );
     }
 
-    bool valid( Continuation c ) {
-        return c.process < processes.size();
+    bool valid( EvalContext &ctx, Continuation c ) {
+        if ( c.process < processes.size() )
+            return true;
+        if ( property && property->valid( ctx, c.property ) )
+            return true;
+        return false;
     }
 
     bool accepting( EvalContext &ctx ) {
