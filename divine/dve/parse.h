@@ -107,7 +107,7 @@ struct Expression : Parser {
     // TODO: Unary operators: minus and tilde (bitwise negation)
     void negation() {
         op = eat( Token::Bool_Not );
-        Expression _lhs( context() );
+        Expression _lhs( context(), 0 );
         lhs = new Expression( _lhs );
     }
 
