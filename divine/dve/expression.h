@@ -42,6 +42,7 @@ struct EvalContext {
 struct Expression {
     struct Item {
         // Identifier = symbol reference; arg = symbol id
+        // Reference = same, but push the *symbol* on the eval stack
         // Constant = in-place constant; arg = the constant
 
         // operator id = operator; arg is unused, operands are the top two
@@ -104,6 +105,11 @@ struct Expression {
                 s = ctx.pop().symbol;
                 ctx.push( s.deref< int >( ctx.mem, b ) );
                 break;
+            case TI::Period:
+                s = ctx.pop().symbol;
+                p = ctx.pop().symbol;
+                ctx.push( s.deref< short >( ctx.mem ) == p.deref< short >( ctx.mem ) );
+                break;
             case TI::Bool_Not:
                 a = ctx.pop().value;
                 ctx.push( !a );
@@ -134,6 +140,23 @@ struct Expression {
     }
 
     void build( const SymTab &sym, const parse::Expression &ex ) {
+        if ( ex.op.id == TI::Period ) {
+            assert( ex.lhs );
+            assert( ex.rhs );
+            parse::RValue *left = ex.lhs->rval, *right = ex.rhs->rval;
+            assert( left );
+            assert( right );
+            Symbol process = sym.lookup( SymTab::Process, left->ident.name() );
+            Symbol state = sym.toplevel()->child( process )->lookup(
+                SymTab::State, right->ident.name() );
+            assert( process.valid() );
+            assert( state.valid() );
+            rpn_push( Token( TI::Reference, "<synthetic>" ), process );
+            rpn_push( Token( TI::Reference, "<synthetic>" ), state );
+            rpn_push( ex.op, 0 );
+            return;
+        }
+
         if ( ex.rval ) {
             parse::RValue &v = *ex.rval;
             if ( v.ident.valid() ) {

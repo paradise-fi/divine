@@ -205,11 +205,16 @@ struct System {
         assert( !sys.synchronous ); // XXX
 
         declare( symtab, sys.decls );
+
+        // ensure validity of pointers into the process array
+        processes.reserve( sys.processes.size() );
+
         for ( parse::Procs::const_iterator i = sys.processes.begin();
               i != sys.processes.end(); ++i )
         {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
             processes.push_back( Process( &symtab, id, *i ) );
+            symtab.children[id] = &processes.back().symtab;
         }
 
         // compute synchronisations

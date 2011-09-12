@@ -42,6 +42,14 @@ struct Symbol {
 
     bool valid() { return context; }
 
+    bool operator<( const Symbol &o ) const {
+        if ( context < o.context )
+            return true;
+        if ( context == o.context && id < o.id )
+            return true;
+        return false;
+    }
+
     bool operator==( const Symbol &o ) const {
         return id == o.id && context == o.context;
     }
@@ -86,6 +94,7 @@ struct SymTab : NS {
 
     SymContext *context;
     SymTab *parent; // scoping
+    std::map< Symbol, SymTab * > children;
 
     SymId newid( Namespace ns, std::string name ) {
         assert( context );
@@ -137,6 +146,18 @@ struct SymTab : NS {
         c.resize( c.size() + 1 );
         c[ i.offset ] = value;
         return Symbol( context, id );
+    }
+
+    const SymTab *child( Symbol id ) const {
+        assert( children.find( id ) != children.end() );
+        assert( children.find( id )->second );
+        return children.find( id )->second;
+    }
+
+    const SymTab *toplevel() const {
+        if ( parent )
+            return parent->toplevel();
+        return this;
     }
 
     SymTab( SymTab *parent = 0 ) : parent( parent ) {
