@@ -7,6 +7,8 @@
 #ifndef DIVINE_DVE_EXPRESSION_H
 #define DIVINE_DVE_EXPRESSION_H
 
+#define DEBUG(x) do { /*x */ } while(false)
+
 namespace divine {
 namespace dve {
 
@@ -23,11 +25,13 @@ struct EvalContext {
     Value pop() {
         assert( !stack.empty() );
         Value v = stack.back();
+        DEBUG(std::cerr << "-[" << v.value << "]");
         stack.pop_back();
         return v;
     }
 
     void push( Value a ) {
+        DEBUG(std::cerr << "+[" << a.value << "]");
         stack.push_back( a );
     }
 
@@ -84,10 +88,10 @@ struct Expression {
 
     void step( EvalContext &ctx, Item &i ) {
         int a, b;
-        Symbol s;
-        /* for ( int i = 0; i < ctx.stack.size(); ++ i )
-            std::cerr << i << " ";
-            std::cerr << i.op; */
+        Symbol p, s;
+        DEBUG(for ( int i = 0; i < ctx.stack.size(); ++ i )
+                  std::cerr << ctx.stack[ i ].value << " ";
+              std::cerr << i.op);
 
         switch (i.op.id) {
             case TI::Identifier:
@@ -113,7 +117,7 @@ struct Expression {
                 a = ctx.pop().value;
                 ctx.push( binop( i.op, a, b ) );
         }
-        // std::cerr << std::endl;
+        DEBUG(std::cerr << std::endl);
     }
 
     int evaluate( EvalContext &ctx ) {
@@ -121,7 +125,7 @@ struct Expression {
         for ( std::vector< Item >::iterator i = rpn.begin(); i != rpn.end(); ++i )
             step( ctx, *i );
         assert_eq( ctx.stack.size(), (size_t) 1 );
-        // std::cerr << "done: " << ctx.stack.back().value << std::endl;
+        DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         return ctx.pop().value;
     }
 
