@@ -78,11 +78,11 @@ struct Token : wibble::Token< TI::TokenId >, TI {
 };
 
 const std::string __fragments[] = {
-    "/*", "*/", "//", "\n", ";", ":", "and", "or"
+    "/*", "*/", "//", "\n", ";", ":", "and", "or", "true", "false"
 };
 
 struct Fragment {
-    enum Frag { LC, EC, SC, EOL, SEMICOL, COL, AND, OR };
+    enum Frag { LC, EC, SC, EOL, SEMICOL, COL, AND, OR, TRUE, FALSE };
 };
 
 template< typename Stream >
@@ -104,8 +104,8 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
         this->match( frag( LC ), frag( EC ), Token::Comment );
         this->match( frag( SC ), frag( EOL ), Token::Comment );
 
-        this->match( "true", TI::Constant );
-        this->match( "false", TI::Constant );
+        this->match( frag( TRUE ), TI::Constant );
+        this->match( frag( FALSE ), TI::Constant );
 
         for ( TI::TokenId i = TI::IndexOpen; i < TI::GenBuchi; i = (TI::TokenId) (i + 1) )
             this->match( tokenName[i], i );
