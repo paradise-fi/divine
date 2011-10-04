@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <cstring> // size_t ... d'oh
 #include <wibble/test.h> // for assert*
+#include <wibble/string.h>
 #ifndef BLOB_NO_HASH
 #include <divine/hash.h>
 #endif
@@ -265,6 +266,20 @@ inline Blob unblob( Blob b ) {
     return b;
 }
 
+}
+
+namespace wibble {
+namespace str {
+
+template<>
+inline std::string fmt( const divine::Blob &b ) {
+    std::deque< int > v;
+    b.write32( std::back_inserter( v ) );
+    v.pop_front();
+    return fmt( v );
+}
+
+}
 }
 
 #endif
