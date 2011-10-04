@@ -30,6 +30,7 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <deque>
 #include <sstream>
 #include <cctype>
 #ifdef _WIN32
@@ -111,6 +112,12 @@ inline std::string fmt(const std::set< X >& val) {
 // formatting vectors using [ ... ] notation
 template< typename X >
 inline std::string fmt(const std::vector< X > &val) {
+    return fmt_container( val, '[', ']' );
+}
+
+// formatting vectors using [ ... ] notation
+template< typename X >
+inline std::string fmt(const std::deque< X > &val) {
     return fmt_container( val, '[', ']' );
 }
 
