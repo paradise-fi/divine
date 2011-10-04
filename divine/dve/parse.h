@@ -251,7 +251,7 @@ struct Declaration : Parser {
             initial.push_back( Expression ( context() ) );
     }
 
-    Declaration( Context &c ) : Parser( c )
+    Declaration( Context &c ) : Parser( c ), size( 1 )
     {
         Token t = eat( Token::Identifier );
         name = t.data;

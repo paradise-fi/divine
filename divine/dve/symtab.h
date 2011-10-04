@@ -8,7 +8,7 @@ namespace divine {
 namespace dve {
 
 struct NS {
-    enum Namespace { Process, Variable, Channel, State };
+    enum Namespace { Process, Variable, Channel, State, Initialiser, InitState };
 };
 
 typedef int SymId;
@@ -191,7 +191,7 @@ struct SymTab : NS {
             context = new SymContext();
         else
             context = parent->context;
-        tabs.resize( 4 ); // one for each namespace
+        tabs.resize( 6 ); // one for each namespace
     }
 
     std::ostream& dump(std::ostream &o, char *mem) {

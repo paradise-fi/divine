@@ -101,8 +101,18 @@ struct Transition {
 
 static inline void declare( SymTab &symtab, const parse::Decls &decls )
 {
-    for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i )
+    for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i ) {
         symtab.allocate( i->is_chan ? NS::Channel : NS::Variable, *i );
+        std::vector< int > init;
+        EvalContext ctx;
+        for ( int j = 0; j < i->initial.size(); ++j ) {
+            Expression ex( symtab, i->initial[ j ] );
+            init.push_back( ex.evaluate( ctx ) );
+        }
+        while ( init.size() < i->size )
+            init.push_back( 0 );
+        symtab.constant( NS::Initialiser, i->name, init );
+    }
 }
 
 struct Process {
@@ -148,6 +158,8 @@ struct Process {
         declare( symtab, proc.decls );
         for ( std::vector< parse::Identifier >::const_iterator i = proc.states.begin();
               i != proc.states.end(); ++i ) {
+            if ( proc.inits.size() && i->name() == proc.inits.front().name() )
+                parent->constant( NS::InitState, proc.name.name(), states );
             symtab.constant( NS::State, i->name(), states++ );
         }
 
@@ -287,6 +299,25 @@ struct System {
             cont.property = property->enabled( ctx, cont.property );
 
         return cont;
+    }
+
+    void initial( EvalContext &ctx ) {
+        for ( int i = 0; i < processes.size(); ++i )
+            initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
+        initial( ctx, symtab, NS::Variable, NS::Initialiser );
+        initial( ctx, symtab, NS::Process, NS::InitState );
+    }
+
+    void initial( EvalContext &ctx, SymTab &tab, NS::Namespace vns, NS::Namespace ins ) {
+        typedef std::map< std::string, SymId > Scope;
+        Scope &scope = tab.tabs[ vns ];
+
+        for ( Scope::iterator i = scope.begin(); i != scope.end(); ++i ) {
+            Symbol vsym = tab.lookup( vns, i->first ), isym = tab.lookup( ins, i->first );
+            assert( vsym.valid() );
+            if ( isym.valid() )
+                vsym.set( ctx.mem, 0, isym.deref() );
+        }
     }
 
     void apply( EvalContext &ctx, Continuation c ) {
