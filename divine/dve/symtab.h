@@ -162,6 +162,18 @@ struct SymTab : NS {
         return Symbol( context, id );
     }
 
+    Symbol constant( Namespace ns, std::string name, std::vector< int > vals ) {
+        unsigned id = newid( ns, name );
+        SymContext::Item &i = context->ids[ id ];
+        std::vector< int > &c = context->constants;
+        i.offset = c.size();
+        i.is_constant = true;
+        i.is_array = true;
+        i.array = vals.size();
+        std::copy( vals.begin(), vals.end(), std::back_inserter( c ) );
+        return Symbol( context, id );
+    }
+
     const SymTab *child( Symbol id ) const {
         assert( children.find( id ) != children.end() );
         assert( children.find( id )->second );
