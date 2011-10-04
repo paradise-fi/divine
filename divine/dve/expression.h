@@ -96,19 +96,19 @@ struct Expression {
 
         switch (i.op.id) {
             case TI::Identifier:
-                ctx.push( i.arg.symbol.deref< int >( ctx.mem ) ); break;
+                ctx.push( i.arg.symbol.deref( ctx.mem ) ); break;
             case TI::Reference:
             case TI::Constant:
                 ctx.push( i.arg ); break;
             case TI::Subscript:
                 b = ctx.pop().value;
                 s = ctx.pop().symbol;
-                ctx.push( s.deref< int >( ctx.mem, b ) );
+                ctx.push( s.deref( ctx.mem, b ) );
                 break;
             case TI::Period:
                 s = ctx.pop().symbol;
                 p = ctx.pop().symbol;
-                ctx.push( s.deref< short >( ctx.mem ) == p.deref< short >( ctx.mem ) );
+                ctx.push( s.deref( ctx.mem ) == p.deref( ctx.mem ) );
                 break;
             case TI::Bool_Not:
                 a = ctx.pop().value;

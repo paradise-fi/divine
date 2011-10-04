@@ -20,11 +20,11 @@ struct SymContext : NS {
     std::vector< int > constants;
 
     struct Item {
-        int offset;
-        int width;
+        size_t offset:30;
+        size_t width:4;
+        size_t array:8;
         bool is_array:1;
         bool is_constant:1;
-        int array;
         Item() : is_array( false ), is_constant( false ), array( 1 ) {}
     };
 
@@ -64,20 +64,31 @@ struct Symbol {
         return context->ids[ id ];
     }
 
-    template< typename T >
-    T deref( char *mem = 0, int idx = 0 ) {
+    int deref( char *mem = 0, int idx = 0 ) {
         if ( item().is_constant )
             return context->constants[ item().offset + idx ];
         else {
-            int value = *reinterpret_cast< int * >( mem + item().offset + idx * item().width );
-            return value;
+            if ( idx )
+                assert( item().is_array );
+            char *place = mem + item().offset + idx * item().width;
+            switch ( item().width ) {
+                case 1: return *reinterpret_cast< uint8_t * >( place );
+                case 2: return *reinterpret_cast< uint16_t * >( place );
+                case 4: return *reinterpret_cast< uint32_t * >( place );
+                default: assert_die();
+            }
         }
     }
 
-    template< typename T >
-    void set( char *mem, int idx, T value ) {
+    void set( char *mem, int idx, int value ) {
         assert ( !item().is_constant );
-        *reinterpret_cast< T * >( mem + item().offset + idx * item().width ) = value;
+        char *place = mem + item().offset + idx * item().width;
+        switch ( item().width ) {
+            case 1: *reinterpret_cast< uint8_t * >( place ) = value; break;
+            case 2: *reinterpret_cast< uint16_t * >( place ) = value; break;
+            case 4: *reinterpret_cast< uint32_t * >( place ) = value; break;
+            default: assert_die();
+        }
     }
 
 };
@@ -90,7 +101,6 @@ std::ostream &operator<<( std::ostream &os, Symbol s )
 struct SymTab : NS {
     typedef std::map< std::string, SymId > Tab;
     std::vector< Tab > tabs;
-    std::set< SymId > scope;
 
     SymContext *context;
     SymTab *parent; // scoping
@@ -129,7 +139,11 @@ struct SymTab : NS {
     }
 
     Symbol allocate( Namespace ns, const parse::Declaration &decl ) {
-        int width = 4; // XXX
+        int width = decl.width;
+
+        assert_leq( 1, width );
+        assert_leq( width, 4 );
+
         Symbol s = allocate( ns, decl.name, width * (decl.is_array ? decl.size : 1) );
         s.item().is_array = decl.is_array;
         s.item().width = width;
@@ -173,7 +187,7 @@ struct SymTab : NS {
             for ( std::map< std::string, int >::iterator i = tabs[ ns ].begin();
                   i != tabs[ ns ].end(); ++i ) {
                 Symbol s( context, i->second );
-                o << i->first << " = " << s.deref< short >( mem ) << ", ";
+                o << i->first << " = " << s.deref( mem ) << ", ";
             }
         }
         return o;

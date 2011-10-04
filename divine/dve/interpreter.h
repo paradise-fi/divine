@@ -55,7 +55,7 @@ struct Transition {
     Effect effect;
 
     bool enabled( EvalContext &ctx ) {
-        if ( process.deref< short >( ctx.mem ) != from.deref< short >( 0 ) )
+        if ( process.deref( ctx.mem ) != from.deref( 0 ) )
             return false;
         for ( int i = 0; i < guards.size(); ++i )
             if ( !guards[i].evaluate( ctx ) )
@@ -68,7 +68,7 @@ struct Transition {
     void apply( EvalContext &ctx ) {
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
             i->first.set( ctx, i->second.evaluate( ctx ) );
-        process.set( ctx.mem, 0, to.deref< short >() );
+        process.set( ctx.mem, 0, to.deref() );
         if ( sync ) {
             if (sync->sync_lval.valid() && sync_expr.valid() )
                 sync->sync_lval.set( ctx, sync_expr.evaluate( ctx ) );
@@ -115,7 +115,7 @@ struct Process {
     std::vector< Transition > writers;
 
     int state( EvalContext &ctx ) {
-        return id.deref< short >( ctx.mem );
+        return id.deref( ctx.mem );
     }
 
     int enabled( EvalContext &ctx, int i ) {
@@ -164,7 +164,7 @@ struct Process {
                 else
                     readers.push_back( t );
             } else
-                trans[ from.deref< short >() ].push_back( t );
+                trans[ from.deref() ].push_back( t );
         }
     }
 
@@ -178,7 +178,7 @@ struct Process {
                     if ( tw.sync_expr.valid() != tr.sync_lval.valid() )
                         throw "Booh";
                     tw.sync = &tr;
-                    trans[ tw.from.deref< short >() ].push_back( tw );
+                    trans[ tw.from.deref() ].push_back( tw );
                 }
             }
         }
