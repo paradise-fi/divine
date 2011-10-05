@@ -859,6 +859,10 @@ void Interpreter::visitCallSite(CallSite CS) {
                 SetValue(CS.getInstruction(), ArgIndex, SF());
                 return;
             }
+            // noops
+            case Intrinsic::dbg_declare:
+            case Intrinsic::dbg_value:
+
             case Intrinsic::vaend:    // va_end is a noop for the interpreter
                 return;
             case Intrinsic::vacopy:   // va_copy: dest = src
