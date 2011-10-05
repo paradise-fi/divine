@@ -210,24 +210,30 @@ static struct {
     { 0, 0 }
 };
 
-GenericValue Interpreter::callExternalFunction(
-    Function *F, const std::vector<GenericValue> &ArgVals)
-{
-    /* std::string mangled = "__divine_builtin_";
-    const FunctionType *FT = F->getFunctionType();
-    for (unsigned i = 0, e = FT->getNumContainedTypes(); i != e; ++i)
-        mangled += getTypeID(FT->getContainedType(i));
-    mangled + "_" + F->getNameStr(); */
-    std::string plain = "__divine_builtin_" + F->getNameStr();
+Builtin findBuiltin( Function *F ) {
+    std::string plain = F->getNameStr();
+    std::string divine = "__divine_builtin_" + plain;
 
     for ( int i = 0; builtins[i].name; ++i ) {
-        if ( plain == builtins[i].name ) {
-            return builtins[i].fun(this, F->getFunctionType(), ArgVals);
-        }
+        if ( plain == builtins[i].name )
+            return builtins[i].fun;
+    }
+
+    for ( int i = 0; builtins[i].name; ++i ) {
+        if ( divine == builtins[i].name )
+            return builtins[i].fun;
     }
 
     std::cerr << "WARNING: failed to resolve symbol " << plain << std::endl;
+    return NULL;
+}
 
+GenericValue Interpreter::callExternalFunction(
+    Function *F, const std::vector<GenericValue> &ArgVals)
+{
+    Builtin fun = findBuiltin( F );
+    if ( fun )
+        return fun( this, F->getFunctionType(), ArgVals );
     return GenericValue();
 }
 
@@ -259,21 +265,20 @@ bool Interpreter::viable( int ctx, int alt )
     if (!F->isDeclaration())
         return alt < 1; // not a builtin, deterministic
 
-    std::string plain = "__divine_builtin_" + F->getNameStr();
-    for ( int i = 0; builtins[i].name; ++i ) {
-        if ( plain == builtins[i].name ) {
-            if (builtins[i].fun == builtin_malloc)
-                return alt < 2; /* malloc has 2 different returns */
-            if (builtins[i].fun == builtin_amb)
-                return alt < 2; /* amb has 2 different returns (0 and 1) */
+    std::string plain = F->getNameStr();
 
-            // everything else is deterministic as well
-            return alt < 1;
-        }
-    }
+    if ( std::string( plain, 0, 4 ) == "llvm" )
+        return alt < 1;
 
-    std::cerr << "WARNING: failed to resolve symbol " << plain << std::endl;
-    return false;
+    Builtin fun = findBuiltin( F );
+
+    if ( fun == builtin_malloc )
+        return alt < 2; /* malloc has 2 different returns */
+    if ( fun == builtin_amb )
+        return alt < 2; /* amb has 2 different returns (0 and 1) */
+
+    // everything else is deterministic as well
+    return alt < 1;
 }
 
 #endif
