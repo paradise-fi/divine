@@ -25,7 +25,8 @@ struct Dve : public Common< Blob > {
 
         bool empty() const {
             if( !parent ) return true;
-            return !parent->system->valid( p );
+            parent->updateMem( _from );
+            return !parent->system->valid( parent->ctx, p );
         }
 
         Node from() { return _from; }
@@ -59,6 +60,8 @@ struct Dve : public Common< Blob > {
 
     Node initial() {
         Blob b = alloc.new_blob( stateSize() );
+        updateMem( b );
+        system->initial( ctx );
         return b;
     }
 
