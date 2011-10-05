@@ -823,8 +823,6 @@ void Interpreter::visitLoadInst(LoadInst &I) {
     GenericValue Result;
     LoadValueFromMemory(Result, Ptr, I.getType());
     SetValue(&I, Result, SF());
-    if (I.isVolatile() && PrintVolatile)
-        dbgs() << "Volatile load " << I;
 }
 
 void Interpreter::visitStoreInst(StoreInst &I) {
@@ -835,8 +833,6 @@ void Interpreter::visitStoreInst(StoreInst &I) {
 
     StoreValueToMemory(Val, (GenericValue *)arena.translate(intptr_t(GVTOP(SRC))),
                        I.getOperand(0)->getType());
-    if (I.isVolatile() && PrintVolatile)
-        dbgs() << "Volatile store: " << I;
 }
 
 void Interpreter::setInstruction( ExecutionContext &SF, BasicBlock::iterator i ) {
@@ -1354,7 +1350,6 @@ void Interpreter::step( int ctx, int alternative ) {
     // Track the number of dynamic instructions executed.
     ++NumDynamicInsts;
 
-    /* dbgs() << "About to interpret: " << *loc.insn << "\n"; */
     visit(I);   // Dispatch to one of the visit* methods...
 
     // remove the context if we are done with it
@@ -1365,32 +1360,9 @@ void Interpreter::step( int ctx, int alternative ) {
 }
 
 void Interpreter::run() {
-  while (!done()) {
-      step();
-    // Interpret a single instruction & increment the "PC".
-#if 0
-    // This is not safe, as visiting the instruction could lower it and free I.
-DEBUG(
-    if (!isa<CallInst>(I) && !isa<InvokeInst>(I) && 
-        I.getType() != Type::VoidTy) {
-      dbgs() << "  --> ";
-      const GenericValue &Val = SF.values[&I];
-      switch (I.getType()->getTypeID()) {
-      default: llvm_unreachable("Invalid GenericValue Type");
-      case Type::VoidTyID:    dbgs() << "void"; break;
-      case Type::FloatTyID:   dbgs() << "float " << Val.FloatVal; break;
-      case Type::DoubleTyID:  dbgs() << "double " << Val.DoubleVal; break;
-      case Type::PointerTyID: dbgs() << "void* " << intptr_t(Val.PointerVal);
-        break;
-      case Type::IntegerTyID: 
-        dbgs() << "i" << Val.IntVal.getBitWidth() << " "
-               << Val.IntVal.toStringUnsigned(10)
-               << " (0x" << Val.IntVal.toStringUnsigned(16) << ")\n";
-        break;
-      }
-    });
-#endif
-  }
+    while ( !done() ) {
+        step();
+    }
 }
 
 #endif
