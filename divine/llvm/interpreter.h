@@ -210,6 +210,7 @@ public:
         uint32_t assert:1;
         uint32_t null_dereference:1;
         uint32_t invalid_dereference:1;
+        uint32_t _padding:29;
     } flags;
     Arena arena;
 

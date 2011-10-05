@@ -41,6 +41,7 @@ Interpreter::Interpreter(Module *M)
   _context = 0;
   _alternative = 0;
   flags.assert = flags.null_dereference = flags.invalid_dereference = false;
+  flags._padding = 0;
 
   IL = new IntrinsicLowering(TD);
 }
