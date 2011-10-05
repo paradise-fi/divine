@@ -58,7 +58,7 @@ void Interpreter::SetValue(Value *V, GenericValue Val, ExecutionContext &SF) {
      break
 
 static void executeFAddInst(GenericValue &Dest, GenericValue Src1,
-                            GenericValue Src2, const Type *Ty) {
+                            GenericValue Src2, Type *Ty) {
   switch (Ty->getTypeID()) {
     IMPLEMENT_BINARY_OPERATOR(+, Float);
     IMPLEMENT_BINARY_OPERATOR(+, Double);
@@ -69,7 +69,7 @@ static void executeFAddInst(GenericValue &Dest, GenericValue Src1,
 }
 
 static void executeFSubInst(GenericValue &Dest, GenericValue Src1,
-                            GenericValue Src2, const Type *Ty) {
+                            GenericValue Src2, Type *Ty) {
   switch (Ty->getTypeID()) {
     IMPLEMENT_BINARY_OPERATOR(-, Float);
     IMPLEMENT_BINARY_OPERATOR(-, Double);
@@ -80,7 +80,7 @@ static void executeFSubInst(GenericValue &Dest, GenericValue Src1,
 }
 
 static void executeFMulInst(GenericValue &Dest, GenericValue Src1,
-                            GenericValue Src2, const Type *Ty) {
+                            GenericValue Src2, Type *Ty) {
   switch (Ty->getTypeID()) {
     IMPLEMENT_BINARY_OPERATOR(*, Float);
     IMPLEMENT_BINARY_OPERATOR(*, Double);
@@ -91,7 +91,7 @@ static void executeFMulInst(GenericValue &Dest, GenericValue Src1,
 }
 
 static void executeFDivInst(GenericValue &Dest, GenericValue Src1, 
-                            GenericValue Src2, const Type *Ty) {
+                            GenericValue Src2, Type *Ty) {
   switch (Ty->getTypeID()) {
     IMPLEMENT_BINARY_OPERATOR(/, Float);
     IMPLEMENT_BINARY_OPERATOR(/, Double);
@@ -102,7 +102,7 @@ static void executeFDivInst(GenericValue &Dest, GenericValue Src1,
 }
 
 static void executeFRemInst(GenericValue &Dest, GenericValue Src1, 
-                            GenericValue Src2, const Type *Ty) {
+                            GenericValue Src2, Type *Ty) {
   switch (Ty->getTypeID()) {
   case Type::FloatTyID:
     Dest.FloatVal = fmod(Src1.FloatVal, Src2.FloatVal);
@@ -132,7 +132,7 @@ static void executeFRemInst(GenericValue &Dest, GenericValue Src1,
       break;
 
 static GenericValue executeICMP_EQ(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(eq,Ty);
@@ -145,7 +145,7 @@ static GenericValue executeICMP_EQ(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_NE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(ne,Ty);
@@ -158,7 +158,7 @@ static GenericValue executeICMP_NE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_ULT(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(ult,Ty);
@@ -171,7 +171,7 @@ static GenericValue executeICMP_ULT(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_SLT(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(slt,Ty);
@@ -184,7 +184,7 @@ static GenericValue executeICMP_SLT(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_UGT(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(ugt,Ty);
@@ -197,7 +197,7 @@ static GenericValue executeICMP_UGT(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_SGT(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(sgt,Ty);
@@ -210,7 +210,7 @@ static GenericValue executeICMP_SGT(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_ULE(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(ule,Ty);
@@ -223,7 +223,7 @@ static GenericValue executeICMP_ULE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_SLE(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(sle,Ty);
@@ -236,7 +236,7 @@ static GenericValue executeICMP_SLE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_UGE(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(uge,Ty);
@@ -249,7 +249,7 @@ static GenericValue executeICMP_UGE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeICMP_SGE(GenericValue Src1, GenericValue Src2,
-                                    const Type *Ty) {
+                                    Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_INTEGER_ICMP(sge,Ty);
@@ -262,7 +262,7 @@ static GenericValue executeICMP_SGE(GenericValue Src1, GenericValue Src2,
 }
 
 void Interpreter::visitICmpInst(ICmpInst &I) {
-  const Type *Ty    = I.getOperand(0)->getType();
+  Type *Ty    = I.getOperand(0)->getType();
   GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
   GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
   GenericValue R;   // Result
@@ -292,7 +292,7 @@ void Interpreter::visitICmpInst(ICmpInst &I) {
      break
 
 static GenericValue executeFCMP_OEQ(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(==, Float);
@@ -305,7 +305,7 @@ static GenericValue executeFCMP_OEQ(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_ONE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(!=, Float);
@@ -319,7 +319,7 @@ static GenericValue executeFCMP_ONE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_OLE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(<=, Float);
@@ -332,7 +332,7 @@ static GenericValue executeFCMP_OLE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_OGE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(>=, Float);
@@ -345,7 +345,7 @@ static GenericValue executeFCMP_OGE(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_OLT(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(<, Float);
@@ -358,7 +358,7 @@ static GenericValue executeFCMP_OLT(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_OGT(GenericValue Src1, GenericValue Src2,
-                                     const Type *Ty) {
+                                     Type *Ty) {
   GenericValue Dest;
   switch (Ty->getTypeID()) {
     IMPLEMENT_FCMP(>, Float);
@@ -383,49 +383,49 @@ static GenericValue executeFCMP_OGT(GenericValue Src1, GenericValue Src2,
 
 
 static GenericValue executeFCMP_UEQ(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_OEQ(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_UNE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_ONE(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_ULE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_OLE(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_UGE(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_OGE(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_ULT(GenericValue Src1, GenericValue Src2,
-                                   const Type *Ty) {
+                                   Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_OLT(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_UGT(GenericValue Src1, GenericValue Src2,
-                                     const Type *Ty) {
+                                     Type *Ty) {
   GenericValue Dest;
   IMPLEMENT_UNORDERED(Ty, Src1, Src2)
   return executeFCMP_OGT(Src1, Src2, Ty);
 }
 
 static GenericValue executeFCMP_ORD(GenericValue Src1, GenericValue Src2,
-                                     const Type *Ty) {
+                                     Type *Ty) {
   GenericValue Dest;
   if (Ty->isFloatTy())
     Dest.IntVal = APInt(1,(Src1.FloatVal == Src1.FloatVal && 
@@ -437,7 +437,7 @@ static GenericValue executeFCMP_ORD(GenericValue Src1, GenericValue Src2,
 }
 
 static GenericValue executeFCMP_UNO(GenericValue Src1, GenericValue Src2,
-                                     const Type *Ty) {
+                                     Type *Ty) {
   GenericValue Dest;
   if (Ty->isFloatTy())
     Dest.IntVal = APInt(1,(Src1.FloatVal != Src1.FloatVal || 
@@ -449,7 +449,7 @@ static GenericValue executeFCMP_UNO(GenericValue Src1, GenericValue Src2,
 }
 
 void Interpreter::visitFCmpInst(FCmpInst &I) {
-  const Type *Ty    = I.getOperand(0)->getType();
+  Type *Ty    = I.getOperand(0)->getType();
   GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
   GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
   GenericValue R;   // Result
@@ -480,7 +480,7 @@ void Interpreter::visitFCmpInst(FCmpInst &I) {
 }
 
 static GenericValue executeCmpInst(unsigned predicate, GenericValue Src1, 
-                                   GenericValue Src2, const Type *Ty) {
+                                   GenericValue Src2, Type *Ty) {
   GenericValue Result;
   switch (predicate) {
   case ICmpInst::ICMP_EQ:    return executeICMP_EQ(Src1, Src2, Ty);
@@ -524,7 +524,7 @@ static GenericValue executeCmpInst(unsigned predicate, GenericValue Src1,
 }
 
 void Interpreter::visitBinaryOperator(BinaryOperator &I) {
-  const Type *Ty    = I.getOperand(0)->getType();
+  Type *Ty    = I.getOperand(0)->getType();
   GenericValue Src1 = getOperandValue(I.getOperand(0), SF());
   GenericValue Src2 = getOperandValue(I.getOperand(1), SF());
   GenericValue R;   // Result
@@ -589,7 +589,7 @@ void Interpreter::exitCalled(GenericValue GV) {
 /// care of switching to the normal destination BB, if we are returning
 /// from an invoke.
 ///
-void Interpreter::popStackAndReturnValueToCaller(const Type *RetTy,
+void Interpreter::popStackAndReturnValueToCaller(Type *RetTy,
                                                  GenericValue Result) {
     leave();
 
@@ -615,7 +615,7 @@ void Interpreter::popStackAndReturnValueToCaller(const Type *RetTy,
 }
 
 void Interpreter::visitReturnInst(ReturnInst &I) {
-  const Type *RetTy = Type::getVoidTy(I.getContext());
+  Type *RetTy = Type::getVoidTy(I.getContext());
   GenericValue Result;
 
   // Save away the return value... (if we are not 'ret void')
@@ -662,7 +662,7 @@ void Interpreter::visitBranchInst(BranchInst &I) {
 
 void Interpreter::visitSwitchInst(SwitchInst &I) {
     GenericValue CondVal = getOperandValue(I.getOperand(0), SF());
-    const Type *ElTy = I.getOperand(0)->getType();
+    Type *ElTy = I.getOperand(0)->getType();
 
     // Check to see if any of the cases match...
     BasicBlock *Dest = 0;
@@ -727,7 +727,7 @@ void Interpreter::SwitchToNewBasicBlock(BasicBlock *Dest, ExecutionContext &SF){
 //===----------------------------------------------------------------------===//
 
 void Interpreter::visitAllocaInst(AllocaInst &I) {
-    const Type *Ty = I.getType()->getElementType();  // Type to be allocated
+    Type *Ty = I.getType()->getElementType();  // Type to be allocated
 
     // Get the number of elements being allocated by the array...
     unsigned NumElements =
@@ -766,7 +766,7 @@ GenericValue Interpreter::executeGEPOperation(Value *Ptr, gep_type_iterator I,
   uint64_t Total = 0;
 
   for (; I != E; ++I) {
-    if (const StructType *STy = dyn_cast<StructType>(*I)) {
+    if (StructType *STy = dyn_cast<StructType>(*I)) {
       const StructLayout *SLO = TD.getStructLayout(STy);
 
       const ConstantInt *CPU = cast<ConstantInt>(I.getOperand());
@@ -950,7 +950,7 @@ void Interpreter::visitAShr(BinaryOperator &I) {
     SetValue(&I, Dest, SF());
 }
 
-GenericValue Interpreter::executeTruncInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeTruncInst(Value *SrcVal, Type *DstTy,
                                            ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -960,7 +960,7 @@ GenericValue Interpreter::executeTruncInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeSExtInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeSExtInst(Value *SrcVal, Type *DstTy,
                                           ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -970,7 +970,7 @@ GenericValue Interpreter::executeSExtInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeZExtInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeZExtInst(Value *SrcVal, Type *DstTy,
                                           ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -980,7 +980,7 @@ GenericValue Interpreter::executeZExtInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeFPTruncInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeFPTruncInst(Value *SrcVal, Type *DstTy,
                                              ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -990,7 +990,7 @@ GenericValue Interpreter::executeFPTruncInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeFPExtInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeFPExtInst(Value *SrcVal, Type *DstTy,
                                            ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1000,10 +1000,10 @@ GenericValue Interpreter::executeFPExtInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeFPToUIInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeFPToUIInst(Value *SrcVal, Type *DstTy,
                                             ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
-  const Type *SrcTy = SrcVal->getType();
+  Type *SrcTy = SrcVal->getType();
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(SrcTy->isFloatingPointTy() && "Invalid FPToUI instruction");
@@ -1015,10 +1015,10 @@ GenericValue Interpreter::executeFPToUIInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeFPToSIInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeFPToSIInst(Value *SrcVal, Type *DstTy,
                                             ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
-  const Type *SrcTy = SrcVal->getType();
+  Type *SrcTy = SrcVal->getType();
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   assert(SrcTy->isFloatingPointTy() && "Invalid FPToSI instruction");
@@ -1030,7 +1030,7 @@ GenericValue Interpreter::executeFPToSIInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeUIToFPInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeUIToFPInst(Value *SrcVal, Type *DstTy,
                                             ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1043,7 +1043,7 @@ GenericValue Interpreter::executeUIToFPInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeSIToFPInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeSIToFPInst(Value *SrcVal, Type *DstTy,
                                             ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1057,7 +1057,7 @@ GenericValue Interpreter::executeSIToFPInst(Value *SrcVal, const Type *DstTy,
 
 }
 
-GenericValue Interpreter::executePtrToIntInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executePtrToIntInst(Value *SrcVal, Type *DstTy,
                                               ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   uint32_t DBitWidth = cast<IntegerType>(DstTy)->getBitWidth();
@@ -1068,7 +1068,7 @@ GenericValue Interpreter::executePtrToIntInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeIntToPtrInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeIntToPtrInst(Value *SrcVal, Type *DstTy,
                                               ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
@@ -1082,11 +1082,11 @@ GenericValue Interpreter::executeIntToPtrInst(Value *SrcVal, const Type *DstTy,
   return Dest;
 }
 
-GenericValue Interpreter::executeBitCastInst(Value *SrcVal, const Type *DstTy,
+GenericValue Interpreter::executeBitCastInst(Value *SrcVal, Type *DstTy,
                                              ExecutionContext &SF) {
     assert_eq( _alternative, 0 );
   
-  const Type *SrcTy = SrcVal->getType();
+  Type *SrcTy = SrcVal->getType();
   GenericValue Dest, Src = getOperandValue(SrcVal, SF);
   if (DstTy->isPointerTy()) {
     assert(SrcTy->isPointerTy() && "Invalid BitCast");
@@ -1174,7 +1174,7 @@ void Interpreter::visitVAArgInst(VAArgInst &I) {
     GenericValue Dest;
     GenericValue Src = SFat(VAList.UIntPairVal.first)
                        .varArgs[VAList.UIntPairVal.second];
-    const Type *Ty = I.getType();
+    Type *Ty = I.getType();
     switch (Ty->getTypeID()) {
         case Type::IntegerTyID: Dest.IntVal = Src.IntVal;
             IMPLEMENT_VAARG(Pointer);
@@ -1241,7 +1241,7 @@ GenericValue Interpreter::getConstantExprValue (ConstantExpr *CE,
   GenericValue Op0 = getOperandValue(CE->getOperand(0), SF);
   GenericValue Op1 = getOperandValue(CE->getOperand(1), SF);
   GenericValue Dest;
-  const Type * Ty = CE->getOperand(0)->getType();
+  Type * Ty = CE->getOperand(0)->getType();
   switch (CE->getOpcode()) {
   case Instruction::Add:  Dest.IntVal = Op0.IntVal + Op1.IntVal; break;
   case Instruction::Sub:  Dest.IntVal = Op0.IntVal - Op1.IntVal; break;

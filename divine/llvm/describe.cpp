@@ -9,7 +9,7 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Describe Interpreter::describeAggregate( const Type *t, void *where, DescribeSeen &seen ) {
+Interpreter::Describe Interpreter::describeAggregate( Type *t, void *where, DescribeSeen &seen ) {
     char delim[2];
     std::vector< std::string > vec;
     Describe sub;
@@ -19,7 +19,7 @@ Interpreter::Describe Interpreter::describeAggregate( const Type *t, void *where
         const StructType *stru = cast< StructType >( t );
         for ( Type::subtype_iterator st = stru->element_begin();
               st != stru->element_end(); ++ st ) {
-            sub = describeValue( st->get(), where, seen );
+            sub = describeValue( (*st), where, seen );
             vec.push_back( sub.first );
             where = sub.second;
         }
@@ -39,7 +39,7 @@ Interpreter::Describe Interpreter::describeAggregate( const Type *t, void *where
     return std::make_pair( wibble::str::fmt_container( vec, delim[0], delim[1] ), where );
 }
 
-std::string Interpreter::describePointer( const Type *t, int idx, DescribeSeen &seen ) {
+std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen ) {
     std::string res = "*" + wibble::str::fmt( (void*) idx );
     if ( idx ) {
         if ( seen.count( idx ) ) {
@@ -54,7 +54,7 @@ std::string Interpreter::describePointer( const Type *t, int idx, DescribeSeen &
     return res;
 }
 
-Interpreter::Describe Interpreter::describeValue( const Type *t, void *where, DescribeSeen &seen ) {
+Interpreter::Describe Interpreter::describeValue( Type *t, void *where, DescribeSeen &seen ) {
     std::string res;
     if ( t->isIntegerTy() ) {
         if ( t->isIntegerTy( 32 ) )
@@ -82,7 +82,7 @@ std::string Interpreter::describeGenericValue( int vindex, GenericValue vvalue, 
     if ( !seen )
         seen = &_seen;
     Value *val = valueIndex.right( vindex );
-    const Type *type = val->getType();
+    Type *type = val->getType();
     if ( val->getValueName() ) {
         str = std::string( val->getValueName()->getKey() ) + " = ";
         if ( type->isPointerTy() ) {
