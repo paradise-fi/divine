@@ -77,7 +77,7 @@ endif( NOT WIN32 )
 
 if( LLVM_FOUND )
   target_link_libraries( libdivine
-    LLVMExecutionEngine LLVMBitReader LLVMInterpreter
+    LLVMExecutionEngine LTO LLVMBitReader LLVMInterpreter
     LLVMTarget LLVMCore LLVMSupport LLVMCodeGen LLVMAnalysis )
 endif()
 
