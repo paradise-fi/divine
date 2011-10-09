@@ -159,8 +159,10 @@ inline void beginAssertFailure() {
 }
 
 inline void endAssertFailure() {
+#ifndef NDEBUG
     const int f = assertFailure;
     assertFailure = 0;
+#endif
     assert( f > 1 );
 }
 
