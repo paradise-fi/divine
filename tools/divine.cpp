@@ -68,7 +68,7 @@ struct Main {
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
-    OptionGroup *common, *drawing, *compact, *ce;
+    OptionGroup *common, *drawing, *compact, *ce, *reduce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_por, *o_fair;
     BoolOption *o_noDeadlocks, *o_noGoals;
@@ -192,6 +192,7 @@ struct Main {
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
         compact = opts.createGroup( "Compact Options" );
+        reduce = opts.createGroup( "Reduction Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -227,11 +228,11 @@ struct Main {
             "gnuplot-statistics", '\0', "gnuplot-statistics", "",
             "output statistics in a gnuplot-friendly format" );
 
-        o_por = common->add< BoolOption >(
+        o_por = reduce->add< BoolOption >(
             "por", 'p', "por", "",
             "enable partial order reduction" );
 
-        o_fair = common->add< BoolOption >(
+        o_fair = reduce->add< BoolOption >(
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
 
@@ -293,26 +294,34 @@ struct Main {
             "where to output the compacted state space (default: ./input-file.compact, -: stdout)" );
 
         cmd_metrics->add( common );
+        cmd_metrics->add( reduce );
 
         cmd_reachability->add( common );
         cmd_reachability->add( ce );
+        cmd_reachability->add( reduce );
 
         cmd_owcty->add( common );
         cmd_owcty->add( ce );
+        cmd_owcty->add( reduce );
 
         cmd_map->add( common );
         cmd_map->add( ce );
+        cmd_map->add( reduce );
 
         cmd_ndfs->add( common );
         cmd_ndfs->add( ce );
+        cmd_ndfs->add( reduce );
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
+        cmd_verify->add( reduce );
 
         cmd_compact->add( common );
         cmd_compact->add( compact );
+        cmd_compact->add( reduce );
 
         cmd_draw->add( drawing );
+        cmd_draw->add( reduce );
     }
 
     void setupLimits() {

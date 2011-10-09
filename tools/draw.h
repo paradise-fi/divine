@@ -59,6 +59,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         bool limit = extension( st ).distance > maxdist;
 
         dotNode( st, limit );
+        g.porExpansion( st );
 
         if ( limit )
             return visitor::IgnoreState;
@@ -75,6 +76,9 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
                 extension( t ) = extension( intrace->get( t ) );
         }
 
+        if ( !f.valid() )
+            return visitor::FollowTransition;
+
         std::string color;
         if ( intrace_trans.count( std::make_pair( extension( f ).serial, extension( t ).serial ) ) )
             color = "red";
@@ -83,6 +87,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         if ( extension( t ).distance == 0 )
            extension( t ).distance = INT_MAX;
 
+        g.porTransition( f, t, 0 );
         extension( t ).distance = std::min( extension( t ).distance, extension( f ).distance + 1 );
         return visitor::FollowTransition;
     }
@@ -196,7 +201,11 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
         visitor::BFV< visitor::Setup< G, This, Table > >
             visitor( g, *this, &this->table() );
-        visitor.exploreFrom( initial );
+
+        do {
+            g.queueInitials( visitor );
+            visitor.processQueue();
+        } while ( g.porEliminateLocally( this->table() ) );
 
         dot += "}";
     }
