@@ -36,6 +36,12 @@ struct NonPORGraph : graph::Transform< G > {
         return false;
     }
 
+    template< typename Table >
+    bool porEliminateLocally( Table & ) {
+        eliminate_done = true;
+        return false;
+    }
+
     template< typename Q >
     void queueInitials( Q &q ) {
         if ( eliminate_done )
@@ -140,15 +146,9 @@ struct PORGraph : graph::Transform< G > {
         return visitor::ForgetTransition;
     }
 
-    template< typename Worker, typename Hasher, typename Table >
-    void _porEliminate( Worker &w, Hasher &h, Table &t ) {
-        typedef PORGraph< G, Statistics > Us;
-        typedef visitor::Setup< Us, Us, Table, Statistics,
-            &Us::elimTransition,
-            &Us::elimExpansion > Setup;
-        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
-
-        Visitor visitor( *this, w, *this, h, &t );
+    template< typename Q >
+    void eliminateInit( Q &q )
+    {
         for ( typename std::set< Node >::iterator j, i = to_check.begin();
               i != to_check.end(); i = j )
         {
@@ -159,17 +159,34 @@ struct PORGraph : graph::Transform< G > {
                     to_expand.insert( *i );
                 }
                 updatePredCount( *i, 1 ); // ...
-                visitor.queue( Blob(), *i );
+                q.queue( Blob(), *i );
                 to_check.erase( i );
             }
         }
-        visitor.processQueue();
+    }
+
+    void eliminateCleanup()
+    {
         for ( typename std::set< Node >::iterator j, i = to_check.begin();
               i != to_check.end(); i = j ) {
             j = i; ++j;
             if ( extension ( *i ).done )
                 to_check.erase( i );
         }
+    }
+
+    template< typename Worker, typename Hasher, typename Table >
+    void _porEliminate( Worker &w, Hasher &h, Table &t ) {
+        typedef PORGraph< G, Statistics > Us;
+        typedef visitor::Setup< Us, Us, Table, Statistics,
+            &Us::elimTransition,
+            &Us::elimExpansion > Setup;
+        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
+
+        Visitor visitor( *this, w, *this, h, &t );
+        eliminateInit( visitor );
+        visitor.processQueue();
+        eliminateCleanup();
     }
 
     // gives true iff there are nodes that need expanding
@@ -192,6 +209,29 @@ struct PORGraph : graph::Transform< G > {
         /* std::cerr << "eliminate: " << checked << " checked, "
            << to_expand.size() << " to expand" << std::endl; */
 
+        return to_expand.size() > 0;
+    }
+
+    template< typename Table >
+    bool porEliminateLocally( Table &t ) {
+        typedef PORGraph< G, Statistics > Us;
+        typedef visitor::Setup< Us, Us, Table, Statistics,
+            &Us::elimTransition,
+            &Us::elimExpansion > Setup;
+
+        visitor::BFV< Setup > visitor( *this, *this, &t );
+
+        while ( !to_check.empty() ) {
+            eliminateInit( visitor );
+            visitor.processQueue();
+            eliminateCleanup();
+            if ( to_check.empty() )
+                break;
+
+            // break a stalemate
+            updatePredCount( *to_check.begin(), 0 );
+            to_expand.insert( *to_check.begin() );
+        }
         return to_expand.size() > 0;
     }
 

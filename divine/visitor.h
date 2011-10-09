@@ -107,14 +107,12 @@ struct Common {
     }
 
     void exploreFrom( Node _initial ) {
-        Node initial = seen().insert( _initial );
-        setPermanent( initial );
-        m_graph.release( _initial );
-
-        if ( S::expansion( m_notify, initial ) == ExpandState )
-            m_queue.pushSuccessors( initial );
-
+        queue( Node(), _initial );
         processQueue();
+    }
+
+    void queue( Node from, Node to ) {
+        edge( from, to );
     }
 
     void processDeadlocks() {
