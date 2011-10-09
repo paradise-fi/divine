@@ -583,6 +583,8 @@ struct Main {
             return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
         } else
 	    die( "FATAL: Unknown input file extension." );
+
+        die( "FATAL: Internal error choosing generator." );
     }
 
     template< typename Stats, typename T >
