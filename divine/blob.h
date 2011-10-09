@@ -233,7 +233,7 @@ struct Blob
 
     hash_t hash( int from, int to ) const
     {
-        uint32_t len, total;
+        uint32_t len;
         const char *ptr;
 
         if ( !valid() || from == to )
@@ -243,7 +243,6 @@ struct Blob
 
         ptr = data() + from;
         len = to - from;
-        total = len;
 
         return jenkins3( ptr, len, 0 );
     }
