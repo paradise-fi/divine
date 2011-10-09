@@ -90,8 +90,8 @@ struct Expression {
     void step( EvalContext &ctx, Item &i ) {
         int a, b;
         Symbol p, s;
-        DEBUG(for ( int i = 0; i < ctx.stack.size(); ++ i )
-                  std::cerr << ctx.stack[ i ].value << " ";
+        DEBUG(for ( int x = 0; x < ctx.stack.size(); ++ x )
+                  std::cerr << ctx.stack[ x ].value << " ";
               std::cerr << i.op);
 
         switch (i.op.id) {
