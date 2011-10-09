@@ -25,7 +25,7 @@ struct SymContext : NS {
         size_t array:8;
         bool is_array:1;
         bool is_constant:1;
-        Item() : is_array( false ), is_constant( false ), array( 1 ) {}
+        Item() : array( 1 ), is_array( false ), is_constant( false ) {}
     };
 
     std::vector< Item > ids;
