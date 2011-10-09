@@ -312,7 +312,7 @@ void dve_compiler::gen_state_struct()
 
 void dve_compiler::gen_initial_state()
 {
-    setAllocator( new generator::Allocator );
+    setAllocator( new Allocator );
 
     append( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out )" );
 
