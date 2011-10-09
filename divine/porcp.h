@@ -12,7 +12,7 @@ namespace algorithm {
 namespace list = wibble::list;
 
 template< typename G >
-struct NonPORGraph : generator::Extended< G > {
+struct NonPORGraph : graph::Transform< G > {
 
     typedef typename G::Node Node;
 
@@ -40,13 +40,13 @@ struct NonPORGraph : generator::Extended< G > {
     void queueInitials( Q &q ) {
         if ( eliminate_done )
             return;
-        this->g().queueInitials( q );
+        this->base().queueInitials( q );
     }
 };
 
 // Implements a (parallel) check of the POR cycle proviso.
 template< typename G, typename Statistics >
-struct PORGraph : generator::Extended< G > {
+struct PORGraph : graph::Transform< G > {
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
 
@@ -69,12 +69,12 @@ struct PORGraph : generator::Extended< G > {
     }
 
     PORGraph() : _predCount( 0 ) {
-        this->g().initPOR();
+        this->base().initPOR();
     }
 
     int setSlack( int s ) {
         m_algslack = s;
-        return generator::Extended< G >::setSlack( s + sizeof( Extension ) );
+        return graph::Transform< G >::setSlack( s + sizeof( Extension ) );
     }
 
     Extension &extension( Node n ) {
@@ -91,9 +91,9 @@ struct PORGraph : generator::Extended< G > {
 
     Successors successors( Node st ) {
         if ( extension( st ).full )
-            return this->g().successors( st );
+            return this->base().successors( st );
         else
-            return this->g().ample( st );
+            return this->base().ample( st );
     }
 
     std::set< Node > to_check, to_expand;
@@ -198,7 +198,7 @@ struct PORGraph : generator::Extended< G > {
     template< typename Visitor >
     void queueInitials( Visitor &v ) {
         if ( to_expand.size() == 0 )
-            this->g().queueInitials( v );
+            this->base().queueInitials( v );
 
         for ( typename std::set< Node >::iterator i = to_expand.begin();
               i != to_expand.end(); ++i ) {
@@ -213,8 +213,8 @@ struct PORGraph : generator::Extended< G > {
         std::set< Node > all, ample, out;
         std::vector< Node > extra;
 
-        list::output( this->g().successors( n ), std::inserter( all, all.begin() ) );
-        list::output( this->g().ample( n ), std::inserter( ample, ample.begin() ) );
+        list::output( this->base().successors( n ), std::inserter( all, all.begin() ) );
+        list::output( this->base().ample( n ), std::inserter( ample, ample.begin() ) );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );
@@ -226,7 +226,7 @@ struct PORGraph : generator::Extended< G > {
 
         // release the states that we aren't going to use
         for ( typename std::vector< Node >::iterator i = extra.begin(); i != extra.end(); ++i )
-            this->g().release( *i );
+            this->base().release( *i );
 
         for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
             const_cast< Blob* >( &*i )->header().permanent = 1;

@@ -268,7 +268,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
                 StateRef fromRef( extension( from ).index, fromOwner );
                 toExt.preds->push_back( fromRef );
             }
-            Node copy( shared.g.g().pool(), to.size() );
+            Node copy( shared.g.pool(), to.size() );
             to.copyTo( copy );
             extension( copy ).back = true;
             visitor->queueAny( copy, from, fromOwner ); // goes to the owner of from
@@ -295,7 +295,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
             StateRef originalToRef( extension( f ).index, visitor->owner( f ) );
 
             extension( t ).succs[ shared.g.successorNum( *this, t, f ) - 1 ] = originalToRef;
-            f.free( shared.g.g().pool() );
+            f.free( shared.g.pool() );
             return visitor::IgnoreTransition;
         }
 

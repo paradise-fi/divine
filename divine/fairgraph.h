@@ -1,3 +1,5 @@
+// -*- C++ -*-
+
 #ifndef DIVINE_FAIRGRAPH_H
 #define DIVINE_FAIRGRAPH_H
 
@@ -21,7 +23,7 @@ struct FairGraph : NonPORGraph< G > {
     int setSlack( int s ) {
         m_algslack = s;
         // copy id has to be treated as a part of the state information
-        generator::Extended< G >::setSlack( s + sizeof( Extension ) );
+        NonPORGraph< G >::setSlack( s + sizeof( Extension ) );
         return s;
     }
 
@@ -69,7 +71,7 @@ struct FairGraph : NonPORGraph< G > {
     };
 
     Successors successors( Node st ) {
-        int procs = this->g().processCount();
+        int procs = this->base().processCount();
         Successors succs;
         succs.parent = this;
 
@@ -77,19 +79,19 @@ struct FairGraph : NonPORGraph< G > {
         assert( copy >= 0 && copy <= procs );
         // 0-th copy: transitions from accepting states are redirected to copy 1, other remain unchanged
         if ( copy == 0 ) {
-            succs.add( this->g().successors( st ), this->g().isAccepting( st ) ? 1 : 0 );
+            succs.add( this->base().successors( st ), this->base().isAccepting( st ) ? 1 : 0 );
         }
         // i-th copy: redirect all transitions made by (i-1)-th process to copy (i+1)
         else {
             GenSuccs proc_succs;
             do {
-                succs.add( this->g().processSuccessors( st , copy - 1, false ), copy );  // stay in curent copy
-                proc_succs = this->g().processSuccessors( st , copy - 1, true );
+                succs.add( this->base().processSuccessors( st , copy - 1, false ), copy );  // stay in curent copy
+                proc_succs = this->base().processSuccessors( st , copy - 1, true );
                 copy = ( copy + 1 ) % ( procs + 1 );
                 // if process is disabled, epsilon-step to the next copy can be made
             } while ( proc_succs.empty() && copy > 0 );
             if ( proc_succs.empty() ) // break the epsilon-chain to avoid skipping the copy 0
-                proc_succs = this->g().successors( st );
+                proc_succs = this->base().successors( st );
             succs.add( proc_succs, copy ); // go to next copy
         }
         return succs;
@@ -97,11 +99,11 @@ struct FairGraph : NonPORGraph< G > {
 
     // only states in copy 0 can be accepting
     bool isAccepting( Node s ) {
-        return extension( s ).copy == 0 && this->g().isAccepting( s );
+        return extension( s ).copy == 0 && this->base().isAccepting( s );
     }
 
     bool isInAccepting( Node s, const size_int_t acc_group ) {
-        return extension( s ).copy == 0 && this->g().isInAccepting( s, acc_group );
+        return extension( s ).copy == 0 && this->base().isInAccepting( s, acc_group );
     }
 
     template< typename Alg >
@@ -110,7 +112,7 @@ struct FairGraph : NonPORGraph< G > {
         // therefore, if 'next' is not in copy 0, it is not found among the successors
         int orig = extension( next ).copy;
         extension( next ).copy = 0;
-        int ret = generator::Extended< G >::successorNum( a, current, next );
+        int ret = NonPORGraph< G >::successorNum( a, current, next );
         extension( next ).copy = orig;
         return ret;
     }

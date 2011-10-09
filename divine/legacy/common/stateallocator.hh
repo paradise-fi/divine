@@ -2,16 +2,16 @@
 #ifndef DIVINE_LEGACY_STATEALLOCATOR_HH
 #define DIVINE_LEGACY_STATEALLOCATOR_HH
 
-#include <divine/stateallocator.h>
+#include <divine/allocator.h>
 
 namespace divine {
 
-struct LegacyStateAllocator {
-    StateAllocator *m_allocator;
+struct IndirectLegacyAllocator {
+    LegacyAllocator *m_allocator;
 
-    LegacyStateAllocator() : m_allocator( 0 ) {}
+    IndirectLegacyAllocator() : m_allocator( 0 ) {}
 
-    void setAllocator( StateAllocator *a ) {
+    void setAllocator( LegacyAllocator *a ) {
         m_allocator = a;
     }
 

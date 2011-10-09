@@ -36,7 +36,7 @@ class process_decomposition_t;
  * Furthermore you can generate states of the system using
  * child class explitcit_system_t (and its children)
  */
-class system_t : public LegacyStateAllocator
+class system_t : public IndirectLegacyAllocator
  {
   protected:
     error_vector_t & terr;

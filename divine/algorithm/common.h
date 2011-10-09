@@ -197,7 +197,7 @@ struct AlgorithmUtils< G, typename wibble::EnableIf<
 
     Table *makeTable() {
         assert( this->peerId >= 0 );
-        return new Table( &this->m_g->g(), this->peerId,
+        return new Table( &this->m_g->base(), this->peerId,
                           divine::valid< typename G::Node >(), this->equal );
     }
 };

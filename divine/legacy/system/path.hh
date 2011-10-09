@@ -22,7 +22,7 @@ namespace divine {//The main DiVinE namespace - we do not want Doxygen to see it
 
 #define PATH_CYCLE_SEPARATOR "================"
 
-  class path_t : public LegacyStateAllocator {
+  class path_t : public IndirectLegacyAllocator {
   private:
     std::deque<state_t> s_list;
     explicit_system_t* System;
