@@ -461,7 +461,7 @@ int main(int argc, char * argv[])
     strcpy(trace_out_name,const_trace_out_name);
     trace_out_name[strlen(const_trace_out_name)]='\0';
   }
-  generator::Allocator Generator;
+  Allocator Generator;
   dve_explicit_system_t System(gerr);
   System.setAllocator(&Generator);
   

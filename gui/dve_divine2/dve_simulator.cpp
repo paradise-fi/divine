@@ -54,7 +54,7 @@ DveSimulator::DveSimulator(QObject * parent)
 
   err_.set_silent(true);
   
-  generator_ = new divine::generator::Allocator();
+  generator_ = new divine::Allocator();
 }
 
 DveSimulator::~DveSimulator()

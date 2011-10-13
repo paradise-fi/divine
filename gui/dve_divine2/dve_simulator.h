@@ -107,7 +107,7 @@ class DveSimulator : public Simulator {
 
   private:
     divine::error_vector_t err_;
-    divine::StateAllocator * generator_;
+    divine::LegacyAllocator * generator_;
     dve_debug_system_t * system_;
 
     // model path

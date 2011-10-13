@@ -52,7 +52,7 @@ char mode; // mode of runnig
 char type; // type of verification
 
 // Original allocator
-struct LegacyAllocator : StateAllocator {
+struct SimpleAllocator : LegacyAllocator {
 	virtual state_t duplicate_state( const state_t &state ) {
 		return divine::duplicate_state( state );
 	}
@@ -442,7 +442,7 @@ void *thread_function( void *ptr )
   state_ref_t pred_ref; //predecessors ref
   thread_state_ref_t thread_state_ref;
   dve_prob_explicit_system_t* sys = inicialization_info->sys;
-  LegacyAllocator allocator;
+  SimpleAllocator allocator;
   sys->setAllocator(&allocator);
 
   /* initialization ... */
