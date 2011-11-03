@@ -227,6 +227,7 @@ template< typename S, typename Worker,
           typename _Hash = divine::hash< typename S::Node > >
 struct Partitioned {
     typedef typename S::Node Node;
+    typedef std::pair< Node, Node > NodePair;
 
     Worker &worker;
     typename S::Notify &notify;
@@ -250,8 +251,7 @@ struct Partitioned {
     inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
         int _to = owner( to, hint ), _from = worker.globalId();
         Statistics::global().sent( _from, _to, sizeof(from) + memSize(to) );
-        worker.submit( _from, _to, unblob< Node >( from ) );
-        worker.submit( _from, _to, unblob< Node >( to ) );
+        worker.submit( _from, _to, NodePair( unblob< Node >( from ),  unblob< Node >( to ) ) );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
@@ -284,17 +284,12 @@ struct Partitioned {
                     return;
                 }
 
-                /* Here, we need to pick out 2 items from the *same* queue. */
                 for ( int from = 0; from < worker.peers(); ++from ) {
                     while ( worker.comms().pending( from, to ) ) {
-                        Node f, t;
-                        f = worker.comms().take( from, to );
-                        /* wait a bit, if need be */
-                        while ( !worker.comms().pending( from, to ) ) ;
-                        t = worker.comms().take( from, to );
-                        Statistics::global().received( from, to, sizeof(f) +  memSize(t));
-
-                        bfv.edge( unblob< Node >( f ), unblob< Node >( t ) );
+                        NodePair p;
+                        p = worker.comms().take( from, to );
+                        Statistics::global().received( from, to, sizeof(p.first) + memSize(p.second) );
+                        bfv.edge( unblob< Node >( p.first ), unblob< Node >( p.second ) );
                     }
                 }
 

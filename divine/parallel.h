@@ -196,6 +196,8 @@ struct FifoMatrix
     }
 };
 
+typedef std::pair<Blob, Blob> BlobPair;
+
 /**
  * A basic template of a worker object, as a part of a larger work
  * Domain. Provides communication, distributed termination detection and clean
@@ -208,7 +210,7 @@ struct FifoMatrix
  * parallel sections as needed, using domain().parallel().run( ... ). The
  * master is expected to call becomeMaster( ... ) in its constructor.
  */
-template< typename T, typename Comms = FifoMatrix< Blob > >
+template< typename T, typename Comms = FifoMatrix< BlobPair > >
 struct DomainWorker {
     typedef divine::Fifo< Blob > Fifo;
     typedef wibble::Unit IsDomainWorker;
@@ -322,7 +324,7 @@ struct DomainWorker {
  * the master. Cf. DomainWorker. You should not need to instantiate this
  * manually.
  */
-template< typename T, typename _Comms = FifoMatrix< Blob > >
+template< typename T, typename _Comms = FifoMatrix< BlobPair > >
 struct Domain {
     typedef _Comms Comms;
     Comms comms;
