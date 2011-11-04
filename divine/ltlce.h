@@ -106,13 +106,12 @@ struct LtlCE {
             Node n = t.get( shared().ce.current );
             assert( n.valid() );
 
-            if ( shared().ce.successor.valid() )
-                shared().ce.successorPos = g().successorNum( w, n, shared().ce.successor );
             shared().ce.successor = n;
-
             shared().ce.current = extension( n ).parent;
-
             shared().ce.current_updated = true;
+
+            shared().ce.successorPos =
+                g().successorNum( w, shared().ce.current, shared().ce.successor );
         }
     }
 
