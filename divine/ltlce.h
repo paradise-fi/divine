@@ -231,6 +231,16 @@ struct LtlCE {
         a.result().cycleTrail = generateTrace( a, _g, trace );
     }
 
+    template< typename Alg, typename T >
+    void goal( Alg &a, T goal ) {
+        o_ce( a ) << std::endl << "===== The goal =====" << std::endl << std::endl;
+        o_trail( a ) << "# goal" << std::endl;
+
+        std::vector< T > trace;
+        trace.push_back( goal );
+        a.result().cycleTrail = generateTrace( a, g(), trace );
+    }
+
     // ------------------------------------------------
     // -- Lasso counterexample generation
     // --

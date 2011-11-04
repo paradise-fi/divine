@@ -180,6 +180,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         shared.ce.initial = n;
         ce.setup( shared.g, shared );
         ce.linear( domain(), *this );
+        ce.goal( *this, n );
     }
 
     void collect() {
