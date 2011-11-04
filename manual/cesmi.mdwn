@@ -18,5 +18,62 @@ modelling formalisms to CESMI modules: a compiler for the DVE language (which
 is also supported directly through an interpreter) and a compiler for the
 MurPHI language, adapted from the original MurPHI model compiler.
 
-(XXX: We need to actually write down the specification, either here, or
-externally and put a link here)
+The Specification
+-----------------
+
+CESMI is a set of APIs (Application Programming Interface) to represent model
+checking problems in a form independent of a specific model-checker. The API is
+explicit-state (states of the model are represented discretely) and allows for
+implicit (on the fly) representation of models -- only local neighborhood of
+any given vertex needs to be provided.
+
+CESMI defines a notion of a "module" and a "loader", the role of the module
+corresponding to the model, or a Kripke structure, to be examined. The "loader"
+is then a part of a model checking or other model examination tool, which
+treats the CESMI module as its input data.
+
+The Module
+----------
+
+We will lay out the basic requirements for a CESMI module in this section. The
+signatures of the individual calls exposed in the API are as follows:
+
+    void setup( inout setup )
+    void get_initial ( in setup, out pointer )
+    integer get_successor( in setup, in integer, in pointer, out pointer )
+    boolean is_accepting( in setup, in pointer, in integer )
+    string show_node( in setup, in pointer, in integer )
+
+The semantics of the calls are to be as follows:
+
+    void setup ( inout setup ) [optional]
+
+This call *may* set up any per-instance state, and keep it in the `private`
+portion of the setup aggregate, which has the following fields available to the
+CESMI module:
+
+    pointer pool [read only]
+    pointer custom [read write]
+    integer slack [read only]
+    integer state_size [read write]
+    boolean has_property [read write]
+
+The `pool` field, we will discuss in the section on memory management later
+on. The `custom` pointer is fully at the disposal of the CESMI module, and
+*must* not be manipulated or read by the CESMI loader. The CESMI module *must*
+not retain any global state. All state *must* be managed through the `custom`
+pointer. The CESMI loader *may* call `setup` multiple times with a different
+parameter (in the same address space), and the resulting CESMI module instances
+*must* be fully isolated.
+
+The `setup` call, apart from `custom` *may* set up the `state_size` field, with
+0 meaning variable-size vertex (state) representation and any non-zero value
+meaning a fixed size.
+
+    void get_initial( in setup, out pointer )
+
+Memory Management
+-----------------
+
+The C implementation
+--------------------
