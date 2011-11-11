@@ -98,18 +98,27 @@ std::string Interpreter::describe() {
     std::stringstream s;
     DescribeSeen seen;
     for ( int c = 0; c < stacks.size(); ++c ) {
-        const Instruction &insn =
-            *locationIndex.right( stack( c ).back().pc ).insn;
         std::vector< std::string > vec;
 
-        const LLVMContext &ctx = insn.getContext();
-        const DebugLoc &loc = insn.getDebugLoc();
-        DILocation des( loc.getAsMDNode( ctx ) );
-        if ( des.getLineNumber() )
-            vec.push_back( std::string( des.getFilename() ) +
-                           ":" + wibble::str::fmt( des.getLineNumber() ) );
-        else
-            vec.push_back( "<unknown>" );
+        if ( stack( c ).back().lastpc ) {
+            const Instruction &insn =
+                *locationIndex.right( stack( c ).back().lastpc ).insn;
+
+            const LLVMContext &ctx = insn.getContext();
+            const DebugLoc &loc = insn.getDebugLoc();
+            DILocation des( loc.getAsMDNode( ctx ) );
+            if ( des.getLineNumber() )
+                vec.push_back( std::string( des.getFilename() ) +
+                               ":" + wibble::str::fmt( des.getLineNumber() ) );
+            else
+                vec.push_back( "<unknown>" );
+
+            std::string descr;
+            raw_string_ostream descr_stream( descr );
+            descr_stream << insn;
+            vec.push_back( descr );
+        } else
+            vec.push_back( "<not started>" );
 
         for ( ExecutionContext::Values::iterator v = stack( c ).back().values.begin();
               v != stack( c ).back().values.end(); ++v ) {
@@ -119,6 +128,19 @@ std::string Interpreter::describe() {
         }
         s << wibble::str::fmt( vec ) << std::endl;
     }
+
+    if ( stacks.empty() )
+        s << "! EXIT" << std::endl;
+
+    if ( flags.assert )
+        s << "! ASSERTION FAILED" << std::endl;
+
+    if ( flags.invalid_dereference )
+        s << "! INVALID DEREFERENCE" << std::endl;
+
+    if ( flags.null_dereference )
+        s << "! NULL DEREFERENCE" << std::endl;
+
     return s.str();
 }
 

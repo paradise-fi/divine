@@ -100,6 +100,7 @@ struct ExecutionContext {
     typedef std::vector<GenericValue> VarArgs;
 
     int pc;          // program counter
+    int lastpc;
     Values values;   // LLVM values used in this invocation
     VarArgs varArgs; // Values passed through an ellipsis
     int caller;      // Holds the call that called subframes.
@@ -107,7 +108,7 @@ struct ExecutionContext {
     Allocas allocas;
 
     int size() {
-        return sizeof( int ) * 2 +
+        return sizeof( int ) * 3 +
                sizeof( size_t ) * 3 +
                sizeof( GenericValue ) * varArgs.size() +
                sizeof( GenericValue ) * values.size() +
@@ -117,6 +118,7 @@ struct ExecutionContext {
 
     int put( int o, Blob b ) {
         o = b.put( o, pc );
+        o = b.put( o, lastpc );
         o = b.put( o, caller );
         o = b.put( o, values.size() );
         for ( Values::iterator i = values.begin(); i != values.end(); ++i ) {
@@ -139,6 +141,7 @@ struct ExecutionContext {
 
         size_t count;
         o = b.get( o, pc );
+        o = b.get( o, lastpc );
         o = b.get( o, caller );
         o = b.get( o, count );
         for ( int i = 0; i < count; ++i ) {
@@ -185,6 +188,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     ExecutionContext &enter() {
         stack().push_back( ExecutionContext() );
         SF().caller = -1;
+        SF().lastpc = 0; // 0 is reserved
         return SF();
     }
 

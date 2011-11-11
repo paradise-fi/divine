@@ -1346,15 +1346,12 @@ void Interpreter::step( int ctx, int alternative ) {
     _context = ctx;
     _alternative = alternative;
     flags.assert = false; // reset assert flag
+    SF().lastpc = SF().pc;
 
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;
     setLocation( SF(), loc );
-
-    // Track the number of dynamic instructions executed.
-    ++NumDynamicInsts;
-
-    visit(I);   // Dispatch to one of the visit* methods...
+    visit( I );
 
     // remove the context if we are done with it
     if ( done( ctx ) ) {
