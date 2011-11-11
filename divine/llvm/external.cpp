@@ -86,6 +86,14 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
     return Old; // and in the current thread, return 0 and continue as usual
 }
 
+static GenericValue builtin_thread_stop(Interpreter *interp, const FunctionType *ty,
+                                        const Args &args)
+{
+    while (!interp->stack().empty())
+        interp->leave();
+    return GenericValue();
+}
+
 static GenericValue builtin_fork(Interpreter *, const FunctionType *, const Args &args)
 {
     // XXX this should fork off a new process; again as with threads, this
@@ -206,6 +214,7 @@ static struct {
     { "__divine_builtin_malloc_guaranteed", builtin_malloc_guaranteed },
     { "__divine_builtin_free", builtin_free },
     { "__divine_builtin_thread_create", builtin_thread_create },
+    { "__divine_builtin_thread_stop", builtin_thread_stop },
     { "__divine_builtin_fork", builtin_fork },
     { 0, 0 }
 };

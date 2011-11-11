@@ -177,7 +177,16 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     BiMap< int, Value * > valueIndex;
     BiMap< int, CallSite > csIndex;
 
+    // AtExitHandlers - List of functions to call when the program exits,
+    // registered with the atexit() library function.
+    std::vector<Function*> AtExitHandlers;
+    void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
+
+public:
     void leave() {
+        if ( stack().empty() ) // nothing to leave
+            return;
+
         for ( std::vector< Arena::Index >::iterator i = SF().allocas.begin();
               i != SF().allocas.end(); ++i )
             arena.free( *i );
@@ -200,12 +209,6 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
         return stack( c )[ i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
     }
 
-  // AtExitHandlers - List of functions to call when the program exits,
-  // registered with the atexit() library function.
-  std::vector<Function*> AtExitHandlers;
-  void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
-
-public:
     /* needs to be accessible to the external functions that are not our
      * members; see external.cpp */
     int _alternative;
