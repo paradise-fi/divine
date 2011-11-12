@@ -870,6 +870,11 @@ void Interpreter::visitCallSite(CallSite CS) {
             // noops
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
+                return;
+            case Intrinsic::trap:
+                while (!stack().empty()) /* get us out */
+                    leave();
+                return;
 
             case Intrinsic::vaend:    // va_end is a noop for the interpreter
                 return;
