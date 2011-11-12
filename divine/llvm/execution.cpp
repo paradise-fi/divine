@@ -802,24 +802,31 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
                                    gep_type_begin(I), gep_type_end(I), SF()), SF());
 }
 
-bool Interpreter::validatePointer(GenericValue GV) {
+GenericValue *Interpreter::dereferencePointer(GenericValue GV) {
     if ( GVTOP(GV) == 0 ) {
         flags.null_dereference = true;
-        return false;
+        return 0;
     }
+
+    if ( intptr_t(GVTOP(GV)) - 0x100 < globalmem.size() )
+        return (GenericValue *) &globalmem[intptr_t(GVTOP(GV)) - 0x100];
+
     if ( !arena.validate( intptr_t( GVTOP(GV) ) ) ) {
         flags.invalid_dereference = true;
-        return false;
+        assert_eq( GVTOP(GV), (void*)0 );
+        return 0;
     }
-    return true;
+
+    return (GenericValue*) arena.translate(intptr_t(GVTOP(GV)));
 }
 
 void Interpreter::visitLoadInst(LoadInst &I) {
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
-    if ( !validatePointer( SRC ) )
+    GenericValue *Ptr;
+
+    if ( !(Ptr = dereferencePointer( SRC )) )
         return;
 
-    GenericValue *Ptr = (GenericValue*)arena.translate(intptr_t(GVTOP(SRC)));
     GenericValue Result;
     LoadValueFromMemory(Result, Ptr, I.getType());
     SetValue(&I, Result, SF());
@@ -828,11 +835,12 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 void Interpreter::visitStoreInst(StoreInst &I) {
     GenericValue Val = getOperandValue(I.getOperand(0), SF());
     GenericValue SRC = getOperandValue(I.getPointerOperand(), SF());
-    if ( !validatePointer( SRC ) )
+    GenericValue *Ptr;
+
+    if ( !(Ptr = dereferencePointer( SRC )) )
         return;
 
-    StoreValueToMemory(Val, (GenericValue *)arena.translate(intptr_t(GVTOP(SRC))),
-                       I.getOperand(0)->getType());
+    StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType());
 }
 
 void Interpreter::setInstruction( ExecutionContext &SF, BasicBlock::iterator i ) {
@@ -1276,16 +1284,17 @@ GenericValue Interpreter::getConstantExprValue (ConstantExpr *CE,
 }
 
 GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
-  if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
-      return getConstantExprValue(CE, SF);
-  } else if (Constant *CPV = dyn_cast<Constant>(V)) {
-      return getConstantValue(CPV);
-  } else if (GlobalValue *GV = dyn_cast<GlobalValue>(V)) {
-      return PTOGV(getPointerToGlobal(GV));
-  } else {
-      GenericValue ret = SF.values[valueIndex.left( V )];
-      return ret;
-  }
+    GlobalVariable *GV;
+    if ((GV = dyn_cast<GlobalVariable>(V)) && !GV->isConstant()) {
+        std::map< const GlobalVariable *, int >::const_iterator i = globals.find( GV );
+        assert( i != globals.end() );
+        return PTOGV((void*) i->second);
+    } else if (Constant *CPV = dyn_cast<Constant>(V)) {
+        return getConstantValue(CPV);
+    } else {
+        GenericValue ret = SF.values[valueIndex.left( V )];
+        return ret;
+    }
 }
 
 //===----------------------------------------------------------------------===//

@@ -31,12 +31,12 @@ Interpreter::Interpreter(Module *M)
       
   memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
   setTargetData(&TD);
-  // Initialize the "backend"
-  initializeExecutionEngine();
-  // initializeExternalFunctions();
-  emitGlobals();
 
+  initializeExecutionEngine();
+
+  emitGlobals( M );
   buildIndex( M );
+
   stacks.resize( 1 );
   _context = 0;
   _alternative = 0;
@@ -48,6 +48,25 @@ Interpreter::Interpreter(Module *M)
 
 Interpreter::~Interpreter() {
   delete IL;
+}
+
+void Interpreter::emitGlobals( Module *M )
+{
+    for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var) {
+        if ( var->isConstant() )
+            continue;
+        Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
+        assert( !var->isDeclaration() );
+        assert( ty );
+        dbgs() << "allocating " << var->getNameStr() << " of type " << *ty << ", size = " << TD.getTypeAllocSize(ty) << "\n";
+        globals.insert( std::make_pair( &*var, globalmem.size() + 0x100 ) );
+        globalmem.resize( globalmem.size() + TD.getTypeAllocSize(ty) );
+    }
+
+    assert_leq( globalmem.size(), 0x300 ); // XXX 0x400 is the lowest valid
+                                           // arena pointer... but that
+                                           // shouldn't be hardcoded here of
+                                           // all places
 }
 
 void Interpreter::runAtExitHandlers () {

@@ -176,13 +176,22 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     BiMap< int, Location > locationIndex;
     BiMap< int, Value * > valueIndex;
     BiMap< int, CallSite > csIndex;
+    std::map< const GlobalVariable *, int > globals;
 
     // AtExitHandlers - List of functions to call when the program exits,
     // registered with the atexit() library function.
     std::vector<Function*> AtExitHandlers;
     void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
 
+    std::vector< char > globalmem;
+
 public:
+    // The runtime stack of executing code.  The top of the stack is the
+    // current function record.
+    std::vector< std::vector< ExecutionContext > > stacks;
+
+    Arena arena;
+
     void leave() {
         if ( stack().empty() ) // nothing to leave
             return;
@@ -219,11 +228,6 @@ public:
         uint32_t invalid_dereference:1;
         uint32_t _padding:29;
     } flags;
-    Arena arena;
-
-    // The runtime stack of executing code.  The top of the stack is the current
-    // function record.
-    std::vector< std::vector< ExecutionContext > > stacks;
 
     std::vector<ExecutionContext> &stack( int c = -1 ) {
         if ( c < 0 )
@@ -252,7 +256,8 @@ public:
     }
 
     Blob snapshot( int extra, Pool &p ) {
-        int need = sizeof( stacks.size() ) + sizeof( flags );
+        int need = sizeof( stacks.size() ) + sizeof( flags ) +
+                   sizeof( globalmem.size() ) + globalmem.size();
         for ( int c = 0; c < stacks.size(); ++c ) {
             need += 4;
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -263,6 +268,11 @@ public:
         int offset = extra;
 
         offset = b.put( offset, flags );
+        offset = b.put( offset, globalmem.size() );
+
+        for ( int c = 0; c < globalmem.size(); ++ c ) // XXX inefficient
+            offset = b.put( offset, globalmem[c] );
+
         offset = b.put( offset, stacks.size() );
 
         for ( int c = 0; c < stacks.size(); ++c ) {
@@ -276,11 +286,17 @@ public:
     }
 
     void restore( Blob b, int extra ) {
-        int contexts;
+        int contexts, globalsize;
         int depth;
         int offset = extra;
 
         offset = b.get( offset, flags );
+        offset = b.get( offset, globalsize );
+        globalmem.resize( globalsize );
+
+        for ( int c = 0; c < globalsize; ++c )
+            offset = b.get( offset, globalmem[c] );
+
         offset = b.get( offset, contexts );
         stacks.resize( contexts );
 
@@ -333,8 +349,12 @@ public:
   ///
   void freeMachineCodeForFunction(Function *F) { }
 
-  // Methods used to execute code:
-  // Place a call on the stack
+    /* Override from ExecutionEngine to allocate space for (mutable) globals in
+     * states, not in a global location */
+    void emitGlobals( Module *M );
+
+    // Methods used to execute code:
+    // Place a call on the stack
     void callFunction(Function *F, const std::vector<GenericValue> &ArgVals);
     void run(); // Execute instructions until nothing left to do
     void step( int ctx = 0, int alternative = 0 );
@@ -348,7 +368,7 @@ public:
     void setInstruction( ExecutionContext &, BasicBlock::iterator );
     Instruction &nextInstruction();
 
-    bool validatePointer( GenericValue );
+    GenericValue *dereferencePointer( GenericValue );
 
   // Opcode Implementations
   void visitReturnInst(ReturnInst &I);
