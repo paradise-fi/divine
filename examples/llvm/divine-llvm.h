@@ -49,15 +49,16 @@ static int pthread_create(pthread_t *ptid,
         return 1;
     }
 
+    int tid = *ptid = __tid_last++;
+
     int id = thread_create();
     if ( id == 0 ) { // this will be the parent
-        *ptid = __tid_last++;
         return 0;
     } else {
-        trace("Thread %d created.", __tid_last);
-        __tid[__tid_last].done = false;
-        __tid[__tid_last].result = entry(arg);
-        __tid[__tid_last].done = true;
+        trace("Thread %d created.", tid);
+        __tid[tid].done = false;
+        __tid[tid].result = entry(arg);
+        __tid[tid].done = true;
         thread_stop(); /* die */
     }
 }
