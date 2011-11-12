@@ -562,7 +562,7 @@ struct Main {
             }
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );
-        } else if ( str::endsWith( config.input, ".ll" ) ) {
+        } else if ( str::endsWith( config.input, ".bc" ) ) {
             report->generator = "LLVM";
 #ifdef HAVE_LLVM
             if ( config.workers > 1 && !::llvm::llvm_start_multithreaded() )
