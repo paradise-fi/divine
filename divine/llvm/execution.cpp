@@ -885,6 +885,7 @@ void Interpreter::visitCallSite(CallSite CS) {
                 // If it is an unknown intrinsic function, use the intrinsic lowering
                 // class to transform it into hopefully tasty LLVM code.
                 //
+                dbgs() << "FATAL: Can't lower:" << *CS.getInstruction() << "\n";
                 assert_die(); /* TODO: the new locations need to be indexed */
                 BasicBlock::iterator me(CS.getInstruction());
                 BasicBlock *Parent = CS.getInstruction()->getParent();
