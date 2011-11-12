@@ -113,10 +113,10 @@ std::string Interpreter::describe() {
             else
                 vec.push_back( "<unknown>" );
 
-            std::string descr;
-            raw_string_ostream descr_stream( descr );
-            descr_stream << insn;
-            vec.push_back( descr );
+            /* std::string descr;
+               raw_string_ostream descr_stream( descr );
+               descr_stream << insn;
+               vec.push_back( descr ); */
         } else
             vec.push_back( "<not started>" );
 
