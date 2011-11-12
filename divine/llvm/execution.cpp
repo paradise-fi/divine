@@ -747,7 +747,7 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
     GenericValue Result;
     Result.PointerVal = reinterpret_cast< void * >( intptr_t( Memory ) );
-    Result.IntVal = APInt(2, 0); // XXX hack.
+    Result.IntVal = APInt(2, 0); // XXX, not very clean; marks an alloca for cloning by detach()
     assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
     SetValue(&I, Result, SF());
 
