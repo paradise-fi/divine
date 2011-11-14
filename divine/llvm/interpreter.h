@@ -316,7 +316,7 @@ public:
     ~Interpreter();
 
     typedef std::pair< std::string, void * > Describe;
-    typedef std::set< int > DescribeSeen;
+    typedef std::set< std::pair< int, Type * > > DescribeSeen;
 
     Describe describeAggregate( Type *t, void *where, DescribeSeen& );
     Describe describeValue( Type *t, void *where, DescribeSeen& );

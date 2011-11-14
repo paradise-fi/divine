@@ -42,13 +42,13 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, void *where, Desc
 std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen ) {
     std::string res = "*" + wibble::str::fmt( (void*) idx );
     if ( idx ) {
-        if ( seen.count( idx ) ) {
+        Type *pointeeTy = cast< PointerType >( t )->getElementType();
+        if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
             res += " <...>";
         } else {
-            Describe pointee = describeValue( cast< PointerType >( t )->getElementType(),
-                                              arena.translate( idx ), seen );
+            Describe pointee = describeValue( pointeeTy, arena.translate( idx ), seen );
             res += " " + pointee.first;
-            seen.insert( idx );
+            seen.insert( std::make_pair( idx, pointeeTy ) );
         }
     }
     return res;
