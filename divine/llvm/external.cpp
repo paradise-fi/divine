@@ -290,4 +290,42 @@ bool Interpreter::viable( int ctx, int alt )
     return alt < 1;
 }
 
+bool Interpreter::isTau( int ctx )
+{
+    _context = ctx;
+
+    if ( _context >= stacks.size() )
+        return false;
+    if ( done( ctx ) )
+        return false;
+
+    // we probably shouldn't slip out of bad states
+    if ( flags.null_dereference || flags.invalid_dereference )
+        return false;
+
+    Instruction &I = nextInstruction();
+
+    if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+        CallSite cs(&I);
+        Function *F = cs.getCalledFunction();
+        if (!F || !F->isDeclaration())
+            return false; // not a builtin, might recurse
+
+        // FIXME SLOW
+        std::string plain = F->getNameStr();
+        if ( std::string( plain, 0, 8 ) == "llvm.dbg" )
+            return true; // debug builtins can be ignored
+
+        return false; // calls to other builtins are invisible
+    }
+
+    if (isa<LoadInst>(I) ||
+        isa<StoreInst>(I) ||
+        isa<IndirectBrInst>(I) ||
+        isa<BranchInst>(I))
+        return false;
+
+    return true; // anything else is tau...
+}
+
 #endif

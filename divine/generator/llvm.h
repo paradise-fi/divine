@@ -82,6 +82,11 @@ struct LLVM : Common< Blob > {
         Node head() {
             interpreter().restore( _from, _parent->alloc._slack );
             interpreter().step( _context, _alternative );
+
+            // collapse all following tau actions in this context
+            while ( interpreter().isTau( _context ) )
+                interpreter().step( _context, 0 ); // tau steps cannot branch
+
             return interpreter().snapshot( _parent->alloc._slack, _parent->pool() );
         }
 

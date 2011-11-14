@@ -361,6 +361,7 @@ public:
     bool done( int ctx = 0 ); // Is there anything left to do?
 
     bool viable( int ctx = 0, int alternative = 0 );
+    bool isTau( int ctx = 0 );
 
     Location location( ExecutionContext & );
     CallSite caller( ExecutionContext & );
