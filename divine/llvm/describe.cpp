@@ -110,13 +110,12 @@ std::string Interpreter::describe() {
             if ( des.getLineNumber() )
                 vec.push_back( std::string( des.getFilename() ) +
                                ":" + wibble::str::fmt( des.getLineNumber() ) );
-            else
-                vec.push_back( "<unknown>" );
-
-            /* std::string descr;
-               raw_string_ostream descr_stream( descr );
-               descr_stream << insn;
-               vec.push_back( descr ); */
+            else {
+                std::string descr;
+                raw_string_ostream descr_stream( descr );
+                descr_stream << insn;
+                vec.push_back( "?:" + descr );
+            }
         } else
             vec.push_back( "<not started>" );
 
