@@ -1,44 +1,69 @@
 /*
- * This program implements the Peterson's mutual exclusion algorithm. Different
- * combinations of build flags lead to different results (incorrect meaning the
- * assertion is violated):
+ * This program implements the Peterson's mutual exclusion algorithm. When
+ * compiled with -DBUG, the algorithm is incorrect but runs without tripping
+ * assertions more often than not.
  *
- *  -O0        correct,  5583 states
- *  -O0 -DBUG  correct,  5583 states
- *  -O2        correct,   170 states
- *  -O2 -DBUG: incorrect, 540 states
- *
- * compile with: clang -c -emit-llvm [flags] -o peterson.ll peterson.c
+ * verify with:
+ *  $ clang -DDIVINE -c -emit-llvm [flags] -o peterson.bc peterson.c
+ *  $ divine reachability peterson.bc --ignore-deadlocks
+ * execute with:
+ *  $ clang [flags] -o peterson.exe peterson.c
+ *  $ ./peterson.exe
  */
 
+#include "divine-llvm.h"
+
 struct state {
-#ifndef BUG
-    volatile
-#endif
-        int flag[2];
+    int flag[2];
     int turn;
     volatile int in_critical[2];
 };
 
-void threads( struct state *s ) {
-    int id = thread_create();
-    s->flag[id] = 1;
-    s->turn = 1 - id;
-    while ( s->flag[id] == 1 && s->turn == 1 - id ) ;
-    s->in_critical[id] = 1;
-    assert( !s->in_critical[1 - id] );
-    s->flag[id] = 0;
+struct p {
+    int id;
+    pthread_t ptid;
+    struct state *s;
+};
+
+void thread( struct p *p ) __attribute__((noinline));
+void thread( struct p *p ) {
+#ifdef BUG
+    p->s->flag[p->id] = 0;
+#else // correct
+    p->s->flag[p->id] = 1;
+#endif
+    p->s->turn = 1 - p->id;
+
+    // wait
+    while ( p->s->flag[1 - p->id] == 1 && p->s->turn == 1 - p->id ) ;
+
+    p->s->in_critical[p->id] = 1;
+    trace("Thread %d in critical.", p->id);
+    assert( !p->s->in_critical[1 - p->id] );
+    p->s->in_critical[p->id] = 0;
+
+    p->s->flag[p->id] = 0;
+
 }
 
 int main() {
-    struct state s;
-    struct state * volatile _s = &s;
+    struct state *s = malloc( sizeof( struct state ) );
+    struct p *one = malloc( sizeof( struct p ) ),
+             *two = malloc( sizeof( struct p ) );
+    if (!s || !one || !two)
+        return 1;
 
-    s.flag[0]   = 0;
-    s.flag[1]   = 0;
-    s.in_critical[0] = 0;
-    s.in_critical[1] = 0;
-    threads( _s );
+    one->s = two->s = s;
+    one->id = 0;
+    two->id = 1;
 
+    s->flag[0]   = 0;
+    s->flag[1]   = 0;
+    s->in_critical[0] = 0;
+    s->in_critical[1] = 0;
+    pthread_create( &one->ptid, NULL, thread, one );
+    pthread_create( &two->ptid, NULL, thread, two );
+    pthread_join( one->ptid, NULL );
+    pthread_join( two->ptid, NULL );
     return 0;
 }
