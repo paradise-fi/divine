@@ -447,7 +447,6 @@ private:  // Helper functions
 
   void initializeExecutionEngine() { }
     // void initializeExternalFunctions();
-  GenericValue getConstantExprValue(ConstantExpr *CE, ExecutionContext &SF);
   GenericValue getOperandValue(Value *V, ExecutionContext &SF);
   GenericValue executeTruncInst(Value *SrcVal, Type *DstTy,
                                 ExecutionContext &SF);
