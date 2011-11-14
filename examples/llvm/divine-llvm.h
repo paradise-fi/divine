@@ -43,7 +43,6 @@ static int pthread_create(pthread_t *ptid,
                           const pthread_attr_t *attr, /* TODO? */
                           void *(*entry)(void *), void *arg)
 {
-    trace("Creating thread %d...", __tid_last);
     if (__tid_last == 32) {
         trace("FATAL: Thread capacity exceeded.");
         return 1;
@@ -55,7 +54,6 @@ static int pthread_create(pthread_t *ptid,
     if ( id == 0 ) { // this will be the parent
         return 0;
     } else {
-        trace("Thread %d created.", tid);
         __tid[tid].done = false;
         __tid[tid].result = entry(arg);
         __tid[tid].done = true;
@@ -63,15 +61,16 @@ static int pthread_create(pthread_t *ptid,
     }
 }
 
-int pthread_join(pthread_t *ptid, void **x) {
-    while ( !__tid[*ptid].done ) ;
-    *x = __tid[*ptid].result;
+int pthread_join(pthread_t ptid, void **x) {
+    while ( !__tid[ptid].done ) ;
+    *x = __tid[ptid].result;
     return 0;
 }
 
 #else // (NOT DIVINE)
 #include <pthread.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include "assert.h"
 
 /* compatibility for native execution */
