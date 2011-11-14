@@ -73,7 +73,7 @@ struct Symbol {
             char *place = mem + item().offset + idx * item().width;
             switch ( item().width ) {
                 case 1: return *reinterpret_cast< uint8_t * >( place );
-                case 2: return *reinterpret_cast< uint16_t * >( place );
+                case 2: return *reinterpret_cast< int16_t * >( place );
                 case 4: return *reinterpret_cast< uint32_t * >( place );
                 default: assert_die();
             }
@@ -85,7 +85,7 @@ struct Symbol {
         char *place = mem + item().offset + idx * item().width;
         switch ( item().width ) {
             case 1: *reinterpret_cast< uint8_t * >( place ) = value; break;
-            case 2: *reinterpret_cast< uint16_t * >( place ) = value; break;
+            case 2: *reinterpret_cast< int16_t * >( place ) = value; break;
             case 4: *reinterpret_cast< uint32_t * >( place ) = value; break;
             default: assert_die();
         }
