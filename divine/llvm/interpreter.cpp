@@ -55,10 +55,11 @@ void Interpreter::emitGlobals( Module *M )
     for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var) {
         if ( var->isConstant() )
             continue;
+        assert( !var->isDeclaration() ); // can't handle extern's yet
+
+        // GlobalVariable type is always a pointer, so dereference it first
         Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
-        assert( !var->isDeclaration() );
         assert( ty );
-        dbgs() << "allocating " << var->getNameStr() << " of type " << *ty << ", size = " << TD.getTypeAllocSize(ty) << "\n";
         globals.insert( std::make_pair( &*var, globalmem.size() + 0x100 ) );
         globalmem.resize( globalmem.size() + TD.getTypeAllocSize(ty) );
     }
