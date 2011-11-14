@@ -199,7 +199,16 @@ struct SymTab : NS {
             for ( std::map< std::string, int >::iterator i = tabs[ ns ].begin();
                   i != tabs[ ns ].end(); ++i ) {
                 Symbol s( context, i->second );
-                o << i->first << " = " << s.deref( mem ) << ", ";
+                if(s.item().is_array) {
+                    o << i->first << " = {" << s.deref( mem );
+                    for (int j = 1; j < s.item().array; j++) {
+                        o << "," << s.deref( mem, j );
+                    }
+                    o << "}, ";
+                }
+                else {
+                    o << i->first << " = " << s.deref( mem ) << ", ";
+                }
             }
         }
         return o;
