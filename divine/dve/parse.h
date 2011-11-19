@@ -248,7 +248,7 @@ struct Declaration : Parser {
             list< Expression >( std::back_inserter( initial ),
                                 Token::BlockOpen, Token::Comma, Token::BlockClose );
         else
-            initial.push_back( Expression ( context() ) );
+            initial.push_back( Expression( context() ) );
     }
 
     Declaration( Context &c ) : Parser( c ), size( 1 )
