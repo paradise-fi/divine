@@ -194,9 +194,9 @@ struct SymTab : NS {
         tabs.resize( 6 ); // one for each namespace
     }
 
-    std::ostream& dump( std::ostream &o, char *mem ) {
+    std::ostream& dump( std::ostream &o, char *mem ) const {
         for ( Namespace ns = Process; ns < State; ns = NS::Namespace( ns + 1 ) ) {
-            for ( std::map< std::string, int >::iterator i = tabs[ ns ].begin();
+            for ( std::map< std::string, int >::const_iterator i = tabs[ ns ].begin();
                   i != tabs[ ns ].end(); ++i ) {
                 Symbol s( context, i->second );
                 o << i->first << " = " << (s.item().is_array ? "[" : "");
@@ -204,7 +204,11 @@ struct SymTab : NS {
                 for ( int j = 1; j < s.item().array; j++ )
                     o << ", " << s.deref( mem, j );
                 o << (s.item().is_array ? "], " : ", ");
+                if (ns == Process) {
+                    child(s)->dump(o, mem);
+                }
             }
+            o << std::endl;
         }
         return o;
     }
