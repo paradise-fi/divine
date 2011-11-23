@@ -66,14 +66,14 @@ struct Transition {
     }
 
     void apply( EvalContext &ctx ) {
-        for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
-            i->first.set( ctx, i->second.evaluate( ctx ) );
-        process.set( ctx.mem, 0, to.deref() );
         if ( sync ) {
             if (sync->sync_lval.valid() && sync_expr.valid() )
                 sync->sync_lval.set( ctx, sync_expr.evaluate( ctx ) );
             sync->apply( ctx );
         }
+        for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
+            i->first.set( ctx, i->second.evaluate( ctx ) );
+        process.set( ctx.mem, 0, to.deref() );
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
