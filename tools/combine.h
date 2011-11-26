@@ -69,37 +69,6 @@ static void copy_graph(const ALT_graph_t& aG, BA_opt_graph_t& oG)
 
 std::string graph_to_cpp(const BA_opt_graph_t &g);
 
-struct PipeThrough
-{
-    std::string cmd;
-
-    PipeThrough( const std::string& _cmd ) : cmd( _cmd ) {}
-
-    std::string run( std::string data ) {
-        int _in, _out;
-
-#ifdef _WIN32
-        Exec exec(cmd);
-#elif defined POSIX
-        ShellCommand exec(cmd);
-#endif
-
-        exec.setupRedirects( &_in, &_out, 0 );
-        exec.fork();
-
-        Pipe in( _in ), out( _out );
-
-        in.write( data );
-        in.close();
-        std::string ret;
-        while ( !out.eof() ) {
-            out.wait();
-            ret += out.nextChunk();
-        }
-        return ret;
-    }
-};
-
 struct Combine {
     Engine *cmd_combine;
     IntOption *o_propId;
