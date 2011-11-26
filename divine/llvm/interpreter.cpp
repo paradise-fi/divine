@@ -70,14 +70,6 @@ void Interpreter::emitGlobals( Module *M )
                                            // all places
 }
 
-void Interpreter::runAtExitHandlers () {
-  while (!AtExitHandlers.empty()) {
-    callFunction(AtExitHandlers.back(), std::vector<GenericValue>());
-    AtExitHandlers.pop_back();
-    run();
-  }
-}
-
 /// run - Start execution with the specified function and arguments.
 ///
 GenericValue

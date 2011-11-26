@@ -571,16 +571,6 @@ void Interpreter::visitSelectInst(SelectInst &I) {
 //                     Terminator Instruction Implementations
 //===----------------------------------------------------------------------===//
 
-void Interpreter::exitCalled(GenericValue GV) {
-  // runAtExitHandlers() assumes there are no stack frames, but
-  // if exit() was called, then it had a stack frame. Blow away
-  // the stack before interpreting atexit handlers.
-    while (!stack().empty())
-        leave();
-    runAtExitHandlers();
-    exit(GV.IntVal.zextOrTrunc(32).getZExtValue());
-}
-
 /// Pop the last stack frame off of ECStack and then copy the result
 /// back into the result variable if we are not returning void. The
 /// result variable may be the ExitValue, or the Value of the calling

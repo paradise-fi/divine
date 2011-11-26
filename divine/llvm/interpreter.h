@@ -178,9 +178,6 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     BiMap< int, CallSite > csIndex;
     std::map< const GlobalVariable *, int > globals;
 
-    // AtExitHandlers - List of functions to call when the program exits,
-    // registered with the atexit() library function.
-    std::vector<Function*> AtExitHandlers;
     void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
 
     std::vector< char > globalmem;
@@ -324,11 +321,6 @@ public:
     std::string describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen * = 0 );
     std::string describe();
 
-  /// runAtExitHandlers - Run any functions registered by the program's calls to
-  /// atexit(3), which we intercept and store in AtExitHandlers.
-  ///
-  void runAtExitHandlers();
-
   /// create - Create an interpreter ExecutionEngine. This can never fail.
   ///
   static ExecutionEngine *create(Module *M, std::string *ErrorStr = 0);
@@ -420,11 +412,6 @@ public:
 
   GenericValue callExternalFunction(Function *F,
                                     const std::vector<GenericValue> &ArgVals);
-  void exitCalled(GenericValue GV);
-
-  void addAtExitHandler(Function *F) {
-    AtExitHandlers.push_back(F);
-  }
 
   GenericValue *getFirstVarArg () {
       return &(SF().varArgs[0]);
