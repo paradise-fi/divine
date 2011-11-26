@@ -220,10 +220,12 @@ public:
     int _alternative;
     int _context;
     struct {
-        uint32_t assert:1;
-        uint32_t null_dereference:1;
-        uint32_t invalid_dereference:1;
-        uint32_t _padding:29;
+        uint64_t assert:1;
+        uint64_t null_dereference:1;
+        uint64_t invalid_dereference:1;
+        // XXX this is kind of a hack
+        uint64_t ap:49;
+        uint64_t buchi:12;
     } flags;
 
     std::vector<ExecutionContext> &stack( int c = -1 ) {

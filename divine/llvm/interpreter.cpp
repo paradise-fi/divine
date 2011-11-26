@@ -28,7 +28,7 @@ using namespace divine::llvm;
 //
 Interpreter::Interpreter(Module *M)
   : ExecutionEngine(M), TD(M) {
-      
+
   memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
   setTargetData(&TD);
 
@@ -41,7 +41,7 @@ Interpreter::Interpreter(Module *M)
   _context = 0;
   _alternative = 0;
   flags.assert = flags.null_dereference = flags.invalid_dereference = false;
-  flags._padding = 0;
+  flags.ap = flags.buchi = 0;
 
   IL = new IntrinsicLowering(TD);
 }
