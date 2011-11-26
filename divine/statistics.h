@@ -18,10 +18,10 @@
 namespace divine {
 
 struct NoStatistics {
-    void enqueue( int , int) {}
-    void dequeue( int , int) {}
-    void hashsize( int , int) {}
-    void hashadded( int , int) {}
+    void enqueue( int , int ) {}
+    void dequeue( int , int ) {}
+    void hashsize( int , int ) {}
+    void hashadded( int , int ) {}
     void sent( int, int, int ) {}
     void received( int, int, int ) {}
 
@@ -68,11 +68,11 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         thread( id ).memQueue -= size;
     }
 
-    void hashsize( int id , int s) {
+    void hashsize( int id , int s ) {
         thread( id ).hashsize = s;
     }
 
-    void hashadded( int id , int nodeSize) {
+    void hashadded( int id , int nodeSize ) {
         thread( id ).hashused ++;
         thread( id ).memHashes += nodeSize;
     }
@@ -84,7 +84,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         return *threads[ id ];
     }
 
-    void sent( int from, int to, int nodeSize) {
+    void sent( int from, int to, int nodeSize ) {
         assert_leq( 0, to );
 
         PerThread &f = thread( from );
@@ -94,7 +94,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         f.memSent[ to ] += nodeSize;
     }
 
-    void received( int from, int to, int nodeSize) {
+    void received( int from, int to, int nodeSize ) {
         assert_leq( 0, from );
 
         PerThread &t = thread( to );
