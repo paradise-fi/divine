@@ -77,14 +77,17 @@ Interpreter::Describe Interpreter::describeValue( Type *t, void *where, Describe
 }
 
 std::string Interpreter::describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen *seen ) {
-    std::string str;
+    std::string str, name;
     DescribeSeen _seen;
     if ( !seen )
         seen = &_seen;
     Value *val = valueIndex.right( vindex );
     Type *type = val->getType();
     if ( val->getValueName() ) {
-        str = std::string( val->getValueName()->getKey() ) + " = ";
+        name = val->getValueName()->getKey();
+        if ( name.find( '.' ) != std::string::npos )
+           return "";
+        str = name + " = ";
         if ( type->isPointerTy() ) {
             str += describePointer( type, intptr_t( vvalue.PointerVal ), *seen );
         } else { // assume intval for now
