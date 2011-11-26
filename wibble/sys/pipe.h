@@ -14,6 +14,7 @@
 #include <wibble/exception.h>
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
+#include <wibble/sys/exec.h>
 
 #ifndef WIBBLE_SYS_PIPE_H
 #define WIBBLE_SYS_PIPE_H
@@ -207,6 +208,37 @@ struct Pipe {
         return l;
     }
 
+};
+
+struct PipeThrough
+{
+    std::string cmd;
+
+    PipeThrough( const std::string& _cmd ) : cmd( _cmd ) {}
+
+    std::string run( std::string data ) {
+        int _in, _out;
+
+#ifdef _WIN32
+        Exec exec(cmd);
+#elif defined POSIX
+        ShellCommand exec(cmd);
+#endif
+
+        exec.setupRedirects( &_in, &_out, 0 );
+        exec.fork();
+
+        Pipe in( _in ), out( _out );
+
+        in.write( data );
+        in.close();
+        std::string ret;
+        while ( !out.eof() ) {
+            out.wait();
+            ret += out.nextChunk();
+        }
+        return ret;
+    }
 };
 
 }
