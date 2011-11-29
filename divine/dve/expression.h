@@ -18,8 +18,10 @@ struct EvalContext {
             Symbol symbol;
             int value;
         };
-        Value ( Symbol s ) : symbol ( s ) {}
-        Value ( int v  ) : value( v ) {}
+        bool error;
+        Value ( Symbol s ) : symbol ( s ), error( false ) {}
+        Value ( int v  ) : value( v ), error( false ) {}
+        Value () : value( 0 ), error( true ) {}
     };
 
     Value pop() {
@@ -59,6 +61,36 @@ struct Expression {
     std::vector< Item > rpn;
     bool _valid;
     bool valid() { return _valid; }
+    
+    inline EvalContext::Value binop( const Token &op, EvalContext::Value a, EvalContext::Value b ) {
+        if ( a.error )
+            return EvalContext::Value();
+        
+        switch (op.id) {
+            case TI::Bool_Or:
+                if ( a.value )
+                    return true;
+                if ( b.error )
+                    return EvalContext::Value();
+                return b.value;
+            case TI::Bool_And:
+                if ( !a.value )
+                    return false;
+                if ( b.error )
+                    return EvalContext::Value();
+                return b.value;
+            case TI::Imply:
+                if ( !a.value )
+                    return true;
+                if ( b.error )
+                    return EvalContext::Value();
+                return b.value;
+            default:
+                if ( b.error )
+                    return EvalContext::Value();
+                return binop( op, a.value, b.value );
+        }
+    }
 
     inline int binop( const Token &op, int a, int b ) {
         switch ( op.id ) {
@@ -88,7 +120,7 @@ struct Expression {
     }
 
     void step( EvalContext &ctx, Item &i ) {
-        int a, b;
+        EvalContext::Value a, b;
         Symbol p, s;
         DEBUG(for ( int x = 0; x < ctx.stack.size(); ++ x )
                   std::cerr << ctx.stack[ x ].value << " ";
@@ -101,9 +133,12 @@ struct Expression {
             case TI::Constant:
                 ctx.push( i.arg ); break;
             case TI::Subscript:
-                b = ctx.pop().value;
+                b = ctx.pop();
                 s = ctx.pop().symbol;
-                ctx.push( s.deref( ctx.mem, b ) );
+                if ( b.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
+                    ctx.push( EvalContext::Value() );
+                else
+                    ctx.push( s.deref( ctx.mem, b.value ) );
                 break;
             case TI::Period:
                 s = ctx.pop().symbol;
@@ -111,16 +146,16 @@ struct Expression {
                 ctx.push( s.deref( ctx.mem ) == p.deref( ctx.mem ) );
                 break;
             case TI::Bool_Not:
-                a = ctx.pop().value;
-                ctx.push( !a );
+                a = ctx.pop();
+                ctx.push( !a.value );
                 break;
             case TI::Tilde:
-                a = ctx.pop().value;
-                ctx.push( ~a );
+                a = ctx.pop();
+                ctx.push( ~a.value );
                 break;
             default:
-                b = ctx.pop().value;
-                a = ctx.pop().value;
+                b = ctx.pop();
+                a = ctx.pop();
                 ctx.push( binop( i.op, a, b ) );
         }
         DEBUG(std::cerr << std::endl);
@@ -132,7 +167,9 @@ struct Expression {
             step( ctx, *i );
         assert_eq( ctx.stack.size(), (size_t) 1 );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
-        return ctx.pop().value;
+        EvalContext::Value retval = ctx.pop();
+        assert(!retval.error);
+        return retval.value;
     }
 
     void rpn_push( Token op, EvalContext::Value v ) {
