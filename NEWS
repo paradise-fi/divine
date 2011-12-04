@@ -1,3 +1,10 @@
+DiVinE 2.5.2 (4.12.2012)
+========================
+
+- Fix compatibility with GCC 4.6.
+- Make compilation work also on openmpi installations without ompi/version.h.
+- Fix installation of the GUI.
+
 DiVinE 2.5.1 (5.4.2011)
 =======================
 
