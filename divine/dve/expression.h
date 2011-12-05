@@ -2,6 +2,7 @@
 
 #include <divine/dve/parse.h>
 #include <divine/dve/symtab.h>
+#include <divine/dve/error.h>
 #include <vector>
 
 #ifndef DIVINE_DVE_EXPRESSION_H
@@ -16,12 +17,15 @@ struct EvalContext {
     struct Value {
         union {
             Symbol symbol;
-            int value;
+            struct {
+                int value;
+                ErrorState errState;
+            };
         };
-        bool error;
-        Value ( Symbol s ) : symbol ( s ), error( false ) {}
-        Value ( int v  ) : value( v ), error( false ) {}
-        Value () : value( 0 ), error( true ) {}
+        Value ( Symbol s ) : symbol ( s ) {}
+        Value ( int v  ) : value( v ), errState() {}
+        Value ( ErrorState state ) : value( 0 ), errState( state ) {}
+        Value () : value( 0 ), errState( ErrorState::e_none ) {}
     };
 
     Value pop() {
@@ -63,31 +67,31 @@ struct Expression {
     bool valid() { return _valid; }
     
     inline EvalContext::Value binop( const Token &op, EvalContext::Value a, EvalContext::Value b ) {
-        if ( a.error )
-            return EvalContext::Value();
+        if ( a.errState.error )
+            return EvalContext::Value(a.errState);
         
         switch (op.id) {
             case TI::Bool_Or:
                 if ( a.value )
                     return true;
-                if ( b.error )
-                    return EvalContext::Value();
+                if ( b.errState.error )
+                    return EvalContext::Value(b.errState);
                 return b.value;
             case TI::Bool_And:
                 if ( !a.value )
                     return false;
-                if ( b.error )
-                    return EvalContext::Value();
+                if ( b.errState.error )
+                    return EvalContext::Value(b.errState);
                 return b.value;
             case TI::Imply:
                 if ( !a.value )
                     return true;
-                if ( b.error )
-                    return EvalContext::Value();
+                if ( b.errState.error )
+                    return EvalContext::Value(b.errState);
                 return b.value;
             default:
-                if ( b.error )
-                    return EvalContext::Value();
+                if ( b.errState.error )
+                    return EvalContext::Value(b.errState);
                 return binop( op, a.value, b.value );
         }
     }
@@ -135,8 +139,8 @@ struct Expression {
             case TI::Subscript:
                 b = ctx.pop();
                 s = ctx.pop().symbol;
-                if ( b.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
-                    ctx.push( EvalContext::Value() );
+                if ( b.errState.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
+                    ctx.push( EvalContext::Value( ErrorState::e_arrayCheck ) );
                 else
                     ctx.push( s.deref( ctx.mem, b.value ) );
                 break;
@@ -168,7 +172,7 @@ struct Expression {
         assert_eq( ctx.stack.size(), (size_t) 1 );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::Value retval = ctx.pop();
-        assert(!retval.error);
+        assert(!retval.errState.error);
         return retval.value;
     }
 
