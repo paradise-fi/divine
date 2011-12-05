@@ -12,7 +12,6 @@
 //===----------------------------------------------------------------------===//
 
 #ifdef HAVE_LLVM
-#define DEBUG_TYPE "interpreter"
 
 #include <divine/llvm/interpreter.h>
 
@@ -24,7 +23,6 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include <algorithm>
@@ -34,8 +32,6 @@
 
 using namespace llvm;
 using namespace divine::llvm;
-
-STATISTIC(NumDynamicInsts, "Number of dynamic instructions executed");
 
 static cl::opt<bool> PrintVolatile("interpreter-print-volatile", cl::Hidden,
           cl::desc("make the interpreter print every volatile load and store"));
@@ -63,8 +59,7 @@ static void executeFAddInst(GenericValue &Dest, GenericValue Src1,
     IMPLEMENT_BINARY_OPERATOR(+, Float);
     IMPLEMENT_BINARY_OPERATOR(+, Double);
   default:
-    dbgs() << "Unhandled type for FAdd instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -74,8 +69,7 @@ static void executeFSubInst(GenericValue &Dest, GenericValue Src1,
     IMPLEMENT_BINARY_OPERATOR(-, Float);
     IMPLEMENT_BINARY_OPERATOR(-, Double);
   default:
-    dbgs() << "Unhandled type for FSub instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -85,8 +79,7 @@ static void executeFMulInst(GenericValue &Dest, GenericValue Src1,
     IMPLEMENT_BINARY_OPERATOR(*, Float);
     IMPLEMENT_BINARY_OPERATOR(*, Double);
   default:
-    dbgs() << "Unhandled type for FMul instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -96,8 +89,7 @@ static void executeFDivInst(GenericValue &Dest, GenericValue Src1,
     IMPLEMENT_BINARY_OPERATOR(/, Float);
     IMPLEMENT_BINARY_OPERATOR(/, Double);
   default:
-    dbgs() << "Unhandled type for FDiv instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -111,8 +103,7 @@ static void executeFRemInst(GenericValue &Dest, GenericValue Src1,
     Dest.DoubleVal = fmod(Src1.DoubleVal, Src2.DoubleVal);
     break;
   default:
-    dbgs() << "Unhandled type for Rem instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -138,8 +129,7 @@ static GenericValue executeICMP_EQ(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(eq,Ty);
     IMPLEMENT_POINTER_ICMP(==);
   default:
-    dbgs() << "Unhandled type for ICMP_EQ predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -151,8 +141,7 @@ static GenericValue executeICMP_NE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(ne,Ty);
     IMPLEMENT_POINTER_ICMP(!=);
   default:
-    dbgs() << "Unhandled type for ICMP_NE predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -164,8 +153,7 @@ static GenericValue executeICMP_ULT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(ult,Ty);
     IMPLEMENT_POINTER_ICMP(<);
   default:
-    dbgs() << "Unhandled type for ICMP_ULT predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -177,8 +165,7 @@ static GenericValue executeICMP_SLT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(slt,Ty);
     IMPLEMENT_POINTER_ICMP(<);
   default:
-    dbgs() << "Unhandled type for ICMP_SLT predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -190,8 +177,7 @@ static GenericValue executeICMP_UGT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(ugt,Ty);
     IMPLEMENT_POINTER_ICMP(>);
   default:
-    dbgs() << "Unhandled type for ICMP_UGT predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -203,8 +189,7 @@ static GenericValue executeICMP_SGT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(sgt,Ty);
     IMPLEMENT_POINTER_ICMP(>);
   default:
-    dbgs() << "Unhandled type for ICMP_SGT predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -216,8 +201,7 @@ static GenericValue executeICMP_ULE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(ule,Ty);
     IMPLEMENT_POINTER_ICMP(<=);
   default:
-    dbgs() << "Unhandled type for ICMP_ULE predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -229,8 +213,7 @@ static GenericValue executeICMP_SLE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(sle,Ty);
     IMPLEMENT_POINTER_ICMP(<=);
   default:
-    dbgs() << "Unhandled type for ICMP_SLE predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -242,8 +225,7 @@ static GenericValue executeICMP_UGE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(uge,Ty);
     IMPLEMENT_POINTER_ICMP(>=);
   default:
-    dbgs() << "Unhandled type for ICMP_UGE predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -255,8 +237,7 @@ static GenericValue executeICMP_SGE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_INTEGER_ICMP(sge,Ty);
     IMPLEMENT_POINTER_ICMP(>=);
   default:
-    dbgs() << "Unhandled type for ICMP_SGE predicate: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -279,8 +260,7 @@ void Interpreter::visitICmpInst(ICmpInst &I) {
   case ICmpInst::ICMP_UGE: R = executeICMP_UGE(Src1, Src2, Ty); break;
   case ICmpInst::ICMP_SGE: R = executeICMP_SGE(Src1, Src2, Ty); break;
   default:
-    dbgs() << "Don't know how to handle this ICmp predicate!\n-->" << I;
-    llvm_unreachable(0);
+      assert_die();
   }
  
   SetValue(&I, R, SF());
@@ -298,8 +278,7 @@ static GenericValue executeFCMP_OEQ(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(==, Float);
     IMPLEMENT_FCMP(==, Double);
   default:
-    dbgs() << "Unhandled type for FCmp EQ instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -312,8 +291,7 @@ static GenericValue executeFCMP_ONE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(!=, Double);
 
   default:
-    dbgs() << "Unhandled type for FCmp NE instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -325,8 +303,7 @@ static GenericValue executeFCMP_OLE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(<=, Float);
     IMPLEMENT_FCMP(<=, Double);
   default:
-    dbgs() << "Unhandled type for FCmp LE instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -338,8 +315,7 @@ static GenericValue executeFCMP_OGE(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(>=, Float);
     IMPLEMENT_FCMP(>=, Double);
   default:
-    dbgs() << "Unhandled type for FCmp GE instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -351,8 +327,7 @@ static GenericValue executeFCMP_OLT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(<, Float);
     IMPLEMENT_FCMP(<, Double);
   default:
-    dbgs() << "Unhandled type for FCmp LT instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -364,8 +339,7 @@ static GenericValue executeFCMP_OGT(GenericValue Src1, GenericValue Src2,
     IMPLEMENT_FCMP(>, Float);
     IMPLEMENT_FCMP(>, Double);
   default:
-    dbgs() << "Unhandled type for FCmp GT instruction: " << *Ty << "\n";
-    llvm_unreachable(0);
+      assert_die();
   }
   return Dest;
 }
@@ -472,8 +446,7 @@ void Interpreter::visitFCmpInst(FCmpInst &I) {
   case FCmpInst::FCMP_UGE:   R = executeFCMP_UGE(Src1, Src2, Ty); break;
   case FCmpInst::FCMP_OGE:   R = executeFCMP_OGE(Src1, Src2, Ty); break;
   default:
-    dbgs() << "Don't know how to handle this FCmp predicate!\n-->" << I;
-    llvm_unreachable(0);
+      assert_die();
   }
  
   SetValue(&I, R, SF());
@@ -518,8 +491,7 @@ static GenericValue executeCmpInst(unsigned predicate, GenericValue Src1,
     return Result;
   }
   default:
-    dbgs() << "Unhandled Cmp predicate\n";
-    llvm_unreachable(0);
+      assert_die();
   }
 }
 
@@ -546,8 +518,7 @@ void Interpreter::visitBinaryOperator(BinaryOperator &I) {
   case Instruction::Or:    R.IntVal = Src1.IntVal | Src2.IntVal; break;
   case Instruction::Xor:   R.IntVal = Src1.IntVal ^ Src2.IntVal; break;
   default:
-    dbgs() << "Don't know how to handle this binary operator!\n-->" << I;
-    llvm_unreachable(0);
+      assert_die();
   }
 
   SetValue(&I, R, SF());
@@ -731,10 +702,6 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
     // Allocate enough memory to hold the type...
     Arena::Index Memory = arena.allocate(MemToAlloc);
 
-    DEBUG(dbgs() << "Allocated Type: " << *Ty << " (" << TypeSize << " bytes) x " 
-          << NumElements << " (Total: " << MemToAlloc << ") at "
-          << uintptr_t(Memory) << '\n');
-
     GenericValue Result;
     Result.PointerVal = reinterpret_cast< void * >( intptr_t( Memory ) );
     Result.IntVal = APInt(2, 0); // XXX, not very clean; marks an alloca for cloning by detach()
@@ -783,7 +750,6 @@ GenericValue Interpreter::executeGEPOperation(Value *Ptr, gep_type_iterator I,
 
   GenericValue Result;
   Result.PointerVal = ((char*)getOperandValue(Ptr, SF).PointerVal) + Total;
-  DEBUG(dbgs() << "GEP Index " << Total << " bytes.\n");
   return Result;
 }
 
@@ -875,7 +841,7 @@ void Interpreter::visitCallSite(CallSite CS) {
                 // If it is an unknown intrinsic function, use the intrinsic lowering
                 // class to transform it into hopefully tasty LLVM code.
                 //
-                dbgs() << "FATAL: Can't lower:" << *CS.getInstruction() << "\n";
+                // dbgs() << "FATAL: Can't lower:" << *CS.getInstruction() << "\n";
                 assert_die(); /* TODO: the new locations need to be indexed */
                 BasicBlock::iterator me(CS.getInstruction());
                 BasicBlock *Parent = CS.getInstruction()->getParent();
@@ -1185,8 +1151,7 @@ void Interpreter::visitVAArgInst(VAArgInst &I) {
             IMPLEMENT_VAARG(Float);
             IMPLEMENT_VAARG(Double);
         default:
-            dbgs() << "Unhandled dest type for vaarg instruction: " << *Ty << "\n";
-            llvm_unreachable(0);
+            assert_die();
     }
 
     // Set the Value of this Instruction.

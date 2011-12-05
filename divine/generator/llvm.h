@@ -7,7 +7,6 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
