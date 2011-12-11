@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 #include <divine/dve/parse.h>
+#include <divine/dve/error.h>
 
 #ifndef DIVINE_DVE_SYMTAB_H
 #define DIVINE_DVE_SYMTAB_H
@@ -80,7 +81,7 @@ struct Symbol {
         }
     }
 
-    void set( char *mem, int idx, int value ) {
+    void set( char *mem, int idx, int value, ErrorState &err ) {
         assert ( !item().is_constant );
         char *place = mem + item().offset + idx * item().width;
         switch ( item().width ) {

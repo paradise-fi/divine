@@ -24,10 +24,10 @@ struct LValue {
     bool valid() { return _valid; }
 
     template< typename T >
-    void set( EvalContext &ctx, T value ) {
+    void set( EvalContext &ctx, T value, ErrorState &err ) {
         if ( symbol.item().is_array )
-            return symbol.set( ctx.mem, idx.evaluate( ctx ), value );
-        return symbol.set( ctx.mem, 0, value );
+            return symbol.set( ctx.mem, idx.evaluate( ctx, &err ), value, err );
+        return symbol.set( ctx.mem, 0, value, err );
     }
 
     LValue( const SymTab &tab, parse::LValue lv )
@@ -54,26 +54,26 @@ struct Transition {
     typedef std::vector< std::pair< LValue, Expression > > Effect;
     Effect effect;
 
-    bool enabled( EvalContext &ctx ) {
+    bool enabled( EvalContext &ctx, ErrorState &err ) {
         if ( process.deref( ctx.mem ) != from.deref( 0 ) )
             return false;
         for ( int i = 0; i < guards.size(); ++i )
-            if ( !guards[i].evaluate( ctx ) )
+            if ( !guards[i].evaluate( ctx, &err ) )
                 return false;
-        if ( sync && !sync->enabled( ctx ) )
+        if ( sync && !sync->enabled( ctx, err ) )
             return false;
         return true;
     }
 
-    void apply( EvalContext &ctx ) {
+    void apply( EvalContext &ctx, ErrorState &err ) {
         if ( sync ) {
             if (sync->sync_lval.valid() && sync_expr.valid() )
-                sync->sync_lval.set( ctx, sync_expr.evaluate( ctx ) );
-            sync->apply( ctx );
+                sync->sync_lval.set( ctx, sync_expr.evaluate( ctx, &err ), err );
+            sync->apply( ctx, err );
         }
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
-            i->first.set( ctx, i->second.evaluate( ctx ) );
-        process.set( ctx.mem, 0, to.deref() );
+            i->first.set( ctx, i->second.evaluate( ctx, &err ), err );
+        process.set( ctx.mem, 0, to.deref(), err );
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
@@ -128,13 +128,16 @@ struct Process {
         return id.deref( ctx.mem );
     }
 
-    int enabled( EvalContext &ctx, int i ) {
+    int enabled( EvalContext &ctx, int i, ErrorState &err ) {
+        ErrorState temp_err = ErrorState::e_none;
         assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
         std::vector< Transition > &tr = trans[ state( ctx ) ];
         for ( ; i < tr.size(); ++i ) {
-            if ( tr[ i ].enabled( ctx ) )
+            if ( tr[ i ].enabled( ctx, temp_err ) )
                 break;
+            temp_err.error = ErrorState::e_none.error;
         }
+        err.error |= temp_err.error;
         return i + 1;
     }
 
@@ -208,7 +211,8 @@ struct System {
         unsigned process:16; // the process whose turn it is
         unsigned property:16; // active property transition; 0 = none
         unsigned transition:32; // active process transition; 0 = none
-        Continuation() : process( 0 ), property( 0 ), transition( 0 ) {}
+        ErrorState err;
+        Continuation() : process( 0 ), property( 0 ), transition( 0 ), err( ErrorState::e_none ) {}
         bool operator==( const Continuation &o ) const {
             return process == o.process && property == o.property && transition == o.transition;
         }
@@ -266,6 +270,7 @@ struct System {
 
     Continuation enabled( EvalContext &ctx, Continuation cont ) {
         bool system_deadlock = cont == Continuation() || cont.process >= processes.size();
+        cont.err.error = ErrorState::e_none.error;
 
         for ( ; cont.process < processes.size(); ++cont.process ) {
             Process &p = processes[ cont.process ];
@@ -275,28 +280,29 @@ struct System {
 
             // try other property transitions first
             if ( cont.transition && property && property->valid( ctx, cont.property ) ) {
-                cont.property = property->enabled( ctx, cont.property );
+                cont.property = property->enabled( ctx, cont.property, cont.err );
                 if ( property->valid( ctx, cont.property ) )
                     return cont;
             }
 
-            cont.transition = p.enabled( ctx, cont.transition );
+            cont.transition = p.enabled( ctx, cont.transition, cont.err );
 
             // is the result a valid transition?
             if ( p.valid( ctx, cont.transition ) ) {
                 if ( !property )
                     return cont;
-                cont.property = property->enabled( ctx, 0 );
+                cont.property = property->enabled( ctx, 0, cont.err );
                 if ( property->valid( ctx, cont.property ) )
                     return cont;
             }
 
             // no more enabled transitions from this process
             cont.transition = 0;
+            cont.err.error = ErrorState::e_none.error;
         }
 
         if ( system_deadlock && property )
-            cont.property = property->enabled( ctx, cont.property );
+            cont.property = property->enabled( ctx, cont.property, cont.err );
 
         return cont;
     }
@@ -311,20 +317,28 @@ struct System {
     void initial( EvalContext &ctx, SymTab &tab, NS::Namespace vns, NS::Namespace ins ) {
         typedef std::map< std::string, SymId > Scope;
         Scope &scope = tab.tabs[ vns ];
+        ErrorState err;
 
         for ( Scope::iterator i = scope.begin(); i != scope.end(); ++i ) {
             Symbol vsym = tab.lookup( vns, i->first ), isym = tab.lookup( ins, i->first );
             assert( vsym.valid() );
             if ( isym.valid() )
-                vsym.set( ctx.mem, 0, isym.deref() );
+                vsym.set( ctx.mem, 0, isym.deref(), err );
         }
     }
 
     void apply( EvalContext &ctx, Continuation c ) {
         if ( c.process < processes.size() )
-            processes[ c.process ].transition( ctx, c.transition ).apply( ctx );
+            processes[ c.process ].transition( ctx, c.transition ).apply( ctx, c.err );
         if ( property )
-            property->transition( ctx, c.property ).apply( ctx );
+            property->transition( ctx, c.property ).apply( ctx, c.err );
+        if ( c.err.error )
+            bail( ctx, c );
+            
+    }
+
+    void bail( EvalContext &ctx, Continuation c ) {
+        assert_die();
     }
 
     bool valid( EvalContext &ctx, Continuation c ) {

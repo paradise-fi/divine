@@ -165,14 +165,19 @@ struct Expression {
         DEBUG(std::cerr << std::endl);
     }
 
-    int evaluate( EvalContext &ctx ) {
+    int evaluate( EvalContext &ctx, ErrorState * err = 0 ) {
         assert( ctx.stack.empty() );
         for ( std::vector< Item >::iterator i = rpn.begin(); i != rpn.end(); ++i )
             step( ctx, *i );
         assert_eq( ctx.stack.size(), (size_t) 1 );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::Value retval = ctx.pop();
-        assert(!retval.errState.error);
+        if ( retval.errState.error ) {
+            assert( !retval.errState.fill );
+            if ( err )
+                err->error |= retval.errState.error;
+            return true; // Black magic - We want to have transition to the error state
+        }
         return retval.value;
     }
 
