@@ -92,6 +92,9 @@ struct Expression {
             default:
                 if ( b.errState.error )
                     return EvalContext::Value(b.errState);
+                if ( op.id == TI::Div || op.id == TI::Mod )
+                    if ( b.value == 0 )
+                        return EvalContext::Value(ErrorState::e_divByZero);
                 return binop( op, a.value, b.value );
         }
     }

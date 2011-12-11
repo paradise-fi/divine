@@ -99,6 +99,8 @@ struct Symbol {
             case 4: *reinterpret_cast< uint32_t * >( place ) = value; break;
             default: assert_die();
         }
+        if ( value != deref( mem, idx ) )
+            err.error |= ErrorState::e_overflow.error;
     }
 
     template< typename T >
