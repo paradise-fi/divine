@@ -312,6 +312,7 @@ struct System {
             initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
         initial( ctx, symtab, NS::Variable, NS::Initialiser );
         initial( ctx, symtab, NS::Process, NS::InitState );
+        symtab.lookup( NS::Flag, "Error" ).set( ctx.mem, 0, ErrorState::e_none );
     }
 
     void initial( EvalContext &ctx, SymTab &tab, NS::Namespace vns, NS::Namespace ins ) {
@@ -338,10 +339,16 @@ struct System {
     }
 
     void bail( EvalContext &ctx, Continuation c ) {
-        assert_die();
+        for( int i = 0; i < symtab.context->offset; i++ )
+            ctx.mem[i] = 0;
+        symtab.lookup( NS::Flag, "Error" ).set( ctx.mem, 0, c.err );
     }
 
     bool valid( EvalContext &ctx, Continuation c ) {
+        ErrorState err;
+        symtab.lookup( NS::Flag, "Error" ).deref( ctx.mem, 0, err );
+        if ( err.error )
+            return false;
         if ( c.process < processes.size() )
             return true;
         if ( property && property->valid( ctx, c.property ) )

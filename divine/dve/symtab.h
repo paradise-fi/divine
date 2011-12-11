@@ -9,7 +9,7 @@ namespace divine {
 namespace dve {
 
 struct NS {
-    enum Namespace { Process, Variable, Channel, State, Initialiser, InitState };
+    enum Namespace { Process, Variable, Channel, State, Initialiser, InitState, Flag };
 };
 
 typedef int SymId;
@@ -80,6 +80,15 @@ struct Symbol {
             }
         }
     }
+    
+    template< typename T >
+    void deref( char *mem, int idx, T &retval ) {
+        assert( !item().is_constant );
+        if ( idx )
+            assert( item().is_array );
+        char *place = mem + item().offset + idx * item().width;
+        retval = *reinterpret_cast< T * >( place );
+    }
 
     void set( char *mem, int idx, int value, ErrorState &err ) {
         assert ( !item().is_constant );
@@ -90,6 +99,13 @@ struct Symbol {
             case 4: *reinterpret_cast< uint32_t * >( place ) = value; break;
             default: assert_die();
         }
+    }
+
+    template< typename T >
+    void set( char *mem, int idx, const T value ) {
+        assert ( !item().is_constant );
+        char *place = mem + item().offset + idx * item().width;
+        *reinterpret_cast< T * >( place ) = value;
     }
 
 };
@@ -192,7 +208,8 @@ struct SymTab : NS {
             context = new SymContext();
         else
             context = parent->context;
-        tabs.resize( 6 ); // one for each namespace
+        tabs.resize( 7 ); // one for each namespace
+        allocate( Flag, "Error", sizeof( ErrorState ) );
     }
 
     std::ostream& dump( std::ostream &o, char *mem ) const {
