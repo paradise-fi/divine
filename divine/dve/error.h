@@ -4,6 +4,7 @@
 #define DIVINE_DVE_ERROR_H
 
 #include <stdint.h>
+#include <iostream>
 
 namespace divine {
 namespace dve {
@@ -26,7 +27,7 @@ struct ErrorState {
     static const ErrorState e_none;
 };
 
-
+std::ostream &operator<<( std::ostream &o, const ErrorState &err );
 
 }
 }

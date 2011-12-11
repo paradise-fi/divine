@@ -213,6 +213,12 @@ struct SymTab : NS {
     }
 
     std::ostream& dump( std::ostream &o, char *mem ) const {
+        ErrorState err;
+        lookup( Flag, "Error" ).deref( mem, 0, err );
+        if ( err.error ) {
+            o << err;
+            return o;
+        }
         for ( Namespace ns = Process; ns < State; ns = NS::Namespace( ns + 1 ) ) {
             for ( std::map< std::string, int >::const_iterator i = tabs[ ns ].begin();
                   i != tabs[ ns ].end(); ++i ) {
