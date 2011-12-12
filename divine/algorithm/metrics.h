@@ -167,6 +167,7 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
 
     void _visit() { // parallel
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
+        this->comms().notify( this->globalId(), &shared.g.pool() );
         visitor::Partitioned< VisitorSetup, This, Hasher >
             vis( shared.g, *this, *this, hasher, &this->table() );
         vis.exploreFrom( shared.g.initial() );

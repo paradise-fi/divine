@@ -322,6 +322,7 @@ struct Compact : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Compact< 
     void _visit() {
         loadLocalStats();
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
+        this->comms().notify( this->globalId(), &shared.g.pool() );
 
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         this->visitor = &visitor;

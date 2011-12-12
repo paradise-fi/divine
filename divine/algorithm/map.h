@@ -257,6 +257,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         shared.expanded = 0;
         shared.eliminated = 0;
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
+        this->comms().notify( this->globalId(), &shared.g.pool() );
 
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );

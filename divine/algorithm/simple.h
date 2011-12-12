@@ -95,6 +95,7 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
 
     void _visit() { // parallel
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
+        this->comms().notify( this->globalId(), &shared.g.pool() );
         Node initial = shared.g.initial();
         if ( owner( initial ) == this->globalId() ) {
             this->table().insert( initial );

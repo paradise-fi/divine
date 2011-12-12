@@ -144,6 +144,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     void _visit() { // parallel
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
+        this->comms().notify( this->globalId(), &shared.g.pool() );
         visitor::Partitioned< VisitorSetup, This, Hasher >
             visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );

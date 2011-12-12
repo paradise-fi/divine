@@ -328,6 +328,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
+        this->comms().notify( this->globalId(), &shared.g.pool() );
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );
         visitor.processQueue();

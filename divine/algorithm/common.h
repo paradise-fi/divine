@@ -138,7 +138,10 @@ struct AlgorithmUtilsCommon : public virtual Algorithm {
     int peerId;
 
     template< typename D >
-    void init( D *domain ) { initGraph( m_g, domain ); }
+    void init( D *domain , int commsParam = 0 ) {
+        initGraph( m_g, domain );
+        domain->comms.setup( commsParam );
+    }
 
     void init() { initGraph( m_g ); }
 

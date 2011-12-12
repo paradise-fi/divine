@@ -2,6 +2,7 @@
 
 #include <wibble/sys/thread.h>
 #include <divine/fifo.h>
+#include <divine/FileFifo.h>
 #include <divine/blob.h>
 #include <divine/barrier.h>
 #include <divine/mpi.h>
@@ -150,8 +151,9 @@ template< typename _T >
 struct FifoMatrix
 {
     typedef _T T;
-    typedef divine::Fifo< T > Fifo;
+    typedef divine::FileFifo< T > Fifo;
     std::vector< std::vector< Fifo > > m_matrix;
+    int fifoParam;
 
     void validate( int from, int to ) {
         assert_leq( from, m_matrix.size() - 1 );
@@ -193,6 +195,17 @@ struct FifoMatrix
         m_matrix.resize( size );
         for ( int i = 0; i < size; ++i )
             m_matrix[ i ].resize( size );
+    }
+
+    void setup( int param ) {
+        fifoParam = param;
+    }
+
+    void notify( int workerId, Pool *pool ) {
+        for ( int i = 0; i < m_matrix.size(); ++i ) {
+            m_matrix[ workerId ][ i ].setup( fifoParam, pool, NULL );
+            m_matrix[ i ][ workerId ].setup( fifoParam, NULL, pool );
+        }
     }
 };
 

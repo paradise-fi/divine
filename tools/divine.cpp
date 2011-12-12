@@ -70,6 +70,7 @@ struct Main {
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
     OptionGroup *common, *drawing, *compact, *ce, *reduce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
+    IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair;
     BoolOption *o_noDeadlocks, *o_noGoals;
     BoolOption *o_curses;
@@ -248,6 +249,10 @@ struct Main {
             "initial-table", 'i', "initial-table", "",
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
+
+        o_diskfifo = common->add< IntOption >(
+            "disk-fifo", '\0', "disk-fifo", "",
+            "save long queues on disk to reduce memory usage" );
 
         // counterexample options
         o_noCe = ce->add< BoolOption >(
@@ -604,7 +609,7 @@ struct Main {
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
         t.domain().mpi.init();
-        t.init( &t.domain() );
+        t.init( &t.domain(), o_diskfifo->intValue() );
         if ( t.domain().mpi.master() )
             setupCurses();
         Stats::global().useDomain( t.domain() );
