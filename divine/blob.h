@@ -2,6 +2,7 @@
 
 // #include <cstdint> requires C++0x : - (
 #include <stdint.h>
+#include <deque> // for fmt
 #include <cstring> // size_t ... d'oh
 #include <wibble/test.h> // for assert*
 #include <wibble/string.h>
