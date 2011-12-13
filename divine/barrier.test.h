@@ -14,7 +14,8 @@ struct TestBarrier {
         TestBarrier *owner;
         bool sleeping;
 
-        Thread() : id( 0 ), busy( false ), sleeping( false ) {}
+        Thread() : i( 0 ), id( 0 ), busy( false ), sleeping( false ) {}
+        Thread( const Thread &o ) : i( o.i ), id( o.id ), busy( o.busy ), sleeping( o.sleeping ) {}
 
         bool workWaiting() {
             if ( busy )
