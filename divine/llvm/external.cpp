@@ -270,8 +270,7 @@ bool Interpreter::viable( int ctx, int alt )
         F = cs.getCalledFunction();
     }
 
-    assert( F );
-    if (!F->isDeclaration())
+    if (!F || !F->isDeclaration())
         return alt < 1; // not a builtin, deterministic
 
     std::string plain = F->getNameStr();
