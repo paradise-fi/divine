@@ -514,17 +514,21 @@ struct Main {
             case RunOwcty:
                 report->algorithm = "OWCTY";
                 return run< algorithm::Owcty< Graph, Stats >, Stats >();
+#ifndef SMALL
             case RunMap:
                 report->algorithm = "MAP";
                 return run< algorithm::Map< Graph, Stats >, Stats >();
+#endif
             case RunNdfs:
                 report->algorithm = "Nested DFS";
                 return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
+#ifndef SMALL
             case RunCompact:
                 report->algorithm = "Compact";
                 return run< algorithm::Compact< Graph, Stats >, Stats >();
+#endif
             default:
-                die( "FATAL: Internal error choosing algorithm." );
+                die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
         }
     }
 
@@ -533,6 +537,7 @@ struct Main {
     {
         if ( str::endsWith( config.input, ".dve" ) ) {
             report->generator = "DVE";
+#ifndef SMALL
             if ( o_fair->boolValue() ) {
                 if ( o_por->boolValue() )
                     std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
@@ -542,12 +547,15 @@ struct Main {
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::LegacyDve, Stats >, Stats >();
-            } else {
+            } else
+#endif
+            {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
             }
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
+#ifndef SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
 #ifdef LCA
             report->generator = "CoIn-LCA";
@@ -560,6 +568,7 @@ struct Main {
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::Coin >, Stats >();
             }
+#endif
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );
         } else if ( str::endsWith( config.input, ".bc" ) ) {
@@ -572,15 +581,20 @@ struct Main {
 #else
 	    die( "FATAL: This binary was built without LLVM support." );
 #endif
+
+#ifndef SMALL
         } else if ( str::endsWith( config.input, ".b" ) ) {
             report->generator = "NIPS";
             return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyBymoc >, Stats >();
+#endif
         } else if ( str::endsWith( config.input, ".so" ) ) {
             report->generator = "Custom";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
+#ifndef SMALL
         } else if ( dummygen ) {
             report->generator = "Dummy";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
+#endif
         } else
 	    die( "FATAL: Unknown input file extension." );
 

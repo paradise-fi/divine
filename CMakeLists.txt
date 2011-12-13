@@ -43,6 +43,7 @@ option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
 option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
+option( SMALL "reduce size of the binary, disabling optional features" OFF )
 
 ###############################################
 ## MISC OPTION IMPLEMENTATION
@@ -52,14 +53,18 @@ if( NOT WIN32 )
   add_definitions( -DPOSIX )
 endif( NOT WIN32 )
 
+if( SMALL )
+  add_definitions( -DSMALL )
+endif( SMALL )
+
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
 include_directories( ${RX_PATH} )
 link_directories( ${RX_PATH} )
 
-if( PERFORMANCE )
+if( PERFORMANCE AND NOT SMALL )
   add_definitions( -DPERFORMANCE )
-endif( PERFORMANCE )
+endif( PERFORMANCE AND NOT SMALL )
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
