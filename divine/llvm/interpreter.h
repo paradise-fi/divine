@@ -255,8 +255,8 @@ public:
     }
 
     Blob snapshot( int extra, Pool &p ) {
-        int need = sizeof( stacks.size() ) + sizeof( flags ) +
-                   sizeof( globalmem.size() ) + globalmem.size();
+        int need = sizeof( int ) + sizeof( flags ) +
+                   sizeof( int ) + globalmem.size();
         for ( int c = 0; c < stacks.size(); ++c ) {
             need += 4;
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -267,15 +267,15 @@ public:
         int offset = extra;
 
         offset = b.put( offset, flags );
-        offset = b.put( offset, globalmem.size() );
+        offset = b.put( offset, int( globalmem.size() ) );
 
         for ( int c = 0; c < globalmem.size(); ++ c ) // XXX inefficient
             offset = b.put( offset, globalmem[c] );
 
-        offset = b.put( offset, stacks.size() );
+        offset = b.put( offset, int( stacks.size() ) );
 
         for ( int c = 0; c < stacks.size(); ++c ) {
-            offset = b.put( offset, stack( c ).size() );
+            offset = b.put( offset, int( stack( c ).size() ) );
 
             for ( int i = 0; i < stack( c ).size(); ++i )
                 offset = SFat( i, c ).put( offset, b );
