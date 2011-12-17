@@ -149,7 +149,9 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 
     visitor::TransitionAction innerTransition( Node from, Node to )
     {
-        if ( to.pointer() == seed.pointer() ) {
+        // The search always starts with a transition from "nowhere" into the
+        // initial state. Ignore this transition here.
+        if ( from.valid() && to.pointer() == seed.pointer() ) {
             valid = false;
             return visitor::TerminateOnTransition;
         }
