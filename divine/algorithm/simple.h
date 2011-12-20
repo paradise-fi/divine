@@ -73,8 +73,7 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
         int owner = hint % this->peers();
 
         if ( owner != this->globalId() ) { // send to remote
-            this->comms().submit( this->globalId(), owner, from );
-            this->comms().submit( this->globalId(), owner, to );
+            this->comms().submit( this->globalId(), owner, BlobPair( from, to ) );
         } else { // we own this node, so let's process it
             Node in_table = this->table().getHinted( to, hint );
 
@@ -109,10 +108,9 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
             // process incoming stuff from other workers
             for ( int from = 0; from < this->peers(); ++from ) {
                 while ( this->comms().pending( from, this->globalId() ) ) {
-                    Node f = this->comms().take( from, this->globalId() );
-                    while ( !this->comms().pending( from, this->globalId() ) ) ;
-                    Node t = this->comms().take( from, this->globalId() );
-                    edge( f, t );
+                    std::pair< Node, Node > p;
+                    p = this->comms().take( from, this->globalId() );
+                    edge( p.first, p.second );
                 }
             }
 

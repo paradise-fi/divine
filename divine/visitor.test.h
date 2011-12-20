@@ -146,7 +146,8 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( t % this->peers() != this->globalId() ) {
-                this->submit( this->globalId(), t % this->peers(), blob( t ) );
+                this->submit( this->globalId(), t % this->peers(),
+                    BlobPair( blob( f ), blob( t ) ) );
                 return visitor::IgnoreTransition;
             }
             shared.trans ++;
@@ -171,11 +172,11 @@ struct TestVisitor {
                 if ( !this->comms().pending( this->globalId() ) )
                     continue;
 
-                Blob next = this->comms().take( this->globalId() );
-                assert_eq( next.template get< int >() % this->peers(),
+                BlobPair next = this->comms().take( this->globalId() );
+                assert_eq( next.second.template get< int >() % this->peers(),
                            this->globalId() );
                 shared.trans ++;
-                bfv.expand( unblob< Node >( next ) );
+                bfv.expand( unblob< Node >( next.second ) );
             }
         }
 
@@ -232,7 +233,8 @@ struct TestVisitor {
 
         visitor::TransitionAction transition( Node f, Node t ) {
             if ( owner( t ) != this->globalId() ) {
-                this->submit( this->globalId(), owner( t ), blob( t ) );
+                this->submit( this->globalId(), owner( t ),
+                    BlobPair( blob( f ), blob( t ) ) );
                 return visitor::IgnoreTransition;
             }
             assert_eq( owner( t ), this->globalId() );
@@ -260,12 +262,12 @@ struct TestVisitor {
             }
             while ( true ) {
                 if ( this->comms().pending( this->globalId() ) ) {
-                    Blob next = this->comms().take( this->globalId() );
+                    BlobPair next = this->comms().take( this->globalId() );
 
-                    assert_eq( owner( unblob< Node >( next ) /*.template get< int >() % this->peers()*/ ),
+                    assert_eq( owner( unblob< Node >( next.second ) /*.template get< int >() % this->peers()*/ ),
                                this->globalId() );
                     shared.trans ++;
-                    bfv.expand( unblob< Node >( next ) );
+                    bfv.expand( unblob< Node >( next.second ) );
                 } else {
                     if ( this->idle() )
                         return;

@@ -77,14 +77,14 @@ struct TestParallel {
         Counter shared;
 
         void tellInc() {
-            Blob b( sizeof( int ) );
-            b.get< int >() = 1;
+            BlobPair b( Blob( sizeof( int ) ), Blob() );
+            b.first.get< int >() = 1;
             submit( globalId(), (globalId() + 1) % peers(), b );
             do {
                 if ( comms().pending( globalId() ) ) {
-                    Blob n = comms().take( globalId() );
-                    shared.i += n.get< int >();
-                    n.free();
+                    BlobPair n = comms().take( globalId() );
+                    shared.i += n.first.get< int >();
+                    n.first.free();
                     return;
                 }
             } while ( true );

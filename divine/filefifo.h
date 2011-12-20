@@ -3,6 +3,8 @@
 
 #include <wibble/sys/mutex.h>
 #include <divine/fifo.h>
+#include <divine/pool.h>
+#include <vector>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -212,14 +214,14 @@ protected:
             }
     }
 
-    static void push32_ptr( vector< uint32_t > &vec, void *ptr ) {
+    static void push32_ptr( std::vector< uint32_t > &vec, void *ptr ) {
         vec.push_back( uint32_t( uintptr_t( ptr ) ) );
         if ( sizeof( ptr ) > 4 ) {
             vec.push_back( uint32_t( uint64_t( ptr ) >> 32 ) );
         }
     }
 
-    static char* read32_ptr( vector< uint32_t >::const_iterator &it ) {
+    static char* read32_ptr( std::vector< uint32_t >::const_iterator &it ) {
         uintptr_t ptr = *it++;
         if ( sizeof( ptr ) > 4 ) {
             ptr |= uint64_t( *it++ ) << 32;
@@ -257,7 +259,7 @@ protected:
         faccess.lock();
         // try to read up to BLOCK nodes
         Node *n = head;
-        unsigned int readBlocks = max( block, 1u );
+        unsigned int readBlocks = std::max( block, 1u );
         for ( unsigned int i = 0; i < readBlocks; i++ ) {
             Node *load = new Node();
             load->write = load->buffer + NodeSize;
@@ -304,7 +306,7 @@ protected:
             wpos = 0;
         }
         std::fstream &file = files[ wfile ];
-        
+
         if ( !file.is_open() ) {    // open file if needed
             file.open( fileName( wfile ).c_str(),
                 std::ios_base::in | std::ios_base::out | std::ios_base::binary | std::ios_base::trunc );
@@ -313,7 +315,7 @@ protected:
                 block = 0; // disable using files
             }
         }
-        
+
         file.seekp( wpos );
         file.write( (char*) &bfr.front(), bfr.size()*4 );
         wpos += (bfr.size() - 1) * 4;
@@ -321,7 +323,7 @@ protected:
              std::cerr << "Writing FAILED" << std::endl;
              abort();
         }
-        reserve = max( reserve, bfr.size() );
+        reserve = std::max( reserve, bfr.size() );
 
         return true;
     }
