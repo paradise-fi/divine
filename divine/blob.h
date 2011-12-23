@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include <deque> // for fmt
 #include <cstring> // size_t ... d'oh
+
+#ifndef DIVINE_EMBED
 #include <wibble/test.h> // for assert*
 #include <wibble/string.h>
-#ifndef BLOB_NO_HASH
 #include <divine/hash.h>
 #endif
 
@@ -226,7 +227,7 @@ struct Blob
         return 0;
     }
 
-#ifndef BLOB_NO_HASH
+#ifndef DIVINE_EMBED
     hash_t hash() const
     {
         return hash( 0, size() );
@@ -268,6 +269,7 @@ inline Blob unblob( Blob b ) {
 
 }
 
+#ifndef DIVINE_EMBED
 namespace wibble {
 namespace str {
 
@@ -281,5 +283,6 @@ inline std::string fmt( const divine::Blob &b ) {
 
 }
 }
+#endif
 
 #endif

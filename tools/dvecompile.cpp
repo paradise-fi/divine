@@ -10,7 +10,7 @@ const char *compile_defines_str = "\
 #define assert_neq(a,b) assert(a != b);\n\
 #define assert_leq(a,b) assert(a <= b);\n\
 #define assert_die() assert(false);\n\
-#define BLOB_NO_HASH\n";
+#define DIVINE_EMBED\n";
 }
 
 void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name)
