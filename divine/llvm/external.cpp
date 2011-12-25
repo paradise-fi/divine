@@ -27,7 +27,15 @@ static GenericValue builtin_assert(Interpreter *interp, const FunctionType *, co
     return GenericValue();
 }
 
-static GenericValue builtin_malloc_guaranteed(Interpreter *interp, const FunctionType *, const Args &args)
+static GenericValue builtin_ap( Interpreter *interp, const FunctionType *, const Args &args )
+{
+    int k = args[0].IntVal.getZExtValue();
+    interp->flags.ap |= 1 << k;
+    return GenericValue();
+}
+
+static GenericValue builtin_malloc_guaranteed(
+    Interpreter *interp, const FunctionType *, const Args &args )
 {
     int size = args[0].IntVal.getZExtValue();
     Arena::Index mem = interp->arena.allocate(size);
@@ -210,6 +218,7 @@ static struct {
     { "__divine_builtin_exit", builtin_exit },
     { "__divine_builtin_trace", builtin_trace },
     { "__divine_builtin_assert", builtin_assert },
+    { "__divine_builtin_ap", builtin_ap },
     { "__divine_builtin_malloc", builtin_malloc },
     { "__divine_builtin_malloc_guaranteed", builtin_malloc_guaranteed },
     { "__divine_builtin_free", builtin_free },

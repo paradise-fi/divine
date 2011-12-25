@@ -143,6 +143,9 @@ std::string Interpreter::describe() {
     if ( flags.null_dereference )
         s << "! NULL DEREFERENCE" << std::endl;
 
+    if ( flags.ap )
+        s << "+ APs: " << flags.ap << std::endl;
+
     return s.str();
 }
 

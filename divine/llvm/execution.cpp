@@ -1233,6 +1233,8 @@ void Interpreter::step( int ctx, int alternative ) {
     _context = ctx;
     _alternative = alternative;
     flags.assert = false; // reset assert flag
+    flags.ap = 0; // XXX a wholesale reset...
+
     SF().lastpc = SF().pc;
 
     Location loc = location( SF() );
