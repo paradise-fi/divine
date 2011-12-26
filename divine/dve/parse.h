@@ -344,7 +344,8 @@ static inline void declarations( Parser &p, std::vector< Declaration > &decls )
                    std::back_inserter( decls ) );
 }
 
-struct Process : Parser {
+template< bool IsProperty >
+struct Automaton : Parser {
     Identifier name;
     std::vector< Declaration > decls;
     std::vector< Identifier > states, accepts, inits;
@@ -356,8 +357,8 @@ struct Process : Parser {
         semicolon();
     }
 
-    Process( Context &c ) : Parser( c ) {
-        eat( Token::Process );
+    Automaton( Context &c ) : Parser( c ) {
+        eat( IsProperty ? Token::Property : Token::Process );
         name = Identifier( c );
         eat( Token::BlockOpen );
 
@@ -371,7 +372,7 @@ struct Process : Parser {
         list< Identifier >( std::back_inserter( inits ), Token::Comma );
         semicolon();
 
-        maybe( &Process::accept );
+        maybe( &Automaton::accept );
 
         eat( Token::Trans );
         list< Transition >( std::back_inserter( trans ), Token::Comma );
@@ -381,9 +382,13 @@ struct Process : Parser {
     }
 };
 
+typedef Automaton< false > Process;
+typedef Automaton< true > Property;
+
 struct System : Parser {
     std::vector< Declaration > decls;
     std::vector< Process > processes;
+    std::vector< Property > properties;
     Identifier property;
     bool synchronous;
 
@@ -396,7 +401,10 @@ struct System : Parser {
     {
         synchronous = false;
         declarations( *this, decls );
+
         many< Process >( std::back_inserter( processes ) );
+        many< Property >( std::back_inserter( properties ) );
+
         eat( Token::System );
 
         if ( next( Token::Async ) ); // nothing

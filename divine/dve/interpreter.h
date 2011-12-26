@@ -13,6 +13,7 @@ namespace dve {
 
 namespace parse {
 typedef std::vector< Process > Procs;
+typedef std::vector< Property > Props;
 typedef std::vector< Declaration > Decls;
 }
 
@@ -124,6 +125,8 @@ struct Process {
     std::vector< Transition > readers;
     std::vector< Transition > writers;
 
+    std::vector< bool > is_accepting;
+
     int state( EvalContext &ctx ) {
         return id.deref( ctx.mem );
     }
@@ -152,7 +155,8 @@ struct Process {
         return trans[ state( ctx ) ][ i - 1 ];
     }
 
-    Process( SymTab *parent, Symbol id, const parse::Process &proc )
+    template< bool X >
+    Process( SymTab *parent, Symbol id, const parse::Automaton< X > &proc )
         : id( id ), symtab( parent )
     {
         int states = 0;
@@ -181,6 +185,13 @@ struct Process {
             } else
                 trans[ from.deref() ].push_back( t );
         }
+
+        is_accepting.resize( proc.states.size(), false );
+        for ( int i = 0; i < is_accepting.size(); ++ i ) {
+            for ( int j = 0; j < proc.accepts.size(); ++ j )
+                if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
+                    is_accepting[i] = true;
+        }
     }
 
     void setupSyncs( std::vector< Transition > &readers )
@@ -203,9 +214,8 @@ struct Process {
 struct System {
     SymTab symtab;
     std::vector< Process > processes;
+    std::vector< Process > properties;
     Process *property;
-
-    std::vector< bool > is_accepting;
 
     struct Continuation {
         unsigned process:16; // the process whose turn it is
@@ -227,6 +237,7 @@ struct System {
 
         // ensure validity of pointers into the process array
         processes.reserve( sys.processes.size() );
+        properties.reserve( sys.properties.size() );
 
         for ( parse::Procs::const_iterator i = sys.processes.begin();
               i != sys.processes.end(); ++i )
@@ -234,6 +245,14 @@ struct System {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
             processes.push_back( Process( &symtab, id, *i ) );
             symtab.children[id] = &processes.back().symtab;
+        }
+
+        for ( parse::Props::const_iterator i = sys.properties.begin();
+              i != sys.properties.end(); ++i )
+        {
+            Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
+            properties.push_back( Process( &symtab, id, *i ) );
+            symtab.children[id] = &properties.back().symtab;
         }
 
         // compute synchronisations
@@ -248,23 +267,12 @@ struct System {
         // find the property process
         if ( sys.property.valid() ) {
             Symbol propid = symtab.lookup( NS::Process, sys.property );
-            const parse::Process *propast = 0;
             for ( int i = 0; i < processes.size(); ++ i ) {
-                if ( processes[ i ].id == propid ) {
+                if ( processes[ i ].id == propid )
                     property = &processes[ i ];
-                    propast = &sys.processes[ i ];
-                }
             }
 
             assert( property );
-            assert( propast );
-
-            is_accepting.resize( propast->states.size(), false );
-            for ( int i = 0; i < is_accepting.size(); ++ i ) {
-                for ( int j = 0; j < propast->accepts.size(); ++ j )
-                    if ( propast->states[ i ].name() == propast->accepts[ j ].name() )
-                        is_accepting[i] = true;
-            }
         }
     }
 
@@ -335,7 +343,7 @@ struct System {
             property->transition( ctx, c.property ).apply( ctx, c.err );
         if ( c.err.error )
             bail( ctx, c );
-            
+
     }
 
     void bail( EvalContext &ctx, Continuation c ) {
@@ -358,7 +366,7 @@ struct System {
 
     bool accepting( EvalContext &ctx ) {
         if ( property )
-            return is_accepting[ property->state( ctx ) ];
+            return property->is_accepting[ property->state( ctx ) ];
         return false;
     }
 };
