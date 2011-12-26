@@ -14,15 +14,15 @@ typedef GenericValue (*Builtin)(Interpreter *i,
                                 const FunctionType *,
                                 const Args &);
 
-static GenericValue builtin_exit(Interpreter *, const FunctionType *, const Args &)
+static GenericValue builtin_exit( Interpreter *, const FunctionType *, const Args & )
 {
     // XXX mark the open state as final
     assert_die();
 }
 
-static GenericValue builtin_assert(Interpreter *interp, const FunctionType *, const Args &args)
+static GenericValue builtin_assert( Interpreter *interp, const FunctionType *, const Args &args )
 {
-    if (!args[0].IntVal)
+    if ( !args[0].IntVal )
         interp->flags.assert = true;
     return GenericValue();
 }
