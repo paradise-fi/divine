@@ -41,6 +41,8 @@ struct Base {
         return o;
     }
 
+    void useProperty( std::string ) {}
+
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
@@ -95,6 +97,10 @@ struct Transform {
     template< typename O >
     O getProperties( O o ) {
         return base().getProperties( o );
+    }
+
+    void useProperty( std::string n ) {
+        base().useProperty( n );
     }
 
     /// Returns an owner id of the state n

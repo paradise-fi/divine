@@ -96,6 +96,11 @@ struct Dve : public Common< Blob > {
         return o;
     }
 
+    void useProperty( std::string p ) {
+        if ( p == "none" )
+            system->property = NULL;
+    }
+
     PropertyType propertyType() {
         return AC_None;
     }

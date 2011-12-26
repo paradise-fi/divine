@@ -135,6 +135,10 @@ struct LLVM : Common< Blob > {
                           o );
     }
 
+    void useProperty( std::string name ) {
+        std::string ltl = interpreter().properties[ name ];
+        std::cerr << "using property " << ltl << std::endl;
+    }
 
     divine::llvm::Interpreter &interpreter() {
         if (_interpreter)
