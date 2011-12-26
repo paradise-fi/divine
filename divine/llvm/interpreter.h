@@ -396,6 +396,7 @@ public:
   void visitBitCastInst(BitCastInst &I);
   void visitSelectInst(SelectInst &I);
 
+  void visitFenceInst(FenceInst &I);
 
   void visitCallSite(CallSite CS);
   void visitCallInst(CallInst &I) { visitCallSite (CallSite (&I)); }

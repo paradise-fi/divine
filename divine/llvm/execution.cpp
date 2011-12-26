@@ -809,6 +809,10 @@ void Interpreter::setInstruction( ExecutionContext &SF, BasicBlock::iterator i )
 //                 Miscellaneous Instruction Implementations
 //===----------------------------------------------------------------------===//
 
+void Interpreter::visitFenceInst(FenceInst &I) {
+    // do nothing for now
+}
+
 void Interpreter::visitCallSite(CallSite CS) {
     // Check to see if this is an intrinsic function call...
     Function *F = CS.getCalledFunction();
