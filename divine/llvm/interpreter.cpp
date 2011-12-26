@@ -18,6 +18,7 @@
 #include <divine/llvm/interpreter.h>
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/DerivedTypes.h"
+#include "llvm/Constants.h"
 #include "llvm/Module.h"
 #include <cstring>
 using namespace llvm;
@@ -55,11 +56,19 @@ void Interpreter::emitGlobals( Module *M )
     for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var) {
         if ( var->isConstant() )
             continue;
-        assert( !var->isDeclaration() ); // can't handle extern's yet
 
         // GlobalVariable type is always a pointer, so dereference it first
         Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
         assert( ty );
+
+        assert( !var->isDeclaration() ); // can't handle extern's yet
+        if ( std::string( var->getNameStr(), 0, 6 ) == "__LTL_" ) {
+            std::string name( var->getNameStr(), 6, std::string::npos );
+            GenericValue GV = getConstantValue(var->getInitializer());
+            properties[name] = std::string( (char*) GV.PointerVal );
+            continue; // do not emit this one
+        }
+
         globals.insert( std::make_pair( &*var, globalmem.size() + 0x100 ) );
         globalmem.resize( globalmem.size() + TD.getTypeAllocSize(ty) );
     }
