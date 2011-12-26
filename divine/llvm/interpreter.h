@@ -186,6 +186,7 @@ public:
     // The runtime stack of executing code.  The top of the stack is the
     // current function record.
     std::vector< std::vector< ExecutionContext > > stacks;
+    std::map< std::string, std::string > properties;
 
     Arena arena;
 

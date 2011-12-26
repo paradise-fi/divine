@@ -128,6 +128,14 @@ struct LLVM : Common< Blob > {
         file = _file;
     }
 
+    template< typename O >
+    O getProperties( O o ) {
+        return std::copy( interpreter().properties.begin(),
+                          interpreter().properties.end(),
+                          o );
+    }
+
+
     divine::llvm::Interpreter &interpreter() {
         if (_interpreter)
             return *_interpreter;

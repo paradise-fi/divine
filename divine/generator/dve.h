@@ -85,6 +85,16 @@ struct Dve : public Common< Blob > {
         }
     }
 
+    template< typename O >
+    O getProperties( O o ) {
+        assert( system );
+        if ( system->property )
+            *o++ = std::make_pair( wibble::str::fmt( system->property->id ), "" );
+        for ( int i = 0; i < system->properties.size(); ++i )
+            *o++ = std::make_pair( wibble::str::fmt( system->properties[i].id ), "" );
+        return o;
+    }
+
     PropertyType propertyType() {
         return AC_None;
     }

@@ -36,6 +36,11 @@ struct Base {
     void setDomainSize( unsigned /* mpiRank */ = 0, unsigned /* mpiSize */ = 1,
                         unsigned /* peersCount */ = 1 ) {}
 
+    template< typename O >
+    O getProperties( O o ) {
+        return o;
+    }
+
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
@@ -86,6 +91,11 @@ struct Transform {
     }
 
     int setSlack( int s ) { return base().setSlack( s ); }
+
+    template< typename O >
+    O getProperties( O o ) {
+        return base().getProperties( o );
+    }
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
