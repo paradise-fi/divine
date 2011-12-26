@@ -104,7 +104,7 @@ struct Algorithm
         assert( domain );
         assert( m_config ); // this is the master instance
         g->setDomainSize( domain->mpi.rank(), domain->mpi.size(), domain->peers() );
-        g->read( m_config->input );
+        initGraph( g );
     }
 
     /// Initializes the graph generator by reading a file
@@ -114,6 +114,8 @@ struct Algorithm
         if ( m_config ) { // this is the master instance
             setSlack( g );
             g->read( m_config->input );
+            if ( !m_config->property.empty() )
+                g->useProperty( m_config->property );
         }
     }
 

@@ -100,6 +100,7 @@ struct Main {
     BoolOption *o_labels, *o_traceLabels;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
+    StringOption *o_property;
     BoolOption *o_findBackEdges, *o_textFormat;
     StringOption *o_compactOutput;
 
@@ -255,7 +256,7 @@ struct Main {
             "output statistics in a gnuplot-friendly format" );
 
         o_por = reduce->add< BoolOption >(
-            "por", 'p', "por", "",
+            "por", '\0', "por", "",
             "enable partial order reduction" );
 
         o_fair = reduce->add< BoolOption >(
@@ -278,6 +279,9 @@ struct Main {
         o_diskfifo = common->add< IntOption >(
             "disk-fifo", '\0', "disk-fifo", "",
             "save long queues on disk to reduce memory usage" );
+        o_property = common->add< StringOption >(
+            "property", 'p', "property", "",
+            "select a (non-default) property" );
 
         // counterexample options
         o_noCe = ce->add< BoolOption >(
@@ -352,6 +356,7 @@ struct Main {
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
+        cmd_draw->add( o_property );
     }
 
     void setupLimits() {
@@ -436,6 +441,7 @@ struct Main {
         // else default (currently set to 2)
 
         config.input = input;
+        config.property = o_property->stringValue();
         config.wantCe = !o_noCe->boolValue();
         config.textFormat = o_textFormat->boolValue();
         config.findBackEdges = o_findBackEdges->boolValue();

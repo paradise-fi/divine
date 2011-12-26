@@ -22,6 +22,7 @@ struct Config {
 
     std::string input;
     std::string trailFile, ceFile;
+    std::string property;
 
     // compact options
     std::string compactFile;
