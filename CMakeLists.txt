@@ -25,16 +25,19 @@ endmacro(appendFlag)
 ##
 
 option( COIN_LCA "use LCA-based algorithm for CoIn" ON )
-option( HOARD "use HOARD SMP memory allocator" ON )
 option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
+option( DVE "include the DVE interpreter in the build" ON )
+option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
+
+option( MANUAL "build pdf/html manual" ON )
+option( GUI "compile the Qt GUI" ON )
+option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
+option( HOARD "use HOARD SMP memory allocator" ON )
+
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
-option( GUI "compile the Qt GUI" ON )
-option( MURPHI "enable Murphi model compiler" ON )
-option( MANUAL "build pdf/html manual" ON )
-option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
 
 ############################################
 ## DEVELOPER-ORIENTED OPTIONS
@@ -69,6 +72,11 @@ if( PERFORMANCE )
     message( "-- WARNING: You asked for both SMALL and PERFORMANCE. I prefer the former." )
   endif()
 endif( PERFORMANCE AND NOT SMALL )
+
+if( DVE )
+    add_definitions( -DDVE )
+    appendFlag( "CXX" "-std=c++0x" )
+endif( DVE )
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )

@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
+#ifdef DVE
 #include <divine/generator/common.h>
 
 #ifndef DIVINE_GENERATOR_DVE_H
@@ -131,4 +132,5 @@ struct Dve : public Common< Blob > {
 }
 }
 
+#endif
 #endif

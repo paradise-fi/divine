@@ -18,6 +18,7 @@
 #include <divine/generator/compact.h>
 #include <divine/generator/coin.h>
 #include <divine/generator/llvm.h>
+#include <divine/generator/dve.h>
 
 // The algorithms.
 #include <divine/algorithm/reachability.h>
@@ -555,7 +556,11 @@ struct Main {
             } else
 #endif
             {
+#ifdef DVE
+                return selectAlgorithm< algorithm::NonPORGraph< generator::Dve >, Stats >();
+#else
                 return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
+#endif
             }
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
