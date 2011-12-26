@@ -61,6 +61,26 @@ void handler( int s ) {
     raise( s );
 }
 
+template< typename G >
+struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
+{
+    G g;
+    Result run() {
+        typedef std::vector< std::pair< std::string, std::string > > Props;
+        Props props;
+        g.getProperties( std::back_inserter( props ) );
+        std::cout << "Available properties:" << std::endl;
+        for ( int i = 0; i < props.size(); ++i )
+            std::cout << " " << i + 1 << ") "
+                      << props[i].first << ": " << props[i].second << std::endl;
+        return Result();
+    }
+
+    Info( Config *c ) : Algorithm( c ) {
+        this->initPeer( &g, 0 ); // XXX icky
+    }
+};
+
 struct Main {
     Config config;
     DrawConfig drawConfig;
@@ -68,7 +88,7 @@ struct Main {
     Report *report;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
+        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info;
     OptionGroup *common, *drawing, *compact, *ce, *reduce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
@@ -190,6 +210,10 @@ struct Main {
         cmd_compact = opts.addEngine( "compact",
                                       "<input>",
                                       "compact state space representation" ); 
+
+        cmd_info = opts.addEngine( "info",
+                                   "<input>",
+                                   "show information about a model" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -367,7 +391,7 @@ struct Main {
 
 
     enum RunAlgorithm { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify,
-        RunDraw, RunCompact } m_run;
+                        RunDraw, RunInfo, RunCompact } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -462,6 +486,8 @@ struct Main {
         if ( opts.foundCommand() == cmd_draw ) {
             config.workers = 1; // never runs in parallel
             m_run = RunDraw;
+        } else if ( opts.foundCommand() == cmd_info ) {
+            m_run = RunInfo;
         } else if ( opts.foundCommand() == cmd_verify ) {
             m_run = RunVerify;
         } else if ( opts.foundCommand() == cmd_ndfs ) {
@@ -511,6 +537,9 @@ struct Main {
             case RunDraw:
                 report->algorithm = "Draw";
                 return run< Draw< Graph >, Stats >();
+            case RunInfo:
+                report->algorithm = "Info";
+                return run< Info< Graph >, Stats >();
             case RunReachability:
                 report->algorithm = "Reachability";
                 return run< algorithm::Reachability< Graph, Stats >, Stats >();
