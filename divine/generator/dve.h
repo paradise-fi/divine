@@ -115,6 +115,7 @@ struct Dve : public Common< Blob > {
     }
 
     void release( Node s ) { s.free( pool() ); }
+    Dve() : system( 0 ) {}
 };
 
 }
