@@ -68,6 +68,8 @@ int pthread_join(pthread_t ptid, void **x) {
     return 0;
 }
 
+#define LTL(name, x) const char *__LTL_ ## name = #x
+
 #else // (NOT DIVINE)
 #include <pthread.h>
 #include <stdarg.h>
@@ -86,5 +88,7 @@ void trace(const char *fmt, ...) {
 void *malloc_guaranteed( unsigned x ) {
     return malloc( x );
 }
+
+#define LTL(name, x)
 
 #endif
