@@ -36,14 +36,15 @@ typedef struct {
     volatile bool done;
 } __Tid;
 
-static __Tid __tid[32]; // TODO: externalize this so it is shared by all modules
+static const int MAXTHREAD = 8;
+static __Tid __tid[MAXTHREAD]; // TODO: externalize this so it is shared by all modules
 static int __tid_last = 0;
 
 static int pthread_create(pthread_t *ptid,
                           const pthread_attr_t *attr, /* TODO? */
                           void *(*entry)(void *), void *arg)
 {
-    if (__tid_last == 32) {
+    if (__tid_last == MAXTHREAD) {
         trace("FATAL: Thread capacity exceeded.");
         return 1;
     }
