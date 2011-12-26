@@ -1170,8 +1170,9 @@ GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
     } else if (Constant *CPV = dyn_cast<Constant>(V)) {
         return getConstantValue(CPV);
     } else {
-        GenericValue ret = SF.values[valueIndex.left( V )];
-        return ret;
+        ExecutionContext::Values::const_iterator i = SF.values.find( valueIndex.left( V ) );
+        assert( i != SF.values.end() );
+        return i->second;
     }
 }
 
