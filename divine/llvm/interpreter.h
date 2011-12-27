@@ -229,6 +229,10 @@ public:
         uint64_t buchi:12;
     } flags;
 
+    GenericValue constant( const Constant *c ) {
+        return getConstantValue( c );
+    }
+
     std::vector<ExecutionContext> &stack( int c = -1 ) {
         if ( c < 0 )
             c = _context;

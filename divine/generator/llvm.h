@@ -15,6 +15,7 @@
 
 #include <divine/generator/common.h>
 #include <divine/llvm/interpreter.h>
+#include <divine/buchi.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H
@@ -27,10 +28,21 @@ using namespace llvm;
 struct LLVM : Common< Blob > {
     typedef Blob Node;
     divine::llvm::Interpreter *_interpreter;
+    Module *_module;
     OwningPtr< MemoryBuffer > *_input;
     LLVMContext *ctx;
     std::string file;
     Node _initial;
+
+    typedef std::vector< int > PropGuard;
+    typedef std::pair< PropGuard, int > PropTrans;
+
+    std::vector< std::vector< int > > prop_next;
+    std::vector< PropTrans > prop_trans;
+    std::vector< bool > prop_accept;
+    int prop_initial;
+
+    bool use_property;
 
     Node initial() {
         interpreter();
@@ -135,9 +147,63 @@ struct LLVM : Common< Blob > {
                           o );
     }
 
+    int literal_id( std::string lit ) {
+        assert( _module );
+        NamedMDNode *enums = _module->getNamedMetadata("llvm.dbg.enum");
+        assert( enums );
+        for ( int i = 0; i < enums->getNumOperands(); ++i ) {
+            MDNode *n = cast< MDNode >( enums->getOperand(i) );
+            n = cast< MDNode >( n->getOperand(10) ); // the list of enum items
+            for ( int j = 0; j < n->getNumOperands(); ++j ) {
+                MDNode *it = cast< MDNode >( n->getOperand(j) );
+                MDString *name = cast< MDString >( it->getOperand(1) );
+                if ( name->getString() == lit )
+                    return 1 + interpreter().constant(
+                        cast< Constant >( it->getOperand(2) ) ).IntVal.getZExtValue();
+            }
+        }
+        assert_die();
+    }
+
     void useProperty( std::string name ) {
         std::string ltl = interpreter().properties[ name ];
-        std::cerr << "using property " << ltl << std::endl;
+        if ( ltl.empty() )
+            return;
+
+        use_property = true;
+        BA_opt_graph_t b = buchi( ltl );
+
+        typedef std::list< KS_BA_node_t * > NodeList;
+        typedef std::list< BA_trans_t > TransList;
+        std::set< std::string > lits;
+
+        NodeList nodes, initial, accept;
+        nodes = b.get_all_nodes();
+        initial = b.get_init_nodes();
+        accept = b.get_accept_nodes();
+
+        assert_eq( initial.size(), 1 );
+        prop_initial = initial.front()->name;
+        prop_next.resize( nodes.size() );
+        prop_accept.resize( nodes.size(), false );
+
+        for ( NodeList::iterator n = nodes.begin(); n != nodes.end(); ++n ) {
+            assert_leq( (*n)->name, nodes.size() );
+            int nid = (*n)->name - 1;
+
+            for ( TransList::const_iterator t = b.get_node_adj(*n).begin();
+                  t != b.get_node_adj(*n).end(); ++t ) {
+                std::vector< int > guard;
+
+                for ( LTL_label_t::const_iterator l = t->t_label.begin();
+                      l != t->t_label.end(); ++l )
+                    guard.push_back( (-1 * l->negace) * literal_id( l->predikat ) );
+                prop_next[nid].push_back( prop_trans.size() );
+                prop_trans.push_back( std::make_pair( guard, t->target->name - 1 ) );
+            }
+        }
+        for ( NodeList::iterator n = accept.begin(); n != accept.end(); ++n )
+            prop_accept[(*n)->name - 1] = true;
     }
 
     divine::llvm::Interpreter &interpreter() {
@@ -153,6 +219,7 @@ struct LLVM : Common< Blob > {
         std::string err;
 
         _interpreter = new Interpreter( m );
+        _module = m;
 
         std::vector<llvm::GenericValue> args;
 
@@ -163,7 +230,7 @@ struct LLVM : Common< Blob > {
         return *_interpreter;
     }
 
-    LLVM() : _interpreter( 0 ) {}
+    LLVM() : _interpreter( 0 ), use_property( false ) {}
 
 };
 
