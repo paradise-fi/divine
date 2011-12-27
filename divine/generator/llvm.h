@@ -59,34 +59,85 @@ struct LLVM : Common< Blob > {
         typedef Node Type;
         LLVM *_parent;
         Node _from;
-        int _alternative;
-        int _context;
+        int _context, _alternative, _buchi;
 
         divine::llvm::Interpreter &interpreter() const {
             assert( _parent );
             return _parent->interpreter();
         }
 
+        std::pair< PropGuard, int > &buchi_trans() const {
+            assert_leq( _buchi + 1, _parent->prop_next.size() );
+            return _parent->prop_trans[ _parent->prop_next[ interpreter().flags.buchi ][ _buchi ] ];
+        }
+
+        static int mask( int i ) {
+            assert_leq( 1, i );
+            return 1 << (i - 1);
+        }
+
+        bool buchi_viable() const {
+            if ( !_parent->use_property )
+                return true;
+
+            interpreter().restore( _from, _parent->alloc._slack );
+            int buchi = interpreter().flags.buchi;
+            assert_leq( buchi + 1, _parent->prop_next.size() );
+
+            interpreter().step( _context, _alternative );
+
+            PropGuard guard = buchi_trans().first;
+            for ( int i = 0; i < guard.size(); ++i ) {
+                if ( guard[i] < 0 && (interpreter().flags.ap & mask(-guard[i])) )
+                    return false;
+                if ( guard[i] > 0 && !(interpreter().flags.ap & mask(guard[i])) )
+                    return false;
+            }
+            return true;
+        }
+
+        bool next() {
+            while ( true ) {
+                interpreter().restore( _from, _parent->alloc._slack );
+
+                if ( _parent->use_property &&
+                     _buchi + 1 < _parent->prop_next[ interpreter().flags.buchi ].size() )
+                {
+                    ++ _buchi;
+                } else {
+                    _buchi = 0;
+                    if ( interpreter().viable( _context, _alternative + 1 ) ) {
+                        ++ _alternative;
+                    } else {
+                        ++ _context;
+                        _alternative = 0;
+                    }
+                }
+
+                if ( interpreter().viable( _context, _alternative ) ) {
+                    if ( buchi_viable() )
+                        return true;
+                } else
+                    return false; // nowhere to look anymore
+            }
+        }
+
         bool empty() const {
             if (!_from.valid())
                 return true;
+
             interpreter().restore( _from, _parent->alloc._slack );
-            bool empty = !interpreter().viable( _context, _alternative )
-                         && !interpreter().viable( _context + 1, 0 );
-            return empty;
+            if ( interpreter().viable( _context, _alternative ) && buchi_viable() )
+                return false;
+
+            return true;
         }
 
         Node from() { return _from; }
 
         Successors tail() const {
             Successors s = *this;
-            interpreter().restore( _from, _parent->alloc._slack );
-            if ( interpreter().viable( _context, _alternative + 1 ) ) {
-                ++ s._alternative;
-            } else {
-                ++ s._context;
-                s._alternative = 0;
-            }
+            s.next();
             return s;
         }
 
@@ -97,6 +148,9 @@ struct LLVM : Common< Blob > {
             // collapse all following tau actions in this context
             while ( interpreter().isTau( _context ) )
                 interpreter().step( _context, 0 ); // tau steps cannot branch
+
+            if ( _parent->use_property )
+                interpreter().flags.buchi = buchi_trans().second;
 
             return interpreter().snapshot( _parent->alloc._slack, _parent->pool() );
         }
@@ -110,6 +164,7 @@ struct LLVM : Common< Blob > {
         ret._parent = this;
         ret._alternative = 0;
         ret._context = 0;
+        ret._buchi = 0;
         return ret;
     }
 
@@ -124,11 +179,28 @@ struct LLVM : Common< Blob > {
             || interpreter().flags.invalid_dereference;
     }
 
-    bool isAccepting( Node s ) { return false; }
+    bool isAccepting( Node n ) {
+        if ( !use_property )
+            return false;
+
+        interpreter().restore( n, alloc._slack );
+        return prop_accept[ interpreter().flags.buchi ];
+    }
 
     std::string showNode( Node n ) {
         interpreter().restore( n, alloc._slack );
-        return interpreter().describe();
+        std::string s = interpreter().describe();
+        if ( use_property ) {
+            int buchi = interpreter().flags.buchi;
+            s += "\nLTL: " + wibble::str::fmt( buchi ) + " (";
+            for ( int i = 0; i < prop_next[ buchi ].size(); ++i ) {
+                int next = prop_next[buchi][i];
+                s += wibble::str::fmt( prop_trans[next].first ) + " -> " +
+                     wibble::str::fmt( prop_trans[next].second ) + "; ";
+            }
+            s += ")";
+        }
+        return s;
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
