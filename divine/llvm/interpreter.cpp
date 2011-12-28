@@ -28,8 +28,8 @@ using namespace divine::llvm;
 // Interpreter ctor - Initialize stuff
 //
 Interpreter::Interpreter(Module *M)
-  : ExecutionEngine(M), TD(M) {
-
+    : ExecutionEngine(M), TD(M), module( M )
+{
   memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
   setTargetData(&TD);
 

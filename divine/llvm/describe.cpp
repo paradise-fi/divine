@@ -143,8 +143,22 @@ std::string Interpreter::describe() {
     if ( flags.null_dereference )
         s << "! NULL DEREFERENCE" << std::endl;
 
-    if ( flags.ap )
-        s << "+ APs: " << flags.ap << std::endl;
+    if ( flags.ap ) {
+        int ap = flags.ap;
+        std::vector< std::string > x;
+        int k = 0;
+        MDNode *apmeta = findEnum( "AP" );
+        while ( ap ) {
+            if ( ap % 2 ) {
+                MDString *name = cast< MDString >(
+                    cast< MDNode >( apmeta->getOperand( k ) )->getOperand( 1 ) );
+                x.push_back( name->getString() );
+            }
+            ap = ap >> 1;
+            ++k;
+        }
+        s << "+ APs: " << wibble::str::fmt( x );
+    }
 
     return s.str();
 }

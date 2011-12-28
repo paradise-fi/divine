@@ -187,6 +187,7 @@ public:
     // current function record.
     std::vector< std::vector< ExecutionContext > > stacks;
     std::map< std::string, std::string > properties;
+    Module *module;
 
     Arena arena;
 
@@ -231,6 +232,19 @@ public:
 
     GenericValue constant( const Constant *c ) {
         return getConstantValue( c );
+    }
+
+    MDNode *findEnum( std::string lookup ) {
+        assert( module );
+        NamedMDNode *enums = module->getNamedMetadata("llvm.dbg.enum");
+        assert( enums );
+        for ( int i = 0; i < enums->getNumOperands(); ++i ) {
+            MDNode *n = cast< MDNode >( enums->getOperand(i) );
+            MDString *name = cast< MDString >( n->getOperand(2) );
+            if ( name->getString() == lookup )
+                return cast< MDNode >( n->getOperand(10) ); // the list of enum items
+        }
+        return NULL;
     }
 
     std::vector<ExecutionContext> &stack( int c = -1 ) {

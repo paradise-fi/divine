@@ -220,19 +220,14 @@ struct LLVM : Common< Blob > {
     }
 
     int literal_id( std::string lit ) {
-        assert( _module );
-        NamedMDNode *enums = _module->getNamedMetadata("llvm.dbg.enum");
-        assert( enums );
-        for ( int i = 0; i < enums->getNumOperands(); ++i ) {
-            MDNode *n = cast< MDNode >( enums->getOperand(i) );
-            n = cast< MDNode >( n->getOperand(10) ); // the list of enum items
-            for ( int j = 0; j < n->getNumOperands(); ++j ) {
-                MDNode *it = cast< MDNode >( n->getOperand(j) );
-                MDString *name = cast< MDString >( it->getOperand(1) );
-                if ( name->getString() == lit )
-                    return 1 + interpreter().constant(
-                        cast< Constant >( it->getOperand(2) ) ).IntVal.getZExtValue();
-            }
+        MDNode *ap = interpreter().findEnum( "AP" );
+        assert( ap );
+        for ( int i = 0; i < ap->getNumOperands(); ++i ) {
+            MDNode *it = cast< MDNode >( ap->getOperand(i) );
+            MDString *name = cast< MDString >( it->getOperand(1) );
+            if ( name->getString() == lit )
+                return 1 + interpreter().constant(
+                    cast< Constant >( it->getOperand(2) ) ).IntVal.getZExtValue();
         }
         assert_die();
     }
