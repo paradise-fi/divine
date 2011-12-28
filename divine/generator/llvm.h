@@ -114,13 +114,14 @@ struct LLVM : Common< Blob > {
         }
 
         bool settle() {
+            interpreter().restore( _from, _parent->alloc._slack );
             while ( true ) {
                 if ( interpreter().viable( _context, _alternative ) ) {
-                    if ( buchi_viable() )
+                    if ( buchi_viable() ) // changes interpreter state
                         return true;
                 } else
                     return false; // nowhere to look anymore
-                next();
+                next(); // restores the interpreter state
             }
         }
 
