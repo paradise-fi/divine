@@ -96,29 +96,31 @@ struct LLVM : Common< Blob > {
             return true;
         }
 
-        bool next() {
-            while ( true ) {
-                interpreter().restore( _from, _parent->alloc._slack );
-
-                if ( _parent->use_property &&
-                     _buchi + 1 < _parent->prop_next[ interpreter().flags.buchi ].size() )
-                {
-                    ++ _buchi;
+        void next() {
+            interpreter().restore( _from, _parent->alloc._slack );
+            if ( _parent->use_property &&
+                 _buchi + 1 < _parent->prop_next[ interpreter().flags.buchi ].size() )
+            {
+                ++ _buchi;
+            } else {
+                _buchi = 0;
+                if ( interpreter().viable( _context, _alternative + 1 ) ) {
+                    ++ _alternative;
                 } else {
-                    _buchi = 0;
-                    if ( interpreter().viable( _context, _alternative + 1 ) ) {
-                        ++ _alternative;
-                    } else {
-                        ++ _context;
-                        _alternative = 0;
-                    }
+                    ++ _context;
+                    _alternative = 0;
                 }
+            }
+        }
 
+        bool settle() {
+            while ( true ) {
                 if ( interpreter().viable( _context, _alternative ) ) {
                     if ( buchi_viable() )
                         return true;
                 } else
                     return false; // nowhere to look anymore
+                next();
             }
         }
 
@@ -128,8 +130,7 @@ struct LLVM : Common< Blob > {
 
             interpreter().restore( _from, _parent->alloc._slack );
             if ( interpreter().viable( _context, _alternative ) && buchi_viable() )
-                return false;
-
+                return false; // not empty
             return true;
         }
 
@@ -138,6 +139,7 @@ struct LLVM : Common< Blob > {
         Successors tail() const {
             Successors s = *this;
             s.next();
+            s.settle();
             return s;
         }
 
@@ -165,6 +167,7 @@ struct LLVM : Common< Blob > {
         ret._alternative = 0;
         ret._context = 0;
         ret._buchi = 0;
+        ret.settle();
         return ret;
     }
 
