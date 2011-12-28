@@ -263,8 +263,11 @@ struct LLVM : Common< Blob > {
                 std::vector< int > guard;
 
                 for ( LTL_label_t::const_iterator l = t->t_label.begin();
-                      l != t->t_label.end(); ++l )
-                    guard.push_back( (-1 * l->negace) * literal_id( l->predikat ) );
+                      l != t->t_label.end(); ++l ) {
+                    assert_leq( 1, literal_id( l->predikat ) );
+                    /* NB. Negation implies a *positive* query on an AP. */
+                    guard.push_back( (l->negace ? 1 : -1) * literal_id( l->predikat ) );
+                }
                 prop_next[nid].push_back( prop_trans.size() );
                 prop_trans.push_back( std::make_pair( guard, t->target->name - 1 ) );
             }
