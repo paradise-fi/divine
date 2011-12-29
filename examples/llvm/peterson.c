@@ -25,6 +25,12 @@ struct p {
     struct state *s;
 };
 
+enum AP { wait1, critical1, wait2, critical2 };
+
+LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
+/* TODO: progress fails due to lack of fairness */
+LTL(exclusion, G(!(critical1 && critical2))); // OK
+
 void thread( struct p *p ) __attribute__((noinline));
 void thread( struct p *p ) {
 #ifdef BUG
@@ -34,11 +40,11 @@ void thread( struct p *p ) {
 #endif
     p->s->turn = 1 - p->id;
 
-    // wait
+    ap( p->id ? wait1 : wait2 );
     while ( p->s->flag[1 - p->id] == 1 && p->s->turn == 1 - p->id ) ;
 
     p->s->in_critical[p->id] = 1;
-    trace("Thread %d in critical.", p->id);
+    ap( p->id ? critical1 : critical2 );
     assert( !p->s->in_critical[1 - p->id] );
     p->s->in_critical[p->id] = 0;
 
