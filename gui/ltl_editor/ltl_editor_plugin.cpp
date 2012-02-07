@@ -46,7 +46,7 @@ void LtlEditorPlugin::install(MainForm * root)
 {
   // document loaders
   EditorBuilder * loader = new LtlEditorBuilder(root);
-  root->registerDocument("ltl", tr("LTL files (*.ltl)"), loader);
+  root->registerDocument("ltl", tr("LTL files"), loader);
   
   // preferences
   PreferencesPage * page = new LtlPreferences();

@@ -58,7 +58,7 @@ class BASE_SHARED_EXPORT MainForm : public QMainWindow
 
     // API for plugins
     void registerDocument(const QString & suffix,
-                          const QString & filter, EditorBuilder * builder);
+                          const QString & name, EditorBuilder * builder);
     void registerSimulator(const QString & suffix, SimulatorFactory * loader);
     void registerPreferences(const QString & group,
                              const QString & tab, QWidget * page);

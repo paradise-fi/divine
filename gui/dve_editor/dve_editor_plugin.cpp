@@ -58,8 +58,8 @@ void DveEditorPlugin::install(MainForm * root)
 {
   // document loaders
   EditorBuilder * loader = new DveEditorBuilder(root);
-  root->registerDocument("dve", tr("DVE files (*.dve)"), loader);
-  root->registerDocument("mdve", tr("MDVE files (*.mdve)"), loader);
+  root->registerDocument("dve", tr("DVE files"), loader);
+  root->registerDocument("mdve", tr("MDVE files"), loader);
   
   // preferences
   PreferencesPage * page = new DvePreferences();

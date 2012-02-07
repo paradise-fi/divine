@@ -103,11 +103,11 @@ void MainForm::initialize(void)
 /*!
  * Registers EditorBuilder instance for given document type.
  * \param suffix Document suffix.
- * \param filter Filter for file dialogs.
+ * \param name Name of this document type for file dialogs.
  * \param builder EditorBuilder instance.
  */
 void MainForm::registerDocument
-(const QString & suffix, const QString & filter, EditorBuilder * builder)
+(const QString & suffix, const QString & name, EditorBuilder * builder)
 {
   // check for duplicit suffixes
   foreach(BuilderList::value_type itr, docBuilders_) {
@@ -115,7 +115,7 @@ void MainForm::registerDocument
       return;
   }
 
-  BuilderPair entry = BuilderPair(DocTypeInfo(suffix, filter), builder);
+  BuilderPair entry = BuilderPair(DocTypeInfo(suffix, name), builder);
 
   docBuilders_.append(entry);
   qSort(docBuilders_.begin(), docBuilders_.end());
@@ -1148,12 +1148,17 @@ bool MainForm::checkSyntaxErrors(Simulator * sim)
 void MainForm::open()
 {
   QStringList filters;
+  QStringList suffixes;
 
   foreach(BuilderList::value_type itr, docBuilders_) {
-    filters << itr.first.second;
+    suffixes << "*." + itr.first.first;
   }
 
-  filters << tr("All files (*)");
+  filters << QString("%1 (%2) (%2)").arg(tr("All applicable files"), suffixes.join(" "));
+
+  foreach(BuilderList::value_type itr, docBuilders_) {
+    filters << QString("%1 (*.%2) (*.%2)").arg(itr.first.second, itr.first.first);
+  }
 
   QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
                      "", filters.join(";;"));
@@ -1198,21 +1203,22 @@ bool MainForm::saveAs(SourceEditor * editor)
 
   QUrl old_url = editor->document()->metaInformation(QTextDocument::DocumentUrl);
   
+  filters << tr("All files (*)");
+  
   foreach(BuilderList::value_type itr, docBuilders_) {
-    filters << itr.first.second;
+    QString filter = QString("%1 (*.%2) (*.%2)").arg(itr.first.second, itr.first.first);
+    filters << filter;
     
     if(itr.first.first == QFileInfo(old_url.path()).suffix())
-      defFilter = itr.first.second;
+      defFilter = filter;
   }
-
-  filters << tr("All files (*)");
   
   QFileDialog dlg(this, tr("Save File"), "", filters.join(";;"));
   dlg.setAcceptMode(QFileDialog::AcceptSave);
   
   // select current suffix as default filter
   if(!defFilter.isEmpty())
-    dlg.selectFilter(defFilter);
+    dlg.setFilter(defFilter);
   
   // open the save dialog
   if(!dlg.exec())
