@@ -376,6 +376,7 @@ void TraceDock::onSimulatorStateChanged(void)
   // add items
   while (trace_->count() < simulator->traceDepth()) {
     trace_->addItem("");
+    updateTraceItem(trace_->count() - 1);
   }
 
   // unmark previous active state

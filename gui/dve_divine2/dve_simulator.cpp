@@ -100,6 +100,9 @@ bool DveSimulator::loadTrail(const QString & fileName)
 
   restart();
 
+  // load state stack quietly
+  blockSignals(true);
+  
   QByteArray line;
   while(!trail.atEnd()) {
     line = trail.readLine();
@@ -110,6 +113,8 @@ bool DveSimulator::loadTrail(const QString & fileName)
     int id = line.simplified().toInt();
     if(id <= 0 || id > transitionCount()) {
       QMessageBox::warning(NULL, tr("DiVinE IDE"), tr("Invalid trail!"));
+      
+      blockSignals(false);
       stop();
       return false;
     }
@@ -117,6 +122,11 @@ bool DveSimulator::loadTrail(const QString & fileName)
     // advance to the next state
     step(id - 1);
   }
+  
+  // resume
+  blockSignals(false);
+  emit stateChanged();
+  
   return true;
 }
 
