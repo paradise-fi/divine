@@ -63,6 +63,7 @@ class dve_prob_explicit_system_t : public dve_explicit_system_t, public prob_exp
  //!A destructor
  virtual ~dve_prob_explicit_system_t() {};
  
+ typedef prob_succ_container_t container_t;
 }; //END of class dve_prob_explicit_system_t
 
 

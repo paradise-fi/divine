@@ -36,10 +36,13 @@ struct BitSet
     G& g() { return *m_g; }
 
 #define USE_BOOL_VECTOR
+
+#ifndef USE_BOOL_VECTOR
 //#define UBSIZE ( 8 * sizeof( unsigned ) )
 #define UBSIZE 32
 #define UBINDEX ( ( id - fromStateId ) / UBSIZE )
 #define UBBIT ( 1 << ( ( id - fromStateId ) % UBSIZE ) )
+#endif
 
 #ifdef USE_BOOL_VECTOR
     std::vector< bool > m_table; // stores visited status of states in bit vector
@@ -48,7 +51,7 @@ struct BitSet
     unsigned m_table_size;
 #endif
 
-    std::map< unsigned, unsigned > sliceCount; // TODO would vector suffice?
+    std::map< unsigned, unsigned > sliceCount;
 
     /// Dummy function to satisfy API
     int hash( Item ) { return 0; }
@@ -147,6 +150,7 @@ struct BitSet
             if ( visited ) {
 #ifdef USE_BOOL_VECTOR
                 for ( ; lowest - fromStateId < m_table.size() && !has( lowest ); lowest++ );
+// TODO following appeared to be slower
 //                 std::vector< bool >::const_iterator it = m_table.begin() + lowest - fromStateId + 1;
 //                 for ( ; it != m_table.end() && !*it; ++it );
 //                 lowest = ( it == m_table.end() ? m_table.size() : *it ) + fromStateId;
@@ -272,12 +276,11 @@ struct BitSet
      * generator::Compact) and peerId of peer using this bitset as a table
      */
     BitSet( G *g_, const int peerId, Valid v = Valid(), Equal eq = Equal() )
-        : m_g( g_ ), initialized( true ), valid( v ), equal( eq ), m_maxsize( -1 )
+        : valid( v ), equal( eq ), m_maxsize( -1 ), initialized( false ), visited( 0 ), m_g( g_ )
     {
         assert( g().initialized );
         assert( peerId >= 0 );
-        if ( !setStates( g().getPeerStates( peerId ) ) )
-            ;//initialized = false; // no states for this bitset // TODO what should it be?
+        initialized = setStates( g().getPeerStates( peerId ) ); // TODO this might need to be set to true eitherway
 
         // assert that default key is invalid, this is assumed
         // throughout the code

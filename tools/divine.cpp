@@ -90,8 +90,8 @@ struct Main {
     Report *report;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact;
-    OptionGroup *common, *drawing, *compact, *ce;
+        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_probabilistic, *cmd_info;
+    OptionGroup *common, *drawing, *compact, *ce, *probabilistic, *probabilisticCommon, *reduce;
     BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair;
@@ -225,6 +225,9 @@ struct Main {
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
         compact = opts.createGroup( "Compact Options" );
+        probabilistic = opts.createGroup( "Probabilistic Options" );
+        probabilisticCommon = opts.createGroup( "Common Options" );
+        reduce = opts.createGroup( "Reduction Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -419,7 +422,7 @@ struct Main {
 
 
     enum RunAlgorithm { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify,
-        RunDraw, RunCompact } m_run;
+                        RunDraw, RunInfo, RunCompact, RunProbabilistic } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -471,6 +474,15 @@ struct Main {
         config.findDeadlocks = !o_noDeadlocks->boolValue();
         config.findGoals = !o_noGoals->boolValue();
         statistics = o_statistics->boolValue();
+
+        /* No point in generating counterexamples just to discard them. */
+        if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )
+            config.wantCe = false;
+
+        // probabilistic options
+        config.onlyQualitative = o_onlyQualitative->boolValue();
+        config.iterativeOptimization = !o_disableIterativeOptimization->boolValue();
+        config.simpleOutput = o_simpleOutput->boolValue();
 
         drawConfig.maxDistance = o_distance->intValue();
         drawConfig.output = o_output->stringValue();
@@ -618,14 +630,18 @@ struct Main {
             }
         } else if ( str::endsWith( config.input, ".probdve" ) ) {
             report->generator = "ProbDVE";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::NProbDve >, Stats >();
+            return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyProbDve >, Stats >();
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
             if ( m_run == RunProbabilistic ) return runProbabilistic();
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
 #ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
+#ifdef LCA
+            report->generator = "CoIn-LCA";
+#else
 	    report->generator = "CoIn";
+#endif
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();

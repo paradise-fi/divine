@@ -109,24 +109,36 @@ struct Transform {
         return base().owner( hash, worker, n, hint );
     }
 
+	/// Makes a nonpermanent copy of a state
+    Node copyState( Node n ) {
+        Node copy( base().pool(), n.size() );
+        n.copyTo( copy );
+        copy.header().permanent = false;
+        return copy;
+    }
+
     /// Returns a position between 1 and n
     template< typename Alg >
-    int successorNum( Alg &a, Node current, Node next )
+    int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 )
     {
-        typename G::Successors succ = base().successors( current );
+        typename G::Successors succs = base().successors( current );
         int edge = 0;
-        while ( !succ.empty() ) {
-            ++ edge;
-            if ( a.equal( succ.head(), next ) )
+        while ( !succs.empty() ) {
+            ++edge;
+            Node succ = succs.head();
+            if ( edge > fromIndex && a.equal( succ, next ) ) {
+                base().release( succ );
+                succs = succs.tail();
                 break;
-            base().release( succ.head() ); // not it
-            succ = succ.tail();
-            assert( !succ.empty() ); // we'd hope the node is actually there!
+            }
+            base().release( succ ); // not it
+            succs = succs.tail();
+            assert( !succs.empty() ); // we'd hope the node is actually there!
         }
 
-        while ( !succ.empty() ) {
-            base().release( succ.head() );
-            succ = succ.tail();
+        while ( !succs.empty() ) {
+            base().release( succs.head() );
+            succs = succs.tail();
         }
 
         assert_leq( 1, edge );

@@ -114,6 +114,7 @@ public:
  public:
  
  ///// VIRTUAL INTERFACE METHODS: /////
+ typedef succ_container_t container_t;
  
  //!A constructor
  /*!\param evect = \evector used for reporting of error messages*/

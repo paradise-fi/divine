@@ -26,7 +26,7 @@ struct Config {
 
     // compact options
     std::string compactFile;
-    bool findBackEdges, textFormat; //keepOriginal;
+    bool findBackEdges, textFormat;
 
     // probabilistic options
     bool onlyQualitative, iterativeOptimization, simpleOutput;

@@ -182,7 +182,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         bool findBackEdges; // find also backward transitions
         bool haveInitial; // signifies that this peer handles the initial state
 
-        Shared() : haveInitial( false ), /*keepOriginal( false ),*/ findBackEdges( false ) {}
+        Shared() : findBackEdges( false ), haveInitial( false ) {}
     } shared;
 
     std::deque< Node > states; // stores all states handled by this peer
@@ -298,8 +298,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
                 StateRef fromRef( extension( from ).index, fromOwner );
                 toExt.preds->push_back( fromRef );
             }
-            Node copy( shared.g.g().pool(), to.size() );
-            to.copyTo( copy );
+            Node copy = shared.g.copyState( to );
             extension( copy ).back = true;
             visitor->queueAny( copy, from, fromOwner ); // goes to the owner of from
         } else {
@@ -324,8 +323,13 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             statsAddOutTransition();
             StateRef originalToRef( extension( f ).index, visitor->owner( f ) );
 
-            extension( t ).succs[ shared.g.successorNum( *this, t, f ) - 1 ] = originalToRef;
-            f.free( shared.g.g().pool() );
+            unsigned index = 0;
+            do {
+                index = shared.g.successorNum( *this, t, f, index );
+            } while ( extension( t ).succs[ index - 1 ].index != 0 );
+            extension( t ).succs[ index - 1 ] = originalToRef;
+
+            shared.g.release( f );
             return visitor::IgnoreTransition;
         }
 
@@ -882,7 +886,7 @@ struct Compact : CompactCommon< G, Statistics >
     Compact( Config *c = 0 ) : Algorithm( c, sizeof( typename CompactCommon::Extension ) ), CompactCommon( c ) {}
 };
 
-#define PROBABILISTIC algorithm::NonPORGraph< generator::NProbDve >, Statistics
+#define PROBABILISTIC algorithm::NonPORGraph< generator::LegacyProbDve >, Statistics
 
 /// algorithm::Compact for probabilistic models (currently ProbDVE is supported)
 template< typename Statistics >

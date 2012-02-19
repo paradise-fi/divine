@@ -107,12 +107,12 @@ struct FairGraph : NonPORGraph< G > {
     }
 
     template< typename Alg >
-    int successorNum( Alg &a, Node current, Node next ) {
+    int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 ) {
         // successorNum works on the original graph, so all successors are in copy 0
         // therefore, if 'next' is not in copy 0, it is not found among the successors
         int orig = extension( next ).copy;
         extension( next ).copy = 0;
-        int ret = NonPORGraph< G >::successorNum( a, current, next );
+        int ret = NonPORGraph< G >::successorNum( a, current, next, fromIndex );
         extension( next ).copy = orig;
         return ret;
     }

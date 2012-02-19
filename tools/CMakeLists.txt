@@ -28,7 +28,9 @@ set( JARS "${CMAKE_SOURCE_DIR}/nips-compiler-jars/pml2s.jar"
 set( PML_C "${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml" )
 set( NIPS_ASM "${CMAKE_CURRENT_SOURCE_DIR}/compile-pml.pl" )
 
-add_executable( divine divine.cpp dvecompile.cpp compile.cpp combine.h ${COMBINE_M4_H} )
+add_executable( divine divine.cpp dvecompile.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
+target_link_libraries( divine lpsolve rt )
+
 add_executable( divine.simulate simulator.cpp )
 add_executable( divine.simple simple.cpp )
 

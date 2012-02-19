@@ -81,17 +81,3 @@ void divine::delete_state(state_t& state)
   state.size = 0;
   state.ptr = 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

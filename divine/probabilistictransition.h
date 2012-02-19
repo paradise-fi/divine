@@ -11,7 +11,7 @@ struct ProbabilisticTransition {
     unsigned weight:8;
     unsigned sum:15;
     bool isProbabilistic:1;
-    
+
     ProbabilisticTransition() : id( 0 ), weight( 0 ), sum( 0 ), isProbabilistic( 0 ) {}
 };
 

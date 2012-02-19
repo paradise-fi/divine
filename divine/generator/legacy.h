@@ -27,6 +27,7 @@ struct LegacyCommon : Common< _State > {
     system_t *m_system;
     por_t *m_por;
 
+    /// Successors implementation
     struct Successors {
         typedef Node Type;
         int current;
@@ -71,6 +72,7 @@ struct LegacyCommon : Common< _State > {
         Successors() : current( 0 ) {}
     };
 
+    /// Returns successors of state s
     Successors successors( State s ) {
         assert( s.valid() );
         Successors succ;
@@ -118,6 +120,7 @@ struct LegacyCommon : Common< _State > {
         return ( legacy_system()->get_with_property() ? count - 1 : count );
     }
 
+    /// Partial order reduction
     por_t &por() {
         if ( !m_por ) {
             m_por = new por_t;
@@ -138,15 +141,18 @@ struct LegacyCommon : Common< _State > {
         return succ;
     }
 
+    /// Returns the initial state
     State initial() {
         return this->alloc.unlegacy_state( legacy_system()->get_initial_state() );
     }
 
+    /// Enques the initial state
     template< typename Q >
     void queueInitials( Q &q ) {
         q.queue( State(), initial() );
     }
 
+    /// Reads the state space from file
     void read( std::string path ) {
         file = path;
         legacy_system(); // force
@@ -156,6 +162,7 @@ struct LegacyCommon : Common< _State > {
         legacy_system()->print_state( this->alloc.legacy_state( s ), o );
     }
 
+    /// Is state s in accepting set?
     bool isAccepting( State s ) {
         return legacy_system()->is_accepting( this->alloc.legacy_state( s ) );
     }
@@ -234,16 +241,14 @@ struct LegacyCommon : Common< _State > {
     }
 };
 
-template< typename _State >
-struct Dve : LegacyCommon< _State, dve_explicit_system_t >
+struct LegacyDve : LegacyCommon< Blob, dve_explicit_system_t, succ_container_t >
 {};
 
-template< typename _State >
-struct Bymoc : LegacyCommon< _State, bymoc_explicit_system_t >
+struct LegacyProbDve : LegacyCommon< Blob, dve_prob_explicit_system_t, prob_succ_container_t > 
 {};
 
-typedef Dve< Blob > NDve;
-typedef Bymoc< Blob > NBymoc;
+struct LegacyBymoc : LegacyCommon< Blob, bymoc_explicit_system_t, succ_container_t >
+{};
 
 }
 }

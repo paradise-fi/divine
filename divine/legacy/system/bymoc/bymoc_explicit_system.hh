@@ -163,7 +163,7 @@ class bymoc_explicit_system_t : public explicit_system_t, public bymoc_system_t
                         const state_t state,
                         data_t & data) const;
  /*@}*/
- 
+ typedef succ_container_t container_t;
 }; //END of class bymoc_explicit_system_t
 
 
