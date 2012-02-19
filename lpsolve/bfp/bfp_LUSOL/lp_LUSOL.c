@@ -62,14 +62,14 @@ MYBOOL BFP_CALLMODEL bfp_resize(lprec *lp, int newsize)
 
   /* Data specific to the factorization engine */
   if(lu->LUSOL != NULL) {
-    if(newsize > 0)
+    if(newsize > 0 || 1)
       LUSOL_sizeto(lu->LUSOL, newsize, newsize, 0);
     else {
       LUSOL_free(lu->LUSOL);
       lu->LUSOL = NULL;
     }
   }
-  else if(newsize > 0) {
+  else if(newsize > 0 || 1) {
     int  asize;
     REAL bsize;
 

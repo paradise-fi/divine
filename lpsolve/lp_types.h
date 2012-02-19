@@ -197,10 +197,10 @@
 #endif
 #define my_if(t, x, y)          ((t) ? (x) : (y))
 #define my_sign(x)              ((x) < 0 ? -1 : 1)
-#if 0
+#if 1
   #define my_chsign(t, x)       ( ((t) && ((x) != 0)) ? -(x) : (x))
 #else
-  #define my_chsign(t, x)       ( (2*((t) == 0) - 1) * (x) )  /* "Pipelined" */
+  #define my_chsign(t, x)       ( (2*((t) == 0) - 1) * (x) )  /* "Pipelined", but problem with "negative zero" and possible problems on AIX  */
 #endif
 #define my_flipsign(x)          ( fabs((REAL) (x)) == 0 ? 0 : -(x) )
 #define my_roundzero(val, eps)  if (fabs((REAL) (val)) < eps) val = 0
