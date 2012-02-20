@@ -637,11 +637,7 @@ struct Main {
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
 #ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
-#ifdef LCA
-            report->generator = "CoIn-LCA";
-#else
 	    report->generator = "CoIn";
-#endif
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();
