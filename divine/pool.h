@@ -36,7 +36,7 @@ struct FakePool {
     }
 };
 
-#ifdef DISABLE_POOLS
+#ifndef O_POOLS
 
 typedef FakePool Pool;
 
@@ -238,7 +238,7 @@ namespace std {
 template<>
 inline void swap< divine::Pool >( divine::Pool &a, divine::Pool &b )
 {
-#ifndef DISABLE_POOLS
+#ifdef O_POOLS
     swap( a.m_groups, b.m_groups );
 #endif
 }

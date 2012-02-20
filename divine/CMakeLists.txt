@@ -14,9 +14,18 @@ file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
                       legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
 file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
 
-file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
-file( GLOB SRC_LLVM llvm/*.cpp )
-file( GLOB SRC_DVE dve/*.cpp )
+if( COIN )
+    file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
+endif( COIN )
+
+if( LLVM )
+    file( GLOB SRC_LLVM llvm/*.cpp )
+endif( LLVM )
+
+if( DVE )
+    file( GLOB SRC_DVE dve/*.cpp )
+endif( DVE )
+
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 

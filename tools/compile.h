@@ -39,9 +39,9 @@ struct Compile {
     static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
         std::stringstream cmd;
         std::string multiarch =
-#if defined(USE_GCC_M32)
+#if defined(O_USE_GCC_M32)
             "-m32 "
-#elif defined(USE_GCC_M64)
+#elif defined(O_USE_GCC_M64)
             "-m64 "
 #else
             ""

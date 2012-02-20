@@ -27,7 +27,7 @@ static inline CPoolGroup *pool_group( CPool *pool, int n ) {
     return (CPoolGroup *)(pool->group_array + n * pool->group_struct_size);
 }
 
-#if defined(__cplusplus) && !defined(DISABLE_POOLS)
+#if defined(__cplusplus) && defined(O_POOLS)
 namespace divine {
     struct Pool;
 };

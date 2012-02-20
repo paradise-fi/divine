@@ -5,7 +5,7 @@
 
 namespace divine {
 
-#ifndef DISABLE_POOLS
+#ifdef O_POOLS
 Pool::Pool() {
     m_groupStructSize = sizeof( Group );
     m_groups.reserve( 8096 ); // FIXME
@@ -30,7 +30,7 @@ Pool::~Pool() {
 
 }
 
-#ifndef DISABLE_POOLS
+#ifdef O_POOLS
 extern "C" void *pool_extend( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
     if ( !p->group( sz ) )

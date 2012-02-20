@@ -157,9 +157,7 @@ void coin_system_t::add_to_complist(name_t s)
   int newid = automata.find_id(s);
   if (newid == -1) { yyerror ("automaton name not declared"); }
   (automata.get(act_aut_id))->composed_of.push_back(newid);
-#ifdef LCA
   (automata.find(s))->setParent(automata.get(act_aut_id));
-#endif
 }
 
 void coin_system_t::add_to_restrict(const label_t & l)

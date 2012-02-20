@@ -11,8 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifdef HAVE_LLVM
-
 #include <divine/llvm/interpreter.h>
 
 #include "llvm/Constants.h"
@@ -1259,5 +1257,3 @@ void Interpreter::run() {
         step();
     }
 }
-
-#endif

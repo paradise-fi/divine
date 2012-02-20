@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
-#ifdef HAVE_LLVM
+#ifdef O_LLVM
 #include <stdint.h>
 #include <iostream>
 

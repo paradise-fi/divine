@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 // Describe the interpreter's state in a human-readable fashion.
 
-#ifdef HAVE_LLVM
-
 #include <divine/llvm/interpreter.h>
 #include "llvm/Analysis/DebugInfo.h"
 
@@ -162,5 +160,3 @@ std::string Interpreter::describe() {
 
     return s.str();
 }
-
-#endif

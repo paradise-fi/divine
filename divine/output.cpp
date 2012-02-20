@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-#ifdef HAVE_CURSES
+#ifdef O_CURSES
 #include <curses.h>
 #endif
 
@@ -99,7 +99,7 @@ struct StdIO : divine::Output, proxycall {
     }
 };
 
-#ifdef HAVE_CURSES
+#ifdef O_CURSES
 struct Curses : divine::Output
 {
     wibble::sys::Mutex mutex;
@@ -183,7 +183,7 @@ Output *makeStdIO( std::ostream &o ) {
 }
 
 Output *makeCurses() {
-#ifdef HAVE_CURSES
+#ifdef O_CURSES
     return new Curses();
 #else
     std::cerr << "WARNING: This binary has been compiled without CURSES support." << std::endl;

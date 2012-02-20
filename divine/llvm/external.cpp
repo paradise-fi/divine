@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 // Implementation of "external" functions that the LLVM bytecode may want to call.
 
-#ifdef HAVE_LLVM
-
 #include <divine/llvm/interpreter.h>
 
 using namespace llvm;
@@ -335,5 +333,3 @@ bool Interpreter::isTau( int ctx )
 
     return true; // anything else is tau...
 }
-
-#endif

@@ -41,7 +41,7 @@
 #include <sys/resource.h>
 #endif
 
-#ifdef HAVE_LLVM
+#ifdef O_LLVM
 #include <llvm/Support/Threading.h>
 #endif
 
@@ -143,7 +143,7 @@ struct Main {
             Statistics::global().output = new std::ofstream( o_gnuplot->stringValue().c_str() );
         }
 
-#ifdef PERFORMANCE
+#ifdef O_PERFORMANCE
         if ( statistics )
             res = selectGraph< Statistics >();
         else
@@ -555,7 +555,7 @@ struct Main {
             case RunOwcty:
                 report->algorithm = "OWCTY";
                 return run< algorithm::Owcty< Graph, Stats >, Stats >();
-#ifndef SMALL
+#ifndef O_SMALL
             case RunMap:
                 report->algorithm = "MAP";
                 return run< algorithm::Map< Graph, Stats >, Stats >();
@@ -563,7 +563,7 @@ struct Main {
             case RunNdfs:
                 report->algorithm = "Nested DFS";
                 return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
-#ifndef SMALL
+#ifndef O_SMALL
             case RunCompact:
                 report->algorithm = "Compact";
                 return run< algorithm::Compact< Graph, Stats >, Stats >();
@@ -578,7 +578,7 @@ struct Main {
     {
         if ( str::endsWith( config.input, ".dve" ) ) {
             report->generator = "DVE";
-#ifndef SMALL
+#ifndef O_SMALL
             if ( o_fair->boolValue() ) {
                 if ( o_por->boolValue() )
                     std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
@@ -591,7 +591,7 @@ struct Main {
             } else
 #endif
             {
-#ifdef DVE
+#ifdef O_DVE
                 return selectAlgorithm< algorithm::NonPORGraph< generator::Dve >, Stats >();
 #else
                 return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
@@ -600,13 +600,9 @@ struct Main {
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
-#ifndef SMALL
+#ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
-#ifdef LCA
-            report->generator = "CoIn-LCA";
-#else
 	    report->generator = "CoIn";
-#endif
             if ( o_por->boolValue() ) {
                 report->reductions.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();
@@ -618,7 +614,7 @@ struct Main {
             die( "FATAL: Partial order reduction is not supported for this input type." );
         } else if ( str::endsWith( config.input, ".bc" ) ) {
             report->generator = "LLVM";
-#ifdef HAVE_LLVM
+#ifdef O_LLVM
             if ( config.workers > 1 && !::llvm::llvm_start_multithreaded() )
                 die( "FATAL: This binary is linked to single-threaded LLVM.\n"
                      "Multi-threaded LLVM is required for parallel algorithms." );
@@ -627,7 +623,7 @@ struct Main {
 	    die( "FATAL: This binary was built without LLVM support." );
 #endif
 
-#ifndef SMALL
+#ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".b" ) ) {
             report->generator = "NIPS";
             return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyBymoc >, Stats >();
@@ -635,7 +631,7 @@ struct Main {
         } else if ( str::endsWith( config.input, ".so" ) ) {
             report->generator = "Custom";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
-#ifndef SMALL
+#ifndef O_SMALL
         } else if ( dummygen ) {
             report->generator = "Dummy";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();

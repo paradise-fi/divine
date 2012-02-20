@@ -28,9 +28,7 @@ int yylex();
 #include <string>
 #include <queue>
 #include <set>
-#ifdef LCA
 #include <tr1/unordered_set>
-#endif
 #include <iostream>
 
 #include "../bit_set.h"
@@ -40,9 +38,7 @@ using std::map;
 using std::vector;
 using std::queue;
 using std::set;
-#ifdef LCA
 using std::multimap;
-#endif
 
 typedef const string & name_t;
 
@@ -187,20 +183,16 @@ struct coin_state_t {
   bit_set_t * input_act;	// for C1 computation
   bit_set_t * output_act;
 
-#ifdef LCA
   vector<trans_t *> input_trans; //use multimap to be able to access transitions with certain act_id
   vector<trans_t *> output_trans; //vector of output transitions
   vector<trans_t *> internal_trans; //vector of input transitions
-#endif
 
   coin_state_t() 
     : enAp(NULL), input_act(NULL), output_act(NULL) {
       outtrans.clear();
-#ifdef LCA
       input_trans.clear();
       output_trans.clear();
       internal_trans.clear();
-#endif
   }
 
   ~coin_state_t() {
@@ -216,7 +208,6 @@ struct coin_state_t {
   void add_trans(trans_t * const t) {
       outtrans.push_back(t);
 
-#ifdef LCA
       if(t->isInput()) {
           input_trans.push_back(t);
       } else if(t->isOutput()) {
@@ -224,22 +215,12 @@ struct coin_state_t {
       } else if(t->isInternal()) {
           internal_trans.push_back(t);
       }
-#endif
   }
 };
 
 class aut_t {
   public:
     aut_t () {}
-#ifndef LCA
-	aut_t (name_t s, bool prim) :
-		is_restrict(true), aut_name(s), is_primitive(prim),
-		all_input_act(NULL), all_output_act(NULL) {}
-	~aut_t () {
-		if (all_input_act) delete all_input_act;
-		if (all_output_act) delete all_output_act;
-	}
-#else
 	aut_t (name_t s, bool prim) :
 		is_restrict(true), aut_name(s), is_primitive(prim),
 		all_input_act(NULL), all_output_act(NULL),
@@ -248,8 +229,7 @@ class aut_t {
 		if (all_input_act) delete all_input_act;
 		if (all_output_act) delete all_output_act;
 	}
-#endif
-    
+
     void add_state(name_t s);
 
     void add_trans(name_t f, const label_t & l, name_t t);
@@ -276,7 +256,6 @@ class aut_t {
     bit_set_t * all_input_act; // only for primitive automata
     bit_set_t * all_output_act;
 
-#ifdef LCA
     aut_t * parent;
     bool visited; // used to compute LCA
     bool is_system_component; // is reachable from system automaton?
@@ -284,7 +263,6 @@ class aut_t {
     void setParent(aut_t * p) {
         this->parent = p;
     }
-#endif
 };
 
 struct prop_trans_t {

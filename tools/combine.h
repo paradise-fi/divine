@@ -17,7 +17,7 @@
 
 extern const char *combine_m4;
 
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
 int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out);
 #endif
 
@@ -33,7 +33,7 @@ struct Combine {
     IntOption *o_propId;
     BoolOption *o_stdout, *o_quiet, *o_help, *o_version, *o_det;
     StringOption *o_formula;
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
     StringOption *o_condition;
 #endif
     commandline::StandardParserWithMandatoryCommand &opts;
@@ -81,7 +81,7 @@ struct Combine {
         o_quiet = cmd_combine->add< BoolOption >(
             "quiet", 'q', "quiet", "",
             "suppress normal output" );
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
         o_condition = cmd_combine->add< StringOption >(
             "condition", 'c', "condition", "",
             "acceptance condition type: NBA | DRA (default: NBA)" );
@@ -119,7 +119,7 @@ struct Combine {
         return str.str();
     }
 
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
     /// Translates ltl formula to automaton specified by acceptanceConditionType using external translator
     std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string ltl ) {
         // ltl2dstar expects the ltl formula to be in the prefix form
@@ -181,14 +181,14 @@ struct Combine {
     void ltl_to_dve( int id, std::string ltl ) {
         std::string automaton;
         std::stringstream automaton_str;
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
         if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
 #endif
         {
             divine::output( buchi( ltl, probabilistic ), automaton_str );
             automaton = automaton_str.str();
         }
-#ifdef LTL2DSTAR
+#ifdef O_LTL2DSTAR
         // this can also handle NBA, Streett, etc.
         else if ( o_condition->stringValue() == "DRA" ) {
             automaton = ltl2dstarTranslation( "rabin", ltl );

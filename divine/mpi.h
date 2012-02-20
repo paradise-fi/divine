@@ -11,7 +11,7 @@
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
 
-#ifdef HAVE_MPI
+#ifdef O_MPI
 #include <mpi.h>
 #endif
 
@@ -59,7 +59,7 @@ struct _MpiId
 
 enum Loop { Continue, Done };
 
-#ifdef HAVE_MPI
+#ifdef O_MPI
 
 struct MpiMonitor {
     // Called when a message with a matching tag has been received. The status

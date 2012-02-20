@@ -2,7 +2,7 @@
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 
-#ifdef HAVE_MURPHI
+#ifdef O_MURPHI
 bool mucompile( const char *, const char * );
 
 namespace divine {

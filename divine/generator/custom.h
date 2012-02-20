@@ -138,7 +138,7 @@ struct Custom : public Common< Blob > {
         if( !dl.get_successor )
             die( "FATAL: Could not resolve get_successor." );
 
-#ifdef DISABLE_POOLS
+#ifndef O_POOLS
         die( "FATAL: Pool support is required for the custom generator." );
 #endif
 

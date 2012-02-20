@@ -15,9 +15,9 @@
 #include <sys/time.h>
 #endif
 
-#ifdef HAVE_MPI
+#ifdef O_MPI
 #include <mpi.h>
-#ifdef HAVE_OMPI_VERSION
+#ifdef O_OMPI_VERSION
 #include <ompi/version.h>
 #endif
 #endif
@@ -215,7 +215,7 @@ struct Report
 
     template< typename Mpi >
     void mpiInfo( Mpi &mpi ) {
-#ifdef HAVE_MPI
+#ifdef O_MPI
         std::stringstream s;
         if (mpi.size() > 1)
             s << mpi.size() << " nodes";
@@ -246,7 +246,7 @@ struct Report
         o << "Debug: enabled" << std::endl;
 #endif
 
-#ifdef HAVE_MPI
+#ifdef O_MPI
         int vers, subvers;
         std::string impl = "unknown implementation";
         MPI::Get_version( vers, subvers );
