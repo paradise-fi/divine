@@ -260,7 +260,7 @@ extern "C" int pthread_create (pthread_t *thread,
   // Force initialization of the TLAB before our first thread is created.
   volatile static TheCustomHeapType * t = getCustomHeap();
 
-#if defined(linux)
+#if defined(__linux)
   char fname[] = "pthread_create";
 #else
   char fname[] = "_pthread_create";

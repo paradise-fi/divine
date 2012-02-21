@@ -35,7 +35,7 @@ extern "C" size_t malloc_usable_size (void *);
 extern "C" size_t malloc_usable_size (void *) throw ();
 #endif
 
-#if defined(_WIN32) || defined(linux)
+#if defined(_WIN32) || defined(__linux)
 #include <malloc.h>
 #elif defined(__APPLE__)
 #include <malloc/malloc.h>
