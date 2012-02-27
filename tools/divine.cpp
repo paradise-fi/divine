@@ -92,7 +92,7 @@ struct Main {
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_probabilistic, *cmd_info;
     OptionGroup *common, *drawing, *compact, *ce, *probabilistic, *probabilisticCommon, *reduce;
-    BoolOption *o_pool, *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
+    BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair;
     BoolOption *o_noDeadlocks, *o_noGoals;
@@ -247,10 +247,6 @@ struct Main {
         o_time = common->add< IntOption >(
             "max-time", '\0', "max-time", "",
             "maximum wall time to use in seconds (default: 0 = unlimited)" );
-
-        o_pool = common->add< BoolOption >(
-            "disable-pool", '\0', "disable-pool", "",
-            "disable pooled allocation (use HOARD for all allocation)" );
 
         o_dummy = common->add< BoolOption >(
             "dummy", '\0', "dummy", "",
