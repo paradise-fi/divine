@@ -69,7 +69,7 @@ stringify( pool.h )
 stringify( blob.h )
 
 include_directories( ${DIVINE_INCLUDES} )
-add_definitions( ${MPI_COMPILE_FLAGS} )
+add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC

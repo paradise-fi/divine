@@ -2,6 +2,7 @@ add_definitions( -Wall -Wno-unused-variable -Wno-unused-function -Wno-overloaded
 add_definitions( -Wextra -Wno-unused-parameter -Wno-sign-compare )
 
 include_directories( ${DIVINE_INCLUDES} )
+add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
 link_libraries( libdivine wibble )
 if( MURPHI )
