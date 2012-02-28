@@ -342,26 +342,6 @@ public:
     std::string describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen * = 0 );
     std::string describe();
 
-  /// create - Create an interpreter ExecutionEngine. This can never fail.
-  ///
-  static ExecutionEngine *create(Module *M, std::string *ErrorStr = 0);
-
-  /// run - Start execution with the specified function and arguments.
-  ///
-  virtual GenericValue runFunction(Function *F,
-                                   const std::vector<GenericValue> &ArgValues);
-
-  /// recompileAndRelinkFunction - For the interpreter, functions are always
-  /// up-to-date.
-  ///
-  virtual void *recompileAndRelinkFunction(Function *F) {
-    return getPointerToFunction(F);
-  }
-
-  /// freeMachineCodeForFunction - The interpreter does not generate any code.
-  ///
-  void freeMachineCodeForFunction(Function *F) { }
-
     /* Override from ExecutionEngine to allocate space for (mutable) globals in
      * states, not in a global location */
     void emitGlobals( Module *M );
@@ -481,9 +461,15 @@ private:  // Helper functions
                                    ExecutionContext &SF);
   GenericValue executeBitCastInst(Value *SrcVal, Type *DstTy,
                                   ExecutionContext &SF);
-  GenericValue executeCastOperation(Instruction::CastOps opcode, Value *SrcVal, 
+  GenericValue executeCastOperation(Instruction::CastOps opcode, Value *SrcVal,
                                     Type *Ty, ExecutionContext &SF);
 
+private:
+    virtual GenericValue runFunction(Function *,
+                                     const std::vector<GenericValue> &)
+    { assert_die(); }
+    virtual void freeMachineCodeForFunction(Function *) { assert_die(); }
+    virtual void *recompileAndRelinkFunction(Function*) { assert_die(); }
 };
 
 }

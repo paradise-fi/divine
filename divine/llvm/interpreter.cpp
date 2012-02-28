@@ -77,34 +77,6 @@ void Interpreter::emitGlobals( Module *M )
                                            // all places
 }
 
-/// run - Start execution with the specified function and arguments.
-///
-GenericValue
-Interpreter::runFunction(Function *F,
-                         const std::vector<GenericValue> &ArgValues) {
-  assert (F && "Function *F was null at entry to run()");
-
-  // Try extra hard not to pass extra args to a function that isn't
-  // expecting them.  C programmers frequently bend the rules and
-  // declare main() with fewer parameters than it actually gets
-  // passed, and the interpreter barfs if you pass a function more
-  // parameters than it is declared to take. This does not attempt to
-  // take into account gratuitous differences in declared types,
-  // though.
-  std::vector<GenericValue> ActualArgs;
-  const unsigned ArgCount = F->getFunctionType()->getNumParams();
-  for (unsigned i = 0; i < ArgCount; ++i)
-    ActualArgs.push_back(ArgValues[i]);
-
-  // Set up the function call.
-  callFunction(F, ActualArgs);
-
-  // Start executing the function.
-  run();
-
-  return ExitValue;
-}
-
 void Interpreter::buildIndex( Module *module ) {
     int i = 0;
     locationIndex.insert( i++, Location( 0, 0, 0 ) );
