@@ -71,7 +71,7 @@ if( PERFORMANCE )
   else()
     message( "-- WARNING: You asked for both SMALL and PERFORMANCE. I prefer the former." )
   endif()
-endif( PERFORMANCE AND NOT SMALL )
+endif( PERFORMANCE )
 
 if( DVE )
     add_definitions( -DO_DVE )
