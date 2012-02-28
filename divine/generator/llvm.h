@@ -145,6 +145,7 @@ struct LLVM : Common< Blob > {
         }
 
         Node head() {
+            assert( !empty() );
             interpreter().restore( _from, _parent->alloc._slack );
             interpreter().step( _context, _alternative );
 
