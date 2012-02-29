@@ -74,8 +74,35 @@ if( PERFORMANCE )
 endif( PERFORMANCE )
 
 if( DVE )
-    add_definitions( -DO_DVE )
-    appendFlag( "CXX" "-std=c++0x" )
+    include( CheckCXXSourceCompiles )
+    set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
+    set( CMAKE_REQUIRED_FLAGS "-std=c++0x" )
+    check_cxx_source_compiles(
+"struct ConstructorTest {
+    int x, y;
+    ConstructorTest(int a, int b) {
+        x = a;
+        y = b;
+    }
+};
+
+union UnionTest {
+    int a;
+    ConstructorTest b;
+};
+
+int main(int argc, char* argv[]) {
+    return 0;
+}" HAVE_CXX11_SUPPORT )
+    set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
+
+    if( HAVE_CXX11_SUPPORT )
+        add_definitions( -DO_DVE )
+        appendFlag( "CXX" "-std=c++0x" )
+    else()
+        set( DVE OFF )
+        message( WARNING "C++11 compiler not found, disabling new DVE interpreter. Please install GCC 4.6 or another C++11-compliant compiler to take advantage of the newest interpreter." )
+    endif()
 endif( DVE )
 
 if( PROFILE )
