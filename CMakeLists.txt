@@ -112,6 +112,8 @@ if( CURSES AND NOT USE32 AND NOT USE64 )
   find_package( Curses )
   if( CURSES_FOUND )
     add_definitions( -DO_CURSES )
+  else()
+    set( CURSES OFF )
   endif()
 endif()
 

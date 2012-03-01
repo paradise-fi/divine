@@ -90,7 +90,7 @@ if( LLVM_FOUND )
     LLVMTarget LLVMCore LLVMSupport LLVMCodeGen LLVMAnalysis )
 endif()
 
-if( CURSES_FOUND )
+if( CURSES )
   target_link_libraries( libdivine ${CURSES_LIBRARIES} )
 endif()
 
