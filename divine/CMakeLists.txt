@@ -84,10 +84,8 @@ if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
 endif( NOT WIN32 )
 
-if( LLVM_FOUND )
-  target_link_libraries( libdivine
-    LLVMExecutionEngine LTO LLVMBitReader LLVMInterpreter
-    LLVMTarget LLVMCore LLVMSupport LLVMCodeGen LLVMAnalysis )
+if( LLVM )
+  target_link_libraries( libdivine ${LLVM_LIBRARIES} )
 endif()
 
 if( CURSES )
