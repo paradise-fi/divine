@@ -356,6 +356,10 @@ struct Automaton : Parser {
         list< Identifier >( std::back_inserter( accepts ), Token::Comma );
         semicolon();
     }
+    
+    void optionalComma() {
+        maybe( Token::Comma );
+    }
 
     Automaton( Context &c ) : Parser( c ) {
         eat( IsProperty ? Token::Property : Token::Process );
@@ -375,8 +379,8 @@ struct Automaton : Parser {
         maybe( &Automaton::accept );
 
         eat( Token::Trans );
-        list< Transition >( std::back_inserter( trans ), Token::Comma );
-        semicolon();
+        list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
+        maybe( &Automaton::semicolon );
 
         eat( Token::BlockClose );
     }
