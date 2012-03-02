@@ -206,12 +206,13 @@ struct SymTab : NS {
     }
 
     SymTab( SymTab *parent = 0 ) : parent( parent ) {
-        if ( !parent )
+        tabs.resize( 7 ); // one for each namespace
+        if ( !parent ) {
             context = new SymContext();
+            allocate( Flag, "Error", sizeof( ErrorState ) );
+        }
         else
             context = parent->context;
-        tabs.resize( 7 ); // one for each namespace
-        allocate( Flag, "Error", sizeof( ErrorState ) );
     }
 
     std::ostream& dump( std::ostream &o, char *mem ) const {
