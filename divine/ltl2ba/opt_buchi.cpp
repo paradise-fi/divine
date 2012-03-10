@@ -669,6 +669,8 @@ void BA_opt_graph_t::strong_fair_sim_reduction(BA_opt_graph_t& G)
 		/* uprava castecneho usporadani */
 		par_ord_size_new = COL.size();
 		par_ord_new = new bool*[par_ord_size_new];
+		size_old = size_new;
+		size_new = 0;
 		for (i = 0; i < par_ord_size_new; i++) {
 			par_ord_new[i] = new bool [par_ord_size_new];
 		}
@@ -682,6 +684,7 @@ void BA_opt_graph_t::strong_fair_sim_reduction(BA_opt_graph_t& G)
 					i_dominates(col_i->second,
 					col_j->second, par_ord)) {
 					par_ord_new[i2][i1] = true;
+					size_new++;
 				} else {
 					par_ord_new[i2][i1] = false;
 				}
@@ -692,9 +695,6 @@ void BA_opt_graph_t::strong_fair_sim_reduction(BA_opt_graph_t& G)
 		delete[] par_ord;
 		par_ord = par_ord_new;
 		par_ord_size = par_ord_size_new;
-
-		size_old = size_new;
-		size_new = color_nodes.size();
 	}
 
 	/* Vybudovani noveho grafu */
