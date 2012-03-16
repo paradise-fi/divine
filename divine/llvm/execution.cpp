@@ -1199,8 +1199,11 @@ void Interpreter::callFunction(Function *F,
          * our own runtime (these may be nondeterministic), or, possibly (TODO)
          * into external, native library code  */
         GenericValue Result = callExternalFunction (F, ArgVals);
-        // Simulate a 'ret' instruction of the appropriate type.
-        popStackAndReturnValueToCaller(F->getReturnType(), Result);
+        if ( SFat( -2 ).pc == SFat( -2 ).lastpc )
+            leave(); // this call was restarted, so do not alter anything
+        else
+            // Simulate a 'ret' instruction of the appropriate type.
+            popStackAndReturnValueToCaller(F->getReturnType(), Result);
         return;
     } else { // a normal "call" instruction is deterministic
         assert_eq( _alternative, 0 );

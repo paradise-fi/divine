@@ -214,7 +214,7 @@ public:
     }
 
     ExecutionContext &SFat( int i, int c = -1 ) {
-        return stack( c )[ i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
+        return stack( c )[ i >= 0 ? i : stack( c ).size() + i ]; // *(ExecutionContext *) arena.translate( stack[ i ] );
     }
 
     /* needs to be accessible to the external functions that are not our

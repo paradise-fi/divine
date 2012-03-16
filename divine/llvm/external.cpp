@@ -71,6 +71,32 @@ static GenericValue builtin_free(Interpreter *interp, const FunctionType *, cons
     return GenericValue();
 }
 
+static GenericValue builtin_mutex_lock(Interpreter *interp, const FunctionType *, const Args &args)
+{
+    int *var = (int *) interp->dereferencePointer(args[0]);
+    if (*var)
+        interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
+    else
+        *var = interp->_context + 1;
+
+    return GenericValue();
+}
+
+static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType *, const Args &args)
+{
+    int *var = (int *) interp->dereferencePointer(args[0]);
+    /* TODO: We would like to double-check that the thread doing the unlock is
+     * the same that did the lock. Sadly, the _context identifier might change
+     * in the meantime, if an older thread exits while we are inside the locked
+     * region. */
+    /* if ( *var != interp->_context + 1 ) // Wrong thread doing the unlock.
+        interp->flags.assert = true;
+    else */
+        *var = 0; // Unlock.
+
+    return GenericValue();
+}
+
 static GenericValue builtin_thread_create(Interpreter *interp, const FunctionType *ty,
                                           const Args &args)
 {
@@ -222,6 +248,8 @@ static struct {
     { "__divine_builtin_free", builtin_free },
     { "__divine_builtin_thread_create", builtin_thread_create },
     { "__divine_builtin_thread_stop", builtin_thread_stop },
+    { "__divine_builtin_mutex_lock", builtin_mutex_lock },
+    { "__divine_builtin_mutex_unlock", builtin_mutex_unlock },
     { "__divine_builtin_fork", builtin_fork },
     { 0, 0 }
 };
