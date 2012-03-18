@@ -51,8 +51,12 @@ static GenericValue builtin_malloc(Interpreter *interp, const FunctionType *ty, 
     switch (interp->_alternative) {
         case 0:
             return builtin_malloc_guaranteed( interp, ty, args );
-        case 1:
-            return PTOGV( 0 );
+        case 1: {
+            GenericValue GV;
+            GV.PointerVal = 0;
+            GV.IntVal = APInt(3, 0); // XXX hack.
+            return GV;
+        }
     }
     assert_die();
 }
