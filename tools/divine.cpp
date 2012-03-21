@@ -624,12 +624,16 @@ struct Main {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
 #endif
             }
+#ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".probdve" ) ) {
             report->generator = "ProbDVE";
             return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyProbDve >, Stats >();
+#endif
         } else if ( str::endsWith( config.input, ".compact" ) ) {
             report->generator = "Compact";
+#ifndef O_SMALL
             if ( m_run == RunProbabilistic ) return runProbabilistic();
+#endif
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
 #ifndef O_SMALL
         } else if ( str::endsWith( config.input, ".coin" ) ) {
@@ -673,6 +677,7 @@ struct Main {
         die( "FATAL: Internal error choosing generator." );
     }
 
+#ifndef O_SMALL
     Result runProbabilistic() {
         report->algorithm = "Probabilistic";
         try {
@@ -691,6 +696,7 @@ struct Main {
             die( std::string( "FATAL: " ) + s );
         }
     }
+#endif
 
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
