@@ -178,6 +178,9 @@ public:
      */
     std::string showNode(Node compressed_state);
 
+    /// currently only dummy method
+    std::string showTransition( Node from, Node to );
+
     /**
      * Initializes the generator using the given file
      *

@@ -363,6 +363,11 @@ struct Compact : public Common< Blob > {
         return stream.str();
     }
 
+    /// currently only dummy method
+    std::string showTransition( Node from, Node to ) {
+        return "";
+    }
+
     /// How many states are handled by one peer based on number of peers peersCount
     unsigned getStatesPerPeer() {
         assert( peersCount );

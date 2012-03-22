@@ -186,6 +186,11 @@ struct Custom : public Common< Blob > {
             return "()";
     }
 
+    /// currently only dummy method
+    std::string showTransition( Node from, Node to ) {
+        return "";
+    }
+
     void release( Node s ) { s.free( pool() ); }
 };
 

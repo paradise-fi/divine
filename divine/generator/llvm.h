@@ -208,6 +208,11 @@ struct LLVM : Common< Blob > {
         return s;
     }
 
+    /// currently only dummy method
+    std::string showTransition( Node from, Node to ) {
+        return "";
+    }
+
     void die( std::string err ) __attribute__((noreturn)) {
         std::cerr << err << std::endl;
         exit( 1 );

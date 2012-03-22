@@ -204,6 +204,15 @@ struct LegacyCommon : Common< _State > {
         return o.str();
     }
 
+    std::string showTransition( State from, State to ) {
+        if ( !from.valid() || !to.valid() )
+            return "";
+        std::stringstream o;
+        legacy_system()->print_transition( this->alloc.legacy_state( from ),
+                                           this->alloc.legacy_state( to ), o );
+        return o.str();
+    }
+
     system_t *legacy_system() {
         if ( !m_system ) {
             m_system = new system_t;

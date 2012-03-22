@@ -271,6 +271,11 @@ std::string Coin::showNode(Node compressed_state) {
     return stream.str();
 }
 
+std::string Coin::showTransition( Node from, Node to )
+{
+    return "";
+}
+
 void Coin::packPrimitiveStates(vector<int> & packed_state, vector<int> & unpacked_state) {
     int j = 0;
     for(int i = 0; i < automata_size; i++) {

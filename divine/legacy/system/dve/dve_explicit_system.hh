@@ -170,6 +170,9 @@ public:
   DBG_print_state(state,outs);
  }
  
+ //!Implements explicit_system_t::print_transition() in DVE \sys
+ virtual void print_transition(state_t from, state_t to, std::ostream & outs = std::cout);
+
  //!Implements explicit_system_t::get_initial_state() in DVE \sys
  virtual state_t get_initial_state();
 

@@ -85,6 +85,11 @@ struct Dummy : Common< Blob > {
         return stream.str();
     }
 
+    /// currently only dummy method
+    std::string showTransition( Node from, Node to ) {
+        return "";
+    }
+
     void read( std::string ) {}
 };
 

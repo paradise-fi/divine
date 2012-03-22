@@ -1604,6 +1604,43 @@ enabled_trans_t * dve_explicit_system_t::new_enabled_trans() const
  return (new dve_enabled_trans_t);
 }
 
+void dve_explicit_system_t::print_transition(state_t from, state_t to,
+                                             std::ostream & outs)
+{
+    const dve_transition_t* transition = NULL;
+
+    enabled_trans_container_t enabled_trans(*this);
+    get_enabled_trans( from, enabled_trans );
+    state_t succ_state;
+
+    for ( size_int_t i=0; i != enabled_trans.size(); i++ ) {
+        //bool trans_err =
+        (void)get_async_enabled_trans_succ(from,enabled_trans[i],succ_state);
+        if (succ_state == to) {
+            transition = get_sending_or_normal_trans( enabled_trans[i] );
+            break;
+        }
+    }
+
+    if (transition == NULL) return;
+
+    std::string guard;
+    bool has_guard = transition->get_guard_string(guard);
+    if (has_guard)
+        outs << "guard: " << guard;
+
+    for (int i = 0; i < transition->get_effect_count(); i++) {
+        if (i == 0) {
+            if (has_guard)
+                outs << "; ";
+            outs << "effects: ";
+        } else {
+            outs << ", ";
+        }
+        outs << transition->get_effect(i)->to_string();
+    }
+}
+
 bool dve_explicit_system_t::violates_assertion(const state_t state) const
 {
  bool eval_err;

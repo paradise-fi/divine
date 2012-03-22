@@ -114,6 +114,9 @@ class bymoc_explicit_system_t : public explicit_system_t, public bymoc_system_t
  //!Implements explicit_system_t::print_state() in BYMOC \sys, but
  //! see also implementation specific notes below
  virtual void print_state(state_t state, std::ostream & outs = std::cout);
+ //!Implements explicit_system_t::print_transition() in BYMOC \sys
+ virtual void print_transition(state_t from, state_t to,
+                               std::ostream & outs = std::cout);
  //!Implements explicit_system_t::get_initial_state() in BYMOC \sys
  virtual state_t get_initial_state();
  //!Implements explicit_system_t::get_succs() in BYMOC \sys

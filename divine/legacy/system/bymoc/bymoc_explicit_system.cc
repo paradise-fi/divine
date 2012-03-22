@@ -70,6 +70,13 @@ void bymoc_explicit_system_t::print_state(state_t state,
 	outs << buf;
 }
 
+void bymoc_explicit_system_t::print_transition(state_t from, state_t to,
+                                               std::ostream & outs)
+{
+    // TODO
+    outs << "";
+}
+
 state_t bymoc_explicit_system_t::get_initial_state()
 {
  nipsvm_state_t *initial_state = nipsvm_initial_state (&nipsvm);
