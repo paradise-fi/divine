@@ -59,6 +59,7 @@ struct Queue {
     void dropEmptyHead() {
         assert( m_head.empty() && !m_queue.empty() );
         Statistics::global().dequeue( id, sizeof( m_queue.front() ) );
+        g.release( m_head.from() );
         m_head = g.successors( m_queue.front() );
         maybe_deadlock = true;
         m_queue.pop_front();
@@ -67,7 +68,7 @@ struct Queue {
     std::pair< Node, Node > next() {
         checkHead();
         assert ( !empty() );
-        return std::make_pair( m_head.from(), m_head.head() );
+        return std::make_pair( g.clone( m_head.from() ), m_head.head() );
     }
 
     bool empty() {
@@ -108,6 +109,7 @@ struct Stack {
 
     void popFinished() {
         assert( finished() );
+        g.release( m_stack.back().from() );
         m_stack.pop_back();
     }
 
@@ -132,7 +134,7 @@ struct Stack {
     std::pair< Node, Node > next() {
         assert( !empty() );
         clearFinished();
-        return std::make_pair( m_stack.back().from(), m_stack.back().head() );
+        return std::make_pair( g.clone( m_stack.back().from() ), m_stack.back().head() );
     }
 
     bool empty() {

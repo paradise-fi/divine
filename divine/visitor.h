@@ -144,6 +144,7 @@ struct Common {
         }
     }
 
+    // process an edge and free both nodes
     void edge( Node from, Node _to ) {
         TransitionAction tact;
         ExpansionAction eact = ExpandState;
@@ -177,11 +178,14 @@ struct Common {
              (tact == FollowTransition && !had) ) {
             eact = S::expansion( m_notify, to );
             if ( eact == ExpandState )
-                m_queue.pushSuccessors( to );
+                m_queue.pushSuccessors( m_graph.clone( to ) );
         }
 
-        if ( tact != IgnoreTransition )
-            m_graph.release( _to );
+        if ( tact != IgnoreTransition ) {
+            m_graph.release( to );
+            m_graph.release( from );
+        }
+        if ( had ) m_graph.release( _to ); // if 'to' was retrieved form table, there is no reference to '_to'
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
             terminate();

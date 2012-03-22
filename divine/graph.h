@@ -118,6 +118,12 @@ struct Transform {
         return copy;
     }
 
+    /// Makes a duplicate that can be released (permanent states are not duplicated)
+    Node clone( Node n ) {
+        assert( n.valid() );
+        return n.header().permanent ? n : copyState( n );
+    }
+
     /// Returns a position between 1 and n
     template< typename Alg >
     int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 )
