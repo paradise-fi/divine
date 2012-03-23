@@ -31,6 +31,7 @@ struct Custom : public Common< Blob > {
     typedef int (*dl_get_successor_t)(CustomSetup *, int, char *, char **);
     typedef bool (*dl_is_accepting_t)(CustomSetup *, char *);
     typedef char *(*dl_show_node_t)(CustomSetup *, char *);
+    typedef char *(*dl_show_transition_t)(CustomSetup *, char *, char *);
     typedef void (*dl_cache_successors_t)(CustomSetup *, SuccessorCache *);
 
     struct Dl {
@@ -39,11 +40,12 @@ struct Custom : public Common< Blob > {
         dl_get_successor_t get_successor;
         dl_is_accepting_t is_accepting;
         dl_show_node_t show_node;
+        dl_show_transition_t show_transition;
         dl_setup_t setup;
         dl_cache_successors_t cache_successors;
 
         Dl() : get_initial( 0 ), get_successor( 0 ), is_accepting( 0 ), show_node( 0 ),
-               setup( 0 ), cache_successors( 0 ) {}
+               show_transition( 0 ), setup( 0 ), cache_successors( 0 ) {}
     } dl;
 
     struct Successors {
@@ -182,9 +184,14 @@ struct Custom : public Common< Blob > {
             return "()";
     }
 
-    /// currently only dummy method
     std::string showTransition( Node from, Node to ) {
-        return "";
+        if ( dl.show_transition ) {
+            char *fmt = dl.show_transition( &setup, from.pointer(), to.pointer() );
+            std::string s( fmt );
+            ::free( fmt );
+            return s;
+        } else
+            return "";
     }
 
     void release( Node s ) { s.free( pool() ); }
