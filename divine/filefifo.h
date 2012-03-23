@@ -207,11 +207,11 @@ protected:
     }
 
     void closeFiles() {
-        for ( int i = 0; i < 2; i++ )
-            if ( files[ i ].is_open() ) {
+        for ( int i = 0; i < 2; i++ ) {
+            if ( files[ i ].is_open() )
                 files[ i ].close();
-                remove( fileName( i ).c_str() );
-            }
+            remove( fileName( i ).c_str() );
+        }
     }
 
     static void push32_ptr( std::vector< uint32_t > &vec, void *ptr ) {
@@ -279,28 +279,6 @@ protected:
     }
 
     bool write( Node *n ) {
-        static size_t reserve = NodeSize;   // to prevent unnecessary reallocation
-        std::vector< uint32_t > bfr;
-        bfr.reserve( reserve );
-        bfr.push_back( 0 ); // reserve space for length
-
-        for ( T *p = n->buffer; p != n->buffer + NodeSize; p++ ) {
-            intptr_t ptr = (intptr_t) p->first.pointer(); // save pointer to the first item
-
-            if ( p->second.header().permanent ) {   // permanent Blobs are not really freed when free is called
-                push32_ptr( bfr, (char*) ( ptr | 1 ) ); // use the least-significant bit of the pointer as a flag
-                push32_ptr( bfr, p->second.pointer() ); // save only pointers
-            } else {
-                push32_ptr( bfr, (char*) ptr );
-                // save and free second item
-                p->second.write32( std::back_inserter( bfr ) );
-                p->second.free( *dpool );
-            }
-        }
-
-        bfr.front() = bfr.size() - 1;   // store length
-        bfr.push_back( 0 ); // place zero into length field of next block to prevent reading that block
-
         if ( wfile == rfile && wpos != 0 ) {    // switch to the other file
             wfile = !wfile;
             wpos = 0;
@@ -313,17 +291,38 @@ protected:
             if ( !file.is_open() ) {
                 std::cerr << "WARNING: Opening file for fifo failed" << std::endl;
                 block = 0; // disable using files
+                return false;
             }
         }
+
+        static size_t reserve = NodeSize;   // to prevent unnecessary reallocation
+        std::vector< uint32_t > bfr;
+        bfr.reserve( reserve );
+        bfr.push_back( 0 ); // reserve space for length
+
+        for ( T *p = n->buffer; p != n->buffer + NodeSize; p++ ) {
+            p->first.write32( std::back_inserter( bfr ) );
+            p->second.write32( std::back_inserter( bfr ) );
+            // defer releasing items after successful write
+        }
+
+        bfr.front() = bfr.size() - 1;   // store length
+        bfr.push_back( 0 ); // place zero into length field of next block to prevent reading that block
 
         file.seekp( wpos );
         file.write( (char*) &bfr.front(), bfr.size()*4 );
         wpos += (bfr.size() - 1) * 4;
         if ( !file.good() ) {
-             std::cerr << "Writing FAILED" << std::endl;
-             abort();
+             std::cerr << "WARNING: Writing fifo to disk failed" << std::endl;
+             return false;
         }
         reserve = std::max( reserve, bfr.size() );
+
+        // actually release states
+        for ( T *p = n->buffer; p != n->buffer + NodeSize; p++ ) {
+            p->first.free( *dpool );
+            p->second.free( *dpool );
+        }
 
         return true;
     }
@@ -338,10 +337,12 @@ protected:
         uint32_t length = 0;
         file.read( (char*) &length, sizeof( length ) );
         if ( !file.good() ) {
-            std::cerr << "Reading FAILED" << std::endl;
+            std::cerr << "ERROR: Reading FAILED, aborting" << std::endl;
+            closeFiles();
             abort();
         }
         if ( length == 0 ) {   // end was reached, try the other file
+            files[ rfile ].close(); // we can close the  file to save space
             rfile = !rfile;
             rpos = 0;
             return read( n );
@@ -352,16 +353,8 @@ protected:
 
         std::vector< uint32_t >::const_iterator it = bfr.begin();
         while ( it != bfr.end() ) {
-            // load pointer
-            intptr_t ptr = (intptr_t) read32_ptr( it );
-            p->first = Blob( (char*) ( ptr & ~1 ) );
-
-            // load second element
-            if ( ptr & 1 )
-                p->second = Blob( read32_ptr( it ) );
-            else
-                it = p->second.read32( apool, it );
-
+            p->first.read32( apool, it );
+            p->second.read32( apool, it );
             p++;
         }
         assert( p == n->buffer + NodeSize );
