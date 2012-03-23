@@ -94,7 +94,7 @@ struct Main {
     OptionGroup *common, *drawing, *compact, *ce, *probabilistic, *probabilisticCommon, *reduce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
-    BoolOption *o_por, *o_fair;
+    BoolOption *o_por, *o_fair, *o_hashCompaction;
     BoolOption *o_noDeadlocks, *o_noGoals;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
@@ -283,6 +283,11 @@ struct Main {
         o_diskfifo = common->add< IntOption >(
             "disk-fifo", '\0', "disk-fifo", "",
             "save long queues on disk to reduce memory usage" );
+
+        o_hashCompaction = cmd_reachability->add< BoolOption >(
+            "hash-compaction", '\0', "hash-compaction", "",
+            "reduction of memory usage, may not discover a counter-example");
+
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
             "select a (non-default) property" );
@@ -469,6 +474,7 @@ struct Main {
         config.findBackEdges = o_findBackEdges->boolValue();
         config.findDeadlocks = !o_noDeadlocks->boolValue();
         config.findGoals = !o_noGoals->boolValue();
+        config.hashCompaction = o_hashCompaction->boolValue();
         statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */

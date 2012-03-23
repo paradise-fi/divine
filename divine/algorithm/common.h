@@ -36,10 +36,11 @@ struct Equal {
     int slack;
     Equal( int s = 0 ) : slack( s ) {}
     void setSlack( int s ) { slack = s; }
+    // setting slack to negative will cause all states considered equal (needed for hash compaction)
     inline hash_t operator()( Blob a, Blob b ) const {
         assert( a.valid() );
         assert( b.valid() );
-        return a.compare( b, slack, std::max( a.size(), b.size() ) ) == 0;
+        return ( slack < 0 ) || ( a.compare( b, slack, std::max( a.size(), b.size() ) ) == 0 );
     }
 };
 

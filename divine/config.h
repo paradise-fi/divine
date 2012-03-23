@@ -19,6 +19,7 @@ struct Config {
     // for reachability
     bool findDeadlocks;
     bool findGoals;
+    bool hashCompaction;
 
     std::string input;
     std::string trailFile, ceFile;

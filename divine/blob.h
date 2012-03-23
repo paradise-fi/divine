@@ -233,7 +233,7 @@ struct Blob
         return hash( 0, size() );
     }
 
-    hash_t hash( int from, int to ) const
+    hash_t hash( int from, int to, uint32_t salt = 0 ) const
     {
         uint32_t len;
         const char *ptr;
@@ -246,7 +246,7 @@ struct Blob
         ptr = data() + from;
         len = to - from;
 
-        return jenkins3( ptr, len, 0 );
+        return jenkins3( ptr, len, salt );
     }
 #endif
 
