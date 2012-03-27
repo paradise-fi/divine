@@ -353,8 +353,8 @@ protected:
 
         std::vector< uint32_t >::const_iterator it = bfr.begin();
         while ( it != bfr.end() ) {
-            p->first.read32( apool, it );
-            p->second.read32( apool, it );
+            it = p->first.read32( apool, it );
+            it = p->second.read32( apool, it );
             p++;
         }
         assert( p == n->buffer + NodeSize );
