@@ -26,7 +26,9 @@ struct SymContext : NS {
         size_t array:8;
         bool is_array:1;
         bool is_constant:1;
-        Item() : array( 1 ), is_array( false ), is_constant( false ) {}
+        bool is_compound:1;
+        Item() : array( 1 ), is_array( false ),
+                 is_constant( false ), is_compound( false ) {}
     };
 
     std::vector< Item > ids;
@@ -161,12 +163,14 @@ struct SymTab : NS {
         int width = decl.width;
 
         assert_leq( 1, width );
-        assert_leq( width, 4 );
+        if ( !decl.is_compound )
+            assert_leq( width, 4 );
 
         Symbol s = allocate( ns, decl.name, width * (decl.is_array ? decl.size : 1) );
         s.item().is_array = decl.is_array;
         s.item().width = width;
         s.item().array = decl.size;
+        s.item().is_compound = decl.is_compound;
         return s;
     }
 

@@ -157,6 +157,25 @@ struct Expression : Parser {
     Expression() : lhs( 0 ), rhs( 0 ), rval( 0 ) {}
 };
 
+struct ExpressionList : Parser {
+    std::vector< Expression > explist;
+    bool compound;
+    
+    ExpressionList( Context &c ) : Parser( c )
+    {
+        if ( next( Token::BlockOpen ) ) {
+                compound = true;
+                list< Expression >( std::back_inserter( explist ), Token::Comma );
+                eat( Token::BlockClose );
+            }
+            else
+                explist.push_back( Expression( context() ) );
+    }
+    
+    ExpressionList() {};
+    
+};
+
 inline void RValue::subscript() {
     eat( Token::IndexOpen );
     idx = new Expression( context() );
@@ -180,6 +199,24 @@ struct LValue : Parser {
     LValue() {}
 };
 
+struct LValueList: Parser {
+    std::vector< LValue > lvlist;
+    bool compound;
+    
+    LValueList( Context &c ) : Parser( c )
+    {
+        if ( next( Token::BlockOpen ) ) {
+                compound = true;
+                list< LValue >( std::back_inserter( lvlist ), Token::Comma );
+                eat( Token::BlockClose );
+            }
+            else
+                lvlist.push_back( LValue( context() ) );
+    }
+    
+    LValueList() {}
+};
+
 struct Assignment : Parser {
     LValue lhs;
     Expression rhs;
@@ -192,16 +229,17 @@ struct Assignment : Parser {
 
 struct SyncExpr : Parser {
     bool write;
+    bool compound;
     Identifier chan;
-    Expression expr;
-    LValue lval;
+    ExpressionList exprlist;
+    LValueList lvallist;
 
-    void lvalue() {
-        lval = LValue( context() );
+    void lvalues() {
+        lvallist = LValueList( context() );
     }
 
-    void expression() {
-        expr = Expression( context() );
+    void expressions() {
+        exprlist = ExpressionList( context() );
     }
 
     SyncExpr( Context &c ) : Parser( c ) {
@@ -214,22 +252,24 @@ struct SyncExpr : Parser {
             fail( "sync read/write mark: ! or ?" );
 
         if ( write )
-            maybe( &SyncExpr::expression );
+            maybe( &SyncExpr::expressions );
         else
-            maybe( &SyncExpr::lvalue );
+            maybe( &SyncExpr::lvalues );
     }
 
     SyncExpr() {}
 };
 
+
 /*
  * Never use this parser directly, only as an AST node. See Declarations.
  */
 struct Declaration : Parser {
-    bool is_const, is_chan;
+    bool is_const, is_chan, is_compound;
     int width; // bytes
     bool is_array;
     int size;
+    std::vector< int > components;
     std::vector< Expression > initial;
     std::string name;
 
@@ -261,6 +301,23 @@ struct Declaration : Parser {
     }
 };
 
+struct Type : Parser {
+    enum TypeSize { Byte = 1, Int = 2 };
+    TypeSize size;
+    
+    Type( Context &c ) : Parser( c ) {
+        if ( next( Token::Byte ) ) {
+            size = TypeSize::Byte;
+        }
+        else if ( next ( Token::Int ) ) {
+            size = TypeSize::Int;
+        }
+        else
+            fail( "type name (int, byte)" );
+    }
+};
+
+
 /*
  * This parses a compact (comma-separated) declaration with a common type but
  * multiple identifiers. Always use this production, and never declaration
@@ -270,11 +327,13 @@ struct Declaration : Parser {
 struct Declarations : Parser {
 
     std::vector< Declaration > decls;
+    std::vector< Type > types;
 
     Declarations( Context &c ) : Parser( c ) {
         bool is_const = false;
         bool is_chan = false;
-        int width = 1; // whatever.
+        bool is_compound = false;
+        int width = 2; // default for untyped channels
 
         if ( next( Token::Const ) )
             is_const = true;
@@ -285,6 +344,12 @@ struct Declarations : Parser {
             width = 1;
         else if ( next( Token::Channel ) ) {
             is_chan = true;
+            if ( next( Token::BlockOpen ) ) {
+                width = 0;
+                is_compound = true;
+                list< Type >( std::back_inserter( types ), Token::Comma );
+                eat( Token::BlockClose );
+            }
         } else
             fail( "type name (int, byte, channel)" );
 
@@ -292,6 +357,11 @@ struct Declarations : Parser {
         for ( unsigned i = 0; i < decls.size(); ++i ) {
             decls[i].is_const = is_const;
             decls[i].is_chan = is_chan;
+            decls[i].is_compound = is_compound;
+            for( unsigned j = 0; j < types.size(); ++j ) {
+                decls[i].components.push_back( types[i].size );
+                width += types[i].size;
+            }
             decls[i].width = width;
         }
         semicolon();

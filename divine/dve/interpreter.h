@@ -41,13 +41,38 @@ struct LValue {
     LValue() : _valid( false ) {}
 };
 
+struct LValueList {
+    std::vector< LValue > lvals;
+    bool _valid;
+    
+    bool valid() { return _valid; }
+    
+    template< typename T >
+    void set( EvalContext &ctx, std::vector< T > values, ErrorState &err ) {
+        auto lvals_it = lvals.begin();
+        for( auto it = values.begin(); it != values.end(); it++, lvals_it++ ) {
+            (*lvals_it).set( ctx, *it, err );
+        }
+    }
+    
+    LValueList( const SymTab &tab, parse::LValueList lvl )
+        : _valid( lvl.valid() )
+    {
+        for( auto lval = lvl.lvlist.begin(); lval != lvl.lvlist.end(); lval++ ) {
+            lvals.push_back( LValue(tab, *lval) );
+        }
+    }
+    
+    LValueList() : _valid( false ) {}
+};
+
 struct Transition {
     Symbol process;
     Symbol from, to;
 
     Symbol sync_channel;
-    LValue sync_lval;
-    Expression sync_expr;
+    LValueList sync_lval;
+    ExpressionList sync_expr;
 
     Transition *sync;
 
@@ -93,9 +118,9 @@ struct Transition {
         if ( t.syncexpr.valid() ) {
             sync_channel = sym.lookup( NS::Channel, t.syncexpr.chan );
             if ( t.syncexpr.write )
-                sync_expr = Expression( sym, t.syncexpr.expr );
-            else if ( t.syncexpr.lval.valid() )
-                sync_lval = LValue( sym, t.syncexpr.lval );
+                sync_expr = ExpressionList( sym, t.syncexpr.exprlist );
+            else if ( t.syncexpr.lvallist.valid() )
+                sync_lval = LValueList( sym, t.syncexpr.lvallist );
         }
     }
 };

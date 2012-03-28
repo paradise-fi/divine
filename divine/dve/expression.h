@@ -245,6 +245,34 @@ struct Expression {
     Expression() : _valid( false ) {}
 };
 
+struct ExpressionList {
+    std::vector< Expression > exprs;
+    bool _valid;
+    
+    bool valid() { return _valid; }
+    
+    std::vector< int > evaluate( EvalContext &ctx, ErrorState * err = 0 ) {
+        std::vector< int > retval;
+        retval.resize( exprs.size() );
+        auto retit = retval.begin();
+        for( auto it = exprs.begin(); it != exprs.end(); it++, retit++ ) {
+            assert( retit != retval.end() );
+            *retit = (*it).evaluate( ctx, err );
+        }
+        return retval;
+    }
+    
+    ExpressionList( const SymTab &tab, parse::ExpressionList explist )
+        : _valid( explist.valid() )
+    {
+        for( auto expr = explist.explist.begin(); expr != explist.explist.end(); expr++ ) {
+            exprs.push_back( Expression(tab, *expr) );
+        }
+    }
+    
+    ExpressionList() : _valid( false ) {}
+};
+
 }
 }
 
