@@ -88,6 +88,14 @@ static int pthread_create(pthread_t *ptid,
     return init != 1;
 }
 
+static void pthread_exit( void *v )
+{
+    int id = __divine_builtin_thread_id();
+    __tid[id].result = v;
+    __divine_builtin_mutex_unlock( &__tid[id].mutex );
+    __divine_builtin_thread_stop(); /* die */
+}
+
 const int PTHREAD_MUTEX_NORMAL = 0;
 const int PTHREAD_MUTEX_RECURSIVE = 1 << 25;
 const int PTHREAD_MUTEX_RECURSIVE_NP = PTHREAD_MUTEX_RECURSIVE; /* alias */
