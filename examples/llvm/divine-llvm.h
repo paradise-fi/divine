@@ -26,7 +26,9 @@ void *__divine_builtin_malloc( unsigned );
 void *__divine_builtin_malloc_guaranteed( unsigned );
 void __divine_builtin_free( void * );
 
-int __divine_builtin_thread_create( int * );
+void __divine_builtin_thread_create( int *,
+                                     void (*)(void *(*)(void *), int *tid, void *arg, volatile int *init),
+                                     void *(*)(void *), int *, void *, volatile int * );
 int __divine_builtin_thread_id();
 void __divine_builtin_thread_stop() __attribute__((noreturn));
 void __divine_builtin_mutex_lock( int * );
@@ -57,29 +59,33 @@ typedef struct {
 
 static const int MAXTHREAD = 8;
 static __Tid __tid[MAXTHREAD]; // TODO: externalize this so it is shared by all modules
+static pthread_mutex_t __tid_mutex;
+
+static void __pthread_entry(void *(*entry)(void *), pthread_t *tid, void *arg, volatile int *init)
+{
+    int id = *tid;
+    if (*tid == MAXTHREAD) {
+        trace("FATAL: Thread capacity exceeded.");
+        *init = 2;
+        __divine_builtin_thread_stop();
+    }
+
+    __divine_builtin_mutex_lock( &__tid[id].mutex );
+    *init = 1;
+    __tid[id].result = entry(arg);
+    __divine_builtin_mutex_unlock( &__tid[id].mutex );
+    __divine_builtin_thread_stop(); /* die */
+}
 
 static int pthread_create(pthread_t *ptid,
                           const pthread_attr_t *attr, /* TODO? */
                           void *(*entry)(void *), void *arg)
 {
-    int id;
-    int where = __divine_builtin_thread_create( &id );
-    if ( where == 0 ) { /* child */
-        __divine_builtin_mutex_lock( &__tid[id].mutex );
-        __tid[id].result = entry(arg);
-        __divine_builtin_mutex_unlock( &__tid[id].mutex );
-        __divine_builtin_thread_stop(); /* die */
-        return 0;
+    volatile int init = 0;
+    __divine_builtin_thread_create( ptid, __pthread_entry, entry, ptid, arg, &init );
 
-    } else {
-        if (id == MAXTHREAD) {
-            trace("FATAL: Thread capacity exceeded.");
-            return 1;
-        }
-
-        *ptid = id;
-        return 0;
-    }
+    while (!init); /* wait */
+    return init != 1;
 }
 
 const int PTHREAD_MUTEX_NORMAL = 0;

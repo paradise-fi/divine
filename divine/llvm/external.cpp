@@ -40,6 +40,7 @@ static GenericValue builtin_malloc_guaranteed(
     GenericValue GV;
     GV.PointerVal = reinterpret_cast< void * >( intptr_t( mem ) );
     GV.IntVal = APInt(3, 0); // XXX hack.
+
     return GV;
 }
 
@@ -101,14 +102,23 @@ static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType
     return GenericValue();
 }
 
+/*
+ * Sadly, the arguments passed through the external call are not fully
+ * initialised, and specifically DoubleVal may contain some random garbage (in
+ * the part not overlapped by PointerVal). You can't pass doubles to
+ * thread_create in the meantime.
+ */
+GenericValue _sanitize_gv(GenericValue v) {
+    GenericValue r = v;
+    r.DoubleVal = 0;
+    r.PointerVal = GVTOP(v);
+    return r;
+}
+
 static GenericValue builtin_thread_create(Interpreter *interp, const FunctionType *ty,
                                           const Args &args)
 {
     int *var = (int *) interp->dereferencePointer(args[0]);
-
-    GenericValue New, Old;
-    Old.IntVal = APInt( 32, 0 );
-    New.IntVal = APInt( 32, 1 );
 
     int old = interp->_context;
     int nieuw = interp->threads.size();
@@ -123,16 +133,15 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
     if (var)
         *var = new_tid;
 
-    // Fork off a new thread, as a clone of the current thread.
-    interp->threads.push_back( interp->thread( old ) );
-    interp->detach( interp->stack( nieuw ) );
+    interp->threads.push_back( ThreadContext() );
     interp->threads[ nieuw ].id = new_tid;
-
     interp->_context = nieuw; // switch to the new thread
-    // simulate a return in the new thread, yielding 0
-    interp->popStackAndReturnValueToCaller(ty->getReturnType(), Old);
+    std::vector<GenericValue> nargs;
+    std::transform( args.begin() + 2, args.end(), std::back_inserter( nargs ), _sanitize_gv );
+    interp->callFunction((Function*)GVTOP(args[1]), nargs);
+
     interp->_context = old;
-    return New; // and in the current thread, return 1 and continue as usual
+    return GenericValue();
 }
 
 static GenericValue builtin_thread_id(Interpreter *interp, const FunctionType *ty,

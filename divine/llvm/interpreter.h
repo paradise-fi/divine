@@ -261,25 +261,6 @@ public:
         return thread( c ).stack;
     }
 
-    void detach( std::vector< ExecutionContext > &s ) {
-        for ( std::vector< ExecutionContext >::iterator c = s.begin(); c != s.end(); ++c ) {
-            c->allocas.clear();
-            for ( ExecutionContext::Values::iterator i = c->values.begin();
-                  i != c->values.end(); ++i ) {
-                if ( i->second.IntVal.getBitWidth() == 2 ) { // this is an alloca, so let's clone it
-                    Arena::Index idx = intptr_t( GVTOP( i->second ) );
-                    int size = arena.size( idx );
-                    Arena::Index nieuw = arena.allocate( size );
-                    GenericValue newGV;
-                    i->second.PointerVal = reinterpret_cast< void * >( intptr_t( nieuw ) );
-                    i->second.IntVal = APInt(2, 0);
-                    c->allocas.push_back( nieuw );
-                    memcpy( arena.translate( nieuw ), arena.translate( idx ), size );
-                }
-            }
-        }
-    }
-
     Blob snapshot( int extra, Pool &p ) {
         int need = sizeof( int ) + sizeof( flags ) +
                    sizeof( int ) + globalmem.size();
