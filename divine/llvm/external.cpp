@@ -78,7 +78,7 @@ static GenericValue builtin_free(Interpreter *interp, const FunctionType *, cons
 static GenericValue builtin_mutex_lock(Interpreter *interp, const FunctionType *, const Args &args)
 {
     int *var = (int *) interp->dereferencePointer(args[0]);
-    if ((*var) & 0xFFFF)
+    if (((*var) & 0xFFFF) && ((*var) & 0xFFFF) != interp->thread().id)
         interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
     else {
         assert_leq( interp->thread().id, 0xFFFF );
