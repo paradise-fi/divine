@@ -42,11 +42,11 @@ void __divine_builtin_trace( const char *, ... );
 // TODO: global new & delete
 #endif
 
+typedef int pthread_t;
+typedef int pthread_attr_t;
+
 static int pthread_create(pthread_t *ptid, const pthread_attr_t *attr,
                           void *(*entry)(void *), void *arg) __attribute__((noinline));
-
-typedef int pthread_t;
-typedef void pthread_attr_t;
 
 typedef struct {
     void *result;
