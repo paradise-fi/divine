@@ -104,8 +104,11 @@ static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType
 static GenericValue builtin_thread_create(Interpreter *interp, const FunctionType *ty,
                                           const Args &args)
 {
+    int *var = (int *) interp->dereferencePointer(args[0]);
+
     GenericValue New, Old;
     Old.IntVal = APInt( 32, 0 );
+    New.IntVal = APInt( 32, 1 );
 
     int old = interp->_context;
     int nieuw = interp->threads.size();
@@ -117,17 +120,19 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
             if ( new_tid == interp->thread(i).id )
                 new_tid ++;
 
+    if (var)
+        *var = new_tid;
+
     // Fork off a new thread, as a clone of the current thread.
     interp->threads.push_back( interp->thread( old ) );
     interp->detach( interp->stack( nieuw ) );
     interp->threads[ nieuw ].id = new_tid;
-    New.IntVal = APInt( 32, new_tid );
 
     interp->_context = nieuw; // switch to the new thread
-    // simulate a return in the new thread, yielding 1
+    // simulate a return in the new thread, yielding 0
     interp->popStackAndReturnValueToCaller(ty->getReturnType(), Old);
     interp->_context = old;
-    return New; // and in the current thread, return 0 and continue as usual
+    return New; // and in the current thread, return 1 and continue as usual
 }
 
 static GenericValue builtin_thread_id(Interpreter *interp, const FunctionType *ty,
@@ -268,6 +273,7 @@ static struct {
     { "__divine_builtin_free", builtin_free },
     { "__divine_builtin_thread_create", builtin_thread_create },
     { "__divine_builtin_thread_stop", builtin_thread_stop },
+    { "__divine_builtin_thread_id", builtin_thread_id },
     { "__divine_builtin_mutex_lock", builtin_mutex_lock },
     { "__divine_builtin_mutex_unlock", builtin_mutex_unlock },
     { "__divine_builtin_fork", builtin_fork },

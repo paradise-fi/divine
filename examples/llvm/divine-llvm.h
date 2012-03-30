@@ -26,7 +26,7 @@ void *__divine_builtin_malloc( unsigned );
 void *__divine_builtin_malloc_guaranteed( unsigned );
 void __divine_builtin_free( void * );
 
-int __divine_builtin_thread_create();
+int __divine_builtin_thread_create( int * );
 int __divine_builtin_thread_id();
 void __divine_builtin_thread_stop() __attribute__((noreturn));
 void __divine_builtin_mutex_lock( int * );
@@ -44,13 +44,15 @@ void __divine_builtin_trace( const char *, ... );
 
 typedef int pthread_t;
 typedef int pthread_attr_t;
+typedef int pthread_mutexattr_t;
+typedef int pthread_mutex_t;
 
 static int pthread_create(pthread_t *ptid, const pthread_attr_t *attr,
                           void *(*entry)(void *), void *arg) __attribute__((noinline));
 
 typedef struct {
     void *result;
-    volatile bool done;
+    pthread_mutex_t mutex;
 } __Tid;
 
 static const int MAXTHREAD = 8;
@@ -60,12 +62,12 @@ static int pthread_create(pthread_t *ptid,
                           const pthread_attr_t *attr, /* TODO? */
                           void *(*entry)(void *), void *arg)
 {
-    int id = __divine_builtin_thread_create();
-    if ( id == 0 ) { /* child */
-        id = __divine_builtin_thread_id();
-        __tid[id].done = false;
+    int id;
+    int where = __divine_builtin_thread_create( &id );
+    if ( where == 0 ) { /* child */
+        __divine_builtin_mutex_lock( &__tid[id].mutex );
         __tid[id].result = entry(arg);
-        __tid[id].done = true;
+        __divine_builtin_mutex_unlock( &__tid[id].mutex );
         __divine_builtin_thread_stop(); /* die */
         return 0;
 
@@ -80,16 +82,14 @@ static int pthread_create(pthread_t *ptid,
     }
 }
 
-typedef int pthread_mutexattr_t;
-typedef int pthread_mutex_t;
-
 const int PTHREAD_MUTEX_NORMAL = 0;
 const int PTHREAD_MUTEX_RECURSIVE = 1 << 25;
 const int PTHREAD_MUTEX_RECURSIVE_NP = PTHREAD_MUTEX_RECURSIVE; /* alias */
 
 static int pthread_join(pthread_t ptid, void **x) {
-    while ( !__tid[ptid].done ) ;
+    __divine_builtin_mutex_lock( &__tid[ptid].mutex );
     *x = __tid[ptid].result;
+    __divine_builtin_mutex_unlock( &__tid[ptid].mutex );
     return 0;
 }
 
