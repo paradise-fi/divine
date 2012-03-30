@@ -126,6 +126,12 @@ static int pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attr
     return 0;
 }
 
+static int pthread_mutex_destroy( pthread_mutex_t *mutex )
+{
+    assert( !((*mutex) & 0xFFFF) ); // make sure the mutex is unlocked
+    return 0;
+}
+
 static int __mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     if ( !((*mutex) & PTHREAD_MUTEX_RECURSIVE) )
         return 0;
