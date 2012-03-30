@@ -1,6 +1,6 @@
 #ifdef DIVINE
 
-#ifndef __cplusplus__
+#ifndef __cplusplus
 #define NULL 0L
 typedef enum { true, false } bool; // well...
 #endif
@@ -17,7 +17,7 @@ typedef enum { true, false } bool; // well...
 #define ap __divine_builtin_ap
 #define trace __divine_builtin_trace
 
-#ifdef __cplusplus__
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -36,7 +36,7 @@ void __divine_builtin_assert( int );
 void __divine_builtin_ap( int );
 void __divine_builtin_trace( const char *, ... );
 
-#ifdef __cplusplus__
+#ifdef __cplusplus
 }
 
 // TODO: global new & delete
