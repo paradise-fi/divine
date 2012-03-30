@@ -98,7 +98,7 @@ std::string Interpreter::describeGenericValue( int vindex, GenericValue vvalue, 
 std::string Interpreter::describe() {
     std::stringstream s;
     DescribeSeen seen;
-    for ( int c = 0; c < stacks.size(); ++c ) {
+    for ( int c = 0; c < threads.size(); ++c ) {
         std::vector< std::string > vec;
 
         if ( stack( c ).back().lastpc ) {
@@ -126,10 +126,10 @@ std::string Interpreter::describe() {
             if ( !vdes.empty() )
                 vec.push_back( vdes );
         }
-        s << wibble::str::fmt( vec ) << std::endl;
+        s << thread( c ).id << ": " << wibble::str::fmt( vec ) << std::endl;
     }
 
-    if ( stacks.empty() )
+    if ( threads.empty() )
         s << "! EXIT" << std::endl;
 
     if ( flags.assert )

@@ -1199,11 +1199,12 @@ void Interpreter::callFunction(Function *F,
          * our own runtime (these may be nondeterministic), or, possibly (TODO)
          * into external, native library code  */
         GenericValue Result = callExternalFunction (F, ArgVals);
-        if ( SFat( -2 ).pc == SFat( -2 ).lastpc )
+        if ( stack().size() >= 2 && SFat( -2 ).pc == SFat( -2 ).lastpc )
             leave(); // this call was restarted, so do not alter anything
         else
             // Simulate a 'ret' instruction of the appropriate type.
             popStackAndReturnValueToCaller(F->getReturnType(), Result);
+
         return;
     } else { // a normal "call" instruction is deterministic
         assert_eq( _alternative, 0 );
@@ -1250,8 +1251,8 @@ void Interpreter::step( int ctx, int alternative ) {
 
     // remove the context if we are done with it
     if ( done( ctx ) ) {
-        assert( (stacks.begin() + ctx)->empty() );
-        stacks.erase( stacks.begin() + ctx );
+        assert( (threads.begin() + ctx)->stack.empty() );
+        threads.erase( threads.begin() + ctx );
     }
 }
 

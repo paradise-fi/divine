@@ -166,6 +166,11 @@ struct ExecutionContext {
     }
 };
 
+struct ThreadContext {
+    int id;
+    std::vector< ExecutionContext > stack;
+};
+
 // Interpreter - This class represents the entirety of the interpreter.
 //
 class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<Interpreter> {
@@ -183,9 +188,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     std::vector< char > globalmem;
 
 public:
-    // The runtime stack of executing code.  The top of the stack is the
-    // current function record.
-    std::vector< std::vector< ExecutionContext > > stacks;
+    std::vector< ThreadContext > threads;
     std::map< std::string, std::string > properties;
     Module *module;
 
@@ -247,11 +250,15 @@ public:
         return NULL;
     }
 
-    std::vector<ExecutionContext> &stack( int c = -1 ) {
+    ThreadContext &thread( int c = -1 ) {
         if ( c < 0 )
             c = _context;
-        assert_leq( c, stacks.size() - 1 );
-        return stacks[ c ];
+        assert_leq( c, threads.size() - 1 );
+        return threads[ c ];
+    }
+
+    std::vector<ExecutionContext> &stack( int c = -1 ) {
+        return thread( c ).stack;
     }
 
     void detach( std::vector< ExecutionContext > &s ) {
@@ -276,8 +283,8 @@ public:
     Blob snapshot( int extra, Pool &p ) {
         int need = sizeof( int ) + sizeof( flags ) +
                    sizeof( int ) + globalmem.size();
-        for ( int c = 0; c < stacks.size(); ++c ) {
-            need += 4;
+        for ( int c = 0; c < threads.size(); ++c ) {
+            need += 4 + 4; /* stack size & thread id */
             for ( int i = 0; i < stack( c ).size(); ++i )
                 need += SFat( i, c ).size();
         }
@@ -291,9 +298,10 @@ public:
         for ( int c = 0; c < globalmem.size(); ++ c ) // XXX inefficient
             offset = b.put( offset, globalmem[c] );
 
-        offset = b.put( offset, int( stacks.size() ) );
+        offset = b.put( offset, int( threads.size() ) );
 
-        for ( int c = 0; c < stacks.size(); ++c ) {
+        for ( int c = 0; c < threads.size(); ++c ) {
+            offset = b.put( offset, int( threads[c].id ) );
             offset = b.put( offset, int( stack( c ).size() ) );
 
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -305,7 +313,7 @@ public:
 
     void restore( Blob b, int extra ) {
         int contexts, globalsize;
-        int depth;
+        int depth, tid;
         int offset = extra;
 
         offset = b.get( offset, flags );
@@ -316,11 +324,13 @@ public:
             offset = b.get( offset, globalmem[c] );
 
         offset = b.get( offset, contexts );
-        stacks.resize( contexts );
+        threads.resize( contexts );
 
         for ( int c = 0; c < contexts; ++c ) {
+            offset = b.get( offset, tid );
             offset = b.get( offset, depth );
             stack( c ).resize( depth );
+            threads[c].id = tid;
             for ( int i = 0; i < depth; ++i )
                 offset = stack( c )[ i ].get( offset, b );
         }

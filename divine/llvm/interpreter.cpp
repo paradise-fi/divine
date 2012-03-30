@@ -36,7 +36,8 @@ Interpreter::Interpreter(Module *M)
   emitGlobals( M );
   buildIndex( M );
 
-  stacks.resize( 1 );
+  threads.resize( 1 );
+  thread( 0 ).id = 1;
   _context = 0;
   _alternative = 0;
   flags.assert = flags.null_dereference = flags.invalid_dereference = false;

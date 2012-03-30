@@ -78,10 +78,13 @@ static GenericValue builtin_free(Interpreter *interp, const FunctionType *, cons
 static GenericValue builtin_mutex_lock(Interpreter *interp, const FunctionType *, const Args &args)
 {
     int *var = (int *) interp->dereferencePointer(args[0]);
-    if (*var)
+    if ((*var) & 0xFFFF)
         interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
-    else
-        *var = interp->_context + 1;
+    else {
+        assert_leq( interp->thread().id, 0xFFFF );
+        (*var) &= ~0xFFFF;
+        (*var) |= interp->thread().id;
+    }
 
     return GenericValue();
 }
@@ -89,14 +92,11 @@ static GenericValue builtin_mutex_lock(Interpreter *interp, const FunctionType *
 static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType *, const Args &args)
 {
     int *var = (int *) interp->dereferencePointer(args[0]);
-    /* TODO: We would like to double-check that the thread doing the unlock is
-     * the same that did the lock. Sadly, the _context identifier might change
-     * in the meantime, if an older thread exits while we are inside the locked
-     * region. */
-    /* if ( *var != interp->_context + 1 ) // Wrong thread doing the unlock.
+
+    if ( ((*var) & 0xFFFF) != interp->thread().id ) { /* Wrong thread doing the unlock. */
         interp->flags.assert = true;
-    else */
-        *var = 0; // Unlock.
+    } else
+        *var &= ~0xFFFF; // Unlock.
 
     return GenericValue();
 }
@@ -105,21 +105,37 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
                                           const Args &args)
 {
     GenericValue New, Old;
-    New.IntVal = APInt( 32, 1 );
     Old.IntVal = APInt( 32, 0 );
 
     int old = interp->_context;
-    int nieuw = interp->stacks.size();
+    int nieuw = interp->threads.size();
+
+    int new_tid = 1;
+    // Silly O(n^2) lookup of the smallest unused tid.
+    for ( int x = 0; x < interp->threads.size(); ++x )
+        for ( int i = 0; i < interp->threads.size(); ++i )
+            if ( new_tid == interp->thread(i).id )
+                new_tid ++;
 
     // Fork off a new thread, as a clone of the current thread.
-    interp->stacks.push_back( interp->stack( old ) );
+    interp->threads.push_back( interp->thread( old ) );
     interp->detach( interp->stack( nieuw ) );
+    interp->threads[ nieuw ].id = new_tid;
+    New.IntVal = APInt( 32, new_tid );
 
     interp->_context = nieuw; // switch to the new thread
     // simulate a return in the new thread, yielding 1
-    interp->popStackAndReturnValueToCaller(ty->getReturnType(), New);
+    interp->popStackAndReturnValueToCaller(ty->getReturnType(), Old);
     interp->_context = old;
-    return Old; // and in the current thread, return 0 and continue as usual
+    return New; // and in the current thread, return 0 and continue as usual
+}
+
+static GenericValue builtin_thread_id(Interpreter *interp, const FunctionType *ty,
+                                      const Args &args)
+{
+    GenericValue id;
+    id.IntVal = APInt( 32, interp->thread().id );
+    return id;
 }
 
 static GenericValue builtin_thread_stop(Interpreter *interp, const FunctionType *ty,
@@ -260,15 +276,9 @@ static struct {
 
 Builtin findBuiltin( Function *F ) {
     std::string plain = F->getNameStr();
-    std::string divine = "__divine_builtin_" + plain;
 
     for ( int i = 0; builtins[i].name; ++i ) {
         if ( plain == builtins[i].name )
-            return builtins[i].fun;
-    }
-
-    for ( int i = 0; builtins[i].name; ++i ) {
-        if ( divine == builtins[i].name )
             return builtins[i].fun;
     }
 
@@ -290,7 +300,7 @@ bool Interpreter::viable( int ctx, int alt )
 {
     _context = ctx;
 
-    if ( _context >= stacks.size() )
+    if ( _context >= threads.size() )
         return false;
     if ( done( ctx ) )
         return false;
@@ -332,7 +342,7 @@ bool Interpreter::isTau( int ctx )
 {
     _context = ctx;
 
-    if ( _context >= stacks.size() )
+    if ( _context >= threads.size() )
         return false;
     if ( done( ctx ) )
         return false;
