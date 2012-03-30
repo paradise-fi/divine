@@ -79,15 +79,22 @@ static GenericValue builtin_free(Interpreter *interp, const FunctionType *, cons
 static GenericValue builtin_mutex_lock(Interpreter *interp, const FunctionType *, const Args &args)
 {
     int *var = (int *) interp->dereferencePointer(args[0]);
-    if (((*var) & 0xFFFF) && ((*var) & 0xFFFF) != interp->thread().id)
-        interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
-    else {
+    int wait = args[1].IntVal.getZExtValue();
+    GenericValue ret;
+    ret.IntVal = APInt( 32, 1 );
+
+    if (((*var) & 0xFFFF) && ((*var) & 0xFFFF) != interp->thread().id) {
+        if ( wait )
+            interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
+        else
+            ret.IntVal = APInt( 32, 0 );
+    } else {
         assert_leq( interp->thread().id, 0xFFFF );
         (*var) &= ~0xFFFF;
         (*var) |= interp->thread().id;
     }
 
-    return GenericValue();
+    return ret;
 }
 
 static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType *, const Args &args)

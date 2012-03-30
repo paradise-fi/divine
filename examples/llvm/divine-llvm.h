@@ -31,7 +31,7 @@ void __divine_builtin_thread_create( int *,
                                      void *(*)(void *), int *, void *, volatile int * );
 int __divine_builtin_thread_id();
 void __divine_builtin_thread_stop() __attribute__((noreturn));
-void __divine_builtin_mutex_lock( int * );
+int __divine_builtin_mutex_lock( int *, int );
 void __divine_builtin_mutex_unlock( int * );
 
 void __divine_builtin_assert( int );
@@ -70,7 +70,7 @@ static void __pthread_entry(void *(*entry)(void *), pthread_t *tid, void *arg, v
         __divine_builtin_thread_stop();
     }
 
-    __divine_builtin_mutex_lock( &__tid[id].mutex );
+    __divine_builtin_mutex_lock( &__tid[id].mutex, 1 );
     *init = 1;
     __tid[id].result = entry(arg);
     __divine_builtin_mutex_unlock( &__tid[id].mutex );
@@ -101,7 +101,7 @@ const int PTHREAD_MUTEX_RECURSIVE = 1 << 25;
 const int PTHREAD_MUTEX_RECURSIVE_NP = PTHREAD_MUTEX_RECURSIVE; /* alias */
 
 static int pthread_join(pthread_t ptid, void **x) {
-    __divine_builtin_mutex_lock( &__tid[ptid].mutex );
+    __divine_builtin_mutex_lock( &__tid[ptid].mutex, 1 );
     *x = __tid[ptid].result;
     __divine_builtin_mutex_unlock( &__tid[ptid].mutex );
     return 0;
@@ -144,12 +144,21 @@ static int __mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return count;
 }
 
-static int pthread_mutex_lock( pthread_mutex_t *mutex ) {
+static int __mutex_lock( pthread_mutex_t *mutex, int wait ) {
     int previous = (*mutex) & 0xFFFF;
-    __divine_builtin_mutex_lock( mutex );
+    if (!__divine_builtin_mutex_lock( mutex, wait ))
+        return 0;
     if (!__mutex_adjust_count( mutex, 1 )) /* a non-recursive mutex */
         assert( ((*mutex) & 0xFFFF) != previous );
-    return 0;
+    return 1; // success
+}
+
+static int pthread_mutex_lock( pthread_mutex_t *mutex ) {
+    return !__mutex_lock( mutex, 1 ); // 0 = success
+}
+
+static int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
+    return !__mutex_lock( mutex, 0 ); // 0 = success
 }
 
 static int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
