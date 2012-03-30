@@ -40,11 +40,14 @@ namespace divine {
 struct Result
 {
     enum R { Yes, No, Unknown };
-    R ltlPropertyHolds, fullyExplored;
+    enum T { NoCE, Cycle, Deadlock, Goal };
+    R propertyHolds, fullyExplored;
+    T ceType;
     uint64_t visited, expanded, deadlocks, transitions;
     std::string iniTrail, cycleTrail;
     Result() :
-        ltlPropertyHolds( Unknown ), fullyExplored( Unknown ),
+        propertyHolds( Unknown ), fullyExplored( Unknown ),
+        ceType( NoCE ),
         visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ),
         iniTrail( "-" ), cycleTrail( "-" )
     {}
@@ -235,6 +238,15 @@ struct Report
         return std::string( str.str(), 0, str.str().length() - 2 );
     }
 
+    std::string ceTypeString( Result::T t ) {
+        switch (t) {
+            case Result::NoCE: return "none";
+            case Result::Goal: return "goal";
+            case Result::Cycle: return "cycle";
+            case Result::Deadlock: return "deadlock";
+        }
+    }
+
     static void about( std::ostream &o ) {
         o << "Version: " << versionString() << std::endl;
         o << "Build-Date: " << buildDateString() << std::endl;
@@ -298,7 +310,7 @@ struct Report
         o << "Termination-Signal: " << sig << std::endl;
         o << std::endl;
         o << "Finished: " << (m_finished ? "Yes" : "No") << std::endl;
-        o << "LTL-Property-Holds: " << res.ltlPropertyHolds << std::endl;
+        o << "Property-Holds: " << res.propertyHolds << std::endl;
         o << "Full-State-Space: " << res.fullyExplored << std::endl;
         o << std::endl;
         o << "States-Visited: " << res.visited << std::endl;
@@ -306,8 +318,9 @@ struct Report
         o << "Transition-Count: " << res.transitions << std::endl;
         o << "Deadlock-Count: " << res.deadlocks << std::endl;
         o << std::endl;
-        o << "Trail-Init: " << res.iniTrail << std::endl;
-        o << "Trail-Cycle: " << res.cycleTrail << std::endl;
+        o << "CE-Type: " << ceTypeString( res.ceType ) << std::endl;
+        o << "CE-Init: " << res.iniTrail << std::endl;
+        o << "CE-Cycle: " << res.cycleTrail << std::endl;
     }
 };
 

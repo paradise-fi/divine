@@ -75,6 +75,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         ce.generateLinear( *this, g, ce_stack );
         ce.generateLasso( *this, g, ce_lasso );
         progress() << "done" << std::endl;
+        result().ceType = Result::Cycle;
     }
 
     // this is the entrypoint for full expansion... I know the name isn't best,
@@ -118,7 +119,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
 
         stats.updateResult( result() );
-        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().propertyHolds = valid ? Result::Yes : Result::No;
         result().fullyExplored = valid ? Result::Yes : Result::No;
         return result();
     }

@@ -550,10 +550,12 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         bool valid = cycleFound() ? false : ( shared.size == 0 );
         livenessBanner( valid );
 
-        if ( want_ce && !valid )
+        if ( want_ce && !valid ) {
             counterexample();
+            result().ceType = Result::Cycle;
+        }
 
-        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().propertyHolds = valid ? Result::Yes : Result::No;
         return result();
     }
 

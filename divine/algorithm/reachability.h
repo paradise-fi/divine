@@ -230,10 +230,13 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         progress() << std::endl;
 
         safetyBanner( !goal.valid() );
-        if ( goal.valid() && !shared.hash_compaction )
+        if ( goal.valid() && !shared.hash_compaction ) {
             counterexample( goal );
+            result().ceType = deadlocked ? Result::Deadlock : Result::Goal;
+        }
 
-        result().fullyExplored = Result::Yes;
+        result().propertyHolds = goal.valid() ? Result::No : Result::Yes;
+        result().fullyExplored = goal.valid() ? Result::No : Result::Yes;
         shared.stats.updateResult( result() );
         return result();
     }

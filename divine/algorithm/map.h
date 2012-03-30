@@ -341,7 +341,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             ++ shared.iteration;
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
-        result().ltlPropertyHolds = valid ? Result::Yes : Result::No;
+        result().propertyHolds = valid ? Result::Yes : Result::No;
 
         livenessBanner( valid );
 
@@ -352,6 +352,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
             progress() << "done" << std::endl;
+            result().ceType = Result::Cycle;
         }
 
         return result();
