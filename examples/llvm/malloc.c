@@ -1,5 +1,7 @@
+#include "divine-llvm.h"
+
 int main() {
-    char *str;
+    void *str;
  restart:
     str = malloc( 10 );
     if ( str ) {

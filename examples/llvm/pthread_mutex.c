@@ -10,7 +10,7 @@ void critical() {
 }
 
 void *other(void *x) {
-    pthread_mutex_t *mutex = x;
+    pthread_mutex_t *mutex = (pthread_mutex_t*) x;
     pthread_mutex_lock( mutex );
     critical();
     pthread_mutex_unlock( mutex );

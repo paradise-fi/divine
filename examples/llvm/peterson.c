@@ -31,8 +31,9 @@ LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
 /* TODO: progress fails due to lack of fairness */
 LTL(exclusion, G(!(critical1 && critical2))); // OK
 
-void thread( struct p *p ) __attribute__((noinline));
-void thread( struct p *p ) {
+void * thread( void *in ) __attribute__((noinline));
+void * thread( void *in ) {
+	struct p* p = (struct p*) in;
 #ifdef BUG
     p->s->flag[p->id] = 0;
 #else // correct
@@ -49,13 +50,14 @@ void thread( struct p *p ) {
     p->s->in_critical[p->id] = 0;
 
     p->s->flag[p->id] = 0;
-
+    
+    return NULL;
 }
 
 int main() {
-    struct state *s = malloc( sizeof( struct state ) );
-    struct p *one = malloc( sizeof( struct p ) ),
-             *two = malloc( sizeof( struct p ) );
+    struct state *s = (struct state *) malloc( sizeof( struct state ) );
+    struct p *one = (struct p*) malloc( sizeof( struct p ) ),
+             *two = (struct p*) malloc( sizeof( struct p ) );
     if (!s || !one || !two)
         return 1;
 

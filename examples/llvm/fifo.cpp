@@ -27,13 +27,7 @@
  * manually for now.
  */
 
-extern "C" void *malloc( int );
-extern "C" void *malloc_guaranteed( int );
-extern "C" void free( void * );
-extern "C" int thread_create();
-extern "C" void assert( int );
-extern "C" void trace( const char *, ... );
-
+#include "divine-llvm.h"
 const int cacheLine = 64;
 
 /**
@@ -169,28 +163,41 @@ public:
     }
 };
 
-void threads( Fifo< int > *f ) {
-    int id = thread_create();
-    if ( id ) {
-        for ( int i = 0; i < 3; ++i )
-            f->push( i );
-        while( true );
-    } else {
-        for ( int i = 0; i < 3; ++i ) {
-            int j = f->front( true );
-            assert( i == j );
-            assert( !f->empty() );
-            f->pop();
-        }
-        assert( f->empty() );
-        while ( true );
-    }
-}
+
+///////////////////////////////
+
+
+void * reader( void * in ) {
+   Fifo< int > * volatile f = (Fifo< int >*) in;
+   for ( int i = 0; i < 3; ++i ) {
+         int j = f->front( true );
+         assert( i == j );
+         assert( !f->empty() );
+         f->pop();
+	 if (i<2) assert (!f->empty() ); //should assert non-deterministically
+   }
+   assert( f->empty() );
+   while ( true );
+   return 0;
+};
+
+
+void * writer( void * in) {
+  Fifo< int > * volatile f = (Fifo< int >*) in;
+   for ( int i = 0; i < 3; ++i )
+         f->push( i );
+   while( true );
+   return 0;
+};
+
 
 int main() {
     Fifo< int > f;
-    Fifo< int > * volatile _f = &f;
-    threads( _f );
+    void * r;
+    pthread_t p1,p2;
+    pthread_create(&p1,0,reader,&f);
+    pthread_create(&p2,0,writer,&f);
+    pthread_join(p1,&r);
+    pthread_join(p2,&r);
     return 0;
 }
-
