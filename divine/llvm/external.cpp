@@ -145,7 +145,7 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
     interp->_context = nieuw; // switch to the new thread
     std::vector<GenericValue> nargs;
     std::transform( args.begin() + 2, args.end(), std::back_inserter( nargs ), _sanitize_gv );
-    interp->callFunction((Function*)GVTOP(args[1]), nargs);
+    interp->callFunction(interp->functionIndex.right(int(GVTOP(args[1]))), nargs);
 
     interp->_context = old;
     return GenericValue();

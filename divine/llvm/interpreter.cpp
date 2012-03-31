@@ -82,6 +82,7 @@ void Interpreter::buildIndex( Module *module ) {
     int i = 0;
     locationIndex.insert( i++, Location( 0, 0, 0 ) );
     for ( Module::iterator function = module->begin(); function != module->end(); ++function ) {
+        functionIndex.insert( i++, &*function );
         for ( Function::iterator block = function->begin(); block != function->end(); ++block ) {
             BasicBlock::iterator insn;
             for ( insn = block->begin(); insn != block->end(); ++insn ) {

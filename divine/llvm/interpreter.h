@@ -188,6 +188,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     std::vector< char > globalmem;
 
 public:
+    BiMap< int, Function * > functionIndex;
     std::vector< ThreadContext > threads;
     std::map< std::string, std::string > properties;
     Module *module;
@@ -422,7 +423,7 @@ private:  // Helper functions
   //
   void SwitchToNewBasicBlock(BasicBlock *Dest, ExecutionContext &SF);
 
-  void *getPointerToFunction(Function *F) { return (void*)F; }
+    void *getPointerToFunction(Function *F) { return (void *) functionIndex.left(F); }
   void *getPointerToBasicBlock(BasicBlock *BB) { return (void*)BB; }
 
   void initializeExecutionEngine() { }

@@ -38,14 +38,17 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, void *where, Desc
 }
 
 std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen ) {
-    std::string res = "*" + wibble::str::fmt( (void*) idx );
+    std::string ptr = "*" + wibble::str::fmt( (void*) idx );
+    std::string res;
     if ( idx ) {
         Type *pointeeTy = cast< PointerType >( t )->getElementType();
-        if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
-            res += " <...>";
+        if ( isa< FunctionType >( pointeeTy ) ) {
+            res = "@" + functionIndex.right( idx )->getNameStr();
+        } else if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
+            res = ptr + " <...>";
         } else {
             Describe pointee = describeValue( pointeeTy, arena.translate( idx ), seen );
-            res += " " + pointee.first;
+            res = ptr + " " + pointee.first;
             seen.insert( std::make_pair( idx, pointeeTy ) );
         }
     }
