@@ -25,10 +25,10 @@ struct Arena {
     static const size_t BB = 10;
 
     struct Index {
-        unsigned __align:7;
+        uint32_t __align:7;
         bool valid:1;
-        unsigned block:8;
-        unsigned i:16; /* this is in bytes, so that pointer arithmetic &c. works */
+        uint32_t block:8;
+        uint32_t i:16; /* this is in bytes, so that pointer arithmetic &c. works */
 
         // to/from a pointer-like object
         operator intptr_t() {
@@ -64,7 +64,9 @@ struct Arena {
             return data[ i * (size / 4) ];
         }
 
-        Block() {
+        Block() : unit( 0 ) {}
+
+        Block( int unit ) : unit( unit ) {
             for ( int i = 0; i < BS / sizeof(word); ++i )
                 data[ i ] = 0;
         }
@@ -75,9 +77,8 @@ struct Arena {
 
     void newBlock( int size ) {
         assert( size % 4 == 0 );
-        blocks.push_back( Block() );
+        blocks.push_back( Block( size ) );
         Block &g = blocks.back();
-        g.unit = size;
         int current = sizes[ size ] = blocks.size();
         int slots = BS / size;
         g.free = Index( current, 0 );
