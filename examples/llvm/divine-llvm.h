@@ -73,7 +73,8 @@ int pthread_join(pthread_t ptid, void **x) {
 #else // (NOT DIVINE)
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdio.h>
+#include <stdio.h> 
+#include <stdlib.h>
 #include "assert.h"
 
 /* compatibility for native execution */
@@ -89,6 +90,7 @@ void *malloc_guaranteed( unsigned x ) {
     return malloc( x );
 }
 
+#define ap(x)
 #define LTL(name, x)
 
 #endif
