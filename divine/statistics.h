@@ -196,24 +196,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     }
 
     static int memUsed() {
-        int vmsz = 0;
-#ifdef __linux
-        std::stringstream file;
-        file << "/proc/" << uint64_t( getpid() ) << "/status";
-        wibble::ERegexp r( "VmSize:[\t ]*([0-9]+)", 2 );
-        if ( divine::Report::matchLine( file.str(), r ) ) {
-            vmsz = atoi( r[1].c_str() );
-        }
-#endif
-  
-#ifdef _WIN32
-    HANDLE hProcess = GetCurrentProcess();
-    PROCESS_MEMORY_COUNTERS pmc;
-    if (hProcess != NULL && GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
-      vmsz = pmc.WorkingSetSize/(1024);
-    CloseHandle(hProcess);
-#endif
-        return vmsz;
+        sysinfo::Info i;
+        return i.peakVmSize();
     }
     
 

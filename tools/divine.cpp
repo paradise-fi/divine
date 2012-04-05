@@ -10,7 +10,7 @@
 #include <wibble/sfinae.h>
 #include <wibble/sys/fs.h>
 
-#include <divine/config.h>
+#include <divine/meta.h>
 #include <divine/generator/common.h>
 #include <divine/generator/dummy.h>
 #include <divine/generator/legacy.h>
@@ -51,14 +51,16 @@ using namespace commandline;
 
 namespace divine {
 
-Report *report = 0;
+Report *_report = 0;
 
 void handler( int s ) {
     signal( s, SIG_DFL );
+
+    sysinfo::Info i;
     Output::output().cleanup();
-    if ( report ) {
-        report->signal( s );
-        report->final( std::cout );
+    if (_report) {
+        _report->signal( s );
+        _report->final( std::cout );
     }
     raise( s );
 }
@@ -67,7 +69,7 @@ template< typename G >
 struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 {
     G g;
-    Result run() {
+    void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
         Props props;
         g.getProperties( std::back_inserter( props ) );
@@ -75,19 +77,17 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         for ( int i = 0; i < props.size(); ++i )
             std::cout << " " << i + 1 << ") "
                       << props[i].first << ": " << props[i].second << std::endl;
-        return Result();
     }
 
-    Info( Config *c ) : Algorithm( c ) {
+    Info( Meta *m ) : Algorithm( m ) {
         this->initPeer( &g, 0 ); // XXX icky
     }
 };
 
 struct Main {
-    Config config;
-    DrawConfig drawConfig;
     Output *output;
-    Report *report;
+    Report report;
+    Meta meta;
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_probabilistic, *cmd_info;
@@ -118,7 +118,7 @@ struct Main {
     Compile compile;
 
     Main( int _argc, const char **_argv )
-        : report( 0 ),
+        : report( meta ),
           dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
@@ -135,11 +135,8 @@ struct Main {
             return;
         }
 
-        Report rep( config );
-        report = &rep;
         if ( o_report->boolValue() )
-            ::report = &rep;
-        Result res;
+            _report = &report;
 
         if ( o_gnuplot->boolValue() ) {
             Statistics::global().gnuplot = true;
@@ -148,18 +145,18 @@ struct Main {
 
 #ifdef O_PERFORMANCE
         if ( statistics )
-            res = selectGraph< Statistics >();
+            selectGraph< Statistics >();
         else
-            res = selectGraph< NoStatistics >();
+            selectGraph< NoStatistics >();
 #else
-        res = selectGraph< Statistics >();
+        selectGraph< Statistics >();
 #endif
-        rep.finished( res );
+        report.finished();
         if ( statistics )
             Statistics::global().snapshot();
         Output::output().cleanup();
         if ( o_report->boolValue() )
-            rep.final( std::cout );
+            report.final( std::cout );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -432,8 +429,11 @@ struct Main {
 
         try {
             if ( opts.parse( argc, argv ) ) {
-                if ( opts.version->boolValue() )
-                    Report::about( std::cout ); // print extra version info
+                if ( opts.version->boolValue() ) {
+                    sysinfo::Info i;
+                    std::cout << BuildInfo();
+                    std::cout << "Architecture: " << i.architecture() << std::endl;
+                }
                 exit( 0 ); // built-in command executed
             }
 
@@ -464,34 +464,33 @@ struct Main {
             die( "FATAL: no command specified" );
 
         if ( o_workers->boolValue() )
-            config.workers = o_workers->intValue();
+            meta.execution.workers = o_workers->intValue();
         // else default (currently set to 2)
 
-        config.input = input;
-        config.property = o_property->stringValue();
-        config.wantCe = !o_noCe->boolValue();
-        config.textFormat = o_textFormat->boolValue();
-        config.findBackEdges = o_findBackEdges->boolValue();
-        config.findDeadlocks = !o_noDeadlocks->boolValue();
-        config.findGoals = !o_noGoals->boolValue();
-        config.hashCompaction = o_hashCompaction->boolValue();
-        statistics = o_statistics->boolValue();
+        meta.input.model = input;
+        meta.input.propertyName = o_property->stringValue();
+        meta.output.wantCe = !o_noCe->boolValue();
+        meta.output.textFormat = o_textFormat->boolValue();
+        meta.output.backEdges = o_findBackEdges->boolValue();
+        meta.algorithm.findDeadlocks = !o_noDeadlocks->boolValue();
+        meta.algorithm.findGoals = !o_noGoals->boolValue();
+        meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
+        meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
         if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )
-            config.wantCe = false;
+            meta.output.wantCe = false;
 
         // probabilistic options
-        config.onlyQualitative = o_onlyQualitative->boolValue();
-        config.iterativeOptimization = !o_disableIterativeOptimization->boolValue();
-        config.simpleOutput = o_simpleOutput->boolValue();
+        meta.algorithm.onlyQualitative = o_onlyQualitative->boolValue();
+        meta.algorithm.iterativeOptimization = !o_disableIterativeOptimization->boolValue();
+        meta.output.quiet = o_simpleOutput->boolValue();
 
-        drawConfig.maxDistance = o_distance->intValue();
-        drawConfig.output = o_output->stringValue();
-        drawConfig.render= o_render->stringValue();
-        drawConfig.labels = o_labels->boolValue();
-        drawConfig.traceLabels = o_traceLabels->boolValue();
-        drawConfig.drawTrace = o_drawTrace->stringValue();
+        meta.algorithm.maxDistance = o_distance->intValue();
+        meta.output.filterProgram = o_render->stringValue();
+        meta.algorithm.labels = o_labels->boolValue();
+        meta.algorithm.traceLabels = o_traceLabels->boolValue();
+        meta.input.trace = o_drawTrace->stringValue();
 
         setupLimits();
 
@@ -500,28 +499,22 @@ struct Main {
                 std::string t = std::string( input, 0,
                                              input.rfind( '.' ) );
                 t += ".trail";
-                config.trailFile = t;
+                meta.output.trailFile = t;
             } else
-                config.trailFile = o_trail->stringValue();
+                meta.output.trailFile = o_trail->stringValue();
         }
 
-        if ( o_compactOutput->stringValue() == "" ) {
-            config.compactFile = str::basename( input + ".compact" );
-        } else if ( o_compactOutput->stringValue() == "-" ) {
-            config.compactFile = "";
-        } else {
-            config.compactFile = o_compactOutput->stringValue();
-        }
+        meta.output.file = o_output->stringValue();
 
         if ( o_dispCe->boolValue() ) {
-            config.ceFile = "-";
+            meta.output.ceFile = "-";
         }
 
         if ( !dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         if ( opts.foundCommand() == cmd_draw ) {
-            config.workers = 1; // never runs in parallel
+            meta.execution.workers = 1; // never runs in parallel
             m_run = RunDraw;
         } else if ( opts.foundCommand() == cmd_info ) {
             m_run = RunInfo;
@@ -530,11 +523,11 @@ struct Main {
         } else if ( opts.foundCommand() == cmd_ndfs ) {
             m_run = RunNdfs;
             if ( !o_workers->boolValue() )
-                config.workers = 1;
+                meta.execution.workers = 1;
         } else if ( opts.foundCommand() == cmd_owcty )
             m_run = RunOwcty;
         else if ( opts.foundCommand() == cmd_reachability ) {
-            if ( !config.findGoals && !config.findDeadlocks )
+            if ( !meta.algorithm.findGoals && !meta.algorithm.findDeadlocks )
                 std::cerr << "WARNING: Both deadlock and goal detection is disabled."
                           << "Only state count " << std::endl << "statistics will be tracked "
                           << "(\"divine metrics\" would have been more efficient)." << std::endl;
@@ -543,26 +536,35 @@ struct Main {
             m_run = RunMap;
         else if ( opts.foundCommand() == cmd_metrics )
             m_run = RunMetrics;
-        else if ( opts.foundCommand() == cmd_compact )
+        else if ( opts.foundCommand() == cmd_compact ) {
+
+            if ( o_compactOutput->stringValue() == "" ) {
+                meta.output.file = str::basename( input + ".compact" );
+            } else if ( o_compactOutput->stringValue() == "-" ) {
+                meta.output.file = "";
+            } else {
+                meta.output.file = o_compactOutput->stringValue();
+            }
+
             m_run = RunCompact;
-        else if ( opts.foundCommand() == cmd_probabilistic )
+        } else if ( opts.foundCommand() == cmd_probabilistic )
             m_run = RunProbabilistic;
         else
             die( "FATAL: Internal error in commandline parser." );
 
-        config.initialTable = 1L << (o_initable->intValue());
+        meta.execution.initialTable = 1L << (o_initable->intValue());
         if (opts.foundCommand() != cmd_ndfs) // ndfs uses shared table
-            config.initialTable /= config.workers;
+            meta.execution.initialTable /= meta.execution.workers;
     }
 
     template< typename Graph, typename Stats >
-    Result selectAlgorithm()
+    void selectAlgorithm()
     {
         if ( m_run == RunVerify ) {
             Graph temp;
-            temp.read( config.input );
+            temp.read( meta.input.model );
 
-            if ( temp.propertyType() != generator::AC_None && config.workers > 1 )
+            if ( temp.propertyType() != generator::AC_None && meta.execution.workers > 1 )
                 m_run = RunOwcty;
             else {
                 if ( temp.propertyType() != generator::AC_None )
@@ -574,31 +576,31 @@ struct Main {
 
         switch ( m_run ) {
             case RunDraw:
-                report->algorithm = "Draw";
+                meta.algorithm.name = "Draw";
                 return run< Draw< Graph >, Stats >();
             case RunInfo:
-                report->algorithm = "Info";
+                meta.algorithm.name = "Info";
                 return run< Info< Graph >, Stats >();
             case RunReachability:
-                report->algorithm = "Reachability";
+                meta.algorithm.name = "Reachability";
                 return run< algorithm::Reachability< Graph, Stats >, Stats >();
             case RunMetrics:
-                report->algorithm = "Metrics";
+                meta.algorithm.name = "Metrics";
                 return run< algorithm::Metrics< Graph, Stats >, Stats >();
             case RunOwcty:
-                report->algorithm = "OWCTY";
+                meta.algorithm.name = "OWCTY";
                 return run< algorithm::Owcty< Graph, Stats >, Stats >();
 #ifndef O_SMALL
             case RunMap:
-                report->algorithm = "MAP";
+                meta.algorithm.name = "MAP";
                 return run< algorithm::Map< Graph, Stats >, Stats >();
 #endif
             case RunNdfs:
-                report->algorithm = "Nested DFS";
+                meta.algorithm.name = "Nested DFS";
                 return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
 #ifndef O_SMALL
             case RunCompact:
-                report->algorithm = "Compact";
+                meta.algorithm.name = "Compact";
                 return run< algorithm::Compact< Graph, Stats >, Stats >();
 #endif
             default:
@@ -607,19 +609,19 @@ struct Main {
     }
 
     template< typename Stats >
-    Result selectGraph()
+    void selectGraph()
     {
-        if ( str::endsWith( config.input, ".dve" ) ) {
-            report->generator = "DVE";
+        if ( str::endsWith( meta.input.model, ".dve" ) ) {
+            meta.input.modelType = "DVE";
 #ifndef O_SMALL
             if ( o_fair->boolValue() ) {
                 if ( o_por->boolValue() )
                     std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-                report->reductions.push_back( "FAIRNESS" );
+                meta.algorithm.transformations.push_back( "fairness" );
                 return selectAlgorithm< algorithm::FairGraph< generator::LegacyDve >, Stats >();
             }
             if ( o_por->boolValue() ) {
-                report->reductions.push_back( "POR" );
+                meta.algorithm.transformations.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::LegacyDve, Stats >, Stats >();
             } else
 #endif
@@ -631,21 +633,21 @@ struct Main {
 #endif
             }
 #ifndef O_SMALL
-        } else if ( str::endsWith( config.input, ".probdve" ) ) {
-            report->generator = "ProbDVE";
+        } else if ( str::endsWith( meta.input.model, ".probdve" ) ) {
+            meta.input.modelType = "ProbDVE";
             return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyProbDve >, Stats >();
 #endif
-        } else if ( str::endsWith( config.input, ".compact" ) ) {
-            report->generator = "Compact";
+        } else if ( str::endsWith( meta.input.model, ".compact" ) ) {
+            meta.input.modelType = "Compact";
 #ifndef O_SMALL
             if ( m_run == RunProbabilistic ) return runProbabilistic();
 #endif
             return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
 #ifndef O_SMALL
-        } else if ( str::endsWith( config.input, ".coin" ) ) {
-	    report->generator = "CoIn";
+        } else if ( str::endsWith( meta.input.model, ".coin" ) ) {
+	    meta.input.modelType = "CoIn";
             if ( o_por->boolValue() ) {
-                report->reductions.push_back( "POR" );
+                meta.algorithm.transformations.push_back( "POR" );
                 return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();
             } else {
                 return selectAlgorithm< algorithm::NonPORGraph< generator::Coin >, Stats >();
@@ -653,10 +655,10 @@ struct Main {
 #endif
         } else if ( o_por->boolValue() ) {
             die( "FATAL: Partial order reduction is not supported for this input type." );
-        } else if ( str::endsWith( config.input, ".bc" ) ) {
-            report->generator = "LLVM";
+        } else if ( str::endsWith( meta.input.model, ".bc" ) ) {
+            meta.input.modelType = "LLVM";
 #ifdef O_LLVM
-            if ( config.workers > 1 && !::llvm::llvm_start_multithreaded() )
+            if ( meta.execution.workers > 1 && !::llvm::llvm_start_multithreaded() )
                 die( "FATAL: This binary is linked to single-threaded LLVM.\n"
                      "Multi-threaded LLVM is required for parallel algorithms." );
             return selectAlgorithm< algorithm::NonPORGraph< generator::LLVM >, Stats >();
@@ -665,16 +667,16 @@ struct Main {
 #endif
 
 #ifndef O_SMALL
-        } else if ( str::endsWith( config.input, ".b" ) ) {
-            report->generator = "NIPS";
+        } else if ( str::endsWith( meta.input.model, ".b" ) ) {
+            meta.input.modelType = "NIPS";
             return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyBymoc >, Stats >();
 #endif
-        } else if ( str::endsWith( config.input, ".so" ) ) {
-            report->generator = "Custom";
+        } else if ( str::endsWith( meta.input.model, ".so" ) ) {
+            meta.input.modelType = "CESMI";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
 #ifndef O_SMALL
         } else if ( dummygen ) {
-            report->generator = "Dummy";
+            meta.input.modelType = "dummy";
             return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
 #endif
         } else
@@ -684,18 +686,18 @@ struct Main {
     }
 
 #ifndef O_SMALL
-    Result runProbabilistic() {
-        report->algorithm = "Probabilistic";
+    void runProbabilistic() {
+        meta.algorithm.name = "Probabilistic";
         try {
-            assert( config.input.substr( config.input.rfind( '.' ) ) == ".compact" );
+            assert( meta.input.model.substr( meta.input.model.rfind( '.' ) ) == ".compact" );
 
-            algorithm::Probabilistic< algorithm::NonPORGraph< generator::Compact > > alg( &config );
+            algorithm::Probabilistic< algorithm::NonPORGraph< generator::Compact > > alg( &meta );
             alg.domain().mpi.init();
             alg.init( &alg.domain() );
             alg.domain().mpi.start();
-            report->mpiInfo( alg.domain().mpi );
+            report.mpiInfo( alg.domain().mpi );
 
-            return alg.run();
+            alg.run();
         } catch ( std::exception &e ) {
             die( std::string( "FATAL: " ) + e.what() );
         } catch ( const char* s ) {
@@ -705,7 +707,7 @@ struct Main {
 #endif
 
     template< typename Stats, typename T >
-    typename T::IsDomainWorker setupParallel( Preferred, Report *r, T &t ) {
+    typename T::IsDomainWorker setupParallel( Preferred, T &t ) {
         t.domain().mpi.init();
         t.init( &t.domain(), o_diskfifo->intValue() );
         if ( t.domain().mpi.master() )
@@ -714,12 +716,12 @@ struct Main {
         if ( statistics )
             Stats::global().start();
         t.domain().mpi.start();
-        report->mpiInfo( t.domain().mpi );
+        report.mpiInfo( t.domain().mpi );
         return wibble::Unit();
     }
 
     template< typename Stats, typename T >
-    wibble::Unit setupParallel( NotPreferred, Report *, T &t ) {
+    wibble::Unit setupParallel( NotPreferred, T &t ) {
         t.init();
         setupCurses();
         if ( statistics )
@@ -727,15 +729,12 @@ struct Main {
         return wibble::Unit();
     }
 
-    template< typename C >
-    C *configure() { assert_die(); }
-
     template< typename Algorithm, typename Stats >
-    Result run() {
+    void run() {
         try {
-            Algorithm alg( configure< typename Algorithm::Config >() );
-            setupParallel< Stats >( Preferred(), report, alg );
-            return alg.run();
+            Algorithm alg( &meta );
+            setupParallel< Stats >( Preferred(), alg );
+            alg.run();
         } catch (std::exception &e) {
             die( std::string( "FATAL: " ) + e.what() );
         }
@@ -749,12 +748,6 @@ struct Main {
     }
 
 };
-
-template<> Config *Main::configure() { return &config; }
-template<> DrawConfig *Main::configure() {
-    drawConfig.super = &config;
-    return &drawConfig;
-}
 
 }
 

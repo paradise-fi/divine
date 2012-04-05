@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 
 #include <divine/allocator.h>
+#include <divine/meta.h>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -41,7 +42,7 @@ struct Base {
         return o;
     }
 
-    void useProperty( std::string ) {}
+    void useProperty( meta::Input & ) {}
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
@@ -100,7 +101,7 @@ struct Transform {
         return base().getProperties( o );
     }
 
-    void useProperty( std::string n ) {
+    void useProperty( meta::Input &n ) {
         base().useProperty( n );
     }
 

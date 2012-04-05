@@ -2625,14 +2625,16 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 /* Main routines                                                */
 /****************************************************************/
 
-    Probabilistic( Config *c = 0 ) : Algorithm( c, sizeof( Extension ) ), lastId( 0 ), lp_started( false ), foundAEC( false ), initialInsideAEC( false ), lastSliceId( 0 ) {
-        if ( c ) {
+    Probabilistic( Meta *m = 0 ) :
+        Algorithm( m, sizeof( Extension ) ), lastId( 0 ), lp_started( false ), foundAEC( false ), initialInsideAEC( false ), lastSliceId( 0 )
+    {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
-            shared.onlyQualitative = c->onlyQualitative;
-            shared.iterativeOptimization = c->iterativeOptimization;
-            simpleOutput = c->simpleOutput;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
+            shared.onlyQualitative = m->algorithm.onlyQualitative;
+            shared.iterativeOptimization = m->algorithm.iterativeOptimization;
+            simpleOutput = m->output.quiet;
         }
     }
 
@@ -2649,7 +2651,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         return Algorithm::progress();
     }
 
-    Result run() {
+    void run() {
         if ( !shared.g.base().hasBackwardTransitions() ) throw "Compact model does not contain backward transitions.";
         if ( !shared.g.base().hasProbabilisticTransitions() ) throw "Compact model does not contain probabilistic transitions.";
 
@@ -2684,9 +2686,8 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             progress() << "." << std::endl;
         }
 
-        result().fullyExplored = Result::Yes;
-        shared.stats.updateResult( result() );
-        return result();
+        result().fullyExplored = meta::Result::Yes;
+        shared.stats.update( meta().statistics );
     }
 };
 

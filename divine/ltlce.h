@@ -186,9 +186,9 @@ struct LtlCE {
     }
 
     template < typename A >
-    std::ostream &o_ce( A &a ) { return filestream( _o_ce, a.config().ceFile ); }
+    std::ostream &o_ce( A &a ) { return filestream( _o_ce, a.meta().output.ceFile ); }
     template < typename A >
-    std::ostream &o_trail( A &a ) { return filestream( _o_trail, a.config().trailFile ); }
+    std::ostream &o_trail( A &a ) { return filestream( _o_trail, a.meta().output.trailFile ); }
 
     /// Generates traces; when numTrace is null, computes a numeric trace sequentially in a single thread
     template< typename Alg, typename T >

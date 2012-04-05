@@ -165,7 +165,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     void collect() {
         for ( int i = 0; i < domain().peers(); ++i )
             shared.stats.merge( domain().shared( i ).stats );
-        shared.stats.updateResult( result() );
+        shared.stats.update( meta().statistics );
         shared.stats = algorithm::Statistics< G >();
         for ( int i = 0; i < domain().peers(); ++ i ) {
             if ( shared.iteration == 1 )
@@ -321,7 +321,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         ce._traceCycle( *this, hasher, this->table() );
     }
 
-    Result run()
+    void run()
     {
         shared.iteration = 1;
         acceptingCount = eliminated = d_eliminated = expanded = 0;
@@ -341,7 +341,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             ++ shared.iteration;
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
-        result().propertyHolds = valid ? Result::Yes : Result::No;
+        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
 
         livenessBanner( valid );
 
@@ -352,19 +352,17 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             ce.setup( shared.g, shared );
             ce.lasso( domain(), *this );
             progress() << "done" << std::endl;
-            result().ceType = Result::Cycle;
+            result().ceType = meta::Result::Cycle;
         }
-
-        return result();
     }
 
-    Map( Config *c = 0 )
-        : Algorithm( c, sizeof( Extension ) )
+    Map( Meta *m = 0 )
+        : Algorithm( m, sizeof( Extension ) )
     {
-        if ( c ) {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
         }
     }
 

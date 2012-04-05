@@ -426,7 +426,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Copies contents of original model source file to the default output stream
         void copyOriginal() {
-            std::ifstream original( parent->m_config->input.c_str() );
+            std::ifstream original( parent->meta().input.model.c_str() );
             while ( !original.eof() ) {
                 char buf[ 4096 ];
                 original.read( buf, 4096 );
@@ -555,14 +555,14 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Separates the compact state space data from the original model
         void printBanner() {
-            const unsigned inputFilenameLength = alg().m_config->input.size();
+            std::string file = alg().meta().input.model;
             *this->out << std::endl;
             *this->out << "******************";
-            for ( unsigned i = 0; i < inputFilenameLength; i++ ) this->out->put( '*' );
+            for ( unsigned i = 0; i < file.size(); i++ ) this->out->put( '*' );
             *this->out << "**" << std::endl;
-            *this->out << "* Original model: " << alg().m_config->input << " *" << std::endl;
+            *this->out << "* Original model: " << file << " *" << std::endl;
             *this->out << "******************";
-            for ( unsigned i = 0; i < inputFilenameLength; i++ ) this->out->put( '*' );
+            for ( unsigned i = 0; i < file.size(); i++ ) this->out->put( '*' );
             *this->out << "**" << std::endl;
             *this->out << std::endl;
         }
@@ -737,7 +737,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         void appendOriginal() {
             this->openOutput( true, binaryStatesOffset( alg().peers() ) );
 
-            std::string prefix = alg().m_config->input + ": ";
+            std::string prefix = alg().meta().input.model + ": ";
             this->out->write( prefix.c_str(), prefix.size() );
             this->copyOriginal();
 
@@ -801,15 +801,15 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     }
 
     /// Constructs Compact algorithm
-    CompactCommon( Config *c = 0 ) : Algorithm( c, sizeof( Extension ) ), 
+    CompactCommon( Meta *m = 0 ) : Algorithm( m, sizeof( Extension ) ), 
         compactFile( "" ), initialPeer( 0 ) {
-        if ( c ) {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
-            compactFile = c->compactFile;
-            plaintextFormat = c->textFormat;
-            shared.findBackEdges = c->findBackEdges;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
+            compactFile = m->output.file;
+            plaintextFormat = m->output.textFormat;
+            shared.findBackEdges = m->output.backEdges;
         }
     }
 
@@ -822,7 +822,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             shared.stats.merge( s.stats );
             localStats.merge( s.localStats );
         }
-        shared.stats.updateResult( result() );
+        shared.stats.update( meta().statistics );
         shared.stats = algorithm::Statistics< G >();
     }
 
@@ -835,7 +835,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     }
 
     /// Runs the Compact algorithm. This is expected to run only once per instance.
-    Result run() {
+    void run() {
         // first we explore the original state space
         progress() << "Compacting...\t\t" << std::flush;
         do {
@@ -863,9 +863,8 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         progress() << "done." << std::endl;
 
-        result().fullyExplored = Result::Yes;
-        shared.stats.updateResult( result() );
-        return result();
+        result().fullyExplored = meta::Result::Yes;
+        shared.stats.update( meta().statistics );
     }
 };
 
@@ -883,7 +882,7 @@ struct Compact : CompactCommon< G, Statistics >
         return ProbabilisticTransition();
     }
 
-    Compact( Config *c = 0 ) : Algorithm( c, sizeof( typename CompactCommon::Extension ) ), CompactCommon( c ) {}
+    Compact( Meta *m = 0 ) : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m ) {}
 };
 
 #define PROBABILISTIC algorithm::NonPORGraph< generator::LegacyProbDve >, Statistics
@@ -913,7 +912,7 @@ struct Compact< PROBABILISTIC > : CompactCommon< PROBABILISTIC >
         return pt;
     }
 
-    Compact( Config *c = 0 ) : Algorithm( c, sizeof( typename CompactCommon::Extension ) ), CompactCommon( c ) {}
+    Compact( Meta *m = 0 ) : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m ) {}
 };
 
 }

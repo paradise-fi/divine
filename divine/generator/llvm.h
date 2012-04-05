@@ -242,10 +242,14 @@ struct LLVM : Common< Blob > {
         assert_die();
     }
 
-    void useProperty( std::string name ) {
+    void useProperty( meta::Input &i ) {
+        std::string name = i.propertyName;
         std::string ltl = interpreter().properties[ name ];
         if ( ltl.empty() )
             return;
+
+        i.property = ltl;
+        i.propertyType = meta::Input::LTL;
 
         use_property = true;
         BA_opt_graph_t b = buchi( ltl );

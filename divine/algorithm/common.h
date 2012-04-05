@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/config.h>
+#include <divine/meta.h>
 #include <divine/report.h>
 #include <divine/blob.h>
 #include <divine/hashset.h>
@@ -13,12 +13,6 @@
 
 namespace divine {
 namespace algorithm {
-
-inline int workerCount( Config *c ) {
-    if ( !c )
-        return 1;
-    return c->workers;
-}
 
 struct Hasher {
     int slack;
@@ -46,23 +40,22 @@ struct Equal {
 
 struct Algorithm
 {
-    typedef divine::Config Config;
+    typedef divine::Meta Meta;
 
-    Config *m_config;
+    Meta *m_meta;
     int m_slack;
     Hasher hasher;
     Equal equal;
-    Result m_result;
 
     int *m_initialTable, m_initialTable_;
 
-    Result &result() { return m_result; }
+    meta::Result &result() { return meta().result; }
 
     bool want_ce;
 
-    Config &config() {
-        assert( m_config );
-        return *m_config;
+    Meta &meta() {
+        assert( m_meta );
+        return *m_meta;
     }
 
     std::ostream &progress() {
@@ -103,7 +96,7 @@ struct Algorithm
     void initGraph( G *g, D *domain ) {
         assert( g );
         assert( domain );
-        assert( m_config ); // this is the master instance
+        assert( m_meta ); // this is the master instance
         g->setDomainSize( domain->mpi.rank(), domain->mpi.size(), domain->peers() );
         initGraph( g );
     }
@@ -112,21 +105,20 @@ struct Algorithm
     template< typename G >
     void initGraph( G *g ) {
         assert( g );
-        if ( m_config ) { // this is the master instance
+        if ( m_meta ) { // this is the master instance
             setSlack( g );
-            g->read( m_config->input );
-            if ( !m_config->property.empty() )
-                g->useProperty( m_config->property );
+            g->read( meta().input.model );
+            g->useProperty( meta().input );
         }
     }
 
-    Algorithm( Config *c = 0, int slack = 0 )
-        : m_config( c ), m_slack( slack )
+    Algorithm( Meta *m = 0, int slack = 0 )
+        : m_meta( m ), m_slack( slack )
     {
         m_initialTable_ = 4096;
         m_initialTable = &m_initialTable_;
-        if ( c ) {
-            want_ce = c->wantCe;
+        if ( m ) {
+            want_ce = meta().output.wantCe;
         }
     }
 };

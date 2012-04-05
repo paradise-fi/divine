@@ -78,11 +78,11 @@ struct Statistics {
         ++ deadlocks;
     }
 
-    void updateResult( Result &res ) {
-        res.visited += states;
-        res.deadlocks += deadlocks;
-        res.expanded += expansions;
-        res.transitions += transitions;
+    void update( meta::Statistics &s ) {
+        s.visited += states;
+        s.deadlocks += deadlocks;
+        s.expanded += expansions;
+        s.transitions += transitions;
     }
 
     void print( std::ostream &o ) {
@@ -173,17 +173,17 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
         vis.exploreFrom( shared.g.initial() );
     }
 
-    Metrics( Config *c = 0 )
-        : Algorithm( c, 0 )
+    Metrics( Meta *m = 0 )
+        : Algorithm( m, 0 )
     {
-        if ( c ) {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
         }
     }
 
-    Result run() {
+    void run() {
         progress() << "  exploring... \t\t\t " << std::flush;
         domain().parallel().run( shared, &This::_visit );
         progress() << "done" << std::endl;
@@ -195,9 +195,8 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
 
         shared.stats.print( progress() );
 
-        result().fullyExplored = Result::Yes;
-        shared.stats.updateResult( result() );
-        return result();
+        result().fullyExplored = meta::Result::Yes;
+        shared.stats.update( meta().statistics );
     }
 };
 

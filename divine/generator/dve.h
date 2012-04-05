@@ -96,8 +96,8 @@ struct Dve : public Common< Blob > {
         return o;
     }
 
-    void useProperty( std::string p ) {
-        if ( p == "none" )
+    void useProperty( meta::Input &i ) {
+        if ( i.propertyName == "none" )
             system->property = NULL;
     }
 

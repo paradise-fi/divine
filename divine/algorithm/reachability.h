@@ -163,16 +163,16 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
             shared.need_expand = true;
     }
 
-    Reachability( Config *c = 0 )
-        : Algorithm( c, sizeof( Extension ) )
+    Reachability( Meta *m = 0 )
+        : Algorithm( m, sizeof( Extension ) )
     {
-        if ( c ) {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
-            shared.find_deadlocks = c->findDeadlocks;
-            shared.find_goals = c->findGoals;
-            shared.hash_compaction = c->hashCompaction;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
+            shared.find_deadlocks = m->algorithm.findDeadlocks;
+            shared.find_goals = m->algorithm.findGoals;
+            shared.hash_compaction = m->algorithm.hashCompaction;
         }
     }
 
@@ -201,7 +201,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         }
     }
 
-    Result run() {
+    void run() {
         progress() << "  searching... \t" << std::flush;
 
         domain().parallel().run( shared, &This::_visit );
@@ -232,13 +232,13 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         safetyBanner( !goal.valid() );
         if ( goal.valid() && !shared.hash_compaction ) {
             counterexample( goal );
-            result().ceType = deadlocked ? Result::Deadlock : Result::Goal;
+            result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }
 
-        result().propertyHolds = goal.valid() ? Result::No : Result::Yes;
-        result().fullyExplored = goal.valid() ? Result::No : Result::Yes;
-        shared.stats.updateResult( result() );
-        return result();
+        meta().input.propertyType = meta::Input::Reachability;
+        result().propertyHolds = goal.valid() ? meta::Result::No : meta::Result::Yes;
+        result().fullyExplored = goal.valid() ? meta::Result::No : meta::Result::Yes;
+        shared.stats.update( meta().statistics );
     }
 };
 

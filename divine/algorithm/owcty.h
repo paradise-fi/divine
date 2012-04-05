@@ -339,7 +339,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         shared.oldsize = shared.size = totalSize();
         while ( true ) {
             if ( cycleFound() ) {
-                result().fullyExplored = Result::No;
+                result().fullyExplored = meta::Result::No;
                 return;
             }
 
@@ -510,15 +510,15 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         for ( int i = 0; i < domain().peers(); ++i ) {
             shared.stats.merge( domain().shared( i ).stats );
         }
-        shared.stats.updateResult( result() );
+        shared.stats.update( meta().statistics );
         shared.stats = algorithm::Statistics< G >();
     }
 
-    Result run()
+    void run()
     {
         size_t oldsize = 0;
 
-        result().fullyExplored = Result::Yes;
+        result().fullyExplored = meta::Result::Yes;
         progress() << " initialise...\t\t    " << std::flush;
         shared.size = 0;
         initialise();
@@ -552,21 +552,20 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
 
         if ( want_ce && !valid ) {
             counterexample();
-            result().ceType = Result::Cycle;
+            result().ceType = meta::Result::Cycle;
         }
 
-        result().propertyHolds = valid ? Result::Yes : Result::No;
-        return result();
+        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
     }
 
-    Owcty( Config *c = 0 )
-        : Algorithm( c, sizeof( Extension ) )
+    Owcty( Meta *m = 0 )
+        : Algorithm( m, sizeof( Extension ) )
     {
         shared.size = 0;
-        if ( c ) {
+        if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
         }
     }
 };

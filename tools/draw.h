@@ -16,24 +16,13 @@ namespace divine {
 
 template< typename > struct Simple;
 
-struct DrawConfig {
-    divine::Config *super;
-    int maxDistance;
-    std::string output;
-    std::string drawTrace;
-    std::string render;
-    bool labels;
-    bool traceLabels;
-};
-
 template< typename G >
 struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 {
     typedef Draw< G > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
-    typedef DrawConfig Config;
-	typedef typename algorithm::AlgorithmUtils< G >::Table Table;
+    typedef typename algorithm::AlgorithmUtils< G >::Table Table;
 
     struct Extension {
         int distance;
@@ -234,21 +223,21 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         }
     }
 
-    Draw( DrawConfig *c = 0 )
-        : Algorithm( c->super, sizeof( Extension ) )
+    Draw( Meta *m = 0 )
+        : Algorithm( m, sizeof( Extension ) )
     {
         this->initPeer( &g, NULL, 0 ); // only one peer
-        maxdist = c->maxDistance;
-        output = c->output;
-        render = c->render;
-        trace = c->drawTrace;
-        labels = c->labels;
-        traceLabels = labels || c->traceLabels;
+        maxdist = m->algorithm.maxDistance;
+        output = m->output.file;
+        render = m->output.filterProgram;
+        trace = m->input.trace;
+        labels = m->algorithm.labels;
+        traceLabels = labels || m->algorithm.traceLabels;
         drawn = 0;
         serial = 1;
     }
 
-    Result run() {
+    void run() {
         progress() << "  exploring... \t\t\t\t" << std::flush;
         draw();
         progress() << "   done" << std::endl;
@@ -256,8 +245,6 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         progress() << "  running graphviz... \t\t\t" << std::flush;
         graphviz();
         progress() << "   done" << std::endl;
-
-        return result();
     }
 };
 

@@ -75,7 +75,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         ce.generateLinear( *this, g, ce_stack );
         ce.generateLasso( *this, g, ce_lasso );
         progress() << "done" << std::endl;
-        result().ceType = Result::Cycle;
+        result().ceType = meta::Result::Cycle;
     }
 
     // this is the entrypoint for full expansion... I know the name isn't best,
@@ -85,7 +85,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         visitor.exploreFrom( to );
     }
 
-    Result run() {
+    void run() {
         progress() << " searching...\t\t\t" << std::flush;
 
         if ( parallel ) {
@@ -118,10 +118,9 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
                 counterexample();
         }
 
-        stats.updateResult( result() );
-        result().propertyHolds = valid ? Result::Yes : Result::No;
-        result().fullyExplored = valid ? Result::Yes : Result::No;
-        return result();
+        stats.update( meta().statistics );
+        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
+        result().fullyExplored = valid ? meta::Result::Yes : meta::Result::No;
     }
 
     visitor::ExpansionAction expansion( Node st ) {
@@ -194,19 +193,19 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
     };
 
-    NestedDFS( Config *c = 0 )
-        : Algorithm( c, sizeof( Extension ) )
+    NestedDFS( Meta *m = 0 )
+        : Algorithm( m, sizeof( Extension ) )
     {
         valid = true;
-        this->initPeer( &g, &c->initialTable, 0 ); // only one peer
-        parallel = c->workers > 1;
-        if (c->workers > 2)
+        this->initPeer( &g, &m->execution.initialTable, 0 ); // only one peer
+        parallel = m->execution.workers > 1;
+        if (m->execution.workers > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
-            progress() << "Using table size " << c->initialTable
+            progress() << "Using table size " << m->execution.initialTable
                        << ", please use -i to override." << std::endl;
-            this->table().m_maxsize = c->initialTable;
+            this->table().m_maxsize = m->execution.initialTable;
         }
         finished = false;
         inner.outer = this;
