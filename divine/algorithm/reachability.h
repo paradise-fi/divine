@@ -86,7 +86,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         bool need_expand;
         bool find_deadlocks;
         bool find_goals;
-        StoreOpt storing;
+        bool hashCompaction;
     } shared;
 
     Node goal;
@@ -115,7 +115,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( !shared.storing.hashComp && !extension( t ).parent.valid() ) {
+        if ( !shared.hashCompaction && !extension( t ).parent.valid() ) {
             extension( t ).parent = f;
             visitor::setPermanent( f );
         }
@@ -146,10 +146,10 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     void _visit() { // parallel
         this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         this->comms().notify( this->globalId(), &shared.g.pool() );
-        if ( shared.storing.hashComp )
+        if ( shared.hashCompaction )
             equal.allEqual = true;
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            visitor( shared.g, *this, *this, hasher, &this->table(), shared.storing );
+            visitor( shared.g, *this, *this, hasher, &this->table(), shared.hashCompaction );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
@@ -168,11 +168,11 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     {
         if ( m ) {
             this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
-            shared.find_deadlocks = c->findDeadlocks;
-            shared.find_goals = c->findGoals;
-            shared.hash_compaction = c->hashCompaction;
+            this->becomeMaster( &shared, m->execution.workers );
+            shared.initialTable = m->execution.initialTable;
+            shared.find_deadlocks = m->algorithm.findDeadlocks;
+            shared.find_goals = m->algorithm.findGoals;
+            shared.hashCompaction = m->algorithm.hashCompaction;
         }
     }
 
@@ -230,7 +230,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         progress() << std::endl;
 
         safetyBanner( !goal.valid() );
-        if ( goal.valid() && !shared.hash_compaction )
+        if ( goal.valid() && !shared.hashCompaction ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }

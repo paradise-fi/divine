@@ -172,8 +172,8 @@ struct Common {
         }
     }
 
-    Common( Graph &g, Notify &n, Seen *s, StoreOpt opt = StoreOpt() ) :
-        m_graph( g ), m_notify( n ), store( g, s, opt.hashComp ), m_queue( g )
+    Common( Graph &g, Notify &n, Seen *s, bool hashCompaction ) :
+        m_graph( g ), m_notify( n ), store( g, s, hashCompaction ), m_queue( g )
     {
     }
 };
@@ -181,15 +181,15 @@ struct Common {
 template< typename S >
 struct BFV : Common< Queue, S > {
     typedef typename S::Seen Seen;
-    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, StoreOpt storeOpt = StoreOpt() )
-        : Common< Queue, S >( g, n, s, storeOpt ) {}
+    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashCompaction = false )
+        : Common< Queue, S >( g, n, s, hashCompaction ) {}
 };
 
 template< typename S >
 struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
-    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, StoreOpt storeOpt = StoreOpt() )
-        : Common< Stack, S >( g, n, s, storeOpt ) {}
+    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashCompaction = false )
+        : Common< Stack, S >( g, n, s, hashCompaction ) {}
 };
 
 template< typename S, typename Worker,
@@ -206,7 +206,7 @@ struct Partitioned {
 
     _Hash hash;
     Seen *m_seen;
-    StoreOpt storeOpt;
+    bool hashCompaction;
 
     int owner( Node n, hash_t hint = 0 ) const {
         return graph.owner( hash, worker, n, hint );
@@ -297,7 +297,7 @@ struct Partitioned {
     }
 
     void exploreFrom( Node initial ) {
-        BFV< Ours > bfv( graph, *this, m_seen, storeOpt );
+        BFV< Ours > bfv( graph, *this, m_seen, hashCompaction );
         setIds( bfv );
         if ( owner( initial ) == worker.globalId() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
@@ -306,14 +306,16 @@ struct Partitioned {
     }
 
     void processQueue() {
-        BFV< Ours > bfv( graph, *this, m_seen, storeOpt );
+        BFV< Ours > bfv( graph, *this, m_seen, hashCompaction );
         setIds( bfv );
         run( bfv );
     }
 
     Partitioned( typename S::Graph &g, Worker &w,
-                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0, StoreOpt opt = StoreOpt() )
-        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s ), storeOpt( opt )
+                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0,
+                 bool hashCompaction = false )
+        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s ),
+          hashCompaction( hashCompaction )
     {}
 };
 
