@@ -467,15 +467,15 @@ struct Main {
             meta.execution.workers = o_workers->intValue();
         // else default (currently set to 2)
 
-        meta.input.model = input;
-        meta.input.propertyName = o_property->stringValue();
-        meta.output.wantCe = !o_noCe->boolValue();
-        meta.output.textFormat = o_textFormat->boolValue();
-        meta.output.backEdges = o_findBackEdges->boolValue();
-        meta.algorithm.findDeadlocks = !o_noDeadlocks->boolValue();
-        meta.algorithm.findGoals = !o_noGoals->boolValue();
-        meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
-        meta.output.statistics = o_statistics->boolValue();
+        config.input = input;
+        config.property = o_property->stringValue();
+        config.wantCe = !o_noCe->boolValue();
+        config.textFormat = o_textFormat->boolValue();
+        config.findBackEdges = o_findBackEdges->boolValue();
+        config.findDeadlocks = !o_noDeadlocks->boolValue();
+        config.findGoals = !o_noGoals->boolValue();
+        config.hashCompaction = o_hashCompaction->boolValue();
+        statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
         if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )

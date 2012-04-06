@@ -52,6 +52,7 @@ struct TestVisitor {
         };
 
         void release( Node ) {}
+        Node clone( Node n ) { return n; }
 
         Successors successors( Node from ) {
             Successors s;
@@ -372,6 +373,12 @@ struct TestVisitor {
 
         void release( Node n ) {
             n.free();
+        }
+
+        Node clone( Node n ) {
+            Node c( sizeof( int ) );
+            n.copyTo( c );
+            return c;
         }
 
         Successors successors( Node from ) {

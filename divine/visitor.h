@@ -9,6 +9,7 @@
 #include <divine/blob.h>
 #include <divine/fifo.h>
 #include <divine/datastruct.h>
+#include <divine/store.h>
 
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H
@@ -30,24 +31,6 @@ enum TransitionAction { TerminateOnTransition,
 
 enum ExpansionAction { TerminateOnState, ExpandState, IgnoreState };
 enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
-
-template< typename T >
-inline bool alias( T a, T b ) {
-    return false;
-}
-
-template<> inline bool alias< Blob >( Blob a, Blob b ) {
-    return a.ptr == b.ptr;
-}
-
-template< typename T > inline bool permanent( T ) { return false; }
-template< typename T > inline void setPermanent( T ) {}
-
-template<> inline bool permanent( Blob b ) { return b.header().permanent; }
-template<> inline void setPermanent( Blob b ) {
-    if ( b.valid() )
-        b.header().permanent = 1;
-}
 
 template<
     typename G, // graph
@@ -91,18 +74,11 @@ struct Common {
     typedef typename S::Statistics Statistics;
     Graph &m_graph;
     Notify &m_notify;
-    Seen *m_seen;
+    Store< Node, Graph, Seen, Statistics > store;
     Queue< Graph, Statistics > m_queue;
 
-    int id;
-    bool compact;
-
-    Seen &seen() {
-        return *m_seen;
-    }
-
     void expand( Node n ) {
-        if ( seen().has( n ) )
+        if ( store.has( n ) )
             return;
         exploreFrom( n );
     }
@@ -145,72 +121,22 @@ struct Common {
         }
     }
 
-    // Retrieve node from hash table
-    Node fetchNode( Node s, hash_t h, bool* had ) {
-        Node found = seen().getHinted( s, h, had );
-
-        if ( alias( s, found ) )
-            assert( seen().valid( found ) );
-
-        if ( !seen().valid( found ) ) {
-            assert( !alias( s, found ) );
-            assert( !*had );
-            return s;
-        }
-
-        if ( compact ) {
-            // copy saved state information
-            std::copy( found.data(), found.data() + found.size(), s.data() );
-            return s;
-        }
-
-        return found;
-    }
-
-    // Store node in hash table
-    void storeNode( Node s, hash_t h ) {
-        if ( !compact ) {
-            Statistics::global().hashadded( id , memSize( s ) );
-            Statistics::global().hashsize( id, seen().size() );
-            seen().insertHinted( s, h );
-            setPermanent( s );
-        } else {
-            // store just a stub containing state information
-            Node stub = unblob< Node >( m_graph.base().alloc.new_blob( 0 ) );
-            Statistics::global().hashadded( id , memSize( stub ) );
-            Statistics::global().hashsize( id, seen().size() );
-            std::copy( s.data(), s.data() + stub.size(), stub.data() );
-            seen().insertHinted( stub, h );
-            assert( seen().equal( s, stub ) );
-        }
-    }
-
-    // Notify hash table that algorithm-specific information about a node have changed
-    void notifyUpdate( Node s, hash_t h ) {
-        if ( compact ) {
-            // update state information in hashtable
-            Node stub = seen().getHinted( s, h, NULL );
-            assert( stub.valid() );
-            std::copy( s.data(), s.data() + stub.size(), stub.data() );
-        }
-    }
-
     // process an edge and free both nodes
     void edge( Node from, Node _to ) {
         TransitionAction tact;
         ExpansionAction eact = ExpandState;
 
         bool had = true;
-        hash_t hint = seen().hash( _to );
+        hash_t hint = store.hash( _to );
 
         if ( S::transitionHint( m_notify, from, _to, hint ) == IgnoreTransition )
             return;
 
-        Node to = fetchNode( _to, hint, &had );
+        Node to = store.fetchNode( _to, hint, &had );
 
         tact = S::transition( m_notify, from, to );
         if ( tact != IgnoreTransition && !had ) {
-            storeNode( to, hint );
+            store.storeNode( to, hint );
         }
 
         if ( tact == ExpandTransition ||
@@ -221,11 +147,12 @@ struct Common {
         }
 
         if ( tact != IgnoreTransition ) {
-            notifyUpdate( to, hint );
+            store.notifyUpdate( to, hint );
             m_graph.release( to );
             m_graph.release( from );
         }
-        if ( !alias( to, _to ) ) m_graph.release( _to );
+        if ( !store.isSame( to, _to ) )
+            m_graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
             terminate();
@@ -245,26 +172,24 @@ struct Common {
         }
     }
 
-    Common( Graph &g, Notify &n, Seen *s, bool hash_comp = false ) :
-        m_graph( g ), m_notify( n ), m_seen( s ), m_queue( g ), id( 0 ), compact( hash_comp )
+    Common( Graph &g, Notify &n, Seen *s, StoreOpt opt = StoreOpt() ) :
+        m_graph( g ), m_notify( n ), store( g, s, opt.hashComp ), m_queue( g )
     {
-        if ( !m_seen )
-            m_seen = new Seen();
     }
 };
 
 template< typename S >
 struct BFV : Common< Queue, S > {
     typedef typename S::Seen Seen;
-    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashComp = false )
-        : Common< Queue, S >( g, n, s, hashComp ) {}
+    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, StoreOpt storeOpt = StoreOpt() )
+        : Common< Queue, S >( g, n, s, storeOpt ) {}
 };
 
 template< typename S >
 struct DFV : Common< Stack, S > {
     typedef typename S::Seen Seen;
-    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashComp = false )
-        : Common< Stack, S >( g, n, s, hashComp ) {}
+    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, StoreOpt storeOpt = StoreOpt() )
+        : Common< Stack, S >( g, n, s, storeOpt ) {}
 };
 
 template< typename S, typename Worker,
@@ -281,7 +206,7 @@ struct Partitioned {
 
     _Hash hash;
     Seen *m_seen;
-    bool compact;
+    StoreOpt storeOpt;
 
     int owner( Node n, hash_t hint = 0 ) const {
         return graph.owner( hash, worker, n, hint );
@@ -367,12 +292,12 @@ struct Partitioned {
 
     template< typename T >
     void setIds( T &bfv ) {
-        bfv.id = worker.globalId();
+        bfv.store.id = worker.globalId();
         bfv.m_queue.id = worker.globalId();
     }
 
     void exploreFrom( Node initial ) {
-        BFV< Ours > bfv( graph, *this, m_seen, compact );
+        BFV< Ours > bfv( graph, *this, m_seen, storeOpt );
         setIds( bfv );
         if ( owner( initial ) == worker.globalId() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
@@ -381,14 +306,14 @@ struct Partitioned {
     }
 
     void processQueue() {
-        BFV< Ours > bfv( graph, *this, m_seen, compact );
+        BFV< Ours > bfv( graph, *this, m_seen, storeOpt );
         setIds( bfv );
         run( bfv );
     }
 
     Partitioned( typename S::Graph &g, Worker &w,
-                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0, bool hash_comp = false )
-        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s ), compact( hash_comp )
+                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0, StoreOpt opt = StoreOpt() )
+        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s ), storeOpt( opt )
     {}
 };
 

@@ -60,6 +60,7 @@ template< typename G >
 struct Transform {
     G _base;
 
+    typedef wibble::Unit HasAllocator;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
     typedef G Graph;
