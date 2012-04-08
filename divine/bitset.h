@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2011 Jiri Appl <jiri@appl.name>
 
-#include "divine/compactstate.h"
+#include <map>
+#include "divine/compact.h"
 
 #ifndef DIVINE_BITSET_H
 #define DIVINE_BITSET_H
@@ -18,6 +19,7 @@ template< typename G,
     typename _Equal = divine::equal< typename G::Node > >
 struct BitSet
 {
+    typedef wibble::Unit IsBitSet;
     typedef typename G::Node Item;
     typedef _Valid Valid;
     typedef _Equal Equal;

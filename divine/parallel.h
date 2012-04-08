@@ -96,9 +96,12 @@ struct Parallel {
         runThreads();
     }
 
-    Parallel( int _n ) : n( _n )
+    template< typename X >
+    Parallel( int _n, X x ) : n( _n )
     {
-        m_instances.resize( n );
+        for ( int i = 0; i < n; ++ i)
+            m_instances.push_back( T( x ) );
+        // m_instances.resize( n );
     }
 };
 
@@ -210,6 +213,10 @@ struct FifoMatrix
 
 typedef std::pair<Blob, Blob> BlobPair;
 
+struct DomainWorkerBase {
+    virtual int globalId() = 0;
+};
+
 /**
  * A basic template of a worker object, as a part of a larger work
  * Domain. Provides communication, distributed termination detection and clean
@@ -223,7 +230,7 @@ typedef std::pair<Blob, Blob> BlobPair;
  * master is expected to call becomeMaster( ... ) in its constructor.
  */
 template< typename T, typename Comms = FifoMatrix< BlobPair > >
-struct DomainWorker {
+struct DomainWorker : DomainWorkerBase {
     typedef divine::Fifo< Blob > Fifo;
     typedef wibble::Unit IsDomainWorker;
 
@@ -377,8 +384,9 @@ struct Domain {
             m_domain->mpi.runInRing( f );
         }
 
-        Parallel( Domain< T, Comms > &dom, int _n )
-            : divine::Parallel< T, BarrierThread >( _n ),
+        template< typename X >
+        Parallel( Domain< T, Comms > &dom, int _n, X x )
+            : divine::Parallel< T, BarrierThread >( _n, x ),
               m_domain( &dom ), mpiWorker( dom )
         {
         }
@@ -397,9 +405,10 @@ struct Domain {
         return m_barrier;
     }
 
-    Parallel &parallel() {
+    template< typename X >
+    Parallel &parallel( X x ) {
         if ( !m_parallel ) {
-            m_parallel = new Parallel( *this, n );
+            m_parallel = new Parallel( *this, n, x );
 
             int count = n;
             if ( mpi.size() > 1 )
@@ -411,6 +420,11 @@ struct Domain {
                 m_parallel->instance( i ).connect( *this );
             }
         }
+        return *m_parallel;
+    }
+
+    Parallel &parallel() {
+        assert( m_parallel );
         return *m_parallel;
     }
 

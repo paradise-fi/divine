@@ -1,9 +1,8 @@
 // -*- C++ -*- (c) 2011 Jiri Appl <jiri@appl.name>
 
 #include <divine/generator/common.h>
-#include <divine/algorithm/compact.h>
-#include <divine/compactstate.h>
 #include <divine/probabilistictransition.h>
+#include <divine/compact.h>
 
 #include <algorithm>
 
@@ -887,8 +886,6 @@ struct Compact : public Common< Blob > {
         compactFile.close();
     }
 };
-
-Compact *Compact::master = NULL; // hack to handle reference counting
 
 }
 }

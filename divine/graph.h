@@ -63,6 +63,7 @@ struct Transform {
     typedef wibble::Unit HasAllocator;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
+    typedef typename G::Table Table;
     typedef G Graph;
 
     G &base() { return _base; }

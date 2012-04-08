@@ -4,7 +4,6 @@
 #include <divine/algorithm/metrics.h> // for stats
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
 #include <divine/probabilistictransition.h>
 #include <algorithm>
 
@@ -116,13 +115,11 @@ struct _MpiId< Probabilistic< G > >
 
     template< typename O >
     static void writeShared( typename A::Shared s, O o ) {
-        *o++ = s.initialTable;
         *o++ = s.offset;
         *o++ = s.pivotId;
         *o++ = s.flag;
         *o++ = s.size;
         *o++ = s.testGroup;
-        *o++ = s.iterativeOptimization;
 
         *o++ = s.visitedSCCs.size();
         for ( std::map< SCCId, unsigned >::const_iterator it = s.visitedSCCs.begin(); it != s.visitedSCCs.end(); ++it ) {
@@ -149,13 +146,11 @@ struct _MpiId< Probabilistic< G > >
 
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
-        s.initialTable = *i++;
         s.offset = *i++;
         s.pivotId = *i++;
         s.flag = *i++;
         s.size = *i++;
         s.testGroup = *i++;
-        s.iterativeOptimization = *i++;
 
         unsigned visitedSCCsSize = *i++;
         s.visitedSCCs.clear();
@@ -198,15 +193,14 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     typedef Probabilistic< G > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
+    typedef typename G::Table Table;
     typedef typename G::Graph::ProbabilisticTransitions ProbabilisticTransitions;
-    typedef typename G::Graph::Table Table;
 
     struct Shared {
         algorithm::Statistics< G > stats;
         G g;
         unsigned offset; // bitset tables offset
         unsigned pivotId; // current pivot
-        int initialTable; 
         bool flag; // bit flag
         unsigned size; // accumulative sum of sizes
         unsigned testGroup; // current pair/set of acceptance condition
@@ -214,8 +208,6 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         std::set< SCCId > emptySCCs; // set of empty SCCs
         std::vector< std::pair< SCCId, unsigned > > toProcessSCCs; // vector of SCCs (and sizes) ready to be solved
         REAL probability; // final probability
-        bool iterativeOptimization; // use iterative optimization?
-        bool onlyQualitative; // do only qualitative analysis
     } shared;
 
     /// Represents a SCC: stores a representant state id and number of unsolved outgoing transitions
@@ -288,7 +280,6 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     std::set< unsigned > readySlices; // new unprocessed slices created by OBF
     std::map< unsigned, unsigned > originalRangeSliceCount; // original sizes of RANGE sets indexed by slice ids
     std::set< unsigned > activeSlices; // set of active slices in OBF
-    bool simpleOutput; // !verbose output
 
     /// Every OBFR call requires additional OFFSETDELTA sets of states
     #define OFFSETDELTA 3
@@ -387,7 +378,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
     /// Who is supposed to solve LP task containing state n
     unsigned collectOwner( Node n ) {
-        if ( !shared.iterativeOptimization ) return 0;
+        if ( !meta().algorithm.iterativeOptimization ) return 0;
 
         // when iterative optimization is on, the aggregation of states is based on componentId
         unsigned sccsPerPeer = shared.toProcessSCCs.size() / this->peers();
@@ -440,7 +431,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
     /// Index of SCC of state n in the SCC vector shared.toProcessSCCs
     unsigned lp_sccIndex( Node n ) {
-        if ( !shared.iterativeOptimization ) return 0;
+        if ( !meta().algorithm.iterativeOptimization ) return 0;
 
         const unsigned compId = extension( n ).componentId;
         const unsigned sccsPerPeer = shared.toProcessSCCs.size() / this->peers();
@@ -915,7 +906,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                             getTable( REACHED ).remove( to );
                             getTable( RANGE ).remove( to, extension( to ).sliceId );
                             
-                            shared.flag = shared.onlyQualitative || shared.g.base().getStateId( to ) == shared.g.base().initialState;
+                            shared.flag = meta().algorithm.onlyQualitative || shared.g.base().getStateId( to ) == shared.g.base().initialState;
                             return shared.flag;
                         }
                     }
@@ -966,7 +957,6 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
      */
     void _init() {
         assert( shared.offset == STARTINGOFFSET );
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         this->table().visitAll();
 
         tables.resize( STARTINGOFFSET + 1 + OFFSETDELTA );
@@ -1610,7 +1600,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             }
             if ( !isEmpty() ) { // found AEC
                 found = true;
-                if ( shared.onlyQualitative || ( initialInsideAEC = appendToPOne() ) ) return true;
+                if ( meta().algorithm.onlyQualitative || ( initialInsideAEC = appendToPOne() ) ) return true;
             }
         }
         return found;
@@ -1631,7 +1621,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         assert_eq( shared.offset, STARTINGOFFSET );
 
         translator.setParent( this );
-        translator.useSCCs( shared.iterativeOptimization );
+        translator.useSCCs( meta().algorithm.iterativeOptimization );
 
         getTable( ELIMINATE ).clear(); // store Minimal Graph here
 
@@ -2442,7 +2432,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         REAL row[ len ];
 
         bool probabilistic = extension( succs[ from ] ).probabilisticTransition.isProbabilistic;
-        assert( probabilistic && to >= from || !probabilistic && to == from );
+        assert( (probabilistic && to >= from) || (!probabilistic && to == from) );
 
         unsigned i = 0;
         REAL computed = 0;
@@ -2505,7 +2495,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
         if ( probabilisticActionStarted )
             lp_addRow( id, compId, sccIndex, succs, probabilisticActionStartedIndex, succs.size() - 1 );
 
-        if ( shared.iterativeOptimization ) { // determine if this state probability should be minimized
+        if ( meta().algorithm.iterativeOptimization ) { // determine if this state probability should be minimized
             assert( compId );
 
             if ( id == shared.g.base().initialState ) { // if it is an initial state, then we don't care about anything else
@@ -2522,7 +2512,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 
     /// Adds solved state probability
     void lp_addCertain( const Node n ) {
-        assert( extension( n ).componentId != 0 || !shared.iterativeOptimization );
+        assert( extension( n ).componentId != 0 || !meta().algorithm.iterativeOptimization );
         assert_eq( this->globalId(), collectOwner( n ) );
         int colno = translator.translate( n );
         REAL row = 1;
@@ -2542,11 +2532,11 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     REAL lp_solve() {
         // Minimal Graph identification
         finalSeeds();
-        if ( shared.iterativeOptimization )
+        if ( meta().algorithm.iterativeOptimization )
             fixSCCsInMG(); // Repartition states before seeds into new SCCs
         minimalGraphIdentification();
 
-        if ( shared.iterativeOptimization )
+        if ( meta().algorithm.iterativeOptimization )
             return computeProbabilityIterative(); // iterative calculation
         else
             return computeProbabilityNoniterative(); // one big task
@@ -2587,7 +2577,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 if ( detectEC )
 #endif
                 if ( owctyElimination() ) {
-                    if ( shared.onlyQualitative )
+                    if ( meta().algorithm.onlyQualitative )
                         foundAEC = true;
                     else
                         initialInsideAEC = true;
@@ -2599,7 +2589,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
                 if ( detectEC && sccSlices.size() ) {
                     if ( shared.g.base().hasProbabilisticTransitions() ) {
                         setIdOfSCC( sccSlices ); // and removes nonSCC states from B
-                        if ( ( foundAEC = detectAEC( /*sccSlices*/ ) ) && ( shared.onlyQualitative || initialInsideAEC ) ) return;
+                        if ( ( foundAEC = detectAEC( /*sccSlices*/ ) ) && ( meta().algorithm.onlyQualitative || initialInsideAEC ) ) return;
                     } else
                         this->progress() << "Compact model does not contain probabilistic transitions, AEC detection disabled." << std::endl;
                     removeSCCs( sccSlices ); // and restores B
@@ -2625,17 +2615,13 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 /* Main routines                                                */
 /****************************************************************/
 
-    Probabilistic( Meta *m = 0 ) :
-        Algorithm( m, sizeof( Extension ) ), lastId( 0 ), lp_started( false ), foundAEC( false ), initialInsideAEC( false ), lastSliceId( 0 )
+    Probabilistic( Meta m, bool master = false ) :
+        Algorithm( m, sizeof( Extension ) ), lastId( 0 ), lp_started( false ),
+        foundAEC( false ), initialInsideAEC( false ), lastSliceId( 0 )
     {
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-            shared.onlyQualitative = m->algorithm.onlyQualitative;
-            shared.iterativeOptimization = m->algorithm.iterativeOptimization;
-            simpleOutput = m->output.quiet;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 
     ~Probabilistic() {
@@ -2647,7 +2633,8 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
     }
 
     std::ostream &progress( bool forceOutput = false ) {
-        Algorithm::progress().clear( !simpleOutput || forceOutput ? std::ios_base::goodbit : std::ios_base::badbit );
+        Algorithm::progress().clear( !meta().output.quiet ||
+                                     forceOutput ? std::ios_base::goodbit : std::ios_base::badbit );
         return Algorithm::progress();
     }
 
@@ -2664,7 +2651,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
 #endif
         progress() << "done." << std::endl;
 
-        if ( /*shared.g.base().hasProbabilisticTransitions() &&*/ !shared.onlyQualitative ) {
+        if ( /*shared.g.base().hasProbabilisticTransitions() &&*/ !meta().algorithm.onlyQualitative ) {
             progress() << "Quantitative analysis started." << std::endl;
             REAL probability = 0;
             if ( initialInsideAEC )
@@ -2679,7 +2666,7 @@ struct Probabilistic : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Pro
             progress() << " The minimal probability that the system satisfies the given LTL formula is: " << ( 1 - probability ) << "." << std::endl;
             progress() << "Quantitative analysis completed." << std::endl;
         }
-        if ( shared.onlyQualitative ) {
+        if ( meta().algorithm.onlyQualitative ) {
             progress() << "AEC is " << ( foundAEC ? "" : "not " ) << "reachable from the initial state." << std::endl;
             progress() << "The probability that the system does not satisfy the given LTL formula is: ";
             progress( true ) << ( foundAEC ? ">0" : "=0" );

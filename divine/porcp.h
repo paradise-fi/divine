@@ -1,7 +1,9 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm/common.h>
 #include <wibble/list.h>
+
+#include <divine/algorithm/common.h>
+#include <divine/graph.h>
 
 #ifndef DIVINE_PORCP_H
 #define DIVINE_PORCP_H

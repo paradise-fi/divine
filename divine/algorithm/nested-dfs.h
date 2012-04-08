@@ -4,7 +4,6 @@
 #include <divine/algorithm/metrics.h>
 #include <divine/porcp.h>
 #include <divine/visitor.h>
-#include <divine/report.h>
 #include <wibble/sfinae.h> // Unit
 
 #ifndef DIVINE_ALGORITHM_NDFS_H
@@ -193,19 +192,19 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
     };
 
-    NestedDFS( Meta *m = 0 )
+    NestedDFS( Meta m, bool = false )
         : Algorithm( m, sizeof( Extension ) )
     {
         valid = true;
-        this->initPeer( &g, &m->execution.initialTable, 0 ); // only one peer
-        parallel = m->execution.workers > 1;
-        if (m->execution.workers > 2)
+        this->init( &g, NULL );
+        parallel = m.execution.threads > 1;
+        if (m.execution.threads > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;
         if ( parallel ) {
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
-            progress() << "Using table size " << m->execution.initialTable
+            progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
-            this->table().m_maxsize = m->execution.initialTable;
+            this->table().m_maxsize = m.execution.initialTable;
         }
         finished = false;
         inner.outer = this;

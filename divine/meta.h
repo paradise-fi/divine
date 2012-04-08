@@ -19,20 +19,28 @@ struct Input {
     std::string propertyName;
     std::string trace;
     PT propertyType;
+    bool dummygen;
 
     Input() : propertyType( NoProperty ) {}
 };
 
 struct Execution {
     int initialTable;
-    int workers;
-    int mpi;
-    Execution() : initialTable( 32 ), workers( 2 ), mpi( 0 ) {}
+    int diskFifo;
+
+    int threads;
+    int nodes;
+    int thisNode;
+
+    Execution() : initialTable( 32 ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
 };
 
 struct Algorithm {
+    enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
+                Draw, Info, Compact, Probabilistic };
+
+    Type algorithm;
     std::string name;
-    std::vector< std::string > transformations;
 
     int maxDistance;
 
@@ -41,6 +49,9 @@ struct Algorithm {
     bool findGoals;
     bool hashCompaction;
     bool onlyQualitative, iterativeOptimization;
+    bool por, fairness;
+
+    Algorithm() : por( false ), fairness( false ) {}
 };
 
 struct Output {

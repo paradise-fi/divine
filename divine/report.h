@@ -13,13 +13,12 @@ namespace divine {
 
 struct Report
 {
-    Meta &meta;
     sysinfo::Info sysinfo;
 
     int m_signal;
     bool m_finished, m_dumped;
 
-    Report( Meta &m ) : meta( m ), m_signal( 0 ), m_finished( false ), m_dumped( false )
+    Report() : m_signal( 0 ), m_finished( false ), m_dumped( false )
     {
     }
 
@@ -34,12 +33,7 @@ struct Report
         m_finished = true;
     }
 
-    template< typename Mpi >
-    void mpiInfo( Mpi &mpi ) {
-        meta.execution.mpi = mpi.size();
-    }
-
-    void final( std::ostream &o ) {
+    void final( std::ostream &o, Meta meta ) {
         if ( m_dumped )
             return;
         m_dumped = true;

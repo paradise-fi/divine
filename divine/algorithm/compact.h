@@ -3,10 +3,9 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 
+#include <divine/compact.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
-#include <divine/compactstate.h>
 #include <divine/probabilistictransition.h>
 #include <divine/porcp.h>
 #include <divine/generator/legacy.h>
@@ -18,17 +17,6 @@
 #define DIVINE_ALGORITHM_COMPACT_H
 
 namespace divine {
-
-/// Compact file string literals
-namespace compact {
-    const std::string cfStates = "states:";
-    const std::string cfBackward = "backward:";
-    const std::string cfForward = "forward:";
-    const std::string cfInitial = "initial:";
-    const std::string cfAC = "ac:";
-    const std::string cfState = "state:";
-    const std::string cfProbabilistic = "probabilistic:";
-}
 
 namespace algorithm {
 
@@ -81,28 +69,22 @@ struct _MpiId< Compact< G, S > >
     static void writeShared( typename A::Shared s, O o ) {
         o = s.stats.write( o );
         o = s.localStats.write( o );
-        *o++ = s.initialTable;
-        *o++ = s.findBackEdges;
         *o++ = s.haveInitial;
 
         o = write( s.statesCountSums, o );
         o = write( s.inTransitionsCountSums, o );
         o = write( s.outTransitionsCountSums, o );
-        o = write( s.compactFile, o );
     }
 
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
         i = s.stats.read( i );
         i = s.localStats.read( i );
-        s.initialTable = *i++;
-        s.findBackEdges = *i++;
         s.haveInitial = *i++;
 
         i = read( s.statesCountSums, i );
         i = read( s.inTransitionsCountSums, i );
         i = read( s.outTransitionsCountSums, i );
-        i = read( s.compactFile, i );
 
         return i;
     }
@@ -178,16 +160,13 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         // cumulative sums of numbers of states and transitions on each node + total sum
         std::vector< unsigned > statesCountSums, inTransitionsCountSums, outTransitionsCountSums; 
-        std::string compactFile; // output file name
-        bool findBackEdges; // find also backward transitions
         bool haveInitial; // signifies that this peer handles the initial state
 
-        Shared() : findBackEdges( false ), haveInitial( false ) {}
+        Shared() : haveInitial( false ) {}
     } shared;
 
     std::deque< Node > states; // stores all states handled by this peer
     LocalStatistics localStats; // local backup of statistics
-    std::string compactFile; // output file holder
     unsigned initialPeer; // globalId of peer with initial state
     bool plaintextFormat; // output compact state space in plaintext format
 
@@ -227,7 +206,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     /// Adds new backward edge to statistics
     void statsAddInTransition() {
         shared.stats.addEdge();
-        if ( shared.findBackEdges ) {
+        if ( meta().output.backEdges ) {
             localStats.addInTransition();
             shared.localStats.addInTransition();
         }
@@ -281,7 +260,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             StateRef nodeRef( toExt.index, this->globalId() );
             states.push_back( to );
 
-            if ( shared.findBackEdges )
+            if ( meta().output.backEdges )
                 toExt.preds = new std::vector< StateRef >();
 
             toExt.succsCount = countSuccessors( to );
@@ -294,7 +273,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         if ( from.valid() ) {
             statsAddInTransition();
             int fromOwner = visitor->owner( from );
-            if ( shared.findBackEdges ) {
+            if ( meta().output.backEdges ) {
                 StateRef fromRef( extension( from ).index, fromOwner );
                 toExt.preds->push_back( fromRef );
             }
@@ -355,7 +334,6 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     /// Called in parallel. State space exploration.
     void _visit() {
         loadLocalStats();
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         this->comms().notify( this->globalId(), &shared.g.pool() );
 
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
@@ -387,13 +365,13 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Opens default output, seeks a position for binary, appends to text
         void openOutput( bool binary = false, unsigned offset = 0 ) {
-            assert( parent->shared.compactFile != "" || !binary );
+            std::string file = parent->meta().output.file;
 
             if ( out == NULL ) {
-                if ( parent->shared.compactFile == "" )
+                if ( file == "" )
                     out = &std::cout;
                 else
-                    out = new std::ofstream( parent->shared.compactFile.c_str(), std::ios_base::out |
+                    out = new std::ofstream( file.c_str(), std::ios_base::out |
                         ( binary ? std::ios_base::binary | std::ios_base::in : std::ios_base::app ) );
             }
 
@@ -402,7 +380,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Closes default output
         void closeOutput() {
-            if ( parent->shared.compactFile != "" ) {
+            if ( parent->meta().output.file != "" ) {
                 std::ofstream *fout = static_cast< std::ofstream* >( out );
                 fout->close();
                 delete fout;
@@ -412,15 +390,15 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Empties default output
         void prepareOutput( bool binary = false ) {
-            if ( parent->compactFile == "" && binary ) {
-                parent->compactFile = "a.compact";
+            std::string file = parent->meta().output.file;
+            if ( file == "" && binary ) {
+                file = "a.compact";
                 std::cerr << "Binary output is not enabled for standard output. Dumping to ./" <<
-                        parent->compactFile << " instead." << std::endl;
+                        file << " instead." << std::endl;
             }
-            if ( parent->compactFile != "" ) {
-                std::ofstream f( parent->compactFile.c_str(), std::ios_base::trunc );
+            if ( file != "" ) {
+                std::ofstream f( file.c_str(), std::ios_base::trunc );
                 f.close();
-                parent->shared.compactFile = parent->compactFile;
             }
         }
 
@@ -446,6 +424,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     struct TextWriter : CompactWriter {
 
         This& alg() { return *this->parent; }
+        Meta &meta() { return alg().meta(); }
 
         G& g() { return this->parent->shared.g; }
 
@@ -491,7 +470,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
                 *this->out << std::endl;
 
                 // store backward transitions
-                if ( shared().findBackEdges ) {
+                if ( meta().output.backEdges ) {
                     *this->out << compact::cfBackward << " ";
                     for ( typename std::vector< StateRef >::const_iterator bit =
                           targetExt.preds->begin(); bit != targetExt.preds->end(); ++bit )
@@ -535,7 +514,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             this->openOutput();
             *this->out << compact::cfStates << " " << alg().localStats.states << std::endl;
             *this->out << compact::cfProbabilistic << " " << alg().isProbabilistic() << std::endl;
-            *this->out << compact::cfBackward << " " << ( shared().findBackEdges ?
+            *this->out << compact::cfBackward << " " << ( meta().output.backEdges ?
                     alg().localStats.incomingTransitions : 0 ) << std::endl;
             *this->out << compact::cfForward << " " <<
                     alg().localStats.outgoingTransitions << std::endl;
@@ -555,7 +534,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         /// Separates the compact state space data from the original model
         void printBanner() {
-            std::string file = alg().meta().input.model;
+            std::string file = meta().input.model;
             *this->out << std::endl;
             *this->out << "******************";
             for ( unsigned i = 0; i < file.size(); i++ ) this->out->put( '*' );
@@ -581,7 +560,8 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         /// Dumps the compact state space to a file
         void writeOutput() {
             initializeOutput();
-            alg().domain().parallel().runInRing( shared(), &This::_dumpTextCompactRepresentation );
+            alg().domain().parallel( meta() ).runInRing(
+                shared(), &This::_dumpTextCompactRepresentation );
             appendOriginal();
         }
     };
@@ -592,6 +572,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     struct BinaryWriter : CompactWriter {
 
         This& alg() { return *this->parent; }
+        Meta &meta() { return alg().meta(); }
 
         G& g() { return this->parent->shared.g; }
 
@@ -606,7 +587,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         unsigned binaryTransitionsOffset( unsigned idPeer ) {
             return binaryHeaderSize() + ( shared().statesCountSums[ idPeer ] +
                     ( idPeer == alg().peers() ? 1 : 0 ) ) *
-                    ( shared().findBackEdges ? 2 : 1 ) * sizeof( unsigned );
+                    ( meta().output.backEdges ? 2 : 1 ) * sizeof( unsigned );
         }
 
         /// Offset of states of particular peer
@@ -616,7 +597,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
                     shared().outTransitionsCountSums[ idPeer ] * 
                     ( sizeof( unsigned ) + ( alg().isProbabilistic() ? sizeof( ProbabilisticTransition ) : 0 ) ) +
                     shared().statesCountSums[ idPeer ] * ( sizeof( AC ) +
-                    sizeof( unsigned ) * ( shared().findBackEdges ? 2 : 1 ) );
+                    sizeof( unsigned ) * ( meta().output.backEdges ? 2 : 1 ) );
         }
 
         /// Dumps states of one peer to a file
@@ -637,7 +618,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
                 Extension &targetExt = alg().extension( target );
 
                 // store backward transitions cumulative sum
-                if ( shared().findBackEdges ) {
+                if ( meta().output.backEdges ) {
                     write( shared().inTransitionsCountSums[ alg().globalId() ] + b );
                     b += targetExt.preds->size();
                 }
@@ -648,7 +629,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             }
             // store total sums
             if ( alg().globalId() == alg().peers() - 1 ) {
-                if ( shared().findBackEdges )
+                if ( meta().output.backEdges )
                     write( shared().inTransitionsCountSums[ alg().peers() ] );
                 write( shared().outTransitionsCountSums[ alg().peers() ] );
             }
@@ -676,7 +657,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
                 write( acData.to_ulong() );
 
                 // store backward transitions
-                if ( shared().findBackEdges ) {
+                if ( meta().output.backEdges ) {
                     write( static_cast< unsigned >( targetExt.preds->size() ) );
                     for ( typename std::vector< StateRef >::const_iterator bit =
                           targetExt.preds->begin(); bit != targetExt.preds->end(); ++bit )
@@ -718,7 +699,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
             this->openOutput( true );
             write( alg().localStats.states );
             write( alg().isProbabilistic() );
-            write( ( shared().findBackEdges ? alg().localStats.incomingTransitions : 0 ) );
+            write( ( meta().output.backEdges ? alg().localStats.incomingTransitions : 0 ) );
             write( alg().localStats.outgoingTransitions );
             write( shared().statesCountSums[ alg().initialPeer ] + 1 );
             generator::PropertyType acType;
@@ -737,7 +718,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         void appendOriginal() {
             this->openOutput( true, binaryStatesOffset( alg().peers() ) );
 
-            std::string prefix = alg().meta().input.model + ": ";
+            std::string prefix = meta().input.model + ": ";
             this->out->write( prefix.c_str(), prefix.size() );
             this->copyOriginal();
 
@@ -747,7 +728,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         /// Dumps the compact state space to the file
         void writeOutput() {
             initializeOutput();
-            alg().domain().parallel().run( shared(),
+            alg().domain().parallel( meta() ).run( shared(),
                 &This::_dumpBinaryCompactRepresentation );
             appendOriginal();
         }
@@ -801,16 +782,13 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     }
 
     /// Constructs Compact algorithm
-    CompactCommon( Meta *m = 0 ) : Algorithm( m, sizeof( Extension ) ), 
-        compactFile( "" ), initialPeer( 0 ) {
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-            compactFile = m->output.file;
-            plaintextFormat = m->output.textFormat;
-            shared.findBackEdges = m->output.backEdges;
-        }
+    CompactCommon( Meta m, bool master = false ) : Algorithm( m, sizeof( Extension ) ),
+                                                   initialPeer( 0 )
+    {
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+
+        this->init( &shared.g, this );
     }
 
     /// Handles statistics
@@ -839,11 +817,11 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
         // first we explore the original state space
         progress() << "Compacting...\t\t" << std::flush;
         do {
-            domain().parallel().run( shared, &This::_visit );
+            domain().parallel( meta() ).run( shared, &This::_visit );
             collect();
             findInitial();
             shared.need_expand = false;
-            domain().parallel().runInRing( shared, &This::_por );
+            domain().parallel( meta() ).runInRing( shared, &This::_por );
         } while ( shared.need_expand );
 
         // then we construct compact representation
@@ -853,7 +831,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         CompactWriter* writer;
 
-        if ( plaintextFormat )
+        if ( meta().output.textFormat )
             writer = new TextWriter( this );
         else
             writer = new BinaryWriter( this );
@@ -882,7 +860,8 @@ struct Compact : CompactCommon< G, Statistics >
         return ProbabilisticTransition();
     }
 
-    Compact( Meta *m = 0 ) : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m ) {}
+    Compact( Meta m, bool master = false )
+        : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m, master ) {}
 };
 
 #define PROBABILISTIC algorithm::NonPORGraph< generator::LegacyProbDve >, Statistics
@@ -912,7 +891,8 @@ struct Compact< PROBABILISTIC > : CompactCommon< PROBABILISTIC >
         return pt;
     }
 
-    Compact( Meta *m = 0 ) : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m ) {}
+    Compact( Meta m, bool master = false )
+        : Algorithm( m, sizeof( typename CompactCommon::Extension ) ), CompactCommon( m, master ) {}
 };
 
 }

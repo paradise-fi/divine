@@ -5,7 +5,6 @@
 #include <divine/ltlce.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
 
 #ifndef DIVINE_ALGORITHM_OWCTY_H
 #define DIVINE_ALGORITHM_OWCTY_H
@@ -56,7 +55,6 @@ struct _MpiId< Owcty< G, S > >
     static void writeShared( typename A::Shared s, O o ) {
         o = s.stats.write( o );
         *o++ = s.need_expand;
-        *o++ = s.initialTable;
         *o++ = s.size;
         *o++ = s.oldsize;
         *o++ = s.iteration;
@@ -71,7 +69,6 @@ struct _MpiId< Owcty< G, S > >
     static I readShared( typename A::Shared &s, I i ) {
         i = s.stats.read( i );
         s.need_expand = *i++;
-        s.initialTable = *i++;
         s.size = *i++;
         s.oldsize = *i++;
         s.iteration = *i++;
@@ -116,7 +113,6 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         int iteration;
         G g;
         CeShared< Node > ce;
-        int initialTable;
         algorithm::Statistics< G > stats;
         bool need_expand;
 
@@ -275,7 +271,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
 
     void reachability() {
         shared.size = 0;
-        domain().parallel().run( shared, &This::_reachability );
+        domain().parallel( meta() ).run( shared, &This::_reachability );
         shared.size = totalSize();
     }
 
@@ -327,7 +323,6 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             &This::initExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         this->comms().notify( this->globalId(), &shared.g.pool() );
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
         shared.g.queueInitials( visitor );
@@ -335,7 +330,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     }
 
     void initialise() {
-        domain().parallel().run( shared, &This::_initialise ); updateResult();
+        domain().parallel( meta() ).run( shared, &This::_initialise ); updateResult();
         shared.oldsize = shared.size = totalSize();
         while ( true ) {
             if ( cycleFound() ) {
@@ -344,11 +339,11 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             }
 
             shared.need_expand = false;
-            domain().parallel().runInRing( shared, &This::_por );
+            domain().parallel( meta() ).runInRing( shared, &This::_por );
             updateResult();
 
             if ( shared.need_expand ) {
-                domain().parallel().run( shared, &This::_initialise );
+                domain().parallel( meta() ).run( shared, &This::_initialise );
                 updateResult();
             } else
                 break;
@@ -407,7 +402,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
 
     void elimination() {
         shared.size = 0;
-        domain().parallel().run( shared, &This::_elimination );
+        domain().parallel( meta() ).run( shared, &This::_elimination );
         shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
@@ -460,7 +455,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
                 continue; // already seen
             if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
-            domain().parallel().run( shared, &This::_checkCycle );
+            domain().parallel( meta() ).run( shared, &This::_checkCycle );
         }
     }
 
@@ -558,15 +553,13 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
     }
 
-    Owcty( Meta *m = 0 )
+    Owcty( Meta m, bool master = false )
         : Algorithm( m, sizeof( Extension ) )
     {
         shared.size = 0;
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 };
 

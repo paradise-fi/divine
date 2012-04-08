@@ -16,10 +16,10 @@ namespace divine {
 
 template< typename > struct Simple;
 
-template< typename G >
+template< typename G, typename X >
 struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 {
-    typedef Draw< G > This;
+    typedef Draw< G, X > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
     typedef typename algorithm::AlgorithmUtils< G >::Table Table;
@@ -223,16 +223,16 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         }
     }
 
-    Draw( Meta *m = 0 )
+    Draw( Meta m, bool = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        this->initPeer( &g, NULL, 0 ); // only one peer
-        maxdist = m->algorithm.maxDistance;
-        output = m->output.file;
-        render = m->output.filterProgram;
-        trace = m->input.trace;
-        labels = m->algorithm.labels;
-        traceLabels = labels || m->algorithm.traceLabels;
+        this->init( &g, NULL );
+        maxdist = m.algorithm.maxDistance;
+        output = m.output.file;
+        render = m.output.filterProgram;
+        trace = m.input.trace;
+        labels = m.algorithm.labels;
+        traceLabels = labels || m.algorithm.traceLabels;
         drawn = 0;
         serial = 1;
     }

@@ -2,10 +2,21 @@
 
 #include <bitset>
 
-#ifndef DIVINE_COMPACTSTATE_H
-#define DIVINE_COMPACTSTATE_H
+#ifndef DIVINE_COMPACT_H
+#define DIVINE_COMPACT_H
 
 namespace divine {
+
+/// Compact file string literals
+namespace compact {
+    const std::string cfStates = "states:";
+    const std::string cfBackward = "backward:";
+    const std::string cfForward = "forward:";
+    const std::string cfInitial = "initial:";
+    const std::string cfAC = "ac:";
+    const std::string cfState = "state:";
+    const std::string cfProbabilistic = "probabilistic:";
+}
 
 typedef unsigned StateId;
 typedef std::bitset< sizeof( unsigned long ) > AC;

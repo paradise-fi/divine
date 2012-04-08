@@ -66,6 +66,7 @@ template< typename _Item,
           typename _Equal = divine::equal< _Item > >
 struct HashSet
 {
+    typedef wibble::Unit IsHashSet;
     typedef _Item Item;
     typedef _Hash Hash;
     typedef _Valid Valid;

@@ -1,9 +1,10 @@
 // -*- C++ -*-
 
+#include <vector>
+#include <divine/porcp.h>
+
 #ifndef DIVINE_FAIRGRAPH_H
 #define DIVINE_FAIRGRAPH_H
-
-#include <divine/porcp.h>
 
 namespace divine {
 namespace algorithm {
@@ -33,7 +34,7 @@ struct FairGraph : NonPORGraph< G > {
 
     // Successor container consisting of multiple successor containers returned by generator
     struct Successors {
-        vector< pair< GenSuccs, int > > parts;
+        std::vector< std::pair< GenSuccs, int > > parts;
         int current;
         FairGraph *parent;
 
@@ -64,7 +65,7 @@ struct FairGraph : NonPORGraph< G > {
         void add( GenSuccs s, int copy ) {
             if ( size_t( current ) == parts.size() && s.empty() )
                 current++;
-            parts.push_back( make_pair( s, copy ) );
+            parts.push_back( std::make_pair( s, copy ) );
         }
 
         Successors() : current( 0 ) {}

@@ -6,7 +6,6 @@
 #include <divine/ltlce.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
 
 #ifndef DIVINE_ALGORITHM_REACHABILITY_H
 #define DIVINE_ALGORITHM_REACHABILITY_H
@@ -44,7 +43,6 @@ struct _MpiId< Reachability< G, S > >
     template< typename O >
     static void writeShared( typename A::Shared s, O o ) {
         o = s.stats.write( o );
-        *o++ = s.initialTable;
         *o++ = s.goal.valid();
         if ( s.goal.valid() )
             o = s.goal.write32( o );
@@ -54,7 +52,6 @@ struct _MpiId< Reachability< G, S > >
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
         i = s.stats.read( i );
-        s.initialTable = *i++;
         bool valid = *i++;
         if ( valid ) {
             FakePool fp;
@@ -82,11 +79,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         algorithm::Statistics< G > stats;
         G g;
         CeShared< Node > ce;
-        int initialTable;
         bool need_expand;
-        bool find_deadlocks;
-        bool find_goals;
-        bool hashCompaction;
     } shared;
 
     Node goal;
@@ -115,13 +108,13 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( !shared.hashCompaction && !extension( t ).parent.valid() ) {
+        if ( !meta().algorithm.hashCompaction && !extension( t ).parent.valid() ) {
             extension( t ).parent = f;
             visitor::setPermanent( f );
         }
         shared.stats.addEdge();
 
-        if ( shared.find_goals && shared.g.isGoal( t ) ) {
+        if ( meta().algorithm.findGoals && shared.g.isGoal( t ) ) {
             shared.goal = t;
             shared.deadlocked = false;
             return visitor::TerminateOnTransition;
@@ -133,7 +126,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
         static visitor::DeadlockAction deadlocked( This &r, Node n ) {
-            if ( !r.shared.find_deadlocks )
+            if ( !r.meta().algorithm.findDeadlocks )
                 return visitor::IgnoreDeadlock;
 
             r.shared.goal = n;
@@ -144,12 +137,11 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     };
 
     void _visit() { // parallel
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         this->comms().notify( this->globalId(), &shared.g.pool() );
-        if ( shared.hashCompaction )
+        if ( meta().algorithm.hashCompaction )
             equal.allEqual = true;
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            visitor( shared.g, *this, *this, hasher, &this->table(), shared.hashCompaction );
+            visitor( shared.g, *this, *this, hasher, &this->table(), meta().algorithm.hashCompaction );
         shared.g.queueInitials( visitor );
         visitor.processQueue();
     }
@@ -163,17 +155,12 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
             shared.need_expand = true;
     }
 
-    Reachability( Meta *m = 0 )
+    Reachability( Meta m, bool master = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-            shared.find_deadlocks = m->algorithm.findDeadlocks;
-            shared.find_goals = m->algorithm.findGoals;
-            shared.hashCompaction = m->algorithm.hashCompaction;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 
     void _parentTrace() {
@@ -204,15 +191,15 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     void run() {
         progress() << "  searching... \t" << std::flush;
 
-        domain().parallel().run( shared, &This::_visit );
+        domain().parallel( meta() ).run( shared, &This::_visit );
         collect();
 
         while ( !goal.valid() ) {
             shared.need_expand = false;
-            domain().parallel().runInRing( shared, &This::_por );
+            domain().parallel( meta() ).runInRing( shared, &This::_por );
 
             if ( shared.need_expand ) {
-                domain().parallel().run( shared, &This::_visit );
+                domain().parallel( meta() ).run( shared, &This::_visit );
                 collect();
             } else
                 break;
@@ -230,7 +217,7 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         progress() << std::endl;
 
         safetyBanner( !goal.valid() );
-        if ( goal.valid() && !shared.hashCompaction ) {
+        if ( goal.valid() && !meta().algorithm.hashCompaction ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }

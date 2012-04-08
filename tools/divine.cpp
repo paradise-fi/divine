@@ -11,28 +11,8 @@
 #include <wibble/sys/fs.h>
 
 #include <divine/meta.h>
-#include <divine/generator/common.h>
-#include <divine/generator/dummy.h>
-#include <divine/generator/legacy.h>
-#include <divine/generator/custom.h>
-#include <divine/generator/compact.h>
-#include <divine/generator/coin.h>
-#include <divine/generator/llvm.h>
-#include <divine/generator/dve.h>
-
-// The algorithms.
-#include <divine/algorithm/reachability.h>
-#include <divine/algorithm/owcty.h>
-#include <divine/algorithm/metrics.h>
-#include <divine/algorithm/map.h>
-#include <divine/algorithm/nested-dfs.h>
-#include <divine/algorithm/compact.h>
-#include <divine/algorithm/probabilistic.h>
-
-#include <divine/porcp.h>
-#include <divine/fairgraph.h>
-
 #include <divine/report.h>
+#include <divine/select.h>
 
 #include <tools/draw.h>
 #include <tools/combine.h>
@@ -52,21 +32,27 @@ using namespace commandline;
 namespace divine {
 
 Report *_report = 0;
+Meta *_meta = 0;
 
 void handler( int s ) {
     signal( s, SIG_DFL );
 
     sysinfo::Info i;
     Output::output().cleanup();
-    if (_report) {
+    if ( _report && _meta ) {
         _report->signal( s );
-        _report->final( std::cout );
+        _report->final( std::cout, *_meta );
     }
     raise( s );
 }
 
-template< typename G >
-struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
+struct InfoBase {
+    virtual generator::PropertyType propertyType() = 0;
+    virtual void read( std::string s ) = 0;
+};
+
+template< typename G, typename X >
+struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >, virtual InfoBase
 {
     G g;
     void run() {
@@ -79,8 +65,16 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
                       << props[i].first << ": " << props[i].second << std::endl;
     }
 
-    Info( Meta *m ) : Algorithm( m ) {
-        this->initPeer( &g, 0 ); // XXX icky
+    virtual generator::PropertyType propertyType() {
+        return g.propertyType();
+    }
+
+    virtual void read( std::string s ) {
+        g.read( s );
+    }
+
+    Info( Meta m, bool = false ) : Algorithm( m ) {
+        this->init( &g, NULL );
     }
 };
 
@@ -107,9 +101,6 @@ struct Main {
     StringOption *o_compactOutput;
     BoolOption *o_onlyQualitative, *o_disableIterativeOptimization, *o_simpleOutput; // probabilistic options
 
-    bool dummygen;
-    bool statistics;
-
     int argc;
     const char **argv;
     commandline::StandardParserWithMandatoryCommand opts;
@@ -118,8 +109,7 @@ struct Main {
     Compile compile;
 
     Main( int _argc, const char **_argv )
-        : report( meta ),
-          dummygen( false ), statistics( false ), argc( _argc ), argv( _argv ),
+        : argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
           combine( opts, argc, argv ),
           compile( opts )
@@ -143,20 +133,50 @@ struct Main {
             Statistics::global().output = new std::ofstream( o_gnuplot->stringValue().c_str() );
         }
 
-#ifdef O_PERFORMANCE
-        if ( statistics )
-            selectGraph< Statistics >();
-        else
-            selectGraph< NoStatistics >();
-#else
-        selectGraph< Statistics >();
-#endif
+        run();
+    }
+
+    void run() {
+        algorithm::Algorithm *a = NULL;
+
+        if ( opts.foundCommand() == cmd_draw )
+            a = selectGraph< Draw >( meta );
+        if ( opts.foundCommand() == cmd_info )
+            a = selectGraph< Info >( meta );
+
+        if (!a)
+            a = selectLtl( meta );
+        if (!a)
+            a = selectExploration( meta );
+        if (!a)
+            a = selectProbabilistic( meta );
+
+        if (!a)
+            die( "Booh." );
+
+        if ( a->mpi() ) {
+            meta.execution.nodes = a->mpi()->size();
+            meta.execution.thisNode = a->mpi()->rank();
+        }
+
+        if ( !a->mpi() || a->mpi()->master() )
+            setupCurses();
+
+        Statistics::global().setup( meta, a->mpi() );
+        if ( meta.output.statistics )
+            Statistics::global().start();
+
+        if ( a->mpi() )
+            a->mpi()->start();
+        a->run();
+        _meta = &a->meta();
+
         report.finished();
-        if ( statistics )
+        if ( meta.output.statistics )
             Statistics::global().snapshot();
         Output::output().cleanup();
         if ( o_report->boolValue() )
-            report.final( std::cout );
+            report.final( std::cout, a->meta() );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -419,8 +439,6 @@ struct Main {
     }
 
 
-    enum RunAlgorithm { RunMetrics, RunReachability, RunNdfs, RunMap, RunOwcty, RunVerify,
-                        RunDraw, RunInfo, RunCompact, RunProbabilistic } m_run;
     bool m_noMC;
 
     void parseCommandline()
@@ -447,7 +465,7 @@ struct Main {
 
             if ( !opts.hasNext() ) {
                 if ( o_dummy->boolValue() )
-                    dummygen = true;
+                    meta.input.dummygen = true;
                 else
                     die( "FATAL: no input file specified" );
             } else {
@@ -464,7 +482,7 @@ struct Main {
             die( "FATAL: no command specified" );
 
         if ( o_workers->boolValue() )
-            meta.execution.workers = o_workers->intValue();
+            meta.execution.threads = o_workers->intValue();
         // else default (currently set to 2)
 
         meta.input.model = input;
@@ -475,6 +493,8 @@ struct Main {
         meta.algorithm.findDeadlocks = !o_noDeadlocks->boolValue();
         meta.algorithm.findGoals = !o_noGoals->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
+        meta.algorithm.por = o_por->boolValue();
+        meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
@@ -510,32 +530,30 @@ struct Main {
             meta.output.ceFile = "-";
         }
 
-        if ( !dummygen && access( input.c_str(), R_OK ) )
+        if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         if ( opts.foundCommand() == cmd_draw ) {
-            meta.execution.workers = 1; // never runs in parallel
-            m_run = RunDraw;
+            meta.execution.threads = 1; // never runs in parallel
+            meta.algorithm.algorithm = meta::Algorithm::Draw;
         } else if ( opts.foundCommand() == cmd_info ) {
-            m_run = RunInfo;
-        } else if ( opts.foundCommand() == cmd_verify ) {
-            m_run = RunVerify;
+            meta.algorithm.algorithm = meta::Algorithm::Info;
         } else if ( opts.foundCommand() == cmd_ndfs ) {
-            m_run = RunNdfs;
+            meta.algorithm.algorithm = meta::Algorithm::Ndfs;
             if ( !o_workers->boolValue() )
-                meta.execution.workers = 1;
+                meta.execution.threads = 1;
         } else if ( opts.foundCommand() == cmd_owcty )
-            m_run = RunOwcty;
+            meta.algorithm.algorithm = meta::Algorithm::Owcty;
         else if ( opts.foundCommand() == cmd_reachability ) {
             if ( !meta.algorithm.findGoals && !meta.algorithm.findDeadlocks )
                 std::cerr << "WARNING: Both deadlock and goal detection is disabled."
                           << "Only state count " << std::endl << "statistics will be tracked "
                           << "(\"divine metrics\" would have been more efficient)." << std::endl;
-            m_run = RunReachability;
+            meta.algorithm.algorithm = meta::Algorithm::Reachability;
         } else if ( opts.foundCommand() == cmd_map )
-            m_run = RunMap;
+            meta.algorithm.algorithm = meta::Algorithm::Map;
         else if ( opts.foundCommand() == cmd_metrics )
-            m_run = RunMetrics;
+            meta.algorithm.algorithm = meta::Algorithm::Metrics;
         else if ( opts.foundCommand() == cmd_compact ) {
 
             if ( o_compactOutput->stringValue() == "" ) {
@@ -546,17 +564,34 @@ struct Main {
                 meta.output.file = o_compactOutput->stringValue();
             }
 
-            m_run = RunCompact;
-        } else if ( opts.foundCommand() == cmd_probabilistic )
-            m_run = RunProbabilistic;
+            meta.algorithm.algorithm = meta::Algorithm::Compact;
+        } else if ( opts.foundCommand() == cmd_probabilistic ) {
+            meta.algorithm.algorithm = meta::Algorithm::Probabilistic;
+        } else if ( opts.foundCommand() == cmd_verify ) {
+            InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
+            assert( ib );
+
+            ib->read( meta.input.model );
+            if ( ib->propertyType() == generator::AC_None )
+                meta.algorithm.algorithm = meta::Algorithm::Reachability;
+            else {
+                if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
+                    meta.algorithm.algorithm = meta::Algorithm::Owcty;
+                else
+                    meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+            }
+
+            delete ib;
+        }
         else
             die( "FATAL: Internal error in commandline parser." );
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
         if (opts.foundCommand() != cmd_ndfs) // ndfs uses shared table
-            meta.execution.initialTable /= meta.execution.workers;
+            meta.execution.initialTable /= meta.execution.threads;
     }
 
+#if 0
     template< typename Graph, typename Stats >
     void selectAlgorithm()
     {
@@ -564,7 +599,7 @@ struct Main {
             Graph temp;
             temp.read( meta.input.model );
 
-            if ( temp.propertyType() != generator::AC_None && meta.execution.workers > 1 )
+            if ( temp.propertyType() != generator::AC_None && meta.execution.threads > 1 )
                 m_run = RunOwcty;
             else {
                 if ( temp.propertyType() != generator::AC_None )
@@ -581,111 +616,11 @@ struct Main {
             case RunInfo:
                 meta.algorithm.name = "Info";
                 return run< Info< Graph >, Stats >();
-            case RunReachability:
-                meta.algorithm.name = "Reachability";
-                return run< algorithm::Reachability< Graph, Stats >, Stats >();
-            case RunMetrics:
-                meta.algorithm.name = "Metrics";
-                return run< algorithm::Metrics< Graph, Stats >, Stats >();
-            case RunOwcty:
-                meta.algorithm.name = "OWCTY";
-                return run< algorithm::Owcty< Graph, Stats >, Stats >();
-#ifndef O_SMALL
-            case RunMap:
-                meta.algorithm.name = "MAP";
-                return run< algorithm::Map< Graph, Stats >, Stats >();
-#endif
-            case RunNdfs:
-                meta.algorithm.name = "Nested DFS";
-                return run< algorithm::NestedDFS< Graph, Stats >, Stats >();
-#ifndef O_SMALL
-            case RunCompact:
-                meta.algorithm.name = "Compact";
-                return run< algorithm::Compact< Graph, Stats >, Stats >();
-#endif
             default:
                 die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
         }
     }
 
-    template< typename Stats >
-    void selectGraph()
-    {
-        if ( str::endsWith( meta.input.model, ".dve" ) ) {
-            meta.input.modelType = "DVE";
-#ifndef O_SMALL
-            if ( o_fair->boolValue() ) {
-                if ( o_por->boolValue() )
-                    std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-                meta.algorithm.transformations.push_back( "fairness" );
-                return selectAlgorithm< algorithm::FairGraph< generator::LegacyDve >, Stats >();
-            }
-            if ( o_por->boolValue() ) {
-                meta.algorithm.transformations.push_back( "POR" );
-                return selectAlgorithm< algorithm::PORGraph< generator::LegacyDve, Stats >, Stats >();
-            } else
-#endif
-            {
-#ifdef O_DVE
-                return selectAlgorithm< algorithm::NonPORGraph< generator::Dve >, Stats >();
-#else
-                return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyDve >, Stats >();
-#endif
-            }
-#ifndef O_SMALL
-        } else if ( str::endsWith( meta.input.model, ".probdve" ) ) {
-            meta.input.modelType = "ProbDVE";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyProbDve >, Stats >();
-#endif
-        } else if ( str::endsWith( meta.input.model, ".compact" ) ) {
-            meta.input.modelType = "Compact";
-#ifndef O_SMALL
-            if ( m_run == RunProbabilistic ) return runProbabilistic();
-#endif
-            return selectAlgorithm< algorithm::NonPORGraph< generator::Compact >, Stats >();
-#ifndef O_SMALL
-        } else if ( str::endsWith( meta.input.model, ".coin" ) ) {
-	    meta.input.modelType = "CoIn";
-            if ( o_por->boolValue() ) {
-                meta.algorithm.transformations.push_back( "POR" );
-                return selectAlgorithm< algorithm::PORGraph< generator::Coin, Stats >, Stats >();
-            } else {
-                return selectAlgorithm< algorithm::NonPORGraph< generator::Coin >, Stats >();
-            }
-#endif
-        } else if ( o_por->boolValue() ) {
-            die( "FATAL: Partial order reduction is not supported for this input type." );
-        } else if ( str::endsWith( meta.input.model, ".bc" ) ) {
-            meta.input.modelType = "LLVM";
-#ifdef O_LLVM
-            if ( meta.execution.workers > 1 && !::llvm::llvm_start_multithreaded() )
-                die( "FATAL: This binary is linked to single-threaded LLVM.\n"
-                     "Multi-threaded LLVM is required for parallel algorithms." );
-            return selectAlgorithm< algorithm::NonPORGraph< generator::LLVM >, Stats >();
-#else
-	    die( "FATAL: This binary was built without LLVM support." );
-#endif
-
-#ifndef O_SMALL
-        } else if ( str::endsWith( meta.input.model, ".b" ) ) {
-            meta.input.modelType = "NIPS";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::LegacyBymoc >, Stats >();
-#endif
-        } else if ( str::endsWith( meta.input.model, ".so" ) ) {
-            meta.input.modelType = "CESMI";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::Custom >, Stats >();
-#ifndef O_SMALL
-        } else if ( dummygen ) {
-            meta.input.modelType = "dummy";
-            return selectAlgorithm< algorithm::NonPORGraph< generator::Dummy >, Stats >();
-#endif
-        } else
-	    die( "FATAL: Unknown input file extension." );
-
-        die( "FATAL: Internal error choosing generator." );
-    }
-
-#ifndef O_SMALL
     void runProbabilistic() {
         meta.algorithm.name = "Probabilistic";
         try {
@@ -704,7 +639,6 @@ struct Main {
             die( std::string( "FATAL: " ) + s );
         }
     }
-#endif
 
     template< typename Stats, typename T >
     typename T::IsDomainWorker setupParallel( Preferred, T &t ) {
@@ -739,6 +673,7 @@ struct Main {
             die( std::string( "FATAL: " ) + e.what() );
         }
     }
+#endif
 
     void noMC() {
         if ( opts.foundCommand() == compile.cmd_compile )

@@ -100,6 +100,9 @@ struct MpiBase {
         m_monitor[ tag ] = &m;
     }
 
+    virtual void init() = 0;
+    virtual void start() = 0;
+
     int rank() { if ( m_initd ) return m_rank; else return 0; }
     int size() { if ( m_initd ) return m_size; else return 1; }
 

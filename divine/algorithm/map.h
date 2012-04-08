@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm/common.h>
+#include <divine/algorithm/metrics.h>
 #include <divine/ltlce.h>
 
 #ifndef DIVINE_ALGORITHM_MAP_H
@@ -75,7 +76,6 @@ struct _MpiId< Map< G, S > >
     static void writeShared( typename A::Shared s, O o ) {
         o = s.stats.write( o );
         *o++ = s.need_expand;
-        *o++ = s.initialTable;
         *o++ = s.iteration;
         *o++ = s.accepting;
         *o++ = s.expanded;
@@ -87,7 +87,6 @@ struct _MpiId< Map< G, S > >
     static I readShared( typename A::Shared &s, I i ) {
         i = s.stats.read( i );
         s.need_expand = *i++;
-        s.initialTable = *i++;
         s.iteration = *i++;
         s.accepting = *i++;
         s.expanded = *i++;
@@ -114,7 +113,6 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     struct Shared {
         int expanded, eliminated, accepting;
         int iteration;
-        int initialTable;
         G g;
         CeShared< Node > ce;
         algorithm::Statistics< G > stats;
@@ -256,7 +254,6 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
         shared.expanded = 0;
         shared.eliminated = 0;
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() );
         this->comms().notify( this->globalId(), &shared.g.pool() );
 
         Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
@@ -294,21 +291,21 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     }
 
     void visit() {
-        domain().parallel().run( shared, &This::_visit );
+        domain().parallel( meta() ).run( shared, &This::_visit );
         collect();
 
         while ( !cycle_node.valid() && shared.iteration == 1 ) {
             shared.need_expand = false;
-            domain().parallel().runInRing( shared, &This::_por );
+            domain().parallel( meta() ).runInRing( shared, &This::_por );
 
             if ( shared.need_expand ) {
-                domain().parallel().run( shared, &This::_visit );
+                domain().parallel( meta() ).run( shared, &This::_visit );
                 collect();
             } else
                 break;
         }
 
-        domain().parallel().run( shared, &This::_cleanup );
+        domain().parallel( meta() ).run( shared, &This::_cleanup );
         collect();
     }
 
@@ -356,14 +353,12 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         }
     }
 
-    Map( Meta *m = 0 )
+    Map( Meta m, bool master = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 
 };

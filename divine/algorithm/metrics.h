@@ -3,7 +3,6 @@
 #include <divine/algorithm/common.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
 
 #include <iomanip>
 
@@ -34,13 +33,11 @@ struct _MpiId< Metrics< G, S > >
 
     template< typename O >
     static void writeShared( typename A::Shared s, O o ) {
-        *o++ = s.initialTable;
         s.stats.write( o );
     }
 
     template< typename I >
     static I readShared( typename A::Shared &s, I i ) {
-        s.initialTable = *i++;
         return s.stats.read( i );
     }
 };
@@ -139,7 +136,6 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
     struct Shared {
         algorithm::Statistics< G > stats;
         G g;
-        int initialTable;
     } shared;
 
     Domain< This > &domain() {
@@ -166,26 +162,23 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
     };
 
     void _visit() { // parallel
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         this->comms().notify( this->globalId(), &shared.g.pool() );
         visitor::Partitioned< VisitorSetup, This, Hasher >
             vis( shared.g, *this, *this, hasher, &this->table() );
         vis.exploreFrom( shared.g.initial() );
     }
 
-    Metrics( Meta *m = 0 )
+    Metrics( Meta m, bool master = false )
         : Algorithm( m, 0 )
     {
-        if ( m ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, m->execution.workers );
-            shared.initialTable = m->execution.initialTable;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 
     void run() {
         progress() << "  exploring... \t\t\t " << std::flush;
-        domain().parallel().run( shared, &This::_visit );
+        domain().parallel( meta() ).run( shared, &This::_visit );
         progress() << "done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {

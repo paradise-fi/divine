@@ -28,7 +28,7 @@ std::ostream &operator<<( std::ostream &o, Input::PT t )
         case Input::NoProperty: return o << "none";
         case Input::Neverclaim: return o << "neverclaim";
         case Input::LTL: return o << "LTL";
-        case Input::Reachability: return o << "reachabality";
+        case Input::Reachability: return o << "reachability";
     }
     return o;
 }
@@ -64,14 +64,12 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
 {
     o << "Algorithm: " << a.name << std::endl;
     o << "Transformations: ";
-    if ( a.transformations.empty() )
-        o << "None";
-    else {
-        o << a.transformations.front();
-        for ( std::vector< std::string >::iterator i = a.transformations.begin() + 1;
-              i != a.transformations.end(); ++i )
-            o << ", " << *i;
-    }
+    if ( a.por )
+        o << "POR";
+    else if ( a.fairness )
+        o << "fairness";
+    else
+        o << "none";
     o << std::endl;
 
     return o;
@@ -79,13 +77,8 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
 
 std::ostream &operator<<( std::ostream &o, Execution a )
 {
-    o << "Workers: " << a.workers << std::endl;
-    o << "MPI: ";
-    if (a.mpi > 1)
-        o << a.mpi << " nodes";
-    else
-        o << "not used";
-    o << std::endl;
+    o << "Threads: " << a.threads << std::endl;
+    o << "MPI-Nodes: "<< a.nodes << std::endl;
     return o;
 }
 
