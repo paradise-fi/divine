@@ -264,6 +264,7 @@ public:
   //!A copy constructor.
   dve_expression_t(const dve_expression_t & expr):
     expression_t(expr),dve_source_position_t(),subexprs(expr.arity(),DVE_MAXIMAL_ARITY)
+    ,p_compact(0)
    {
     DEBFUNC(cerr << "Constructor 5 of dve_expression_t" << endl;)
     assign(expr);
