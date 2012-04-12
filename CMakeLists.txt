@@ -295,6 +295,7 @@ endif()
 add_subdirectory( divine )
 add_subdirectory( tools )
 add_subdirectory( examples )
+add_subdirectory( ltl3ba )
 
 if( GUI )
   add_subdirectory( gui )
