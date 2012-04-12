@@ -139,7 +139,10 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     void dotEdge( Node f, Node t, std::string color = "" ) {
         stringstream str;
         str << extension( f ).serial << " -> " << extension( t ).serial;
-        std::string label = g.showTransition( f, t );
+        std::string label;
+        if ( labels )
+            label = g.showTransition( f, t );
+
         if ( !color.empty() || !label.empty()) {
             str << " [";
             if (!color.empty()) {
