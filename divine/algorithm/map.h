@@ -204,7 +204,8 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     {
         if ( shared.iteration == 1 ) {
             shared.g.porTransition( f, t, 0 );
-            shared.stats.addEdge();
+            if ( !extension( t ).iteration )
+                shared.stats.addEdge();
         }
 
         if ( !f.valid() ) {
