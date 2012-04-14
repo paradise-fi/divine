@@ -25,7 +25,7 @@ shift
 tests="$@"
 
 for t_ in $tests; do
-    t=`basename $t_`
+    t=`echo $t_ | rev | cut -d/ -f1-2 | rev`
     test -n "$T" && {
         echo $t | grep -q $T || continue
     }

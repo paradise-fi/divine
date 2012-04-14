@@ -1,10 +1,8 @@
-file( GLOB tests ${CMAKE_SOURCE_DIR}/test/*.sh )
+set( root ${CMAKE_SOURCE_DIR}/test )
+file( GLOB tests ${root}/algorithm/*.sh ${root}/mpi/*.sh )
 add_custom_target( functional
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.dve .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.m .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.coin .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.mdve .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/*.ltl .
+  COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND ${WIBBLE_WRAP_TESTS} sh ${CMAKE_SOURCE_DIR}/test/harness "${divine_BINARY_DIR}/tools" "${MPIEXEC}" ${tests}
 )
 

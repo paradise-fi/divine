@@ -1,0 +1,127 @@
+# -*- sh -*-
+
+not() { "$@" && exit 1 || return 0; }
+map() { divine map --report "$@" 2> progress | tee report; }
+ndfs() { divine nested-dfs --report "$@" 2> progress | tee report; }
+owcty() { divine owcty --report "$@" 2> progress | tee report; }
+reachability() { divine reachability --report "$@" 2> progress | tee report; }
+metrics() { divine metrics --report "$@" 2> progress | tee report; }
+
+mpi() {
+    test -x `which $MPIEXEC` || exit 200;
+    $MPIEXEC -H localhost,localhost divine "$@" --report 2> progress | tee report
+}
+
+ltl_valid() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: neverclaim" report || return 0
+    grep "^Property-Holds: Yes" report
+}
+
+ltl_invalid() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: neverclaim" report || return 0
+    grep "^Property-Holds: No" report
+}
+
+reachability_valid() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: Yes" report
+}
+
+reachability_deadlock() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: deadlock" report
+}
+
+reachability_goal() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: goal" report
+}
+
+reachability_any() {
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: goal" report || grep "^CE-Type: deadlock" report
+}
+
+statespace() {
+    op=-le
+    grep "^Full-State-Space: Yes" report && op=-eq
+
+    states=`grep ^States-Visited report | cut -d' ' -f2`
+    trans=`grep ^Transition-Count report | cut -d' ' -f2`
+    accept=`grep ^States-Accepting report | cut -d' ' -f2`
+    dead=`grep ^Deadlock-Count report | cut -d' ' -f2`
+
+    test $states $op $1
+    test $trans $op $2
+    test $accept $op $3
+    test "$dead" = "-" || test $dead $op $4
+}
+
+owcty_sizes() {
+    if ! grep -q "^Algorithm: OWCTY" report; then return 0; fi
+
+    if ! grep -q "MAP/ET" progress;  then
+        grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
+        rm numbers-right
+        for n in $@; do echo $n >> numbers-right; done
+        diff -u numbers-right numbers
+    fi
+}
+
+dve_small() {
+    "$@" test1.dve
+    ltl_invalid
+    statespace 7 15 3 0
+
+    "$@" test2.dve
+    ltl_valid
+    owcty_sizes 2 2 0
+    statespace 3 3 2 2
+
+    "$@" test3.dve
+    ltl_valid
+    owcty_sizes 2 5 0
+    statespace 6 13 2 0
+
+    "$@" test4.dve
+    ltl_invalid
+    owcty_sizes 1 4 1
+    statespace 5 6 1 0
+
+    "$@" test5.dve
+    ltl_invalid
+    owcty_sizes 1 4 1
+    statespace 5 6 1 0
+
+    "$@" test6.dve
+    ltl_invalid
+    owcty_sizes 2 6 1 5 1
+    statespace 6 7 2 0
+}
+
+llvm_small() {
+    :
+}
+
+coin_small() {
+    :
+}
+
+all_small() {
+    dve_small "$@"
+    llvm_small "$@"
+    coin_small "$@"
+}
+
+set -vex -o pipefail
+trap "cat progress" EXIT
+
