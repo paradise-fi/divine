@@ -65,8 +65,8 @@ struct Output {
 };
 
 struct Statistics {
-    uint64_t visited, expanded, deadlocks, transitions;
-    Statistics() : visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ) {}
+    int64_t visited, expanded, deadlocks, transitions, accepting;
+    Statistics() : visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ), accepting( 0 ) {}
 };
 
 struct Result

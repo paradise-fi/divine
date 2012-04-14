@@ -80,6 +80,7 @@ struct Statistics {
         s.deadlocks += deadlocks;
         s.expanded += expansions;
         s.transitions += transitions;
+        s.accepting += accepting;
     }
 
     void print( std::ostream &o ) {

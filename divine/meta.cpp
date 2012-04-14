@@ -54,6 +54,7 @@ std::ostream &operator<<( std::ostream &o, Result r )
 std::ostream &operator<<( std::ostream &o, Statistics r )
 {
     o << "States-Visited: " << r.visited << std::endl;
+    o << "States-Accepting: " << r.accepting << std::endl;
     o << "States-Expanded: " << r.expanded << std::endl;
     o << "Transition-Count: " << r.transitions << std::endl;
     o << "Deadlock-Count: " << r.deadlocks << std::endl;
