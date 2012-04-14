@@ -118,6 +118,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
 
         stats.update( meta().statistics );
+        meta().statistics.deadlocks = -1; /* did not count */
         result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
         result().fullyExplored = valid ? meta::Result::Yes : meta::Result::No;
     }

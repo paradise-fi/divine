@@ -57,7 +57,11 @@ std::ostream &operator<<( std::ostream &o, Statistics r )
     o << "States-Accepting: " << r.accepting << std::endl;
     o << "States-Expanded: " << r.expanded << std::endl;
     o << "Transition-Count: " << r.transitions << std::endl;
-    o << "Deadlock-Count: " << r.deadlocks << std::endl;
+    o << "Deadlock-Count: ";
+    if (r.deadlocks >= 0)
+        o << r.deadlocks << std::endl;
+    else
+        o << "-" << std::endl;
     return o;
 }
 

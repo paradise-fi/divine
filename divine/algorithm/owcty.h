@@ -550,6 +550,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
         }
 
         result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
+        meta().statistics.deadlocks = -1; /* did not count */
     }
 
     Owcty( Meta m, bool master = false )
