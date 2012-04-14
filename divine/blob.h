@@ -115,7 +115,7 @@ struct Blob
 
     template< typename T >
     int put( int off, T t ) {
-        *reinterpret_cast< T * >( data() + off ) = t;
+        new ( static_cast< void * >( data() + off ) ) T( t );
         return off + sizeof( T );
     }
 
