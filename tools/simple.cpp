@@ -4,7 +4,7 @@
 #include <wibble/commandline/parser.h>
 #include <wibble/sys/fs.h>
 
-#include <divine/config.h>
+#include <divine/meta.h>
 #include <divine/generator/legacy.h>
 #include <divine/algorithm/simple.h>
 #include <divine/report.h>
@@ -14,7 +14,7 @@ using namespace wibble;
 using namespace commandline;
 
 struct Main {
-    Config config;
+    Meta meta;
 
     BoolOption *o_report;
     IntOption *o_workers, *o_initable;
@@ -30,26 +30,26 @@ struct Main {
         setupCommandline();
         parseCommandline();
 
-        Report report( config );
-        Result res;
+        Report report;
 
-        report.algorithm = "Simple Reachability";
-        report.generator = "DVE";
+        meta.algorithm.name = "Simple Reachability";
+        meta.input.modelType = "Legacy DVE";
 
         try {
-            algorithm::Simple< generator::LegacyDve > alg( &config );
-            alg.domain().mpi.init();
-            alg.init( &alg.domain() );
-            alg.domain().mpi.start();
-            report.mpiInfo( alg.domain().mpi );
+            algorithm::Simple< generator::LegacyDve > alg( meta, true );
+            alg.domain().mpi.init( meta );
+            meta.execution.nodes = alg.domain().mpi.size();
+            meta.execution.thisNode = alg.domain().mpi.rank();
 
-            res = alg.run();
+            alg.domain().mpi.start();
+            alg.run();
+            report.finished();
+            if ( o_report->boolValue() )
+                report.final( std::cout, alg.meta() );
         } catch (std::exception &e) {
             die( std::string( "FATAL: " ) + e.what() );
         }
 
-        report.finished( res );
-        if ( o_report->boolValue() ) report.final( std::cout );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -96,10 +96,10 @@ struct Main {
             die( e.fullInfo() );
         }
 
-        config.workers = o_workers->intValue();
-        config.initialTable =
+        meta.execution.threads = o_workers->intValue();
+        meta.execution.initialTable =
             ( 2 << (o_initable->intValue()) ) / o_workers->intValue();
-        config.input = input;
+        meta.input.model = input;
 
         if ( access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );

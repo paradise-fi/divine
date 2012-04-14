@@ -4,7 +4,6 @@
 #include <divine/algorithm/metrics.h> // for stats
 #include <divine/visitor.h>
 #include <divine/parallel.h>
-#include <divine/report.h>
 
 #ifndef DIVINE_ALGORITHM_SIMPLE_H
 #define DIVINE_ALGORITHM_SIMPLE_H
@@ -93,7 +92,6 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
     }
 
     void _visit() { // parallel
-        this->initPeer( &shared.g, &shared.initialTable, this->globalId() ); // XXX find better place for this
         this->comms().notify( this->globalId(), &shared.g.pool() );
         Node initial = shared.g.initial();
         if ( owner( initial ) == this->globalId() ) {
@@ -126,19 +124,17 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
         } while ( !this->idle() ) ; // until termination detection succeeds
     }
 
-    Simple( Config *c = 0 )
-        : Algorithm( c, 0 )
+    Simple( Meta m, bool master = false )
+        : Algorithm( m, 0 )
     {
-        if ( c ) {
-            this->initPeer( &shared.g );
-            this->becomeMaster( &shared, workerCount( c ) );
-            shared.initialTable = c->initialTable;
-        }
+        if ( master )
+            this->becomeMaster( &shared, m.execution.threads );
+        this->init( &shared.g, this );
     }
 
-    Result run() {
+    void run() {
         progress() << "  exploring... \t\t\t\t" << std::flush;
-        domain().parallel().run( shared, &This::_visit );
+        domain().parallel( meta() ).run( shared, &This::_visit );
         progress() << "   done" << std::endl;
 
         for ( int i = 0; i < domain().peers(); ++i ) {
@@ -148,9 +144,8 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
 
         shared.stats.print( progress() );
 
-        result().fullyExplored = Result::Yes;
-        shared.stats.updateResult( result() );
-        return result();
+        result().fullyExplored = meta::Result::Yes;
+        shared.stats.update( meta().statistics );
     }
 };
 
