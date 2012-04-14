@@ -106,6 +106,8 @@ struct Algorithm
     {
         want_ce = meta().output.wantCe;
     }
+
+    virtual ~Algorithm() {}
 };
 
 template< typename G >

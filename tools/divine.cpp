@@ -177,6 +177,8 @@ struct Main {
         Output::output().cleanup();
         if ( o_report->boolValue() )
             report.final( std::cout, a->meta() );
+
+        delete a;
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
