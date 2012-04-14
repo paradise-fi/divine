@@ -137,9 +137,8 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     // -- generally useful utilities
     // --
 
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
-    }
+    Domain< This > &domain() { return DomainWorker< This >::domain(); }
+    MpiBase *mpi() { return &domain().mpi; }
 
     static Extension &extension( Node n ) {
         return n.template get< Extension >();

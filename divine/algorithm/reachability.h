@@ -85,9 +85,8 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     Node goal;
     bool deadlocked;
 
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
-    }
+    Domain< This > &domain() { return DomainWorker< This >::domain(); }
+    MpiBase *mpi() { return &domain().mpi; }
 
     struct Extension {
         Blob parent;

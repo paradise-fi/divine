@@ -138,9 +138,8 @@ struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< 
         G g;
     } shared;
 
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
-    }
+    Domain< This > &domain() { return DomainWorker< This >::domain(); }
+    MpiBase *mpi() { return &domain().mpi; }
 
     visitor::ExpansionAction expansion( Node st )
     {

@@ -170,10 +170,8 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     unsigned initialPeer; // globalId of peer with initial state
     bool plaintextFormat; // output compact state space in plaintext format
 
-    /// Returns reference to the domain instance
-    Domain< Compact > &domain() {
-        return DomainWorker< Compact >::domain();
-    }
+    Domain< Compact > &domain() { return DomainWorker< Compact >::domain(); }
+    MpiBase *mpi() { return &domain().mpi; }
 
     /// Algorithm Extension structure
     struct Extension {

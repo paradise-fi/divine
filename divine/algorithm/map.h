@@ -144,9 +144,8 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
     LtlCE< G, Shared, Extension > ce;
 
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
-    }
+    Domain< This > &domain() { return DomainWorker< This >::domain(); }
+    MpiBase *mpi() { return &domain().mpi; }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
