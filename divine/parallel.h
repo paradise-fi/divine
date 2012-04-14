@@ -382,6 +382,7 @@ struct Domain {
                     sh = this->shared( i );
             }
             m_domain->mpi.runInRing( f );
+            m_domain->mpi.collectSharedBits(); // update shared stuff
         }
 
         template< typename X >

@@ -125,9 +125,6 @@ struct Main {
             return;
         }
 
-        if ( o_report->boolValue() )
-            _report = &report;
-
         if ( o_gnuplot->boolValue() ) {
             Statistics::global().gnuplot = true;
             Statistics::global().output = new std::ofstream( o_gnuplot->stringValue().c_str() );
@@ -155,12 +152,16 @@ struct Main {
             die( "Booh." );
 
         if ( a->mpi() ) {
+            a->mpi()->init( meta );
             meta.execution.nodes = a->mpi()->size();
             meta.execution.thisNode = a->mpi()->rank();
         }
 
-        if ( !a->mpi() || a->mpi()->master() )
+        if ( !a->mpi() || a->mpi()->master() ) {
             setupCurses();
+            if ( o_report->boolValue() )
+                _report = &report;
+        }
 
         Statistics::global().setup( meta, a->mpi() );
         if ( meta.output.statistics )
@@ -172,10 +173,11 @@ struct Main {
         _meta = &a->meta();
 
         report.finished();
+
         if ( meta.output.statistics )
             Statistics::global().snapshot();
         Output::output().cleanup();
-        if ( o_report->boolValue() )
+        if ( (!a->mpi() || a->mpi()->master()) && o_report->boolValue() )
             report.final( std::cout, a->meta() );
 
         delete a;

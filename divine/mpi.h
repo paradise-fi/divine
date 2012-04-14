@@ -5,6 +5,7 @@
 #include <divine/blob.h>
 #include <divine/barrier.h>
 #include <divine/fifo.h>
+#include <divine/meta.h>
 
 #include <divine/output.h>
 
@@ -100,7 +101,7 @@ struct MpiBase {
         m_monitor[ tag ] = &m;
     }
 
-    virtual void init() = 0;
+    virtual void init( Meta ) = 0;
     virtual void start() = 0;
 
     int rank() { if ( m_initd ) return m_rank; else return 0; }
@@ -151,7 +152,7 @@ struct Mpi : MpiBase {
         return m_shared[ i ];
     }
 
-    void init() {
+    void init( Meta m ) {
         if (m_initd)
             return;
 
@@ -163,13 +164,14 @@ struct Mpi : MpiBase {
         m_shared.resize( domain().peers() );
 
         domain().setupIds();
+        domain().parallel( m );
 
         if ( m_rank == 0 )
             is_master = true;
     }
 
     void start() {
-        init();
+        assert( m_initd );
 
         if ( !master() )
             while ( true )
