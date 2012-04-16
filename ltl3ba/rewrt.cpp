@@ -36,6 +36,10 @@ extern int	tl_verbose;
 
 static Node	*can = ZN;
 
+void reinitWrt() {
+    can = ZN;
+}
+
 Node *
 right_linked(Node *n)
 {

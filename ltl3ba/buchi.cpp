@@ -67,7 +67,16 @@ BScc *bscc_stack;
 #ifdef DICT
 map<GState*, BState*>** bsDict;
 #endif
-int accept, bstate_count = 0, btrans_count = 0, b_rank, det_m = 0;
+int accept, bstate_count = 0, btrans_count = 0, b_rank;
+
+void reinitBuchi() {
+    bstack = bstates = bremoved = NULL;
+    bscc_stack = NULL;
+#ifdef DICT
+    bsDict = NULL;
+#endif
+    accept = bstate_count = btrans_count = b_rank = 0;
+}
 
 /********************************************************************\
 |*              Simplification of the Buchi automaton               *|

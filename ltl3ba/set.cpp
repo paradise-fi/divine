@@ -41,8 +41,11 @@ extern char **sym_table;
 
 /*int scc_size;*/
 
-int mod = 8 * sizeof(int);
+int ltl3ba_mod = 8 * sizeof(int);
 
+void reinitSet() {
+    ltl3ba_mod = 8 * sizeof( int );
+}
 
 /* type = 2 for scc set, 1 for symbol sets, 0 for nodes sets */
 
@@ -66,7 +69,7 @@ int *make_set(int n, int type) /* creates the set {n}, or the empty set if n = -
 {
   int *l = clear_set(new_set(type), type);
   if(n == -1) return l;
-  l[n/mod] = 1 << (n%mod);
+  l[n/ltl3ba_mod] = 1 << (n%ltl3ba_mod);
   return l;
 }
 
@@ -117,12 +120,12 @@ int empty_intersect_sets(int *l1, int *l2, int type) /* tests intersection of tw
 
 void add_set(int *l, int n) /* adds an element to a set */
 {
-  l[n/mod] |= 1 << (n%mod);
+  l[n/ltl3ba_mod] |= 1 << (n%ltl3ba_mod);
 }
 
 void rem_set(int *l, int n) /* removes an element from a set */
 {
-  l[n/mod] &= (-1 - (1 << (n%mod)));
+  l[n/ltl3ba_mod] &= (-1 - (1 << (n%ltl3ba_mod)));
 }
 
 std::ostream &print_set_out(std::ostream& out , int *l, int type) /* prints the content of a set to stream out*/
@@ -130,16 +133,16 @@ std::ostream &print_set_out(std::ostream& out , int *l, int type) /* prints the 
   int i, j, start = 1;
   if(type != 1) out << "{";
   for(i = 0; i < set_size(type); i++) 
-    for(j = 0; j < mod; j++)
+    for(j = 0; j < ltl3ba_mod; j++)
       if(l[i] & (1 << j)) {
         switch(type) {
           case 0: case 2:
             if(!start) out << ",";
-            out << (mod * i + j);
+            out << (ltl3ba_mod * i + j);
             break;
           case 1:
             if(!start) out << " & ";
-            out << sym_table[mod * i + j];
+            out << sym_table[ltl3ba_mod * i + j];
             break;
         }
         start = 0;
@@ -154,16 +157,16 @@ void print_set(int *l, int type) /* prints the content of a set */
   int i, j, start = 1;
   if(type != 1) fprintf(tl_out, "{");
   for(i = 0; i < set_size(type); i++) 
-    for(j = 0; j < mod; j++)
+    for(j = 0; j < ltl3ba_mod; j++)
       if(l[i] & (1 << j)) {
         switch(type) {
           case 0: case 2:
             if(!start) fprintf(tl_out, ",");
-            fprintf(tl_out, "%i", mod * i + j);
+            fprintf(tl_out, "%i", ltl3ba_mod * i + j);
             break;
           case 1:
             if(!start) fprintf(tl_out, " & ");
-            fprintf(tl_out, "%s", sym_table[mod * i + j]);
+            fprintf(tl_out, "%s", sym_table[ltl3ba_mod * i + j]);
             break;
         }
         start = 0;
@@ -176,16 +179,16 @@ void print_set_neg(int *l, int type) /* prints the content of a set */
   int i, j, start = 1;
   if(type != 1) fprintf(tl_out, "{");
   for(i = 0; i < set_size(type); i++) 
-    for(j = 0; j < mod; j++)
+    for(j = 0; j < ltl3ba_mod; j++)
       if(l[i] & (1 << j)) {
         switch(type) {
           case 0: case 2:
             if(!start) fprintf(tl_out, ",");
-            fprintf(tl_out, "!%i", mod * i + j);
+            fprintf(tl_out, "!%i", ltl3ba_mod * i + j);
             break;
           case 1:
             if(!start) fprintf(tl_out, " & ");
-            fprintf(tl_out, "!%s", sym_table[mod * i + j]);
+            fprintf(tl_out, "!%s", sym_table[ltl3ba_mod * i + j]);
             break;
         }
         start = 0;
@@ -220,13 +223,13 @@ int included_set(int *l1, int *l2, int type)
 
 int in_set(int *l, int n) /* tests if an element is in a set */
 {
-  return(l[n/mod] & (1 << (n%mod)));
+  return(l[n/ltl3ba_mod] & (1 << (n%ltl3ba_mod)));
 }
 
 int size_set(int *l, int type) {
   int i, j, size = 0;
   for(i = 0; i < set_size(type); i++)
-    for(j = 0; j < mod; j++) 
+    for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
         size++;
   return size;
@@ -235,25 +238,25 @@ int size_set(int *l, int type) {
 int return_elem(int *l, int type) {
   int i, j, size = 0;
   for(i = 0; i < set_size(type); i++)
-    for(j = 0; j < mod; j++) 
+    for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
-        return (mod * i + j);
+        return (ltl3ba_mod * i + j);
 }
 
 int *list_set(int *l, int type) /* transforms a set into a list */
 {
   int i, j, size = 1, *list;
   for(i = 0; i < set_size(type); i++)
-    for(j = 0; j < mod; j++) 
+    for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
 	size++;
   list = (int *)tl_emalloc(size * sizeof(int));
   list[0] = size;
   size = 1;
   for(i = 0; i < set_size(type); i++)
-    for(j = 0; j < mod; j++) 
+    for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
-	list[size++] = mod * i + j;
+	list[size++] = ltl3ba_mod * i + j;
   return list;
 }
 

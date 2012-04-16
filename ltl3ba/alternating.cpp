@@ -65,6 +65,18 @@ int *INFp_nodes, *UXp_nodes, *GFcomp_nodes, *Falpha_nodes, **predecessors, *teck
 
 int predicates;
 
+void reinitAlternating() {
+    label = NULL;
+    sym_table = NULL;
+    transition = NULL;
+    final_set = NULL, node_id = 1, sym_id = 0;
+    node_size = sym_size = nodes_num = 0;
+    astate_count = 0, atrans_count = 0;
+    INFp_nodes = NULL; UXp_nodes = NULL; GFcomp_nodes = NULL; Falpha_nodes = NULL;
+    predecessors = NULL; tecky = NULL; V_nodes = NULL;
+    is_Gs = NULL; is_UG = NULL; UG_succ = NULL; UG_pred = NULL;
+}
+
 map<cset, ATrans*> *build_alternating(Node *p);
 
 /********************************************************************\

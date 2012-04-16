@@ -72,6 +72,60 @@ static int	hasuform=0, cnt=0;
 std::string ltl_file;
 std::string add_ltl;
 
+void reinitParse();
+void reinitCache();
+void reinitMem();
+void reinitWrt();
+void reinitSet();
+void reinitTrans();
+void reinitGeneralized();
+void reinitLex();
+void reinitBuchi();
+void reinitAlternating();
+
+void reinit() {
+    reinitParse();
+    reinitCache();
+    reinitMem();
+    reinitWrt();
+    reinitSet();
+    reinitTrans();
+    reinitGeneralized();
+    reinitLex();
+    reinitBuchi();
+    reinitAlternating();
+
+#ifdef STATS
+    tl_stats = 0;
+#endif
+    tl_simp_log  = 1;
+    tl_simp_diff = 1;
+    tl_simp_fly  = 1;
+    tl_simp_scc  = 1;
+    tl_fjtofj    = 1;
+    tl_postpone  = 1;
+    tl_f_components = 1;
+    tl_rem_scc   = 1;
+    tl_alt       = 1;
+    tl_rew_f     = 1;
+    tl_det_m     = 0;
+    tl_determinize  = 0;
+    tl_bisim     = 0;
+    tl_bisim_r   = 0;
+    tl_sim       = 0;
+    tl_sim_r     = 0;
+    tl_ltl3ba    = 1;
+    tl_errs      = 0;
+    tl_verbose   = 0;
+    tl_terse     = 0;
+    All_Mem      = 0;
+
+    uform.clear();
+    hasuform=0, cnt=0;
+    ltl_file.clear();
+    add_ltl.clear();
+}
+
 static void	tl_endstats(void);
 static void	non_fatal(char *, char *);
 
@@ -165,9 +219,12 @@ tl_main(std::string &argv)
 }
 
 int
-main(int argc, char *argv[])
+main_function(int argc, char *argv[], FILE* outFile)
 {	int i;
-	tl_out = stdout;
+  if (outFile)
+    tl_out = outFile;
+  else
+  	tl_out = stdout;
 
 	while (argc > 1 && argv[1][0] == '-')
         {       switch (argv[1][1]) {
@@ -216,10 +273,35 @@ main(int argc, char *argv[])
         {       usage();
         }
         else if (argc > 0)
-        {       exit(tl_main(add_ltl));
+        {
+                if (outFile)
+                {       tl_out = outFile;
+                        tl_main(add_ltl);
+                        fclose(outFile);
+                }
+                else
+                {       exit(tl_main(add_ltl));
+                }
         }
-        usage();
+        else
+        {       usage();
+        }
 }
+
+int
+main_ltl3ba(int argc, char *argv[], FILE* outFile)
+{
+      /* use the option to produce more deterinistic automaton by default */
+      tl_det_m = 1;
+      
+      return main_function(argc, argv, outFile);
+}
+
+//int
+//main(int argc, char *argv[])
+//{
+//      return main_function(argc, argv, NULL);
+//}
 
 #ifdef STATS
 /* Subtract the `struct timeval' values X and Y, storing the result X-Y in RESULT.

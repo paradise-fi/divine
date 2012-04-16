@@ -72,6 +72,22 @@ cset *fin;
 extern int *INFp_nodes, *UXp_nodes, *GFcomp_nodes, *Falpha_nodes, **predecessors, *tecky, *V_nodes,
            *is_Gs, *is_UG, *UG_succ, *UG_pred;
 
+void reinitGeneralized() {
+    gstack = gremoved = gstates = NULL;
+    init = NULL;
+    gscc_stack = NULL;
+#ifdef DICT
+    gsDict.clear();
+#endif
+    empty_t = NULL;
+    init_size = 0, gstate_id = 1, gstate_count = 0, gtrans_count = 0;
+    compute_directly = 0;
+    final = NULL;
+    rank = scc_id = scc_size = 0;
+    bad_scc = NULL; non_term_scc = NULL;
+    fin = NULL;
+}
+
 void print_generalized();
 void remove_redundandt_targets(cset *set, cset *fin);
 

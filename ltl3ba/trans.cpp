@@ -42,6 +42,11 @@ extern FILE	*tl_out;
 int	Stack_mx=0, Max_Red=0, Total=0;
 static char	dumpbuf[2048];
 
+void reinitTrans() {
+    Stack_mx=0, Max_Red=0, Total=0;
+    memset( dumpbuf, 0, 2048 );
+}
+
 #ifdef NXT
 int
 only_nxt(Node *n)
