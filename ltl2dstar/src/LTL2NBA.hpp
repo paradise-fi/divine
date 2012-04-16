@@ -46,7 +46,11 @@ public:
   virtual NBA_t *ltl2nba(LTLFormula& ltl) = 0;
 };
 
-extern "C" int main_ltl2ba(int arc, char* argv[], FILE* outFile);
+#ifdef O_LTL3BA
+  extern int main_ltl3ba(int arc, char* argv[], FILE* outFile);
+#else
+  extern "C" int main_ltl2ba(int arc, char* argv[], FILE* outFile);
+#endif
 
 /**
  * Wrapper for linked LTL-to-Buechi translators using the SPIN interface.
@@ -79,7 +83,11 @@ public:
 	
 		AnonymousTempFile spin_outfile;
 		std::vector<std::string> arguments;
+#ifdef O_LTL3BA
+		arguments.push_back("ltl3ba");
+#else
 		arguments.push_back("ltl2ba");
+#endif
 		arguments.push_back("-f");
 		arguments.push_back(ltl_canonical->toStringInfix());
 	
@@ -89,7 +97,11 @@ public:
 		for ( std::vector<std::string>::iterator it = arguments.begin(); it != arguments.end(); ++it, i++)
 			argv[ i ] = const_cast<char*>(it->c_str());
 		
+#ifdef O_LTL3BA
+		main_ltl3ba(arguments.size(), argv, spin_outfile.getOutFILEStream());
+#else
 		main_ltl2ba(arguments.size(), argv, spin_outfile.getOutFILEStream());
+#endif
 		
 		NBA_t *result_nba(new NBA_t(canonical_apset));
 		

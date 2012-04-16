@@ -9,4 +9,8 @@ add_library( ltl2dstar src/common/BitSet.cpp src/StutterSensitivenessInformation
 	src/parsers/nba-parser-lbtt.tab.cpp src/parsers/nba-parser-promela.lex.cpp 
 	src/parsers/nba-parser-promela.tab.cpp src/plugins/PluginManager.cpp src/ltl2dstar_main.cpp )
 
-target_link_libraries( ltl2dstar ltl2ba )
+if ( LTL3BA )
+  target_link_libraries( ltl2dstar ltl3ba )
+else()
+  target_link_libraries( ltl2dstar ltl2ba )
+endif()
