@@ -15,6 +15,11 @@ let
         name = "divine-tarball";
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
+        distPhase = ''
+            make package_source
+            mkdir $out/tarballs
+            cp divine-*.tar.gz $out/tarballs
+        '';
       };
 
     build = 
@@ -25,7 +30,7 @@ let
       pkgs.releaseTools.nixBuild { 
         name = "divine" ;
         src = jobs.tarball { inherit divineSrc; };
-        configureFlags = [ "--disable-silent-rules" ];
+        buildInputs = [ pkgs.cmake ];
       };
 
     debian6_i386 = { divineSrc ? src }:
