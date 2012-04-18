@@ -18,14 +18,13 @@ let
       };
 
     build = 
-      { tarball ? jobs.tarball {}        
-      , system ? builtins.currentSystem
+      { system ? builtins.currentSystem
       }:
 
       let pkgs = import nixpkgs { inherit system; }; in
       pkgs.releaseTools.nixBuild { 
         name = "divine" ;
-        src = tarball;
+        src = jobs.tarball {};
         configureFlags = [ "--disable-silent-rules" ];
       };
   };
