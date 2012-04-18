@@ -18,13 +18,13 @@ let
       };
 
     build = 
-      { system ? builtins.currentSystem
-      }:
+      { system ? builtins.currentSystem,
+        divineSrc ? src }:
 
       let pkgs = import nixpkgs { inherit system; }; in
       pkgs.releaseTools.nixBuild { 
         name = "divine" ;
-        src = jobs.tarball {};
+        src = jobs.tarball { inherit divineSrc; };
         configureFlags = [ "--disable-silent-rules" ];
       };
   };
