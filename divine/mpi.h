@@ -681,7 +681,7 @@ struct MpiBase {
     template< typename F >
     void runInRing( F f ) {}
 
-    void init() {}
+    virtual void init( Meta ) {}
     void start() {}
 };
 
