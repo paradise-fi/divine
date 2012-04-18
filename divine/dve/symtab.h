@@ -114,7 +114,7 @@ struct Symbol {
 
 };
 
-std::ostream &operator<<( std::ostream &os, Symbol s )
+static std::ostream &operator<<( std::ostream &os, Symbol s )
 {
     return os << s.id;
 }
