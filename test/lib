@@ -52,8 +52,9 @@ reachability_any() {
 }
 
 statespace() {
-    op=-le
-    grep "^Full-State-Space: Yes" report && op=-eq
+    op=-eq
+    grep "^Full-State-Space: No" report && op=-le
+    grep "^Transformations:.*POR" report && op=-le
 
     states=`grep ^States-Visited report | cut -d' ' -f2`
     trans=`grep ^Transition-Count report | cut -d' ' -f2`
@@ -61,20 +62,20 @@ statespace() {
     dead=`grep ^Deadlock-Count report | cut -d' ' -f2`
 
     test $states $op $1
-    test $trans $op $2
+    test "$trans" = "-" || test $trans $op $2
     test $accept $op $3
     test "$dead" = "-" || test $dead $op $4
 }
 
 owcty_sizes() {
     if ! grep -q "^Algorithm: OWCTY" report; then return 0; fi
+    if grep -q "^Full-State-Space: No" report; then return 0; fi
+    if grep -q "^Transformations:.*POR" report; then return 0; fi
 
-    if ! grep -q "MAP/ET" progress;  then
-        grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
-        rm numbers-right
-        for n in $@; do echo $n >> numbers-right; done
-        diff -u numbers-right numbers
-    fi
+    grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
+    rm numbers-right
+    for n in $@; do echo $n >> numbers-right; done
+    diff -u numbers-right numbers
 }
 
 dve_small() {
