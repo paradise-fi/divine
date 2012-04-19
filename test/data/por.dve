@@ -1,0 +1,22 @@
+process P1
+{
+  state a,b,c;
+  init a;
+  trans	a->b {}, b->b {}, b->c {};
+}
+
+process P2
+{
+  state a,b,c;
+  init a;
+  trans	a->b {}, b->b {}, b->c {};
+}
+
+process P3
+{
+  state a,b,c;
+  init a;
+  trans a->b {}, b->b {}, b->c {};
+}
+
+system async;
