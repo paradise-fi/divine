@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/parallel.h>
+#include <divine/meta.h> // FIXME
 
 using namespace divine;
 
@@ -28,13 +29,15 @@ struct TestParallel {
         void inc() {
             shared.inc();
         }
+        ParCounter() {}
+        ParCounter( Meta ) {} // FIXME
     };
 
     Test parCounter() {
         ParCounter m;
         assert_eq( m.shared.i, 0 );
 
-        Parallel< ParCounter > p( 10 );
+        Parallel< ParCounter > p( 10, Meta() ); // FIXME
         p.run( m.shared, &ParCounter::inc );
         for ( int i = 0; i < 10; ++i )
             assert_eq_l( i, p.shared( i ).i, 1 );
@@ -53,21 +56,22 @@ struct TestParallel {
         void inc() { shared.inc(); }
 
         void run() {
-            domain.parallel().run( shared, &DomCounter::inc );
+            domain.parallel( Meta() ).run( shared, &DomCounter::inc );
         }
 
         DomCounter() { shared.i = 0; }
+        DomCounter( Meta ) { shared.i = 0; } // FIXME
     };
 
     Test domCounter() {
         DomCounter d;
         assert_eq( d.shared.i, 0 );
         for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel().shared( i ).i, 0 );
+            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 0 );
         d.run();
         assert_eq( d.shared.i, 0 );
         for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel().shared( i ).i, 1 );
+            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 1 );
     }
 
     struct Dom2Counter : DomainWorker< Dom2Counter >
@@ -91,20 +95,21 @@ struct TestParallel {
         }
 
         void run() {
-            domain.parallel().run( shared, &Dom2Counter::tellInc );
+            domain.parallel( Meta() ).run( shared, &Dom2Counter::tellInc );
         }
 
         Dom2Counter() { shared.i = 0; }
+        Dom2Counter( Meta ) { shared.i = 0; } // FIXME
     };
 
     Test dom2Counter() {
         Dom2Counter d;
         assert_eq( d.shared.i, 0 );
         for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel().shared( i ).i, 0 );
+            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 0 );
         d.run();
         assert_eq( d.shared.i, 0 );
         for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel().shared( i ).i, 1 );
+            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 1 );
     }
 };

@@ -192,8 +192,8 @@ struct TestVisitor {
             shared.initial = initial;
             seen = shared.seen = 0;
             trans = shared.trans = 0;
-            domain.parallel().run( shared, &ParVisitor< G >::_visit );
-            for ( int i = 0; i < domain.parallel().n; ++i ) {
+            domain.parallel( Meta() ).run( shared, &ParVisitor< G >::_visit );
+            for ( int i = 0; i < domain.parallel( Meta() ).n; ++i ) {
                 seen += domain.parallel().shared( i ).seen;
                 trans += domain.parallel().shared( i ).trans;
             }
@@ -210,6 +210,8 @@ struct TestVisitor {
             shared.g = g;
             shared.n = _n;
         }
+
+        ParVisitor( Meta ) {}
     };
 
     void _parVisitor( int n, int m ) {
@@ -280,14 +282,15 @@ struct TestVisitor {
             shared.initial = initial;
             shared.seen = 0;
             shared.trans = 0;
-            domain.parallel().run( shared, &TermParVisitor< G >::_visit );
-            for ( int i = 0; i < domain.parallel().n; ++i ) {
-                shared.seen += domain.parallel().shared( i ).seen;
-                shared.trans += domain.parallel().shared( i ).trans;
+            domain.parallel( Meta() ).run( shared, &TermParVisitor< G >::_visit );
+            for ( int i = 0; i < domain.parallel( Meta() ).n; ++i ) {
+                shared.seen += domain.parallel( Meta() ).shared( i ).seen;
+                shared.trans += domain.parallel( Meta() ).shared( i ).trans;
             }
         }
 
         TermParVisitor( G g = G() ) { shared.g = g; }
+        TermParVisitor( Meta ) {}
     };
 
     void _termParVisitor( int n, int m ) {
@@ -460,14 +463,15 @@ struct TestVisitor {
             shared.initial = initial;
             shared.seen = 0;
             shared.trans = 0;
-            domain.parallel().run( shared, &SimpleParReach< G >::_visit );
-            for ( int i = 0; i < domain.parallel().n; ++i ) {
-                shared.seen += domain.parallel().shared( i ).seen;
-                shared.trans += domain.parallel().shared( i ).trans;
+            domain.parallel( Meta() ).run( shared, &SimpleParReach< G >::_visit );
+            for ( int i = 0; i < domain.parallel( Meta() ).n; ++i ) {
+                shared.seen += domain.parallel( Meta() ).shared( i ).seen;
+                shared.trans += domain.parallel( Meta() ).shared( i ).trans;
             }
         }
 
         SimpleParReach( G g = G() ) { shared.g = g; }
+        SimpleParReach( Meta ) {}
     };
 
     void _simpleParReach( int n, int m ) {
