@@ -202,11 +202,8 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( shared.iteration == 1 ) {
+        if ( shared.iteration == 1 )
             shared.g.porTransition( f, t, 0 );
-            if ( !extension( t ).iteration )
-                shared.stats.addEdge();
-        }
 
         if ( !f.valid() ) {
             assert( equal( t, shared.g.initial() ) );
@@ -339,6 +336,8 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
 
         result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
+        meta().statistics.deadlocks = -1; /* did not count */
+        meta().statistics.transitions = -1; /* cannot count */
 
         livenessBanner( valid );
 
