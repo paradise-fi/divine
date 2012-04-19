@@ -319,6 +319,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     {
         shared.iteration = 1;
         acceptingCount = eliminated = d_eliminated = expanded = 0;
+        result().fullyExplored = meta::Result::No;
         bool valid = true;
         do {
             progress() << " iteration " << std::setw( 3 ) << shared.iteration
@@ -331,6 +332,9 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             progress() << eliminated << " eliminated, "
                        << expanded << " expanded" << std::endl;
             valid = !cycle_node.valid();
+
+            if ( valid )
+                result().fullyExplored = meta::Result::Yes;
 
             ++ shared.iteration;
         } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
