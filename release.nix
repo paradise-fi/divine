@@ -30,7 +30,7 @@ let
       pkgs.releaseTools.nixBuild { 
         name = "divine" ;
         src = jobs.tarball { inherit divineSrc; };
-        buildInputs = [ pkgs.cmake ];
+        buildInputs = [ pkgs.cmake pkgs.perl ];
       };
 
     debian6_i386 = { divineSrc ? src }:
