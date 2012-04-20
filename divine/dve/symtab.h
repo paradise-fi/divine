@@ -114,10 +114,7 @@ struct Symbol {
 
 };
 
-static std::ostream &operator<<( std::ostream &os, Symbol s )
-{
-    return os << s.id;
-}
+std::ostream &operator<<( std::ostream &os, Symbol s );
 
 struct SymTab : NS {
     typedef std::map< std::string, SymId > Tab;
