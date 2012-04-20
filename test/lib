@@ -8,7 +8,7 @@ reachability() { divine reachability --report "$@" 2> progress | tee report; }
 metrics() { divine metrics --report "$@" 2> progress | tee report; }
 
 mpi() {
-    test -x `which $MPIEXEC` || exit 200;
+    $MPIEXEC >& /dev/null || exit 200; # probably not found
     $MPIEXEC -H localhost,localhost divine "$@" --report 2> progress | tee report
 }
 

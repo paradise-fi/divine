@@ -19,7 +19,7 @@ p1=`echo -n "$p" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
 PATH="$p:$p1:$PATH"
 shift
 
-export MPIEXEC="$1"
+export MPIEXEC="${1:-false}"
 shift
 
 tests="$@"
