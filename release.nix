@@ -27,6 +27,13 @@ let
         src = jobs.tarball { inherit divineSrc; };
         configureFlags = [ "--disable-silent-rules" ];
       };
+
+    debian6_i386 = { divineSrc ? src }:
+      pkgs.releaseTools.debBuild rec {
+        name = "divine-deb";
+        src = jobs.tarball { inherit divineSrc; };
+        diskImage = pkgs.vmTools.diskImages.debian60i386;
+      };
   };
 in
   jobs
