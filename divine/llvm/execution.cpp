@@ -880,7 +880,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     // To handle indirect calls, we must get the pointer value from the argument
     // and treat it as a function pointer.
     GenericValue SRC = getOperandValue(CS.getCalledValue(), SF());
-    Function *fun = functionIndex.right(int(GVTOP(SRC)));
+    Function *fun = functionIndex.right(int(intptr_t(GVTOP(SRC))));
     callFunction(fun, ArgVals);
 }
 
