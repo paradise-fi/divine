@@ -21,7 +21,7 @@ struct Input {
     PT propertyType;
     bool dummygen;
 
-    Input() : propertyType( NoProperty ) {}
+    Input() : propertyType( NoProperty ), dummygen( false ) {}
 };
 
 struct Execution {
