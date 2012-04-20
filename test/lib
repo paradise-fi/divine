@@ -73,7 +73,7 @@ owcty_sizes() {
     if grep -q "^Transformations:.*POR" report; then return 0; fi
 
     grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
-    rm numbers-right
+    rm -f numbers-right
     for n in $@; do echo $n >> numbers-right; done
     diff -u numbers-right numbers
 }
