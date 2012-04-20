@@ -25,7 +25,8 @@ shift
 tests="$@"
 
 for t_ in $tests; do
-    t=`echo $t_ | rev | cut -d/ -f1-2 | rev`
+    # cut+rev is nicer but the latter's in util-linux
+    t=`echo $t_ | sed -e 's,.*/\([^/]\+/[^/]\+\)$,\1,'`
     test -n "$T" && {
         echo $t | grep -q $T || continue
     }
