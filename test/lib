@@ -79,31 +79,31 @@ owcty_sizes() {
 }
 
 dve_small() {
-    "$@" test1.dve
+    "$@" data/test1.dve
     ltl_invalid
     statespace 7 15 3 0
 
-    "$@" test2.dve
+    "$@" data/test2.dve
     ltl_valid
     owcty_sizes 2 2 0
     statespace 3 3 2 2
 
-    "$@" test3.dve
+    "$@" data/test3.dve
     ltl_valid
     owcty_sizes 2 5 0
     statespace 6 13 2 0
 
-    "$@" test4.dve
+    "$@" data/test4.dve
     ltl_invalid
     owcty_sizes 1 4 1
     statespace 5 6 1 0
 
-    "$@" test5.dve
+    "$@" data/test5.dve
     ltl_invalid
     owcty_sizes 1 4 1
     statespace 5 6 1 0
 
-    "$@" test6.dve
+    "$@" data/test6.dve
     ltl_invalid
     owcty_sizes 2 6 1 5 1
     statespace 6 7 2 0
