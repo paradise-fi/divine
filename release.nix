@@ -1,14 +1,22 @@
 { nixpkgs ? <nixpkgs> }:
 
 let
-  pkgs = import nixpkgs {}; 
+  pkgs = import nixpkgs {};
+
+  mkbuild = { name, inputs }: { system ? builtins.currentSystem, divineSrc ? src }:
+    let pkgs = import nixpkgs { inherit system; }; in
+    pkgs.releaseTools.nixBuild {
+       name = "divine-" + name;
+       src = jobs.tarball { inherit divineSrc; };
+       buildInputs = [ pkgs.cmake pkgs.perl ] ++ inputs;
+    };
 
   src = pkgs.fetchurl {
     url = "http://divine.fi.muni.cz/divine-2.5.2.tar.gz";
     sha256 = "0sxnpqrv9wbfw1m1pm9jzd7hs02yvvnvkm8qdbafhdl2qmll7c0l";
   };
 
-  jobs = rec { 
+  jobs = rec {
 
     tarball = { divineSrc ? src }: 
       pkgs.releaseTools.sourceTarball { 
@@ -22,16 +30,8 @@ let
         '';
       };
 
-    build = 
-      { system ? builtins.currentSystem,
-        divineSrc ? src }:
-
-      let pkgs = import nixpkgs { inherit system; }; in
-      pkgs.releaseTools.nixBuild { 
-        name = "divine" ;
-        src = jobs.tarball { inherit divineSrc; };
-        buildInputs = [ pkgs.cmake pkgs.perl pkgs.which ];
-      };
+    minimal = mkbuild { name = "minimal"; inputs = []; };
+    mpi = mkbuild { name = "minimal"; inputs = [ pkgs.openmpi ]; };
 
     debian6_i386 = { divineSrc ? src }:
       debuild rec {
