@@ -31,7 +31,10 @@ let
       };
 
     minimal = mkbuild { name = "minimal"; inputs = []; };
-    mpi = mkbuild { name = "minimal"; inputs = [ pkgs.openmpi ]; };
+    mpi = mkbuild { name = "mpi"; inputs = [ pkgs.openmpi ]; };
+    gui = mkbuild { name = "gui"; inputs = [ pkgs.qt4 ]; };
+    llvm = mkbuild { name = "llvm"; inputs = [ pkgs.llvm pkgs.clang ]; };
+    full = mkbuild { name = "full"; inputs = [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
 
     debian6_i386 = { divineSrc ? src }:
       debuild rec {
