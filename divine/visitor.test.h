@@ -22,6 +22,8 @@ inline Blob blob( const Blob &b ) {
 }
 
 struct TestVisitor {
+    typedef void Test_;
+
     struct NMTree {
         typedef int Node;
         int n, m;
@@ -299,7 +301,7 @@ struct TestVisitor {
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
 
-    Test nmtree() {
+    Test_ nmtree() {
         _nmtree( 7, 2 );
         _nmtree( 8, 2 );
         _nmtree( 31, 2 );
@@ -315,7 +317,7 @@ struct TestVisitor {
         _nmtree( 120, 2 );
     }
 
-    Test parVisitor() {
+    Test_ parVisitor() {
         // note we need first number to be 10-divisible for now.
         _parVisitor( 20, 2 );
         _parVisitor( 50, 3 );
@@ -323,7 +325,7 @@ struct TestVisitor {
         _parVisitor( 120, 2 );
     }
 
-    Test termParVisitor() {
+    Test_ termParVisitor() {
         _termParVisitor( 7, 2 );
         _termParVisitor( 8, 2 );
         _termParVisitor( 31, 2 );
@@ -414,7 +416,7 @@ struct TestVisitor {
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
 
-    Test bTermParVisitor() {
+    Test_ bTermParVisitor() {
         _bTermParVisitor( 7, 2 );
         _bTermParVisitor( 8, 2 );
         _bTermParVisitor( 31, 2 );
@@ -482,7 +484,7 @@ struct TestVisitor {
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
 
-    Test simpleParReach() {
+    Test_ simpleParReach() {
         _simpleParReach( 7, 2 );
         _simpleParReach( 8, 2 );
         _simpleParReach( 31, 2 );
