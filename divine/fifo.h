@@ -82,9 +82,11 @@ public:
 
         *t->write = x;
         ++ t->write;
+        __sync_synchronize();
 
         if ( tail != t ) {
             tail->next = t;
+            __sync_synchronize();
             tail = t;
         }
     }
