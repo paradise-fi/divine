@@ -30,7 +30,7 @@ let
         '';
       };
 
-    minimal = mkbuild { name = "minimal"; inputs = []; };
+    minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
     mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
     gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
     llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
