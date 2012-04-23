@@ -8,7 +8,7 @@ let
     pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball { inherit divineSrc; };
-       buildInputs = [ pkgs.cmake pkgs.perl ] ++ inputs;
+       buildInputs = [ pkgs.cmake pkgs.perl ] ++ inputs { inherit pkgs; };
     };
 
   src = pkgs.fetchurl {
@@ -31,10 +31,10 @@ let
       };
 
     minimal = mkbuild { name = "minimal"; inputs = []; };
-    mpi = mkbuild { name = "mpi"; inputs = [ pkgs.openmpi ]; };
-    gui = mkbuild { name = "gui"; inputs = [ pkgs.qt4 ]; };
-    llvm = mkbuild { name = "llvm"; inputs = [ pkgs.llvm pkgs.clang ]; };
-    full = mkbuild { name = "full"; inputs = [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
+    mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
+    gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
+    llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    full = mkbuild { name = "full"; inputs = { pkgs }: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
 
     debian6_i386 = { divineSrc ? src }:
       debuild rec {
