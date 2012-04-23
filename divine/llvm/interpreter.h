@@ -325,11 +325,11 @@ public:
     explicit Interpreter(Module *M);
     ~Interpreter();
 
-    typedef std::pair< std::string, void * > Describe;
+    typedef std::pair< std::string, char * > Describe;
     typedef std::set< std::pair< int, Type * > > DescribeSeen;
 
-    Describe describeAggregate( Type *t, void *where, DescribeSeen& );
-    Describe describeValue( Type *t, void *where, DescribeSeen& );
+    Describe describeAggregate( Type *t, char *where, DescribeSeen& );
+    Describe describeValue( Type *t, char *where, DescribeSeen& );
     std::string describePointer( Type *t, int idx, DescribeSeen& );
     std::string describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen * = 0 );
     std::string describe();

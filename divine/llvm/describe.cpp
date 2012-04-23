@@ -7,7 +7,7 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Describe Interpreter::describeAggregate( Type *t, void *where, DescribeSeen &seen ) {
+Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, DescribeSeen &seen ) {
     char delim[2];
     std::vector< std::string > vec;
     Describe sub;
@@ -47,7 +47,7 @@ std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen )
         } else if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
             res = ptr + " <...>";
         } else {
-            Describe pointee = describeValue( pointeeTy, arena.translate( idx ), seen );
+            Describe pointee = describeValue( pointeeTy, static_cast< char * >( arena.translate( idx ) ), seen );
             res = ptr + " " + pointee.first;
             seen.insert( std::make_pair( idx, pointeeTy ) );
         }
@@ -55,7 +55,7 @@ std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen )
     return res;
 }
 
-Interpreter::Describe Interpreter::describeValue( Type *t, void *where, DescribeSeen &seen ) {
+Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
     std::string res;
     if ( t->isIntegerTy() ) {
         if ( t->isIntegerTy( 32 ) )
