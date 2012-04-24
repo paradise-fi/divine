@@ -32,7 +32,7 @@ let
       pkgs.releaseTools.debBuild rec {
         name = "divine-deb";
         src = jobs.tarball { inherit divineSrc; };
-        diskImage = pkgs.vmTools.diskImageFuns.debian60i386 { extraPackages = [ "cmake "]; };
+        diskImage = pkgs.vmTools.diskImageFuns.debian60i386 { extraPackages = [ "cmake" ]; };
         configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
       };
 
