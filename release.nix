@@ -35,6 +35,14 @@ let
         diskImage = pkgs.vmTools.diskImageFuns.debian60i386 { extraPackages = [ "cmake "]; };
         configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
       };
+
+    fedora16_i386 = { divineSrc ? src }:
+      pkgs.releaseTools.rpmBuild rec {
+        name = "divine-rpm";
+        src = jobs.tarball { inherit divineSrc; };
+        diskImage = pkgs.vmTools.diskImageFuns.fedora16i386 { extraPackages = [ "cmake" ]; };
+        configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
+      };
   };
 in
   jobs
