@@ -33,6 +33,7 @@ let
         name = "divine-deb";
         src = jobs.tarball { inherit divineSrc; };
         diskImage = pkgs.vmTools.diskImageFuns.debian60i386 { extraPackages = [ "cmake" ]; };
+        memSize = 2047;
         configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
       };
 
@@ -41,6 +42,7 @@ let
         name = "divine-rpm";
         src = jobs.tarball { inherit divineSrc; };
         diskImage = pkgs.vmTools.diskImageFuns.fedora16i386 { extraPackages = [ "cmake" ]; };
+        memSize = 2047;
         configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
       };
   };
