@@ -23,6 +23,7 @@ let
         name = "divine-tarball";
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
+        autoconfPhase = "chmod +x configure"; # ha-ha
         distPhase = ''
             make package_source
             mkdir $out/tarballs
