@@ -27,7 +27,10 @@ let
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
-        autoconfPhase = "chmod +x configure"; # ha-ha
+        autoconfPhase = ''
+          sed -e "s,^\(Version:.*\)$,\1${versionSuffix}," -i divine.spec # icky
+          chmod +x configure # ha-ha
+        '';
         distPhase = ''
             make package_source
             mkdir $out/tarballs
