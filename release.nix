@@ -18,11 +18,17 @@ let
 
   jobs = rec {
 
-    tarball = { divineSrc ? src }: 
+    tarball = { divineSrc ? src,
+                versionSuffix ?
+                  if divineSrc ? rev
+                     then "+pre${toString divineSrc.rev}"
+                     else ""
+              }:
       pkgs.releaseTools.sourceTarball { 
         name = "divine-tarball";
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
+        cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         autoconfPhase = "chmod +x configure"; # ha-ha
         distPhase = ''
             make package_source
