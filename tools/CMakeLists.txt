@@ -56,8 +56,6 @@ if( NOT WIN32 )
   install( TARGETS divine.probabilistic DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
 endif( NOT WIN32 )
 
-install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
-
 set( PROMELA_JARS "BUNDLE" CACHE STRING "Either path to the ProMeLa/NIPS JAR files or BUNDLE" )
 
 if ( PROMELA_JARS STREQUAL "BUNDLE" )
@@ -66,17 +64,20 @@ else()
   set( JAR_DEPS "" )
 endif()
 
-add_custom_command(
-  OUTPUT ${PML_C}
-  DEPENDS packjars.pl ${JAR_DEPS} ${NIPS_ASM} ${PACKJARS}
-  COMMAND ${PERL_EXECUTABLE} ${PACKJARS} "${PROMELA_JARS}" ${NIPS_ASM} ${JARS} > ${PML_C}
-  COMMAND chmod +x ${PML_C} )
+if ( PROMELA_JARS )
+  add_custom_command(
+    OUTPUT ${PML_C}
+    DEPENDS packjars.pl ${JAR_DEPS} ${NIPS_ASM} ${PACKJARS}
+    COMMAND ${PERL_EXECUTABLE} ${PACKJARS} "${PROMELA_JARS}" ${NIPS_ASM} ${JARS} > ${PML_C}
+    COMMAND chmod +x ${PML_C} )
+  add_custom_target(
+    make-divine.compile-pml ALL
+    DEPENDS ${PML_C} )
+  install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
+endif()
 
 add_custom_command(
   OUTPUT ${COMBINE_M4_H}
   DEPENDS ${COMBINE_M4} ${MAKE_STRING_CONST}
   COMMAND ${PERL_EXECUTABLE} ${MAKE_STRING_CONST} "const char *combine_m4 = " ${COMBINE_M4} > ${COMBINE_M4_H} )
 
-add_custom_target(
-  make-divine.compile-pml ALL
-  DEPENDS ${PML_C} )
