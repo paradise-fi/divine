@@ -18,14 +18,12 @@ let
 
   jobs = rec {
 
-    tarball = { divineSrc ? src,
-                versionSuffix ?
-                  if divineSrc ? rev
-                     then "+pre${toString divineSrc.rev}"
-                     else ""
-              }:
-      pkgs.releaseTools.sourceTarball { 
+    tarball = { divineSrc ? src }:
+      pkgs.releaseTools.sourceTarball rec {
         name = "divine-tarball";
+        versionSuffix = if divineSrc ? rev
+                           then "+pre${toString divineSrc.rev}"
+                           else "";
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
