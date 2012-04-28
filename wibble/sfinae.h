@@ -77,8 +77,17 @@ struct EnableIfC {};
 template< typename Type >
 struct EnableIfC< true, Type > { typedef Type T; };
 
+template< bool, typename T = Unit >
+struct DisableIfC {};
+
+template< typename Type >
+struct DisableIfC< false, Type > { typedef Type T; };
+
 template< typename X, typename T = Unit >
 struct EnableIf : EnableIfC< X::value, T > {};
+
+template< typename X, typename T = Unit >
+struct DisableIf : DisableIfC< X::value, T > {};
 
 template< typename A, typename B >
 struct TPair {
