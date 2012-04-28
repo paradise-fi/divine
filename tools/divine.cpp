@@ -51,30 +51,31 @@ struct InfoBase {
     virtual void read( std::string s ) = 0;
 };
 
-template< typename G, typename X >
+template< typename G, template< typename > class, typename >
 struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >, virtual InfoBase
 {
-    G g;
+    G m_graph;
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
         Props props;
-        g.getProperties( std::back_inserter( props ) );
+        m_graph.getProperties( std::back_inserter( props ) );
         std::cout << "Available properties:" << std::endl;
         for ( int i = 0; i < props.size(); ++i )
             std::cout << " " << i + 1 << ") "
                       << props[i].first << ": " << props[i].second << std::endl;
     }
 
+    int id() { return 0; }
     virtual generator::PropertyType propertyType() {
-        return g.propertyType();
+        return m_graph.propertyType();
     }
 
     virtual void read( std::string s ) {
-        g.read( s );
+        m_graph.read( s );
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
-        this->init( &g, NULL );
+        this->init( this );
     }
 };
 
@@ -136,51 +137,51 @@ struct Main {
     void run() {
         algorithm::Algorithm *a = NULL;
 
-        if ( opts.foundCommand() == cmd_draw )
+        /* if ( opts.foundCommand() == cmd_draw )
             a = selectGraph< Draw >( meta );
         if ( opts.foundCommand() == cmd_info )
-            a = selectGraph< Info >( meta );
+        a = selectGraph< Info >( meta ); */
 
-        if (!a)
-            a = selectLtl( meta );
+        /* if (!a)
+           a = selectLtl( meta ); */
         if (!a)
             a = selectExploration( meta );
-        if (!a)
-            a = selectProbabilistic( meta );
+        /* if (!a)
+           a = selectProbabilistic( meta ); */
 
         if (!a)
             die( "Booh." );
 
-        if ( a->mpi() ) {
-            a->mpi()->init( meta );
-            meta.execution.nodes = a->mpi()->size();
-            meta.execution.thisNode = a->mpi()->rank();
-        }
+        _meta = &a->meta();
 
-        if ( !a->mpi() || a->mpi()->master() ) {
+        Mpi mpi; // TODO: do not construct if not needed?
+
+        meta.execution.nodes = mpi.size();
+        meta.execution.thisNode = mpi.rank();
+
+        if ( mpi.master() ) {
             setupCurses();
             if ( o_report->boolValue() )
                 _report = &report;
         }
 
-        Statistics::global().setup( meta, a->mpi() );
+        Statistics::global().setup( meta );
         if ( meta.output.statistics )
             Statistics::global().start();
 
-        if ( a->mpi() )
-            a->mpi()->start();
+        mpi.start();
         a->run();
-        _meta = &a->meta();
 
         report.finished();
 
         if ( meta.output.statistics )
             Statistics::global().snapshot();
         Output::output().cleanup();
-        if ( (!a->mpi() || a->mpi()->master()) && o_report->boolValue() )
+        if ( mpi.master() && o_report->boolValue() )
             report.final( std::cout, a->meta() );
 
         delete a;
+        delete &Statistics::global(); // uh-oh
     }
 
     static void die( std::string bla ) __attribute__((noreturn))

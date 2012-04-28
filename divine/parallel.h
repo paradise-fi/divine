@@ -46,63 +46,34 @@ struct RunThread : wibble::sys::Thread {
  * distributed to each of the threads (cf. the run() method). The number of
  * (identical) threads to execute is passed in as a constructor parameter.
  */
-template< typename T, template< typename > class R = RunThread >
-struct Parallel {
-    typedef typename T::Shared Shared;
-    std::vector< T > m_instances;
-    std::vector< R< T > > m_threads;
+template< typename T, typename R = RunThread< T > >
+struct ThreadVector {
+    std::vector< R > m_threads;
 
-    int n;
-
-    T &instance( int i ) {
-        assert( i < n );
-        assert_eq( size_t( n ), m_instances.size() );
-        return m_instances[ i ];
-    }
-
-    /// Look up i-th instance's shared data.
-    Shared &shared( int i ) {
-        return instance( i ).shared;
-    }
-
-    /// Look up i-th thread (as opposed to i-th instance).
-    R< T > &thread( int i ) {
-        assert( i < n );
-        assert_eq( size_t( n ), m_threads.size() );
+    R &thread( int i ) {
+        assert_leq( i, m_threads.size() - 1 );
         return m_threads[ i ];
     }
 
-    /// Internal.
-    template< typename Shared, typename F >
-    void initThreads( Shared &sh, F f ) {
-        m_threads.clear();
-        for ( int i = 0; i < n; ++i ) {
-            instance( i ).shared = sh;
-            m_threads.push_back( R< T >( instance( i ), f ) );
-        }
-    }
-
-    /// Internal.
-    void runThreads() {
+    void run( wibble::sys::Thread *extra = 0 ) {
+        size_t n = m_threads.size();
         for ( int i = 0; i < n; ++i )
-            thread( i ).start();
+            m_threads[ i ].start();
+        if ( extra )
+            extra->start();
         for ( int i = 0; i < n; ++i )
-            thread( i ).join();
+            m_threads[ i ].join();
+        if ( extra )
+            extra->join();
     }
 
-    template< typename F >
-    void run( Shared &sh, F f ) {
-        initThreads( sh, f );
-        runThreads();
-    }
-
-    template< typename X >
-    Parallel( int _n, X x ) : n( _n )
+    ThreadVector( std::vector< T > &instances, void (T::*fun)() )
     {
-        for ( int i = 0; i < n; ++ i)
-            m_instances.push_back( T( x ) );
-        // m_instances.resize( n );
+        for ( int i = 0; i < instances.size(); ++ i )
+            m_threads.push_back( R( instances[ i ], fun ) );
     }
+
+    ThreadVector() {}
 };
 
 /**
@@ -110,7 +81,7 @@ struct Parallel {
  * with a Barrier, for distributed termination detection.
  */
 template< typename T >
-struct BarrierThread : RunThread< T >, Terminable {
+struct BarrierThread : RunThread< T > {
     Barrier< Terminable > *m_barrier;
 
     void setBarrier( Barrier< Terminable > &b ) {
@@ -119,18 +90,12 @@ struct BarrierThread : RunThread< T >, Terminable {
 
     virtual void init() {
         assert( m_barrier );
-        m_barrier->started( this );
+        m_barrier->started( this->t );
     }
 
     virtual void fini() {
-        m_barrier->done( this );
+        m_barrier->done( this->t );
     }
-
-    bool workWaiting() {
-        return this->t->workWaiting();
-    }
-
-    bool isBusy() { return this->t->isBusy(); }
 
     BarrierThread( T &_t, typename RunThread< T >::F _f )
         : RunThread< T >( _t, _f ), m_barrier( 0 )
@@ -146,8 +111,7 @@ template< typename, typename > struct Domain;
  * of communication for each pair of communicating tasks (threads). The Fifo
  * instances are relatively cheap to instantiate.
  *
- * This class in itself is a single row of such a matrix, representing
- * *incoming* queues for a single thread. See also Domain and DomainWorker.
+ * See also Parallel and LocalTopology.
  */
 template< typename _T >
 struct FifoMatrix
@@ -158,8 +122,8 @@ struct FifoMatrix
     int fifoParam;
 
     void validate( int from, int to ) {
-        assert_leq( from, m_matrix.size() - 1 );
-        assert_leq( to, m_matrix[ from ].size() - 1 );
+        assert_leq( from, int( m_matrix.size() ) - 1 );
+        assert_leq( to, int( m_matrix[ from ].size() ) - 1 );
     }
 
     bool pending( int from, int to ) {
@@ -213,70 +177,63 @@ struct FifoMatrix
 
 typedef std::pair<Blob, Blob> BlobPair;
 
-struct DomainWorkerBase {
-    virtual int globalId() = 0;
-};
-
 /**
- * A basic template of a worker object, as a part of a larger work
- * Domain. Provides communication, distributed termination detection and clean
- * early termination (interrupt). You usually want to derive your parallel
- * workers from this class. See e.g. reachability.h for usage example.
+ * A basic template for an object with parallel sections, which are arranged
+ * according to a parametric topology. The topology is responsible for setting
+ * up instances and providing means of communication and synchronisation. See
+ * e.g. reachability.h for usage example.
  *
- * Usually, one of a group of DomainWorker-derived instances is the
- * master. NB. The master does no parallel work. The master is expected to
- * coordinate the high-level serial structure of the algorithm, and call into
- * parallel sections as needed, using domain().parallel().run( ... ). The
- * master is expected to call becomeMaster( ... ) in its constructor.
+ * One instance of your derived class is a "master" which does no parallel work
+ * itself, but coordinates the high-level serial structure of the
+ * algorithm. The master invokes parallel sections of the algorithm, which are
+ * then executed through the topology (see parallel()). The master must call
+ * becomeMaster() in its constructor.
  */
-template< typename T, typename Comms = FifoMatrix< BlobPair > >
-struct DomainWorker : DomainWorkerBase {
-    typedef divine::Fifo< Blob > Fifo;
-    typedef wibble::Unit IsDomainWorker;
+template< template < typename > class Topology, typename Instance >
+struct Parallel : Terminable {
+    typedef wibble::Unit IsParallel;
 
-    Domain< T, Comms > *m_domain;
+    Topology< Instance > *m_topology;
+    typedef typename Topology< Instance >::Comms Comms;
+
     bool is_master;
     int m_id;
     bool m_interrupt, m_busy;
 
-    DomainWorker()
-        : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
+    Parallel()
+        : m_topology( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
-    DomainWorker( const DomainWorker & )
-        : m_domain( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
+    Parallel( const Parallel & ) /* fake copy */
+        : m_topology( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
-    template< typename Shared >
-    void becomeMaster( Shared *shared = 0, int n = 4 ) {
+    template< typename M = Instance >
+    void becomeMaster( int n, M m = M() ) {
         is_master = true;
-        assert( !m_domain );
-        m_domain = new Domain< T, Comms >( shared, n );
+        assert( !m_topology );
+        m_topology = new Topology< Instance >( n, m ); // TODO int is kind of limited
     }
 
-    Domain< T, Comms > &master() {
-        return domain();
+    void becomeSlave( Topology< Instance > &topology, int id ) {
+        m_topology = &topology;
+        m_id = id;
     }
 
-    Domain< T, Comms > &domain() {
-        assert( m_domain );
-        return *m_domain;
-    }
-
-    void connect( Domain< T, Comms > &dom ) {
-        assert( !m_domain );
-        m_domain = &dom;
-        m_id = dom.obtainId( *this );
+    Topology< Instance > &topology() {
+        assert( m_topology );
+        return *m_topology;
     }
 
     int peers() {
-        return master().n * master().mpi.size();
+        return topology().peers();
     }
 
     bool idle() {
+        assert( !is_master );
         m_busy = false;
         m_interrupt = false;
-        bool res = master().barrier().idle( terminable() );
+        bool res = topology().barrier().idle( static_cast< Instance* >( this ) );
         m_busy = true;
         return res;
     }
@@ -285,25 +242,21 @@ struct DomainWorker : DomainWorkerBase {
 
     bool workWaiting() {
         for ( int from = 0; from < peers(); ++from )
-            if ( master().comms.pending( from, globalId() ) )
+            if ( comms().pending( from, id() ) )
                 return true;
         return false;
     }
 
-    int globalId() {
-        assert( m_domain );
+    int id() {
+        assert( m_topology );
         return m_id;
-    }
-
-    int localId() {
-        return m_id - master().minId;
     }
 
     /// Terminate early. Notifies peers (always call without a parameter!).
     void interrupt( bool from_master = false ) {
         m_interrupt = true;
         if ( !from_master )
-            master().interrupt();
+            topology().interrupt();
     }
 
     bool interrupted() {
@@ -314,176 +267,259 @@ struct DomainWorker : DomainWorkerBase {
     void restart() {
         m_interrupt = false;
         m_busy = true;
-        master().parallel().m_threads[ localId() ].m_barrier->started( terminable() );
-    }
-
-    /// Internal.
-    Terminable *terminable() {
-        return &master().parallel().m_threads[ localId() ];
+        topology().barrier().started( static_cast< Instance * >( this ) );
     }
 
     /// Submit a message.
     void submit( int from, int to, typename Comms::T value ) {
         assert( from < peers() );
-        return master().submit( from, to, value );
+        return comms().submit( from, to, value );
     }
 
     Comms &comms() {
-        return master().comms;
+        return topology().comms();
     }
 
-    ~DomainWorker() {
+    ~Parallel() {
         if ( is_master )
-            delete m_domain;
+            delete m_topology;
     }
 };
 
-/**
- * A parallel Domain. This is the control object, maintained (automatically) by
- * the master. Cf. DomainWorker. You should not need to instantiate this
- * manually.
- */
-template< typename T, typename _Comms = FifoMatrix< BlobPair > >
-struct Domain {
-    typedef _Comms Comms;
-    Comms comms;
+template< typename Instance >
+struct LocalTopology
+{
+    typedef ThreadVector< Instance, BarrierThread< Instance > > Threads;
+    typedef std::vector< Instance > Instances;
+    typedef FifoMatrix< BlobPair > Comms;
 
-    struct Parallel : divine::Parallel< T, BarrierThread >
-    {
-        Domain< T, Comms > *m_domain;
-        MpiWorker< Domain< T, Comms >, Comms > mpiWorker;
-
-        template< typename Shared, typename F >
-        void run( Shared &sh, F f ) {
-            this->initThreads( sh, f );
-
-            for ( int i = 0; i < this->n; ++i )
-                this->thread( i ).setBarrier( m_domain->barrier() );
-
-            m_domain->mpi.runOnSlaves( sh, f );
-            if (m_domain->mpi.size() > 1 )
-                mpiWorker.start();
-            this->runThreads();
-            m_domain->mpi.collectSharedBits(); // wait for shared stuff
-            if (m_domain->mpi.size() > 1 )
-                mpiWorker.join();
-            m_domain->barrier().clear();
-        }
-
-        template< typename Shared, typename F >
-        void runInRing( Shared &sh, F f ) {
-            this->shared( 0 ) = sh;
-            for ( int i = 0; i < this->n; ++i ) {
-                ((this->instance( i )).*f)();
-                if ( i < this->n - 1 ) {
-                    this->shared( i + 1 ) = this->shared( i );
-                }
-                if ( i == this->n - 1 )
-                    sh = this->shared( i );
-            }
-            m_domain->mpi.runInRing( f );
-            m_domain->mpi.collectSharedBits(); // update shared stuff
-        }
-
-        template< typename X >
-        Parallel( Domain< T, Comms > &dom, int _n, X x )
-            : divine::Parallel< T, BarrierThread >( _n, x ),
-              m_domain( &dom ), mpiWorker( dom )
-        {
-        }
-    };
-
-    Mpi< T, Domain< T, Comms > > mpi;
+    Instances m_slaves;
     Barrier< Terminable > m_barrier;
+    Comms m_comms;
 
-    int minId, maxId, lastId;
-    std::map< DomainWorker< T, Comms >*, int > m_ids;
-    Parallel *m_parallel;
+    Comms &comms() { return m_comms; }
+    Barrier< Terminable > &barrier() { return m_barrier; }
 
-    int n;
+    template< typename X = Instance >
+    LocalTopology( int n, X init = X() ) {
+        for ( int i = 0; i < n; ++ i )
+            m_slaves.push_back( Instance( init ) );
+        m_comms.resize( n );
+    }
 
-    Barrier< Terminable > &barrier() {
-        return m_barrier;
+    template< typename Bit >
+    void distribute( Bit bit, void (Instance::*set)( Bit ) ) {
+        for ( int i = 0; i < m_slaves.size(); ++i )
+            (m_slaves[ i ].*set)( bit );
+    }
+
+    template< typename Bits, typename Bit >
+    void collect( Bits &bits, Bit (Instance::*get)() ) {
+        for ( int i = 0; i < m_slaves.size(); ++i )
+            bits.push_back( (m_slaves[ i ].*get)() );
+    }
+
+    int peers() { return m_slaves.size(); }
+
+    void parallel( void (Instance::*fun)() ) {
+        parallel( this, fun );
+    }
+
+    template< typename Self >
+    void parallel( Self *self, void (Instance::*fun)(), wibble::sys::Thread * extra = 0, int offset = 0 )
+    {
+        int nextra = extra ? 1 : 0;
+        Threads threads( m_slaves, fun );
+        m_barrier.setExpect( m_slaves.size() + nextra );
+
+        for ( int i = 0; i < m_slaves.size(); ++i ) {
+            threads.thread( i ).setBarrier( m_barrier );
+            m_slaves[ i ].becomeSlave( *self, offset + i );
+        }
+
+        threads.run( extra );
     }
 
     template< typename X >
-    Parallel &parallel( X x ) {
-        if ( !m_parallel ) {
-            m_parallel = new Parallel( *this, n, x );
-
-            int count = n;
-            if ( mpi.size() > 1 )
-                ++ count;
-
-            m_barrier.setExpect( count );
-
-            for ( int i = 0; i < m_parallel->n; ++i ) {
-                m_parallel->instance( i ).connect( *this );
-            }
-        }
-        return *m_parallel;
+    X ring( X x, X (Instance::*fun)( X ) )
+    {
+        for ( int i = 0; i < m_slaves.size(); ++i )
+            x = (m_slaves[ i ].*fun)( x );
+        return x;
     }
 
-    Parallel &parallel() {
-        assert( m_parallel );
-        return *m_parallel;
-    }
-
-    void setupIds() {
-        comms.resize( peers() ); // FIXME kinda out of place, here, but in the
-                                 // ctor we don't have the right peers() figure
-                                 // yet :(
-        minId = lastId = n * mpi.rank();
-        maxId = (n * (mpi.rank() + 1)) - 1;
-    }
-
-    int obtainId( DomainWorker< T, Comms > &t ) {
-        if ( !lastId ) {
-            setupIds();
-        }
-
-        if ( !m_ids.count( &t ) )
-            m_ids[ &t ] = lastId ++;
-
-        return m_ids[ &t ];
-    }
-
-    bool isLocalId( int id ) {
-        return id >= minId && id <= maxId;
-    }
-
-    int peers() {
-        return n * mpi.size();
-    }
-
-    typename T::Shared &shared( int i ) {
-        if ( isLocalId( i ) )
-            return parallel().shared( i - minId );
-        return mpi.shared( i );
-    }
-
-    void interrupt( bool from_mpi = false ) {
-        for ( int i = 0; i < parallel().n; ++i )
-            parallel().instance( i ).interrupt( true );
-        if ( !from_mpi )
-            parallel().mpiWorker.interrupt();
-    }
-
-    void submit( int from, int to, typename Comms::T value ) {
-        comms.submit( from, to, value );
-    }
-
-    Domain( typename T::Shared *shared = 0, int _n = 4 )
-        : mpi( shared, this ),
-          lastId( 0 ),
-          m_parallel( 0 ),
-          n( _n )
-    {}
-
-    ~Domain() {
-        delete m_parallel;
+    void interrupt() {
+        for ( int i = 0; i < m_slaves.size(); ++i )
+            m_slaves[ i ].interrupt( true );
     }
 };
+
+template< typename Instance >
+struct MpiTopology : MpiMonitor
+{
+    typedef FifoMatrix< BlobPair > Comms;
+
+    Mpi mpi;
+    LocalTopology< Instance > m_local;
+    MpiForwarder< Comms > m_mpiForwarder;
+    rpc::bitstream async_retval;
+
+    Comms &comms() { return m_local.comms(); }
+    Barrier< Terminable > &barrier() { return m_local.barrier(); }
+
+    int peers() { return m_local.peers() * mpi.size(); } // XXX
+
+    MpiTopology( const MpiTopology & ) = delete;
+
+    template< typename X = Instance >
+    MpiTopology( int pernode, X init = X() )
+        : m_local( pernode, init ),
+          m_mpiForwarder( &barrier(),
+                          &comms(),
+                          pernode * mpi.size(), /* total */
+                          mpi.rank() * pernode, /* min */
+                          (mpi.rank() + 1) * pernode - 1 /* max */
+                        )
+    {
+        mpi.debug() << "created MpiTopology, pernode = " << pernode << ", size = " << mpi.size() << std::endl;
+        mpi.registerMonitor( TAG_RING, *this );
+        mpi.registerMonitor( TAG_PARALLEL, *this );
+        mpi.registerMonitor( TAG_INTERRUPT, *this );
+        comms().resize( pernode * mpi.size() );
+    }
+
+    template< typename Bit >
+    void distribute( Bit bit, void (Instance::*set)( Bit ) )
+    {
+        rpc::bitstream bs;
+        rpc::marshall( set, bit, bs );
+        mpi.notifySlaves( TAG_PARALLEL, bs );
+        m_local.distribute( bit, set );
+    }
+
+    template< typename Bits, typename Bit >
+    void collect( Bits &bits, Bit (Instance::*get)() )
+    {
+        m_local.collect( bits, get );
+
+        rpc::bitstream bs;
+        rpc::marshall( get, bs );
+        if ( mpi.master() ) {
+            mpi.notifySlaves( TAG_PARALLEL, bs );
+            for ( int i = 1; i < mpi.size(); ++i ) {
+                rpc::bitstream response;
+                MPI::Status st;
+                MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_COLLECT, st );
+                mpi.recvStream( st, response );
+                response >> bits;
+            }
+        }
+    }
+
+    void parallel( void (Instance::*fun)() )
+    {
+        rpc::bitstream bs;
+        rpc::marshall( fun, bs );
+        mpi.notifySlaves( TAG_PARALLEL, bs );
+
+        mpi.debug() << "parallel()" << std::endl;
+        m_local.parallel( this, fun, &m_mpiForwarder, mpi.rank() * m_local.peers() );
+        mpi.debug() << "parallel() DONE" << std::endl;
+    }
+
+    template< typename X >
+    X ring( X x, X (Instance::*fun)( X ) ) {
+        x = m_local.ring( x );
+
+        rpc::bitstream bs;
+
+        bs << rpc::marshall( fun, x, bs );
+
+        wibble::sys::MutexLock _lock( mpi.global().mutex );
+        mpi.global().is_master = false;
+        mpi.notifyOne( mpi.rank() + 1, TAG_RING, bs );
+        _lock.drop();
+        while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
+        mpi.global().is_master = true;
+
+        X retval;
+        async_retval >> retval;
+        return retval;
+    }
+
+    template< typename MPIT, typename F > struct RingFromRemote
+    {
+        template< typename X >
+        auto operator()( MPIT &mpit, X (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
+        {
+            if ( !mpit.mpi.rank() )
+                mpit.async_retval << x; /* done, x is the final value */
+            else
+                mpit.ring( x, fun );
+        }
+    };
+
+    template< typename MPIT, typename F > struct ParallelFromRemote
+    {
+        template< typename X >
+        auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
+        {
+            mpit.distribute( x, fun );
+        }
+
+        template< typename X >
+        void operator()( MPIT &mpit, X (Instance::*fun)() )
+        {
+            std::vector< X > bits;
+            rpc::bitstream bs;
+            mpit.collect( bits, fun );
+            bs << bits;
+            mpit.mpi.notifyOne( 0, TAG_COLLECT, bs );
+        }
+
+        void operator()( MPIT &mpit, void (Instance::*fun)() ) {
+            mpit.parallel( fun );
+        }
+
+    };
+
+    /* The slave monitor */
+    Loop process( wibble::sys::MutexLock &_lock, MPI::Status &status ) {
+
+        rpc::bitstream in, out;
+
+        mpi.debug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
+        mpi.recvStream( status, in );
+
+        switch ( status.Get_tag() ) {
+            case TAG_RING:
+                rpc::demarshallWith< Instance, RingFromRemote >( *this, in, out );
+                if ( !async_retval.empty() )
+                    return Done;
+                break;
+            case TAG_PARALLEL:
+                _lock.drop();
+                rpc::demarshallWith< Instance, ParallelFromRemote >( *this, in, out );
+                break;
+            case TAG_INTERRUPT:
+                mpi.debug() << "INTERRUPTED (remote)" << std::endl;
+                m_local.interrupt();
+                break;
+            default:
+                assert_die();
+        }
+
+        return Continue;
+    }
+
+    void interrupt() {
+        wibble::sys::MutexLock _lock( mpi.global().mutex );
+        mpi.debug() << "INTERRUPTED (local)" << std::endl;
+        mpi.notify( TAG_INTERRUPT );
+    }
+
+};
+
 
 }
 

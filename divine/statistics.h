@@ -50,7 +50,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     };
 
     std::vector< PerThread * > threads;
-    divine::MpiBase *mpi;
+    divine::Mpi mpi;
     int pernode, localmin;
 
     bool gnuplot;
@@ -126,9 +126,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     void send() {}
 #endif
 
-    void setup( const Meta &m, MpiBase *_mpi );
+    void setup( const Meta &m );
 
-    Statistics() : mpi( 0 ), pernode( 1 ), localmin( 0 )
+    Statistics() : pernode( 1 ), localmin( 0 )
     {
         output = 0;
         gnuplot = false;

@@ -1,11 +1,14 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/test.h>
+#include <wibble/sys/thread.h>
+
 #include <divine/pool.h>
 #include <divine/blob.h>
 #include <divine/barrier.h>
 #include <divine/fifo.h>
 #include <divine/meta.h>
+#include <divine/rpc.h>
 
 #include <divine/output.h>
 
@@ -19,44 +22,16 @@
 namespace divine {
 
 #define TAG_ALL_DONE    0
-#define TAG_RUN         1
-#define TAG_GET_COUNTS  2
-#define TAG_GIVE_COUNTS 4
-#define TAG_DONE        5
-#define TAG_SHARED      6
-#define TAG_INTERRUPT   7
-#define TAG_RING_RUN    8
-#define TAG_RING_DONE   9
-#define TAG_SOLICIT_SHARED 10
+#define TAG_GET_COUNTS  1
+#define TAG_GIVE_COUNTS 2
+#define TAG_TERMINATED  3
+#define TAG_INTERRUPT   4
 
-#define TAG_ID           100
+#define TAG_PARALLEL    5
+#define TAG_RING        6
+#define TAG_COLLECT     7
 
-namespace algorithm {
-
-template< typename T >
-struct _MpiId
-{
-    static int to_id( void (T::*f)() ) {
-        // assert( 0 );
-        return -1;
-    }
-
-    static void (T::*from_id( int ))() {
-        // assert( 0 );
-        return 0;
-    }
-
-    template< typename O >
-    static void writeShared( typename T::Shared, O ) {
-    }
-
-    template< typename I >
-    static I readShared( typename T::Shared &, I i ) {
-        return i;
-    }
-};
-
-}
+#define TAG_ID        100
 
 enum Loop { Continue, Done };
 
@@ -70,50 +45,8 @@ struct MpiMonitor {
     // Called whenever there is a pause in incoming traffic (i.e. a nonblocking
     // probe fails). A blocking probe will follow each call to progress().
     virtual Loop progress() { return Continue; }
-};
 
-struct MpiBase {
-    wibble::sys::Mutex m_mutex;
-
-    MpiMonitor * m_progress;
-    std::vector< MpiMonitor * > m_monitor;
-
-    bool is_master; // the master token
-    bool m_initd;
-    int m_rank, m_size;
-
-    void send( const void *buf, int count, const MPI::Datatype &dt, int dest, int tag ) {
-        wibble::sys::MutexLock _lock( m_mutex );
-        send( _lock, buf, count, dt, dest, tag );
-    }
-
-    void send( wibble::sys::MutexLock &, const void *buf, int count,
-               const MPI::Datatype &dt, int dest, int tag ) {
-        MPI::COMM_WORLD.Send( buf, count, dt, dest, tag );
-    }
-
-    void registerProgress( MpiMonitor &m ) {
-        m_progress = &m;
-    }
-
-    void registerMonitor( int tag, MpiMonitor &m ) {
-        m_monitor.resize( std::max( size_t( tag ) + 1, m_monitor.size() ) );
-        m_monitor[ tag ] = &m;
-    }
-
-    virtual void init( Meta ) = 0;
-    virtual void start() = 0;
-
-    int rank() { if ( m_initd ) return m_rank; else return 0; }
-    int size() { if ( m_initd ) return m_size; else return 1; }
-
-    bool master() { return is_master; }
-
-    MpiBase() : m_mutex( true ), m_progress( 0 ) {}
-
-    std::ostream &mpidebug() {
-        return Output::output().debug() << "MPI[" << rank() << "]: ";
-    }
+    virtual ~MpiMonitor() {}
 };
 
 /**
@@ -128,73 +61,135 @@ struct MpiBase {
  * parallel.h) and to relay the parallel-start and the termination detection
  * over MPI to the slave nodes.
  */
-template< typename Algorithm, typename D >
-struct Mpi : MpiBase {
+struct Mpi {
 
-    D *m_domain;
-    typedef typename Algorithm::Shared Shared;
-    Shared *master_shared;
-    std::vector< Shared > m_shared;
+private:
+    struct Data {
+        wibble::sys::Mutex mutex;
 
-    D &domain() {
-        assert( m_domain );
-        return *m_domain;
+        MpiMonitor * progress;
+        std::vector< MpiMonitor * > monitor;
+
+        bool is_master; // the master token
+        int rank, size;
+        int instances;
+    };
+
+    static Data *s_data;
+
+public:
+    Data &global() {
+        return *s_data;
     }
 
-    Mpi( Shared *sh, D *d ) : master_shared( sh )
-    {
-        m_domain = d;
-        is_master = false;
-        m_initd = false;
+    void send( const void *buf, int count, const MPI::Datatype &dt, int dest, int tag ) {
+        wibble::sys::MutexLock _lock( global().mutex );
+        send( _lock, buf, count, dt, dest, tag );
     }
 
-    Shared &shared( int i ) {
-        return m_shared[ i ];
+    void send( wibble::sys::MutexLock &, const void *buf, int count,
+               const MPI::Datatype &dt, int dest, int tag ) {
+        MPI::COMM_WORLD.Send( buf, count, dt, dest, tag );
     }
 
-    void init( Meta m ) {
-        if (m_initd)
-            return;
-
-        m_initd = true;
-        MPI::Init();
-        m_size = MPI::COMM_WORLD.Get_size();
-        m_rank = MPI::COMM_WORLD.Get_rank();
-
-        m_shared.resize( domain().peers() );
-
-        domain().setupIds();
-        domain().parallel( m );
-
-        if ( m_rank == 0 )
-            is_master = true;
+    void registerProgress( MpiMonitor &m ) {
+        global().progress = &m;
     }
+
+    void registerMonitor( int tag, MpiMonitor &m ) {
+        global().monitor.resize( std::max( size_t( tag ) + 1, global().monitor.size() ) );
+        global().monitor[ tag ] = &m;
+    }
+
+    int rank() { return global().rank; }
+    int size() { return global().size; }
+
+    bool master() { return global().is_master; }
+
+    std::ostream &debug() {
+        return Output::output().debug() << "MPI[" << rank() << "]: ";
+    }
+
+    Mpi();
+    Mpi( const Mpi & );
+    ~Mpi();
 
     void start() {
-        assert( m_initd );
-
         if ( !master() )
             while ( true )
                 loop();
     }
 
-    void notifyOne( int i, int tag, int id ) {
-        MPI::COMM_WORLD.Send( &id, 1, MPI::INT, i, tag );
+    rpc::bitstream &recvStream( MPI::Status &st, rpc::bitstream &bs )
+    {
+        MPI::COMM_WORLD.Probe( st.Get_source(), st.Get_tag(), st );
+        int first = bs.bits.size(), count = st.Get_count( MPI::BYTE ) / 4;
+        bs.bits.resize( first + count );
+        MPI::COMM_WORLD.Recv( &bs.bits[ first ], count * 4,
+                              MPI::BYTE, st.Get_source(), st.Get_tag(), st );
+        debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): " << wibble::str::fmt( bs.bits ) << std::endl;
+        return bs;
     }
 
-    void notifySlaves( int tag, int id ) {
+    rpc::bitstream &sendStream( rpc::bitstream &bs, int to, int tag ) {
+        debug() << "sending (tag = " << tag << ", to = " << to << "): " << wibble::str::fmt( bs.bits ) << std::endl;
+        MPI::COMM_WORLD.Send( &bs.bits.front(),
+                              bs.bits.size() * 4,
+                              MPI::BYTE, to, tag );
+        return bs;
+    }
+
+    void notifyOne( int i, int tag, rpc::bitstream bs = rpc::bitstream() ) {
+        sendStream( bs, i, tag );
+    }
+
+    void notifySlaves( int tag, rpc::bitstream bs = rpc::bitstream() ) {
         if ( !master() )
             return;
-        notify( tag, id );
+        notify( tag, bs );
     }
 
-    void notify( int tag, int id ) {
+    void notify( int tag, rpc::bitstream bs = rpc::bitstream() ) {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
-                notifyOne( i, tag, id );
+                notifyOne( i, tag, bs );
         }
     }
 
+    Loop loop() {
+
+        MPI::Status status;
+
+        wibble::sys::MutexLock _lock( s_data->mutex );
+        // And process incoming MPI traffic.
+        while ( MPI::COMM_WORLD.Iprobe(
+                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
+        {
+            int tag = status.Get_tag();
+
+            if ( tag == TAG_ALL_DONE ) {
+                MPI::Finalize();
+                exit( 0 ); // after a fashion...
+            }
+
+            if ( global().monitor.size() >= size_t( tag ) && global().monitor[ tag ] ) {
+                if ( global().monitor[ tag ]->process( _lock, status ) == Done )
+                    return Done;
+            } else assert_die();
+        }
+
+        sched_yield();
+
+        if ( global().progress )
+            return global().progress->progress();
+
+        /* wait for messages */
+        /* MPI::COMM_WORLD.Probe(
+            MPI::ANY_SOURCE, MPI::ANY_TAG ); */
+
+        return Continue;
+    }
+#if 0
     void returnSharedBits( int to ) {
         std::vector< int32_t > shbits;
         for ( int i = 0; i < domain().n; ++i ) {
@@ -215,7 +210,7 @@ struct Mpi : MpiBase {
 
         MPI::Status status;
 
-        mpidebug() << "collecting shared bits" << std::endl;
+        debug() << "collecting shared bits" << std::endl;
 
         std::vector< int32_t > shbits;
         notifySlaves( TAG_SOLICIT_SHARED, 0 );
@@ -233,7 +228,7 @@ struct Mpi : MpiBase {
             }
             assert( it == shbits.end() ); // sanity check
         }
-        mpidebug() << "shared bits collected" << std::endl;
+        debug() << "shared bits collected" << std::endl;
     }
 
     Shared obtainSharedBits() {
@@ -253,7 +248,7 @@ struct Mpi : MpiBase {
         std::vector< int32_t > shbits;
         algorithm::_MpiId< Algorithm >::writeShared(
             sh, std::back_inserter( shbits ) );
-        mpidebug() << "sending shared bits to " << to << "..." << std::endl;
+        debug() << "sending shared bits to " << to << "..." << std::endl;
         MPI::COMM_WORLD.Send( &shbits.front(),
                               shbits.size() * 4,
                               MPI::BYTE, to, TAG_SHARED );
@@ -292,7 +287,7 @@ struct Mpi : MpiBase {
     }
 
     ~Mpi() {
-        mpidebug() << "ALL DONE" << std::endl;
+        debug() << "ALL DONE" << std::endl;
         if ( m_initd && master() ) {
             notifySlaves( TAG_ALL_DONE, 0 );
             MPI::Finalize();
@@ -305,17 +300,17 @@ struct Mpi : MpiBase {
         is_master = true;
         *master_shared = obtainSharedBits();
         _lock.drop();
-        mpidebug() << "runSerial " << id << "..." << std::endl;
+        debug() << "runSerial " << id << "..." << std::endl;
         domain().parallel().runInRing(
             *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
-        mpidebug() << "runSerial " << id << " locally done..." << std::endl;
+        debug() << "runSerial " << id << " locally done..." << std::endl;
         _lock.reclaim();
         is_master = false;
         if ( rank() < size() - 1 ) {
-            mpidebug() << "passing control to " << rank() + 1 << "..." << std::endl;
+            debug() << "passing control to " << rank() + 1 << "..." << std::endl;
             notifyOne( rank() + 1, TAG_RING_RUN, id );
         } else {
-            mpidebug() << "ring finished, passing control back to master..." << std::endl;
+            debug() << "ring finished, passing control back to master..." << std::endl;
             notifyOne( 0, TAG_RING_DONE, 0 );
         }
         sendSharedBits( ( rank() + 1 ) % size(), *master_shared );
@@ -326,72 +321,7 @@ struct Mpi : MpiBase {
         domain().parallel().run(
             sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
     }
-
-    Loop slave( wibble::sys::MutexLock &_lock, MPI::Status &status ) {
-        assert_eq( status.Get_count( MPI::INT ), 1 );
-
-        int id;
-
-        mpidebug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
-
-        MPI::COMM_WORLD.Recv( &id, 1, /* one integer per message */
-                              MPI::INT,
-                              MPI::ANY_SOURCE, /* anyone can become a master these days */
-                              MPI::ANY_TAG, status );
-        switch ( status.Get_tag() ) {
-            case TAG_ALL_DONE:
-                MPI::Finalize();
-                exit( 0 ); // after a fashion...
-            case TAG_RING_RUN:
-                runSerial( _lock, id );
-                break;
-            case TAG_RING_DONE:
-                assert( master_shared );
-                *master_shared = obtainSharedBits();
-                mpidebug() << "RING DONE" << std::endl;
-                return Done;
-            case TAG_RUN:
-                _lock.drop();
-                run( id );
-                break;
-            case TAG_SOLICIT_SHARED:
-                returnSharedBits( status.Get_source() );
-                break;
-            default:
-                assert( 0 );
-        }
-
-        return Continue;
-    }
-
-    Loop loop() {
-
-        MPI::Status status;
-
-        wibble::sys::MutexLock _lock( m_mutex );
-        // And process incoming MPI traffic.
-        while ( MPI::COMM_WORLD.Iprobe(
-                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
-        {
-            int tag = status.Get_tag();
-            if ( m_monitor.size() >= size_t( tag ) && m_monitor[ tag ] ) {
-                if ( m_monitor[ tag ]->process( _lock, status ) == Done )
-                    return Done;
-            } else if ( slave( _lock, status ) == Done )
-                return Done;
-        }
-
-        sched_yield();
-
-        if ( m_progress )
-            return m_progress->progress();
-
-        /* wait for messages */
-        /* MPI::COMM_WORLD.Probe(
-            MPI::ANY_SOURCE, MPI::ANY_TAG ); */
-
-        return Continue;
-    }
+#endif
 
 };
 
@@ -418,9 +348,8 @@ template< typename T > struct FifoMatrix;
  * used to plug in the MpiWorker into a Parallel setup. The MpiWorker then
  * takes care to relay
  */
-template< typename D, typename Comms = FifoMatrix< Blob > >
-struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
-    D &m_domain;
+template< typename Comms = FifoMatrix< Blob > >
+struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     int recv, sent;
 
     Pool pool;
@@ -428,16 +357,40 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
     Matrix< std::pair< bool, MPI::Request > >  requests;
     std::vector< int32_t > in_buffer;
 
-    MpiWorker( D &d ) : m_domain( d ) {
-        buffers.resize( d.peers(), d.peers() );
-        requests.resize( d.peers(), d.peers() );
+    Comms *m_comms;
+    Barrier< Terminable > *m_barrier;
+    Mpi mpi;
+    int m_peers;
+    int m_localMin, m_localMax;
+
+    Comms &comms() {
+        assert( m_comms );
+        return *m_comms;
+    }
+
+    bool isLocal( int id ) {
+        return id >= m_localMin && id <= m_localMax;
+    }
+
+    int rankOf( int id ) {
+        return id / (m_localMax - m_localMin + 1);
+    }
+
+    MpiForwarder( Barrier< Terminable > *barrier, Comms *comms, int total, int min, int max )
+        : m_barrier( barrier ), m_comms( comms )
+    {
+        buffers.resize( total, total );
+        requests.resize( total, total );
         sent = recv = 0;
+        m_peers = total;
+        m_localMin = min;
+        m_localMax = max;
     }
 
     bool outgoingEmpty() {
-        for ( int from = 0; from < m_domain.peers(); ++from )
-            for ( int to = 0; to < m_domain.peers(); ++to ) {
-                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+        for ( int from = 0; from < m_peers; ++from )
+            for ( int to = 0; to < m_peers; ++to ) {
+                if ( !isLocal( from ) || isLocal( to ) )
                     continue;
 
                 if ( comms().pending( from, to ) )
@@ -452,9 +405,11 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         return !outgoingEmpty();
     }
 
-    template< typename Mpi >
-    std::pair< int, int > accumCounts( Mpi &mpi, int id ) {
-        mpi.notifySlaves( TAG_GET_COUNTS, id );
+    std::pair< int, int > accumCounts( int id ) {
+        rpc::bitstream bs;
+        bs << id;
+
+        mpi.notifySlaves( TAG_GET_COUNTS, bs );
         MPI::Status status;
         int r = recv, s = sent;
         bool valid = true;
@@ -478,28 +433,21 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
     bool termination() {
         std::pair< int, int > one, two;
 
-        one = accumCounts( m_domain.mpi, 0 );
+        one = accumCounts( 0 );
 
         if ( one.first != one.second )
             return false;
 
-        two = accumCounts( m_domain.mpi, 1 );
+        two = accumCounts( 1 );
 
         if ( one.first == two.first && two.first == two.second ) {
-            m_domain.mpi.notifySlaves( TAG_DONE, 0 );
+            mpi.notifySlaves( TAG_TERMINATED );
 
-            if ( m_domain.barrier().idle( this ) )
+            if ( m_barrier->idle( this ) )
                 return true;
         }
 
         return false;
-    }
-
-    void interrupt() {
-        wibble::sys::MutexLock _lock( m_domain.mpi.m_mutex );
-        mpidebug() << "INTERRUPTED (local)" << std::endl;
-        m_domain.mpi.notify( TAG_INTERRUPT, 0 );
-        sent += m_domain.mpi.size() - 1;
     }
 
     void receiveDataMessage( MPI::Status &status )
@@ -515,13 +463,13 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
 
         int from = *i++;
         int to = *i++;
-        mpidebug() << "DATA: " << from << " -> " << to << std::endl;
-        assert_pred( m_domain.isLocalId, to );
+        // mpi.debug() << "DATA: " << from << " -> " << to << std::endl;
+        assert_pred( isLocal, to );
 
         while ( i != in_buffer.end() ) {
             i = b.first.read32( &pool, i );
             i = b.second.read32( &pool, i );
-            m_domain.submit( from, to, b );
+            comms().submit( from, to, b );
         }
         ++ recv;
     }
@@ -546,38 +494,25 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
                 MPI::COMM_WORLD.Send( cnt, 3, MPI::INT,
                                       status.Get_source(), TAG_GIVE_COUNTS );
                 return Continue;
-            case TAG_DONE:
-                mpidebug() << "DONE" << std::endl;
-                return m_domain.barrier().idle( this ) ? Done : Continue;
-            case TAG_INTERRUPT:
-                mpidebug() << "INTERRUPTED (remote)" << std::endl;
-                ++ recv;
-                m_domain.interrupt( true );
-                return Continue;
+            case TAG_TERMINATED:
+                mpi.debug() << "DONE" << std::endl;
+                return m_barrier->idle( this ) ? Done : Continue;
             default:
                 assert_die();
         }
     }
 
     bool lastMan() {
-        bool r = m_domain.barrier().lastMan( this );
+        bool r = m_barrier->lastMan( this );
         return r;
-    }
-
-    std::ostream &mpidebug() {
-        return m_domain.mpi.mpidebug();
-    }
-
-    Comms &comms() {
-        return m_domain.comms;
     }
 
     Loop progress() {
         // Fill outgoing buffers from the incoming FIFO queues...
-        for ( int from = 0; from < m_domain.peers(); ++from ) {
-            for ( int to = 0; to < m_domain.peers(); ++to ) {
+        for ( int from = 0; from < m_peers; ++from ) {
+            for ( int to = 0; to < m_peers; ++to ) {
 
-                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+                if ( !isLocal( from ) || isLocal( to ) )
                     continue;
 
                 /* initialise the buffer with from/to information */
@@ -601,10 +536,10 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         }
 
         // ... and flush the buffers.
-        for ( int from = 0; from < m_domain.peers(); ++from ) {
-            for ( int to = 0; to < m_domain.peers(); ++to ) {
+        for ( int from = 0; from < m_peers; ++from ) {
+            for ( int to = 0; to < m_peers; ++to ) {
 
-                if ( !m_domain.isLocalId( from ) || m_domain.isLocalId( to ) )
+                if ( !isLocal( from ) || isLocal( to ) )
                     continue;
 
                 if ( requests[ from ][ to ].first ) {
@@ -619,15 +554,15 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
                 if ( buffers[ from ][ to ].size() <= 2 )
                     continue;
 
-                mpidebug() << "SENDING: " << from << " -> " << to << std::endl;
-                mpidebug() << "BUFFER: " << buffers[ from ][ to ][ 0 ] << ", "
-                           << buffers[ from ][ to ][ 1 ] << " ... " << std::endl;
-                int rank = to / m_domain.n;
+                /* mpi.debug() << "SENDING: " << from << " -> " << to << std::endl;
+                mpi.debug() << "BUFFER: " << buffers[ from ][ to ][ 0 ] << ", "
+                << buffers[ from ][ to ][ 1 ] << " ... " << std::endl; */
+
                 requests[ from ][ to ].first = true;
                 requests[ from ][ to ].second = MPI::COMM_WORLD.Isend(
                     &buffers[ from ][ to ].front(),
                     buffers[ from ][ to ].size() * 4,
-                    MPI::BYTE, rank, TAG_ID );
+                    MPI::BYTE, rankOf( to ), TAG_ID );
                 ++ sent;
             }
         }
@@ -635,9 +570,9 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
         // NB. The call to lastMan() here is first, since it needs to be done
         // by non-master nodes, to wake up sleeping workers that have received
         // messages from network. Ugly, yes.
-        if ( lastMan() && m_domain.mpi.master() && outgoingEmpty() ) {
+        if ( lastMan() && mpi.master() && outgoingEmpty() ) {
             if ( termination() ) {
-                mpidebug() << "TERMINATED" << std::endl;
+                mpi.debug() << "TERMINATED" << std::endl;
                 return Done;
             }
         }
@@ -646,17 +581,17 @@ struct MpiWorker: Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     void *main() {
-        mpidebug() << "WORKER START" << std::endl;
-        m_domain.barrier().started( this );
-        m_domain.mpi.registerProgress( *this );
-        m_domain.mpi.registerMonitor( TAG_ID, *this );
-        m_domain.mpi.registerMonitor( TAG_GET_COUNTS, *this );
-        m_domain.mpi.registerMonitor( TAG_DONE, *this );
-        m_domain.mpi.registerMonitor( TAG_INTERRUPT, *this );
+        mpi.debug() << "FORWARDER START" << std::endl;
+        m_barrier->started( this );
+        mpi.registerProgress( *this );
+        mpi.registerMonitor( TAG_ID, *this );
+        mpi.registerMonitor( TAG_INTERRUPT, *this );
+        mpi.registerMonitor( TAG_GET_COUNTS, *this );
+        mpi.registerMonitor( TAG_TERMINATED, *this );
 
-        while ( m_domain.mpi.loop() == Continue ) ;
+        while ( mpi.loop() == Continue ) ;
 
-        mpidebug() << "WORKER DONE" << std::endl;
+        mpi.debug() << "FORWARDER DONE" << std::endl;
         return 0;
     }
 };

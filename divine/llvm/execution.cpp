@@ -23,6 +23,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Analysis/DebugInfo.h"
 #include <algorithm>
 #include <cmath>
 #include <wibble/test.h>
@@ -1248,6 +1249,19 @@ void Interpreter::step( int ctx, int alternative ) {
     Location loc = location( SF() );
     Instruction &I = *loc.insn++;
     setLocation( SF(), loc );
+
+    std::string descr;
+    raw_string_ostream descr_stream( descr );
+    descr_stream << I;
+
+    const LLVMContext &xx = I.getContext();
+    const DebugLoc &dloc = I.getDebugLoc();
+    DILocation des( dloc.getAsMDNode( xx ) );
+    /* std::cerr << "executing " << descr << "; at ";
+    if ( des.getLineNumber() )
+        std::cerr << std::string(des.getFilename()) << ":" << des.getLineNumber();
+        std::cerr << std::endl; */
+
     visit( I );
 
     // remove the context if we are done with it

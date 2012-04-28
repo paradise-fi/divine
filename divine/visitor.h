@@ -213,13 +213,13 @@ struct Partitioned {
     }
 
     inline void queue( Node from, Node to, hash_t hint = 0 ) {
-        if ( owner( to, hint ) != worker.globalId() )
+        if ( owner( to, hint ) != worker.id() )
             return;
         queueAny( from, to, hint );
     }
 
     inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
-        int _to = owner( to, hint ), _from = worker.globalId();
+        int _to = owner( to, hint ), _from = worker.id();
         Statistics::global().sent( _from, _to, sizeof(from) + memSize(to) );
         worker.submit( _from, _to, NodePair( unblob< Node >( from ),  unblob< Node >( to ) ) );
     }
@@ -232,7 +232,7 @@ struct Partitioned {
     }
 
     visitor::ExpansionAction expansion( Node n ) {
-        assert_eq( owner( n ), worker.globalId() );
+        assert_eq( owner( n ), worker.id() );
         ExpansionAction eact = S::expansion( notify, n );
         if ( eact == TerminateOnState )
             worker.interrupt();
@@ -245,7 +245,7 @@ struct Partitioned {
         while ( true ) {
             if ( worker.workWaiting() ) {
 
-                int to = worker.globalId();
+                int to = worker.id();
 
                 if ( worker.interrupted() ) {
                     while ( !worker.idle() )
@@ -277,8 +277,8 @@ struct Partitioned {
     {
         typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
         static inline TransitionAction transitionHint( Notify &n, Node f, Node t, hash_t hint ) {
-            if ( n.owner( t, hint ) != n.worker.globalId() ) {
-                assert_eq( n.owner( f ), n.worker.globalId() );
+            if ( n.owner( t, hint ) != n.worker.id() ) {
+                assert_eq( n.owner( f ), n.worker.id() );
                 n.queueAny( f, t, hint );
                 return visitor::IgnoreTransition;
             }
@@ -292,14 +292,14 @@ struct Partitioned {
 
     template< typename T >
     void setIds( T &bfv ) {
-        bfv.store.id = worker.globalId();
-        bfv.m_queue.id = worker.globalId();
+        bfv.store.id = worker.id();
+        bfv.m_queue.id = worker.id();
     }
 
     void exploreFrom( Node initial ) {
         BFV< Ours > bfv( graph, *this, m_seen, hashCompaction );
         setIds( bfv );
-        if ( owner( initial ) == worker.globalId() ) {
+        if ( owner( initial ) == worker.id() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
         }
         run( bfv );

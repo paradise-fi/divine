@@ -47,29 +47,29 @@ wibble::Unit setupParallel( NotPreferred, T &t )
 }
 */
 
-template< template< typename, typename > class A, typename Graph >
+template< template< typename, template< typename > class, typename > class A, typename Graph >
 algorithm::Algorithm *makeAlgorithm( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::NonPORGraph< Graph >, NoStatistics >( meta, true );
+        return new A< algorithm::NonPORGraph< Graph >, LocalTopology, NoStatistics >( meta, true );
     else
 #endif
-        return new A< algorithm::NonPORGraph< Graph >, Statistics >( meta, true );
+        return new A< algorithm::NonPORGraph< Graph >, MpiTopology, Statistics >( meta, true );
 }
 
-template< template< typename, typename > class A, typename Graph >
+template< template< typename, template< typename > class, typename > class A, typename Graph >
 algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::PORGraph< Graph, NoStatistics >, NoStatistics >( meta, true );
+        return new A< algorithm::PORGraph< Graph, NoStatistics >, LocalTopology, NoStatistics >( meta, true );
     else
 #endif
-        return new A< algorithm::PORGraph< Graph, Statistics >, Statistics >( meta, true );
+        return new A< algorithm::PORGraph< Graph, Statistics >, LocalTopology, Statistics >( meta, true );
 }
 
-template< template< typename, typename > class A >
+template< template< typename, template< typename > class, typename > class A >
 algorithm::Algorithm *selectGraph( Meta &meta )
 {
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {

@@ -118,8 +118,8 @@ void Statistics::send() {
         data.push_back( t.memHashes );
     }
 
-    mpi->send( &data.front(), data.size(), MPI::INT, 0, TAG_STATISTICS );
-    mpi->mpidebug() << "stats sent: " << wibble::str::fmt( data ) << std::endl;
+    mpi.send( &data.front(), data.size(), MPI::INT, 0, TAG_STATISTICS );
+    mpi.debug() << "stats sent: " << wibble::str::fmt( data ) << std::endl;
 }
 
 Loop Statistics::process( wibble::sys::MutexLock &, MPI::Status &status )
@@ -132,7 +132,7 @@ Loop Statistics::process( wibble::sys::MutexLock &, MPI::Status &status )
 
     MPI::COMM_WORLD.Recv( &data.front(), data.size(),
                           MPI::INT, status.Get_source(), status.Get_tag() );
-    mpi->mpidebug() << "stats received: " << wibble::str::fmt( data ) << std::endl;
+    mpi.debug() << "stats received: " << wibble::str::fmt( data ) << std::endl;
 
     int min = data.front();
     std::vector< int >::iterator iter = data.begin() + 1;
@@ -171,12 +171,12 @@ void Statistics::snapshot() {
 
 void *Statistics::main() {
     while ( true ) {
-        if ( !mpi || mpi->master() ) {
+        if ( !mpi.master() ) {
             wibble::sys::sleep( 1 );
             snapshot();
         }
 
-        if ( mpi && !mpi->master() ) {
+        if ( mpi.master() ) {
             wibble::sys::usleep( 200 * 1000 );
             send();
         }
@@ -200,12 +200,10 @@ void Statistics::resize( int s ) {
     }
 }
 
-void Statistics::setup( const Meta &m, MpiBase *_mpi ) {
+void Statistics::setup( const Meta &m ) {
     int total = m.execution.nodes * m.execution.threads;
     resize( total );
-    mpi = _mpi;
-    if ( mpi )
-        mpi->registerMonitor( TAG_STATISTICS, *this );
+    mpi.registerMonitor( TAG_STATISTICS, *this );
     pernode = m.execution.threads;
     localmin = m.execution.threads * m.execution.thisNode;
     Output::output().setStatsSize( total * 10 + 11, total + 11 );

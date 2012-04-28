@@ -6,6 +6,7 @@
 #include <divine/bitset.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
+#include <divine/rpc.h>
 #include <wibble/sfinae.h>
 
 #ifndef DIVINE_ALGORITHM_H
@@ -51,7 +52,6 @@ struct Algorithm
     meta::Result &result() { return meta().result; }
 
     virtual void run() = 0;
-    virtual MpiBase *mpi() { return NULL; }
 
     bool want_ce;
 
@@ -101,6 +101,25 @@ struct Algorithm
                           meta().execution.nodes * meta().execution.threads );
     }
 
+    template< typename T >
+    typename T::Shared getShared() {
+        return static_cast< T * >( this )->shared;
+    }
+
+    template< typename T >
+    void setShared( typename T::Shared s ) {
+        static_cast< T * >( this )->shared = s;
+    }
+
+    template< typename T >
+    void parallel( void (T::*fun)() ) {
+        T *self = static_cast< T * >( this );
+
+        self->topology().template distribute< decltype( self->shared ) >( self->shared, &T::template setShared< T > );
+        self->topology().parallel( fun );
+        self->topology().template collect< decltype( self->shareds ), decltype( self->shared ) >( self->shareds, &T::template getShared< T > );
+    }
+
     Algorithm( Meta m, int slack = 0 )
         : m_meta( m ), m_slack( slack )
     {
@@ -111,38 +130,57 @@ struct Algorithm
 };
 
 template< typename G >
-struct AlgorithmUtilsCommon : public virtual Algorithm
+struct AlgorithmUtilsCommon
 {
     typedef typename G::Table Table;
 
-    G *m_graph;
-    DomainWorkerBase *m_domainWorker;
-
     Table *m_table;
+    int *m_tableRefs;
+    G *m_graph;
 
-    void init( G *g, DomainWorkerBase *dwb) {
-        m_graph = g;
-        this->initGraph( g );
-        m_domainWorker = dwb;
+    template< typename Self >
+    void init( Self *self ) {
+        m_graph = &self->m_graph;
+        self->initGraph( m_graph );
+        m_table = self->makeTable( self );
+        m_tableRefs = new int( 1 );
     }
 
     G &graph() {
-        return *( G *) this->m_graph;
+        return *(this->m_graph);
     }
 
     Table &table() {
-        if ( !this->m_table )
-            this->m_table = makeTable();
-        return *this->m_table;
+        assert( m_table );
+        return *m_table;
     }
 
-    virtual Table* makeTable() = 0;
+    AlgorithmUtilsCommon() : m_table( NULL ), m_graph( NULL ) {}
+    AlgorithmUtilsCommon( const AlgorithmUtilsCommon &o ) {
+        m_table = o.m_table;
+        m_tableRefs = o.m_tableRefs;
+        m_graph = o.m_graph;
+        (*m_tableRefs) ++;
+    }
+    AlgorithmUtilsCommon &operator=( const AlgorithmUtilsCommon &o ) {
+        if (m_tableRefs)
+            (*m_tableRefs) --;
 
-    AlgorithmUtilsCommon() : Algorithm( Meta() ), m_domainWorker( NULL ), m_table( NULL ) {}
+        m_table = o.m_table;
+        m_tableRefs = o.m_tableRefs;
+        m_graph = o.m_graph;
+        (*m_tableRefs) ++;
+        return *this;
+    }
 
     ~AlgorithmUtilsCommon() {
-        safe_delete( m_table );
+        (*m_tableRefs)--;
+        if (!*m_tableRefs) {
+            safe_delete( m_table );
+            safe_delete( m_tableRefs );
+        }
     }
+
 };
 
 /// HashSet specialization: HashSet is used as a storage of visited states
@@ -154,12 +192,11 @@ struct AlgorithmUtils< G, typename G::Table::IsHashSet >
 {
     typedef typename G::Table Table;
 
-    Table *makeTable() {
-        return new Table( this->hasher, divine::valid< typename G::Node >(),
-                          this->equal, this->meta().execution.initialTable );
+    template< typename Self >
+    Table *makeTable( Self *self ) {
+        return new Table( self->hasher, divine::valid< typename G::Node >(),
+                          self->equal, self->meta().execution.initialTable );
     }
-
-    AlgorithmUtils() : Algorithm( Meta() ), AlgorithmUtilsCommon< G >() {}
 };
 
 #define BITSET BitSet< G, divine::valid< typename G::Node >, algorithm::Equal >
@@ -172,20 +209,30 @@ template< typename G >
 struct AlgorithmUtils< G, typename G::Table::IsBitSet >
     : AlgorithmUtilsCommon< G >
 {
-    G* m_g;
-
     typedef typename G::Table Table;
 
-    Table *makeTable() {
-        int id = this->m_domainWorker ? this->m_domainWorker->globalId() : 0;
-        return new Table( &this->graph().base(), id,
-                          divine::valid< typename G::Node >(), this->equal );
+    template< typename Self >
+    Table *makeTable( Self *self ) {
+        return new Table( &this->graph().base(), self->id(),
+                          divine::valid< typename G::Node >(), self->equal );
     }
-
-    AlgorithmUtils() : Algorithm( Meta() ), AlgorithmUtilsCommon< G >() {}
 };
 
 }
 }
+
+/* This is ugly, mostly because CPP interprets commas in template parameter
+ * lists as argument separators, which means we can't pass multi-parameter
+ * templates to RPC_ID. Sigh. */
+#define ALGORITHM_RPC_ID(_type, _id, _fun...)                           \
+    template< typename G, template < typename > class T, typename S >   \
+    template< bool xoxo > struct _type< G, T, S >::RpcId< 2 + _id, xoxo > { \
+        typedef decltype( &_type< G, T, S >::_fun ) Fun;                \
+        static Fun fun() { return &_type< G, T, S >::_fun; }            \
+    };
+
+#define ALGORITHM_RPC(alg) \
+    ALGORITHM_RPC_ID(alg, -1, template getShared< alg< G, T, S > >) \
+    ALGORITHM_RPC_ID(alg, 0, template setShared< alg< G, T, S > >)
 
 #endif

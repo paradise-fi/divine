@@ -1,5 +1,9 @@
+#if 0
 #include <divine/select.h>
+
+#ifndef O_SMALL
 #include <divine/algorithm/probabilistic.h>
+#endif
 
 namespace divine {
 
@@ -18,3 +22,4 @@ algorithm::Algorithm *selectProbabilistic( Meta &meta ) {
 }
 
 }
+#endif

@@ -12,37 +12,6 @@
 namespace divine {
 namespace algorithm {
 
-template< typename, typename > struct Metrics;
-
-// MPI function-to-number-and-back-again drudgery... To be automated.
-template< typename G, typename S >
-struct _MpiId< Metrics< G, S > >
-{
-    typedef Metrics< G, S > A;
-
-    static int to_id( void (A::*f)() ) {
-        assert_eq( f, &A::_visit );
-        return 0;
-    }
-
-    static void (A::*from_id( int n ))()
-    {
-        assert_eq( n, 0 );
-        return &A::_visit;
-    }
-
-    template< typename O >
-    static void writeShared( typename A::Shared s, O o ) {
-        s.stats.write( o );
-    }
-
-    template< typename I >
-    static I readShared( typename A::Shared &s, I i ) {
-        return s.stats.read( i );
-    }
-};
-// END MPI drudgery
-
 /**
  * A generalized statistics tracker for parallel algorithms. Put an instance in
  * your Shared structure and use the addNode/addEdge traps in your algorithm to
@@ -50,12 +19,12 @@ struct _MpiId< Metrics< G, S > >
  * from multiple parallel workers. Call updateResult to popuplate your Result
  * structure with collected data (for the report).
  */
-template< typename G >
 struct Statistics {
     int states, transitions, accepting, deadlocks, expansions;
 
     Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), deadlocks( 0 ), expansions( 0 ) {}
 
+    template< typename G >
     void addNode( G &g, typename G::Node n ) {
         ++states;
         if ( g.isAccepting( n ) )
@@ -92,28 +61,7 @@ struct Statistics {
           << " ===================================== " << std::endl;
     }
 
-    template< typename O >
-    O write( O o ) {
-        *o++ = states;
-        *o++ = transitions;
-        *o++ = accepting;
-        *o++ = expansions;
-        *o++ = deadlocks;
-        return o;
-    }
-
-    template< typename I >
-    I read( I i ) {
-        states = *i++;
-        transitions = *i++;
-        accepting = *i++;
-        expansions = *i++;
-        deadlocks = *i++;
-        return i;
-    }
-
-    template< typename G1 >
-    void merge( Statistics< G1 > other ) {
+    void merge( Statistics other ) {
         states += other.states;
         transitions += other.transitions;
         accepting += other.accepting;
@@ -123,75 +71,98 @@ struct Statistics {
 
 };
 
+rpc::bitstream &operator<<( rpc::bitstream &bs, Statistics st )
+{
+    return bs << st.states << st.transitions << st.expansions << st.accepting << st.deadlocks;
+}
+
+rpc::bitstream &operator>>( rpc::bitstream &bs, Statistics &st )
+{
+    return bs >> st.states >> st.transitions >> st.expansions >> st.accepting >> st.deadlocks;
+}
+
 /**
  * A very simple state space measurement algorithm. Explores the full state
  * space, keeping simple numeric statistics (see the Statistics template
  * above).
  */
-template< typename G, typename Statistics >
-struct Metrics : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Metrics< G, Statistics > >
+template< typename G, template < typename > class Topology, typename Statistics >
+struct Metrics : Algorithm, AlgorithmUtils< G >,
+                 Parallel< Topology, Metrics< G, Topology, Statistics > >
 {
-    typedef Metrics< G, Statistics > This;
+    RPC_CLASS;
+    typedef Metrics< G, Topology, Statistics > This;
     typedef typename G::Node Node;
 
-    struct Shared {
-        algorithm::Statistics< G > stats;
-        G g;
-    } shared;
+    G m_graph;
+    typedef algorithm::Statistics Shared;
+    Shared shared;
 
-    Domain< This > &domain() { return DomainWorker< This >::domain(); }
-    MpiBase *mpi() { return &domain().mpi; }
+    std::vector< Shared > shareds;
 
     visitor::ExpansionAction expansion( Node st )
     {
-        shared.stats.addNode( shared.g, st );
+        shared.addNode( m_graph, st );
         return visitor::ExpandState;
     }
 
     visitor::TransitionAction transition( Node, Node )
     {
-        shared.stats.addEdge();
+        shared.addEdge();
         return visitor::FollowTransition;
     }
 
     struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
         static visitor::DeadlockAction deadlocked( This &r, Node ) {
-            r.shared.stats.addDeadlock();
+            r.shared.addDeadlock();
             return visitor::IgnoreDeadlock;
         }
     };
 
     void _visit() { // parallel
-        this->comms().notify( this->globalId(), &shared.g.pool() );
+        this->comms().notify( this->id(), &m_graph.pool() );
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            vis( shared.g, *this, *this, hasher, &this->table() );
-        vis.exploreFrom( shared.g.initial() );
+            vis( m_graph, *this, *this, hasher, &this->table() );
+        vis.exploreFrom( m_graph.initial() );
     }
 
     Metrics( Meta m, bool master = false )
         : Algorithm( m, 0 )
     {
         if ( master )
-            this->becomeMaster( &shared, m.execution.threads );
-        this->init( &shared.g, this );
+            this->becomeMaster( m.execution.threads, m );
+        this->init( this );
     }
 
     void run() {
         progress() << "  exploring... \t\t\t " << std::flush;
-        domain().parallel( meta() ).run( shared, &This::_visit );
+        parallel( &This::_visit );
         progress() << "done" << std::endl;
 
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            shared.stats.merge( s.stats );
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            shared.merge( shareds[ i ] );
         }
 
-        shared.stats.print( progress() );
+        shared.print( progress() );
 
         result().fullyExplored = meta::Result::Yes;
-        shared.stats.update( meta().statistics );
+        shared.update( meta().statistics );
     }
+
+    template< typename T >
+    typename T::Shared getShared() {
+        return static_cast< T * >( this )->shared;
+    }
+
+    template< typename T >
+    void setShared( typename T::Shared s ) {
+        static_cast< T * >( this )->shared = s;
+    }
+
 };
+
+ALGORITHM_RPC( Metrics );
+ALGORITHM_RPC_ID( Metrics, 1, _visit );
 
 }
 }
