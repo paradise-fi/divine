@@ -102,22 +102,20 @@ struct Algorithm
     }
 
     template< typename T >
-    typename T::Shared getShared() {
-        return static_cast< T * >( this )->shared;
-    }
-
-    template< typename T >
-    void setShared( typename T::Shared s ) {
-        static_cast< T * >( this )->shared = s;
+    void ring( typename T::Shared (T::*fun)( typename T::Shared ) ) {
+        T *self = static_cast< T * >( this );
+        self->shared = self->topology().ring( self->shared, fun );
     }
 
     template< typename T >
     void parallel( void (T::*fun)() ) {
         T *self = static_cast< T * >( this );
 
-        self->topology().template distribute< decltype( self->shared ) >( self->shared, &T::template setShared< T > );
+        self->topology().template distribute< decltype( self->shared ) >(
+            self->shared, &T::setShared );
         self->topology().parallel( fun );
-        self->topology().template collect< decltype( self->shareds ), decltype( self->shared ) >( self->shareds, &T::template getShared< T > );
+        self->topology().template collect< decltype( self->shareds ), decltype( self->shared ) >(
+            self->shareds, &T::getShared );
     }
 
     Algorithm( Meta m, int slack = 0 )
@@ -232,7 +230,7 @@ struct AlgorithmUtils< G, typename G::Table::IsBitSet >
     };
 
 #define ALGORITHM_RPC(alg) \
-    ALGORITHM_RPC_ID(alg, -1, template getShared< alg< G, T, S > >) \
-    ALGORITHM_RPC_ID(alg, 0, template setShared< alg< G, T, S > >)
+    ALGORITHM_RPC_ID(alg, -1, getShared) \
+    ALGORITHM_RPC_ID(alg, 0, setShared)
 
 #endif

@@ -98,6 +98,9 @@ struct Metrics : Algorithm, AlgorithmUtils< G >,
     typedef algorithm::Statistics Shared;
     Shared shared;
 
+    void setShared( Shared sh ) { shared = sh; };
+    Shared getShared() { return shared; };
+
     std::vector< Shared > shareds;
 
     visitor::ExpansionAction expansion( Node st )
@@ -148,17 +151,6 @@ struct Metrics : Algorithm, AlgorithmUtils< G >,
         result().fullyExplored = meta::Result::Yes;
         shared.update( meta().statistics );
     }
-
-    template< typename T >
-    typename T::Shared getShared() {
-        return static_cast< T * >( this )->shared;
-    }
-
-    template< typename T >
-    void setShared( typename T::Shared s ) {
-        static_cast< T * >( this )->shared = s;
-    }
-
 };
 
 ALGORITHM_RPC( Metrics );
