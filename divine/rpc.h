@@ -109,9 +109,11 @@ struct Param1< _R (_T::*)( P0, P1 ) > { typedef P0 T; };
 template< typename T, typename F, int n >
 int findID_helper( wibble::NotPreferred, F f );
 
+template< typename F > int check( F f );
+
 template< typename T, typename F, int n >
-typename wibble::EnableIf< wibble::TSame< typename T::template RpcId< n, true >::Fun, F >, int >::T
-findID_helper( wibble::Preferred, F f )
+auto findID_helper( wibble::Preferred, F f ) ->
+    decltype( check< typename T::template RpcId< n, true >::Fun >( f ) )
 {
     assert( n );
     if ( f == T::template RpcId< n, true >::fun() )
