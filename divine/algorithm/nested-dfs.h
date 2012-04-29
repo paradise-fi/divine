@@ -12,14 +12,14 @@
 namespace divine {
 namespace algorithm {
 
-template< typename G, typename Statistics >
+template< typename G, template< typename > class _Top, typename Statistics >
 struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 {
-    typedef NestedDFS< G, Statistics > This;
+    typedef NestedDFS< G, _Top, Statistics > This;
     typedef typename G::Node Node;
     typedef typename AlgorithmUtils< G >::Table Table;
 
-    G g;
+    G m_graph;
     Node seed;
     bool valid;
     bool parallel, finished;
@@ -28,7 +28,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     std::deque< Node > ce_lasso;
     std::deque< Node > toexpand;
 
-    algorithm::Statistics< G > stats;
+    algorithm::Statistics stats;
 
     struct Extension {
         bool nested:1;
@@ -39,6 +39,8 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         return n.template get< Extension >();
     }
 
+    int id() { return 0; } // expected by AlgorithmUtils
+
     void runInner( G &graph, Node n ) {
         seed = n;
         visitor::DFV< InnerVisit > visitor( graph, *this, &this->table() );
@@ -47,7 +49,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 
     struct : wibble::sys::Thread {
         Fifo< Node > process;
-        NestedDFS< G, Statistics > *outer;
+        This *outer;
         G graph;
 
         void *main() {
@@ -71,8 +73,8 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
         LtlCE< G, wibble::Unit, wibble::Unit > ce;
-        ce.generateLinear( *this, g, ce_stack );
-        ce.generateLasso( *this, g, ce_lasso );
+        ce.generateLinear( *this, m_graph, ce_stack );
+        ce.generateLasso( *this, m_graph, ce_lasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
     }
@@ -80,7 +82,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     // this is the entrypoint for full expansion... I know the name isn't best,
     // but that's what PORGraph uses
     void queue( Node from, Node to ) {
-        visitor::DFV< OuterVisit > visitor( g, *this, &this->table() );
+        visitor::DFV< OuterVisit > visitor( m_graph, *this, &this->table() );
         visitor.exploreFrom( to );
     }
 
@@ -88,16 +90,16 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         progress() << " searching...\t\t\t" << std::flush;
 
         if ( parallel ) {
-            inner.graph = g;
+            inner.graph = m_graph;
             inner.start();
         }
 
-        visitor::DFV< OuterVisit > visitor( g, *this, &this->table() );
-        visitor.exploreFrom( g.initial() );
+        visitor::DFV< OuterVisit > visitor( m_graph, *this, &this->table() );
+        visitor.exploreFrom( m_graph.initial() );
 
         while ( valid && !toexpand.empty() ) {
-            if ( !g.full( toexpand.front() ) )
-                g.fullexpand( *this, toexpand.front() );
+            if ( !m_graph.full( toexpand.front() ) )
+                m_graph.fullexpand( *this, toexpand.front() );
             toexpand.pop_front();
         }
 
@@ -126,7 +128,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     visitor::ExpansionAction expansion( Node st ) {
         if ( !valid )
             return visitor::TerminateOnState;
-        stats.addNode( g, st );
+        stats.addNode( m_graph, st );
         ce_stack.push_front( st );
         extension( st ).on_stack = true;
         return visitor::ExpandState;
@@ -142,7 +144,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 
     visitor::TransitionAction transition( Node from, Node to ) {
         stats.addEdge();
-        if ( from.valid() && !g.full( from ) && !g.full( to ) && extension( to ).on_stack )
+        if ( from.valid() && !m_graph.full( from ) && !m_graph.full( to ) && extension( to ).on_stack )
             toexpand.push_back( from );
         return visitor::FollowTransition;
     }
@@ -167,11 +169,11 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     struct OuterVisit : visitor::Setup< G, This, Table, Statistics > {
         static void finished( This &dfs, Node n ) {
 
-            if ( dfs.g.isAccepting( n ) ) { // run the nested search
+            if ( dfs.m_graph.isAccepting( n ) ) { // run the nested search
                 if ( dfs.parallel )
                     dfs.inner.process.push( n );
                 else
-                    dfs.runInner( dfs.g, n );
+                    dfs.runInner( dfs.m_graph, n );
             }
 
             if ( !dfs.ce_stack.empty() ) {
@@ -197,7 +199,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         : Algorithm( m, sizeof( Extension ) )
     {
         valid = true;
-        this->init( &g, NULL );
+        this->init( this );
         parallel = m.execution.threads > 1;
         if (m.execution.threads > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;
