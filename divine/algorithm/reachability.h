@@ -13,80 +13,45 @@
 namespace divine {
 namespace algorithm {
 
-template< typename, typename > struct Reachability;
-
-// MPI function-to-number-and-back-again drudgery... To be automated.
-template< typename G, typename S >
-struct _MpiId< Reachability< G, S > >
-{
-    typedef Reachability< G, S > A;
-
-    static int to_id( void (A::*f)() ) {
-        if( f == &A::_visit ) return 0;
-        if( f == &A::_parentTrace ) return 1;
-        if( f == &A::_por) return 7;
-        if( f == &A::_por_worker) return 8;
-        assert_die();
-    }
-
-    static void (A::*from_id( int n ))()
-    {
-        switch ( n ) {
-            case 0: return &A::_visit;
-            case 1: return &A::_parentTrace;
-            case 7: return &A::_por;
-            case 8: return &A::_por_worker;
-            default: assert_die();
-        }
-    }
-
-    template< typename O >
-    static void writeShared( typename A::Shared s, O o ) {
-        o = s.stats.write( o );
-        *o++ = s.goal.valid();
-        if ( s.goal.valid() )
-            o = s.goal.write32( o );
-        o = s.ce.write( o );
-    }
-
-    template< typename I >
-    static I readShared( typename A::Shared &s, I i ) {
-        i = s.stats.read( i );
-        bool valid = *i++;
-        if ( valid ) {
-            FakePool fp;
-            i = s.goal.read32( &fp, i );
-        }
-        i = s.ce.read( i );
-        return i;
-    }
+struct ReachabilityShared {
+    Blob goal;
+    bool deadlocked;
+    algorithm::Statistics stats;
+    CeShared< Blob > ce;
+    bool need_expand;
 };
-// END MPI drudgery
+
+static inline rpc::bitstream &operator<<( rpc::bitstream &bs, ReachabilityShared st )
+{
+    return bs << st.goal << st.deadlocked << st.stats << st.ce << st.need_expand;
+}
+
+static inline rpc::bitstream &operator>>( rpc::bitstream &bs, ReachabilityShared &st )
+{
+    return bs >> st.goal >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
+}
 
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
  * about here.
  */
-template< typename G, typename Statistics >
-struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reachability< G, Statistics > >
+template< typename G, template< typename > class Topology, typename Statistics >
+struct Reachability : Algorithm, AlgorithmUtils< G >,
+                      Parallel< Topology, Reachability< G, Topology, Statistics > >
 {
-    typedef Reachability< G, Statistics > This;
+    RPC_CLASS;
+    typedef Reachability< G, Topology, Statistics > This;
     typedef typename G::Node Node;
 
-    struct Shared {
-        Node goal;
-        bool deadlocked;
-        algorithm::Statistics< G > stats;
-        G g;
-        CeShared< Node > ce;
-        bool need_expand;
-    } shared;
+    typedef ReachabilityShared Shared;
+    Shared shared;
+    std::vector< Shared > shareds;
+    Shared getShared() { return shared; }
+    void setShared( Shared sh ) { shared = sh; }
 
+    G m_graph;
     Node goal;
     bool deadlocked;
-
-    Domain< This > &domain() { return DomainWorker< This >::domain(); }
-    MpiBase *mpi() { return &domain().mpi; }
 
     struct Extension {
         Blob parent;
@@ -100,8 +65,8 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
 
     visitor::ExpansionAction expansion( Node st )
     {
-        shared.stats.addNode( shared.g, st );
-        shared.g.porExpansion( st );
+        shared.stats.addNode( m_graph, st );
+        m_graph.porExpansion( st );
         return visitor::ExpandState;
     }
 
@@ -113,13 +78,13 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         }
         shared.stats.addEdge();
 
-        if ( meta().algorithm.findGoals && shared.g.isGoal( t ) ) {
+        if ( meta().algorithm.findGoals && m_graph.isGoal( t ) ) {
             shared.goal = t;
             shared.deadlocked = false;
             return visitor::TerminateOnTransition;
         }
 
-        shared.g.porTransition( f, t, 0 );
+        m_graph.porTransition( f, t, 0 );
         return visitor::FollowTransition;
     }
 
@@ -136,52 +101,55 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     };
 
     void _visit() { // parallel
-        this->comms().notify( this->globalId(), &shared.g.pool() );
+        this->comms().notify( this->id(), &m_graph.pool() );
         if ( meta().algorithm.hashCompaction )
             equal.allEqual = true;
         visitor::Partitioned< VisitorSetup, This, Hasher >
-            visitor( shared.g, *this, *this, hasher, &this->table(), meta().algorithm.hashCompaction );
-        shared.g.queueInitials( visitor );
+            visitor( m_graph, *this, *this, hasher, &this->table(), meta().algorithm.hashCompaction );
+        m_graph.queueInitials( visitor );
         visitor.processQueue();
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, this->table() );
+        m_graph._porEliminate( *this, hasher, this->table() );
     }
 
-    void _por() {
-        if ( shared.g.porEliminate( domain(), *this ) )
+    Shared _por( Shared sh ) {
+        shared = sh;
+        if ( m_graph.porEliminate( *this, *this ) )
             shared.need_expand = true;
+        return shared;
     }
 
     Reachability( Meta m, bool master = false )
         : Algorithm( m, sizeof( Extension ) )
     {
         if ( master )
-            this->becomeMaster( &shared, m.execution.threads );
-        this->init( &shared.g, this );
+            this->becomeMaster( m.execution.threads, m );
+        this->init( this );
     }
 
-    void _parentTrace() {
-        ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
+    Shared _parentTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
         ce._parentTrace( *this, hasher, equal, this->table() );
+        return shared;
     }
 
     void counterexample( Node n ) {
         shared.ce.initial = n;
-        ce.setup( shared.g, shared );
-        ce.linear( domain(), *this );
+        ce.setup( m_graph, shared );
+        ce.linear( *this, *this );
         ce.goal( *this, n );
     }
 
     void collect() {
         deadlocked = false;
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            shared.stats.merge( s.stats );
-            if ( s.goal.valid() ) {
-                goal = s.goal;
-                if ( s.deadlocked )
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            shared.stats.merge( shareds[ i ].stats );
+            if ( shareds[ i ].goal.valid() ) {
+                goal = shareds[ i ].goal;
+                if ( shareds[ i ].deadlocked )
                     deadlocked = true;
             }
         }
@@ -190,15 +158,15 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
     void run() {
         progress() << "  searching... \t" << std::flush;
 
-        domain().parallel( meta() ).run( shared, &This::_visit );
+        parallel( &This::_visit );
         collect();
 
         while ( !goal.valid() ) {
             shared.need_expand = false;
-            domain().parallel( meta() ).runInRing( shared, &This::_por );
+            ring( &This::_por );
 
             if ( shared.need_expand ) {
-                domain().parallel( meta() ).run( shared, &This::_visit );
+                parallel( &This::_visit );
                 collect();
             } else
                 break;
@@ -227,6 +195,13 @@ struct Reachability : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Reac
         shared.stats.update( meta().statistics );
     }
 };
+
+
+ALGORITHM_RPC( Reachability );
+ALGORITHM_RPC_ID( Reachability, 1, _visit );
+ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
+ALGORITHM_RPC_ID( Reachability, 3, _por );
+ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
 
 }
 }
