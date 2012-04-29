@@ -197,7 +197,7 @@ struct PORGraph : graph::Transform< G > {
         // int checked = to_check.size();
 
         while ( !to_check.empty() ) {
-            d.parallel().run( a.shared, &Alg::_por_worker );
+            d.parallel( &Alg::_por_worker );
             /* std::cerr << "eliminate: " << to_check.size() << " nodes remaining, "
                << to_expand.size() << " to expand" << std::endl; */
 
