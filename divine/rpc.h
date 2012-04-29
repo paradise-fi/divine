@@ -29,6 +29,7 @@ template<> struct bitstream_container< std::string > {
     typedef bitstream stream; };
 
 template< typename X > struct bitstream_int {};
+template<> struct bitstream_int< bool > { typedef bitstream stream; };
 template<> struct bitstream_int< char > { typedef bitstream stream; };
 template<> struct bitstream_int< int8_t > { typedef bitstream stream; };
 template<> struct bitstream_int< int16_t > { typedef bitstream stream; };
