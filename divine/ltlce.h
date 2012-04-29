@@ -16,41 +16,21 @@ struct CeShared {
     Node successor;
     unsigned successorPos;
     bool current_updated;
-    template< typename I >
-    I read( I i ) {
-        FakePool fp;
-
-        if ( *i++ )
-            i = initial.read32( &fp, i );
-        if ( *i++ )
-            i = current.read32( &fp, i );
-        else
-            current = Node();
-        if ( *i++ )
-            i = successor.read32( &fp, i );
-        else
-            successor = Node();
-        successorPos = *i++;
-        current_updated = *i++;
-        return i;
-    }
-
-    template< typename O >
-    O write( O o ) {
-        *o++ = initial.valid();
-        if ( initial.valid() )
-            o = initial.write32( o );
-        *o++ = current.valid();
-        if ( current.valid() )
-            o = current.write32( o );
-        *o++ = successor.valid();
-        if ( successor.valid() )
-            o = successor.write32( o );
-        *o++ = successorPos;
-        *o++ = current_updated;
-        return o;
-    }
 };
+
+template< typename Node >
+static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const CeShared< Node > &sh )
+{
+    return bs << sh.initial << sh.current << sh.successor << sh.successorPos
+              << sh.current_updated;
+}
+
+template< typename Node >
+static inline rpc::bitstream &operator>>( rpc::bitstream &bs, CeShared< Node > &sh )
+{
+    return bs >> sh.initial >> sh.current >> sh.successor >> sh.successorPos
+              >> sh.current_updated;
+}
 
 template< typename G, typename Shared, typename Extension >
 struct LtlCE {
@@ -102,7 +82,7 @@ struct LtlCE {
     void _parentTrace( Worker &w, Hasher &h, Equal &, Table &t ) {
         if ( shared().ce.current_updated )
             return;
-        if ( owner( h, w, shared().ce.current ) == w.globalId() ) {
+        if ( owner( h, w, shared().ce.current ) == w.id() ) {
             Node n = t.get( shared().ce.current );
             assert( n.valid() );
 
@@ -144,7 +124,7 @@ struct LtlCE {
 
         Visitor visitor( g(), w, *this, h, &t );
         assert( shared().ce.initial.valid() );
-        if ( visitor.owner( shared().ce.initial ) == w.globalId() ) {
+        if ( visitor.owner( shared().ce.initial ) == w.id() ) {
             shared().ce.initial = t.get( shared().ce.initial );
             visitor.queue( Blob(), shared().ce.initial );
         }
@@ -256,7 +236,7 @@ struct LtlCE {
             if ( a.equal( shared().ce.current, stop ) && !numTrace.empty() )
                 break;
             shared().ce.current_updated = false;
-            d.parallel().runInRing( shared(), &Alg::_parentTrace );
+            d.ring( &Alg::_parentTrace );
             assert( shared().ce.current_updated );
             if ( shared().ce.successorPos ) {
                 trace.push_back( shared().ce.current );
@@ -278,7 +258,7 @@ struct LtlCE {
     void lasso( Domain &d, Alg &a ) {
         linear( d, a );
         ++ shared().iteration;
-        d.parallel().run( shared(), &Alg::_traceCycle );
+        d.parallel( &Alg::_traceCycle );
 
         generateLasso( a, g(), parentTrace( d, a, shared().ce.initial ) );
     }
