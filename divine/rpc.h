@@ -103,6 +103,11 @@ struct Param1< _R (_T::*)( P0 ) > { typedef P0 T; };
 template< typename _T, typename _R, typename P0, typename P1 >
 struct Param1< _R (_T::*)( P0, P1 ) > { typedef P0 T; };
 
+template< typename F >
+struct Param2 {};
+template< typename _T, typename _R, typename P0, typename P1 >
+struct Param2< _R (_T::*)( P0, P1 ) > { typedef P1 T; };
+
 /* --------------------------------------------------------------------------
    ---- MARSHALLING
    -------------------------------------------------------------------------- */
@@ -163,57 +168,68 @@ struct Call {
 #define IS_VOID(x) typename wibble::EnableIf< wibble::TSame< x, void >, void >::T
 #define NOT_VOID(x) typename wibble::DisableIf< wibble::TSame< x, void >, void >::T
 
-template< typename F, typename... P >
-auto catchReturn( wibble::Preferred, bitstream &out, F f, P&&... p ) -> IS_VOID( decltype( f( p... ) ) )
-{
-    f( p... );
-}
+template< typename T, typename X, template< typename, typename > class With, typename _F >
+struct Apply {
+    typedef _F F;
+    typedef typename Return< F >::T R;
+    typedef With< X, F > Wrapper;
+    bitstream &in, &out;
 
-template< typename F, typename... P >
-auto catchReturn( wibble::Preferred, bitstream &out, F f, P&&... p ) -> NOT_VOID( decltype( f( p... ) ) )
-{
-    out << f( p... );
-}
+    Apply( bitstream &in, bitstream &out ) : in( in ), out( out ) {}
 
-template< typename F, typename... P >
-void catchReturn( wibble::NotPreferred, bitstream &, F, P&&... )
-{
-    assert_die(); // the function does not exist or overloads failed to resolve
-}
+    template< typename... P >
+    auto grab( wibble::Preferred, P&&... p ) -> IS_VOID( decltype( With< X, F >()( p... ) ) )
+    {
+        With< X, F > f;
+        f( p... );
+    }
 
-template< typename T, typename X, template< typename, typename > class With, typename R >
-void apply( X &&x, R (T::*f)(), bitstream &, bitstream &out )
-{
-    With< X, R (T::*)() > wrapper;
-    catchReturn( wibble::Preferred(), out, wrapper, std::forward< X >( x ), f );
-}
+    template< typename... P >
+    auto grab( wibble::Preferred, P&&... p ) -> NOT_VOID( decltype( With< X, F >()( p... ) ) )
+    {
+        With< X, F > f;
+        out << f( p... );
+    }
 
-/* This could conceivably become a variadic template... */
-template< typename T, typename X, template< typename, typename > class With, typename R, typename P1 >
-void apply( X &&x, R (T::*f)( P1 ), bitstream &in, bitstream &out )
-{
-    P1 p;
-    in >> p;
-    With< X, R (T::*)( P1 ) > wrapper;
-    catchReturn( wibble::Preferred(), out, wrapper, std::forward< X >( x ), f, p );
-}
+    template< typename... P >
+    void grab( wibble::NotPreferred, P&&... )
+    {
+        assert_die(); // the function does not exist or overloads failed to resolve
+    }
 
-template< typename T, typename X, template< typename, typename > class With,
-          typename R, typename P1, typename P2 >
-void apply( X &&x, R (T::*f)( P1, P2 ), bitstream &in, bitstream &out )
-{
-    P1 p1; P2 p2;
-    in >> p1 >> p2;
-    With< X, R (T::*)( P1, P2 ) > wrapper;
-    catchReturn( wibble::Preferred(), out, wrapper, std::forward< X >( x ), f, p1, p2 );
-}
+    template< typename FF >
+    void match( X &&x, R (T::*f)() )
+    {
+        grab( wibble::Preferred(), std::forward< X >( x ), f );
+    }
+
+    template< typename FF >
+    void match( X &&x, R (T::*f)( typename Param1< FF >::T ) )
+    {
+        typename Param1< FF >::T p1;
+        in >> p1;
+
+        grab( wibble::Preferred(), std::forward< X >( x ), f, p1 );
+    }
+
+    template< typename FF >
+    void match( X &&x, R (T::*f)( typename Param1< FF >::T, typename Param2< FF >::T ) )
+    {
+        typename Param1< FF >::T p1;
+        typename Param2< FF >::T p2;
+
+        in >> p1 >> p2;
+        grab( wibble::Preferred(), std::forward< X >( x ), f, p1, p2 );
+    }
+};
 
 template< typename T, typename X, template< typename, typename > class With, int id >
 typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Second
 applyID( wibble::Preferred, X &&x, bitstream &in, bitstream &out ) {
     typedef typename T::template RpcId< id, true >::Fun F;
     F f = T::template RpcId< id, true >::fun();
-    apply< T, X, With, typename Return< F >::T >( std::forward< X >( x ), f, in, out );
+    Apply< T, X, With, F > apply( in, out );
+    apply.template match< F >( std::forward< X >( x ), f );
 }
 
 template< typename T, typename X, template< typename, typename > class With, int id >
