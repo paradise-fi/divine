@@ -114,6 +114,7 @@ struct Algorithm
         self->topology().template distribute< decltype( self->shared ) >(
             self->shared, &T::setShared );
         self->topology().parallel( fun );
+        self->shareds.clear();
         self->topology().template collect< decltype( self->shareds ), decltype( self->shared ) >(
             self->shareds, &T::getShared );
     }
