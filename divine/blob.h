@@ -9,6 +9,8 @@
 #include <wibble/test.h> // for assert*
 #include <wibble/string.h>
 #include <divine/hash.h>
+#include <divine/rpc.h> // for bitstream
+#include <divine/pool.h> // for FakePool
 #endif
 
 #ifndef DIVINE_BLOB_H
@@ -266,6 +268,42 @@ template<>
 inline Blob unblob( Blob b ) {
     return b;
 }
+
+#ifndef DIVINE_EMBED
+static inline rpc::bitstream &operator>>( rpc::bitstream &bs, Blob &blob )
+{
+    int size, off = 0;
+    bs >> size;
+
+    if ( !size ) {
+        blob = Blob();
+        return bs;
+    }
+
+    FakePool fp;
+    blob = Blob( fp, size );
+    while ( off < blob.size() ) {
+        off += 4;
+        bs >> blob.get< uint32_t >( off );
+    }
+
+    return bs;
+}
+
+static inline rpc::bitstream &operator<<( rpc::bitstream &bs, Blob blob )
+{
+    if ( !blob.valid() )
+        return bs << 0;
+
+    bs << blob.size();
+    int off = 0;
+    while ( off < blob.size() ) {
+        off += 4;
+        bs << blob.get< uint32_t >( off );
+    }
+    return bs;
+}
+#endif
 
 }
 
