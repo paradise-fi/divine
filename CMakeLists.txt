@@ -75,31 +75,30 @@ if( PERFORMANCE )
   endif()
 endif( PERFORMANCE )
 
+include( CheckCXXSourceCompiles )
+set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
+set( CMAKE_REQUIRED_FLAGS "-std=c++11" )
+check_cxx_source_compiles("
+    struct ConstructorTest {
+        ConstructorTest(int) {}
+    };
+
+    union UnionTest {
+        ConstructorTest b;
+    };
+
+    int main() { return 0; }
+" HAVE_CXX11_SUPPORT )
+set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
+appendFlag( "CXX" "-std=c++11" )
+
+if( NOT HAVE_CXX11_SUPPORT )
+    message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
+endif()
+
 if( DVE )
-    include( CheckCXXSourceCompiles )
-    set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-    set( CMAKE_REQUIRED_FLAGS "-std=c++0x" )
-    check_cxx_source_compiles("
-        struct ConstructorTest {
-            ConstructorTest(int) {}
-        };
-
-        union UnionTest {
-            ConstructorTest b;
-        };
-
-        int main() { return 0; }
-    " HAVE_CXX11_SUPPORT )
-    set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
-
-    if( HAVE_CXX11_SUPPORT )
-        add_definitions( -DO_DVE )
-        appendFlag( "CXX" "-std=c++0x" )
-    else()
-        set( DVE OFF )
-        message( "-- WARNING: C++11 support not available. Disabling DVE interpreter." )
-    endif()
-endif( DVE )
+    add_definitions( -DO_DVE )
+endif()
 
 if( PROFILE )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
