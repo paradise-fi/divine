@@ -41,6 +41,8 @@ struct VertexId {
     }
 } __attribute__((packed));
 
+#if 0
+
 // ------------------------------------------
 // -- Some drudgery for MPI's sake
 // --
@@ -366,6 +368,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
 };
 
+#endif
 }
 }
 

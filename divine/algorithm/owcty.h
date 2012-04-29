@@ -12,76 +12,29 @@
 namespace divine {
 namespace algorithm {
 
-template< typename, typename > struct Owcty;
+struct OwctyShared {
+    size_t size, oldsize;
+    Blob cycle_node;
+    bool cycle_found;
+    int iteration;
+    CeShared< Blob > ce;
+    algorithm::Statistics stats;
+    bool need_expand;
 
-// ------------------------------------------
-// -- Some drudgery for MPI's sake
-// --
-template< typename G, typename S >
-struct _MpiId< Owcty< G, S > >
-{
-    typedef Owcty< G, S > A;
-
-    static void (A::*from_id( int n ))()
-    {
-        switch ( n ) {
-            case 0: return &A::_initialise;
-            case 1: return &A::_reachability;
-            case 2: return &A::_elimination;
-            case 3: return &A::_counterexample;
-            case 4: return &A::_checkCycle;
-            case 5: return &A::_parentTrace;
-            case 6: return &A::_traceCycle;
-            case 7: return &A::_por;
-            case 8: return &A::_por_worker;
-            default: assert_die();
-        }
-    }
-
-    static int to_id( void (A::*f)() ) {
-        if( f == &A::_initialise ) return 0;
-        if( f == &A::_reachability ) return 1;
-        if( f == &A::_elimination ) return 2;
-        if( f == &A::_counterexample ) return 3;
-        if( f == &A::_checkCycle) return 4;
-        if( f == &A::_parentTrace) return 5;
-        if( f == &A::_traceCycle) return 6;
-        if( f == &A::_por) return 7;
-        if( f == &A::_por_worker) return 8;
-        assert_die();
-    }
-
-    template< typename O >
-    static void writeShared( typename A::Shared s, O o ) {
-        o = s.stats.write( o );
-        *o++ = s.need_expand;
-        *o++ = s.size;
-        *o++ = s.oldsize;
-        *o++ = s.iteration;
-        *o++ = s.cycle_found;
-        *o++ = s.cycle_node.valid();
-        if ( s.cycle_node.valid() )
-            o = s.cycle_node.write32( o );
-        o = s.ce.write( o );
-    }
-
-    template< typename I >
-    static I readShared( typename A::Shared &s, I i ) {
-        i = s.stats.read( i );
-        s.need_expand = *i++;
-        s.size = *i++;
-        s.oldsize = *i++;
-        s.iteration = *i++;
-        s.cycle_found = *i++;
-        bool valid = *i++;
-        if ( valid ) {
-            FakePool fp;
-            i = s.cycle_node.read32( &fp, i );
-        }
-        i = s.ce.read( i );
-        return i;
-    }
+    OwctyShared() : cycle_found( false ) {}
 };
+
+static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const OwctyShared &sh )
+{
+    return bs << sh.size << sh.oldsize << sh.cycle_node << sh.cycle_found
+              << sh.iteration << sh.ce << sh.stats << sh.need_expand;
+}
+
+static inline rpc::bitstream &operator>>( rpc::bitstream &bs, OwctyShared &sh )
+{
+    return bs >> sh.size >> sh.oldsize >> sh.cycle_node >> sh.cycle_found
+              >> sh.iteration >> sh.ce >> sh.stats >> sh.need_expand;
+}
 
 /**
  * Implementation of the One-Way Catch Them Young algorithm for fair cycle
@@ -95,29 +48,25 @@ struct _MpiId< Owcty< G, S > >
  * Weak LTL Properties. In International Conference on Formal Engineering
  * Methods, LNCS. Springer-Verlag, 2009.  To appear.
  */
-template< typename G, typename Statistics >
-struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, Statistics > >
+template< typename G, template< typename > class Topology, typename Statistics >
+struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Topology, Statistics > >
 {
-    typedef Owcty< G, Statistics > This;
+    RPC_CLASS;
+    typedef Owcty< G, Topology, Statistics > This;
     typedef typename G::Node Node;
 	typedef typename AlgorithmUtils< G >::Table Table;
+    typedef OwctyShared Shared;
+
+    Shared shared;
+    std::vector< Shared > shareds;
+    G m_graph;
+
+    void setShared( Shared sh ) { shared = sh; };
+    Shared getShared() { return shared; };
 
     // -------------------------------
     // -- Some useful types
     // --
-
-    struct Shared {
-        size_t size, oldsize;
-        Node cycle_node;
-        bool cycle_found;
-        int iteration;
-        G g;
-        CeShared< Node > ce;
-        algorithm::Statistics< G > stats;
-        bool need_expand;
-
-        Shared() : cycle_found( false ) {}
-    } shared;
 
     struct Extension {
         Blob parent;
@@ -137,9 +86,6 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     // -- generally useful utilities
     // --
 
-    Domain< This > &domain() { return DomainWorker< This >::domain(); }
-    MpiBase *mpi() { return &domain().mpi; }
-
     static Extension &extension( Node n ) {
         return n.template get< Extension >();
     }
@@ -151,8 +97,8 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     bool cycleFound() {
         if ( shared.cycle_found )
             return true;
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            if ( domain().shared( i ).cycle_found )
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            if ( shareds[ i ].cycle_found )
                 return true;
         }
         return false;
@@ -164,10 +110,10 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             return shared.cycle_node;
         }
 
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            if ( domain().shared( i ).cycle_found ) {
-                assert( domain().shared( i ).cycle_node.valid() );
-                return domain().shared( i ).cycle_node;
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            if ( shareds[ i ].cycle_found ) {
+                assert( shareds[ i ].cycle_node.valid() );
+                return shareds[ i ].cycle_node;
             }
         }
 
@@ -176,19 +122,9 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
 
     int totalSize() {
         int sz = 0;
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            sz += s.size;
-        }
+        for ( int i = 0; i < shareds.size(); ++i )
+            sz += shareds[ i ].size;
         return sz;
-    }
-
-    void resetSize() {
-        shared.size = 0;
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            s.size = 0;
-        }
     }
 
     template< typename V >
@@ -199,7 +135,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
                 if ( reset )
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
-                    assert_eq( v.owner( st ), v.worker.globalId() );
+                    assert_eq( v.owner( st ), v.worker.id() );
                     v.queueAny( Blob(), st ); // slightly faster maybe
                 }
             }
@@ -209,7 +145,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     VertexId makeId( Node t ) {
         VertexId r;
         r.ptr = reinterpret_cast< uintptr_t >( t.ptr ) >> 2;
-        r.owner = this->globalId();
+        r.owner = this->id();
         return r;
     }
 
@@ -263,14 +199,14 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             &This::reachExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
+        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
         queueAll( visitor, true );
         visitor.processQueue();
     }
 
     void reachability() {
         shared.size = 0;
-        domain().parallel( meta() ).run( shared, &This::_reachability );
+        parallel( &This::_reachability );
         shared.size = totalSize();
     }
 
@@ -287,7 +223,7 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             VertexId fromId = makeId( from );
             if ( getMap( to ) < fromMap )
                 setMap( to, fromMap  );
-            if ( shared.g.isAccepting( from ) ) {
+            if ( m_graph.isAccepting( from ) ) {
                 if ( from.pointer() == to.pointer() ) {
                     shared.cycle_node = to;
                     shared.cycle_found = true;
@@ -303,16 +239,16 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             }
         }
         shared.stats.addEdge();
-        shared.g.porTransition( from, to, &updatePredCount );
+        m_graph.porTransition( from, to, &updatePredCount );
         return visitor::FollowTransition;
     }
 
     visitor::ExpansionAction initExpansion( Node st )
     {
-        extension( st ).inF = extension( st ).inS = shared.g.isAccepting( st );
+        extension( st ).inF = extension( st ).inS = m_graph.isAccepting( st );
         shared.size += extension( st ).inS;
-        shared.stats.addNode( shared.g, st );
-        shared.g.porExpansion( st );
+        shared.stats.addNode( m_graph, st );
+        m_graph.porExpansion( st );
         return visitor::ExpandState;
     }
 
@@ -322,14 +258,14 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             &This::initExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        this->comms().notify( this->globalId(), &shared.g.pool() );
-        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
-        shared.g.queueInitials( visitor );
+        this->comms().notify( this->id(), &m_graph.pool() );
+        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
+        m_graph.queueInitials( visitor );
         visitor.processQueue();
     }
 
     void initialise() {
-        domain().parallel( meta() ).run( shared, &This::_initialise ); updateResult();
+        parallel( &This::_initialise ); updateResult();
         shared.oldsize = shared.size = totalSize();
         while ( true ) {
             if ( cycleFound() ) {
@@ -338,11 +274,11 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             }
 
             shared.need_expand = false;
-            domain().parallel( meta() ).runInRing( shared, &This::_por );
+            ring< This >( &This::_por );
             updateResult();
 
             if ( shared.need_expand ) {
-                domain().parallel( meta() ).run( shared, &This::_initialise );
+                parallel( &This::_initialise );
                 updateResult();
             } else
                 break;
@@ -350,12 +286,14 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, this->table() );
+        m_graph._porEliminate( *this, hasher, this->table() );
     }
 
-    void _por() {
-        if ( shared.g.porEliminate( domain(), *this ) )
+    Shared _por( Shared sh ) {
+        shared = sh;
+        if ( m_graph.porEliminate( *this, *this ) )
             shared.need_expand = true;
+        return shared;
     }
 
     // -----------------------------------------------
@@ -394,14 +332,14 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             &This::elimExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
+        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
         queueAll( visitor );
         visitor.processQueue();
     }
 
     void elimination() {
         shared.size = 0;
-        domain().parallel( meta() ).run( shared, &This::_elimination );
+        parallel( &This::_elimination );
         shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
@@ -434,18 +372,19 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
             &This::ccExpansion > Setup;
         typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
 
-        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
+        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
         assert( shared.cycle_node.valid() );
         visitor.queue( Blob(), shared.cycle_node );
         visitor.processQueue();
     }
 
-    void _counterexample() {
+    Shared _counterexample( Shared sh ) {
+        shared = sh;
         for ( int i = 0; i < this->table().size(); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
-                return;
+                return shared;
             }
             Node st = shared.cycle_node = this->table()[ i ];
             if ( !st.valid() )
@@ -454,13 +393,16 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
                 continue; // already seen
             if ( !extension( st ).inS || !extension( st ).inF )
                 continue;
-            domain().parallel( meta() ).run( shared, &This::_checkCycle );
+            parallel( &This::_checkCycle );
         }
+        return shared;
     }
 
-    void _parentTrace() {
-        ce.setup( shared.g, shared ); // XXX this will be done many times needlessly
+    Shared _parentTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
         ce._parentTrace( *this, hasher, equal, this->table() );
+        return shared;
     }
 
     void _traceCycle() {
@@ -470,17 +412,16 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     void counterexample() {
         if ( !cycleFound() ) {
             progress() << " obtaining counterexample...      " << std::flush;
-            domain().parallel().runInRing(
-                shared, &This::_counterexample );
+            ring( &This::_counterexample );
             progress() << "done" << std::endl;
         }
 
         progress() << " generating counterexample...      " << std::flush;
-        shared.ce.initial = cycleNode();
         assert( cycleFound() );
+        shared.ce.initial = cycleNode();
 
-        ce.setup( shared.g, shared );
-        ce.lasso( domain(), *this );
+        ce.setup( m_graph, shared );
+        ce.lasso( *this, *this );
         progress() << "done" << std::endl;
     }
 
@@ -501,11 +442,12 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     }
 
     void updateResult() {
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            shared.stats.merge( domain().shared( i ).stats );
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            shared.stats.merge( shareds[ i ].stats );
+            shareds[ i ].stats = algorithm::Statistics();
         }
         shared.stats.update( meta().statistics );
-        shared.stats = algorithm::Statistics< G >();
+        shared.stats = algorithm::Statistics();
     }
 
     void run()
@@ -558,10 +500,21 @@ struct Owcty : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Owcty< G, S
     {
         shared.size = 0;
         if ( master )
-            this->becomeMaster( &shared, m.execution.threads );
-        this->init( &shared.g, this );
+            this->becomeMaster( m.execution.threads, m );
+        this->init( this );
     }
 };
+
+ALGORITHM_RPC( Owcty );
+ALGORITHM_RPC_ID( Owcty, 1, _initialise );
+ALGORITHM_RPC_ID( Owcty, 2, _reachability );
+ALGORITHM_RPC_ID( Owcty, 3, _elimination );
+ALGORITHM_RPC_ID( Owcty, 4, _counterexample );
+ALGORITHM_RPC_ID( Owcty, 5, _checkCycle );
+ALGORITHM_RPC_ID( Owcty, 6, _parentTrace );
+ALGORITHM_RPC_ID( Owcty, 7, _traceCycle );
+ALGORITHM_RPC_ID( Owcty, 8, _por );
+ALGORITHM_RPC_ID( Owcty, 9, _por_worker );
 
 }
 }
