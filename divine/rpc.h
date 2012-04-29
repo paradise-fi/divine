@@ -213,13 +213,12 @@ typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Sec
 applyID( wibble::Preferred, X &&x, bitstream &in, bitstream &out ) {
     typedef typename T::template RpcId< id, true >::Fun F;
     F f = T::template RpcId< id, true >::fun();
-    std::cerr << "found function at " << id << std::endl;
     apply< T, X, With, typename Return< F >::T >( std::forward< X >( x ), f, in, out );
 }
 
 template< typename T, typename X, template< typename, typename > class With, int id >
 void applyID( wibble::NotPreferred, X &&x, bitstream &in, bitstream &out ) {
-    std::cerr << "not found function at " << id << std::endl;
+    assert_die();
 }
 
 template< typename T, typename X, template< typename F, typename > class With, int n >
