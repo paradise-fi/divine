@@ -10,8 +10,6 @@
 namespace divine {
 namespace algorithm {
 
-template< typename, typename > struct Map;
-
 struct VertexId {
     uintptr_t ptr;
     short owner;
@@ -41,62 +39,26 @@ struct VertexId {
     }
 } __attribute__((packed));
 
-#if 0
 
-// ------------------------------------------
-// -- Some drudgery for MPI's sake
-// --
-template< typename G, typename S >
-struct _MpiId< Map< G, S > >
-{
-    typedef Map< G, S > A;
-
-    static void (Map< G, S >::*from_id( int n ))()
-    {
-        switch ( n ) {
-            case 0: return &A::_visit;
-            case 1: return &A::_cleanup;
-            case 2: return &A::_parentTrace;
-            case 3: return &A::_traceCycle;
-            case 7: return &A::_por;
-            case 8: return &A::_por_worker;
-            default: assert_die();
-        }
-    }
-
-    static int to_id( void (A::*f)() ) {
-        if( f == &A::_visit ) return 0;
-        if( f == &A::_cleanup ) return 1;
-        if( f == &A::_parentTrace ) return 2;
-        if( f == &A::_traceCycle ) return 3;
-        if( f == &A::_por) return 7;
-        if( f == &A::_por_worker) return 8;
-        assert_die();
-    }
-
-    template< typename O >
-    static void writeShared( typename A::Shared s, O o ) {
-        o = s.stats.write( o );
-        *o++ = s.need_expand;
-        *o++ = s.iteration;
-        *o++ = s.accepting;
-        *o++ = s.expanded;
-        *o++ = s.eliminated;
-        o = s.ce.write( o );
-    }
-
-    template< typename I >
-    static I readShared( typename A::Shared &s, I i ) {
-        i = s.stats.read( i );
-        s.need_expand = *i++;
-        s.iteration = *i++;
-        s.accepting = *i++;
-        s.expanded = *i++;
-        s.eliminated = *i++;
-        i = s.ce.read( i );
-        return i;
-    }
+struct MapShared {
+    int expanded, eliminated, accepting;
+    int iteration;
+    CeShared< Blob > ce;
+    algorithm::Statistics stats;
+    bool need_expand;
 };
+
+static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const MapShared &sh )
+{
+    return bs << sh.stats << sh.ce << sh.iteration << sh.need_expand
+              << sh.accepting << sh.expanded << sh.eliminated;
+}
+
+static inline rpc::bitstream &operator>>( rpc::bitstream &bs, MapShared &sh )
+{
+    return bs >> sh.stats >> sh.ce >> sh.iteration >> sh.need_expand
+              >> sh.accepting >> sh.expanded >> sh.eliminated;
+}
 
 /**
  * Implementation of Maximal Accepting Predecessors fair cycle detection
@@ -106,31 +68,30 @@ struct _MpiId< Map< G, S > >
  * Computer-Aided Design (FM-CAD'04), volume 3312 of LNCS, pages
  * 352–366. Springer-Verlag, 2004.
  */
-template< typename G, typename _Statistics >
-struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Statistics > >
+template< typename G, template< typename > class Topology, typename _Statistics >
+struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topology, _Statistics > >
 {
+    RPC_CLASS;
     typedef typename G::Node Node;
-    typedef Map< G, _Statistics > This;
-
-    struct Shared {
-        int expanded, eliminated, accepting;
-        int iteration;
-        G g;
-        CeShared< Node > ce;
-        algorithm::Statistics< G > stats;
-        bool need_expand;
-    } shared;
+    typedef Map< G, Topology, _Statistics > This;
 
     int d_eliminated,
         acceptingCount,
         eliminated,
         expanded;
     Node cycle_node;
+    G m_graph;
+
+    typedef MapShared Shared;
+    Shared shared;
+    std::vector< Shared > shareds;
+    Shared getShared() { return shared; }
+    void setShared( Shared sh ) { shared = sh; }
 
     VertexId makeId( Node n ) {
         VertexId ret;
         ret.ptr = reinterpret_cast< intptr_t >( n.data() );
-        ret.owner = this->globalId();
+        ret.owner = this->id();
         return ret;
     }
 
@@ -146,9 +107,6 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
     LtlCE< G, Shared, Extension > ce;
 
-    Domain< This > &domain() { return DomainWorker< This >::domain(); }
-    MpiBase *mpi() { return &domain().mpi; }
-
     Extension &extension( Node n ) {
         return n.template get< Extension >();
     }
@@ -162,25 +120,25 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     }
 
     void collect() {
-        for ( int i = 0; i < domain().peers(); ++i )
-            shared.stats.merge( domain().shared( i ).stats );
+        for ( int i = 0; i < shareds.size(); ++i )
+            shared.stats.merge( shareds[ i ].stats );
         shared.stats.update( meta().statistics );
-        shared.stats = algorithm::Statistics< G >();
-        for ( int i = 0; i < domain().peers(); ++ i ) {
+        shared.stats = algorithm::Statistics();
+        for ( int i = 0; i < shareds.size(); ++ i ) {
             if ( shared.iteration == 1 )
-                acceptingCount += domain().shared( i ).accepting;
-            d_eliminated += domain().shared( i ).eliminated;
-            expanded += domain().shared( i ).expanded;
+                acceptingCount += shareds[ i ].accepting;
+            d_eliminated += shareds[ i ].eliminated;
+            expanded += shareds[ i ].expanded;
             assert_eq( shared.eliminated, 0 );
             assert_eq( shared.expanded, 0 );
 
-            if ( domain().shared( i ).ce.initial.valid() )
-                cycle_node = domain().shared( i ).ce.initial;
+            if ( shareds[ i ].ce.initial.valid() )
+                cycle_node = shareds[ i ].ce.initial;
         }
     }
 
     bool isAccepting( Node st ) {
-        if ( !shared.g.isAccepting ( st ) )
+        if ( !m_graph.isAccepting ( st ) )
             return false;
         if ( extension( st ).elim == 2 )
             return false;
@@ -192,10 +150,10 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         ++ shared.expanded;
         if ( !extension( st ).seen ) {
             extension( st ).seen = true;
-            if ( shared.g.isAccepting ( st ) )
+            if ( m_graph.isAccepting ( st ) )
                 ++ shared.accepting;
-            shared.g.porExpansion( st );
-            shared.stats.addNode( shared.g, st );
+            m_graph.porExpansion( st );
+            shared.stats.addNode( m_graph, st );
         } else
             shared.stats.addExpansion();
 
@@ -205,10 +163,10 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     visitor::TransitionAction transition( Node f, Node t )
     {
         if ( shared.iteration == 1 )
-            shared.g.porTransition( f, t, 0 );
+            m_graph.porTransition( f, t, 0 );
 
         if ( !f.valid() ) {
-            assert( equal( t, shared.g.initial() ) );
+            assert( equal( t, m_graph.initial() ) );
             return updateIteration( t );
         }
 
@@ -216,7 +174,7 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             extension( t ).parent = f;
 
         /* self loop */
-        if ( shared.g.isAccepting( f ) && f.pointer() == t.pointer() ) {
+        if ( m_graph.isAccepting( f ) && f.pointer() == t.pointer() ) {
             shared.ce.initial = t;
             return visitor::TerminateOnTransition;
         }
@@ -253,10 +211,10 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
 
         shared.expanded = 0;
         shared.eliminated = 0;
-        this->comms().notify( this->globalId(), &shared.g.pool() );
+        this->comms().notify( this->id(), &m_graph.pool() );
 
-        Visitor visitor( shared.g, *this, *this, hasher, &this->table() );
-        shared.g.queueInitials( visitor );
+        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
+        m_graph.queueInitials( visitor );
         visitor.processQueue();
     }
 
@@ -281,36 +239,40 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
     }
 
     void _por_worker() {
-        shared.g._porEliminate( *this, hasher, this->table() );
+        m_graph._porEliminate( *this, hasher, this->table() );
     }
 
-    void _por() {
-        if ( shared.g.porEliminate( domain(), *this ) )
+    Shared _por( Shared sh ) {
+        shared = sh;
+        if ( m_graph.porEliminate( *this, *this ) )
             shared.need_expand = true;
+        return shared;
     }
 
     void visit() {
-        domain().parallel( meta() ).run( shared, &This::_visit );
+        parallel( &This::_visit );
         collect();
 
         while ( !cycle_node.valid() && shared.iteration == 1 ) {
             shared.need_expand = false;
-            domain().parallel( meta() ).runInRing( shared, &This::_por );
+            ring( &This::_por );
 
             if ( shared.need_expand ) {
-                domain().parallel( meta() ).run( shared, &This::_visit );
+                parallel( &This::_visit );
                 collect();
             } else
                 break;
         }
 
-        domain().parallel( meta() ).run( shared, &This::_cleanup );
+        parallel( &This::_cleanup );
         collect();
     }
 
-    void _parentTrace() {
-        ce.setup( shared.g, shared );
+    Shared _parentTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( m_graph, shared );
         ce._parentTrace( *this, hasher, equal, this->table() );
+        return shared;
     }
 
     void _traceCycle() {
@@ -351,8 +313,8 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
             progress() << " generating counterexample...     " << std::flush;
             assert( cycle_node.valid() );
             shared.ce.initial = cycle_node;
-            ce.setup( shared.g, shared );
-            ce.lasso( domain(), *this );
+            ce.setup( m_graph, shared );
+            ce.lasso( *this, *this );
             progress() << "done" << std::endl;
             result().ceType = meta::Result::Cycle;
         }
@@ -362,13 +324,20 @@ struct Map : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Map< G, _Stat
         : Algorithm( m, sizeof( Extension ) )
     {
         if ( master )
-            this->becomeMaster( &shared, m.execution.threads );
-        this->init( &shared.g, this );
+            this->becomeMaster( m.execution.threads, m );
+        this->init( this );
     }
 
 };
 
-#endif
+ALGORITHM_RPC( Map );
+ALGORITHM_RPC_ID( Map, 1, _visit );
+ALGORITHM_RPC_ID( Map, 2, _cleanup );
+ALGORITHM_RPC_ID( Map, 3, _parentTrace );
+ALGORITHM_RPC_ID( Map, 4, _traceCycle );
+ALGORITHM_RPC_ID( Map, 5, _por );
+ALGORITHM_RPC_ID( Map, 6, _por_worker );
+
 }
 }
 
