@@ -28,10 +28,12 @@ Mpi::~Mpi() {
     // std::cerr << "~MPI? " << global().instances << std::endl;
     -- global().instances;
     if (!s_data->instances) {
-        std::cerr << "MPI DONE" << std::endl;
-        notifySlaves( TAG_ALL_DONE );
+        debug() << "MPI DONE" << std::endl;
+        wibble::sys::MutexLock _lock( global().mutex );
+        notifySlaves( _lock, TAG_ALL_DONE );
         if ( master() )
             MPI::Finalize();
+        _lock.drop();
         delete s_data;
         s_data = 0;
     }

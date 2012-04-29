@@ -363,6 +363,7 @@ struct MpiTopology : MpiMonitor
     LocalTopology< Instance > m_local;
     MpiForwarder< Comms > m_mpiForwarder;
     rpc::bitstream async_retval;
+    int request_source;
 
     Comms &comms() { return m_local.comms(); }
     Barrier< Terminable > &barrier() { return m_local.barrier(); }
@@ -393,7 +394,8 @@ struct MpiTopology : MpiMonitor
     {
         rpc::bitstream bs;
         rpc::marshall( set, bit, bs );
-        mpi.notifySlaves( TAG_PARALLEL, bs );
+        wibble::sys::MutexLock _lock( mpi.global().mutex );
+        mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
         m_local.distribute( bit, set );
     }
 
@@ -405,12 +407,13 @@ struct MpiTopology : MpiMonitor
         rpc::bitstream bs;
         rpc::marshall( get, bs );
         if ( mpi.master() ) {
-            mpi.notifySlaves( TAG_PARALLEL, bs );
+            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
                 rpc::bitstream response;
                 MPI::Status st;
                 MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_COLLECT, st );
-                mpi.recvStream( st, response );
+                mpi.recvStream( _lock, st, response );
                 response >> bits;
             }
         }
@@ -420,7 +423,11 @@ struct MpiTopology : MpiMonitor
     {
         rpc::bitstream bs;
         rpc::marshall( fun, bs );
-        mpi.notifySlaves( TAG_PARALLEL, bs );
+
+        {
+            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
+        }
 
         mpi.debug() << "parallel()" << std::endl;
         m_local.parallel( this, fun, &m_mpiForwarder, mpi.rank() * m_local.peers() );
@@ -429,16 +436,17 @@ struct MpiTopology : MpiMonitor
 
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) ) {
-        x = m_local.ring( x );
 
         rpc::bitstream bs;
 
-        bs << rpc::marshall( fun, x, bs );
+        x = m_local.ring( x, fun );
+        rpc::marshall( fun, x, bs );
 
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.global().is_master = false;
-        mpi.notifyOne( mpi.rank() + 1, TAG_RING, bs );
+        mpi.notifyOne( _lock, (mpi.rank() + 1) % mpi.size(), TAG_RING, bs );
         _lock.drop();
+
         while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
         mpi.global().is_master = true;
 
@@ -454,8 +462,11 @@ struct MpiTopology : MpiMonitor
         {
             if ( !mpit.mpi.rank() )
                 mpit.async_retval << x; /* done, x is the final value */
-            else
+            else {
+                mpit.mpi.global().is_master = true;
                 mpit.ring( x, fun );
+                mpit.mpi.global().is_master = false;
+            }
         }
     };
 
@@ -464,6 +475,7 @@ struct MpiTopology : MpiMonitor
         template< typename X >
         auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
         {
+            mpit.mpi.debug() << "MPI: distribute()" << std::endl;
             mpit.distribute( x, fun );
         }
 
@@ -474,7 +486,9 @@ struct MpiTopology : MpiMonitor
             rpc::bitstream bs;
             mpit.collect( bits, fun );
             bs << bits;
-            mpit.mpi.notifyOne( 0, TAG_COLLECT, bs );
+
+            wibble::sys::MutexLock _lock( mpit.mpi.global().mutex );
+            mpit.mpi.notifyOne( _lock, mpit.request_source, TAG_COLLECT, bs );
         }
 
         void operator()( MPIT &mpit, void (Instance::*fun)() ) {
@@ -489,10 +503,12 @@ struct MpiTopology : MpiMonitor
         rpc::bitstream in, out;
 
         mpi.debug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
-        mpi.recvStream( status, in );
+        mpi.recvStream( _lock, status, in );
+        request_source = status.Get_source();
 
         switch ( status.Get_tag() ) {
             case TAG_RING:
+                _lock.drop();
                 rpc::demarshallWith< Instance, RingFromRemote >( *this, in, out );
                 if ( !async_retval.empty() )
                     return Done;
@@ -515,7 +531,7 @@ struct MpiTopology : MpiMonitor
     void interrupt() {
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.debug() << "INTERRUPTED (local)" << std::endl;
-        mpi.notify( TAG_INTERRUPT );
+        mpi.notify( _lock, TAG_INTERRUPT );
     }
 
 };

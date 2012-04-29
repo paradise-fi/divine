@@ -44,7 +44,7 @@ struct MpiMonitor {
 
     // Called whenever there is a pause in incoming traffic (i.e. a nonblocking
     // probe fails). A blocking probe will follow each call to progress().
-    virtual Loop progress() { return Continue; }
+    virtual Loop progress( wibble::sys::MutexLock & ) { return Continue; }
 
     virtual ~MpiMonitor() {}
 };
@@ -120,39 +120,50 @@ public:
                 loop();
     }
 
-    rpc::bitstream &recvStream( MPI::Status &st, rpc::bitstream &bs )
+    rpc::bitstream &recvStream( wibble::sys::MutexLock &_lock,
+                                MPI::Status &st, rpc::bitstream &bs )
     {
         MPI::COMM_WORLD.Probe( st.Get_source(), st.Get_tag(), st );
         int first = bs.bits.size(), count = st.Get_count( MPI::BYTE ) / 4;
         bs.bits.resize( first + count );
         MPI::COMM_WORLD.Recv( &bs.bits[ first ], count * 4,
                               MPI::BYTE, st.Get_source(), st.Get_tag(), st );
-        debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): " << wibble::str::fmt( bs.bits ) << std::endl;
+        debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): "
+                << wibble::str::fmt( bs.bits ) << std::endl;
         return bs;
     }
 
-    rpc::bitstream &sendStream( rpc::bitstream &bs, int to, int tag ) {
-        debug() << "sending (tag = " << tag << ", to = " << to << "): " << wibble::str::fmt( bs.bits ) << std::endl;
+    rpc::bitstream &sendStream( wibble::sys::MutexLock &_lock,
+                                rpc::bitstream &bs, int to, int tag )
+    {
+        debug() << "sending (tag = " << tag << ", to = " << to << "): "
+                << wibble::str::fmt( bs.bits ) << std::endl;
         MPI::COMM_WORLD.Send( &bs.bits.front(),
                               bs.bits.size() * 4,
                               MPI::BYTE, to, tag );
         return bs;
     }
 
-    void notifyOne( int i, int tag, rpc::bitstream bs = rpc::bitstream() ) {
-        sendStream( bs, i, tag );
+    void notifyOne( wibble::sys::MutexLock &_lock,
+                    int i, int tag, rpc::bitstream bs = rpc::bitstream() )
+    {
+        sendStream( _lock, bs, i, tag );
     }
 
-    void notifySlaves( int tag, rpc::bitstream bs = rpc::bitstream() ) {
+    void notifySlaves( wibble::sys::MutexLock &_lock,
+                       int tag, rpc::bitstream bs = rpc::bitstream() )
+    {
         if ( !master() )
             return;
-        notify( tag, bs );
+        notify( _lock, tag, bs );
     }
 
-    void notify( int tag, rpc::bitstream bs = rpc::bitstream() ) {
+    void notify( wibble::sys::MutexLock &_lock,
+                 int tag, rpc::bitstream bs = rpc::bitstream() )
+    {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
-                notifyOne( i, tag, bs );
+                notifyOne( _lock, i, tag, bs );
         }
     }
 
@@ -160,7 +171,7 @@ public:
 
         MPI::Status status;
 
-        wibble::sys::MutexLock _lock( s_data->mutex );
+        wibble::sys::MutexLock _lock( global().mutex );
         // And process incoming MPI traffic.
         while ( MPI::COMM_WORLD.Iprobe(
                     MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
@@ -181,7 +192,7 @@ public:
         sched_yield();
 
         if ( global().progress )
-            return global().progress->progress();
+            return global().progress->progress( _lock );
 
         /* wait for messages */
         /* MPI::COMM_WORLD.Probe(
@@ -377,7 +388,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     MpiForwarder( Barrier< Terminable > *barrier, Comms *comms, int total, int min, int max )
-        : m_barrier( barrier ), m_comms( comms )
+        : m_comms( comms ), m_barrier( barrier )
     {
         buffers.resize( total, total );
         requests.resize( total, total );
@@ -405,11 +416,11 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return !outgoingEmpty();
     }
 
-    std::pair< int, int > accumCounts( int id ) {
+    std::pair< int, int > accumCounts( wibble::sys::MutexLock &_lock, int id ) {
         rpc::bitstream bs;
         bs << id;
 
-        mpi.notifySlaves( TAG_GET_COUNTS, bs );
+        mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );
         MPI::Status status;
         int r = recv, s = sent;
         bool valid = true;
@@ -430,18 +441,18 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
     }
 
-    bool termination() {
+    bool termination( wibble::sys::MutexLock &_lock ) {
         std::pair< int, int > one, two;
 
-        one = accumCounts( 0 );
+        one = accumCounts( _lock, 0 );
 
         if ( one.first != one.second )
             return false;
 
-        two = accumCounts( 1 );
+        two = accumCounts( _lock, 1 );
 
         if ( one.first == two.first && two.first == two.second ) {
-            mpi.notifySlaves( TAG_TERMINATED );
+            mpi.notifySlaves( _lock, TAG_TERMINATED );
 
             if ( m_barrier->idle( this ) )
                 return true;
@@ -507,7 +518,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return r;
     }
 
-    Loop progress() {
+    Loop progress( wibble::sys::MutexLock &_lock ) {
         // Fill outgoing buffers from the incoming FIFO queues...
         for ( int from = 0; from < m_peers; ++from ) {
             for ( int to = 0; to < m_peers; ++to ) {
@@ -571,7 +582,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         // by non-master nodes, to wake up sleeping workers that have received
         // messages from network. Ugly, yes.
         if ( lastMan() && mpi.master() && outgoingEmpty() ) {
-            if ( termination() ) {
+            if ( termination( _lock ) ) {
                 mpi.debug() << "TERMINATED" << std::endl;
                 return Done;
             }
@@ -585,7 +596,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         m_barrier->started( this );
         mpi.registerProgress( *this );
         mpi.registerMonitor( TAG_ID, *this );
-        mpi.registerMonitor( TAG_INTERRUPT, *this );
         mpi.registerMonitor( TAG_GET_COUNTS, *this );
         mpi.registerMonitor( TAG_TERMINATED, *this );
 
