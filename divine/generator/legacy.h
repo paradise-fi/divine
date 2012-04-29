@@ -214,7 +214,9 @@ struct LegacyCommon : Common< _State > {
     }
 
     system_t *legacy_system() {
+        static wibble::sys::Mutex m;
         if ( !m_system ) {
+            wibble::sys::MutexLock _lock( m );
             m_system = new system_t;
             m_system->setAllocator( &this->alloc );
             if ( !file.empty() ) {
