@@ -283,8 +283,8 @@ static inline rpc::bitstream &operator>>( rpc::bitstream &bs, Blob &blob )
     FakePool fp;
     blob = Blob( fp, size );
     while ( off < blob.size() ) {
-        off += 4;
         bs >> blob.get< uint32_t >( off );
+        off += 4;
     }
 
     return bs;
@@ -298,8 +298,8 @@ static inline rpc::bitstream &operator<<( rpc::bitstream &bs, Blob blob )
     bs << blob.size();
     int off = 0;
     while ( off < blob.size() ) {
-        off += 4;
         bs << blob.get< uint32_t >( off );
+        off += 4;
     }
     return bs;
 }
