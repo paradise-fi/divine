@@ -137,13 +137,13 @@ struct Main {
     void run() {
         algorithm::Algorithm *a = NULL;
 
-        /* if ( opts.foundCommand() == cmd_draw )
+        if ( opts.foundCommand() == cmd_draw )
             a = selectGraph< Draw >( meta );
         if ( opts.foundCommand() == cmd_info )
-        a = selectGraph< Info >( meta ); */
+            a = selectGraph< Info >( meta );
 
-        /* if (!a)
-           a = selectLtl( meta ); */
+        if (!a)
+           a = selectLtl( meta );
         if (!a)
             a = selectExploration( meta );
         /* if (!a)
