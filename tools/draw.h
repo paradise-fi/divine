@@ -16,10 +16,10 @@ namespace divine {
 
 template< typename > struct Simple;
 
-template< typename G, typename X >
-struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
+template< typename G, template< typename > class _Top, typename X >
+struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 {
-    typedef Draw< G, X > This;
+    typedef Draw< G, _Top, X > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
     typedef typename algorithm::AlgorithmUtils< G >::Table Table;
@@ -29,7 +29,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         int serial;
     };
 
-    G g;
+    G m_graph;
     Node initial;
     int drawn, maxdist, serial;
 
@@ -38,6 +38,8 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     bool traceLabels;
     Table *intrace;
     std::set< std::pair< int, int > > intrace_trans;
+
+    int id() { return 0; }
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -48,7 +50,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         bool limit = extension( st ).distance > maxdist;
 
         dotNode( st, limit );
-        g.porExpansion( st );
+        m_graph.porExpansion( st );
 
         if ( limit )
             return visitor::IgnoreState;
@@ -76,7 +78,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         if ( extension( t ).distance == 0 )
            extension( t ).distance = INT_MAX;
 
-        g.porTransition( f, t, 0 );
+        m_graph.porTransition( f, t, 0 );
         extension( t ).distance = std::min( extension( t ).distance, extension( f ).distance + 1 );
         return visitor::FollowTransition;
     }
@@ -99,9 +101,9 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     std::string label( Node n ) {
         if ( intrace->has( n ) && traceLabels )
-            return g.showNode( n );
+            return m_graph.showNode( n );
         if ( labels )
-            return g.showNode( n );
+            return m_graph.showNode( n );
         return "";
     }
 
@@ -118,7 +120,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
-        if ( g.isAccepting( n ) )
+        if ( m_graph.isAccepting( n ) )
             str << "peripheries=2 ";
 
         if ( label( n ).empty() )
@@ -141,7 +143,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
         if ( labels )
-            label = g.showTransition( f, t );
+            label = m_graph.showTransition( f, t );
 
         if ( !color.empty() || !label.empty()) {
             str << " [";
@@ -160,7 +162,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     // TODO: We leak some memory here, roughly linear to the trace size, i.e. not too bad
     void loadTrace() {
-        intrace = this->makeTable();
+        intrace = this->makeTable( this );
 
         if ( trace.empty() )
             return;
@@ -177,7 +179,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
                 from = intrace->get( from );
             else
                 intrace->insert( from );
-            typename G::Successors s = wibble::list::drop( trans[ i ] - 1, g.successors( from ) );
+            typename G::Successors s = wibble::list::drop( trans[ i ] - 1, m_graph.successors( from ) );
             Node to = intrace->get( s.head() );
             if ( !to.valid() ) {
                 to = s.head();
@@ -195,19 +197,19 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     void draw() {
         dot += "digraph {";
 
-        initial = g.initial();
+        initial = m_graph.initial();
         extension( initial ).serial = 1;
         extension( initial ).distance = 1;
 
         loadTrace();
 
         visitor::BFV< visitor::Setup< G, This, Table > >
-            visitor( g, *this, &this->table() );
+            visitor( m_graph, *this, &this->table() );
 
         do {
-            g.queueInitials( visitor );
+            m_graph.queueInitials( visitor );
             visitor.processQueue();
-        } while ( g.porEliminateLocally( this->table() ) );
+        } while ( m_graph.porEliminateLocally( this->table() ) );
 
         dot += "}";
     }
@@ -229,7 +231,7 @@ struct Draw : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     Draw( Meta m, bool = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( &g, NULL );
+        this->init( this );
         maxdist = m.algorithm.maxDistance;
         output = m.output.file;
         render = m.output.filterProgram;
