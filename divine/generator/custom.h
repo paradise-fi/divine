@@ -156,12 +156,11 @@ struct Custom : public Common< Blob > {
         return setup.has_property ? AC_Buchi : AC_None;
     }
 
-    Custom &operator=( const Custom &other ) {
-        Common::operator=( other );
+    Custom() {}
+    Custom( const Custom &other ) {
         dl = other.dl;
         setup = other.setup;
         call_setup();
-        return *this;
     }
 
 
