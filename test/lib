@@ -13,24 +13,28 @@ mpi() {
 }
 
 ltl_valid() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: neverclaim" report || return 0
     grep "^Property-Holds: Yes" report
 }
 
 ltl_invalid() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: neverclaim" report || return 0
     grep "^Property-Holds: No" report
 }
 
 reachability_valid() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: reachability" report || return 0
     grep "^Property-Holds: Yes" report
 }
 
 reachability_deadlock() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: reachability" report || return 0
     grep "^Property-Holds: No" report
@@ -38,6 +42,7 @@ reachability_deadlock() {
 }
 
 reachability_goal() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: reachability" report || return 0
     grep "^Property-Holds: No" report
@@ -45,6 +50,7 @@ reachability_goal() {
 }
 
 reachability_any() {
+    test -f report || return 0
     grep "^Finished: Yes" report
     grep "^Property-Type: reachability" report || return 0
     grep "^Property-Holds: No" report
@@ -52,6 +58,7 @@ reachability_any() {
 }
 
 statespace() {
+    test -f report || return 0
     op=-eq
     grep "^Full-State-Space: No" report && op=-le
     grep "^Transformations:.*POR" report && op=-le
@@ -67,7 +74,14 @@ statespace() {
     test "$dead" = "-" || test $dead $op $4
 }
 
+clear() {
+    rm -f progress report
+}
+
 owcty_sizes() {
+    test -f report || return 0
+    test -f progress || return 0
+
     if ! grep -q "^Algorithm: OWCTY" report; then return 0; fi
     if grep -q "^Full-State-Space: No" report; then return 0; fi
     if grep -q "^Transformations:.*POR" report; then return 0; fi
@@ -78,35 +92,66 @@ owcty_sizes() {
     diff -u numbers-right numbers
 }
 
-dve_small() {
-    "$@" data/test1.dve
+for_dve_small() {
+    wrapper=$1
+    shift
+
+    clear
+    $wrapper data/test1.dve "$@"
     ltl_invalid
     statespace 7 15 3 0
 
-    "$@" data/test2.dve
+    clear
+    $wrapper data/test2.dve "$@"
     ltl_valid
     owcty_sizes 2 2 0
     statespace 3 3 2 2
 
-    "$@" data/test3.dve
+    clear
+    $wrapper data/test3.dve "$@"
     ltl_valid
     owcty_sizes 2 5 0
     statespace 6 13 2 0
 
-    "$@" data/test4.dve
+    clear
+    $wrapper data/test4.dve "$@"
     ltl_invalid
     owcty_sizes 1 4 1
     statespace 5 6 1 0
 
-    "$@" data/test5.dve
+    clear
+    $wrapper data/test5.dve "$@"
     ltl_invalid
     owcty_sizes 1 4 1
     statespace 5 6 1 0
 
-    "$@" data/test6.dve
+    clear
+    $wrapper data/test6.dve "$@"
     ltl_invalid
     owcty_sizes 2 6 1 5 1
     statespace 6 7 2 0
+}
+
+unwrap() {
+    file=$1
+    shift
+    "$@" "$file"
+}
+
+dve_small() {
+    for_dve_small unwrap "$@"
+}
+
+compile() {
+    file=$1
+    shift
+
+    divine compile $file
+    "$@" `basename $file.so`
+}
+
+dve_compiled_small() {
+    for_dve_small compile "$@"
 }
 
 llvm_small() {
@@ -124,5 +169,5 @@ all_small() {
 }
 
 set -vex -o pipefail
-trap "cat progress" EXIT
+trap "test -f progress && cat progress" EXIT
 
