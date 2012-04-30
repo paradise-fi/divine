@@ -1,0 +1,19 @@
+digraph {2 [shape=circle ]
+2 -> 3
+3 [peripheries=2 shape=circle ]
+2 -> 4
+4 [peripheries=2 shape=circle ]
+3 -> 5
+5 [shape=circle ]
+3 -> 6
+6 [shape=circle ]
+4 -> 6
+4 -> 7
+7 [shape=circle ]
+5 -> 5
+5 -> 6
+6 -> 6
+6 -> 6
+7 -> 6
+7 -> 7
+}
