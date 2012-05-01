@@ -15,11 +15,6 @@ using namespace wibble::sys;
 
 #ifdef _WIN32
 #define sleep Sleep
-#define ECHO "echo"
-#define CAT "cat"
-#else
-#define ECHO "/bin/echo"
-#define CAT "/bin/cat"
 #endif
 
 class EndlessChild : public ChildProcess
@@ -103,7 +98,8 @@ struct TestChildprocess {
     }
 
     Test redirect() {
-        Exec child(ECHO);
+        Exec child("echo");
+        child.searchInPath = true;
         child.args.push_back("antani");
         int out;
 	
@@ -134,7 +130,8 @@ struct TestChildprocess {
     }
 
     Test inout() {
-        Exec child(CAT);
+        Exec child("cat");
+        child.searchInPath = true;
         int in, out;
 	
         // Fork the child redirecting its stdout
