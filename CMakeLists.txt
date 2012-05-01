@@ -77,7 +77,7 @@ endif( PERFORMANCE )
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-set( CMAKE_REQUIRED_FLAGS "-std=c++11" )
+set( CMAKE_REQUIRED_FLAGS "-std=c++0x" ) # for the benefit of GCC
 check_cxx_source_compiles("
     struct ConstructorTest {
         ConstructorTest(int) {}
@@ -90,7 +90,7 @@ check_cxx_source_compiles("
     int main() { return 0; }
 " HAVE_CXX11_SUPPORT )
 set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
-appendFlag( "CXX" "-std=c++11" )
+appendFlag( "CXX" "-std=c++0x" )
 
 if( NOT HAVE_CXX11_SUPPORT )
     message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
