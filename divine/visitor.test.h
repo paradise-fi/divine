@@ -21,31 +21,51 @@ inline Blob blob( const Blob &b ) {
     return b;
 }
 
+template< typename N > int node( N );
+template< typename N > N makeNode( int );
+
+template<> int node< Blob >( Blob b ) {
+    if ( b.valid() )
+        return b.get< int >();
+    else return 0;
+}
+template<> int node< int >( int n ) { return n; }
+
+template<> int makeNode< int >( int n ) { return n; }
+template<> Blob makeNode< Blob >( int n ) {
+    Blob b( sizeof( int ) );
+    b.get< int >() = n;
+    return b;
+}
+
 struct TestVisitor {
     typedef void Test_;
 
+    template< typename _Node >
     struct NMTree {
-        typedef int Node;
+        typedef _Node Node;
         int n, m;
 
         struct Successors {
             int n, m;
-            int i, _from;
+            int i;
+            Node _from;
             Node from() { return _from; }
             Node head() {
-                int x = m * (_from - 1) + i + 1; return (x >= n ? 0 : x)+1;
+                int x = m * (node( _from ) - 1) + i + 1;
+                return makeNode< Node >( (x >= n ? 0 : x)+1 );
             }
             bool empty() {
                 if ( n < 0 )
                     return true;
                 // no multi-edges to 0 please
-                if ( i > 0 && m * (_from - 1) + i >= n )
+                if ( i > 0 && m * (node( _from ) - 1) + i >= n )
                     return true;
                 return i >= m;
             }
 
             Successors tail() {
-                Successors next = *this;;
+                Successors next = *this;
                 next.i ++;
                 return next;
             }
@@ -53,8 +73,14 @@ struct TestVisitor {
             Successors() : n( -1 ) {}
         };
 
-        void release( Node ) {}
         Node clone( Node n ) { return n; }
+        void release( Blob n ) { n.free(); }
+        void release( int ) {}
+        Node initial() {
+            static Node n = makeNode< Node >( 1 );
+            visitor::setPermanent( n );
+            return n;
+        }
 
         Successors successors( Node from ) {
             Successors s;
@@ -67,34 +93,199 @@ struct TestVisitor {
 
         NMTree( int _n, int _m ) : n( _n ), m( _m ) {}
         NMTree() : n( 0 ), m( 0 ) {}
+
+        template< typename Hash, typename Worker >
+        int owner( Hash &hash, Worker &worker, Node n, hash_t = 0 ) {
+            return hash( n ) % worker.peers();
+        }
     };
 
     template< typename G >
-    struct Checker {
+    struct Check {
         typedef typename G::Node Node;
         std::set< Node > seen;
         std::set< std::pair< Node, Node > > t_seen;
-        int nodes, transitions;
+        std::pair< int, int > counts;
+
+        int &edges() { return counts.first; }
+        int &nodes() { return counts.second; }
+
+        int _edges() { return this->edges(); }
+        int _nodes() { return this->nodes(); }
 
         visitor::TransitionAction transition( Node f, Node t ) {
-            assert( seen.count( f ) );
-            assert( !t_seen.count( std::make_pair( f, t ) ) );
-            t_seen.insert( std::make_pair( f, t ) );
-            transitions ++;
+            if ( node( f ) ) {
+                assert( seen.count( f ) );
+                edges() ++;
+                assert( !t_seen.count( std::make_pair( f, t ) ) );
+                t_seen.insert( std::make_pair( f, t ) );
+            }
             return visitor::FollowTransition;
         }
 
         visitor::ExpansionAction expansion( Node t ) {
             assert( !seen.count( t ) );
             seen.insert( t );
-            nodes ++;
+            nodes() ++;
             return visitor::ExpandState;
         }
 
-        Checker() : nodes( 0 ), transitions( 0 ) {}
+        Check() : counts( std::make_pair( 0, 0 ) ) {}
     };
 
-    void checkNMTreeMetric( int n, int m, int _nodes, int _transitions )
+    template< typename T, typename N >
+    static visitor::TransitionAction parallel_transition( T *self, N f, N t ) {
+        if ( node( t ) % self->peers() != self->id() ) {
+            self->submit( self->id(), node( t ) % self->peers(),
+                          std::make_pair( f, t ) );
+                return visitor::IgnoreTransition;
+            }
+
+        if ( node( f ) % self->peers() == self->id() )
+            assert( self->seen.count( f ) );
+
+        if ( node( f ) ) {
+            self->edges() ++;
+            assert( !self->t_seen.count( std::make_pair( f, t ) ) );
+            self->t_seen.insert( std::make_pair( f, t ) );
+        }
+
+        return visitor::FollowTransition;
+    }
+
+    template< typename G >
+    struct ParallelCheck : Parallel<
+        Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
+        ParallelCheck< G > >, Check< G >
+    {
+        typedef typename G::Node Node;
+        typedef std::pair< Node, Node > Message;
+        Node make( int n ) { return makeNode< Node >( n ); }
+        int expected;
+
+        G m_graph;
+
+        visitor::TransitionAction transition( Node f, Node t ) {
+            return parallel_transition( this, f, t );
+        }
+
+        visitor::ExpansionAction expansion( Node t ) {
+            return Check< G >::expansion( t );
+        }
+
+        void _visit() { // parallel
+            assert_eq( expected % this->peers(), 0 );
+            typedef visitor::Setup< G, ParallelCheck< G > > VisitorSetup;
+            visitor::BFV< VisitorSetup > bfv( m_graph, *this );
+            Node initial = m_graph.initial();
+            if ( node( initial ) % this->peers() == this->id() )
+                bfv.exploreFrom( initial );
+
+            while ( this->nodes() != expected / this->peers() ) {
+                if ( !this->comms().pending( this->id() ) )
+                    continue;
+
+                Message next = this->comms().take( this->id() );
+                assert_eq( node( next.second ) % this->peers(), this->id() );
+                bfv.queue( next.first, next.second );
+                bfv.processQueue();
+            }
+        }
+
+        void _finish() { // parallel
+            while ( this->comms().pending( this->id() ) ) {
+                this->edges() ++;
+                this->comms().take( this->id() );
+            }
+        }
+
+        void visit() {
+            std::vector< int > edgevec, nodevec;
+
+            this->topology().parallel( &ParallelCheck< G >::_visit );
+            this->topology().parallel( &ParallelCheck< G >::_finish );
+
+            this->topology().collect( edgevec, &ParallelCheck< G >::_edges );
+            this->topology().collect( nodevec, &ParallelCheck< G >::_nodes );
+
+            this->edges() = std::accumulate( edgevec.begin(), edgevec.end(), 0 );
+            this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
+        }
+
+        ParallelCheck( std::pair< G, int > init, bool master = false )
+        {
+            m_graph = init.first;
+            expected = init.second;
+            if ( master ) {
+                int i = 32;
+                while ( expected % i ) i--;
+                this->becomeMaster( i, init );
+            }
+        }
+    };
+
+    template< typename G >
+    struct TerminableCheck : Parallel<
+        Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
+        TerminableCheck< G > >, Check< G >
+    {
+        typedef typename G::Node Node;
+        typedef std::pair< Node, Node > Message;
+        G m_graph;
+
+        visitor::TransitionAction transition( Node f, Node t ) {
+            return parallel_transition( this, f, t );
+        }
+
+        visitor::ExpansionAction expansion( Node t ) {
+            return Check< G >::expansion( t );
+        }
+
+        int owner( Node n ) {
+            return node( n ) % this->peers();
+        }
+
+        void _visit() { // parallel
+            typedef visitor::Setup< G, TerminableCheck< G > > VisitorSetup;
+            visitor::BFV<  VisitorSetup > bfv( m_graph, *this );
+
+            Node initial = m_graph.initial();
+            if ( owner( initial ) == this->id() )
+                bfv.exploreFrom( initial );
+
+            while ( true ) {
+                if ( this->comms().pending( this->id() ) ) {
+                    Message next = this->comms().take( this->id() );
+                    assert_eq( owner( next.second ), this->id() );
+                    bfv.queue( next.first, next.second );
+                    bfv.processQueue();
+                } else {
+                    if ( this->idle() )
+                        return;
+                }
+            }
+        }
+
+        void visit() {
+            std::vector< int > edgevec, nodevec;
+            this->topology().parallel( &TerminableCheck< G >::_visit );
+
+            this->topology().collect( edgevec, &TerminableCheck< G >::_edges );
+            this->topology().collect( nodevec, &TerminableCheck< G >::_nodes );
+
+            this->edges() = std::accumulate( edgevec.begin(), edgevec.end(), 0 );
+            this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
+        }
+
+        TerminableCheck( std::pair< G, int > init, bool master = false )
+        {
+            m_graph = init.first;
+            if ( master )
+                this->becomeMaster( 10, init );
+        }
+    };
+
+    static void checkNMTreeMetric( int n, int m, int _nodes, int _transitions )
     {
         int fullheight = 1;
         int fulltree = 1;
@@ -111,325 +302,73 @@ struct TestVisitor {
         assert_eq( transitions, _transitions );
     }
 
-    void _nmtree( int n, int m ) {
-        NMTree g( n, m );
-        typedef Checker< NMTree > C;
+    template< typename F >
+    void examples( F f ) {
+        f( 7, 2 );
+        f( 8, 2 );
+        f( 31, 2 );
+        f( 4, 3 );
+        f( 8, 3 );
+        f( 242, 3 );
+        f( 245, 3 );
+        f( 20, 2 );
+        f( 50, 3 );
+        f( 120, 8 );
+        f( 120, 2 );
+    }
+
+    template< typename N >
+    static void _sequential( int n, int m ) {
+        NMTree< N > g( n, m );
+        typedef Check< NMTree< N > > C;
         C c1, c2;
 
-        // sanity check 
-        assert_eq( c1.transitions, 0 );
-        assert_eq( c1.nodes, 0 );
+        // sanity check
+        assert_eq( c1.edges(), 0 );
+        assert_eq( c1.nodes(), 0 );
 
-        typedef visitor::Setup< NMTree, C > CheckSetup;
+        typedef visitor::Setup< NMTree< N >, C > CheckSetup;
 
         visitor::BFV< CheckSetup > bfv( g, c1 );
-        bfv.exploreFrom( 1 );
-        checkNMTreeMetric( n, m, c1.nodes, c1.transitions );
+        bfv.exploreFrom( makeNode< N >( 1 ) );
+        checkNMTreeMetric( n, m, c1.nodes(), c1.edges() );
 
         visitor::DFV< CheckSetup > dfv( g, c2 );
-        dfv.exploreFrom( 1 );
-        checkNMTreeMetric( n, m, c2.nodes, c2.transitions );
+        dfv.exploreFrom( makeNode< N >( 1 ) );
+        checkNMTreeMetric( n, m, c2.nodes(), c2.edges() );
     }
 
-    // requires that n % peers() == 0
-    template< typename G >
-    struct ParVisitor : DomainWorker< ParVisitor< G > > {
-        typedef typename G::Node Node;
-
-        struct Shared {
-            Node initial;
-            int seen, trans;
-            G g;
-            int n;
-        } shared;
-        Domain< ParVisitor< G > > domain;
-
-        int seen, trans;
-        std::set< int > seenset;
-
-        visitor::TransitionAction transition( Node f, Node t ) {
-            if ( t % this->peers() != this->globalId() ) {
-                this->submit( this->globalId(), t % this->peers(),
-                    BlobPair( blob( f ), blob( t ) ) );
-                return visitor::IgnoreTransition;
-            }
-            shared.trans ++;
-            return visitor::FollowTransition;
-        }
-
-        visitor::ExpansionAction expansion( Node n ) {
-            ++ shared.seen;
-            assert( !seenset.count( unblob< int >( n ) ) );
-            seenset.insert( unblob< int >( n ) );
-            return visitor::ExpandState;
-        }
-
-        void _visit() { // parallel
-            assert( !(shared.n % this->peers()) );
-            typedef visitor::Setup< G, ParVisitor< G > > VisitorSetup;
-            visitor::BFV< VisitorSetup > bfv( shared.g, *this );
-            if ( shared.initial % this->peers() == this->globalId() ) {
-                bfv.exploreFrom( shared.initial );
-            }
-            while ( shared.seen != shared.n / this->peers() ) {
-                if ( !this->comms().pending( this->globalId() ) )
-                    continue;
-
-                BlobPair next = this->comms().take( this->globalId() );
-                assert_eq( next.second.template get< int >() % this->peers(),
-                           this->globalId() );
-                shared.trans ++;
-                bfv.expand( unblob< Node >( next.second ) );
-            }
-        }
-
-        void _finish() { // parallel
-            while ( this->comms().pending( this->globalId() ) ) {
-                shared.trans ++;
-                this->comms().take( this->globalId() );
-            }
-        }
-
-        void visit( Node initial ) {
-            shared.initial = initial;
-            seen = shared.seen = 0;
-            trans = shared.trans = 0;
-            domain.parallel( Meta() ).run( shared, &ParVisitor< G >::_visit );
-            for ( int i = 0; i < domain.parallel( Meta() ).n; ++i ) {
-                seen += domain.parallel().shared( i ).seen;
-                trans += domain.parallel().shared( i ).trans;
-            }
-            shared.seen = 0;
-            shared.trans = 0;
-            domain.parallel().run( shared, &ParVisitor< G >::_finish );
-            for ( int i = 0; i < domain.parallel().n; ++i )
-                trans += domain.parallel().shared( i ).trans;
-        }
-
-        ParVisitor( G g = G(), int _n = 0 ) 
-            : domain( 0, 10 )
-        {
-            shared.g = g;
-            shared.n = _n;
-        }
-
-        ParVisitor( Meta ) {}
-    };
-
-    void _parVisitor( int n, int m ) {
-        ParVisitor< NMTree > pv( NMTree( n, m ), n );
-        pv.visit( 1 );
-        checkNMTreeMetric( n, m, pv.seen, pv.trans );
+    template< template< typename > class T, typename N >
+    static void _parallel( int n, int m ) {
+        T< NMTree< N > > pv( std::make_pair( NMTree< N >( n, m ), n ), true );
+        pv.visit();
+        checkNMTreeMetric( n, m, pv.nodes(), pv.edges() );
     }
 
-    // requires that n % peers() == 0
-    template< typename G >
-    struct TermParVisitor : DomainWorker< TermParVisitor< G > >
-    {
-        typedef typename G::Node Node;
-        struct Shared {
-            Node initial;
-            int seen, trans;
-            G g;
-        } shared;
-        Domain< TermParVisitor< G > > domain;
-
-        std::set< int > seenset;
-
-        visitor::TransitionAction transition( Node f, Node t ) {
-            if ( owner( t ) != this->globalId() ) {
-                this->submit( this->globalId(), owner( t ),
-                    BlobPair( blob( f ), blob( t ) ) );
-                return visitor::IgnoreTransition;
-            }
-            assert_eq( owner( t ), this->globalId() );
-            shared.trans ++;
-            return visitor::FollowTransition;
-        }
-
-        visitor::ExpansionAction expansion( Node n ) {
-            assert( !seenset.count( unblob< int >( n ) ) );
-            assert_eq( owner( n ), this->globalId() );
-            seenset.insert( unblob< int >( n ) );
-            ++ shared.seen;
-            return visitor::ExpandState;
-        }
-
-        int owner( Node n ) {
-            return unblob< int >( n ) % this->peers();
-        }
-
-        void _visit() { // parallel
-            typedef visitor::Setup< G, TermParVisitor< G > > VisitorSetup;
-            visitor::BFV<  VisitorSetup > bfv( shared.g, *this );
-            if ( owner( shared.initial ) == this->globalId() ) {
-                bfv.exploreFrom( unblob< Node >( shared.initial ) );
-            }
-            while ( true ) {
-                if ( this->comms().pending( this->globalId() ) ) {
-                    BlobPair next = this->comms().take( this->globalId() );
-
-                    assert_eq( owner( unblob< Node >( next.second ) /*.template get< int >() % this->peers()*/ ),
-                               this->globalId() );
-                    shared.trans ++;
-                    bfv.expand( unblob< Node >( next.second ) );
-                } else {
-                    if ( this->idle() )
-                        return;
-                }
-            }
-        }
-
-        void visit( Node initial ) {
-            shared.initial = initial;
-            shared.seen = 0;
-            shared.trans = 0;
-            domain.parallel( Meta() ).run( shared, &TermParVisitor< G >::_visit );
-            for ( int i = 0; i < domain.parallel( Meta() ).n; ++i ) {
-                shared.seen += domain.parallel( Meta() ).shared( i ).seen;
-                shared.trans += domain.parallel( Meta() ).shared( i ).trans;
-            }
-        }
-
-        TermParVisitor( G g = G() ) { shared.g = g; }
-        TermParVisitor( Meta ) {}
-    };
-
-    void _termParVisitor( int n, int m ) {
-        TermParVisitor< NMTree > pv( NMTree( n, m ) );
-        pv.visit( 1 );
-        checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
+    Test sequential_int() {
+        examples( _sequential< int > );
+    }
+    Test sequential_blob() {
+        examples( _sequential< Blob > );
     }
 
-    Test_ nmtree() {
-        _nmtree( 7, 2 );
-        _nmtree( 8, 2 );
-        _nmtree( 31, 2 );
-        _nmtree( 4, 3 );
-        _nmtree( 8, 3 );
-        _nmtree( 242, 3 );
-        _nmtree( 245, 3 );
-
-        // check that the stuff we use in parVisitor later actually works
-        _nmtree( 20, 2 );
-        _nmtree( 50, 3 );
-        _nmtree( 120, 8 );
-        _nmtree( 120, 2 );
+    Test parallel_int() {
+        examples( _parallel< ParallelCheck, int > );
     }
 
-    Test_ parVisitor() {
-        // note we need first number to be 10-divisible for now.
-        _parVisitor( 20, 2 );
-        _parVisitor( 50, 3 );
-        _parVisitor( 120, 8 );
-        _parVisitor( 120, 2 );
+    Test parallel_blob() {
+        examples( _parallel< ParallelCheck, Blob > );
     }
 
-    Test_ termParVisitor() {
-        _termParVisitor( 7, 2 );
-        _termParVisitor( 8, 2 );
-        _termParVisitor( 31, 2 );
-        _termParVisitor( 4, 3 );
-        _termParVisitor( 8, 3 );
-        _termParVisitor( 242, 3 );
-        _termParVisitor( 245, 3 );
-        _termParVisitor( 20, 2 );
-        _termParVisitor( 50, 3 );
-        _termParVisitor( 120, 8 );
-        _termParVisitor( 120, 2 );
+    Test terminable_int() {
+        examples( _parallel< TerminableCheck, int > );
     }
 
-    struct BlobNMTree {
-        typedef Blob Node;
-        int n, m;
-
-        struct Successors {
-            int n, m;
-            int i, _from;
-            Node from() {
-                Node n( sizeof( int ) );
-                n.get< int >() = _from;
-                return n;
-            }
-            Node head() {
-                Node r = Node( sizeof( int ) );
-                int x = m * _from + i + 1;
-                r.get< int >() = x >= n ? 0 : x;
-                return r;
-            }
-
-            bool empty() {
-                if ( n < 0 )
-                    return true;
-                // no multi-edges to 0 please
-                if ( i > 0 && m * _from + i >= n )
-                    return true;
-                return i >= m;
-            }
-
-            Successors tail() {
-                Successors next = *this;;
-                next.i ++;
-                return next;
-            }
-
-            Successors() : n( -1 ) {}
-        };
-
-        void release( Node n ) {
-            n.free();
-        }
-
-        Node clone( Node n ) {
-            Node c( sizeof( int ) );
-            n.copyTo( c );
-            return c;
-        }
-
-        Successors successors( Node from ) {
-            Successors s;
-            s.n = n;
-            s.m = m;
-            s._from = from.get< int >();
-            s.i = 0;
-            return s;
-        }
-
-        template< typename Hash, typename Worker >
-        int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
-            assert( n.valid() );
-            if ( !hint )
-                return hash( n ) % worker.peers();
-            else
-                return hint % worker.peers();
-        }
-
-        BlobNMTree( int _n, int _m ) : n( _n ), m( _m ) {}
-        BlobNMTree() : n( 0 ), m( 0 ) {}
-    };
-
-    void _bTermParVisitor( int n, int m ) {
-        TermParVisitor< BlobNMTree > pv( BlobNMTree( n, m ) );
-        Blob init( sizeof( int ) );
-        init.get< int >() = 0;
-        pv.visit( init );
-        checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
+    Test terminable_blob() {
+        examples( _parallel< TerminableCheck, Blob > );
     }
 
-    Test_ bTermParVisitor() {
-        _bTermParVisitor( 7, 2 );
-        _bTermParVisitor( 8, 2 );
-        _bTermParVisitor( 31, 2 );
-        _bTermParVisitor( 4, 3 );
-        _bTermParVisitor( 8, 3 );
-        _bTermParVisitor( 242, 3 );
-        _bTermParVisitor( 245, 3 );
-        _bTermParVisitor( 20, 2 );
-        _bTermParVisitor( 50, 3 );
-        _bTermParVisitor( 120, 8 );
-        _bTermParVisitor( 120, 2 );
-    }
-
+#if 0
     template< typename G >
     struct SimpleParReach : DomainWorker< SimpleParReach< G > >
     {
@@ -483,19 +422,6 @@ struct TestVisitor {
         pv.visit( init );
         checkNMTreeMetric( n, m, pv.shared.seen, pv.shared.trans );
     }
-
-    Test_ simpleParReach() {
-        _simpleParReach( 7, 2 );
-        _simpleParReach( 8, 2 );
-        _simpleParReach( 31, 2 );
-        _simpleParReach( 4, 3 );
-        _simpleParReach( 8, 3 );
-        _simpleParReach( 242, 3 );
-        _simpleParReach( 245, 3 );
-        _simpleParReach( 20, 2 );
-        _simpleParReach( 50, 3 );
-        _simpleParReach( 120, 8 );
-        _simpleParReach( 120, 2 );
-    }
+#endif
 
 };
