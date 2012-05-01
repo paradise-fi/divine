@@ -286,12 +286,15 @@ struct Parallel : Terminable {
     }
 };
 
+template< typename Message = BlobPair >
+struct Topology {
+
 template< typename Instance >
-struct LocalTopology
+struct Local
 {
     typedef ThreadVector< Instance, BarrierThread< Instance > > Threads;
     typedef std::vector< Instance > Instances;
-    typedef FifoMatrix< BlobPair > Comms;
+    typedef FifoMatrix< Message > Comms;
 
     Instances m_slaves;
     Barrier< Terminable > m_barrier;
@@ -301,7 +304,7 @@ struct LocalTopology
     Barrier< Terminable > &barrier() { return m_barrier; }
 
     template< typename X = Instance >
-    LocalTopology( int n, X init = X() ) {
+    Local( int n, X init = X() ) {
         for ( int i = 0; i < n; ++ i )
             m_slaves.push_back( Instance( init ) );
         m_comms.resize( n );
@@ -355,12 +358,12 @@ struct LocalTopology
 };
 
 template< typename Instance >
-struct MpiTopology : MpiMonitor
+struct Mpi : MpiMonitor
 {
     typedef FifoMatrix< BlobPair > Comms;
 
-    Mpi mpi;
-    LocalTopology< Instance > m_local;
+    divine::Mpi mpi;
+    Local< Instance > m_local;
     MpiForwarder< Comms > m_mpiForwarder;
     rpc::bitstream async_retval;
     int request_source;
@@ -370,10 +373,10 @@ struct MpiTopology : MpiMonitor
 
     int peers() { return m_local.peers() * mpi.size(); } // XXX
 
-    MpiTopology( const MpiTopology & ) = delete;
+    Mpi( const Mpi& ) = delete;
 
     template< typename X = Instance >
-    MpiTopology( int pernode, X init = X() )
+    Mpi( int pernode, X init = X() )
         : m_local( pernode, init ),
           m_mpiForwarder( &barrier(),
                           &comms(),
@@ -533,6 +536,8 @@ struct MpiTopology : MpiMonitor
         mpi.debug() << "INTERRUPTED (local)" << std::endl;
         mpi.notify( _lock, TAG_INTERRUPT );
     }
+
+};
 
 };
 

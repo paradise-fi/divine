@@ -55,7 +55,7 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta )
         return new A< algorithm::NonPORGraph< Graph >, LocalTopology, NoStatistics >( meta, true );
     else
 #endif
-        return new A< algorithm::NonPORGraph< Graph >, MpiTopology, Statistics >( meta, true );
+        return new A< algorithm::NonPORGraph< Graph >, Topology<>::Mpi, Statistics >( meta, true );
 }
 
 template< template< typename, template< typename > class, typename > class A, typename Graph >
@@ -63,10 +63,12 @@ algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::PORGraph< Graph, NoStatistics >, LocalTopology, NoStatistics >( meta, true );
+        return new A< algorithm::PORGraph< Graph, NoStatistics >, Topology<>::Local, NoStatistics >( meta, true );
     else
 #endif
-        return new A< algorithm::PORGraph< Graph, Statistics >, LocalTopology, Statistics >( meta, true );
+        return new A< algorithm::PORGraph< Graph, Statistics >,
+                      Topology< std::pair< typename Graph::Node, typename Graph::Node > >::template Local,
+                      Statistics >( meta, true );
 }
 
 template< template< typename, template< typename > class, typename > class A >
