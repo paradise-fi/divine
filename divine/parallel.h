@@ -310,21 +310,27 @@ struct Local
         m_comms.resize( n );
     }
 
-    template< typename Bit >
-    void distribute( Bit bit, void (Instance::*set)( Bit ) ) {
+    template< typename Base, typename Bit >
+    auto distribute( Bit bit, void (Base::*set)( Bit ) )
+         -> decltype( rpc::check_void< void (Instance::*)( Bit ) >( set ) )
+    {
         for ( int i = 0; i < m_slaves.size(); ++i )
             (m_slaves[ i ].*set)( bit );
     }
 
-    template< typename Bits, typename Bit >
-    void collect( Bits &bits, Bit (Instance::*get)() ) {
+    template< typename Base, typename Bits, typename Bit >
+    auto collect( Bits &bits, Bit (Base::*get)() )
+         -> decltype( rpc::check_void< Bit (Instance::*)() >( get ) )
+    {
         for ( int i = 0; i < m_slaves.size(); ++i )
             bits.push_back( (m_slaves[ i ].*get)() );
     }
 
     int peers() { return m_slaves.size(); }
 
-    void parallel( void (Instance::*fun)() ) {
+    auto parallel( void (Instance::*fun)() )
+         -> decltype( rpc::check_void< void (Instance::*)() >( fun ) )
+    {
         parallel( this, fun );
     }
 

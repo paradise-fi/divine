@@ -111,12 +111,10 @@ struct Algorithm
     void parallel( void (T::*fun)() ) {
         T *self = static_cast< T * >( this );
 
-        self->topology().template distribute< decltype( self->shared ) >(
-            self->shared, &T::setShared );
+        self->topology().distribute( self->shared, &T::setShared );
         self->topology().parallel( fun );
         self->shareds.clear();
-        self->topology().template collect< decltype( self->shareds ), decltype( self->shared ) >(
-            self->shareds, &T::getShared );
+        self->topology().template collect( self->shareds, &T::getShared );
     }
 
     Algorithm( Meta m, int slack = 0 )
