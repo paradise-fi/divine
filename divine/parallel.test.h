@@ -1,11 +1,11 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/parallel.h>
-#include <divine/meta.h> // FIXME
 
 using namespace divine;
 
 struct TestParallel {
+
     struct Counter {
         int i;
         void inc() { i++; }
@@ -22,94 +22,85 @@ struct TestParallel {
         assert_eq( c.i, 1 );
     }
 
-    struct ParCounter {
-        typedef Counter Shared;
-        Counter shared;
+    Test threadVector() {
+        std::vector< Counter > vec;
+        vec.resize( 10 );
+        ThreadVector< Counter > p( vec, &Counter::inc );
+        p.run();
 
-        void inc() {
-            shared.inc();
-        }
-        ParCounter() {}
-        ParCounter( Meta ) {} // FIXME
-    };
-
-    Test parCounter() {
-        ParCounter m;
-        assert_eq( m.shared.i, 0 );
-
-        Parallel< ParCounter > p( 10, Meta() ); // FIXME
-        p.run( m.shared, &ParCounter::inc );
         for ( int i = 0; i < 10; ++i )
-            assert_eq_l( i, p.shared( i ).i, 1 );
-
-        m.shared.i = 10;
-        p.run( m.shared, &ParCounter::inc );
-        for ( int i = 0; i < 10; ++i )
-            assert_eq( p.shared( i ).i, 11 );
+            assert_eq_l( i, vec[ i ].i, 1 );
     }
 
-    struct DomCounter : DomainWorker< DomCounter >
+    struct ParallelCounter : Parallel< Topology<>::Local, ParallelCounter >
     {
-        typedef Counter Shared;
-        Domain< DomCounter > domain;
-        Counter shared;
-        void inc() { shared.inc(); }
+        Counter counter;
+
+        int get() { return counter.i; }
+        void set( Counter c ) { counter = c; }
+        void inc() { counter.inc(); }
 
         void run() {
-            domain.parallel( Meta() ).run( shared, &DomCounter::inc );
+            this->topology().distribute( counter, &ParallelCounter::set );
+            this->topology().parallel( &ParallelCounter::inc );
         }
 
-        DomCounter() { shared.i = 0; }
-        DomCounter( Meta ) { shared.i = 0; } // FIXME
+        ParallelCounter( bool master = true ) {
+            if (master) this->becomeMaster( 10, false );
+        }
     };
 
-    Test domCounter() {
-        DomCounter d;
-        assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 0 );
-        d.run();
-        assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 1 );
+    template< typename X >
+    void checkValues( X &x, int n, int k ) {
+        std::vector< int > values;
+        x.topology().collect( values, &X::get );
+        assert_eq( values.size(), n );
+        for ( int i = 0; i < values.size(); ++i )
+            assert_eq_l( i, values[ i ], k );
     }
 
-    struct Dom2Counter : DomainWorker< Dom2Counter >
+    Test parallel() {
+        ParallelCounter c;
+        assert_eq( c.get(), 0 );
+        checkValues( c, 10, 0 );
+
+        c.run();
+        assert_eq( c.get(), 0 );
+        checkValues( c, 10, 1 );
+    }
+
+    struct CommCounter : Parallel< Topology< int >::Local, CommCounter >
     {
-        typedef Counter Shared;
-        Domain< Dom2Counter > domain;
-        Counter shared;
+        Counter counter;
 
         void tellInc() {
-            BlobPair b( Blob( sizeof( int ) ), Blob() );
-            b.first.get< int >() = 1;
-            submit( globalId(), (globalId() + 1) % peers(), b );
+            submit( this->id(), (this->id() + 1) % this->peers(), 1 );
             do {
-                if ( comms().pending( globalId() ) ) {
-                    BlobPair n = comms().take( globalId() );
-                    shared.i += n.first.get< int >();
-                    n.first.free();
+                if ( comms().pending( id() ) ) {
+                    counter.i += comms().take( this->id() );
                     return;
                 }
             } while ( true );
         }
 
+        int get() { return counter.i; }
         void run() {
-            domain.parallel( Meta() ).run( shared, &Dom2Counter::tellInc );
+            this->topology().parallel( &CommCounter::tellInc );
         }
 
-        Dom2Counter() { shared.i = 0; }
-        Dom2Counter( Meta ) { shared.i = 0; } // FIXME
+        CommCounter( bool master = true ) {
+            if (master) this->becomeMaster( 10, false );
+            counter.i = 0;
+        }
     };
 
-    Test dom2Counter() {
-        Dom2Counter d;
-        assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 0 );
-        d.run();
-        assert_eq( d.shared.i, 0 );
-        for ( int i = 0; i < d.domain.n; ++i )
-            assert_eq_l( i, d.domain.parallel( Meta() ).shared( i ).i, 1 );
+    Test comm() {
+        CommCounter c;
+        assert_eq( c.counter.i, 0 );
+        checkValues( c, 10, 0 );
+
+        c.run();
+        assert_eq( c.counter.i, 0 );
+        checkValues( c, 10, 1 );
     }
 };
