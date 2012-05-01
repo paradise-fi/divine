@@ -51,18 +51,8 @@ static inline rpc::bitstream &operator>>( rpc::bitstream &bs, OwctyShared &sh )
 template< typename G, template< typename > class Topology, typename Statistics >
 struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Topology, Statistics > >
 {
-    RPC_CLASS;
     typedef Owcty< G, Topology, Statistics > This;
-    typedef typename G::Node Node;
-	typedef typename AlgorithmUtils< G >::Table Table;
-    typedef OwctyShared Shared;
-
-    Shared shared;
-    std::vector< Shared > shareds;
-    G m_graph;
-
-    void setShared( Shared sh ) { shared = sh; };
-    Shared getShared() { return shared; };
+    ALGORITHM_CLASS( G, OwctyShared );
 
     // -------------------------------
     // -- Some useful types

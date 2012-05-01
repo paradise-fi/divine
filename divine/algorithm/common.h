@@ -220,6 +220,17 @@ struct AlgorithmUtils< G, typename G::Table::IsBitSet >
 }
 }
 
+#define ALGORITHM_CLASS(_graph, _shared)                        \
+    RPC_CLASS;                                                  \
+    typedef _shared Shared;                                     \
+    Shared shared;                                              \
+    std::vector< Shared > shareds;                              \
+    void setShared( Shared sh ) { shared = sh; }                \
+    Shared getShared() { return shared; }                       \
+    _graph m_graph;                                             \
+    typedef typename _graph::Node Node;                         \
+    typedef typename AlgorithmUtils< _graph >::Table Table;
+
 /* This is ugly, mostly because CPP interprets commas in template parameter
  * lists as argument separators, which means we can't pass multi-parameter
  * templates to RPC_ID. Sigh. */

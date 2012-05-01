@@ -39,17 +39,9 @@ template< typename G, template< typename > class Topology, typename Statistics >
 struct Reachability : Algorithm, AlgorithmUtils< G >,
                       Parallel< Topology, Reachability< G, Topology, Statistics > >
 {
-    RPC_CLASS;
     typedef Reachability< G, Topology, Statistics > This;
-    typedef typename G::Node Node;
+    ALGORITHM_CLASS( G, ReachabilityShared );
 
-    typedef ReachabilityShared Shared;
-    Shared shared;
-    std::vector< Shared > shareds;
-    Shared getShared() { return shared; }
-    void setShared( Shared sh ) { shared = sh; }
-
-    G m_graph;
     Node goal;
     bool deadlocked;
 

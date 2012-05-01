@@ -71,22 +71,14 @@ static inline rpc::bitstream &operator>>( rpc::bitstream &bs, MapShared &sh )
 template< typename G, template< typename > class Topology, typename _Statistics >
 struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topology, _Statistics > >
 {
-    RPC_CLASS;
-    typedef typename G::Node Node;
     typedef Map< G, Topology, _Statistics > This;
+    ALGORITHM_CLASS( G, MapShared );
 
     int d_eliminated,
         acceptingCount,
         eliminated,
         expanded;
     Node cycle_node;
-    G m_graph;
-
-    typedef MapShared Shared;
-    Shared shared;
-    std::vector< Shared > shareds;
-    Shared getShared() { return shared; }
-    void setShared( Shared sh ) { shared = sh; }
 
     VertexId makeId( Node n ) {
         VertexId ret;

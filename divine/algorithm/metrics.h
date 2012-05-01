@@ -90,18 +90,8 @@ template< typename G, template < typename > class Topology, typename Statistics 
 struct Metrics : Algorithm, AlgorithmUtils< G >,
                  Parallel< Topology, Metrics< G, Topology, Statistics > >
 {
-    RPC_CLASS;
     typedef Metrics< G, Topology, Statistics > This;
-    typedef typename G::Node Node;
-
-    G m_graph;
-    typedef algorithm::Statistics Shared;
-    Shared shared;
-
-    void setShared( Shared sh ) { shared = sh; };
-    Shared getShared() { return shared; };
-
-    std::vector< Shared > shareds;
+    ALGORITHM_CLASS( G, algorithm::Statistics );
 
     visitor::ExpansionAction expansion( Node st )
     {
