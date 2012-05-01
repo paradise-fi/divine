@@ -34,8 +34,8 @@ struct TestMMap {
         assert_eq(map.size, 0u);
         assert_eq(map.buf, (const char*)0);
 
-    	map.map("/bin/ls");
-        assert_eq(map.filename, "/bin/ls");
+    	map.map("/bin/sh");
+        assert_eq(map.filename, "/bin/sh");
         assert(map.fd != -1);
         assert(map.size != 0u);
         assert(map.buf != (const char*)0);
@@ -49,7 +49,7 @@ struct TestMMap {
         assert_eq(map.size, 0u);
         assert_eq(map.buf, (const char*)0);
 
-        assert_eq(map1.filename, "/bin/ls");
+        assert_eq(map1.filename, "/bin/sh");
         assert(map1.fd != -1);
         assert(map1.size != 0u);
         assert(map1.buf != (const char*)0);
