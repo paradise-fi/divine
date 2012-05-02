@@ -157,7 +157,7 @@ void dve_compiler::gen_header()
 
     line( "using namespace divine;" );
 
-    line( divine::generator_custom_api_h_str );
+    line( divine::generator_cesmi_client_h_str );
     line();
 }
 
@@ -314,7 +314,7 @@ void dve_compiler::gen_initial_state()
 {
     setAllocator( new Allocator );
 
-    append( "extern \"C\" void get_initial( CustomSetup *setup, Blob *out )" );
+    append( "extern \"C\" void get_initial( CESMISetup *setup, Blob *out )" );
 
     block_begin();
     line( "Blob b( *(setup->pool), state_size + setup->slack );" );
@@ -747,7 +747,7 @@ void dve_compiler::gen_is_accepting()
     if(!have_property)
         return;
 
-    line( "extern \"C\" bool is_accepting( CustomSetup *setup, Blob b )" );
+    line( "extern \"C\" bool is_accepting( CESMISetup *setup, Blob b )" );
     block_begin();
 
     line( "state_struct_t &state = b.get< state_struct_t >( setup->slack );" );
@@ -774,7 +774,7 @@ void dve_compiler::print_generator()
     gen_state_struct();
     gen_initial_state();
 
-    line( "extern \"C\" void setup( CustomSetup *setup ) {" );
+    line( "extern \"C\" void setup( CESMISetup *setup ) {" );
     line( "    setup->state_size = state_size;" );
     line( "    setup->has_property = " + fmt( get_with_property() ) + ";" );
     line( "}" );
@@ -784,7 +784,7 @@ void dve_compiler::print_generator()
 
     gen_is_accepting();
 
-    line( "extern \"C\" int get_successor( CustomSetup *setup, int next_state, Blob from, Blob *to ) " );
+    line( "extern \"C\" int get_successor( CESMISetup *setup, int next_state, Blob from, Blob *to ) " );
     block_begin();
     line( "const state_struct_t *in = &from.get< state_struct_t >( setup->slack );" );
     line( "bool system_in_deadlock = false;" );

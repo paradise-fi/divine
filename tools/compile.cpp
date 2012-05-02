@@ -18,7 +18,7 @@ void Compile::compileMurphi( std::string in ) {
     sys::fs::deleteIfExists( outfile );
 
     sys::fs::writeFile( outfile, "\
-" + mu + compile_defines_str + pool_h_str + blob_h_str + generator_custom_api_h_str + "\
+" + mu + compile_defines_str + pool_h_str + blob_h_str + generator_cesmi_client_h_str + "\
 \n\
 using namespace divine;\n\
 extern \"C\" void setup( CustomSetup *s ) {\n\

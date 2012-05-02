@@ -10,7 +10,7 @@
 #include <divine/generator/dve.h>
 #include <divine/generator/llvm.h>
 #include <divine/generator/coin.h>
-#include <divine/generator/custom.h>
+#include <divine/generator/cesmi.h>
 #include <divine/generator/dummy.h>
 
 #ifndef DIVINE_SELECT_H
@@ -135,7 +135,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 #endif
     } else if ( wibble::str::endsWith( meta.input.model, ".so" ) ) {
         meta.input.modelType = "CESMI";
-        return makeAlgorithm< A, generator::Custom >( meta );
+        return makeAlgorithm< A, generator::CESMI >( meta );
 #ifndef O_SMALL
     } else if ( meta.input.dummygen ) {
         meta.input.modelType = "dummy";

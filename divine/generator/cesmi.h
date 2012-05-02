@@ -8,31 +8,31 @@
 #include <divine/dlfcn-win32.h>
 #endif
 
-#ifndef DIVINE_GENERATOR_CUSTOM_H
-#define DIVINE_GENERATOR_CUSTOM_H
+#ifndef DIVINE_GENERATOR_CESMI_H
+#define DIVINE_GENERATOR_CESMI_H
 
-#include <divine/generator/custom-api.h>
+#include <divine/generator/cesmi-client.h>
 
 namespace divine {
 namespace generator {
 
 /**
  * A binary model loader. The model is expected to be a shared object (i.e. .so
- * on ELF systems, and a .dll on win32).
+ * on ELF systems, and a .dll on win32) and conform to the CESMI specification.
  */
 
-struct Custom : public Common< Blob > {
+struct CESMI : public Common< Blob > {
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
     std::string file;
 
-    typedef void (*dl_setup_t)(CustomSetup *);
-    typedef void (*dl_get_initial_t)(CustomSetup *, char **);
-    typedef int (*dl_get_successor_t)(CustomSetup *, int, char *, char **);
-    typedef bool (*dl_is_accepting_t)(CustomSetup *, char *);
-    typedef char *(*dl_show_node_t)(CustomSetup *, char *);
-    typedef char *(*dl_show_transition_t)(CustomSetup *, char *, char *);
-    typedef void (*dl_cache_successors_t)(CustomSetup *, SuccessorCache *);
+    typedef void (*dl_setup_t)(CESMISetup *);
+    typedef void (*dl_get_initial_t)(CESMISetup *, char **);
+    typedef int (*dl_get_successor_t)(CESMISetup *, int, char *, char **);
+    typedef bool (*dl_is_accepting_t)(CESMISetup *, char *);
+    typedef char *(*dl_show_node_t)(CESMISetup *, char *);
+    typedef char *(*dl_show_transition_t)(CESMISetup *, char *, char *);
+    typedef void (*dl_cache_successors_t)(CESMISetup *, SuccessorCache *);
 
     struct Dl {
         void *handle;
@@ -53,7 +53,7 @@ struct Custom : public Common< Blob > {
         Node _from;
         mutable Node my;
         mutable int handle;
-        Custom *parent;
+        CESMI *parent;
 
         bool empty() const {
             if ( !_from.valid() )
@@ -85,7 +85,7 @@ struct Custom : public Common< Blob > {
         }
     };
 
-    CustomSetup setup;
+    CESMISetup setup;
 
     Successors successors( Node s ) {
         Successors succ;
@@ -137,7 +137,7 @@ struct Custom : public Common< Blob > {
             die( "FATAL: Could not resolve get_successor." );
 
 #ifndef O_POOLS
-        die( "FATAL: Pool support is required for the custom generator." );
+        die( "FATAL: Pool support is required for the CESMI generator." );
 #endif
 
         call_setup();
@@ -156,8 +156,8 @@ struct Custom : public Common< Blob > {
         return setup.has_property ? AC_Buchi : AC_None;
     }
 
-    Custom() {}
-    Custom( const Custom &other ) {
+    CESMI() {}
+    CESMI( const CESMI &other ) {
         dl = other.dl;
         setup = other.setup;
         call_setup();

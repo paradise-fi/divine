@@ -2,8 +2,8 @@
 
 // Not part of the DiVinE *library* headers.
 
-#ifndef DIVINE_GENERATOR_CUSTOM_API_H
-#define DIVINE_GENERATOR_CUSTOM_API_H
+#ifndef DIVINE_GENERATOR_CESMI_CLIENT_H
+#define DIVINE_GENERATOR_CESMI_CLIENT_H
 
 #define HINTCOUNT 128
 
@@ -86,7 +86,7 @@ struct SuccessorCache {
     CBlob out[HINTCOUNT * 4];
 };
 
-typedef struct CustomSetup {
+typedef struct CESMISetup {
 #ifdef __cplusplus
     union {
 #endif
@@ -101,6 +101,6 @@ typedef struct CustomSetup {
     int state_size; // The shared object fills this in. Use 0 for variable.
     int has_property; // set to 1 if this is a Buchi automaton (has accepting
                       // states and we are looking for cycles)
-} CustomSetup;
+} CESMISetup;
 
 #endif

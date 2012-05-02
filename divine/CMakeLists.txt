@@ -64,7 +64,7 @@ macro( stringify file )
     )
 endmacro( stringify )
 
-stringify( generator/custom-api.h )
+stringify( generator/cesmi-client.h )
 stringify( pool.h )
 #stringify( circular.h )
 stringify( blob.h )
@@ -77,7 +77,7 @@ add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_ALG}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
-    pool_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
+    pool_h_str.cpp blob_h_str.cpp generator_cesmi_client_h_str.cpp )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )

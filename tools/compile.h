@@ -10,7 +10,7 @@
 
 namespace divine {
 
-extern const char *generator_custom_api_h_str;
+extern const char *generator_cesmi_client_h_str;
 extern const char *pool_h_str;
 extern const char *circular_h_str;
 extern const char *blob_h_str;

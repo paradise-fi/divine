@@ -211,7 +211,7 @@ struct Combine {
         f << "#include <malloc.h>" << std::endl;
         f << "#include <algorithm>" << std::endl;
         f << divine::compile_defines_str << std::endl;
-        f << divine::generator_custom_api_h_str << std::endl;
+        f << divine::generator_cesmi_client_h_str << std::endl;
         f << divine::blob_h_str << std::endl;
         f << "using namespace divine;" << std::endl;
         f << graph_to_cpp( buchi( ltl, probabilistic ) );
