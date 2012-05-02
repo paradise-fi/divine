@@ -142,15 +142,10 @@ struct Main {
         if ( opts.foundCommand() == cmd_info )
             a = selectGraph< Info >( meta );
 
-        if (!a)
-           a = selectLtl( meta );
-        if (!a)
-            a = selectExploration( meta );
-        /* if (!a)
-           a = selectProbabilistic( meta ); */
+        if (!a) a = select( meta );
 
         if (!a)
-            die( "Booh." );
+            die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
 
         _meta = &a->meta();
 

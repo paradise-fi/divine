@@ -3,6 +3,7 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/porcp.h>
+#include <divine/ltlce.h>
 #include <divine/visitor.h>
 #include <wibble/sfinae.h> // Unit
 

@@ -150,9 +150,15 @@ algorithm::Algorithm *selectGraph( Meta &meta )
     return NULL;
 }
 
-algorithm::Algorithm *selectLtl( Meta &m );
-algorithm::Algorithm *selectExploration( Meta &m );
+algorithm::Algorithm *selectOWCTY( Meta &m );
+algorithm::Algorithm *selectMAP( Meta &m );
+algorithm::Algorithm *selectNDFS( Meta &m );
+algorithm::Algorithm *selectMetrics( Meta &m );
+algorithm::Algorithm *selectReachability( Meta &m );
 algorithm::Algorithm *selectProbabilistic( Meta &m );
+algorithm::Algorithm *selectCompact( Meta &m );
+
+algorithm::Algorithm *select( Meta &m );
 
 }
 

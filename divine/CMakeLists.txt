@@ -31,6 +31,7 @@ file( GLOB H_BA ltl2ba/*.hh )
 
 file( GLOB SRC_GEN generator/*.cpp )
 file( GLOB H_GEN generator/*.h )
+file( GLOB SRC_ALG algorithm/*.cpp )
 file( GLOB H_ALG algorithm/*.h )
 
 file( GLOB testh *.test.h llvm/*.test.h )
@@ -73,7 +74,8 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
+    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_ALG}
+    ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
     pool_h_str.cpp blob_h_str.cpp generator_custom_api_h_str.cpp )
 
