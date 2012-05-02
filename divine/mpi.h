@@ -120,8 +120,8 @@ public:
                 loop();
     }
 
-    rpc::bitstream &recvStream( wibble::sys::MutexLock &_lock,
-                                MPI::Status &st, rpc::bitstream &bs )
+    bitstream &recvStream( wibble::sys::MutexLock &_lock,
+                                MPI::Status &st, bitstream &bs )
     {
         MPI::COMM_WORLD.Probe( st.Get_source(), st.Get_tag(), st );
         int first = bs.bits.size(), count = st.Get_count( MPI::BYTE ) / 4;
@@ -133,8 +133,8 @@ public:
         return bs;
     }
 
-    rpc::bitstream &sendStream( wibble::sys::MutexLock &_lock,
-                                rpc::bitstream &bs, int to, int tag )
+    bitstream &sendStream( wibble::sys::MutexLock &_lock,
+                                bitstream &bs, int to, int tag )
     {
         debug() << "sending (tag = " << tag << ", to = " << to << "): "
                 << wibble::str::fmt( bs.bits ) << std::endl;
@@ -145,13 +145,13 @@ public:
     }
 
     void notifyOne( wibble::sys::MutexLock &_lock,
-                    int i, int tag, rpc::bitstream bs = rpc::bitstream() )
+                    int i, int tag, bitstream bs = bitstream() )
     {
         sendStream( _lock, bs, i, tag );
     }
 
     void notifySlaves( wibble::sys::MutexLock &_lock,
-                       int tag, rpc::bitstream bs = rpc::bitstream() )
+                       int tag, bitstream bs = bitstream() )
     {
         if ( !master() )
             return;
@@ -159,7 +159,7 @@ public:
     }
 
     void notify( wibble::sys::MutexLock &_lock,
-                 int tag, rpc::bitstream bs = rpc::bitstream() )
+                 int tag, bitstream bs = bitstream() )
     {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
@@ -417,7 +417,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     std::pair< int, int > accumCounts( wibble::sys::MutexLock &_lock, int id ) {
-        rpc::bitstream bs;
+        bitstream bs;
         bs << id;
 
         mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );

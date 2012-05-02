@@ -19,14 +19,14 @@ struct CeShared {
 };
 
 template< typename Node >
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const CeShared< Node > &sh )
+static inline bitstream &operator<<( bitstream &bs, const CeShared< Node > &sh )
 {
     return bs << sh.initial << sh.current << sh.successor << sh.successorPos
               << sh.current_updated;
 }
 
 template< typename Node >
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, CeShared< Node > &sh )
+static inline bitstream &operator>>( bitstream &bs, CeShared< Node > &sh )
 {
     return bs >> sh.initial >> sh.current >> sh.successor >> sh.successorPos
               >> sh.current_updated;

@@ -71,12 +71,12 @@ struct Statistics {
 
 };
 
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, Statistics st )
+static inline bitstream &operator<<( bitstream &bs, Statistics st )
 {
     return bs << st.states << st.transitions << st.expansions << st.accepting << st.deadlocks;
 }
 
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, Statistics &st )
+static inline bitstream &operator>>( bitstream &bs, Statistics &st )
 {
     return bs >> st.states >> st.transitions >> st.expansions >> st.accepting >> st.deadlocks;
 }

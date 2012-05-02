@@ -2,9 +2,8 @@
 
 #include <wibble/sfinae.h>
 #include <wibble/test.h>
-#include <deque>
-#include <string>
-#include <stdint.h>
+
+#include <divine/bitstream.h>
 
 #ifndef DIVINE_RPC_H
 #define DIVINE_RPC_H
@@ -13,63 +12,6 @@
 
 namespace divine {
 namespace rpc {
-
-struct bitstream {
-    std::deque< uint32_t > bits;
-    void clear() { bits.clear(); }
-    bool empty() { return bits.empty(); }
-};
-
-template< typename X > struct bitstream_container {};
-template< typename T > struct bitstream_container< std::vector< T > > {
-    typedef bitstream stream; };
-template< typename T > struct bitstream_container< std::deque< T > > {
-    typedef bitstream stream; };
-template<> struct bitstream_container< std::string > {
-    typedef bitstream stream; };
-
-template< typename X > struct bitstream_int {};
-template<> struct bitstream_int< bool > { typedef bitstream stream; };
-template<> struct bitstream_int< char > { typedef bitstream stream; };
-template<> struct bitstream_int< int8_t > { typedef bitstream stream; };
-template<> struct bitstream_int< int16_t > { typedef bitstream stream; };
-template<> struct bitstream_int< int32_t > { typedef bitstream stream; };
-template<> struct bitstream_int< uint8_t > { typedef bitstream stream; };
-template<> struct bitstream_int< uint16_t > { typedef bitstream stream; };
-template<> struct bitstream_int< uint32_t > { typedef bitstream stream; };
-
-template< typename X >
-typename bitstream_container< X >::stream &operator<<( bitstream &bs, X x ) {
-    bs << x.size();
-    for ( typename X::const_iterator i = x.begin(); i != x.end(); ++i )
-        bs << *i;
-    return bs;
-}
-
-template< typename T >
-typename bitstream_int< T >::stream &operator<<( bitstream &bs, T i ) {
-    bs.bits.push_back( i );
-    return bs;
-}
-
-template< typename T >
-typename bitstream_int< T >::stream &operator>>( bitstream &bs, T &x ) {
-    x = bs.bits.front();
-    bs.bits.pop_front();
-    return bs;
-}
-
-template< typename X >
-typename bitstream_container< X >::stream &operator>>( bitstream &bs, X &x ) {
-    int size;
-    bs >> size;
-    for ( int i = 0; i < size; ++ i ) {
-        typename X::value_type tmp;
-        bs >> tmp;
-        x.push_back( tmp );
-    }
-    return bs;
-}
 
 /* --------------------------------------------------------------------------
    ---- some helpers (maybe try to lift this from a lib somewhere?)

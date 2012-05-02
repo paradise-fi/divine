@@ -371,7 +371,7 @@ struct Mpi : MpiMonitor
     divine::Mpi mpi;
     Local< Instance > m_local;
     MpiForwarder< Comms > m_mpiForwarder;
-    rpc::bitstream async_retval;
+    bitstream async_retval;
     int request_source;
 
     Comms &comms() { return m_local.comms(); }
@@ -401,7 +401,7 @@ struct Mpi : MpiMonitor
     template< typename Bit >
     void distribute( Bit bit, void (Instance::*set)( Bit ) )
     {
-        rpc::bitstream bs;
+        bitstream bs;
         rpc::marshall( set, bit, bs );
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
@@ -413,13 +413,13 @@ struct Mpi : MpiMonitor
     {
         m_local.collect( bits, get );
 
-        rpc::bitstream bs;
+        bitstream bs;
         rpc::marshall( get, bs );
         if ( mpi.master() ) {
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
-                rpc::bitstream response;
+                bitstream response;
                 MPI::Status st;
                 MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_COLLECT, st );
                 mpi.recvStream( _lock, st, response );
@@ -430,7 +430,7 @@ struct Mpi : MpiMonitor
 
     void parallel( void (Instance::*fun)() )
     {
-        rpc::bitstream bs;
+        bitstream bs;
         rpc::marshall( fun, bs );
 
         {
@@ -446,7 +446,7 @@ struct Mpi : MpiMonitor
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) ) {
 
-        rpc::bitstream bs;
+        bitstream bs;
 
         x = m_local.ring( x, fun );
         rpc::marshall( fun, x, bs );
@@ -492,7 +492,7 @@ struct Mpi : MpiMonitor
         void operator()( MPIT &mpit, X (Instance::*fun)() )
         {
             std::vector< X > bits;
-            rpc::bitstream bs;
+            bitstream bs;
             mpit.collect( bits, fun );
             bs << bits;
 
@@ -509,7 +509,7 @@ struct Mpi : MpiMonitor
     /* The slave monitor */
     Loop process( wibble::sys::MutexLock &_lock, MPI::Status &status ) {
 
-        rpc::bitstream in, out;
+        bitstream in, out;
 
         mpi.debug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
         mpi.recvStream( _lock, status, in );

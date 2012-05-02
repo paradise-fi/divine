@@ -21,12 +21,12 @@ struct ReachabilityShared {
     bool need_expand;
 };
 
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, ReachabilityShared st )
+static inline bitstream &operator<<( bitstream &bs, ReachabilityShared st )
 {
     return bs << st.goal << st.deadlocked << st.stats << st.ce << st.need_expand;
 }
 
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, ReachabilityShared &st )
+static inline bitstream &operator>>( bitstream &bs, ReachabilityShared &st )
 {
     return bs >> st.goal >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
 }

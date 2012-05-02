@@ -24,13 +24,13 @@ struct OwctyShared {
     OwctyShared() : cycle_found( false ) {}
 };
 
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const OwctyShared &sh )
+static inline bitstream &operator<<( bitstream &bs, const OwctyShared &sh )
 {
     return bs << sh.size << sh.oldsize << sh.cycle_node << sh.cycle_found
               << sh.iteration << sh.ce << sh.stats << sh.need_expand;
 }
 
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, OwctyShared &sh )
+static inline bitstream &operator>>( bitstream &bs, OwctyShared &sh )
 {
     return bs >> sh.size >> sh.oldsize >> sh.cycle_node >> sh.cycle_found
               >> sh.iteration >> sh.ce >> sh.stats >> sh.need_expand;

@@ -270,7 +270,7 @@ inline Blob unblob( Blob b ) {
 }
 
 #ifndef DIVINE_EMBED
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, Blob &blob )
+static inline bitstream &operator>>( bitstream &bs, Blob &blob )
 {
     int size, off = 0;
     bs >> size;
@@ -290,7 +290,7 @@ static inline rpc::bitstream &operator>>( rpc::bitstream &bs, Blob &blob )
     return bs;
 }
 
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, Blob blob )
+static inline bitstream &operator<<( bitstream &bs, Blob blob )
 {
     if ( !blob.valid() )
         return bs << 0;
@@ -313,10 +313,10 @@ namespace str {
 
 template<>
 inline std::string fmt( const divine::Blob &b ) {
-    std::deque< int > v;
-    b.write32( std::back_inserter( v ) );
-    v.pop_front();
-    return fmt( v );
+    divine::bitstream bs;
+    bs << b;
+    bs.bits.pop_front(); /* remove size */
+    return fmt( bs.bits );
 }
 
 }

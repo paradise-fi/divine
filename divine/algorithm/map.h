@@ -48,13 +48,13 @@ struct MapShared {
     bool need_expand;
 };
 
-static inline rpc::bitstream &operator<<( rpc::bitstream &bs, const MapShared &sh )
+static inline bitstream &operator<<( bitstream &bs, const MapShared &sh )
 {
     return bs << sh.stats << sh.ce << sh.iteration << sh.need_expand
               << sh.accepting << sh.expanded << sh.eliminated;
 }
 
-static inline rpc::bitstream &operator>>( rpc::bitstream &bs, MapShared &sh )
+static inline bitstream &operator>>( bitstream &bs, MapShared &sh )
 {
     return bs >> sh.stats >> sh.ce >> sh.iteration >> sh.need_expand
               >> sh.accepting >> sh.expanded >> sh.eliminated;
