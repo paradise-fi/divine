@@ -58,6 +58,7 @@ template< typename T, typename F, int n >
 int findID_helper( wibble::NotPreferred, F f );
 
 template< typename F > int check( F f );
+template< typename F > void check_void( F f );
 
 template< typename T, typename F, int n >
 auto findID_helper( wibble::Preferred, F f ) ->
