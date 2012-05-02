@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
+#ifdef O_LEGACY
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <divine/legacy/system/dve/dve_prob_explicit_system.hh>
 #include <divine/legacy/system/bymoc/bymoc_explicit_system.hh>
@@ -264,4 +265,5 @@ struct LegacyBymoc : LegacyCommon< Blob, bymoc_explicit_system_t, succ_container
 }
 }
 
+#endif
 #endif

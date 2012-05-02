@@ -52,6 +52,7 @@ struct Compile {
     }
 
     void compileDve( std::string in ) {
+#ifdef O_LEGACY
         dve_compiler compiler;
         compiler.read( in.c_str() );
         compiler.analyse();
@@ -62,6 +63,9 @@ struct Compile {
         compiler.print_generator();
 
         gplusplus( outfile, str::basename( in ) + ".so" );
+#else
+        die( "FATAL: The DVE compiler requires LEGACY code." );
+#endif
     }
 
     void compileMurphi( std::string in );

@@ -31,6 +31,7 @@ option( COIN "include the CoIn interpreter in the build" ON )
 option( LTL3BA "use ltl3ba for LTL to BA translation" ON )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
+option( LEGACY "include the legacy DVE and BYMOC interpreters" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
@@ -100,6 +101,10 @@ endif()
 
 if( DVE )
     add_definitions( -DO_DVE )
+endif()
+
+if( LEGACY )
+    add_definitions( -DO_LEGACY )
 endif()
 
 if( MPIDEBUG )

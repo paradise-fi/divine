@@ -10,10 +10,12 @@
 namespace divine {
 
 struct LegacyAllocator {
+#ifdef O_LEGACY
     virtual state_t duplicate_state( const state_t &state ) = 0;
     virtual state_t new_state( std::size_t size ) = 0;
     virtual void delete_state( state_t &st ) = 0;
     virtual ~LegacyAllocator() {}
+#endif
 };
 
 struct Allocator : LegacyAllocator {
@@ -25,6 +27,13 @@ struct Allocator : LegacyAllocator {
     void setSlack( int s ) { _slack = s; }
     Pool &pool() { return _pool; }
 
+    Blob new_blob( std::size_t size ) {
+        Blob b = Blob( pool(), size + _slack );
+        b.clear();
+        return b;
+    }
+
+#ifdef O_LEGACY
     virtual state_t legacy_state( Blob b ) {
         divine::state_t s;
         s.size = b.size() - _slack;
@@ -50,16 +59,11 @@ struct Allocator : LegacyAllocator {
         return legacy_state( b );
     }
 
-    Blob new_blob( std::size_t size ) {
-        Blob b = Blob( pool(), size + _slack );
-        b.clear();
-        return b;
-    }
-
     void delete_state( state_t &st ) {
         Blob a( st.ptr, true );
         a.free( pool() );
     }
+#endif
 };
 
 }

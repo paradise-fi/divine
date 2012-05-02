@@ -10,9 +10,11 @@ include( ../wibble/test.cmake )
 file( GLOB SRC_TOP *.cpp )
 file( GLOB H_TOP *.h )
 
-file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
-                      legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
-file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
+if ( LEGACY )
+   file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
+                         legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
+   file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
+endif()
 
 if( COIN )
     file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)

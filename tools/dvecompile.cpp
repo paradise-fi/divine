@@ -13,6 +13,7 @@ const char *compile_defines_str = "\
 #define DIVINE_EMBED\n";
 }
 
+#ifdef O_LEGACY
 void dve_compiler::write_C(dve_expression_t & expr, std::ostream & ostr, std::string state_name)
 {
     std::map< int, const char * > op;
@@ -831,3 +832,4 @@ void dve_compiler::print_generator()
     block_end();
 #endif
 }
+#endif

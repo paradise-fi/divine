@@ -76,7 +76,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 {
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
         meta.input.modelType = "DVE";
-#ifndef O_SMALL
+#if defined(O_LEGACY) && !defined(O_SMALL)
         if ( meta.algorithm.fairness ) {
             if ( meta.algorithm.por )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
@@ -87,13 +87,14 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         } else
 #endif
         {
-#ifdef O_DVE
+#if defined(O_DVE)
             return makeAlgorithm< A, generator::Dve >( meta );
-#else
+#endif
+#if defined(O_LEGACY)
             return makeAlgorithm< A, generator::LegacyDve >( meta );
 #endif
         }
-#ifndef O_SMALL
+#if defined(O_LEGACY) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".probdve" ) ) {
         meta.input.modelType = "ProbDVE";
         return makeAlgorithm< A, generator::LegacyProbDve >( meta );
@@ -128,7 +129,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         return NULL;
 #endif
 
-#ifndef O_SMALL
+#if defined(O_LEGACY) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".b" ) ) {
         meta.input.modelType = "NIPS";
         return makeAlgorithm< A, generator::LegacyBymoc >( meta );

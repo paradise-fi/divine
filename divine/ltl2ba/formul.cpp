@@ -11,11 +11,7 @@
 #include <iterator>
 #include <algorithm>
 #include "formul.hh"
-
-#include <sevine.h>
-
-// #include "error/error.hh"
-// #include "deb/deb.hh"
+#include <wibble/test.h> // for assert_die
 
 #ifndef DOXYGEN_PROCESSING
 
@@ -1081,12 +1077,16 @@ bool LTL_formul_t::is_pure_event()
 			return(obsah.o1->arg1->is_pure_event() &&
 				obsah.o1->arg2->is_pure_event());
 			break;
-                default: gerr << "Unexpected value of variable \"obsah.o1->op\"" << thr();
+                    default:
+                        std::cerr << "Unexpected value of variable \"obsah.o1->op\"" << std::endl;
+                        assert_die();
                 return false; //unreachable
                 break;
 		}
 		break;
-        default: gerr << "Unexpected value of variable \"what\"" << thr();
+        default:
+            std:cerr << "Unexpected value of variable \"what\"" << std::endl;
+            assert_die();
             return false; //unreachable
             break;
 	}
@@ -1118,12 +1118,16 @@ bool LTL_formul_t::is_pure_universal()
 			return(obsah.o1->arg1->is_pure_universal() &&
 				obsah.o1->arg2->is_pure_universal());
 			break;
-                default: gerr << "Unexpected value of variable \"obsah.o1->op\"" << thr();
+                default:
+                    std::cerr << "Unexpected value of variable \"obsah.o1->op\"" << std::endl;
+                    assert_die();
                 return false; //unreachable
                 break;
 		}
 		break;
-        default: gerr << "Unexpected value of variable \"what\"" << thr();
+        default:
+            std::cerr << "Unexpected value of variable \"what\"" << std::endl;
+            assert_die();
             return false; //unreachable
             break;
 	}

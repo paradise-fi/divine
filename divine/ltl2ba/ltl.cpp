@@ -10,11 +10,8 @@
 #include <string>
 #include "ltl.hh"
 #include "formul.hh"
+#include <wibble/test.h> // assert_die
 
-#include <sevine.h>
-
-//#include "error/error.hh"
-//#include "deb/deb.hh"
 
 #ifndef DOXYGEN_PROCESSING
 using namespace std;
@@ -219,7 +216,7 @@ synt_an_el konvert_synt_el(LTL_syntax_el_t e)
 	case ltl_atom: return(an_atom); break;
         case divine::end: return(an_end); break;
 	case unknown: return(an_unknown); break;
-        default: gerr << "Unexpected value of \"e\"" << thr();
+            default: std:cerr << "Unexpected value of \"e\"" << std::endl; assert_die();
                  return an_unknown; //unreachable
                  break;
 	}

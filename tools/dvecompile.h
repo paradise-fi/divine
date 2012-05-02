@@ -1,4 +1,6 @@
 // -*- C++ -*- (c) 2009, 2010 Milan Ceska & Petr Rockai
+#ifdef O_LEGACY
+
 #include <divine/legacy/system/dve/dve_explicit_system.hh>
 #include <string>
 #include <math.h>
@@ -198,4 +200,5 @@ struct dve_compiler: public dve_explicit_system_t
     void print_generator();
 };
 
+#endif
 #endif
