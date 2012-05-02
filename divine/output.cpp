@@ -78,11 +78,15 @@ struct StdIO : divine::Output, proxycall {
     }
 
     std::ostream &debug() {
-        // wibble::sys::MutexLock __l( mutex );
+#if defined(O_MPIDEBUG)
+        wibble::sys::MutexLock __l( mutex );
+        repeat( last < ::time( 0 ) );
+        return std::cerr;
+#else
         static struct : std::streambuf {} buf;
         static std::ostream null(&buf);
-        // repeat( last < ::time( 0 ) );
         return null;
+#endif
     }
 
     std::ostream &progress() {

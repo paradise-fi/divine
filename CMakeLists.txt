@@ -37,6 +37,8 @@ option( GUI "compile the Qt GUI" ON )
 option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
 option( HOARD "use HOARD SMP memory allocator" ON )
 
+option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
+
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 set( VERSION_APPEND "" CACHE STRING "Optional version suffix." )
@@ -98,6 +100,10 @@ endif()
 
 if( DVE )
     add_definitions( -DO_DVE )
+endif()
+
+if( MPIDEBUG )
+    add_definitions( -DO_MPIDEBUG )
 endif()
 
 if( PROFILE )
