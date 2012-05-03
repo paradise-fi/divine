@@ -52,7 +52,7 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::NonPORGraph< Graph >, LocalTopology, NoStatistics >( meta, true );
+        return new A< algorithm::NonPORGraph< Graph >, Topology<>::Local, NoStatistics >( meta, true );
     else
 #endif
         return new A< algorithm::NonPORGraph< Graph >, Topology<>::Mpi, Statistics >( meta, true );
