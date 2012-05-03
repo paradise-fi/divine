@@ -72,6 +72,10 @@ template< typename B > struct integer< B, uint8_t > { typedef base< B > stream; 
 template< typename B > struct integer< B, uint16_t > { typedef base< B > stream; };
 template< typename B > struct integer< B, uint32_t > { typedef base< B > stream; };
 
+template< typename B, typename X > struct int64 {};
+template< typename B > struct int64< B, uint64_t > { typedef base< B > stream; };
+template< typename B > struct int64< B, int64_t > { typedef base< B > stream; };
+
 template< typename B, typename X >
 typename container< B, X >::stream &operator<<( base< B > &bs, X x ) {
     bs << x.size();
@@ -86,6 +90,14 @@ typename integer< B, T >::stream &operator<<( base< B > &bs, T i ) {
     return bs;
 }
 
+template< typename B, typename T >
+typename int64< B, T >::stream &operator<<( base< B > &bs, T i ) {
+    union { uint64_t x; struct { uint32_t a; uint32_t b; }; };
+    x = i;
+    bs << a << b;
+    return bs;
+}
+
 template< typename B, typename T1, typename T2 >
 base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
     return bs << i.first << i.second;
@@ -95,6 +107,14 @@ template< typename B, typename T >
 typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
     x = bs.front();
     bs.shift();
+    return bs;
+}
+
+template< typename B, typename T >
+typename int64< B, T >::stream &operator>>( base< B > &bs, T &i ) {
+    union { uint64_t x; struct { uint32_t a; uint32_t b; }; };
+    bs >> a >> b;
+    i = x;
     return bs;
 }
 

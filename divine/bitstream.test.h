@@ -25,4 +25,15 @@ struct TestBitstream {
         bs >> x; assert_eq( x, 3 );
         assert( bs.empty() );
     }
+
+    Test _bitstream_64() {
+        bitstream bs;
+        bs << 1ll << 2ll << 3ll;
+        uint64_t x;
+        bs >> x; assert_eq( x, 1 );
+        bs >> x; assert_eq( x, 2 );
+        bs >> x; assert_eq( x, 3 );
+        assert( bs.empty() );
+    }
+
 };
