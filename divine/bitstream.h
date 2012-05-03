@@ -4,6 +4,9 @@
 #include <deque>
 #include <string>
 
+#include <divine/blob.h>
+#include <divine/pool.h>
+
 #ifndef DIVINE_BITSTREAM_H
 #define DIVINE_BITSTREAM_H
 
@@ -13,9 +16,42 @@ namespace bitstream_impl {
 template< typename Bits >
 struct base {
     Bits bits;
+    Pool *pool;
+
     void clear() { bits.clear(); }
     bool empty() { return bits.empty(); }
     size_t size() { return bits.size(); }
+    void shift() { bits.pop_front(); }
+    uint32_t &front() { return bits.front(); }
+    void push( uint32_t i ) { bits.push_back( i ); }
+    base() : pool( 0 ) {}
+};
+
+struct block : std::vector< uint32_t > {};
+
+template<> struct base< block > {
+    block bits;
+    int offset;
+    Pool *pool;
+
+    void clear() { bits.clear(); offset = 0; }
+    void maybeclear() {
+        if ( offset == bits.size() )
+            clear();
+    }
+
+    bool empty() {
+        maybeclear();
+        return bits.empty();
+    }
+    size_t size() { return bits.size(); }
+    void shift() {
+        ++ offset;
+        maybeclear();
+    }
+    void push( uint32_t i ) { bits.push_back( i ); }
+    uint32_t &front() { return bits[ offset ]; }
+    base() : offset( 0 ), pool( 0 ) {}
 };
 
 template< typename B, typename X > struct container {};
@@ -46,14 +82,19 @@ typename container< B, X >::stream &operator<<( base< B > &bs, X x ) {
 
 template< typename B, typename T >
 typename integer< B, T >::stream &operator<<( base< B > &bs, T i ) {
-    bs.bits.push_back( i );
+    bs.push( i );
     return bs;
+}
+
+template< typename B, typename T1, typename T2 >
+base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
+    return bs << i.first << i.second;
 }
 
 template< typename B, typename T >
 typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
-    x = bs.bits.front();
-    bs.bits.pop_front();
+    x = bs.front();
+    bs.shift();
     return bs;
 }
 
@@ -69,10 +110,55 @@ typename container< B, X >::stream &operator>>( base< B > &bs, X &x ) {
     return bs;
 }
 
+template< typename B, typename T1, typename T2 >
+base< B > &operator>>( base< B > &bs, std::pair< T1, T2 > &i ) {
+    return bs >> i.first >> i.second;
+}
+
+/* NB. The previous contents of the blob that's read is *not released*. */
+template< typename B >
+base< B > &operator>>( base< B > &bs, Blob &blob )
+{
+    int size, off = 0;
+    bs >> size;
+
+    if ( !size ) {
+        blob = Blob();
+        return bs;
+    }
+
+    if ( bs.pool )
+        blob = Blob( *bs.pool, size );
+    else
+        blob = Blob( size );
+
+    while ( off < blob.size() ) {
+        bs >> blob.get< uint32_t >( off );
+        off += 4;
+    }
+
+    return bs;
+}
+
+template< typename B >
+base< B > &operator<<( base< B > &bs, Blob blob )
+{
+    if ( !blob.valid() )
+        return bs << 0;
+
+    bs << blob.size();
+    int off = 0;
+    while ( off < blob.size() ) {
+        bs << blob.get< uint32_t >( off );
+        off += 4;
+    }
+    return bs;
+}
+
 }
 
 typedef bitstream_impl::base< std::deque< uint32_t > > bitstream;
-typedef bitstream_impl::base< std::vector< uint32_t > > bitblock;
+typedef bitstream_impl::base< bitstream_impl::block > bitblock;
 
 }
 

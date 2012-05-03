@@ -7,10 +7,7 @@
 
 #ifndef DIVINE_EMBED
 #include <wibble/test.h> // for assert*
-#include <wibble/string.h>
 #include <divine/hash.h>
-#include <divine/rpc.h> // for bitstream
-#include <divine/pool.h> // for FakePool
 #endif
 
 #ifndef DIVINE_BLOB_H
@@ -269,45 +266,12 @@ inline Blob unblob( Blob b ) {
     return b;
 }
 
-#ifndef DIVINE_EMBED
-static inline bitstream &operator>>( bitstream &bs, Blob &blob )
-{
-    int size, off = 0;
-    bs >> size;
-
-    if ( !size ) {
-        blob = Blob();
-        return bs;
-    }
-
-    FakePool fp;
-    blob = Blob( fp, size );
-    while ( off < blob.size() ) {
-        bs >> blob.get< uint32_t >( off );
-        off += 4;
-    }
-
-    return bs;
-}
-
-static inline bitstream &operator<<( bitstream &bs, Blob blob )
-{
-    if ( !blob.valid() )
-        return bs << 0;
-
-    bs << blob.size();
-    int off = 0;
-    while ( off < blob.size() ) {
-        bs << blob.get< uint32_t >( off );
-        off += 4;
-    }
-    return bs;
-}
-#endif
-
 }
 
 #ifndef DIVINE_EMBED
+#include <wibble/string.h>
+#include <divine/bitstream.h>
+
 namespace wibble {
 namespace str {
 
