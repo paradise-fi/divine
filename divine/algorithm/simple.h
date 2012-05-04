@@ -11,51 +11,10 @@
 namespace divine {
 namespace algorithm {
 
-template< typename > struct Simple;
-
-// MPI function-to-number-and-back-again drudgery... To be automated.
-template< typename G >
-struct _MpiId< Simple< G > >
+template< typename G, template< typename > class Topology, typename Stats >
+struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, Topology, Stats > >
 {
-    typedef Simple< G > A;
-
-    static int to_id( void (A::*f)() ) {
-        assert_eq( f, &A::_visit );
-        return 0;
-    }
-
-    static void (A::*from_id( int n ))()
-    {
-        assert_eq( n, 0 );
-        return &A::_visit;
-    }
-
-    template< typename O >
-    static void writeShared( typename A::Shared s, O o ) {
-        *o++ = s.initialTable;
-        s.stats.write( o );
-    }
-
-    template< typename I >
-    static I readShared( typename A::Shared &s, I i ) {
-        s.initialTable = *i++;
-        return s.stats.read( i );
-    }
-};
-// END MPI drudgery
-
-template< typename G >
-struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G > >
-{
-    typedef Simple< G > This;
-    typedef typename G::Node Node;
-    typedef typename G::Successors Successors;
-
-    struct Shared {
-        algorithm::Statistics< G > stats;
-        G g;
-        int initialTable;
-    } shared;
+    ALGORITHM_CLASS( G, algorithm::Statistics );
 
     std::deque< Successors > localqueue;
 
@@ -80,10 +39,10 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
             if ( !this->table().valid( in_table ) ) {
                 this->table().insertHinted( to, hint );
                 to.header().permanent = 1; // don't ever release this
-                localqueue.push_back( shared.g.successors( to ) );
-                shared.stats.addNode( shared.g, to );
+                localqueue.push_back( m_graph.successors( to ) );
+                shared.stats.addNode( m_graph, to );
             } else {
-                shared.g.release( to );
+                m_graph.release( to );
                 to = in_table;
             }
             // from now on "to" always refers to the node in the hash table
@@ -92,15 +51,15 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
     }
 
     void _visit() { // parallel
-        this->comms().notify( this->globalId(), &shared.g.pool() );
-        Node initial = shared.g.initial();
+        this->comms().notify( this->globalId(), &m_graph.pool() );
+        Node initial = m_graph.initial();
         if ( owner( initial ) == this->globalId() ) {
             this->table().insert( initial );
             initial.header().permanent = 1;
-            shared.stats.addNode( shared.g, initial );
-            localqueue.push_back( shared.g.successors( initial ) );
+            shared.stats.addNode( m_graph, initial );
+            localqueue.push_back( m_graph.successors( initial ) );
         } else
-            shared.g.release( initial );
+            m_graph.release( initial );
 
         do {
             // process incoming stuff from other workers
@@ -129,7 +88,7 @@ struct Simple : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Simple< G 
     {
         if ( master )
             this->becomeMaster( &shared, m.execution.threads );
-        this->init( &shared.g, this );
+        this->init( this );
     }
 
     void run() {
