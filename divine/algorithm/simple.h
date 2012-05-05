@@ -14,13 +14,11 @@ namespace algorithm {
 template< typename G, template< typename > class Topology, typename Stats >
 struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, Topology, Stats > >
 {
+    typedef Metrics< G, Topology, Stats > This;
     ALGORITHM_CLASS( G, algorithm::Statistics );
+    typedef typename G::Successors Successors;
 
     std::deque< Successors > localqueue;
-
-    Domain< This > &domain() {
-        return DomainWorker< This >::domain();
-    }
 
     int owner( Node n ) {
         return hasher( n ) % this->peers();
@@ -35,12 +33,12 @@ struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, T
         } else { // we own this node, so let's process it
             Node in_table = this->table().getHinted( to, hint );
 
-            shared.stats.addEdge();
+            shared.addEdge();
             if ( !this->table().valid( in_table ) ) {
                 this->table().insertHinted( to, hint );
                 to.header().permanent = 1; // don't ever release this
                 localqueue.push_back( m_graph.successors( to ) );
-                shared.stats.addNode( m_graph, to );
+                shared.addNode( m_graph, to );
             } else {
                 m_graph.release( to );
                 to = in_table;
@@ -56,7 +54,7 @@ struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, T
         if ( owner( initial ) == this->globalId() ) {
             this->table().insert( initial );
             initial.header().permanent = 1;
-            shared.stats.addNode( m_graph, initial );
+            shared.addNode( m_graph, initial );
             localqueue.push_back( m_graph.successors( initial ) );
         } else
             m_graph.release( initial );
@@ -87,24 +85,23 @@ struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, T
         : Algorithm( m, 0 )
     {
         if ( master )
-            this->becomeMaster( &shared, m.execution.threads );
+            this->becomeMaster( m.execution.threads, m );
         this->init( this );
     }
 
     void run() {
         progress() << "  exploring... \t\t\t\t" << std::flush;
-        domain().parallel( meta() ).run( shared, &This::_visit );
+        this->parallel( &This::_visit );
         progress() << "   done" << std::endl;
 
-        for ( int i = 0; i < domain().peers(); ++i ) {
-            Shared &s = domain().shared( i );
-            shared.stats.merge( s.stats );
+        for ( int i = 0; i < shareds.size(); ++i ) {
+            shared.merge( shareds[ i ] );
         }
 
-        shared.stats.print( progress() );
+        shared.print( progress() );
 
         result().fullyExplored = meta::Result::Yes;
-        shared.stats.update( meta().statistics );
+        shared.update( meta().statistics );
     }
 };
 
