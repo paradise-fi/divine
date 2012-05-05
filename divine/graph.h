@@ -44,6 +44,20 @@ struct Base {
 
     void useProperty( meta::Input & ) {}
 
+    /// Makes a nonpermanent copy of a state
+    Node copyState( Node n ) {
+        Node copy( pool(), n.size() );
+        n.copyTo( copy );
+        copy.header().permanent = false;
+        return copy;
+    }
+
+    /// Makes a duplicate that can be released (permanent states are not duplicated)
+    Node clone( Node n ) {
+        assert( n.valid() );
+        return n.header().permanent ? n : copyState( n );
+    }
+
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
@@ -97,6 +111,7 @@ struct Transform {
     }
 
     int setSlack( int s ) { return base().setSlack( s ); }
+    Node clone( Node n ) { return base().clone( n ); }
 
     template< typename O >
     O getProperties( O o ) {
@@ -111,20 +126,6 @@ struct Transform {
     template< typename Hash, typename Worker >
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
         return base().owner( hash, worker, n, hint );
-    }
-
-	/// Makes a nonpermanent copy of a state
-    Node copyState( Node n ) {
-        Node copy( base().pool(), n.size() );
-        n.copyTo( copy );
-        copy.header().permanent = false;
-        return copy;
-    }
-
-    /// Makes a duplicate that can be released (permanent states are not duplicated)
-    Node clone( Node n ) {
-        assert( n.valid() );
-        return n.header().permanent ? n : copyState( n );
     }
 
     /// Returns a position between 1 and n
