@@ -36,12 +36,14 @@ struct Main {
         meta.input.modelType = "Legacy DVE";
 
         try {
-            algorithm::Simple< generator::LegacyDve > alg( meta, true );
-            alg.domain().mpi.init( meta );
-            meta.execution.nodes = alg.domain().mpi.size();
-            meta.execution.thisNode = alg.domain().mpi.rank();
+            Mpi mpi;
+            algorithm::Simple< generator::LegacyDve, Topology<>::Mpi, NoStatistics >
+                alg( meta, true );
 
-            alg.domain().mpi.start();
+            meta.execution.nodes = mpi.size();
+            meta.execution.thisNode = mpi.rank();
+            mpi.start();
+
             alg.run();
             report.finished();
             if ( o_report->boolValue() )
