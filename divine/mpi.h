@@ -93,11 +93,11 @@ public:
     typedef MpiStatus Status;
 
 #ifdef O_MPI
-    const int anySource = MPI::ANY_SOURCE;
-    const int anyTag = MPI::ANY_TAG;
+    static const int anySource = MPI::ANY_SOURCE;
+    static const int anyTag = MPI::ANY_TAG;
 #else
-    const int anySource = 42;
-    const int anyTag = 42;
+    static const int anySource = 42;
+    static const int anyTag = 42;
 #endif
 
     Data &global() {
