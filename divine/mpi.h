@@ -36,11 +36,23 @@ namespace divine {
 enum Loop { Continue, Done };
 
 #ifdef O_MPI
+typedef MPI::Status MpiStatus;
+typedef MPI::Request MpiRequest;
+#else
+struct MpiRequest {
+    bool Test() { return true; }
+};
+struct MpiStatus {
+    int Get_tag() { return 0; }
+    int Get_source() { return 0; }
+};
+#endif
+
 
 struct MpiMonitor {
     // Called when a message with a matching tag has been received. The status
     // object for the message is handed in.
-    virtual Loop process( wibble::sys::MutexLock &, MPI::Status & ) = 0;
+    virtual Loop process( wibble::sys::MutexLock &, MpiStatus & ) = 0;
 
     // Called whenever there is a pause in incoming traffic (i.e. a nonblocking
     // probe fails). A blocking probe will follow each call to progress().
@@ -78,18 +90,59 @@ private:
     static Data *s_data;
 
 public:
+    typedef MpiStatus Status;
+
+#ifdef O_MPI
+    const int anySource = MPI::ANY_SOURCE;
+    const int anyTag = MPI::ANY_TAG;
+#else
+    const int anySource = 42;
+    const int anyTag = 42;
+#endif
+
     Data &global() {
         return *s_data;
     }
 
-    void send( const void *buf, int count, const MPI::Datatype &dt, int dest, int tag ) {
+    void send( const void *buf, int count, int dest, int tag ) {
         wibble::sys::MutexLock _lock( global().mutex );
-        send( _lock, buf, count, dt, dest, tag );
+        send( _lock, buf, count, dest, tag );
     }
 
-    void send( wibble::sys::MutexLock &, const void *buf, int count,
-               const MPI::Datatype &dt, int dest, int tag ) {
-        MPI::COMM_WORLD.Send( buf, count, dt, dest, tag );
+    void send( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
+#ifdef O_MPI
+            return MPI::COMM_WORLD.Send( buf, count, MPI::BYTE, dest, tag );
+#endif
+    }
+
+    MpiRequest isend( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
+#ifdef O_MPI
+        return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
+#endif
+    }
+
+    void recv( void *mem, size_t count, int source, int tag, Status &st ) {
+#ifdef O_MPI
+        MPI::COMM_WORLD.Recv( mem, count, MPI::BYTE, source, tag, st );
+#endif
+    }
+
+    bool probe( int source, int tag, Status &st, bool wait = true ) {
+#ifdef O_MPI
+        if (wait) {
+            MPI::COMM_WORLD.Probe( source, tag, st );
+            return false;
+        } else
+            return MPI::COMM_WORLD.Iprobe( source, tag, st );
+#endif
+        return false;
+    }
+
+    size_t size( const Status &st ) {
+#ifdef O_MPI
+        return st.Get_count( MPI::BYTE );
+#endif
+        return 0;
     }
 
     void registerProgress( MpiMonitor &m ) {
@@ -107,7 +160,11 @@ public:
     bool master() { return global().is_master; }
 
     std::ostream &debug() {
+#ifdef O_MPI
         return Output::output().debug() << "MPI[" << rank() << "]: ";
+#else
+        return Output::output().debug() << "NOMPI: ";
+#endif
     }
 
     Mpi();
@@ -120,34 +177,30 @@ public:
                 loop();
     }
 
-    bitstream &recvStream( wibble::sys::MutexLock &_lock,
-                                MPI::Status &st, bitstream &bs )
+    bitstream &getStream( wibble::sys::MutexLock &_lock, int source, int tag, bitstream &bs )
     {
-        MPI::COMM_WORLD.Probe( st.Get_source(), st.Get_tag(), st );
-        int first = bs.bits.size(), count = st.Get_count( MPI::BYTE ) / 4;
+        Status st;
+        probe( source, tag, st );
+        return recvStream( _lock, st, bs );
+    }
+
+    bitstream &recvStream( wibble::sys::MutexLock &_lock, Status &st, bitstream &bs )
+    {
+        probe( st.Get_source(), st.Get_tag(), st );
+        int first = bs.bits.size(), count = size( st ) / 4;
         bs.bits.resize( first + count );
-        MPI::COMM_WORLD.Recv( &bs.bits[ first ], count * 4,
-                              MPI::BYTE, st.Get_source(), st.Get_tag(), st );
+        recv( &bs.bits[ first ], count * 4, st.Get_source(), st.Get_tag(), st );
         debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): "
                 << wibble::str::fmt( bs.bits ) << std::endl;
         return bs;
     }
 
-    bitstream &sendStream( wibble::sys::MutexLock &_lock,
-                                bitstream &bs, int to, int tag )
+    bitstream &sendStream( wibble::sys::MutexLock &_lock, bitstream &bs, int to, int tag )
     {
         debug() << "sending (tag = " << tag << ", to = " << to << "): "
                 << wibble::str::fmt( bs.bits ) << std::endl;
-        MPI::COMM_WORLD.Send( &bs.bits.front(),
-                              bs.bits.size() * 4,
-                              MPI::BYTE, to, tag );
+        send( _lock, &bs.bits.front(), bs.bits.size() * 4, to, tag );
         return bs;
-    }
-
-    void notifyOne( wibble::sys::MutexLock &_lock,
-                    int i, int tag, bitstream bs = bitstream() )
-    {
-        sendStream( _lock, bs, i, tag );
     }
 
     void notifySlaves( wibble::sys::MutexLock &_lock,
@@ -163,23 +216,24 @@ public:
     {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
-                notifyOne( _lock, i, tag, bs );
+                sendStream( _lock, bs, i, tag );
         }
     }
 
     Loop loop() {
 
-        MPI::Status status;
+        Status status;
 
         wibble::sys::MutexLock _lock( global().mutex );
         // And process incoming MPI traffic.
-        while ( MPI::COMM_WORLD.Iprobe(
-                    MPI::ANY_SOURCE, MPI::ANY_TAG, status ) )
+        while ( probe( anySource, anyTag, status, false ) )
         {
             int tag = status.Get_tag();
 
             if ( tag == TAG_ALL_DONE ) {
+#ifdef O_MPI
                 MPI::Finalize();
+#endif
                 exit( 0 ); // after a fashion...
             }
 
@@ -200,139 +254,6 @@ public:
 
         return Continue;
     }
-#if 0
-    void returnSharedBits( int to ) {
-        std::vector< int32_t > shbits;
-        for ( int i = 0; i < domain().n; ++i ) {
-            algorithm::_MpiId< Algorithm >::writeShared(
-                domain().parallel().shared( i ),
-                std::back_inserter( shbits ) );
-        }
-        MPI::COMM_WORLD.Send( &shbits.front(),
-                              shbits.size() * 4,
-                              MPI::BYTE, to, TAG_SHARED );
-    }
-
-    void collectSharedBits() {
-        if (!master())
-            return;
-
-        wibble::sys::MutexLock _lock( m_mutex );
-
-        MPI::Status status;
-
-        debug() << "collecting shared bits" << std::endl;
-
-        std::vector< int32_t > shbits;
-        notifySlaves( TAG_SOLICIT_SHARED, 0 );
-        for ( int i = 0; i < size(); ++ i ) {
-            if ( i == rank() )
-                continue;
-            MPI::COMM_WORLD.Probe( i, TAG_SHARED, status );
-            shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
-            MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
-                                  MPI::BYTE, i, TAG_SHARED, status );
-            std::vector< int32_t >::const_iterator it = shbits.begin();
-            for ( int k = 0; k < domain().n; ++k ) {
-                it = algorithm::_MpiId< Algorithm >::readShared(
-                    m_shared[ i * domain().n + k ], it );
-            }
-            assert( it == shbits.end() ); // sanity check
-        }
-        debug() << "shared bits collected" << std::endl;
-    }
-
-    Shared obtainSharedBits() {
-        MPI::Status status;
-        std::vector< int32_t > shbits;
-        Shared sh = *master_shared;
-
-        MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_SHARED, status );
-        shbits.resize( status.Get_count( MPI::BYTE ) / 4 );
-        MPI::COMM_WORLD.Recv( &shbits.front(), shbits.size() * 4,
-                              MPI::BYTE, MPI::ANY_SOURCE, TAG_SHARED, status );
-        algorithm::_MpiId< Algorithm >::readShared( sh, shbits.begin() );
-        return sh;
-    }
-
-    void sendSharedBits( int to, const Shared &sh ) {
-        std::vector< int32_t > shbits;
-        algorithm::_MpiId< Algorithm >::writeShared(
-            sh, std::back_inserter( shbits ) );
-        debug() << "sending shared bits to " << to << "..." << std::endl;
-        MPI::COMM_WORLD.Send( &shbits.front(),
-                              shbits.size() * 4,
-                              MPI::BYTE, to, TAG_SHARED );
-    }
-
-    template< typename F >
-    void runInRing( F f ) {
-        if ( rank() != 0 ) return;
-        if ( size() <= 1 ) return;
-
-        wibble::sys::MutexLock _lock( m_mutex );
-
-        is_master = false;
-        notifyOne( 1, TAG_RING_RUN,
-                   algorithm::_MpiId< Algorithm >::to_id( f ) );
-        sendSharedBits( 1, *master_shared );
-
-        _lock.drop();
-        while ( loop() == Continue ) ; // wait (and serve) till the ring is done
-        is_master = true;
-    }
-
-    template< typename Shared, typename F >
-    void runOnSlaves( Shared sh, F f ) {
-        if ( !master() ) return;
-        if ( size() <= 1 ) return; // master_shared can be NULL otherwise
-
-        wibble::sys::MutexLock _lock( m_mutex );
-
-        notifySlaves( TAG_RUN,
-                      algorithm::_MpiId< Algorithm >::to_id( f ) );
-        for ( int i = 0; i < size(); ++i ) {
-            if ( i != rank() )
-                sendSharedBits( i, sh );
-        }
-    }
-
-    ~Mpi() {
-        debug() << "ALL DONE" << std::endl;
-        if ( m_initd && master() ) {
-            notifySlaves( TAG_ALL_DONE, 0 );
-            MPI::Finalize();
-        }
-    }
-
-    // Default copy and assignment is fine for us.
-
-    void runSerial( wibble::sys::MutexLock &_lock, int id ) {
-        is_master = true;
-        *master_shared = obtainSharedBits();
-        _lock.drop();
-        debug() << "runSerial " << id << "..." << std::endl;
-        domain().parallel().runInRing(
-            *master_shared, algorithm::_MpiId< Algorithm >::from_id( id ) );
-        debug() << "runSerial " << id << " locally done..." << std::endl;
-        _lock.reclaim();
-        is_master = false;
-        if ( rank() < size() - 1 ) {
-            debug() << "passing control to " << rank() + 1 << "..." << std::endl;
-            notifyOne( rank() + 1, TAG_RING_RUN, id );
-        } else {
-            debug() << "ring finished, passing control back to master..." << std::endl;
-            notifyOne( 0, TAG_RING_DONE, 0 );
-        }
-        sendSharedBits( ( rank() + 1 ) % size(), *master_shared );
-    }
-
-    void run( int id ) {
-        Shared sh = obtainSharedBits();
-        domain().parallel().run(
-            sh, algorithm::_MpiId< Algorithm >::from_id( id ) );
-    }
-#endif
 
 };
 
@@ -365,7 +286,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
 
     Pool pool;
     Matrix< std::vector< int32_t > > buffers;
-    Matrix< std::pair< bool, MPI::Request > >  requests;
+    Matrix< std::pair< bool, MpiRequest > >  requests;
     std::vector< int32_t > in_buffer;
 
     Comms *m_comms;
@@ -421,7 +342,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         bs << id;
 
         mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );
-        MPI::Status status;
+        MpiStatus status;
         int r = recv, s = sent;
         bool valid = true;
         for ( int i = 0; i < mpi.size(); ++ i ) {
@@ -429,14 +350,13 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             if ( i == mpi.rank() )
                 continue;
 
-            int cnt[3];
-            MPI::COMM_WORLD.Recv( cnt, 3, MPI::INT,
-                                  MPI::ANY_SOURCE, TAG_GIVE_COUNTS,
-                                  status );
-            if ( !cnt[0] )
-                valid = false;
-            s += cnt[1];
-            r += cnt[2];
+            bitstream in;
+            mpi.getStream( _lock, mpi.anySource, TAG_GIVE_COUNTS, in );
+
+            int addr, adds;
+            in >> valid >> adds >> addr;
+            s += adds;
+            r += addr;
         }
         return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
     }
@@ -461,15 +381,13 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return false;
     }
 
-    void receiveDataMessage( MPI::Status &status )
+    void receiveDataMessage( MpiStatus &status )
     {
         typename Comms::T b;
 
-        in_buffer.resize( status.Get_count( MPI::BYTE ) / 4 );
-        MPI::COMM_WORLD.Recv( &in_buffer.front(), in_buffer.size() * 4,
-                              MPI::BYTE,
-                              status.Get_source(),
-                              status.Get_tag(), status );
+        in_buffer.resize( mpi.size( status ) / 4 );
+        mpi.recv( &in_buffer.front(), in_buffer.size() * 4,
+                  status.Get_source(), status.Get_tag(), status );
         std::vector< int32_t >::const_iterator i = in_buffer.begin();
 
         int from = *i++;
@@ -485,7 +403,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         ++ recv;
     }
 
-    Loop process( wibble::sys::MutexLock &, MPI::Status &status ) {
+    Loop process( wibble::sys::MutexLock &_lock, MpiStatus &status ) {
         int id;
 
         if ( status.Get_tag() == TAG_ID ) {
@@ -493,17 +411,13 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             return Continue;
         }
 
-        MPI::COMM_WORLD.Recv( &id, 1, MPI::INT,
-                              status.Get_source(),
-                              status.Get_tag(), status );
+        bitstream in, out;
+        mpi.recvStream( _lock, status, in );
+
         switch ( status.Get_tag() ) {
             case TAG_GET_COUNTS:
-                int cnt[3];
-                cnt[0] = outgoingEmpty() && lastMan();
-                cnt[1] = sent;
-                cnt[2] = recv;
-                MPI::COMM_WORLD.Send( cnt, 3, MPI::INT,
-                                      status.Get_source(), TAG_GIVE_COUNTS );
+                out << (outgoingEmpty() && lastMan()) << sent << recv;
+                mpi.sendStream( _lock, out, status.Get_source(), TAG_GIVE_COUNTS );
                 return Continue;
             case TAG_TERMINATED:
                 mpi.debug() << "DONE" << std::endl;
@@ -570,10 +484,10 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                 << buffers[ from ][ to ][ 1 ] << " ... " << std::endl; */
 
                 requests[ from ][ to ].first = true;
-                requests[ from ][ to ].second = MPI::COMM_WORLD.Isend(
+                requests[ from ][ to ].second = mpi.isend( _lock,
                     &buffers[ from ][ to ].front(),
                     buffers[ from ][ to ].size() * 4,
-                    MPI::BYTE, rankOf( to ), TAG_ID );
+                    rankOf( to ), TAG_ID );
                 ++ sent;
             }
         }
@@ -605,49 +519,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return 0;
     }
 };
-
-#else
-
-struct MpiMonitor {};
-
-struct MpiBase {
-    int rank() { return 0; }
-    int size() { return 1; }
-    bool master() { return true; }
-    void notifySlaves( int, int ) {}
-    void collectSharedBits() {}
-
-    void registerProgress( MpiMonitor & ) {}
-    void registerMonitor( int, MpiMonitor & ) {}
-
-    template< typename Shared, typename F >
-    void runOnSlaves( Shared, F ) {}
-
-    template< typename F >
-    void runInRing( F f ) {}
-
-    virtual void init( Meta ) {}
-    void start() {}
-};
-
-template< typename M, typename D >
-struct Mpi : MpiBase {
-    typename M::Shared &shared( int i ) {
-        assert_die();
-    }
-    Mpi( typename M::Shared *, D * ) {}
-};
-
-template< typename D, typename C >
-struct MpiWorker {
-    void interrupt() {}
-    void start() {}
-    void* join() { return 0; }
-
-    MpiWorker( D& ) {}
-};
-
-#endif
 
 }
 

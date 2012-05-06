@@ -420,9 +420,7 @@ struct Mpi : MpiMonitor
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
                 bitstream response;
-                MPI::Status st;
-                MPI::COMM_WORLD.Probe( MPI::ANY_SOURCE, TAG_COLLECT, st );
-                mpi.recvStream( _lock, st, response );
+                mpi.getStream( _lock, mpi.anySource, TAG_COLLECT, response );
                 response >> bits;
             }
         }
@@ -439,28 +437,31 @@ struct Mpi : MpiMonitor
         }
 
         mpi.debug() << "parallel()" << std::endl;
-        m_local.parallel( this, fun, &m_mpiForwarder, mpi.rank() * m_local.peers() );
+        m_local.parallel( this, fun,
+                          mpi.size() > 1 ? &m_mpiForwarder : 0,
+                          mpi.rank() * m_local.peers() );
         mpi.debug() << "parallel() DONE" << std::endl;
     }
 
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) ) {
-
+        X retval;
         bitstream bs;
 
-        x = m_local.ring( x, fun );
+        retval = x = m_local.ring( x, fun );
         rpc::marshall( fun, x, bs );
 
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.global().is_master = false;
-        mpi.notifyOne( _lock, (mpi.rank() + 1) % mpi.size(), TAG_RING, bs );
+        mpi.sendStream( _lock, bs, (mpi.rank() + 1) % mpi.size(), TAG_RING );
         _lock.drop();
 
-        while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
-        mpi.global().is_master = true;
+        if ( mpi.size() > 1 ) {
+            while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
+            async_retval >> retval;
+        }
 
-        X retval;
-        async_retval >> retval;
+        mpi.global().is_master = true;
         return retval;
     }
 
@@ -497,7 +498,7 @@ struct Mpi : MpiMonitor
             bs << bits;
 
             wibble::sys::MutexLock _lock( mpit.mpi.global().mutex );
-            mpit.mpi.notifyOne( _lock, mpit.request_source, TAG_COLLECT, bs );
+            mpit.mpi.sendStream( _lock, bs, mpit.request_source, TAG_COLLECT );
         }
 
         void operator()( MPIT &mpit, void (Instance::*fun)() ) {
@@ -507,7 +508,7 @@ struct Mpi : MpiMonitor
     };
 
     /* The slave monitor */
-    Loop process( wibble::sys::MutexLock &_lock, MPI::Status &status ) {
+    Loop process( wibble::sys::MutexLock &_lock, divine::Mpi::Status &status ) {
 
         bitstream in, out;
 

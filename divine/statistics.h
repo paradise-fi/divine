@@ -119,12 +119,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     void snapshot();
     void *main();
 
-#ifdef O_MPI
     void send();
-    Loop process( wibble::sys::MutexLock &, MPI::Status &status );
-#else
-    void send() {}
-#endif
+    Loop process( wibble::sys::MutexLock &, MpiStatus &status );
 
     void setup( const Meta &m );
 

@@ -95,68 +95,43 @@ void Statistics::format( std::ostream &o ) {
     }
 }
 
-#ifdef O_MPI
 void Statistics::send() {
-    std::vector< int > data;
-    data.push_back( localmin );
+    bitstream data;
+    data << localmin;
 
     for ( int i = 0; i < pernode; ++i ) {
         PerThread &t = thread( i + localmin );
-        std::copy( t.sent.begin(), t.sent.end(),
-                   std::back_inserter( data ) );
-        std::copy( t.received.begin(), t.received.end(),
-                   std::back_inserter( data ) );
-        std::copy( t.memSent.begin(), t.memSent.end(),
-                   std::back_inserter( data ) );
-        std::copy( t.memReceived.begin(), t.memReceived.end(),
-                   std::back_inserter( data ) );
-        data.push_back( t.enq );
-        data.push_back( t.deq );
-        data.push_back( t.hashsize );
-        data.push_back( t.hashused );
-        data.push_back( t.memQueue );
-        data.push_back( t.memHashes );
+        data << t.sent << t.received << t.memSent << t.memReceived;
+        data << t.enq << t.deq << t.hashsize << t.hashused << t.memQueue << t.memHashes;
     }
 
-    mpi.send( &data.front(), data.size(), MPI::INT, 0, TAG_STATISTICS );
-    mpi.debug() << "stats sent: " << wibble::str::fmt( data ) << std::endl;
+    wibble::sys::MutexLock _lock( mpi.global().mutex );
+    mpi.sendStream( _lock, data, 0, TAG_STATISTICS );
+    mpi.debug() << "stats sent: " << wibble::str::fmt( data.bits ) << std::endl;
 }
 
-Loop Statistics::process( wibble::sys::MutexLock &, MPI::Status &status )
+Loop Statistics::process( wibble::sys::MutexLock &, MpiStatus &status )
 {
-    std::vector< int > data;
     int n = threads.size();
     int sendrecv = n * 4,
            local = 6;
-    data.resize( 1 /* localmin */ + pernode * (sendrecv + local) );
 
-    MPI::COMM_WORLD.Recv( &data.front(), data.size(),
-                          MPI::INT, status.Get_source(), status.Get_tag() );
-    mpi.debug() << "stats received: " << wibble::str::fmt( data ) << std::endl;
+    bitstream data;
+    wibble::sys::MutexLock _lock( mpi.global().mutex );
+    mpi.recvStream( _lock, status, data );
+    mpi.debug() << "stats received: " << wibble::str::fmt( data.bits ) << std::endl;
 
-    int min = data.front();
-    std::vector< int >::iterator iter = data.begin() + 1;
+    int min;
+    data >> min;
 
     for ( int i = 0; i < pernode; ++i ) {
         PerThread &t = thread( i + min );
-        std::copy( iter, iter + n, t.sent.begin() );
-        std::copy( iter + n, iter + 2*n, t.received.begin() );
-        std::copy( iter + 2*n, iter + 3*n, t.memSent.begin() );
-        std::copy( iter + 3*n, iter + 4*n, t.memReceived.begin() );
-
-        iter += sendrecv;
-
-        t.enq = *iter++;
-        t.deq = *iter++;
-        t.hashsize = *iter++;
-        t.hashused = *iter++;
-        t.memQueue = *iter++;
-        t.memHashes = *iter++;
+        data >> t.sent >> t.received >> t.memSent >> t.memReceived;
+        data >> t.enq >> t.deq >> t.hashsize >> t.hashused >> t.memQueue >> t.memHashes;
     }
 
     return Continue;
 }
-#endif
 
 void Statistics::snapshot() {
     std::stringstream str;
