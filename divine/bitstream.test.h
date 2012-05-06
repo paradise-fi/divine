@@ -28,7 +28,7 @@ struct TestBitstream {
 
     Test _bitstream_64() {
         bitstream bs;
-        bs << 1ll << 2ll << 3ll;
+        bs << int64_t( 1 ) << int64_t( 2 ) << int64_t( 3 );
         uint64_t x;
         bs >> x; assert_eq( x, 1 );
         bs >> x; assert_eq( x, 2 );
