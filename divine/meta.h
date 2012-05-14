@@ -41,6 +41,7 @@ struct Algorithm {
 
     Type algorithm;
     std::string name;
+    uint32_t hashSeed;
 
     int maxDistance;
 

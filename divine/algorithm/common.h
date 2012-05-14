@@ -17,13 +17,15 @@ namespace algorithm {
 
 struct Hasher {
     int slack;
+    uint32_t seed;
 
-    Hasher( int s = 0 ) : slack( s ) {}
+    Hasher( int s = 0 ) : slack( s ), seed( 0 ) {}
     void setSlack( int s ) { slack = s; }
+    void setSeed( uint32_t s ) { seed = s; }
 
     inline hash_t operator()( Blob b ) const {
         assert( b.valid() );
-        return b.hash( slack, b.size() );
+        return b.hash( slack, b.size(), seed );
     }
 };
 
@@ -99,6 +101,7 @@ struct Algorithm
         g->setDomainSize( meta().execution.thisNode,
                           meta().execution.nodes,
                           meta().execution.nodes * meta().execution.threads );
+        hasher.setSeed( meta().algorithm.hashSeed );
     }
 
     template< typename T >

@@ -94,6 +94,7 @@ struct Main {
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
+    IntOption *o_seed;
     BoolOption *o_labels, *o_traceLabels;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
@@ -305,6 +306,10 @@ struct Main {
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
 
+        o_seed = common->add< IntOption >(
+            "seed", '\0', "seed", "",
+            "set seed for hashing, useful with hash-compaction" );
+
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
             "select a (non-default) property" );
@@ -494,6 +499,7 @@ struct Main {
         meta.algorithm.findGoals = !o_noGoals->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
         meta.algorithm.por = o_por->boolValue();
+        meta.algorithm.hashSeed = (uint32_t) o_seed->intValue();
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
 
