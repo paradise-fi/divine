@@ -155,6 +155,37 @@ struct Transform {
         assert_leq( 1, edge );
         return edge;
     }
+
+    /// Equivalent of the above method for hash-compaction
+    /// Returns pair(0, Node()) when no successor has given hash
+    template< typename Alg >
+    std::pair<int, Node> successorNumHash( Alg &a, Node current, hash_t next, unsigned fromIndex = 0 )
+    {
+        typename G::Successors succs = base().successors( current );
+        int edge = 0;
+        Node nextNode;
+        while ( !succs.empty() ) {
+            ++edge;
+            Node succ = succs.head();
+            if ( edge > fromIndex && a.hasher( succ ) == next ) {
+                nextNode = succ;
+                succs = succs.tail();
+                break;
+            }
+            base().release( succ ); // not it
+            succs = succs.tail();
+        }
+
+        while ( !succs.empty() ) {
+            base().release( succs.head() );
+            succs = succs.tail();
+        }
+
+        return nextNode.valid()
+            ? std::make_pair( edge, nextNode )
+            : std::make_pair( 0, Node() );
+    }
+
 };
 
 }

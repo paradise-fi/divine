@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
+#include <stdint.h>
 #include <sstream>
 #include <utility>
 
@@ -15,6 +16,7 @@ struct CeShared {
     Node current;
     Node successor;
     unsigned successorPos;
+    hash_t current_hash;
     bool current_updated;
 };
 
@@ -22,14 +24,14 @@ template< typename BS, typename Node >
 typename BS::bitstream &operator<<( BS &bs, const CeShared< Node > &sh )
 {
     return bs << sh.initial << sh.current << sh.successor << sh.successorPos
-              << sh.current_updated;
+              << sh.current_hash << sh.current_updated;
 }
 
 template< typename BS, typename Node >
 typename BS::bitstream &operator>>( BS &bs, CeShared< Node > &sh )
 {
     return bs >> sh.initial >> sh.current >> sh.successor >> sh.successorPos
-              >> sh.current_updated;
+              >> sh.current_hash >> sh.current_updated;
 }
 
 template< typename G, typename Shared, typename Extension >
@@ -54,8 +56,8 @@ struct LtlCE {
     }
 
     template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n ) {
-        return g().owner( hash, worker, n );
+    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+        return g().owner( hash, worker, n, hint );
     }
 
     void setup( G &g, Shared &s )
@@ -178,8 +180,12 @@ struct LtlCE {
         NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
-            o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
-            _g.release( trace.back() );
+            if ( trace.back().valid() ) {
+                o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
+                _g.release( trace.back() );
+            } else {
+                o_ce( a ) << "?" << std::endl;
+            }
             trace.pop_back();
         }
 
@@ -251,19 +257,87 @@ struct LtlCE {
     }
 
     template< typename Domain, typename Alg >
-    void linear( Domain &d, Alg &a )
+    void linear( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace<Domain, Alg> )
     {
-        generateLinear( a, g(), parentTrace( d, a, g().initial() ) );
+        generateLinear( a, g(), (this->*traceFnc)( d, a, g().initial() ) );
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg &a ) {
-        linear( d, a );
+    void lasso( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace<Domain, Alg> ) {
+        linear( d, a, traceFnc );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
 
-        generateLasso( a, g(), parentTrace( d, a, shared().ce.initial ) );
+        generateLasso( a, g(), (this->*traceFnc)( d, a, shared().ce.initial ) );
     }
+
+    // ------------------------------------------------
+    // -- Hash compaction counter-examples
+    // --
+
+    template< typename Worker, typename Hasher, typename Equal, typename Table >
+    void _hashTrace( Worker &w, Hasher &h, Equal &, Table &t ) {
+        if ( shared().ce.current_updated )
+            return;
+        if ( owner( h, w, Node(), shared().ce.current_hash ) == w.id() ) { // determine owner just from hash
+            Node n = t.getHinted( Node(), shared().ce.current_hash );
+            if ( n.valid() ) {
+                shared().ce.current_hash = hash_t( uintptr_t( extension( n ).parent.ptr ) );
+                shared().ce.current_updated = true;
+            }
+        }
+    }
+
+    template< typename Domain, typename Alg >
+    Traces hashTrace( Domain &d, Alg &a, Node stop ) {
+        Trace trace;
+        std::vector< hash_t > hashes;
+        NumericTrace numTrace;
+        // construct trail of hashes
+        shared().ce.current = Node(); // not tracking nodes
+        shared().ce.current_hash = a.hasher( shared().ce.initial );
+        hash_t stop_hash = a.hasher( stop );
+        while ( true ) {
+            if ( shared().ce.current_hash == stop_hash && !hashes.empty() )
+                break;
+            shared().ce.current_updated = false;
+            d.ring( &Alg::_hashTrace );
+            if ( !shared().ce.current_updated )
+                break;
+            hashes.push_back( shared().ce.current_hash );
+        }
+        // follow the trail from the _stop_ state
+        Node cur = stop;
+        while ( !hashes.empty() ) {
+            std::pair< int, Node > ret = g().successorNumHash( a, cur, hashes.back() );
+            if ( ret.first > 0 ) {
+                trace.push_back( ret.second );
+                numTrace.push_back( ret.first );
+                cur = ret.second;
+            } else {
+                trace.push_back( Node() );
+                numTrace.push_back( 0 );
+            }
+            hashes.pop_back();
+        }
+
+        // reverse the trace
+        std::reverse( trace.begin(), trace.end() );
+        std::reverse( numTrace.begin(), numTrace.end() );
+
+        return std::make_pair( trace, numTrace );
+    }
+
+    template< typename Domain, typename Alg >
+    void linear_hc( Domain &d, Alg &a ) {
+        linear( d, a, &Us::hashTrace<Domain, Alg> );
+    }
+
+    template< typename Domain, typename Alg >
+    void lasso_hc( Domain &d, Alg &a ) {
+        lasso( d, a, &Us::hashTrace<Domain, Alg> );
+    }
+
 
 };
 
