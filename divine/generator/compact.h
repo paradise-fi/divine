@@ -239,8 +239,7 @@ struct Compact : public Common< Blob > {
     unsigned predsCount( Node st ) {
         assert( initialized );
         assert( backward != NULL );
-        StateId id = getStateId( st );
-        assert( belongsToUs( id ) );
+        assert( belongsToUs( getStateId( st ) ) );
         return getNextCompactState( st ).backward - getCompactState( st ).backward;
     }
 

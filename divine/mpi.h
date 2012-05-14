@@ -118,6 +118,8 @@ public:
     MpiRequest isend( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
 #ifdef O_MPI
         return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
+#else
+        return MpiRequest();
 #endif
     }
 
@@ -342,7 +344,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         bs << id;
 
         mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );
-        MpiStatus status;
         int r = recv, s = sent;
         bool valid = true;
         for ( int i = 0; i < mpi.size(); ++ i ) {
@@ -404,7 +405,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     Loop process( wibble::sys::MutexLock &_lock, MpiStatus &status ) {
-        int id;
 
         if ( status.Get_tag() == TAG_ID ) {
             receiveDataMessage( status );
