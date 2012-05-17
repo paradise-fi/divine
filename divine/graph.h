@@ -61,8 +61,7 @@ struct Base {
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
     int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
-        assert( n.valid() );
-
+        // if n is not valid, this correctly returns owner for hint, because hash( n ) is 0
         if ( !hint )
             return hash( n ) % worker.peers();
         else

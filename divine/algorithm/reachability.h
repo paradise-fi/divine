@@ -66,14 +66,19 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
 
     visitor::TransitionAction transition( Node f, Node t )
     {
-        if ( !meta().algorithm.hashCompaction && !extension( t ).parent.valid() ) {
-            extension( t ).parent = f;
-            visitor::setPermanent( f );
+        if ( !meta().algorithm.hashCompaction ) {
+            if ( !extension( t ).parent.valid() ) {
+                extension( t ).parent = f;
+                visitor::setPermanent( f );
+            }
+        } else {
+            if ( !extension( t ).parent.ptr && f.valid() )
+                extension( t ).parent.ptr = (char *)(uintptr_t) hasher( f );
         }
         shared.stats.addEdge();
 
         if ( meta().algorithm.findGoals && m_graph.isGoal( t ) ) {
-            shared.goal = t;
+            shared.goal = m_graph.clone( t );
             shared.deadlocked = false;
             return visitor::TerminateOnTransition;
         }
@@ -87,7 +92,7 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
             if ( !r.meta().algorithm.findDeadlocks )
                 return visitor::IgnoreDeadlock;
 
-            r.shared.goal = n;
+            r.shared.goal = r.m_graph.clone( n );
             r.shared.stats.addDeadlock();
             r.shared.deadlocked = true;
             return visitor::TerminateOnDeadlock;
@@ -96,8 +101,6 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
 
     void _visit() { // parallel
         this->comms().notify( this->id(), &m_graph.pool() );
-        if ( meta().algorithm.hashCompaction )
-            equal.allEqual = true;
         visitor::Partitioned< VisitorSetup, This, Hasher >
             visitor( m_graph, *this, *this, hasher, &this->table(), meta().algorithm.hashCompaction );
         m_graph.queueInitials( visitor );
@@ -120,6 +123,7 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
     {
         if ( master )
             this->becomeMaster( m.execution.threads, m );
+        equal.allEqual = m.algorithm.hashCompaction; // has to be set before makeTable
         this->init( this );
     }
 
@@ -130,10 +134,21 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
         return shared;
     }
 
+    Shared _hashTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
+        ce._hashTrace( *this, hasher, equal, this->table() );
+        return shared;
+    }
+
     void counterexample( Node n ) {
         shared.ce.initial = n;
         ce.setup( m_graph, shared );
-        ce.linear( *this, *this );
+        if ( !meta().algorithm.hashCompaction ) {
+            ce.linear( *this, *this );
+        } else {
+            ce.linear_hc( *this, *this );
+        }
         ce.goal( *this, n );
     }
 
@@ -178,7 +193,7 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
         progress() << std::endl;
 
         safetyBanner( !goal.valid() );
-        if ( goal.valid() && !meta().algorithm.hashCompaction ) {
+        if ( goal.valid() ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }
@@ -196,6 +211,7 @@ ALGORITHM_RPC_ID( Reachability, 1, _visit );
 ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
 ALGORITHM_RPC_ID( Reachability, 3, _por );
 ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
+ALGORITHM_RPC_ID( Reachability, 5, _hashTrace );
 
 }
 }

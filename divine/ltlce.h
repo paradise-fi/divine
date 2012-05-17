@@ -124,7 +124,7 @@ struct LtlCE {
             &Us::cycleExpansion > Setup;
         typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
 
-        Visitor visitor( g(), w, *this, h, &t );
+        Visitor visitor( g(), w, *this, h, &t, w.meta().algorithm.hashCompaction );
         assert( shared().ce.initial.valid() );
         if ( visitor.owner( shared().ce.initial ) == w.id() ) {
             shared().ce.initial = t.get( shared().ce.initial );
@@ -280,7 +280,7 @@ struct LtlCE {
         if ( shared().ce.current_updated )
             return;
         if ( owner( h, w, Node(), shared().ce.current_hash ) == w.id() ) { // determine owner just from hash
-            Node n = t.getHinted( Node(), shared().ce.current_hash );
+            Node n = t.getHinted( Node(), shared().ce.current_hash ); // get from table just by hash
             if ( n.valid() ) {
                 shared().ce.current_hash = hash_t( uintptr_t( extension( n ).parent.ptr ) );
                 shared().ce.current_updated = true;
@@ -297,14 +297,14 @@ struct LtlCE {
         shared().ce.current = Node(); // not tracking nodes
         shared().ce.current_hash = a.hasher( shared().ce.initial );
         hash_t stop_hash = a.hasher( stop );
-        while ( true ) {
-            if ( shared().ce.current_hash == stop_hash && !hashes.empty() )
-                break;
+        hash_t last = stop_hash;
+        while ( hashes.size() <= 0  || ( shared().ce.current_hash != stop_hash && shared().ce.current_hash != last ) ) {
+            last = shared().ce.current_hash;
             shared().ce.current_updated = false;
             d.ring( &Alg::_hashTrace );
             if ( !shared().ce.current_updated )
-                break;
-            hashes.push_back( shared().ce.current_hash );
+                break; // parent points to non-existing state
+            hashes.push_back( last );
         }
         // follow the trail from the _stop_ state
         Node cur = stop;
@@ -317,6 +317,7 @@ struct LtlCE {
             } else {
                 trace.push_back( Node() );
                 numTrace.push_back( 0 );
+                break; // incomplete trace
             }
             hashes.pop_back();
         }
