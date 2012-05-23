@@ -136,6 +136,7 @@ static void	non_fatal(char *, char *);
 inline void
 alldone(int estatus)
 {
+        bdd_done();
         exit(estatus);
 }
 
@@ -171,7 +172,7 @@ tl_UnGetchar(void)
 }
 
 void
-usage(void)
+usage(int estatus)
 {
         printf("usage: ltl3ba [-flag] -f formula\n");
         printf("                   or -F file\n");
@@ -198,9 +199,18 @@ usage(void)
         printf(" -B\t\tenable basic (B)isimulation reduction of BA\n");
         printf(" -S\t\tenable strong fair (S)imulation reduction of BA\n");
         printf(" -x\t\tdisable all LTL3BA specific improvements (act like LTL2BA)\n");
+        printf(" -v\t\tdisplay LTL3BA's version and exit\n");
+        printf(" -h\t\tdisplay this help\n");
 	
-        alldone(1);
+        alldone(estatus);
 }
+
+void
+print_version()
+{
+        printf("LTL3BA %s\n", VERSION_NUM);
+}
+
 
 void init_buddy() {
   // Buddy might have been initialized by a third-party library.
@@ -223,10 +233,9 @@ tl_main(std::string &argv)
 	}
   uform = argv;
 	hasuform = uform.length();
-	if (hasuform == 0) usage();
+	if (hasuform == 0) usage(1);
 	init_buddy();
 	tl_parse();
-	
 #ifdef STATS
 	if (tl_stats) tl_endstats();
 #endif
@@ -248,7 +257,7 @@ main_function(int argc, char *argv[], FILE* outFile)
                 case 'f': if (*(argv+2)) add_ltl = *(argv+2);
                           argc--; argv++; break;
                 case 'a': tl_fjtofj = 0; break;
-                case 'c': tl_simp_scc = 0; break;
+                case 'c': tl_simp_scc = 0; tl_rem_scc = 0; break;
                 case 'o': tl_simp_fly = 0; break;
                 case 'p': tl_simp_diff = 0; break;
                 case 'l': tl_simp_log = 0; break;
@@ -268,24 +277,29 @@ main_function(int argc, char *argv[], FILE* outFile)
                 case 's': tl_sim = 1; break;
                 case 'S': tl_sim_r = 1; break;
                 case 'x': tl_postpone = 0; tl_f_components = 0; tl_ltl3ba = 0; tl_rem_scc = 0; tl_alt = 0; tl_rew_f = 0; break;
-                default : usage(); break;
+                case 'v': print_version(); alldone(0);
+                case 'h': usage(0); break;
+                default : printf("ltl3ba: unknown option -- %c\n\n", argv[1][1]); usage(1); break;
                 }
                 argc--, argv++;
         }
   
-        if(ltl_file.empty() && add_ltl.empty()) usage();
+        if(ltl_file.empty() && add_ltl.empty()) {
+          printf("ltl3ba: no formula given at input\n\n");
+          usage(1);
+        }
 
         if (!ltl_file.empty())
         {       std::ifstream in_file(ltl_file.c_str(), std::ifstream::in);
                 if (!in_file.is_open())
-                {       printf("ltl2ba: cannot open %s\n", ltl_file.c_str());
+                {       printf("ltl3ba: cannot open %s\n", ltl_file.c_str());
                         alldone(1);
                 }
                 std::getline(in_file, add_ltl, '\0');
                 in_file.close();
         }
         if (argc > 1)
-        {       usage();
+        {       usage(1);
         }
         else if (argc > 0)
         {
@@ -299,7 +313,7 @@ main_function(int argc, char *argv[], FILE* outFile)
                 }
         }
         else
-        {       usage();
+        {       usage(1);
         }
 }
 
@@ -442,7 +456,7 @@ non_fatal(const char *s1, char *s2)
 {	extern int tl_yychar;
 	int i;
 
-	printf("ltl2ba: ");
+	printf("ltl3ba: ");
 	if (s2)
 		printf(s1, s2);
 	else
@@ -452,7 +466,7 @@ non_fatal(const char *s1, char *s2)
 		tl_explain(tl_yychar);
 		printf("'");
 	}
-	printf("\nltl2ba: %s\n-------", uform.c_str());
+	printf("\nltl3ba: %s\n-------", uform.c_str());
 	for (i = 0; i < cnt; i++)
 		printf("-");
 	printf("^\n");

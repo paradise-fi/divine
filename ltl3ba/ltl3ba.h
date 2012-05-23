@@ -43,6 +43,9 @@
 #include <bdd.h>
 #include <map>
 
+/* Set LTL3BA's version number */
+#define VERSION_NUM "1.0.1"
+
 /* Defines, whether to gather statistics.                                  */
 /* Statistics are not relevant since ltl3ba ungrade, so they are disabled. */
 /* Some tweeeks are necessary in order to gather relevant data again.      */
@@ -413,7 +416,7 @@ class cGTrans {
 //    cGTrans& operator=(const cGTrans &t);
     
     void decrement_incoming(void);
-    // chceck wheter the newly build transitions dominates any existing or is dominated
+    // check wheter the newly build transitions dominates any existing or is dominated
     // true value is returned if the new transition shoul be added
     bool check_dominance(ATrans *t, cset *t_to, cset* fin, int acc, int &state_trans, GState* s);
     bool determinize(ATrans *t, cset *t_to, cset* fin, int acc, int &state_trans, GState* s);

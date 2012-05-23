@@ -152,7 +152,7 @@ int all_btrans_match(BState *a, BState *b) /* decides if the states are equivale
       a->incoming >=0 && b->incoming >=0)
     return 0; /* the states have to be both final or both non final */
 
-  // Chceck whether they have same number of transitions
+  // Check whether they have same number of transitions
   if (a->trans->size() != b->trans->size())
     return 0;
   
@@ -383,7 +383,7 @@ void basic_bisim_reduction() {
     for (ln_i = cn_i->second.begin(); ln_i != cn_i->second.end(); ln_i++) {
       if ((*ln_i)->id == -1) {
         s->id = -1;
-        // s is initial node -> move it at the bottom of the stack
+        // s is initial node -> move it to the bottom of the stack
         s->prv->nxt = s->nxt;
         s->nxt->prv = s->prv;
         s->prv = stack->prv;
@@ -942,7 +942,7 @@ void print_buchi(BState *s) /* dumps the Buchi automaton */
 void print_spin_buchi() {
   map<BState*, bdd>::iterator t;
   BState *s;
-  int accept_all = 0, init_count = 0;
+  int accept_all = 0;
   if(bstates->nxt == bstates) { /* empty automaton */
     fprintf(tl_out, "never {    /* ");
     put_uform();

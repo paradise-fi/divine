@@ -269,11 +269,11 @@ bin_simpler(Node *ptr)
 		  break;
 		}
 		/** NEW **/
+		ptr->lft = bin_simpler(ptr->lft);
+
+		/** NEW **/
 		if (is_INFp(ptr->lft))
 		  ptr = ptr->lft;
-		  
-		/** NEW **/
-		ptr->lft = bin_simpler(ptr->lft);
 		break;
 #endif
 	case IMPLIES:
@@ -595,7 +595,6 @@ bin_simpler(Node *ptr)
 					    ptr->rgt->rgt->rgt)));
 		    break;
 		  }
-		break;
 
 		/* NEW */
 		if (implies(push_negation_simple(tl_nn(NOT, dupnode(ptr->rgt), ZN)),
@@ -605,6 +604,7 @@ bin_simpler(Node *ptr)
 		{       ptr = True;
 		        break;
 		}
+		break;
 	}
 	return ptr;
 }
@@ -633,7 +633,7 @@ tl_factor(void)
 		if (tl_yychar != ')')
 			tl_yyerror("expected ')'");
 		tl_yychar = tl_yylex();
-		goto simpl;
+		break;
 	case NOT:
 		ptr = tl_yylval;
 		tl_yychar = tl_yylex();
@@ -750,120 +750,46 @@ tl_formula(void)
 	return tl_level(1);	/* 2 precedence levels, 1 and 0 */	
 }
 
-static Node* remove_V(Node *ptr) {
-  Node *l, *r;
+/* Changed will be true if the formula was changed.       */
+/* It is correct only if changed is false in the beginnig */
+static Node* rewrite_V(Node *ptr, bool& changed) {
+	Node *l, *r;
 
-  if (ptr)
-	switch(ptr->ntyp) {
-	case V_OPER:
-	  if (is_G(ptr)) {
-	    ptr->rgt = remove_V(ptr->rgt);  
-	  } else {
-      l = ptr->lft;
-      r = ptr->rgt;
-      ptr = tl_nn(OR,
-          tl_nn(V_OPER, tl_nn(FALSE, ZN, ZN), dupnode(r)), 
-				  tl_nn(U_OPER, dupnode(r), tl_nn(AND, l, r)));
-		}
-	case OR:	
-	case AND:
-	case U_OPER:
-	  ptr->lft = remove_V(ptr->lft);
-	  ptr->rgt = remove_V(ptr->rgt);
-	  break;
-#ifdef NXT
-	case NEXT:
-#endif
-	case NOT:
-	  ptr->lft = remove_V(ptr->lft);
-    break;
-	case FALSE:
-	case TRUE:
-	case PREDICATE:
-		break;
-	default:
-		printf("Unknown token: ");
-		tl_explain(ptr->ntyp);
-		break;
-	}
-  
-  return ptr;
-}
-
-static Node* rewrite_U(Node *ptr) {
-  Node *l, *r;
-
-  if (ptr)
-	switch(ptr->ntyp) {
-	case U_OPER:
-	  if (is_INFp(ptr->lft)) {
-      l = rewrite_U(ptr->lft);
-      r = rewrite_U(ptr->rgt);
-      ptr = tl_nn(OR, r, 
-  				  tl_nn(AND, l,
-      		  tl_nn(U_OPER, tl_nn(TRUE, ZN, ZN), dupnode(r))));
-		}
-	case OR:	
-	case AND:
-	case V_OPER:
-	  ptr->lft = rewrite_U(ptr->lft);
-	  ptr->rgt = rewrite_U(ptr->rgt);
-	  break;
-#ifdef NXT
-	case NEXT:
-#endif
-	case NOT:
-	  ptr->lft = rewrite_U(ptr->lft);
-    break;
-	case FALSE:
-	case TRUE:
-	case PREDICATE:
-		break;
-	default:
-		printf("Unknown token: ");
-		tl_explain(ptr->ntyp);
-		break;
-	}
-  
-  return ptr;
-}
-
-static Node* rewrite_V(Node *ptr) {
-  Node *l, *r;
-
-  if (ptr)
+	if (ptr)
 	switch(ptr->ntyp) {
 	case V_OPER:
 	  if (is_INFp(ptr->lft)) {
-      l = rewrite_V(ptr->lft);
-      r = rewrite_V(ptr->rgt);
-      ptr = tl_nn(OR,
-          tl_nn(V_OPER, tl_nn(FALSE, ZN, ZN), r),
-          tl_nn(AND, l, dupnode(r)));
-		}
-	case OR:	
+	    l = rewrite_V(ptr->lft, changed);
+	    r = rewrite_V(ptr->rgt, changed);
+	    ptr = tl_nn(OR,
+	        tl_nn(V_OPER, tl_nn(FALSE, ZN, ZN), r),
+	        tl_nn(AND, l, dupnode(r)));
+	    changed = true;
+	    break;
+	  }
+	case OR:
 	case AND:
 	case U_OPER:
-	  ptr->lft = rewrite_V(ptr->lft);
-	  ptr->rgt = rewrite_V(ptr->rgt);
+	  ptr->lft = rewrite_V(ptr->lft, changed);
+	  ptr->rgt = rewrite_V(ptr->rgt, changed);
 	  break;
 #ifdef NXT
 	case NEXT:
 #endif
 	case NOT:
-	  ptr->lft = rewrite_V(ptr->lft);
-    break;
+	  ptr->lft = rewrite_V(ptr->lft, changed);
+	  break;
 	case FALSE:
 	case TRUE:
 	case PREDICATE:
-		break;
+	  break;
 	default:
-		printf("Unknown token: ");
-		tl_explain(ptr->ntyp);
-		break;
+	  printf("Unknown token: ");
+	  tl_explain(ptr->ntyp);
+	  break;
 	}
-  
-  return ptr;
+
+	return ptr;
 }
 
 static Node* negate(Node *ptr) {
@@ -970,9 +896,10 @@ tl_parse(void)
 		printf("\n");
 	}
 	if (tl_rew_f) {
-	  n = rewrite_V(n);
-	  if (tl_simp_log)
-  	  n = bin_simpler(n);
+	  bool changed = false;
+	  n = rewrite_V(n, changed);
+	  if (tl_simp_log && changed)
+	    n = bin_simpler(n);
 	}
 	trans(n);
 }

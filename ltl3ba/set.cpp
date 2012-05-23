@@ -276,4 +276,3 @@ int compare_sets_lexi(int *l1, int *l2, int type) /* compare lexicographically t
   }
   return 0;
 }
-

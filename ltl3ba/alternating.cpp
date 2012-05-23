@@ -177,7 +177,7 @@ map<cset, ATrans*> *boolean(Node *p) /* computes the transitions to boolean node
   ATrans *t;
   map<cset, ATrans*>::iterator t1, t2;
   map<cset, ATrans*> *lft, *rgt, *result = (map<cset, ATrans*> *)0;
-  int id;
+
   switch(p->ntyp) {
   case TRUE:
     result = new map<cset, ATrans*>();
@@ -196,9 +196,16 @@ map<cset, ATrans*> *boolean(Node *p) /* computes the transitions to boolean node
           if(tmp) {
             if (!result)
               result = new map<cset, ATrans*>();
-            cset tmp_set(0);
-            tmp_set.merge(t1->first, t2->first);
-            result->insert(pair<cset, ATrans*>(tmp_set, tmp));
+            cset to(0);
+            to.merge(t1->first, t2->first);
+            // First check whether there already exists a transtion leading
+            // to the same node "to". If so, merge it with the new transition.
+            ATrans** tmp_2 = &(*result)[to];
+            if (*tmp_2) {
+              (*tmp_2)->label |= tmp->label;
+            } else {
+              *tmp_2 = tmp;
+            }
           }
         }
     }
@@ -217,6 +224,8 @@ map<cset, ATrans*> *boolean(Node *p) /* computes the transitions to boolean node
     rgt = boolean(p->rgt);
     if (rgt)
       for(t1 = rgt->begin(); t1 != rgt->end(); t1++) {
+        // First check whether there already exists a transtion leading
+        // to the same node. If so, merge it with the new transition. 
         ATrans **tmp = &(*result)[t1->first];
         if (*tmp) {
           (*tmp)->label |= t1->second->label;
@@ -433,7 +442,14 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
               result = new map<cset, ATrans*>();
             cset to(0);
             to.merge(t1->first, t2->first);
-            result->insert(pair<cset, ATrans*>(to, tmp));
+            // First check whether there already exists a transtion leading
+            // to the same node "to". If so, merge it with the new transition.
+            ATrans** tmp_2 = &(*result)[to];
+            if (*tmp_2) {
+              (*tmp_2)->label |= tmp->label;
+            } else {
+              *tmp_2 = tmp;
+            }
           }
         }
       }
@@ -478,6 +494,8 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
         }
       if (lft)
         for(t1 = lft->begin(); t1 != lft->end(); t1++) {
+            // First check whether there already exists a transtion leading
+            // to the same node. If so, merge it with the new transition. 
             ATrans** tmp = &(*result)[t1->first];
             if (*tmp) {
               (*tmp)->label |= t1->second->label;
@@ -500,6 +518,8 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
         }
       if (rgt)
         for(t1 = rgt->begin(); t1 != rgt->end(); t1++) {
+          // First check whether there already exists a transtion leading
+          // to the same node. If so, merge it with the new transition. 
           ATrans **tmp = &(*result)[t1->first];
           if (*tmp) {
             (*tmp)->label |= t1->second->label;
@@ -661,10 +681,7 @@ void print_alternating() /* dumps the alternating automaton */
   for(i = node_id - 1; i > 0; i--) {
     if(!label[i])
       continue;
-    if (in_set(tecky, i))
-      fprintf(tl_out, "* state %i : ", i);
-    else
-      fprintf(tl_out, "state %i : ", i);
+    fprintf(tl_out, "state %i : ", i);
     dump(label[i]);
     fprintf(tl_out, "\n");
     if (transition[i])
@@ -677,8 +694,6 @@ void print_alternating() /* dumps the alternating automaton */
         }
         fprintf(tl_out, " -> ");
         t->first.print();
-        fprintf(tl_out, "\t\t");
-        print_set(t->second->bad_nodes, 0);
         fprintf(tl_out, "\n");
       }
   }
@@ -708,19 +723,6 @@ void count_predecessors_sets(int nodes_num) {
   for(i=0; i<nodes_num; i++) {
  	  rem_set(predecessors[i], i);
   }
-}
-
-void print_predecessors_sets() {
-  int i;
-  
-  fprintf(tl_out, "\nPredecessors sets:\n");
-	
-  for (i = node_id - 1; i > 0; i--) {
-    fprintf(tl_out, "%i -> ", i);
-    print_set(predecessors[i], 0);
-    fprintf(tl_out, "\n");
-  }
-  fprintf(tl_out, "\n");
 }
 
 void oteckuj(int nodes_num) {

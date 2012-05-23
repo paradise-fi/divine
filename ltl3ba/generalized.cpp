@@ -89,7 +89,7 @@ void reinitGeneralized() {
 }
 
 void print_generalized();
-void remove_redundandt_targets(cset *set, cset *fin);
+void remove_redundand_targets(cset *set, cset *fin);
 
 int included_big_set(cset *set_1, cset *set_2, GState *s);
 
@@ -142,7 +142,7 @@ void cGTrans::decrement_incoming(void) {
     t->first->incoming = t->first->incoming - t->second.size();
 }
 
-/* chceck wheter the newly build transitions dominates any existing or is dominated */
+/* Check wheter the newly build transitions dominates any existing or is dominated */
 /* true is returned if the new transition shoul be added */
 bool cGTrans::check_dominance(ATrans *t, cset *t_to, cset* fin, int acc, int &state_trans, GState* s) {
   map<GState*, map<cset, bdd> >::iterator t1, tx1;
@@ -387,7 +387,7 @@ int all_gtrans_match(GState *a, GState *b, int use_scc)
       if (a_t1->first != b_t1->first)
         return 0;
         
-      // Chceck whether both states have same transitions going to that same state
+      // Check whether both states have same transitions going to that same state
       // Firs we check whether acceptance conditions may be ignored
       if (in_set(bad_scc, a->incoming) ||
           in_set(bad_scc, b->incoming) ||
@@ -649,7 +649,7 @@ int check_postpone(int *list) {
   return out;
 }
 
-/* Chcecks whether node is a cuccesor of some GF state in list */
+/* Checks whether node is a cuccesor of some GF state in list */
 int is_succ_off_some_GF(int *list, int node) {
   int j;
   for(j = 1; j < list[0]; j++) {
@@ -660,7 +660,7 @@ int is_succ_off_some_GF(int *list, int node) {
   return 0;
 }
 
-void remove_redundandt_targets(cset *set, cset *fin) {
+void remove_redundand_targets(cset *set, cset *fin) {
   int i, *list;
   list = set->to_list();
 
@@ -743,7 +743,7 @@ void make_gtrans(GState *s) { /* creates all the transitions from a state */
     postpone=0;
   } else {
     compute_directly = 0;
-    if (tl_postpone)
+    if (tl_postpone && !empty_intersect_sets(s->nodes_set->get_set(), INFp_nodes, 0))
       postpone = check_postpone(list);
     else
       postpone = 0; 
@@ -774,7 +774,7 @@ void make_gtrans(GState *s) { /* creates all the transitions from a state */
     t1_to = &p->prod_to;
     if(t1) { /* solves the current transition */
       fin->clear();
-      
+
       for(i = 1; i < final[0]; i++)
         if(is_final(s->nodes_set, t1, t1_to, final[i]))
           fin->insert(final[i]);
@@ -802,7 +802,7 @@ void make_gtrans(GState *s) { /* creates all the transitions from a state */
             tfree(set);
           }
           if (tl_f_components && can_be_optimized(t1_to)) {
-            remove_redundandt_targets(t1_to, fin);
+            remove_redundand_targets(t1_to, fin);
           }
         }
         GState *to = find_gstate(t1_to, s);

@@ -9,7 +9,6 @@
 #define false 0
 #define true 1
 
-
 int is_G(Node *n) {
   if (!n) return false;
   
@@ -44,6 +43,7 @@ int is_UXp(Node *n) {
   else return false;
 }
 
+// Checks whether it is a fromula of LTL() fragment (boolean combination of APs)
 int is_LTL(Node *n) {
   if (!n) return false;
         
