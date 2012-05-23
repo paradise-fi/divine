@@ -21,6 +21,10 @@ extern const char *combine_m4;
 int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out);
 #endif
 
+#ifdef O_LTL3BA
+int main_ltl3ba(int argc, char *argv[], std::ostream& out);
+#endif
+
 using namespace wibble;
 using namespace commandline;
 using namespace sys;
@@ -146,6 +150,32 @@ struct Combine {
     }
 #endif
 
+#ifdef O_LTL3BA
+    /// Translates ltl formula to Buchi automaton using ltl3ba
+    std::string ltl3baTranslation( std::string ltl ) {
+        std::stringstream automatonStream, formulaStream;
+        LTL_parse_t ltlParse( ltl );
+        LTL_formul_t ltlFormula, ltlFormulaNeg;
+        if ( !ltlParse.syntax_check( ltlFormula ) ) {
+            std::cerr << "Syntax error in LTL formula: " << ltl << endl;
+            return "";
+        }
+        ltlFormulaNeg = ltlFormula.negace();
+        formulaStream << ltlFormulaNeg;
+
+        char** argv = new char*[ 5 ];
+        argv[ 0 ] = const_cast<char*>("ltl3ba");
+        // option to produce more deterinistic automaton
+        argv[ 1 ] = const_cast<char*>("-M");
+        // enable strong fair (S)imulation reduction of BA
+        argv[ 2 ] = const_cast<char*>("-S");
+        argv[ 3 ] = const_cast<char*>("-f");
+        argv[ 4 ] = const_cast<char*>(formulaStream.str().c_str()); //ltl.c_str());
+        main_ltl3ba(5, argv, automatonStream);
+        return automatonStream.str();
+    }
+#endif
+
     void announce( int id, std::string descr ) {
         if ( !o_quiet->boolValue() && !o_stdout->boolValue() )
             std::cerr << outFile( id ) << ": " << descr << std::endl;
@@ -189,8 +219,12 @@ struct Combine {
         if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
 #endif
         {
+#ifdef O_LTL3BA
+            automaton = ltl3baTranslation( ltl );
+#else
             divine::output( buchi( ltl, probabilistic ), automaton_str );
             automaton = automaton_str.str();
+#endif
         }
 #ifdef O_LTL2DSTAR
         // this can also handle NBA, Streett, etc.

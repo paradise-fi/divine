@@ -55,7 +55,7 @@ extern struct rusage tr_debut, tr_fin;
 extern struct timeval t_diff;
 #endif
 extern int tl_verbose, tl_stats, tl_simp_diff, tl_simp_fly, tl_simp_scc, tl_ltl3ba,
-  tl_bisim, tl_bisim_r, tl_sim, tl_sim_r, init_size, *final;
+  tl_bisim, tl_bisim_r, tl_sim, tl_sim_r, init_size, *final, tl_print;
 extern void put_uform(void);
 
 extern int sym_size, mod, predicates, scc_id, gstate_id;
@@ -1022,13 +1022,85 @@ void allsatPrintHandlerDve(char* varset, int size)
     if (varset[v] < 0) continue;       
     if (print_and) *where_os << " && ";
     if (varset[v] == 0)
-      *where_os << "not " << sym_table[v];
+      *where_os << "not (" << sym_table[v] << ")";
     else
-      *where_os << sym_table[v];
+      *where_os << "(" << sym_table[v] << ")";
     print_and = 1;
   }
   *where_os << ")";
   print_or = 1;
+}
+
+void print_dve_buchi(ostream& o_stream) {
+  map<BState*, bdd>::iterator t;
+  int i = 1;
+  BState *s;
+  std::ostringstream states, a_states, i_states;
+  bool acc_state = false;
+
+  int accept_all = 0;
+  if(bstates->nxt == bstates) { /* empty automaton */
+    o_stream << "process LTL_property {\n";
+    o_stream << "state q1;\n";
+    o_stream << "init q1;\n";
+    o_stream << "accept ;\n";
+    o_stream << "trans\n";
+    o_stream << ";\n";
+    o_stream << "}\n";
+    return;
+  }
+
+  o_stream << "process LTL_property {\n";
+  states << "state ";
+  a_states << "accept ";
+  i_states << "init ";
+  for(s = bstates->prv; s != bstates; s = s->prv, i++) {
+    s->incoming = i;
+    states << "q" << s->incoming;
+    if (s->prv != bstates) {
+      states << ", ";
+    } else {
+      states << ";\n";
+    }
+
+    if (s->final == accept) {
+      if (acc_state)
+        a_states << ", q" << s->incoming;
+      else
+        a_states << "q" << s->incoming;
+      acc_state = true;
+    }
+    if (s->id == -1) {
+      i_states << "q" << s->incoming << ";\n";
+    }
+  }
+  a_states << ";\n";
+  o_stream << states.str();
+  o_stream << i_states.str();
+  o_stream << a_states.str();
+
+  o_stream << "trans\n";
+  where_os = &o_stream;
+  for(s = bstates->prv; s != bstates; s = s->prv) {
+    for(t = s->trans->begin(); t != s->trans->end();) {
+      if (t->second == bdd_false())
+        continue;
+      if (t->second == bdd_true())
+        o_stream << "q" << s->incoming << " -> q" << t->first->incoming << " {}";
+      else {
+        o_stream << "q" << s->incoming << " -> q" << t->first->incoming << " { guard ";
+        print_or = 0;
+        bdd_allsat(t->second, allsatPrintHandlerDve);
+        o_stream << "; }";
+      }
+      t++;
+      if (s->prv == bstates && t == s->trans->end())
+        o_stream << ";\n";
+      else
+        o_stream << ",\n";
+    }
+  }
+  o_stream << "}\n";
 }
 
 /********************************************************************\
@@ -1174,5 +1246,6 @@ void mk_buchi()
     } while (bstate_count < states || btrans_count < trans);
   }
 
-  print_spin_buchi();
+  if (tl_print)
+    print_spin_buchi();
 }

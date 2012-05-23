@@ -62,6 +62,7 @@ int tl_bisim_r   = 0; /* enable basic bisimulatin reduction of BA and repeat unt
 int tl_sim       = 0; /* enable strong fair simulation reduction of BA */
 int tl_sim_r     = 0; /* enable strong fair simulation reduction of BA and repeat until there is no reduction */
 int tl_ltl3ba    = 1; /* enable some LTL3BA specific improvements */
+int tl_print     = 1;
 int tl_errs      = 0;
 int tl_verbose   = 0;
 int tl_terse     = 0;
@@ -115,6 +116,7 @@ void reinit() {
     tl_sim       = 0;
     tl_sim_r     = 0;
     tl_ltl3ba    = 1;
+    tl_print     = 1;
     tl_errs      = 0;
     tl_verbose   = 0;
     tl_terse     = 0;
@@ -299,6 +301,18 @@ main_function(int argc, char *argv[], FILE* outFile)
         else
         {       usage();
         }
+}
+
+int
+main_ltl3ba(int argc, char *argv[], std::ostream& out)
+{
+      reinit();
+      /* disable the default promela output do std */
+      tl_print = 0;
+      
+      int i = main_function(argc, argv, NULL);
+      print_dve_buchi(out);
+      return i;
 }
 
 int

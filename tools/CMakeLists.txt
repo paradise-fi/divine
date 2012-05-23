@@ -39,6 +39,10 @@ if( LTL2DSTAR )
   target_link_libraries( divine ltl2dstar )
 endif( LTL2DSTAR )
 
+if( LTL3BA )
+  target_link_libraries( divine ltl3ba )
+endif( LTL3BA )
+
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )
 else( WIN32 )

@@ -204,6 +204,9 @@ void    mk_alternating(Node *);
 void    mk_generalized();
 void    mk_buchi();
 
+void print_spin_buchi();
+void print_dve_buchi(std::ostream& );
+
 ATrans *dup_trans(ATrans *);
 ATrans *merge_trans(ATrans *, ATrans *);
 void do_merge_trans(ATrans **, ATrans *, ATrans *);
