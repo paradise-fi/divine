@@ -177,17 +177,8 @@ void trans(Node *p)
   if (tl_terse)
     return;
  
-  // Buddy might have been initialized by a third-party library.
-  if (!bdd_isrunning()) {
-    bdd_init(100000, 10000);
-    // Disable the default GC handler.
-    bdd_gbc_hook(0);
-  }
-
   mk_alternating(p);
   mk_generalized();
   mk_buchi();
-  
-  bdd_done();
 }
 

@@ -124,6 +124,8 @@ void reinit() {
     hasuform=0, cnt=0;
     ltl_file.clear();
     add_ltl.clear();
+
+    bdd_done();
 }
 
 static void	tl_endstats(void);
@@ -198,6 +200,15 @@ usage(void)
         alldone(1);
 }
 
+void init_buddy() {
+  // Buddy might have been initialized by a third-party library.
+  if (!bdd_isrunning()) {
+    bdd_init(100000, 10000);
+    // Disable the default GC handler.
+    bdd_gbc_hook(0);
+  }
+}
+
 int
 tl_main(std::string &argv)
 { 
@@ -211,7 +222,9 @@ tl_main(std::string &argv)
   uform = argv;
 	hasuform = uform.length();
 	if (hasuform == 0) usage();
+	init_buddy();
 	tl_parse();
+	
 #ifdef STATS
 	if (tl_stats) tl_endstats();
 #endif
@@ -280,7 +293,7 @@ main_function(int argc, char *argv[], FILE* outFile)
                         fclose(outFile);
                 }
                 else
-                {       exit(tl_main(add_ltl));
+                {       return(tl_main(add_ltl));
                 }
         }
         else
@@ -291,6 +304,7 @@ main_function(int argc, char *argv[], FILE* outFile)
 int
 main_ltl3ba(int argc, char *argv[], FILE* outFile)
 {
+      reinit();
       /* use the option to produce more deterinistic automaton by default */
       tl_det_m = 1;
       
