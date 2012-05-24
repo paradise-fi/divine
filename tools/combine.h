@@ -23,6 +23,10 @@ int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& 
 
 #ifdef O_LTL3BA
 int main_ltl3ba(int argc, char *argv[], std::ostream& out);
+struct BState;
+BState* get_buchi_states();
+int get_buchi_accept();
+std::list<std::string> get_buchi_all_symbols();
 #endif
 
 using namespace wibble;
@@ -30,7 +34,11 @@ using namespace commandline;
 using namespace sys;
 using namespace divine;
 
+#ifdef O_LTL3BA
+std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > symbols);
+#else
 std::string graph_to_cpp(const BA_opt_graph_t &g);
+#endif
 
 struct Combine {
     Engine *cmd_combine;
@@ -252,7 +260,12 @@ struct Combine {
         f << divine::generator_cesmi_client_h_str << std::endl;
         f << divine::blob_h_str << std::endl;
         f << "using namespace divine;" << std::endl;
+#ifdef O_LTL3BA
+        ltl3baTranslation( ltl );
+        f << buchi_to_cpp( get_buchi_states(), get_buchi_accept(), get_buchi_all_symbols() );
+#else
         f << graph_to_cpp( buchi( ltl, probabilistic ) );
+#endif
         f.close();
         Compile::gplusplus( filename + " " + input, outFile( id ) );
     }

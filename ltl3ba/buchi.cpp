@@ -37,7 +37,6 @@
 #include <bdd.h>
 #include <map>
 #include <list>
-#include <set>
 
 /* When defined, auxiliary dictionaries are used to speed up searching */
 /* among existing states.             Comment to disable.              */
@@ -55,7 +54,7 @@ extern struct rusage tr_debut, tr_fin;
 extern struct timeval t_diff;
 #endif
 extern int tl_verbose, tl_stats, tl_simp_diff, tl_simp_fly, tl_simp_scc, tl_ltl3ba,
-  tl_bisim, tl_bisim_r, tl_sim, tl_sim_r, init_size, *final, tl_print;
+  tl_bisim, tl_bisim_r, tl_sim, tl_sim_r, init_size, *final, tl_print, sym_id;
 extern void put_uform(void);
 
 extern int sym_size, mod, predicates, scc_id, gstate_id;
@@ -1101,6 +1100,27 @@ void print_dve_buchi(ostream& o_stream) {
     }
   }
   o_stream << "}\n";
+}
+
+BState* get_buchi_states() {
+  return bstates;
+}
+
+int get_buchi_accept() {
+  return accept;
+}
+
+std::list<std::string> get_buchi_all_symbols() {
+  list<string> symbols;
+
+  for (int i = 0; i < sym_id; i++) {
+    symbols.push_back(string(sym_table[i]));
+  }
+  return symbols;
+}
+
+std::string get_buchi_symbol(int i) {
+  return string(sym_table[i]);
 }
 
 /********************************************************************\

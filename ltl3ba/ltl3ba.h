@@ -42,6 +42,7 @@
 #include <sys/resource.h>
 #include <bdd.h>
 #include <map>
+#include <list>
 
 /* Set LTL3BA's version number */
 #define VERSION_NUM "1.0.1"
@@ -271,6 +272,11 @@ int is_GF_component(Node *n);
 }
 
 void allsatPrintHandler(char* , int);
+
+BState* get_buchi_states();
+int get_buchi_accept();
+std::list<std::string> get_buchi_all_symbols();
+std::string get_buchi_symbol(int);
 
 class cset
 {
