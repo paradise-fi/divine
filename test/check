@@ -2,70 +2,81 @@
 # -*- sh -*-
 set -e
 
+complain() {
+    echo 1>&2
+    echo "### $@" 1>&2
+    echo 1>&2
+}
+
 die() {
     test -f progress && cat progress
     rm progress
-    echo
-    echo "### $@"
-    echo
+    complain "$@"
     exit 1
 }
 
-ltl_valid() {
+report() {
     test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: neverclaim" report || return 0
-    grep "^Property-Holds: Yes" report
+    v=`grep "^$1:" report | cut -f2- -d: | cut -c2-`
+    if test -n "$2" && test "$2" != "$v"; then
+        complain "Field $1: expected '$2'; got '$v'"
+        return 1
+    fi
+    echo "$v";
+    return 0
+}
+
+ltl_valid() {
+    report Finished Yes
+    report Property-Type neverclaim || return 0
+    report Property-Holds Yes
 }
 
 ltl_invalid() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: neverclaim" report || return 0
-    grep "^Property-Holds: No" report
+    report Finished Yes
+    report Property-Type neverclaim || return 0
+    report Property-Holds No
 }
 
 reachability_valid() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: Yes" report
+    report Finished Yes
+    report Property-Type reachability || return 0
+    report Property-Holds Yes
 }
 
 reachability_deadlock() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: deadlock" report
+    report Finished Yes
+    report Property-Type reachability || return 0
+    report Property-Holds No
+    report CE-Type deadlock
 }
 
 reachability_goal() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: goal" report
+    report Finished Yes
+    report Property-Type reachability || return 0
+    report Property-Holds No
+    report CE-Type goal
 }
 
 reachability_any() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: goal" report || grep "^CE-Type: deadlock" report
+    report Finished Yes
+    report Property-Type reachability || return 0
+    report Property-Holds No
+    report CE-Type goal || report CE-Type deadlock
 }
 
 statespace() {
     test -f report || return 0
+
+    report Finished Yes
     op=-eq
-    grep "^Full-State-Space: No" report && op=-le
+    report Full-State-Space No && op=-le
     grep "^Transformations:.*POR" report && op=-le
 
-    states=`grep ^States-Visited report | cut -d' ' -f2`
-    trans=`grep ^Transition-Count report | cut -d' ' -f2`
-    accept=`grep ^States-Accepting report | cut -d' ' -f2`
-    dead=`grep ^Deadlock-Count report | cut -d' ' -f2`
+    states=`report States-Visited`
+    trans=`report Transition-Count`
+    accept=`report States-Accepting`
+    dead=`report Deadlock-Count`
 
     test $states $op $1 || die "States-Visited: $1 expected, $states got"
     test "$trans" = "-" || test $trans $op $2 || die "Transition-Count: $2 expected, $trans got"
