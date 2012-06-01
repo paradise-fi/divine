@@ -111,14 +111,15 @@ struct Call {
 #define IS_VOID(x) typename wibble::EnableIf< wibble::TSame< x, void >, void >::T
 #define NOT_VOID(x) typename wibble::DisableIf< wibble::TSame< x, void >, void >::T
 
-template< typename T, typename X, template< typename, typename > class With, typename _F >
+template< typename T, typename X, template< typename, typename > class With, typename _F, typename BSI, typename BSO >
 struct Apply {
     typedef _F F;
     typedef typename Return< F >::T R;
     typedef With< X, F > Wrapper;
-    bitstream &in, &out;
+    BSI &in;
+    BSO &out;
 
-    Apply( bitstream &in, bitstream &out ) : in( in ), out( out ) {}
+    Apply( BSI &in, BSO &out ) : in( in ), out( out ) {}
 
     template< typename... P >
     auto grab( wibble::Preferred, P&&... p ) -> IS_VOID( decltype( With< X, F >()( p... ) ) )
@@ -166,22 +167,22 @@ struct Apply {
     }
 };
 
-template< typename T, typename X, template< typename, typename > class With, int id >
+template< typename T, typename X, template< typename, typename > class With, int id, typename BSI, typename BSO >
 typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Second
-applyID( wibble::Preferred, X &&x, bitstream &in, bitstream &out ) {
+applyID( wibble::Preferred, X &&x, BSI &in, BSO &out ) {
     typedef typename T::template RpcId< id, true >::Fun F;
     F f = T::template RpcId< id, true >::fun();
-    Apply< T, X, With, F > apply( in, out );
+    Apply< T, X, With, F, BSI, BSO > apply( in, out );
     apply.template match< F >( std::forward< X >( x ), f );
 }
 
-template< typename T, typename X, template< typename, typename > class With, int id >
-void applyID( wibble::NotPreferred, X &&x, bitstream &in, bitstream &out ) {
+template< typename T, typename X, template< typename, typename > class With, int id, typename BSI, typename BSO >
+void applyID( wibble::NotPreferred, X &&x, BSI &in, BSO &out ) {
     assert_die();
 }
 
-template< typename T, typename X, template< typename F, typename > class With, int n >
-void lookupAndApplyID( int id, X &&x, bitstream &in, bitstream &out ) {
+template< typename T, typename X, template< typename F, typename > class With, int n, typename BSI, typename BSO >
+void lookupAndApplyID( int id, X &&x, BSI &in, BSO &out ) {
     assert( n );
     if ( n == id )
         applyID< T, X, With, n >( wibble::Preferred(), std::forward< X >( x ), in, out );
@@ -189,16 +190,16 @@ void lookupAndApplyID( int id, X &&x, bitstream &in, bitstream &out ) {
         lookupAndApplyID< T, X, With, n == 0 ? 0 : (n - 1) >( id, std::forward< X >( x ), in, out );
 }
 
-template< typename T, template< typename, typename > class With, typename X >
-void demarshallWith( X &&x, bitstream &in, bitstream &out )
+template< typename T, template< typename, typename > class With, typename X, typename BSI, typename BSO >
+void demarshallWith( X &&x, BSI &in, BSO &out )
 {
     int id;
     in >> id;
     lookupAndApplyID< T, X, With, RPC_MAX >( id, std::forward< X >( x ), in, out );
 }
 
-template< typename T >
-void demarshall( T t, bitstream &in, bitstream &out )
+template< typename T, typename BSI, typename BSO >
+void demarshall( T t, BSI &in, BSO &out )
 {
     demarshallWith< T, Call >( t, in, out );
 }
