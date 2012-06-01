@@ -1,11 +1,15 @@
 . lib
 
-draw() {
-    divine draw -r cat -o out.dot $1
+normal() {
     diff -u out.dot $1.dot
+}
 
-    divine draw -l -r cat -o out.dot $1
+labels() {
     grep '\->' out.dot | not grep -v '\[.*label.*\]'
 }
 
-dve_small draw
+extracheck=normal
+dve_small draw -r cat -o out.dot
+
+extracheck=labels
+dve_small draw -l -r cat -o out.dot

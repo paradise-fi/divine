@@ -1,0 +1,47 @@
+#!/bin/sh
+
+ann() {
+    echo "% $@" 1>&2
+    eval "$@"
+}
+
+capture() {
+    tee report | sed -e "s,^,  | ,"
+}
+
+map() { ann "divine map --report" "$@" "2> progress | capture"; }
+ndfs() { ann "divine nested-dfs --report" "$@" "2> progress | capture"; }
+owcty() { ann "divine owcty --report" "$@" "2> progress | capture"; }
+reachability() { ann "divine reachability --report" "$@" "2> progress | capture"; }
+metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
+draw() { ann "divine draw" "$@"; }
+
+mpi() {
+    $MPIEXEC >& /dev/null || exit 200; # probably not found
+    ann "$MPIEXEC -H localhost,localhost divine" "$@" "--report 2> progress | capture"
+}
+
+identity() {
+    file=$1
+    shift
+    "$@" "$file"
+}
+
+dve_compile() {
+    file=$1
+    shift
+
+    ann divine compile $file
+    "$@" `basename $file.so`
+}
+
+llvm_assemble() {
+    file=$1
+    shift
+
+    out=`basename $file .ll`.bc
+    ann llvm-as -o=$out $file
+    "$@" $out
+}
+
+"$@"

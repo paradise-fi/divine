@@ -3,9 +3,7 @@
 set -e
 
 complain() {
-    echo 1>&2
-    echo "### $@" 1>&2
-    echo 1>&2
+    echo "### $@" > complaint
 }
 
 die() {
@@ -18,12 +16,19 @@ die() {
 report() {
     test -f report || return 0
     v=`grep "^$1:" report | cut -f2- -d: | cut -c2-`
-    if test -n "$2" && test "$2" != "$v"; then
-        complain "Field $1: expected '$2'; got '$v'"
+    test -n "$3" && op="$3" || op="=";
+
+    if test -n "$2" && ! test "$2" "$op" "$v"; then
+        complain "Expected $1 $op '$2' but got '$v' instead"
         return 1
     fi
-    echo "$v";
+    echo "$v" > value;
     return 0
+}
+
+report_print() {
+    report "$@"
+    cat value
 }
 
 ltl_valid() {
@@ -73,10 +78,10 @@ statespace() {
     report Full-State-Space No && op=-le
     grep "^Transformations:.*POR" report && op=-le
 
-    states=`report States-Visited`
-    trans=`report Transition-Count`
-    accept=`report States-Accepting`
-    dead=`report Deadlock-Count`
+    states=`report_print States-Visited`
+    trans=`report_print Transition-Count`
+    accept=`report_print States-Accepting`
+    dead=`report_print Deadlock-Count`
 
     test $states $op $1 || die "States-Visited: $1 expected, $states got"
     test "$trans" = "-" || test $trans $op $2 || die "Transition-Count: $2 expected, $trans got"
@@ -86,6 +91,7 @@ statespace() {
 
 clear() {
     rm -f progress report
+    echo
 }
 
 owcty_sizes() {
@@ -104,7 +110,13 @@ owcty_sizes() {
 
 debris() {
     echo
+    echo "#### TEST END"
+    echo
     test -f progress && cat progress || true
+    echo
+    test -f complaint && cat complaint || true
+    echo
+    echo "."
 }
 
 "$@"
