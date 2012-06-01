@@ -15,6 +15,7 @@ namespace bitstream_impl {
 
 template< typename Bits >
 struct base {
+    typedef base< Bits > bitstream;
     Bits bits;
     Pool *pool;
 
@@ -30,6 +31,7 @@ struct base {
 struct block : std::vector< uint32_t > {};
 
 template<> struct base< block > {
+    typedef base< block > bitstream;
     block bits;
     int offset;
     Pool *pool;
@@ -105,6 +107,7 @@ base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
 
 template< typename B, typename T >
 typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
+    assert( bs.size() );
     x = bs.front();
     bs.shift();
     return bs;
@@ -151,6 +154,8 @@ base< B > &operator>>( base< B > &bs, Blob &blob )
         blob = Blob( *bs.pool, size );
     else
         blob = Blob( size );
+
+    assert_leq( blob.size(), bs.size() * 4 );
 
     while ( off < blob.size() ) {
         bs >> blob.get< uint32_t >( off );

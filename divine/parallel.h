@@ -419,7 +419,7 @@ struct Mpi : MpiMonitor
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
-                bitstream response;
+                bitblock response;
                 mpi.getStream( _lock, mpi.anySource, TAG_COLLECT, response );
                 response >> bits;
             }
@@ -510,7 +510,8 @@ struct Mpi : MpiMonitor
     /* The slave monitor */
     Loop process( wibble::sys::MutexLock &_lock, divine::Mpi::Status &status ) {
 
-        bitstream in, out;
+        bitblock in;
+        bitstream out;
 
         mpi.debug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
         mpi.recvStream( _lock, status, in );

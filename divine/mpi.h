@@ -177,21 +177,21 @@ public:
                 loop();
     }
 
-    bitstream &getStream( wibble::sys::MutexLock &_lock, int source, int tag, bitstream &bs )
+    bitblock &getStream( wibble::sys::MutexLock &_lock, int source, int tag, bitblock &bs )
     {
         Status st;
         probe( source, tag, st );
         return recvStream( _lock, st, bs );
     }
 
-    bitstream &recvStream( wibble::sys::MutexLock &_lock, Status &st, bitstream &bs )
+    bitblock &recvStream( wibble::sys::MutexLock &_lock, Status &st, bitblock &bs )
     {
         probe( st.Get_source(), st.Get_tag(), st );
         int first = bs.bits.size(), count = size( st ) / 4;
         bs.bits.resize( first + count );
         recv( &bs.bits[ first ], count * 4, st.Get_source(), st.Get_tag(), st );
         debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): "
-                << wibble::str::fmt( bs.bits ) << std::endl;
+                << wibble::str::fmt( static_cast< std::vector< uint32_t > >( bs.bits ) ) << std::endl;
         return bs;
     }
 
@@ -350,7 +350,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             if ( i == mpi.rank() )
                 continue;
 
-            bitstream in;
+            bitblock in;
             mpi.getStream( _lock, mpi.anySource, TAG_GIVE_COUNTS, in );
 
             int addr, adds;
@@ -411,7 +411,8 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             return Continue;
         }
 
-        bitstream in, out;
+        bitstream out;
+        bitblock in;
         mpi.recvStream( _lock, status, in );
 
         switch ( status.Get_tag() ) {

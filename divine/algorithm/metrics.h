@@ -71,12 +71,14 @@ struct Statistics {
 
 };
 
-static inline bitstream &operator<<( bitstream &bs, Statistics st )
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, Statistics st )
 {
     return bs << st.states << st.transitions << st.expansions << st.accepting << st.deadlocks;
 }
 
-static inline bitstream &operator>>( bitstream &bs, Statistics &st )
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, Statistics &st )
 {
     return bs >> st.states >> st.transitions >> st.expansions >> st.accepting >> st.deadlocks;
 }

@@ -116,10 +116,10 @@ Loop Statistics::process( wibble::sys::MutexLock &, MpiStatus &status )
     int sendrecv = n * 4,
            local = 6;
 
-    bitstream data;
+    bitblock data;
     wibble::sys::MutexLock _lock( mpi.global().mutex );
     mpi.recvStream( _lock, status, data );
-    mpi.debug() << "stats received: " << wibble::str::fmt( data.bits ) << std::endl;
+    mpi.debug() << "stats received: " << wibble::str::fmt( static_cast< std::vector< uint32_t > >( data.bits ) ) << std::endl;
 
     int min;
     data >> min;

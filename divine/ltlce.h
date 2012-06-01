@@ -18,15 +18,15 @@ struct CeShared {
     bool current_updated;
 };
 
-template< typename Node >
-static inline bitstream &operator<<( bitstream &bs, const CeShared< Node > &sh )
+template< typename BS, typename Node >
+typename BS::bitstream &operator<<( BS &bs, const CeShared< Node > &sh )
 {
     return bs << sh.initial << sh.current << sh.successor << sh.successorPos
               << sh.current_updated;
 }
 
-template< typename Node >
-static inline bitstream &operator>>( bitstream &bs, CeShared< Node > &sh )
+template< typename BS, typename Node >
+typename BS::bitstream &operator>>( BS &bs, CeShared< Node > &sh )
 {
     return bs >> sh.initial >> sh.current >> sh.successor >> sh.successorPos
               >> sh.current_updated;

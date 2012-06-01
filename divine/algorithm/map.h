@@ -48,13 +48,15 @@ struct MapShared {
     bool need_expand;
 };
 
-static inline bitstream &operator<<( bitstream &bs, const MapShared &sh )
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, const MapShared &sh )
 {
     return bs << sh.stats << sh.ce << sh.iteration << sh.need_expand
               << sh.accepting << sh.expanded << sh.eliminated;
 }
 
-static inline bitstream &operator>>( bitstream &bs, MapShared &sh )
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, MapShared &sh )
 {
     return bs >> sh.stats >> sh.ce >> sh.iteration >> sh.need_expand
               >> sh.accepting >> sh.expanded >> sh.eliminated;

@@ -24,13 +24,15 @@ struct OwctyShared {
     OwctyShared() : cycle_found( false ) {}
 };
 
-static inline bitstream &operator<<( bitstream &bs, const OwctyShared &sh )
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, const OwctyShared &sh )
 {
     return bs << sh.size << sh.oldsize << sh.cycle_node << sh.cycle_found
               << sh.iteration << sh.ce << sh.stats << sh.need_expand;
 }
 
-static inline bitstream &operator>>( bitstream &bs, OwctyShared &sh )
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, OwctyShared &sh )
 {
     return bs >> sh.size >> sh.oldsize >> sh.cycle_node >> sh.cycle_found
               >> sh.iteration >> sh.ce >> sh.stats >> sh.need_expand;
