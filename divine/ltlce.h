@@ -241,6 +241,7 @@ struct LtlCE {
             if ( shared().ce.successorPos ) {
                 trace.push_back( shared().ce.current );
                 numTrace.push_back( shared().ce.successorPos );
+                shared().ce.current = Node(); // owned by trace now
             }
         }
 
