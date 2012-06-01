@@ -159,7 +159,7 @@ struct Blob
         std::fill( data() + from, data() + to, pattern );
     }
 
-    size_t size() const
+    int size() const
     {
         return header().size;
     }

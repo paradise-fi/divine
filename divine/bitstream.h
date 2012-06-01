@@ -123,7 +123,7 @@ typename int64< B, T >::stream &operator>>( base< B > &bs, T &i ) {
 
 template< typename B, typename X >
 typename container< B, X >::stream &operator>>( base< B > &bs, X &x ) {
-    int size;
+    size_t size;
     bs >> size;
     for ( int i = 0; i < size; ++ i ) {
         typename X::value_type tmp;
