@@ -12,124 +12,44 @@ mpi() {
     $MPIEXEC -H localhost,localhost divine "$@" --report 2> progress | tee report
 }
 
-ltl_valid() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: neverclaim" report || return 0
-    grep "^Property-Holds: Yes" report
-}
-
-ltl_invalid() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: neverclaim" report || return 0
-    grep "^Property-Holds: No" report
-}
-
-reachability_valid() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: Yes" report
-}
-
-reachability_deadlock() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: deadlock" report
-}
-
-reachability_goal() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: goal" report
-}
-
-reachability_any() {
-    test -f report || return 0
-    grep "^Finished: Yes" report
-    grep "^Property-Type: reachability" report || return 0
-    grep "^Property-Holds: No" report
-    grep "^CE-Type: goal" report || grep "^CE-Type: deadlock" report
-}
-
-statespace() {
-    test -f report || return 0
-    op=-eq
-    grep "^Full-State-Space: No" report && op=-le
-    grep "^Transformations:.*POR" report && op=-le
-
-    states=`grep ^States-Visited report | cut -d' ' -f2`
-    trans=`grep ^Transition-Count report | cut -d' ' -f2`
-    accept=`grep ^States-Accepting report | cut -d' ' -f2`
-    dead=`grep ^Deadlock-Count report | cut -d' ' -f2`
-
-    test $states $op $1
-    test "$trans" = "-" || test $trans $op $2
-    test $accept $op $3
-    test "$dead" = "-" || test $dead $op $4
-}
-
-clear() {
-    rm -f progress report
-}
-
-owcty_sizes() {
-    test -f report || return 0
-    test -f progress || return 0
-
-    if ! grep -q "^Algorithm: OWCTY" report; then return 0; fi
-    if grep -q "^Full-State-Space: No" report; then return 0; fi
-    if grep -q "^Transformations:.*POR" report; then return 0; fi
-
-    grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
-    rm -f numbers-right
-    for n in $@; do echo $n >> numbers-right; done
-    diff -u numbers-right numbers
-}
-
 for_dve_small() {
     wrapper=$1
     shift
 
-    clear
+    check clear
     $wrapper data/test1.dve "$@"
-    ltl_invalid
-    statespace 7 15 3 0
+    check ltl_invalid
+    check statespace 7 15 3 0
 
-    clear
+    check clear
     $wrapper data/test2.dve "$@"
-    ltl_valid
-    owcty_sizes 2 2 0
-    statespace 3 3 2 2
+    check ltl_valid
+    check owcty_sizes 2 2 0
+    check statespace 3 3 2 2
 
-    clear
+    check clear
     $wrapper data/test3.dve "$@"
-    ltl_valid
-    owcty_sizes 2 5 0
-    statespace 6 13 2 0
+    check ltl_valid
+    check owcty_sizes 2 5 0
+    check statespace 6 13 2 0
 
-    clear
+    check clear
     $wrapper data/test4.dve "$@"
-    ltl_invalid
-    owcty_sizes 1 4 1
-    statespace 5 6 1 0
+    check ltl_invalid
+    check owcty_sizes 1 4 1
+    check statespace 5 6 1 0
 
-    clear
+    check clear
     $wrapper data/test5.dve "$@"
-    ltl_invalid
-    owcty_sizes 1 4 1
-    statespace 5 6 1 0
+    check ltl_invalid
+    check owcty_sizes 1 4 1
+    check statespace 5 6 1 0
 
-    clear
+    check clear
     $wrapper data/test6.dve "$@"
-    ltl_invalid
-    owcty_sizes 2 6 1 5 1
-    statespace 6 7 2 0
+    check ltl_invalid
+    check owcty_sizes 2 6 1 5 1
+    check statespace 6 7 2 0
 }
 
 unwrap() {
@@ -168,6 +88,8 @@ all_small() {
     coin_small "$@"
 }
 
+chmod +x check
+PATH=".:$PATH"
 set -vex -o pipefail
-trap "test -f progress && cat progress" EXIT
+trap "check debris" EXIT
 

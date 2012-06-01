@@ -1,0 +1,99 @@
+#!/bin/sh
+# -*- sh -*-
+set -e
+
+die() {
+    test -f progress && cat progress
+    rm progress
+    echo
+    echo "### $@"
+    echo
+    exit 1
+}
+
+ltl_valid() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: neverclaim" report || return 0
+    grep "^Property-Holds: Yes" report
+}
+
+ltl_invalid() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: neverclaim" report || return 0
+    grep "^Property-Holds: No" report
+}
+
+reachability_valid() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: Yes" report
+}
+
+reachability_deadlock() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: deadlock" report
+}
+
+reachability_goal() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: goal" report
+}
+
+reachability_any() {
+    test -f report || return 0
+    grep "^Finished: Yes" report
+    grep "^Property-Type: reachability" report || return 0
+    grep "^Property-Holds: No" report
+    grep "^CE-Type: goal" report || grep "^CE-Type: deadlock" report
+}
+
+statespace() {
+    test -f report || return 0
+    op=-eq
+    grep "^Full-State-Space: No" report && op=-le
+    grep "^Transformations:.*POR" report && op=-le
+
+    states=`grep ^States-Visited report | cut -d' ' -f2`
+    trans=`grep ^Transition-Count report | cut -d' ' -f2`
+    accept=`grep ^States-Accepting report | cut -d' ' -f2`
+    dead=`grep ^Deadlock-Count report | cut -d' ' -f2`
+
+    test $states $op $1 || die "States-Visited: $1 expected, $states got"
+    test "$trans" = "-" || test $trans $op $2 || die "Transition-Count: $2 expected, $trans got"
+    test $accept $op $3 || die "States-Accepting: $3 expected, $accept got"
+    test "$dead" = "-" || test $dead $op $4 || die "Deadlock-Count: $4 expected, $dead got"
+}
+
+clear() {
+    rm -f progress report
+}
+
+owcty_sizes() {
+    test -f report || return 0
+    test -f progress || return 0
+
+    if ! grep -q "^Algorithm: OWCTY" report; then return 0; fi
+    if grep -q "^Full-State-Space: No" report; then return 0; fi
+    if grep -q "^Transformations:.*POR" report; then return 0; fi
+
+    grep '|S| = ' progress | sed -r -e 's,[^0-9]*([0-9]+).*,\1,' > numbers
+    rm -f numbers-right
+    for n in $@; do echo $n >> numbers-right; done
+    diff -u numbers-right numbers
+}
+
+debris() {
+    echo
+    test -f progress && cat progress || true
+}
+
+"$@"
