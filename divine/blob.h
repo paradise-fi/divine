@@ -75,9 +75,12 @@ struct Blob
     void free( A &a ) {
         if ( !valid() )
             return;
-        assert( !header().heap );
-        if ( !header().permanent )
-            a.deallocate( ptr, allocationSize( size() ) );
+        if ( !header().permanent ) {
+            if( header().heap )
+                delete[] ptr;
+            else
+                a.deallocate( ptr, allocationSize( size() ) );
+        }
     }
 
     void free() {
