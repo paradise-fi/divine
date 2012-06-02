@@ -8,7 +8,7 @@ let
     pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball { inherit divineSrc; };
-       buildInputs = [ pkgs.cmake pkgs.perl ] ++ inputs { inherit pkgs; };
+       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
     };
 
   src = pkgs.fetchurl {
