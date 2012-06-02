@@ -106,10 +106,14 @@ struct Combine {
             extension = ext;
 
         std::ostringstream str;
-        int a = input.rfind( '.' );
+        int a = input.rfind( '/' ), b = input.rfind( '.' );
+        if ( b == std::string::npos )
+            throw wibble::exception::Generic( "Suffix expected." );
         if ( a == std::string::npos )
-            throw wibble::exception::Generic( "Bla." );
-        std::string base( input, 0, a );
+            a = 0;
+        else
+            a = a + 1;
+        std::string base( input, a, b - a );
         str << base;
         if ( i != -1 ) {
             str << ".prop";
