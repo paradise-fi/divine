@@ -280,6 +280,7 @@ endif( GUI )
 
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/ltl3ba/buddy/src
   ${divine_BINARY_DIR}
   ${MPI_INCLUDE_PATH}
   ${LLVM_INCLUDE_DIRS}
