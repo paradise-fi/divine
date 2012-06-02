@@ -370,7 +370,8 @@ bool Interpreter::isTau( int ctx )
         return false;
 
     // we probably shouldn't slip out of bad states
-    if ( flags.null_dereference || flags.invalid_dereference )
+    if ( flags.assert || flags.null_dereference ||
+         flags.invalid_dereference || flags.invalid_argument )
         return false;
 
     Instruction &I = nextInstruction();
