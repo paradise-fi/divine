@@ -95,9 +95,10 @@ struct Common {
     void processDeadlocks() {
         while ( m_queue.deadlocked() ) {
             Node dead = m_queue.nextFrom();
-            if ( S::deadlocked( m_notify, dead ) == TerminateOnDeadlock )
-                return terminate();
+            auto action = S::deadlocked( m_notify, dead );
             m_queue.removeDeadlocked(); // _dead_ is released by this call
+            if ( action == TerminateOnDeadlock )
+                return terminate();
         }
     }
 
