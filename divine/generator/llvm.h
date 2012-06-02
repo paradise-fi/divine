@@ -181,7 +181,8 @@ struct LLVM : Common< Blob > {
         interpreter().restore( n, alloc._slack );
         return interpreter().flags.assert
             || interpreter().flags.null_dereference
-            || interpreter().flags.invalid_dereference;
+            || interpreter().flags.invalid_dereference
+            || interpreter().flags.invalid_argument;
     }
 
     bool isAccepting( Node n ) {
