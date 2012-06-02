@@ -257,13 +257,13 @@ struct LtlCE {
     }
 
     template< typename Domain, typename Alg >
-    void linear( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace<Domain, Alg> )
+    void linear( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace )
     {
         generateLinear( a, g(), (this->*traceFnc)( d, a, g().initial() ) );
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace<Domain, Alg> ) {
+    void lasso( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace ) {
         linear( d, a, traceFnc );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
