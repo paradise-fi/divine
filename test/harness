@@ -1,14 +1,5 @@
 #!/bin/sh
 
-# fake ssh for mpiexec
-cat > $1/ssh <<EOF
-#!/bin/sh
-test "\$1" = "-x" && shift
-shift # hostname
-eval "\$@"
-EOF
-chmod +x $1/ssh
-
 while echo $1 | grep -q =; do
     echo "$1"
     eval "export $1"
@@ -22,6 +13,15 @@ test -d "$TOOLS" -a -f "$TOOLS/divine" || {
 
 TOOLS1=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
 PATH="$TOOLS:$TOOLS1:$PATH"
+
+# fake ssh for mpiexec
+cat > $TOOLS/ssh <<EOF
+#!/bin/sh
+test "\$1" = "-x" && shift
+shift # hostname
+eval "\$@"
+EOF
+chmod +x $TOOLS/ssh
 
 test -z "$MPIEXEC" && MPIEXEC=false
 
