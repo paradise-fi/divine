@@ -40,7 +40,9 @@ Interpreter::Interpreter(Module *M)
   thread( 0 ).id = 1;
   _context = 0;
   _alternative = 0;
-  flags.assert = flags.null_dereference = flags.invalid_dereference = false;
+  flags.assert = flags.invalid_argument = false;
+  flags.invalid_dereference = flags.null_dereference = false;
+
   flags.ap = flags.buchi = 0;
 
   IL = new IntrinsicLowering(TD);

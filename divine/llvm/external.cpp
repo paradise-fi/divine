@@ -102,7 +102,7 @@ static GenericValue builtin_mutex_unlock(Interpreter *interp, const FunctionType
     int *var = (int *) interp->dereferencePointer(args[0]);
 
     if ( ((*var) & 0xFFFF) != interp->thread().id ) { /* Wrong thread doing the unlock. */
-        interp->flags.assert = true;
+        interp->flags.invalid_argument = true;
     } else
         *var &= ~0xFFFF; // Unlock.
 

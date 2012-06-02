@@ -138,6 +138,9 @@ std::string Interpreter::describe() {
     if ( flags.assert )
         s << "! ASSERTION FAILED" << std::endl;
 
+    if ( flags.invalid_argument )
+        s << "! INVALID ARGUMENT" << std::endl;
+
     if ( flags.invalid_dereference )
         s << "! INVALID DEREFERENCE" << std::endl;
 
