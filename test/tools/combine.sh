@@ -5,24 +5,35 @@ ltl_proc() {
     grep -A 1000 LTL_property $1
 }
 
+guard() { # this is quite crude, but works
+    # "normalize" the guards so they look the same with legacy divine/ltl2ba
+    # and with ltl3ba
+    sed -e 's,^.*guard \(.*\); }[,;],\1,' \
+        -e 's,^(\(.*\))$,\1,;' \
+        -e 's,^not \([^(].*\)$,not (\1),;' \
+        -e 's,^not ((\(.*\))),not (\1),;' \
+      | tee xxx
+    grep "$1" xxx
+}
+
 check_peterson1() {
-    ltl_proc $1 | grep "q1 -> q2" | grep "guard P_0.CS";
     ltl_proc $1 | grep "q1 -> q1" | grep "{}";
-    ltl_proc $1 | grep "q2 -> q2" | grep "guard P_0.CS";
+    ltl_proc $1 | grep "q1 -> q2" | guard "P_0.CS";
+    ltl_proc $1 | grep "q2 -> q2" | guard "P_0.CS";
     test `ltl_proc $1 | grep -c -- "->"` -eq 3
 }
 
 check_peterson2() {
-    ltl_proc $1 | grep "q1 -> q2" | grep "guard not P_0.CS";
     ltl_proc $1 | grep "q1 -> q1" | grep "{}";
-    ltl_proc $1 | grep "q2 -> q2" | grep "guard not P_0.CS";
+    ltl_proc $1 | grep "q1 -> q2" | guard "not (P_0.CS)";
+    ltl_proc $1 | grep "q2 -> q2" | guard "not (P_0.CS)";
     test `ltl_proc $1 | grep -c -- "->"` -eq 3
 }
 
 check_peterson3() {
-    ltl_proc $1 | grep "q1 -> q2" | grep "guard not (in_critical==1)";
     ltl_proc $1 | grep "q1 -> q1" | grep "{}";
-    ltl_proc $1 | grep "q2 -> q2" | grep "guard not (in_critical==1)";
+    ltl_proc $1 | grep "q1 -> q2" | guard "not (in_critical==1)";
+    ltl_proc $1 | grep "q2 -> q2" | guard "not (in_critical==1)";
     test `ltl_proc $1 | grep -c -- "->"` -eq 3
 }
 
