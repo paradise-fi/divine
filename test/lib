@@ -4,6 +4,7 @@ not() { "$@" && exit 1 || return 0; }
 
 for_dve_small() {
     wrapper=$1; shift
+    test "$O_DVE" = "ON" || test "$O_LEGACY" = "ON"|| return 0
 
     check clear
     run $wrapper data/test1.dve "$@"
@@ -56,6 +57,7 @@ dve_compiled_small() {
 }
 
 llvm_small() {
+    test "$O_LLVM" = "ON" || return 0
     check clear
     run llvm_assemble data/pthread-ok.ll "$@"
     check reachability_deadlock

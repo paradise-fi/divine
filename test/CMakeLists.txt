@@ -5,7 +5,12 @@ add_custom_target( functional
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
-  COMMAND ${WIBBLE_WRAP_TESTS} sh ${CMAKE_SOURCE_DIR}/test/harness "'${divine_BINARY_DIR}/tools'" "'${MPIEXEC}'" ${tests}
+  COMMAND ${WIBBLE_WRAP_TESTS} sh ${CMAKE_SOURCE_DIR}/test/harness
+    "TOOLS='${divine_BINARY_DIR}/tools'"
+    "MPIEXEC='${MPIEXEC}'"
+    "O_DVE='${DVE}'"
+    "O_LEGACY='${LEGACY}'"
+    "O_LLVM='${LLVM}'" ${tests}
 )
 
 add_dependencies( functional examples )

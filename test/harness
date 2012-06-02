@@ -1,10 +1,5 @@
 #!/bin/sh
 
-test -d "$1" -a -f "$1/divine" || {
-    echo "First parameter has to be directory with your divine binary."
-    exit 1
-}
-
 # fake ssh for mpiexec
 cat > $1/ssh <<EOF
 #!/bin/sh
@@ -14,13 +9,21 @@ eval "\$@"
 EOF
 chmod +x $1/ssh
 
-p="$1"
-p1=`echo -n "$p" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
-PATH="$p:$p1:$PATH"
-shift
+while echo $1 | grep -q =; do
+    echo "$1"
+    eval "export $1"
+    shift
+done
 
-export MPIEXEC="${1:-false}"
-shift
+test -d "$TOOLS" -a -f "$TOOLS/divine" || {
+    echo "TOOLS has to be directory with your divine binary."
+    exit 1
+}
+
+TOOLS1=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
+PATH="$TOOLS:$TOOLS1:$PATH"
+
+test -z "$MPIEXEC" && MPIEXEC=false
 
 tests="$@"
 
