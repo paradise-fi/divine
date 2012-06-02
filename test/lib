@@ -56,7 +56,15 @@ dve_compiled_small() {
 }
 
 llvm_small() {
-    :
+    check clear
+    run llvm_assemble data/pthread-ok.ll "$@" -d
+    check reachability_deadlock
+    check statespace 110 198 0 1
+
+    check clear
+    run llvm_assemble data/pthread-bad.ll "$@" --ignore-deadlocks
+    check reachability_goal
+    check statespace 106 187 0 1
 }
 
 coin_small() {
