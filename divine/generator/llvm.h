@@ -315,6 +315,11 @@ struct LLVM : Common< Blob > {
     }
 
     LLVM() : _interpreter( 0 ), use_property( false ) {}
+    LLVM( const LLVM &other ) {
+        *this = other;
+        _interpreter = 0;
+        _initial = Node();
+    }
 
 };
 
