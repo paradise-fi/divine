@@ -245,7 +245,9 @@ public:
             } else assert_die();
         }
 
+#ifdef POSIX
         sched_yield();
+#endif
 
         if ( global().progress )
             return global().progress->progress( _lock );
