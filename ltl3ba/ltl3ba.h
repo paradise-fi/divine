@@ -142,6 +142,9 @@ typedef struct BScc {
   struct BScc *nxt;
 } BScc;
 
+#undef TRUE
+#undef FALSE
+
 enum {
 	ALWAYS=257,
 	AND,		/* 258 */
