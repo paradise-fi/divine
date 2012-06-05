@@ -39,7 +39,10 @@
 #include <sstream>
 #include <stdlib.h>
 #include <sys/time.h>
+#ifdef POSIX
 #include <sys/resource.h>
+#endif
+
 #include <bdd.h>
 #include <map>
 #include <list>
