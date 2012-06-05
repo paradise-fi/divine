@@ -81,6 +81,9 @@ const std::string __fragments[] = {
     "/*", "*/", "//", "\n", ";", ":", "and", "or", "true", "false"
 };
 
+#undef TRUE
+#undef FALSE
+
 struct Fragment {
     enum Frag { LC, EC, SC, EOL, SEMICOL, COL, AND, OR, TRUE, FALSE };
 };
