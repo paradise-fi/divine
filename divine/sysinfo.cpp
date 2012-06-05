@@ -11,6 +11,7 @@
 #endif
 
 #ifdef _WIN32
+#include <windows.h>
 #include <psapi.h>
 #include <setupapi.h>
 
@@ -143,7 +144,7 @@ int Info::peakVmSize() {
 
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS pmc;
-    if (hProcess != NULL && GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
+    if (data->hProcess != NULL && GetProcessMemoryInfo(data->hProcess, &pmc, sizeof(pmc)))
         vmsz = pmc.PeakWorkingSetSize/(1024);
 #endif
     return vmsz;
