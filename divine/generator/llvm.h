@@ -244,8 +244,10 @@ struct LLVM : Common< Blob > {
     }
 
     void useProperty( meta::Input &i ) {
-        std::string name = i.propertyName;
-        std::string ltl = interpreter().properties[ name ];
+        std::string name = i.propertyName, ltl;
+
+        if ( interpreter().properties.count( name ) )
+            ltl = interpreter().properties[ name ];
         if ( ltl.empty() )
             return;
 
