@@ -239,10 +239,19 @@ public:
         return getConstantValue( c );
     }
 
+    MDNode *node( MDNode *root ) { return root; }
+    template< typename N, typename... Args >
+    MDNode *node( N *root, int n, Args... args ) {
+        if (root)
+            return node( cast< MDNode >( root->getOperand(n) ), args... );
+        return NULL;
+    }
+
     MDNode *findEnum( std::string lookup ) {
         assert( module );
-        NamedMDNode *enums = module->getNamedMetadata("llvm.dbg.enum");
-        assert( enums );
+        MDNode *enums = node( module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
+        if ( !enums )
+            return NULL;
         for ( int i = 0; i < enums->getNumOperands(); ++i ) {
             MDNode *n = cast< MDNode >( enums->getOperand(i) );
             MDString *name = cast< MDString >( n->getOperand(2) );
