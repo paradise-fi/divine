@@ -477,6 +477,8 @@ struct Main {
                 input = opts.next();
                 if ( o_dummy->boolValue() )
                     std::cerr << "Both input and --dummy specified. Ignoring --dummy." << std::endl;
+                while ( opts.hasNext() )
+                    std::cerr << "WARNING: Extraneous argument: " << opts.next() << std::endl;
             }
 
         } catch( wibble::exception::BadOption &e ) {
