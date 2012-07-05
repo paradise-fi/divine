@@ -1,0 +1,48 @@
+diff -ru wimlib-0.7.2/programs/mkwinpeimg wimlib-0.7.2.new/programs/mkwinpeimg
+--- wimlib-0.7.2/programs/mkwinpeimg	2012-05-01 17:23:13.000000000 +0200
++++ wimlib-0.7.2.new/programs/mkwinpeimg	2012-06-04 12:41:21.470109878 +0200
+@@ -114,7 +114,7 @@
+ process_command_line() {
+ 
+ 	if ! options=$(getopt -o oiw:W:s:O:t:A:hv -l \
+-		only-wim,iso,wim:,windows-dir:,start-script:,overlay:,tmp-dir:,waik-dir:,help,version \
++		only-wim,iso,wim:,windows-dir:,start-script:,overlay:,tmp-dir:,waik-dir:,help,version,img-overlay: \
+ 				-- "$@" ); then
+ 		usage
+ 		exit 1
+@@ -157,6 +157,10 @@
+ 			overlay="$2"
+ 			shift
+ 			;;
++		--img-overlay)
++			img_overlay="$2"
++			shift
++			;;
+ 		-t|--tmp-dir)
+ 			rmdir "$tmp_dir"
+ 			tmp_dir="$2"
+@@ -382,6 +386,15 @@
+ 	rmdir "$mnt_dir"
+ }
+ 
++modify_img() {
++	if [ -n "$img_overlay" ]; then
++		stat_busy "Overlaying \"$img_overlay\" on the image"
++		cp -r "$img_overlay"/* "$tmp_dir"  || stat_fail
++		stat_done
++	fi
++
++}
++
+ make_iso_img() {
+ 
+ 	image="$1"
+@@ -467,6 +480,8 @@
+ 	modify_boot_wim "$boot_wim" "$mnt_dir"
+ fi
+ 
++modify_img
++
+ if [ $make = iso ]; then
+ 	make_iso_img "$image"
+ elif [ $make = disk ]; then
