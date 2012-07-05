@@ -3,6 +3,21 @@
 let
   pkgs = import nixpkgs {};
 
+  wimlib = pkgs.callPackage nix/wimlib.nix {};
+  windows7_iso = pkgs.fetchurl {
+    url = "http://msft.digitalrivercontent.net/win/X17-59183.iso";
+    sha256 = "13l3skfp3qi2ccv9djhpg7a7f2g57rph8n38dnkw8yh8w1bdyk7x";
+  };
+
+  windows7_img = pkgs.callPackage nix/windows_img.nix {
+    inherit wimlib;
+    iso = windows7_iso;
+  };
+  windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
+  windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
+
+
+
   mkbuild = { name, inputs }: { system ? builtins.currentSystem, divineSrc ? src }:
     let pkgs = import nixpkgs { inherit system; }; in
     pkgs.releaseTools.nixBuild {
@@ -71,6 +86,21 @@ let
         diskImage = pkgs.vmTools.diskImageFuns.fedora16i386 { extraPackages = [ "cmake" ]; };
         memSize = 2047;
       };
+
+    windows_i386 = { divineSrc ? src }: pkgs.callPackage nix/windows_build.nix {
+      inherit windows_mingw;
+      tools = [ windows_cmake ];
+      img = windows7_img;
+      src = jobs.tarball { inherit divineSrc; };
+      buildScript = ''
+        set -ex
+        mkdir build && cd build
+        cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF ../source
+        make
+        make check
+        cp tools/divine.exe E:/
+      '';
+  };
   };
 in
   jobs
