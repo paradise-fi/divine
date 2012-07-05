@@ -1,6 +1,6 @@
 {stdenv, lib, qemu_kvm, writeText, img, cdrkit, unzip, vmTools, writeScript,
  windows_mingw,
- tools ? [], sourceTarball, buildScript}:
+ tools ? [], src, buildScript}:
 
 let origtools = tools;
  in stdenv.mkDerivation rec {
@@ -58,7 +58,9 @@ let origtools = tools;
     ${tools_unpack}
 
     mkdir source && cd source
-    if test -d $src/tarballs; then src=$(ls $src/tarballs/*.tar.* | sort | head -1); fi
+    src=${src}
+    if test -d ${src}/tarballs; then src=$(ls $src/tarballs/*.tar.* | sort | head -1); fi
+    echo source: $src
     tar xaf $src
     mv */* .
     cd ..
