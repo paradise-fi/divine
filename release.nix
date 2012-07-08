@@ -90,7 +90,7 @@ let
 
     windows_i386 = { divineSrc ? src }: pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
-      tools = [ windows_cmake ];
+      tools = [ windows_cmake windows_nsis ];
       img = windows7_img;
       src = jobs.tarball { inherit divineSrc; };
       buildScript = ''
@@ -99,7 +99,9 @@ let
         cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF ../source
         make divine
         # make check # tests don't work?
+        make package
         cp tools/divine.exe E:/
+        cp build/divine-*.exe E:/
       '';
   };
   };
