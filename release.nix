@@ -15,6 +15,7 @@ let
   };
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
+  windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
 
 
 
