@@ -88,5 +88,11 @@ let origtools = tools;
 
     rm xchg/code.txt
     cp xchg/* $out/
+
+    mkdir $out/nix-support
+    for f in $out/*.exe; do
+        echo BUILT: $f
+        echo file exe $f >> $out/nix-support/hydra-build-products
+    done
   '';
 }
