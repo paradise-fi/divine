@@ -18,6 +18,10 @@ stdenv.mkDerivation rec {
   kvm = qemu_kvm;
   requiredSystemFeatures = [ "kvm" ];
 
+  meta = {
+    maxSilent = 7200; # win7 installer takes a long time without feedback
+  };
+
   builder = writeScript "${name}-builder" ''
     source $stdenv/setup
     ensureDir $out
