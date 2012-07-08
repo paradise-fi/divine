@@ -101,7 +101,7 @@ let
         # make check # tests don't work?
         make package
         cp tools/divine.exe E:/
-        cp build/divine-*.exe E:/
+        cp divine-*.exe E:/
       '';
   };
   };
