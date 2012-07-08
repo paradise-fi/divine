@@ -355,8 +355,12 @@ if( WIN32 )
   find_file( REGEX_LIB libgnurx-0.dll )
   find_file( GCC_SJL_LIB libgcc_s_sjlj-1.dll )
 
-  install(FILES ${REGEX_LIB} DESTINATION ./ COMPONENT sys)
-  install(FILES ${GCC_SJL_LIB} DESTINATION ./ COMPONENT qt)
+  if( REGEX_LIB )
+    install(FILES ${REGEX_LIB} DESTINATION ./ COMPONENT sys)
+  endif()
+  if( GCC_SJL_LIB )
+    install(FILES ${GCC_SJL_LIB} DESTINATION ./ COMPONENT qt)
+  endif()
 endif( WIN32 )
 
 ########################################
