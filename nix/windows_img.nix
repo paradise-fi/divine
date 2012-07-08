@@ -16,6 +16,7 @@ stdenv.mkDerivation rec {
 
   wimtools = wimlib;
   kvm = qemu_kvm;
+  requiredSystemFeatures = [ "kvm" ];
 
   builder = writeScript "${name}-builder" ''
     source $stdenv/setup

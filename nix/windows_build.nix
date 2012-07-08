@@ -10,6 +10,8 @@ let origtools = tools;
   tools = origtools ++ [ windows_mingw ];
   build = writeText "stage3.sh" buildScript;
 
+  requiredSystemFeatures = [ "kvm" ];
+
   name = "windows-build";
 
   tools_unpack = lib.concatMapStrings (x: ''
