@@ -25,7 +25,7 @@ struct TI {
         Increment, Decrement,
         Init, State, Trans, Accept,
         Guard, Effect,
-        Assert,
+        Assert, Commit,
         System, Async, Sync, Process, Property,
         Streett, Muller, Rabin, Buchi, GenBuchi
     };
@@ -43,7 +43,7 @@ const std::string tokenName[] = {
     "++", "--",
     "init", "state", "trans", "accept",
     "guard", "effect",
-    "assert",
+    "assert", "commit",
     "system", "async", "sync", "process", "property",
     "streett", "muller", "rabin", "buchi", "genbuchi"
 };

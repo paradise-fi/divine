@@ -418,12 +418,19 @@ template< bool IsProperty >
 struct Automaton : Parser {
     Identifier name;
     std::vector< Declaration > decls;
-    std::vector< Identifier > states, accepts, inits;
+    std::vector< Identifier > states, accepts, commits, inits;
     std::vector< Transition > trans;
+    std::vector< Assertion > asserts;
 
     void accept() {
         eat( Token::Accept );
         list< Identifier >( std::back_inserter( accepts ), Token::Comma );
+        semicolon();
+    }
+
+    void commit() {
+        eat( Token::Commit );
+        list< Identifier >( std::back_inserter( commits ), Token::Comma );
         semicolon();
     }
     
@@ -446,7 +453,9 @@ struct Automaton : Parser {
         list< Identifier >( std::back_inserter( inits ), Token::Comma );
         semicolon();
 
+        maybe( &Automaton::commit );
         maybe( &Automaton::accept );
+        maybe( &Automaton::commit );
 
         eat( Token::Trans );
         list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
