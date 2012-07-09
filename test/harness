@@ -11,8 +11,10 @@ test -d "$TOOLS" -a -f "$TOOLS/divine" || {
     exit 1
 }
 
-TOOLS1=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,g;'` # MSYS hack
-PATH="$TOOLS:$TOOLS1:$PATH"
+if echo $TOOLS | grep -q "^C:"; then # MSYS hack
+    TOOLS=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,;'`
+fi
+PATH="$TOOLS:$PATH"
 
 # fake ssh for mpiexec
 cat > $TOOLS/ssh <<EOF
