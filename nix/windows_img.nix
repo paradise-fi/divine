@@ -25,6 +25,7 @@ stdenv.mkDerivation rec {
   builder = writeScript "${name}-builder" ''
     source $stdenv/setup
     ensureDir $out
+    set -x
 
     ${qemu_kvm}/bin/qemu-img create -f qcow2 $out/hda.img 8G
     ${qemu_kvm}/bin/qemu-kvm \
@@ -39,6 +40,8 @@ stdenv.mkDerivation rec {
   password = "hookah"; # in possession of a large blue caterpillar
 
   bootscript = writeText "bootscript.cmd" ''
+   drvload X:\windows\inf\msports.inf
+   echo PASS: Boot > COM1
    e:
    setup.exe /unattend:D:\unattend.xml
    pause
@@ -159,6 +162,13 @@ stdenv.mkDerivation rec {
               <WillShowUI>Never</WillShowUI>
             </ProductKey>
           </UserData>
+
+          <RunSynchronous>
+            <RunSynchronousCommand wcm:action="add">
+              <Order>1</Order>
+              <Path>cmd /c echo PASS: Windows PE > COM1</Path>
+            </RunSynchronousCommand>
+          </RunSynchronous>
         </component>
       </settings>
 
@@ -227,6 +237,10 @@ stdenv.mkDerivation rec {
             <RunSynchronousCommand wcm:action="add">
               <Order>1</Order>
               <Path>cmd /c reg add HKLM\Software\Microsoft\Windows\CurrentVersion\Run /t REG_SZ /d "d:\batch.cmd"</Path>
+            </RunSynchronousCommand>
+            <RunSynchronousCommand wcm:action="add">
+              <Order>2</Order>
+              <Path>cmd /c echo PASS: Deployment > COM1</Path>
             </RunSynchronousCommand>
           </RunSynchronous>
         </component>
