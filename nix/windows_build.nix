@@ -28,6 +28,7 @@ let origtools = tools;
   stage2 = writeText "stage2.cmd" ''
     rem run commands to install build dependencies
     ${tools_install}
+    setx PATH %PATH%
 
 :retry
     net use e: \\10.0.2.4\xchg
