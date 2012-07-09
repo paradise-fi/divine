@@ -46,6 +46,14 @@ stdenv.mkDerivation rec {
     wsh.sleep 300000
     wscript.echo "PASS: Installer (interval " & wscript.arguments.item(0) & ")"
   '';
+  monitor_cmd = "FOR %G IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16) DO" +
+                " cscript //nologo D:\monitor.vbs %G > COM1 2>&1";
+
+  registry = writeText "registry.cmd" ''
+    reg add HKLM\Software\Microsoft\Windows\CurrentVersion\Run /t REG_SZ /d "d:\batch.cmd"
+    reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v DontShowUI /t REG_DWORD /d 1
+    reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v Disabled /t REG_DWORD /d 1
+  '';
 
   xmlKey = ''
       publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
@@ -84,6 +92,7 @@ stdenv.mkDerivation rec {
       mkdir data
       cp ${unattend} data/unattend.xml
       cp ${monitor} data/monitor.vbs
+      cp ${registry} data/registry.cmd
       echo shutdown -s > data/batch.cmd
 
       export PATH=$PATH:${fuse}/bin/ # for fusermount
@@ -174,7 +183,7 @@ stdenv.mkDerivation rec {
           <RunAsynchronous>
             <RunAsynchronousCommand wcm:action="add">
               <Order>1</Order>
-              <Path>cmd /c FOR %G IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15) DO cscript //nologo D:\monitor.vbs %G > COM1 2>&1</Path>
+              <Path>cmd /c ${monitor_cmd}</Path>
             </RunAsynchronousCommand>
           </RunAsynchronous>
         </component>
@@ -244,7 +253,7 @@ stdenv.mkDerivation rec {
           <RunSynchronous>
             <RunSynchronousCommand wcm:action="add">
               <Order>1</Order>
-              <Path>cmd /c reg add HKLM\Software\Microsoft\Windows\CurrentVersion\Run /t REG_SZ /d "d:\batch.cmd"</Path>
+              <Path>cmd /c D:\registry.cmd > COM1</Path>
             </RunSynchronousCommand>
             <RunSynchronousCommand wcm:action="add">
               <Order>2</Order>
