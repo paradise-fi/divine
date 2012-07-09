@@ -365,6 +365,7 @@ if( WIN32 )
   bundle( GCC_DW2_LIB libgcc_s_dw2-1.dll )
   bundle( GCC_STDCPP libstdc++-6.dll )
   bundle( MINGW_LIB mingwm10.dll )
+  bundle( MSYS_LIB msys-1.0.dll )
 endif( WIN32 )
 
 ########################################
