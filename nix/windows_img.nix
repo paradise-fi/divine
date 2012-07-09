@@ -18,10 +18,6 @@ stdenv.mkDerivation rec {
   kvm = qemu_kvm;
   requiredSystemFeatures = [ "kvm" ];
 
-  meta = {
-    maxSilent = 7200; # win7 installer takes a long time without feedback
-  };
-
   builder = writeScript "${name}-builder" ''
     source $stdenv/setup
     ensureDir $out
@@ -45,6 +41,10 @@ stdenv.mkDerivation rec {
    e:
    setup.exe /unattend:D:\unattend.xml
    pause
+  '';
+  monitor = writeText "monitor.vbs" ''
+    wsh.sleep 300000
+    wscript.echo "PASS: Installer (interval " & wscript.arguments.item(0) & ")"
   '';
 
   xmlKey = ''
@@ -83,6 +83,7 @@ stdenv.mkDerivation rec {
       cp ${bootscript} install.cmd
       mkdir data
       cp ${unattend} data/unattend.xml
+      cp ${monitor} data/monitor.vbs
       echo shutdown -s > data/batch.cmd
 
       export PATH=$PATH:${fuse}/bin/ # for fusermount
@@ -169,6 +170,13 @@ stdenv.mkDerivation rec {
               <Path>cmd /c echo PASS: Windows PE > COM1</Path>
             </RunSynchronousCommand>
           </RunSynchronous>
+
+          <RunAsynchronous>
+            <RunAsynchronousCommand wcm:action="add">
+              <Order>1</Order>
+              <Path>cmd /c FOR %G IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15) DO cscript //nologo D:\monitor.vbs %G > COM1 2>&1</Path>
+            </RunAsynchronousCommand>
+          </RunAsynchronous>
         </component>
       </settings>
 
