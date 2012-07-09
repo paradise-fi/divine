@@ -21,7 +21,7 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
 
   pkgs = [ libgmp libintl_msys libintl_mingw libmpc libmpfr libiconv
            libregex libtermcap libgcc regex_dev tar
-           gcc_core gcc_cpp binutils bash make msys_core perl
+           gcc_core gcc_cpp gcc_libstdcpp binutils bash make msys_core perl
            zlib libbz2 libcrypt libexpat sed grep coreutils
            w32api mingw_rt ];
 
@@ -85,6 +85,9 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   gcc_cpp = mingw {
     pkg = "gcc-c++-4.6.2-1-mingw32-bin.tar.lzma";
     hash = "0q0kx3nf2avks9iys2dg8fhhrl4v1q2dz3s82kw2wwf1ssm5bn6z"; };
+  gcc_libstdcpp = mingw {
+    pkg = "libstdc++-4.6.2-1-mingw32-dll-6.tar.lzma";
+    hash = "0v33m9ay4hhlpmwrw2d8214sl05a9g6ywqgll6xrk3g9n55fl2af"; };
   binutils = mingw {
     pkg = "binutils-2.22-1-mingw32-bin.tar.lzma";
     hash = "0a9cq0kpkb53b4fzxjhk93zcjpl1czj4adihv7n7gf3jj2in7n35"; };
