@@ -37,8 +37,8 @@ let
     tarball = { divineSrc ? src }:
       pkgs.releaseTools.sourceTarball rec {
         name = "divine-tarball";
-        versionSuffix = if divineSrc ? rev
-                           then "+pre${toString divineSrc.rev}"
+        versionSuffix = if divineSrc ? revCount
+                           then "+pre${toString divineSrc.revCount}"
                            else "";
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake ]);
