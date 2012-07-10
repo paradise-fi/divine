@@ -1,5 +1,5 @@
 Name:		divine
-Version:	2.5.1
+Version:	0
 Release:	1%{?dist}
 Summary:	Multi-core model checking system for proving specifications
 

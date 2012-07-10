@@ -50,7 +50,7 @@ let
         buildInputs = (with pkgs; [ cmake ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         autoconfPhase = ''
-          sed -e "s,^\(Version:.*\)$,\1${versionSuffix}," -i divine.spec # icky
+          sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
           chmod +x configure # ha-ha
         '';
         distPhase = ''
