@@ -8,6 +8,8 @@ labels() {
     grep '\->' out.dot | not grep -v '\[.*label.*\]'
 }
 
+test "$WIN32" = "1" && skip
+
 extracheck=normal
 dve_small draw -r cat -o out.dot
 

@@ -1,6 +1,7 @@
 # -*- sh -*-
 
 not() { "$@" && exit 1 || return 0; }
+skip() { exit 200; }
 
 for_dve_small() {
     wrapper=$1; shift

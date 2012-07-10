@@ -8,6 +8,7 @@ add_custom_target( functional
   COMMAND ${WIBBLE_WRAP_TESTS} sh ${CMAKE_SOURCE_DIR}/test/harness
     "TOOLS='${divine_BINARY_DIR}/tools'"
     "MPIEXEC='${MPIEXEC}'"
+    "WIN32='${WIN32}'"
     "O_DVE='${DVE}'"
     "O_LEGACY='${LEGACY}'"
     "O_LLVM='${LLVM}'" ${tests}
