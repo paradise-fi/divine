@@ -2,6 +2,7 @@
 
 let
   pkgs = import nixpkgs {};
+  lib = pkgs.lib;
 
   wimlib = pkgs.callPackage nix/wimlib.nix {};
   windows7_iso = pkgs.fetchurl {
@@ -17,8 +18,6 @@ let
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
 
-
-
   mkbuild = { name, inputs }: { system ? builtins.currentSystem, divineSrc ? src }:
     let pkgs = import nixpkgs { inherit system; }; in
     pkgs.releaseTools.nixBuild {
@@ -32,10 +31,17 @@ let
     sha256 = "0sxnpqrv9wbfw1m1pm9jzd7hs02yvvnvkm8qdbafhdl2qmll7c0l";
   };
 
+  versionFile = builtins.readFile ./divine/version.cpp;
+  versionLine = builtins.head (
+    lib.filter (str: lib.eqStrings (builtins.substring 0 22 str) "#define DIVINE_VERSION")
+               (lib.splitString "\n" versionFile));
+  version = builtins.head (builtins.tail (lib.splitString "\"" (versionLine + " ")));
+
   jobs = rec {
 
     tarball = { divineSrc ? src }:
       pkgs.releaseTools.sourceTarball rec {
+        inherit version;
         name = "divine-tarball";
         versionSuffix = if divineSrc ? revCount
                            then "+pre${toString divineSrc.revCount}"
