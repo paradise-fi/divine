@@ -5,6 +5,7 @@
  *      Author: Milan Krivanek
  */
 
+#ifdef O_COIN
 #include <divine/generator/coin.h>
 
 namespace divine {
@@ -1087,3 +1088,4 @@ vector<sometrans> Coin::getSuccTransitionsLCA() {
 
 }  // namespace generator
 }  // namespace divine
+#endif

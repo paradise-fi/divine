@@ -104,7 +104,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
     } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
         meta.input.modelType = "Compact";
         return makeAlgorithm< A, generator::Compact >( meta );
-#ifndef O_SMALL
+#if defined(O_COIN) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
         meta.input.modelType = "CoIn";
         if ( meta.algorithm.por ) {

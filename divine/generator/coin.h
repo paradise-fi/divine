@@ -2,6 +2,7 @@
 #ifndef DIVINE_GENERATOR_COINGENERATOR_H
 #define DIVINE_GENERATOR_COINGENERATOR_H
 
+#ifdef O_COIN
 #include <stdexcept>
 #include <list>
 #include <sstream>
@@ -428,4 +429,5 @@ private:
 }  // namespace generator
 }  // namespace divine
 
+#endif
 #endif
