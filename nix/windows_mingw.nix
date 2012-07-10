@@ -22,8 +22,8 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   pkgs = [ libgmp libintl_msys libintl_mingw libmpc libmpfr libiconv
            libregex libtermcap libgcc regex_dev tar
            gcc_core gcc_cpp gcc_libstdcpp binutils bash make msys_core perl
-           zlib libbz2 libcrypt libexpat sed grep coreutils
-           w32api mingw_rt ];
+           zlib libbz2 libcrypt libexpat sed grep coreutils coreutils_ext
+           diffutils w32api mingw_rt ];
 
   libgmp = mingw {
     pkg = "libgmp-5.0.1-1-mingw32-dll-10.tar.lzma";
@@ -55,6 +55,14 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   coreutils = mingw {
     pkg = "coreutils-5.97-3-msys-1.0.13-bin.tar.lzma";
     hash = "0ri31ci1952hlgw8rmdj4j3npi3bb47zxp1nqd5af5pa2q29kizq"; };
+  coreutils_ext = mingw {
+    pkg = "coreutils-5.97-3-msys-1.0.13-ext.tar.lzma";
+    hash = "0ya5w30syxcq9mkp9lm0lhp9hkr4sdb0mpvdcpyrzxsgr6k5lliz"; };
+  diffutils = mingw {
+    pkg = "diffutils-2.8.7.20071206cvs-3-msys-1.0.13-bin.tar.lzma";
+    hash = "0r5qm4z42j83cslbhpyaabri2nlrc9ibllj7ghrx4ba98jq8ja2j";
+  };
+
   libintl_mingw = mingw {
     pkg = "libintl-0.18.1.1-2-mingw32-dll-8.tar.lzma";
     hash = "0jandbdd0ijd6gzbafxb9s35931clzr9pz1zvdnvqg933h5zk40k"; };
