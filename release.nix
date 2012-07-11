@@ -52,6 +52,7 @@ let
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         autoconfPhase = ''
           sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
+          sed -e 's,"","${versionSuffix}",' -i cmake/VersionAppend.cmake
           chmod +x configure # ha-ha
         '';
         distPhase = ''

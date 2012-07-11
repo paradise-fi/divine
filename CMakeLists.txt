@@ -42,7 +42,7 @@ option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
 
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
-set( VERSION_APPEND "" CACHE STRING "Optional version suffix." )
+include (VersionAppend)
 
 ############################################
 ## DEVELOPER-ORIENTED OPTIONS
