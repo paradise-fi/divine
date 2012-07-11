@@ -2,6 +2,10 @@
 
 let
   pkgs = import nixpkgs {};
+  debuild = args:
+    import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
+  rpmbuild = pkgs.vmTools.rpmBuild;
+  vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
   wimlib = pkgs.callPackage nix/wimlib.nix {};
@@ -18,6 +22,18 @@ let
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
+  extra_debs = [ "cmake" "build-essential" "debhelper" ];
+  extra_rpms = [ "cmake" ];
+
+  mkVM = { VM, extras, diskFun }: { divineSrc ? src }:
+   VM rec {
+     name = "divine";
+     src = jobs.tarball { inherit divineSrc; };
+     diskImage = diskFun { extraPackages = extras; };
+     configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
+     checkPhase = ""; # the package builder is supposed to run checks
+     memSize = 2047;
+   };
 
   mkbuild = { name, inputs }: { system ? builtins.currentSystem, divineSrc ? src }:
     let pkgs = import nixpkgs { inherit system; }; in
@@ -66,35 +82,12 @@ let
     mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
     gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
     llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
-    full = mkbuild { name = "full"; inputs = { pkgs }: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
+    full = mkbuild { name = "full"; inputs = { pkgs }:
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
 
-    debian6_i386 = { divineSrc ? src }:
-      debuild rec {
-        name = "divine";
-        src = jobs.tarball { inherit divineSrc; };
-        diskImage = pkgs.vmTools.diskImageFuns.debian60i386 {
-          extraPackages = [ "cmake" "build-essential" "debhelper" ]; };
-        memSize = 2047;
-        configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
-      };
-
-    ubuntu1204_i386 = { divineSrc ? src }:
-      debuild rec {
-        name = "divine";
-        src = jobs.tarball { inherit divineSrc; };
-        diskImage = pkgs.vmTools.diskImageFuns.ubuntu1204i386 {
-          extraPackages = [ "cmake" "build-essential" "debhelper" ]; };
-        memSize = 2047;
-        configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
-      };
-
-    fedora16_i386 = { divineSrc ? src }:
-      pkgs.releaseTools.rpmBuild rec {
-        name = "divine";
-        src = jobs.tarball { inherit divineSrc; };
-        diskImage = pkgs.vmTools.diskImageFuns.fedora16i386 { extraPackages = [ "cmake" ]; };
-        memSize = 2047;
-      };
+    debian6_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian60i386; extras = extra_debs; };
+    ubuntu1204_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204i386; extras = extra_debs; };
+    fedora16_i386 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
     windows_i386 = { divineSrc ? src }: pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
@@ -112,7 +105,7 @@ let
         cp tools/divine.exe E:/
         cp divine-*.exe E:/
       '';
-  };
+    };
   };
 in
   jobs
