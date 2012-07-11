@@ -31,7 +31,7 @@ let
      src = jobs.tarball { inherit divineSrc; };
      diskImage = diskFun { extraPackages = extras; };
      configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
-     checkPhase = ""; # the package builder is supposed to run checks
+     doCheck = false; # the package builder is supposed to run checks
      memSize = 2047;
    };
 
