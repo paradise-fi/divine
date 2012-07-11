@@ -43,10 +43,10 @@ stdenv.mkDerivation rec {
    pause
   '';
   monitor = writeText "monitor.vbs" ''
-    wsh.sleep 300000
+    wsh.sleep 450000
     wscript.echo "PASS: Installer (interval " & wscript.arguments.item(0) & ")"
   '';
-  monitor_cmd = "FOR %G IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16) DO" +
+  monitor_cmd = "FOR %G IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20) DO" +
                 " cscript //nologo D:\monitor.vbs %G > COM1 2>&1";
 
   registry = writeText "registry.cmd" ''
