@@ -29,10 +29,21 @@ let
       };
 
     debian6_i386 = { divineSrc ? src }:
-      pkgs.releaseTools.debBuild rec {
+      debuild rec {
+        name = "divine";
+        src = jobs.tarball { inherit divineSrc; };
+        diskImage = pkgs.vmTools.diskImageFuns.debian60i386 {
+          extraPackages = [ "cmake" "build-essential" "debhelper" ]; };
+        memSize = 2047;
+        configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
+      };
+
+    ubuntu1204_i386 = { divineSrc ? src }:
+      debuild rec {
         name = "divine-deb";
         src = jobs.tarball { inherit divineSrc; };
-        diskImage = pkgs.vmTools.diskImageFuns.debian60i386 { extraPackages = [ "cmake" ]; };
+        diskImage = pkgs.vmTools.diskImageFuns.ubuntu1204i386 {
+          extraPackages = [ "cmake" "build-essential" "debhelper" ]; };
         memSize = 2047;
         configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
       };
