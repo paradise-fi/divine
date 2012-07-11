@@ -16,7 +16,7 @@ draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" "$@"; }
 
 mpi() {
-    $MPIEXEC >& /dev/null || exit 200; # probably not found
+    "$MPIEXEC" > /dev/null 2>&1 || exit 200; # probably not found
     ann "$MPIEXEC -H localhost,localhost divine" "$@" "--report 2> progress | capture"
 }
 
