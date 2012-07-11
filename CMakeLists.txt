@@ -383,9 +383,13 @@ set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING" )
 file(STRINGS divine/version.cpp VERSION_LINE REGEX "#define DIVINE_VERSION \"(.*)\"")
 string(REGEX REPLACE "#define DIVINE_VERSION \"([0-9.]+)\"" "\\1" VERSION_STRING ${VERSION_LINE})
 
-string(REGEX REPLACE "([0-9])\\.([0-9])\\.([0-9])" "\\1" CPACK_PACKAGE_VERSION_MAJOR ${VERSION_STRING})
-string(REGEX REPLACE "([0-9])\\.([0-9])\\.([0-9])" "\\2" CPACK_PACKAGE_VERSION_MINOR ${VERSION_STRING})
-string(REGEX REPLACE "([0-9])\\.([0-9])\\.([0-9])" "\\3" CPACK_PACKAGE_VERSION_PATCH ${VERSION_STRING})
+macro(versionExtract out n in)
+   string(REGEX REPLACE "([0-9]*)\\.([0-9]*)\\.?([0-9]*)?" "\\${n}" ${out} ${in})
+endmacro()
+
+versionExtract( CPACK_PACKAGE_VERSION_MAJOR 1 ${VERSION_STRING} )
+versionExtract( CPACK_PACKAGE_VERSION_MINOR 2 ${VERSION_STRING} )
+versionExtract( CPACK_PACKAGE_VERSION_PATCH 3 ${VERSION_STRING} )
 set( CPACK_PACKAGE_VERSION ${VERSION_STRING} )
 
 message( "-- Version: ${VERSION_STRING}" )
