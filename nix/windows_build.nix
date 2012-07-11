@@ -1,5 +1,5 @@
 {stdenv, lib, qemu_kvm, writeText, img, cdrkit, unzip, vmTools, writeScript,
- windows_mingw,
+ windows_mingw, name ? "build",
  tools ? [], src, buildScript}:
 
 let origtools = tools;
@@ -12,7 +12,7 @@ let origtools = tools;
 
   requiredSystemFeatures = [ "kvm" ];
 
-  name = "windows-build";
+  name = name + "-windows" + (if src ? version then "-" + src.version else "");
 
   tools_unpack = lib.concatMapStrings (x: ''
     package=${x}
