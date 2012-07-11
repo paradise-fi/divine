@@ -20,7 +20,7 @@ else
 fi
 
 test -z "$old" && old=`cat $where`
-if which $sha1sum > /dev/null; then
+if type -p $sha1sum > /dev/null; then
     test -z "$new" && \
         new=`echo "$manifest" | egrep "$interesting" | egrep -v "$boring" | xargs $sha1sum \
         | cut -d' ' -f1 | $sha1sum | cut -d' ' -f1`
