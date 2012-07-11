@@ -50,7 +50,7 @@ for i in 1 2 3; do
     check_peterson$i peterson.prop$i.dve
 done
 
-if which m4; then
+if type -p m4; then
     divine combine data/peterson.mdve -o N=2 > peterson.combined.dve
     not grep "process LTL_property" peterson.combined.dve
     not grep "system async property LTL_property" peterson.combined.dve
