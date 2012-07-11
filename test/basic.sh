@@ -5,4 +5,4 @@ divine --version
 divine --version | grep '2\.[0-9]'
 not divine foobar
 
-which divine
+type -p divine
