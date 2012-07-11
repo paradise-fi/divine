@@ -1,0 +1,26 @@
+This work was packaged for Debian by:
+
+    Petr Rockai <mornfall@debian.org> on Tue, 10 Jul 2012 22:11:18 +0200
+
+It was downloaded from:
+
+    <http://divine.fi.muni.cz>
+
+Upstream Author(s):
+
+    (See AUTHORS)
+
+Copyright:
+
+    (See COPYING)
+
+License:
+
+    (See COPYING)
+
+The Debian packaging is:
+
+    Copyright (C) 2012 Petr Rockai <mornfall@debian.org>
+
+and is licensed under the GPL version 3,
+see "/usr/share/common-licenses/GPL-3".

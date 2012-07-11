@@ -1,0 +1,18 @@
+Source: divine
+Section: unknown
+Priority: extra
+Maintainer: Petr Rockai <mornfall@debian.org>
+Build-Depends: debhelper (>= 7.0.50~), cmake
+Standards-Version: 3.8.4
+Homepage: http://divine.fi.muni.cz
+
+Package: divine
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Multi-core model checking system for proving specifications
+ DiVinE is a tool for LTL model checking and reachability analysis of discrete
+ distributed systems. The tool is able to efficiently exploit the aggregate
+ computing power of multiple network-interconnected multi-cored workstations in
+ order to deal with extremely large verification tasks. As such it allows to
+ analyse systems whose size is far beyond the size of systems that can be
+ handled with regular sequential tools.
