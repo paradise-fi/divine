@@ -78,7 +78,7 @@ let
 
     ubuntu1204_i386 = { divineSrc ? src }:
       debuild rec {
-        name = "divine-deb";
+        name = "divine";
         src = jobs.tarball { inherit divineSrc; };
         diskImage = pkgs.vmTools.diskImageFuns.ubuntu1204i386 {
           extraPackages = [ "cmake" "build-essential" "debhelper" ]; };
@@ -88,7 +88,7 @@ let
 
     fedora16_i386 = { divineSrc ? src }:
       pkgs.releaseTools.rpmBuild rec {
-        name = "divine-rpm";
+        name = "divine";
         src = jobs.tarball { inherit divineSrc; };
         diskImage = pkgs.vmTools.diskImageFuns.fedora16i386 { extraPackages = [ "cmake" ]; };
         memSize = 2047;
@@ -99,6 +99,7 @@ let
       tools = [ windows_cmake windows_nsis ];
       img = windows7_img;
       src = jobs.tarball { inherit divineSrc; };
+      name = "divine";
       buildScript = ''
         set -ex
         mkdir build && cd build
