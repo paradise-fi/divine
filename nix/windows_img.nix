@@ -7,12 +7,14 @@
  iso,
  productKey ? "", # not really required or useful for our purposes
  language ? "en-US",
- architecture ? "x86"
+ architecture ? "x86",
+ name ? "windows"
  }:
 
-stdenv.mkDerivation rec {
+let origname = name;
+ in stdenv.mkDerivation rec {
   inherit iso productKey language;
-  name = "windows_image";
+  name = origname + "-" + architecture;
 
   wimtools = wimlib;
   kvm = qemu_kvm;

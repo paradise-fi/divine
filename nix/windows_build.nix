@@ -2,7 +2,7 @@
  windows_mingw, name ? "build",
  tools ? [], src, buildScript}:
 
-let origtools = tools;
+let origtools = tools; origname = name;
  in stdenv.mkDerivation rec {
 
   inherit img unzip cdrkit;
@@ -12,7 +12,7 @@ let origtools = tools;
 
   requiredSystemFeatures = [ "kvm" ];
 
-  name = name + "-windows" + (if src ? version then "-" + src.version else "");
+  name = origname + "-" + img.name + (if src ? version then "-" + src.version else "");
 
   tools_unpack = lib.concatMapStrings (x: ''
     package=${x}
