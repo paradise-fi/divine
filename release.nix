@@ -13,6 +13,7 @@ let
   windows7_img = pkgs.callPackage nix/windows_img.nix {
     inherit wimlib;
     iso = windows7_iso;
+    name = "windows7";
   };
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
