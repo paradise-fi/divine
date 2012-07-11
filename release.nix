@@ -4,7 +4,7 @@ let
   pkgs = import nixpkgs {};
   debuild = args:
     import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
-  rpmbuild = pkgs.vmTools.rpmBuild;
+  rpmbuild = pkgs.releaseTools.rpmBuild;
   vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
