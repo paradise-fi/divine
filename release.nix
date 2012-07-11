@@ -22,7 +22,7 @@ let
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
-  extra_debs = [ "cmake" "build-essential" "debhelper" ];
+  extra_debs = [ "cmake" "build-essential" "debhelper" "m4" ];
   extra_rpms = [ "cmake" ];
 
   mkVM = { VM, extras, diskFun }: { divineSrc ? src }:
