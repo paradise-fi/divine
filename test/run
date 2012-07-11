@@ -5,9 +5,7 @@ ann() {
     eval "$@"
 }
 
-capture() {
-    tee report | sed -e "s,^,  | ,"
-}
+capture() { tee report | sed -e "s,^,  | ,"; }
 
 map() { ann "divine map --report" "$@" "2> progress | capture"; }
 ndfs() { ann "divine nested-dfs --report" "$@" "2> progress | capture"; }
