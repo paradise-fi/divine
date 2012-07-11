@@ -69,6 +69,17 @@ let
         autoconfPhase = ''
           sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
           sed -e 's,"","${versionSuffix}",' -i cmake/VersionAppend.cmake
+
+          mv debian/changelog debian/changelog.xxx
+          echo "divine (${version}${versionSuffix}) unstable; urgency=low" >> debian/changelog
+          echo >> debian/changelog
+          echo "  * Automated Hydra build" >> debian/changelog
+          echo >> debian/changelog
+          echo " -- Petr Rockai <mornfall@debian.org>  `date -R`" >> debian/changelog
+          echo >> debian/changelog
+          cat debian/changelog.xxx >> debian/changelog
+          rm debian/changelog.xxx
+
           chmod +x configure # ha-ha
         '';
         distPhase = ''
