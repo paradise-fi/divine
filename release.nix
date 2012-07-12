@@ -1,4 +1,4 @@
-{ nixpkgs ? <nixpkgs> }:
+{ nixpkgs ? <nixpkgs>, divineSrc, release ? false }:
 
 let
   pkgs = import nixpkgs {};
@@ -25,28 +25,23 @@ let
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4" ];
   extra_rpms = [ "cmake" ];
 
-  mkVM = { VM, extras, diskFun }: { divineSrc ? src }:
+  mkVM = { VM, extras, diskFun }:
    VM rec {
      name = "divine";
-     src = jobs.tarball { inherit divineSrc; };
+     src = jobs.tarball;
      diskImage = diskFun { extraPackages = extras; };
      configurePhase = ''./configure -DCMAKE_INSTALL_PREFIX=/usr'';
      doCheck = false; # the package builder is supposed to run checks
      memSize = 2047;
    };
 
-  mkbuild = { name, inputs }: { system ? builtins.currentSystem, divineSrc ? src }:
+  mkbuild = { name, inputs }: { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; }; in
     pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
-       src = jobs.tarball { inherit divineSrc; };
+       src = jobs.tarball;
        buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
     };
-
-  src = pkgs.fetchurl {
-    url = "http://divine.fi.muni.cz/divine-2.5.2.tar.gz";
-    sha256 = "0sxnpqrv9wbfw1m1pm9jzd7hs02yvvnvkm8qdbafhdl2qmll7c0l";
-  };
 
   versionFile = builtins.readFile ./divine/version.cpp;
   versionLine = builtins.head (
@@ -56,8 +51,7 @@ let
 
   jobs = rec {
 
-    tarball = { divineSrc ? src }:
-      pkgs.releaseTools.sourceTarball rec {
+    tarball = pkgs.releaseTools.sourceTarball rec {
         inherit version;
         name = "divine-tarball";
         versionSuffix = if divineSrc ? revCount
@@ -100,11 +94,11 @@ let
     ubuntu1204_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204i386; extras = extra_debs; };
     fedora16_i386 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
-    windows_i386 = { divineSrc ? src }: pkgs.callPackage nix/windows_build.nix {
+    windows_i386 = pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
       tools = [ windows_cmake windows_nsis ];
       img = windows7_img;
-      src = jobs.tarball { inherit divineSrc; };
+      src = jobs.tarball;
       name = "divine";
       buildScript = ''
         set -ex
