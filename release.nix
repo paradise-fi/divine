@@ -92,6 +92,7 @@ let
 
     debian6_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian60i386; extras = extra_debs; };
     ubuntu1204_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204i386; extras = extra_debs; };
+    ubuntu1110_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110i386; extras = extra_debs; };
     fedora16_i386 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
     windows_i386 = pkgs.callPackage nix/windows_build.nix {
