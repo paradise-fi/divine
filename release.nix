@@ -5,6 +5,7 @@ let
   debuild = args:
     import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
   rpmbuild = pkgs.releaseTools.rpmBuild;
+  rpmbuild_i386 = pkgs.pkgsi686Linux.releaseTools.rpmBuild;
   vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
@@ -93,7 +94,7 @@ let
 
     ubuntu1204_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204i386; extras = extra_debs; };
     ubuntu1110_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110i386; extras = extra_debs; };
-    fedora16_i386 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
+    fedora16_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
     windows_i386 = pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
