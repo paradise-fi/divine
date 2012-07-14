@@ -96,6 +96,10 @@ let
     ubuntu1110_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110i386; extras = extra_debs; };
     fedora16_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
+    ubuntu1204_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204x86_64; extras = extra_debs; };
+    ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; };
+    fedora16_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16x86_64; extras = extra_rpms; };
+
     windows_i386 = pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
       tools = [ windows_cmake windows_nsis ];
