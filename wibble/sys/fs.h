@@ -5,6 +5,7 @@
 #include <memory>       // auto_ptr
 #include <sys/types.h>  // mode_t
 #include <sys/stat.h>   // struct stat
+#include <unistd.h>     // access
 
 struct dirent;
 
