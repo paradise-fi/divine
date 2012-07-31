@@ -33,6 +33,7 @@
 #include <process.h>
 #endif
 #include <signal.h>
+#include <unistd.h>
 
 namespace wibble {
 namespace sys {
