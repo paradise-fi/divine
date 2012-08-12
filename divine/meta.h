@@ -32,7 +32,7 @@ struct Execution {
     int nodes;
     int thisNode;
 
-    Execution() : initialTable( 32 ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
+    Execution() : initialTable( 32 ), diskFifo( 0 ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
 };
 
 struct Algorithm {
@@ -52,7 +52,13 @@ struct Algorithm {
     bool onlyQualitative, iterativeOptimization;
     bool por, fairness;
 
-    Algorithm() : por( false ), fairness( false ) {}
+    Algorithm() : algorithm( Info ),
+                  hashSeed( 0 ),
+                  maxDistance( 32 ),
+                  labels( false ), traceLabels( false ),
+                  findDeadlocks( true ), findGoals( true ),
+                  hashCompaction( false ), onlyQualitative( false ), iterativeOptimization( true ),
+                  por( false ), fairness( false ) {}
 };
 
 struct Output {
@@ -63,6 +69,8 @@ struct Output {
     std::string filterProgram;
     std::string trailFile, ceFile;
     std::string file;
+
+    Output() : quiet( false ), wantCe( false ), textFormat( false ), backEdges( false ), statistics( false ) {}
 };
 
 struct Statistics {
