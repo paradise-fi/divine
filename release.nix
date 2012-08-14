@@ -111,6 +111,7 @@ let
         mkdir build && cd build
         cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF ../source
         make
+        mkdir E:\\nix-support
         make check || touch E:\\nix-support\\failed # ignore failures for now
         make package
         cp tools/divine.exe E:/

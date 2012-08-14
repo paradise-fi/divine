@@ -92,7 +92,7 @@ let origtools = tools; origname = name;
     }
 
     rm xchg/code.txt
-    cp xchg/* $out/
+    cp -R xchg/* $out/
 
     mkdir -p $out/nix-support
     for f in $out/*.exe; do
