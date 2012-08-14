@@ -64,7 +64,7 @@ struct Setup {
 };
 
 template<
-    template< typename, typename > class Queue, typename S >
+    template< typename, typename > class _Queue, typename S >
 struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
@@ -75,7 +75,8 @@ struct Common {
     Graph &m_graph;
     Notify &m_notify;
     Store< Node, Graph, Seen, Statistics > store;
-    Queue< Graph, Statistics > m_queue;
+    typedef _Queue< Graph, Statistics > Queue;
+    Queue m_queue;
 
     void expand( Node n ) {
         if ( store.has( n ) )
@@ -173,24 +174,32 @@ struct Common {
         }
     }
 
-    Common( Graph &g, Notify &n, Seen *s, bool hashCompaction ) :
-        m_graph( g ), m_notify( n ), store( g, s, hashCompaction ), m_queue( g )
+    Common( Graph &g, Notify &n, Queue q, Seen *s, bool hashCompaction ) :
+        m_graph( g ), m_notify( n ), store( g, s, hashCompaction ), m_queue( q )
     {
     }
 };
 
 template< typename S >
 struct BFV : Common< Queue, S > {
+    typedef Common< Queue, S > Super;
     typedef typename S::Seen Seen;
-    BFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashCompaction = false )
-        : Common< Queue, S >( g, n, s, hashCompaction ) {}
+    BFV( typename S::Graph &g,
+         typename S::Notify &n,
+         Seen *s = 0,
+         bool hashCompaction = false
+        ) : Common< Queue, S >( g, n, typename Super::Queue( g ), s, hashCompaction ) {}
 };
 
 template< typename S >
 struct DFV : Common< Stack, S > {
+    typedef Common< Stack, S > Super;
     typedef typename S::Seen Seen;
-    DFV( typename S::Graph &g, typename S::Notify &n, Seen *s = 0, bool hashCompaction = false )
-        : Common< Stack, S >( g, n, s, hashCompaction ) {}
+    DFV( typename S::Graph &g,
+         typename S::Notify &n,
+         Seen *s = 0,
+         bool hashCompaction = false
+        ) : Common< Stack, S >( g, n, typename Super::Queue( g ), s, hashCompaction ) {}
 };
 
 template< typename S, typename Worker,
