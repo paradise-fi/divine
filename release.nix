@@ -100,7 +100,7 @@ let
     ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; };
     fedora16_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16x86_64; extras = extra_rpms; };
 
-    windows_i386 = pkgs.callPackage nix/windows_build.nix {
+    win7 = flags: pkgs.callPackage nix/windows_build.nix {
       inherit windows_mingw;
       tools = [ windows_cmake windows_nsis ];
       img = windows7_img;
@@ -109,7 +109,7 @@ let
       buildScript = ''
         set -ex
         mkdir build && cd build
-        cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ../source
+        cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ${flags} ../source
         make
         mkdir E:\\nix-support
         make check || touch E:\\nix-support\\failed # ignore failures for now
@@ -118,6 +118,9 @@ let
         cp divine-*.exe E:/
       '';
     };
+
+    win7_i386_small = win7 "-DSMALL=ON";
+    win7_i386 = win7 "";
   };
 in
   jobs
