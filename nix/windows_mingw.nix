@@ -41,8 +41,8 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
     pkg = "libbz2-1.0.5-2-msys-1.0.13-dll-1.tar.lzma";
     hash = "0ksk6wh1lbm4dp7myjf1li1nij789c6fxdl4q6xnliy7qii0inks"; };
   regex_dev = mingw {
-    pkg = "libregex-1.20090805-2-msys-1.0.13-dev.tar.lzma";
-    hash = "1hz17j8wgr5px0k6vfi41bj3xscl9ff07s26890iwi4mqmrwcggq"; };
+    pkg = "mingw-libgnurx-2.5.1-dev.tar.gz";
+    hash = "0w07f17xndygg6vqsy5hcj71dikdaah2dls96mq0kdklh0nywrcc"; };
   sed = mingw {
     pkg = "sed-4.2.1-2-msys-1.0.13-bin.tar.lzma";
     hash = "150vbp7fs3kf6aif7ip5q18bzkmzrg0bf201hkkr3dpc9hh5jc7p"; };
@@ -79,8 +79,8 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
     pkg = "libiconv-1.14-1-msys-1.0.17-dll-2.tar.lzma";
     hash = "10qn4csg19kvqa6hr7s1j6dd5clsippbjlk8da79q99jqbl22s8r"; };
   libregex = mingw {
-    pkg = "libregex-1.20090805-2-msys-1.0.13-dll-1.tar.lzma";
-    hash = "1lfk9c9vx5n8hkr1jbfdx3fmbfz2gax5ggk7z32pa1m94wg8rpc5"; };
+    pkg = "mingw-libgnurx-2.5.1-bin.tar.gz";
+    hash = "07haaf0xs481phv8wv76ghm972f6lpwcbx8a7gl65m1rckwq2bri"; };
   libgcc = mingw {
     pkg = "libgcc-4.6.2-1-mingw32-dll-1.tar.lzma";
     hash = "13mpyc2hlk277d43n6504d32ibd4jihdcbny2klvcymhx477lmfs"; };
