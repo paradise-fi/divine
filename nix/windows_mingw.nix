@@ -20,7 +20,7 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   install = "set PATH=%PATH%;D:\\mingw\\bin";
 
   pkgs = [ libgmp libintl_msys libintl_mingw libmpc libmpfr libiconv
-           libregex libtermcap libgcc regex_dev tar
+           libregex libregex_msys libtermcap libgcc regex_dev tar
            gcc_core gcc_cpp gcc_libstdcpp binutils bash make msys_core perl
            zlib libbz2 libcrypt libexpat sed grep coreutils coreutils_ext
            diffutils w32api mingw_rt ];
@@ -81,6 +81,9 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   libregex = mingw {
     pkg = "mingw-libgnurx-2.5.1-bin.tar.gz";
     hash = "07haaf0xs481phv8wv76ghm972f6lpwcbx8a7gl65m1rckwq2bri"; };
+  libregex_msys = mingw {
+    pkg = "libregex-1.20090805-2-msys-1.0.13-dll-1.tar.lzma";
+    hash = "1lfk9c9vx5n8hkr1jbfdx3fmbfz2gax5ggk7z32pa1m94wg8rpc5"; };
   libgcc = mingw {
     pkg = "libgcc-4.6.2-1-mingw32-dll-1.tar.lzma";
     hash = "13mpyc2hlk277d43n6504d32ibd4jihdcbny2klvcymhx477lmfs"; };
