@@ -31,6 +31,7 @@ std::string graph_to_cpp(const BA_opt_graph_t &g)
     accept = g.get_accept_nodes();
 
     s << "#include <iostream>" << std::endl;
+    s << "#include <stdio.h>" << std::endl;
 
     s << "int *buchi_state( CustomSetup *setup, char *st ) {" << std::endl;
     s << "    return (int *)(st + setup->slack + 4 /* FIXME BlobHeader */ - sizeof(int));"
