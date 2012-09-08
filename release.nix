@@ -31,8 +31,8 @@ let
    VM rec {
      name = "divine";
      src = jobs.tarball;
-     diskImage = diskFun { extraPackages = extras; };
-     configurePhase = ''./configure -DCMAKE_BUILD_TYPE=${buildType} -DCMAKE_INSTALL_PREFIX=/usr'';
+     diskImage = diskFun { extraPackages = extras; size = 6144; };
+     configurePhase = "";
      doCheck = false; # the package builder is supposed to run checks
      memSize = 2047;
    };
