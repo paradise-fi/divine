@@ -27,14 +27,14 @@ let
                  "libqt4-dev" "libboost-dev" "libncurses5-dev" ];
   extra_rpms = [ "cmake" ];
 
-  mkVM = { VM, extras, diskFun }:
+  mkVM = { VM, extras, diskFun, mem ? 2047 }:
    VM rec {
      name = "divine";
      src = jobs.tarball;
-     diskImage = diskFun { extraPackages = extras; size = 6144; };
+     diskImage = diskFun { extraPackages = extras; };
      configurePhase = ":";
      doCheck = false; # the package builder is supposed to run checks
-     memSize = 2047;
+     memSize = mem;
    };
 
   mkbuild = { name, inputs }: { system ? builtins.currentSystem }:
@@ -96,8 +96,8 @@ let
     ubuntu1110_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110i386; extras = extra_debs; };
     fedora16_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
 
-    ubuntu1204_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204x86_64; extras = extra_debs; };
-    ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; };
+    ubuntu1204_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204x86_64; extras = extra_debs; mem = 3072; };
+    ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; mem = 3072; };
     fedora16_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16x86_64; extras = extra_rpms; };
 
     win7 = flags: pkgs.callPackage nix/windows_build.nix {
