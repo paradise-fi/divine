@@ -48,7 +48,13 @@ include (VersionAppend)
 ## DEVELOPER-ORIENTED OPTIONS
 ##
 
-option( PERFORMANCE "compile for maximum performance (LONG compilation)" ON )
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set( PERFORMANCE_DEF OFF )
+else()
+    set( PERFORMANCE_DEF ON )
+endif()
+
+option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFORMANCE_DEF} )
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
