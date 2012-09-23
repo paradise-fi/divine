@@ -54,6 +54,7 @@ dve_small() {
 }
 
 dve_compiled_small() {
+    test "$O_POOLS" = "ON" || return 0
     for_dve_small dve_compile "$@"
 }
 
