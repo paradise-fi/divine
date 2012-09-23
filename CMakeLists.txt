@@ -90,26 +90,44 @@ endif( PERFORMANCE )
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
 set( CMAKE_REQUIRED_FLAGS "-std=gnu++0x" ) # for the benefit of GCC
+
 check_cxx_source_compiles("
-    struct ConstructorTest {
-        ConstructorTest(int) {}
-    };
+template< typename F > int check( F f );
 
-    union UnionTest {
-        ConstructorTest b;
-    };
+template< typename T, typename F, int n >
+auto findID_helper( F f ) ->
+    decltype( check< typename T::template X< n, true >::Fun >( f ) )
+{}
+int main() { return 0; }
+" HAVE_CXX11 )
 
-    int main() { return 0; }
-" HAVE_CXX11_SUPPORT )
+if( HAVE_CXX11 )
+  check_cxx_source_compiles("
+      struct ConstructorTest {
+          ConstructorTest(int) {}
+      };
+
+      union UnionTest {
+          ConstructorTest b;
+      };
+
+      int main() { return 0; }
+  " HAVE_CXX11_UNRESTRICTED_UNIONS )
+endif()
+
 set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
 appendFlag( "CXX" "-std=gnu++0x" )
 
-if( NOT HAVE_CXX11_SUPPORT )
+if( NOT HAVE_CXX11 )
     message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
 endif()
 
 if( DVE )
+  if( HAVE_CXX11_UNRESTRICTED_UNIONS )
     add_definitions( -DO_DVE )
+  else()
+    message( "-- WARNING: C++11 unrestricted unions not available. Disabling DVE support." )
+  endif()
 endif()
 
 if( LEGACY )
