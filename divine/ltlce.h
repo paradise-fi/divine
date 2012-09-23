@@ -37,7 +37,7 @@ typename BS::bitstream &operator>>( BS &bs, CeShared< Node > &sh )
 template< typename G, typename Shared, typename Extension >
 struct LtlCE {
     typedef typename G::Node Node;
-    typedef LtlCE< G, Shared, Extension > Us;
+    typedef LtlCE< G, Shared, Extension > This;
 
     G *_g;
     Shared *_shared;
@@ -53,11 +53,6 @@ struct LtlCE {
             divine::safe_delete( _o_ce );
         if ( ( _o_trail != &std::cerr ) && ( _o_trail != &std::cout ) )
             divine::safe_delete( _o_trail );
-    }
-
-    template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
-        return g().owner( hash, worker, n, hint );
     }
 
     void setup( G &g, Shared &s )
@@ -80,12 +75,12 @@ struct LtlCE {
     // -- Parent trace extraction
     // --
 
-    template< typename Worker, typename Hasher, typename Equal, typename Table >
-    void _parentTrace( Worker &w, Hasher &h, Equal &, Table &t ) {
+    template< typename Worker, typename Store >
+    void _parentTrace( Worker &w, Store &s ) {
         if ( shared().ce.current_updated )
             return;
-        if ( owner( h, w, shared().ce.current ) == w.id() ) {
-            Node n = t.get( shared().ce.current );
+        if ( s.owner( w, shared().ce.current ) == w.id() ) {
+            Node n = s.fetch( shared().ce.current, s.hash( shared().ce.current ) );
             assert( n.valid() );
 
             shared().ce.successor = n;
@@ -101,33 +96,36 @@ struct LtlCE {
     // -- Local cycle discovery
     // --
 
-    visitor::ExpansionAction cycleExpansion( Node n ) {
-        return visitor::ExpandState;
-    }
+    template< typename Setup >
+    struct FindCycle : algorithm::Visit< This, Setup >
+    {
 
-    visitor::TransitionAction cycleTransition( Node from, Node to ) {
-        if ( from.valid() && to == shared().ce.initial ) {
-            extension( to ).parent = from;
-            return visitor::TerminateOnTransition;
+        static visitor::ExpansionAction expansion( This &, Node n ) {
+            return visitor::ExpandState;
         }
-        if ( updateIteration( to ) ) {
-            extension( to ).parent = from;
-            return visitor::ExpandTransition;
+
+        static visitor::TransitionAction transition( This &t, Node from, Node to ) {
+            if ( from.valid() && to == t.shared().ce.initial ) {
+                t.extension( to ).parent = from;
+                return visitor::TerminateOnTransition;
+            }
+            if ( t.updateIteration( to ) ) {
+                t.extension( to ).parent = from;
+                return visitor::ExpandTransition;
+            }
+            return visitor::ForgetTransition;
         }
-        return visitor::ForgetTransition;
-    }
+    };
 
-    template< typename Worker, typename Hasher, typename Table >
-    void _traceCycle( Worker &w, Hasher &h, Table &t ) {
-        typedef visitor::Setup< G, Us, Table, NoStatistics,
-            &Us::cycleTransition,
-            &Us::cycleExpansion > Setup;
-        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
+    template< typename Algorithm >
+    void _traceCycle( Algorithm &a ) {
+        typedef FindCycle< typename Algorithm::Setup > Find;
+        visitor::Partitioned< Find, Algorithm >
+            visitor( *this, a, a.graph(), a.store() );
 
-        Visitor visitor( g(), w, *this, h, &t, w.meta().algorithm.hashCompaction );
         assert( shared().ce.initial.valid() );
-        if ( visitor.owner( shared().ce.initial ) == w.id() ) {
-            shared().ce.initial = t.get( shared().ce.initial );
+        if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {
+            shared().ce.initial = a.store().fetch( shared().ce.initial, a.store().hash( shared().ce.initial ) );
             visitor.queue( Blob(), shared().ce.initial );
         }
         visitor.processQueue();
@@ -239,7 +237,7 @@ struct LtlCE {
         shared().ce.successor = Node(); // !valid()
         shared().ce.successorPos = 0;
         while ( shared().ce.current.valid() ) {
-            if ( a.equal( shared().ce.current, stop ) && !numTrace.empty() )
+            if ( a.store().hasher().equal( shared().ce.current, stop ) && !numTrace.empty() )
                 break;
             shared().ce.current_updated = false;
             d.ring( &Alg::_parentTrace );
@@ -257,89 +255,21 @@ struct LtlCE {
     }
 
     template< typename Domain, typename Alg >
-    void linear( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace )
+    void linear( Domain &d, Alg &a,
+                 Traces (This::*traceFnc)( Domain&, Alg&, Node ) = &This::parentTrace )
     {
         generateLinear( a, g(), (this->*traceFnc)( d, a, g().initial() ) );
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg &a, Traces (Us::*traceFnc)( Domain&, Alg&, Node ) = &Us::parentTrace ) {
+    void lasso( Domain &d, Alg &a,
+                Traces (This::*traceFnc)( Domain&, Alg&, Node ) = &This::parentTrace ) {
         linear( d, a, traceFnc );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
 
         generateLasso( a, g(), (this->*traceFnc)( d, a, shared().ce.initial ) );
     }
-
-    // ------------------------------------------------
-    // -- Hash compaction counter-examples
-    // --
-
-    template< typename Worker, typename Hasher, typename Equal, typename Table >
-    void _hashTrace( Worker &w, Hasher &h, Equal &, Table &t ) {
-        if ( shared().ce.current_updated )
-            return;
-        if ( owner( h, w, Node(), shared().ce.current_hash ) == w.id() ) { // determine owner just from hash
-            Node n = t.getHinted( Node(), shared().ce.current_hash ); // get from table just by hash
-            if ( n.valid() ) {
-                shared().ce.current_hash = hash_t( uintptr_t( extension( n ).parent.ptr ) );
-                shared().ce.current_updated = true;
-            }
-        }
-    }
-
-    template< typename Domain, typename Alg >
-    Traces hashTrace( Domain &d, Alg &a, Node stop ) {
-        Trace trace;
-        std::vector< hash_t > hashes;
-        NumericTrace numTrace;
-        // construct trail of hashes
-        shared().ce.current = Node(); // not tracking nodes
-        shared().ce.current_hash = a.hasher( shared().ce.initial );
-        hash_t stop_hash = a.hasher( stop );
-        hash_t last = stop_hash;
-        while ( hashes.size() <= 0  || ( shared().ce.current_hash != stop_hash && shared().ce.current_hash != last ) ) {
-            last = shared().ce.current_hash;
-            shared().ce.current_updated = false;
-            d.ring( &Alg::_hashTrace );
-            if ( !shared().ce.current_updated )
-                break; // parent points to non-existing state
-            hashes.push_back( last );
-        }
-        // follow the trail from the _stop_ state
-        Node cur = stop;
-        while ( !hashes.empty() ) {
-            std::pair< int, Node > ret = g().successorNumHash( a, cur, hashes.back() );
-            if ( ret.first > 0 ) {
-                trace.push_back( ret.second );
-                numTrace.push_back( ret.first );
-                cur = ret.second;
-            } else {
-                trace.push_back( Node() );
-                numTrace.push_back( 0 );
-                break; // incomplete trace
-            }
-            hashes.pop_back();
-        }
-
-        // reverse the trace
-        std::reverse( trace.begin(), trace.end() );
-        std::reverse( numTrace.begin(), numTrace.end() );
-
-        return std::make_pair( trace, numTrace );
-    }
-
-    template< typename Domain, typename Alg >
-    void linear_hc( Domain &d, Alg &a ) {
-        linear( d, a, &Us::hashTrace<Domain, Alg> );
-    }
-
-    template< typename Domain, typename Alg >
-    void lasso_hc( Domain &d, Alg &a ) {
-        lasso( d, a, &Us::hashTrace<Domain, Alg> );
-    }
-
-
 };
 
 }

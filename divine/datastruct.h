@@ -20,6 +20,9 @@ struct Queue {
 
     int id;
 
+    void reserve( int n ) { m_queue.reserve( n ); }
+    int size() { return m_queue.size(); } // XXX misleading?
+
     void pushSuccessors( const Node &t )
     {
         Statistics::global().enqueue( id, sizeof( t ) );

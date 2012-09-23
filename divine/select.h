@@ -47,31 +47,70 @@ wibble::Unit setupParallel( NotPreferred, T &t )
 }
 */
 
-template< template< typename, template< typename > class, typename > class A, typename Graph >
+template< template< typename > class T >
+struct SetupT {
+    template< typename X > using Topology = T< X >;
+};
+
+template< template< typename > class A, typename G, template< typename > class T, typename S,
+          typename St >
+algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
+    struct Setup : SetupT< T > {
+        typedef G Graph;
+        typedef S Statistics;
+        typedef St Store;
+    };
+    return new A< Setup >( meta, true );
+}
+
+template< template< typename > class A, typename G, template< typename > class T, typename S >
+algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
+    if ( meta.algorithm.hashCompaction )
+        abort(); // return makeAlgorithm< A, G, T, S, visitor::HcStore< G, algorithm::Hasher, S > >( meta );
+    else
+        return makeAlgorithm< A, G, T, S, visitor::PartitionedStore< G, algorithm::Hasher, S > >( meta );
+}
+
+template< template< typename > class A, typename G, template< typename > class T >
 algorithm::Algorithm *makeAlgorithm( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::NonPORGraph< Graph >, Topology<>::Local, NoStatistics >( meta, true );
+        return makeAlgorithm< A, G, T, divine::NoStatistics >( meta );
     else
 #endif
-        return new A< algorithm::NonPORGraph< Graph >, Topology<>::Mpi, Statistics >( meta, true );
+        return makeAlgorithm< A, G, T, divine::Statistics >( meta );
 }
 
-template< template< typename, template< typename > class, typename > class A, typename Graph >
+template< template< typename > class A, typename G >
+algorithm::Algorithm *makeAlgorithm( Meta &meta )
+{
+#ifdef O_PERFORMANCE
+    if ( meta.execution.nodes == 1 )
+        return makeAlgorithm< A, G, Topology<>::Local >( meta );
+    else
+#endif
+        return makeAlgorithm< A, G, Topology<>::Mpi >( meta );
+}
+
+template< template< typename > class A, typename Graph >
+algorithm::Algorithm *makeAlgorithmN( Meta &meta )
+{
+    return makeAlgorithm< A, algorithm::NonPORGraph< Graph > >( meta );
+}
+
+template< template< typename > class A, typename Graph >
 algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( !meta.output.statistics )
-        return new A< algorithm::PORGraph< Graph, NoStatistics >, Topology<>::Local, NoStatistics >( meta, true );
+        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::NoStatistics > >( meta );
     else
 #endif
-        return new A< algorithm::PORGraph< Graph, Statistics >,
-                      Topology< std::pair< typename Graph::Node, typename Graph::Node > >::template Local,
-                      Statistics >( meta, true );
+        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::Statistics > >( meta );
 }
 
-template< template< typename, template< typename > class, typename > class A >
+template< template< typename > class A >
 algorithm::Algorithm *selectGraph( Meta &meta )
 {
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
@@ -80,37 +119,37 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         if ( meta.algorithm.fairness ) {
             if ( meta.algorithm.por )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-            return makeAlgorithm< A, generator::LegacyDve >( meta );
+            return makeAlgorithmN< A, generator::LegacyDve >( meta );
         }
         if ( meta.algorithm.por ) {
             return makeAlgorithmPOR< A, generator::LegacyDve >( meta );
         } else if ( meta.algorithm.labels || meta.algorithm.traceLabels ) {
-            return makeAlgorithm< A, generator::LegacyDve >( meta );
+            return makeAlgorithmN< A, generator::LegacyDve >( meta );
         } else
 #endif
         {
 #if defined(O_DVE)
-            return makeAlgorithm< A, generator::Dve >( meta );
+            return makeAlgorithmN< A, generator::Dve >( meta );
 #endif
 #if defined(O_LEGACY)
-            return makeAlgorithm< A, generator::LegacyDve >( meta );
+            return makeAlgorithmN< A, generator::LegacyDve >( meta );
 #endif
         }
 #if defined(O_LEGACY) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".probdve" ) ) {
         meta.input.modelType = "ProbDVE";
-        return makeAlgorithm< A, generator::LegacyProbDve >( meta );
+        return makeAlgorithmN< A, generator::LegacyProbDve >( meta );
 #endif
     } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
         meta.input.modelType = "Compact";
-        return makeAlgorithm< A, generator::Compact >( meta );
+        return makeAlgorithmN< A, generator::Compact >( meta );
 #if defined(O_COIN) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
         meta.input.modelType = "CoIn";
         if ( meta.algorithm.por ) {
             return makeAlgorithmPOR< A, generator::Coin >( meta );
         } else {
-            return makeAlgorithm< A, generator::Coin >( meta );
+            return makeAlgorithmN< A, generator::Coin >( meta );
         }
 #endif
     } else if ( meta.algorithm.por ) {
@@ -125,7 +164,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
                       << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
             return NULL;
         }
-        return makeAlgorithm< A, generator::LLVM >( meta );
+        return makeAlgorithmN< A, generator::LLVM >( meta );
 #else
         std::cerr << "FATAL: This binary was built without LLVM support." << std::endl;
         return NULL;
@@ -134,15 +173,15 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 #if defined(O_LEGACY) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".b" ) ) {
         meta.input.modelType = "NIPS";
-        return makeAlgorithm< A, generator::LegacyBymoc >( meta );
+        return makeAlgorithmN< A, generator::LegacyBymoc >( meta );
 #endif
     } else if ( wibble::str::endsWith( meta.input.model, ".so" ) ) {
         meta.input.modelType = "CESMI";
-        return makeAlgorithm< A, generator::CESMI >( meta );
+        return makeAlgorithmN< A, generator::CESMI >( meta );
 #ifndef O_SMALL
     } else if ( meta.input.dummygen ) {
         meta.input.modelType = "dummy";
-        return makeAlgorithm< A, generator::Dummy >( meta );
+        return makeAlgorithmN< A, generator::Dummy >( meta );
 #endif
     } else {
         std::cerr << "FATAL: Unknown input file extension." << std::endl;

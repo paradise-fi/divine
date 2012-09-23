@@ -51,15 +51,14 @@ struct InfoBase {
     virtual void read( std::string s ) = 0;
 };
 
-template< typename G, template< typename > class, typename >
-struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >, virtual InfoBase
+template< typename Setup >
+struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, virtual InfoBase, Sequential
 {
-    G m_graph;
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
         Props props;
-        m_graph.getProperties( std::back_inserter( props ) );
-        std::cout << "Available properties:" << std::endl;
+        this->graph().getProperties( std::back_inserter( props ) );
+        std::cout << "Available properties (" << props.size() << "):" << std::endl;
         for ( int i = 0; i < props.size(); ++i )
             std::cout << " " << i + 1 << ") "
                       << props[i].first << ": " << props[i].second << std::endl;
@@ -67,11 +66,11 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< G >, virt
 
     int id() { return 0; }
     virtual generator::PropertyType propertyType() {
-        return m_graph.propertyType();
+        return this->graph().propertyType();
     }
 
     virtual void read( std::string s ) {
-        m_graph.read( s );
+        this->graph().read( s );
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {

@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
+#include <divine/rpc.h>
 #include <divine/algorithm/common.h>
 #include <divine/visitor.h>
 #include <divine/parallel.h>
@@ -88,37 +89,34 @@ typename BS::bitstream &operator>>( BS &bs, Statistics &st )
  * space, keeping simple numeric statistics (see the Statistics template
  * above).
  */
-template< typename G, template < typename > class Topology, typename Statistics >
-struct Metrics : Algorithm, AlgorithmUtils< G >,
-                 Parallel< Topology, Metrics< G, Topology, Statistics > >
+template< typename Setup >
+struct Metrics : Algorithm, AlgorithmUtils< Setup >,
+                 Parallel< Setup::template Topology, Metrics< Setup > >
 {
-    typedef Metrics< G, Topology, Statistics > This;
-    ALGORITHM_CLASS( G, algorithm::Statistics );
+    typedef Metrics< Setup > This;
+    ALGORITHM_CLASS( Setup, algorithm::Statistics );
 
-    visitor::ExpansionAction expansion( Node st )
-    {
-        shared.addNode( m_graph, st );
-        return visitor::ExpandState;
-    }
+    struct Main : Visit< This, Setup > {
+        static visitor::ExpansionAction expansion( This &t, Node st )
+        {
+            t.shared.addNode( t.graph(), st );
+            return visitor::ExpandState;
+        }
 
-    visitor::TransitionAction transition( Node, Node )
-    {
-        shared.addEdge();
-        return visitor::FollowTransition;
-    }
+        static visitor::TransitionAction transition( This &t, Node, Node )
+        {
+            t.shared.addEdge();
+            return visitor::FollowTransition;
+        }
 
-    struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
-        static visitor::DeadlockAction deadlocked( This &r, Node ) {
-            r.shared.addDeadlock();
+        static visitor::DeadlockAction deadlocked( This &t, Node ) {
+            t.shared.addDeadlock();
             return visitor::IgnoreDeadlock;
         }
     };
 
     void _visit() { // parallel
-        this->comms().notify( this->id(), &m_graph.pool() );
-        visitor::Partitioned< VisitorSetup, This, Hasher >
-            vis( m_graph, *this, *this, hasher, &this->table() );
-        vis.exploreFrom( m_graph.initial() );
+        this->visit( this, Main() );
     }
 
     Metrics( Meta m, bool master = false )

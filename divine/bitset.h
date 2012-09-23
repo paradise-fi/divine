@@ -14,18 +14,12 @@ namespace divine {
  * It can be used in cooperation with generator::Compact to achieve constant time
  * access to states.
  */
-template< typename G,
-    typename _Valid = divine::valid< typename G::Node >,
-    typename _Equal = divine::equal< typename G::Node > >
+template< typename G >
 struct BitSet
 {
     typedef wibble::Unit IsBitSet;
     typedef typename G::Node Item;
-    typedef _Valid Valid;
-    typedef _Equal Equal;
 
-    Valid valid;
-    Equal equal;
     size_t m_maxsize;
 
     StateId fromStateId, toStateId; // indices of boundary states to be stored
@@ -277,16 +271,13 @@ struct BitSet
      * Constructs bitset based on given graph (G::Graph is supposed to be
      * generator::Compact) and peerId of peer using this bitset as a table
      */
-    BitSet( G *g_, const int peerId, Valid v = Valid(), Equal eq = Equal() )
-        : valid( v ), equal( eq ), m_maxsize( -1 ), initialized( false ), visited( 0 ), m_g( g_ )
+    BitSet( G *g_, const int peerId )
+        : m_maxsize( -1 ), initialized( false ), visited( 0 ), m_g( g_ )
     {
         assert( g().initialized );
         assert( peerId >= 0 );
         initialized = setStates( g().getPeerStates( peerId ) ); // TODO this might need to be set to true eitherway
 
-        // assert that default key is invalid, this is assumed
-        // throughout the code
-        assert( !valid( Item() ) );
     }
 };
 

@@ -70,11 +70,11 @@ typename BS::bitstream &operator>>( BS &bs, MapShared &sh )
  * Computer-Aided Design (FM-CAD'04), volume 3312 of LNCS, pages
  * 352–366. Springer-Verlag, 2004.
  */
-template< typename G, template< typename > class Topology, typename _Statistics >
-struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topology, _Statistics > >
+template< typename Setup >
+struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
 {
-    typedef Map< G, Topology, _Statistics > This;
-    ALGORITHM_CLASS( G, MapShared );
+    typedef Map< Setup > This;
+    ALGORITHM_CLASS( Setup, MapShared );
 
     int d_eliminated,
         acceptingCount,
@@ -99,7 +99,7 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
         VertexId oldmap;
     };
 
-    LtlCE< G, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension > ce;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -132,89 +132,85 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
     }
 
     bool isAccepting( Node st ) {
-        if ( !m_graph.isAccepting ( st ) )
+        if ( !this->graph().isAccepting ( st ) )
             return false;
         if ( extension( st ).elim == 2 )
             return false;
         return true;
     }
 
-    visitor::ExpansionAction expansion( Node st )
+    struct Main : Visit< This, Setup >
     {
-        ++ shared.expanded;
-        if ( !extension( st ).seen ) {
-            extension( st ).seen = true;
-            if ( m_graph.isAccepting ( st ) )
-                ++ shared.accepting;
-            m_graph.porExpansion( st );
-            shared.stats.addNode( m_graph, st );
-        } else
-            shared.stats.addExpansion();
+        static visitor::ExpansionAction expansion( This &m, Node st )
+        {
+            ++ m.shared.expanded;
+            if ( !m.extension( st ).seen ) {
+                m.extension( st ).seen = true;
+                if ( m.graph().isAccepting ( st ) )
+                    ++ m.shared.accepting;
+                m.graph().porExpansion( st );
+                m.shared.stats.addNode( m.graph(), st );
+            } else
+                m.shared.stats.addExpansion();
 
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction transition( Node f, Node t )
-    {
-        if ( shared.iteration == 1 )
-            m_graph.porTransition( f, t, 0 );
-
-        if ( !f.valid() ) {
-            assert( equal( t, m_graph.initial() ) );
-            return updateIteration( t );
+            return visitor::ExpandState;
         }
 
-        if ( !extension( t ).parent.valid() )
-            extension( t ).parent = f;
+        static visitor::TransitionAction transition( This &m, Node f, Node t )
+        {
+            if ( m.shared.iteration == 1 )
+                m.graph().porTransition( f, t, 0 );
 
-        /* self loop */
-        if ( m_graph.isAccepting( f ) && f.pointer() == t.pointer() ) {
-            shared.ce.initial = t;
-            return visitor::TerminateOnTransition;
+            if ( !f.valid() ) {
+                assert( m.store().equal( t, m.graph().initial() ) );
+                return m.updateIteration( t );
+            }
+
+            if ( !m.extension( t ).parent.valid() )
+                m.extension( t ).parent = f;
+
+            /* self loop */
+            if ( m.graph().isAccepting( f ) && f.pointer() == t.pointer() ) {
+                m.shared.ce.initial = t;
+                return visitor::TerminateOnTransition;
+            }
+
+            /* MAP arrived to its origin */
+            if ( m.isAccepting( t ) && m.extension( f ).map == m.makeId( t ) ) {
+                m.shared.ce.initial = t;
+                return visitor::TerminateOnTransition;
+            }
+
+            if ( m.extension( f ).oldmap.valid() && m.extension( t ).oldmap.valid() )
+                if ( m.extension( f ).oldmap != m.extension( t ).oldmap )
+                    return m.updateIteration( t );
+
+            VertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
+            if ( m.isAccepting( t ) )
+                map = std::max( map, m.makeId( t ) );
+
+            if ( m.extension( t ).map < map ) {
+                // we are *not* the MAP of our successors anymore, so not a
+                // candidate for elimination (shrinking), remove from set
+                if ( m.isAccepting( t ) && m.extension( t ).elim )
+                    m.extension( t ).elim = 1;
+                m.extension( t ).map = map;
+                return visitor::ExpandTransition;
+            }
+
+            return m.updateIteration( t );
         }
-
-        /* MAP arrived to its origin */
-        if ( isAccepting( t ) && extension( f ).map == makeId( t ) ) {
-            shared.ce.initial = t;
-            return visitor::TerminateOnTransition;
-        }
-
-        if ( extension( f ).oldmap.valid() && extension( t ).oldmap.valid() )
-            if ( extension( f ).oldmap != extension( t ).oldmap )
-                return updateIteration( t );
-
-        VertexId map = std::max( extension( f ).map, extension( t ).map );
-        if ( isAccepting( t ) )
-            map = std::max( map, makeId( t ) );
-
-        if ( extension( t ).map < map ) {
-            // we are *not* the MAP of our successors anymore, so not a
-            // candidate for elimination (shrinking), remove from set
-            if ( isAccepting( t ) && extension( t ).elim )
-                extension( t ).elim = 1;
-            extension( t ).map = map;
-            return visitor::ExpandTransition;
-        }
-
-        return updateIteration( t );
-    }
+    };
 
     void _visit() {
-        typedef visitor::Setup< G, This, typename This::Table, _Statistics > Setup;
-        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
-
         shared.expanded = 0;
         shared.eliminated = 0;
-        this->comms().notify( this->id(), &m_graph.pool() );
-
-        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
-        m_graph.queueInitials( visitor );
-        visitor.processQueue();
+        this->visit( this, Main() );
     }
 
     void _cleanup() {
-        for ( size_t i = 0; i < this->table().size(); ++i ) {
-            Node st = this->table()[ i ];
+        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
+            Node st = this->store().table[ i ];
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = VertexId();
@@ -233,17 +229,17 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
     }
 
     void _por_worker() {
-        m_graph._porEliminate( *this, hasher, this->table() );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
         shared = sh;
-        if ( m_graph.porEliminate( *this, *this ) )
+        if ( this->graph().porEliminate( *this, *this ) )
             shared.need_expand = true;
         return shared;
     }
 
-    void visit() {
+    void iteration() {
         parallel( &This::_visit );
         collect();
 
@@ -264,13 +260,13 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( m_graph, shared );
-        ce._parentTrace( *this, hasher, equal, this->table() );
+        ce.setup( this->graph(), shared );
+        ce._parentTrace( *this, this->store() );
         return shared;
     }
 
     void _traceCycle() {
-        ce._traceCycle( *this, hasher, this->table() );
+        ce._traceCycle( *this );
     }
 
     void run()
@@ -284,7 +280,7 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
                        << "...\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
             expanded = d_eliminated = 0;
-            visit();
+            iteration();
             eliminated += d_eliminated;
             assert_leq( eliminated, acceptingCount );
             progress() << eliminated << " eliminated, "
@@ -307,7 +303,7 @@ struct Map : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Map< G, Topolog
             progress() << " generating counterexample...     " << std::flush;
             assert( cycle_node.valid() );
             shared.ce.initial = cycle_node;
-            ce.setup( m_graph, shared );
+            ce.setup( this->graph(), shared );
             ce.lasso( *this, *this );
             progress() << "done" << std::endl;
             result().ceType = meta::Result::Cycle;

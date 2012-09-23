@@ -177,6 +177,16 @@ struct FifoMatrix
 
 typedef std::pair<Blob, Blob> BlobPair;
 
+struct WithID {
+    int m_id;
+    int id() { assert_leq( 0, m_id ); return m_id; }
+    WithID() : m_id( -1 ) {}
+};
+
+struct Sequential : WithID {
+    Sequential() { m_id = 0; }
+};
+
 /**
  * A basic template for an object with parallel sections, which are arranged
  * according to a parametric topology. The topology is responsible for setting
@@ -190,14 +200,13 @@ typedef std::pair<Blob, Blob> BlobPair;
  * becomeMaster() in its constructor.
  */
 template< template < typename > class Topology, typename Instance >
-struct Parallel : Terminable {
+struct Parallel : Terminable, WithID {
     typedef wibble::Unit IsParallel;
 
     Topology< Instance > *m_topology;
     typedef typename Topology< Instance >::Comms Comms;
 
     bool is_master;
-    int m_id;
     bool m_interrupt, m_busy;
 
     Parallel()
@@ -245,11 +254,6 @@ struct Parallel : Terminable {
             if ( comms().pending( from, id() ) )
                 return true;
         return false;
-    }
-
-    int id() {
-        assert( m_topology );
-        return m_id;
     }
 
     /// Terminate early. Notifies peers (always call without a parameter!).
@@ -335,7 +339,8 @@ struct Local
     }
 
     template< typename Self >
-    void parallel( Self *self, void (Instance::*fun)(), wibble::sys::Thread * extra = 0, int offset = 0 )
+    void parallel( Self *self, void (Instance::*fun)(),
+                   wibble::sys::Thread * extra = 0, int offset = 0 )
     {
         int nextra = extra ? 1 : 0;
         Threads threads( m_slaves, fun );

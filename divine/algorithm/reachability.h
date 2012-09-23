@@ -37,12 +37,12 @@ typename BS::bitstream &operator>>( BS &bs, ReachabilityShared &st )
  * A simple parallel reachability analysis implementation. Nothing to worry
  * about here.
  */
-template< typename G, template< typename > class Topology, typename Statistics >
-struct Reachability : Algorithm, AlgorithmUtils< G >,
-                      Parallel< Topology, Reachability< G, Topology, Statistics > >
+template< typename Setup >
+struct Reachability : Algorithm, AlgorithmUtils< Setup >,
+                      Parallel< Setup::template Topology, Reachability< Setup > >
 {
-    typedef Reachability< G, Topology, Statistics > This;
-    ALGORITHM_CLASS( G, ReachabilityShared );
+    typedef Reachability< Setup > This;
+    ALGORITHM_CLASS( Setup, ReachabilityShared );
 
     Node goal;
     bool deadlocked;
@@ -51,48 +51,45 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
         Blob parent;
     };
 
-    LtlCE< G, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension > ce;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
     }
 
-    visitor::ExpansionAction expansion( Node st )
+    struct Main : Visit< This, Setup >
     {
-        shared.stats.addNode( m_graph, st );
-        m_graph.porExpansion( st );
-        return visitor::ExpandState;
-    }
+        static visitor::ExpansionAction expansion( This &r, Node st )
+        {
+            r.shared.stats.addNode( r.graph(), st );
+            r.graph().porExpansion( st );
+            return visitor::ExpandState;
+        }
 
-    visitor::TransitionAction transition( Node f, Node t )
-    {
-        if ( !meta().algorithm.hashCompaction ) {
-            if ( !extension( t ).parent.valid() ) {
-                extension( t ).parent = f;
+        static visitor::TransitionAction transition( This &r, Node f, Node t )
+        {
+            if ( !r.extension( t ).parent.valid() ) {
+                r.extension( t ).parent = f;
                 visitor::setPermanent( f );
             }
-        } else {
-            if ( !extension( t ).parent.ptr && f.valid() )
-                extension( t ).parent.ptr = (char *)(uintptr_t) hasher( f );
+            r.shared.stats.addEdge();
+
+            if ( r.meta().algorithm.findGoals && r.graph().isGoal( t ) ) {
+                r.shared.goal = r.graph().clone( t );
+                r.shared.deadlocked = false;
+                return visitor::TerminateOnTransition;
+            }
+
+            r.graph().porTransition( f, t, 0 );
+            return visitor::FollowTransition;
         }
-        shared.stats.addEdge();
 
-        if ( meta().algorithm.findGoals && m_graph.isGoal( t ) ) {
-            shared.goal = m_graph.clone( t );
-            shared.deadlocked = false;
-            return visitor::TerminateOnTransition;
-        }
-
-        m_graph.porTransition( f, t, 0 );
-        return visitor::FollowTransition;
-    }
-
-    struct VisitorSetup : visitor::Setup< G, This, typename AlgorithmUtils< G >::Table, Statistics > {
-        static visitor::DeadlockAction deadlocked( This &r, Node n ) {
+        static visitor::DeadlockAction deadlocked( This &r, Node n )
+        {
             if ( !r.meta().algorithm.findDeadlocks )
                 return visitor::IgnoreDeadlock;
 
-            r.shared.goal = r.m_graph.clone( n );
+            r.shared.goal = r.graph().clone( n );
             r.shared.stats.addDeadlock();
             r.shared.deadlocked = true;
             return visitor::TerminateOnDeadlock;
@@ -100,20 +97,16 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
     };
 
     void _visit() { // parallel
-        this->comms().notify( this->id(), &m_graph.pool() );
-        visitor::Partitioned< VisitorSetup, This, Hasher >
-            visitor( m_graph, *this, *this, hasher, &this->table(), meta().algorithm.hashCompaction );
-        m_graph.queueInitials( visitor );
-        visitor.processQueue();
+        this->visit( this, Main() );
     }
 
     void _por_worker() {
-        m_graph._porEliminate( *this, hasher, this->table() );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
         shared = sh;
-        if ( m_graph.porEliminate( *this, *this ) )
+        if ( this->graph().porEliminate( *this, *this ) )
             shared.need_expand = true;
         return shared;
     }
@@ -123,32 +116,20 @@ struct Reachability : Algorithm, AlgorithmUtils< G >,
     {
         if ( master )
             this->becomeMaster( m.execution.threads, m );
-        equal.allEqual = m.algorithm.hashCompaction; // has to be set before makeTable
         this->init( this );
     }
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
-        ce._parentTrace( *this, hasher, equal, this->table() );
-        return shared;
-    }
-
-    Shared _hashTrace( Shared sh ) {
-        shared = sh;
-        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
-        ce._hashTrace( *this, hasher, equal, this->table() );
+        ce.setup( this->graph(), shared ); // XXX this will be done many times needlessly
+        ce._parentTrace( *this, this->store() );
         return shared;
     }
 
     void counterexample( Node n ) {
         shared.ce.initial = n;
-        ce.setup( m_graph, shared );
-        if ( !meta().algorithm.hashCompaction ) {
-            ce.linear( *this, *this );
-        } else {
-            ce.linear_hc( *this, *this );
-        }
+        ce.setup( this->graph(), shared );
+        ce.linear( *this, *this );
         ce.goal( *this, n );
     }
 
@@ -211,7 +192,6 @@ ALGORITHM_RPC_ID( Reachability, 1, _visit );
 ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
 ALGORITHM_RPC_ID( Reachability, 3, _por );
 ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
-ALGORITHM_RPC_ID( Reachability, 5, _hashTrace );
 
 }
 }

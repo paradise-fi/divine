@@ -45,7 +45,8 @@ struct LLVM : Common< Blob > {
     bool use_property;
 
     Node initial() {
-        interpreter();
+        if ( !_initial.valid() )
+            _initial = interpreter().snapshot( alloc._slack, pool() );
         assert( _initial.valid() );
         return _initial;
     }
@@ -313,7 +314,6 @@ struct LLVM : Common< Blob > {
         Function *f = m->getFunction( "main" );
         assert( f );
         _interpreter->callFunction( f, args );
-        _initial = _interpreter->snapshot( alloc._slack, pool() );
         return *_interpreter;
     }
 

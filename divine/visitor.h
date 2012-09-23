@@ -32,51 +32,74 @@ enum TransitionAction { TerminateOnTransition,
 enum ExpansionAction { TerminateOnState, ExpandState, IgnoreState };
 enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
 
-template<
-    typename G, // graph
-    typename N, // notify
-    typename S = HashSet< typename G::Node >,
-    typename _Statistics = NoStatistics,
-    TransitionAction (N::*tr)(typename G::Node, typename G::Node) = &N::transition,
-    ExpansionAction (N::*exp)(typename G::Node) = &N::expansion >
-struct Setup {
-    typedef G Graph;
-    typedef N Notify;
-    typedef S Seen;
-    typedef typename Graph::Node Node;
-    typedef _Statistics Statistics;
-
-    static TransitionAction transition( Notify &n, Node a, Node b ) {
-        return (n.*tr)( a, b );
-    }
-
-    static ExpansionAction expansion( Notify &n, Node a ) {
-        return (n.*exp)( a );
-    }
-
-    static void finished( Notify &, Node ) {}
-    static DeadlockAction deadlocked( Notify &, Node ) { return IgnoreDeadlock; }
-
-    static TransitionAction transitionHint( Notify &, Node, Node, hash_t ) {
+struct SetupBase {
+    template< typename Listener, typename Node >
+    static TransitionAction transition( Listener &, Node, Node ) {
         return FollowTransition;
     }
 
+    template< typename Listener, typename Node >
+    static ExpansionAction expansion( Listener &, Node ) {
+        return ExpandState;
+    }
+
+    template< typename Listener, typename Node >
+    static void finished( Listener &, Node ) {}
+
+    template< typename Listener, typename Node >
+    static DeadlockAction deadlocked( Listener &, Node ) {
+        return IgnoreDeadlock;
+    }
+
+    template< typename Listener, typename Node >
+    static TransitionAction transitionHint( Listener &, Node, Node, hash_t ) {
+        return FollowTransition;
+    }
 };
+
+template< typename A, typename BListener >
+struct SetupOverride : A {
+    typedef typename A::Node Node;
+    typedef std::pair< typename A::Listener *, BListener * > Listener;
+
+    static TransitionAction transition( Listener &l, Node a, Node b ) {
+        return A::transition( *l.first, a, b );
+    }
+
+    static ExpansionAction expansion( Listener &l, Node x ) {
+        return A::expansion( *l.first, x );
+    }
+
+    static void finished( Listener &l, Node n ) {
+        A::finished( *l.first, n );
+    }
+
+    static DeadlockAction deadlocked( Listener &l, Node x ) {
+        return A::deadlocked( *l.first, x );
+    }
+
+    template< typename Listener, typename Node >
+    static TransitionAction transitionHint( Listener &l, Node a, Node b, hash_t h ) {
+        return A::transitionHint( *l.first, a, b, h );
+    }
+};
+
 
 template<
     template< typename, typename > class _Queue, typename S >
 struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
-    typedef typename S::Notify Notify;
+    typedef typename S::Listener Listener;
     typedef typename Graph::Successors Successors;
-    typedef typename S::Seen Seen;
+    typedef typename S::Store Store;
     typedef typename S::Statistics Statistics;
-    Graph &m_graph;
-    Notify &m_notify;
-    Store< Node, Graph, Seen, Statistics > store;
     typedef _Queue< Graph, Statistics > Queue;
-    Queue m_queue;
+
+    Graph &graph;
+    Listener &notify;
+    Store &store;
+    Queue _queue;
 
     void expand( Node n ) {
         if ( store.has( n ) )
@@ -94,19 +117,19 @@ struct Common {
     }
 
     void processDeadlocks() {
-        while ( m_queue.deadlocked() ) {
-            Node dead = m_queue.nextFrom();
-            auto action = S::deadlocked( m_notify, dead );
-            m_queue.removeDeadlocked(); // _dead_ is released by this call
+        while ( _queue.deadlocked() ) {
+            Node dead = _queue.nextFrom();
+            auto action = S::deadlocked( notify, dead );
+            _queue.removeDeadlocked(); // _dead_ is released by this call
             if ( action == TerminateOnDeadlock )
                 return terminate();
         }
     }
 
     void processFinished() {
-            while ( m_queue.finished() ) {
-                S::finished( m_notify, m_queue.from() );
-                m_queue.popFinished();
+            while ( _queue.finished() ) {
+                S::finished( notify, _queue.from() );
+                _queue.popFinished();
             }
     }
 
@@ -114,10 +137,10 @@ struct Common {
         while ( true ) {
             processFinished();
             processDeadlocks();
-            if ( m_queue.empty() )
+            if ( _queue.empty() )
                 return;
-            std::pair< Node, Node > c = m_queue.next();
-            m_queue.pop();
+            std::pair< Node, Node > c = _queue.next();
+            _queue.pop();
             processDeadlocks();
             edge( c.first, c.second );
         }
@@ -131,30 +154,30 @@ struct Common {
         bool had = true;
         hash_t hint = store.hash( _to );
 
-        if ( S::transitionHint( m_notify, from, _to, hint ) == IgnoreTransition )
+        if ( S::transitionHint( notify, from, _to, hint ) == IgnoreTransition )
             return;
 
-        Node to = store.fetchNode( _to, hint, &had );
+        Node to = store.fetch( _to, hint, &had );
 
-        tact = S::transition( m_notify, from, to );
+        tact = S::transition( notify, from, to );
         if ( tact != IgnoreTransition && !had ) {
-            store.storeNode( to, hint );
+            store.store( to, hint );
         }
 
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
-            eact = S::expansion( m_notify, to );
+            eact = S::expansion( notify, to );
             if ( eact == ExpandState )
-                m_queue.pushSuccessors( m_graph.clone( to ) );
+                _queue.pushSuccessors( graph.clone( to ) );
         }
 
         if ( tact != IgnoreTransition ) {
-            store.notifyUpdate( to, hint );
-            m_graph.release( to );
-            m_graph.release( from );
+            store.update( to, hint );
+            graph.release( to );
+            graph.release( from );
         }
-        if ( !store.isSame( to, _to ) )
-            m_graph.release( _to );
+        if ( !store.alias( to, _to ) )
+            graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
             terminate();
@@ -165,17 +188,17 @@ struct Common {
     }
 
     void clearQueue() {
-        while ( !m_queue.empty() ) {
-            std::pair< Node, Node > elem = m_queue.next();
-            m_queue.pop();
+        while ( !_queue.empty() ) {
+            std::pair< Node, Node > elem = _queue.next();
+            _queue.pop();
 
-            m_graph.release( elem.first );
-            m_graph.release( elem.second );
+            graph.release( elem.first );
+            graph.release( elem.second );
         }
     }
 
-    Common( Graph &g, Notify &n, Queue q, Seen *s, bool hashCompaction ) :
-        m_graph( g ), m_notify( n ), store( g, s, hashCompaction ), m_queue( q )
+    Common( Listener &n, Graph &g, Store &s, Queue q ) :
+        graph( g ), notify( n ), store( s ), _queue( q )
     {
     }
 };
@@ -183,43 +206,41 @@ struct Common {
 template< typename S >
 struct BFV : Common< Queue, S > {
     typedef Common< Queue, S > Super;
-    typedef typename S::Seen Seen;
-    BFV( typename S::Graph &g,
-         typename S::Notify &n,
-         Seen *s = 0,
-         bool hashCompaction = false
-        ) : Common< Queue, S >( g, n, typename Super::Queue( g ), s, hashCompaction ) {}
+    typedef typename S::Store Store;
+    BFV( typename S::Listener &n,
+         typename S::Graph &g,
+         typename S::Store &s )
+        : Common< Queue, S >( n, g, s, typename Super::Queue( g ) ) {}
 };
 
 template< typename S >
 struct DFV : Common< Stack, S > {
     typedef Common< Stack, S > Super;
-    typedef typename S::Seen Seen;
-    DFV( typename S::Graph &g,
-         typename S::Notify &n,
-         Seen *s = 0,
-         bool hashCompaction = false
-        ) : Common< Stack, S >( g, n, typename Super::Queue( g ), s, hashCompaction ) {}
+    typedef typename S::Store Store;
+    DFV( typename S::Listener &n,
+         typename S::Graph &g,
+         typename S::Store &s )
+        : Common< Stack, S >( n, g, s, typename Super::Queue( g ) ) {}
 };
 
-template< typename S, typename Worker,
-          typename _Hash = divine::hash< typename S::Node > >
+template< typename S, typename Worker >
 struct Partitioned {
     typedef typename S::Node Node;
+    typedef typename S::Graph Graph;
     typedef std::pair< Node, Node > NodePair;
 
     Worker &worker;
-    typename S::Notify &notify;
+    typename S::Listener &notify;
     typename S::Graph &graph;
-    typedef typename S::Seen Seen;
+    typedef typename S::Store Store;
+    typedef typename Store::Hasher Hasher;
     typedef typename S::Statistics Statistics;
+    typedef Partitioned< S, Worker > This;
 
-    _Hash hash;
-    Seen *m_seen;
-    bool hashCompaction;
+    Store &_store;
 
     int owner( Node n, hash_t hint = 0 ) const {
-        return graph.owner( hash, worker, n, hint );
+        return graph.owner( _store.hasher(), worker, n, hint );
     }
 
     inline void queue( Node from, Node to, hash_t hint = 0 ) {
@@ -282,11 +303,14 @@ struct Partitioned {
         }
     }
 
-    typedef Partitioned< S, Worker, _Hash > P;
-    struct Ours : Setup< typename S::Graph, P, Seen, Statistics >
+    typedef Partitioned< S, Worker > P;
+    struct Ours : SetupOverride< S, This >
     {
-        typedef typename Setup< typename S::Graph, P, Seen >::Notify Notify;
-        static inline TransitionAction transitionHint( Notify &n, Node f, Node t, hash_t hint ) {
+        typedef typename SetupOverride< S, This >::Listener Listener;
+        static inline TransitionAction transitionHint(
+            Listener l, Node f, Node t, hash_t hint )
+        {
+            This &n = *l.second;
             if ( n.owner( t, hint ) != n.worker.id() ) {
                 assert_eq( n.owner( f ), n.worker.id() );
                 n.queueAny( f, t, hint );
@@ -294,20 +318,16 @@ struct Partitioned {
             }
             return visitor::FollowTransition;
         }
-
-        static DeadlockAction deadlocked( P &p, Node n ) {
-            return S::deadlocked( p.notify, n );
-        }
     };
 
     template< typename T >
     void setIds( T &bfv ) {
-        bfv.store.id = worker.id();
-        bfv.m_queue.id = worker.id();
+        bfv.store.id = &worker;
+        bfv._queue.id = worker.id();
     }
 
     void exploreFrom( Node initial ) {
-        BFV< Ours > bfv( graph, *this, m_seen, hashCompaction );
+        BFV< Ours > bfv( *this, graph, _store );
         setIds( bfv );
         if ( owner( initial ) == worker.id() ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
@@ -316,16 +336,14 @@ struct Partitioned {
     }
 
     void processQueue() {
-        BFV< Ours > bfv( graph, *this, m_seen, hashCompaction );
+        auto l = std::make_pair( &notify, this );
+        BFV< Ours > bfv( l, graph, _store );
         setIds( bfv );
         run( bfv );
     }
 
-    Partitioned( typename S::Graph &g, Worker &w,
-                 typename S::Notify &n, _Hash h = _Hash(), Seen *s = 0,
-                 bool hashCompaction = false )
-        : worker( w ), notify( n ), graph( g ), hash( h ), m_seen( s ),
-          hashCompaction( hashCompaction )
+    Partitioned( typename S::Listener &n, Worker &w, Graph &g, Store &s )
+        : worker( w ), notify( n ), graph( g ), _store( s )
     {}
 };
 

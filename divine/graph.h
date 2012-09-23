@@ -60,10 +60,10 @@ struct Base {
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+    int owner( Hash &hasher, Worker &worker, Node n, hash_t hint = 0 ) {
         // if n is not valid, this correctly returns owner for hint, because hash( n ) is 0
         if ( !hint )
-            return hash( n ) % worker.peers();
+            return hasher.hash( n ) % worker.peers();
         else
             return hint % worker.peers();
     }
@@ -136,7 +136,7 @@ struct Transform {
         while ( !succs.empty() ) {
             ++edge;
             Node succ = succs.head();
-            if ( edge > fromIndex && a.equal( succ, next ) ) {
+            if ( edge > fromIndex && a.store().equal( succ, next ) ) {
                 base().release( succ );
                 succs = succs.tail();
                 break;

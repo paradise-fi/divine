@@ -18,7 +18,7 @@ template< typename _Node >
 struct Common : graph::Base< _Node > {
     typedef _Node Node;
     /// Default storage for the visited set. May be overriden by subclasses.
-    typedef HashSet< Node, algorithm::Hasher, divine::valid< Node >, algorithm::Equal > Table;
+    typedef HashSet< Node, algorithm::Hasher > Table;
 };
 
 }

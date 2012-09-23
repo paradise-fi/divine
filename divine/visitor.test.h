@@ -8,6 +8,7 @@
 
 using namespace divine;
 using namespace wibble;
+using namespace visitor;
 
 template< typename N >
 inline Blob blob( const N &n ) {
@@ -78,7 +79,7 @@ struct TestVisitor {
         void release( int ) {}
         Node initial() {
             static Node n = makeNode< Node >( 1 );
-            visitor::setPermanent( n );
+            setPermanent( n );
             return n;
         }
 
@@ -101,8 +102,13 @@ struct TestVisitor {
     };
 
     template< typename G >
-    struct Check {
+    struct Check : SetupBase {
         typedef typename G::Node Node;
+        typedef G Graph;
+        typedef Check< G > This;
+        typedef This Listener;
+        typedef NoStatistics Statistics;
+        typedef PartitionedStore< G > Store;
         std::set< Node > seen;
         std::set< std::pair< Node, Node > > t_seen;
         std::pair< int, int > counts;
@@ -113,32 +119,33 @@ struct TestVisitor {
         int _edges() { return this->edges(); }
         int _nodes() { return this->nodes(); }
 
-        visitor::TransitionAction transition( Node f, Node t ) {
+        template< typename Self >
+        static TransitionAction transition( Self &c, Node f, Node t ) {
             if ( node( f ) ) {
-                assert( seen.count( f ) );
-                edges() ++;
-                assert( !t_seen.count( std::make_pair( f, t ) ) );
-                t_seen.insert( std::make_pair( f, t ) );
+                assert( c.seen.count( f ) );
+                c.edges() ++;
+                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                c.t_seen.insert( std::make_pair( f, t ) );
             }
-            return visitor::FollowTransition;
+            return FollowTransition;
         }
 
-        visitor::ExpansionAction expansion( Node t ) {
-            assert( !seen.count( t ) );
-            seen.insert( t );
-            nodes() ++;
-            return visitor::ExpandState;
+        static ExpansionAction expansion( This &c, Node t ) {
+            assert( !c.seen.count( t ) );
+            c.seen.insert( t );
+            c.nodes() ++;
+            return ExpandState;
         }
 
         Check() : counts( std::make_pair( 0, 0 ) ) {}
     };
 
     template< typename T, typename N >
-    static visitor::TransitionAction parallel_transition( T *self, N f, N t ) {
+    static TransitionAction parallel_transition( T *self, N f, N t ) {
         if ( node( t ) % self->peers() != self->id() ) {
             self->submit( self->id(), node( t ) % self->peers(),
                           std::make_pair( f, t ) );
-                return visitor::IgnoreTransition;
+                return IgnoreTransition;
             }
 
         if ( node( f ) % self->peers() == self->id() )
@@ -150,33 +157,33 @@ struct TestVisitor {
             self->t_seen.insert( std::make_pair( f, t ) );
         }
 
-        return visitor::FollowTransition;
+        return FollowTransition;
     }
 
     template< typename G >
-    struct ParallelCheck : Parallel<
+    struct ParallelCheck : Check< G >, Parallel<
         Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
-        ParallelCheck< G > >, Check< G >
+        ParallelCheck< G > >
     {
+        typedef ParallelCheck< G > This;
+        typedef This Listener;
         typedef typename G::Node Node;
+        typedef G Graph;
         typedef std::pair< Node, Node > Message;
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
         G m_graph;
 
-        visitor::TransitionAction transition( Node f, Node t ) {
-            return parallel_transition( this, f, t );
-        }
-
-        visitor::ExpansionAction expansion( Node t ) {
-            return Check< G >::expansion( t );
+        static TransitionAction transition( This &c, Node f, Node t ) {
+            return parallel_transition( &c, f, t );
         }
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            typedef visitor::Setup< G, ParallelCheck< G > > VisitorSetup;
-            visitor::BFV< VisitorSetup > bfv( m_graph, *this );
+            PartitionedStore< G > store( m_graph );
+            store.id = this;
+            BFV< ParallelCheck< G > > bfv( *this, m_graph, store );
             Node initial = m_graph.initial();
             if ( node( initial ) % this->peers() == this->id() )
                 bfv.exploreFrom( initial );
@@ -229,16 +236,14 @@ struct TestVisitor {
         Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
         TerminableCheck< G > >, Check< G >
     {
+        typedef TerminableCheck< G > This;
+        typedef This Listener;
         typedef typename G::Node Node;
         typedef std::pair< Node, Node > Message;
         G m_graph;
 
-        visitor::TransitionAction transition( Node f, Node t ) {
-            return parallel_transition( this, f, t );
-        }
-
-        visitor::ExpansionAction expansion( Node t ) {
-            return Check< G >::expansion( t );
+        static TransitionAction transition( This &c, Node f, Node t ) {
+            return parallel_transition( &c, f, t );
         }
 
         int owner( Node n ) {
@@ -246,8 +251,9 @@ struct TestVisitor {
         }
 
         void _visit() { // parallel
-            typedef visitor::Setup< G, TerminableCheck< G > > VisitorSetup;
-            visitor::BFV<  VisitorSetup > bfv( m_graph, *this );
+            PartitionedStore< G > store( m_graph );
+            store.id = this;
+            BFV< This > bfv( *this, m_graph, store );
 
             Node initial = m_graph.initial();
             if ( owner( initial ) == this->id() )
@@ -327,13 +333,18 @@ struct TestVisitor {
         assert_eq( c1.edges(), 0 );
         assert_eq( c1.nodes(), 0 );
 
-        typedef visitor::Setup< NMTree< N >, C > CheckSetup;
+        struct CheckSetup : Check< NMTree< N > >, Sequential {};
 
-        visitor::BFV< CheckSetup > bfv( g, c1 );
+        typename CheckSetup::Store s1( g ), s2( g );
+        WithID wid;
+        wid.m_id = 0;
+        s1.id = s2.id = &wid;
+
+        BFV< CheckSetup > bfv( c1, g, s1 );
         bfv.exploreFrom( makeNode< N >( 1 ) );
         checkNMTreeMetric( n, m, c1.nodes(), c1.edges() );
 
-        visitor::DFV< CheckSetup > dfv( g, c2 );
+        DFV< CheckSetup > dfv( c2, g, s2 );
         dfv.exploreFrom( makeNode< N >( 1 ) );
         checkNMTreeMetric( n, m, c2.nodes(), c2.edges() );
     }
@@ -382,20 +393,20 @@ struct TestVisitor {
 
         std::set< int > seenset;
 
-        visitor::TransitionAction transition( Node f, Node t ) {
+        TransitionAction transition( Node f, Node t ) {
             shared.trans ++;
-            return visitor::FollowTransition;
+            return FollowTransition;
         }
 
-        visitor::ExpansionAction expansion( Node n ) {
+        ExpansionAction expansion( Node n ) {
             seenset.insert( unblob< int >( n ) );
             ++ shared.seen;
-            return visitor::ExpandState;
+            return ExpandState;
         }
 
         void _visit() { // parallel
-            typedef visitor::Setup< G, SimpleParReach< G > > VisitorSetup;
-            visitor::Partitioned< VisitorSetup, SimpleParReach< G > >
+            typedef Setup< G, SimpleParReach< G > > VisitorSetup;
+            Partitioned< VisitorSetup, SimpleParReach< G > >
                 vis( shared.g, *this, *this );
             vis.exploreFrom( shared.initial );
         }

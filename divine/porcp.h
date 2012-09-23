@@ -29,8 +29,8 @@ struct NonPORGraph : graph::Transform< G > {
     template< typename Visitor >
     void fullexpand( Visitor &v, Node n ) {}
 
-    template< typename Worker, typename Hasher, typename Table >
-    void _porEliminate( Worker &, Hasher &, Table & ) {}
+    template< typename Algorithm >
+    void _porEliminate( Algorithm & ) {}
 
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &, Alg & ) {
@@ -55,6 +55,7 @@ struct NonPORGraph : graph::Transform< G > {
 // Implements a (parallel) check of the POR cycle proviso.
 template< typename G, typename Statistics >
 struct PORGraph : graph::Transform< G > {
+    typedef PORGraph< G, Statistics > This;
     typedef typename G::Node Node;
     typedef typename G::Successors Successors;
 
@@ -116,117 +117,98 @@ struct PORGraph : graph::Transform< G > {
         if ( extension( t ).done )
             return; // ignore
 
-        /* std::cerr << "transition ("
-                  << extension( t ).predCount << "): "
-                  << showNode( f ) << " -> " << showNode( t ) << std::endl; */
-
         // increase predecessor count
         if ( f.valid() )
             updatePredCount( t, predCount( t ) + 1 );
     }
 
-    visitor::ExpansionAction elimExpansion( Node n ) {
-        // std::cerr << "elimExpansion " << showNode( n ) << std::endl;
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction elimTransition( Node from, Node to ) {
-        if ( extension( to ).done )
-            return visitor::ForgetTransition;
-
-        /* std::cerr << "elimTransition ("
-                  << extension( to ).predCount << "): "
-                  << showNode( from ) << " -> " << showNode( to ) << std::endl; */
-
-        assert( predCount( to ) );
-        updatePredCount( to, predCount( to ) - 1 );
-        extension( to ).remove = true;
-        if ( predCount( to ) == 0 ) {
-            extension( to ).done = true;
-            return visitor::ExpandTransition;
-        }
-        return visitor::ForgetTransition;
-    }
-
-    template< typename Q >
-    void eliminateInit( Q &q )
+    template< typename Setup >
+    struct POREliminate : algorithm::Visit< This, Setup >
     {
-        for ( typename std::set< Node >::iterator j, i = to_check.begin();
-              i != to_check.end(); i = j )
+        static visitor::ExpansionAction expansion( This &, Node n ) {
+            return visitor::ExpandState;
+        }
+
+        static visitor::TransitionAction transition( This &t, Node from, Node to ) {
+            if ( t.extension( to ).done )
+                return visitor::ForgetTransition;
+
+            assert( t.predCount( to ) );
+            t.updatePredCount( to, t.predCount( to ) - 1 );
+            t.extension( to ).remove = true;
+            if ( t.predCount( to ) == 0 ) {
+                t.extension( to ).done = true;
+                return visitor::ExpandTransition;
+            }
+            return visitor::ForgetTransition;
+        }
+
+        template< typename Q >
+        static void init( This &t, Q &q )
         {
-            j = i; ++j;
-            if ( !predCount( *i ) || extension( *i ).remove ) {
-                if ( predCount( *i ) ) {
-                    // std::cerr << "to expand: " << showNode( *i ) << std::endl;
-                    to_expand.insert( *i );
+            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
+                  i != t.to_check.end(); i = j )
+            {
+                j = i; ++j;
+                if ( !t.predCount( *i ) || t.extension( *i ).remove ) {
+                    if ( t.predCount( *i ) ) {
+                        t.to_expand.insert( *i );
+                    }
+                    t.updatePredCount( *i, 1 ); // ...
+                    q.queue( Blob(), *i );
+                    t.to_check.erase( i );
                 }
-                updatePredCount( *i, 1 ); // ...
-                q.queue( Blob(), *i );
-                to_check.erase( i );
             }
         }
-    }
 
-    void eliminateCleanup()
-    {
-        for ( typename std::set< Node >::iterator j, i = to_check.begin();
-              i != to_check.end(); i = j ) {
-            j = i; ++j;
-            if ( extension ( *i ).done )
-                to_check.erase( i );
+        static void cleanup( This &t )
+        {
+            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
+                  i != t.to_check.end(); i = j ) {
+                j = i; ++j;
+                if ( t.extension ( *i ).done )
+                    t.to_check.erase( i );
+            }
         }
-    }
+    };
 
-    template< typename Worker, typename Hasher, typename Table >
-    void _porEliminate( Worker &w, Hasher &h, Table &t ) {
-        typedef PORGraph< G, Statistics > Us;
-        typedef visitor::Setup< Us, Us, Table, Statistics,
-            &Us::elimTransition,
-            &Us::elimExpansion > Setup;
-        typedef visitor::Partitioned< Setup, Worker, Hasher > Visitor;
+    template< typename Algorithm >
+    void _porEliminate( Algorithm &a ) {
+        typedef POREliminate< typename Algorithm::Setup > Elim;
+        visitor::Partitioned< Elim, Algorithm >
+            visitor( *this, a, *this, a.store() );
 
-        Visitor visitor( *this, w, *this, h, &t );
-        eliminateInit( visitor );
+        Elim::init( *this, visitor );
         visitor.processQueue();
-        eliminateCleanup();
+        Elim::cleanup( *this );
     }
 
     // gives true iff there are nodes that need expanding
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &d, Alg &a ) {
-        // int checked = to_check.size();
-
         while ( !to_check.empty() ) {
             d.parallel( &Alg::_por_worker );
-            /* std::cerr << "eliminate: " << to_check.size() << " nodes remaining, "
-               << to_expand.size() << " to expand" << std::endl; */
 
             if ( to_check.empty() )
                 break;
 
-            // std::cerr << "breaking stalemate at: " << showNode( *to_check.begin() ) << std::endl;
             updatePredCount( *to_check.begin(), 0 );
             to_expand.insert( *to_check.begin() );
         }
-        /* std::cerr << "eliminate: " << checked << " checked, "
-           << to_expand.size() << " to expand" << std::endl; */
 
         return to_expand.size() > 0;
     }
 
-    template< typename Table >
-    bool porEliminateLocally( Table &t ) {
-        typedef PORGraph< G, Statistics > Us;
-        typedef visitor::Setup< Us, Us, Table, Statistics,
-            &Us::elimTransition,
-            &Us::elimExpansion > Setup;
-
-        visitor::BFV< Setup > visitor( *this, *this, &t );
+    template< typename Algorithm >
+    bool porEliminateLocally( Algorithm &a ) {
+        typedef POREliminate< typename Algorithm::Setup > Elim;
+        visitor::BFV< Elim > visitor( *this, *this, a.store() );
 
         while ( !to_check.empty() ) {
-            eliminateInit( visitor );
+            Elim::init( *this, visitor );
             visitor.processQueue();
-            eliminateCleanup();
+            Elim::cleanup( *this );
+
             if ( to_check.empty() )
                 break;
 
@@ -234,7 +216,6 @@ struct PORGraph : graph::Transform< G > {
             updatePredCount( *to_check.begin(), 0 );
             to_expand.insert( *to_check.begin() );
         }
-        return to_expand.size() > 0;
     }
 
     template< typename Visitor >

@@ -13,40 +13,17 @@ typedef uint32_t hash_t;
 
 // default hash implementation
 template< typename T >
-struct hash {
-    inline hash_t operator()( T t ) const {
-        return t.hash();
-    }
-};
-
-// default validity implementation
-template< typename T >
-struct valid {
-    inline bool operator()( T t ) const {
-        return t.valid();
-    }
-};
-
-// default equality implementation
-template< typename T >
-struct equal {
-    inline bool operator()( T a, T b ) const {
-        return a == b;
-    }
+struct default_hasher {
+    hash_t hash( T t ) const { return t.hash(); }
+    bool valid( T t ) const { return t.valid(); }
+    bool equal( T a, T b )const { return a == b; }
 };
 
 template<>
-struct valid< int > {
-    inline bool operator()( int t ) const {
-        return t != 0;
-    }
-};
-
-template<>
-struct hash< int > {
-    inline hash_t operator()( int t ) const {
-        return t;
-    }
+struct default_hasher< int > {
+    hash_t hash( int t ) const { return t; }
+    bool valid( int t ) const { return t != 0; }
+    bool equal( int a, int b ) const { return a == b; }
 };
 
 /**
@@ -60,17 +37,11 @@ struct hash< int > {
  * known there will be many elements. Table growth is exponential with base 2
  * and is triggered at 75% load. (See maxcollision().)
  */
-template< typename _Item,
-          typename _Hash = divine::hash< _Item >,
-          typename _Valid = divine::valid< _Item >,
-          typename _Equal = divine::equal< _Item > >
+template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
 struct HashSet
 {
-    typedef wibble::Unit IsHashSet;
     typedef _Item Item;
-    typedef _Hash Hash;
-    typedef _Valid Valid;
-    typedef _Equal Equal;
+    typedef _Hasher Hasher;
 
     int maxcollision() { return 65536; }
     int growthreshold() { return 75; } // percent
@@ -88,9 +59,7 @@ struct HashSet
     size_t m_maxsize;
     bool growing;
 
-    Hash hash;
-    Valid valid;
-    Equal equal;
+    Hasher hasher;
 
     size_t usage() {
         return m_used;
@@ -110,7 +79,7 @@ struct HashSet
     };
 
     inline Item insert( Item i ) {
-        return insertHinted( i, hash( i ) );
+        return insertHinted( i, hasher.hash( i ) );
     }
 
     inline Item insertHinted( Item i, hash_t h ) {
@@ -120,14 +89,14 @@ struct HashSet
         return insertCell( c, m_table, m_used );
     }
 
-    bool has( Item i ) { return valid( get( i ) ); }
-    Item get( Item i ) { return getHinted( i, hash( i ) ); }
+    bool has( Item i ) { return hasher.valid( get( i ) ); }
+    Item get( Item i ) { return getHinted( i, hasher.hash( i ) ); }
     Item getHinted( Item i, hash_t h, bool* has = NULL ) {
         Cell c;
         c.item = i;
         c.hash = h;
         const Item& item = getCell( c );
-        if ( has != NULL ) *has = valid( item );
+        if ( has != NULL ) *has = hasher.valid( item );
         return item;
     }
 
@@ -137,7 +106,7 @@ struct HashSet
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( c.hash, i );
 
-            if ( !valid( m_table[ idx ].item ) )
+            if ( !hasher.valid( m_table[ idx ].item ) )
                 return Item(); // invalid
 
             if ( cellEq( c, m_table[ idx ] ) )
@@ -150,12 +119,12 @@ struct HashSet
     }
 
     inline bool cellEq( Cell a, Cell b) {
-        return a.hash == b.hash && equal( a.item, b.item );
+        return a.hash == b.hash && hasher.equal( a.item, b.item );
     }
 
     inline Item insertCell( Cell c, Table &table, int &used )
     {
-        assert( valid( c.item ) ); // ensure key validity
+        assert( hasher.valid( c.item ) ); // ensure key validity
 
         if ( !growing && size_t( m_used ) > (size() / 100) * 75 )
             grow();
@@ -164,7 +133,7 @@ struct HashSet
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( c.hash, i );
 
-            if ( !valid( table[ idx ].item ) ) {
+            if ( !hasher.valid( table[ idx ].item ) ) {
                 ++ used;
                 table[ idx ] = c;
                 return c.item; // done
@@ -201,7 +170,7 @@ struct HashSet
         m_bits |= (m_bits << 1); // unmask more
 
         for ( size_t i = 0; i < m_table.size(); ++i ) {
-            if ( valid( m_table[ i ].item ) )
+            if ( hasher.valid( m_table[ i ].item ) )
                 insertCell( m_table[ i ], table, used );
         }
 
@@ -228,9 +197,8 @@ struct HashSet
         return m_table[ off ].item;
     }
 
-    HashSet( Hash h = Hash(), Valid v = Valid(), Equal eq = Equal(),
-             int initial = 32 )
-        : hash( h ), valid( v ), equal( eq )
+    HashSet( Hasher h = Hasher(), int initial = 32 )
+        : hasher( h )
     {
         growing = false;
         m_used = 0;
@@ -239,7 +207,7 @@ struct HashSet
 
         // assert that default key is invalid, this is assumed
         // throughout the code
-        assert( !valid( Item() ) );
+        assert( !hasher.valid( Item() ) );
     }
 };
 

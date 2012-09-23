@@ -11,36 +11,36 @@
 namespace divine {
 namespace algorithm {
 
-template< typename G, template< typename > class Topology, typename Stats >
-struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, Topology, Stats > >
+template< typename Setup >
+struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Simple< Setup > >
 {
-    typedef Metrics< G, Topology, Stats > This;
-    ALGORITHM_CLASS( G, algorithm::Statistics );
-    typedef typename G::Successors Successors;
+    typedef Simple< Setup > This;
+    ALGORITHM_CLASS( Setup, algorithm::Statistics );
+    typedef typename Graph::Successors Successors;
 
     std::deque< Successors > localqueue;
 
     int owner( Node n ) {
-        return hasher( n ) % this->peers();
+        return this->store().hash( n ) % this->peers();
     }
 
     void edge( Node from, Node to ) {
-        hash_t hint = this->table().hash( to );
+        hash_t hint = this->store().hash( to );
         int owner = hint % this->peers();
 
-        if ( owner != this->globalId() ) { // send to remote
-            this->comms().submit( this->globalId(), owner, BlobPair( from, to ) );
+        if ( owner != this->id() ) { // send to remote
+            this->comms().submit( this->id(), owner, BlobPair( from, to ) );
         } else { // we own this node, so let's process it
-            Node in_table = this->table().getHinted( to, hint );
+            Node in_table = this->store().fetch( to, hint );
 
             shared.addEdge();
-            if ( !this->table().valid( in_table ) ) {
-                this->table().insertHinted( to, hint );
+            if ( !this->store().valid( in_table ) ) {
+                this->store().store( to, hint );
                 to.header().permanent = 1; // don't ever release this
-                localqueue.push_back( m_graph.successors( to ) );
-                shared.addNode( m_graph, to );
+                localqueue.push_back( this->graph().successors( to ) );
+                shared.addNode( this->graph(), to );
             } else {
-                m_graph.release( to );
+                this->graph().release( to );
                 to = in_table;
             }
             // from now on "to" always refers to the node in the hash table
@@ -49,22 +49,22 @@ struct Simple : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Simple< G, T
     }
 
     void _visit() { // parallel
-        this->comms().notify( this->globalId(), &m_graph.pool() );
-        Node initial = m_graph.initial();
-        if ( owner( initial ) == this->globalId() ) {
-            this->table().insert( initial );
+        this->comms().notify( this->id(), &this->graph().pool() );
+        Node initial = this->graph().initial();
+        if ( owner( initial ) == this->id() ) {
+            this->store().store( initial, this->store().hash( initial ) );
             initial.header().permanent = 1;
-            shared.addNode( m_graph, initial );
-            localqueue.push_back( m_graph.successors( initial ) );
+            shared.addNode( this->graph(), initial );
+            localqueue.push_back( this->graph().successors( initial ) );
         } else
-            m_graph.release( initial );
+            this->graph().release( initial );
 
         do {
             // process incoming stuff from other workers
             for ( int from = 0; from < this->peers(); ++from ) {
-                while ( this->comms().pending( from, this->globalId() ) ) {
+                while ( this->comms().pending( from, this->id() ) ) {
                     std::pair< Node, Node > p;
-                    p = this->comms().take( from, this->globalId() );
+                    p = this->comms().take( from, this->id() );
                     edge( p.first, p.second );
                 }
             }

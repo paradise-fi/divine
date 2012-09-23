@@ -14,7 +14,7 @@ namespace generator {
 
 /// Represents a generator of compact state space (.compact files)
 struct Compact : public Common< Blob > {
-    typedef BitSet< Compact, divine::valid< Node >, algorithm::Equal > Table; // used state storage
+    typedef BitSet< Compact > Table; // used state storage
     typedef generator::Common< Blob > Common;
 
     /// References a state by its id; additional information about transition can be encoded into flags

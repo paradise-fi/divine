@@ -16,27 +16,30 @@ namespace divine {
 
 template< typename > struct Simple;
 
-template< typename G, template< typename > class _Top, typename X >
-struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
+template< typename Setup >
+struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor::SetupBase, Sequential
 {
-    typedef Draw< G, _Top, X > This;
-    typedef typename G::Node Node;
-    typedef typename G::Successors Successors;
-    typedef typename algorithm::AlgorithmUtils< G >::Table Table;
+    typedef Draw< Setup > This;
+    typedef typename Setup::Graph Graph;
+    typedef typename Graph::Node Node;
+    typedef typename Setup::Store Store;
+    typedef typename Graph::Successors Successors;
+    typedef This Listener;
+    typedef NoStatistics Statistics;
 
     struct Extension {
         int distance;
         int serial;
     };
 
-    G m_graph;
     Node initial;
     int drawn, maxdist, serial;
 
     std::string dot, output, render, trace;
     bool labels;
     bool traceLabels;
-    Table *intrace;
+
+    HashSet< Node, algorithm::Hasher > *intrace;
     std::set< std::pair< int, int > > intrace_trans;
 
     int id() { return 0; }
@@ -45,12 +48,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         return n.template get< Extension >();
     }
 
-    visitor::ExpansionAction expansion( Node st )
+    static visitor::ExpansionAction expansion( This &t, Node st )
     {
-        bool limit = extension( st ).distance > maxdist;
+        bool limit = t.extension( st ).distance > t.maxdist;
 
-        dotNode( st, limit );
-        m_graph.porExpansion( st );
+        t.dotNode( st, limit );
+        t.graph().porExpansion( st );
 
         if ( limit )
             return visitor::IgnoreState;
@@ -58,28 +61,31 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
             return visitor::ExpandState;
     }
 
-    visitor::TransitionAction transition( Node f, Node t )
+    static visitor::TransitionAction transition( This &draw, Node f, Node t )
     {
-        if ( extension( t ).serial == 0 ) {
-            if ( !intrace->has( t ) )
-                extension( t ).serial = ++serial;
+        if ( draw.extension( t ).serial == 0 ) {
+            if ( !draw.intrace->has( t ) )
+                draw.extension( t ).serial = ++draw.serial;
             else
-                extension( t ) = extension( intrace->get( t ) );
+                draw.extension( t ) = draw.extension( draw.intrace->get( t ) );
         }
 
         if ( !f.valid() )
             return visitor::FollowTransition;
 
         std::string color;
-        if ( intrace_trans.count( std::make_pair( extension( f ).serial, extension( t ).serial ) ) )
+        if ( draw.intrace_trans.count(
+                 std::make_pair( draw.extension( f ).serial,
+                                 draw.extension( t ).serial ) ) )
             color = "red";
-        dotEdge( f, t, color );
+        draw.dotEdge( f, t, color );
 
-        if ( extension( t ).distance == 0 )
-           extension( t ).distance = INT_MAX;
+        if ( draw.extension( t ).distance == 0 )
+           draw.extension( t ).distance = INT_MAX;
 
-        m_graph.porTransition( f, t, 0 );
-        extension( t ).distance = std::min( extension( t ).distance, extension( f ).distance + 1 );
+        draw.graph().porTransition( f, t, 0 );
+        draw.extension( t ).distance =
+            std::min( draw.extension( t ).distance, draw.extension( f ).distance + 1 );
         return visitor::FollowTransition;
     }
 
@@ -101,9 +107,9 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     std::string label( Node n ) {
         if ( intrace->has( n ) && traceLabels )
-            return m_graph.showNode( n );
+            return this->graph().showNode( n );
         if ( labels )
-            return m_graph.showNode( n );
+            return this->graph().showNode( n );
         return "";
     }
 
@@ -120,7 +126,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
-        if ( m_graph.isAccepting( n ) )
+        if ( this->graph().isAccepting( n ) )
             str << "peripheries=2 ";
 
         if ( label( n ).empty() )
@@ -143,7 +149,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
         if ( labels )
-            label = m_graph.showTransition( f, t );
+            label = this->graph().showTransition( f, t );
 
         if ( !color.empty() || !label.empty()) {
             str << " [";
@@ -162,7 +168,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
 
     // TODO: We leak some memory here, roughly linear to the trace size, i.e. not too bad
     void loadTrace() {
-        intrace = this->makeTable( this );
+        intrace = new HashSet< Node, algorithm::Hasher >( this->store().hasher() );
 
         if ( trace.empty() )
             return;
@@ -179,7 +185,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
                 from = intrace->get( from );
             else
                 intrace->insert( from );
-            typename G::Successors s = wibble::list::drop( trans[ i ] - 1, m_graph.successors( from ) );
+            Successors s = wibble::list::drop( trans[ i ] - 1, this->graph().successors( from ) );
             Node to = intrace->get( s.head() );
             if ( !to.valid() ) {
                 to = s.head();
@@ -197,19 +203,19 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< G >
     void draw() {
         dot += "digraph {";
 
-        initial = m_graph.initial();
+        initial = this->graph().initial();
         extension( initial ).serial = 1;
         extension( initial ).distance = 1;
 
         loadTrace();
 
-        visitor::BFV< visitor::Setup< G, This, Table > >
-            visitor( m_graph, *this, &this->table() );
+        visitor::BFV< This >
+            visitor( *this, this->graph(), this->store() );
 
         do {
-            m_graph.queueInitials( visitor );
+            this->graph().queueInitials( visitor );
             visitor.processQueue();
-        } while ( m_graph.porEliminateLocally( this->table() ) );
+        } while ( this->graph().porEliminateLocally( *this ) );
 
         dot += "}";
     }

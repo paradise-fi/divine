@@ -13,14 +13,14 @@
 namespace divine {
 namespace algorithm {
 
-template< typename G, template< typename > class _Top, typename Statistics >
-struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
+template< typename Setup >
+struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 {
-    typedef NestedDFS< G, _Top, Statistics > This;
-    typedef typename G::Node Node;
-    typedef typename AlgorithmUtils< G >::Table Table;
+    typedef NestedDFS< Setup > This;
+    typedef typename Setup::Graph Graph;
+    typedef typename Graph::Node Node;
+    typedef typename Setup::Store Store;
 
-    G m_graph;
     Node seed;
     bool valid;
     bool parallel, finished;
@@ -42,16 +42,16 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 
     int id() { return 0; } // expected by AlgorithmUtils
 
-    void runInner( G &graph, Node n ) {
+    void runInner( Graph &graph, Node n ) {
         seed = n;
-        visitor::DFV< InnerVisit > visitor( graph, *this, &this->table() );
+        visitor::DFV< Inner > visitor( *this, graph, this->store() );
         visitor.exploreFrom( n );
     }
 
     struct : wibble::sys::Thread {
         Fifo< Node > process;
         This *outer;
-        G graph;
+        Graph graph;
 
         void *main() {
             while ( outer->valid ) {
@@ -73,9 +73,9 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        LtlCE< G, wibble::Unit, wibble::Unit > ce;
-        ce.generateLinear( *this, m_graph, ce_stack );
-        ce.generateLasso( *this, m_graph, ce_lasso );
+        LtlCE< Graph, wibble::Unit, wibble::Unit > ce;
+        ce.generateLinear( *this, this->graph(), ce_stack );
+        ce.generateLasso( *this, this->graph(), ce_lasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
     }
@@ -83,7 +83,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
     // this is the entrypoint for full expansion... I know the name isn't best,
     // but that's what PORGraph uses
     void queue( Node from, Node to ) {
-        visitor::DFV< OuterVisit > visitor( m_graph, *this, &this->table() );
+        visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
         visitor.exploreFrom( to );
     }
 
@@ -91,16 +91,17 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         progress() << " searching...\t\t\t" << std::flush;
 
         if ( parallel ) {
-            inner.graph = m_graph;
+            inner.graph = this->graph();
             inner.start();
         }
 
-        visitor::DFV< OuterVisit > visitor( m_graph, *this, &this->table() );
-        visitor.exploreFrom( m_graph.initial() );
+        visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
+        this->graph().queueInitials( visitor );
+        visitor.processQueue();
 
         while ( valid && !toexpand.empty() ) {
-            if ( !m_graph.full( toexpand.front() ) )
-                m_graph.fullexpand( *this, toexpand.front() );
+            if ( !this->graph().full( toexpand.front() ) )
+                this->graph().fullexpand( *this, toexpand.front() );
             toexpand.pop_front();
         }
 
@@ -126,55 +127,31 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         result().fullyExplored = valid ? meta::Result::Yes : meta::Result::No;
     }
 
-    visitor::ExpansionAction expansion( Node st ) {
-        if ( !valid )
-            return visitor::TerminateOnState;
-        stats.addNode( m_graph, st );
-        ce_stack.push_front( st );
-        extension( st ).on_stack = true;
-        return visitor::ExpandState;
-    }
-
-    visitor::ExpansionAction innerExpansion( Node st ) {
-        if ( !valid )
-            return visitor::TerminateOnState;
-        stats.addExpansion();
-        ce_lasso.push_front( st );
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction transition( Node from, Node to ) {
-        stats.addEdge();
-        if ( from.valid() && !m_graph.full( from ) && !m_graph.full( to ) && extension( to ).on_stack )
-            toexpand.push_back( from );
-        return visitor::FollowTransition;
-    }
-
-    visitor::TransitionAction innerTransition( Node from, Node to )
+    struct Outer : Visit< This, Setup >
     {
-        // The search always starts with a transition from "nowhere" into the
-        // initial state. Ignore this transition here.
-        if ( from.valid() && to.pointer() == seed.pointer() ) {
-            valid = false;
-            return visitor::TerminateOnTransition;
+        static visitor::ExpansionAction expansion( This &dfs, Node st ) {
+            if ( !dfs.valid )
+                return visitor::TerminateOnState;
+            dfs.stats.addNode( dfs.graph(), st );
+            dfs.ce_stack.push_front( st );
+            dfs.extension( st ).on_stack = true;
+            return visitor::ExpandState;
         }
 
-        if ( !extension( to ).nested ) {
-            extension( to ).nested = true;
-            return visitor::ExpandTransition;
+        static visitor::TransitionAction transition( This &dfs, Node from, Node to ) {
+            dfs.stats.addEdge();
+            if ( from.valid() && !dfs.graph().full( from ) &&
+                 !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
+                dfs.toexpand.push_back( from );
+            return visitor::FollowTransition;
         }
 
-        return visitor::FollowTransition;
-    }
-
-    struct OuterVisit : visitor::Setup< G, This, Table, Statistics > {
         static void finished( This &dfs, Node n ) {
-
-            if ( dfs.m_graph.isAccepting( n ) ) { // run the nested search
+            if ( dfs.graph().isAccepting( n ) ) { // run the nested search
                 if ( dfs.parallel )
                     dfs.inner.process.push( n );
                 else
-                    dfs.runInner( dfs.m_graph, n );
+                    dfs.runInner( dfs.graph(), n );
             }
 
             if ( !dfs.ce_stack.empty() ) {
@@ -184,10 +161,33 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
         }
     };
 
-    struct InnerVisit : visitor::Setup< G, This, Table, Statistics,
-                                        &This::innerTransition,
-                                        &This::innerExpansion >
+    struct Inner : Visit< This, Setup >
     {
+        static visitor::ExpansionAction expansion( This &dfs, Node st ) {
+            if ( !dfs.valid )
+                return visitor::TerminateOnState;
+            dfs.stats.addExpansion();
+            dfs.ce_lasso.push_front( st );
+            return visitor::ExpandState;
+        }
+
+        static visitor::TransitionAction transition( This &dfs, Node from, Node to )
+        {
+            // The search always starts with a transition from "nowhere" into the
+            // initial state. Ignore this transition here.
+            if ( from.valid() && to.pointer() == dfs.seed.pointer() ) {
+                dfs.valid = false;
+                return visitor::TerminateOnTransition;
+            }
+
+            if ( !dfs.extension( to ).nested ) {
+                dfs.extension( to ).nested = true;
+                return visitor::ExpandTransition;
+            }
+
+            return visitor::FollowTransition;
+        }
+
         static void finished( This &dfs, Node n ) {
             if ( !dfs.ce_lasso.empty() ) {
                 assert_eq( n.pointer(), dfs.ce_lasso.front().pointer() );
@@ -208,7 +208,7 @@ struct NestedDFS : virtual Algorithm, AlgorithmUtils< G >
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
             progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
-            this->table().m_maxsize = m.execution.initialTable;
+            this->store().table.m_maxsize = m.execution.initialTable; // XXX
         }
         finished = false;
         inner.outer = this;

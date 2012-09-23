@@ -37,8 +37,13 @@ struct Main {
 
         try {
             Mpi mpi;
-            algorithm::Simple< generator::LegacyDve, Topology<>::Mpi, NoStatistics >
-                alg( meta, true );
+            struct Setup {
+                template< typename X > using Topology = Topology<>::Mpi< X >;
+                using Statistics = NoStatistics;
+                using Graph = generator::LegacyDve;
+                using Store = visitor::PartitionedStore< Graph, algorithm::Hasher >;
+            };
+            algorithm::Simple< Setup > alg( meta, true );
 
             meta.execution.nodes = mpi.size();
             meta.execution.thisNode = mpi.rank();

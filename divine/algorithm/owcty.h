@@ -50,11 +50,11 @@ typename BS::bitstream &operator>>( BS &bs, OwctyShared &sh )
  * Weak LTL Properties. In International Conference on Formal Engineering
  * Methods, LNCS. Springer-Verlag, 2009.  To appear.
  */
-template< typename G, template< typename > class Topology, typename Statistics >
-struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Topology, Statistics > >
+template< typename Setup >
+struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Owcty< Setup > >
 {
-    typedef Owcty< G, Topology, Statistics > This;
-    ALGORITHM_CLASS( G, OwctyShared );
+    typedef Owcty< Setup > This;
+    ALGORITHM_CLASS( Setup, OwctyShared );
 
     // -------------------------------
     // -- Some useful types
@@ -72,7 +72,7 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
         unsigned map_owner:9; // handle up to 512 MPI nodes
     };
 
-    LtlCE< G, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension > ce;
 
     // ------------------------------------------------------
     // -- generally useful utilities
@@ -121,8 +121,8 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
 
     template< typename V >
     void queueAll( V &v, bool reset = false ) {
-        for ( size_t i = 0; i < this->table().size(); ++i ) {
-            Node st = this->table()[ i ];
+        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
+            Node st = this->store().table[ i ];
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
@@ -159,41 +159,38 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
         return old != shared.iteration;
     }
 
-    // -----------------------------------------------
-    // -- REACHABILITY implementation
-    // --
-
-    visitor::ExpansionAction reachExpansion( Node st )
+    struct Reachability : Visit< This, Setup >
     {
-        assert( extension( st ).predCount > 0 );
-        assert( extension( st ).inS );
-        ++ shared.size;
-        shared.stats.addExpansion();
-        return visitor::ExpandState;
-    }
-
-    visitor::TransitionAction reachTransition( Node f, Node t )
-    {
-        ++ extension( t ).predCount;
-        extension( t ).inS = true;
-        if ( extension( t ).inF && f.valid() )
-            return visitor::ForgetTransition;
-        else {
-            return updateIteration( t ) ?
-                visitor::ExpandTransition :
-                visitor::ForgetTransition;
+        static visitor::ExpansionAction expansion( This &o, Node st )
+        {
+            assert( o.extension( st ).predCount > 0 );
+            assert( o.extension( st ).inS );
+            ++ o.shared.size;
+            o.shared.stats.addExpansion();
+            return visitor::ExpandState;
         }
-    }
+
+        static visitor::TransitionAction transition( This &o, Node f, Node t )
+        {
+            ++ o.extension( t ).predCount;
+            o.extension( t ).inS = true;
+            if ( o.extension( t ).inF && f.valid() )
+                return visitor::ForgetTransition;
+            else {
+                return o.updateIteration( t ) ?
+                    visitor::ExpandTransition :
+                    visitor::ForgetTransition;
+            }
+        }
+
+        template< typename Visitor >
+        void queueInitials( This &t, Visitor &v ) {
+            t.queueAll( v, true );
+        }
+    };
 
     void _reachability() { // parallel
-        typedef visitor::Setup< G, This, Table, Statistics,
-            &This::reachTransition,
-            &This::reachExpansion > Setup;
-        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
-
-        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
-        queueAll( visitor, true );
-        visitor.processQueue();
+        this->visit( this, Reachability() );
     }
 
     void reachability() {
@@ -202,58 +199,49 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
         shared.size = totalSize();
     }
 
-    // -----------------------------------------------
-    // -- INITIALISE implementation
-    // --
-
-    visitor::TransitionAction initTransition( Node from, Node to )
+    struct Initialise : Visit< This, Setup >
     {
-        if ( !extension( to ).parent.valid() )
-            extension( to ).parent = from;
-        if ( from.valid() ) {
-            VertexId fromMap = getMap( from );
-            VertexId fromId = makeId( from );
-            if ( getMap( to ) < fromMap )
-                setMap( to, fromMap  );
-            if ( m_graph.isAccepting( from ) ) {
-                if ( from.pointer() == to.pointer() ) {
-                    shared.cycle_node = to;
-                    shared.cycle_found = true;
+        static visitor::TransitionAction transition( This &o, Node from, Node to )
+        {
+            if ( !o.extension( to ).parent.valid() )
+                o.extension( to ).parent = from;
+            if ( from.valid() ) {
+                VertexId fromMap = o.getMap( from );
+                VertexId fromId = o.makeId( from );
+                if ( o.getMap( to ) < fromMap )
+                    o.setMap( to, fromMap  );
+                if ( o.graph().isAccepting( from ) ) {
+                    if ( from.pointer() == to.pointer() ) {
+                        o.shared.cycle_node = to;
+                        o.shared.cycle_found = true;
+                        return visitor::TerminateOnTransition;
+                    }
+                    if ( o.getMap( to ) < fromId )
+                        o.setMap( to, fromId );
+                }
+                if ( o.makeId( to ) == fromMap ) {
+                    o.shared.cycle_node = to;
+                    o.shared.cycle_found = true;
                     return visitor::TerminateOnTransition;
                 }
-                if ( getMap( to ) < fromId )
-                    setMap( to, fromId );
             }
-            if ( makeId( to ) == fromMap ) {
-                shared.cycle_node = to;
-                shared.cycle_found = true;
-                return visitor::TerminateOnTransition;
-            }
+            o.shared.stats.addEdge();
+            o.graph().porTransition( from, to, &updatePredCount );
+            return visitor::FollowTransition;
         }
-        shared.stats.addEdge();
-        m_graph.porTransition( from, to, &updatePredCount );
-        return visitor::FollowTransition;
-    }
 
-    visitor::ExpansionAction initExpansion( Node st )
-    {
-        extension( st ).inF = extension( st ).inS = m_graph.isAccepting( st );
-        shared.size += extension( st ).inS;
-        shared.stats.addNode( m_graph, st );
-        m_graph.porExpansion( st );
-        return visitor::ExpandState;
-    }
+        static visitor::ExpansionAction expansion( This &o, Node st )
+        {
+            o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st );
+            o.shared.size += o.extension( st ).inS;
+            o.shared.stats.addNode( o.graph(), st );
+            o.graph().porExpansion( st );
+            return visitor::ExpandState;
+        }
+    };
 
     void _initialise() { // parallel
-        typedef visitor::Setup< G, This, Table, Statistics,
-            &This::initTransition,
-            &This::initExpansion > Setup;
-        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
-
-        this->comms().notify( this->id(), &m_graph.pool() );
-        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
-        m_graph.queueInitials( visitor );
-        visitor.processQueue();
+        this->visit( this, Initialise() );
     }
 
     void initialise() {
@@ -278,55 +266,52 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
     }
 
     void _por_worker() {
-        m_graph._porEliminate( *this, hasher, this->table() );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
         shared = sh;
-        if ( m_graph.porEliminate( *this, *this ) )
+        if ( this->graph().porEliminate( *this, *this ) )
             shared.need_expand = true;
         return shared;
     }
 
-    // -----------------------------------------------
-    // -- ELIMINATION implementation 
-    // --
-
-    visitor::ExpansionAction elimExpansion( Node st )
+    struct Elimination : Visit< This, Setup >
     {
-        assert( extension( st ).predCount == 0 );
-        extension( st ).inS = false;
-        if ( extension( st ).inF )
-            shared.size ++;
-        shared.stats.addExpansion();
-        return visitor::ExpandState;
-    }
+        static visitor::ExpansionAction expansion( This &o, Node st )
+        {
+            assert( o.extension( st ).predCount == 0 );
+            o.extension( st ).inS = false;
+            if ( o.extension( st ).inF )
+                o.shared.size ++;
+            o.shared.stats.addExpansion();
+            return visitor::ExpandState;
+        }
 
-    visitor::TransitionAction elimTransition( Node f, Node t )
-    {
-        assert( t.valid() );
-        assert( extension( t ).inS );
-        assert( extension( t ).predCount >= 1 );
-        -- extension( t ).predCount;
-        // we follow a transition only if the target state is going to
-        // be eliminated
-        if ( extension( t ).predCount == 0 ) {
-            return updateIteration( t ) ?
-                visitor::ExpandTransition :
-                visitor::ForgetTransition;
-        } else
-            return visitor::ForgetTransition;
-    }
+        static visitor::TransitionAction transition( This &o, Node f, Node t )
+        {
+            assert( t.valid() );
+            assert( o.extension( t ).inS );
+            assert( o.extension( t ).predCount >= 1 );
+            -- o.extension( t ).predCount;
+            // we follow a transition only if the target state is going to
+            // be eliminated
+            if ( o.extension( t ).predCount == 0 ) {
+                return o.updateIteration( t ) ?
+                    visitor::ExpandTransition :
+                    visitor::ForgetTransition;
+            } else
+                return visitor::ForgetTransition;
+        }
+
+        template< typename Visitor >
+        void queueInitials( This &t, Visitor &v ) {
+            t.queueAll( v );
+        }
+    };
 
     void _elimination() {
-        typedef visitor::Setup< G, This, Table, Statistics,
-            &This::elimTransition,
-            &This::elimExpansion > Setup;
-        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
-
-        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
-        queueAll( visitor );
-        visitor.processQueue();
+        this->visit( this, Elimination() );
     }
 
     void elimination() {
@@ -335,50 +320,44 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
         shared.oldsize = shared.size = shared.oldsize - totalSize();
     }
 
+    struct FindCE : Visit< This, Setup > {
+        static visitor::TransitionAction transition( This &o, Node from, Node to )
+        {
+            if ( !o.extension( to ).inS )
+                return visitor::ForgetTransition;
+            if ( from.valid() && to == o.shared.cycle_node ) {
+                o.shared.cycle_found = true;
+                return visitor::TerminateOnTransition;
+            }
 
-    // -------------------------------------------
-    // -- COUNTEREXAMPLES
-    // --
-
-    visitor::TransitionAction ccTransition( Node from, Node to )
-    {
-        if ( !extension( to ).inS )
-            return visitor::ForgetTransition;
-        if ( from.valid() && to == shared.cycle_node ) {
-            shared.cycle_found = true;
-            return visitor::TerminateOnTransition;
+            return o.updateIteration( to ) ?
+                visitor::ExpandTransition :
+                visitor::ForgetTransition;
         }
 
-        return updateIteration( to ) ?
-            visitor::ExpandTransition :
-            visitor::ForgetTransition;
-    }
+        static visitor::ExpansionAction ccExpansion( Node ) {
+            return visitor::ExpandState;
+        }
 
-    visitor::ExpansionAction ccExpansion( Node ) {
-        return visitor::ExpandState;
-    }
+        template< typename V > void queueInitials( This &o, V &v ) {
+            v.queue( Node(), o.shared.cycle_node );
+        }
+    };
 
     void _checkCycle() {
-        typedef visitor::Setup< G, This, Table, Statistics,
-            &This::ccTransition,
-            &This::ccExpansion > Setup;
-        typedef visitor::Partitioned< Setup, This, Hasher > Visitor;
-
-        Visitor visitor( m_graph, *this, *this, hasher, &this->table() );
         assert( shared.cycle_node.valid() );
-        visitor.queue( Blob(), shared.cycle_node );
-        visitor.processQueue();
+        this->visit( this, FindCE() );
     }
 
     Shared _counterexample( Shared sh ) {
         shared = sh;
-        for ( int i = 0; i < this->table().size(); ++i ) {
+        for ( int i = 0; i < this->store().table.size(); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
                 return shared;
             }
-            Node st = shared.cycle_node = this->table()[ i ];
+            Node st = shared.cycle_node = this->store().table[ i ];
             if ( !st.valid() )
                 continue;
             if ( extension( st ).iteration == shared.iteration )
@@ -392,13 +371,13 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( m_graph, shared ); // XXX this will be done many times needlessly
-        ce._parentTrace( *this, hasher, equal, this->table() );
+        ce.setup( this->graph(), shared ); // XXX this will be done many times needlessly
+        ce._parentTrace( *this, this->store() );
         return shared;
     }
 
     void _traceCycle() {
-        ce._traceCycle( *this, hasher, this->table() );
+        ce._traceCycle( *this );
     }
 
     void counterexample() {
@@ -412,7 +391,7 @@ struct Owcty : Algorithm, AlgorithmUtils< G >, Parallel< Topology, Owcty< G, Top
         assert( cycleFound() );
         shared.ce.initial = cycleNode();
 
-        ce.setup( m_graph, shared );
+        ce.setup( this->graph(), shared );
         ce.lasso( *this, *this );
         progress() << "done" << std::endl;
     }

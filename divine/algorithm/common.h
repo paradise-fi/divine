@@ -9,6 +9,8 @@
 #include <divine/rpc.h>
 #include <wibble/sfinae.h>
 
+#include <memory>
+
 #ifndef DIVINE_ALGORITHM_H
 #define DIVINE_ALGORITHM_H
 
@@ -18,27 +20,34 @@ namespace algorithm {
 struct Hasher {
     int slack;
     uint32_t seed;
+    bool allEqual;
 
-    Hasher( int s = 0 ) : slack( s ), seed( 0 ) {}
+    Hasher( int s = 0 ) : slack( s ), seed( 0 ), allEqual( false ) {}
     void setSlack( int s ) { slack = s; }
     void setSeed( uint32_t s ) { seed = s; }
 
-    inline hash_t operator()( Blob b ) const {
+    inline hash_t hash( Blob b ) const {
         assert( b.valid() );
         return b.hash( slack, b.size(), seed );
     }
-};
 
-struct Equal {
-    int slack;
-    bool allEqual;
-    Equal( int s = 0 ) : slack( s ), allEqual( false ) {}
-    void setSlack( int s ) { slack = s; }
-
-    inline hash_t operator()( Blob a, Blob b ) const {
+    inline bool equal( Blob a, Blob b ) const {
         assert( a.valid() );
         assert( b.valid() );
         return allEqual || ( a.compare( b, slack, std::max( a.size(), b.size() ) ) == 0 );
+    }
+
+    bool valid( Blob a ) const { return a.valid(); }
+};
+
+template< typename _Listener, typename AlgorithmSetup >
+struct Visit : AlgorithmSetup, visitor::SetupBase {
+    typedef _Listener Listener;
+    typedef typename AlgorithmSetup::Graph::Node Node;
+
+    template< typename A, typename V >
+    void queueInitials( A &a, V &v ) {
+        a.graph().queueInitials( v );
     }
 };
 
@@ -48,8 +57,6 @@ struct Algorithm
 
     Meta m_meta;
     int m_slack;
-    Hasher hasher;
-    Equal equal;
 
     meta::Result &result() { return meta().result; }
 
@@ -83,25 +90,25 @@ struct Algorithm
                    << " ===================================== " << std::endl;
     }
 
-    /// Sets the offset for generator part of state data
-    template < typename G >
-    void setSlack( G *g ) {
-        int real = g->setSlack( m_slack );
-        hasher.setSlack( real );
-        equal.setSlack( real );
-    }
-
     /// Initializes the graph generator by reading a file
-    template< typename G >
-    void initGraph( G *g ) {
-        assert( g );
-        setSlack( g );
+    template< typename Self >
+    typename Self::Graph *initGraph( Self &self ) {
+        typename Self::Graph *g = new typename Self::Graph;
         g->read( meta().input.model );
         g->useProperty( meta().input );
         g->setDomainSize( meta().execution.thisNode,
                           meta().execution.nodes,
                           meta().execution.nodes * meta().execution.threads );
-        hasher.setSeed( meta().algorithm.hashSeed );
+        return g;
+    }
+
+    template< typename Self >
+    typename Self::Store *initStore( Self &self ) {
+        typename Self::Store *s = new typename Self::Store( self.graph() );
+        s->hasher().setSeed( meta().algorithm.hashSeed );
+        s->hasher().setSlack( self.graph().setSlack( m_slack ) );
+        s->id = &self;
+        return s;
     }
 
     template< typename T >
@@ -120,6 +127,14 @@ struct Algorithm
         self->topology().template collect( self->shareds, &T::getShared );
     }
 
+    template< typename Self, typename Setup >
+    void visit( Self *self, Setup setup ) {
+        visitor::Partitioned< Setup, Self >
+            visitor( *self, *self, self->graph(), self->store() );
+        setup.queueInitials( *self, visitor );
+        visitor.processQueue();
+    }
+
     Algorithm( Meta m, int slack = 0 )
         : m_meta( m ), m_slack( slack )
     {
@@ -129,119 +144,50 @@ struct Algorithm
     virtual ~Algorithm() {}
 };
 
-template< typename G >
-struct AlgorithmUtilsCommon
+template< typename _Setup >
+struct AlgorithmUtils
 {
-    typedef typename G::Table Table;
+    typedef _Setup Setup;
+    typedef typename Setup::Store Store;
+    typedef typename Setup::Graph Graph;
 
-    Table *m_table;
-    int *m_tableRefs;
-    G *m_graph;
+    std::shared_ptr< Store > m_store;
+    std::shared_ptr< Graph > m_graph;
 
     template< typename Self >
     void init( Self *self ) {
-        m_graph = &self->m_graph;
-        self->initGraph( m_graph );
-        m_table = self->makeTable( self );
-        m_tableRefs = new int( 1 );
+        m_graph = std::shared_ptr< Graph >( self->initGraph( *self ) );
+        m_store = std::shared_ptr< Store >( self->initStore( *self ) );
     }
 
-    G &graph() {
-        return *(this->m_graph);
+    Graph &graph() {
+        assert( m_graph );
+        return *m_graph;
     }
 
-    Table &table() {
-        assert( m_table );
-        return *m_table;
-    }
-
-    AlgorithmUtilsCommon() : m_table( NULL ), m_graph( NULL ) {}
-    AlgorithmUtilsCommon( const AlgorithmUtilsCommon &o ) {
-        m_table = o.m_table;
-        m_tableRefs = o.m_tableRefs;
-        m_graph = o.m_graph;
-        (*m_tableRefs) ++;
-    }
-    AlgorithmUtilsCommon &operator=( const AlgorithmUtilsCommon &o ) {
-        if (m_tableRefs)
-            (*m_tableRefs) --;
-
-        m_table = o.m_table;
-        m_tableRefs = o.m_tableRefs;
-        m_graph = o.m_graph;
-        (*m_tableRefs) ++;
-        return *this;
-    }
-
-    ~AlgorithmUtilsCommon() {
-        (*m_tableRefs)--;
-        if (!*m_tableRefs) {
-            safe_delete( m_table );
-            safe_delete( m_tableRefs );
-        }
-    }
-
-};
-
-/// HashSet specialization: HashSet is used as a storage of visited states
-template< typename G, typename X = wibble::Unit > struct AlgorithmUtils {};
-
-template< typename G >
-struct AlgorithmUtils< G, typename G::Table::IsHashSet >
-    : public AlgorithmUtilsCommon< G >
-{
-    typedef typename G::Table Table;
-
-    template< typename Self >
-    Table *makeTable( Self *self ) {
-        return new Table( self->hasher, divine::valid< typename G::Node >(),
-                          self->equal, self->meta().execution.initialTable );
-    }
-};
-
-#define BITSET BitSet< G, divine::valid< typename G::Node >, algorithm::Equal >
-
-/**
- * BitSet specialization: BitSet with combination of generator::Compact
- * is used as a storage of visited states.
- */
-template< typename G >
-struct AlgorithmUtils< G, typename G::Table::IsBitSet >
-    : AlgorithmUtilsCommon< G >
-{
-    typedef typename G::Table Table;
-
-    template< typename Self >
-    Table *makeTable( Self *self ) {
-        return new Table( &this->graph().base(), self->id(),
-                          divine::valid< typename G::Node >(), self->equal );
+    Store &store() {
+        assert( m_store );
+        return *m_store;
     }
 };
 
 }
 }
 
-#define ALGORITHM_CLASS(_graph, _shared)                        \
+#define ALGORITHM_CLASS(_setup, _shared)                        \
     RPC_CLASS;                                                  \
     typedef _shared Shared;                                     \
     Shared shared;                                              \
     std::vector< Shared > shareds;                              \
     void setShared( Shared sh ) { shared = sh; }                \
     Shared getShared() { return shared; }                       \
-    _graph m_graph;                                             \
-    typedef typename _graph::Node Node;                         \
-    typedef typename AlgorithmUtils< _graph >::Table Table;
+    typedef typename _setup::Graph Graph;                       \
+    typedef typename _setup::Statistics Statistics;             \
+    typedef typename Graph::Node Node;                          \
+    typedef typename _setup::Store Store;
 
-/* This is ugly, mostly because CPP interprets commas in template parameter
- * lists as argument separators, which means we can't pass multi-parameter
- * templates to RPC_ID. Sigh. */
-#define ALGORITHM_RPC_ID(_type, _id, _fun...)                           \
-    template< typename G, template < typename > class T, typename S >   \
-    template< bool xoxo > struct _type< G, T, S >::RpcId< 2 + _id, xoxo > { \
-        typedef decltype( &_type< G, T, S >::_fun ) Fun;                \
-        static Fun fun() { return &_type< G, T, S >::_fun; }            \
-    };
-
+#define ALGORITHM_RPC_ID(_type, _id, _fun) \
+    template< typename Setup > RPC_ID( _type< Setup >, _fun, 2 + _id )
 #define ALGORITHM_RPC(alg) \
     ALGORITHM_RPC_ID(alg, -1, getShared) \
     ALGORITHM_RPC_ID(alg, 0, setShared)
