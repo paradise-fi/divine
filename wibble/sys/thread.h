@@ -25,6 +25,7 @@
 #include <wibble/exception.h>
 #ifdef POSIX
 #include <pthread.h>
+#include <unistd.h>
 #endif
 
 #ifdef _WIN32
