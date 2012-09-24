@@ -13,6 +13,11 @@ using namespace divine;
 using namespace wibble;
 using namespace commandline;
 
+template< template< typename > class T >
+struct SetupT {
+    template< typename X > using Topology = T< X >;
+};
+
 struct Main {
     Meta meta;
 
@@ -37,8 +42,7 @@ struct Main {
 
         try {
             Mpi mpi;
-            struct Setup {
-                template< typename X > using Topology = Topology<>::Mpi< X >;
+            struct Setup : SetupT< Topology<>::Mpi > {
                 using Statistics = NoStatistics;
                 using Graph = generator::LegacyDve;
                 using Store = visitor::PartitionedStore< Graph, algorithm::Hasher >;
