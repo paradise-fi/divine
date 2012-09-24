@@ -116,7 +116,11 @@ if( HAVE_CXX11 )
 endif()
 
 set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
-appendFlag( "CXX" "-std=c++11" )
+if( WIN32 ) # strdup does not exist with c++11 on win32
+    appendFlag( "CXX" "-std=gnu++11" )
+else()
+    appendFlag( "CXX" "-std=c++11" )
+endif()
 
 if( NOT HAVE_CXX11 )
     message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
