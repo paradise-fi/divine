@@ -167,9 +167,11 @@ struct Apply {
     }
 };
 
-template< typename T, typename X, template< typename, typename > class With, int id, typename BSI, typename BSO >
-typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Second
-applyID( wibble::Preferred, X &&x, BSI &in, BSO &out ) {
+template< typename T, typename X, template< typename, typename > class With,
+          int id, typename BSI, typename BSO >
+auto applyID( wibble::Preferred, X &&x, BSI &in, BSO &out ) ->
+    typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Second
+{
     typedef typename T::template RpcId< id, true >::Fun F;
     F f = T::template RpcId< id, true >::fun();
     Apply< T, X, With, F, BSI, BSO > apply( in, out );

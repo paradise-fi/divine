@@ -77,7 +77,8 @@ struct TableUtils
     TableUtils() : id( 0 ) {}
 };
 
-template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >, typename Statistics = NoStatistics >
+template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
+           typename Statistics = NoStatistics >
 struct PartitionedStore : TableUtils< HashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
 {
     typedef typename Graph::Node T;
