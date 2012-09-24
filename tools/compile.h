@@ -4,6 +4,7 @@
 #include <wibble/string.h>
 #include "dvecompile.h"
 #include <wibble/sys/fs.h>
+#include <unistd.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H

@@ -8,6 +8,7 @@
 #ifdef POSIX
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 
 #ifdef _WIN32
