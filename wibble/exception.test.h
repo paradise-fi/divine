@@ -21,6 +21,7 @@
 #include <wibble/test.h>
 #include <wibble/exception.h>
 #include <errno.h>
+#include <unistd.h>
 
 using namespace std;
 namespace wex = wibble::exception;

@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <set>
 #include <cstdlib>
+#include <unistd.h>
 
 #include <wibble/test.h>
 

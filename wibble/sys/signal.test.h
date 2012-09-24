@@ -2,6 +2,7 @@
 #include <wibble/sys/signal.h>
 #include <set>
 #include <cstdlib>
+#include <unistd.h>
 
 #include <wibble/test.h>
 
