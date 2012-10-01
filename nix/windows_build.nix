@@ -77,8 +77,8 @@ let origtools = tools; origname = name;
     TMPDIR=`pwd`
     ${vmTools.startSamba}
 
-    $kvm/bin/qemu-img create -f qcow2 -b $img/hda.img $out/hda.img
-    $kvm/bin/qemu-kvm -cdrom $out/tools.iso -hda $out/hda.img -m 1024M -nographic \
+    $kvm/bin/qemu-img create -f qcow2 -b $img/hda.img hda.img
+    $kvm/bin/qemu-kvm -cdrom $out/tools.iso -hda hda.img -m 1024M -nographic \
      -chardev socket,id=samba,path=./samba \
      -net nic \
      -net user,guestfwd=tcp:10.0.2.4:445-chardev:samba,restrict=on
