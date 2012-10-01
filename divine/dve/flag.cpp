@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2011 Jan Kriho
 
-#include <divine/dve/error.h>
+#include <divine/dve/flag.h>
 #include <iostream>
 
 namespace divine {
@@ -22,6 +22,19 @@ std::ostream &operator<<( std::ostream &o, const ErrorState &err ) {
         o << "Division by zero, ";
     if ( err.other )
         o << "Unknown, ";
+    return o;
+}
+
+const StateFlags StateFlags::f_commited = {{{1, 0, 0}}};
+const StateFlags StateFlags::f_commited_dirty = {{{0, 1, 0}}};
+const StateFlags StateFlags::f_none = {{{0, 0, 0}}};
+
+std::ostream &operator<<( std::ostream &o, const StateFlags &flags ) {
+    o << "Flags: ";
+    if ( flags.commited )
+        o << "Commited, ";
+    if ( flags.commited_dirty )
+        o << "Dirty Commited, ";
     return o;
 }
 

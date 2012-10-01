@@ -2,7 +2,7 @@
 
 #include <divine/dve/parse.h>
 #include <divine/dve/symtab.h>
-#include <divine/dve/error.h>
+#include <divine/dve/flag.h>
 #include <vector>
 
 #ifndef DIVINE_DVE_EXPRESSION_H

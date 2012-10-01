@@ -29,6 +29,22 @@ struct ErrorState {
 
 std::ostream &operator<<( std::ostream &o, const ErrorState &err );
 
+struct StateFlags {
+    union {
+        struct {
+            uint8_t commited:1;
+            uint8_t commited_dirty:1;
+            uint8_t fill:6;
+        };
+        uint8_t flags;
+    };
+    static const StateFlags f_commited;
+    static const StateFlags f_commited_dirty;
+    static const StateFlags f_none;
+};
+
+std::ostream &operator<<( std::ostream &o, const StateFlags &err );
+
 }
 }
 

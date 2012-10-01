@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 #include <divine/dve/parse.h>
-#include <divine/dve/error.h>
+#include <divine/dve/flag.h>
 
 #ifndef DIVINE_DVE_SYMTAB_H
 #define DIVINE_DVE_SYMTAB_H
@@ -211,6 +211,7 @@ struct SymTab : NS {
         if ( !parent ) {
             context = new SymContext();
             allocate( Flag, "Error", sizeof( ErrorState ) );
+            allocate( Flag, "Flags", sizeof( StateFlags ) );
         }
         else
             context = parent->context;
@@ -238,6 +239,13 @@ struct SymTab : NS {
             }
             o << std::endl;
         }
+
+        if ( parent )
+            return o;
+
+        StateFlags flags;
+        lookup( Flag, "Flags" ).deref( mem, 0, flags );
+        o << flags;
         return o;
     }
 };
