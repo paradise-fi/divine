@@ -47,6 +47,21 @@ for_dve_small() {
     check owcty_sizes 2 6 1 5 1
     check statespace 6 7 2 0
     $extracheck data/test6.dve
+
+    check clear
+    run $wrapper data/commit1.dve "$@"
+    check statespace 10 15 0 0
+    $extracheck data/commit1.dve
+
+    check clear
+    run $wrapper data/commit2.dve "$@"
+    check statespace 8 9 0 2
+    $extracheck data/commit2.dve
+
+    check clear
+    run $wrapper data/haoEEDM.dve "$@"
+    check statespace 502 923 0 0
+    $extracheck data/haoEEDM.dve
 }
 
 dve_small() {
