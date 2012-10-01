@@ -1,8 +1,7 @@
 // -*- C++ -*-
 #include <iostream>
 #include <sstream>
-#include <divine/version.h>
-#include <divine/buchi.h>
+#include <divine/ltl2ba/main.h>
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
@@ -258,7 +257,7 @@ struct Combine {
         f << "#include <algorithm>" << std::endl;
         f << divine::compile_defines_str << std::endl;
         f << divine::generator_cesmi_client_h_str << std::endl;
-        f << divine::blob_h_str << std::endl;
+        f << divine::toolkit_blob_h_str << std::endl;
         f << "using namespace divine;" << std::endl;
 #ifdef O_LTL3BA
         ltl3baTranslation( ltl );

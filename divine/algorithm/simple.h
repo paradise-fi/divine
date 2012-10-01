@@ -2,8 +2,6 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h> // for stats
-#include <divine/visitor.h>
-#include <divine/parallel.h>
 
 #ifndef DIVINE_ALGORITHM_SIMPLE_H
 #define DIVINE_ALGORITHM_SIMPLE_H

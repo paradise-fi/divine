@@ -23,8 +23,8 @@ set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
 set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
 
-set( JARS "${CMAKE_SOURCE_DIR}/nips-compiler-jars/pml2s.jar"
-          "${CMAKE_SOURCE_DIR}/nips-compiler-jars/jdom.jar" )
+set( JARS "${CMAKE_SOURCE_DIR}/external/nips-compiler-jars/pml2s.jar"
+          "${CMAKE_SOURCE_DIR}/external/nips-compiler-jars/jdom.jar" )
 
 set( PML_C "${CMAKE_CURRENT_BINARY_DIR}/divine.compile-pml" )
 set( NIPS_ASM "${CMAKE_CURRENT_SOURCE_DIR}/compile-pml.pl" )

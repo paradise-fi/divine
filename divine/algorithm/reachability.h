@@ -3,9 +3,7 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 
-#include <divine/ltlce.h>
-#include <divine/visitor.h>
-#include <divine/parallel.h>
+#include <divine/graph/ltlce.h>
 
 #ifndef DIVINE_ALGORITHM_REACHABILITY_H
 #define DIVINE_ALGORITHM_REACHABILITY_H

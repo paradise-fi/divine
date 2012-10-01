@@ -5,7 +5,7 @@
 #ifdef POSIX
 #include <dlfcn.h>
 #elif defined _WIN32
-#include <divine/dlfcn-win32.h>
+#include <external/dlfcn-win32.h>
 #endif
 
 #ifndef DIVINE_GENERATOR_CESMI_H

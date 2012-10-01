@@ -2,9 +2,7 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/map.h> // for VertexId
-#include <divine/ltlce.h>
-#include <divine/visitor.h>
-#include <divine/parallel.h>
+#include <divine/graph/ltlce.h>
 
 #ifndef DIVINE_ALGORITHM_OWCTY_H
 #define DIVINE_ALGORITHM_OWCTY_H

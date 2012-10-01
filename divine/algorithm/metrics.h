@@ -1,9 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/rpc.h>
 #include <divine/algorithm/common.h>
-#include <divine/visitor.h>
-#include <divine/parallel.h>
 
 #include <iomanip>
 

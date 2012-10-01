@@ -4,10 +4,10 @@
 #include <wibble/commandline/parser.h>
 #include <wibble/sys/fs.h>
 
-#include <divine/meta.h>
+#include <divine/utility/meta.h>
 #include <divine/generator/legacy.h>
 #include <divine/algorithm/simple.h>
-#include <divine/report.h>
+#include <divine/utility/report.h>
 
 using namespace divine;
 using namespace wibble;

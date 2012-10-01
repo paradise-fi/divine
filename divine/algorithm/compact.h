@@ -3,11 +3,9 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 
-#include <divine/compact.h>
-#include <divine/visitor.h>
-#include <divine/parallel.h>
-#include <divine/probabilistictransition.h>
-#include <divine/porcp.h>
+#include <divine/graph/compact.h>
+#include <divine/graph/probabilistictransition.h>
+#include <divine/graph/porcp.h>
 #include <divine/generator/legacy.h>
 
 #include <iostream>

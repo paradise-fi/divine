@@ -311,7 +311,7 @@ endif( GUI )
 
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/ltl3ba/buddy/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
   ${divine_BINARY_DIR}
   ${MPI_INCLUDE_PATH}
   ${LLVM_INCLUDE_DIRS}
@@ -325,21 +325,21 @@ add_custom_target( check )
 add_custom_target( unit )
 
 add_subdirectory( wibble )
-add_subdirectory( lpsolve )
+add_subdirectory( external/lpsolve )
 
 if( HOARD )
-  add_subdirectory( hoard )
+  add_subdirectory( external/hoard )
 endif( HOARD )
 
 if( LTL2DSTAR )
   if ( NOT LTL3BA )
-    add_subdirectory( ltl2ba )
+    add_subdirectory( external/ltl2ba )
   endif()
-  add_subdirectory( ltl2dstar )
+  add_subdirectory( external/ltl2dstar )
 endif()
 
 if( MURPHI )
-  add_subdirectory( murphi )
+  add_subdirectory( external/murphi )
 endif()
 
 add_subdirectory( divine )
@@ -347,7 +347,7 @@ add_subdirectory( tools )
 add_subdirectory( examples )
 
 if ( LTL3BA )
-  add_subdirectory( ltl3ba )
+  add_subdirectory( external/ltl3ba )
 endif()
 
 if( GUI )
@@ -408,7 +408,7 @@ set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
 set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README" )
 set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING" )
 
-file(STRINGS divine/version.cpp VERSION_LINE REGEX "#define DIVINE_VERSION \"(.*)\"")
+file(STRINGS divine/utility/version.cpp VERSION_LINE REGEX "#define DIVINE_VERSION \"(.*)\"")
 string(REGEX REPLACE "#define DIVINE_VERSION \"([0-9.]+)\"" "\\1" VERSION_STRING ${VERSION_LINE})
 
 macro(versionExtract out n in)

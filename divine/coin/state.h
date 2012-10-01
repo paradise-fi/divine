@@ -12,7 +12,7 @@
 #include <vector>
 #include <iostream>
 
-#include <divine/blob.h>
+#include <divine/toolkit/blob.h>
 
 namespace divine {
 namespace generator {

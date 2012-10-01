@@ -1,7 +1,7 @@
-#include "combine.h"
-#include "tools/combine.m4.h"
+#include <tools/combine.h>
+#include <tools/combine.m4.h>
 #ifdef O_LTL3BA
-#include "ltl3ba/ltl3ba.h"
+#include <external/ltl3ba/ltl3ba.h>
 #endif
 
 #ifndef O_LTL3BA

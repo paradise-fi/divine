@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <vector>
 #include <map>
-#include <divine/blob.h>
-#include <divine/pool.h>
+#include <divine/toolkit/blob.h>
+#include <divine/toolkit/pool.h>
 
 namespace divine {
 namespace llvm {

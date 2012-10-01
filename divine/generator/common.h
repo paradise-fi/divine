@@ -1,10 +1,9 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/allocator.h>
-#include <divine/blob.h>
-#include <divine/hashset.h>
-#include <divine/graph.h>
-#include <divine/algorithm/common.h>
+#include <divine/toolkit/blob.h>
+#include <divine/toolkit/hashset.h>
+#include <divine/graph/allocator.h>
+#include <divine/graph/graph.h>
 
 #ifndef DIVINE_GENERATOR_COMMON_H
 #define DIVINE_GENERATOR_COMMON_H
@@ -17,8 +16,6 @@ using namespace graph;
 template< typename _Node >
 struct Common : graph::Base< _Node > {
     typedef _Node Node;
-    /// Default storage for the visited set. May be overriden by subclasses.
-    typedef HashSet< Node, algorithm::Hasher > Table;
 };
 
 }

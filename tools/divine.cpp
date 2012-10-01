@@ -10,9 +10,9 @@
 #include <wibble/sfinae.h>
 #include <wibble/sys/fs.h>
 
-#include <divine/meta.h>
-#include <divine/report.h>
-#include <divine/select.h>
+#include <divine/utility/meta.h>
+#include <divine/utility/report.h>
+#include <divine/instances/instantiate.h>
 
 #include <tools/draw.h>
 #include <tools/combine.h>

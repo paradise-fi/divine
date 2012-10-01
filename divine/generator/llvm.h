@@ -15,7 +15,7 @@
 
 #include <divine/generator/common.h>
 #include <divine/llvm/interpreter.h>
-#include <divine/buchi.h>
+#include <divine/ltl2ba/main.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H

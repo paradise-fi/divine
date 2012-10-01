@@ -12,9 +12,8 @@
 namespace divine {
 
 extern const char *generator_cesmi_client_h_str;
-extern const char *pool_h_str;
-extern const char *circular_h_str;
-extern const char *blob_h_str;
+extern const char *toolkit_pool_h_str;
+extern const char *toolkit_blob_h_str;
 extern const char *compile_defines_str;
 
 using namespace wibble;

@@ -2,9 +2,7 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h> // for stats
-#include <divine/visitor.h>
-#include <divine/parallel.h>
-#include <divine/probabilistictransition.h>
+#include <divine/graph/probabilistictransition.h>
 #include <algorithm>
 
 #include <climits>

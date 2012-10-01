@@ -7,8 +7,15 @@ appendFlag( "CXX" "-Wno-overloaded-virtual" )
 
 include( ../wibble/test.cmake )
 
-file( GLOB SRC_TOP *.cpp )
-file( GLOB H_TOP *.h )
+file( GLOB SRC *.cpp )
+file( GLOB H *.h )
+
+foreach( D utility toolkit generator algorithm instances )
+    file( GLOB SRC_${D} ${D}/*.cpp )
+    file( GLOB H_${D} ${D}/*.h )
+    install( FILES ${H_${D}} DESTINATION include/divine/${D} COMPONENT divine_dev )
+    list( APPEND SRC ${SRC_${D}} )
+endforeach()
 
 if ( LEGACY )
    file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
@@ -31,16 +38,11 @@ endif( DVE )
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
-file( GLOB SRC_GEN generator/*.cpp )
-file( GLOB H_GEN generator/*.h )
-file( GLOB SRC_ALG algorithm/*.cpp )
-file( GLOB H_ALG algorithm/*.h )
-
-file( GLOB testh *.test.h llvm/*.test.h )
+file( GLOB testh *.test.h llvm/*.test.h toolkit/*.test.h graph/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
-    set( SRC_DLFCN dlfcn-win32.c )
+    set( SRC_DLFCN ../external/dlfcn-win32.c )
 endif( WIN32 )
 
 set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
@@ -67,19 +69,18 @@ macro( stringify file )
 endmacro( stringify )
 
 stringify( generator/cesmi-client.h )
-stringify( pool.h )
-#stringify( circular.h )
-stringify( blob.h )
+stringify( toolkit/pool.h )
+stringify( toolkit/blob.h )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC_TOP} ${SRC_LEGACY} ${SRC_GEN} ${SRC_ALG}
+    ${SRC_DLFCN} ${SRC} ${SRC_LEGACY}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
-    pool_h_str.cpp blob_h_str.cpp generator_cesmi_client_h_str.cpp )
+    toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 wibble_add_test( divine-test ${testh} )
@@ -107,8 +108,7 @@ endif( NOT WIN32 )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
 
-install( FILES ${H_TOP} DESTINATION include/divine COMPONENT divine_dev )
+install( FILES ${H} DESTINATION include/divine COMPONENT divine_dev )
 install( FILES ${H_LEGACY} DESTINATION include/divine/legacy COMPONENT divine_dev )
 install( FILES ${H_BA} DESTINATION include/divine/ltl2ba COMPONENT divine_dev )
-install( FILES ${H_GEN} DESTINATION include/divine/generator COMPONENT divine_dev )
-install( FILES ${H_ALG} DESTINATION include/divine/algorithm COMPONENT divine_dev )
+

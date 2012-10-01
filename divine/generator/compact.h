@@ -1,8 +1,9 @@
 // -*- C++ -*- (c) 2011 Jiri Appl <jiri@appl.name>
 
+#include <divine/graph/probabilistictransition.h>
 #include <divine/generator/common.h>
-#include <divine/probabilistictransition.h>
-#include <divine/compact.h>
+#include <divine/toolkit/bitset.h>
+#include <divine/graph/compact.h>
 
 #include <algorithm>
 
@@ -14,7 +15,7 @@ namespace generator {
 
 /// Represents a generator of compact state space (.compact files)
 struct Compact : public Common< Blob > {
-    typedef BitSet< Compact > Table; // used state storage
+    typedef BitSet< Compact, StateId > Table; // used state storage
     typedef generator::Common< Blob > Common;
 
     /// References a state by its id; additional information about transition can be encoded into flags

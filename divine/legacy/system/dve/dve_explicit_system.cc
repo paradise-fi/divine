@@ -8,7 +8,7 @@
 #include "common/error.hh"
 #include "common/deb.hh"
 
-#include <divine/datastruct.h>
+#include <divine/graph/datastruct.h>
 
 #ifndef DOXYGEN_PROCESSING
 using namespace divine;

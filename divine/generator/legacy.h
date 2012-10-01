@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include <divine/generator/common.h>
+#include <divine/graph/datastruct.h> // XXX for safe_delete
 
 #ifndef DIVINE_GENERATOR_LEGACY_H
 #define DIVINE_GENERATOR_LEGACY_H

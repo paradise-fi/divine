@@ -32,13 +32,13 @@
 #include <divine/legacy/common/sysinfo.hh>
 #include <divine/legacy/common/stateallocator.hh>
 //#include <divine/legacy/sevine.h>
-#include <divine/version.h>
+#include <divine/utility/version.h>
 #include <pthread.h>
 #include <assert.h>
 #include <errno.h>
 #include <iomanip>
 
-#include <lpsolve/lp_lib.h>
+#include <external/lpsolve/lp_lib.h>
 
 using namespace std;
 using namespace divine;

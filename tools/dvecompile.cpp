@@ -150,10 +150,10 @@ void dve_compiler::gen_header()
 
     line( compile_defines_str );
 
-    line( divine::pool_h_str );
+    line( divine::toolkit_pool_h_str );
     line();
 
-    line( divine::blob_h_str );
+    line( divine::toolkit_blob_h_str );
     line();
 
     line( "using namespace divine;" );
