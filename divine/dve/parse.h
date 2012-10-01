@@ -449,6 +449,10 @@ struct Automaton : Parser {
         list< Identifier >( std::back_inserter( states ), Token::Comma );
         semicolon();
 
+        maybe( &Automaton::commit );
+        maybe( &Automaton::accept );
+        maybe( &Automaton::commit );
+
         eat( Token::Init );
         list< Identifier >( std::back_inserter( inits ), Token::Comma );
         semicolon();
