@@ -45,7 +45,7 @@ let
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
     };
 
-  versionFile = builtins.readFile ./divine/version.cpp;
+  versionFile = builtins.readFile ./divine/utility/version.cpp;
   versionLine = builtins.head (
     lib.filter (str: lib.eqStrings (builtins.substring 0 22 str) "#define DIVINE_VERSION")
                (lib.splitString "\n" versionFile));
