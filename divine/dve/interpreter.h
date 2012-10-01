@@ -80,14 +80,23 @@ struct Transition {
     typedef std::vector< std::pair< LValue, Expression > > Effect;
     Effect effect;
 
+    bool from_commited, to_commited;
+    Symbol flags;
+
     bool enabled( EvalContext &ctx, ErrorState &err ) {
         if ( process.deref( ctx.mem ) != from.deref( 0 ) )
             return false;
         for ( int i = 0; i < guards.size(); ++i )
             if ( !guards[i].evaluate( ctx, &err ) )
                 return false;
-        if ( sync && !sync->enabled( ctx, err ) )
-            return false;
+        if ( sync ) {
+            if ( from_commited && !sync->from_commited )
+                return false;
+            if ( !from_commited && sync->from_commited )
+                return false;
+            if ( !sync->enabled( ctx, err ) )
+                return false;
+        }
         return true;
     }
 
@@ -100,6 +109,13 @@ struct Transition {
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
             i->first.set( ctx, i->second.evaluate( ctx, &err ), err );
         process.set( ctx.mem, 0, to.deref(), err );
+        StateFlags sflags;
+        flags.deref( ctx.mem, 0, sflags );
+        if ( from_commited )
+            sflags.commited_dirty |= !to_commited;
+        else
+            sflags.commited |= to_commited;
+        flags.set( ctx.mem, 0, sflags );
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
@@ -122,6 +138,8 @@ struct Transition {
             else if ( t.syncexpr.lvallist.valid() )
                 sync_lval = LValueList( sym, t.syncexpr.lvallist );
         }
+
+        flags = sym.lookup( NS::Flag, "Flags" );
     }
 };
 
@@ -146,14 +164,25 @@ struct Process {
     SymTab symtab;
 
     std::vector< std::vector< Transition > > trans;
+    std::vector< std::vector< Transition > > state_readers;
 
     std::vector< Transition > readers;
     std::vector< Transition > writers;
 
-    std::vector< bool > is_accepting;
+    std::vector< bool > is_accepting, is_commited;
 
     int state( EvalContext &ctx ) {
         return id.deref( ctx.mem );
+    }
+
+    bool commited( EvalContext &ctx ) {
+        return is_commited[ state( ctx ) ];
+    }
+
+    int available( EvalContext &ctx ) {
+        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
+        return trans[ state( ctx ) ].size() > 0 ||
+                state_readers[ state( ctx ) ].size() > 0;
     }
 
     int enabled( EvalContext &ctx, int i, ErrorState &err ) {
@@ -196,27 +225,38 @@ struct Process {
         }
 
         assert_eq( states, proc.states.size() );
+
+        is_accepting.resize( proc.states.size(), false );
+        is_commited.resize( proc.states.size(), false );
+        for ( int i = 0; i < is_accepting.size(); ++ i ) {
+            for ( int j = 0; j < proc.accepts.size(); ++ j )
+                if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
+                    is_accepting[i] = true;
+            for ( int j = 0; j < proc.commits.size(); ++ j )
+                if ( proc.states[ i ].name() == proc.commits[ j ].name() )
+                    is_commited[i] = true;
+        }
+
         trans.resize( proc.states.size() );
+        state_readers.resize( proc.states.size() );
 
         for ( std::vector< parse::Transition >::const_iterator i = proc.trans.begin();
               i != proc.trans.end(); ++i ) {
             Symbol from = symtab.lookup( NS::State, i->from.name() );
             Transition t( symtab, id, *i );
+            t.from_commited = is_commited[ t.from.deref( 0 ) ];
+            t.to_commited = is_commited[ t.to.deref( 0 ) ];
             if ( i->syncexpr.valid() ) {
                 if ( i->syncexpr.write )
                     writers.push_back( t );
-                else
+                else {
                     readers.push_back( t );
+                    state_readers[ t.from.deref() ].push_back( t );
+                }
             } else
                 trans[ from.deref() ].push_back( t );
         }
 
-        is_accepting.resize( proc.states.size(), false );
-        for ( int i = 0; i < is_accepting.size(); ++ i ) {
-            for ( int j = 0; j < proc.accepts.size(); ++ j )
-                if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
-                    is_accepting[i] = true;
-        }
     }
 
     void setupSyncs( std::vector< Transition > &readers )
@@ -242,6 +282,8 @@ struct System {
     std::vector< Process > properties;
     Process *property;
 
+    Symbol flags;
+
     struct Continuation {
         unsigned process:16; // the process whose turn it is
         unsigned property:16; // active property transition; 0 = none
@@ -259,6 +301,7 @@ struct System {
         assert( !sys.synchronous ); // XXX
 
         declare( symtab, sys.decls );
+        flags = symtab.lookup( NS::Flag, "Flags" );
 
         // ensure validity of pointers into the process array
         processes.reserve( sys.processes.size() );
@@ -301,38 +344,100 @@ struct System {
         }
     }
 
-    Continuation enabled( EvalContext &ctx, Continuation cont ) {
-        bool system_deadlock = cont == Continuation() || cont.process >= processes.size();
+    void setCommitedFlag( EvalContext &ctx ) {
+        StateFlags sflags;
+        flags.deref( ctx.mem, 0, sflags );
+        sflags.commited_dirty = 0;
+        sflags.commited = 0;
+        for ( int i = 0; i < processes.size(); i++ ) {
+            sflags.commited |= (bool)processes[i].commited( ctx );
+        }
+        flags.set( ctx.mem, 0, sflags );
+    }
+
+    bool processEnabled( EvalContext &ctx, Continuation &cont ) {
+        Process &p = processes[ cont.process ];
+
+        if ( &p == property ) // property process cannot progress alone
+            return false;
+
+        // try other property transitions first
+        if ( cont.transition && property && property->valid( ctx, cont.property ) ) {
+            cont.property = property->enabled( ctx, cont.property, cont.err );
+            if ( property->valid( ctx, cont.property ) )
+                return true;
+        }
+
+        cont.transition = p.enabled( ctx, cont.transition, cont.err );
+
+        // is the result a valid transition?
+        if ( p.valid( ctx, cont.transition ) ) {
+            if ( !property )
+                return true;
+            cont.property = property->enabled( ctx, 0, cont.err );
+            if ( property->valid( ctx, cont.property ) )
+                return true;
+        }
+
+        // no more enabled transitions from this process
+        cont.transition = 0;
         cont.err.error = ErrorState::e_none.error;
 
-        for ( ; cont.process < processes.size(); ++cont.process ) {
-            Process &p = processes[ cont.process ];
+        return false;
+    }
 
-            if ( &p == property ) // property process cannot progress alone
-                continue;
-
-            // try other property transitions first
-            if ( cont.transition && property && property->valid( ctx, cont.property ) ) {
-                cont.property = property->enabled( ctx, cont.property, cont.err );
-                if ( property->valid( ctx, cont.property ) )
-                    return cont;
+    Continuation enabledPrioritized( EvalContext &ctx, Continuation cont ) {
+        if ( cont == Continuation() ) {
+            bool commitEnable = false;
+            for ( int i = 0; i < processes.size(); i++ ) {
+                Process &pa = processes[ i ];
+                if ( &pa == property )
+                    continue;
+                if ( pa.commited( ctx ) && pa.available( ctx ) ) {
+                    commitEnable = true;
+                    break;
+                }
             }
-
-            cont.transition = p.enabled( ctx, cont.transition, cont.err );
-
-            // is the result a valid transition?
-            if ( p.valid( ctx, cont.transition ) ) {
-                if ( !property )
-                    return cont;
-                cont.property = property->enabled( ctx, 0, cont.err );
-                if ( property->valid( ctx, cont.property ) )
-                    return cont;
+            if ( !commitEnable ) {
+                StateFlags sflags;
+                flags.deref( ctx.mem, 0, sflags );
+                sflags.commited = 0;
+                flags.set( ctx.mem, 0, sflags );
+                return enabledAll( ctx, cont );
             }
-
-            // no more enabled transitions from this process
-            cont.transition = 0;
-            cont.err.error = ErrorState::e_none.error;
         }
+        for ( ; cont.process < processes.size(); ++cont.process ) {
+            Process &pb = processes[ cont.process ];
+            if ( !pb.commited( ctx ) )
+                continue;
+            if ( processEnabled( ctx, cont ) )
+                return cont;
+        }
+        return cont;
+    }
+
+    Continuation enabledAll( EvalContext &ctx, Continuation cont ) {
+        for ( ; cont.process < processes.size(); ++cont.process ) {
+            if ( processEnabled( ctx, cont ) )
+                return cont;
+        }
+        return cont;
+    }
+
+    Continuation enabled( EvalContext &ctx, Continuation cont ) {
+        bool system_deadlock = cont == Continuation();
+        cont.err.error = ErrorState::e_none.error;
+        StateFlags sflags;
+        flags.deref( ctx.mem, 0, sflags );
+
+        if ( sflags.commited ) {
+            cont = enabledPrioritized( ctx, cont );
+        }
+        else {
+            cont = enabledAll( ctx, cont );
+        }
+
+        system_deadlock = system_deadlock && cont.process >= processes.size();
 
         if ( system_deadlock && property )
             cont.property = property->enabled( ctx, cont.property, cont.err );
@@ -341,11 +446,14 @@ struct System {
     }
 
     void initial( EvalContext &ctx ) {
-        for ( int i = 0; i < processes.size(); ++i )
+        symtab.lookup( NS::Flag, "Flags" ).set(ctx.mem, 0, StateFlags::f_none);
+        for ( int i = 0; i < processes.size(); ++i ) {
             initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
+        }
         initial( ctx, symtab, NS::Variable, NS::Initialiser );
         initial( ctx, symtab, NS::Process, NS::InitState );
         symtab.lookup( NS::Flag, "Error" ).set( ctx.mem, 0, ErrorState::e_none );
+        setCommitedFlag( ctx );
     }
 
     void initial( EvalContext &ctx, SymTab &tab, NS::Namespace vns, NS::Namespace ins ) {
@@ -372,6 +480,10 @@ struct System {
             property->transition( ctx, c.property ).apply( ctx, c.err );
         if ( c.err.error )
             bail( ctx, c );
+        StateFlags sflags;
+        flags.deref( ctx.mem, 0, sflags );
+        if ( sflags.commited_dirty )
+            setCommitedFlag( ctx );
 
     }
 
