@@ -7,7 +7,6 @@
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/fifo.h>
-#include <divine/toolkit/shmem.h>
 #include <divine/graph/datastruct.h>
 #include <divine/graph/store.h>
 
