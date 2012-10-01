@@ -420,7 +420,6 @@ struct Automaton : Parser {
     std::vector< Declaration > decls;
     std::vector< Identifier > states, accepts, commits, inits;
     std::vector< Transition > trans;
-    std::vector< Assertion > asserts;
 
     void accept() {
         eat( Token::Accept );
