@@ -14,9 +14,8 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
 {
     typedef Simple< Setup > This;
     ALGORITHM_CLASS( Setup, algorithm::Statistics );
-    typedef typename Graph::Successors Successors;
 
-    std::deque< Successors > localqueue;
+    std::deque< Node > localqueue;
 
     int owner( Node n ) {
         return this->store().hash( n ) % this->peers();
@@ -35,7 +34,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
             if ( !this->store().valid( in_table ) ) {
                 this->store().store( to, hint );
                 to.header().permanent = 1; // don't ever release this
-                localqueue.push_back( this->graph().successors( to ) );
+                localqueue.push_back( to );
                 shared.addNode( this->graph(), to );
             } else {
                 this->graph().release( to );
@@ -53,7 +52,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
             this->store().store( initial, this->store().hash( initial ) );
             initial.header().permanent = 1;
             shared.addNode( this->graph(), initial );
-            localqueue.push_back( this->graph().successors( initial ) );
+            localqueue.push_back( initial );
         } else
             this->graph().release( initial );
 
@@ -69,11 +68,9 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
 
             // process local queue
             while ( !localqueue.empty() ) {
-                Successors &succ = localqueue.front();
-                while ( !succ.empty() ) {
-                    edge( succ.from(), succ.head() );
-                    succ = succ.tail();
-                }
+                this->graph().successors( localqueue.front(), [&]( Node n ) {
+                        this->edge( localqueue.front(), n );
+                    } );
                 localqueue.pop_front();
             }
         } while ( !this->idle() ) ; // until termination detection succeeds
