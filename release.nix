@@ -45,6 +45,25 @@ let
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
     };
 
+  mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
+    inherit windows_mingw;
+    tools = [ windows_cmake windows_nsis ];
+    img = image;
+    src = jobs.tarball;
+    name = "divine";
+    buildScript = ''
+      set -ex
+      mkdir build && cd build
+      cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ${flags} ../source
+      make
+      mkdir E:\\nix-support
+      make check || touch E:\\nix-support\\failed # ignore failures for now
+      make package
+      cp tools/divine.exe E:/
+      cp divine-*.exe E:/
+    '';
+  };
+
   versionFile = builtins.readFile ./divine/utility/version.cpp;
   versionLine = builtins.head (
     lib.filter (str: lib.eqStrings (builtins.substring 0 22 str) "#define DIVINE_VERSION")
@@ -100,27 +119,8 @@ let
     ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; mem = 3072; };
     fedora16_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16x86_64; extras = extra_rpms; };
 
-    win7 = flags: pkgs.callPackage nix/windows_build.nix {
-      inherit windows_mingw;
-      tools = [ windows_cmake windows_nsis ];
-      img = windows7_img;
-      src = jobs.tarball;
-      name = "divine";
-      buildScript = ''
-        set -ex
-        mkdir build && cd build
-        cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ${flags} ../source
-        make
-        mkdir E:\\nix-support
-        make check || touch E:\\nix-support\\failed # ignore failures for now
-        make package
-        cp tools/divine.exe E:/
-        cp divine-*.exe E:/
-      '';
-    };
-
-    win7_i386_small = win7 "-DSMALL=ON";
-    win7_i386 = win7 "";
+    win7_i386_small = mkwin windows7_img "-DSMALL=ON";
+    win7_i386 = mkwin windows7_img "";
   };
 in
   jobs
