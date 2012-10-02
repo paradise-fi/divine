@@ -2,7 +2,8 @@
 
 #include <divine/utility/meta.h>
 #include <divine/algorithm/common.h>
-#include <divine/graph/fairgraph.h>
+#include <divine/algorithm/por-c3.h>
+#include <divine/graph/fairness.h>
 
 #include <divine/generator/legacy.h>
 #include <divine/generator/compact.h>
@@ -96,7 +97,7 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta )
 template< template< typename > class A, typename Graph >
 algorithm::Algorithm *makeAlgorithmN( Meta &meta )
 {
-    return makeAlgorithm< A, algorithm::NonPORGraph< Graph > >( meta );
+    return makeAlgorithm< A, graph::NonPORGraph< Graph > >( meta );
 }
 
 template< template< typename > class A, typename Graph >

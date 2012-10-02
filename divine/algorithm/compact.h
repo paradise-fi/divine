@@ -2,10 +2,10 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
+#include <divine/algorithm/por-c3.h>
 
 #include <divine/graph/compact.h>
 #include <divine/graph/probabilistictransition.h>
-#include <divine/graph/porcp.h>
 #include <divine/generator/legacy.h>
 
 #include <iostream>

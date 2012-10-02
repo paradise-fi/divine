@@ -2,7 +2,7 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
-#include <divine/graph/porcp.h>
+#include <divine/algorithm/por-c3.h>
 #include <divine/graph/ltlce.h>
 #include <wibble/sfinae.h> // Unit
 

@@ -1,56 +1,13 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <wibble/list.h>
-
 #include <divine/algorithm/common.h>
-#include <divine/graph/graph.h>
+#include <divine/graph/por.h>
 
-#ifndef DIVINE_PORCP_H
-#define DIVINE_PORCP_H
+#ifndef DIVINE_ALGORITHM_POR_C3_H
+#define DIVINE_ALGORITHM_POR_C3_H
 
 namespace divine {
 namespace algorithm {
-
-namespace list = wibble::list;
-
-template< typename G >
-struct NonPORGraph : graph::Transform< G > {
-
-    typedef typename G::Node Node;
-
-    bool eliminate_done;
-
-    NonPORGraph() : eliminate_done( false ) {}
-
-    void porExpansion( Node ) {}
-    void porTransition( Node, Node, void (*)( Node, int ) ) {}
-    bool full( Node ) { return true; }
-
-    template< typename Visitor >
-    void fullexpand( Visitor &v, Node n ) {}
-
-    template< typename Algorithm >
-    void _porEliminate( Algorithm & ) {}
-
-    template< typename Domain, typename Alg >
-    bool porEliminate( Domain &, Alg & ) {
-        eliminate_done = true;
-        return false;
-    }
-
-    template< typename Table >
-    bool porEliminateLocally( Table & ) {
-        eliminate_done = true;
-        return false;
-    }
-
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        if ( eliminate_done )
-            return;
-        this->base().queueInitials( q );
-    }
-};
 
 // Implements a (parallel) check of the POR cycle proviso.
 template< typename G, typename Statistics >

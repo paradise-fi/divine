@@ -1,13 +1,13 @@
 // -*- C++ -*-
 
 #include <vector>
-#include <divine/graph/porcp.h>
+#include <divine/graph/por.h>
 
-#ifndef DIVINE_FAIRGRAPH_H
-#define DIVINE_FAIRGRAPH_H
+#ifndef DIVINE_GRAPH_FAIRNESS_H
+#define DIVINE_GRAPH_FAIRNESS_H
 
 namespace divine {
-namespace algorithm {
+namespace graph {
 
 template< typename G >
 struct FairGraph : NonPORGraph< G > {
