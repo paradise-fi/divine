@@ -13,6 +13,7 @@ sub want() {
 sub dir() {
     my ( $dir ) = @_;
     $dir =~ s,^(.*)/[^/]*$,$1,;
+    $dir =~ s,^([^/]*/[^/]*).*,$1,;
     $dir =~ s,/,_,g;
     return $dir;
 };
@@ -27,16 +28,24 @@ for my $f (@files) {
 
     next unless (&want($f));
 
-    unless ($collapse or $dir eq $cluster and not $dir eq "divine") {
-        print "}\n" if $cluster;
-        print "subgraph \"cluster_$dir\" {\n";
-        print "label = \"$dir\";\n";
-        print "style = filled;\n";
-        print "color = lightblue;\n";
+    unless ($dir eq $cluster) {
+        my $dirname = $dir;
+        $dirname =~ s,_,/,g;
+        my $sloc = `sloccount $dirname | grep "^Total Physical" | cut -d= -f2`;
+        chomp $sloc;
+        if ($collapse) {
+            print "\"$dir\" [label=\"$dir: $sloc\"];\n" if $cluster;
+        } else {
+            print "}\n" if $cluster;
+            print "subgraph \"cluster_$dir\" {\n";
+            print "label = \"$dir\";\n";
+            print "style = filled;\n";
+            print "color = lightblue;\n";
+        }
         $cluster = $dir;
     };
 
-    if ($dir eq "divine" or not $collapse) {
+    unless ($collapse) {
         print "\"$f\"";
         print "[color=grey,fontcolor=grey]" if ($f =~ /\.cpp$|\.cc$/);
         print "\n;";
@@ -57,8 +66,8 @@ for my $f (@files) {
         next unless (&want($a) and &want($b));
 
         if ($collapse) {
-            $a = &dir($f) unless (&dir($f) eq "divine");;
-            $b = &dir($_) unless (&dir($_) eq "divine");
+            $a = &dir($f);
+            $b = &dir($_);
             next if ($a eq $b);
             next if $seen{"$a -> $b"};
             $seen{"$a -> $b"} = 1;
