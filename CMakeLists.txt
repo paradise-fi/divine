@@ -89,7 +89,7 @@ endif( PERFORMANCE )
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-set( CMAKE_REQUIRED_FLAGS "-std=gnu++0x" ) # for the benefit of GCC
+set( CMAKE_REQUIRED_FLAGS "-std=c++11" ) # for the benefit of GCC
 
 check_cxx_source_compiles("
 template< typename F > int check( F f );
