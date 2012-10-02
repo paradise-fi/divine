@@ -42,7 +42,7 @@ file( GLOB testh *.test.h llvm/*.test.h toolkit/*.test.h graph/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
-    set( SRC_DLFCN ../external/dlfcn-win32.c )
+    set( SRC_DLFCN ../external/dlfcn-win32/dlfcn.c )
 endif( WIN32 )
 
 set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
