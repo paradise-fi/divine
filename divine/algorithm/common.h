@@ -1,11 +1,12 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/utility/meta.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/bitset.h>
 #include <divine/toolkit/parallel.h>
 #include <divine/toolkit/rpc.h>
+#include <divine/utility/output.h>
+#include <divine/utility/meta.h>
 #include <divine/graph/visitor.h>
 #include <wibble/sfinae.h>
 

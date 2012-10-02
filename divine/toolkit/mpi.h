@@ -9,8 +9,6 @@
 #include <divine/toolkit/fifo.h>
 #include <divine/toolkit/rpc.h>
 
-#include <divine/utility/output.h>
-
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
 
@@ -160,14 +158,6 @@ public:
 
     bool master() { return global().is_master; }
 
-    std::ostream &debug() {
-#ifdef O_MPI
-        return Output::output().debug() << "MPI[" << rank() << "]: ";
-#else
-        return Output::output().debug() << "NOMPI: ";
-#endif
-    }
-
     Mpi();
     Mpi( const Mpi & );
     ~Mpi();
@@ -191,15 +181,11 @@ public:
         int first = bs.bits.size(), count = size( st ) / 4;
         bs.bits.resize( first + count );
         recv( &bs.bits[ first ], count * 4, st.Get_source(), st.Get_tag(), st );
-        debug() << "got (tag = " << st.Get_tag() << ", src = " << st.Get_source() << "): "
-                << wibble::str::fmt( static_cast< std::vector< uint32_t > >( bs.bits ) ) << std::endl;
         return bs;
     }
 
     bitstream &sendStream( wibble::sys::MutexLock &_lock, bitstream &bs, int to, int tag )
     {
-        debug() << "sending (tag = " << tag << ", to = " << to << "): "
-                << wibble::str::fmt( bs.bits ) << std::endl;
         send( _lock, &bs.bits.front(), bs.bits.size() * 4, to, tag );
         return bs;
     }
@@ -394,7 +380,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
 
         int from = *i++;
         int to = *i++;
-        // mpi.debug() << "DATA: " << from << " -> " << to << std::endl;
         assert_pred( isLocal, to );
 
         while ( i != in_buffer.end() ) {
@@ -422,7 +407,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                 mpi.sendStream( _lock, out, status.Get_source(), TAG_GIVE_COUNTS );
                 return Continue;
             case TAG_TERMINATED:
-                mpi.debug() << "DONE" << std::endl;
                 return m_barrier->idle( this ) ? Done : Continue;
             default:
                 assert_die();
@@ -481,10 +465,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                 if ( buffers[ from ][ to ].size() <= 2 )
                     continue;
 
-                /* mpi.debug() << "SENDING: " << from << " -> " << to << std::endl;
-                mpi.debug() << "BUFFER: " << buffers[ from ][ to ][ 0 ] << ", "
-                << buffers[ from ][ to ][ 1 ] << " ... " << std::endl; */
-
                 requests[ from ][ to ].first = true;
                 requests[ from ][ to ].second = mpi.isend( _lock,
                     &buffers[ from ][ to ].front(),
@@ -498,17 +478,14 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         // by non-master nodes, to wake up sleeping workers that have received
         // messages from network. Ugly, yes.
         if ( lastMan() && mpi.master() && outgoingEmpty() ) {
-            if ( termination( _lock ) ) {
-                mpi.debug() << "TERMINATED" << std::endl;
+            if ( termination( _lock ) )
                 return Done;
-            }
         }
 
         return Continue;
     }
 
     void *main() {
-        mpi.debug() << "FORWARDER START" << std::endl;
         m_barrier->started( this );
         mpi.registerProgress( *this );
         mpi.registerMonitor( TAG_ID, *this );
@@ -517,7 +494,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
 
         while ( mpi.loop() == Continue ) ;
 
-        mpi.debug() << "FORWARDER DONE" << std::endl;
         return 0;
     }
 };

@@ -107,7 +107,6 @@ void Statistics::send() {
 
     wibble::sys::MutexLock _lock( mpi.global().mutex );
     mpi.sendStream( _lock, data, 0, TAG_STATISTICS );
-    mpi.debug() << "stats sent: " << wibble::str::fmt( data.bits ) << std::endl;
 }
 
 Loop Statistics::process( wibble::sys::MutexLock &, MpiStatus &status )
@@ -115,7 +114,6 @@ Loop Statistics::process( wibble::sys::MutexLock &, MpiStatus &status )
     bitblock data;
     wibble::sys::MutexLock _lock( mpi.global().mutex );
     mpi.recvStream( _lock, status, data );
-    mpi.debug() << "stats received: " << wibble::str::fmt( static_cast< std::vector< uint32_t > >( data.bits ) ) << std::endl;
 
     int min;
     data >> min;

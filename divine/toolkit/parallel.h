@@ -396,7 +396,6 @@ struct Mpi : MpiMonitor
                           (mpi.rank() + 1) * pernode - 1 /* max */
                         )
     {
-        mpi.debug() << "created MpiTopology, pernode = " << pernode << ", size = " << mpi.size() << std::endl;
         mpi.registerMonitor( TAG_RING, *this );
         mpi.registerMonitor( TAG_PARALLEL, *this );
         mpi.registerMonitor( TAG_INTERRUPT, *this );
@@ -441,11 +440,9 @@ struct Mpi : MpiMonitor
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
         }
 
-        mpi.debug() << "parallel()" << std::endl;
         m_local.parallel( this, fun,
                           mpi.size() > 1 ? &m_mpiForwarder : 0,
                           mpi.rank() * m_local.peers() );
-        mpi.debug() << "parallel() DONE" << std::endl;
     }
 
     template< typename X >
@@ -490,7 +487,6 @@ struct Mpi : MpiMonitor
         template< typename X >
         auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
         {
-            mpit.mpi.debug() << "MPI: distribute()" << std::endl;
             mpit.distribute( x, fun );
         }
 
@@ -518,7 +514,6 @@ struct Mpi : MpiMonitor
         bitblock in;
         bitstream out;
 
-        mpi.debug() << "slave( tag = " << status.Get_tag() << " )" << std::endl;
         mpi.recvStream( _lock, status, in );
         request_source = status.Get_source();
 
@@ -534,7 +529,6 @@ struct Mpi : MpiMonitor
                 rpc::demarshallWith< Instance, ParallelFromRemote >( *this, in, out );
                 break;
             case TAG_INTERRUPT:
-                mpi.debug() << "INTERRUPTED (remote)" << std::endl;
                 m_local.interrupt();
                 break;
             default:
@@ -546,7 +540,6 @@ struct Mpi : MpiMonitor
 
     void interrupt() {
         wibble::sys::MutexLock _lock( mpi.global().mutex );
-        mpi.debug() << "INTERRUPTED (local)" << std::endl;
         mpi.notify( _lock, TAG_INTERRUPT );
     }
 

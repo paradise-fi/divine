@@ -22,19 +22,15 @@ Mpi::Mpi()
         s_data->instances = 1;
     } else
         s_data->instances ++;
-    // std::cerr << "MPI! " << global().instances << std::endl;
 }
 
 Mpi::Mpi( const Mpi & ) {
     global().instances ++;
-    // std::cerr << "MPI! " << global().instances << std::endl;
 }
 
 Mpi::~Mpi() {
-    // std::cerr << "~MPI? " << global().instances << std::endl;
     -- global().instances;
     if (!s_data->instances) {
-        debug() << "MPI DONE" << std::endl;
         wibble::sys::MutexLock _lock( global().mutex );
         notifySlaves( _lock, TAG_ALL_DONE );
 #ifdef O_MPI
