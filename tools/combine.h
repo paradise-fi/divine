@@ -177,7 +177,8 @@ struct Combine {
         // enable strong fair (S)imulation reduction of BA
         argv[ 2 ] = const_cast<char*>("-S");
         argv[ 3 ] = const_cast<char*>("-f");
-        argv[ 4 ] = const_cast<char*>(formulaStream.str().c_str()); //ltl.c_str());
+        std::string formula = formulaStream.str();
+        argv[ 4 ] = const_cast<char*>(formula.c_str());
         main_ltl3ba(5, argv, automatonStream);
         return automatonStream.str();
     }
