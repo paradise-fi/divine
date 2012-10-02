@@ -57,7 +57,6 @@ template< typename G, typename Statistics >
 struct PORGraph : graph::Transform< G > {
     typedef PORGraph< G, Statistics > This;
     typedef typename G::Node Node;
-    typedef typename G::Successors Successors;
 
     int m_algslack;
 
@@ -98,11 +97,12 @@ struct PORGraph : graph::Transform< G > {
         return extension( n ).full;
     }
 
-    Successors successors( Node st ) {
+    template< typename Yield >
+    void successors( Node st, Yield yield ) {
         if ( extension( st ).full )
-            return this->base().successors( st );
+            this->base().successors( st, yield );
         else
-            return this->base().ample( st );
+            this->base().ample( st, yield );
     }
 
     std::set< Node > to_check, to_expand;
@@ -236,8 +236,8 @@ struct PORGraph : graph::Transform< G > {
         std::set< Node > all, ample, out;
         std::vector< Node > extra;
 
-        list::output( this->base().successors( n ), std::inserter( all, all.begin() ) );
-        list::output( this->base().ample( n ), std::inserter( ample, ample.begin() ) );
+        this->base().successors( n, [&]( Node x ) { all.insert( x ); } );
+        this->base().ample( n, [&]( Node x ) { ample.insert( x ); } );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );

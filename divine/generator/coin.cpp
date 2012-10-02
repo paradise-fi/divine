@@ -175,13 +175,13 @@ inline size_t Coin::getSize(unsigned int number_of_states) {
     }
 }
 
-Coin::Successors Coin::successors(Node compressed_state) {
+Coin::Successors Coin::_successors(Node compressed_state) {
     vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
 
     return apply(compressed_state, enabled_trans);
 }
 
-Coin::Successors Coin::ample(Node compressed_state) {
+Coin::Successors Coin::_ample(Node compressed_state) {
     assert(por);
 
     vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);

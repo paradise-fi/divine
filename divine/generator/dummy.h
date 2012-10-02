@@ -12,9 +12,13 @@ struct Dummy : Common< Blob > {
     typedef std::pair< short, short > Content;
     typedef Blob Node;
 
+    Content &content( Blob b ) {
+        return b.get< Content >( alloc._slack );
+    }
+
     Node initial() {
         Blob b = alloc.new_blob( sizeof( Content ) );
-        b.get< Content >( alloc._slack ) = std::make_pair( 0, 0 );
+        content( b ) = std::make_pair( 0, 0 );
         return b;
     }
 
@@ -23,47 +27,22 @@ struct Dummy : Common< Blob > {
         q.queue( Node(), initial() );
     }
 
-    struct Successors {
-        typedef Node Type;
-        mutable Node _from;
-        int nth;
-        Dummy *parent;
+    template< typename Yield >
+    void successors( Node st, Yield yield ) {
+        Node r;
 
-        bool empty() const {
-            if ( !_from.valid() )
-                return true;
-            Content f = _from.get< Content >( parent->alloc._slack );
-            if ( f.first == 1024 || f.second == 1024 )
-                return true;
-            return nth == 3;
-        }
+        if ( !st.valid() )
+            return;
 
-        Node from() { return _from; }
+        r = alloc.new_blob( sizeof( Content ) );
+        content( r ) = content( st );
+        content( r ).first ++;
+        yield( r );
 
-        Successors tail() const {
-            Successors s = *this;
-            s.nth ++;
-            return s;
-        }
-
-        Node head() {
-            Node ret = parent->alloc.new_blob( sizeof( Content ) );
-            ret.get< Content >( parent->alloc._slack ) =
-                _from.get< Content >( parent->alloc._slack );
-            if ( nth == 1 )
-                ret.get< Content >( parent->alloc._slack ).first ++;
-            if ( nth == 2 )
-                ret.get< Content >( parent->alloc._slack ).second ++;
-            return ret;
-        }
-    };
-
-    Successors successors( Node st ) {
-        Successors ret;
-        ret._from = st;
-        ret.nth = 1;
-        ret.parent = this;
-        return ret;
+        r = alloc.new_blob( sizeof( Content ) );
+        content( r ) = content( st );
+        content( r ).second ++;
+        yield( r );
     }
 
     Node clone( Node n ) {

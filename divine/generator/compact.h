@@ -126,19 +126,17 @@ struct Compact : public Common< Blob > {
         return ret;
     }
 
-    /// Returns successors of state st
-    Successors successors( Node st ) {
+    template< typename Yield >
+    void successors( Node st, Yield yield ) {
         assert( initialized );
 
-        Successors ret;
-        ret._from = st;
-        ret.trans = forward;
-        CompactState &compactState = getCompactState( st );
-        ret.cur = compactState.forward;
-        CompactState &nextCompactState = getNextCompactState( st );
-        ret.end = nextCompactState.forward;
-        ret.parent = this;
-        return ret;
+        unsigned cur = getCompactState( st ).forward,
+                 end = getNextCompactState( st ).forward;
+
+        while ( cur < end ) {
+            yield( getAnyState( (*forward)[ cur ].id ) );
+            ++ cur;
+        }
     }
 
     /// Returns predecessors of state st

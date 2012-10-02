@@ -75,14 +75,15 @@ struct Transform {
 
     typedef wibble::Unit HasAllocator;
     typedef typename G::Node Node;
-    typedef typename G::Successors Successors;
     typedef G Graph;
 
     G &base() { return _base; }
     Pool &pool() { return base().pool(); }
 
     Node initial() { return base().initial(); } // XXX remove
-    Successors successors( Node st ) { return base().successors( st ); }
+
+    template< typename Yield >
+    void successors( Node st, Yield yield ) { base().successors( st, yield ); }
     void release( Node s ) { base().release( s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
     bool isGoal( Node s ) { return base().isGoal( s ); }
@@ -130,58 +131,20 @@ struct Transform {
     template< typename Alg >
     int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 )
     {
-        typename G::Successors succs = base().successors( current );
         int edge = 0;
-        while ( !succs.empty() ) {
-            ++edge;
-            Node succ = succs.head();
-            if ( edge > fromIndex && a.store().equal( succ, next ) ) {
-                base().release( succ );
-                succs = succs.tail();
-                break;
-            }
-            base().release( succ ); // not it
-            succs = succs.tail();
-            assert( !succs.empty() ); // we'd hope the node is actually there!
-        }
+        bool found = false;
 
-        while ( !succs.empty() ) {
-            base().release( succs.head() );
-            succs = succs.tail();
-        }
+        base().successors( current, [&]( Node n ) {
+                if (!found)
+                    ++ edge;
+                if ( edge > fromIndex && a.store().equal( n, next ) )
+                    found = true;
+                this->base().release( n );
+            } );
 
         assert_leq( 1, edge );
+        assert( found );
         return edge;
-    }
-
-    /// Equivalent of the above method for hash-compaction
-    /// Returns pair(0, Node()) when no successor has given hash
-    template< typename Alg >
-    std::pair<int, Node> successorNumHash( Alg &a, Node current, hash_t next, unsigned fromIndex = 0 )
-    {
-        typename G::Successors succs = base().successors( current );
-        int edge = 0;
-        Node nextNode;
-        while ( !succs.empty() ) {
-            ++edge;
-            Node succ = succs.head();
-            if ( edge > fromIndex && a.hasher( succ ) == next ) {
-                nextNode = succ;
-                succs = succs.tail();
-                break;
-            }
-            base().release( succ ); // not it
-            succs = succs.tail();
-        }
-
-        while ( !succs.empty() ) {
-            base().release( succs.head() );
-            succs = succs.tail();
-        }
-
-        return nextNode.valid()
-            ? std::make_pair( edge, nextNode )
-            : std::make_pair( 0, Node() );
     }
 
 };

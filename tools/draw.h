@@ -23,7 +23,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Setup::Store Store;
-    typedef typename Graph::Successors Successors;
     typedef This Listener;
     typedef NoStatistics Statistics;
 
@@ -179,18 +178,25 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
              std::getline( split, each, ',' );
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
-        Node from = initial;
+        Node from = initial, to;
         for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {
             if ( intrace->get( from ).valid() )
                 from = intrace->get( from );
             else
                 intrace->insert( from );
-            Successors s = wibble::list::drop( trans[ i ] - 1, this->graph().successors( from ) );
-            Node to = intrace->get( s.head() );
-            if ( !to.valid() ) {
-                to = s.head();
-                intrace->insert( to );
-            }
+
+            int drop = trans[ i ] - 1;
+            this->graph().successors( from, [&]( Node n ) {
+                    -- drop;
+                    if ( drop != 0 )
+                        return;
+                    to = intrace->get( n );
+                    if ( !to.valid() ) {
+                        to = n;
+                        intrace->insert( to );
+                    }
+                } );
+
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;

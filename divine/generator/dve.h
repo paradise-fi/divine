@@ -17,46 +17,25 @@ struct Dve : public Common< Blob > {
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
 
-    struct Successors {
-        typedef Node Type;
+    template< typename Yield >
+    void successors( Node from, Yield yield ) {
+        if ( !from.valid() )
+            return;
 
-        Node _from;
+        updateMem( from );
         dve::System::Continuation p;
-        Dve* parent;
 
-        bool empty() const {
-            if( !parent ) return true;
-            parent->updateMem( _from );
-            return !parent->system->valid( parent->ctx, p );
+        p = system->enabled( ctx, p );
+
+        while ( system->valid( ctx, p ) ) {
+            Blob b = alloc.new_blob( stateSize() );
+            memcpy( mem( b ), mem( from ), stateSize() );
+            updateMem( b );
+            system->apply( ctx, p );
+            yield( b );
+            updateMem( from );
+            p = system->enabled( ctx, p );
         }
-
-        Node from() { return _from; }
-
-        Node head() {
-            Blob b = parent->alloc.new_blob( parent->stateSize() );
-            memcpy( parent->mem( b ), parent->mem( _from ), parent->stateSize() );
-            parent->updateMem( b );
-            parent->system->apply( parent->ctx, p );
-            return b;
-        }
-
-        Successors tail() {
-            Successors s = *this;
-            parent->updateMem( _from );
-            s.p = parent->system->enabled( parent->ctx, p );
-            return s;
-        }
-
-        Successors() : parent( 0 ) {}
-    };
-
-    Successors successors( Node s ) {
-        Successors succ;
-        succ._from = s;
-        updateMem( s );
-        succ.p = system->enabled( ctx, dve::System::Continuation() );
-        succ.parent = this;
-        return succ;
     }
 
     Node initial() {

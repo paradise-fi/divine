@@ -142,7 +142,7 @@ public:
      * \param compressed_state  the source node
      * \return successors of compressed_state
      */
-    Successors successors(Node compressed_state);
+    Successors _successors(Node compressed_state);
 
     /**
      * Returns the reduced collection of successors of a node.
@@ -150,7 +150,25 @@ public:
      * \param compressed_state  the source node
      * \return reduced collection of successors
      */
-    Successors ample(Node compressed_state);
+    Successors _ample(Node compressed_state);
+
+    template< typename Yield >
+    void successors( Node n, Yield yield ) {
+        Successors s = _successors( n );
+        while ( !s.empty() ) {
+            yield( s.head() );
+            s = s.tail();
+        }
+    }
+
+    template< typename Yield >
+    void ample( Node n, Yield yield ) {
+        Successors s = _ample( n );
+        while ( !s.empty() ) {
+            yield( s.head() );
+            s = s.tail();
+        }
+    }
 
     /**
      * Deallocates a node.

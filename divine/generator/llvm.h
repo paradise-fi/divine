@@ -163,15 +163,19 @@ struct LLVM : Common< Blob > {
         Successors() {}
     };
 
-    Successors successors( Node st ) {
-        Successors ret;
-        ret._from = st;
-        ret._parent = this;
-        ret._alternative = 0;
-        ret._context = 0;
-        ret._buchi = 0;
-        ret.settle();
-        return ret;
+    template< typename Yield >
+    void successors( Node st, Yield yield ) {
+        Successors s;
+        s._from = st;
+        s._parent = this;
+        s._alternative = 0;
+        s._context = 0;
+        s._buchi = 0;
+        s.settle();
+        while ( !s.empty() ) {
+            yield( s.head() );
+            s = s.tail();
+        }
     }
 
     void release( Node s ) {

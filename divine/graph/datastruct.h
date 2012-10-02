@@ -14,146 +14,114 @@ template< typename Graph, typename Statistics >
 struct Queue {
     Graph &g;
     typedef typename Graph::Node Node;
-    std::deque< Node > m_queue;
-    typename Graph::Successors m_head;
-    bool maybe_deadlock;
+    std::deque< Node > _queue;
 
+    bool deadlocked;
     int id;
 
-    void reserve( int n ) { m_queue.reserve( n ); }
-    int size() { return m_queue.size(); } // XXX misleading?
+    void reserve( int n ) { _queue.reserve( n ); }
+    int size() { return _queue.size(); } // XXX misleading?
 
-    void pushSuccessors( const Node &t )
+    void push( const Node &t )
     {
         Statistics::global().enqueue( id, sizeof( t ) );
-        m_queue.push_back( t );
+        _queue.push_back( t );
     }
 
-    void pop() {
-        m_head = m_head.tail();
-        maybe_deadlock = false;
-        if ( m_head.empty() && !m_queue.empty() )
-            dropEmptyHead();
+    template< typename Next >
+    void processOpen( Next next ) {
+        deadlocked = true;
+        Node from = _queue.front();
+        g.successors( from, [&]( Node n ) {
+                deadlocked = false;
+                next( from, n );
+            } );
     }
 
-    inline bool deadlocked() {
-        if (m_head.empty() && !m_queue.empty() && !maybe_deadlock)
-            dropEmptyHead();
-        return maybe_deadlock && m_head.empty();
-    }
+    template< typename Dead >
+    void processDead( Dead dead ) {
+        if ( deadlocked && !empty() )
+            dead( _queue.front() );
+    };
 
-    void removeDeadlocked() {
-        assert( m_head.empty() );
-        if ( !m_queue.empty() )
-            dropEmptyHead();
-        else
-            maybe_deadlock = false;
-    }
+    template< typename Close >
+    void processClosed( Close close ) {
+        if ( !empty() ) {
+            close( _queue.front() );
+            _queue.pop_front();
+        }
+    };
 
-    Node nextFrom() {
-        return m_head.from();
-    }
+    bool empty() { return _queue.empty(); }
+    void clear() { _queue.clear(); }
 
-    void checkHead() {
-        while ( m_head.empty() && !m_queue.empty() )
-            dropEmptyHead();
-    }
-
-    void dropEmptyHead() {
-        assert( m_head.empty() && !m_queue.empty() );
-        Statistics::global().dequeue( id, sizeof( m_queue.front() ) );
-        g.release( m_head.from() );
-        m_head = g.successors( m_queue.front() );
-        maybe_deadlock = true;
-        m_queue.pop_front();
-    }
-
-    std::pair< Node, Node > next() {
-        checkHead();
-        assert ( !empty() );
-        return std::make_pair( g.clone( m_head.from() ), m_head.head() );
-    }
-
-    bool empty() {
-        checkHead();
-        return m_head.empty() && m_queue.empty();
-    }
-
-    void clear() { while ( !empty() ) pop(); }
-
-    bool finished() { return false; }
-    void popFinished() {}
-    Node from() { return Node(); }
-
-    Queue( Graph &_g ) : g( _g ), maybe_deadlock( false ), id( 0 ) {}
+    Queue( Graph &_g ) : g( _g ), deadlocked( true ), id( 0 ) {}
 };
 
 template< typename Graph, typename Statistics >
 struct Stack {
     Graph &g;
     typedef typename Graph::Node Node;
-    std::deque< typename Graph::Successors > m_stack;
+    enum Flag { Fresh, Expanded };
 
-    int pushes, pops;
+    std::deque< std::pair< Flag, Node > > _stack;
+    Node _from;
+    bool deadlocked;
 
-    void pushSuccessors( Node t ) {
-        m_stack.push_back( g.successors( t ) );
-        typename Graph::Successors s = g.successors( t );
-        while ( !s.empty() ) {
-            ++ pushes;
-            s = s.tail();
+    int _pushes, _pops;
+
+    void push( Node t ) {
+        _from = t;
+        _stack.push_back( std::make_pair( Expanded , t ) );
+        deadlocked = true;
+        g.successors( t, [&]( Node n ) {
+                ++ this->_pushes;
+                deadlocked = false;
+                _stack.push_back( std::make_pair( Fresh, n ) );
+            } );
+    }
+
+    template< typename Next >
+    void processOpen( Next next ) {
+        if ( !deadlocked ) {
+            assert_eq( _stack.back().first, Fresh );
+            Node n = _stack.back().second;
+            _stack.pop_back();
+            ++ _pops;
+            next( _from, n );
         }
     }
 
-    void clearFinished() {
-        while ( finished() )
-            popFinished();
+    template< typename Dead >
+    void processDead( Dead dead ) {
+        if ( deadlocked && ! empty() ) {
+            assert_eq( _stack.back().first, Expanded );
+            dead( _stack.back().second );
+            deadlocked = false;
+        }
     }
 
-    void popFinished() {
-        assert( finished() );
-        g.release( m_stack.back().from() );
-        m_stack.pop_back();
+    template< typename Close >
+    void processClosed( Close close ) {
+        if ( empty() || _stack.back().first != Expanded )
+            return;
+
+        while ( !empty() && _stack.back().first == Expanded ) {
+            close( _stack.back().second );
+            _stack.pop_back();
+        }
+
+        for ( auto i = _stack.rbegin(); i != _stack.rend(); ++i )
+            if ( i->first == Expanded ) {
+                _from = i->second;
+                break;
+            }
     }
 
-    void pop() {
-        clearFinished();
-        assert( !empty() );
-        assert( !m_stack.back().empty() );
-        m_stack.back() = m_stack.back().tail();
-        ++ pops;
-        assert( pops <= pushes );
-    }
+    bool empty() { return _stack.empty(); }
+    void clear() { _stack.clear(); }
 
-    bool finished() {
-        return !m_stack.empty() && m_stack.back().empty();
-    }
-
-    Node from() {
-        assert( !m_stack.empty() );
-        return m_stack.back().from();
-    }
-
-    std::pair< Node, Node > next() {
-        assert( !empty() );
-        clearFinished();
-        return std::make_pair( g.clone( m_stack.back().from() ), m_stack.back().head() );
-    }
-
-    bool empty() {
-        clearFinished();
-        return m_stack.empty();
-    }
-
-    void clear() { while ( !empty() ) pop(); }
-
-    Stack( Graph &_g ) : g( _g ) { pushes = pops = 0; }
-
-    bool deadlocked() { return false; }
-    bool removeDeadlocked() { return false; }
-    Node nextFrom() {
-        return m_stack.back().from();
-    }
+    Stack( Graph &_g ) : g( _g ) { _pushes = _pops = 0; }
 };
 
 template< typename T >

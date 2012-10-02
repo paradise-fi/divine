@@ -48,33 +48,6 @@ struct TestVisitor {
         typedef _Node Node;
         int n, m;
 
-        struct Successors {
-            int n, m;
-            int i;
-            Node _from;
-            Node from() { return _from; }
-            Node head() {
-                int x = m * (node( _from ) - 1) + i + 1;
-                return makeNode< Node >( (x >= n ? 0 : x)+1 );
-            }
-            bool empty() {
-                if ( n < 0 )
-                    return true;
-                // no multi-edges to 0 please
-                if ( i > 0 && m * (node( _from ) - 1) + i >= n )
-                    return true;
-                return i >= m;
-            }
-
-            Successors tail() {
-                Successors next = *this;
-                next.i ++;
-                return next;
-            }
-
-            Successors() : n( -1 ) {}
-        };
-
         Node clone( Node n ) { return n; }
         void release( Blob n ) { n.free(); }
         void release( int ) {}
@@ -84,13 +57,18 @@ struct TestVisitor {
             return n;
         }
 
-        Successors successors( Node from ) {
-            Successors s;
-            s.n = n;
-            s.m = m;
-            s._from = from;
-            s.i = 0;
-            return s;
+        template< typename Yield >
+        void successors( Node from, Yield yield ) {
+            if ( n < 0 )
+                return;
+
+            for ( int i = 0; i < m; ++i ) {
+                int x = m * ( node( from ) - 1 ) + i + 1;
+                int y = (x >= n ? 0 : x) + 1;
+                yield( makeNode< Node >( y ) );
+                if ( x >= n )
+                    break;
+            }
         }
 
         NMTree( int _n, int _m ) : n( _n ), m( _m ) {}
@@ -324,30 +302,26 @@ struct TestVisitor {
         f( 120, 2 );
     }
 
-    template< typename N >
+    template< typename N, template< typename > class Visitor >
     static void _sequential( int n, int m ) {
         NMTree< N > g( n, m );
         typedef Check< NMTree< N > > C;
-        C c1, c2;
+        C c;
 
         // sanity check
-        assert_eq( c1.edges(), 0 );
-        assert_eq( c1.nodes(), 0 );
+        assert_eq( c.edges(), 0 );
+        assert_eq( c.nodes(), 0 );
 
         struct CheckSetup : Check< NMTree< N > >, Sequential {};
 
-        typename CheckSetup::Store s1( g ), s2( g );
+        typename CheckSetup::Store s( g );
         WithID wid;
         wid.m_id = 0;
-        s1.id = s2.id = &wid;
+        s.id = &wid;
 
-        BFV< CheckSetup > bfv( c1, g, s1 );
+        Visitor< CheckSetup > bfv( c, g, s );
         bfv.exploreFrom( makeNode< N >( 1 ) );
-        checkNMTreeMetric( n, m, c1.nodes(), c1.edges() );
-
-        DFV< CheckSetup > dfv( c2, g, s2 );
-        dfv.exploreFrom( makeNode< N >( 1 ) );
-        checkNMTreeMetric( n, m, c2.nodes(), c2.edges() );
+        checkNMTreeMetric( n, m, c.nodes(), c.edges() );
     }
 
     template< template< typename > class T, typename N >
@@ -357,11 +331,20 @@ struct TestVisitor {
         checkNMTreeMetric( n, m, pv.nodes(), pv.edges() );
     }
 
-    Test sequential_int() {
-        examples( _sequential< int > );
+    Test bfv_int() {
+        examples( _sequential< int, BFV > );
     }
-    Test sequential_blob() {
-        examples( _sequential< Blob > );
+
+    Test dfv_int() {
+        examples( _sequential< int, DFV > );
+    }
+
+    Test bfv_blob() {
+        examples( _sequential< Blob, BFV > );
+    }
+
+    Test dfv_blob() {
+        examples( _sequential< Blob, DFV > );
     }
 
     Test parallel_int() {

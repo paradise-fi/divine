@@ -90,7 +90,6 @@ struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
     typedef typename S::Listener Listener;
-    typedef typename Graph::Successors Successors;
     typedef typename S::Store Store;
     typedef typename S::Statistics Statistics;
     typedef _Queue< Graph, Statistics > Queue;
@@ -115,33 +114,14 @@ struct Common {
         edge( from, to );
     }
 
-    void processDeadlocks() {
-        while ( _queue.deadlocked() ) {
-            Node dead = _queue.nextFrom();
-            auto action = S::deadlocked( notify, dead );
-            _queue.removeDeadlocked(); // _dead_ is released by this call
-            if ( action == TerminateOnDeadlock )
-                return terminate();
-        }
-    }
-
-    void processFinished() {
-            while ( _queue.finished() ) {
-                S::finished( notify, _queue.from() );
-                _queue.popFinished();
-            }
-    }
-
     void processQueue() {
-        while ( true ) {
-            processFinished();
-            processDeadlocks();
-            if ( _queue.empty() )
-                return;
-            std::pair< Node, Node > c = _queue.next();
-            _queue.pop();
-            processDeadlocks();
-            edge( c.first, c.second );
+        while ( ! _queue.empty() ) {
+            _queue.processOpen( [&]( Node f, Node t ) { this->edge( f, t ); } );
+            _queue.processDead( [&]( Node n ) {
+                    if ( S::deadlocked( notify, n ) == TerminateOnDeadlock )
+                        this->terminate();
+                } );
+            _queue.processClosed( [&]( Node n ) { S::finished( notify, n ); } );
         }
     }
 
@@ -167,7 +147,7 @@ struct Common {
              (tact == FollowTransition && !had) ) {
             eact = S::expansion( notify, to );
             if ( eact == ExpandState )
-                _queue.pushSuccessors( graph.clone( to ) );
+                _queue.push( graph.clone( to ) );
         }
 
         if ( tact != IgnoreTransition ) {
@@ -179,22 +159,10 @@ struct Common {
             graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
-            terminate();
+            this->terminate();
     }
 
-    void terminate() {
-        clearQueue();
-    }
-
-    void clearQueue() {
-        while ( !_queue.empty() ) {
-            std::pair< Node, Node > elem = _queue.next();
-            _queue.pop();
-
-            graph.release( elem.first );
-            graph.release( elem.second );
-        }
-    }
+    void terminate() { _queue.clear(); }
 
     Common( Listener &n, Graph &g, Store &s, Queue q ) :
         graph( g ), notify( n ), store( s ), _queue( q )

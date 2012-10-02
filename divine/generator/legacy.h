@@ -29,72 +29,29 @@ struct LegacyCommon : Common< _State > {
     system_t *m_system;
     por_t *m_por;
 
-    /// Successors implementation
-    struct Successors {
-        typedef Node Type;
-        int current;
-        container_t m_succs;
-        Node _from;
-        LegacyCommon *parent;
-
-        bool empty() const __attribute__((pure)) {
-            if ( !_from.valid() )
-                return true;
-            if ( parent->legacy_system()->is_erroneous( parent->alloc.legacy_state( _from ) ) )
-                return true;
-            return size_t( current ) == m_succs.size();
-        }
-
-        Node from() { return _from; }
-
-        State head() const {
-            return parent->alloc.unlegacy_state( m_succs[ current ].getState() );
-        }
-
-        bool headIsProbabilistic() const { return m_succs[ current ].isProbabilistic(); }
-        size_int_t headProbabilisticId() const { 
-            assert( headIsProbabilistic() );
-            return m_succs[ current ].probabilisticId(); 
-        }
-        ulong_int_t headProbabilisticWeight() const { 
-            assert( headIsProbabilistic() );
-            return m_succs[ current ].probabilisticWeight(); 
-        }
-        ulong_int_t headProbabilisticSum() const { 
-            assert( headIsProbabilistic() );
-            return m_succs[ current ].probabilisticSum(); 
-        }
-
-        Successors tail() const {
-            Successors s = *this;
-            ++ s.current;
-            return s;
-        }
-
-        Successors() : current( 0 ) {}
-    };
-
     /// Returns successors of state s
-    Successors successors( State s ) {
+    template< typename Yield >
+    void successors( State s, Yield yield ) {
         assert( s.valid() );
-        Successors succ;
-        succ.parent = this;
-        succ._from = s;
+        if ( legacy_system()->is_erroneous( this->alloc.legacy_state( s ) ) )
+            return;
+
+        container_t succs;
         state_t legacy = this->alloc.legacy_state( s );
-        legacy_system()->get_succs( legacy, succ.m_succs );
-        return succ;
+        legacy_system()->get_succs( legacy, succs );
+        for ( auto i = succs.begin(); i != succs.end(); ++i )
+            yield( this->alloc.unlegacy_state( i->getState() ) );
     }
 
     /// Finds successors of transitions involving specified process (or every process except that one)
-    Successors processSuccessors( State s , int pid, bool include = true ) {
+
+    template< typename Yield >
+    void processSuccessors( State s, Yield yield, int pid, bool include = true ) {
         assert( s.valid() );
         // works only with dve_explicit_system_t
         dve_explicit_system_t* system = dynamic_cast< dve_explicit_system_t* >( legacy_system() );
-        Successors succs;
-        succs.parent = this;
-        succs._from = s;
-        state_t legacy = this->alloc.legacy_state( s );
 
+        state_t legacy = this->alloc.legacy_state( s );
         enabled_trans_container_t enabled_trans( *system );
         legacy_system()->get_enabled_trans( legacy, enabled_trans );
         unsigned proc_gid = pid;
@@ -109,11 +66,9 @@ struct LegacyCommon : Common< _State > {
             if ( involved == include ) {
                 state_t succ;
                 system->get_ith_succ( legacy, i, succ );
-                succs.m_succs.push_back( succ );
+                yield( this->alloc.unlegacy_state( succ ) );
             }
         }
-
-        return succs;
     }
 
     /// Count processes and ignore property process
@@ -132,15 +87,18 @@ struct LegacyCommon : Common< _State > {
         return *m_por;
     }
 
-    Successors ample( State s ) {
-        Successors succ;
-        succ.parent = this;
-        succ._from = s;
-        state_t legacy = this->alloc.legacy_state( s );
+    template< typename Yield >
+    void ample( State s, Yield yield ) {
+        assert( s.valid() );
+        if ( legacy_system()->is_erroneous( this->alloc.legacy_state( s ) ) )
+            return;
 
-        size_t proc_gid; // output parameter, to be discarded
-        por().ample_set_succs( legacy, succ.m_succs, proc_gid );
-        return succ;
+        container_t succs;
+        state_t legacy = this->alloc.legacy_state( s );
+        size_t proc_gid;
+        por().ample_set_succs( legacy, succs, proc_gid );
+        for ( auto i = succs.begin(); i != succs.end(); ++i )
+            yield( this->alloc.unlegacy_state( i->getState() ) );
     }
 
     /// Returns the initial state

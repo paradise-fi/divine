@@ -48,51 +48,20 @@ struct CESMI : public Common< Blob > {
                show_transition( 0 ), setup( 0 ), cache_successors( 0 ) {}
     } dl;
 
-    struct Successors {
-        typedef Node Type;
-        Node _from;
-        mutable Node my;
-        mutable int handle;
-        CESMI *parent;
-
-        bool empty() const {
-            if ( !_from.valid() )
-                return true;
-            force();
-            return handle == 0;
-        }
-
-        Node from() { return _from; }
-
-        void force() const {
-            if ( my.valid() || !handle ) return;
-            char *state;
-            handle = parent->dl.get_successor( &(parent->setup), handle, _from.pointer(), &state );
-            if ( handle )
-                my = Blob( state );
-        }
-
-        Node head() {
-            force();
-            return my;
-        }
-
-        Successors tail() {
-            force();
-            Successors s = *this;
-            s.my = Blob();
-            return s;
-        }
-    };
-
     CESMISetup setup;
 
-    Successors successors( Node s ) {
-        Successors succ;
-        succ._from = s;
-        succ.parent = this;
-        succ.handle = 1;
-        return succ;
+    template< typename Yield >
+    void successors( Node s, Yield yield ) {
+        int handle = 1;
+        if ( !s.valid() )
+            return;
+
+        while ( handle ) {
+            char *state;
+            handle = dl.get_successor( &setup, handle, s.pointer(), &state );
+            if ( handle )
+                yield( Blob( state ) );
+        }
     }
 
     Node initial() {
