@@ -20,7 +20,7 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include "dlfcn-win32.h"
+#include "dlfcn.h"
 
 /* Note:
  * MSDN says these functions are not thread-safe. We make no efforts to have
