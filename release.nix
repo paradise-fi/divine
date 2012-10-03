@@ -79,7 +79,7 @@ let
                            then "+pre${toString divineSrc.revCount}"
                            else "";
         src = divineSrc;
-        buildInputs = (with pkgs; [ cmake ]);
+        buildInputs = (with pkgs; [ cmake gcc47 ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         autoconfPhase = ''
           sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
