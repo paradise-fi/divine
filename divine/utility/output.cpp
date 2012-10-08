@@ -6,6 +6,7 @@
 
 #ifdef O_CURSES
 #include <curses.h>
+#include <unistd.h>
 #endif
 
 #include <divine/utility/output.h>
