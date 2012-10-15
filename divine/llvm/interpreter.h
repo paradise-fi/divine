@@ -433,7 +433,8 @@ private:  // Helper functions
   //
   void SwitchToNewBasicBlock(BasicBlock *Dest, ExecutionContext &SF);
 
-    void *getPointerToFunction(Function *F) { return (void *) functionIndex.left(F); }
+  void* getOrEmitGlobalVariable(const GlobalVariable *GV);
+  void *getPointerToFunction(Function *F) { return (void *) functionIndex.left(F); }
   void *getPointerToBasicBlock(BasicBlock *BB) { return (void*)BB; }
 
   void initializeExecutionEngine() { }

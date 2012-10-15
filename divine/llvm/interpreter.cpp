@@ -80,6 +80,19 @@ void Interpreter::emitGlobals( Module *M )
                                            // all places
 }
 
+void* Interpreter::getOrEmitGlobalVariable(const GlobalVariable *GV) {
+    if (Function *F = const_cast<Function*>(dyn_cast<Function>(GV)))
+        return getPointerToFunction(F);
+
+    std::map< const GlobalVariable *, int >::const_iterator i = globals.find( GV );
+    if  (i == globals.end()) {
+        // not stored in globalmem => constant global stored internally in ExecutionEngine
+        return getPointerToGlobal(GV);
+    } else {
+        return (void*) i->second;
+    }
+}
+
 void Interpreter::buildIndex( Module *module ) {
     int i = 0;
     locationIndex.insert( i++, Location( 0, 0, 0 ) );
