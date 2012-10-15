@@ -8,6 +8,8 @@
 namespace divine {
 namespace dve {
 
+struct Channel;
+
 struct NS {
     enum Namespace { Process, Variable, Channel, State, Initialiser, InitState, Flag };
 };
@@ -82,7 +84,7 @@ struct Symbol {
             }
         }
     }
-    
+
     template< typename T >
     void deref( char *mem, int idx, T &retval ) {
         assert( !item().is_constant );
@@ -90,6 +92,14 @@ struct Symbol {
             assert( item().is_array );
         char *place = mem + item().offset + idx * item().width;
         retval = *reinterpret_cast< T * >( place );
+    }
+
+    char * getref( char *mem = 0, int idx = 0 ) {
+        assert( !item().is_constant );
+        if ( idx )
+            assert( item().is_array );
+        char *place = mem + item().offset + idx * item().width;
+        return place;
     }
 
     void set( char *mem, int idx, int value, ErrorState &err ) {
@@ -119,6 +129,7 @@ std::ostream &operator<<( std::ostream &os, Symbol s );
 struct SymTab : NS {
     typedef std::map< std::string, SymId > Tab;
     std::vector< Tab > tabs;
+    std::map< std::string, divine::dve::Channel*> channels;
 
     SymContext *context;
     SymTab *parent; // scoping
@@ -146,6 +157,18 @@ struct SymTab : NS {
         return lookup( ns, id.name() );
     }
 
+    divine::dve::Channel* lookupChannel( std::string id ) const {
+        if ( channels.count( id ) )
+            return channels.find( id )->second;
+        if ( parent )
+            return parent->lookupChannel( id );
+        return 0;
+    }
+
+    divine::dve::Channel* lookupChannel( const parse::Identifier id ) const {
+        return lookupChannel( id.name() );
+    }
+
     Symbol allocate( Namespace ns, std::string name, int width )
     {
         unsigned id = newid( ns, name );
@@ -156,7 +179,8 @@ struct SymTab : NS {
         return Symbol( context, id );
     }
 
-    Symbol allocate( Namespace ns, const parse::Declaration &decl ) {
+    template< typename T >
+    Symbol allocate( Namespace ns, const T &decl ) {
         int width = decl.width;
 
         assert_leq( 1, width );
@@ -229,7 +253,10 @@ struct SymTab : NS {
                   i != tabs[ ns ].end(); ++i ) {
                 Symbol s( context, i->second );
                 o << i->first << " = " << (s.item().is_array ? "[" : "");
-                o << s.deref( mem );
+                if ( ns == NS::Channel )
+                    ;
+                else
+                    o << s.deref( mem );
                 for ( int j = 1; j < s.item().array; j++ )
                     o << ", " << s.deref( mem, j );
                 o << (s.item().is_array ? "], " : ", ");

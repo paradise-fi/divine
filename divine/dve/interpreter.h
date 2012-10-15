@@ -66,14 +66,102 @@ struct LValueList {
     LValueList() : _valid( false ) {}
 };
 
+struct Channel {
+    bool is_buffered, is_compound, is_array;
+    int size, bufsize, width;
+    std::string name;
+
+    Symbol thischan;
+
+    SymContext context;
+    std::vector< Symbol > components;
+
+    char * item(char * data, int i) {
+        return data + i*context.offset;
+    }
+
+    int & count(char * data) {
+        char *place = data + bufsize*context.offset;
+        return *reinterpret_cast< int * >( place );
+    }
+
+    void enqueue( EvalContext &ctx, std::vector< int > values, ErrorState &err ) {
+        char * data = thischan.getref( ctx.mem, 0 );
+        char * _item = item( data, count( data ) );
+        assert_eq( values.size(), components.size() );
+        for ( unsigned i = 0; i < values.size(); i++ ) {
+            /* Prevents segfault probably caused by copying this class to other
+             * threads and not updating pointers properly.
+             * Will look into it later
+             */
+            components[ i ].context = &context;
+            components[ i ].set( _item, 0, values[ i ], err );
+        }
+        count( data )++;
+    }
+
+    std::vector< int > dequeue( EvalContext &ctx, ErrorState &err ) {
+        char * data = thischan.getref( ctx.mem, 0 );
+        std::vector< int > retval;
+        retval.resize( components.size() );
+        for ( unsigned i = 0; i < components.size(); i++ ) {
+            components[ i ].context = &context; // Prevents segfault (See enqueue)
+            retval[ i ] = components[ i ].deref( data, 0 );
+        }
+        memmove( data, item( data, 1 ), context.offset * ( --count( data ) ) );
+        memset( item( data, count( data ) ), 0, context.offset );
+        return retval;
+    }
+
+    bool full( EvalContext &ctx ) {
+        char * data;
+        if ( is_buffered )
+            data = thischan.getref( ctx.mem, 0 );
+        else
+            return false;
+        return count( data ) >= bufsize;
+    };
+
+    bool empty( EvalContext &ctx ) {
+        char * data;
+        if ( is_buffered )
+            data = thischan.getref( ctx.mem, 0 );
+        else
+            return false;
+        return count( data ) <= 0;
+    };
+
+    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : size( 1 ), is_compound( 0 ), is_array( 0 )
+    {
+        is_buffered = chandecl.is_buffered;
+        bufsize = chandecl.size;
+        name = chandecl.name;
+        components.resize( chandecl.components.size() );
+        for( unsigned i = 0; i < chandecl.components.size(); i++ ) {
+            context.ids.push_back( SymContext::Item() );
+            SymContext::Item &it = context.ids[ context.id ];
+            it.offset = context.offset;
+            it.width = chandecl.components[ i ];
+            context.offset += it.width;
+            components[ i ] =  Symbol( &context, context.id );
+            context.id++;
+        }
+        width = bufsize * context.offset + sizeof( int );
+        if ( is_buffered )
+            thischan = sym.allocate( NS::Channel, *this );
+    }
+
+};
+
 struct Transition {
     Symbol process;
     Symbol from, to;
 
-    Symbol sync_channel;
+    Channel *sync_channel;
     LValueList sync_lval;
     ExpressionList sync_expr;
 
+    // Reader transition to this one (in case of atomic sync)
     Transition *sync;
 
     std::vector< Expression > guards;
@@ -89,6 +177,11 @@ struct Transition {
         for ( int i = 0; i < guards.size(); ++i )
             if ( !guards[i].evaluate( ctx, &err ) )
                 return false;
+        if ( sync_channel )
+            if ( sync_expr.valid() && sync_channel->full( ctx ) )
+                return false;
+            if ( sync_lval.valid() && sync_channel->empty( ctx ) )
+                return false;
         if ( sync ) {
             if ( from_commited && !sync->from_commited )
                 return false;
@@ -101,9 +194,17 @@ struct Transition {
     }
 
     void apply( EvalContext &ctx, ErrorState &err ) {
+        if ( sync_channel && sync_channel->is_buffered ) {
+                if( sync_expr.valid() )
+                    sync_channel->enqueue( ctx, sync_expr.evaluate( ctx, &err ), err );
+                else if ( sync_lval.valid() )
+                    sync_lval.set( ctx, sync_channel->dequeue( ctx, err ), err );
+                else
+                    assert_die();
+        }
         if ( sync ) {
             if (sync->sync_lval.valid() && sync_expr.valid() )
-                sync->sync_lval.set( ctx, sync_expr.evaluate( ctx, &err ), err );
+                    sync->sync_lval.set( ctx, sync_expr.evaluate( ctx, &err ), err );
             sync->apply( ctx, err );
         }
         for ( Effect::iterator i = effect.begin(); i != effect.end(); ++i )
@@ -119,7 +220,7 @@ struct Transition {
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc ), sync( 0 )
+        : process( proc ), sync( 0 ), sync_channel( 0 )
     {
         for ( int i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
@@ -132,7 +233,7 @@ struct Transition {
         assert( to.valid() );
 
         if ( t.syncexpr.valid() ) {
-            sync_channel = sym.lookup( NS::Channel, t.syncexpr.chan );
+            sync_channel = sym.lookupChannel( t.syncexpr.chan );
             if ( t.syncexpr.write )
                 sync_expr = ExpressionList( sym, t.syncexpr.exprlist );
             else if ( t.syncexpr.lvallist.valid() )
@@ -146,7 +247,7 @@ struct Transition {
 static inline void declare( SymTab &symtab, const parse::Decls &decls )
 {
     for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i ) {
-        symtab.allocate( i->is_chan ? NS::Channel : NS::Variable, *i );
+        symtab.allocate( NS::Variable, *i );
         std::vector< int > init;
         EvalContext ctx;
         for ( int j = 0; j < i->initial.size(); ++j ) {
@@ -246,7 +347,7 @@ struct Process {
             Transition t( symtab, id, *i );
             t.from_commited = is_commited[ t.from.deref( 0 ) ];
             t.to_commited = is_commited[ t.to.deref( 0 ) ];
-            if ( i->syncexpr.valid() ) {
+            if ( i->syncexpr.valid() && !t.sync_channel->is_buffered ) {
                 if ( i->syncexpr.write )
                     writers.push_back( t );
                 else {
@@ -280,6 +381,7 @@ struct System {
     SymTab symtab;
     std::vector< Process > processes;
     std::vector< Process > properties;
+    std::vector< Channel > channels;
     Process *property;
 
     Symbol flags;
@@ -302,6 +404,12 @@ struct System {
 
         declare( symtab, sys.decls );
         flags = symtab.lookup( NS::Flag, "Flags" );
+
+        // declare channels
+        for( auto i = sys.chandecls.begin(); i != sys.chandecls.end(); i++ ) {
+            channels.push_back( Channel( symtab, *i )  );
+            symtab.channels[ i->name ] =  &channels.back();
+        }
 
         // ensure validity of pointers into the process array
         processes.reserve( sys.processes.size() );

@@ -265,7 +265,7 @@ struct SyncExpr : Parser {
  * Never use this parser directly, only as an AST node. See Declarations.
  */
 struct Declaration : Parser {
-    bool is_const, is_chan, is_compound;
+    bool is_const, is_compound, is_buffered;
     int width; // bytes
     bool is_array;
     int size;
@@ -291,7 +291,7 @@ struct Declaration : Parser {
             initial.push_back( Expression( context() ) );
     }
 
-    Declaration( Context &c ) : Parser( c ), size( 1 )
+    Declaration( Context &c ) : Parser( c ), size( 1 ), is_buffered( 0 )
     {
         Token t = eat( Token::Identifier );
         name = t.data;
@@ -317,6 +317,29 @@ struct Type : Parser {
     }
 };
 
+struct ChannelDeclaration : Parser {
+    bool is_buffered, is_const;
+    int size, width;
+    std::string name;
+    bool is_compound;
+    std::vector< int > components;
+
+    void subscript() {
+        eat( Token::IndexOpen );
+        Token t = eat( Token::Constant );
+        eat( Token::IndexClose );
+        size = atoi( t.data.c_str() );
+        is_buffered = (size > 0);
+    }
+
+    ChannelDeclaration( Context &c ) : Parser( c ), size( 1 )
+    {
+        Token t = eat( Token::Identifier );
+        name = t.data;
+        is_buffered = false;
+        maybe( &ChannelDeclaration::subscript );
+    }
+};
 
 /*
  * This parses a compact (comma-separated) declaration with a common type but
@@ -327,14 +350,30 @@ struct Type : Parser {
 struct Declarations : Parser {
 
     std::vector< Declaration > decls;
+    std::vector< ChannelDeclaration > chandecls;
     std::vector< Type > types;
 
-    Declarations( Context &c ) : Parser( c ) {
-        bool is_const = false;
-        bool is_chan = false;
-        bool is_compound = false;
-        int width = 2; // default for untyped channels
+    bool is_const = false;
+    bool is_chan = false;
+    bool is_compound = false;
+    int width = 2; // default for untyped channels
 
+    template< typename T >
+    void init( T &decllist )
+    {
+        for ( unsigned i = 0; i < decllist.size(); ++i ) {
+            decllist[i].is_const = is_const;
+            //decls[i].is_chan = is_chan;
+            decllist[i].is_compound = is_compound;
+            for( unsigned j = 0; j < types.size(); ++j ) {
+                decllist[i].components.push_back( types[i].size );
+                width += types[i].size;
+            }
+            decllist[i].width = width;
+        }
+    }
+
+    Declarations( Context &c ) : Parser( c ) {
         if ( next( Token::Const ) )
             is_const = true;
 
@@ -352,17 +391,13 @@ struct Declarations : Parser {
             }
         } else
             fail( "type name (int, byte, channel)" );
-
-        list< Declaration >( std::back_inserter( decls ), Token::Comma );
-        for ( unsigned i = 0; i < decls.size(); ++i ) {
-            decls[i].is_const = is_const;
-            decls[i].is_chan = is_chan;
-            decls[i].is_compound = is_compound;
-            for( unsigned j = 0; j < types.size(); ++j ) {
-                decls[i].components.push_back( types[i].size );
-                width += types[i].size;
-            }
-            decls[i].width = width;
+        if ( is_chan ) {
+            list< ChannelDeclaration >( std::back_inserter( chandecls ), Token::Comma );
+            init( chandecls );
+        }
+        else {
+            list< Declaration >( std::back_inserter( decls ), Token::Comma );
+            init( decls );
         }
         semicolon();
     }
@@ -405,19 +440,23 @@ struct Transition : Parser {
     }
 };
 
-static inline void declarations( Parser &p, std::vector< Declaration > &decls )
+static inline void declarations( Parser &p, std::vector< Declaration > &decls, std::vector< ChannelDeclaration > &chandecls )
 {
     std::vector< Declarations > declss;
     p.many< Declarations >( std::back_inserter( declss ) );
-    for ( unsigned i = 0; i < declss.size(); ++i )
+    for ( unsigned i = 0; i < declss.size(); ++i ) {
         std::copy( declss[i].decls.begin(), declss[i].decls.end(),
                    std::back_inserter( decls ) );
+        std::copy( declss[i].chandecls.begin(), declss[i].chandecls.end(),
+                   std::back_inserter( chandecls ) );
+    }
 }
 
 template< bool IsProperty >
 struct Automaton : Parser {
     Identifier name;
     std::vector< Declaration > decls;
+    std::vector< ChannelDeclaration > chandecls;
     std::vector< Identifier > states, accepts, commits, inits;
     std::vector< Transition > trans;
 
@@ -442,7 +481,7 @@ struct Automaton : Parser {
         name = Identifier( c );
         eat( Token::BlockOpen );
 
-        declarations( *this, decls );
+        declarations( *this, decls, chandecls );
 
         eat( Token::State );
         list< Identifier >( std::back_inserter( states ), Token::Comma );
@@ -473,6 +512,7 @@ typedef Automaton< true > Property;
 
 struct System : Parser {
     std::vector< Declaration > decls;
+    std::vector< ChannelDeclaration > chandecls;
     std::vector< Process > processes;
     std::vector< Property > properties;
     Identifier property;
@@ -486,7 +526,7 @@ struct System : Parser {
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
-        declarations( *this, decls );
+        declarations( *this, decls, chandecls );
 
         many< Process >( std::back_inserter( processes ) );
         many< Property >( std::back_inserter( properties ) );
