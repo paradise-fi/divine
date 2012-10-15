@@ -142,6 +142,7 @@ static GenericValue builtin_thread_create(Interpreter *interp, const FunctionTyp
 
     interp->threads.push_back( ThreadContext() );
     interp->threads[ nieuw ].id = new_tid;
+    interp->threads[ nieuw ].sleepState = tss_running;
     interp->_context = nieuw; // switch to the new thread
     std::vector<GenericValue> nargs;
     std::transform( args.begin() + 2, args.end(), std::back_inserter( nargs ), _sanitize_gv );
@@ -275,6 +276,103 @@ static GenericValue builtin_trace(Interpreter *interp, const FunctionType *FT,
     return GenericValue();
 }
 
+static GenericValue builtin_cond_wait (Interpreter *interp, const FunctionType *ty,
+                                       const Args &args)
+{
+    int *var = (int *) interp->dereferencePointer(args[0]);
+    switch ( interp->thread().sleepState ) {
+    case tss_running: {
+        // fall asleep
+        interp->thread().sleepState = tss_sleeping;
+        // one more thread is waiting for condition
+        (*var) += 1;
+        // unlock mutex
+        std::vector<GenericValue> unlockMutexArgs;
+        unlockMutexArgs.push_back(args[1]);
+        builtin_mutex_unlock(interp,ty,unlockMutexArgs);
+        break;
+    }
+    case tss_woken: {
+        // try to lock associated mutex
+        GenericValue wait;
+        wait.IntVal = APInt( 32, 0 );
+        std::vector<GenericValue> lockMutexArgs;
+        lockMutexArgs.push_back(args[1]);
+        lockMutexArgs.push_back(wait);
+        GenericValue ret = builtin_mutex_lock(interp,ty,lockMutexArgs);
+        if (ret.IntVal.getZExtValue()) {
+            interp->thread().sleepState = tss_running;
+            return GenericValue();
+        }
+    }
+    }
+
+    // fake sleeping
+    interp->SFat( -2 ).pc = interp->SFat( -2 ).lastpc; // restart this call
+    return GenericValue();
+}
+
+static GenericValue __builtin_cond_signal (Interpreter *interp, const Args &args,
+                                           bool broadcast = false) {
+    int *var = (int *) interp->dereferencePointer(args[0]);
+    if (*var) { // some threads waiting for condition
+        int numOfWaiting = 0, wokenUp = 0;
+        for ( int i = 0; i < interp->threads.size(); ++i ) {
+            // is this thread sleeping ?
+            if ( interp->thread(i).sleepState != tss_sleeping ) {
+                continue;
+            }
+
+            // did pthread_cond_wait made this thread to sleep ?
+            ExecutionContext &threadContext = interp->SFat(-1,i);
+            Instruction &I = *interp->locationIndex.right( threadContext.pc ).insn;
+            if (!isa<CallInst>(I) && !isa<InvokeInst>(I)) {
+                continue;
+            }
+            CallSite cs(&I);
+            std::string fncName = cs.getCalledFunction()->getNameStr();
+            if (fncName != "__divine_builtin_cond_wait") {
+                continue;
+            }
+
+            // is it the same condition ?
+            Value *condOp = cs.getArgument(0);
+            GenericValue condOpV = interp->getOperandValue(condOp,threadContext);
+            if (var != (int*) interp->dereferencePointer(condOpV)) {
+                continue;
+            }
+
+            // depending on the _alternative wake up the thread
+            numOfWaiting++;
+            if ( ( broadcast ) ||
+                 ( (interp->_alternative + 1) & (1 << (numOfWaiting - 1)) ) ) {
+               // wake up the thread
+               interp->thread(i).sleepState = tss_woken;
+               wokenUp++;
+            }
+        }
+        if (numOfWaiting != *var) {
+            // conditional variable wasn't properly initialized
+            interp->flags.invalid_argument = true;
+        }
+        (*var) -= wokenUp;
+    }
+
+    return GenericValue();
+}
+
+static GenericValue builtin_cond_signal (Interpreter *interp, const FunctionType *,
+                                         const Args &args)
+{
+    return __builtin_cond_signal (interp, args);
+}
+
+static GenericValue builtin_cond_broadcast (Interpreter *interp, const FunctionType *,
+                                            const Args &args)
+{
+    return __builtin_cond_signal (interp, args, true);
+}
+
 static struct {
     const char *name;
     Builtin fun;
@@ -293,6 +391,9 @@ static struct {
     { "__divine_builtin_mutex_lock", builtin_mutex_lock },
     { "__divine_builtin_mutex_unlock", builtin_mutex_unlock },
     { "__divine_builtin_fork", builtin_fork },
+    { "__divine_builtin_cond_broadcast", builtin_cond_broadcast },
+    { "__divine_builtin_cond_wait", builtin_cond_wait },
+    { "__divine_builtin_cond_signal", builtin_cond_signal },
     { 0, 0 }
 };
 
@@ -355,6 +456,15 @@ bool Interpreter::viable( int ctx, int alt )
         return alt < 2; /* malloc has 2 different returns */
     if ( fun == builtin_amb )
         return alt < 2; /* amb has 2 different returns (0 and 1) */
+    if ( fun == builtin_cond_signal) {
+        // signal can be sent to any non-empty subset of waiting threads
+        // => max( 1, (2 ^ |waiting_threads|) - 1 ) successors
+        CallSite cs(&I);
+        Value *condOp = cs.getArgument(0);
+        GenericValue condOpV = getOperandValue(condOp, SF()); // _context = ctx;
+        int *condVar = (int *) dereferencePointer(condOpV);
+        return alt < std::max(1,(1 << *condVar) - 1);
+    }
 
     // everything else is deterministic as well
     return alt < 1;

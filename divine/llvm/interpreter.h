@@ -166,8 +166,14 @@ struct ExecutionContext {
     }
 };
 
+enum ThreadSleepState {tss_running = 0,
+                       tss_sleeping,
+                       tss_woken
+                       };
+
 struct ThreadContext {
     int id;
+    ThreadSleepState sleepState;
     std::vector< ExecutionContext > stack;
 };
 
@@ -178,7 +184,6 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
     TargetData TD;
     IntrinsicLowering *IL;
 
-    BiMap< int, Location > locationIndex;
     BiMap< int, Value * > valueIndex;
     BiMap< int, CallSite > csIndex;
     std::map< const GlobalVariable *, int > globals;
@@ -189,6 +194,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
 
 public:
     BiMap< int, Function * > functionIndex;
+    BiMap< int, Location > locationIndex;
     std::vector< ThreadContext > threads;
     std::map< std::string, std::string > properties;
     Module *module;
@@ -275,8 +281,8 @@ public:
     Blob snapshot( int extra, Pool &p ) {
         int need = sizeof( int ) + sizeof( flags ) +
                    sizeof( int ) + globalmem.size();
-        for ( int c = 0; c < threads.size(); ++c ) {
-            need += 4 + 4; /* stack size & thread id */
+        for ( int c = 0; c < threads.size(); ++c ) {    
+            need += sizeof( int ) * 3; /* stack size & thread id & sleep state */
             for ( int i = 0; i < stack( c ).size(); ++i )
                 need += SFat( i, c ).size();
         }
@@ -294,6 +300,7 @@ public:
 
         for ( int c = 0; c < threads.size(); ++c ) {
             offset = b.put( offset, int( threads[c].id ) );
+            offset = b.put( offset, int( threads[c].sleepState ) );
             offset = b.put( offset, int( stack( c ).size() ) );
 
             for ( int i = 0; i < stack( c ).size(); ++i )
@@ -305,7 +312,7 @@ public:
 
     void restore( Blob b, int extra ) {
         int contexts, globalsize;
-        int depth, tid;
+        int depth, tid, sleepState;
         int offset = extra;
 
         offset = b.get( offset, flags );
@@ -320,9 +327,11 @@ public:
 
         for ( int c = 0; c < contexts; ++c ) {
             offset = b.get( offset, tid );
+            offset = b.get( offset, sleepState );
             offset = b.get( offset, depth );
             stack( c ).resize( depth );
             threads[c].id = tid;
+            threads[c].sleepState = static_cast<ThreadSleepState>(sleepState);
             for ( int i = 0; i < depth; ++i )
                 offset = stack( c )[ i ].get( offset, b );
         }
@@ -421,6 +430,8 @@ public:
       return &(SF().varArgs[0]);
   }
 
+  GenericValue getOperandValue(Value *V, ExecutionContext &SF);
+
   void popStackAndReturnValueToCaller(Type *RetTy, GenericValue Result);
 
 private:  // Helper functions
@@ -439,7 +450,6 @@ private:  // Helper functions
 
   void initializeExecutionEngine() { }
     // void initializeExternalFunctions();
-  GenericValue getOperandValue(Value *V, ExecutionContext &SF);
   GenericValue executeTruncInst(Value *SrcVal, Type *DstTy,
                                 ExecutionContext &SF);
   GenericValue executeSExtInst(Value *SrcVal, Type *DstTy,

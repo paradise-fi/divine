@@ -38,6 +38,10 @@ void __divine_builtin_assert( int );
 void __divine_builtin_ap( int );
 void __divine_builtin_trace( const char *, ... );
 
+void __divine_builtin_cond_broadcast(int *);
+void __divine_builtin_cond_signal(int *);
+void __divine_builtin_cond_wait(int *, int *);
+
 #ifdef __cplusplus
 }
 
@@ -48,6 +52,8 @@ typedef int pthread_t;
 typedef int pthread_attr_t;
 typedef int pthread_mutexattr_t;
 typedef int pthread_mutex_t;
+typedef int pthread_cond_t;
+typedef int pthread_condattr_t;
 
 static int pthread_create(pthread_t *ptid, const pthread_attr_t *attr,
                           void *(*entry)(void *), void *arg) __attribute__((noinline));
@@ -166,6 +172,33 @@ static int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         __divine_builtin_mutex_unlock( mutex );
     return 0;
 }
+
+static int pthread_cond_init(pthread_cond_t *cond,
+                             const pthread_condattr_t *attr /*TODO?*/) {
+    *cond = 0;
+    return 0;
+}
+
+static int pthread_cond_destroy(pthread_cond_t *cond) {
+    assert (*cond == 0); // make sure that no thread is waiting on this condition
+    return 0;
+}
+
+static int pthread_cond_broadcast(pthread_cond_t *cond) {
+    __divine_builtin_cond_broadcast(cond);
+    return 0;
+}
+
+static int pthread_cond_signal(pthread_cond_t *cond) {
+    __divine_builtin_cond_signal(cond);
+    return 0;
+}
+
+static int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
+    __divine_builtin_cond_wait(cond, mutex);
+    return 0;
+}
+
 
 #define LTL(name, x) const char *__LTL_ ## name = #x
 

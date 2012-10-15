@@ -38,6 +38,7 @@ Interpreter::Interpreter(Module *M)
 
   threads.resize( 1 );
   thread( 0 ).id = 1;
+  thread( 0 ).sleepState = tss_running;
   _context = 0;
   _alternative = 0;
   flags.assert = flags.invalid_argument = false;
