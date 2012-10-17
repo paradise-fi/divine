@@ -23,6 +23,7 @@
 
 #include <wibble/sys/macros.h>
 #include <wibble/exception.h>
+#include <unistd.h>
 #ifdef POSIX
 #include <pthread.h>
 #include <unistd.h>
