@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 die() {
     echo -e "$@"
     exit 1
@@ -16,7 +16,7 @@ $DARCS || test -f manifest || die \
     "Sorry, the file \"manifest\" appears to be missing from the distribution;\n\
 please make sure you are running this script in the source directory."
 
-cat manifest 2> /dev/null | while read; do
+cat manifest 2> /dev/null | while read REPLY; do
     test -e "$REPLY" || die \
         "Sorry, but file \"$REPLY\" appears to be missing from the distribution;\nplease make sure your tarball is complete.";
 done
@@ -59,8 +59,8 @@ Download and install cmake? [y/n]"
     fi
 }
 
-$CMAKE --version >& /dev/null || cmake_inst
-$CMAKE --version >& /dev/null || die "$CMAKE unexpectedly failed."
+$CMAKE --version 2>&1 > /dev/null || cmake_inst
+$CMAKE --version 2>&1 > /dev/null || die "$CMAKE unexpectedly failed."
 
 test -e _build && die "The directory \"_build\" already exists, please remove it before reconfiguring."
 
