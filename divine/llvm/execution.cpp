@@ -763,8 +763,16 @@ GenericValue *Interpreter::dereferencePointer(GenericValue GV) {
         return 0;
     }
 
-    if ( intptr_t(GVTOP(GV)) - 0x100 < globalmem.size() )
-        return (GenericValue *) &globalmem[intptr_t(GVTOP(GV)) - 0x100];
+    if ( intptr_t(GVTOP(GV)) - 0x100 < constGlobalmem.size() + globalmem.size()) {
+        // global
+        if ( intptr_t(GVTOP(GV)) - 0x100 < constGlobalmem.size() ) {
+            // const global
+            return (GenericValue *) &constGlobalmem[intptr_t(GVTOP(GV)) - 0x100];
+        } else {
+            // non-const global
+            return (GenericValue *) &globalmem[intptr_t(GVTOP(GV)) - 0x100 - constGlobalmem.size()];
+        }
+    }
 
     if ( !arena.validate( intptr_t( GVTOP(GV) ) ) ) {
         flags.invalid_dereference = true;
@@ -1167,7 +1175,7 @@ void Interpreter::visitVAArgInst(VAArgInst &I) {
 
 GenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
     GlobalVariable *GV;
-    if ((GV = dyn_cast<GlobalVariable>(V)) && !GV->isConstant()) {
+    if (GV = dyn_cast<GlobalVariable>(V)) {
         std::map< const GlobalVariable *, int >::const_iterator i = globals.find( GV );
         assert( i != globals.end() );
         return PTOGV((void*) i->second);

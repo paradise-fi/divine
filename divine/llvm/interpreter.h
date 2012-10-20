@@ -190,6 +190,7 @@ class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<I
 
     void SetValue(Value *V, GenericValue Val, ExecutionContext &SF);
 
+    std::vector< char > constGlobalmem;
     std::vector< char > globalmem;
 
 public:

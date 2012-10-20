@@ -33,8 +33,8 @@ Interpreter::Interpreter(Module *M)
 
   initializeExecutionEngine();
 
-  emitGlobals( M );
   buildIndex( M );
+  emitGlobals( M );
 
   threads.resize( 1 );
   thread( 0 ).id = 1;
@@ -55,30 +55,42 @@ Interpreter::~Interpreter() {
 
 void Interpreter::emitGlobals( Module *M )
 {
-    for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var) {
-        if ( var->isConstant() )
-            continue;
+    int usedMem = 0;
+    for (int stage = 0; stage < 2; stage++) // 0: const globals; 1: non-const globals
+        for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var) {
+            if ( stage == var->isConstant() )
+                continue;
 
-        // GlobalVariable type is always a pointer, so dereference it first
-        Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
-        assert( ty );
+            // GlobalVariable type is always a pointer, so dereference it first
+            Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
+            assert( ty );
 
-        assert( !var->isDeclaration() ); // can't handle extern's yet
-        if ( std::string( var->getNameStr(), 0, 6 ) == "__LTL_" ) {
-            std::string name( var->getNameStr(), 6, std::string::npos );
-            GenericValue GV = getConstantValue(var->getInitializer());
-            properties[name] = std::string( (char*) GV.PointerVal );
-            continue; // do not emit this one
+            assert( !var->isDeclaration() ); // can't handle extern's yet
+            if ( std::string( var->getNameStr(), 0, 6 ) == "__LTL_" ) {
+                std::string name( var->getNameStr(), 6, std::string::npos );
+                GenericValue GV = getConstantValue(var->getInitializer());
+                properties[name] = std::string( (char*) dereferencePointer(GV) );
+                continue; // do not emit this one
+            }
+
+            globals.insert( std::make_pair( &*var, usedMem + 0x100 ) );
+            int tySize = TD.getTypeAllocSize(ty);
+            void* addr;
+            if (stage == 0) {
+                constGlobalmem.resize( constGlobalmem.size() + tySize );
+                addr = &constGlobalmem[constGlobalmem.size() - tySize];
+            } else {
+                globalmem.resize( globalmem.size() + tySize );
+                addr = &globalmem[globalmem.size() - tySize];
+            }
+            usedMem += tySize;
+            InitializeMemory(var->getInitializer(), addr);
         }
 
-        globals.insert( std::make_pair( &*var, globalmem.size() + 0x100 ) );
-        globalmem.resize( globalmem.size() + TD.getTypeAllocSize(ty) );
-    }
-
-    assert_leq( globalmem.size(), 0x300 ); // XXX 0x400 is the lowest valid
-                                           // arena pointer... but that
-                                           // shouldn't be hardcoded here of
-                                           // all places
+    assert_leq( usedMem, 0x300 ); // XXX 0x400 is the lowest valid
+                                  // arena pointer... but that
+                                  // shouldn't be hardcoded here of
+                                  // all places
 }
 
 void* Interpreter::getOrEmitGlobalVariable(const GlobalVariable *GV) {
@@ -86,12 +98,8 @@ void* Interpreter::getOrEmitGlobalVariable(const GlobalVariable *GV) {
         return getPointerToFunction(F);
 
     std::map< const GlobalVariable *, int >::const_iterator i = globals.find( GV );
-    if  (i == globals.end()) {
-        // not stored in globalmem => constant global stored internally in ExecutionEngine
-        return getPointerToGlobal(GV);
-    } else {
-        return (void*) i->second;
-    }
+    assert (i != globals.end());
+    return (void*) i->second;
 }
 
 void Interpreter::buildIndex( Module *module ) {

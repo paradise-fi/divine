@@ -2,7 +2,7 @@
 
 #ifndef __cplusplus
 #define NULL 0L
-typedef enum { true, false } bool; // well...
+typedef enum { false = 0, true } bool; // well...
 #endif
 
 #ifdef NO_MALLOC_FAILURE

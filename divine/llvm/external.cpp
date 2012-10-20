@@ -191,7 +191,7 @@ static GenericValue builtin_sprintf(Interpreter *interp, const FunctionType *FT,
                                     const std::vector<GenericValue> &Args)
 {
   char *OutputBuffer = (char *)GVTOP(Args[0]);
-  const char *FmtStr = (const char *)GVTOP(Args[1]);
+  const char *FmtStr = (const char *)interp->dereferencePointer(Args[1]);
   unsigned ArgNo = 2;
 
   // printf should return # chars printed.  This is completely incorrect, but
