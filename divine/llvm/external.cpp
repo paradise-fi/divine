@@ -71,8 +71,15 @@ static GenericValue builtin_amb(Interpreter *interp, const FunctionType *, const
 
 static GenericValue builtin_free(Interpreter *interp, const FunctionType *, const Args &args)
 {
-    Arena::Index idx = intptr_t(GVTOP(args[0]));
-    interp->arena.free(idx);
+    intptr_t ptr = intptr_t(GVTOP(args[0]));
+    Arena::Index idx = (Arena::Index) ptr;
+    if (idx.block != 0) { // not NULL
+        if (!interp->arena.validate(idx)) {
+            interp->flags.invalid_argument = true;
+        } else {
+            interp->arena.free(idx);
+        }
+    } // free(NULL) is noop
     return GenericValue();
 }
 
