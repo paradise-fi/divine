@@ -47,8 +47,22 @@ std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen )
         } else if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
             res = ptr + " <...>";
         } else {
-            Describe pointee = describeValue( pointeeTy, static_cast< char * >( arena.translate( idx ) ), seen );
-            res = ptr + " " + pointee.first;
+            char *ptrAdr = NULL;
+            int __idx;
+            if ((__idx = idx - 0x100) < constGlobalmem.size()) {
+                ptrAdr = &constGlobalmem[__idx];
+            } else  if ((__idx -= constGlobalmem.size()) < globalmem.size()) {
+                ptrAdr = &globalmem[__idx];
+            } else {
+                if ( arena.validate(idx) && ((Arena::Index) idx ).block ) {
+                    ptrAdr = static_cast< char * >(arena.translate(idx));
+                }
+            }
+            if (ptrAdr) {
+                Describe pointee = describeValue( pointeeTy, ptrAdr, seen );
+                res = ptr + " " + pointee.first;
+            } else
+                res = ptr + " (INVALID ADDRESS)";
             seen.insert( std::make_pair( idx, pointeeTy ) );
         }
     }
