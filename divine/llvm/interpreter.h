@@ -411,7 +411,6 @@ public:
   void visitCallSite(CallSite CS);
   void visitCallInst(CallInst &I) { visitCallSite (CallSite (&I)); }
   void visitInvokeInst(InvokeInst &I) { visitCallSite (CallSite (&I)); }
-  void visitUnwindInst(UnwindInst &I);
   void visitUnreachableInst(UnreachableInst &I);
 
   void visitShl(BinaryOperator &I);
@@ -484,6 +483,9 @@ private:
     { assert_die(); }
     virtual void freeMachineCodeForFunction(Function *) { assert_die(); }
     virtual void *recompileAndRelinkFunction(Function*) { assert_die(); }
+    virtual void *getPointerToNamedFunction(const std::string &, bool)
+    { assert_die(); }
+
 };
 
 }

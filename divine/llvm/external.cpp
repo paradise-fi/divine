@@ -337,7 +337,7 @@ static GenericValue __builtin_cond_signal (Interpreter *interp, const Args &args
                 continue;
             }
             CallSite cs(&I);
-            std::string fncName = cs.getCalledFunction()->getNameStr();
+            std::string fncName = cs.getCalledFunction()->getName().str();
             if (fncName != "__divine_builtin_cond_wait") {
                 continue;
             }
@@ -405,7 +405,7 @@ static struct {
 };
 
 Builtin findBuiltin( Function *F ) {
-    std::string plain = F->getNameStr();
+    std::string plain = F->getName().str();
 
     for ( int i = 0; builtins[i].name; ++i ) {
         if ( plain == builtins[i].name )
@@ -452,7 +452,7 @@ bool Interpreter::viable( int ctx, int alt )
     if (!F || !F->isDeclaration())
         return alt < 1; // not a builtin, deterministic
 
-    std::string plain = F->getNameStr();
+    std::string plain = F->getName().str();
 
     if ( std::string( plain, 0, 4 ) == "llvm" )
         return alt < 1;
@@ -500,7 +500,7 @@ bool Interpreter::isTau( int ctx )
             return false; // not a builtin, might recurse
 
         // FIXME SLOW
-        std::string plain = F->getNameStr();
+        std::string plain = F->getName().str();
         if ( std::string( plain, 0, 8 ) == "llvm.dbg" )
             return true; // debug builtins can be ignored
 

@@ -43,7 +43,7 @@ std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen )
     if ( idx ) {
         Type *pointeeTy = cast< PointerType >( t )->getElementType();
         if ( isa< FunctionType >( pointeeTy ) ) {
-            res = "@" + functionIndex.right( idx )->getNameStr();
+            res = "@" + functionIndex.right( idx )->getName().str();
         } else if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
             res = ptr + " <...>";
         } else {

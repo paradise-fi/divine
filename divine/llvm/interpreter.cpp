@@ -66,8 +66,8 @@ void Interpreter::emitGlobals( Module *M )
             assert( ty );
 
             assert( !var->isDeclaration() ); // can't handle extern's yet
-            if ( std::string( var->getNameStr(), 0, 6 ) == "__LTL_" ) {
-                std::string name( var->getNameStr(), 6, std::string::npos );
+            if ( std::string( var->getName().str(), 0, 6 ) == "__LTL_" ) {
+                std::string name( var->getName().str(), 6, std::string::npos );
                 GenericValue GV = getConstantValue(var->getInitializer());
                 properties[name] = std::string( (char*) dereferencePointer(GV) );
                 continue; // do not emit this one
@@ -138,6 +138,6 @@ void Interpreter::setLocation( ExecutionContext &SF, Location l ) {
 
 namespace divine { namespace llvm {
 std::ostream &operator<<( std::ostream &ostr, Location l ) {
-    return ostr << "<" << l.function->getNameStr() << ", " << l.insn->getNameStr() << ">";
+    return ostr << "<" << l.function->getName().str() << ", " << l.insn->getName().str() << ">";
 }
 } }
