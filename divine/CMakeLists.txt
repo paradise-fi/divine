@@ -14,7 +14,9 @@ foreach( D utility toolkit generator algorithm instances )
     file( GLOB SRC_${D} ${D}/*.cpp )
     file( GLOB H_${D} ${D}/*.h )
     install( FILES ${H_${D}} DESTINATION include/divine/${D} COMPONENT divine_dev )
-    list( APPEND SRC ${SRC_${D}} )
+    if ( NOT ${D} STREQUAL instances )
+       list( APPEND SRC ${SRC_${D}} )
+    endif()
 endforeach()
 
 if ( LEGACY )
@@ -82,7 +84,11 @@ add_library( libdivine STATIC
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
     toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp )
 
+add_library( libdivine-instances STATIC ${SRC_instances} )
+
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
+set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
+
 wibble_add_test( divine-test ${testh} )
 
 if( NOT WIN32 )
@@ -107,6 +113,7 @@ if( NOT WIN32 )
 endif( NOT WIN32 )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
+install( TARGETS libdivine-instances DESTINATION lib COMPONENT divine_dev )
 
 install( FILES ${H} DESTINATION include/divine COMPONENT divine_dev )
 install( FILES ${H_LEGACY} DESTINATION include/divine/legacy COMPONENT divine_dev )

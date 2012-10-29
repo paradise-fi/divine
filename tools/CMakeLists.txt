@@ -4,7 +4,7 @@ add_definitions( -Wextra -Wno-unused-parameter -Wno-sign-compare )
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
-link_libraries( libdivine wibble )
+link_libraries( libdivine libdivine-instances wibble )
 if( MURPHI )
     link_libraries( murphi )
 endif()
