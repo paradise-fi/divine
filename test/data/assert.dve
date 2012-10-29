@@ -1,0 +1,12 @@
+process P1 
+{
+  byte i = 0;
+  state a;
+  init a;
+  assert
+    a : i < 3;
+  trans	a->a {guard i < 5; effect i = i+1;},
+        a->a {guard i == 5; effect i = 0;};
+}
+
+system async;

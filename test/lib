@@ -77,6 +77,17 @@ for_dve_small() {
     run $wrapper data/unbufchan.dve "$@"
     check statespace 2 4 0 0
     $extracheck data/unbufchan.dve
+
+    check clear
+    run $wrapper data/assert.dve "@"
+    check reachability_goal
+    check statespace 6 7 0 0
+
+    check clear
+    run $wrapper data/assert2.dve "@"
+    check reachability_valid
+    check statespace 6 7 0 0
+
 }
 
 dve_small() {
