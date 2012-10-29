@@ -12,8 +12,8 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#ifndef PLUGIN_MANAGER_H_
-#define PLUGIN_MANAGER_H_
+#ifndef MODULE_MANAGER_H_
+#define MODULE_MANAGER_H_
 
 #include <QObject>
 #include <QString>
@@ -29,7 +29,7 @@ namespace gui {
 class AbstractDocumentFactory;
 class AbstractSimulatorFactory;
   
-class PluginManager : public QObject {
+class ModuleManager : public QObject {
   Q_OBJECT
 
 public:
@@ -37,8 +37,8 @@ public:
   typedef QList<AbstractSimulatorFactory*> SimulatorList;
   
 public:
-  PluginManager(QObject * parent = NULL) : QObject(parent) {}
-  ~PluginManager();
+  ModuleManager(QObject * parent = NULL) : QObject(parent) {}
+  ~ModuleManager();
 
   void registerDocument(AbstractDocumentFactory * factory);
   void registerSimulator(AbstractSimulatorFactory * loader);

@@ -18,8 +18,6 @@
 #include <QObject>
 #include <QCompleter>
 
-#include "baseIdeExport.h"
-
 #include "textEditor.h"
 
 namespace divine {
@@ -27,7 +25,7 @@ namespace gui {
 
 class TextEditor;
 
-class BASE_IDE_EXPORT SimpleIndenter : public QObject, public AbstractKeyPressHandler
+class SimpleIndenter : public QObject, public AbstractKeyPressHandler
 {
   Q_OBJECT
 
@@ -44,7 +42,7 @@ class BASE_IDE_EXPORT SimpleIndenter : public QObject, public AbstractKeyPressHa
     bool enabled_;
 };
 
-class BASE_IDE_EXPORT SimpleTabConverter : public QObject, public AbstractKeyPressHandler
+class SimpleTabConverter : public QObject, public AbstractKeyPressHandler
 {
   Q_OBJECT
 
@@ -62,7 +60,7 @@ class BASE_IDE_EXPORT SimpleTabConverter : public QObject, public AbstractKeyPre
     bool enabled_;
 };
 
-class BASE_IDE_EXPORT SimpleCompleter : public QCompleter, public AbstractKeyPressHandler
+class SimpleCompleter : public QCompleter, public AbstractKeyPressHandler
 {
   Q_OBJECT
 

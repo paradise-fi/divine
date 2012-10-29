@@ -17,7 +17,7 @@
 #include "ui_editorPreferences.h"
 
 #include "editorPreferences.h"
-#include "plugins.h"
+#include "modules.h"
 
 namespace divine {
 namespace gui {

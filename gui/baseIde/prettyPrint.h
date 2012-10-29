@@ -15,20 +15,18 @@
 #ifndef PRETTY_PRINT_H_
 #define PRETTY_PRINT_H_
 
-#include "baseIdeExport.h"
-
 #include <QVariant>
 #include <QString>
 
 namespace divine {
 namespace gui {
 
-BASE_IDE_EXPORT const QString quoteString(const QString & src);
-BASE_IDE_EXPORT const QString unquoteString(const QString & src);
+const QString quoteString(const QString & src);
+const QString unquoteString(const QString & src);
 
-BASE_IDE_EXPORT const QString prettyPrint(const QVariantList & array);
-BASE_IDE_EXPORT const QString prettyPrint(const QVariantMap & map);
-BASE_IDE_EXPORT const QString prettyPrint(const QVariant & var);
+const QString prettyPrint(const QVariantList & array);
+const QString prettyPrint(const QVariantMap & map);
+const QString prettyPrint(const QVariant & var);
 
 }
 }

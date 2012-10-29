@@ -26,7 +26,7 @@
 #include "signalLock.h"
 
 // defaults
-#include "baseToolsPlugin.h"
+#include "baseToolsModule.h"
 
 namespace divine {
 namespace gui {

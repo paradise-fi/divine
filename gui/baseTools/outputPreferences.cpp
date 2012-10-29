@@ -20,7 +20,7 @@
 #include "settings.h"
 
 // defaults
-#include "baseToolsPlugin.h"
+#include "baseToolsModule.h"
 
 namespace divine {
 namespace gui {

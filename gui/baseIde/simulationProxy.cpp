@@ -27,8 +27,8 @@
 #include "abstractEditor.h"
 #include "abstractDocument.h"
 #include "abstractToolLock.h"
-#include "plugins.h"
-#include "pluginManager.h"
+#include "modules.h"
+#include "moduleManager.h"
 #include "mainForm.h"
 #include "settings.h"
 #include "layoutManager.h"
@@ -240,7 +240,7 @@ void SimulationProxy::start()
   lock_->lock(editor->document());
 
   // create a new simulator instance
-  const AbstractSimulatorFactory * fab = root_->plugins()->findSimulator(
+  const AbstractSimulatorFactory * fab = root_->modules()->findSimulator(
     QFileInfo(editor->document()->path()).suffix());
 
   Q_ASSERT(fab);
@@ -414,7 +414,7 @@ void SimulationProxy::updateActions()
   if(isReadOnly() || root_->isLocked() || !editor) {
     startAct_->setEnabled(false);
   } else {
-    bool canSimulate = root_->plugins()->findSimulator(QFileInfo(
+    bool canSimulate = root_->modules()->findSimulator(QFileInfo(
       editor->document()->path()).suffix()) != NULL;
 
     startAct_->setEnabled(canSimulate);

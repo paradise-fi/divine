@@ -18,7 +18,6 @@
 #include <QObject>
 #include <QVariant>
 
-#include "baseIdeExport.h"
 #include "abstractSimulator.h"
 
 class QAction;
@@ -30,7 +29,7 @@ class MainForm;
 class SimulationLock;
 class SimulationLoader;
 
-class BASE_IDE_EXPORT SimulationProxy : public QObject
+class SimulationProxy : public QObject
 {
     Q_OBJECT
 

@@ -4,8 +4,7 @@ include(${QT_USE_FILE})
 include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
 
 set(BASE_IDE_SRC
-    baseIdeExport.h
-    plugins.h
+    modules.h
 
     # abstract
     abstractDocument.h
@@ -18,8 +17,8 @@ set(BASE_IDE_SRC
     mainForm.h
     layoutManager.cpp
     layoutManager.h
-    pluginManager.cpp
-    pluginManager.h
+    moduleManager.cpp
+    moduleManager.h
 
     recentFilesMenu.cpp
     recentFilesMenu.h
@@ -59,13 +58,13 @@ set(BASE_IDE_SRC
 )
 
 set(BASE_IDE_MOC
-    plugins.h
+    modules.h
     abstractDocument.h
     abstractEditor.h
     abstractSimulator.h
     mainForm.h
     layoutManager.h
-    pluginManager.h
+    moduleManager.h
     recentFilesMenu.h
     simulationProxy.h
     simulationTools.h
@@ -98,5 +97,3 @@ qt4_add_resources(BASE_IDE_SRC4 ${BASE_IDE_RES})
 add_library(baseIDE SHARED ${BASE_IDE_SRC} ${BASE_IDE_SRC2}
                            ${BASE_IDE_SRC3} ${BASE_IDE_SRC4})
 target_link_libraries(baseIDE ${QT_LIBRARIES})
-
-install(TARGETS baseIDE DESTINATION ${GUI_LIB_DEST} COMPONENT gui_tools)

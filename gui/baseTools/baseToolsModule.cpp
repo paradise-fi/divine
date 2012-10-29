@@ -16,10 +16,10 @@
 #include <QAction>
 #include <QMenu>
 
-#include "baseToolsPlugin.h"
+#include "baseToolsModule.h"
 #include "mainForm.h"
 #include "simulationProxy.h"
-#include "pluginManager.h"
+#include "moduleManager.h"
 #include "preferencesDialog.h"
 #include "layoutManager.h"
 
@@ -28,7 +28,6 @@
 #include "simulatorPreferences.h"
 #include "tracePreferences.h"
 
-#include "filesystem.h"
 #include "outputDock.h"
 #include "traceDock.h"
 #include "watchDock.h"
@@ -102,7 +101,7 @@ AbstractDocument * TextDocumentFactory::create(MainForm * root) const
 //
 // Plugin implementation
 //
-void BaseToolsPlugin::install(MainForm * root)
+void BaseToolsModule::install(MainForm * root)
 {
   // preferences
   QWidget * page = new OutputPreferences();
@@ -119,23 +118,13 @@ void BaseToolsPlugin::install(MainForm * root)
 
   // text editor
   TextDocumentFactory * fab = new TextDocumentFactory(this);
-  root->plugins()->registerDocument(fab);
+  root->modules()->registerDocument(fab);
 
   // panels
   QMenu * menu = root->findChild<QMenu*>("main.menu.view.panels");
   QAction * action;
   Q_ASSERT(menu);
-  
-  // file system browser
-  FileSystemBrowserDock * fs = new FileSystemBrowserDock(root);
-  fs->setObjectName("common.dock.filesystem");
-  root->addDockWidget(Qt::LeftDockWidgetArea, fs);
-
-  action = fs->toggleViewAction();
-  action->setText(QObject::tr("&Filesystem"));
-  action->setStatusTip(QObject::tr("Toggles the filesystem panel"));
-  menu->addAction(action);
-  
+    
   // output
   OutputDock * output = new OutputDock(root);
   output->setObjectName("common.dock.output");
@@ -204,5 +193,3 @@ void BaseToolsPlugin::install(MainForm * root)
 
 }
 }
-
-Q_EXPORT_PLUGIN2(baseTools, divine::gui::BaseToolsPlugin)

@@ -15,7 +15,7 @@
 #ifndef DVE_PLUGIN_H_
 #define DVE_PLUGIN_H_
 
-#include "plugins.h"
+#include "modules.h"
 
 class QAction;
 class QMenu;
@@ -80,16 +80,12 @@ class DveSimulatorFactory : public AbstractSimulatorFactory
     AbstractSimulator * create(MainForm * root) const;
 };
 
-/*!
- * Main class of the dve_editor plugin.
- */
-class DvePlugin : public QObject, public AbstractPlugin
+class DveModule : public QObject, public AbstractModule
 {
     Q_OBJECT
-    Q_INTERFACES(divine::gui::AbstractPlugin)
 
   public:
-    DvePlugin();
+    DveModule();
 
     void install(MainForm * root);
 

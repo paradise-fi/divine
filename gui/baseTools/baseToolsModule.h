@@ -18,7 +18,7 @@
 #include <QColor>
 #include <QFont>
 
-#include "plugins.h"
+#include "modules.h"
 #include "settings.h"
 
 namespace divine {
@@ -60,12 +60,11 @@ class TextDocumentFactory : public AbstractDocumentFactory
 };
 
 /*!
- * The BaseToolsPlugin class is the main class in base_tools plugin.
+ * The BaseToolsModule class is the main class in base_tools plugin.
  */
-class BaseToolsPlugin : public QObject, public AbstractPlugin
+class BaseToolsModule : public QObject, public AbstractModule
 {
     Q_OBJECT
-    Q_INTERFACES(divine::gui::AbstractPlugin)
 
   public:
     void install(MainForm * root);

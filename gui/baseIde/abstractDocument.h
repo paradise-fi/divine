@@ -15,8 +15,6 @@
 #ifndef ABSTRACT_DOCUMENT_H_
 #define ABSTRACT_DOCUMENT_H_
 
-#include "baseIdeExport.h"
-
 #include <QObject>
 #include <QStringList>
 
@@ -25,7 +23,7 @@ namespace gui {
 
 class AbstractEditor;
   
-class BASE_IDE_EXPORT AbstractDocument : public QObject
+class AbstractDocument : public QObject
 {
   Q_OBJECT
   

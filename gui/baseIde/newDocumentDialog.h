@@ -17,7 +17,7 @@
 
 #include <QDialog>
 
-#include "pluginManager.h"
+#include "moduleManager.h"
 
 namespace Ui
 {
@@ -38,7 +38,7 @@ class NewDocumentDialog : public QDialog
     Q_OBJECT
 
   public:
-    NewDocumentDialog(const PluginManager::DocumentList & docs, QWidget * parent = NULL);
+    NewDocumentDialog(const ModuleManager::DocumentList & docs, QWidget * parent = NULL);
     ~NewDocumentDialog();
 
     QString selection() const;

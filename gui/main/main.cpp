@@ -13,48 +13,33 @@
  ***************************************************************************/
 
 #include <QApplication>
-#include <QDir>
-#include <QPluginLoader>
+
+#include "baseIde/modules.h"
+#include "baseTools/baseToolsModule.h"
+#include "dve/dveModule.h"
 
 #include "mainForm.h"
-#include "plugins.h"
 
-void loadPlugins(divine::gui::MainForm * root)
+using namespace divine::gui;
+
+void loadModules(MainForm * root)
 {
-  QDir pluginsDir;
-  const char * envPlugins = getenv("DIVINE_GUI_PLUGIN_PATH");
-
-  if(envPlugins) {
-    pluginsDir = QDir(envPlugins);
-  } else {
-    pluginsDir = QDir(qApp->applicationDirPath());
-    pluginsDir.cd("plugins");
-  }
-
-  foreach(QString fileName, pluginsDir.entryList(QDir::Files)) {
-    QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
-    QObject * plugin = loader.instance();
-
-    if (plugin) {
-      divine::gui::AbstractPlugin * ap = qobject_cast< divine::gui::AbstractPlugin* >(plugin);
-
-      if (ap)
-        ap->install(root);
-    } else {
-      qDebug("%s", loader.errorString().toAscii().data());
-    }
-  }
+  
 }
 
 int main(int argc, char * argv[])
 {
   QApplication app(argc, argv);
+  MainForm mf;
 
-  divine::gui::MainForm mf;
+  // load modules
+  BaseToolsModule btm;
+  btm.install(&mf);
+  
+  DveModule dm;
+  dm.install(&mf);
 
-  // load plugins
-  loadPlugins(&mf);
-
+  // show time
   mf.initialize();
   mf.show();
   return app.exec();

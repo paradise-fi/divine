@@ -19,8 +19,6 @@
 #include <QPlainTextEdit>
 #include <QTextCharFormat>
 
-#include "baseIdeExport.h"
-
 #include "abstractEditor.h"
 #include "abstractDocument.h"
 
@@ -35,7 +33,7 @@ namespace gui {
 class MainForm;
 class SearchPanel;
 
-class BASE_IDE_EXPORT AbstractKeyPressHandler {
+class AbstractKeyPressHandler {
   public:
     virtual ~AbstractKeyPressHandler() {}
 
@@ -43,7 +41,7 @@ class BASE_IDE_EXPORT AbstractKeyPressHandler {
       QKeyEvent * event, const QRect * cursorRect) = 0;
 };
 
-class BASE_IDE_EXPORT EnhancedPlainTextEdit : public QPlainTextEdit,
+class EnhancedPlainTextEdit : public QPlainTextEdit,
                                               public LineNumberBarHost
 {
   Q_OBJECT
@@ -105,7 +103,7 @@ class BASE_IDE_EXPORT EnhancedPlainTextEdit : public QPlainTextEdit,
 
 };
 
-class BASE_IDE_EXPORT TextEditor : public AbstractEditor
+class TextEditor : public AbstractEditor
 {
   Q_OBJECT
 

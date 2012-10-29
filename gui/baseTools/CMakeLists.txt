@@ -5,10 +5,8 @@ include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
 include_directories(qt)
 
 set(BASE_TOOLS_SRC
-    baseToolsPlugin.cpp
-    baseToolsPlugin.h
-    filesystem.cpp
-    filesystem.h
+    baseToolsModule.cpp
+    baseToolsModule.h
     outputDock.cpp
     outputDock.h
     mscDock.cpp
@@ -31,9 +29,7 @@ set(BASE_TOOLS_SRC
 )
 
 set(BASE_TOOLS_MOC
-    ../baseIde/plugins.h
-    baseToolsPlugin.h
-    filesystem.h
+    baseToolsModule.h
     outputDock.h
     mscDock.h
     cycleBar.h
@@ -62,8 +58,6 @@ qt4_wrap_cpp(BASE_TOOLS_SRC2 ${BASE_TOOLS_MOC})
 qt4_wrap_ui(BASE_TOOLS_SRC3 ${BASE_TOOLS_UI})
 qt4_add_resources(BASE_TOOLS_SRC4 ${BASE_TOOLS_RES})
 
-add_library(baseTools MODULE ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2}
+add_library(baseTools STATIC ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2}
                              ${BASE_TOOLS_SRC3} ${BASE_TOOLS_SRC4})
 target_link_libraries(baseTools baseIDE ${QT_LIBRARIES} qtcolorpicker)
-
-install(TARGETS baseTools DESTINATION ${GUI_PLUGIN_DEST} COMPONENT gui_tools)

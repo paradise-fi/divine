@@ -12,8 +12,8 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#include "plugins.h"
-#include "pluginManager.h"
+#include "modules.h"
+#include "moduleManager.h"
 
 namespace divine {
 namespace gui {
@@ -39,7 +39,7 @@ namespace {
   
 }
 
-PluginManager::~PluginManager()
+ModuleManager::~ModuleManager()
 {
 }
 
@@ -47,7 +47,7 @@ PluginManager::~PluginManager()
  * Registers EditorBuilder instance for given document type.
  * \param factory Factory class instance.
  */
-void PluginManager::registerDocument(AbstractDocumentFactory * factory)
+void ModuleManager::registerDocument(AbstractDocumentFactory * factory)
 {
   DocumentList::iterator pos = qLowerBound(
     documents_.begin(), documents_.end(), factory->suffix(),
@@ -64,7 +64,7 @@ void PluginManager::registerDocument(AbstractDocumentFactory * factory)
  * Registers SimulatorFactory instance for given document type.
  * \param factory Factory class instance.
  */
-void PluginManager::registerSimulator(AbstractSimulatorFactory * factory)
+void ModuleManager::registerSimulator(AbstractSimulatorFactory * factory)
 {
   SimulatorList::iterator pos = qLowerBound(
     simulators_.begin(), simulators_.end(), factory->suffix(),
@@ -77,7 +77,7 @@ void PluginManager::registerSimulator(AbstractSimulatorFactory * factory)
   simulators_.insert(pos, factory);
 }
 
-const AbstractDocumentFactory * PluginManager::findDocument(const QString & suffix) const
+const AbstractDocumentFactory * ModuleManager::findDocument(const QString & suffix) const
 {
   DocumentList::const_iterator pos = qBinaryFind(
     documents_.begin(), documents_.end(), suffix,
@@ -89,7 +89,7 @@ const AbstractDocumentFactory * PluginManager::findDocument(const QString & suff
   return *pos;
 }
 
-const AbstractSimulatorFactory * PluginManager::findSimulator(const QString & suffix) const
+const AbstractSimulatorFactory * ModuleManager::findSimulator(const QString & suffix) const
 {
   SimulatorList::const_iterator pos = qBinaryFind(
     simulators_.begin(), simulators_.end(), suffix,

@@ -26,8 +26,8 @@
 #include "settings.h"
 #include "layoutManager.h"
 #include "recentFilesMenu.h"
-#include "plugins.h"
-#include "pluginManager.h"
+#include "modules.h"
+#include "moduleManager.h"
 
 #ifdef Q_OS_WIN32
 #  define ASSISTANT_BIN "assistant.exe"
@@ -81,7 +81,7 @@ MainForm::MainForm(QWidget* parent, Qt::WindowFlags flags)
   setObjectName("ide.main");
   setWindowIcon(QIcon(":/icons/divine"));
 
-  plugins_ = new PluginManager();
+  modules_ = new ModuleManager();
 
   QStringList layouts;
   layouts << "edit" << "debug";
@@ -346,11 +346,11 @@ bool MainForm::openDocument(const QString path, QStringList views, bool focus)
 
   // open the document
   if (!doc) {
-    const AbstractDocumentFactory * fab = plugins_->findDocument(finfo.suffix());
+    const AbstractDocumentFactory * fab = modules_->findDocument(finfo.suffix());
 
     // universal editor
     if (!fab)
-      fab = plugins_->findDocument("");
+      fab = modules_->findDocument("");
 
     // nothing to open with
     if (!fab)
@@ -927,12 +927,12 @@ void MainForm::saveSession()
 
 void MainForm::newDocument()
 {
-  NewDocumentDialog dlg(plugins_->documents(), this);
+  NewDocumentDialog dlg(modules_->documents(), this);
 
   if (!dlg.exec())
     return;
 
-  const AbstractDocumentFactory * factory = plugins_->findDocument(dlg.selection());
+  const AbstractDocumentFactory * factory = modules_->findDocument(dlg.selection());
   Q_ASSERT(factory);
 
   AbstractDocument * doc = factory->create(this);
@@ -949,9 +949,9 @@ void MainForm::open()
   QStringList filters;
   QStringList suffixes;
 
-  const PluginManager::DocumentList & docs = plugins_->documents();
+  const ModuleManager::DocumentList & docs = modules_->documents();
 
-  foreach(PluginManager::DocumentList::value_type itr, docs) {
+  foreach(ModuleManager::DocumentList::value_type itr, docs) {
     // skip universal editor
     if(itr->suffix().isEmpty())
       continue;
@@ -961,7 +961,7 @@ void MainForm::open()
 
   filters << QString("%1 (%2) (%2)").arg(tr("All applicable files"), suffixes.join(" "));
 
-  foreach(PluginManager::DocumentList::value_type itr, docs) {
+  foreach(ModuleManager::DocumentList::value_type itr, docs) {
     // skip universal editor
     if(itr->suffix().isEmpty())
       continue;
@@ -1020,11 +1020,11 @@ bool MainForm::saveAs(AbstractEditor * editor)
   // setup the file dialog
   QString filter;
 
-  const AbstractDocumentFactory * fab = plugins_->findDocument(
+  const AbstractDocumentFactory * fab = modules_->findDocument(
     QFileInfo(editor->sourcePath()).suffix());
 
   if(!fab)
-    fab = plugins_->findDocument("");
+    fab = modules_->findDocument("");
 
   // the current editor had to be created somehow
   Q_ASSERT(fab);

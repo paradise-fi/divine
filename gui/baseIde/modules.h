@@ -12,8 +12,8 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#ifndef PLUGINS_H_
-#define PLUGINS_H_
+#ifndef MODULES_H_
+#define MODULES_H_
 
 #include <QObject>
 #include <QString>
@@ -74,12 +74,12 @@ class AbstractSimulatorFactory : public QObject
 };
 
 /*!
- * The AbstractPlugin class provides interface for all plugins.
+ * The AbstractModule class provides interface for all modules.
  */
-class AbstractPlugin
+class AbstractModule
 {
   public:
-    virtual ~AbstractPlugin() {};
+    virtual ~AbstractModule() {};
 
     /*!
      * This function installs the plugin to the program.
@@ -90,7 +90,5 @@ class AbstractPlugin
 
 }
 }
-
-Q_DECLARE_INTERFACE(divine::gui::AbstractPlugin, "edu.ParaDiSe.DiVinE_IDE.AbstractPlugin/2.0")
 
 #endif

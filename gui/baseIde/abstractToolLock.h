@@ -15,8 +15,6 @@
 #ifndef ABSTRACT_TOOL_LOCK_H_
 #define ABSTRACT_TOOL_LOCK_H_
 
-#include "baseIdeExport.h"
-
 #include <QObject>
 
 namespace divine {
@@ -24,7 +22,7 @@ namespace gui {
 
 class AbstractDocument;
 
-class BASE_IDE_EXPORT AbstractToolLock
+class AbstractToolLock
 {
   public:
     AbstractToolLock() {}

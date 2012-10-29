@@ -21,7 +21,6 @@
 #include <QHBoxLayout>
 
 #include "ltlPreferences.h"
-#include "plugins.h"
 #include "settings.h"
 
 namespace divine {

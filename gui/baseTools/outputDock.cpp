@@ -17,7 +17,7 @@
 #include <QFont>
 #include <QMenu>
 
-#include "baseToolsPlugin.h"
+#include "baseToolsModule.h"
 #include "settings.h"
 #include "outputDock.h"
 

@@ -15,8 +15,6 @@
 #ifndef ABSTRACT_SIMULATOR_H_
 #define ABSTRACT_SIMULATOR_H_
 
-#include "baseIdeExport.h"
-
 #include <QObject>
 #include <QList>
 #include <QVariant>
@@ -31,14 +29,14 @@ class AbstractDocument;
 //
 // Symbol table
 //
-struct BASE_IDE_EXPORT SymbolType {
+struct SymbolType {
   virtual ~SymbolType() {}
   
   QString id;
   QString name;
 };
 
-struct BASE_IDE_EXPORT PODType : public SymbolType {
+struct PODType : public SymbolType {
   enum BaseType {
     Integer,
     Char,
@@ -51,22 +49,22 @@ struct BASE_IDE_EXPORT PODType : public SymbolType {
   qint64 max;
 };
 
-struct BASE_IDE_EXPORT ArrayType : public SymbolType {
+struct ArrayType : public SymbolType {
   QString subtype;
   int size;
 };
 
-struct BASE_IDE_EXPORT ListType : public SymbolType {
+struct ListType : public SymbolType {
 };
 
-struct BASE_IDE_EXPORT OptionType : public SymbolType {
+struct OptionType : public SymbolType {
   QStringList options;
 };
 
 //
 // Other structures
 //
-struct BASE_IDE_EXPORT Symbol {
+struct Symbol {
   static const quint32 NoFlag = 0x00;
   static const quint32 System = 0x01;
   static const quint32 ReadOnly = 0x02;
@@ -87,7 +85,7 @@ struct BASE_IDE_EXPORT Symbol {
   bool hasFlag(quint32 flag) const { return (flags & flag) != 0; }
 };
 
-struct BASE_IDE_EXPORT Communication {
+struct Communication {
   virtual ~Communication() {}
   
   QString from;
@@ -95,7 +93,7 @@ struct BASE_IDE_EXPORT Communication {
   QString medium;
 };
 
-struct BASE_IDE_EXPORT Transition {
+struct Transition {
   virtual ~Transition() {}
   
   QString description;
@@ -106,7 +104,7 @@ struct BASE_IDE_EXPORT Transition {
 //
 // NOTE: pointers to structures might not be valid forever
 //
-class BASE_IDE_EXPORT AbstractSimulator : public QObject
+class AbstractSimulator : public QObject
 {
     Q_OBJECT
   

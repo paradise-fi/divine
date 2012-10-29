@@ -24,7 +24,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 
-#include "dvePlugin.h"
+#include "dveModule.h"
 #include "dveDocument.h"
 #include "dveHighlighter.h"
 #include "dvePreferences.h"
@@ -39,7 +39,7 @@
 #include "settings.h"
 #include "mainForm.h"
 #include "preferencesDialog.h"
-#include "pluginManager.h"
+#include "moduleManager.h"
 #include "divineTools.h"
 #include "simulationProxy.h"
 
@@ -245,11 +245,11 @@ AbstractSimulator * DveSimulatorFactory::create(MainForm * root) const
 //
 // Dve plugin
 //
-DvePlugin::DvePlugin()
+DveModule::DveModule()
 {
 }
 
-void DvePlugin::install(MainForm * root)
+void DveModule::install(MainForm * root)
 {
   Q_ASSERT(root);
   root_ = root;
@@ -298,15 +298,15 @@ void DvePlugin::install(MainForm * root)
   root->preferences()->addWidget(QObject::tr("Syntax"), QObject::tr("LTL"), page);
 
   // editors
-  root->plugins()->registerDocument(new DveDocumentFactory(this));
-  root->plugins()->registerDocument(new MDveDocumentFactory(this));
-  root->plugins()->registerDocument(new LtlDocumentFactory(this));
+  root->modules()->registerDocument(new DveDocumentFactory(this));
+  root->modules()->registerDocument(new MDveDocumentFactory(this));
+  root->modules()->registerDocument(new LtlDocumentFactory(this));
 
   // simulator
-  root->plugins()->registerSimulator(new DveSimulatorFactory(this));
+  root->modules()->registerSimulator(new DveSimulatorFactory(this));
 }
 
-void DvePlugin::updateActions()
+void DveModule::updateActions()
 {
   AbstractEditor * editor = root_->activeEditor();
   if(!editor)
@@ -349,7 +349,7 @@ void DvePlugin::updateActions()
   }
 }
 
-void DvePlugin::onEditorDeactivated()
+void DveModule::onEditorDeactivated()
 {
   syntaxAct_->setVisible(false);
   preprocessorAct_->setVisible(false);
@@ -372,7 +372,7 @@ void DvePlugin::onEditorDeactivated()
   disconnect(verifyAct, SIGNAL(triggered()), this, SLOT(onVerifyTriggered()));
 }
 
-void DvePlugin::onSyntaxTriggered()
+void DveModule::onSyntaxTriggered()
 {
   Q_ASSERT(root_->activeEditor());
   QByteArray input = qobject_cast<TextEditor*>(
@@ -399,7 +399,7 @@ void DvePlugin::onSyntaxTriggered()
   emit message(tr("%1: Syntax check OK").arg(viewName));
 }
 
-void DvePlugin::onPreprocessorTriggered()
+void DveModule::onPreprocessorTriggered()
 {
   Q_ASSERT(root_->activeEditor());
 
@@ -435,7 +435,7 @@ void DvePlugin::onPreprocessorTriggered()
   root_->activateEditor(ed);
 }
 
-void DvePlugin::onCombineTriggered()
+void DveModule::onCombineTriggered()
 {
   Q_ASSERT(root_->activeEditor());
 
@@ -489,7 +489,7 @@ void DvePlugin::onCombineTriggered()
   root_->activateEditor(ed);
 }
 
-void DvePlugin::onMetricsTriggered()
+void DveModule::onMetricsTriggered()
 {
   Meta meta;
   meta.algorithm.algorithm = divine::meta::Algorithm::Metrics;
@@ -497,7 +497,7 @@ void DvePlugin::onMetricsTriggered()
   runAlgorithm(meta);
 }
 
-void DvePlugin::onReachabilityTriggered()
+void DveModule::onReachabilityTriggered()
 {
   Meta meta;
   meta.algorithm.algorithm = divine::meta::Algorithm::Reachability;
@@ -505,12 +505,12 @@ void DvePlugin::onReachabilityTriggered()
   runAlgorithm(meta);
 }
 
-void DvePlugin::onSearchTriggered()
+void DveModule::onSearchTriggered()
 {
   // TODO: implement search?
 }
 
-void DvePlugin::onVerifyTriggered()
+void DveModule::onVerifyTriggered()
 {
   Meta meta;
   QString algorithm = Settings("ide/verification").value("algorithm", defVerificationAlgorithm).toString();
@@ -526,7 +526,7 @@ void DvePlugin::onVerifyTriggered()
   runAlgorithm(meta);
 }
 
-void DvePlugin::onRunnerFinished()
+void DveModule::onRunnerFinished()
 {
   if(!root_->isLocked(lock_))
     return;
@@ -566,7 +566,7 @@ void DvePlugin::onRunnerFinished()
   }
 }
 
-void DvePlugin::runAlgorithm(const Meta & meta)
+void DveModule::runAlgorithm(const Meta & meta)
 {
   // just in case
   if(root_->isLocked())
@@ -608,5 +608,3 @@ void DvePlugin::runAlgorithm(const Meta & meta)
 
 }
 }
-
-Q_EXPORT_PLUGIN2(dvePlugin, divine::gui::DvePlugin)

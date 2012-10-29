@@ -20,7 +20,6 @@
 #include <QHeaderView>
 #include <QHBoxLayout>
 
-#include "plugins.h"
 #include "settings.h"
 #include "dvePreferences.h"
 

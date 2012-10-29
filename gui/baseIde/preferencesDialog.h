@@ -15,8 +15,6 @@
 #ifndef PREFERENCES_DIALOG_H_
 #define PREFERENCES_DIALOG_H_
 
-#include "baseIdeExport.h"
-
 #include <QDialog>
 
 class QString;
@@ -31,7 +29,7 @@ namespace gui {
 /*!
  * The PreferencesDialog class implements the application preferences dialog.
  */
-class BASE_IDE_EXPORT PreferencesDialog: public QDialog
+class PreferencesDialog: public QDialog
 {
     Q_OBJECT
 

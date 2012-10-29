@@ -15,7 +15,7 @@
 #ifndef DVE_DOCUMENT_HANDLERS_H_
 #define DVE_DOCUMENT_HANDLERS_H_
 
-class BASE_IDE_EXPORT AbstractKeyPressHandler {
+class AbstractKeyPressHandler {
   public:
     virtual ~AbstractKeyPressHandler() {}
     

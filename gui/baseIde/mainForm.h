@@ -15,8 +15,6 @@
 #ifndef MAIN_FORM_H_
 #define MAIN_FORM_H_
 
-#include "baseIdeExport.h"
-
 #include <QMainWindow>
 #include <QList>
 #include <QPair>
@@ -36,7 +34,7 @@ class QResizeEvent;
 namespace divine {
 namespace gui {
 
-class PluginManager;
+class ModuleManager;
 
 class RecentFilesMenu;
 class PreferencesDialog;
@@ -51,7 +49,7 @@ class SimulationProxy;
 /*!
  * The MainForm implements the main window of the application.
  */
-class BASE_IDE_EXPORT MainForm : public QMainWindow
+class MainForm : public QMainWindow
 {
     Q_OBJECT
 
@@ -63,11 +61,11 @@ class BASE_IDE_EXPORT MainForm : public QMainWindow
     MainForm(QWidget * parent = 0, Qt::WindowFlags flags = 0);
     ~MainForm();
 
-    // call after plugins are loaded
+    // call after modules are loaded
     void initialize();
 
-    // access to internal components for plugins
-    PluginManager * plugins() {return plugins_;}
+    // access to internal components for modules
+    ModuleManager * modules() {return modules_;}
     PreferencesDialog * preferences() {return preferences_;}
     LayoutManager * layouts() {return layman_;}
     SimulationProxy * simulation() {return simulation_;}
@@ -141,8 +139,8 @@ class BASE_IDE_EXPORT MainForm : public QMainWindow
     // current simulator
     SimulationProxy * simulation_;
 
-    // registered plugins
-    PluginManager * plugins_;
+    // registered modules
+    ModuleManager * modules_;
 
     // layouts
     LayoutManager * layman_;

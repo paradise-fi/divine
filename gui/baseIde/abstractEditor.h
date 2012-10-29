@@ -15,8 +15,6 @@
 #ifndef ABSTRACT_EDITOR_H_
 #define ABSTRACT_EDITOR_H_
 
-#include "baseIdeExport.h"
-
 #include <QWidget>
 
 class QPrinter;
@@ -26,7 +24,7 @@ namespace gui {
 
 class AbstractDocument;
 
-class BASE_IDE_EXPORT AbstractEditor : public QWidget
+class AbstractEditor : public QWidget
 {
     Q_OBJECT
 

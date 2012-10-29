@@ -15,8 +15,6 @@
 #ifndef LAYOUT_MANAGER_H_
 #define LAYOUT_MANAGER_H_
 
-#include "baseIdeExport.h"
-
 #include <QHash>
 #include <QObject>
 #include <QPair>
@@ -57,7 +55,7 @@ class LayoutSet
  * It helps serialize geometry and visibility of widgets and actions among
  * number of layouts.
  */
-class BASE_IDE_EXPORT LayoutManager : public QObject
+class LayoutManager : public QObject
 {
     Q_OBJECT
 

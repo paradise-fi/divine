@@ -17,15 +17,13 @@
 
 #include <QWidget>
 
-#include "baseIdeExport.h"
-
 class QRect;
 class QAbstractScrollArea;
 
 namespace divine {
 namespace gui {
 
-class BASE_IDE_EXPORT LineNumberBarHost {
+class LineNumberBarHost {
   public:
     virtual int lineCount() = 0;
     
@@ -33,7 +31,7 @@ class BASE_IDE_EXPORT LineNumberBarHost {
     virtual QList<int> visibleLines(const QRect & rect) = 0;
 };
 
-class BASE_IDE_EXPORT LineNumberBar : public QWidget
+class LineNumberBar : public QWidget
 {
     Q_OBJECT
 

@@ -19,7 +19,6 @@
 #include <QDialogButtonBox>
 
 #include "preferencesDialog.h"
-#include "plugins.h"
 
 namespace divine {
 namespace gui {

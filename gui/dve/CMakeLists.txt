@@ -14,16 +14,15 @@ add_custom_command(
   DEPENDS ${COMBINE_M4} ${MAKE_STRING_CONST}
   COMMAND ${PERL_EXECUTABLE} ${MAKE_STRING_CONST} "const char *combine_m4 = " ${COMBINE_M4} > ${COMBINE_M4_H} )
 
-set(DVE_PLUGIN_SRC
+set(DVE_MODULE_SRC
     combine.cpp
     combine.h
     combineDialog.cpp
     combineDialog.h
     divineTools.cpp
     divineTools.h
-    dvePlugin.h
-    dvePlugin.cpp
-    dvePlugin.h
+    dveModule.cpp
+    dveModule.h
     dveDocument.cpp
     dveDocument.h
     dveHighlighter.cpp
@@ -38,12 +37,10 @@ set(DVE_PLUGIN_SRC
     ltlPreferences.h
 )
 
-set(DVE_PLUGIN_MOC
-    ../baseIde/plugins.h
-
+set(DVE_MODULE_MOC
     divineTools.h
     combineDialog.h
-    dvePlugin.h
+    dveModule.h
     dveDocument.h
     dveHighlighter.h
     dvePreferences.h
@@ -53,16 +50,14 @@ set(DVE_PLUGIN_MOC
     ltlPreferences.h
 )
 
-set(DVE_PLUGIN_UI
+set(DVE_MODULE_UI
     ui/combineDialog.ui
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/plugins)
 
-qt4_wrap_cpp(DVE_PLUGIN_SRC2 ${DVE_PLUGIN_MOC})
-qt4_wrap_ui(DVE_PLUGIN_SRC3 ${DVE_PLUGIN_UI})
+qt4_wrap_cpp(DVE_MODULE_SRC2 ${DVE_MODULE_MOC})
+qt4_wrap_ui(DVE_MODULE_SRC3 ${DVE_MODULE_UI})
 
-add_library(dvePlugin MODULE ${DVE_PLUGIN_SRC} ${DVE_PLUGIN_SRC2} ${DVE_PLUGIN_SRC3} ${COMBINE_M4_H})
-target_link_libraries(dvePlugin baseIDE libdivine wibble ${QT_LIBRARIES})
-
-install(TARGETS dvePlugin DESTINATION ${GUI_PLUGIN_DEST} COMPONENT gui_tools)
+add_library(dveModule STATIC ${DVE_MODULE_SRC} ${DVE_MODULE_SRC2} ${DVE_MODULE_SRC3} ${COMBINE_M4_H})
+target_link_libraries(dveModule baseIDE libdivine wibble ${QT_LIBRARIES})

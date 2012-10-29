@@ -23,7 +23,7 @@ namespace gui {
 class MainForm;
 class TextEditor;
 
-class BASE_IDE_EXPORT TextDocument : public AbstractDocument
+class TextDocument : public AbstractDocument
 {
     Q_OBJECT
 

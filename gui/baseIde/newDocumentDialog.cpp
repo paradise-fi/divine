@@ -16,7 +16,7 @@
 
 #include "ui_newDocumentDialog.h"
 
-#include "plugins.h"
+#include "modules.h"
 
 #include "newDocumentDialog.h"
 #include "mainForm.h"
@@ -26,7 +26,7 @@ namespace gui {
 
 //! Initializes the dialog with given set of document types.
 NewDocumentDialog::NewDocumentDialog
-(const PluginManager::DocumentList & docs, QWidget * parent)
+(const ModuleManager::DocumentList & docs, QWidget * parent)
 {
   ui_ = new Ui::NewDocumentDialog;
 
@@ -34,7 +34,7 @@ NewDocumentDialog::NewDocumentDialog
 
   QSet<QString> used;
   
-  foreach (PluginManager::DocumentList::value_type itr, docs) {
+  foreach (ModuleManager::DocumentList::value_type itr, docs) {
     QListWidgetItem * item = new QListWidgetItem(ui_->documentList);
     item->setText(itr->name());
     item->setIcon(itr->icon());
