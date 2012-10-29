@@ -222,7 +222,7 @@ struct Transition {
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc ), sync( 0 )
+        : process( proc ), sync( 0 ), sync_channel( 0 ), parse( t )
     {
         for ( int i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
