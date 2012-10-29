@@ -173,6 +173,8 @@ struct PORGraph : graph::Transform< G > {
             updatePredCount( *to_check.begin(), 0 );
             to_expand.insert( *to_check.begin() );
         }
+
+        return to_expand.size() > 0;
     }
 
     template< typename Visitor >
