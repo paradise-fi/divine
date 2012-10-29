@@ -88,7 +88,10 @@ struct Dve : public Common< Blob > {
         return system->symtab.context->offset;
     }
 
-    bool isGoal( Node s ) { return false; } // XXX
+    bool isGoal( Node s ) {
+        updateMem( s );
+        return !system->assertValid( ctx );
+    }
 
     bool isAccepting( Node s ) {
         updateMem( s );

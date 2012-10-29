@@ -274,12 +274,21 @@ struct Process {
 
     std::vector< bool > is_accepting, is_commited;
 
+    std::vector< std::vector< Expression > > asserts;
+
     int state( EvalContext &ctx ) {
         return id.deref( ctx.mem );
     }
 
     bool commited( EvalContext &ctx ) {
         return is_commited[ state( ctx ) ];
+    }
+
+    bool assertValid( EvalContext &ctx ) {
+        for ( auto expr = asserts[ state( ctx ) ].begin(); expr != asserts[ state( ctx ) ].end(); ++ expr )
+            if ( !expr->evaluate( ctx ) )
+                return false;
+        return true;
     }
 
     int available( EvalContext &ctx ) {
@@ -331,6 +340,7 @@ struct Process {
 
         is_accepting.resize( proc.states.size(), false );
         is_commited.resize( proc.states.size(), false );
+        asserts.resize( proc.states.size() );
         for ( int i = 0; i < is_accepting.size(); ++ i ) {
             for ( int j = 0; j < proc.accepts.size(); ++ j )
                 if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
@@ -338,6 +348,9 @@ struct Process {
             for ( int j = 0; j < proc.commits.size(); ++ j )
                 if ( proc.states[ i ].name() == proc.commits[ j ].name() )
                     is_commited[i] = true;
+            for ( int j = 0; j < proc.asserts.size(); ++ j )
+                if ( proc.states[ i ].name() == proc.asserts[ j ].state.name() )
+                    asserts[ i ].push_back( Expression( symtab, proc.asserts[ j ].expr) );
         }
 
         trans.resize( proc.states.size() );
@@ -452,6 +465,13 @@ struct System {
 
             assert( property );
         }
+    }
+
+    bool assertValid( EvalContext &ctx ) {
+        for ( auto proc = processes.begin(); proc != processes.end(); ++ proc)
+            if ( !proc->assertValid( ctx ) )
+                return false;
+        return true;
     }
 
     void setCommitedFlag( EvalContext &ctx ) {

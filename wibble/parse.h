@@ -310,6 +310,15 @@ struct Parser {
         fail( "semicolon" );
     }
 
+    void colon() {
+        Token t = eat();
+        if ( t.id == Token::Punctuation && t.data == ":" )
+            return;
+
+        context().rewind( 1 );
+        fail( "colon" );
+    }
+
     Token eat( TokenId id ) {
         Token t = eat( false );
         if ( t.id == id )

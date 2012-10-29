@@ -403,6 +403,17 @@ struct Declarations : Parser {
     }
 };
 
+struct Assertion : Parser {
+    Identifier state;
+    Expression expr;
+
+    Assertion( Context &c ) : Parser( c ) {
+        state = Identifier( c );
+        colon();
+        expr = Expression( c );
+    }
+};
+
 struct Transition : Parser {
     Identifier from, to;
     std::vector< Expression > guards;
@@ -460,6 +471,7 @@ struct Automaton : Parser {
     std::vector< Declaration > decls;
     std::vector< ChannelDeclaration > chandecls;
     std::vector< Identifier > states, accepts, commits, inits;
+    std::vector< Assertion > asserts;
     std::vector< Transition > trans;
 
     void accept() {
@@ -496,6 +508,11 @@ struct Automaton : Parser {
         eat( Token::Init );
         list< Identifier >( std::back_inserter( inits ), Token::Comma );
         semicolon();
+
+        if ( next( Token::Assert ) ) {
+            list< Assertion >( std::back_inserter( asserts ), Token::Comma );
+            semicolon();
+        }
 
         maybe( &Automaton::commit );
         maybe( &Automaton::accept );
