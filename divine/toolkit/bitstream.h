@@ -38,7 +38,7 @@ template<> struct base< block > {
 
     void clear() { bits.clear(); offset = 0; }
     void maybeclear() {
-        if ( offset == bits.size() )
+        if ( offset == int( bits.size() ) )
             clear();
     }
 
@@ -125,7 +125,7 @@ template< typename B, typename X >
 typename container< B, X >::stream &operator>>( base< B > &bs, X &x ) {
     size_t size;
     bs >> size;
-    for ( int i = 0; i < size; ++ i ) {
+    for ( int i = 0; i < int( size ); ++ i ) {
         typename X::value_type tmp;
         bs >> tmp;
         x.push_back( tmp );

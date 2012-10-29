@@ -52,7 +52,7 @@ struct Pool {
 
     struct Group
     {
-        size_t item, used, total;
+        int item, used, total;
         char **free; // reuse allocation
         char *current; // tail allocation
         char *last; // bumper
@@ -64,8 +64,8 @@ struct Pool {
     };
 
     // for FFI
-    size_t m_groupCount;
-    size_t m_groupStructSize;
+    int m_groupCount;
+    int m_groupStructSize;
     Group *m_groupArray;
 
     typedef std::vector< Group > Groups;
@@ -81,8 +81,8 @@ struct Pool {
     void newBlock( Group *g )
     {
         Block b;
-        size_t s = std::min( 4 * g->blocks.back().size,
-                             size_t( 4 * 1024 * 1024 ) );
+        int s = std::min( 4 * int( g->blocks.back().size ),
+                          4 * 1024 * 1024 );
         b.size = s;
         b.start = new char[ s ];
         g->current = b.start;
@@ -91,7 +91,7 @@ struct Pool {
         g->blocks.push_back( b );
     }
 
-    size_t adjustSize( size_t bytes )
+    int adjustSize( int bytes )
     {
         // round up to a value divisible by 4
         bytes += 3;
@@ -101,9 +101,9 @@ struct Pool {
         return bytes;
     }
 
-    Group *group( size_t bytes )
+    Group *group( int bytes )
     {
-        if ( bytes / 4 >= m_groups.size() )
+        if ( bytes / 4 >= int( m_groups.size() ) )
             return 0;
         assert_eq( bytes % 4, 0 );
         if ( m_groups[ bytes / 4 ].total )
@@ -117,19 +117,19 @@ struct Pool {
         m_groupArray = &m_groups.front();
     }
 
-    Group *createGroup( size_t bytes )
+    Group *createGroup( int bytes )
     {
         assert( bytes % 4 == 0 );
         Group g;
         g.item = bytes;
         Block b;
-        b.size = std::min( std::max( size_t( 1024 * 1024 ), bytes ), 4096 * bytes );
+        b.size = std::min( std::max( 1024 * 1024, bytes ), 4096 * bytes );
         b.start = new char[ b.size ];
         g.blocks.push_back( b );
         g.current = b.start;
         g.last = b.start + b.size;
         g.total = b.size;
-        m_groups.resize( std::max( bytes / 4 + 1, m_groups.size() ), Group() );
+        m_groups.resize( std::max( bytes / 4 + 1, int( m_groups.size() ) ), Group() );
 
         ffi_update();
 
@@ -173,10 +173,10 @@ struct Pool {
         return 0; // replace with magic
     }
 
-    void release( Group *g, char *ptr, size_t size )
+    void release( Group *g, char *ptr, int size )
     {
         assert( g );
-        assert( g->item == size );
+        assert_eq( g->item, size );
         char ***ptr3 = reinterpret_cast< char *** >( ptr );
         char **ptr2 = reinterpret_cast< char ** >( ptr );
         *ptr3 = g->free;

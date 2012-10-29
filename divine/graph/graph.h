@@ -129,7 +129,7 @@ struct Transform {
 
     /// Returns a position between 1 and n
     template< typename Alg >
-    int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 )
+    int successorNum( Alg &a, Node current, Node next, int fromIndex = 0 )
     {
         int edge = 0;
         bool found = false;

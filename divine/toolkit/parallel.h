@@ -56,7 +56,7 @@ struct ThreadVector {
     }
 
     void run( wibble::sys::Thread *extra = 0 ) {
-        size_t n = m_threads.size();
+        int n = m_threads.size();
         for ( int i = 0; i < n; ++i )
             m_threads[ i ].start();
         if ( extra )
