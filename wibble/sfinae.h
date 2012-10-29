@@ -5,7 +5,10 @@
 
 namespace wibble {
 
-struct Unit {};
+struct Unit {
+    bool operator<( Unit ) const { return false; }
+    bool operator==( Unit ) const { return true; }
+};
 
 struct TTrue {
     static const bool value = true;
