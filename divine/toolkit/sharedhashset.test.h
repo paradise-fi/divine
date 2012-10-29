@@ -24,7 +24,7 @@ struct TestSharedHashset
             for ( int i = from; i < to; ++i ) {
                 set->insert( i );
                 assert( set->has( i ) );
-                if (!overlap)
+                if (!overlap && i < to - 1)
                     assert( !set->has( i + 1 ) );
             }
             return 0;
