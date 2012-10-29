@@ -62,6 +62,21 @@ for_dve_small() {
     run $wrapper data/haoEEDM.dve "$@"
     check statespace 502 923 0 0
     $extracheck data/haoEEDM.dve
+
+    check clear
+    run $wrapper data/bufchan.dve "$@"
+    check statespace 3 6 0 0
+    $extracheck data/bufchan.dve
+
+    check clear
+    run $wrapper data/bufchan2.dve "$@"
+    check statespace 8 13 0 0
+    $extracheck data/bufchan2.dve
+
+    check clear
+    run $wrapper data/unbufchan.dve "$@"
+    check statespace 2 4 0 0
+    $extracheck data/unbufchan.dve
 }
 
 dve_small() {
