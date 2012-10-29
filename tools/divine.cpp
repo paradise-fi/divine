@@ -151,8 +151,8 @@ struct Main {
 
         Mpi mpi; // TODO: do not construct if not needed?
 
-        meta.execution.nodes = mpi.size();
-        meta.execution.thisNode = mpi.rank();
+        a->meta().execution.nodes = mpi.size();
+        a->meta().execution.thisNode = mpi.rank();
 
         if ( mpi.master() ) {
             setupCurses();
@@ -160,7 +160,7 @@ struct Main {
                 _report = &report;
         }
 
-        Statistics::global().setup( meta );
+        Statistics::global().setup( a->meta() );
         if ( meta.output.statistics )
             Statistics::global().start();
 
