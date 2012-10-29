@@ -453,7 +453,7 @@ void DveSimulator::updateTransitions(int state)
     if(tr.sync) {
       trans.sync.from = reverse_[tr.process.id];
       trans.sync.to = reverse_[tr.sync->process.id];
-      trans.sync.medium = reverse_[tr.sync_channel.id];
+      trans.sync.medium = reverse_[tr.sync_channel->thischan.id];
 
       src = QRect(QPoint(tr.sync->parse.from.token.position.column,
                          tr.sync->parse.from.token.position.line),
