@@ -408,6 +408,7 @@ struct Transition : Parser {
     std::vector< Expression > guards;
     std::vector< Assignment > effects;
     SyncExpr syncexpr;
+    Token end;
 
     void guard() {
         eat( Token::Guard );
@@ -436,7 +437,8 @@ struct Transition : Parser {
         maybe( &Transition::guard );
         maybe( &Transition::sync );
         maybe( &Transition::effect );
-        eat( Token::BlockClose );
+
+        end = eat( Token::BlockClose );
     }
 };
 

@@ -167,6 +167,8 @@ struct Transition {
     std::vector< Expression > guards;
     typedef std::vector< std::pair< LValue, Expression > > Effect;
     Effect effect;
+    
+    parse::Transition parse;
 
     bool from_commited, to_commited;
     Symbol flags;
@@ -220,7 +222,7 @@ struct Transition {
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc ), sync( 0 ), sync_channel( 0 )
+        : process( proc ), sync( 0 )
     {
         for ( int i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
