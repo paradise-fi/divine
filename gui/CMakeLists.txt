@@ -22,16 +22,21 @@ endif(WIN32)
 #   add_definitions(-static-libgcc)
 # endif(WIN32)
 
+# Disable assertions in release code
+if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  add_definitions(-DQT_NO_DEBUG)
+endif(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/baseIde)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+include_directories(qtcolorpicker)
+
 add_subdirectory(qtcolorpicker)
 
-include_directories(include qtcolorpicker)
-
 add_subdirectory(main)
-add_subdirectory(base_shared)
-add_subdirectory(base_tools)
-add_subdirectory(dve_editor)
-add_subdirectory(dve_divine2)
-add_subdirectory(ltl_editor)
+add_subdirectory(baseIde)
+add_subdirectory(baseTools)
+add_subdirectory(dve)
 
 add_subdirectory(help)
 

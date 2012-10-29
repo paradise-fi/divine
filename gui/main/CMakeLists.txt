@@ -16,7 +16,7 @@ endif(APPLE)
 
 # main executable
 add_executable(divine.ide ${GUI_TYPE} main.cpp)
-target_link_libraries(divine.ide base_shared ${QT_LIBRARIES})
+target_link_libraries(divine.ide baseIDE ${QT_LIBRARIES})
 
 set(BIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_BIN_DEST})
 set(LIB_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_LIB_DEST})

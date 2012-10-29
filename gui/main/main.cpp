@@ -16,10 +16,10 @@
 #include <QDir>
 #include <QPluginLoader>
 
-#include "mainform.h"
+#include "mainForm.h"
 #include "plugins.h"
 
-void loadPlugins(MainForm * root)
+void loadPlugins(divine::gui::MainForm * root)
 {
   QDir pluginsDir;
   const char * envPlugins = getenv("DIVINE_GUI_PLUGIN_PATH");
@@ -36,7 +36,7 @@ void loadPlugins(MainForm * root)
     QObject * plugin = loader.instance();
 
     if (plugin) {
-      AbstractPlugin * ap = qobject_cast< AbstractPlugin* >(plugin);
+      divine::gui::AbstractPlugin * ap = qobject_cast< divine::gui::AbstractPlugin* >(plugin);
 
       if (ap)
         ap->install(root);
@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
 {
   QApplication app(argc, argv);
 
-  MainForm mf;
+  divine::gui::MainForm mf;
 
   // load plugins
   loadPlugins(&mf);
