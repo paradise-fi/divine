@@ -32,7 +32,7 @@ struct TestParallel {
             assert_eq_l( i, vec[ i ].i, 1 );
     }
 
-    struct ParallelCounter : Parallel< Topology<>::Local, ParallelCounter >
+    struct ParallelCounter : Parallel< Topology< wibble::Unit >::Local, ParallelCounter >
     {
         Counter counter;
 
