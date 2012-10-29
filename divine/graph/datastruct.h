@@ -14,6 +14,7 @@ template< typename Graph, typename Statistics >
 struct Queue {
     Graph &g;
     typedef typename Graph::Node Node;
+    typedef typename Graph::Label Label;
     std::deque< Node > _queue;
 
     bool deadlocked;
@@ -32,9 +33,9 @@ struct Queue {
     void processOpen( Next next ) {
         deadlocked = true;
         Node from = _queue.front();
-        g.successors( from, [&]( Node n ) {
+        g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
-                next( from, n );
+                next( from, n, label );
             } );
     }
 
@@ -62,9 +63,10 @@ template< typename Graph, typename Statistics >
 struct Stack {
     Graph &g;
     typedef typename Graph::Node Node;
+    typedef typename Graph::Label Label;
     enum Flag { Fresh, Expanded };
 
-    std::deque< std::pair< Flag, Node > > _stack;
+    std::deque< std::pair< Flag, std::pair< Node, Label > > > _stack;
     Node _from;
     bool deadlocked;
 
@@ -72,12 +74,12 @@ struct Stack {
 
     void push( Node t ) {
         _from = t;
-        _stack.push_back( std::make_pair( Expanded , t ) );
+        _stack.push_back( std::make_pair( Expanded , std::make_pair( t, Label() ) ) );
         deadlocked = true;
-        g.successors( t, [&]( Node n ) {
+        g.successors( t, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 deadlocked = false;
-                _stack.push_back( std::make_pair( Fresh, n ) );
+                _stack.push_back( std::make_pair( Fresh, std::make_pair( n, l ) ) );
             } );
     }
 
@@ -85,10 +87,11 @@ struct Stack {
     void processOpen( Next next ) {
         if ( !deadlocked ) {
             assert_eq( _stack.back().first, Fresh );
-            Node n = _stack.back().second;
+            Node n = _stack.back().second.first;
+            Label l = _stack.back().second.second;
             _stack.pop_back();
             ++ _pops;
-            next( _from, n );
+            next( _from, n, l );
         }
     }
 
@@ -96,7 +99,7 @@ struct Stack {
     void processDead( Dead dead ) {
         if ( deadlocked && ! empty() ) {
             assert_eq( _stack.back().first, Expanded );
-            dead( _stack.back().second );
+            dead( _stack.back().second.first );
             deadlocked = false;
         }
     }
@@ -107,13 +110,13 @@ struct Stack {
             return;
 
         while ( !empty() && _stack.back().first == Expanded ) {
-            close( _stack.back().second );
+            close( _stack.back().second.first );
             _stack.pop_back();
         }
 
         for ( auto i = _stack.rbegin(); i != _stack.rend(); ++i )
             if ( i->first == Expanded ) {
-                _from = i->second;
+                _from = i->second.first;
                 break;
             }
     }

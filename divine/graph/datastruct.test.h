@@ -7,11 +7,13 @@ using namespace divine;
 
 struct TestDatastruct {
     typedef Blob Node;
+    typedef generator::Dummy::Label Label;
+
     Node first, second, third;
     void init( generator::Dummy &g ) {
         int count = 0;
         first = g.initial();
-        g.successors( first, [&]( Node n ) {
+        g.successors( first, [&]( Node n, Label ) {
                 if ( count == 0 )
                     second = n;
                 if (count == 1 )
@@ -34,7 +36,7 @@ struct TestDatastruct {
         assert( !q.empty() );
 
         count = 0;
-        q.processOpen( [&]( Node, Node ) { ++count; } );
+        q.processOpen( [&]( Node, Node, Label ) { ++count; } );
         q.processClosed( [&]( Node ) {} );
         assert_eq( count, 2 );
         assert( q.empty() );
@@ -44,7 +46,7 @@ struct TestDatastruct {
         q.push( second );
         assert( !q.empty() );
 
-        q.processOpen( [&]( Node, Node n ) {
+        q.processOpen( [&]( Node, Node n, Label ) {
                 if ( count == 0 ) {
                     assert_eq( n.template get< short >(), 1 );
                     assert_eq( n.template get< short >( 2 ), 0 );
@@ -63,7 +65,7 @@ struct TestDatastruct {
         assert( !q.empty() );
 
         count = 0;
-        q.processOpen( [&]( Node, Node n ) {
+        q.processOpen( [&]( Node, Node n, Label ) {
                 if ( count == 0 ) {
                     assert_eq( n.template get< short >(), 2 );
                     assert_eq( n.template get< short >( 2 ), 0 );
@@ -95,13 +97,13 @@ struct TestDatastruct {
         q.processClosed( []( Node ) { assert_die(); } );
         assert( !q.empty() );
 
-        q.processOpen( [&]( Node, Node ) { die = false; } );
+        q.processOpen( [&]( Node, Node, Label ) { die = false; } );
         q.processClosed( []( Node ) { assert_die(); } );
         assert( !q.empty() );
         assert( !die );
 
         die = true;
-        q.processOpen( [&]( Node, Node ) { die = false; } );
+        q.processOpen( [&]( Node, Node, Label ) { die = false; } );
         assert( !die );
 
         die = true;
@@ -114,7 +116,7 @@ struct TestDatastruct {
         q.push( second );
 
         // 1, 1, from 1, 0
-        q.processOpen( []( Node f, Node t ) {
+        q.processOpen( []( Node f, Node t, Label ) {
                 assert_eq( f.get< short >(), 1 );
                 assert_eq( f.get< short >( 2 ), 0 );
                 assert_eq( t.get< short >(), 1 );
@@ -124,7 +126,7 @@ struct TestDatastruct {
         assert( !q.empty() );
 
         // 2, 0, from 1, 0
-        q.processOpen( []( Node f, Node t ) { 
+        q.processOpen( []( Node f, Node t, Label ) { 
                 assert_eq( f.get< short >(), 1 );
                 assert_eq( f.get< short >( 2 ), 0 );
                 assert_eq( t.get< short >(), 2 );
@@ -136,7 +138,7 @@ struct TestDatastruct {
         assert( !q.empty() );
 
         // 0, 1, from 0, 0
-        q.processOpen( []( Node f, Node t ) {
+        q.processOpen( []( Node f, Node t, Label ) {
                 assert_eq( f.get< short >(), 0 );
                 assert_eq( f.get< short >( 2 ), 0 );
                 assert_eq( t.get< short >(), 0 );
@@ -145,7 +147,7 @@ struct TestDatastruct {
         assert( !q.empty() );
 
         // 1, 0, from 0, 0
-        q.processOpen( []( Node f, Node t ) {
+        q.processOpen( []( Node f, Node t, Label ) {
                 assert_eq( f.get< short >(), 0 );
                 assert_eq( f.get< short >( 2 ), 0 );
                 assert_eq( t.get< short >(), 1 );

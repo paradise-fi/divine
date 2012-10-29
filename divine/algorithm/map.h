@@ -156,7 +156,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &m, Node f, Node t )
+        static visitor::TransitionAction transition( This &m, Node f, Node t, Label )
         {
             if ( m.shared.iteration == 1 )
                 m.graph().porTransition( f, t, 0 );

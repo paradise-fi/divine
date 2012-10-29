@@ -12,6 +12,11 @@ struct Dummy : Common< Blob > {
     typedef std::pair< short, short > Content;
     typedef Blob Node;
 
+    struct Label {
+        short probability;
+        Label( short p = 0 ) : probability( p ) {}
+    };
+
     Content &content( Blob b ) {
         return b.get< Content >( alloc._slack );
     }
@@ -24,7 +29,7 @@ struct Dummy : Common< Blob > {
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     template< typename Yield >
@@ -37,12 +42,12 @@ struct Dummy : Common< Blob > {
         r = alloc.new_blob( sizeof( Content ) );
         content( r ) = content( st );
         content( r ).first ++;
-        yield( r );
+        yield( r, Label( 7 ) );
 
         r = alloc.new_blob( sizeof( Content ) );
         content( r ) = content( st );
         content( r ).second ++;
-        yield( r );
+        yield( r, Label( 3 ) );
     }
 
     Node clone( Node n ) {

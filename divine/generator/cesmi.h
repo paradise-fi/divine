@@ -24,6 +24,7 @@ namespace generator {
 struct CESMI : public Common< Blob > {
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
+    typedef typename Common::Label Label;
     std::string file;
 
     typedef void (*dl_setup_t)(CESMISetup *);
@@ -60,7 +61,7 @@ struct CESMI : public Common< Blob > {
             char *state;
             handle = dl.get_successor( &setup, handle, s.pointer(), &state );
             if ( handle )
-                yield( Blob( state ) );
+                yield( Blob( state ), Label() );
         }
     }
 
@@ -73,7 +74,7 @@ struct CESMI : public Common< Blob > {
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     void die( const char *fmt, ... ) __attribute__((noreturn)) {

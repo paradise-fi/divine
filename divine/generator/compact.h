@@ -15,6 +15,7 @@ namespace generator {
 
 /// Represents a generator of compact state space (.compact files)
 struct Compact : public Common< Blob > {
+    typedef typename Common< Blob >::Label Label;
     typedef BitSet< Compact, StateId > Table; // used state storage
     typedef generator::Common< Blob > Common;
 
@@ -134,7 +135,7 @@ struct Compact : public Common< Blob > {
                  end = getNextCompactState( st ).forward;
 
         while ( cur < end ) {
-            yield( getAnyState( (*forward)[ cur ].id ) );
+            yield( getAnyState( (*forward)[ cur ].id ), Label() );
             ++ cur;
         }
     }
@@ -335,7 +336,7 @@ struct Compact : public Common< Blob > {
     /// Enques initial state
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     /// Releases memory used by state s

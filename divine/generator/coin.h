@@ -49,6 +49,7 @@ class Coin: public Common< Blob > {
 
 public:
     typedef Blob Node;
+    typedef typename Common< Blob >::Label Label;
     typedef Coin Graph;
     typedef generator::Common< Blob > Common;
 
@@ -133,7 +134,7 @@ public:
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     /**
@@ -156,7 +157,7 @@ public:
     void successors( Node n, Yield yield ) {
         Successors s = _successors( n );
         while ( !s.empty() ) {
-            yield( s.head() );
+            yield( s.head(), Label() );
             s = s.tail();
         }
     }
@@ -165,7 +166,7 @@ public:
     void ample( Node n, Yield yield ) {
         Successors s = _ample( n );
         while ( !s.empty() ) {
-            yield( s.head() );
+            yield( s.head(), Label() );
             s = s.tail();
         }
     }

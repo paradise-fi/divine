@@ -175,8 +175,6 @@ struct FifoMatrix
     }
 };
 
-typedef std::pair<Blob, Blob> BlobPair;
-
 struct WithID {
     int m_id;
     int id() { assert_leq( 0, m_id ); return m_id; }
@@ -290,7 +288,7 @@ struct Parallel : Terminable, WithID {
     }
 };
 
-template< typename Message = BlobPair >
+template< typename Message >
 struct Topology {
 
 template< typename Instance >
@@ -371,7 +369,7 @@ struct Local
 template< typename Instance >
 struct Mpi : MpiMonitor
 {
-    typedef FifoMatrix< BlobPair > Comms;
+    typedef FifoMatrix< Message > Comms;
 
     divine::Mpi mpi;
     Local< Instance > m_local;

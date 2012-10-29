@@ -22,6 +22,7 @@ template< typename _State, typename system_t, typename container_t >
 struct LegacyCommon : Common< _State > {
     typedef _State State;
     typedef State Node;
+    typedef typename Common< _State >::Label Label;
     typedef generator::Common< _State > Common;
     typedef LegacyCommon< _State, system_t, container_t > Graph;
 
@@ -40,7 +41,7 @@ struct LegacyCommon : Common< _State > {
         state_t legacy = this->alloc.legacy_state( s );
         legacy_system()->get_succs( legacy, succs );
         for ( auto i = succs.begin(); i != succs.end(); ++i )
-            yield( this->alloc.unlegacy_state( i->getState() ) );
+            yield( this->alloc.unlegacy_state( i->getState() ), Label() );
     }
 
     /// Finds successors of transitions involving specified process (or every process except that one)
@@ -66,7 +67,7 @@ struct LegacyCommon : Common< _State > {
             if ( involved == include ) {
                 state_t succ;
                 system->get_ith_succ( legacy, i, succ );
-                yield( this->alloc.unlegacy_state( succ ) );
+                yield( this->alloc.unlegacy_state( succ ), Label() );
             }
         }
     }
@@ -98,7 +99,7 @@ struct LegacyCommon : Common< _State > {
         size_t proc_gid;
         por().ample_set_succs( legacy, succs, proc_gid );
         for ( auto i = succs.begin(); i != succs.end(); ++i )
-            yield( this->alloc.unlegacy_state( i->getState() ) );
+            yield( this->alloc.unlegacy_state( i->getState() ), Label() );
     }
 
     /// Returns the initial state
@@ -109,7 +110,7 @@ struct LegacyCommon : Common< _State > {
     /// Enques the initial state
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( State(), initial() );
+        q.queue( State(), initial(), Label() );
     }
 
     /// Reads the state space from file

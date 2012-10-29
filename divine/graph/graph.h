@@ -15,6 +15,7 @@ enum PropertyType { AC_None, AC_Buchi, AC_GenBuchi, AC_Muller, AC_Rabin, AC_Stre
 template< typename _Node >
 struct Base {
     typedef _Node Node;
+    typedef wibble::Unit Label;
 
     Allocator alloc;
     int setSlack( int s ) { alloc.setSlack( s ); return s; }
@@ -75,6 +76,7 @@ struct Transform {
 
     typedef wibble::Unit HasAllocator;
     typedef typename G::Node Node;
+    typedef typename G::Label Label;
     typedef G Graph;
 
     G &base() { return _base; }
@@ -134,7 +136,7 @@ struct Transform {
         int edge = 0;
         bool found = false;
 
-        base().successors( current, [&]( Node n ) {
+        base().successors( current, [&]( Node n, Label ) {
                 if (!found)
                     ++ edge;
                 if ( edge > fromIndex && a.store().equal( n, next ) )

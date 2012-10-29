@@ -22,6 +22,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef Draw< Setup > This;
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
+    typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
     typedef This Listener;
     typedef NoStatistics Statistics;
@@ -60,7 +61,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return visitor::ExpandState;
     }
 
-    static visitor::TransitionAction transition( This &draw, Node f, Node t )
+    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label )
     {
         if ( draw.extension( t ).serial == 0 ) {
             if ( !draw.intrace->has( t ) )
@@ -186,7 +187,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 intrace->insert( from );
 
             int drop = trans[ i ] - 1;
-            this->graph().successors( from, [&]( Node n ) {
+            this->graph().successors( from, [&]( Node n, Label ) {
                     -- drop;
                     if ( drop != 0 )
                         return;

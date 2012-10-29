@@ -42,7 +42,7 @@ struct Main {
 
         try {
             Mpi mpi;
-            struct Setup : SetupT< Topology<>::Mpi > {
+            struct Setup : SetupT< Topology< std::pair< Blob, Blob > >::Mpi > {
                 using Statistics = NoStatistics;
                 using Graph = generator::LegacyDve;
                 using Store = visitor::PartitionedStore< Graph, algorithm::Hasher >;

@@ -26,7 +26,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
         int owner = hint % this->peers();
 
         if ( owner != this->id() ) { // send to remote
-            this->comms().submit( this->id(), owner, BlobPair( from, to ) );
+            this->comms().submit( this->id(), owner, std::make_pair( from, to ) );
         } else { // we own this node, so let's process it
             Node in_table = this->store().fetch( to, hint );
 
@@ -68,7 +68,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
 
             // process local queue
             while ( !localqueue.empty() ) {
-                this->graph().successors( localqueue.front(), [&]( Node n ) {
+                this->graph().successors( localqueue.front(), [&]( Node n, Label ) {
                         this->edge( localqueue.front(), n );
                     } );
                 localqueue.pop_front();

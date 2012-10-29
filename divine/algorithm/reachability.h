@@ -64,7 +64,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &r, Node f, Node t )
+        static visitor::TransitionAction transition( This &r, Node f, Node t, Label )
         {
             if ( !r.extension( t ).parent.valid() ) {
                 r.extension( t ).parent = f;

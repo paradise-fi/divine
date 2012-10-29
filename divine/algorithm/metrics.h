@@ -100,7 +100,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node, Node )
+        static visitor::TransitionAction transition( This &t, Node, Node, Label )
         {
             t.shared.addEdge();
             return visitor::FollowTransition;

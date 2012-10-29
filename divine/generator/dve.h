@@ -16,6 +16,7 @@ struct Dve : public Common< Blob > {
     struct dve::EvalContext ctx;
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
+    typedef typename Common::Label Label;
 
     template< typename Yield >
     void successors( Node from, Yield yield ) {
@@ -32,7 +33,7 @@ struct Dve : public Common< Blob > {
             memcpy( mem( b ), mem( from ), stateSize() );
             updateMem( b );
             system->apply( ctx, p );
-            yield( b );
+            yield( b, Label() );
             updateMem( from );
             p = system->enabled( ctx, p );
         }
@@ -47,7 +48,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     void read( std::string path ) {

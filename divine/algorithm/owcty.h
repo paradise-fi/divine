@@ -126,7 +126,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
                     assert_eq( v.owner( st ), v.worker.id() );
-                    v.queueAny( Blob(), st ); // slightly faster maybe
+                    v.queueAny( Blob(), st, Label() ); // slightly faster maybe
                 }
             }
         }
@@ -168,7 +168,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &o, Node f, Node t )
+        static visitor::TransitionAction transition( This &o, Node f, Node t, Label )
         {
             ++ o.extension( t ).predCount;
             o.extension( t ).inS = true;
@@ -199,7 +199,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     struct Initialise : Visit< This, Setup >
     {
-        static visitor::TransitionAction transition( This &o, Node from, Node to )
+        static visitor::TransitionAction transition( This &o, Node from, Node to, Label )
         {
             if ( !o.extension( to ).parent.valid() )
                 o.extension( to ).parent = from;
@@ -286,7 +286,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &o, Node f, Node t )
+        static visitor::TransitionAction transition( This &o, Node f, Node t, Label )
         {
             assert( t.valid() );
             assert( o.extension( t ).inS );
@@ -319,7 +319,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     struct FindCE : Visit< This, Setup > {
-        static visitor::TransitionAction transition( This &o, Node from, Node to )
+        static visitor::TransitionAction transition( This &o, Node from, Node to, Label )
         {
             if ( !o.extension( to ).inS )
                 return visitor::ForgetTransition;
@@ -338,7 +338,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         }
 
         template< typename V > void queueInitials( This &o, V &v ) {
-            v.queue( Node(), o.shared.cycle_node );
+            v.queue( Node(), o.shared.cycle_node, Label() );
         }
     };
 

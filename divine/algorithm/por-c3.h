@@ -14,6 +14,7 @@ template< typename G, typename Statistics >
 struct PORGraph : graph::Transform< G > {
     typedef PORGraph< G, Statistics > This;
     typedef typename G::Node Node;
+    typedef typename G::Label Label;
 
     int m_algslack;
 
@@ -86,7 +87,7 @@ struct PORGraph : graph::Transform< G > {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node from, Node to ) {
+        static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
             if ( t.extension( to ).done )
                 return visitor::ForgetTransition;
 
@@ -112,7 +113,7 @@ struct PORGraph : graph::Transform< G > {
                         t.to_expand.insert( *i );
                     }
                     t.updatePredCount( *i, 1 ); // ...
-                    q.queue( Blob(), *i );
+                    q.queue( Blob(), *i, Label() ); // coming from "nowhere"
                     t.to_check.erase( i );
                 }
             }
@@ -192,11 +193,11 @@ struct PORGraph : graph::Transform< G > {
     template< typename Visitor >
     void fullexpand( Visitor &v, Node n ) {
         extension( n ).full = true;
-        std::set< Node > all, ample, out;
-        std::vector< Node > extra;
+        std::set< std::pair< Node, Label > > all, ample, out;
+        std::vector< std::pair< Node, Label > > extra;
 
-        this->base().successors( n, [&]( Node x ) { all.insert( x ); } );
-        this->base().ample( n, [&]( Node x ) { ample.insert( x ); } );
+        this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
+        this->base().ample( n, [&]( Node x, Label l ) { ample.insert( std::make_pair( x, l ) ); } );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ) );
@@ -207,12 +208,12 @@ struct PORGraph : graph::Transform< G > {
                                std::back_inserter( extra ) );
 
         // release the states that we aren't going to use
-        for ( typename std::vector< Node >::iterator i = extra.begin(); i != extra.end(); ++i )
-            this->base().release( *i );
+        for ( auto i = extra.begin(); i != extra.end(); ++i )
+            this->base().release( i->first );
 
-        for ( typename std::set< Node >::iterator i = out.begin(); i != out.end(); ++i ) {
-            const_cast< Blob* >( &*i )->header().permanent = 1;
-            v.queue( n, *i );
+        for ( auto i = out.begin(); i != out.end(); ++i ) {
+            const_cast< Blob* >( &i->first )->header().permanent = 1;
+            v.queue( n, i->first, i->second );
         }
     }
 };

@@ -33,6 +33,7 @@ struct LLVM : Common< Blob > {
     LLVMContext *ctx;
     std::string file;
     Node _initial;
+    typedef wibble::Unit Label;
 
     typedef std::vector< int > PropGuard;
     typedef std::pair< PropGuard, int > PropTrans;
@@ -53,7 +54,7 @@ struct LLVM : Common< Blob > {
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial() );
+        q.queue( Node(), initial(), Label() );
     }
 
     struct Successors {
@@ -173,7 +174,7 @@ struct LLVM : Common< Blob > {
         s._buchi = 0;
         s.settle();
         while ( !s.empty() ) {
-            yield( s.head() );
+            yield( s.head(), Label() );
             s = s.tail();
         }
     }

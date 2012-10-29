@@ -32,8 +32,8 @@ enum ExpansionAction { TerminateOnState, ExpandState, IgnoreState };
 enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
 
 struct SetupBase {
-    template< typename Listener, typename Node >
-    static TransitionAction transition( Listener &, Node, Node ) {
+    template< typename Listener, typename Node, typename Label >
+    static TransitionAction transition( Listener &, Node, Node, Label ) {
         return FollowTransition;
     }
 
@@ -50,8 +50,8 @@ struct SetupBase {
         return IgnoreDeadlock;
     }
 
-    template< typename Listener, typename Node >
-    static TransitionAction transitionHint( Listener &, Node, Node, hash_t ) {
+    template< typename Listener, typename Node, typename Label >
+    static TransitionAction transitionHint( Listener &, Node, Node, Label, hash_t ) {
         return FollowTransition;
     }
 };
@@ -59,10 +59,11 @@ struct SetupBase {
 template< typename A, typename BListener >
 struct SetupOverride : A {
     typedef typename A::Node Node;
+    typedef typename A::Label Label;
     typedef std::pair< typename A::Listener *, BListener * > Listener;
 
-    static TransitionAction transition( Listener &l, Node a, Node b ) {
-        return A::transition( *l.first, a, b );
+    static TransitionAction transition( Listener &l, Node a, Node b, Label label ) {
+        return A::transition( *l.first, a, b, label );
     }
 
     static ExpansionAction expansion( Listener &l, Node x ) {
@@ -78,8 +79,8 @@ struct SetupOverride : A {
     }
 
     template< typename Listener, typename Node >
-    static TransitionAction transitionHint( Listener &l, Node a, Node b, hash_t h ) {
-        return A::transitionHint( *l.first, a, b, h );
+    static TransitionAction transitionHint( Listener &l, Node a, Node b, Label label, hash_t h ) {
+        return A::transitionHint( *l.first, a, b, label, h );
     }
 };
 
@@ -89,6 +90,7 @@ template<
 struct Common {
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
+    typedef typename S::Label Label;
     typedef typename S::Listener Listener;
     typedef typename S::Store Store;
     typedef typename S::Statistics Statistics;
@@ -106,17 +108,17 @@ struct Common {
     }
 
     void exploreFrom( Node _initial ) {
-        queue( Node(), _initial );
+        queue( Node(), _initial, Label() );
         processQueue();
     }
 
-    void queue( Node from, Node to ) {
-        edge( from, to );
+    void queue( Node from, Node to, Label l ) {
+        edge( from, to, l );
     }
 
     void processQueue() {
         while ( ! _queue.empty() ) {
-            _queue.processOpen( [&]( Node f, Node t ) { this->edge( f, t ); } );
+            _queue.processOpen( [&]( Node f, Node t, Label l ) { this->edge( f, t, l ); } );
             _queue.processDead( [&]( Node n ) {
                     if ( S::deadlocked( notify, n ) == TerminateOnDeadlock )
                         this->terminate();
@@ -126,19 +128,19 @@ struct Common {
     }
 
     // process an edge and free both nodes
-    void edge( Node from, Node _to ) {
+    void edge( Node from, Node _to, Label label ) {
         TransitionAction tact;
         ExpansionAction eact = ExpandState;
 
         bool had = true;
         hash_t hint = store.hash( _to );
 
-        if ( S::transitionHint( notify, from, _to, hint ) == IgnoreTransition )
+        if ( S::transitionHint( notify, from, _to, label, hint ) == IgnoreTransition )
             return;
 
         Node to = store.fetch( _to, hint, &had );
 
-        tact = S::transition( notify, from, to );
+        tact = S::transition( notify, from, to, label );
         if ( tact != IgnoreTransition && !had ) {
             store.store( to, hint );
         }
@@ -193,8 +195,8 @@ struct DFV : Common< Stack, S > {
 template< typename S, typename Worker >
 struct Partitioned {
     typedef typename S::Node Node;
+    typedef typename S::Label Label;
     typedef typename S::Graph Graph;
-    typedef std::pair< Node, Node > NodePair;
 
     Worker &worker;
     typename S::Listener &notify;
@@ -210,16 +212,17 @@ struct Partitioned {
         return graph.owner( _store.hasher(), worker, n, hint );
     }
 
-    inline void queue( Node from, Node to, hash_t hint = 0 ) {
+    inline void queue( Node from, Node to, Label label, hash_t hint = 0 ) {
         if ( owner( to, hint ) != worker.id() )
             return;
-        queueAny( from, to, hint );
+        queueAny( from, to, label, hint );
     }
 
-    inline void queueAny( Node from, Node to, hash_t hint = 0 ) {
+    inline void queueAny( Node from, Node to, Label label, hash_t hint = 0 ) {
         int _to = owner( to, hint ), _from = worker.id();
         Statistics::global().sent( _from, _to, sizeof(from) + memSize(to) );
-        worker.submit( _from, _to, NodePair( unblob< Node >( from ),  unblob< Node >( to ) ) );
+        worker.submit( _from, _to, std::make_tuple( unblob< Node >( from ),
+                                                    unblob< Node >( to ), label ) );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
@@ -254,10 +257,12 @@ struct Partitioned {
 
                 for ( int from = 0; from < worker.peers(); ++from ) {
                     while ( worker.comms().pending( from, to ) ) {
-                        NodePair p;
-                        p = worker.comms().take( from, to );
-                        Statistics::global().received( from, to, sizeof(p.first) + memSize(p.second) );
-                        bfv.edge( unblob< Node >( p.first ), unblob< Node >( p.second ) );
+                        auto p = worker.comms().take( from, to );
+                        Statistics::global().received(
+                            from, to, sizeof( Node ) + memSize( std::get< 1 >( p ) ) );
+                        bfv.edge( unblob< Node >( std::get< 0 >( p ) ),
+                                  unblob< Node >( std::get< 1 >( p ) ),
+                                  std::get< 2 >( p ) );
                     }
                 }
 
@@ -275,12 +280,12 @@ struct Partitioned {
     {
         typedef typename SetupOverride< S, This >::Listener Listener;
         static inline TransitionAction transitionHint(
-            Listener l, Node f, Node t, hash_t hint )
+            Listener l, Node f, Node t, Label label, hash_t hint )
         {
             This &n = *l.second;
             if ( n.owner( t, hint ) != n.worker.id() ) {
                 assert_eq( n.owner( f ), n.worker.id() );
-                n.queueAny( f, t, hint );
+                n.queueAny( f, t, label, hint );
                 return visitor::IgnoreTransition;
             }
             return visitor::FollowTransition;

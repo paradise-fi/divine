@@ -2,6 +2,7 @@
 
 #include <wibble/sfinae.h>
 #include <cmath> // for pow
+#include <tuple>
 
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h>
@@ -46,6 +47,7 @@ struct TestVisitor {
     template< typename _Node >
     struct NMTree {
         typedef _Node Node;
+        typedef wibble::Unit Label;
         int n, m;
 
         Node clone( Node n ) { return n; }
@@ -65,7 +67,7 @@ struct TestVisitor {
             for ( int i = 0; i < m; ++i ) {
                 int x = m * ( node( from ) - 1 ) + i + 1;
                 int y = (x >= n ? 0 : x) + 1;
-                yield( makeNode< Node >( y ) );
+                yield( makeNode< Node >( y ), Label() );
                 if ( x >= n )
                     break;
             }
@@ -81,8 +83,12 @@ struct TestVisitor {
     };
 
     template< typename G >
+    using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
+
+    template< typename G >
     struct Check : SetupBase {
         typedef typename G::Node Node;
+        typedef typename G::Label Label;
         typedef G Graph;
         typedef Check< G > This;
         typedef This Listener;
@@ -99,7 +105,7 @@ struct TestVisitor {
         int _nodes() { return this->nodes(); }
 
         template< typename Self >
-        static TransitionAction transition( Self &c, Node f, Node t ) {
+        static TransitionAction transition( Self &c, Node f, Node t, Label ) {
             if ( node( f ) ) {
                 assert( c.seen.count( f ) );
                 c.edges() ++;
@@ -119,11 +125,11 @@ struct TestVisitor {
         Check() : counts( std::make_pair( 0, 0 ) ) {}
     };
 
-    template< typename T, typename N >
-    static TransitionAction parallel_transition( T *self, N f, N t ) {
+    template< typename T, typename N, typename Label >
+    static TransitionAction parallel_transition( T *self, N f, N t, Label label ) {
         if ( node( t ) % self->peers() != self->id() ) {
             self->submit( self->id(), node( t ) % self->peers(),
-                          std::make_pair( f, t ) );
+                          std::make_tuple( f, t, label ) );
                 return IgnoreTransition;
             }
 
@@ -140,22 +146,22 @@ struct TestVisitor {
     }
 
     template< typename G >
-    struct ParallelCheck : Check< G >, Parallel<
-        Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
-        ParallelCheck< G > >
+    struct ParallelCheck : Parallel< Topology< Transition< G > >::template Local,
+                                     ParallelCheck< G > >,
+                           Check< G >
     {
         typedef ParallelCheck< G > This;
         typedef This Listener;
         typedef typename G::Node Node;
+        typedef typename G::Label Label;
         typedef G Graph;
-        typedef std::pair< Node, Node > Message;
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
         G m_graph;
 
-        static TransitionAction transition( This &c, Node f, Node t ) {
-            return parallel_transition( &c, f, t );
+        static TransitionAction transition( This &c, Node f, Node t, Label label ) {
+            return parallel_transition( &c, f, t, label );
         }
 
         void _visit() { // parallel
@@ -171,9 +177,9 @@ struct TestVisitor {
                 if ( !this->comms().pending( this->id() ) )
                     continue;
 
-                Message next = this->comms().take( this->id() );
-                assert_eq( node( next.second ) % this->peers(), this->id() );
-                bfv.queue( next.first, next.second );
+                auto next = this->comms().take( this->id() );
+                assert_eq( node( std::get< 1 >( next ) ) % this->peers(), this->id() );
+                bfv.queue( std::get< 0 >( next ), std::get< 1 >( next ), std::get< 2 >( next ) );
                 bfv.processQueue();
             }
         }
@@ -211,18 +217,18 @@ struct TestVisitor {
     };
 
     template< typename G >
-    struct TerminableCheck : Parallel<
-        Topology< std::pair< typename G::Node, typename G::Node > >::template Local,
-        TerminableCheck< G > >, Check< G >
+    struct TerminableCheck : Parallel< Topology< Transition< G > >::template Local,
+                                       TerminableCheck< G > >,
+                             Check< G >
     {
         typedef TerminableCheck< G > This;
         typedef This Listener;
         typedef typename G::Node Node;
-        typedef std::pair< Node, Node > Message;
+        typedef typename G::Label Label;
         G m_graph;
 
-        static TransitionAction transition( This &c, Node f, Node t ) {
-            return parallel_transition( &c, f, t );
+        static TransitionAction transition( This &c, Node f, Node t, Label label ) {
+            return parallel_transition( &c, f, t, label );
         }
 
         int owner( Node n ) {
@@ -240,9 +246,9 @@ struct TestVisitor {
 
             while ( true ) {
                 if ( this->comms().pending( this->id() ) ) {
-                    Message next = this->comms().take( this->id() );
-                    assert_eq( owner( next.second ), this->id() );
-                    bfv.queue( next.first, next.second );
+                    auto next = this->comms().take( this->id() );
+                    assert_eq( owner( std::get< 1 >( next ) ), this->id() );
+                    bfv.queue( std::get< 0 >( next ), std::get< 1 >( next ), std::get< 2 >( next ) );
                     bfv.processQueue();
                 } else {
                     if ( this->idle() )
@@ -377,7 +383,7 @@ struct TestVisitor {
 
         std::set< int > seenset;
 
-        TransitionAction transition( Node f, Node t ) {
+        TransitionAction transition( Node f, Node t, Label ) {
             shared.trans ++;
             return FollowTransition;
         }

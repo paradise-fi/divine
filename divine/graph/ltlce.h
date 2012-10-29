@@ -37,6 +37,7 @@ typename BS::bitstream &operator>>( BS &bs, CeShared< Node > &sh )
 template< typename G, typename Shared, typename Extension >
 struct LtlCE {
     typedef typename G::Node Node;
+    typedef typename G::Label Label;
     typedef LtlCE< G, Shared, Extension > This;
 
     G *_g;
@@ -104,7 +105,7 @@ struct LtlCE {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node from, Node to ) {
+        static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
             if ( from.valid() && to == t.shared().ce.initial ) {
                 t.extension( to ).parent = from;
                 return visitor::TerminateOnTransition;
@@ -126,7 +127,7 @@ struct LtlCE {
         assert( shared().ce.initial.valid() );
         if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {
             shared().ce.initial = a.store().fetch( shared().ce.initial, a.store().hash( shared().ce.initial ) );
-            visitor.queue( Blob(), shared().ce.initial );
+            visitor.queue( Blob(), shared().ce.initial, Label() );
         }
         visitor.processQueue();
     }

@@ -18,6 +18,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef NestedDFS< Setup > This;
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
+    typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
 
     Node seed;
@@ -81,7 +82,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     // this is the entrypoint for full expansion... I know the name isn't best,
     // but that's what PORGraph uses
-    void queue( Node from, Node to ) {
+    void queue( Node from, Node to, Label ) {
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
         visitor.exploreFrom( to );
     }
@@ -137,7 +138,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Node from, Node to ) {
+        static visitor::TransitionAction transition( This &dfs, Node from, Node to, Label ) {
             dfs.stats.addEdge();
             if ( from.valid() && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
@@ -170,7 +171,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Node from, Node to )
+        static visitor::TransitionAction transition( This &dfs, Node from, Node to, Label )
         {
             // The search always starts with a transition from "nowhere" into the
             // initial state. Ignore this transition here.

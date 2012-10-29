@@ -48,6 +48,9 @@ wibble::Unit setupParallel( NotPreferred, T &t )
 }
 */
 
+template< typename G >
+using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
+
 template< template< typename > class T >
 struct SetupT {
     template< typename X > using Topology = T< X >;
@@ -88,10 +91,10 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta )
 {
 #ifdef O_PERFORMANCE
     if ( meta.execution.nodes == 1 )
-        return makeAlgorithm< A, G, Topology<>::Local >( meta );
+        return makeAlgorithm< A, G, Topology< Transition< G > >::template Local >( meta );
     else
 #endif
-        return makeAlgorithm< A, G, Topology<>::Mpi >( meta );
+        return makeAlgorithm< A, G, Topology< Transition< G > >::template Mpi >( meta );
 }
 
 template< template< typename > class A, typename Graph >
