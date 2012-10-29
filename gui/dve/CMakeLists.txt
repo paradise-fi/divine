@@ -60,4 +60,4 @@ qt4_wrap_cpp(DVE_MODULE_SRC2 ${DVE_MODULE_MOC})
 qt4_wrap_ui(DVE_MODULE_SRC3 ${DVE_MODULE_UI})
 
 add_library(dveModule STATIC ${DVE_MODULE_SRC} ${DVE_MODULE_SRC2} ${DVE_MODULE_SRC3} ${COMBINE_M4_H})
-target_link_libraries(dveModule baseIDE libdivine wibble ${QT_LIBRARIES})
+target_link_libraries(dveModule baseIDE libdivine libdivine-instances wibble ${QT_LIBRARIES})
