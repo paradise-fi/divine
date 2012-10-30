@@ -17,10 +17,11 @@ namespace lens {
 
 template< typename T >
 struct LinearSize {
-    template< typename X > int check();
+    template< typename X > static int check( X );
 
     template< typename Addr, typename U >
-    static auto _get( wibble::Preferred, Addr a ) -> typename U::LensFriend
+    static auto _get( wibble::Preferred, Addr a ) ->
+        decltype( check( a.template as< U >().advance( a, 0 ) ) )
     {
         T &instance = a.template as< T >();
         return a.distance( instance.advance( a, instance.end() ) );
@@ -76,8 +77,7 @@ struct LinearAddress {
 #define LENS_FRIEND \
     template< typename __Addr, typename __T > friend struct Lens; \
     template< typename __S, typename... __T > friend struct TypeAt; \
-    template< typename __T > friend struct LinearSize; \
-    typedef int LensFriend;
+    template< typename __T > friend struct LinearSize;
 
 template< typename Structure, typename... Path > struct TypeAt;
 
