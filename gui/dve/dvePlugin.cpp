@@ -410,7 +410,7 @@ void DvePlugin::onPreprocessorTriggered()
 
   defs = QInputDialog::getText(
     root_, tr("Preprocessor"), tr("Enter a list of space separated definitions:"),
-    QLineEdit::Normal, defs, &ok);
+    QLineEdit::Normal, defs, &ok).trimmed();
 
   if(!ok)
     return;
@@ -419,7 +419,7 @@ void DvePlugin::onPreprocessorTriggered()
 
   QByteArray input = qobject_cast<TextEditor*>(
     root_->activeEditor())->textDocument()->toPlainText().toAscii();
-  QStringList dlist = defs.split(' ');
+  QStringList dlist = defs.isEmpty() ? QStringList() : defs.split(' ');
 
   QByteArray res = Combine().preprocess(input, dlist);
 
