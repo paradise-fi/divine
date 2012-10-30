@@ -15,43 +15,26 @@
 namespace divine {
 namespace lens {
 
-/* Helpers. */
-
-template< typename T >
-T &as( char *mem ) {
-    return *reinterpret_cast< T * >( mem );
-}
-
-template< typename T >
-const T &as( const char *mem ) {
-    return *reinterpret_cast< const T * >( mem );
-}
-
-template< typename T >
-char *asmem( T &t ) {
-    return reinterpret_cast< char * >( &t );
-}
-
-template< typename T >
-const char *asmem( const T &t ) {
-    return reinterpret_cast< const char * >( &t );
-}
-
 template< typename T >
 struct LinearSize {
-    template< typename U >
-    static auto _get( wibble::Preferred, U &t ) -> decltype( t.offset( 0 ) ) {
-        return t.offset( t.end() );
+    template< typename X > int check();
+
+    template< typename Addr, typename U >
+    static auto _get( wibble::Preferred, Addr a ) -> typename U::LensFriend
+    {
+        T &instance = a.template as< T >();
+        return a.distance( instance.advance( a, instance.end() ) );
     }
 
-    template< typename U >
-    static auto _get( wibble::NotPreferred, U & ) -> int {
+    template< typename Addr, typename U >
+    static auto _get( wibble::NotPreferred, Addr ) -> int {
         return sizeof( T );
     }
 
-    static auto get( T &t ) -> int
+    template< typename Addr >
+    static auto get( Addr a ) -> int
     {
-        return _get( wibble::Preferred(), t );
+        return _get< Addr, T >( wibble::Preferred(), a );
     }
 };
 
@@ -59,9 +42,8 @@ struct LinearAddress {
     Blob b;
     int offset;
 
-    template< typename LinearOffset >
-    LinearAddress( LinearAddress base, int index, LinearOffset offset )
-        : b( base.b ), offset( base.offset + offset( index ) )
+    LinearAddress( LinearAddress base, int index, int offset )
+        : b( base.b ), offset( base.offset + offset )
     {}
 
     LinearAddress( Blob b, int offset )
@@ -74,17 +56,28 @@ struct LinearAddress {
         return b.data() + offset;
     }
 
+    template< typename T >
+    T &as() {
+        return *reinterpret_cast< T * >( dereference() );
+    }
+
+    int distance( LinearAddress b ) {
+        return b.offset - offset;
+    }
+
     // TODO: Generalize to non-linear targets...
     template< typename LinearSize >
-    void copy( LinearAddress to, LinearSize size ) {
+    LinearAddress copy( LinearAddress to, LinearSize size ) {
         std::copy( dereference(), dereference() + size(), to.dereference() );
+        return LinearAddress( to.b, to.offset + size() );
     }
 };
 
 #define LENS_FRIEND \
     template< typename __Addr, typename __T > friend struct Lens; \
     template< typename __S, typename... __T > friend struct TypeAt; \
-    template< typename __T > friend struct LinearSize;
+    template< typename __T > friend struct LinearSize; \
+    typedef int LensFriend;
 
 template< typename Structure, typename... Path > struct TypeAt;
 
@@ -115,16 +108,15 @@ struct Lens
 
     template< typename T, typename P, typename... Ps >
     static Address _address( Address base, P p, Ps... ps ) {
-        T &instance = as< T >( base.dereference() );
+        T &instance = base.template as< T >();
         return _address< decltype( T::type( p ) ) >(
-            Address( base, T::index( p ), [&]( int idx ) { return instance.offset( idx ); } ),
-            ps... );
+            instance.advance( base, T::index( p ) ), ps... );
     }
 
     template< typename... Ps >
     auto get( Ps... ps ) -> typename TypeAt< Structure, Ps... >::T &
     {
-        return as< typename TypeAt< Structure, Ps... >::T >( address( ps... ).dereference() );
+        return address( ps... ).template as< typename TypeAt< Structure, Ps... >::T >();
     }
 
     template< typename... Ps >
@@ -140,8 +132,8 @@ struct Lens
     }
 
     template< typename Addr >
-    void copy( Addr to ) {
-        to.copy( start, [&]() { return LinearSize< Structure >::get( get() ); } );
+    Addr copy( Addr to ) {
+        return to.copy( start, [&]() { return LinearSize< Structure >::get( this->address() ); } );
     }
 };
 
@@ -152,7 +144,8 @@ template< int Idx >
 struct _Tuple< Idx >
 {
     int _length() { return Idx; }
-    int _offset( int i ) { assert_eq( i, Idx ); return 0; }
+    template< typename Addr >
+    static Addr _advance( Addr base, int i ) { assert_eq( i, Idx ); return base; }
 };
 
 template< int _Idx, typename _Head, typename... _Tail >
@@ -163,14 +156,13 @@ struct _Tuple< _Idx, _Head, _Tail... > : _Tuple< _Idx + 1, _Tail... >
     typedef _Head Head;
     typedef _Tuple< _Idx + 1, _Tail... > Tail;
 
-    int _offset( int i ) {
+    template< typename Addr >
+    static Addr _advance( Addr base, int i ) {
         if ( _Idx < i )
-            return LinearSize< Head >::get( head() ) + tail()._offset( i );
+            return Tail::_advance( Addr( base, 1, LinearSize< Head >::get( base ) ), i );
         else
-            return 0; /* found our index */
+            return base; /* found our index */
     }
-    Tail &tail() { return as< Tail >( asmem( *this ) + LinearSize< Head >::get( head() ) ); }
-    Head &head() { return as< Head >( asmem( *this ) ); }
 };
 
 template< typename... Ts >
@@ -197,8 +189,11 @@ class Tuple
     static int index( T ) {
         return _index< T, Real >();
     }
+
     int end() { return real._length(); }
-    int offset( int idx ) { return real._offset( idx ); }
+
+    template< typename Addr >
+    Addr advance( Addr base, int idx ) { return Real::_advance( base, idx ); }
 
     template< typename T >
     static T type( T t ) {
@@ -214,8 +209,12 @@ class FixedArray
     int _length;
     static T type( int ) { return T(); }
     static int index( int i ) { return i; }
+
     int end() { return length(); }
-    int offset( int i ) { return sizeof( int ) + i * sizeof( T ); }
+
+    template< typename Addr >
+    Addr advance( Addr base, int i ) { return Addr( base, i, sizeof( int ) + i * sizeof( T ) ); }
+
     LENS_FRIEND
 public:
     int &length() { return _length; }
@@ -231,14 +230,6 @@ struct _Array {
 
     Self &self() { return *static_cast< Self * >( this ); }
 
-    T &atoffset( int off ) {
-        return as< T >( asmem( *this ) + off );
-    }
-
-    T &at( int i ) {
-        return self().atoffset( self().offset( i ) );
-    }
-
     static T type( int ) { return T(); }
     static int index( int i ) { return i; }
     int end() { return _length; }
@@ -247,17 +238,19 @@ struct _Array {
 template< typename T >
 class Array: _Array< T, Array< T > >
 {
-    int offset( int i, int base = sizeof( int ) ) {
+    template< typename Addr >
+    Addr advance( Addr a, int i, int base = sizeof( int ) ) {
         if ( !i )
-            return base;
-        int previous = offset( i - 1 );
-        return previous + LinearSize< T >::get( this->atoffset( previous ) );
+            return Addr( a, -1, base );
+        Addr previous = advance( a, i - 1, base );
+        return Addr( previous, i, LinearSize< T >::get( previous ) );
     }
     LENS_FRIEND
 public:
     int &length() { return this->_length; }
 };
 
+#if 0
 /*
  * TODO This is not very useful yet, since the index is not built
  * automatically, nor updated. We need an update interface first.
@@ -273,6 +266,7 @@ class IndexedArray : _Array< T, IndexedArray< T > >
 public:
     int &length() { return this->_length; }
 };
+#endif
 
 }
 }

@@ -5,6 +5,43 @@
 using namespace divine::lens;
 
 struct TestLens {
+
+    Test tuple() {
+        divine::Blob blob( 3 * sizeof( int ) + sizeof( float ) );
+        blob.clear();
+
+        struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
+        struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
+        struct IntC { int i; IntC( int i = 0 ) : i( i ) {} };
+
+        typedef Tuple< IntA, IntB, IntC, float > Foo;
+
+        LinearAddress a( blob, 0 );
+        Lens< LinearAddress, Foo > lens( a );
+
+        lens.get( IntA() ) = 1;
+        lens.get( IntB() ) = 2;
+        lens.get( IntC() ) = 3;
+
+        assert_eq( wibble::str::fmt( blob ), "[ 1, 2, 3, 0 ]" );
+    }
+
+    Test fixedArray() {
+        divine::Blob blob( sizeof( int ) * 10 );
+        blob.clear();
+
+        typedef FixedArray< int > Array;
+
+        LinearAddress a( blob, 0 );
+        Lens< LinearAddress, Array > lens( a );
+
+        lens.get().length() = 8;
+        for ( int i = 0; i < 8; ++i )
+            lens.get( i ) = i + 1;
+
+        assert_eq( wibble::str::fmt( blob ), "[ 8, 1, 2, 3, 4, 5, 6, 7, 8, 0 ]" );
+    }
+
     Test basic() {
         divine::Blob blob( 200 );
         blob.clear();
