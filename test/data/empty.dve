@@ -1,0 +1,7 @@
+process A 
+{
+ state q;
+ init q;
+}
+
+system async;

@@ -8,6 +8,11 @@ for_dve_small() {
     test "$O_DVE" = "ON" || test "$O_LEGACY" = "ON"|| return 0
 
     check clear
+    run $wrapper data/empty.dve "$@"
+    check reachability_any
+    $extracheck data/empty.dve
+
+    check clear
     run $wrapper data/test1.dve "$@"
     check ltl_invalid
     check statespace 7 15 3 0
