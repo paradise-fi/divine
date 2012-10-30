@@ -338,13 +338,13 @@ void DvePlugin::updateActions()
 
     metricsAct->setEnabled(!locked);
     reachAct->setEnabled(!locked);
-    searchAct->setEnabled(!locked);
+// TODO: implement search?
+//     searchAct->setEnabled(!locked);
     verifyAct->setEnabled(!locked);
 
     connect(metricsAct, SIGNAL(triggered()), SLOT(onMetricsTriggered()));
     connect(reachAct, SIGNAL(triggered()), SLOT(onReachabilityTriggered()));
-// TODO: implement search
-//     connect(searchAct, SIGNAL(triggered()), SLOT(onSearchTriggered()));
+    connect(searchAct, SIGNAL(triggered()), SLOT(onSearchTriggered()));
     connect(verifyAct, SIGNAL(triggered()), SLOT(onVerifyTriggered()));
   }
 }
