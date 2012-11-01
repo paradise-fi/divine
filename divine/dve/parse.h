@@ -518,9 +518,10 @@ struct Automaton : Parser {
         maybe( &Automaton::accept );
         maybe( &Automaton::commit );
 
-        eat( Token::Trans );
-        list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
-        maybe( &Automaton::semicolon );
+        if ( next( Token::Trans ) ) {
+            list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
+            maybe( &Automaton::semicolon );
+        }
 
         eat( Token::BlockClose );
     }
