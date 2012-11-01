@@ -388,7 +388,7 @@ void preved_bin_op(LTL_syntax_el_t elem, LTL_formul_t& F1,
 
 bool LTL_parse_t::syntax_check(LTL_formul_t& F)
 {
-	int i, old_i, delka, stav;
+	int i, old_i, stav;
 	string pred;
 	LTL_syntax_el_t elem = static_cast< LTL_syntax_el_t >( 0 );
 	synt_an_el an_elem = static_cast< synt_an_el >( 0 ), N;
@@ -399,7 +399,7 @@ bool LTL_parse_t::syntax_check(LTL_formul_t& F)
 	stack<preved_zas> Zprev;
 	LTL_formul_t F1, F2, F3;
 
-	delka = formule.length();
+	//delka = formule.length();	
 	stav = 0; i = 0; old_i = 0; N = gnd;
 
 	pom.stav = 0; pom.elem = gnd; Z.push(pom);

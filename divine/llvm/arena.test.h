@@ -3,6 +3,8 @@
 #include <divine/llvm/arena.h>
 #include <cstring>
 
+#define _unused(x) ((void)x)
+
 using namespace divine::llvm;
 using namespace divine;
 
@@ -13,7 +15,7 @@ struct TestArena {
         Arena::Index j = x;
         assert_eq( i, j );
         assert_eq( x, j );
-        assert_eq( x, i );
+        assert_eq( x, i );       
     }
 
     Test allocate() {
@@ -23,6 +25,7 @@ struct TestArena {
         assert( !strcmp( (char *) a.translate( i ), "hey!" ) );
         Arena::Index j = a.allocate( 9 );
         assert( !strcmp( (char *) a.translate( i ), "hey!" ) );
+	_unused (j);
     }
 
     Test free() {
@@ -32,6 +35,8 @@ struct TestArena {
                      k = a.allocate( 5 );
         a.free( k );
         assert_eq( a.allocate( 5 ), k );
+	_unused(i);
+	_unused(j);
     }
 
     Test spill() {
@@ -67,9 +72,11 @@ struct TestArena {
         Arena::Index i = a.allocate( 5 );
         strcpy( (char *) a.translate( i ), "hey!" );
         assert( !strcmp( (char *) a.translate( i ), "hey!" ) );
+
         Arena::Index j = a.allocate( 9 );
         divine::Blob blob = a.compact( 0, p );
         b.expand( blob, 0 );
+	_unused(j);
 
         assert( !strcmp( (char *) b.translate( i ), "hey!" ) );
     }

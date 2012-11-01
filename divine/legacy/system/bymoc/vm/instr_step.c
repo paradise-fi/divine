@@ -441,8 +441,8 @@ et_ic_status instr_monitor_succ( st_instr_tmp_succ * p_succ, // successor state 
                               p_succ_ctx->priv_context );
 
   // keep compiler happy
-  flag_reg = 0;
-  timeout = 0;
+  // flag_reg = 0;
+  // timeout = 0;
 }
 
 
@@ -522,8 +522,8 @@ et_ic_status instr_sync_succ( st_instr_tmp_succ * p_succ, // successor state (wi
                              p_succ_ctx, p_succ_cnts );
 
   // keep compiler happy
-  flag_reg = 0;
-  timeout = 0;
+  //flag_reg = 0;
+  //timeout = 0;
 }
 
 
@@ -580,7 +580,7 @@ et_ic_status instr_sys_succ( st_instr_tmp_succ * p_succ, // successor state (wit
   return IC_CONTINUE;
 
   // keep compiler happy
-  p_unused = NULL;
+  //p_unused = NULL;
 }
 
 

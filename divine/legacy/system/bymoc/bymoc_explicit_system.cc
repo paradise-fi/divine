@@ -14,6 +14,8 @@ using namespace divine;
 #endif
 using std::ostream;
 using std::vector;
+
+#define _unused(x) ((void)x)
                                 
 
 ////METHODS of explicit_system:
@@ -88,6 +90,7 @@ state_t bymoc_explicit_system_t::get_initial_state()
 
  nipsvm_state_t *sptr = nipsvm_state_copy (sz, initial_state, &tmp, &tmp_size);
  assert(sptr != NULL);
+ _unused(sptr);
  return s;
 }
 

@@ -57,12 +57,12 @@ et_ic_status instr_succ_buf_succ_cb( st_global_state_header *succ,
   // go on finding successor states
   return IC_CONTINUE;
   // keep compiler happy
-  label_1st = 0;
-  label = 0;
-  flag_reg_1st = 0;
-  flag_reg = 0;
-  succ_cb_flags = 0;
-  p_succ_out = NULL;
+  /* label_1st = 0; */
+  /* label = 0; */
+  /* flag_reg_1st = 0; */
+  /* flag_reg = 0; */
+  /* succ_cb_flags = 0; */
+  /* p_succ_out = NULL; */
 }
 
 

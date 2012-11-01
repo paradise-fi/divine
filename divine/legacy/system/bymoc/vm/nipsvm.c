@@ -100,5 +100,5 @@ nipsvm_default_error_cb (nipsvm_errorcode_t err, nipsvm_pid_t pid,
 	// do not try to find successor states
 	return IC_STOP;
 	// keep compiler happy
-	priv_context = NULL;
+	//priv_context = NULL;
 }

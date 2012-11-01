@@ -25,6 +25,8 @@ namespace generator {
 
 using namespace llvm;
 
+#define _unused(x) ((void)x)
+
 struct LLVM : Common< Blob > {
     typedef Blob Node;
     divine::llvm::Interpreter *_interpreter;
@@ -85,6 +87,7 @@ struct LLVM : Common< Blob > {
             interpreter().restore( _from, _parent->alloc._slack );
             int buchi = interpreter().flags.buchi;
             assert_leq( buchi + 1, _parent->prop_next.size() );
+	    _unused(buchi);
 
             interpreter().step( _context, _alternative );
 

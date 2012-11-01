@@ -379,7 +379,7 @@ bool explicit_storage_t::is_stored_if_not_insert(state_t state,state_ref_t& stat
   char *cstate = 0;
   int cstate_size = 0;
   //int tmp_extra_mem = 0;
-  bool already_stored=false;
+  //bool already_stored=false;
 
   hresult = hasher.get_hash(reinterpret_cast<unsigned char *>(state.ptr),state.size,
 			    EXPLICIT_STORAGE_HASH_SEED);  
@@ -426,7 +426,7 @@ bool explicit_storage_t::is_stored_if_not_insert(state_t state,state_ref_t& stat
 		      == 0)
 		    {
 		      //already inserted ...
-		      already_stored = true;
+		      //already_stored = true;
 		      delete [] cstate;
 		      state_reference.hres = hresult;
 		      state_reference.id = i;

@@ -6,6 +6,10 @@
 #ifndef DIVINE_BARRIER_H
 #define DIVINE_BARRIER_H
 
+// Using _unused(V) prevents the compiler from complaining about
+// a variable V being defined but not used. 
+#define _unused(x) ((void)x)  
+
 namespace divine {
 
 // You can usually use Barrier< Terminable > and derive your threads from this
@@ -80,6 +84,7 @@ struct Barrier {
         }
 
         assert( who_is_ours );
+	_unused( who_is_ours );
 
         // we are now holding whatever we could get at; let's check that
         // there's no work left in the system

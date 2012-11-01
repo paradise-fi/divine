@@ -108,7 +108,7 @@ search_succ_cb (size_t succ_sz, nipsvm_state_t *succ,
   return IC_CONTINUE;
 
   // keep compiler happy
-  t_info = NULL;
+  //t_info = NULL;
 }
 
 
