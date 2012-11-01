@@ -43,6 +43,10 @@ let
        name = "divine-" + name;
        src = jobs.tarball;
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
+       checkPhase = ''
+          make unit || touch $out/nix-support/failed
+          make functional || touch $out/nix-support/failed
+       '';
     };
 
   mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
