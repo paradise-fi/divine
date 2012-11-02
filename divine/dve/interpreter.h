@@ -594,12 +594,13 @@ struct System {
         for ( Scope::iterator i = scope.begin(); i != scope.end(); ++i ) {
             Symbol vsym = tab.lookup( vns, i->first ), isym = tab.lookup( ins, i->first );
             assert( vsym.valid() );
-            if ( isym.valid() )
+            if ( isym.valid() ) {
                 if ( vsym.item().is_array )
                     for ( int index = 0; index < vsym.item().array; index++ )
                         vsym.set( ctx.mem, index, isym.deref( 0, index ), err );
                 else
                     vsym.set( ctx.mem, 0, isym.deref(), err );
+	    }
         }
     }
 

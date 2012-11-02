@@ -11,8 +11,6 @@
 
 #include <divine/utility/output.h>
 
-#define _unused(x) (void(x))
-
 struct proxycall {
     virtual void flush( std::string ) = 0;
     virtual void partial( std::string ) = 0;
@@ -146,7 +144,7 @@ struct Curses : divine::Output
 
         int maxy, maxx;
         getmaxyx( stdscr, maxy, maxx );
-	_unused(maxy);
+	(void)maxy;
 
         progcall.win = newwin( 0, 45, 1, 0 );
         scrollok( progcall.win, true );

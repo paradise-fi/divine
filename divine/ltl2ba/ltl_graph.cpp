@@ -22,8 +22,6 @@ using namespace divine;
 using namespace std;
 #endif //DOXYGEN_PROCESSING
 
-#define _unused(x) ((void)x)
-
 typedef pair<int, int> node_pair;
 
 inline bool operator<(const node_pair& T1, const node_pair& T2)
@@ -82,7 +80,7 @@ bool equiv_old(const list<LTL_formul_t>& LF1, const list<LTL_formul_t>& LF2)
 		//}
 	}
 
-	_unused(t);
+	(void)t;
 	return(true);
 }
 

@@ -21,8 +21,6 @@ using namespace divine;
 using namespace std;
 #endif //DOXYGEN_PROCESSING
 
-#define _unused(x) ((void)x)
-
 /* pomocne funkce */
 
 bool equiv_C(const list<ALT_vwaa_node_t*> & L1,
@@ -1423,7 +1421,7 @@ void ALT_graph_t::transform_vwaa()
 				/*if (b1) {
 					simp_ALT_gba_node_ts();
 				}*/
-				_unused(b1);
+				(void)b1;
 
 				sas_i = acc_set.begin();
 				for (ac_i = ac_b; ac_i != ac_e; ac_i++) {
