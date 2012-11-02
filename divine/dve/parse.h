@@ -291,7 +291,7 @@ struct Declaration : Parser {
             initial.push_back( Expression( context() ) );
     }
 
-    Declaration( Context &c ) : Parser( c ), size( 1 ), is_buffered( 0 )
+  Declaration( Context &c ) : Parser( c ), is_buffered( 0 ), size( 1 )
     {
         Token t = eat( Token::Identifier );
         name = t.data;

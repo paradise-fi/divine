@@ -131,7 +131,7 @@ struct Channel {
         return count( data ) <= 0;
     };
 
-    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : size( 1 ), is_compound( 0 ), is_array( 0 )
+    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 0 ),  is_array( 0 ), size( 1 )
     {
         is_buffered = chandecl.is_buffered;
         bufsize = chandecl.size;
@@ -222,7 +222,7 @@ struct Transition {
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc ), sync( 0 ), sync_channel( 0 ), parse( t )
+        : process( proc ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
         for ( int i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
