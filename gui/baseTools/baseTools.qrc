@@ -1,7 +1,0 @@
-<RCC>
-  <qresource prefix="icons" >
-    <!-- TextDocument -->
-    <file alias="filetypes/generic/64" >res/64x64/text-plain.png</file>
-    <file alias="filetypes/generic/128" >res/128x128/text-plain.png</file>
-  </qresource>
-</RCC>

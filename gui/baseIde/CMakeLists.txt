@@ -88,16 +88,8 @@ set(BASE_IDE_UI
     ui/searchPanel.ui
 )
 
-set(BASE_IDE_RES
-    baseIde.qrc
-)
-
-add_definitions(-DBASE_IDE_LIB)
-
 qt4_wrap_cpp(BASE_IDE_SRC2 ${BASE_IDE_MOC})
 qt4_wrap_ui(BASE_IDE_SRC3 ${BASE_IDE_UI})
-qt4_add_resources(BASE_IDE_SRC4 ${BASE_IDE_RES})
 
-add_library(baseIDE STATIC ${BASE_IDE_SRC} ${BASE_IDE_SRC2}
-                           ${BASE_IDE_SRC3} ${BASE_IDE_SRC4})
+add_library(baseIDE STATIC ${BASE_IDE_SRC} ${BASE_IDE_SRC2} ${BASE_IDE_SRC3})
 target_link_libraries(baseIDE libdivine libdivine-instances wibble ${QT_LIBRARIES})

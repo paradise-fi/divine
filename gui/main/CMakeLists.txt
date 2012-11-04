@@ -15,8 +15,10 @@ if(APPLE)
   set(GUI_TYPE MACOSX_BUNDLE)
 endif(APPLE)
 
+qt4_add_resources(DIVINE_IDE_RES main.qrc)
+
 # main executable
-add_executable(divine.ide ${GUI_TYPE} main.cpp)
+add_executable(divine.ide ${GUI_TYPE} main.cpp ${DIVINE_IDE_RES})
 target_link_libraries(divine.ide baseIDE baseTools dveModule ${QT_LIBRARIES})
 
 set(BIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_BIN_DEST})

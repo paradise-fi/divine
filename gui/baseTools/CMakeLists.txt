@@ -48,16 +48,10 @@ set(BASE_TOOLS_UI
     ui/simulatorPreferences.ui
 )
 
-set(BASE_TOOLS_RES
-    baseTools.qrc
-)
-
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/plugins)
 
 qt4_wrap_cpp(BASE_TOOLS_SRC2 ${BASE_TOOLS_MOC})
 qt4_wrap_ui(BASE_TOOLS_SRC3 ${BASE_TOOLS_UI})
-qt4_add_resources(BASE_TOOLS_SRC4 ${BASE_TOOLS_RES})
 
-add_library(baseTools STATIC ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2}
-                             ${BASE_TOOLS_SRC3} ${BASE_TOOLS_SRC4})
+add_library(baseTools STATIC ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2} ${BASE_TOOLS_SRC3})
 # target_link_libraries(baseTools baseIDE ${QT_LIBRARIES} qtcolorpicker)
