@@ -19,6 +19,7 @@
 
 #include <QThread>
 #include <QObject>
+#include <QVector>
 
 #include "abstractToolLock.h"
 
@@ -99,6 +100,9 @@ class DivineRunner : public QThread
 
     void init(const Meta & meta);
     const Meta & meta() const { return meta_; }
+    
+    const QVector<int> iniTrail() const;
+    const QVector<int> cycleTrail() const;
 
     void run();
 

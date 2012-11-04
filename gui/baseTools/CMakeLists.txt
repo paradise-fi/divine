@@ -60,4 +60,4 @@ qt4_add_resources(BASE_TOOLS_SRC4 ${BASE_TOOLS_RES})
 
 add_library(baseTools STATIC ${BASE_TOOLS_SRC} ${BASE_TOOLS_SRC2}
                              ${BASE_TOOLS_SRC3} ${BASE_TOOLS_SRC4})
-target_link_libraries(baseTools baseIDE ${QT_LIBRARIES} qtcolorpicker)
+# target_link_libraries(baseTools baseIDE ${QT_LIBRARIES} qtcolorpicker)

@@ -2,6 +2,7 @@ find_package(Qt4 REQUIRED QtXml)
 include(${QT_USE_FILE})
 
 include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${DIVINE_INCLUDES})
 
 set(BASE_IDE_SRC
     modules.h
@@ -55,6 +56,8 @@ set(BASE_IDE_SRC
     signalLock.h
     prettyPrint.cpp
     prettyPrint.h
+    divineTools.cpp
+    divineTools.h
 )
 
 set(BASE_IDE_MOC
@@ -76,6 +79,7 @@ set(BASE_IDE_MOC
     multiSaveDialog.h
     newDocumentDialog.h
     preferencesDialog.h
+    divineTools.h
 )
 
 set(BASE_IDE_UI
@@ -94,6 +98,6 @@ qt4_wrap_cpp(BASE_IDE_SRC2 ${BASE_IDE_MOC})
 qt4_wrap_ui(BASE_IDE_SRC3 ${BASE_IDE_UI})
 qt4_add_resources(BASE_IDE_SRC4 ${BASE_IDE_RES})
 
-add_library(baseIDE SHARED ${BASE_IDE_SRC} ${BASE_IDE_SRC2}
+add_library(baseIDE STATIC ${BASE_IDE_SRC} ${BASE_IDE_SRC2}
                            ${BASE_IDE_SRC3} ${BASE_IDE_SRC4})
-target_link_libraries(baseIDE ${QT_LIBRARIES})
+target_link_libraries(baseIDE libdivine libdivine-instances wibble ${QT_LIBRARIES})

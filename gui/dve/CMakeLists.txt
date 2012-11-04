@@ -19,8 +19,6 @@ set(DVE_MODULE_SRC
     combine.h
     combineDialog.cpp
     combineDialog.h
-    divineTools.cpp
-    divineTools.h
     dveModule.cpp
     dveModule.h
     dveDocument.cpp
@@ -38,7 +36,6 @@ set(DVE_MODULE_SRC
 )
 
 set(DVE_MODULE_MOC
-    divineTools.h
     combineDialog.h
     dveModule.h
     dveDocument.h
@@ -60,4 +57,4 @@ qt4_wrap_cpp(DVE_MODULE_SRC2 ${DVE_MODULE_MOC})
 qt4_wrap_ui(DVE_MODULE_SRC3 ${DVE_MODULE_UI})
 
 add_library(dveModule STATIC ${DVE_MODULE_SRC} ${DVE_MODULE_SRC2} ${DVE_MODULE_SRC3} ${COMBINE_M4_H})
-target_link_libraries(dveModule baseIDE libdivine libdivine-instances wibble ${QT_LIBRARIES})
+target_link_libraries(dveModule baseIDE qtcolorpicker libdivine)

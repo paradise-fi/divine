@@ -50,20 +50,6 @@
 namespace divine {
 namespace gui {
 
-namespace {
-  QVector<int> extract(const QString & trail)
-  {
-    QVector<int> res;
-    QStringList spl = trail.split(',');
-
-    foreach(QString str, spl) {
-      // trail in meta.result is numbered from 1
-      res.append(str.toInt() - 1);
-    }
-    return res;
-  }
-}
-
 //
 // Dve editor factory
 //
@@ -557,12 +543,8 @@ void DveModule::onRunnerFinished()
       return;
 
     // prepare the sequence
-    QVector<int> cev;
-    cev += extract(runner_->meta().result.iniTrail.c_str());
-    cev += extract(runner_->meta().result.cycleTrail.c_str());
-
     root_->simulation()->start();
-    root_->simulation()->autoRun(cev);
+    root_->simulation()->autoRun(runner_->iniTrail() + runner_->cycleTrail());
   }
 }
 
