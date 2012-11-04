@@ -399,7 +399,7 @@ struct System {
     std::vector< Channel > channels;
     Process *property;
 
-    Symbol flags;
+    Symbol flags, errFlags;
 
     struct Continuation {
         unsigned process:16; // the process whose turn it is
@@ -419,6 +419,7 @@ struct System {
 
         declare( symtab, sys.decls );
         flags = symtab.lookup( NS::Flag, "Flags" );
+        errFlags = symtab.lookup( NS::Flag, "Error" );
 
         // declare channels
         for( auto i = sys.chandecls.begin(); i != sys.chandecls.end(); i++ ) {
@@ -576,13 +577,13 @@ struct System {
     }
 
     void initial( EvalContext &ctx ) {
-        symtab.lookup( NS::Flag, "Flags" ).set(ctx.mem, 0, StateFlags::f_none);
+        flags.set(ctx.mem, 0, StateFlags::f_none);
         for ( int i = 0; i < processes.size(); ++i ) {
             initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
         }
         initial( ctx, symtab, NS::Variable, NS::Initialiser );
         initial( ctx, symtab, NS::Process, NS::InitState );
-        symtab.lookup( NS::Flag, "Error" ).set( ctx.mem, 0, ErrorState::e_none );
+        errFlags.set( ctx.mem, 0, ErrorState::e_none );
         setCommitedFlag( ctx );
     }
 
@@ -621,12 +622,12 @@ struct System {
     void bail( EvalContext &ctx, Continuation c ) {
         for( int i = 0; i < symtab.context->offset; i++ )
             ctx.mem[i] = 0;
-        symtab.lookup( NS::Flag, "Error" ).set( ctx.mem, 0, c.err );
+        errFlags.set( ctx.mem, 0, c.err );
     }
 
     bool valid( EvalContext &ctx, Continuation c ) {
         ErrorState err;
-        symtab.lookup( NS::Flag, "Error" ).deref( ctx.mem, 0, err );
+        errFlags.deref( ctx.mem, 0, err );
         if ( err.error )
             return false;
         if ( c.process < processes.size() )
