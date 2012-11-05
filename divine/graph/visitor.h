@@ -152,13 +152,16 @@ struct Common {
                 _queue.push( graph.clone( to ) );
         }
 
-        if ( tact != IgnoreTransition ) {
+        if ( tact != IgnoreTransition )
             store.update( to, hint );
+
+        if ( !store.alias( to, _to ) )
+            graph.release( _to );
+
+        if ( tact != IgnoreTransition ) {
             graph.release( to );
             graph.release( from );
         }
-        if ( !store.alias( to, _to ) )
-            graph.release( _to );
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
             this->terminate();

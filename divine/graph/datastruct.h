@@ -32,11 +32,18 @@ struct Queue {
     template< typename Next >
     void processOpen( Next next ) {
         deadlocked = true;
+
         Node from = _queue.front();
+        bool permanent = from.header().permanent;
+        from.header().permanent = true;
+
         g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
                 next( from, n, label );
             } );
+
+        from.header().permanent = permanent;
+        g.release( from ); // Hm.
     }
 
     template< typename Dead >
