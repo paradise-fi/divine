@@ -1636,7 +1636,7 @@ void dve_explicit_system_t::print_transition(state_t from, state_t to,
         case 0:
             transition = get_sending_or_normal_trans(
                                     enabled_trans[enabled_trans_idx]);
-            outs << "(sending) ";
+            outs << "(SYS) ";
             break;
         case 1:
             transition = get_receiving_trans(
@@ -1646,17 +1646,19 @@ void dve_explicit_system_t::print_transition(state_t from, state_t to,
                  transition->get_effect_count() == 0))
                 // receiving transition can be NULL / empty
                 continue;
-            outs << " | (receiving) ";
+            outs << "\\n| ";
             break;
         case 2:
             transition = get_property_trans(
                                     enabled_trans[enabled_trans_idx]);
-            if (transition == NULL ||
-                (transition->get_guard() == NULL &&
-                 transition->get_effect_count() == 0))
-                // property transition can be NULL / empty
-                continue;
-            outs << " | (property) ";
+
+	    // property transition can be NULL / empty
+            if (transition == NULL)
+	      continue;
+	    if ( (transition->get_guard() == NULL && transition->get_effect_count() == 0))
+	      outs << "\\n(LTL) guard: TRUE";
+	    else
+	      outs << "\\n(LTL) ";
         }
 
         std::string guard;
