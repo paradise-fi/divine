@@ -80,8 +80,11 @@ struct Dummy : Common< Blob > {
     }
 
     /// currently only dummy method
-    std::string showTransition( Node from, Node to ) {
-        return "";
+    std::string showTransition( Node from, Node to, Label act ) {
+        if (act.probability == 3)
+	  return "3";
+	else
+	  return "7";
     }
 
     void read( std::string ) {}

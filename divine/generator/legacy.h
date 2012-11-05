@@ -165,7 +165,7 @@ struct LegacyCommon : Common< _State > {
         return o.str();
     }
 
-    std::string showTransition( State from, State to ) {
+    std::string showTransition( State from, State to, Label ) {
         if ( !from.valid() || !to.valid() )
             return "";
         std::stringstream o;

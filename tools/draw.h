@@ -61,7 +61,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return visitor::ExpandState;
     }
 
-    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label )
+    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label l)
     {
         if ( draw.extension( t ).serial == 0 ) {
             if ( !draw.intrace->has( t ) )
@@ -78,7 +78,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                  std::make_pair( draw.extension( f ).serial,
                                  draw.extension( t ).serial ) ) )
             color = "red";
-        draw.dotEdge( f, t, color );
+        draw.dotEdge( f, t, l, color);
 
         if ( draw.extension( t ).distance == 0 )
            draw.extension( t ).distance = INT_MAX;
@@ -144,12 +144,13 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         dot += str.str();
     }
 
-    void dotEdge( Node f, Node t, std::string color = "" ) {
+    void dotEdge( Node f, Node t, Label a, std::string color = "") {
         stringstream str;
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
+
         if ( labels )
-            label = this->graph().showTransition( f, t );
+            label = escape( this->graph().showTransition( f, t, a ) );
 
         if ( !color.empty() || !label.empty()) {
             str << " [";

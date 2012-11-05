@@ -91,7 +91,7 @@ struct Transform {
     bool isGoal( Node s ) { return base().isGoal( s ); }
     bool isAccepting( Node s ) { return base().isAccepting( s ); }
     std::string showNode( Node s ) { return base().showNode( s ); }
-    std::string showTransition( Node from, Node to ) { return base().showTransition( from, to ); }
+    std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
     void read( std::string path ) { base().read( path ); }
     void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
                         const unsigned peersCount = 1 ) {

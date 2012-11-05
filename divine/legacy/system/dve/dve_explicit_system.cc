@@ -1646,7 +1646,7 @@ void dve_explicit_system_t::print_transition(state_t from, state_t to,
                  transition->get_effect_count() == 0))
                 // receiving transition can be NULL / empty
                 continue;
-            outs << "\\n| ";
+            outs << "\n| ";
             break;
         case 2:
             transition = get_property_trans(
@@ -1656,9 +1656,9 @@ void dve_explicit_system_t::print_transition(state_t from, state_t to,
             if (transition == NULL)
 	      continue;
 	    if ( (transition->get_guard() == NULL && transition->get_effect_count() == 0))
-	      outs << "\\n(LTL) guard: TRUE";
+	      outs << "\n(LTL) guard: TRUE";
 	    else
-	      outs << "\\n(LTL) ";
+	      outs << "\n(LTL) ";
         }
 
         std::string guard;

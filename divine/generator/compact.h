@@ -362,7 +362,7 @@ struct Compact : public Common< Blob > {
     }
 
     /// currently only dummy method
-    std::string showTransition( Node from, Node to ) {
+    std::string showTransition( Node from, Node to, Label ) {
         return "";
     }
 

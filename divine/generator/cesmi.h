@@ -153,7 +153,7 @@ struct CESMI : public Common< Blob > {
             return "()";
     }
 
-    std::string showTransition( Node from, Node to ) {
+    std::string showTransition( Node from, Node to, Label ) {
         if ( dl.show_transition ) {
             char *fmt = dl.show_transition( &setup, from.pointer(), to.pointer() );
             std::string s( fmt );
