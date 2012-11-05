@@ -39,15 +39,19 @@ struct Dummy : Common< Blob > {
         if ( !st.valid() )
             return;
 
-        r = alloc.new_blob( sizeof( Content ) );
-        content( r ) = content( st );
-        content( r ).first ++;
-        yield( r, Label( 7 ) );
+        if ( content( st ).first < 512 ) {
+            r = alloc.new_blob( sizeof( Content ) );
+            content( r ) = content( st );
+            content( r ).first ++;
+            yield( r, Label( 7 ) );
+        }
 
-        r = alloc.new_blob( sizeof( Content ) );
-        content( r ) = content( st );
-        content( r ).second ++;
-        yield( r, Label( 3 ) );
+        if ( content( st ).second < 512 ) {
+            r = alloc.new_blob( sizeof( Content ) );
+            content( r ) = content( st );
+            content( r ).second ++;
+            yield( r, Label( 3 ) );
+        }
     }
 
     Node clone( Node n ) {
