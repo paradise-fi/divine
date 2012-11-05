@@ -139,7 +139,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
 
         static visitor::TransitionAction transition( This &dfs, Node from, Node to, Label ) {
-            dfs.stats.addEdge();
+            dfs.stats.addEdge( dfs.graph(), from, to );
             if ( from.valid() && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
                 dfs.toexpand.push_back( from );

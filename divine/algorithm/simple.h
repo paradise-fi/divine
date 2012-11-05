@@ -30,7 +30,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
         } else { // we own this node, so let's process it
             Node in_table = this->store().fetch( to, hint );
 
-            shared.addEdge();
+            shared.addEdge( this->graph(), from, to );
             if ( !this->store().valid( in_table ) ) {
                 this->store().store( to, hint );
                 to.header().permanent = 1; // don't ever release this

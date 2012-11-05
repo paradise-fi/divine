@@ -200,8 +200,8 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
     }
 
     /// Adds new backward edge to statistics
-    void statsAddInTransition() {
-        shared.stats.addEdge();
+    void statsAddInTransition( Node from, Node to ) {
+        shared.stats.addEdge( this->graph(), from, to );
         if ( meta().output.backEdges ) {
             localStats.addInTransition();
             shared.localStats.addInTransition();
@@ -267,7 +267,7 @@ struct CompactCommon : virtual Algorithm, AlgorithmUtils< G >, DomainWorker< Com
 
         // add backward transition reference, send notification to from owner
         if ( from.valid() ) {
-            statsAddInTransition();
+            statsAddInTransition( from, to );
             int fromOwner = visitor->owner( from );
             if ( meta().output.backEdges ) {
                 StateRef fromRef( extension( from ).index, fromOwner );

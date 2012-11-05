@@ -70,7 +70,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 r.extension( t ).parent = f;
                 visitor::setPermanent( f );
             }
-            r.shared.stats.addEdge();
+            r.shared.stats.addEdge( r.graph(), f, t );
 
             if ( r.meta().algorithm.findGoals && r.graph().isGoal( t ) ) {
                 r.shared.goal = r.graph().clone( t );

@@ -223,7 +223,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                     return visitor::TerminateOnTransition;
                 }
             }
-            o.shared.stats.addEdge();
+            o.shared.stats.addEdge( o.graph(), from, to );
             o.graph().porTransition( from, to, &updatePredCount );
             return visitor::FollowTransition;
         }

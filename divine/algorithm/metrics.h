@@ -34,8 +34,10 @@ struct Statistics {
         ++expansions;
     }
 
-    void addEdge() {
-        ++ transitions;
+    template< typename G >
+    void addEdge( G &g, typename G::Node n, typename G::Node ) {
+        if ( n.valid() )
+            ++ transitions;
     }
 
     void addDeadlock() {
@@ -100,9 +102,9 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node, Node, Label )
+        static visitor::TransitionAction transition( This &t, Node from, Node to, Label )
         {
-            t.shared.addEdge();
+            t.shared.addEdge( t.graph(), from, to );
             return visitor::FollowTransition;
         }
 

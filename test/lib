@@ -15,83 +15,83 @@ for_dve_small() {
     check clear
     run $wrapper data/test1.dve "$@"
     check ltl_invalid
-    check statespace 7 15 3 0
+    check statespace 7 14 3 0
     $extracheck data/test1.dve
 
     check clear
     run $wrapper data/test2.dve "$@"
     check ltl_valid
     check owcty_sizes 2 2 0
-    check statespace 3 3 2 2
+    check statespace 3 2 2 2
     $extracheck data/test2.dve
 
     check clear
     run $wrapper data/test3.dve "$@"
     check ltl_valid
     check owcty_sizes 2 5 0
-    check statespace 6 13 2 0
+    check statespace 6 12 2 0
     $extracheck data/test3.dve
 
     check clear
     run $wrapper data/test4.dve "$@"
     check ltl_invalid
     check owcty_sizes 1 4 1
-    check statespace 5 6 1 0
+    check statespace 5 5 1 0
     $extracheck data/test4.dve
 
     check clear
     run $wrapper data/test5.dve "$@"
     check ltl_invalid
     check owcty_sizes 1 4 1
-    check statespace 5 6 1 0
+    check statespace 5 5 1 0
     $extracheck data/test5.dve
 
     check clear
     run $wrapper data/test6.dve "$@"
     check ltl_invalid
     check owcty_sizes 2 6 1 5 1
-    check statespace 6 7 2 0
+    check statespace 6 6 2 0
     $extracheck data/test6.dve
 
     check clear
     run $wrapper data/commit1.dve "$@"
-    check statespace 10 15 0 0
+    check statespace 10 14 0 0
     $extracheck data/commit1.dve
 
     check clear
     run $wrapper data/commit2.dve "$@"
-    check statespace 8 9 0 2
+    check statespace 8 8 0 2
     $extracheck data/commit2.dve
 
     check clear
     run $wrapper data/haoEEDM.dve "$@"
-    check statespace 502 923 0 0
+    check statespace 502 922 0 0
     $extracheck data/haoEEDM.dve
 
     check clear
     run $wrapper data/bufchan.dve "$@"
-    check statespace 3 6 0 0
+    check statespace 3 5 0 0
     $extracheck data/bufchan.dve
 
     check clear
     run $wrapper data/bufchan2.dve "$@"
-    check statespace 8 13 0 0
+    check statespace 8 12 0 0
     $extracheck data/bufchan2.dve
 
     check clear
     run $wrapper data/unbufchan.dve "$@"
-    check statespace 2 4 0 0
+    check statespace 2 3 0 0
     $extracheck data/unbufchan.dve
 
     check clear
     run $wrapper data/assert.dve "$@"
     check reachability_goal
-    check statespace 6 7 0 0
+    check statespace 6 6 0 0
 
     check clear
     run $wrapper data/assert2.dve "$@"
     check reachability_valid
-    check statespace 6 7 0 0
+    check statespace 6 6 0 0
 
 }
 
@@ -109,12 +109,12 @@ llvm_small() {
     check clear
     run llvm_assemble data/pthread-ok.ll "$@"
     check reachability_deadlock
-    check statespace 110 198 0 1
+    check statespace 110 197 0 1
 
     check clear
     run llvm_assemble data/pthread-bad.ll "$@"
     check reachability_goal
-    check statespace 106 187 0 1
+    check statespace 106 186 0 1
 }
 
 coin_small() {
