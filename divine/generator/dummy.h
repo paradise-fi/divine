@@ -54,12 +54,6 @@ struct Dummy : Common< Blob > {
         }
     }
 
-    Node clone( Node n ) {
-        Node ret = alloc.new_blob( n.size() );
-        n.copyTo( ret );
-        return ret;
-    }
-
     void release( Node s ) {
         s.free( pool() );
     }
