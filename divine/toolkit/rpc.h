@@ -230,12 +230,12 @@ F lookupID( int id ) {
     return lookupID_helper< typename Owner< F >::T, F, RPC_MAX >( wibble::Preferred(), id );
 }
 
-#define RPC_CLASS template< int id, bool > struct RpcId;
+#define RPC_CLASS template< int id, bool > struct RpcId
 #define RPC_ID(_type, _fun, _id) \
   template< bool xoxo > struct _type::RpcId< _id, xoxo > { \
     typedef decltype( &_type::_fun ) Fun; \
     static Fun fun() { return &_type::_fun; } \
-  };
+  }
 
 
 }

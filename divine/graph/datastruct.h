@@ -50,7 +50,7 @@ struct Queue {
     void processDead( Dead dead ) {
         if ( deadlocked && !empty() )
             dead( _queue.front() );
-    };
+    }
 
     template< typename Close >
     void processClosed( Close close ) {
@@ -58,7 +58,7 @@ struct Queue {
             close( _queue.front() );
             _queue.pop_front();
         }
-    };
+    }
 
     bool empty() { return _queue.empty(); }
     void clear() { _queue.clear(); }

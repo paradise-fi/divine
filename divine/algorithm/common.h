@@ -192,7 +192,7 @@ struct AlgorithmUtils
 #define ALGORITHM_RPC_ID(_type, _id, _fun) \
     template< typename Setup > RPC_ID( _type< Setup >, _fun, 2 + _id )
 #define ALGORITHM_RPC(alg) \
-    ALGORITHM_RPC_ID(alg, -1, getShared) \
+    ALGORITHM_RPC_ID(alg, -1, getShared);       \
     ALGORITHM_RPC_ID(alg, 0, setShared)
 
 #endif
