@@ -443,6 +443,7 @@ struct Compact : public Common< Blob > {
         Compact* parent; // pointer to generator::Compact
 
         CompactReader( Compact* generator ) : parent( generator ) {}
+        virtual ~CompactReader() {};
 
         /// Sets BlobHeader
         void setHeader( unsigned i ) {
