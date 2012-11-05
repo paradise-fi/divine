@@ -9,6 +9,8 @@ struct transition_t {
 
   	transition_t (int aut, int ts, const label_t &l)
 	  	: label(l), automaton(aut), to_state(ts) {}
+
+        virtual ~transition_t() {};
 	
 	bool is_simple() const { return !is_sync(); }
 	virtual bool is_sync() const { return false; }
@@ -39,7 +41,9 @@ struct transition_t {
 struct sync_transition_t : public transition_t {
 
 	sync_transition_t(int aut, int ts, int aut2, int ts2, const label_t & l)
-	  	: transition_t(aut, ts, l), automaton2(aut2), to_state2(ts2) {}
+	  : transition_t(aut, ts, l), automaton2(aut2), to_state2(ts2) {};
+
+        virtual ~sync_transition_t() {};
 
   	//  automaton is the SENDING automaton	(output label)
   	// automaton2 is the RECEIVING automaton (input label)
@@ -67,6 +71,8 @@ struct transition_with_property_t : public transition_t {
 	transition_with_property_t(const transition_t & t, int pts)
 	  : transition_t(t), prop_to_state(pts) {}
 
+        virtual ~transition_with_property_t() {}
+
 	int prop_to_state;
 
 	virtual void get_effect(const vector<int> & state_vector,
@@ -88,6 +94,8 @@ struct sync_transition_with_property_t : public sync_transition_t {
 	sync_transition_with_property_t(const sync_transition_t & t, int pts)
 	  : sync_transition_t(t), prop_to_state(pts) {}
 	
+        virtual ~sync_transition_with_property_t() {};
+
 	int prop_to_state;
 
         virtual void get_effect(const vector<int> & state_vector,

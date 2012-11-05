@@ -49,6 +49,7 @@ void handler( int s ) {
 struct InfoBase {
     virtual generator::PropertyType propertyType() = 0;
     virtual void read( std::string s ) = 0;
+    virtual ~InfoBase() {};
 };
 
 template< typename Setup >
