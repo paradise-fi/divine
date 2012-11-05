@@ -2,6 +2,7 @@
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
 #include <divine/utility/statistics.h>
+#include <divine/graph/store.h>
 
 #include <deque>
 
@@ -34,15 +35,15 @@ struct Queue {
         deadlocked = true;
 
         Node from = _queue.front();
-        bool permanent = from.header().permanent;
-        from.header().permanent = true;
+        bool permanent = visitor::permanent( from );
+        visitor::setPermanent( from );
 
         g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
                 next( from, n, label );
             } );
 
-        from.header().permanent = permanent;
+        visitor::setPermanent( from, permanent );
         g.release( from ); // Hm.
     }
 

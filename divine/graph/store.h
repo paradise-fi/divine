@@ -1,12 +1,12 @@
 // -*- C++ -*-
-#ifndef DIVINE_STORE_H
-#define DIVINE_STORE_H
-
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h> // for WithID
+
+#ifndef DIVINE_STORE_H
+#define DIVINE_STORE_H
 
 namespace divine {
 namespace visitor {
@@ -22,12 +22,12 @@ template<> inline bool alias< Blob >( Blob a, Blob b ) {
 }
 
 template< typename T > inline bool permanent( T ) { return false; }
-template< typename T > inline void setPermanent( T ) {}
+template< typename T > inline void setPermanent( T, bool = true ) {}
 
-template<> inline bool permanent( Blob b ) { return b.header().permanent; }
-template<> inline void setPermanent( Blob b ) {
+template<> inline bool permanent( Blob b ) { return b.valid() ? b.header().permanent : false; }
+template<> inline void setPermanent( Blob b, bool x ) {
     if ( b.valid() )
-        b.header().permanent = 1;
+        b.header().permanent = x;
 }
 
 template < typename Table, typename _Hasher, typename Statistics >
