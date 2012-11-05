@@ -85,7 +85,7 @@ struct Main {
 
     Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
         *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_probabilistic, *cmd_info;
-    OptionGroup *common, *drawing, *compact, *ce, *probabilistic, *probabilisticCommon, *reduce;
+    OptionGroup *common, *drawing, *compact, *input, *ce, *probabilistic, *probabilisticCommon, *reduce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair, *o_hashCompaction;
@@ -242,6 +242,7 @@ struct Main {
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
         compact = opts.createGroup( "Compact Options" );
+        input = opts.createGroup( "Input Options" );
         probabilistic = opts.createGroup( "Probabilistic Options" );
         probabilisticCommon = opts.createGroup( "Common Options" );
         reduce = opts.createGroup( "Reduction Options" );
@@ -264,10 +265,6 @@ struct Main {
         o_time = common->add< IntOption >(
             "max-time", '\0', "max-time", "",
             "maximum wall time to use in seconds (default: 0 = unlimited)" );
-
-        o_dummy = common->add< BoolOption >(
-            "dummy", '\0', "dummy", "",
-            "use a \"dummy\" benchmarking model instead of a real input" );
 
         o_statistics = common->add< BoolOption >(
             "statistics", 's', "statistics", "",
@@ -326,12 +323,16 @@ struct Main {
             "trail", 't', "trail", "",
             "file to output trail to (default: input-file.trail)" );
 
+        // input options
+        o_dummy = input->add< BoolOption >(
+            "dummy", '\0', "dummy", "",
+            "use a \"dummy\" benchmarking model instead of a real input" );
+
         // drawing options
         o_distance = drawing->add< IntOption >(
             "distance", '\0', "distance", "",
             "set maximum BFS distance from initial state [default = 32]" );
         o_distance ->setValue( 32 );
-
         o_drawTrace = drawing->add< StringOption >(
             "draw-trace", '\0', "draw-trace", "",
             "draw and highlight a particular trace in the output" );
@@ -374,22 +375,27 @@ struct Main {
 
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
+	cmd_metrics->add( input );
 
         cmd_reachability->add( common );
         cmd_reachability->add( ce );
         cmd_reachability->add( reduce );
+	cmd_reachability->add( input );
 
         cmd_owcty->add( common );
         cmd_owcty->add( ce );
         cmd_owcty->add( reduce );
+	cmd_owcty->add( input );
 
         cmd_map->add( common );
         cmd_map->add( ce );
         cmd_map->add( reduce );
+	cmd_map->add( input );
 
         cmd_ndfs->add( common );
         cmd_ndfs->add( ce );
         cmd_ndfs->add( reduce );
+	cmd_ndfs->add( input );
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
@@ -398,6 +404,7 @@ struct Main {
         cmd_compact->add( common );
         cmd_compact->add( compact );
         cmd_compact->add( reduce );
+        cmd_compact->add( input );
 
         cmd_probabilistic->add( probabilisticCommon );
         cmd_probabilistic->add( probabilistic );
@@ -405,6 +412,7 @@ struct Main {
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
         cmd_draw->add( o_property );
+	cmd_draw->add( input );
     }
 
     void setupLimits() {
