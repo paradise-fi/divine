@@ -129,7 +129,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         parallel( &This::_visit );
         progress() << "done" << std::endl;
 
-        for ( int i = 0; i < shareds.size(); ++i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++i ) {
             shared.merge( shareds[ i ] );
         }
 

@@ -114,11 +114,11 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void collect() {
-        for ( int i = 0; i < shareds.size(); ++i )
+        for ( int i = 0; i < int( shareds.size() ); ++i )
             shared.stats.merge( shareds[ i ].stats );
         shared.stats.update( meta().statistics );
         shared.stats = algorithm::Statistics();
-        for ( int i = 0; i < shareds.size(); ++ i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++ i ) {
             if ( shared.iteration == 1 )
                 acceptingCount += shareds[ i ].accepting;
             d_eliminated += shareds[ i ].eliminated;

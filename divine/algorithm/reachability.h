@@ -133,7 +133,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
     void collect() {
         deadlocked = false;
-        for ( int i = 0; i < shareds.size(); ++i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++i ) {
             shared.stats.merge( shareds[ i ].stats );
             if ( shareds[ i ].goal.valid() ) {
                 goal = shareds[ i ].goal;

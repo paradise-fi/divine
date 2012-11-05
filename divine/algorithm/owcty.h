@@ -100,7 +100,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return shared.cycle_node;
         }
 
-        for ( int i = 0; i < shareds.size(); ++i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++i ) {
             if ( shareds[ i ].cycle_found ) {
                 assert( shareds[ i ].cycle_node.valid() );
                 return shareds[ i ].cycle_node;
@@ -112,7 +112,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     int totalSize() {
         int sz = 0;
-        for ( int i = 0; i < shareds.size(); ++i )
+        for ( int i = 0; i < int( shareds.size() ); ++i )
             sz += shareds[ i ].size;
         return sz;
     }
@@ -349,7 +349,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     Shared _counterexample( Shared sh ) {
         shared = sh;
-        for ( int i = 0; i < this->store().table.size(); ++i ) {
+        for ( int i = 0; i < int( this->store().table.size() ); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
@@ -411,7 +411,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     void updateResult() {
-        for ( int i = 0; i < shareds.size(); ++i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++i ) {
             shared.stats.merge( shareds[ i ].stats );
             shareds[ i ].stats = algorithm::Statistics();
         }

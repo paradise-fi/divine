@@ -69,7 +69,7 @@ struct ThreadVector {
 
     ThreadVector( std::vector< T > &instances, void (T::*fun)() )
     {
-        for ( int i = 0; i < instances.size(); ++ i )
+        for ( int i = 0; i < int( instances.size() ); ++ i )
             m_threads.push_back( R( instances[ i ], fun ) );
     }
 
@@ -316,7 +316,7 @@ struct Local
     auto distribute( Bit bit, void (Base::*set)( Bit ) )
          -> decltype( rpc::check_void< void (Instance::*)( Bit ) >( set ) )
     {
-        for ( int i = 0; i < m_slaves.size(); ++i )
+        for ( int i = 0; i < int( m_slaves.size() ); ++i )
             (m_slaves[ i ].*set)( bit );
     }
 
@@ -324,7 +324,7 @@ struct Local
     auto collect( Bits &bits, Bit (Base::*get)() )
          -> decltype( rpc::check_void< Bit (Instance::*)() >( get ) )
     {
-        for ( int i = 0; i < m_slaves.size(); ++i )
+        for ( int i = 0; i < int( m_slaves.size() ); ++i )
             bits.push_back( (m_slaves[ i ].*get)() );
     }
 
@@ -344,7 +344,7 @@ struct Local
         Threads threads( m_slaves, fun );
         m_barrier.setExpect( m_slaves.size() + nextra );
 
-        for ( int i = 0; i < m_slaves.size(); ++i ) {
+        for ( int i = 0; i < int( m_slaves.size() ); ++i ) {
             threads.thread( i ).setBarrier( m_barrier );
             m_slaves[ i ].becomeSlave( *self, offset + i );
         }
@@ -355,13 +355,13 @@ struct Local
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) )
     {
-        for ( int i = 0; i < m_slaves.size(); ++i )
+        for ( int i = 0; i < int( m_slaves.size() ); ++i )
             x = (m_slaves[ i ].*fun)( x );
         return x;
     }
 
     void interrupt() {
-        for ( int i = 0; i < m_slaves.size(); ++i )
+        for ( int i = 0; i < int( m_slaves.size() ); ++i )
             m_slaves[ i ].interrupt( true );
     }
 };
