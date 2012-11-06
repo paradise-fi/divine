@@ -184,14 +184,15 @@ public:
         return bs;
     }
 
-    bitstream &sendStream( wibble::sys::MutexLock &_lock, bitstream &bs, int to, int tag )
+    bitblock &sendStream( wibble::sys::MutexLock &_lock, bitblock &bs, int to, int tag )
     {
-        send( _lock, &bs.bits.front(), bs.bits.size() * 4, to, tag );
+        void *data = &*(bs.bits.begin() + bs.offset);
+        send( _lock, data, bs.size() * 4, to, tag );
         return bs;
     }
 
     void notifySlaves( wibble::sys::MutexLock &_lock,
-                       int tag, bitstream bs = bitstream() )
+                       int tag, bitblock bs = bitblock() )
     {
         if ( !master() )
             return;
@@ -199,7 +200,7 @@ public:
     }
 
     void notify( wibble::sys::MutexLock &_lock,
-                 int tag, bitstream bs = bitstream() )
+                 int tag, bitblock bs = bitblock() )
     {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
@@ -327,7 +328,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     std::pair< int, int > accumCounts( wibble::sys::MutexLock &_lock, int id ) {
-        bitstream bs;
+        bitblock bs;
         bs << id;
 
         mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );
@@ -398,8 +399,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             return Continue;
         }
 
-        bitstream out;
-        bitblock in;
+        bitblock in, out;
         mpi.recvStream( _lock, status, in );
 
         switch ( status.Get_tag() ) {

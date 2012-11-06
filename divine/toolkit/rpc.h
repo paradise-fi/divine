@@ -81,18 +81,18 @@ int findID( F f ) {
     return findID_helper< typename Owner< F >::T, F, RPC_MAX >( wibble::Preferred(), f );
 }
 
-template< typename T, typename R >
-void marshall( R (T::*f)(), bitstream &s ) {
+template< typename T, typename R, typename stream >
+void marshall( R (T::*f)(), stream &s ) {
     s << findID_helper< T, R (T::*)(), RPC_MAX >( wibble::Preferred(), f );
 }
 
-template< typename T, typename R, typename P1 >
-void marshall( R (T::*f)( P1 ), P1 p, bitstream &s ) {
+template< typename T, typename R, typename P1, typename stream >
+void marshall( R (T::*f)( P1 ), P1 p, stream &s ) {
     s << findID_helper< T, R (T::*)( P1 ), RPC_MAX >( wibble::Preferred(), f ) << p;
 }
 
-template< typename T, typename R, typename P1, typename P2 >
-void marshall( R (T::*f)( P1 ), P1 p1, P2 p2, bitstream &s ) {
+template< typename T, typename R, typename P1, typename P2, typename stream >
+void marshall( R (T::*f)( P1 ), P1 p1, P2 p2, stream &s ) {
     s << findID_helper< T, R (T::*)( P1 ), RPC_MAX >( wibble::Preferred(), f ) << p1 << p2;
 }
 

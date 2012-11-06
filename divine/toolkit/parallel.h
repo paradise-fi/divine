@@ -374,7 +374,7 @@ struct Mpi : MpiMonitor
     divine::Mpi mpi;
     Local< Instance > m_local;
     MpiForwarder< Comms > m_mpiForwarder;
-    bitstream async_retval;
+    bitblock async_retval;
     int request_source;
 
     Comms &comms() { return m_local.comms(); }
@@ -403,7 +403,7 @@ struct Mpi : MpiMonitor
     template< typename Bit >
     void distribute( Bit bit, void (Instance::*set)( Bit ) )
     {
-        bitstream bs;
+        bitblock bs;
         rpc::marshall( set, bit, bs );
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
@@ -415,7 +415,7 @@ struct Mpi : MpiMonitor
     {
         m_local.collect( bits, get );
 
-        bitstream bs;
+        bitblock bs;
         rpc::marshall( get, bs );
         if ( mpi.master() ) {
             wibble::sys::MutexLock _lock( mpi.global().mutex );
@@ -430,7 +430,7 @@ struct Mpi : MpiMonitor
 
     void parallel( void (Instance::*fun)() )
     {
-        bitstream bs;
+        bitblock bs;
         rpc::marshall( fun, bs );
 
         {
@@ -446,7 +446,7 @@ struct Mpi : MpiMonitor
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) ) {
         X retval;
-        bitstream bs;
+        bitblock bs;
 
         retval = x = m_local.ring( x, fun );
         rpc::marshall( fun, x, bs );
@@ -492,7 +492,7 @@ struct Mpi : MpiMonitor
         void operator()( MPIT &mpit, X (Instance::*fun)() )
         {
             std::vector< X > bits;
-            bitstream bs;
+            bitblock bs;
             mpit.collect( bits, fun );
             bs << bits;
 
@@ -509,8 +509,7 @@ struct Mpi : MpiMonitor
     /* The slave monitor */
     Loop process( wibble::sys::MutexLock &_lock, divine::Mpi::Status &status ) {
 
-        bitblock in;
-        bitstream out;
+        bitblock in, out;
 
         mpi.recvStream( _lock, status, in );
         request_source = status.Get_source();

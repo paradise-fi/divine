@@ -96,7 +96,7 @@ void Statistics::format( std::ostream &o ) {
 }
 
 void Statistics::send() {
-    bitstream data;
+    bitblock data;
     data << localmin;
 
     for ( int i = 0; i < pernode; ++i ) {

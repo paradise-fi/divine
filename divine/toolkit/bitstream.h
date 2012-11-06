@@ -46,7 +46,7 @@ template<> struct base< block > {
         maybeclear();
         return bits.empty();
     }
-    size_t size() { return bits.size(); }
+    size_t size() { return bits.size() - offset; }
     void shift() {
         ++ offset;
         maybeclear();
