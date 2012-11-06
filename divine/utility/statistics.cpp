@@ -109,10 +109,9 @@ void Statistics::send() {
     mpi.sendStream( _lock, data, 0, TAG_STATISTICS );
 }
 
-Loop Statistics::process( wibble::sys::MutexLock &, MpiStatus &status )
+Loop Statistics::process( wibble::sys::MutexLock &_lock, MpiStatus &status )
 {
     bitblock data;
-    wibble::sys::MutexLock _lock( mpi.global().mutex );
     mpi.recvStream( _lock, status, data );
 
     int min;
