@@ -4,5 +4,5 @@ dve_small mpi reachability -w 1
 
 run mpi reachability data/shuffle.dve
 check reachability_valid
-check statespace 181450 483851 0 0
+check statespace 181450 483850 0 0
 
