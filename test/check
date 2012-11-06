@@ -115,6 +115,7 @@ debris() {
     test -f progress && cat progress || true
     echo
     test -f complaint && cat complaint || true
+    rm -f complaint progress
     echo
     echo "."
 }
