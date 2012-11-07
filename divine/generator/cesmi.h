@@ -113,6 +113,10 @@ struct CESMI : public Common< Blob > {
         call_setup();
     }
 
+    int setSlack( int s ) {
+        return setup.slack = s;
+    }
+
     void call_setup()
     {
         setup.has_property = 0;
