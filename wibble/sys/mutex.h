@@ -73,6 +73,10 @@ public:
 #else
                 pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE_NP );
 #endif
+            } else {
+#ifndef NDEBUG
+                pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_ERRORCHECK_NP );
+#endif
             }
     res = pthread_mutex_init(&mutex, &attr);
 #endif
