@@ -99,6 +99,7 @@ struct CESMI : public Common< Blob > {
         dl.get_successor = (dl_get_successor_t) dlsym(dl.handle, "get_successor");
         dl.is_accepting = (dl_is_accepting_t) dlsym(dl.handle, "is_accepting");
         dl.show_node = (dl_show_node_t) dlsym(dl.handle, "show_node");
+        dl.show_transition = (dl_show_transition_t) dlsym(dl.handle, "show_transition");
         dl.cache_successors = (dl_cache_successors_t) dlsym(dl.handle, "cache_successors");
 
         if( !dl.get_initial )

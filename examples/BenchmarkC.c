@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h> //malloc
 
 #include "../divine/generator/cesmi-client.h"
 
@@ -36,4 +37,24 @@ int get_successor( CESMISetup *setup, int handle, char *from, char **to )
 
 void setup( CESMISetup *s ) {
     s->state_size = sizeof( struct state );
+}
+
+char *show_node( CESMISetup *setup, char *from )
+{
+    struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
+    char * ret = (char *) malloc ( 50 );  // FIXME
+    sprintf (ret, "a:%d, b:%d\n", in->a, in->b );
+    return ret;
+}
+
+char *show_transition( CESMISetup *setup, char *from, char *to )
+{
+    struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
+    struct state *out = (struct state *) (to + setup->slack + 4); //FIXME
+    char * ret = (char *) malloc ( 50 );  // FIXME
+    if (in->a == out->a)
+      sprintf (ret, "b++" );
+    else
+      sprintf (ret, "a++" );
+    return ret;
 }
