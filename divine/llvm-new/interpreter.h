@@ -236,14 +236,24 @@ struct MachineState
      */
     std::pair< llvm::Type *, char * > dereference( llvm::Type *t,
                                                    ProgramInfo::Value v,
-                                                   int thread = -1,
+                                                   int tid = -1,
                                                    int frame = 0 )
     {
-        if ( thread < 0 )
-            thread = _thread;
+        char *block = _frame->memory;
 
-        assert_die();
-        // return std::make_pair( t, ... );
+        if ( tid < 0 )
+            tid = _thread;
+
+        if ( !v.global && !v.constant && frame || tid != _thread )
+            block = stack( tid ).get( stack( tid ).get().length() - frame - 1 ).memory;
+
+        if ( v.global )
+            block = state().get( Globals() ).memory;
+
+        if ( v.constant )
+            block = &_info.constdata[0];
+
+        return std::make_pair( t, block + v.offset );
     }
 
     void rewind( Blob to, int thread )
