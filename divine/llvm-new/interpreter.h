@@ -156,14 +156,34 @@ struct ProgramInfo {
     Value insert( int function, llvm::Value *val );
 };
 
-struct MachineState {
+struct MachineState
+{
+    struct StateAddress : lens::LinearAddress
+    {
+        ProgramInfo *_info;
+
+        StateAddress( StateAddress base, int index, int offset )
+            : LinearAddress( base, index, offset ), _info( base._info )
+        {}
+
+        StateAddress( ProgramInfo *i, Blob b, int offset )
+            : LinearAddress( b, offset ), _info( i )
+        {}
+
+        template< typename LinearSize >
+        StateAddress copy( StateAddress to, LinearSize size ) {
+            std::copy( dereference(), dereference() + size(), to.dereference() );
+            return StateAddress( _info, to.b, to.offset + size() );
+        }
+    };
+
 
     struct Frame {
         PC pc;
         char memory[0];
-        // TODO varargs
-        int _size( ProgramInfo &info ) {
-            return sizeof( Frame ) + info.function(pc).framesize;
+
+        StateAddress advance( StateAddress a, int ) {
+            return StateAddress( a, 0, sizeof( Frame ) + a._info->function(pc).framesize );
         }
         int end() { return 0; }
     };
@@ -184,7 +204,7 @@ struct MachineState {
     int _size_difference;
 
     template< typename T >
-    using Lens = lens::Lens< lens::LinearAddress, T >;
+    using Lens = lens::Lens< StateAddress, T >;
 
     struct Flags {
         uint64_t assert:1;
@@ -205,7 +225,7 @@ struct MachineState {
     typedef lens::Tuple< Flags, Globals, Threads > State;
 
     Lens< State > state() {
-        return Lens< State >( lens::LinearAddress( _blob, _slack ) );
+        return Lens< State >( StateAddress( &_info, _blob, _slack ) );
     }
 
     /*
@@ -242,14 +262,14 @@ struct MachineState {
 
     Lens< Stack > stack( int thread = -1 ) {
         if ( thread == _thread || thread < 0 )
-            return Lens< Stack >( lens::LinearAddress( _stack, 0 ) );
+            return Lens< Stack >( StateAddress( &_info, _stack, 0 ) );
         else
             return _blob_thread( thread ).sub( Stack() );
     }
 
     Lens< Heap > heap( int thread = -1 ) {
         if ( thread == _thread || thread < 0 )
-            return Lens< Heap >( lens::LinearAddress( _heap, 0 ) );
+            return Lens< Heap >( StateAddress( &_info, _heap, 0 ) );
         else
             return _blob_thread( thread ).sub( Heap() );
     }
@@ -266,23 +286,26 @@ struct MachineState {
         _frame = &stack().get( depth );
         _frame->pc = PC( function, 0, 0 );
         std::fill( _frame->memory, _frame->memory + framesize, 0 );
+        _size_difference += framesize + sizeof( Frame );
     }
 
     void leave() {
-        stack().get().length() --;
+        auto &s = stack().get();
+        s.length() --;
+        _size_difference -= LinearSize< Frame >::get( stack().address( s.length() ) );
         _frame = &stack().get( stack().get().length() - 1 );
     }
 
     Blob snapshot( Pool &pool ) {
         Blob b( pool, _blob.size() + _size_difference );
-        lens::LinearAddress address( b, _slack );
+        StateAddress address( &_info, b, _slack );
         int i = 0;
 
         address = state().sub( Flags() ).copy( address );
         for ( ; i < _thread ; ++i )
             address = state().sub( Threads(), i ).copy( address );
 
-        auto to = Lens< Thread >( lens::LinearAddress( b, address.offset ) );
+        auto to = Lens< Thread >( StateAddress( &_info, b, address.offset ) );
         stack( _thread ).copy( to.address( Stack() ) );
 
         auto target = to.sub( Heap() );
