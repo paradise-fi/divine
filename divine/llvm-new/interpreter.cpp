@@ -32,10 +32,6 @@ ProgramInfo::Value ProgramInfo::insert( int function, llvm::Value *val )
 
     if ( C && C->getType()->getTypeID() == Type::PointerTyID )
     {
-        /* auto F = dyn_cast< Function >( val );
-        auto B = dyn_cast< BlockAddress >( val );
-        auto G = dyn_cast< GlobalVariable >( val ); */
-
         if ( auto F = dyn_cast< llvm::Function >( val ) )
             storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
         if ( auto B = dyn_cast< BlockAddress >( val ) )
