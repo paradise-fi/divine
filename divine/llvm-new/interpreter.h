@@ -67,11 +67,11 @@ struct ProgramInfo {
     Interpreter *interpreter;
 
     struct Value {
-        enum Type { Variable, Constant, Function, Block };
         bool global:1;
-        Type type:2;
+        bool constant:1;
         uint32_t offset:20;
         uint32_t width:10;
+        Value() : global( 0 ), constant( 0 ), offset( 0 ), width( 0 ) {}
     };
 
     struct Instruction {
@@ -165,6 +165,15 @@ struct MachineState {
         int _size( ProgramInfo &info ) {
             return sizeof( Frame ) + info.function(pc).framesize;
         }
+        int end() { return 0; }
+    };
+
+    struct Globals {
+        char memory[0];
+        StateAddress advance( StateAddress a, int ) {
+            return StateAddress( a, 0, a._info->globalsize );
+        }
+        int end() { return 0; }
     };
 
     Blob _blob, _stack, _heap;
@@ -193,7 +202,7 @@ struct MachineState {
     typedef lens::Array< Frame > Stack;
     typedef lens::Tuple< Stack, Heap > Thread;
     typedef lens::Array< Thread > Threads;
-    typedef lens::Tuple< Flags, Threads > State;
+    typedef lens::Tuple< Flags, Globals, Threads > State;
 
     Lens< State > state() {
         return Lens< State >( lens::LinearAddress( _blob, _slack ) );

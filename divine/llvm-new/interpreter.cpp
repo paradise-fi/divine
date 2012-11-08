@@ -41,7 +41,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, llvm::Value *val )
             if ( G->isConstant() )
                 storeConstant( result, interpreter->getConstantValue( C ), C->getType() );
             else {
-                result.type = Value::Constant;
+                result.constant = true;
                 result.offset = globalsize;
                 result.width = target.getTypeAllocSize( C->getType() );
                 globalsize += result.width;
