@@ -58,7 +58,7 @@ extern \"C\" int get_successor( CustomSetup *setup, int h, Blob from, Blob *to )
     return rule + 2;\n\
 }\n" );
 
-    gplusplus( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
+    runCompiler( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
 }
 
 }
