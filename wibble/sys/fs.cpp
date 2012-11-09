@@ -20,12 +20,12 @@ namespace sys {
 namespace fs {
 
 #ifdef POSIX
-std::auto_ptr<struct stat> stat(const std::string& pathname)
+std::unique_ptr<struct stat> stat(const std::string& pathname)
 {
-	std::auto_ptr<struct stat> res(new struct stat);
+	std::unique_ptr<struct stat> res(new struct stat);
 	if (::stat(pathname.c_str(), res.get()) == -1) {
 		if (errno == ENOENT)
-			return std::auto_ptr<struct stat>();
+			return std::unique_ptr<struct stat>();
 		else
 			throw wibble::exception::System("getting file information for " + pathname);
         }
@@ -69,7 +69,7 @@ std::string abspath(const std::string& pathname)
 
 void mkdirIfMissing(const std::string& dir, mode_t mode)
 {
-	std::auto_ptr<struct stat> st = wibble::sys::fs::stat(dir);
+	std::unique_ptr<struct stat> st = wibble::sys::fs::stat(dir);
 	if (st.get() == NULL)
 	{
 		// If it does not exist, make it
@@ -183,7 +183,7 @@ Directory::const_iterator Directory::end() const
 bool Directory::valid()
 {
 	// Check that the directory exists
-	std::auto_ptr<struct stat> st = stat(path());
+	std::unique_ptr<struct stat> st = stat(path());
 	if (st.get() == NULL)
 		return false;
 	// Check that it is a directory
@@ -201,7 +201,7 @@ bool Directory::isdir(const const_iterator& i) const
 		return false;
 #endif
 	// No d_type, we'll need to stat
-	std::auto_ptr<struct stat> st = stat(wibble::str::joinpath(m_path, *i));
+	std::unique_ptr<struct stat> st = stat(wibble::str::joinpath(m_path, *i));
 	if (st.get() == 0)
 		return false;
 	if (S_ISDIR(st->st_mode))
