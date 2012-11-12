@@ -239,6 +239,7 @@ class Array: _Array< T, Array< T > >
 {
     template< typename Addr >
     Addr advance( Addr a, int i, int base = sizeof( int ) ) {
+        assert_leq( 0, i );
         if ( !i )
             return Addr( a, -1, base );
         Addr previous = advance( a, i - 1, base );
