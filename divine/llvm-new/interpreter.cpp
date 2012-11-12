@@ -41,7 +41,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                                        blockmap[ B->getBasicBlock() ], 0 ) );
         if ( auto G = dyn_cast< GlobalVariable >( val ) ) {
             if ( G->isConstant() )
-                storeConstant( result, interpreter->getConstantValue( C ), C->getType() );
+                storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
             else {
                 result.constant = true;
                 result.offset = globalsize;
@@ -75,13 +75,13 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *i )
 
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
-    interpreter->StoreValueToMemory(
+    interpreter.StoreValueToMemory(
         GV, reinterpret_cast< GenericValue * >(
             allocateConstant( result, target.getTypeStoreSize( ty ) ) ), ty );
 }
 
-Interpreter::Interpreter(Module *M)
-    : ExecutionEngine(M), TD(M), module( M ), info(), state( info )
+Interpreter::Interpreter(Allocator &alloc, Module *M)
+    : ExecutionEngine(M), TD(M), module( M ), info( TD, *this ), alloc( alloc ), state( info, alloc )
 {
     setTargetData(&TD);
     initializeExecutionEngine();
@@ -159,4 +159,21 @@ void Interpreter::buildInfo( Module *module ) {
         for ( auto v = fun.values.begin(); v != fun.values.end(); ++v )
             fun.framesize += v->width;
     }
+}
+
+divine::Blob Interpreter::initial( Function *f )
+{
+    int emptysize = sizeof( MachineState::Flags ) + // flags...
+                    info.globalsize + // globals
+                    sizeof( int ); // threads array length
+    Blob pre_initial = alloc.new_blob( emptysize );
+    pre_initial.clear();
+    state.rewind( pre_initial, 0 ); // there isn't a thread really
+    int tid = state.new_thread(); // switches automagically
+    assert_eq( tid, 0 ); // just to be on the safe side...
+    state.enter( info.functionmap[ f ] );
+    Blob result = state.snapshot();
+    state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
+    pre_initial.free( alloc.pool() ); // wee
+    return result;
 }

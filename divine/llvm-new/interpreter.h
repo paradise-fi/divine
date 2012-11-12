@@ -28,6 +28,7 @@
 #define NO_RTTI
 
 #include <divine/toolkit/lens.h>
+#include <divine/graph/allocator.h> // hmm.
 #include <divine/llvm/arena.h>
 
 namespace llvm {
@@ -63,8 +64,9 @@ struct Pointer {
 };
 
 struct ProgramInfo {
-    TargetData target;
-    Interpreter *interpreter;
+    TargetData &target;
+    /* required for getConstantValue/StoreValueToMemory */
+    Interpreter &interpreter;
 
     struct Value {
         bool global:1;
@@ -154,6 +156,12 @@ struct ProgramInfo {
 
     void insert( PC pc, ::llvm::Instruction *i );
     Value insert( int function, ::llvm::Value *val );
+
+    ProgramInfo( TargetData &td, Interpreter &i ) : target( td ), interpreter( i )
+    {
+        constdatasize = 0;
+        globalsize = 0;
+    }
 };
 
 struct MachineState
@@ -170,10 +178,9 @@ struct MachineState
             : LinearAddress( b, offset ), _info( i )
         {}
 
-        template< typename LinearSize >
-        StateAddress copy( StateAddress to, LinearSize size ) {
-            std::copy( dereference(), dereference() + size(), to.dereference() );
-            return StateAddress( _info, to.b, to.offset + size() );
+        StateAddress copy( StateAddress to, int size ) {
+            std::copy( dereference(), dereference() + size, to.dereference() );
+            return StateAddress( _info, to.b, to.offset + size );
         }
     };
 
@@ -198,8 +205,9 @@ struct MachineState
 
     Blob _blob, _stack, _heap;
     ProgramInfo &_info;
-    int _slack;
+    Allocator &_alloc;
     int _thread; /* the currently scheduled thread */
+    int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
     int _size_difference;
 
@@ -225,7 +233,7 @@ struct MachineState
     typedef lens::Tuple< Flags, Globals, Threads > State;
 
     Lens< State > state() {
-        return Lens< State >( StateAddress( &_info, _blob, _slack ) );
+        return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
     }
 
     /*
@@ -257,28 +265,65 @@ struct MachineState
     void rewind( Blob to, int thread )
     {
         _blob = to;
-        _thread = thread;
+        _thread = -1; // special
         _size_difference = 0;
-        assert_die();
-        // stack( _thread ) = _blob_thread( _thread ).get( Stack() );
-        // heap( _thread ) = _blob_thread( _thread ).get( Heap() );
+
+        _thread_count = threads().get().length();
+
+        if ( thread < threads().get().length() )
+            switch_thread( thread );
+        // else everything becomes rather unsafe...
+    }
+
+    void switch_thread( int thread )
+    {
+        assert_leq( thread, threads().get().length() - 1 );
+        _thread = thread;
+
+        StateAddress stackaddr( &_info, _stack, 0 ),
+                     heapaddr( &_info, _heap, 0 );
+
+        _blob_thread( _thread ).sub( Stack() ).copy( stackaddr );
+        _blob_thread( _thread ).sub( Heap() ).copy( heapaddr );
+    }
+
+    int new_thread()
+    {
+        Blob old = _blob;
+        _blob = snapshot();
+        old.free( _alloc.pool() );
+        _thread = _thread_count ++;
+
+        /* Set up an empty thread. */
+        stack().get().length() = 0;
+        heap().get( PageTable() ).length() = 0;
+        heap().get( Memory() ).length() = 0;
+        _size_difference += 3 * sizeof( int ); // circa?
+        return _thread;
+    }
+
+    Lens< Threads > threads() {
+        return state().sub( Threads() );
     }
 
     Lens< Thread > _blob_thread( int i ) {
+        assert_leq( 0, i );
         return state().sub( Threads(), i );
     }
 
     Lens< Stack > stack( int thread = -1 ) {
-        if ( thread == _thread || thread < 0 )
+        if ( thread == _thread || thread < 0 ) {
+            assert_leq( 0, _thread );
             return Lens< Stack >( StateAddress( &_info, _stack, 0 ) );
-        else
+        } else
             return _blob_thread( thread ).sub( Stack() );
     }
 
     Lens< Heap > heap( int thread = -1 ) {
-        if ( thread == _thread || thread < 0 )
+        if ( thread == _thread || thread < 0 ) {
+            assert_leq( 0, _thread );
             return Lens< Heap >( StateAddress( &_info, _heap, 0 ) );
-        else
+        } else
             return _blob_thread( thread ).sub( Heap() );
     }
 
@@ -300,28 +345,36 @@ struct MachineState
     void leave() {
         auto &s = stack().get();
         s.length() --;
-        _size_difference -= LinearSize< Frame >::get( stack().address( s.length() ) );
+        // XXX _size_difference -= LinearSize< Frame >::get( stack().address( s.length() ) );
         _frame = &stack().get( stack().get().length() - 1 );
     }
 
-    Blob snapshot( Pool &pool ) {
-        Blob b( pool, _blob.size() + _size_difference );
-        StateAddress address( &_info, b, _slack );
+    Blob snapshot() {
+        Blob b( _alloc.pool(), _blob.size() + _size_difference );
+        StateAddress address( &_info, b, _alloc._slack );
         int i = 0;
 
         address = state().sub( Flags() ).copy( address );
+        assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
+        address = state().sub( Globals() ).copy( address );
+
+        address.as< int >() = _thread_count;
+        address.offset += sizeof( int ); // ick. length of the threads array
         for ( ; i < _thread ; ++i )
             address = state().sub( Threads(), i ).copy( address );
 
-        auto to = Lens< Thread >( StateAddress( &_info, b, address.offset ) );
-        stack( _thread ).copy( to.address( Stack() ) );
+        if ( _thread >= 0 ) { // we actually have a current thread to speak of
+            auto to = Lens< Thread >( StateAddress( &_info, b, address.offset ) );
+            stack( _thread ).copy( to.address( Stack() ) );
 
-        auto target = to.sub( Heap() );
-        auto source = heap( _thread );
+            auto target = to.sub( Heap() );
+            auto source = heap( _thread );
 
-        // TODO canonicalize( source, target );
-        address = source.copy( target.address() );
+            // TODO canonicalize( source, target );
+            address = source.copy( target.address() );
+        }
 
+        /* might have been that length here == _thread; that's OK */
         for ( ; i < state().get( Threads() ).length(); ++i )
             address = state().sub( Threads(), i ).copy( address );
 
@@ -329,8 +382,11 @@ struct MachineState
         return b;
     }
 
-    MachineState( ProgramInfo &i ) : _stack( 4096 ), _heap( 4096 ), _info( i )
-    {}
+    MachineState( ProgramInfo &i, Allocator &alloc ) : _stack( 4096 ), _heap( 4096 ), _info( i ), _alloc( alloc )
+    {
+        _thread_count = 0;
+        _size_difference = 0;
+    }
 
 };
 
@@ -350,6 +406,8 @@ public:
     ::llvm::Module *module; /* The bitcode. */
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
+
+    Allocator &alloc;
 
     void parseProperties( Module *M );
     void buildInfo( Module *M );
@@ -411,7 +469,7 @@ public:
         return NULL;
     }
 
-    explicit Interpreter(Module *M);
+    explicit Interpreter(Allocator &a, Module *M);
     ~Interpreter();
 
     typedef std::pair< std::string, char * > Describe;
@@ -481,6 +539,7 @@ public:
 private:  // Helper functions
     /* The following two are used by getConstantValue */
     void *getPointerToFunction(Function *F) { assert_die(); }
+    void *getPointerToNamedFunction(const std::string &, bool) { assert_die(); }
     void *getPointerToBasicBlock(BasicBlock *BB) { assert_die(); }
 
     void initializeExecutionEngine() { }
