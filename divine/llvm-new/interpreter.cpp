@@ -78,7 +78,7 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
     insn.operands.resize( I->getNumOperands() );
     for ( int i = 0; i < I->getNumOperands(); ++i ) {
         ::llvm::Value *v = I->getOperand( i );
-        if ( dyn_cast< Constant >( v ) )
+        if ( dyn_cast< Constant >( v ) || dyn_cast< BasicBlock >( v ) )
             insert( 0, v );
         assert( valuemap.count( v ) );
         insn.operands[ i ] = valuemap[ v ];
