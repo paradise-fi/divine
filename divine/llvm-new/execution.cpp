@@ -30,7 +30,7 @@
 #include <wibble/sys/mutex.h>
 
 using namespace llvm;
-using namespace divine::llvm;
+using namespace divine::llvm2;
 
 template< typename Cons, int N > struct ConsAt;
 

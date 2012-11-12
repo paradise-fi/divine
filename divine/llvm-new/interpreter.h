@@ -41,7 +41,7 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 }
 
 namespace divine {
-namespace llvm {
+namespace llvm2 {
 
 struct Interpreter;
 
@@ -79,7 +79,7 @@ struct ProgramInfo {
         std::vector< Value > operands;
 
         bool noninterleaved; /* applies to stores */
-        llvm::Instruction *op; /* the actual operation */
+        ::llvm::Instruction *op; /* the actual operation */
         /* next instruction is in the same BB unless op == NULL */
     };
 
@@ -106,11 +106,11 @@ struct ProgramInfo {
     std::vector< char > constdata;
     int globalsize, constdatasize;
 
-    std::map< llvm::Value *, Value > valuemap;
-    std::map< llvm::Instruction *, PC > pcmap;
+    std::map< ::llvm::Value *, Value > valuemap;
+    std::map< ::llvm::Instruction *, PC > pcmap;
 
-    std::map< llvm::BasicBlock *, int > blockmap;
-    std::map< llvm::Function *, int > functionmap;
+    std::map< ::llvm::BasicBlock *, int > blockmap;
+    std::map< ::llvm::Function *, int > functionmap;
 
     template< typename Container >
     static void makeFit( Container &c, int index ) {
@@ -152,8 +152,8 @@ struct ProgramInfo {
 
     void storeConstant( Value &result, GenericValue GV, Type *ty );
 
-    void insert( PC pc, llvm::Instruction *i );
-    Value insert( int function, llvm::Value *val );
+    void insert( PC pc, ::llvm::Instruction *i );
+    Value insert( int function, ::llvm::Value *val );
 };
 
 struct MachineState
@@ -234,10 +234,8 @@ struct MachineState
      * currently executing one) and in frame "frame" (default, i.e. 0 is the
      * topmost frame, 1 is the frame just below that, etc...).
      */
-    std::pair< llvm::Type *, char * > dereference( llvm::Type *t,
-                                                   ProgramInfo::Value v,
-                                                   int tid = -1,
-                                                   int frame = 0 )
+    std::pair< ::llvm::Type *, char * > dereference(
+        ::llvm::Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 )
     {
         char *block = _frame->memory;
 
@@ -349,7 +347,7 @@ public:
     TargetData TD;
 
     std::map< std::string, std::string > properties;
-    llvm::Module *module; /* The bitcode. */
+    ::llvm::Module *module; /* The bitcode. */
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
 

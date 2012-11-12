@@ -20,9 +20,9 @@
 #include "llvm/Module.h"
 #include <cstring>
 using namespace llvm;
-using namespace divine::llvm;
+using namespace divine::llvm2;
 
-ProgramInfo::Value ProgramInfo::insert( int function, llvm::Value *val )
+ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 {
     if ( valuemap.find( val ) != valuemap.end() )
         return valuemap.find( val )->second;
@@ -32,7 +32,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, llvm::Value *val )
 
     if ( C && C->getType()->getTypeID() == Type::PointerTyID )
     {
-        if ( auto F = dyn_cast< llvm::Function >( val ) )
+        if ( auto F = dyn_cast< ::llvm::Function >( val ) )
             storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
         if ( auto B = dyn_cast< BlockAddress >( val ) )
             storeConstant( result, PC( functionmap[ B->getFunction() ],
@@ -62,7 +62,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, llvm::Value *val )
     return result;
 }
 
-void ProgramInfo::insert( PC pc, llvm::Instruction *i )
+void ProgramInfo::insert( PC pc, ::llvm::Instruction *i )
 {
     makeFit( functions, pc.function );
     makeFit( function( pc ).blocks, pc.block );
