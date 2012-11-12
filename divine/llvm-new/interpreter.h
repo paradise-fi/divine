@@ -397,6 +397,10 @@ struct MachineState
 
             // TODO canonicalize( source, target );
             address = source.copy( target.address() );
+
+            /* this thread also existed in the previous state */
+            if ( _thread < state().get( Threads() ).length() )
+                ++ i;
         }
 
         /* might have been that length here == _thread; that's OK */
