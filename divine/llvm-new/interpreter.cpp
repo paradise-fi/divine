@@ -174,6 +174,6 @@ divine::Blob Interpreter::initial( Function *f )
     state.enter( info.functionmap[ f ] );
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
-    pre_initial.free( alloc.pool() ); // wee
+    // pre_initial got free'd by the interpreter since it wasn't permanent
     return result;
 }
