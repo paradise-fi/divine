@@ -87,7 +87,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     bool cycleFound() {
         if ( shared.cycle_found )
             return true;
-        for ( int i = 0; i < shareds.size(); ++i ) {
+        for ( int i = 0; i < int( shareds.size() ); ++i ) {
             if ( shareds[ i ].cycle_found )
                 return true;
         }
