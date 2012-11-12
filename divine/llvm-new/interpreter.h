@@ -53,6 +53,20 @@ struct PC {
     uint32_t block:12;
     uint32_t instruction:10;
     explicit PC( int f = 0, int b = 0, int i = 0 ) : function( f ), block( b ), instruction( i ) {}
+
+    bool operator< ( PC other ) const {
+        if ( function < other.function )
+            return true;
+        if ( function > other.function )
+            return false;
+        if ( block < other.block )
+            return true;
+        if ( block > other.block )
+            return false;
+        if ( instruction > other.instruction )
+            return true;
+        return false;
+    }
 };
 
 struct Pointer {
