@@ -10,7 +10,8 @@ const char *compile_defines_str = "\
 #define assert_neq(a,b) assert(a != b);\n\
 #define assert_leq(a,b) assert(a <= b);\n\
 #define assert_die() assert(false);\n\
-#define DIVINE_EMBED\n";
+#define DIVINE_EMBED\n\
+#define O_POOLS\n"; // required
 }
 
 #ifdef O_LEGACY
