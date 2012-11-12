@@ -86,7 +86,7 @@ struct ProgramInfo {
     struct BB {
         std::vector< Instruction > instructions;
         Instruction &instruction( PC pc ) {
-            assert_leq( pc.instruction, instructions.size() - 1 );
+            assert_leq( int( pc.instruction ), int( instructions.size() ) - 1 );
             return instructions[ pc.instruction ];
         }
     };
@@ -96,7 +96,7 @@ struct ProgramInfo {
         std::vector< Value > values;
         std::vector< BB > blocks;
         BB &block( PC pc ) {
-            assert_leq( pc.block, blocks.size() - 1 );
+            assert_leq( int( pc.block ), int( blocks.size() ) - 1 );
             return blocks[ pc.block ];
         }
     };
@@ -118,12 +118,12 @@ struct ProgramInfo {
     }
 
     Instruction &instruction( PC pc ) {
-        assert_leq( pc.block, function( pc ).blocks.size() - 1 );
+        assert_leq( int( pc.block ), int( function( pc ).blocks.size() ) - 1 );
         return function( pc ).block( pc ).instruction( pc );
     }
 
     Function &function( PC pc ) {
-        assert_leq( pc.function, functions.size() - 1 );
+        assert_leq( int( pc.function ), int( functions.size() ) - 1 );
         return functions[ pc.function ];
     }
 
