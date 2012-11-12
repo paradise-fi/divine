@@ -64,13 +64,26 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     return result;
 }
 
-void ProgramInfo::insert( PC pc, ::llvm::Instruction *i )
+void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
 {
     makeFit( functions, pc.function );
     makeFit( function( pc ).blocks, pc.block );
     makeFit( function( pc ).block( pc ).instructions, pc.instruction );
-    // instruction( pc ).values
-    pcmap.insert( std::make_pair( i, pc ) );
+    ProgramInfo::Instruction &insn = instruction( pc );
+    insn.op = I;
+
+    if ( !I )
+        return; /* our work here is done */
+
+    insn.operands.resize( I->getNumOperands() );
+    for ( int i = 0; i < I->getNumOperands(); ++i ) {
+        ::llvm::Value *v = I->getOperand( i );
+        if ( dyn_cast< Constant >( v ) )
+            insert( 0, v );
+        assert( valuemap.count( v ) );
+        insn.operands[ i ] = valuemap[ v ];
+    }
+    pcmap.insert( std::make_pair( I, pc ) );
 }
 
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
@@ -126,6 +139,7 @@ void Interpreter::buildInfo( Module *module ) {
     for ( auto function = module->begin(); function != module->end();
           ++ function, ++ pc.function )
     {
+        info.functionmap[ function ] = pc.function;
         pc.block = 0;
 
         if ( function->begin() == function->end() )
