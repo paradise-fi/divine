@@ -114,7 +114,7 @@ struct ProgramInfo {
 
     template< typename Container >
     static void makeFit( Container &c, int index ) {
-        c.resize( std::min( index + 1, int( c.size() ) ) );
+        c.resize( std::max( index + 1, int( c.size() ) ) );
     }
 
     Instruction &instruction( PC pc ) {
