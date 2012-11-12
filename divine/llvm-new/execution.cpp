@@ -367,7 +367,7 @@ void Interpreter::leaveFrame( Type *ty, ProgramInfo::Value result ) {
         /* TODO handle exit codes (?) */
     } else {
         /* Find the call instruction we are going back to. */
-        auto i = info.instruction( state.frame( -1, 1 ).get().pc );
+        auto i = info.instruction( state.frame( -1, 1 ).pc );
         /* Copy the return value. */
         implementN< Copy >( state.dereference( ty, i.result, -1 , 1 ),
                             state.dereference( ty, result ) );

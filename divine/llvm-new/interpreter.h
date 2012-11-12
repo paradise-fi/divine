@@ -327,8 +327,16 @@ struct MachineState
             return _blob_thread( thread ).sub( Heap() );
     }
 
-    Lens< Frame > frame( int thread = -1, int idx = 0 ) {
-        return stack( thread ).sub( idx );
+    Frame &frame( int thread = -1, int idx = 0 ) {
+         if ( !idx )
+             return *_frame;
+
+        auto s = stack( thread );
+        return s.get( s.get().length() - idx - 1 );
+    }
+
+    Flags &flags() {
+        return state().get( Flags() );
     }
 
     void enter( int function ) {
@@ -386,6 +394,7 @@ struct MachineState
     {
         _thread_count = 0;
         _size_difference = 0;
+        _frame = nullptr;
     }
 
 };
@@ -439,7 +448,7 @@ public:
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
     ProgramInfo::Instruction instruction() { return info.instruction( pc() ); }
-    PC pc() { return state._frame->pc; }
+    PC &pc() { return state._frame->pc; }
 
     Blob detach() {
         // make a copy of state.
