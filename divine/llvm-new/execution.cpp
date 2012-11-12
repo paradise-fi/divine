@@ -532,16 +532,20 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
 template< typename Cons >
 struct Load : Implementation {
     void operator()( Cons &c ) {
+        assert_die(); /*
         decons< 0 >( c ) = *reinterpret_cast< decltype( &decons< 0 >( c ) ) >(
             interpreter().dereferencePointer( decons< 1 >( c ) ) );
+                      */
     }
 };
 
 template< typename Cons >
 struct Store : Implementation {
     void operator()( Cons &c ) {
+        assert_die(); /*
         *reinterpret_cast< decltype( &decons< 1 >( c ) ) >(
             interpreter().dereferencePointer( decons< 0 >( c ) ) ) = decons< 1 >( c );
+                      */
     }
 };
 
