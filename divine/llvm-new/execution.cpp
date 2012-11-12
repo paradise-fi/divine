@@ -436,9 +436,8 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
 //
 void Interpreter::switchBB( BasicBlock *Dest )
 {
-    PC next = info.pcmap[ &*(Dest->begin()) ];
+    pc() = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
 
-    state.frame().get().pc = next;
     if ( !isa<PHINode>( Dest->begin() ) ) return;  // Nothing fancy to do
 
     assert_die();
