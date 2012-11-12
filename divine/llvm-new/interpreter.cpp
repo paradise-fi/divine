@@ -13,6 +13,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#define NO_RTTI
+#include <wibble/exception.h>
 #include <divine/llvm-new/interpreter.h>
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/DerivedTypes.h"
@@ -126,12 +128,22 @@ void Interpreter::buildInfo( Module *module ) {
     {
         pc.block = 0;
 
+        if ( function->begin() == function->end() )
+            throw wibble::exception::Consistency(
+                "Interpreter::buildInfo",
+                "Can't deal with empty functions." );
+
         for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg )
             info.insert( pc.function, &*arg );
 
         for ( auto block = function->begin(); block != function->end();
               ++ block, ++ pc.block )
         {
+            if ( block->begin() == block->end() )
+                throw wibble::exception::Consistency(
+                    "Interpreter::buildInfo",
+                    "Can't deal with an empty BasicBlock" );
+
             pc.instruction = 0;
             for ( auto insn = block->begin(); insn != block->end();
                   ++ insn, ++ pc.instruction )
