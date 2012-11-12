@@ -67,10 +67,9 @@ struct LinearAddress {
     }
 
     // TODO: Generalize to non-linear targets...
-    template< typename LinearSize >
-    LinearAddress copy( LinearAddress to, LinearSize size ) {
-        std::copy( dereference(), dereference() + size(), to.dereference() );
-        return LinearAddress( to.b, to.offset + size() );
+    LinearAddress copy( LinearAddress to, int size ) {
+        std::copy( dereference(), dereference() + size, to.dereference() );
+        return LinearAddress( to.b, to.offset + size );
     }
 };
 
@@ -133,7 +132,7 @@ struct Lens
 
     template< typename Addr >
     Addr copy( Addr to ) {
-        return to.copy( start, [&]() { return LinearSize< Structure >::get( this->address() ); } );
+        return start.copy( to, LinearSize< Structure >::get( this->address() ) );
     }
 };
 

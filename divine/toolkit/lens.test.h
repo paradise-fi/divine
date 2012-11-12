@@ -100,4 +100,32 @@ struct TestLens {
                    " 4, 4, 100, 101, 102, 103, 4, 100, 102, 104, 106, 4, 100, 103, 106, 109, 4,"
                    " 100, 104, 108, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]" );
     }
+
+    Test copy() {
+        int size = 2 * sizeof( int );
+        divine::Blob blob( size ), copy( size );
+        blob.clear();
+        copy.clear();
+
+        struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
+        struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
+
+        typedef Tuple< IntA, IntB > Foo;
+
+        LinearAddress a( blob, 0 );
+        LinearAddress b( copy, 0 );
+
+        Lens< LinearAddress, Foo > lens( a );
+
+        lens.get( IntA() ) = 1;
+        lens.get( IntB() ) = 2;
+
+        lens.sub( IntA() ).copy( b );
+        assert_eq( wibble::str::fmt( copy ), "[ 1, 0 ]" );
+        copy.clear();
+
+        lens.copy( b );
+        assert_eq( wibble::str::fmt( copy ), "[ 1, 2 ]" );
+    }
+
 };
