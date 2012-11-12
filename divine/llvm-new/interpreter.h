@@ -242,8 +242,7 @@ struct MachineState
      * currently executing one) and in frame "frame" (default, i.e. 0 is the
      * topmost frame, 1 is the frame just below that, etc...).
      */
-    std::pair< ::llvm::Type *, char * > dereference(
-        ::llvm::Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 )
+    char *dereference( ProgramInfo::Value v, int tid = -1, int frame = 0 )
     {
         char *block = _frame->memory;
 
@@ -259,7 +258,7 @@ struct MachineState
         if ( v.constant )
             block = &_info.constdata[0];
 
-        return std::make_pair( t, block + v.offset );
+        return block + v.offset;
     }
 
     void rewind( Blob to, int thread )
@@ -421,8 +420,16 @@ public:
     void parseProperties( Module *M );
     void buildInfo( Module *M );
 
-    std::pair< Type *, char * > dereference( Type *, ProgramInfo::Value );
-    std::pair< Type *, char * > dereferenceOperand( const ProgramInfo::Instruction &i, int n );
+    std::pair< Type *, char * > dereference( Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 ) {
+        char *mem = state.dereference( v, tid, frame );
+        return std::make_pair( t, mem );
+    }
+
+    std::pair< Type *, char * > dereferenceOperand( const ProgramInfo::Instruction &i, int n ) {
+        Type *t = i.op->getOperand( n )->getType();
+        return dereference( t, i.operands[ n ] );
+    }
+
     std::pair< Type *, char * > dereferenceResult( const ProgramInfo::Instruction &i );
     char * dereferencePointer( Pointer );
     BasicBlock *dereferenceBB( Pointer );

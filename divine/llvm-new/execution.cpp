@@ -141,8 +141,8 @@ void Interpreter::implement1( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    state.dereference( ty, i.result ),
-                    state.dereference( ty, i.operands[ 0 ] ) );
+                    dereference( ty, i.result ),
+                    dereference( ty, i.operands[ 0 ] ) );
 }
 
 template< template< typename > class I >
@@ -150,9 +150,9 @@ void Interpreter::implement2( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    state.dereference( ty, i.result ),
-                    state.dereference( ty, i.operands[ 0 ] ),
-                    state.dereference( ty, i.operands[ 1 ] ) );
+                    dereference( ty, i.result ),
+                    dereference( ty, i.operands[ 0 ] ),
+                    dereference( ty, i.operands[ 1 ] ) );
 }
 
 template< template< typename > class I >
@@ -160,10 +160,10 @@ void Interpreter::implement3( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    state.dereference( ty, i.result ),
-                    state.dereference( ty, i.operands[ 0 ] ),
-                    state.dereference( ty, i.operands[ 1 ] ),
-                    state.dereference( ty, i.operands[ 2 ] ) );
+                    dereference( ty, i.result ),
+                    dereference( ty, i.operands[ 0 ] ),
+                    dereference( ty, i.operands[ 1 ] ),
+                    dereference( ty, i.operands[ 2 ] ) );
 }
 
 struct Implementation {
@@ -369,8 +369,8 @@ void Interpreter::leaveFrame( Type *ty, ProgramInfo::Value result ) {
         /* Find the call instruction we are going back to. */
         auto i = info.instruction( state.frame( -1, 1 ).pc );
         /* Copy the return value. */
-        implementN< Copy >( state.dereference( ty, i.result, -1 , 1 ),
-                            state.dereference( ty, result ) );
+        implementN< Copy >( dereference( ty, i.result, -1 , 1 ),
+                            dereference( ty, result ) );
 
         /* If this was an invoke, run the non-error target. */
         if ( InvokeInst *II = dyn_cast< InvokeInst >( i.op ) )
@@ -421,7 +421,7 @@ void Interpreter::visitSwitchInst(SwitchInst &I) {
 
 void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
     Pointer target = implementN< Get< Pointer >::I >( dereferenceOperand( instruction(), 0 ) );
-    switchBB( dereferenceBB( target ) );
+    assert_die(); // switchBB( dereferenceBB( target ) );
 }
 
 // SwitchToNewBasicBlock - This method is used to jump to a new basic block.
@@ -636,7 +636,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     for ( int i = 0; i < CS.arg_size(); ++i )
     {
         Type *ty = CS.getArgument( i )->getType();
-        implementN< Copy >( state.dereference( ty, function.values[ i ] ),
+        implementN< Copy >( dereference( ty, function.values[ i ] ),
                             dereferenceOperand( insn, i + 1 ) );
     }
 
