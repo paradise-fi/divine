@@ -435,6 +435,7 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
 //
 void Interpreter::switchBB( BasicBlock *Dest )
 {
+    jumped = true;
     pc() = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
 
     if ( !isa<PHINode>( Dest->begin() ) ) return;  // Nothing fancy to do

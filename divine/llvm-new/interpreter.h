@@ -437,6 +437,7 @@ public:
     ::llvm::Module *module; /* The bitcode. */
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
+    bool jumped;
 
     Allocator &alloc;
 
@@ -532,13 +533,14 @@ public:
         while ( true ) {
             seen.insert( pc() );
             state.flags().assert = false;
-            Instruction *insn = instruction().op;
-            visit( insn );
+            jumped = false;
+
+            visit( instruction().op );
 
             if ( !state.stack().get().length() )
                 break; /* this thread is done */
 
-            if ( insn == instruction().op ) { // did not jump
+            if ( !jumped ) { // did not jump
                 pc().instruction ++;
                 if ( !instruction().op ) {
                     pc().block ++;
