@@ -350,10 +350,14 @@ struct MachineState
     }
 
     void leave() {
+        int fun = frame().pc.function;
         auto &s = stack().get();
         s.length() --;
-        // XXX _size_difference -= LinearSize< Frame >::get( stack().address( s.length() ) );
-        _frame = &stack().get( stack().get().length() - 1 );
+        _size_difference -= _info.functions[ fun ].framesize + sizeof( Frame );
+        if ( stack().get().length() )
+            _frame = &stack().get( stack().get().length() - 1 );
+        else
+            _frame = nullptr;
     }
 
     Blob snapshot() {

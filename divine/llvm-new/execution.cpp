@@ -356,8 +356,7 @@ struct Get {
 
 void Interpreter::leaveFrame()
 {
-    /* TODO Remove the frame... */
-    assert_die();
+    state.leave();
 }
 
 void Interpreter::leaveFrame( Type *ty, ProgramInfo::Value result ) {
