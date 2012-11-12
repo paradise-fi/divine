@@ -29,4 +29,20 @@ struct TestLLVM {
         dlvm::Interpreter i( a, main->getParent() );
         i.initial( main );
     }
+
+    Test successor()
+    {
+        divine::Allocator a;
+        Function *main = code1();
+        dlvm::Interpreter i( a, main->getParent() );
+        divine::Blob ini = i.initial( main ), fin;
+        i.rewind( ini );
+        i.run( 0, [&]( divine::Blob b ) {
+                assert( !fin.valid() ); // only one allowed
+                fin = b;
+            });
+        assert( fin.valid() );
+        // 2x flags, thread count, thread 1( stack, pagetable, memory size )
+        assert_eq( wibble::str::fmt( fin ), "[ 0, 0, 1, 0, 0, 0 ]" );
+    }
 };

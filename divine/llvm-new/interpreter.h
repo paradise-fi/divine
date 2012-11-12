@@ -521,10 +521,39 @@ public:
     std::string describe();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
-    void rewind( Blob );
+    void rewind( Blob b ) { state.rewind( b, 0 ); }
 
     template< typename Yield > /* non-determistic choice */
-    void runUninterruptible( int thread, Yield yield );
+    void run( int thread, Yield yield ) {
+        std::set< PC > seen;
+
+        assert( state.stack().get().length() );
+
+        while ( true ) {
+            seen.insert( pc() );
+            state.flags().assert = false;
+            Instruction *insn = instruction().op;
+            visit( insn );
+
+            if ( !state.stack().get().length() )
+                break; /* this thread is done */
+
+            if ( insn == instruction().op ) { // did not jump
+                pc().instruction ++;
+                if ( !instruction().op ) {
+                    pc().block ++;
+                    pc().instruction = 0;
+                    assert( instruction().op );
+                }
+            }
+            if ( seen.count( pc() ) ) {
+                yield( state.snapshot() );
+                return;
+            }
+        }
+
+        yield( state.snapshot() );
+    }
 
     /* Flow control. */
     void visitReturnInst(ReturnInst &I);
