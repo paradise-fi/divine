@@ -76,16 +76,21 @@ struct Channel {
     SymContext context;
     std::vector< Symbol > components;
 
+    bool _valid;
+
     char * item(char * data, int i) {
+        assert( _valid );
         return data + i*context.offset;
     }
 
     int & count(char * data) {
+        assert( _valid );
         char *place = data + bufsize*context.offset;
         return *reinterpret_cast< int * >( place );
     }
 
     void enqueue( EvalContext &ctx, std::vector< int > values, ErrorState &err ) {
+        assert( _valid );
         char * data = thischan.getref( ctx.mem, 0 );
         char * _item = item( data, count( data ) );
         assert_eq( values.size(), components.size() );
@@ -101,6 +106,7 @@ struct Channel {
     }
 
     std::vector< int > dequeue( EvalContext &ctx, ErrorState &err ) {
+        assert( _valid );
         char * data = thischan.getref( ctx.mem, 0 );
         std::vector< int > retval;
         retval.resize( components.size() );
@@ -114,6 +120,7 @@ struct Channel {
     }
 
     bool full( EvalContext &ctx ) {
+        assert( _valid );
         char * data;
         if ( is_buffered )
             data = thischan.getref( ctx.mem, 0 );
@@ -123,6 +130,7 @@ struct Channel {
     };
 
     bool empty( EvalContext &ctx ) {
+        assert( _valid );
         char * data;
         if ( is_buffered )
             data = thischan.getref( ctx.mem, 0 );
@@ -131,7 +139,9 @@ struct Channel {
         return count( data ) <= 0;
     };
 
-    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 0 ),  is_array( 0 ), size( 1 )
+    Channel() : _valid( false ) {}
+
+    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 0 ),  is_array( 0 ), size( 1 ), _valid( true )
     {
         is_buffered = chandecl.is_buffered;
         bufsize = chandecl.size;
@@ -422,9 +432,10 @@ struct System {
         errFlags = symtab.lookup( NS::Flag, "Error" );
 
         // declare channels
-        for( auto i = sys.chandecls.begin(); i != sys.chandecls.end(); i++ ) {
-            channels.push_back( Channel( symtab, *i )  );
-            symtab.channels[ i->name ] =  &channels.back();
+        channels.resize( sys.chandecls.size() );
+        for( size_t i = 0; i < sys.chandecls.size(); i++ ) {
+            channels[i] = Channel( symtab, sys.chandecls[i] );
+            symtab.channels[ sys.chandecls[i].name ] =  &channels[i];
         }
 
         // ensure validity of pointers into the process array
