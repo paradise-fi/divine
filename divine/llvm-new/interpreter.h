@@ -389,7 +389,8 @@ struct MachineState
         return b;
     }
 
-    MachineState( ProgramInfo &i, Allocator &alloc ) : _stack( 4096 ), _heap( 4096 ), _info( i ), _alloc( alloc )
+    MachineState( ProgramInfo &i, Allocator &alloc )
+        : _stack( 4096 ), _heap( 4096 ), _info( i ), _alloc( alloc )
     {
         _thread_count = 0;
         _size_difference = 0;
