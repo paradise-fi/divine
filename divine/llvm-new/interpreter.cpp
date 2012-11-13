@@ -24,12 +24,19 @@
 using namespace llvm;
 using namespace divine::llvm2;
 
+static void handleBB( ProgramInfo *info, ProgramInfo::Value &result, ::llvm::BasicBlock *b )
+{
+    info->storeConstant( result, PC( info->functionmap[ b->getParent() ],
+                                     info->blockmap[ b ], 0 ) );
+}
+
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 {
     if ( valuemap.find( val ) != valuemap.end() )
         return valuemap.find( val )->second;
 
     Value result; /* not seen yet, needs to be allocated */
+
     auto C = dyn_cast< Constant >( val );
 
     if ( C && C->getType()->getTypeID() == Type::PointerTyID )
@@ -37,8 +44,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         if ( auto F = dyn_cast< ::llvm::Function >( val ) )
             storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
         if ( auto B = dyn_cast< BlockAddress >( val ) )
-            storeConstant( result, PC( functionmap[ B->getFunction() ],
-                                       blockmap[ B->getBasicBlock() ], 0 ) );
+            handleBB( this, result, B->getBasicBlock() );
         if ( auto G = dyn_cast< GlobalVariable >( val ) ) {
             if ( G->isConstant() )
                 storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
@@ -52,6 +58,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         }
         result.global = true;
     }
+
+    if ( auto B = dyn_cast< BasicBlock >( val ) )
+        handleBB( this, result, B );
 
     if (function) {
         // must be already there... makeFit( functions, function );
