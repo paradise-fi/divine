@@ -97,6 +97,7 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
 
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
+    result.constant = true;
     interpreter.StoreValueToMemory(
         GV, reinterpret_cast< GenericValue * >(
             allocateConstant( result, target.getTypeStoreSize( ty ) ) ), ty );

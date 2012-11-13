@@ -149,6 +149,7 @@ struct ProgramInfo {
     }
 
     char *allocateConstant( Value &result, int width ) {
+        result.constant = true;
         result.offset = constdatasize;
         result.width = width;
         constdatasize += width;
