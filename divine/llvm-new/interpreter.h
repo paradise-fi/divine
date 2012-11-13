@@ -263,7 +263,7 @@ struct MachineState
         if ( tid < 0 )
             tid = _thread;
 
-        if ( !v.global && !v.constant && frame || tid != _thread )
+        if ( !v.global && !v.constant && ( frame || tid != _thread ) )
             block = stack( tid ).get( stack( tid ).get().length() - frame - 1 ).memory;
 
         if ( v.global )
