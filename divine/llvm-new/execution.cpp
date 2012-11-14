@@ -111,13 +111,15 @@ typename Fun< Nil >::T Interpreter::implement( ProgramInfo::Instruction i, Cons 
                                                std::pair< Type *, char * > arg, Args... args )
 {
     Type *ty = arg.first;
-    int width = TD.getTypeAllocSize( ty );
+    int width = TD.getTypeAllocSize( ty ); /* bytes */
 
     if ( ty->isIntegerTy() ) {
         if ( isSignedOp( i ) ) {
             switch ( width ) {
-                case  8: return implement< Fun >( i, consPtr<  int8_t >( arg.second, list ), args... );
-                case 16: return implement< Fun >( i, consPtr< int16_t >( arg.second, list ), args... );
+                case 1: return implement< Fun >( i, consPtr<  int8_t >( arg.second, list ), args... );
+                case 2: return implement< Fun >( i, consPtr< int16_t >( arg.second, list ), args... );
+                case 4: return implement< Fun >( i, consPtr< int32_t >( arg.second, list ), args... );
+                case 8: return implement< Fun >( i, consPtr< int64_t >( arg.second, list ), args... );
             }
         }
     }
@@ -186,10 +188,10 @@ struct Arithmetic : Implementation {
     static void check( X ) {}
 
     template< typename X >
-    auto doit( wibble::Preferred, X &list ) -> decltype( check( decons< 1 >( list ) % decons< 2 >( list ) ) ) {
-        auto &r = decons< 0 >( list );
+    auto doit( wibble::Preferred, X &list ) -> decltype( check( decons< 1 >( list ) % decons< 0 >( list ) ) ) {
+        auto &r = decons< 2 >( list );
         auto &a = decons< 1 >( list );
-        auto &b = decons< 2 >( list );
+        auto &b = decons< 0 >( list );
 
         switch( i().op->getOpcode() ) {
             case Instruction::FAdd:
@@ -223,16 +225,16 @@ struct Arithmetic : Implementation {
 template< typename Cons >
 struct Select : Implementation {
     void operator()( Cons &l ) {
-        decons< 0 >( l ) = ( decons< 1 >( l ) ? decons< 3 >( l ) : decons< 2 >( l ) );
+        decons< 3 >( l ) = ( decons< 2 >( l ) ? decons< 0 >( l ) : decons< 1 >( l ) );
     }
 };
 
 template< typename Cons >
 struct ICmp : Implementation {
     void operator()( Cons &list ) {
-        auto &r = decons< 0 >( list );
+        auto &r = decons< 2 >( list );
         auto &a = decons< 1 >( list );
-        auto &b = decons< 2 >( list );
+        auto &b = decons< 0 >( list );
 
         switch (dyn_cast< ICmpInst >( i().op )->getPredicate()) {
             case ICmpInst::ICMP_EQ:  r = a == b; return;
@@ -254,9 +256,9 @@ template< typename Cons >
 struct FCmp : Implementation {
     void operator()( Cons &list ) {
 
-        auto &r = decons< 0 >( list );
+        auto &r = decons< 2 >( list );
         auto &a = decons< 1 >( list );
-        auto &b = decons< 2 >( list );
+        auto &b = decons< 0 >( list );
 
         switch ( dyn_cast< FCmpInst >( i().op )->getPredicate() ) {
             case FCmpInst::FCMP_FALSE: r = false; return;
@@ -321,17 +323,17 @@ void Interpreter::visitSelectInst(SelectInst &) {
 template< typename Cons >
 struct Copy : Implementation {
     void operator()( Cons &l ) {
-        decons< 0 >( l ) = decons< 1 >( l );
+        decons< 1 >( l ) = decons< 0 >( l );
     }
 };
 
 template< typename Cons >
 struct BitCast : Implementation {
     void operator()( Cons &l ) {
-        char *from = reinterpret_cast< char * >( &decons< 1 >( l ) );
-        char *to = reinterpret_cast< char * >( &decons< 0 >( l ) );
-        assert_eq( sizeof( decons< 0 >( l ) ), sizeof( decons< 1 >( l ) ) );
-        std::copy( from, from + sizeof( decons< 0 >( l ) ), to );
+        char *from = reinterpret_cast< char * >( &decons< 0 >( l ) );
+        char *to = reinterpret_cast< char * >( &decons< 1 >( l ) );
+        assert_eq( sizeof( decons< 0 >( l ) ), sizeof( decons< 0 >( l ) ) );
+        std::copy( from, from + sizeof( decons< 1 >( l ) ), to );
     }
 };
 
@@ -518,8 +520,8 @@ struct GetElement : Implementation {
             }
         }
 
-        /* decons< 0 > has to be a Pointer */
-        decons< 0 >( c ) = decons< 1 >( c ) + total;
+        /* decons< 1 > has to be a Pointer */
+        decons< 1 >( c ) = decons< 0 >( c ) + total;
     }
 };
 
@@ -533,8 +535,8 @@ template< typename Cons >
 struct Load : Implementation {
     void operator()( Cons &c ) {
         assert_die(); /*
-        decons< 0 >( c ) = *reinterpret_cast< decltype( &decons< 0 >( c ) ) >(
-            interpreter().dereferencePointer( decons< 1 >( c ) ) );
+        decons< 1 >( c ) = *reinterpret_cast< decltype( &decons< 1 >( c ) ) >(
+            interpreter().dereferencePointer( decons< 0 >( c ) ) );
                       */
     }
 };
@@ -543,8 +545,8 @@ template< typename Cons >
 struct Store : Implementation {
     void operator()( Cons &c ) {
         assert_die(); /*
-        *reinterpret_cast< decltype( &decons< 1 >( c ) ) >(
-            interpreter().dereferencePointer( decons< 0 >( c ) ) ) = decons< 1 >( c );
+        *reinterpret_cast< decltype( &decons< 0 >( c ) ) >(
+            interpreter().dereferencePointer( decons< 1 >( c ) ) ) = decons< 0 >( c );
                       */
     }
 };
