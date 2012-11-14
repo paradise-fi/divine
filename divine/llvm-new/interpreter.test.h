@@ -89,4 +89,15 @@ struct TestLLVM {
         assert_eq( wibble::str::fmt( _ith( code3(), 2 ) ),
                    "[ 0, 0, 1, 1, 1, 3, 0, 0, 0 ]" );
     }
+
+    Test idempotency()
+    {
+        Function *f = code2();
+        divine::Allocator a;
+        dlvm::Interpreter interpreter( a, f->getParent() );
+        divine::Blob b1 = interpreter.initial( f ), b2;
+        interpreter.rewind( b1 );
+        b2 = interpreter.state.snapshot();
+        assert( b1 == b2 );
+    }
 };
