@@ -94,8 +94,13 @@ void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
     result.constant = true;
     result.width = target.getTypeStoreSize( ty );
-    interpreter.StoreValueToMemory(
-        GV, reinterpret_cast< GenericValue * >( allocateConstant( result ) ), ty );
+    if ( ty->isIntegerTy() ) { /* StoreValueToMemory is buggy for (at least) integers... */
+        const uint8_t *mem = reinterpret_cast< const uint8_t * >( GV.IntVal.getRawData() );
+        std::copy( mem, mem + result.width, allocateConstant( result ) );
+    } else {
+        interpreter.StoreValueToMemory(
+            GV, reinterpret_cast< GenericValue * >( allocateConstant( result ) ), ty );
+    }
 }
 
 Interpreter::Interpreter(Allocator &alloc, Module *M)
