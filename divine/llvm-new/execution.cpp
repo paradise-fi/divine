@@ -247,8 +247,8 @@ struct ICmp : Implementation {
             case ICmpInst::ICMP_SLE: r = a <= b; return;
             case ICmpInst::ICMP_UGE:
             case ICmpInst::ICMP_SGE: r = a >= b; return;
+            default: assert_die();
         }
-        assert_die();
     }
 };
 
@@ -276,6 +276,8 @@ struct FCmp : Implementation {
                     r = true;
                     return;
                 }
+                break;
+            default: assert_die();
         }
 
         switch ( dyn_cast< FCmpInst >( i().op )->getPredicate() ) {
@@ -295,8 +297,8 @@ struct FCmp : Implementation {
 
             case FCmpInst::FCMP_OGE:
             case FCmpInst::FCMP_UGE: r = a >= b; return;
+            default: assert_die();
         }
-        assert_die();
     }
 };
 
