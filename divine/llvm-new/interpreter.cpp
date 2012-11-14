@@ -133,6 +133,11 @@ void Interpreter::parseProperties( Module *M )
     }
 }
 
+void static align( int &v, int a ) {
+    if ( v % a )
+        v += a - (v % a);
+}
+
 void Interpreter::buildInfo( Module *module ) {
     PC pc( 0, 0, 0 );
     PC lastpc;
@@ -177,7 +182,10 @@ void Interpreter::buildInfo( Module *module ) {
         fun.framesize = 0;
         for ( auto v = fun.values.begin(); v != fun.values.end(); ++v )
             fun.framesize += v->width;
+        align( fun.framesize, 4 ); // 4-byte align please
     }
+
+    align( info.globalsize, 4 );
 }
 
 divine::Blob Interpreter::initial( Function *f )
