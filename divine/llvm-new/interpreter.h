@@ -537,6 +537,7 @@ public:
     std::string describe();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
+    void new_thread( Function *f );
     void rewind( Blob b ) { state.rewind( b, 0 ); }
 
     template< typename Yield > /* non-determistic choice */

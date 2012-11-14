@@ -209,3 +209,10 @@ divine::Blob Interpreter::initial( Function *f )
     // pre_initial got free'd by the interpreter since it wasn't permanent
     return result;
 }
+
+void Interpreter::new_thread( Function *f )
+{
+    int tid = state.new_thread();
+    state.enter( info.functionmap[ f ] );
+    state.rewind( state.snapshot(), tid );
+}
