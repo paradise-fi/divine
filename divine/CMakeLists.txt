@@ -31,6 +31,7 @@ endif( COIN )
 
 if( LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp llvm-new/*.cpp )
+    file( GLOB llvmtest llvm-new/*.test.h )
 endif( LLVM )
 
 if( DVE )
@@ -40,7 +41,7 @@ endif( DVE )
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
-file( GLOB testh *.test.h llvm/*.test.h toolkit/*.test.h graph/*.test.h llvm-new/*.test.h )
+file( GLOB testh *.test.h llvm/*.test.h toolkit/*.test.h graph/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
@@ -89,7 +90,7 @@ add_library( libdivine-instances STATIC ${SRC_instances} )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
 
-wibble_add_test( divine-test ${testh} )
+wibble_add_test( divine-test ${testh} ${llvmtesth} )
 
 if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
