@@ -148,22 +148,36 @@ struct ProgramInfo {
         return *reinterpret_cast< T * >( &constdata[ v.offset ] );
     }
 
-    char *allocateConstant( Value &result, int width ) {
+    char *allocateConstant( Value &result ) {
         result.constant = true;
         result.offset = constdatasize;
-        result.width = width;
-        constdatasize += width;
-        constdata.resize( constdata.size() + width );
+        constdatasize += result.width;
+        constdata.resize( constdata.size() + result.width );
         return &constdata[ result.offset ];
     }
 
+    void allocateValue( int fun, Value &result ) {
+        result.constant = false;
+        if ( fun ) {
+            result.global = false;
+            result.offset = functions[ fun ].framesize;
+            functions[ fun ].framesize += result.width;
+        } else {
+            result.global = true;
+            result.offset = globalsize;
+            globalsize += result.width;
+        }
+    }
+
     void storeConstant( Value &result, int v ) {
-        allocateConstant( result, sizeof( int ) );
+        result.width = sizeof( int );
+        allocateConstant( result );
         constant< int >( result ) = v;
     }
 
     void storeConstant( Value &result, PC pc ) {
-        allocateConstant( result, sizeof( PC ) );
+        result.width = sizeof( PC );
+        allocateConstant( result );
         constant< PC >( result ) = pc;
     }
 

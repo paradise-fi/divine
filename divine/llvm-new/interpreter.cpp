@@ -36,31 +36,26 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         return valuemap.find( val )->second;
 
     Value result; /* not seen yet, needs to be allocated */
+    result.width = target.getTypeAllocSize( val->getType() );
 
-    auto C = dyn_cast< Constant >( val );
-
-    if ( C && C->getType()->getTypeID() == Type::PointerTyID )
-    {
-        if ( auto F = dyn_cast< ::llvm::Function >( val ) )
-            storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
-        if ( auto B = dyn_cast< BlockAddress >( val ) )
-            handleBB( this, result, B->getBasicBlock() );
-        if ( auto G = dyn_cast< GlobalVariable >( val ) ) {
-            if ( G->isConstant() )
-                storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
-            else {
-                result.constant = true;
-                result.offset = globalsize;
-                result.width = target.getTypeAllocSize( C->getType() );
-                globalsize += result.width;
-                /* TODO what about vector types? */
-            }
-        }
-        result.global = true;
-    }
-
-    if ( auto B = dyn_cast< BasicBlock >( val ) )
+    if ( auto F = dyn_cast< ::llvm::Function >( val ) )
+        storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
+    else if ( auto B = dyn_cast< BlockAddress >( val ) )
+        handleBB( this, result, B->getBasicBlock() );
+    else if ( auto B = dyn_cast< BasicBlock >( val ) )
         handleBB( this, result, B );
+    else if ( auto C = dyn_cast< Constant >( val ) ) {
+        if ( C->getType()->getTypeID() == Type::PointerTyID ) {
+            result.global = true;
+            if ( auto G = dyn_cast< GlobalVariable >( val ) ) {
+                if ( G->isConstant() ) {
+                    assert( G->hasInitializer() );
+                    storeConstant( result, interpreter.getConstantValue( G->getInitializer() ),
+                                   C->getType() );
+                } else allocateValue( 0, result );
+            }
+        } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
+    } else allocateValue( function, result );
 
     if (function) {
         // must be already there... makeFit( functions, function );
@@ -98,9 +93,9 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
     result.constant = true;
+    result.width = target.getTypeStoreSize( ty );
     interpreter.StoreValueToMemory(
-        GV, reinterpret_cast< GenericValue * >(
-            allocateConstant( result, target.getTypeStoreSize( ty ) ) ), ty );
+        GV, reinterpret_cast< GenericValue * >( allocateConstant( result ) ), ty );
 }
 
 Interpreter::Interpreter(Allocator &alloc, Module *M)
