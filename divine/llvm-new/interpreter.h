@@ -313,7 +313,8 @@ struct MachineState
 
         _blob_thread( _thread ).sub( Stack() ).copy( stackaddr );
         _blob_thread( _thread ).sub( Heap() ).copy( heapaddr );
-    }
+        _frame = &stack().get( stack().get().length() - 1 );
+   }
 
     int new_thread()
     {
