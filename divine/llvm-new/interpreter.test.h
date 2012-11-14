@@ -90,6 +90,28 @@ struct TestLLVM {
                    "[ 0, 0, 1, 1, 1, 3, 0, 0, 0 ]" );
     }
 
+    Test describe1()
+    {
+        Function *f = code2();
+        divine::Allocator a;
+        dlvm::Interpreter interpreter( a, f->getParent() );
+        divine::Blob b = _ith( code2(), 1 );
+        interpreter.rewind( b );
+        assert_eq( "0: [ ?:  br label %entry ]\n", interpreter.describe() );
+    }
+
+    Test describe2()
+    {
+        Function *f = code2();
+        divine::Allocator a;
+        dlvm::Interpreter interpreter( a, f->getParent() );
+        divine::Blob b = _ith( code2(), 1 );
+        interpreter.rewind( b );
+        interpreter.new_thread( f );
+        assert_eq( "0: [ ?:  br label %entry ]\n"
+                   "1: [ ?:  br label %entry ]\n", interpreter.describe() );
+    }
+
     Test idempotency()
     {
         Function *f = code2();
