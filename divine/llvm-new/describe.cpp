@@ -121,6 +121,7 @@ std::string Interpreter::describe() {
     DescribeSeen seen;
     for ( int c = 0; c < state._thread_count; ++c ) {
         std::vector< std::string > vec;
+        std::stringstream locs;
 
         if ( state.stack( c ).get().length() &&
              info.instruction( state.frame( c ).pc ).op )
@@ -128,15 +129,16 @@ std::string Interpreter::describe() {
             const Instruction &insn = *info.instruction( state.frame( c ).pc ).op;
             const LLVMContext &ctx = insn.getContext();
             const DebugLoc &loc = insn.getDebugLoc();
+            const Function *f = insn.getParent()->getParent();
             DILocation des( loc.getAsMDNode( ctx ) );
+            locs << "<" << f->getName().str() << ">";
             if ( des.getLineNumber() )
-                vec.push_back( std::string( des.getFilename() ) +
-                               ":" + wibble::str::fmt( des.getLineNumber() ) );
+                locs << " [ " << des.getFilename().str() << ":" << des.getLineNumber() << " ]";
             else {
                 std::string descr;
                 raw_string_ostream descr_stream( descr );
                 descr_stream << insn;
-                vec.push_back( "?:" + descr );
+                locs << " [" << std::string( descr, 1, std::string::npos ) << " ]";
             }
         } else
             vec.push_back( "<not started>" );
@@ -148,7 +150,7 @@ std::string Interpreter::describe() {
             if ( !vdes.empty() )
                 vec.push_back( vdes );
         }
-        s << c << ": " << wibble::str::fmt( vec ) << std::endl;
+        s << c << ": " << locs.str() << " " << wibble::str::fmt( vec ) << std::endl;
     }
 
     if ( !state._thread_count )

@@ -14,7 +14,7 @@ struct TestLLVM {
     Function *_main() {
         Module *m = new Module( "code1", ctx );
         FunctionType *mainT = FunctionType::get(Type::getInt32Ty(ctx), std::vector<Type *>(), false);
-        Function *main = Function::Create(mainT, Function::ExternalLinkage, "test_main", m);
+        Function *main = Function::Create(mainT, Function::ExternalLinkage, "testf", m);
         BasicBlock *BB = BasicBlock::Create(ctx, "entry", main);
         builder.SetInsertPoint( BB );
         return main;
@@ -97,7 +97,7 @@ struct TestLLVM {
         dlvm::Interpreter interpreter( a, f->getParent() );
         divine::Blob b = _ith( code2(), 1 );
         interpreter.rewind( b );
-        assert_eq( "0: [ ?:  br label %entry ]\n", interpreter.describe() );
+        assert_eq( "0: <testf> [ br label %entry ] []\n", interpreter.describe() );
     }
 
     Test describe2()
@@ -108,8 +108,8 @@ struct TestLLVM {
         divine::Blob b = _ith( code2(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
-        assert_eq( "0: [ ?:  br label %entry ]\n"
-                   "1: [ ?:  br label %entry ]\n", interpreter.describe() );
+        assert_eq( "0: <testf> [ br label %entry ] []\n"
+                   "1: <testf> [ br label %entry ] []\n", interpreter.describe() );
     }
 
     Test describe3()
@@ -117,9 +117,12 @@ struct TestLLVM {
         Function *f = code3();
         divine::Allocator a;
         dlvm::Interpreter interpreter( a, f->getParent() );
-        divine::Blob b = _ith( code3(), 1 );
+        divine::Blob b = interpreter.initial( f );
+        assert_eq( "0: <testf> [ %meh = add i32 1, 2 ] [ meh = 0 ]\n", interpreter.describe() );
+
+        b = _ith( code3(), 1 );
         interpreter.rewind( b );
-        assert_eq( "0: [ ?:  %meh = add i32 1, 2, meh = 3 ]\n", interpreter.describe() );
+        assert_eq( "0: <testf> [ %meh = add i32 1, 2 ] [ meh = 3 ]\n", interpreter.describe() );
     }
 
     Test idempotency()
