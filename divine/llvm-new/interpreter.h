@@ -27,6 +27,7 @@
 
 #define NO_RTTI
 
+#include <wibble/mixin.h>
 #include <divine/toolkit/lens.h>
 #include <divine/graph/allocator.h> // hmm.
 #include <divine/llvm/arena.h>
@@ -69,12 +70,20 @@ struct PC {
     }
 };
 
-struct Pointer {
+struct Pointer : wibble::mixin::Comparable< Pointer > {
     uint32_t thread:10;  /* thread id */
     uint32_t address:15; /* pagetable offset */
-    Pointer( int i = 0 ) {
-        assert_die();
-    };
+    Pointer operator+( int offset ) {
+        return Pointer( thread, address + offset );
+    }
+    Pointer( int thread, int address ) : thread( thread ), address( address ) {}
+    Pointer() : thread( 0 ), address( 0 ) {}
+
+    bool operator<=( Pointer o ) const {
+        if ( thread < o.thread )
+            return true;
+        return thread == o.thread && address <= o.address;
+    }
 };
 
 struct ProgramInfo {

@@ -139,6 +139,9 @@ typename Fun::T Interpreter::implement( ProgramInfo::Instruction i, Cons list,
         }
     }
 
+    if ( ty->isPointerTy() )
+        return implement< Fun >( i, consPtr< Pointer >( arg.second, list ), args... );
+
     if ( ty->isFloatTy() )
         return implement< Fun >( i, consPtr< float /* TODO float32_t */ >( arg.second, list ), args... );
     if ( ty->isDoubleTy() )
