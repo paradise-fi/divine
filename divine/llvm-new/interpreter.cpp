@@ -65,6 +65,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     }
 
     valuemap.insert( std::make_pair( val, result ) );
+    llvmvaluemap.insert( std::make_pair( result, val ) );
     return result;
 }
 

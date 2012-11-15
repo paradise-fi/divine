@@ -87,6 +87,9 @@ struct ProgramInfo {
         bool constant:1;
         uint32_t offset:20;
         uint32_t width:10;
+        bool operator<( Value v ) const {
+            return *reinterpret_cast< const uint32_t * >( this ) < *reinterpret_cast< const uint32_t * >( &v );
+        }
         Value() : global( 0 ), constant( 0 ), offset( 0 ), width( 0 ) {}
     };
 
@@ -123,6 +126,7 @@ struct ProgramInfo {
     int globalsize, constdatasize;
 
     std::map< ::llvm::Value *, Value > valuemap;
+    std::map< Value, ::llvm::Value * > llvmvaluemap;
     std::map< ::llvm::Instruction *, PC > pcmap;
 
     std::map< ::llvm::BasicBlock *, int > blockmap;
