@@ -35,6 +35,8 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( valuemap.find( val ) != valuemap.end() )
         return valuemap.find( val )->second;
 
+    makeFit( functions, function );
+
     Value result; /* not seen yet, needs to be allocated */
     result.width = target.getTypeAllocSize( val->getType() );
 
