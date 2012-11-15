@@ -11,30 +11,34 @@ struct TestLLVM {
 
     TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {}
 
-    Function *_main() {
-        Module *m = new Module( "testm", ctx );
-        FunctionType *mainT = FunctionType::get(Type::getInt32Ty(ctx), std::vector<Type *>(), false);
-        Function *main = Function::Create(mainT, Function::ExternalLinkage, "testf", m);
-        BasicBlock *BB = BasicBlock::Create(ctx, "entry", main);
+    Function *_function( Module *m = NULL, const char *name = "testf", int pcount = 0 ) {
+        if ( !m )
+            m = new Module( "testm", ctx );
+        std::vector< Type * > args;
+        for ( int i = 0; i < pcount; ++ i )
+            args.push_back( Type::getInt32Ty( ctx ) );
+        FunctionType *t = FunctionType::get(Type::getInt32Ty(ctx), args, false);
+        Function *f = Function::Create(t, Function::ExternalLinkage, name, m);
+        BasicBlock *BB = BasicBlock::Create(ctx, "entry", f);
         builder.SetInsertPoint( BB );
-        return main;
+        return f;
     }
 
     Function *code_ret() {
-        Function *main = _main();
+        Function *main = _function();
         Value *result = ConstantInt::get(ctx, APInt(32, 1));
         builder.CreateRet( result );
         return main;
     }
 
     Function *code_loop() {
-        Function *f = _main();
+        Function *f = _function();
         builder.CreateBr( &*(f->begin()) );
         return f;
     }
 
     Function *code_add() {
-        Function *f = _main();
+        Function *f = _function();
         Value *a = ConstantInt::get(ctx, APInt(32, 1)),
               *b = ConstantInt::get(ctx, APInt(32, 2));
         Value *result = builder.Insert( BinaryOperator::Create( Instruction::Add, a, b ), "meh" );
@@ -44,14 +48,21 @@ struct TestLLVM {
     }
 
     Function *code_call() {
-        Function *f = _main();
-        FunctionType *helperT = FunctionType::get(Type::getInt32Ty(ctx), std::vector<Type *>(), false);
-        Function *helper = Function::Create(helperT, Function::ExternalLinkage, "helper", f->getParent());
-        BasicBlock *BB = BasicBlock::Create(ctx, "entry", helper);
-        builder.CreateCall( helper );
-        builder.CreateBr( &*(f->begin()) );
-        builder.SetInsertPoint( BB );
+        Function *helper = _function( NULL, "helper", 0 );
         builder.CreateBr( &*(helper->begin()) );
+        Function *f = _function( helper->getParent() );
+        builder.CreateCall( helper );
+        return f;
+    }
+
+    Function *code_callarg() {
+        Function *helper = _function( NULL, "helper", 1 );
+        builder.Insert( BinaryOperator::Create( Instruction::Add,
+                                                helper->arg_begin(),
+                                                helper->arg_begin() ), "meh" );
+        builder.CreateBr( &*(helper->begin()) );
+        Function *f = _function( helper->getParent() );
+        builder.CreateCall( helper, ConstantInt::get(ctx, APInt(32, 7)) );
         return f;
     }
 
@@ -147,6 +158,16 @@ struct TestLLVM {
         b = _ith( code_call(), 1 );
         assert_eq( _descr( code_call(), b ),
                    "0: <helper> [ br label %entry ] []\n" );
+    }
+
+    Test describe5()
+    {
+        divine::Blob b = _ith( code_callarg(), 0 );
+        assert_eq( _descr( code_callarg(), b ),
+                   "0: <testf> [ %0 = call i32 @helper(i32 7) ] []\n" );
+        b = _ith( code_callarg(), 1 );
+        assert_eq( _descr( code_callarg(), b ),
+                   "0: <helper> [ %meh = add i32 %0, %0 ] [ meh = 14 ]\n" );
     }
 
     Test idempotency()
