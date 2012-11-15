@@ -469,9 +469,9 @@ public:
         return std::make_pair( t, mem );
     }
 
-    std::pair< Type *, char * > dereferenceOperand( const ProgramInfo::Instruction &i, int n ) {
+    std::pair< Type *, char * > dereferenceOperand( const ProgramInfo::Instruction &i, int n, int frame = 0 ) {
         Type *t = i.op->getOperand( n )->getType();
-        return dereference( t, i.operands[ n ] );
+        return dereference( t, i.operands[ n ], -1, frame );
     }
 
     std::pair< Type *, char * > dereferenceResult( const ProgramInfo::Instruction &i );
@@ -623,7 +623,7 @@ public:
     /* Fallthrough. */
     void visitInstruction(Instruction &I) { assert_die(); }
 
-    void switchBB( BasicBlock *Dest );
+    void switchBB( BasicBlock *Dest = nullptr );
     void checkJump( BasicBlock *Dest );
     void leaveFrame(); /* without a return value */
     void leaveFrame( Type *ty, ProgramInfo::Value result );

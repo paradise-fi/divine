@@ -454,7 +454,11 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
 void Interpreter::switchBB( BasicBlock *Dest )
 {
     jumped = true;
-    pc() = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
+
+    if ( Dest ) /* PC already updated if Dest is NULL */
+        pc() = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
+    else
+        Dest = instruction().op->getParent();
 
     if ( !isa<PHINode>( Dest->begin() ) ) return;  // Nothing fancy to do
 
@@ -658,10 +662,13 @@ void Interpreter::visitCallSite(CallSite CS) {
     {
         Type *ty = CS.getArgument( i )->getType();
         implementN< Copy >( dereference( ty, function.values[ i ] ),
-                            dereferenceOperand( insn, i + 1 ) );
+                            dereferenceOperand( insn, i + 1, 1 ) );
     }
 
-    assert_die();
+    /* TODO function entry blocks probably can't have PHI nodes in them, so
+     * this is actually redundant. */
+    switchBB();
+
 #if 0
     Location loc = location( SF() );
     loc.insn = CS.getInstruction();
