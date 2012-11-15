@@ -410,7 +410,7 @@ struct MachineState
 
         if ( _thread >= 0 ) { // we actually have a current thread to speak of
             auto to = Lens< Thread >( StateAddress( &_info, b, address.offset ) );
-            stack( _thread ).copy( to.address( Stack() ) );
+            address = stack( _thread ).copy( address );
 
             auto target = to.sub( Heap() );
             auto source = heap( _thread );
