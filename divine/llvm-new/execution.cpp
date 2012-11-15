@@ -390,15 +390,29 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
         leaveFrame();
 }
 
+void Interpreter::checkJump( BasicBlock *Dest )
+{
+    PC from = pc();
+    PC to = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
+    if ( from.function != to.function )
+        throw wibble::exception::Consistency(
+            "Interpreter::checkJump",
+            "Can't deal with cross-function jumps." );
+}
+
 void Interpreter::visitBranchInst(BranchInst &I)
 {
-    if ( I.isUnconditional() )
+    if ( I.isUnconditional() ) {
+        checkJump( I.getSuccessor( 0 ) );
         switchBB( I.getSuccessor( 0 ) );
-    else {
-        if ( implementN< IsTrue >( dereferenceOperand( instruction(), 0 ) ) )
+    } else {
+        if ( implementN< IsTrue >( dereferenceOperand( instruction(), 0 ) ) ) {
+            checkJump( I.getSuccessor( 0 ) );
             switchBB( I.getSuccessor( 0 ) );
-        else
+        } else {
+            checkJump( I.getSuccessor( 1 ) );
             switchBB( I.getSuccessor( 1 ) );
+        }
     }
 }
 

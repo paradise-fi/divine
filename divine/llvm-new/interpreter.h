@@ -624,6 +624,7 @@ public:
     void visitInstruction(Instruction &I) { assert_die(); }
 
     void switchBB( BasicBlock *Dest );
+    void checkJump( BasicBlock *Dest );
     void leaveFrame(); /* without a return value */
     void leaveFrame( Type *ty, ProgramInfo::Value result );
 
