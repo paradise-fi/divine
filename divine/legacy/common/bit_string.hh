@@ -164,7 +164,7 @@ class bit_string_t
   }
 };
 
-};
+}
 
 #include "common/undeb.hh"
 

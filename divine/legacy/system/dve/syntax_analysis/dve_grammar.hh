@@ -24,7 +24,7 @@ void dve_trans_init_parsing(dve_parser_t * const, error_vector_t *, std::istream
 void dve_proc_init_parsing(dve_parser_t * const, error_vector_t *, std::istream & mystream);
 
 #ifndef DOXYGEN_PROCESSING
-};
+}
 #endif //DOXYGEN_PROCESSING
 
 #endif

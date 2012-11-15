@@ -456,7 +456,7 @@ class error_vector_t
 extern error_vector_t gerr;
 
 #ifndef DOXYGEN_PROCESSING
-}; // end of namespace
+} // end of namespace
 #include "common/undeb.hh"
 #endif //DOXYGEN_PROCESSING
 
