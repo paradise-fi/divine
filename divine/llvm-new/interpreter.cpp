@@ -71,7 +71,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     return result;
 }
 
-void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
+ProgramInfo::Instruction &ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
 {
     makeFit( functions, pc.function );
     makeFit( function( pc ).blocks, pc.block );
@@ -80,7 +80,7 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
     insn.op = I;
 
     if ( !I )
-        return; /* our work here is done */
+        return insn; /* our work here is done */
 
     insn.operands.resize( I->getNumOperands() );
     for ( int i = 0; i < I->getNumOperands(); ++i ) {
@@ -91,6 +91,7 @@ void ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
         insn.operands[ i ] = valuemap[ v ];
     }
     pcmap.insert( std::make_pair( I, pc ) );
+    return insn;
 }
 
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
@@ -180,8 +181,8 @@ void Interpreter::buildInfo( Module *module ) {
             for ( auto insn = block->begin(); insn != block->end();
                   ++ insn, ++ pc.instruction )
             {
-                info.insert( pc, &*insn );
-                info.insert( pc.function, &*insn );
+                auto &insn_info = info.insert( pc, &*insn );
+                insn_info.result = info.insert( pc.function, &*insn );
             }
             info.insert( pc, nullptr ); /* past-the-end iterator, for BB end */
         }

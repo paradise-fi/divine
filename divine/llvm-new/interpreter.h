@@ -196,7 +196,7 @@ struct ProgramInfo {
 
     void storeConstant( Value &result, GenericValue GV, Type *ty );
 
-    void insert( PC pc, ::llvm::Instruction *i );
+    Instruction &insert( PC pc, ::llvm::Instruction *i );
     Value insert( int function, ::llvm::Value *val );
 
     ProgramInfo( TargetData &td, Interpreter &i ) : target( td ), interpreter( i )
