@@ -538,7 +538,7 @@ public:
     Describe describeAggregate( Type *t, char *where, DescribeSeen& );
     Describe describeValue( Type *t, char *where, DescribeSeen& );
     std::string describePointer( Type *t, int idx, DescribeSeen& );
-    std::string describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen * = 0 );
+    std::string describeValue( ProgramInfo::Value , int, DescribeSeen * = 0 );
     std::string describe();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */

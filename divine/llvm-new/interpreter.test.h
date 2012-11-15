@@ -112,6 +112,16 @@ struct TestLLVM {
                    "1: [ ?:  br label %entry ]\n", interpreter.describe() );
     }
 
+    Test describe3()
+    {
+        Function *f = code3();
+        divine::Allocator a;
+        dlvm::Interpreter interpreter( a, f->getParent() );
+        divine::Blob b = _ith( code3(), 1 );
+        interpreter.rewind( b );
+        assert_eq( "0: [ ?:  %meh = add i32 1, 2, meh = 3 ]\n", interpreter.describe() );
+    }
+
     Test idempotency()
     {
         Function *f = code2();

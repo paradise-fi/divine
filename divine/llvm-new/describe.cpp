@@ -7,7 +7,6 @@
 using namespace llvm;
 using namespace divine::llvm2;
 
-#if 0
 Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, DescribeSeen &seen ) {
     char delim[2];
     std::vector< std::string > vec;
@@ -38,6 +37,7 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, Desc
     return std::make_pair( wibble::str::fmt_container( vec, delim[0], delim[1] ), where );
 }
 
+#if 0
 std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen ) {
     std::string ptr = "*" + wibble::str::fmt( (void*) idx );
     std::string res;
@@ -69,6 +69,7 @@ std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen )
     }
     return res;
 }
+#endif
 
 Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
     std::string res;
@@ -79,8 +80,9 @@ Interpreter::Describe Interpreter::describeValue( Type *t, char *where, Describe
             res = wibble::str::fmt( int( *(int8_t *) where ) );
         where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isPointerTy() ) {
-        res = describePointer( t, *(intptr_t*) where, seen );
-        where += t->getPrimitiveSizeInBits() / 8;
+        assert_die();
+        /* res = describePointer( t, *(intptr_t*) where, seen );
+           where += t->getPrimitiveSizeInBits() / 8; */
     } else if ( t->getPrimitiveSizeInBits() ) {
         res = "?";
         where += t->getPrimitiveSizeInBits() / 8;
@@ -92,27 +94,27 @@ Interpreter::Describe Interpreter::describeValue( Type *t, char *where, Describe
     return std::make_pair( res, where );
 }
 
-std::string Interpreter::describeGenericValue( int vindex, GenericValue vvalue, DescribeSeen *seen ) {
+std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, DescribeSeen *seen ) {
     std::string str, name;
     DescribeSeen _seen;
     if ( !seen )
         seen = &_seen;
-    Value *val = valueIndex.right( vindex );
+
+    Value *val = info.llvmvaluemap[ v ];
     Type *type = val->getType();
+
     if ( val->getValueName() ) {
         name = val->getValueName()->getKey();
         if ( name.find( '.' ) != std::string::npos )
            return "";
         str = name + " = ";
         if ( type->isPointerTy() ) {
-            str += describePointer( type, intptr_t( vvalue.PointerVal ), *seen );
-        } else { // assume intval for now
-            str += vvalue.IntVal.toString( 10, 1 );
-        }
+            assert_die(); // str += describePointer ...
+        } else
+            str += describeValue( type, state.dereference( v, thread ), *seen ).first;
     }
     return str;
 }
-#endif
 
 std::string Interpreter::describe() {
     std::stringstream s;
@@ -139,14 +141,13 @@ std::string Interpreter::describe() {
         } else
             vec.push_back( "<not started>" );
 
-#if 0
-        for ( ExecutionContext::Values::iterator v = stack( c ).back().values.begin();
-              v != stack( c ).back().values.end(); ++v ) {
-            std::string vdes = describeGenericValue( v->first, v->second, &seen );
+        auto function = info.function( state.frame( c ).pc );
+        for ( auto v = function.values.begin(); v != function.values.end(); ++v )
+        {
+            std::string vdes = describeValue( *v, c, &seen );
             if ( !vdes.empty() )
                 vec.push_back( vdes );
         }
-#endif
         s << c << ": " << wibble::str::fmt( vec ) << std::endl;
     }
 
