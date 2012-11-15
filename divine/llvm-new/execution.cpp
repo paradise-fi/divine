@@ -32,28 +32,26 @@
 using namespace llvm;
 using namespace divine::llvm2;
 
-template< typename Cons, int N > struct ConsAt;
+struct Nil {};
 
-template< typename Cons >
-struct ConsAt< Cons, 0 > {
-    typedef typename Cons::Car T;
-    static T get( Cons &c ) {
+template< int N > struct ConsAt;
+
+template<>
+struct ConsAt< 0 > {
+    template< typename Cons >
+    static auto get( Cons &c ) -> decltype( c.car ) {
         return c.car;
     }
 };
 
-template< typename Cons, int N >
+template< int N >
 struct ConsAt {
-    typedef typename Cons::Cdr Cdr;
-    typedef ConsAt< Cdr, N - 1 > CdrAt;
-
-    typedef typename CdrAt::T T;
-
-    static T get( Cons &c ) {
-        return CdrAt::get( c.cdr );
+    template< typename Cons >
+    static auto get( Cons &c ) -> decltype( ConsAt< N - 1 >::get( c.cdr ) )
+    {
+        return ConsAt< N - 1 >::get( c.cdr );
     }
 };
-
 
 template< typename A, typename B >
 struct Cons {
@@ -63,9 +61,9 @@ struct Cons {
     B cdr;
 
     template< int N >
-    auto get() -> typename ConsAt< Cons< A, B >, N >::T
+    auto get() -> decltype( ConsAt< N >::get( *this ) )
     {
-        return ConsAt< Cons< A, B >, N >::get( *this );
+        return ConsAt< N >::get( *this );
     }
 };
 
@@ -89,26 +87,43 @@ template< typename X >
 struct UnPtr< X * > { typedef X T; };
 
 template< int I, typename Cons >
-typename UnPtr< typename ConsAt< Cons, I >::T >::T &decons( Cons &c ) {
+auto decons( Cons &c ) -> typename UnPtr< decltype( ConsAt< I >::get( c ) ) >::T &
+{
     return *c.template get< I >();
+}
+
+#define MATCH(expr...) template< typename F, typename X > \
+    auto match( wibble::Preferred, F f, X &&x ) -> decltype( f( expr ) ) { return f( expr ); }
+
+MATCH( decons< 0 >( x ) )
+MATCH( decons< 1 >( x ), decons< 0 >( x ) )
+MATCH( decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x ) )
+MATCH( decons< 3 >( x ), decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x ) )
+
+#undef MATCH
+
+template< typename F, typename X >
+typename F::T match( wibble::NotPreferred, F f, X &&x )
+{
+    assert_die();
 }
 
 bool isSignedOp( ProgramInfo::Instruction i ) {
     return true; // XXX
 }
 
-template< template< typename > class Fun, typename Cons >
-typename Fun< Nil >::T Interpreter::implement( ProgramInfo::Instruction i, Cons list )
+template< typename Fun, typename Cons >
+typename Fun::T Interpreter::implement( ProgramInfo::Instruction i, Cons list )
 {
-    Fun< Cons > instance;
+    Fun instance;
     instance._interpreter = this;
     instance.instruction = i;
-    return instance( list );
+    return match( wibble::Preferred(), instance, list );
 }
 
-template< template< typename > class Fun, typename Cons, typename... Args >
-typename Fun< Nil >::T Interpreter::implement( ProgramInfo::Instruction i, Cons list,
-                                               std::pair< Type *, char * > arg, Args... args )
+template< typename Fun, typename Cons, typename... Args >
+typename Fun::T Interpreter::implement( ProgramInfo::Instruction i, Cons list,
+                                        std::pair< Type *, char * > arg, Args... args )
 {
     Type *ty = arg.first;
     int width = TD.getTypeAllocSize( ty ); /* bytes */
@@ -128,17 +143,16 @@ typename Fun< Nil >::T Interpreter::implement( ProgramInfo::Instruction i, Cons 
         return implement< Fun >( i, consPtr< float /* TODO float32_t */ >( arg.second, list ), args... );
     if ( ty->isDoubleTy() )
         return implement< Fun >( i, consPtr< double /* TODO float64_t */ >( arg.second, list ), args... );
-
     assert_die();
 }
 
-template< template< typename > class Fun, typename... Args >
-typename Fun< Nil >::T Interpreter::implementN( Args... args )
+template< typename Fun, typename... Args >
+typename Fun::T Interpreter::implementN( Args... args )
 {
     return implement< Fun >( ProgramInfo::Instruction(), Nil(), args... );
 }
 
-template< template< typename > class I >
+template< typename I >
 void Interpreter::implement1( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
@@ -147,7 +161,7 @@ void Interpreter::implement1( ProgramInfo::Instruction i )
                     dereference( ty, i.operands[ 0 ] ) );
 }
 
-template< template< typename > class I >
+template< typename I >
 void Interpreter::implement2( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
@@ -157,7 +171,7 @@ void Interpreter::implement2( ProgramInfo::Instruction i )
                     dereference( ty, i.operands[ 1 ] ) );
 }
 
-template< template< typename > class I >
+template< typename I >
 void Interpreter::implement3( ProgramInfo::Instruction i )
 {
     Type *ty = i.op->getOperand(0)->getType();
@@ -177,22 +191,13 @@ struct Implementation {
     TargetData &TD() { return interpreter().TD; }
 };
 
-template< typename Cons >
+template< typename... X >
+static void declcheck( X... ) {}
+
 struct Arithmetic : Implementation {
-
-    void doit( wibble::NotPreferred, Cons &list ) {
-        assert_die();
-    }
-
     template< typename X >
-    static void check( X ) {}
-
-    template< typename X >
-    auto doit( wibble::Preferred, X &list ) -> decltype( check( decons< 1 >( list ) % decons< 0 >( list ) ) ) {
-        auto &r = decons< 2 >( list );
-        auto &a = decons< 1 >( list );
-        auto &b = decons< 0 >( list );
-
+    auto operator()( X &r, X &a, X &b ) -> decltype( declcheck( a % b ) )
+    {
         switch( i().op->getOpcode() ) {
             case Instruction::FAdd:
             case Instruction::Add: r = a + b; return;
@@ -215,27 +220,19 @@ struct Arithmetic : Implementation {
         }
         assert_die();
     }
-
-    template< typename X >
-    void operator()( X &list ) {
-        return doit( wibble::Preferred(), list );
-    }
 };
 
-template< typename Cons >
 struct Select : Implementation {
-    void operator()( Cons &l ) {
-        decons< 3 >( l ) = ( decons< 2 >( l ) ? decons< 0 >( l ) : decons< 1 >( l ) );
+    template< typename R, typename C >
+    auto operator()( R &r, C &a, R &b, R &c ) -> decltype( declcheck( r = a ? b : c ) )
+    {
+        r = a ? b : c;
     }
 };
 
-template< typename Cons >
 struct ICmp : Implementation {
-    void operator()( Cons &list ) {
-        auto &r = decons< 2 >( list );
-        auto &a = decons< 1 >( list );
-        auto &b = decons< 0 >( list );
-
+    template< typename R, typename X >
+    auto operator()( R &r, X &a, X &b ) -> decltype( declcheck( r = a < b ) ) {
         switch (dyn_cast< ICmpInst >( i().op )->getPredicate()) {
             case ICmpInst::ICMP_EQ:  r = a == b; return;
             case ICmpInst::ICMP_NE:  r = a != b; return;
@@ -252,14 +249,11 @@ struct ICmp : Implementation {
     }
 };
 
-template< typename Cons >
 struct FCmp : Implementation {
-    void operator()( Cons &list ) {
-
-        auto &r = decons< 2 >( list );
-        auto &a = decons< 1 >( list );
-        auto &b = decons< 0 >( list );
-
+    template< typename R, typename X >
+    auto operator()( R &r, X &a, X &b ) ->
+        decltype( declcheck( r = isnan( a ) && isnan( b ) ) )
+    {
         switch ( dyn_cast< FCmpInst >( i().op )->getPredicate() ) {
             case FCmpInst::FCMP_FALSE: r = false; return;
             case FCmpInst::FCMP_TRUE:  r = true;  return;
@@ -322,41 +316,38 @@ void Interpreter::visitSelectInst(SelectInst &) {
 
 /* Control flow. */
 
-template< typename Cons >
 struct Copy : Implementation {
-    void operator()( Cons &l ) {
-        decons< 1 >( l ) = decons< 0 >( l );
+    template< typename X >
+    void operator()( X &r, X &l )
+    {
+        r = l;
     }
 };
 
-template< typename Cons >
 struct BitCast : Implementation {
-    void operator()( Cons &l ) {
-        char *from = reinterpret_cast< char * >( &decons< 0 >( l ) );
-        char *to = reinterpret_cast< char * >( &decons< 1 >( l ) );
-        assert_eq( sizeof( decons< 0 >( l ) ), sizeof( decons< 0 >( l ) ) );
-        std::copy( from, from + sizeof( decons< 1 >( l ) ), to );
-    }
-};
-
-template< typename Cons >
-struct IsTrue : Implementation {
-    typedef bool T;
-    bool operator()( Cons &l ) {
-        return decons< 0 >( l );
+    template< typename R, typename L >
+    void operator()( R &r, L &l ) {
+        char *from = reinterpret_cast< char * >( &l );
+        char *to = reinterpret_cast< char * >( &r );
+        assert_eq( sizeof( R ), sizeof( L ) );
+        std::copy( from, from + sizeof( R ), to );
     }
 };
 
 template< typename _T >
 struct Get {
-    template< typename Cons >
     struct I : Implementation {
         typedef _T T;
-        T operator()( Cons &l ) { /* kinda evil */
-            return static_cast< T >( decons< 0 >( l ) );
-        };
+
+        template< typename X >
+        auto operator()( X &l ) -> decltype( static_cast< T >( l ) )
+        {
+            return static_cast< T >( l );
+        }
     };
 };
+
+typedef Get< bool >::I IsTrue;
 
 void Interpreter::leaveFrame()
 {
@@ -517,9 +508,8 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 #endif
 }
 
-template< typename Cons >
 struct GetElement : Implementation {
-    void operator()( Cons &c ) {
+    void operator()( Pointer &r, Pointer &p ) {
         int total = 0;
 
         gep_type_iterator I = gep_type_begin( i().op ),
@@ -534,14 +524,13 @@ struct GetElement : Implementation {
                 total += SLO->getElementOffset( index );
             } else {
                 const SequentialType *ST = cast<SequentialType>(*I);
-                int index = interpreter().template implementN< Get< int >::I >(
+                int index = interpreter().implementN< Get< int >::I >(
                     interpreter().dereferenceOperand( i(), meh ) );
                 total += index * TD().getTypeAllocSize( ST->getElementType() );
             }
         }
 
-        /* decons< 1 > has to be a Pointer */
-        decons< 1 >( c ) = decons< 0 >( c ) + total;
+        r = p + total;
     }
 };
 
@@ -551,9 +540,9 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
     implement2< GetElement >( instruction() );
 }
 
-template< typename Cons >
 struct Load : Implementation {
-    void operator()( Cons &c ) {
+    template< typename R >
+    void operator()( R &r, Pointer p ) {
         assert_die(); /*
         decons< 1 >( c ) = *reinterpret_cast< decltype( &decons< 1 >( c ) ) >(
             interpreter().dereferencePointer( decons< 0 >( c ) ) );
@@ -561,9 +550,9 @@ struct Load : Implementation {
     }
 };
 
-template< typename Cons >
 struct Store : Implementation {
-    void operator()( Cons &c ) {
+    template< typename L >
+    void operator()( Pointer r, L &l ) {
         assert_die(); /*
         *reinterpret_cast< decltype( &decons< 0 >( c ) ) >(
             interpreter().dereferencePointer( decons< 1 >( c ) ) ) = decons< 0 >( c );

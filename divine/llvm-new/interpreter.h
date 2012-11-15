@@ -441,8 +441,6 @@ struct MachineState
 
 };
 
-struct Nil {};
-
 // Interpreter - This class represents the entirety of the interpreter.
 //
 class Interpreter : public ::llvm::ExecutionEngine, public ::llvm::InstVisitor<Interpreter>
@@ -478,23 +476,23 @@ public:
     char * dereferencePointer( Pointer );
     BasicBlock *dereferenceBB( Pointer );
 
-    template< template< typename > class Fun, typename Cons >
-    typename Fun< Nil >::T implement( ProgramInfo::Instruction i, Cons list );
+    template< typename Fun, typename Cons >
+    typename Fun::T implement( ProgramInfo::Instruction i, Cons list );
 
-    template< template< typename > class Fun, typename Cons, typename... Args >
-    typename Fun< Nil >::T implement( ProgramInfo::Instruction i, Cons list,
+    template< typename Fun, typename Cons, typename... Args >
+    typename Fun::T implement( ProgramInfo::Instruction i, Cons list,
                                       std::pair< Type *, char * > arg, Args... args );
 
-    template< template< typename > class Fun, typename... Args >
-    typename Fun< Nil >::T implementN( Args... args );
+    template< typename Fun, typename... Args >
+    typename Fun::T implementN( Args... args );
 
-    template< template< typename > class I >
+    template< typename I >
     void implement1( ProgramInfo::Instruction i );
 
-    template< template< typename > class I >
+    template< typename I >
     void implement2( ProgramInfo::Instruction i );
 
-    template< template< typename > class I >
+    template< typename I >
     void implement3( ProgramInfo::Instruction i );
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
