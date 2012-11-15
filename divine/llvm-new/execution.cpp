@@ -654,7 +654,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     {
         Type *ty = CS.getArgument( i )->getType();
         implementN< Copy >( dereference( ty, function.values[ i ] ),
-                            dereferenceOperand( insn, i + 1, 1 ) );
+                            dereferenceOperand( insn, i, 1 ) );
     }
 
     /* TODO function entry blocks probably can't have PHI nodes in them, so
