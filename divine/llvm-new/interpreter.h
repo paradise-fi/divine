@@ -49,24 +49,20 @@ struct Interpreter;
 
 using namespace ::llvm;
 
-struct PC {
+struct PC : wibble::mixin::Comparable< PC >
+{
     uint32_t function:10;
     uint32_t block:12;
-    uint32_t instruction:10;
-    explicit PC( int f = 0, int b = 0, int i = 0 ) : function( f ), block( b ), instruction( i ) {}
+    uint32_t instruction:9;
+    bool masked:1;
+    explicit PC( int f = 0, int b = 0, int i = 0 )
+        : function( f ), block( b ), instruction( i ), masked( false )
+    {}
 
-    bool operator< ( PC other ) const {
-        if ( function < other.function )
-            return true;
-        if ( function > other.function )
-            return false;
-        if ( block < other.block )
-            return true;
-        if ( block > other.block )
-            return false;
-        if ( instruction > other.instruction )
-            return true;
-        return false;
+    bool operator<= ( PC o ) const {
+        /* masked is irrelevant for equality! */
+        return std::make_tuple( int( function ), int( block ), int( instruction ) )
+            <= std::make_tuple( int( o.function ), int( o.block ), int( o.instruction ) );
     }
 };
 
@@ -115,7 +111,7 @@ struct ProgramInfo {
 
         int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::Instruction *op; /* the actual operation */
-        Instruction() : op( nullptr ) {}
+        Instruction() : op( nullptr ), builtin( NotBuiltin ) {}
         /* next instruction is in the same BB unless op == NULL */
     };
 
@@ -219,7 +215,7 @@ struct ProgramInfo {
 
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
-    Position builtin( Position );
+    void builtin( Position );
     Value insert( int function, ::llvm::Value *val );
 
     ProgramInfo( TargetData &td, Interpreter &i ) : target( td ), interpreter( i )
@@ -487,7 +483,7 @@ public:
     ::llvm::Module *module; /* The bitcode. */
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
-    bool jumped;
+    bool jumped, observable;
 
     Allocator &alloc;
 
@@ -584,7 +580,7 @@ public:
         while ( true ) {
             seen.insert( pc() );
             state.flags().assert = false;
-            jumped = false;
+            observable = jumped = false;
 
             visit( instruction().op );
 
@@ -600,7 +596,7 @@ public:
                     switchBB();
                 }
             }
-            if ( seen.count( pc() ) ) {
+            if ( observable || seen.count( pc() ) ) {
                 yield( state.snapshot() );
                 return;
             }

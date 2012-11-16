@@ -85,11 +85,21 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
     return Position( p.pc, insert );
 }
 
-ProgramInfo::Position ProgramInfo::builtin( Position p )
+void ProgramInfo::builtin( Position p )
 {
-    assert_die();
-    p.pc.instruction ++; p.I ++; /* next please */
-    return p;
+    ProgramInfo::Instruction &insn = instruction( p.pc );
+    CallSite CS( p.I );
+    ::llvm::Function *F = CS.getCalledFunction();
+    std::string name = F->getName().str();
+    if ( name == "__divine_interrupt_mask" )
+        insn.builtin = BuiltinMask;
+    else if ( name == "__divine_interrupt_unmask" )
+        insn.builtin = BuiltinUnmask;
+    else if ( name == "__divine_tid" )
+        insn.builtin = BuiltinTID;
+    else throw wibble::exception::Consistency(
+        "ProgramInfo::builtin",
+        "Unknown undefined function " + name );
 }
 
 ProgramInfo::Position ProgramInfo::insert( Position p )
@@ -121,7 +131,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 default: return lower( p );
             }
         if ( F->isDeclaration() )
-            return builtin( p );
+            builtin( p );
     }
 
     insn.operands.resize( p.I->getNumOperands() );

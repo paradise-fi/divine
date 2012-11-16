@@ -11,6 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#define NO_RTTI
+#include <wibble/exception.h>
 #include <divine/llvm-new/interpreter.h>
 
 #include "llvm/Constants.h"
@@ -584,7 +586,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     // Check to see if this is an intrinsic function call...
     Function *F = CS.getCalledFunction();
 
-    if ( F && F->isDeclaration() )
+    if ( F && F->isDeclaration() ) {
         switch (F->getIntrinsicID()) {
             case Intrinsic::not_intrinsic:
                 break;
@@ -612,6 +614,13 @@ void Interpreter::visitCallSite(CallSite CS) {
             default:
                 assert_die(); /* Can't happen. */
         }
+        switch( insn.builtin ) {
+            case NotBuiltin: break;
+            case BuiltinMask: state.frame().pc.masked = true; break;
+            case BuiltinUnmask: state.frame().pc.masked = false; break;
+            case BuiltinTID: assert_die(); // meh.
+        }
+    }
 
     // Special handling for external functions.
     if (F->isDeclaration()) {
