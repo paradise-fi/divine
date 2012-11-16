@@ -66,6 +66,15 @@ struct TestLLVM {
         return f;
     }
 
+    Function *code_callret() {
+        Function *helper = _function( NULL, "helper", 0 );
+        builder.CreateRet( ConstantInt::get(ctx, APInt(32, 42)) );
+        Function *f = _function( helper->getParent() );
+        builder.CreateCall( helper, "meh" );
+        builder.CreateBr( &*(f->begin()) );
+        return f;
+    }
+
     divine::Blob _ith( Function *f, int step ) {
         divine::Allocator a;
         dlvm::Interpreter interpreter( a, f->getParent() );
@@ -168,6 +177,13 @@ struct TestLLVM {
         b = _ith( code_callarg(), 1 );
         assert_eq( _descr( code_callarg(), b ),
                    "0: <helper> [ %meh = add i32 %0, %0 ] [ meh = 14 ]\n" );
+    }
+
+    Test describe6()
+    {
+        divine::Blob b = _ith( code_callret(), 1 );
+        assert_eq( _descr( code_callret(), b ),
+                   "0: <testf> [ %meh = call i32 @helper() ] [ meh = 42 ]\n" );
     }
 
     Test idempotency()
