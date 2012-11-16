@@ -332,7 +332,7 @@ struct MachineState
 
         _thread_count = threads().get().length();
 
-        if ( thread < threads().get().length() )
+        if ( thread >= 0 && thread < threads().get().length() )
             switch_thread( thread );
         // else everything becomes rather unsafe...
     }
@@ -405,10 +405,12 @@ struct MachineState
     void enter( int function ) {
         int framesize = _info.functions[ function ].framesize;
         int depth = stack().get().length();
+        bool masked = depth ? frame().pc.masked : false;
         stack().get().length() ++;
 
         _frame = &stack().get( depth );
         _frame->pc = PC( function, 0, 0 );
+        _frame->pc.masked = masked; /* inherit */
         std::fill( _frame->memory, _frame->memory + framesize, 0 );
         _size_difference += framesize + sizeof( Frame );
     }
@@ -583,32 +585,64 @@ public:
     void rewind( Blob b ) { state.rewind( b, 0 ); }
     void choose( int32_t i );
 
-    template< typename Yield > /* non-determistic choice */
-    void run( int thread, Yield yield ) {
+    void advance() {
+        if ( !jumped ) { // did not jump
+            pc().instruction ++;
+            if ( !instruction().op ) {
+                pc().block ++;
+                pc().instruction = 0;
+                assert( instruction().op );
+                switchBB();
+            }
+        }
+    }
+
+    template< typename Yield >
+    void run( Blob b, Yield yield ) {
+        state.rewind( b, -1 ); int tid = 0;
+        while ( true ) {
+            run( tid, yield );
+            if ( ++tid == state._thread_count )
+                break;
+            state.rewind( b, -1 );
+        }
+    }
+
+    template< typename Yield >
+    void run( int tid, Yield yield ) {
         std::set< PC > seen;
 
+        assert_leq( tid, state._thread_count - 1 );
+        state.switch_thread( tid );
         assert( state.stack().get().length() );
 
         while ( true ) {
             seen.insert( pc() );
             state.flags().assert = false;
             observable = jumped = false;
+            choice = 0;
 
             visit( instruction().op );
 
             if ( !state.stack().get().length() )
                 break; /* this thread is done */
 
-            if ( !jumped ) { // did not jump
-                pc().instruction ++;
-                if ( !instruction().op ) {
-                    pc().block ++;
-                    pc().instruction = 0;
-                    assert( instruction().op );
-                    switchBB();
+            if ( choice ) {
+                assert( !jumped );
+                Blob fork = state.snapshot();
+                for ( int i = 0; i < choice; ++i ) {
+                    state.rewind( fork, -1 );
+                    choose( i );
+                    advance();
+                    run( tid, yield );
                 }
+                fork.free( alloc.pool() );
+                return;
             }
-            if ( observable || seen.count( pc() ) ) {
+
+            advance();
+
+            if ( ( observable && !pc().masked ) || seen.count( pc() ) ) {
                 yield( state.snapshot() );
                 return;
             }

@@ -558,6 +558,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 }
 
 void Interpreter::visitStoreInst(StoreInst &I) {
+    observable = true;
     implement1< Store >( instruction() );
 }
 
@@ -575,6 +576,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     Function *F = CS.getCalledFunction();
 
     if ( F && F->isDeclaration() ) {
+
         switch (F->getIntrinsicID()) {
             case Intrinsic::not_intrinsic: break;
             case Intrinsic::vastart:

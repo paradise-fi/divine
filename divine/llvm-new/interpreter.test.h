@@ -79,12 +79,11 @@ struct TestLLVM {
         divine::Allocator a;
         dlvm::Interpreter interpreter( a, f->getParent() );
         divine::Blob ini = interpreter.initial( f ), fin;
-        interpreter.rewind( ini );
         fin = ini;
 
         for ( int i = 0; i < step; ++i ) {
             fin = divine::Blob();
-            interpreter.run( 0, [&]( divine::Blob b ) {
+            interpreter.run( ini, [&]( divine::Blob b ) {
                     assert( !fin.valid() ); // only one allowed
                     fin = b;
                 });
