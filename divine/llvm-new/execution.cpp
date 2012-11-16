@@ -160,31 +160,28 @@ typename Fun::T Interpreter::implementN( Args... args )
 template< typename I >
 void Interpreter::implement1( ProgramInfo::Instruction i )
 {
-    Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    dereference( ty, i.result ),
-                    dereference( ty, i.operands[ 0 ] ) );
+                    dereferenceResult( i ),
+                    dereferenceOperand( i, 0 ) );
 }
 
 template< typename I >
 void Interpreter::implement2( ProgramInfo::Instruction i )
 {
-    Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    dereference( ty, i.result ),
-                    dereference( ty, i.operands[ 0 ] ),
-                    dereference( ty, i.operands[ 1 ] ) );
+                    dereferenceResult( i ),
+                    dereferenceOperand( i, 0 ),
+                    dereferenceOperand( i, 1 ) );
 }
 
 template< typename I >
 void Interpreter::implement3( ProgramInfo::Instruction i )
 {
-    Type *ty = i.op->getOperand(0)->getType();
     implement< I >( i, Nil(),
-                    dereference( ty, i.result ),
-                    dereference( ty, i.operands[ 0 ] ),
-                    dereference( ty, i.operands[ 1 ] ),
-                    dereference( ty, i.operands[ 2 ] ) );
+                    dereferenceResult( i ),
+                    dereferenceOperand( i, 0 ),
+                    dereferenceOperand( i, 1 ),
+                    dereferenceOperand( i, 2 ) );
 }
 
 struct Implementation {
@@ -340,19 +337,17 @@ struct BitCast : Implementation {
 };
 
 template< typename _T >
-struct Get {
-    struct I : Implementation {
-        typedef _T T;
+struct Get : Implementation {
+    typedef _T T;
 
-        template< typename X >
-        auto operator()( X &l ) -> decltype( static_cast< T >( l ) )
-        {
-            return static_cast< T >( l );
-        }
-    };
+    template< typename X >
+    auto operator()( X &l ) -> decltype( static_cast< T >( l ) )
+    {
+        return static_cast< T >( l );
+    }
 };
 
-typedef Get< bool >::I IsTrue;
+typedef Get< bool > IsTrue;
 
 void Interpreter::leaveFrame()
 {
@@ -433,7 +428,7 @@ void Interpreter::visitSwitchInst(SwitchInst &I) {
 }
 
 void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
-    Pointer target = implementN< Get< Pointer >::I >( dereferenceOperand( instruction(), 0 ) );
+    Pointer target = implementN< Get< Pointer > >( dereferenceOperand( instruction(), 0 ) );
     assert_die(); // switchBB( dereferenceBB( target ) );
 }
 
@@ -490,7 +485,7 @@ void Interpreter::switchBB( BasicBlock *Dest )
 void Interpreter::visitAllocaInst(AllocaInst &I) {
     Type *ty = I.getType()->getElementType();  // Type to be allocated
 
-    int count = implementN< Get< int >::I >( dereferenceOperand( instruction(), 0 ) );
+    int count = implementN< Get< int > >( dereferenceOperand( instruction(), 0 ) );
     int size = TD.getTypeAllocSize(ty);
 
     // Avoid malloc-ing zero bytes, use max()...
@@ -529,7 +524,7 @@ struct GetElement : Implementation {
                 total += SLO->getElementOffset( index );
             } else {
                 const SequentialType *ST = cast<SequentialType>(*I);
-                int index = interpreter().implementN< Get< int >::I >(
+                int index = interpreter().implementN< Get< int > >(
                     interpreter().dereferenceOperand( i(), meh ) );
                 total += index * TD().getTypeAllocSize( ST->getElementType() );
             }
@@ -540,28 +535,20 @@ struct GetElement : Implementation {
 };
 
 void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
-    assert(I.getPointerOperand()->getType()->isPointerTy() &&
-           "Cannot getElementOffset of a nonpointer type!");
     implement2< GetElement >( instruction() );
 }
 
 struct Load : Implementation {
     template< typename R >
     void operator()( R &r, Pointer p ) {
-        assert_die(); /*
-        decons< 1 >( c ) = *reinterpret_cast< decltype( &decons< 1 >( c ) ) >(
-            interpreter().dereferencePointer( decons< 0 >( c ) ) );
-                      */
+        r = *reinterpret_cast< R * >( interpreter().dereferencePointer( p ) );
     }
 };
 
 struct Store : Implementation {
     template< typename L >
-    void operator()( Pointer r, L &l ) {
-        assert_die(); /*
-        *reinterpret_cast< decltype( &decons< 0 >( c ) ) >(
-            interpreter().dereferencePointer( decons< 1 >( c ) ) ) = decons< 0 >( c );
-                      */
+    void operator()( Pointer p, L &l ) {
+        *reinterpret_cast< L * >( interpreter().dereferencePointer( p ) ) = l;
     }
 };
 
@@ -668,8 +655,6 @@ void Interpreter::visitCallSite(CallSite CS) {
 #endif
 }
 
-// FPTo*I should round
-
 void Interpreter::visitTruncInst(TruncInst &I) {
     implement2< Copy >( instruction() );
 }
@@ -699,11 +684,11 @@ void Interpreter::visitSIToFPInst(SIToFPInst &I) {
 }
 
 void Interpreter::visitFPToUIInst(FPToUIInst &I) {
-    implement2< Copy >( instruction() ); // XXX rounding?
+    implement2< Copy >( instruction() ); // XXX rounding!
 }
 
 void Interpreter::visitFPToSIInst(FPToSIInst &I) {
-    implement2< Copy >( instruction() ); // XXX rounding?
+    implement2< Copy >( instruction() ); // XXX rounding!
 }
 
 void Interpreter::visitPtrToIntInst(PtrToIntInst &I) {

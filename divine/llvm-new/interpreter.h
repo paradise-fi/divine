@@ -490,18 +490,26 @@ public:
     void parseProperties( Module *M );
     void buildInfo( Module *M );
 
-    std::pair< Type *, char * > dereference( Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 ) {
+    std::pair< Type *, char * > dereference(
+        Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 )
+    {
         char *mem = state.dereference( v, tid, frame );
         return std::make_pair( t, mem );
     }
 
-    std::pair< Type *, char * > dereferenceOperand( const ProgramInfo::Instruction &i, int n, int frame = 0 ) {
+    std::pair< Type *, char * > dereferenceOperand(
+        const ProgramInfo::Instruction &i, int n, int frame = 0 )
+    {
         Type *t = i.op->getOperand( n )->getType();
         return dereference( t, i.operands[ n ], -1, frame );
     }
 
-    std::pair< Type *, char * > dereferenceResult( const ProgramInfo::Instruction &i );
-    char * dereferencePointer( Pointer );
+    std::pair< Type *, char * > dereferenceResult( const ProgramInfo::Instruction &i )
+    {
+        return dereference( i.op->getType(), i.result );
+    }
+
+    char * dereferencePointer( Pointer ) { assert_die(); }
     BasicBlock *dereferenceBB( Pointer );
 
     template< typename Fun, typename Cons >
