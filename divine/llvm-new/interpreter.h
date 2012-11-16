@@ -597,6 +597,7 @@ public:
                     pc().block ++;
                     pc().instruction = 0;
                     assert( instruction().op );
+                    switchBB();
                 }
             }
             if ( seen.count( pc() ) ) {
