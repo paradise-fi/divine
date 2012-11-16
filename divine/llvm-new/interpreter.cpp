@@ -95,11 +95,15 @@ void ProgramInfo::builtin( Position p )
         insn.builtin = BuiltinMask;
     else if ( name == "__divine_interrupt_unmask" )
         insn.builtin = BuiltinUnmask;
-    else if ( name == "__divine_tid" )
-        insn.builtin = BuiltinTID;
+    else if ( name == "__divine_get_tid" )
+        insn.builtin = BuiltinGetTID;
+    else if ( name == "__divine_new_thread" )
+        insn.builtin = BuiltinNewThread;
+    else if ( name == "__divine_choice" )
+        insn.builtin = BuiltinChoice;
     else throw wibble::exception::Consistency(
         "ProgramInfo::builtin",
-        "Unknown undefined function " + name );
+        "Can't call an undefined function <" + name + ">" );
 }
 
 ProgramInfo::Position ProgramInfo::insert( Position p )
@@ -221,6 +225,7 @@ void Interpreter::buildInfo( Module *module ) {
                 "Interpreter::buildInfo",
                 "Can't deal with empty functions." );
 
+        /* TODO: va_args; implement as a Pointer */
         for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg )
             info.insert( pc.function, &*arg );
 

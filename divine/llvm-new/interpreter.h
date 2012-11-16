@@ -84,9 +84,11 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
 
 enum Builtin {
     NotBuiltin = 0,
-    BuiltinMask = 1,
-    BuiltinUnmask = 2,
-    BuiltinTID = 3
+    BuiltinChoice = 1,
+    BuiltinMask = 2,
+    BuiltinUnmask = 3,
+    BuiltinGetTID = 4,
+    BuiltinNewThread = 5
 };
 
 struct ProgramInfo {
@@ -484,6 +486,7 @@ public:
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
     bool jumped, observable;
+    int choice;
 
     Allocator &alloc;
 
@@ -578,6 +581,7 @@ public:
     Blob initial( Function *f ); /* Make an initial state from Function. */
     void new_thread( Function *f );
     void rewind( Blob b ) { state.rewind( b, 0 ); }
+    void choose( int32_t i );
 
     template< typename Yield > /* non-determistic choice */
     void run( int thread, Yield yield ) {

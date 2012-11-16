@@ -26,6 +26,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Analysis/DebugInfo.h"
+#include "llvm/LLVMContext.h"
 #include <algorithm>
 #include <cmath>
 #include <wibble/test.h>
@@ -575,53 +576,38 @@ void Interpreter::visitCallSite(CallSite CS) {
 
     if ( F && F->isDeclaration() ) {
         switch (F->getIntrinsicID()) {
-            case Intrinsic::not_intrinsic:
-                break;
-            case Intrinsic::vastart: { // va_start
-                assert_die(); /*
-                GenericValue ArgIndex;
-                ArgIndex.UIntPairVal.first = stack().size() - 1;
-                ArgIndex.UIntPairVal.second = 0;
-                SetValue(CS.getInstruction(), ArgIndex, SF()); */
-                return;
-            }
-            // noops
+            case Intrinsic::not_intrinsic: break;
+            case Intrinsic::vastart:
             case Intrinsic::trap:
-                assert_die();
-                /* while (!stack().empty()) // get us out
-                    leave(); */
-                return;
-
-            case Intrinsic::vaend:    // va_end is a noop for the interpreter
-                return;
-            case Intrinsic::vacopy:   // va_copy: dest = src
-                assert_die();
-                // SetValue(CS.getInstruction(), getOperandValue(*CS.arg_begin(), SF()), SF());
-                return;
+            case Intrinsic::vaend:
+            case Intrinsic::vacopy:
+                assert_die(); /* TODO */
             default:
-                assert_die(); /* Can't happen. */
+                assert_die(); /* We lowered everything in buildInfo. */
         }
+
         switch( insn.builtin ) {
             case NotBuiltin: break;
-            case BuiltinMask: state.frame().pc.masked = true; break;
-            case BuiltinUnmask: state.frame().pc.masked = false; break;
-            case BuiltinTID: assert_die(); // meh.
+            case BuiltinChoice:
+                choice = implementN< Get< int > >(
+                    dereferenceOperand( instruction(), 0 ) );
+                return;
+            case BuiltinMask: state.frame().pc.masked = true; return;
+            case BuiltinUnmask: state.frame().pc.masked = false; return;
+            case BuiltinGetTID: assert_die(); /* TODO */
+            case BuiltinNewThread: assert_die(); /* TODO */
         }
+
     }
 
-    // Special handling for external functions.
-    if (F->isDeclaration()) {
-        /* This traps into the "externals": functions that may be provided by
-         * our own runtime (these may be nondeterministic), or, possibly (TODO)
-         * into external, native library code  */
-        assert_die();
-    }
+    assert ( !F->isDeclaration() );
 
+    /* TODO (performance) Use an operand Value here instead. */
     int functionid = info.functionmap[ F ];
-    state.enter( functionid );
+    state.enter( functionid ); /* push a new frame */
 
+    /* Copy arguments to the new frame. */
     ProgramInfo::Function function = info.function( pc() );
-
     for ( int i = 0; i < CS.arg_size(); ++i )
     {
         Type *ty = CS.getArgument( i )->getType();
@@ -629,30 +615,11 @@ void Interpreter::visitCallSite(CallSite CS) {
                             dereferenceOperand( insn, i, 1 ) );
     }
 
+    /* TODO varargs */
+
     /* TODO function entry blocks probably can't have PHI nodes in them, so
      * this is actually redundant. */
     switchBB();
-
-#if 0
-    Location loc = location( SF() );
-    loc.insn = CS.getInstruction();
-    SF().caller = locationIndex.left( loc );
-    std::vector<GenericValue> ArgVals;
-    const unsigned NumArgs = CS.arg_size();
-    ArgVals.reserve(NumArgs);
-    uint16_t pNum = 1;
-    for (CallSite::arg_iterator i = CS.arg_begin(),
-                                e = CS.arg_end(); i != e; ++i, ++pNum) {
-        Value *V = *i;
-        ArgVals.push_back(getOperandValue(V, SF()));
-    }
-
-    // To handle indirect calls, we must get the pointer value from the argument
-    // and treat it as a function pointer.
-    GenericValue SRC = getOperandValue(CS.getCalledValue(), SF());
-    Function *fun = functionIndex.right(int(intptr_t(GVTOP(SRC))));
-    callFunction(fun, ArgVals);
-#endif
 }
 
 void Interpreter::visitTruncInst(TruncInst &I) {
@@ -703,3 +670,11 @@ void Interpreter::visitBitCastInst(BitCastInst &I) {
     implement2< BitCast >( instruction() ); // XXX?
 }
 
+void Interpreter::choose( int32_t result )
+{
+    assert_eq( instruction().builtin, BuiltinChoice );
+    char *result_mem = reinterpret_cast< char * >( &result );
+    Type *result_type = Type::getInt32Ty( ::llvm::getGlobalContext() );
+    implementN< Copy >( dereferenceResult( instruction() ),
+                        std::make_pair( result_type, result_mem ) );
+}
