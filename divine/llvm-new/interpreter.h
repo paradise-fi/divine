@@ -86,6 +86,13 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     }
 };
 
+enum Builtin {
+    NotBuiltin = 0,
+    BuiltinMask = 1,
+    BuiltinUnmask = 2,
+    BuiltinTID = 3
+};
+
 struct ProgramInfo {
     TargetData &target;
     /* required for getConstantValue/StoreValueToMemory */
@@ -106,17 +113,20 @@ struct ProgramInfo {
         Value result;
         std::vector< Value > operands;
 
-        bool noninterleaved; /* applies to stores */
+        int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::Instruction *op; /* the actual operation */
+        Instruction() : op( nullptr ) {}
         /* next instruction is in the same BB unless op == NULL */
     };
 
     struct BB {
         std::vector< Instruction > instructions;
+        ::llvm::BasicBlock *bb;
         Instruction &instruction( PC pc ) {
             assert_leq( int( pc.instruction ), int( instructions.size() ) - 1 );
             return instructions[ pc.instruction ];
         }
+        BB() : bb( nullptr ) {}
     };
 
     struct Function {
@@ -148,7 +158,12 @@ struct ProgramInfo {
 
     Instruction &instruction( PC pc ) {
         assert_leq( int( pc.block ), int( function( pc ).blocks.size() ) - 1 );
-        return function( pc ).block( pc ).instruction( pc );
+        return block( pc ).instruction( pc );
+    }
+
+    BB &block( PC pc ) {
+        assert_leq( int( pc.block ), int( function( pc ).blocks.size() ) - 1 );
+        return function( pc ).block( pc );
     }
 
     Function &function( PC pc ) {
@@ -196,7 +211,15 @@ struct ProgramInfo {
 
     void storeConstant( Value &result, GenericValue GV, Type *ty );
 
-    Instruction &insert( PC pc, ::llvm::Instruction *i );
+    struct Position {
+        PC pc;
+        ::llvm::BasicBlock::iterator I;
+        Position( PC pc, ::llvm::BasicBlock::iterator I ) : pc( pc ), I( I ) {}
+    };
+
+    Position insert( Position );
+    Position lower( Position ); // convert intrinsic into normal insns
+    Position builtin( Position );
     Value insert( int function, ::llvm::Value *val );
 
     ProgramInfo( TargetData &td, Interpreter &i ) : target( td ), interpreter( i )

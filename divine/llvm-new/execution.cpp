@@ -597,9 +597,6 @@ void Interpreter::visitCallSite(CallSite CS) {
                 return;
             }
             // noops
-            case Intrinsic::dbg_declare:
-            case Intrinsic::dbg_value:
-                return;
             case Intrinsic::trap:
                 assert_die();
                 /* while (!stack().empty()) // get us out
@@ -613,28 +610,7 @@ void Interpreter::visitCallSite(CallSite CS) {
                 // SetValue(CS.getInstruction(), getOperandValue(*CS.arg_begin(), SF()), SF());
                 return;
             default:
-                // If it is an unknown intrinsic function, use the intrinsic lowering
-                // class to transform it into hopefully tasty LLVM code.
-                //
-                // dbgs() << "FATAL: Can't lower:" << *CS.getInstruction() << "\n";
-                assert_die(); /* TODO: the new locations need to be indexed */
-                /* BasicBlock::iterator me(CS.getInstruction());
-                BasicBlock *Parent = CS.getInstruction()->getParent();
-                bool atBegin(Parent->begin() == me);
-                if (!atBegin)
-                    --me;
-                IL->LowerIntrinsicCall(cast<CallInst>(CS.getInstruction()));
-
-                // Restore the CurInst pointer to the first instruction newly inserted, if
-                // any.
-                if (atBegin) {
-                    setInstruction( SF(), Parent->begin() );
-                } else {
-                    BasicBlock::iterator me_next = me;
-                    ++ me_next;
-                    setInstruction( SF(), me_next );
-                }
-                return; */
+                assert_die(); /* Can't happen. */
         }
 
     // Special handling for external functions.

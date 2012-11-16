@@ -71,27 +71,72 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     return result;
 }
 
-ProgramInfo::Instruction &ProgramInfo::insert( PC pc, ::llvm::Instruction *I )
+/* This is silly. */
+ProgramInfo::Position ProgramInfo::lower( Position p )
 {
-    makeFit( functions, pc.function );
-    makeFit( function( pc ).blocks, pc.block );
-    makeFit( function( pc ).block( pc ).instructions, pc.instruction );
-    ProgramInfo::Instruction &insn = instruction( pc );
-    insn.op = I;
+    auto BB = p.I->getParent();
+    bool first = p.I == BB->begin();
+    auto insert = p.I;
 
-    if ( !I )
-        return insn; /* our work here is done */
+    if ( !first ) --insert;
+    interpreter.IL->LowerIntrinsicCall( cast< CallInst >( p.I ) );
+    if ( first ) insert = BB->begin();
 
-    insn.operands.resize( I->getNumOperands() );
-    for ( int i = 0; i < I->getNumOperands(); ++i ) {
-        ::llvm::Value *v = I->getOperand( i );
+    return Position( p.pc, insert );
+}
+
+ProgramInfo::Position ProgramInfo::builtin( Position p )
+{
+    assert_die();
+    p.pc.instruction ++; p.I ++; /* next please */
+    return p;
+}
+
+ProgramInfo::Position ProgramInfo::insert( Position p )
+{
+    makeFit( functions, p.pc.function );
+    makeFit( function( p.pc ).blocks, p.pc.block );
+    makeFit( function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
+    ProgramInfo::Instruction &insn = instruction( p.pc );
+
+    if ( !block( p.pc ).bb )
+        block( p.pc ).bb = p.I->getParent();
+
+    if ( p.I == block( p.pc ).bb->end() )
+        return p; /* nowhere further to go */
+    insn.op = &*p.I;
+
+    if ( dyn_cast< CallInst >( p.I ) || dyn_cast< InvokeInst >( p.I ) ) {
+        CallSite CS( p.I );
+        ::llvm::Function *F = CS.getCalledFunction();
+        if ( F && F->isDeclaration() )
+            switch ( F->getIntrinsicID() ) {
+                case Intrinsic::not_intrinsic:
+                case Intrinsic::trap:
+                case Intrinsic::vastart:
+                case Intrinsic::vacopy:
+                case Intrinsic::vaend: break;
+                case Intrinsic::dbg_declare:
+                case Intrinsic::dbg_value: p.I++; return p;
+                default: return lower( p );
+            }
+        if ( F->isDeclaration() )
+            return builtin( p );
+    }
+
+    insn.operands.resize( p.I->getNumOperands() );
+    for ( int i = 0; i < p.I->getNumOperands(); ++i ) {
+        ::llvm::Value *v = p.I->getOperand( i );
         if ( dyn_cast< Constant >( v ) || dyn_cast< BasicBlock >( v ) )
             insert( 0, v );
         assert( valuemap.count( v ) );
         insn.operands[ i ] = valuemap[ v ];
     }
-    pcmap.insert( std::make_pair( I, pc ) );
-    return insn;
+    pcmap.insert( std::make_pair( p.I, p.pc ) );
+    insn.result = insert( p.pc.function, &*p.I );
+
+    p.pc.instruction ++; p.I ++; /* next please */
+    return p;
 }
 
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
@@ -178,13 +223,10 @@ void Interpreter::buildInfo( Module *module ) {
                     "Can't deal with an empty BasicBlock" );
 
             pc.instruction = 0;
-            for ( auto insn = block->begin(); insn != block->end();
-                  ++ insn, ++ pc.instruction )
-            {
-                auto &insn_info = info.insert( pc, &*insn );
-                insn_info.result = info.insert( pc.function, &*insn );
-            }
-            info.insert( pc, nullptr ); /* past-the-end iterator, for BB end */
+            ProgramInfo::Position p( pc, block->begin() );
+            while ( p.I != block->end() )
+                p = info.insert( p );
+            p = info.insert( p ); // end of block
         }
 
         auto &fun = info.function( pc );
