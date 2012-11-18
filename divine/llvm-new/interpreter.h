@@ -66,19 +66,28 @@ struct PC : wibble::mixin::Comparable< PC >
     }
 };
 
+/*
+ * We use a *non-overlapping* segmented memory scheme, with *variable-sized
+ * segments*. Each allocation creates a new segment. Pointers cannot cross
+ * segment boundaries through pointer arithmetic or any other manipulation.
+ */
 struct Pointer : wibble::mixin::Comparable< Pointer > {
-    uint32_t thread:10;  /* thread id */
-    uint32_t address:15; /* pagetable offset */
-    Pointer operator+( int offset ) {
-        return Pointer( thread, address + offset );
+    bool valid:1; /* make a (0, 0) pointer different from NULL */
+    uint32_t segment:16; /* at most 64k objects */
+    uint32_t offset:15; /* each at most 32kB */
+    Pointer operator+( int relative ) {
+        return Pointer( segment, offset + relative );
     }
-    Pointer( int thread, int address ) : thread( thread ), address( address ) {}
-    Pointer() : thread( 0 ), address( 0 ) {}
+    Pointer( int segment, int offset )
+        : valid( true ), segment( segment ), offset( offset )
+    {}
+    Pointer() : valid( false ), segment( 0 ), offset( 0 ) {}
+    bool null() { return !valid; } // all size = 0 pointers represent NULL
 
     bool operator<=( Pointer o ) const {
-        if ( thread < o.thread )
+        if ( segment < o.segment )
             return true;
-        return thread == o.thread && address <= o.address;
+        return segment == o.segment && offset <= o.offset;
     }
 };
 
