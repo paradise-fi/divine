@@ -275,6 +275,41 @@ struct MachineState
         int end() { return 0; }
     };
 
+    struct Heap {
+        int size;
+        uint32_t _memory[0];
+
+        int bitmapSize() {
+            return size / 32 + (size % 32 ? 4 : 0);
+        }
+
+        StateAddress advance( StateAddress a, int ) {
+            return StateAddress( a, 0, sizeof( Heap ) + size + bitmapSize() );
+        }
+        int end() { return 0; }
+
+        void setPointer( int offset, bool ptr ) {
+            assert_eq( offset % 4, 0 );
+            int mask = 1 << offset % 32;
+            uint32_t &word = _memory[ offset / 32 ];
+            if ( ptr )
+                word |= mask;
+            else
+                word &= ~mask;
+        }
+
+        bool isPointer( int offset ) {
+            assert_eq( offset % 4, 0 );
+            int mask = 1 << offset % 32;
+            uint32_t &word = _memory[ offset / 32 ];
+            return word & mask;
+        }
+
+        char *memory( int offset ) {
+            return reinterpret_cast< char * >( _memory ) + bitmapSize() + offset;
+        }
+    };
+
     Blob _blob, _stack, _heap;
     ProgramInfo &_info;
     Allocator &_alloc;
@@ -295,14 +330,9 @@ struct MachineState
         uint64_t buchi:12;
     };
 
-    typedef lens::FixedArray< short > PageTable;
-    typedef lens::FixedArray< char > Memory;
-    typedef lens::Tuple< PageTable, Memory > Heap;
-
     typedef lens::Array< Frame > Stack;
-    typedef lens::Tuple< Stack, Heap > Thread;
-    typedef lens::Array< Thread > Threads;
-    typedef lens::Tuple< Flags, Globals, Threads > State;
+    typedef lens::Array< Stack > Threads;
+    typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
     Lens< State > state() {
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
@@ -340,6 +370,7 @@ struct MachineState
         _size_difference = 0;
 
         _thread_count = threads().get().length();
+        state().sub( Heap() ).copy( StateAddress( &_info, _heap, 0 ) );
 
         if ( thread >= 0 && thread < threads().get().length() )
             switch_thread( thread );
@@ -351,11 +382,8 @@ struct MachineState
         assert_leq( thread, threads().get().length() - 1 );
         _thread = thread;
 
-        StateAddress stackaddr( &_info, _stack, 0 ),
-                     heapaddr( &_info, _heap, 0 );
-
-        _blob_thread( _thread ).sub( Stack() ).copy( stackaddr );
-        _blob_thread( _thread ).sub( Heap() ).copy( heapaddr );
+        StateAddress stackaddr( &_info, _stack, 0 );
+        _blob_stack( _thread ).copy( stackaddr );
         _frame = &stack().get( stack().get().length() - 1 );
    }
 
@@ -368,9 +396,7 @@ struct MachineState
 
         /* Set up an empty thread. */
         stack().get().length() = 0;
-        heap().get( PageTable() ).length() = 0;
-        heap().get( Memory() ).length() = 0;
-        _size_difference += 3 * sizeof( int ); // circa?
+        _size_difference += sizeof( int );
         return _thread;
     }
 
@@ -378,7 +404,7 @@ struct MachineState
         return state().sub( Threads() );
     }
 
-    Lens< Thread > _blob_thread( int i ) {
+    Lens< Stack > _blob_stack( int i ) {
         assert_leq( 0, i );
         return state().sub( Threads(), i );
     }
@@ -388,15 +414,11 @@ struct MachineState
             assert_leq( 0, _thread );
             return Lens< Stack >( StateAddress( &_info, _stack, 0 ) );
         } else
-            return _blob_thread( thread ).sub( Stack() );
+            return _blob_stack( thread );
     }
 
-    Lens< Heap > heap( int thread = -1 ) {
-        if ( thread == _thread || thread < 0 ) {
-            assert_leq( 0, _thread );
-            return Lens< Heap >( StateAddress( &_info, _heap, 0 ) );
-        } else
-            return _blob_thread( thread ).sub( Heap() );
+    Lens< Heap > heap() {
+        return Lens< Heap >( StateAddress( &_info, _heap, 0 ) );
     }
 
     Frame &frame( int thread = -1, int idx = 0 ) {
@@ -444,20 +466,16 @@ struct MachineState
         assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
         address = state().sub( Globals() ).copy( address );
 
+        /* TODO canonicalize the heap */
+        address = heap().copy( address );
+
         address.as< int >() = _thread_count;
         address.offset += sizeof( int ); // ick. length of the threads array
         for ( ; i < _thread ; ++i )
             address = state().sub( Threads(), i ).copy( address );
 
         if ( _thread >= 0 ) { // we actually have a current thread to speak of
-            auto to = Lens< Thread >( StateAddress( &_info, b, address.offset ) );
             address = stack( _thread ).copy( address );
-
-            auto target = to.sub( Heap() );
-            auto source = heap( _thread );
-
-            // TODO canonicalize( source, target );
-            address = source.copy( target.address() );
 
             /* this thread also existed in the previous state */
             if ( _thread < state().get( Threads() ).length() )
