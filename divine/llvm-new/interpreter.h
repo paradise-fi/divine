@@ -589,10 +589,10 @@ public:
         if ( !jumped ) { // did not jump
             pc().instruction ++;
             if ( !instruction().op ) {
-                pc().block ++;
-                pc().instruction = 0;
-                assert( instruction().op );
-                switchBB();
+                PC to = pc();
+                to.block ++;
+                to.instruction = 0;
+                switchBB( to );
             }
         }
     }
@@ -696,8 +696,8 @@ public:
     /* Fallthrough. */
     void visitInstruction(Instruction &I) { assert_die(); }
 
-    void switchBB( BasicBlock *Dest = nullptr );
-    void checkJump( BasicBlock *Dest );
+    void switchBB( PC target );
+    void jumpTo( ProgramInfo::Value v );
     void leaveFrame(); /* without a return value */
     void leaveFrame( Type *ty, ProgramInfo::Value result );
 

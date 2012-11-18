@@ -369,7 +369,7 @@ void Interpreter::leaveFrame( Type *ty, ProgramInfo::Value result ) {
 
         /* If this was an invoke, run the non-error target. */
         if ( InvokeInst *II = dyn_cast< InvokeInst >( i.op ) )
-            switchBB( II->getNormalDest() );
+            jumpTo( instruction().operands[ instruction().operands.size() - 2 ] );
     }
 
     leaveFrame(); /* Actually pop the stack. */
@@ -382,29 +382,26 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
         leaveFrame();
 }
 
-void Interpreter::checkJump( BasicBlock *Dest )
+void Interpreter::jumpTo( ProgramInfo::Value v )
 {
     PC from = pc();
-    PC to = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
+    PC to = *reinterpret_cast< PC * >( state.dereference( v ) );
     if ( from.function != to.function )
         throw wibble::exception::Consistency(
             "Interpreter::checkJump",
             "Can't deal with cross-function jumps." );
+    switchBB( to );
 }
 
 void Interpreter::visitBranchInst(BranchInst &I)
 {
-    if ( I.isUnconditional() ) {
-        checkJump( I.getSuccessor( 0 ) );
-        switchBB( I.getSuccessor( 0 ) );
-    } else {
-        if ( implementN< IsTrue >( dereferenceOperand( instruction(), 0 ) ) ) {
-            checkJump( I.getSuccessor( 0 ) );
-            switchBB( I.getSuccessor( 0 ) );
-        } else {
-            checkJump( I.getSuccessor( 1 ) );
-            switchBB( I.getSuccessor( 1 ) );
-        }
+    if ( I.isUnconditional() )
+        jumpTo( instruction().operands[ 0 ] );
+    else {
+        if ( implementN< IsTrue >( dereferenceOperand( instruction(), 0 ) ) )
+            jumpTo( instruction().operands[ 0 ] );
+        else
+            jumpTo( instruction().operands[ 1 ] );
     }
 }
 
@@ -443,16 +440,16 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
 // their inputs.  If the input PHI node is updated before it is read, incorrect
 // results can happen.  Thus we use a two phase approach.
 //
-void Interpreter::switchBB( BasicBlock *Dest )
+void Interpreter::switchBB( PC target )
 {
     jumped = true;
+    PC origin = pc();
+    pc() = target;
 
-    if ( Dest ) /* PC already updated if Dest is NULL */
-        pc() = info.pcmap[ &*(Dest->begin()) ]; /* jump! */
-    else
-        Dest = instruction().op->getParent();
+    assert( instruction().op );
 
-    if ( !isa<PHINode>( Dest->begin() ) ) return;  // Nothing fancy to do
+    if ( !isa<PHINode>( instruction().op ) )
+        return;  // Nothing fancy to do
 
     assert_die();
 #if 0
@@ -607,6 +604,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     /* TODO (performance) Use an operand Value here instead. */
     int functionid = info.functionmap[ F ];
     state.enter( functionid ); /* push a new frame */
+    jumped = true;
 
     /* Copy arguments to the new frame. */
     ProgramInfo::Function function = info.function( pc() );
@@ -619,9 +617,7 @@ void Interpreter::visitCallSite(CallSite CS) {
 
     /* TODO varargs */
 
-    /* TODO function entry blocks probably can't have PHI nodes in them, so
-     * this is actually redundant. */
-    switchBB();
+    assert( !isa<PHINode>( instruction().op ) );
 }
 
 void Interpreter::visitTruncInst(TruncInst &I) {
