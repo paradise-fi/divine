@@ -14,18 +14,28 @@ namespace divine {
 namespace dve {
 
 struct EvalContext {
+    struct ImmValue {
+        int value;
+        uint8_t error;
+        ImmValue ( int v ) : value( v ), error( 0 ) {}
+        ImmValue ( ErrorState state ) : value( 0 ), error( state.error ) {}
+        ImmValue () : value( 0 ), error( 0 ) {}
+        //ImmValue( int v, ErrorState state ) : value( v ), errState( state ) {}
+        inline ErrorState errState() {
+            return ErrorState( error );
+        }
+    };
+
     struct Value {
         union {
             Symbol symbol;
-            struct {
-                int value;
-                ErrorState errState;
-            };
+            ImmValue ival;
         };
         Value ( Symbol s ) : symbol ( s ) {}
-        Value ( int v  ) : value( v ), errState() {}
-        Value ( ErrorState state ) : value( 0 ), errState( state ) {}
-        Value () : value( 0 ), errState( ErrorState::e_none ) {}
+        Value ( ImmValue iv ) : ival( iv ) {}
+        Value ( int v  ) : ival( v ) {}
+        Value ( ErrorState state ) : ival( state ) {}
+        Value () : ival() {}
     };
 
     Value pop() {
@@ -72,30 +82,30 @@ struct Expression {
         
         switch (op.id) {
             case TI::Bool_Or:
-                if ( a.value )
+                if ( a.ival.value )
                     return true;
-                if ( b.errState.error )
-                    return EvalContext::Value(b.errState);
-                return b.value;
+                if ( b.ival.error )
+                    return EvalContext::Value(b.ival.errState());
+                return b.ival.value;
             case TI::Bool_And:
-                if ( !a.value )
+                if ( !a.ival.value )
                     return false;
-                if ( b.errState.error )
-                    return EvalContext::Value(b.errState);
-                return b.value;
+                if ( b.ival.error )
+                    return EvalContext::Value(b.ival.errState());
+                return b.ival.value;
             case TI::Imply:
-                if ( !a.value )
+                if ( !a.ival.value )
                     return true;
-                if ( b.errState.error )
-                    return EvalContext::Value(b.errState);
-                return b.value;
+                if ( b.ival.error )
+                    return EvalContext::Value(b.ival.errState());
+                return b.ival.value;
             default:
-                if ( b.errState.error )
-                    return EvalContext::Value(b.errState);
+                if ( b.ival.error )
+                    return EvalContext::Value(b.ival.errState());
                 if ( op.id == TI::Div || op.id == TI::Mod )
-                    if ( b.value == 0 )
-                        return EvalContext::Value(ErrorState::e_divByZero);
-                return binop( op, a.value, b.value );
+                    if ( b.ival.value == 0 )
+                        return EvalContext::Value( ErrorState::e_divByZero );
+                return binop( op, a.ival.value, b.ival.value );
         }
     }
 
@@ -142,10 +152,10 @@ struct Expression {
             case TI::Subscript:
                 b = ctx.pop();
                 s = ctx.pop().symbol;
-                if ( b.errState.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
+                if ( b.ival.error || b.ival.value < 0 || (s.item().is_array && s.item().array <= b.ival.value ) )
                     ctx.push( EvalContext::Value( ErrorState::e_arrayCheck ) );
                 else
-                    ctx.push( s.deref( ctx.mem, b.value ) );
+                    ctx.push( s.deref( ctx.mem, b.ival.value ) );
                 break;
             case TI::Period:
                 s = ctx.pop().symbol;
@@ -154,11 +164,11 @@ struct Expression {
                 break;
             case TI::Bool_Not:
                 a = ctx.pop();
-                ctx.push( !a.value );
+                ctx.push( !a.ival.value );
                 break;
             case TI::Tilde:
                 a = ctx.pop();
-                ctx.push( ~a.value );
+                ctx.push( ~a.ival.value );
                 break;
             default:
                 b = ctx.pop();
@@ -175,13 +185,13 @@ struct Expression {
         assert_eq( ctx.stack.size(), (size_t) 1 );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::Value retval = ctx.pop();
-        if ( retval.errState.error ) {
-            assert( !retval.errState.fill );
+        if ( retval.ival.error ) {
+//             assert( !retval.errState.fill );
             if ( err )
-                err->error |= retval.errState.error;
+                err->error |= retval.ival.error;
             return true; // Black magic - We want to have transition to the error state
         }
-        return retval.value;
+        return retval.ival.value;
     }
 
     void rpn_push( Token op, EvalContext::Value v ) {

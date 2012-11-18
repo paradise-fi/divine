@@ -316,7 +316,7 @@ struct Process {
                 break;
             temp_err.error = ErrorState::e_none.error;
         }
-        err.error |= temp_err.error;
+        err |= temp_err;
         return i + 1;
     }
 
