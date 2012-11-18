@@ -384,9 +384,13 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
 
 void Interpreter::jumpTo( ProgramInfo::Value v )
 {
-    PC from = pc();
     PC to = *reinterpret_cast< PC * >( state.dereference( v ) );
-    if ( from.function != to.function )
+    jumpTo( to );
+}
+
+void Interpreter::jumpTo( PC to )
+{
+    if ( pc().function != to.function )
         throw wibble::exception::Consistency(
             "Interpreter::checkJump",
             "Can't deal with cross-function jumps." );
@@ -427,7 +431,7 @@ void Interpreter::visitSwitchInst(SwitchInst &I) {
 
 void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
     Pointer target = implementN< Get< Pointer > >( dereferenceOperand( instruction(), 0 ) );
-    assert_die(); // switchBB( dereferenceBB( target ) );
+    jumpTo( *reinterpret_cast< PC * >( dereferencePointer( target ) ) );
 }
 
 // SwitchToNewBasicBlock - This method is used to jump to a new basic block.

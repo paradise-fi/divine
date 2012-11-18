@@ -696,8 +696,9 @@ public:
     /* Fallthrough. */
     void visitInstruction(Instruction &I) { assert_die(); }
 
-    void switchBB( PC target );
     void jumpTo( ProgramInfo::Value v );
+    void jumpTo( PC target  );
+    void switchBB( PC target );
     void leaveFrame(); /* without a return value */
     void leaveFrame( Type *ty, ProgramInfo::Value result );
 
