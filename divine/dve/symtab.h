@@ -112,7 +112,7 @@ struct Symbol {
             default: assert_die();
         }
         if ( value != deref( mem, idx ) )
-            err |= ErrorState::e_overflow;
+            err |= ErrorState::i_overflow;
     }
 
     template< typename T >

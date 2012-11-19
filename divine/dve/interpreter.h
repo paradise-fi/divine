@@ -314,7 +314,7 @@ struct Process {
         for ( ; i < tr.size(); ++i ) {
             if ( tr[ i ].enabled( ctx, temp_err ) )
                 break;
-            temp_err.error = ErrorState::e_none.error;
+            temp_err.error = ErrorState::i_none;
         }
         err |= temp_err;
         return i + 1;
@@ -568,7 +568,7 @@ struct System {
 
     Continuation enabled( EvalContext &ctx, Continuation cont ) {
         bool system_deadlock = cont == Continuation();
-        cont.err.error = ErrorState::e_none.error;
+        cont.err.error = ErrorState::i_none;
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
 
