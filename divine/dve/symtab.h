@@ -106,14 +106,20 @@ struct Symbol {
         assert ( !item().is_constant );
         char *place = mem + item().offset + idx * item().width;
         switch ( item().width ) {
-            case 1: *reinterpret_cast< uint8_t * >( place ) = value; break;
-            case 2: *reinterpret_cast< int16_t * >( place ) = value; break;
-            case 4: *reinterpret_cast< uint32_t * >( place ) = value; break;
+            case 1: setval< uint8_t >( place, value, err ); break;
+            case 2: setval< int16_t >( place, value, err ); break;
+            case 4: setval< uint32_t >( place, value, err ); break;
             default: assert_die();
         }
-        if ( value != deref( mem, idx ) )
-            err |= ErrorState::i_overflow;
     }
+
+    template< typename T >
+    inline void setval( char * place, int value, ErrorState &err ) {
+        if ( value != (T)value )
+            err |= ErrorState::i_overflow;
+        *reinterpret_cast< T * >( place ) = value;
+    }
+
 
     template< typename T >
     void set( char *mem, int idx, const T value ) {
