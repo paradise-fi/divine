@@ -76,36 +76,36 @@ struct Expression {
     bool _valid;
     bool valid() { return _valid; }
     
-    inline EvalContext::Value binop( const Token &op, EvalContext::Value a, EvalContext::Value b ) {
-        if ( a.errState.error )
-            return EvalContext::Value(a.errState);
+    inline EvalContext::ImmValue binop( const Token &op, EvalContext::ImmValue a, EvalContext::ImmValue b ) {
+        if ( a.error )
+            return EvalContext::ImmValue(a.error);
         
         switch (op.id) {
             case TI::Bool_Or:
-                if ( a.ival.value )
+                if ( a.value )
                     return true;
-                if ( b.ival.error )
-                    return EvalContext::Value(b.ival.errState());
-                return b.ival.value;
+                if ( b.error )
+                    return EvalContext::ImmValue(b.errState());
+                return b.value;
             case TI::Bool_And:
-                if ( !a.ival.value )
+                if ( !a.value )
                     return false;
-                if ( b.ival.error )
-                    return EvalContext::Value(b.ival.errState());
-                return b.ival.value;
+                if ( b.error )
+                    return EvalContext::ImmValue(b.errState());
+                return b.value;
             case TI::Imply:
-                if ( !a.ival.value )
+                if ( !a.value )
                     return true;
-                if ( b.ival.error )
-                    return EvalContext::Value(b.ival.errState());
-                return b.ival.value;
+                if ( b.error )
+                    return EvalContext::ImmValue(b.errState());
+                return b.value;
             default:
-                if ( b.ival.error )
-                    return EvalContext::Value(b.ival.errState());
+                if ( b.error )
+                    return EvalContext::ImmValue(b.errState());
                 if ( op.id == TI::Div || op.id == TI::Mod )
-                    if ( b.ival.value == 0 )
-                        return EvalContext::Value( ErrorState::e_divByZero );
-                return binop( op, a.ival.value, b.ival.value );
+                    if ( b.value == 0 )
+                        return EvalContext::ImmValue( ErrorState::e_divByZero );
+                return binop( op, a.value, b.value );
         }
     }
 
@@ -137,7 +137,7 @@ struct Expression {
     }
 
     void step( EvalContext &ctx, Item &i ) {
-        EvalContext::Value a, b;
+        EvalContext::ImmValue a, b;
         Symbol p, s;
         DEBUG(for ( int x = 0; x < ctx.stack.size(); ++ x )
                   std::cerr << ctx.stack[ x ].value << " ";
@@ -150,12 +150,12 @@ struct Expression {
             case TI::Constant:
                 ctx.push( i.arg ); break;
             case TI::Subscript:
-                b = ctx.pop();
+                b = ctx.pop().ival;
                 s = ctx.pop().symbol;
-                if ( b.ival.error || b.ival.value < 0 || (s.item().is_array && s.item().array <= b.ival.value ) )
+                if ( b.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
                     ctx.push( EvalContext::Value( ErrorState::e_arrayCheck ) );
                 else
-                    ctx.push( s.deref( ctx.mem, b.ival.value ) );
+                    ctx.push( s.deref( ctx.mem, b.value ) );
                 break;
             case TI::Period:
                 s = ctx.pop().symbol;
@@ -163,16 +163,16 @@ struct Expression {
                 ctx.push( s.deref( ctx.mem ) == p.deref( ctx.mem ) );
                 break;
             case TI::Bool_Not:
-                a = ctx.pop();
-                ctx.push( !a.ival.value );
+                a = ctx.pop().ival;
+                ctx.push( !a.value );
                 break;
             case TI::Tilde:
-                a = ctx.pop();
-                ctx.push( ~a.ival.value );
+                a = ctx.pop().ival;
+                ctx.push( ~a.value );
                 break;
             default:
-                b = ctx.pop();
-                a = ctx.pop();
+                b = ctx.pop().ival;
+                a = ctx.pop().ival;
                 ctx.push( binop( i.op, a, b ) );
         }
         DEBUG(std::cerr << std::endl);
