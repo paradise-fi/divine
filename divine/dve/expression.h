@@ -152,7 +152,9 @@ struct Expression {
             case TI::Subscript:
                 b = ctx.pop().ival;
                 s = ctx.pop().symbol;
-                if ( b.error || b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
+                if ( b.error )
+                    ctx.push( b.error );
+                else if ( b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
                     ctx.push( EvalContext::Value( ErrorState::e_arrayCheck ) );
                 else
                     ctx.push( s.deref( ctx.mem, b.value ) );
