@@ -258,7 +258,7 @@ divine::Blob Interpreter::initial( Function *f )
 {
     int emptysize = sizeof( MachineState::Flags ) + // flags...
                     info.globalsize + // globals
-                    sizeof( MachineState::Heap ) + // heap size
+                    sizeof( MachineState::Heap ) + 4 + // empty heap size
                     sizeof( int ); // threads array length
     Blob pre_initial = alloc.new_blob( emptysize );
     pre_initial.clear();

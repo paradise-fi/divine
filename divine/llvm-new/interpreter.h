@@ -256,7 +256,6 @@ struct MachineState
         }
     };
 
-
     struct Frame {
         PC pc;
         char memory[0];
@@ -276,22 +275,31 @@ struct MachineState
     };
 
     struct Heap {
-        int size;
-        uint32_t _memory[0];
+        int segcount;
+        uint16_t _memory[0];
+
+        int size() {
+            return _memory[ segcount ];
+        }
 
         int bitmapSize() {
-            return size / 32 + (size % 32 ? 4 : 0);
+            return size() / 32 + (size() % 32 ? 4 : 0);
+        }
+
+        int jumptableSize() {
+            /* 4-align, extra item for "end of memory" */
+            return 2 * (2 + segcount - segcount % 2);
         }
 
         StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Heap ) + size + bitmapSize() );
+            return StateAddress( a, 0, sizeof( Heap ) + size() + jumptableSize() + bitmapSize() );
         }
         int end() { return 0; }
 
         void setPointer( int offset, bool ptr ) {
             assert_eq( offset % 4, 0 );
-            int mask = 1 << offset % 32;
-            uint32_t &word = _memory[ offset / 32 ];
+            int mask = 1 << ((offset % 64) / 4);
+            uint16_t &word = _memory[ offset / 64 ];
             if ( ptr )
                 word |= mask;
             else
@@ -300,23 +308,31 @@ struct MachineState
 
         bool isPointer( int offset ) {
             assert_eq( offset % 4, 0 );
-            int mask = 1 << offset % 32;
-            uint32_t &word = _memory[ offset / 32 ];
+            int mask = 1 << ((offset % 64) / 4);
+            uint16_t &word = _memory[ offset / 64 ];
             return word & mask;
         }
 
-        char *memory( int offset ) {
-            return reinterpret_cast< char * >( _memory ) + bitmapSize() + offset;
+        uint16_t &segoffset( int segment ) {
+            return (_memory + bitmapSize() / 2)[ segment ];
         }
+
+        char *memory( int segment ) {
+            return reinterpret_cast< char * >( _memory )
+                   + bitmapSize() + jumptableSize()
+                   + segoffset( segment );
+        }
+
     };
 
-    Blob _blob, _stack, _heap;
+    Blob _blob, _stack, _memory;
     ProgramInfo &_info;
     Allocator &_alloc;
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
-    int _size_difference;
+    int _stack_difference;
+    std::vector< int > _offsets;
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
@@ -333,6 +349,25 @@ struct MachineState
     typedef lens::Array< Frame > Stack;
     typedef lens::Array< Stack > Threads;
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
+
+    char *dereferencePointer( Pointer p ) {
+        if ( p.segment < heap().segcount )
+            return heap().memory( p.segment ) + p.offset;
+        else
+            return _memory.data() + _offsets[ p.segment ] + p.offset;
+    }
+
+    Pointer malloc( int size ) {
+        Pointer p;
+        p.segment = _offsets.size() - 1;
+        p.offset = 0;
+        p.valid = true;
+        int start = _offsets[ p.segment ];
+        int end = start + size;
+        _offsets.push_back( end );
+        _memory.clear( start, end );
+        return p;
+    }
 
     Lens< State > state() {
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
@@ -367,10 +402,11 @@ struct MachineState
     {
         _blob = to;
         _thread = -1; // special
-        _size_difference = 0;
+        _stack_difference = 0;
 
         _thread_count = threads().get().length();
-        state().sub( Heap() ).copy( StateAddress( &_info, _heap, 0 ) );
+        _offsets.clear();
+        _offsets.push_back( 0 );
 
         if ( thread >= 0 && thread < threads().get().length() )
             switch_thread( thread );
@@ -396,7 +432,7 @@ struct MachineState
 
         /* Set up an empty thread. */
         stack().get().length() = 0;
-        _size_difference += sizeof( int );
+        _stack_difference += sizeof( int );
         return _thread;
     }
 
@@ -417,8 +453,8 @@ struct MachineState
             return _blob_stack( thread );
     }
 
-    Lens< Heap > heap() {
-        return Lens< Heap >( StateAddress( &_info, _heap, 0 ) );
+    Heap &heap() {
+        return state().get( Heap() );
     }
 
     Frame &frame( int thread = -1, int idx = 0 ) {
@@ -443,14 +479,14 @@ struct MachineState
         _frame->pc = PC( function, 0, 0 );
         _frame->pc.masked = masked; /* inherit */
         std::fill( _frame->memory, _frame->memory + framesize, 0 );
-        _size_difference += framesize + sizeof( Frame );
+        _stack_difference += framesize + sizeof( Frame );
     }
 
     void leave() {
         int fun = frame().pc.function;
         auto &s = stack().get();
         s.length() --;
-        _size_difference -= _info.functions[ fun ].framesize + sizeof( Frame );
+        _stack_difference -= _info.functions[ fun ].framesize + sizeof( Frame );
         if ( stack().get().length() )
             _frame = &stack().get( stack().get().length() - 1 );
         else
@@ -458,7 +494,9 @@ struct MachineState
     }
 
     Blob snapshot() {
-        Blob b( _alloc.pool(), _blob.size() + _size_difference );
+        /* TODO build a pointer update map and work out heap size */
+
+        Blob b( _alloc.pool(), _blob.size() + _stack_difference );
         StateAddress address( &_info, b, _alloc._slack );
         int i = 0;
 
@@ -466,8 +504,8 @@ struct MachineState
         assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
         address = state().sub( Globals() ).copy( address );
 
-        /* TODO canonicalize the heap */
-        address = heap().copy( address );
+        /* TODO canonicalize the heap; use a copying GC */
+        address = state().sub( Heap() ).copy( address );
 
         address.as< int >() = _thread_count;
         address.offset += sizeof( int ); // ick. length of the threads array
@@ -491,11 +529,12 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
-        : _stack( 4096 ), _heap( 4096 ), _info( i ), _alloc( alloc )
+        : _stack( 4096 ), _memory( 4096 ), _info( i ), _alloc( alloc )
     {
         _thread_count = 0;
-        _size_difference = 0;
+        _stack_difference = 0;
         _frame = nullptr;
+        _offsets.push_back( 0 );
     }
 
 };
