@@ -656,7 +656,10 @@ public:
 
     std::pair< Type *, char * > dereferenceResult( const ProgramInfo::Instruction &i )
     {
-        return dereference( i.op->getType(), i.result );
+        if ( i.result.width )
+            return dereference( i.op->getType(), i.result );
+        else
+            return std::make_pair( i.op->getType(), nullptr );
     }
 
     char * dereferencePointer( Pointer p ) { return state.dereference( p ); }

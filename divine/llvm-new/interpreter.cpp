@@ -39,6 +39,8 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 
     Value result; /* not seen yet, needs to be allocated */
     result.width = target.getTypeAllocSize( val->getType() );
+    if ( val->getType()->isVoidTy() )
+        result.width = 0;
     result.pointer = val->getType()->isPointerTy();
 
     if ( auto F = dyn_cast< ::llvm::Function >( val ) )
