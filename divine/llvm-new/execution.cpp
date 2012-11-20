@@ -131,6 +131,9 @@ typename Fun::T Interpreter::implement( ProgramInfo::Instruction i, Cons list,
     Type *ty = arg.first;
     int width = TD.getTypeAllocSize( ty ); /* bytes */
 
+    if ( ty->isVoidTy() )
+        return implement< Fun >( i, list , args... ); /* we entirely ignore void items */
+
     if ( ty->isIntegerTy() ) {
         if ( isSignedOp( i ) ) {
             switch ( width ) {
@@ -549,7 +552,7 @@ struct Load : Implementation {
 
 struct Store : Implementation {
     template< typename L >
-    void operator()( Pointer p, L &l ) {
+    void operator()( L &l, Pointer p ) {
         *reinterpret_cast< L * >( interpreter().dereferencePointer( p ) ) = l;
     }
 };
@@ -560,7 +563,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 
 void Interpreter::visitStoreInst(StoreInst &I) {
     observable = true;
-    implement1< Store >( instruction() );
+    implement2< Store >( instruction() );
 }
 
 //===----------------------------------------------------------------------===//
