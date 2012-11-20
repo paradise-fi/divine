@@ -495,22 +495,8 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
     // Avoid malloc-ing zero bytes, use max()...
     unsigned alloc = std::max( 1, count * size );
-
-    assert_eq( alloc, 0 ); // bang. To be implemented.
-
-#if 0
-    // Allocate enough memory to hold the type...
-    Arena::Index Memory = arena.allocate(alloc);
-
-    GenericValue Result;
-    Result.PointerVal = reinterpret_cast< void * >( intptr_t( Memory ) );
-    Result.IntVal = APInt(2, 0); // XXX, not very clean; marks an alloca for cloning by detach()
-    assert(Result.PointerVal != 0 && "Null pointer returned by malloc!");
-    SetValue(&I, Result, SF());
-
-    if (I.getOpcode() == Instruction::Alloca)
-        SF().allocas.push_back(Memory);
-#endif
+    Pointer &p = *reinterpret_cast< Pointer * >( state.dereference( instruction().result ) );
+    p = state.nursery.malloc( alloc );
 }
 
 struct GetElement : Implementation {
