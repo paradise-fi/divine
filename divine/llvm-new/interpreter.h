@@ -482,7 +482,7 @@ struct MachineState
         return block + v.offset;
     }
 
-    void rewind( Blob to, int thread )
+    void rewind( Blob to, int thread = 0 )
     {
         _blob = to;
         _thread = -1; // special
@@ -719,6 +719,8 @@ public:
         }
         return NULL;
     }
+
+    GenericValue constantGV( const Constant *x ) { return getConstantValue( x ); }
 
     explicit Interpreter(Allocator &a, Module *M);
     ~Interpreter();
