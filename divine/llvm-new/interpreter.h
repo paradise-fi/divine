@@ -341,8 +341,7 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            if ( p.segment < segcount )
-                return true;
+            return p.segment < segcount;
         }
 
         char *dereference( Pointer p ) {
@@ -430,10 +429,15 @@ struct MachineState
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
     char *dereference( Pointer p ) {
+        assert( validate( p ) );
         if ( heap().owns( p ) )
             return heap().dereference( p );
         else
-            nursery.dereference( p );
+            return nursery.dereference( p );
+    }
+
+    bool validate( Pointer p ) {
+        return p.valid && ( heap().owns( p ) || nursery.owns( p ) );
     }
 
     Pointer followPointer( Pointer p ) {
