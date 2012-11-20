@@ -201,11 +201,6 @@ void Interpreter::parseProperties( Module *M )
     }
 }
 
-void static align( int &v, int a ) {
-    if ( v % a )
-        v += a - (v % a);
-}
-
 void Interpreter::buildInfo( Module *module ) {
     PC pc( 0, 0, 0 );
     PC lastpc;

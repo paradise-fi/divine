@@ -49,6 +49,11 @@ struct Interpreter;
 
 using namespace ::llvm;
 
+void static align( int &v, int a ) {
+    if ( v % a )
+        v += a - (v % a);
+}
+
 struct PC : wibble::mixin::Comparable< PC >
 {
     uint32_t function:10;
@@ -276,7 +281,7 @@ struct MachineState
 
     struct Heap {
         int segcount;
-        uint16_t _memory[0];
+        char _memory[0];
 
         int size() {
             return _memory[ segcount ];
@@ -291,48 +296,114 @@ struct MachineState
             return 2 * (2 + segcount - segcount % 2);
         }
 
+        uint16_t &jumptable( Pointer p ) {
+            assert( owns( p ) );
+            return reinterpret_cast< uint16_t * >( _memory )[ p.segment ];
+        }
+
+        uint16_t &bitmap( Pointer p ) {
+            assert( owns( p ) );
+            return reinterpret_cast< uint16_t * >( _memory + jumptableSize() )[ p.segment / 64 ];
+        }
+
+        int offset( Pointer p ) {
+            assert( owns( p ) );
+            return int( jumptable( p ) * 4 ) + p.offset;
+        }
+
+        uint16_t mask( Pointer p ) {
+            assert_eq( offset( p ) % 4, 0 );
+            return 1 << ((offset( p ) % 64) / 4);
+        }
+
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, sizeof( Heap ) + size() + jumptableSize() + bitmapSize() );
         }
         int end() { return 0; }
 
-        void setPointer( int offset, bool ptr ) {
-            assert_eq( offset % 4, 0 );
-            int mask = 1 << ((offset % 64) / 4);
-            uint16_t &word = _memory[ offset / 64 ];
+        void setPointer( Pointer p, bool ptr ) {
             if ( ptr )
-                word |= mask;
+                bitmap( p ) |= mask( p );
             else
-                word &= ~mask;
+                bitmap( p ) &= ~mask( p );
         }
 
-        bool isPointer( int offset ) {
-            assert_eq( offset % 4, 0 );
-            int mask = 1 << ((offset % 64) / 4);
-            uint16_t &word = _memory[ offset / 64 ];
-            return word & mask;
+        bool isPointer( Pointer p ) {
+            return bitmap( p ) & mask( p );
         }
 
-        uint16_t &segoffset( int segment ) {
-            return (_memory + bitmapSize() / 2)[ segment ];
+        bool owns( Pointer p ) {
+            if ( p.segment < segcount )
+                return true;
         }
 
-        char *memory( int segment ) {
+        char *dereference( Pointer p ) {
+            assert( owns( p ) );
             return reinterpret_cast< char * >( _memory )
                    + bitmapSize() + jumptableSize()
-                   + segoffset( segment );
+                   + offset( p );
         }
-
     };
 
-    Blob _blob, _stack, _memory;
+    struct Nursery {
+        std::vector< int > offsets;
+        std::vector< char > memory;
+        std::vector< bool > pointer;
+        int segshift;
+
+        Pointer malloc( int size ) {
+            int segment = offsets.size() - 1;
+            int start = offsets[ segment ];
+            int end = start + size;
+            align( end, 4 );
+            offsets.push_back( end );
+            memory.resize( end );
+            pointer.resize( end / 4 );
+            std::fill( memory.begin() + start, memory.end(), 0 );
+            std::fill( pointer.begin() + start / 4, pointer.end(), 0 );
+            return Pointer( segment + segshift, 0 );
+        }
+
+        bool owns( Pointer p ) {
+            return p.segment - segshift < offsets.size() - 1;
+        }
+
+        int offset( Pointer p ) {
+            assert( owns( p ) );
+            return offsets[ p.segment - segshift ] + p.offset;
+        }
+
+        bool isPointer( Pointer p ) {
+            assert_eq( p.offset % 4, 0 );
+            return pointer[ offset( p ) / 4 ];
+        }
+
+        void setPointer( Pointer p, bool is ) {
+            pointer[ offset( p ) / 4 ] = is;
+        }
+
+        char *dereference( Pointer p ) {
+            assert( owns( p ) );
+            return &memory[ offset( p ) ];
+        }
+
+        void reset( int shift ) {
+            segshift = shift;
+            memory.clear();
+            offsets.clear();
+            offsets.push_back( 0 );
+            pointer.clear();
+        }
+    };
+
+    Blob _blob, _stack;
+    Nursery nursery;
     ProgramInfo &_info;
     Allocator &_alloc;
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
     int _stack_difference;
-    std::vector< int > _offsets;
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
@@ -350,23 +421,24 @@ struct MachineState
     typedef lens::Array< Stack > Threads;
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
-    char *dereferencePointer( Pointer p ) {
-        if ( p.segment < heap().segcount )
-            return heap().memory( p.segment ) + p.offset;
+    char *dereference( Pointer p ) {
+        if ( heap().owns( p ) )
+            return heap().dereference( p );
         else
-            return _memory.data() + _offsets[ p.segment ] + p.offset;
+            nursery.dereference( p );
     }
 
-    Pointer malloc( int size ) {
-        Pointer p;
-        p.segment = _offsets.size() - 1;
-        p.offset = 0;
-        p.valid = true;
-        int start = _offsets[ p.segment ];
-        int end = start + size;
-        _offsets.push_back( end );
-        _memory.clear( start, end );
-        return p;
+    Pointer followPointer( Pointer p ) {
+        if ( !p.valid )
+            return Pointer();
+
+        Pointer next = *reinterpret_cast< Pointer * >( dereference( p ) );
+        if ( heap().owns( p ) ) {
+            if ( heap().isPointer( p ) )
+                return next;
+        } else if ( nursery.isPointer( p ) )
+            return next;
+        return Pointer();
     }
 
     Lens< State > state() {
@@ -405,8 +477,7 @@ struct MachineState
         _stack_difference = 0;
 
         _thread_count = threads().get().length();
-        _offsets.clear();
-        _offsets.push_back( 0 );
+        nursery.reset( heap().segcount );
 
         if ( thread >= 0 && thread < threads().get().length() )
             switch_thread( thread );
@@ -529,12 +600,12 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
-        : _stack( 4096 ), _memory( 4096 ), _info( i ), _alloc( alloc )
+        : _stack( 4096 ), _info( i ), _alloc( alloc )
     {
         _thread_count = 0;
         _stack_difference = 0;
         _frame = nullptr;
-        _offsets.push_back( 0 );
+        nursery.reset( 0 ); /* nothing in the heap */
     }
 
 };
@@ -580,7 +651,7 @@ public:
         return dereference( i.op->getType(), i.result );
     }
 
-    char * dereferencePointer( Pointer ) { assert_die(); }
+    char * dereferencePointer( Pointer p ) { return state.dereference( p ); }
     BasicBlock *dereferenceBB( Pointer );
 
     template< typename Fun, typename Cons >
