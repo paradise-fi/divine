@@ -37,39 +37,28 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, Desc
     return std::make_pair( wibble::str::fmt_container( vec, delim[0], delim[1] ), where );
 }
 
-#if 0
-std::string Interpreter::describePointer( Type *t, int idx, DescribeSeen &seen ) {
-    std::string ptr = "*" + wibble::str::fmt( (void*) idx );
+std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen )
+{
+    if ( !p.valid )
+        return "null";
+
+    std::string ptr = "*" + wibble::str::fmt( p.segment ) + ":" + wibble::str::fmt( p.offset );
     std::string res;
-    if ( idx ) {
-        Type *pointeeTy = cast< PointerType >( t )->getElementType();
-        if ( isa< FunctionType >( pointeeTy ) ) {
-            res = "@" + functionIndex.right( idx )->getName().str();
-        } else if ( seen.count( std::make_pair( idx, pointeeTy ) ) ) {
-            res = ptr + " <...>";
-        } else {
-            char *ptrAdr = NULL;
-            int __idx;
-            if ((__idx = idx - 0x100) < constGlobalmem.size()) {
-                ptrAdr = &constGlobalmem[__idx];
-            } else  if ((__idx -= constGlobalmem.size()) < globalmem.size()) {
-                ptrAdr = &globalmem[__idx];
-            } else {
-                if ( arena.validate(idx) && ((Arena::Index) idx ).block ) {
-                    ptrAdr = static_cast< char * >(arena.translate(idx));
-                }
-            }
-            if (ptrAdr) {
-                Describe pointee = describeValue( pointeeTy, ptrAdr, seen );
-                res = ptr + " " + pointee.first;
-            } else
-                res = ptr + " (INVALID ADDRESS)";
-            seen.insert( std::make_pair( idx, pointeeTy ) );
-        }
+    Type *pointeeTy = cast< PointerType >( t )->getElementType();
+    if ( isa< FunctionType >( pointeeTy ) ) {
+        res = "@<???>"; // TODO functionIndex.right( idx )->getName().str();
+    } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
+        res = ptr + " <...>";
+    } else {
+        if ( state.validate( p ) ) {
+            Describe pointee = describeValue( pointeeTy, dereferencePointer( p ), seen );
+            res = ptr + " " + pointee.first;
+        } else
+            res = ptr + " (not mapped)";
+        seen.insert( std::make_pair( p, pointeeTy ) );
     }
     return res;
 }
-#endif
 
 Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
     std::string res;
@@ -80,9 +69,8 @@ Interpreter::Describe Interpreter::describeValue( Type *t, char *where, Describe
             res = wibble::str::fmt( int( *(int8_t *) where ) );
         where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isPointerTy() ) {
-        assert_die();
-        /* res = describePointer( t, *(intptr_t*) where, seen );
-           where += t->getPrimitiveSizeInBits() / 8; */
+        res = describePointer( t, *reinterpret_cast< Pointer* >( where ), seen );
+        where += sizeof( Pointer );
     } else if ( t->getPrimitiveSizeInBits() ) {
         res = "?";
         where += t->getPrimitiveSizeInBits() / 8;
@@ -108,10 +96,11 @@ std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, Descri
         if ( name.find( '.' ) != std::string::npos )
            return "";
         str = name + " = ";
-        if ( type->isPointerTy() ) {
-            assert_die(); // str += describePointer ...
-        } else
-            str += describeValue( type, state.dereference( v, thread ), *seen ).first;
+        char *where = state.dereference( v, thread );
+        if ( type->isPointerTy() )
+            str += describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
+        else
+            str += describeValue( type, where, *seen ).first;
     }
     return str;
 }

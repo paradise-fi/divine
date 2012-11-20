@@ -724,12 +724,12 @@ public:
     ~Interpreter();
 
     typedef std::pair< std::string, char * > Describe;
-    typedef std::set< std::pair< int, Type * > > DescribeSeen;
+    typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 
     Describe describeAggregate( Type *t, char *where, DescribeSeen& );
     Describe describeValue( Type *t, char *where, DescribeSeen& );
-    std::string describePointer( Type *t, int idx, DescribeSeen& );
-    std::string describeValue( ProgramInfo::Value , int, DescribeSeen * = 0 );
+    std::string describePointer( Type *t, Pointer p, DescribeSeen& );
+    std::string describeValue( ProgramInfo::Value, int, DescribeSeen * = 0 );
     std::string describe();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
