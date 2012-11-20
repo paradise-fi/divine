@@ -154,17 +154,21 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     return p;
 }
 
+void ProgramInfo::storeGV( char *where, GenericValue GV, Type *ty, int width ) {
+    if ( ty->isIntegerTy() ) { /* StoreValueToMemory is buggy for (at least) integers... */
+        const uint8_t *mem = reinterpret_cast< const uint8_t * >( GV.IntVal.getRawData() );
+        std::copy( mem, mem + width, where );
+    } else {
+        interpreter.StoreValueToMemory(
+            GV, reinterpret_cast< GenericValue * >( where ), ty );
+    }
+}
+
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
     result.constant = true;
     result.width = target.getTypeStoreSize( ty );
-    if ( ty->isIntegerTy() ) { /* StoreValueToMemory is buggy for (at least) integers... */
-        const uint8_t *mem = reinterpret_cast< const uint8_t * >( GV.IntVal.getRawData() );
-        std::copy( mem, mem + result.width, allocateConstant( result ) );
-    } else {
-        interpreter.StoreValueToMemory(
-            GV, reinterpret_cast< GenericValue * >( allocateConstant( result ) ), ty );
-    }
+    storeGV( allocateConstant( result ), GV, ty, result.width );
 }
 
 Interpreter::Interpreter(Allocator &alloc, Module *M)
@@ -258,6 +262,17 @@ divine::Blob Interpreter::initial( Function *f )
                     sizeof( int ); // threads array length
     Blob pre_initial = alloc.new_blob( emptysize );
     pre_initial.clear();
+
+    int offset = sizeof( MachineState::Flags ), idx = 0;
+    for ( auto var = module->global_begin(); var != module->global_end(); ++ var, ++ idx ) {
+        int w = info.globals[ idx ].width;
+        if ( var->hasInitializer() )
+            info.storeGV( pre_initial.data() + offset,
+                          getConstantValue( var->getInitializer() ),
+                          var->getType(), w );
+        offset += w;
+    }
+
     state.rewind( pre_initial, 0 ); // there isn't a thread really
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...

@@ -215,6 +215,8 @@ struct ProgramInfo {
         }
     }
 
+    void storeGV( char *where, GenericValue GV, Type *ty, int width );
+
     void storeConstant( Value &result, int v ) {
         result.width = sizeof( int );
         allocateConstant( result );
