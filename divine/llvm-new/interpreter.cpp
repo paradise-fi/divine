@@ -39,6 +39,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 
     Value result; /* not seen yet, needs to be allocated */
     result.width = target.getTypeAllocSize( val->getType() );
+    result.pointer = val->getType()->isPointerTy();
 
     if ( auto F = dyn_cast< ::llvm::Function >( val ) )
         storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
@@ -47,7 +48,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     else if ( auto B = dyn_cast< BasicBlock >( val ) )
         handleBB( this, result, B );
     else if ( auto C = dyn_cast< Constant >( val ) ) {
-        if ( C->getType()->getTypeID() == Type::PointerTyID ) {
+        if ( result.pointer ) {
             result.global = true;
             if ( auto G = dyn_cast< GlobalVariable >( val ) ) {
                 if ( G->isConstant() ) {
@@ -55,7 +56,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                     storeConstant( result, interpreter.getConstantValue( G->getInitializer() ),
                                    C->getType() );
                 } else allocateValue( 0, result );
-            }
+            } else assert_die(); /* duh. */
         } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
     } else allocateValue( function, result );
 

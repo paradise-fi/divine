@@ -113,12 +113,18 @@ struct ProgramInfo {
     struct Value {
         bool global:1;
         bool constant:1;
+        bool pointer:1;
         uint32_t offset:20;
-        uint32_t width:10;
+        uint32_t width:9;
+
         bool operator<( Value v ) const {
             return *reinterpret_cast< const uint32_t * >( this ) < *reinterpret_cast< const uint32_t * >( &v );
         }
-        Value() : global( 0 ), constant( 0 ), offset( 0 ), width( 0 ) {}
+
+        Value()
+            : global( false ), constant( false ), pointer( false ),
+              offset( 0 ), width( 0 )
+        {}
     };
 
     struct Instruction {
