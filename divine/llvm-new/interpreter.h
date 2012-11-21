@@ -291,36 +291,53 @@ struct MachineState
         int end() { return 0; }
     };
 
+    static int size_jumptable( int segcount ) {
+        /* 4-align, extra item for "end of memory" */
+        return 2 * (2 + segcount - segcount % 2);
+    }
+
+    static int size_bitmap( int bytecount ) {
+        return bytecount / 32 + ((bytecount % 32) ? 4 : 0);
+    }
+
+    static int size_heap( int segcount, int bytecount ) {
+        return sizeof( Heap ) +
+            bytecount +
+            size_jumptable( segcount ) +
+            size_bitmap( bytecount );
+    }
+
     struct Heap {
         int segcount;
         char _memory[0];
 
         int size() {
-            return _memory[ segcount ];
+            return jumptable( segcount ) * 4;
         }
 
-        int bitmapSize() {
-            return size() / 32 + (size() % 32 ? 4 : 0);
-        }
-
-        int jumptableSize() {
-            /* 4-align, extra item for "end of memory" */
-            return 2 * (2 + segcount - segcount % 2);
+        uint16_t &jumptable( int segment ) {
+            return reinterpret_cast< uint16_t * >( _memory )[ segment ];
         }
 
         uint16_t &jumptable( Pointer p ) {
             assert( owns( p ) );
-            return reinterpret_cast< uint16_t * >( _memory )[ p.segment ];
+            return jumptable( p.segment );
         }
 
         uint16_t &bitmap( Pointer p ) {
             assert( owns( p ) );
-            return reinterpret_cast< uint16_t * >( _memory + jumptableSize() )[ p.segment / 64 ];
+            return reinterpret_cast< uint16_t * >(
+                _memory + size_jumptable( segcount ) )[ p.segment / 64 ];
         }
 
         int offset( Pointer p ) {
             assert( owns( p ) );
             return int( jumptable( p ) * 4 ) + p.offset;
+        }
+
+        int size( Pointer p ) {
+            assert( owns( p ) );
+            return 4 * (jumptable( p.segment + 1 ) - jumptable( p ));
         }
 
         uint16_t mask( Pointer p ) {
@@ -329,7 +346,7 @@ struct MachineState
         }
 
         StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Heap ) + size() + jumptableSize() + bitmapSize() );
+            return StateAddress( a, 0, size_heap( segcount, size() ) );
         }
         int end() { return 0; }
 
@@ -345,14 +362,12 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.segment < segcount;
+            return p.valid && p.segment < segcount;
         }
 
         char *dereference( Pointer p ) {
             assert( owns( p ) );
-            return reinterpret_cast< char * >( _memory )
-                   + bitmapSize() + jumptableSize()
-                   + offset( p );
+            return _memory + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p );
         }
     };
 
@@ -376,12 +391,17 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.segment - segshift < offsets.size() - 1;
+            return p.valid && (p.segment - segshift < offsets.size() - 1);
         }
 
         int offset( Pointer p ) {
             assert( owns( p ) );
             return offsets[ p.segment - segshift ] + p.offset;
+        }
+
+        int size( Pointer p ) {
+            assert( owns( p ) );
+            return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
         }
 
         bool isPointer( Pointer p ) {
@@ -445,7 +465,7 @@ struct MachineState
     }
 
     Pointer followPointer( Pointer p ) {
-        if ( !p.valid )
+        if ( !validate( p ) )
             return Pointer();
 
         Pointer next = *reinterpret_cast< Pointer * >( dereference( p ) );
@@ -455,6 +475,16 @@ struct MachineState
         } else if ( nursery.isPointer( p ) )
             return next;
         return Pointer();
+    }
+
+    int pointerSize( Pointer p ) {
+        if ( !validate( p ) )
+            return 0;
+
+        if ( heap().owns( p ) )
+            return heap().size( p );
+        else
+            return nursery.size( p );
     }
 
     Lens< State > state() {

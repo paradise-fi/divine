@@ -266,11 +266,7 @@ void Interpreter::buildInfo( Module *module ) {
 
 divine::Blob Interpreter::initial( Function *f )
 {
-    int emptysize = sizeof( MachineState::Flags ) + // flags...
-                    info.globalsize + // globals
-                    sizeof( MachineState::Heap ) + 4 + // empty heap size
-                    sizeof( int ); // threads array length
-    Blob pre_initial = alloc.new_blob( emptysize );
+    Blob pre_initial = alloc.new_blob( state.size( 0, 0, 0 ) );
     pre_initial.clear();
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 
