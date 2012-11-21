@@ -23,10 +23,10 @@ void static align( int &v, int a ) {
 
 struct PC : wibble::mixin::Comparable< PC >
 {
-    uint32_t function:10;
-    uint32_t block:12;
-    uint32_t instruction:9;
     bool masked:1;
+    uint32_t function:11;
+    uint32_t block:10;
+    uint32_t instruction:10;
     explicit PC( int f = 0, int b = 0, int i = 0 )
         : function( f ), block( b ), instruction( i ), masked( false )
     {}
