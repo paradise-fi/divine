@@ -219,16 +219,19 @@ void Interpreter::buildInfo( Module *module ) {
         info.insert( 0, &*var );
 
     pc.function = 1;
-    for ( auto function = module->begin(); function != module->end();
-          ++ function, ++ pc.function )
+    for ( auto function = module->begin(); function != module->end(); ++ function )
     {
-        info.functionmap[ function ] = pc.function;
-        pc.block = 0;
+        if ( function->isDeclaration() )
+            continue; /* skip */
+        ++ pc.function;
 
         if ( function->begin() == function->end() )
             throw wibble::exception::Consistency(
                 "Interpreter::buildInfo",
                 "Can't deal with empty functions." );
+
+        info.functionmap[ function ] = pc.function;
+        pc.block = 0;
 
         /* TODO: va_args; implement as a Pointer */
         for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg )
