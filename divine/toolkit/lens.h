@@ -3,6 +3,9 @@
 #include <wibble/sfinae.h>
 #include <divine/toolkit/blob.h>
 
+#ifndef DIVINE_TOOLKIT_LENS_H
+#define DIVINE_TOOLKIT_LENS_H
+
 /*
  * Lens provide a type-safe interface to acessing variable-sized objects,
  * stored in possibly disjoint address spaces. The addressing scheme for
@@ -270,3 +273,5 @@ public:
 
 }
 }
+
+#endif
