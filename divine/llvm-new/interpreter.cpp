@@ -43,7 +43,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         result.width = 0;
 
     if ( val->getType()->isPointerTy() ) {
-        result.pointer = true;
+        result.pointer = !isa< ::llvm::Function >( val ) &&
+                         !isa< ::llvm::BlockAddress >( val ) &&
+                         !isa< ::llvm::BasicBlock >( val );
         result.width = 4;
     }
 
