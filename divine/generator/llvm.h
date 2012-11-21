@@ -14,7 +14,7 @@
 #include <llvm/Support/system_error.h>
 
 #include <divine/generator/common.h>
-#include <divine/llvm/interpreter.h>
+#include <divine/llvm-new/interpreter.h>
 #include <divine/ltl2ba/main.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
@@ -23,11 +23,11 @@
 namespace divine {
 namespace generator {
 
-using namespace llvm;
+using namespace ::llvm;
 
 struct LLVM : Common< Blob > {
     typedef Blob Node;
-    divine::llvm::Interpreter *_interpreter;
+    divine::llvm2::Interpreter *_interpreter, *_interpreter_2;
     Module *_module;
     OwningPtr< MemoryBuffer > *_input;
     LLVMContext *ctx;
@@ -46,10 +46,10 @@ struct LLVM : Common< Blob > {
     bool use_property;
 
     Node initial() {
-        if ( !_initial.valid() )
-            _initial = interpreter().snapshot( alloc._slack, pool() );
-        assert( _initial.valid() );
-        return _initial;
+        assert( _module );
+        Function *f = _module->getFunction( "main" );
+        assert( f );
+        return interpreter().initial( f );
     }
 
     template< typename Q >
@@ -57,154 +57,36 @@ struct LLVM : Common< Blob > {
         q.queue( Node(), initial(), Label() );
     }
 
-    struct Successors {
-        typedef Node Type;
-        LLVM *_parent;
-        Node _from;
-        int _context, _alternative, _buchi;
-
-        divine::llvm::Interpreter &interpreter() const {
-            assert( _parent );
-            return _parent->interpreter();
-        }
-
-        std::pair< PropGuard, int > &buchi_trans() const {
-            assert_leq( _buchi + 1, _parent->prop_next.size() );
-            return _parent->prop_trans[ _parent->prop_next[ interpreter().flags.buchi ][ _buchi ] ];
-        }
-
-        static int mask( int i ) {
-            assert_leq( 1, i );
-            return 1 << (i - 1);
-        }
-
-        bool buchi_viable() const {
-            if ( !_parent->use_property )
-                return true;
-
-            interpreter().restore( _from, _parent->alloc._slack );
-            int buchi = interpreter().flags.buchi;
-            assert_leq( buchi + 1, _parent->prop_next.size() );
-	    (void)(buchi);
-
-            interpreter().step( _context, _alternative );
-
-            PropGuard guard = buchi_trans().first;
-            for ( int i = 0; i < guard.size(); ++i ) {
-                if ( guard[i] < 0 && (interpreter().flags.ap & mask(-guard[i])) )
-                    return false;
-                if ( guard[i] > 0 && !(interpreter().flags.ap & mask(guard[i])) )
-                    return false;
-            }
-            return true;
-        }
-
-        void next() {
-            interpreter().restore( _from, _parent->alloc._slack );
-            if ( _parent->use_property &&
-                 _buchi + 1 < _parent->prop_next[ interpreter().flags.buchi ].size() )
-            {
-                ++ _buchi;
-            } else {
-                _buchi = 0;
-                if ( interpreter().viable( _context, _alternative + 1 ) ) {
-                    ++ _alternative;
-                } else {
-                    ++ _context;
-                    _alternative = 0;
-                }
-            }
-        }
-
-        bool settle() {
-            interpreter().restore( _from, _parent->alloc._slack );
-            while ( true ) {
-                if ( interpreter().viable( _context, _alternative ) ) {
-                    if ( buchi_viable() ) // changes interpreter state
-                        return true;
-                } else
-                    return false; // nowhere to look anymore
-                next(); // restores the interpreter state
-            }
-        }
-
-        bool empty() const {
-            if (!_from.valid())
-                return true;
-
-            interpreter().restore( _from, _parent->alloc._slack );
-            if ( interpreter().viable( _context, _alternative ) && buchi_viable() )
-                return false; // not empty
-            return true;
-        }
-
-        Node from() { return _from; }
-
-        Successors tail() const {
-            Successors s = *this;
-            s.next();
-            s.settle();
-            return s;
-        }
-
-        Node head() {
-            assert( !empty() );
-            interpreter().restore( _from, _parent->alloc._slack );
-            interpreter().step( _context, _alternative );
-
-            // collapse all following tau actions in this context
-            while ( interpreter().isTau( _context ) )
-                interpreter().step( _context, 0 ); // tau steps cannot branch
-
-            if ( _parent->use_property )
-                interpreter().flags.buchi = buchi_trans().second;
-
-            return interpreter().snapshot( _parent->alloc._slack, _parent->pool() );
-        }
-
-        Successors() {}
-    };
-
     template< typename Yield >
     void successors( Node st, Yield yield ) {
-        Successors s;
-        s._from = st;
-        s._parent = this;
-        s._alternative = 0;
-        s._context = 0;
-        s._buchi = 0;
-        s.settle();
-        while ( !s.empty() ) {
-            yield( s.head(), Label() );
-            s = s.tail();
-        }
+        interpreter().run( st, [&]( Node n ){ yield( n, Label() ); } );
     }
 
     void release( Node s ) {
         s.free( pool() );
     }
 
+    divine::llvm2::MachineState::Flags &flags( Blob b ) {
+        return b.get< divine::llvm2::MachineState::Flags >( alloc._slack );
+    }
+
     bool isGoal( Node n ) {
-        interpreter().restore( n, alloc._slack );
-        return interpreter().flags.assert
-            || interpreter().flags.null_dereference
-            || interpreter().flags.invalid_dereference
-            || interpreter().flags.invalid_argument;
+        auto fl = flags( n );
+        return fl.assert || fl.null_dereference || fl.invalid_dereference || fl.invalid_argument;
     }
 
     bool isAccepting( Node n ) {
         if ( !use_property )
             return false;
-
-        interpreter().restore( n, alloc._slack );
-        return prop_accept[ interpreter().flags.buchi ];
+        return prop_accept[ flags( n ).buchi ];
     }
 
     std::string showNode( Node n ) {
-        interpreter().restore( n, alloc._slack );
-        std::string s = interpreter().describe();
+        interpreter(); /* ensure _interpreter_2 is initialised */
+        _interpreter_2->rewind( n );
+        std::string s = _interpreter_2->describe();
         if ( use_property ) {
-            int buchi = interpreter().flags.buchi;
+            int buchi = _interpreter_2->state.flags().buchi;
             s += "\nLTL: " + wibble::str::fmt( buchi ) + " (";
             for ( int i = 0; i < prop_next[ buchi ].size(); ++i ) {
                 int next = prop_next[buchi][i];
@@ -216,9 +98,8 @@ struct LLVM : Common< Blob > {
         return s;
     }
 
-    /// currently only dummy method
     std::string showTransition( Node from, Node to, Label ) {
-        return "";
+        return ""; // dummy
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
@@ -244,7 +125,7 @@ struct LLVM : Common< Blob > {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );
             if ( name->getString() == lit )
-                return 1 + interpreter().constant(
+                return 1 + interpreter().constantGV(
                     cast< Constant >( it->getOperand(2) ) ).IntVal.getZExtValue();
         }
         assert_die();
@@ -300,7 +181,7 @@ struct LLVM : Common< Blob > {
             prop_accept[(*n)->name - 1] = true;
     }
 
-    divine::llvm::Interpreter &interpreter() {
+    divine::llvm2::Interpreter &interpreter() {
         if (_interpreter)
             return *_interpreter;
 
@@ -312,14 +193,10 @@ struct LLVM : Common< Blob > {
         assert( m );
         std::string err;
 
-        _interpreter = new Interpreter( m );
+        _interpreter = new divine::llvm2::Interpreter( alloc, m );
+        _interpreter_2 = new divine::llvm2::Interpreter( alloc, m );
         _module = m;
 
-        std::vector<llvm::GenericValue> args;
-
-        Function *f = m->getFunction( "main" );
-        assert( f );
-        _interpreter->callFunction( f, args );
         return *_interpreter;
     }
 
