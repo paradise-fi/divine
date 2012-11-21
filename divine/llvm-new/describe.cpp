@@ -39,7 +39,7 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, Desc
 
 std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen )
 {
-    if ( !p.valid )
+    if ( p.null() )
         return "null";
 
     std::string ptr = wibble::str::fmt( p );
@@ -60,32 +60,42 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
     return res;
 }
 
+static std::string fmtInteger( char *where, int bits ) {
+    switch ( bits ) {
+        case 64: return wibble::str::fmt( *(int64_t*) where);
+        case 32: return wibble::str::fmt( *(int32_t*) where);
+        case 16: return wibble::str::fmt( *(int16_t*) where);
+        case 8: return wibble::str::fmt( int( *(int8_t *) where ) );
+        case 1: return wibble::str::fmt( *(bool *) where );
+        default: return "<" + wibble::str::fmt( bits ) + "-bit integer>";
+    }
+}
+
 Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
     std::string res;
     if ( t->isIntegerTy() ) {
-        if ( t->isIntegerTy( 64 ) )
-            res = wibble::str::fmt( *(int64_t*) where);
-        if ( t->isIntegerTy( 32 ) )
-            res = wibble::str::fmt( *(int32_t*) where);
-        if ( t->isIntegerTy( 8 ) )
-            res = wibble::str::fmt( int( *(int8_t *) where ) );
+        res = fmtInteger( where, t->getPrimitiveSizeInBits() );
         where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isPointerTy() ) {
         res = describePointer( t, *reinterpret_cast< Pointer* >( where ), seen );
         where += sizeof( Pointer );
     } else if ( t->getPrimitiveSizeInBits() ) {
-        res = "?";
+        res = "<weird scalar>";
         where += t->getPrimitiveSizeInBits() / 8;
     } else if ( t->isAggregateType() ) {
         Describe sub = describeAggregate( t, where, seen );
         res = sub.first;
         where = sub.second;
-    } else res = "?";
+    } else res = "<weird type>";
     return std::make_pair( res, where );
 }
 
-std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, DescribeSeen *seen ) {
-    std::string str, name;
+std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
+                                        DescribeSeen *seen,
+                                        int *anonymous,
+                                        std::vector< std::string > *container )
+{
+    std::string name, value;
     DescribeSeen _seen;
     if ( !seen )
         seen = &_seen;
@@ -95,18 +105,27 @@ std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, Descri
 
     if ( vname )
         name = vname->getKey();
-    if ( name.empty() )
-        return "";
-    str = name + " = ";
-    char *where = state.dereference( v, thread );
+    else if ( type->isVoidTy() )
+        ;
+    else if ( anonymous ) /* This is a hack. */
+        name = "%" + wibble::str::fmt( (*anonymous)++ );
+
+    if ( isa< BasicBlock >( val ) )
+        name = ""; // ignore, but include in anonymous counter
+
+    char *where = state.dereference( info.valuemap[ val ], thread );
     if ( type->isPointerTy() )
-        str += describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
+        value = describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
     else
-        str += describeValue( type, where, *seen ).first;
-    return str;
+        value = describeValue( type, where, *seen ).first;
+
+    if ( container && !name.empty() )
+        container->push_back( name + " = " + value );
+
+    return name.empty() ? "" : name + " = " + value;
 }
 
-std::string Interpreter::describe() {
+std::string Interpreter::describe( bool detailed ) {
     std::stringstream s;
     DescribeSeen seen;
     for ( int c = 0; c < state._thread_count; ++c ) {
@@ -130,12 +149,17 @@ std::string Interpreter::describe() {
                 descr_stream << insn;
                 locs << " [" << std::string( descr, 1, std::string::npos ) << " ]";
             }
-            auto function = info.function( state.frame( c ).pc );
-            for ( auto v = function.values.begin(); v != function.values.end(); ++v )
-            {
-                std::string vdes = describeValue( *v, c, &seen );
-                if ( !vdes.empty() )
-                    vec.push_back( vdes );
+
+            int _anonymous = 0;
+            int *anonymous = detailed ? &_anonymous : nullptr;
+
+            for ( auto arg = f->arg_begin(); arg != f->arg_end(); ++ arg )
+                describeValue( &*arg, c, &seen, anonymous, &vec );
+
+            for ( auto block = f->begin(); block != f->end(); ++block ) {
+                describeValue( &*block, c, &seen, anonymous, &vec );
+                for ( auto v = block->begin(); v != block->end(); ++v )
+                    describeValue( &*v, c, &seen, anonymous, &vec );
             }
         } else
             locs << "<null>";

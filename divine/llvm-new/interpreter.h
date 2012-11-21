@@ -157,8 +157,11 @@ public:
     Describe describeAggregate( Type *t, char *where, DescribeSeen& );
     Describe describeValue( Type *t, char *where, DescribeSeen& );
     std::string describePointer( Type *t, Pointer p, DescribeSeen& );
-    std::string describeValue( ProgramInfo::Value, int, DescribeSeen * = 0 );
-    std::string describe();
+    std::string describeValue( const ::llvm::Value *, int thread,
+                               DescribeSeen * = nullptr,
+                               int *anonymous = nullptr,
+                               std::vector< std::string > *container = nullptr );
+    std::string describe( bool detailed = false );
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
     void new_thread( Function *f );
