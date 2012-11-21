@@ -34,8 +34,17 @@ struct MachineState
         PC pc;
         char memory[0];
 
+        int framesize( ProgramInfo &i ) {
+            return i.function( pc ).framesize;
+        }
+
         StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Frame ) + a._info->function(pc).framesize );
+            return StateAddress( a, 0, sizeof( Frame ) + framesize( *a._info ) );
+        }
+        char *dereference( ProgramInfo &i, ProgramInfo::Value v ) {
+            assert_leq( v.offset, framesize( i ) );
+            assert_leq( v.offset + v.width, framesize( i ) );
+            return memory + v.offset;
         }
         int end() { return 0; }
     };
