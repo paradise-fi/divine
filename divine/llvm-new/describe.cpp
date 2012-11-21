@@ -63,6 +63,8 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
 Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
     std::string res;
     if ( t->isIntegerTy() ) {
+        if ( t->isIntegerTy( 64 ) )
+            res = wibble::str::fmt( *(int64_t*) where);
         if ( t->isIntegerTy( 32 ) )
             res = wibble::str::fmt( *(int32_t*) where);
         if ( t->isIntegerTy( 8 ) )
@@ -78,7 +80,7 @@ Interpreter::Describe Interpreter::describeValue( Type *t, char *where, Describe
         Describe sub = describeAggregate( t, where, seen );
         res = sub.first;
         where = sub.second;
-    }
+    } else res = "?";
     return std::make_pair( res, where );
 }
 
@@ -90,18 +92,18 @@ std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, Descri
 
     Value *val = info.llvmvaluemap[ v ];
     Type *type = val->getType();
+    auto vname = val->getValueName();
 
-    if ( val->getValueName() ) {
-        name = val->getValueName()->getKey();
-        if ( name.find( '.' ) != std::string::npos )
-           return "";
-        str = name + " = ";
-        char *where = state.dereference( v, thread );
-        if ( type->isPointerTy() )
-            str += describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
-        else
-            str += describeValue( type, where, *seen ).first;
-    }
+    if ( vname )
+        name = vname->getKey();
+    if ( name.empty() )
+        return "";
+    str = name + " = ";
+    char *where = state.dereference( v, thread );
+    if ( type->isPointerTy() )
+        str += describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
+    else
+        str += describeValue( type, where, *seen ).first;
     return str;
 }
 
@@ -129,16 +131,16 @@ std::string Interpreter::describe() {
                 descr_stream << insn;
                 locs << " [" << std::string( descr, 1, std::string::npos ) << " ]";
             }
+            auto function = info.function( state.frame( c ).pc );
+            for ( auto v = function.values.begin(); v != function.values.end(); ++v )
+            {
+                std::string vdes = describeValue( *v, c, &seen );
+                if ( !vdes.empty() )
+                    vec.push_back( vdes );
+            }
         } else
-            vec.push_back( "<not started>" );
+            locs << "<null>";
 
-        auto function = info.function( state.frame( c ).pc );
-        for ( auto v = function.values.begin(); v != function.values.end(); ++v )
-        {
-            std::string vdes = describeValue( *v, c, &seen );
-            if ( !vdes.empty() )
-                vec.push_back( vdes );
-        }
         s << c << ": " << locs.str() << " " << wibble::str::fmt( vec ) << std::endl;
     }
 
