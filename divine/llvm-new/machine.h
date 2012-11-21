@@ -63,7 +63,8 @@ struct MachineState
     }
 
     static int size_bitmap( int bytecount ) {
-        return bytecount / 32 + ((bytecount % 32) ? 4 : 0);
+        /* NB. 4 * (x / 32) is NOT the same as x / 8 */
+        return 4 * (bytecount / 32) + ((bytecount % 32) ? 4 : 0);
     }
 
     static int size_heap( int segcount, int bytecount ) {
