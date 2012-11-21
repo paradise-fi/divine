@@ -66,12 +66,11 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
     } else allocateValue( function, result );
 
-    if (function) {
-        // must be already there... makeFit( functions, function );
-        this->functions[ function ].values.push_back( result );
-    } else {
+    if ( function ) {
+        if ( result.width )
+            this->functions[ function ].values.push_back( result );
+    } else
         globals.push_back( result );
-    }
 
     valuemap.insert( std::make_pair( val, result ) );
     return result;
