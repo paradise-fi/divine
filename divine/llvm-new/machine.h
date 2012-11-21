@@ -410,6 +410,7 @@ struct MachineState
             if ( val->pointer )
                 trace( *reinterpret_cast< Pointer * >( &f.memory[val->offset] ), canonic );
         }
+        align( canonic.stack, 4 );
     }
 
     template< typename F >
@@ -443,13 +444,14 @@ struct MachineState
         from.offset = to.offset = 0;
         for ( ; from.offset < size; from.offset += 4, to.offset += 4 ) {
             Pointer p = followPointer( from ), q = canonic[ p ];
-            heap.setPointer( to, p.valid );
-            if ( p.valid ) { /* recurse */
+            heap.setPointer( to, !p.null() );
+            if ( p.null() ) /* not a pointer, make a straight copy */
+                std::copy( dereference( from ), dereference( from ) + 4,
+                           heap.dereference( to ) );
+            else { /* recurse */
                 *reinterpret_cast< Pointer * >( heap.dereference( to ) ) = q;
                 snapshot( p, q, canonic, heap );
-            } else /* not a pointer, make a straight copy */
-                *reinterpret_cast< uint32_t * >( heap.dereference( to ) ) =
-                    *reinterpret_cast< uint32_t * >( dereference( from ) );
+            }
         }
     }
 
@@ -458,7 +460,7 @@ struct MachineState
         address.as< PC >() = f.pc;
         address.advance( sizeof( PC ) );
         for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-            char *from_addr = &f.memory[val->offset];
+            char *from_addr = f.dereference( _info, *val );
             if ( val->pointer ) {
                 Pointer from = *reinterpret_cast< Pointer * >( from_addr );
                 Pointer to = canonic[ from ];
@@ -468,6 +470,7 @@ struct MachineState
                 std::copy( from_addr, from_addr + val->width, address.dereference() );
             address.advance( val->width );
         }
+        align( address.offset, 4 );
     }
 
     Blob snapshot() {
@@ -501,6 +504,7 @@ struct MachineState
         /* heap needs to know its size in order to correctly dereference! */
         _heap->jumptable( canonic.segcount ) = canonic.allocated / 4;
         address.advance( size_heap( canonic.segcount, canonic.allocated ) );
+        assert_eq( size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
         address.as< int >() = live_threads;
         address.advance( sizeof( int ) ); // ick. length of the threads array
@@ -519,6 +523,7 @@ struct MachineState
         assert_eq( canonic.segdone, canonic.segcount );
         assert_eq( canonic.boundary, canonic.allocated );
         assert_eq( address.offset, b.size() );
+        assert_eq( b.size() % 4, 0 );
 
         return b;
     }
