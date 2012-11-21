@@ -26,8 +26,8 @@ using namespace divine::llvm2;
 
 static void handleBB( ProgramInfo *info, ProgramInfo::Value &result, ::llvm::BasicBlock *b )
 {
-    info->storeConstant( result, PC( info->functionmap[ b->getParent() ],
-                                     info->blockmap[ b ], 0 ) );
+    assert( info->blockmap.count( b ) );
+    info->storeConstant( result, info->blockmap[ b ] );
 }
 
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
@@ -230,6 +230,10 @@ void Interpreter::buildInfo( Module *module ) {
         /* TODO: va_args; implement as a Pointer */
         for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg )
             info.insert( pc.function, &*arg );
+
+        int blockid = 0;
+        for ( auto block = function->begin(); block != function->end(); ++block, ++blockid )
+            info.blockmap[ &*block ] = PC( pc.function, blockid, 0 );
 
         for ( auto block = function->begin(); block != function->end();
               ++ block, ++ pc.block )

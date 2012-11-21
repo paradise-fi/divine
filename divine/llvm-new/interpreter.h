@@ -166,7 +166,7 @@ struct ProgramInfo {
     std::map< Value, ::llvm::Value * > llvmvaluemap;
     std::map< ::llvm::Instruction *, PC > pcmap;
 
-    std::map< ::llvm::BasicBlock *, int > blockmap;
+    std::map< ::llvm::BasicBlock *, PC > blockmap;
     std::map< ::llvm::Function *, int > functionmap;
 
     template< typename Container >
