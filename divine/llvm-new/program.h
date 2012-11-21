@@ -134,7 +134,6 @@ struct ProgramInfo {
     int globalsize, constdatasize;
 
     std::map< const ::llvm::Value *, Value > valuemap;
-    std::map< Value, ::llvm::Value * > llvmvaluemap;
     std::map< const ::llvm::Instruction *, PC > pcmap;
 
     std::map< const ::llvm::BasicBlock *, PC > blockmap;

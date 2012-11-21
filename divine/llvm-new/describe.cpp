@@ -90,7 +90,6 @@ std::string Interpreter::describeValue( ProgramInfo::Value v, int thread, Descri
     if ( !seen )
         seen = &_seen;
 
-    Value *val = info.llvmvaluemap[ v ];
     Type *type = val->getType();
     auto vname = val->getValueName();
 
