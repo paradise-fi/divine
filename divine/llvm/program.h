@@ -126,6 +126,7 @@ struct ProgramInfo {
             assert_leq( int( pc.block ), int( blocks.size() ) - 1 );
             return blocks[ pc.block ];
         }
+        Function() : framesize( 0 ) {}
     };
 
     std::vector< Function > functions;

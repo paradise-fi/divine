@@ -256,11 +256,7 @@ void Interpreter::buildInfo( Module *module ) {
             p = info.insert( p ); // end of block
         }
 
-        auto &fun = info.function( pc );
-        fun.framesize = 0;
-        for ( auto v = fun.values.begin(); v != fun.values.end(); ++v )
-            fun.framesize += v->width;
-        align( fun.framesize, 4 ); // 4-byte align please
+        align( info.function( pc ).framesize, 4 );
     }
 
     align( info.globalsize, 4 );
