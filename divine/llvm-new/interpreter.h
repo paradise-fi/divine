@@ -434,7 +434,6 @@ struct MachineState
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
-    int _stack_difference;
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
@@ -520,7 +519,6 @@ struct MachineState
     {
         _blob = to;
         _thread = -1; // special
-        _stack_difference = 0;
 
         _thread_count = threads().get().length();
         nursery.reset( heap().segcount );
@@ -550,7 +548,6 @@ struct MachineState
 
         /* Set up an empty thread. */
         stack().get().length() = 0;
-        _stack_difference += sizeof( int );
         return _thread;
     }
 
@@ -597,52 +594,165 @@ struct MachineState
         _frame->pc = PC( function, 0, 0 );
         _frame->pc.masked = masked; /* inherit */
         std::fill( _frame->memory, _frame->memory + framesize, 0 );
-        _stack_difference += framesize + sizeof( Frame );
     }
 
     void leave() {
         int fun = frame().pc.function;
         auto &s = stack().get();
         s.length() --;
-        _stack_difference -= _info.functions[ fun ].framesize + sizeof( Frame );
         if ( stack().get().length() )
             _frame = &stack().get( stack().get().length() - 1 );
         else
             _frame = nullptr;
     }
 
+    struct Canonic {
+        MachineState &ms;
+        std::map< int, int > segmap;
+        int allocated, segcount;
+        int stack;
+        int boundary, segdone;
+
+        Canonic( MachineState &ms )
+            : ms( ms ), allocated( 0 ), segcount( 0 ), stack( 0 ), boundary( 0 ), segdone( 0 )
+        {}
+
+        Pointer operator[]( Pointer idx ) {
+            if ( !idx.valid )
+                return idx;
+            if ( !segmap.count( idx.segment ) ) {
+                segmap.insert( std::make_pair( int( idx.segment ), segcount ) );
+                ++ segcount;
+                allocated += ms.pointerSize( idx );
+            }
+            return Pointer( segmap[ int( idx.segment ) ], idx.offset );
+        }
+    };
+
+    void trace( Pointer p, Canonic &canonic ) {
+        if ( p.valid ) {
+            canonic[ p ];
+            trace( followPointer( p ), canonic );
+        }
+    }
+
+    void trace( Frame &f, Canonic &canonic ) {
+        auto vals = _info.function( f.pc ).values;
+        for ( auto val = vals.begin(); val != vals.end(); ++val ) {
+            canonic.stack += val->width;
+            if ( val->pointer )
+                trace( *reinterpret_cast< Pointer * >( &f.memory[val->offset] ), canonic );
+        }
+    }
+
+    template< typename F >
+    void eachframe( Lens< Stack > s, F f ) {
+        int idx = 0;
+        auto address = s.sub( 0 ).address();
+        while ( idx < s.get().length() ) {
+            Frame &fr = address.as< Frame >();
+            f( fr );
+            address = fr.advance( address, 0 );
+            ++ idx;
+        }
+    }
+
+    int size( int stack, int heapbytes, int heapsegs ) {
+        return sizeof( Flags ) +
+               sizeof( int ) + /* thread count */
+               stack + size_heap( heapsegs, heapbytes ) + _info.globalsize;
+    }
+
+    void snapshot( Pointer from, Pointer to, Canonic &canonic, Heap &heap ) {
+        if ( !validate( from ) || to.segment < canonic.segdone )
+            return; /* invalid or done */
+        assert_eq( to.segment, canonic.segdone );
+        canonic.segdone ++;
+        int size = pointerSize( from );
+        heap.jumptable( to ) = canonic.boundary / 4;
+        canonic.boundary += size;
+
+        /* Work in 4 byte steps, since pointers are 4 bytes and 4-byte aligned. */
+        from.offset = to.offset = 0;
+        for ( ; from.offset < size; from.offset += 4, to.offset += 4 ) {
+            Pointer p = followPointer( from ), q = canonic[ p ];
+            heap.setPointer( to, p.valid );
+            if ( p.valid ) { /* recurse */
+                *reinterpret_cast< Pointer * >( heap.dereference( to ) ) = q;
+                snapshot( p, q, canonic, heap );
+            } else /* not a pointer, make a straight copy */
+                *reinterpret_cast< uint32_t * >( heap.dereference( to ) ) =
+                    *reinterpret_cast< uint32_t * >( dereference( from ) );
+        }
+    }
+
+    void snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address ) {
+        auto vals = _info.function( f.pc ).values;
+        address.as< PC >() = f.pc;
+        address.advance( sizeof( PC ) );
+        for ( auto val = vals.begin(); val != vals.end(); ++val ) {
+            char *from_addr = &f.memory[val->offset];
+            if ( val->pointer ) {
+                Pointer from = *reinterpret_cast< Pointer * >( from_addr );
+                Pointer to = canonic[ from ];
+                address.as< Pointer >() = to;
+                snapshot( from, to, canonic, heap );
+            } else
+                std::copy( from_addr, from_addr + val->width, address.dereference() );
+            address.advance( val->width );
+        }
+    }
+
     Blob snapshot() {
-        /* TODO build a pointer update map and work out heap size */
+        Canonic canonic( *this );
+        int live_threads = _thread_count;
 
-        Blob b( _alloc.pool(), _blob.size() + _stack_difference );
+        for ( int tid = 0; tid < _thread_count; ++tid ) {
+            if ( !stack( tid ).get().length() ) { /* leave out dead threads */
+                -- live_threads;
+                continue;
+            }
+
+            canonic.stack += sizeof( Stack );
+            eachframe( stack( tid ), [&]( Frame &fr ) {
+                    canonic.stack += sizeof( Frame );
+                    trace( fr, canonic );
+                } );
+        }
+
+        Blob b = _alloc.new_blob(
+            size( canonic.stack, canonic.allocated, canonic.segcount ) );
+
         StateAddress address( &_info, b, _alloc._slack );
-        int i = 0;
-
         address = state().sub( Flags() ).copy( address );
         assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
         address = state().sub( Globals() ).copy( address );
 
-        /* TODO canonicalize the heap; use a copying GC */
-        address = state().sub( Heap() ).copy( address );
+        /* skip the heap */
+        Heap *_heap = &address.as< Heap >();
+        _heap->segcount = canonic.segcount;
+        /* heap needs to know its size in order to correctly dereference! */
+        _heap->jumptable( canonic.segcount ) = canonic.allocated / 4;
+        address.advance( size_heap( canonic.segcount, canonic.allocated ) );
 
-        address.as< int >() = _thread_count;
-        address.offset += sizeof( int ); // ick. length of the threads array
-        for ( ; i < _thread ; ++i )
-            address = state().sub( Threads(), i ).copy( address );
+        address.as< int >() = live_threads;
+        address.advance( sizeof( int ) ); // ick. length of the threads array
 
-        if ( _thread >= 0 ) { // we actually have a current thread to speak of
-            address = stack( _thread ).copy( address );
+        for ( int tid = 0; tid < _thread_count; ++tid ) {
+            if ( !stack( tid ).get().length() )
+                continue;
 
-            /* this thread also existed in the previous state */
-            if ( _thread < state().get( Threads() ).length() )
-                ++ i;
+            address.as< int >() = stack( tid ).get().length();
+            address.advance( sizeof( int ) );
+            eachframe( stack( tid ), [&]( Frame &fr ) {
+                    snapshot( fr, canonic, *_heap, address );
+                });
         }
 
-        /* might have been that length here == _thread; that's OK */
-        for ( ; i < state().get( Threads() ).length(); ++i )
-            address = state().sub( Threads(), i ).copy( address );
-
+        assert_eq( canonic.segdone, canonic.segcount );
+        assert_eq( canonic.boundary, canonic.allocated );
         assert_eq( address.offset, b.size() );
+
         return b;
     }
 
@@ -650,7 +760,6 @@ struct MachineState
         : _stack( 4096 ), _info( i ), _alloc( alloc )
     {
         _thread_count = 0;
-        _stack_difference = 0;
         _frame = nullptr;
         nursery.reset( 0 ); /* nothing in the heap */
     }
