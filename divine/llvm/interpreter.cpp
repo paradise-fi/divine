@@ -68,7 +68,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
     } else allocateValue( function, result );
 
-    if ( function ) {
+    if ( function && !result.global && !result.constant ) {
         if ( result.width )
             this->functions[ function ].values.push_back( result );
     } else
