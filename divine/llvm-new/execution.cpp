@@ -406,9 +406,9 @@ void Interpreter::visitBranchInst(BranchInst &I)
         jumpTo( instruction().operands[ 0 ] );
     else {
         if ( implementN< IsTrue >( dereferenceOperand( instruction(), 0 ) ) )
-            jumpTo( instruction().operands[ 0 ] );
-        else
             jumpTo( instruction().operands[ 1 ] );
+        else
+            jumpTo( instruction().operands[ 2 ] );
     }
 }
 
