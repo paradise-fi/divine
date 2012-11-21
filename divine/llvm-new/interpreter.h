@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLI_INTERPRETER_H
-#define LLI_INTERPRETER_H
+#ifndef DIVINE_LLVM_INTERPRETER_H
+#define DIVINE_LLVM_INTERPRETER_H
 
 #define NO_RTTI
 
@@ -30,6 +30,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/raw_ostream.h"
+
 
 namespace llvm {
 
