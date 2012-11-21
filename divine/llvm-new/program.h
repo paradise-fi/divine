@@ -133,12 +133,12 @@ struct ProgramInfo {
     std::vector< char > constdata;
     int globalsize, constdatasize;
 
-    std::map< ::llvm::Value *, Value > valuemap;
+    std::map< const ::llvm::Value *, Value > valuemap;
     std::map< Value, ::llvm::Value * > llvmvaluemap;
-    std::map< ::llvm::Instruction *, PC > pcmap;
+    std::map< const ::llvm::Instruction *, PC > pcmap;
 
-    std::map< ::llvm::BasicBlock *, PC > blockmap;
-    std::map< ::llvm::Function *, int > functionmap;
+    std::map< const ::llvm::BasicBlock *, PC > blockmap;
+    std::map< const ::llvm::Function *, int > functionmap;
 
     template< typename Container >
     static void makeFit( Container &c, int index ) {
