@@ -13,7 +13,7 @@
 
 #define NO_RTTI
 #include <wibble/exception.h>
-#include <divine/llvm-new/interpreter.h>
+#include <divine/llvm/interpreter.h>
 
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
@@ -33,7 +33,7 @@
 #include <wibble/sys/mutex.h>
 
 using namespace llvm;
-using namespace divine::llvm2;
+using namespace divine::llvm;
 
 struct Nil {};
 

@@ -1,11 +1,11 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 // Describe the interpreter's state in a human-readable fashion.
 
-#include <divine/llvm-new/interpreter.h>
+#include <divine/llvm/interpreter.h>
 #include "llvm/Analysis/DebugInfo.h"
 
 using namespace llvm;
-using namespace divine::llvm2;
+using namespace divine::llvm;
 
 Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, DescribeSeen &seen ) {
     char delim[2];

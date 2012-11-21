@@ -15,14 +15,14 @@
 
 #define NO_RTTI
 #include <wibble/exception.h>
-#include <divine/llvm-new/interpreter.h>
+#include <divine/llvm/interpreter.h>
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Constants.h"
 #include "llvm/Module.h"
 #include <cstring>
 using namespace llvm;
-using namespace divine::llvm2;
+using namespace divine::llvm;
 
 static void handleBB( ProgramInfo *info, ProgramInfo::Value &result, ::llvm::BasicBlock *b )
 {

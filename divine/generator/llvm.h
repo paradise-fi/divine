@@ -14,7 +14,7 @@
 #include <llvm/Support/system_error.h>
 
 #include <divine/generator/common.h>
-#include <divine/llvm-new/interpreter.h>
+#include <divine/llvm/interpreter.h>
 #include <divine/ltl2ba/main.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
@@ -27,7 +27,7 @@ using namespace ::llvm;
 
 struct LLVM : Common< Blob > {
     typedef Blob Node;
-    divine::llvm2::Interpreter *_interpreter, *_interpreter_2;
+    divine::llvm::Interpreter *_interpreter, *_interpreter_2;
     Module *_module;
     OwningPtr< MemoryBuffer > *_input;
     LLVMContext *ctx;
@@ -66,8 +66,8 @@ struct LLVM : Common< Blob > {
         s.free( pool() );
     }
 
-    divine::llvm2::MachineState::Flags &flags( Blob b ) {
-        return b.get< divine::llvm2::MachineState::Flags >( alloc._slack );
+    divine::llvm::MachineState::Flags &flags( Blob b ) {
+        return b.get< divine::llvm::MachineState::Flags >( alloc._slack );
     }
 
     bool isGoal( Node n ) {
@@ -181,7 +181,7 @@ struct LLVM : Common< Blob > {
             prop_accept[(*n)->name - 1] = true;
     }
 
-    divine::llvm2::Interpreter &interpreter() {
+    divine::llvm::Interpreter &interpreter() {
         if (_interpreter)
             return *_interpreter;
 
@@ -193,8 +193,8 @@ struct LLVM : Common< Blob > {
         assert( m );
         std::string err;
 
-        _interpreter = new divine::llvm2::Interpreter( alloc, m );
-        _interpreter_2 = new divine::llvm2::Interpreter( alloc, m );
+        _interpreter = new divine::llvm::Interpreter( alloc, m );
+        _interpreter_2 = new divine::llvm::Interpreter( alloc, m );
         _module = m;
 
         return *_interpreter;

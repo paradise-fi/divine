@@ -12,7 +12,7 @@
 #define DIVINE_LLVM_PROGRAM_H
 
 namespace divine {
-namespace llvm2 {
+namespace llvm {
 
 struct Interpreter;
 

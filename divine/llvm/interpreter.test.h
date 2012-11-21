@@ -1,9 +1,9 @@
-#include <divine/llvm-new/interpreter.h>
+#include <divine/llvm/interpreter.h>
 #include "llvm/LLVMContext.h"
 #include "llvm/Support/IRBuilder.h"
 
 using namespace llvm;
-namespace dlvm = divine::llvm2;
+namespace dlvm = divine::llvm;
 
 struct TestLLVM {
     LLVMContext &ctx;

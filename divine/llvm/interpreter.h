@@ -16,8 +16,8 @@
 
 #define NO_RTTI
 
-#include <divine/llvm-new/program.h>
-#include <divine/llvm-new/machine.h>
+#include <divine/llvm/program.h>
+#include <divine/llvm/machine.h>
 #include <divine/graph/allocator.h> // hmm.
 
 #include "llvm/Function.h"
@@ -43,7 +43,7 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 }
 
 namespace divine {
-namespace llvm2 {
+namespace llvm {
 
 struct Interpreter;
 

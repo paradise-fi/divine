@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2012 Petr Rockai
 
-#include <divine/llvm-new/program.h>
+#include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
 #include <divine/graph/allocator.h>
 
@@ -8,7 +8,7 @@
 #define DIVINE_LLVM_MACHINE_H
 
 namespace divine {
-namespace llvm2 {
+namespace llvm {
 
 struct MachineState
 {

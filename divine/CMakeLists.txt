@@ -30,8 +30,8 @@ if( COIN )
 endif( COIN )
 
 if( LLVM )
-    file( GLOB SRC_LLVM llvm/*.cpp llvm-new/*.cpp )
-    file( GLOB llvmtesth llvm-new/*.test.h )
+    file( GLOB SRC_LLVM llvm/*.cpp )
+    file( GLOB llvmtesth llvm/*.test.h )
 endif( LLVM )
 
 if( DVE )
