@@ -41,7 +41,11 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     result.width = target.getTypeAllocSize( val->getType() );
     if ( val->getType()->isVoidTy() )
         result.width = 0;
-    result.pointer = val->getType()->isPointerTy();
+
+    if ( val->getType()->isPointerTy() ) {
+        result.pointer = true;
+        result.width = 4;
+    }
 
     if ( auto F = dyn_cast< ::llvm::Function >( val ) )
         storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
