@@ -203,3 +203,48 @@ std::string Interpreter::describe( bool detailed ) {
 
     return s.str();
 }
+
+void MachineState::dump( std::ostream &r ) {
+    Flags &fl = flags();
+
+    r << "flags: [ " << fl.assert << " " << fl.null_dereference << " " << fl.invalid_dereference
+      << " " << fl.invalid_argument << " " << fl.ap << " " << fl.buchi << " ]" << std::endl;
+
+    r << "globals: [ ";
+    for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ )
+        r << fmtInteger( dereference( *v ), v->width * 8 ) << " ";
+    r << "]" << std::endl;
+
+    r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data = ";
+    for ( int i = 0; i < heap().segcount; ++ i ) {
+        char *where = heap().dereference( Pointer( i, 0 ) );
+        int size = heap().size( Pointer( i, 0 ) );
+        for ( int j = 0; j < size; j += 4 )
+            r << fmtInteger( where, 32 ) << " ";
+        if ( i < heap().segcount - 1 )
+            r << "| ";
+    }
+    r << std::endl;
+
+    for ( int i = 0; i < _thread_count; ++ i ) {
+        int count = 0;
+        r << "thread " << i << ", stack depth = " << stack( i ).get().length() << std::endl;
+        eachframe( stack( i ), [&]( Frame &f ) {
+                r << "frame[" << count << "]: pc = ("
+                  << f.pc.function << ":" << f.pc.block << ":"
+                  << f.pc.instruction << "), data = ";
+                ++ count;
+                if ( f.pc.function >= _info.functions.size() ) {
+                    r << "<invalid PC>" << std::endl;
+                    return;
+                }
+                auto fun = _info.function( f.pc );
+                r << "[" << fun.framesize << " bytes] ";
+                for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i )
+                    r << "[" << i->offset << "]" << fmtInteger( f.memory + i->offset, i->width * 8 ) << " ";
+                r << std::endl;
+            });
+    }
+
+    r << "--------" << std::endl;
+}

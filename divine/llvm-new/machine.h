@@ -521,6 +521,7 @@ struct MachineState
         nursery.reset( 0 ); /* nothing in the heap */
     }
 
+    void dump( std::ostream & );
 };
 
 }
