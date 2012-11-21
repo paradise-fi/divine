@@ -272,18 +272,17 @@ divine::Blob Interpreter::initial( Function *f )
                     sizeof( int ); // threads array length
     Blob pre_initial = alloc.new_blob( emptysize );
     pre_initial.clear();
+    state.rewind( pre_initial, 0 ); // there isn't a thread really
 
-    int offset = sizeof( MachineState::Flags ), idx = 0;
+    int idx = 0;
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var, ++ idx ) {
-        int w = info.globals[ idx ].width;
+        auto val = info.globals[ idx ];
         if ( var->hasInitializer() )
-            info.storeGV( pre_initial.data() + offset,
+            info.storeGV( state.dereference( val ),
                           getConstantValue( var->getInitializer() ),
-                          var->getType(), w );
-        offset += w;
+                          var->getType(), val.width );
     }
 
-    state.rewind( pre_initial, 0 ); // there isn't a thread really
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...
     state.enter( info.functionmap[ f ] );
