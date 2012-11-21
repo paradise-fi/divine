@@ -47,6 +47,14 @@ struct TestLLVM {
         return f;
     }
 
+    Function *code_mem() {
+        Function *f = _function();
+        auto *mem = builder.CreateAlloca(Type::getInt32Ty(ctx), 0, "foo");
+        builder.CreateStore(ConstantInt::get(ctx, APInt(32, 33)), mem);
+        builder.CreateRet(ConstantInt::get(ctx, APInt(32, 1)));
+        return f;
+    }
+
     Function *code_call() {
         Function *helper = _function( NULL, "helper", 0 );
         builder.CreateBr( &*(helper->begin()) );
@@ -183,6 +191,13 @@ struct TestLLVM {
         divine::Blob b = _ith( code_callret(), 1 );
         assert_eq( _descr( code_callret(), b ),
                    "0: <testf> [ %meh = call i32 @helper() ] [ meh = 42 ]\n" );
+    }
+
+    Test memory1()
+    {
+        divine::Blob b = _ith( code_mem(), 1 );
+        assert_eq( _descr( code_mem(), b ),
+                   "0: <testf> [ ret i32 1 ] [ foo = <0:0> 33 ]\n" );
     }
 
     Test idempotency()
