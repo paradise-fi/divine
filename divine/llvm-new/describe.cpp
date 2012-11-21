@@ -42,7 +42,7 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
     if ( !p.valid )
         return "null";
 
-    std::string ptr = "*" + wibble::str::fmt( p.segment ) + ":" + wibble::str::fmt( p.offset );
+    std::string ptr = wibble::str::fmt( p );
     std::string res;
     Type *pointeeTy = cast< PointerType >( t )->getElementType();
     if ( isa< FunctionType >( pointeeTy ) ) {
