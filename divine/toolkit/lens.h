@@ -74,6 +74,10 @@ struct LinearAddress {
         std::copy( dereference(), dereference() + size, to.dereference() );
         return LinearAddress( to.b, to.offset + size );
     }
+
+    void advance( int i ) {
+        offset += i;
+    }
 };
 
 #define LENS_FRIEND \
