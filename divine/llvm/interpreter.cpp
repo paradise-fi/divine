@@ -148,8 +148,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     insn.operands.resize( p.I->getNumOperands() );
     for ( int i = 0; i < p.I->getNumOperands(); ++i ) {
         ::llvm::Value *v = p.I->getOperand( i );
-        if ( dyn_cast< Constant >( v ) || dyn_cast< BasicBlock >( v ) )
-            insert( 0, v );
+        insert( p.pc.function, v ); /* use-before-def can actually happen */
         assert( valuemap.count( v ) );
         insn.operands[ i ] = valuemap[ v ];
     }
