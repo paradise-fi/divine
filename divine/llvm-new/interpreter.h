@@ -537,6 +537,7 @@ struct MachineState
 
         StateAddress stackaddr( &_info, _stack, 0 );
         _blob_stack( _thread ).copy( stackaddr );
+        assert( stack().get().length() );
         _frame = &stack().get( stack().get().length() - 1 );
    }
 
@@ -788,7 +789,7 @@ public:
     template< typename Yield >
     void run( Blob b, Yield yield ) {
         state.rewind( b, -1 ); int tid = 0;
-        while ( true ) {
+        while ( state._thread_count ) {
             run( tid, yield );
             if ( ++tid == state._thread_count )
                 break;
@@ -799,6 +800,9 @@ public:
     template< typename Yield >
     void run( int tid, Yield yield ) {
         std::set< PC > seen;
+
+        if ( !state._thread_count )
+            return; /* no more successors for you */
 
         assert_leq( tid, state._thread_count - 1 );
         state.switch_thread( tid );
