@@ -8,6 +8,7 @@ namespace dlvm = divine::llvm;
 struct TestLLVM {
     LLVMContext &ctx;
     IRBuilder<> builder;
+    divine::Allocator alloc;
 
     TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {}
 
@@ -84,8 +85,7 @@ struct TestLLVM {
     }
 
     divine::Blob _ith( Function *f, int step ) {
-        divine::Allocator a;
-        dlvm::Interpreter interpreter( a, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, f->getParent() );
         divine::Blob ini = interpreter.initial( f ), fin;
         fin = ini;
 
@@ -102,17 +102,15 @@ struct TestLLVM {
     }
 
     std::string _descr( Function *f, divine::Blob b ) {
-        divine::Allocator a;
-        dlvm::Interpreter interpreter( a, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, f->getParent() );
         interpreter.rewind( b );
         return interpreter.describe();
     }
 
     Test initial()
     {
-        divine::Allocator a;
         Function *main = code_ret();
-        dlvm::Interpreter i( a, main->getParent() );
+        dlvm::Interpreter i( alloc, main->getParent() );
         i.initial( main );
     }
 
@@ -146,8 +144,7 @@ struct TestLLVM {
     Test describe2()
     {
         Function *f = code_loop();
-        divine::Allocator a;
-        dlvm::Interpreter interpreter( a, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, f->getParent() );
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
@@ -203,8 +200,7 @@ struct TestLLVM {
     Test idempotency()
     {
         Function *f = code_loop();
-        divine::Allocator a;
-        dlvm::Interpreter interpreter( a, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, f->getParent() );
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();
