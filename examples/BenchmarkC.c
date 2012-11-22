@@ -40,13 +40,13 @@ static inline struct state *make( CESMISetup *setup, char **to ) {
     return (struct state *) ((*to) + setup->slack + 4); // FIXME
 }
 
-void system_get_initial( CESMISetup *setup, char **to )
+void get_system_initial( CESMISetup *setup, char **to )
 {
     struct state *s = make( setup, to );
     s->a = s->b = 0;
 }
 
-int system_get_successor( CESMISetup *setup, int handle, char *from, char **to )
+int get_system_successor( CESMISetup *setup, int handle, char *from, char **to )
 {
     struct state *in = (struct state *) (from + setup->slack + 4);
 
@@ -65,7 +65,7 @@ void system_setup( CESMISetup *s ) {
     s->state_size = sizeof( struct state );
 }
 
-char *system_show_node( CESMISetup *setup, char *from )
+char *show_system_node( CESMISetup *setup, char *from )
 {
     struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
     char * ret = (char *) malloc ( 50 );  // FIXME
@@ -73,7 +73,7 @@ char *system_show_node( CESMISetup *setup, char *from )
     return ret;
 }
 
-char *system_show_transition( CESMISetup *setup, char *from, char *to )
+char *show_system_transition( CESMISetup *setup, char *from, char *to )
 {
     struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
     struct state *out = (struct state *) (to + setup->slack + 4); //FIXME

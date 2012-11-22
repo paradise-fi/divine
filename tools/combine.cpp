@@ -57,7 +57,7 @@ std::string graph_to_cpp(const BA_opt_graph_t &g)
     s << "}" << std::endl;
 
     s << "extern \"C\" char *show_node( CESMISetup *setup, char *st, int l ) {" << std::endl;
-    s << "    char *sys = system_show_node( setup, st, l );" << std::endl;
+    s << "    char *sys = show_system_node( setup, st, l );" << std::endl;
     s << "    char *bonk = (char *)malloc( strlen( sys ) + 32 );" << std::endl;
     s << "    sprintf( bonk, \"[LTL: %d] %s\", *buchi_state( setup, st ) + 1, sys );" << std::endl;
     s << "    return bonk;" << std::endl;
@@ -95,8 +95,7 @@ std::string graph_to_cpp(const BA_opt_graph_t &g)
 
     decls << "extern \"C\" int get_system_successor( CESMISetup *, int, char *, char ** );" << std::endl;
     decls << "extern \"C\" void get_system_initial( CESMISetup *setup, char **to );" << std::endl;
-    decls << "extern \"C\" char *system_show_node( CESMISetup *setup, char *from, int );" << std::endl;
-    decls << "extern \"C\" bool prop_limit_active( CESMISetup *setup, char *st );" << std::endl;
+    decls << "extern \"C\" char *show_system_node( CESMISetup *setup, char *from, int );" << std::endl;
     decls << "extern \"C\" void system_setup( CESMISetup *setup );" << std::endl;
 
     for ( std::set< std::string >::iterator i = lits.begin(); i != lits.end(); ++ i )
@@ -167,7 +166,7 @@ std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > s
     s << "}" << std::endl;
 
     s << "extern \"C\" char *show_node( CESMISetup *setup, char *st, int l ) {" << std::endl;
-    s << "    char *sys = system_show_node( setup, st, l );" << std::endl;
+    s << "    char *sys = show_system_node( setup, st, l );" << std::endl;
     s << "    char *bonk = (char *)malloc( strlen( sys ) + 32 );" << std::endl;
     s << "    sprintf( bonk, \"[LTL: %d] %s\", *buchi_state( setup, st ) + 1, sys );" << std::endl;
     s << "    return bonk;" << std::endl;
@@ -205,8 +204,7 @@ std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > s
 
     decls << "extern \"C\" int get_system_successor( CESMISetup *, int, char *, char ** );" << std::endl;
     decls << "extern \"C\" void get_system_initial( CESMISetup *setup, char **to );" << std::endl;
-    decls << "extern \"C\" char *system_show_node( CESMISetup *setup, char *from, int );" << std::endl;
-    decls << "extern \"C\" bool prop_limit_active( CESMISetup *setup, char *st );" << std::endl;
+    decls << "extern \"C\" char *show_system_node( CESMISetup *setup, char *from, int );" << std::endl;
     decls << "extern \"C\" void system_setup( CESMISetup *setup );" << std::endl;
 
     for ( std::list< std::string >::iterator i = symbols.begin(); i != symbols.end(); ++ i )
