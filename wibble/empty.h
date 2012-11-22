@@ -36,7 +36,7 @@ public:
 	class const_iterator : public std::iterator<std::forward_iterator_tag, const T, void, const T*, const T&>
 	{
 	public:
-		const T& operator*() const { return *(T*)0; }
+		const T& operator*() const { return *reinterpret_cast< T* >( 0 ); }
 		const T* operator->() const { return 0; }
 		const_iterator& operator++() { return *this; }
 		bool operator==(const const_iterator&) const { return true; }
@@ -46,7 +46,7 @@ public:
 	class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
 	{
 	public:
-		T& operator*() const { return *(T*)0; }
+		T& operator*() const { return *reinterpret_cast< T* >( 0 ); }
 		T* operator->() const { return 0; }
 		iterator& operator++() { return *this; }
 		bool operator==(const iterator&) const { return true; }
