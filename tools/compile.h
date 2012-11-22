@@ -32,7 +32,7 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi;
-    
+
     void die_help( std::string bla )
     {
         opts.outputHelp( std::cerr );
@@ -71,8 +71,7 @@ struct Compile {
     static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
 	runCompiler ("g++", in, out, flags + "-O2 -fPIC -shared");
     }
-    
-    
+
     void compileDve( std::string in ) {
 #ifdef O_LEGACY
         dve_compiler compiler;
@@ -91,7 +90,7 @@ struct Compile {
     }
 
     void compileMurphi( std::string in );
-    
+
     void compileCESMI( std::string in ) {
 	std::string name( str::basename(in), 0, str::basename(in).rfind( '.' ) );
 	std::string cesmi_aux = name + "_cesmi_aux";
@@ -103,11 +102,11 @@ struct Compile {
 	else {
 	    comp = "g++";
 	    cesmi_aux = cesmi_aux + ".cpp";
-	}  
+	}
 
 	// CESMI interface with system_ prefix     model.c -> model.o, model.so
-	runCompiler( comp , str::basename( in ), name + ".o" , "-c -O2 -fPIC");
-	
+        runCompiler( comp , str::basename( in ), name + ".o" , "-c -O2 -fPIC");
+
 	//  system_ model.c -> model.noprop.so
 	run ( "sed 's/_system_//' " + str::basename( in ) + "| sed 's/system_setup/setup/' >" + cesmi_aux );
 	runCompiler( comp , cesmi_aux, name + ".so", "-O2 -fPIC -shared" );
@@ -115,7 +114,7 @@ struct Compile {
     }
 
     void main() {
-        std::string input = opts.next();        
+        std::string input = opts.next();
         if ( access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
         if ( str::endsWith( input, ".dve" ) )
