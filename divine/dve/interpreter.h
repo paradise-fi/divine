@@ -186,7 +186,7 @@ struct Transition {
     bool enabled( EvalContext &ctx, ErrorState &err ) {
         if ( process.deref( ctx.mem ) != from.deref( 0 ) )
             return false;
-        for ( int i = 0; i < guards.size(); ++i )
+        for ( size_t i = 0; i < guards.size(); ++i )
             if ( !guards[i].evaluate( ctx, &err ) )
                 return false;
         if ( sync_channel )
@@ -234,9 +234,9 @@ struct Transition {
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
         : process( proc ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
-        for ( int i = 0; i < t.guards.size(); ++ i )
+        for ( size_t i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
-        for ( int i = 0; i < t.effects.size(); ++ i )
+        for ( size_t i = 0; i < t.effects.size(); ++ i )
             effect.push_back( std::make_pair( LValue( sym, t.effects[i].lhs ),
                                               Expression( sym, t.effects[i].rhs ) ) );
         from = sym.lookup( NS::State, t.from );
@@ -262,11 +262,13 @@ static inline void declare( SymTab &symtab, const parse::Decls &decls )
         symtab.allocate( NS::Variable, *i );
         std::vector< int > init;
         EvalContext ctx;
-        for ( int j = 0; j < i->initial.size(); ++j ) {
+        for ( size_t j = 0; j < i->initial.size(); ++j ) {
             Expression ex( symtab, i->initial[ j ] );
             init.push_back( ex.evaluate( ctx ) );
         }
-        while ( init.size() < i->size )
+        // TODO: add proper runtime check for array size validity
+        assert_leq( 0, i->size );
+        while ( init.size() < (unsigned)i->size )
             init.push_back( 0 );
         symtab.constant( NS::Initialiser, i->name, init );
     }
@@ -307,7 +309,7 @@ struct Process {
                 state_readers[ state( ctx ) ].size() > 0;
     }
 
-    int enabled( EvalContext &ctx, int i, ErrorState &err ) {
+    int enabled( EvalContext &ctx, unsigned i, ErrorState &err ) {
         ErrorState temp_err = ErrorState::e_none;
         assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
         std::vector< Transition > &tr = trans[ state( ctx ) ];
@@ -320,7 +322,7 @@ struct Process {
         return i + 1;
     }
 
-    bool valid( EvalContext &ctx, int i ) {
+    bool valid( EvalContext &ctx, unsigned i ) {
         return i <= trans[ state( ctx ) ].size();
     }
 
@@ -351,14 +353,14 @@ struct Process {
         is_accepting.resize( proc.states.size(), false );
         is_commited.resize( proc.states.size(), false );
         asserts.resize( proc.states.size() );
-        for ( int i = 0; i < is_accepting.size(); ++ i ) {
-            for ( int j = 0; j < proc.accepts.size(); ++ j )
+        for ( size_t i = 0; i < is_accepting.size(); ++ i ) {
+            for ( size_t j = 0; j < proc.accepts.size(); ++ j )
                 if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
                     is_accepting[i] = true;
-            for ( int j = 0; j < proc.commits.size(); ++ j )
+            for ( size_t j = 0; j < proc.commits.size(); ++ j )
                 if ( proc.states[ i ].name() == proc.commits[ j ].name() )
                     is_commited[i] = true;
-            for ( int j = 0; j < proc.asserts.size(); ++ j )
+            for ( size_t j = 0; j < proc.asserts.size(); ++ j )
                 if ( proc.states[ i ].name() == proc.asserts[ j ].state.name() )
                     asserts[ i ].push_back( Expression( symtab, proc.asserts[ j ].expr) );
         }
@@ -387,9 +389,9 @@ struct Process {
 
     void setupSyncs( std::vector< Transition > &readers )
     {
-        for ( int w = 0; w < writers.size(); ++ w ) {
+        for ( size_t w = 0; w < writers.size(); ++ w ) {
             Transition &tw = writers[w];
-            for ( int r = 0; r < readers.size(); ++r ) {
+            for ( size_t r = 0; r < readers.size(); ++r ) {
                 Transition &tr = readers[r];
                 if ( tw.sync_channel == tr.sync_channel ) {
                     if ( tw.sync_expr.valid() != tr.sync_lval.valid() )
@@ -459,8 +461,8 @@ struct System {
         }
 
         // compute synchronisations
-        for ( int i = 0; i < processes.size(); ++ i ) {
-            for ( int j = 0; j < processes.size(); ++ j ) {
+        for ( size_t i = 0; i < processes.size(); ++ i ) {
+            for ( size_t j = 0; j < processes.size(); ++ j ) {
                 if ( i == j )
                     continue;
                 processes[ i ].setupSyncs( processes[ j ].readers );
@@ -470,7 +472,7 @@ struct System {
         // find the property process
         if ( sys.property.valid() ) {
             Symbol propid = symtab.lookup( NS::Process, sys.property );
-            for ( int i = 0; i < processes.size(); ++ i ) {
+            for ( size_t i = 0; i < processes.size(); ++ i ) {
                 if ( processes[ i ].id == propid )
                     property = &processes[ i ];
             }
@@ -491,7 +493,7 @@ struct System {
         flags.deref( ctx.mem, 0, sflags );
         sflags.commited_dirty = 0;
         sflags.commited = 0;
-        for ( int i = 0; i < processes.size(); i++ ) {
+        for ( size_t i = 0; i < processes.size(); i++ ) {
             sflags.commited |= (bool)processes[i].commited( ctx );
         }
         flags.set( ctx.mem, 0, sflags );
@@ -531,7 +533,7 @@ struct System {
     Continuation enabledPrioritized( EvalContext &ctx, Continuation cont ) {
         if ( cont == Continuation() ) {
             bool commitEnable = false;
-            for ( int i = 0; i < processes.size(); i++ ) {
+            for ( size_t i = 0; i < processes.size(); i++ ) {
                 Process &pa = processes[ i ];
                 if ( &pa == property )
                     continue;
@@ -589,7 +591,7 @@ struct System {
 
     void initial( EvalContext &ctx ) {
         flags.set(ctx.mem, 0, StateFlags::f_none);
-        for ( int i = 0; i < processes.size(); ++i ) {
+        for ( size_t i = 0; i < processes.size(); ++i ) {
             initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
         }
         initial( ctx, symtab, NS::Variable, NS::Initialiser );
