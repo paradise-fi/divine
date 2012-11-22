@@ -57,6 +57,8 @@ struct CESMI : public Common< Blob > {
         if ( !s.valid() )
             return;
 
+        call_setup();
+
         while ( handle ) {
             char *state;
             handle = dl.get_successor( &setup, handle, s.pointer(), &state );
@@ -67,6 +69,7 @@ struct CESMI : public Common< Blob > {
 
     Node initial() {
         char *state;
+        call_setup();
         assert_eq( setup.pool, &pool() );
         dl.get_initial( &setup, &state );
         return Blob( state );
@@ -110,32 +113,32 @@ struct CESMI : public Common< Blob > {
 #ifndef O_POOLS
         die( "FATAL: Pool support is required for the CESMI generator." );
 #endif
-
-        call_setup();
-    }
-
-    int setSlack( int s ) {
-        return setup.slack = s;
     }
 
     void call_setup()
     {
+        if ( setup.setup_done )
+            return;
+
         setup.has_property = 0;
         setup.slack = alloc._slack;
         setup.pool = &pool();
         if ( dl.setup )
             dl.setup( &setup );
+        setup.setup_done = true;
     }
 
     PropertyType propertyType() {
         return setup.has_property ? AC_Buchi : AC_None;
     }
 
-    CESMI() {}
+    CESMI() {
+        setup.setup_done = false;
+    }
+
     CESMI( const CESMI &other ) {
         dl = other.dl;
-        setup = other.setup;
-        call_setup();
+        setup.setup_done = false;
     }
 
 

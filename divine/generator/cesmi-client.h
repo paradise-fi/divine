@@ -101,6 +101,7 @@ typedef struct CESMISetup {
     int state_size; // The shared object fills this in. Use 0 for variable.
     int has_property; // set to 1 if this is a Buchi automaton (has accepting
                       // states and we are looking for cycles)
+    int setup_done;
 } CESMISetup;
 
 #endif
