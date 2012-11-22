@@ -106,7 +106,7 @@ struct Compile {
 	}  
 
 	// CESMI interface with system_ prefix     model.c -> model.o, model.so
-	runCompiler( comp , str::basename( in ), name + ".o" , "-c -O2");
+	runCompiler( comp , str::basename( in ), name + ".o" , "-c -O2 -fPIC");
 	
 	//  system_ model.c -> model.noprop.so
 	run ( "sed 's/system_//' " + str::basename( in ) + ">" + cesmi_aux );

@@ -256,6 +256,7 @@ struct Combine {
         std::ofstream f( filename.c_str() );
         f << "#include <malloc.h>" << std::endl;
         f << "#include <algorithm>" << std::endl;
+	f << "#include <cassert>" << std::endl;
         f << divine::compile_defines_str << std::endl;
         f << divine::generator_cesmi_client_h_str << std::endl;
         f << divine::toolkit_blob_h_str << std::endl;
