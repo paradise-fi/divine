@@ -41,7 +41,7 @@ endif( DVE )
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
-file( GLOB testh *.test.h llvm/*.test.h toolkit/*.test.h graph/*.test.h )
+file( GLOB testh *.test.h toolkit/*.test.h graph/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
