@@ -1,27 +1,27 @@
 /*
  * This is an example of usage of the CESMI interface.
  * This file is processed by the DiVinE model checker as follows:
- *  
+ *
  * 1) First we compile BenchmarkC.c into BenchmarkC.so and BenchmarkC.o
- * 
+ *
  *	$ divine compile --cesmi BenchmarkC.c
- * 
- * 2) BenchmarkC.so can be used as input model to the DiVinE model checker, 
+ *
+ * 2) BenchmarkC.so can be used as input model to the DiVinE model checker,
  *    should anybody be interested in the state space graph of it, see e.g.
  *
  * 	$ divine draw -l BenchmarkC.so
  * 	$ divine metrics BenchmarkC.so
- * 
+ *
  * 3) BenchmarkC.o is used for model checking purposes. First, the file must be combined
  *    with LTL formulas as listed in BenchmarkC.ltl:
  *
- *	$ divine combine -l BenchmarkC.ltl BenchmarkC.o
+ *	$ divine combine -f BenchmarkC.ltl BenchmarkC.o
  *
  *    The previous command creates two new files in the working directory, BenchmarkC.prop1.so
  *    and BenchmarkC.prop2.so, which can be used as inputs to the model checker.
- * 
+ *
  * 	$ divine verify BenchmarkC.prop1.so
- *  
+ *
  */
 
 #include <stdio.h>
@@ -78,10 +78,10 @@ char *system_show_transition( CESMISetup *setup, char *from, char *to )
     struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
     struct state *out = (struct state *) (to + setup->slack + 4); //FIXME
     char * ret = (char *) malloc ( 50 );  // FIXME
-    if (in->a == out->a)
-      sprintf (ret, "b++" );
-    else
+    if (in->a != out->a)
       sprintf (ret, "a++" );
+    else
+      sprintf (ret, "b++" );
     return ret;
 }
 
