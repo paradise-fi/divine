@@ -20,19 +20,23 @@ struct ErrorState {
     uint8_t error;
 
     inline bool overflow() const {
-        return error | i_overflow;
+        return error & i_overflow;
     }
 
     inline bool arrayCheck() const {
-        return error | i_arrayCheck;
+        return error & i_arrayCheck;
     }
 
     inline bool divByZero() const {
-        return error | i_divByZero;
+        return error & i_divByZero;
     }
 
     inline bool other() const {
-        return error | i_other;
+        return error & i_other;
+    }
+
+    inline bool padding() const {
+        return error & i_padding;
     }
 
     inline void operator|=( ErrorState err ) {
@@ -58,6 +62,8 @@ struct ErrorState {
     static const uint8_t i_divByZero = 4;
     static const uint8_t i_other = 8;
     static const uint8_t i_none = 0;
+    static const uint8_t i_padding = ~( i_overflow | i_arrayCheck
+                                        | i_divByZero | i_other );
 };
 
 std::ostream &operator<<( std::ostream &o, const ErrorState &err );

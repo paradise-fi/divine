@@ -188,7 +188,7 @@ struct Expression {
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::Value retval = ctx.pop();
         if ( retval.ival.error ) {
-//             assert( !retval.errState.fill );
+            assert( !retval.ival.errState().padding() );
             if ( err )
                 err->error |= retval.ival.error;
             return true; // Black magic - We want to have transition to the error state
