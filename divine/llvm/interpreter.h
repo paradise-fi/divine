@@ -200,7 +200,8 @@ public:
             return; /* no more successors for you */
 
         assert_leq( tid, state._thread_count - 1 );
-        state.switch_thread( tid );
+        if ( state._thread != tid )
+            state.switch_thread( tid );
         assert( state.stack().get().length() );
 
         while ( true ) {
@@ -217,8 +218,9 @@ public:
             if ( choice ) {
                 assert( !jumped );
                 Blob fork = state.snapshot();
-                for ( int i = 0; i < choice; ++i ) {
-                    state.rewind( fork, -1 );
+                int limit = choice; /* make a copy, sublings must overwrite the original */
+                for ( int i = 0; i < limit; ++i ) {
+                    state.rewind( fork, tid );
                     choose( i );
                     advance();
                     run( tid, yield );
