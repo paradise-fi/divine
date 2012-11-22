@@ -62,7 +62,8 @@ let
       cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ${flags} ../source
       make
       mkdir E:\\nix-support
-      make check || touch E:\\nix-support\\failed # ignore failures for now
+      make unit || touch E:\\nix-support\\failed
+      make functional || touch E:\\nix-support\\failed
       make package
       cp tools/divine.exe E:/
       cp divine-*.exe E:/
