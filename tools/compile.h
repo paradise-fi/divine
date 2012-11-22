@@ -108,7 +108,7 @@ struct Compile {
         runCompiler( comp , str::basename( in ), name + ".o" , "-g -c -O2 -fPIC");
 
 	//  system_ model.c -> model.noprop.so
-	run ( "sed 's/_system_//' " + str::basename( in ) + "| sed 's/system_setup/setup/' >" + cesmi_aux );
+	run ( "sed 's/_system_/_/' " + str::basename( in ) + "| sed 's/system_setup/setup/' >" + cesmi_aux );
 	runCompiler( comp , cesmi_aux, name + ".so", "-g -O2 -fPIC -shared" );
 	run ( "rm -f " + cesmi_aux );
     }
