@@ -63,6 +63,8 @@ option( SMALL "reduce size of the binary, disabling optional features" OFF )
 ## MISC OPTION IMPLEMENTATION
 ##
 
+add_definitions( -Wold-style-cast )
+
 if( WIN32 )
   # PE Executables have fixed stack size and the BISON parser needs a big one
   appendFlag( "EXE_LINKER;SHARED_LINKER" "-Wl,--stack,10485760" )
