@@ -2,6 +2,7 @@
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
 #include <divine/utility/statistics.h>
+#include <divine/toolkit/lockedqueue.h>
 #include <divine/graph/store.h>
 
 #include <deque>
@@ -11,15 +12,59 @@
 
 namespace divine {
 
-template< typename Graph, typename Statistics >
-struct Queue {
-    Graph &g;
+template< typename Graph, typename Self >
+struct QueueFrontend {
+    Self &self() { return *static_cast< Self * >( this ); }
+    bool deadlocked;
+
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
+
+    template< typename Next >
+    void processOpen( Next next ) {
+        deadlocked = true;
+
+        Node from = self().front();
+        bool permanent = visitor::permanent( from );
+        visitor::setPermanent( from );
+
+        self().g.successors( from, [&]( Node n, Label label ) {
+                deadlocked = false;
+                next( from, n, label );
+            } );
+
+        visitor::setPermanent( from, permanent );
+        self().g.release( from ); // Hm.
+    }
+
+    template< typename Dead >
+    void processDead( Dead dead ) {
+        if ( deadlocked && !self().empty() )
+            dead( self().front() );
+    }
+
+    template< typename Close >
+    void processClosed( Close close ) {
+        if ( !self().empty() ) {
+            close( self().front() );
+            self().pop_front();
+        }
+    }
+
+    QueueFrontend() : deadlocked( true ) {}
+};
+
+template< typename Graph, typename Statistics >
+struct Queue : QueueFrontend< Graph, Queue< Graph, Statistics > >
+{
+    Graph &g;
+    typedef typename Graph::Node Node;
     std::deque< Node > _queue;
 
-    bool deadlocked;
     int id;
+
+    Node front() { return _queue.front(); }
+    void pop_front() { _queue.pop_front(); }
 
     void reserve( int n ) { _queue.reserve( n ); }
     int size() { return _queue.size(); } // XXX misleading?
@@ -30,41 +75,10 @@ struct Queue {
         _queue.push_back( t );
     }
 
-    template< typename Next >
-    void processOpen( Next next ) {
-        deadlocked = true;
-
-        Node from = _queue.front();
-        bool permanent = visitor::permanent( from );
-        visitor::setPermanent( from );
-
-        g.successors( from, [&]( Node n, Label label ) {
-                deadlocked = false;
-                next( from, n, label );
-            } );
-
-        visitor::setPermanent( from, permanent );
-        g.release( from ); // Hm.
-    }
-
-    template< typename Dead >
-    void processDead( Dead dead ) {
-        if ( deadlocked && !empty() )
-            dead( _queue.front() );
-    }
-
-    template< typename Close >
-    void processClosed( Close close ) {
-        if ( !empty() ) {
-            close( _queue.front() );
-            _queue.pop_front();
-        }
-    }
-
     bool empty() { return _queue.empty(); }
     void clear() { _queue.clear(); }
 
-    Queue( Graph &_g ) : g( _g ), deadlocked( true ), id( 0 ) {}
+    Queue( Graph &_g ) : g( _g ), id( 0 ) {}
 };
 
 template< typename Graph, typename Statistics >
@@ -133,6 +147,78 @@ struct Stack {
     void clear() { _stack.clear(); }
 
     Stack( Graph &_g ) : g( _g ) { _pushes = _pops = 0; }
+};
+
+/**
+ * An adaptor over a LockedQueue to lump access into big chunks. Implements a
+ * graph-traversal-friendly inteface, same as the above two.
+ */
+template < typename G, typename Statistics >
+struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
+{
+    typedef std::deque< typename G::Node > Chunk;
+    typedef divine::LockedQueue< Chunk > ChunkQ;
+    typedef typename G::Node T;
+    typedef G Graph;
+
+    Graph &g;
+
+    const unsigned maxChunkSize;
+    unsigned chunkSize;
+    ChunkQ *_chunkq;
+
+    Chunk outgoing;
+    Chunk incoming;
+
+    ChunkQ &chunkq() { assert( _chunkq ); return *_chunkq; }
+    SharedQueue( ChunkQ &q ) : maxChunkSize( 1024 ), chunkSize( 8 ), _chunkq( &q )
+    {
+	outgoing.reserve( chunkSize );
+    }
+
+    ~SharedQueue() { flush(); }
+
+    /**
+     * Push current chunk even though it's not full. To be called by threads
+     * when the queue is empty.
+     */
+    void flush() {
+	if ( !outgoing.empty() ) {
+	    Chunk tmp;
+	    tmp.reserve( chunkSize );
+	    std::swap( outgoing, tmp );
+	    chunkq().push( std::move( tmp ) );
+
+	    /* A quickstart trick -- make first few chunks smaller. */
+	    if ( chunkSize < maxChunkSize )
+		chunkSize = std::max( 2 * chunkSize, maxChunkSize );
+	}
+    }
+
+    void push( const T &b ) {
+        /* TODO statistics */
+	outgoing.push_back( b );
+	if ( outgoing.size() >= chunkSize )
+	    flush();
+    }
+
+    T front() { return incoming.front(); }
+    void pop_front() {
+        incoming.pop_front();
+        if ( incoming.empty() ) /* try to get a fresh one */
+            incoming = chunkq().pop();
+    }
+
+    bool empty() { return incoming.empty(); }
+    void clear() {
+        incoming.clear();
+        while ( !chunkq().empty )
+            chunkq().pop();
+    }
+
+    SharedQueue( Graph &_g ) : g( _g ) {}
+
+    /* No r-value push because it's not necessary for Blob. */
 };
 
 template< typename T >
