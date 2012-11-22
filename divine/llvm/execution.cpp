@@ -458,29 +458,23 @@ void Interpreter::switchBB( PC target )
     if ( !isa<PHINode>( instruction().op ) )
         return;  // Nothing fancy to do
 
-    assert_die();
-#if 0
-    // Loop over all of the PHI nodes in the current block, reading their inputs.
-    std::vector<GenericValue> ResultValues;
+    MachineState::Frame &original = state.frame();
+    int framesize = original.framesize( info );
+    Blob tmp( sizeof( MachineState::Frame ) + framesize );
+    MachineState::Frame &copy = tmp.get< MachineState::Frame >();
+    copy = state.frame();
 
-    for (; PHINode *PN = dyn_cast<PHINode>(next.insn); ++next.insn) {
-        // Search for the value corresponding to this previous bb...
-        int i = PN->getBasicBlockIndex(previous.block);
-        assert(i != -1 && "PHINode doesn't contain entry for predecessor??");
-        Value *IncomingValue = PN->getIncomingValue(i);
-
-        // Save the incoming value for this PHI node...
-        ResultValues.push_back(getOperandValue(IncomingValue, SF));
+    std::copy( original.memory, original.memory + framesize, copy.memory );
+    while ( PHINode *PN = dyn_cast<PHINode>(instruction().op) ) {
+        /* TODO use operands directly, avoiding valuemap lookup */
+        auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
+        char *value = ( v.global || v.constant ) ?
+                          state.dereference( v ) : original.dereference( info, v );
+        char *result = copy.dereference( info, instruction().result );
+        std::copy( value, value + v.width, result );
+        advance();
     }
-
-    // Now loop over all of the PHI nodes setting their values...
-    next.insn = next.block->begin();
-    for (unsigned i = 0; isa<PHINode>(next.insn); ++next.insn, ++i) {
-        PHINode *PN = cast<PHINode>(next.insn);
-        SetValue(PN, ResultValues[i], SF);
-    }
-    setLocation( SF, next );
-#endif
+    std::copy( copy.memory, copy.memory + framesize, original.memory );
 }
 
 //===----------------------------------------------------------------------===//

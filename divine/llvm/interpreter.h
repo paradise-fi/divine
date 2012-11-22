@@ -170,14 +170,12 @@ public:
     void choose( int32_t i );
 
     void advance() {
-        if ( !jumped ) { // did not jump
-            pc().instruction ++;
-            if ( !instruction().op ) {
-                PC to = pc();
-                to.block ++;
-                to.instruction = 0;
-                switchBB( to );
-            }
+        pc().instruction ++;
+        if ( !instruction().op ) {
+            PC to = pc();
+            to.block ++;
+            to.instruction = 0;
+            switchBB( to );
         }
     }
 
@@ -229,7 +227,8 @@ public:
                 return;
             }
 
-            advance();
+            if ( !jumped )
+                advance();
 
             if ( ( observable && !pc().masked ) || seen.count( pc() ) ) {
                 yield( state.snapshot() );
