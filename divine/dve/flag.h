@@ -10,13 +10,6 @@ namespace divine {
 namespace dve {
 
 struct ErrorState {
-        /*struct {
-            uint8_t overflow:1;
-            uint8_t arrayCheck:1;
-            uint8_t divByZero:1;
-            uint8_t other:1;
-            uint8_t fill:4;
-        };*/
     uint8_t error;
 
     inline bool overflow() const {

@@ -20,7 +20,7 @@ struct EvalContext {
         ImmValue ( int v ) : value( v ), error( 0 ) {}
         ImmValue ( ErrorState state ) : value( 0 ), error( state.error ) {}
         ImmValue () : value( 0 ), error( 0 ) {}
-        //ImmValue( int v, ErrorState state ) : value( v ), errState( state ) {}
+
         inline ErrorState errState() {
             return ErrorState( error );
         }
