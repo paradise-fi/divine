@@ -69,7 +69,7 @@ struct Compile {
     }
 
     static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
-	runCompiler ("g++", in, out, flags + "-O2 -fPIC -shared");
+	runCompiler ("g++", in, out, flags + "-g -O2 -fPIC -shared");
     }
 
     void compileDve( std::string in ) {
@@ -105,11 +105,11 @@ struct Compile {
 	}
 
 	// CESMI interface with system_ prefix     model.c -> model.o, model.so
-        runCompiler( comp , str::basename( in ), name + ".o" , "-c -O2 -fPIC");
+        runCompiler( comp , str::basename( in ), name + ".o" , "-g -c -O2 -fPIC");
 
 	//  system_ model.c -> model.noprop.so
 	run ( "sed 's/_system_//' " + str::basename( in ) + "| sed 's/system_setup/setup/' >" + cesmi_aux );
-	runCompiler( comp , cesmi_aux, name + ".so", "-O2 -fPIC -shared" );
+	runCompiler( comp , cesmi_aux, name + ".so", "-g -O2 -fPIC -shared" );
 	run ( "rm -f " + cesmi_aux );
     }
 
