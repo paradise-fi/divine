@@ -141,7 +141,7 @@ struct Channel {
 
     Channel() : _valid( false ) {}
 
-    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 0 ),  is_array( 0 ), size( 1 ), _valid( true )
+    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 1 ),  is_array( 0 ), size( 1 ), _valid( true )
     {
         is_buffered = chandecl.is_buffered;
         bufsize = chandecl.size;
