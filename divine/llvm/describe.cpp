@@ -103,9 +103,11 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
     Type *type = val->getType();
     auto vname = val->getValueName();
 
-    if ( vname )
+    if ( vname ) {
         name = vname->getKey();
-    else if ( type->isVoidTy() )
+        if ( name.find( '.' ) != std::string::npos && !anonymous )
+            name = ""; /* ignore compiler-generated values */
+    } else if ( type->isVoidTy() )
         ;
     else if ( anonymous ) /* This is a hack. */
         name = "%" + wibble::str::fmt( (*anonymous)++ );
