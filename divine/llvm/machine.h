@@ -201,6 +201,7 @@ struct MachineState
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
+    bool _blob_private;
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
@@ -284,6 +285,10 @@ struct MachineState
 
     void rewind( Blob to, int thread = 0 )
     {
+        if ( _blob_private && _blob.valid() )
+            _blob.free( _alloc.pool() );
+
+        _blob_private = false;
         _blob = to;
         _thread = -1; // special
 
@@ -295,8 +300,20 @@ struct MachineState
         // else everything becomes rather unsafe...
     }
 
+    void resnap() {
+        Blob snap = snapshot();
+
+        if ( _blob_private && _blob.valid() )
+            _blob.free( _alloc.pool() );
+
+        _blob_private = true;
+        _blob = snap;
+    }
+
     void switch_thread( int thread )
     {
+        resnap();
+
         assert_leq( thread, threads().get().length() - 1 );
         _thread = thread;
 
@@ -308,12 +325,8 @@ struct MachineState
 
     int new_thread()
     {
-        Blob old = _blob;
-        _blob = snapshot();
-        old.free( _alloc.pool() );
+        resnap();
         _thread = _thread_count ++;
-
-        /* Set up an empty thread. */
         stack().get().length() = 0;
         return _thread;
     }
@@ -529,7 +542,7 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
-        : _stack( 4096 ), _info( i ), _alloc( alloc )
+        : _stack( 4096 ), _info( i ), _alloc( alloc ), _blob_private( false )
     {
         _thread_count = 0;
         _frame = nullptr;
