@@ -520,7 +520,7 @@ struct GetElement : Implementation {
 };
 
 void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
-    implement2< GetElement >( instruction() );
+    implement1< GetElement >( instruction() );
 }
 
 struct Load : Implementation {
