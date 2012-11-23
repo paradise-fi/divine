@@ -185,7 +185,10 @@ void ProgramInfo::storeGV( char *where, GenericValue GV, Type *ty, int width )
 void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
 {
     result.constant = true;
-    result.width = target.getTypeStoreSize( ty );
+    if ( !result.pointer )
+        assert_eq( result.width, target.getTypeStoreSize( ty ) );
+    else
+        assert_eq( result.width, 4 );
     storeGV( allocateConstant( result ), GV, ty, result.width );
 }
 
