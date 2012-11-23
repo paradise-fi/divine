@@ -190,16 +190,11 @@ struct ProgramInfo {
 
     void storeGV( char *where, ::llvm::GenericValue GV, ::llvm::Type *ty, int width );
 
-    void storeConstant( Value &result, int v ) {
-        result.width = sizeof( int );
+    template< typename T >
+    void storeConstant( Value &result, T value ) {
+        assert_eq( result.width, sizeof( T ) );
         allocateConstant( result );
-        constant< int >( result ) = v;
-    }
-
-    void storeConstant( Value &result, PC pc ) {
-        result.width = sizeof( PC );
-        allocateConstant( result );
-        constant< PC >( result ) = pc;
+        constant< T >( result ) = value;
     }
 
     void storeConstant( Value &result, ::llvm::GenericValue GV, ::llvm::Type *ty );
