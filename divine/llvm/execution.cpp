@@ -542,7 +542,6 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 }
 
 void Interpreter::visitStoreInst(StoreInst &I) {
-    observable = true;
     implement2< Store >( instruction() );
 }
 

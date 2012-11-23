@@ -63,13 +63,17 @@ public:
     ::llvm::Module *module; /* The bitcode. */
     MachineState state; /* the state we are dealing with */
     ProgramInfo info;
-    bool jumped, observable;
+    bool jumped;
     int choice;
 
     Allocator &alloc;
 
     void parseProperties( Module *M );
     void buildInfo( Module *M );
+
+    bool observable() {
+        return isa< StoreInst >( instruction().op );
+    }
 
     std::pair< Type *, char * > dereference(
         Type *t, ProgramInfo::Value v, int tid = -1, int frame = 0 )
@@ -205,11 +209,17 @@ public:
         assert( state.stack().get().length() );
 
         while ( true ) {
-            seen.insert( pc() );
-            state.flags().assert = false;
-            observable = jumped = false;
-            choice = 0;
+            /* do not execute the instruction yet! */
+            if ( ( observable() && !pc().masked && !seen.empty() ) ||
+                 seen.count( pc() ) ) {
+                yield( state.snapshot() );
+                return;
+            }
 
+            state.flags().assert = false;
+            jumped = false;
+            choice = 0;
+            seen.insert( pc() );
             visit( instruction().op );
 
             if ( !state.stack().get().length() )
@@ -231,11 +241,6 @@ public:
 
             if ( !jumped )
                 advance();
-
-            if ( ( observable && !pc().masked ) || seen.count( pc() ) ) {
-                yield( state.snapshot() );
-                return;
-            }
         }
 
         yield( state.snapshot() );
