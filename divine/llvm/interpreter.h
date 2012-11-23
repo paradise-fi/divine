@@ -292,9 +292,14 @@ public:
     void leaveFrame(); /* without a return value */
     void leaveFrame( Type *ty, ProgramInfo::Value result );
 
-private:  // Helper functions
-    /* The following two are used by getConstantValue */
-    void *getPointerToFunction(Function *F) { assert_die(); }
+private:
+
+    /* The following are used by getConstantValue */
+    void *getPointerToFunction(Function *F) {
+        PC pc( info.functionmap[ F ], 0, 0 );
+        uint32_t *alias = reinterpret_cast< uint32_t * >( &pc );
+        return reinterpret_cast< void * >( *alias );
+    }
     void *getPointerToNamedFunction(const std::string &, bool) { assert_die(); }
     void *getPointerToBasicBlock(BasicBlock *BB) { assert_die(); }
 
