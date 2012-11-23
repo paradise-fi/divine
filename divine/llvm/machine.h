@@ -353,7 +353,7 @@ struct MachineState
     }
 
     Frame &frame( int thread = -1, int idx = 0 ) {
-         if ( !idx )
+        if ( ( thread == _thread || thread < 0 ) && !idx )
              return *_frame;
 
         auto s = stack( thread );
