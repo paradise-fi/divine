@@ -323,8 +323,8 @@ void Interpreter::visitSelectInst(SelectInst &) {
 /* Control flow. */
 
 struct Copy : Implementation {
-    template< typename X >
-    void operator()( X &r, X &l )
+    template< typename X, typename Y >
+    auto operator()( X &r, Y &l ) -> decltype( declcheck( r = l ) )
     {
         r = l;
     }
@@ -611,51 +611,51 @@ void Interpreter::visitCallSite(CallSite CS) {
 }
 
 void Interpreter::visitTruncInst(TruncInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitSExtInst(SExtInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitZExtInst(ZExtInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitFPTruncInst(FPTruncInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitFPExtInst(FPExtInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitUIToFPInst(UIToFPInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitSIToFPInst(SIToFPInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitFPToUIInst(FPToUIInst &I) {
-    implement2< Copy >( instruction() ); // XXX rounding!
+    implement1< Copy >( instruction() ); // XXX rounding!
 }
 
 void Interpreter::visitFPToSIInst(FPToSIInst &I) {
-    implement2< Copy >( instruction() ); // XXX rounding!
+    implement1< Copy >( instruction() ); // XXX rounding!
 }
 
 void Interpreter::visitPtrToIntInst(PtrToIntInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitIntToPtrInst(IntToPtrInst &I) {
-    implement2< Copy >( instruction() );
+    implement1< Copy >( instruction() );
 }
 
 void Interpreter::visitBitCastInst(BitCastInst &I) {
-    implement2< BitCast >( instruction() ); // XXX?
+    implement1< BitCast >( instruction() );
 }
 
 void Interpreter::choose( int32_t result )
