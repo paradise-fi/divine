@@ -129,7 +129,16 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
 
 std::string Interpreter::describe( bool detailed ) {
     std::stringstream s;
+    std::vector< std::string > globals;
+
     DescribeSeen seen;
+
+    for ( auto v = module->global_begin(); v != module->global_end(); ++v )
+        describeValue( &*v, 0, &seen, nullptr, &globals );
+
+    if ( globals.size() )
+        s << "global: " << wibble::str::fmt( globals ) << std::endl;
+
     for ( int c = 0; c < state._thread_count; ++c ) {
         std::vector< std::string > vec;
         std::stringstream locs;
