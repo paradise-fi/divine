@@ -131,7 +131,7 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.valid && p.segment < segcount;
+            return p.heap && p.segment < segcount;
         }
 
         char *dereference( Pointer p ) {
@@ -160,7 +160,7 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.valid && (p.segment - segshift < offsets.size() - 1);
+            return p.heap && (p.segment - segshift < offsets.size() - 1);
         }
 
         int offset( Pointer p ) {
@@ -221,8 +221,12 @@ struct MachineState
     typedef lens::Array< Stack > Threads;
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
+    bool globalPointer( Pointer p ) {
+        return !p.heap && p.segment == 1;
+    }
+
     bool validate( Pointer p ) {
-        return p.valid && ( heap().owns( p ) || nursery.owns( p ) );
+        return !p.null() && ( globalPointer( p ) || heap().owns( p ) || nursery.owns( p ) );
     }
 
     Lens< State > state() {
@@ -231,7 +235,9 @@ struct MachineState
 
     char *dereference( Pointer p ) {
         assert( validate( p ) );
-        if ( heap().owns( p ) )
+        if ( globalPointer( p ) )
+             return state().get( Globals() ).memory + p.offset;
+        else if ( heap().owns( p ) )
             return heap().dereference( p );
         else
             return nursery.dereference( p );

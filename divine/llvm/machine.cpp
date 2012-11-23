@@ -90,7 +90,7 @@ struct divine::llvm::Canonic
     {}
 
     Pointer operator[]( Pointer idx ) {
-        if ( !idx.valid )
+        if ( !idx.heap )
             return idx;
         if ( !segmap.count( idx.segment ) ) {
             segmap.insert( std::make_pair( int( idx.segment ), segcount ) );
@@ -103,7 +103,7 @@ struct divine::llvm::Canonic
 
 void MachineState::trace( Pointer p, Canonic &canonic )
 {
-    if ( p.valid ) {
+    if ( p.heap ) {
         canonic[ p ];
         trace( followPointer( p ), canonic );
     }

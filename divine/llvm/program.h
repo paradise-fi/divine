@@ -44,22 +44,24 @@ struct PC : wibble::mixin::Comparable< PC >
  * segment boundaries through pointer arithmetic or any other manipulation.
  */
 struct Pointer : wibble::mixin::Comparable< Pointer > {
-    bool valid:1; /* make a (0, 0) pointer different from NULL */
+    bool heap:1; /* make a (0, 0) pointer different from NULL */
     uint32_t segment:16; /* at most 64k objects */
     uint32_t offset:15; /* each at most 32kB */
     Pointer operator+( int relative ) {
         return Pointer( segment, offset + relative );
     }
-    Pointer( int segment, int offset )
-        : valid( true ), segment( segment ), offset( offset )
+    explicit Pointer( int global )
+        : heap( false ), segment( 1 ), offset( global )
     {}
-    Pointer() : valid( false ), segment( 0 ), offset( 0 ) {}
-    bool null() { return !valid; } // all size = 0 pointers represent NULL
+    Pointer( int segment, int offset )
+        : heap( true ), segment( segment ), offset( offset )
+    {}
+    Pointer() : heap( false ), segment( 0 ), offset( 0 ) {}
+    bool null() { return !heap && !segment; }
 
     bool operator<=( Pointer o ) const {
-        if ( segment < o.segment )
-            return true;
-        return segment == o.segment && offset <= o.offset;
+        return std::make_tuple( int( heap ), int( segment ), int( offset ) )
+            <= std::make_tuple( int( o.heap ), int( o.segment ), int( o.offset ) );
     }
 };
 
