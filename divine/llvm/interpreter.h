@@ -182,9 +182,10 @@ public:
     template< typename Yield >
     void run( Blob b, Yield yield ) {
         state.rewind( b, -1 ); int tid = 0;
-        while ( state._thread_count ) {
+        int threads = state._thread_count;
+        while ( threads ) {
             run( tid, yield );
-            if ( ++tid == state._thread_count )
+            if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
         }
