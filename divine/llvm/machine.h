@@ -358,6 +358,7 @@ struct MachineState
     }
 
     void dump( std::ostream & );
+    void dump();
 };
 
 }

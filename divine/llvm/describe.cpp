@@ -267,3 +267,7 @@ void MachineState::dump( std::ostream &r ) {
 
     r << "--------" << std::endl;
 }
+
+void MachineState::dump() {
+    dump( std::cerr );
+}
