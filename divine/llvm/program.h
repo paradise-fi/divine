@@ -212,6 +212,7 @@ struct ProgramInfo {
     Position lower( Position ); // convert intrinsic into normal insns
     void builtin( Position );
     Value insert( int function, ::llvm::Value *val );
+    void build( ::llvm::Module *m );
 
     ProgramInfo( ::llvm::TargetData &td, Interpreter &i ) : target( td ), interpreter( i )
     {
