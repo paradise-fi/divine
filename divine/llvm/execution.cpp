@@ -581,7 +581,11 @@ void Interpreter::visitCallSite(CallSite CS) {
             case BuiltinMask: state.frame().pc.masked = true; return;
             case BuiltinUnmask: state.frame().pc.masked = false; return;
             case BuiltinGetTID: assert_die(); /* TODO */
-            case BuiltinNewThread: assert_die(); /* TODO */
+            case BuiltinNewThread:
+                Pointer entry = implementN< Get< Pointer > >( dereferenceOperand( instruction(), 0 ) );
+                /* As far as LLVM is concerned, entry is a Pointer, but in fact it's a PC. */
+                new_thread( *reinterpret_cast< PC * >( &entry ) );
+                return; /* TODO result! */
         }
 
     }
