@@ -223,8 +223,16 @@ void MachineState::dump( std::ostream &r ) {
 
     r << "globals: [ ";
     for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ )
-        r << fmtInteger( dereference( *v ), v->width * 8 ) << " ";
+        if ( !v->constant )
+            r << fmtInteger( dereference( *v ), v->width * 8 ) << " ";
     r << "]" << std::endl;
+
+    r << "constdata: [ ";
+    for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ )
+        if ( v->constant )
+            r << fmtInteger( dereference( *v ), v->width * 8 ) << " ";
+    r << "]" << std::endl;
+
 
     r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data = ";
     for ( int i = 0; i < heap().segcount; ++ i ) {
