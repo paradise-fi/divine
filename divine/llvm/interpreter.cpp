@@ -64,7 +64,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                     storeConstant( result, interpreter.getConstantValue( G->getInitializer() ),
                                    C->getType() );
                 } else allocateValue( 0, result );
-            } else assert_die(); /* duh. */
+            } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
         } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
     } else allocateValue( function, result );
 
