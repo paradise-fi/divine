@@ -166,6 +166,7 @@ public:
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
     void new_thread( Function *f );
+    void new_thread( PC pc );
     void rewind( Blob b ) { state.rewind( b, 0 ); }
     void choose( int32_t i );
 
