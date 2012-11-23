@@ -208,6 +208,7 @@ struct ProgramInfo {
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
     void builtin( Position );
+    void initValue( ::llvm::Value *val, Value &result );
     Value insert( int function, ::llvm::Value *val );
     void build( ::llvm::Module *m );
 

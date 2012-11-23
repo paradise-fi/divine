@@ -71,7 +71,7 @@ divine::Blob Interpreter::initial( Function *f )
         if ( var->hasInitializer() )
             info.storeGV( state.dereference( val ),
                           getConstantValue( var->getInitializer() ),
-                          var->getType(), val.width );
+                          var->getInitializer()->getType(), val.width );
     }
 
     int tid = state.new_thread(); // switches automagically

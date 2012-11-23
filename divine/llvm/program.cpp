@@ -21,6 +21,28 @@ static void handleBB( ProgramInfo *info, ProgramInfo::Value &result, ::llvm::Bas
     info->storeConstant( result, info->blockmap[ b ] );
 }
 
+static bool isCodePointer( ::llvm::Value *val )
+{
+    return isa< ::llvm::Function >( val ) ||
+           isa< ::llvm::BlockAddress >( val ) ||
+           isa< ::llvm::BasicBlock >( val );
+}
+
+void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
+{
+    result.width = target.getTypeAllocSize( val->getType() );
+    if ( val->getType()->isVoidTy() )
+        result.width = 0;
+
+    if ( val->getType()->isPointerTy() ) {
+        result.pointer = !isCodePointer( val );
+        result.width = 4;
+    }
+
+    if ( isCodePointer( val ) )
+        result.width = 4;
+}
+
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 {
     if ( valuemap.find( val ) != valuemap.end() )
@@ -29,16 +51,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     makeFit( functions, function );
 
     Value result; /* not seen yet, needs to be allocated */
-    result.width = target.getTypeAllocSize( val->getType() );
-    if ( val->getType()->isVoidTy() )
-        result.width = 0;
-
-    if ( val->getType()->isPointerTy() ) {
-        result.pointer = !isa< ::llvm::Function >( val ) &&
-                         !isa< ::llvm::BlockAddress >( val ) &&
-                         !isa< ::llvm::BasicBlock >( val );
-        result.width = 4;
-    }
+    initValue( val, result );
 
     if ( auto F = dyn_cast< ::llvm::Function >( val ) )
         storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
@@ -50,11 +63,17 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         if ( result.pointer ) {
             result.global = true;
             if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
-                if ( G->isConstant() ) {
-                    assert( G->hasInitializer() );
+                assert( G->hasInitializer() ); /* extern globals are not allowed */
+                if ( G->isConstant() )
                     storeConstant( result, interpreter.getConstantValue( G->getInitializer() ),
                                    C->getType() );
-                } else allocateValue( 0, result );
+                else {
+                    Value pointee;
+                    initValue( G->getInitializer(), pointee );
+                    allocateValue( 0, pointee );
+                    globals.push_back( pointee );
+                    storeConstant( result, Pointer( pointee.offset ) );
+                }
             } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
         } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
     } else allocateValue( function, result );
