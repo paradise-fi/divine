@@ -10,7 +10,7 @@
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/Constants.h>
 #include <llvm/Support/system_error.h>
 
 #include <divine/generator/common.h>
@@ -124,9 +124,9 @@ struct LLVM : Common< Blob > {
         for ( int i = 0; i < ap->getNumOperands(); ++i ) {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );
+            assert_die();
             if ( name->getString() == lit )
-                return 1 + interpreter().constantGV(
-                    cast< Constant >( it->getOperand(2) ) ).IntVal.getZExtValue();
+                return 1 + cast< ConstantInt >( it->getOperand(2) )->getValue().getZExtValue();
         }
         assert_die();
     }
