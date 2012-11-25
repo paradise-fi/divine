@@ -46,6 +46,9 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.type = Value::CodePointer;
         result.width = 4;
     }
+
+    if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( val ) )
+        result.width = CDS->getNumElements() * CDS->getElementByteSize();
 }
 
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
@@ -63,16 +66,13 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
+            Value pointee;
             assert( G->hasInitializer() ); /* extern globals are not allowed */
-            if ( G->isConstant() )
-                makeLLVMConstant( result, G->getInitializer() );
-            else {
-                Value pointee;
-                initValue( G->getInitializer(), pointee );
-                allocateValue( 0, pointee );
-                globals.push_back( pointee );
-                makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
-            }
+            pointee.constant = G->isConstant();
+            initValue( G->getInitializer(), pointee );
+            allocateValue( 0, pointee );
+            globals.push_back( pointee );
+            makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
 

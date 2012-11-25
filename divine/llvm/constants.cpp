@@ -32,6 +32,21 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         else assert_die();
     } else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
         ; /* nothing to do, everything is zeroed by default */
+    else if ( auto CA = dyn_cast< ::llvm::ConstantArray >( C ) ) {
+        Value sub = v; /* inherit offset & global/constant status */
+        for ( int i = 0; i < CA->getNumOperands(); ++i ) {
+            initValue( C->getOperand( i ), sub );
+            storeConstant( sub, cast< ::llvm::Constant >( C->getOperand( i ) ), global );
+            sub.offset += sub.width;
+        }
+    } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
+        assert_eq( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
+        const char *raw = CDS->getRawDataValues().data();
+        std::copy( raw, raw + v.width, econtext.dereference( v ) );
+    } else if ( auto CV = dyn_cast< ::llvm::ConstantVector >( C ) )
+        assert_die(); /* don't know how to handle yet */
+    else if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) )
+        assert_die();
     else assert_die();
 }
 
