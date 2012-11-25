@@ -5,18 +5,18 @@
 #include <wibble/exception.h>
 
 #include <divine/llvm/program.h>
-#include <divine/llvm/interpreter.h>
-#include <divine/llvm/execution.h>
 
 #include <llvm/Type.h>
 #include <llvm/GlobalVariable.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/Support/CallSite.h>
 #include <llvm/Constants.h>
+#include <llvm/Module.h>
 
 using namespace divine::llvm;
 using ::llvm::isa;
 using ::llvm::dyn_cast;
+using ::llvm::cast;
 
 static bool isCodePointer( ::llvm::Value *val )
 {
@@ -86,38 +86,6 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     return result;
 }
 
-void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, char *global )
-{
-    GlobalContext econtext( *this, TD, global );
-    if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {
-        ControlContext ccontext;
-        Evaluator< GlobalContext, ControlContext > eval( *this, econtext, ccontext );
-
-        Instruction &comp = eval.instruction;
-        comp.op = CE;
-        comp.opcode = CE->getOpcode();
-        comp.values.push_back( v ); /* the result comes first */
-        for ( int i = 0; i < CE->getNumOperands(); ++i ) // now the operands
-            comp.values.push_back( insert( 0, CE->getOperand( i ) ) );
-        eval.run(); /* compute and write out the value */
-    } else if ( auto I = dyn_cast< ConstantInt >( C ) ) {
-        const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
-        std::copy( mem, mem + v.width, econtext.dereference( v ) );
-    } else if ( C->getType()->isPointerTy() ) {
-        if ( auto F = dyn_cast< ::llvm::Function >( C ) )
-            constant< PC >( v ) = PC( functionmap[ F ], 0, 0 );
-        else if ( auto B = dyn_cast< ::llvm::BlockAddress >( C ) )
-            constant< PC >( v ) = blockmap[ B->getBasicBlock() ];
-        else if ( auto B = dyn_cast< ::llvm::BasicBlock >( C ) )
-            constant< PC >( v ) = blockmap[ B ];
-        else if ( isa< ConstantPointerNull >( C ) )
-            constant< Pointer >( v ) = Pointer();
-        else assert_die();
-    } else if ( isa< ConstantAggregateZero >( C ) )
-        ; /* nothing to do, everything is zeroed by default */
-    else assert_die();
-}
-
 /* This is silly. */
 ProgramInfo::Position ProgramInfo::lower( Position p )
 {
@@ -126,7 +94,7 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
     auto insert = p.I;
 
     if ( !first ) --insert;
-    IL->LowerIntrinsicCall( cast< CallInst >( p.I ) );
+    IL->LowerIntrinsicCall( cast< ::llvm::CallInst >( p.I ) );
     if ( first ) insert = BB->begin();
 
     return Position( p.pc, insert );
@@ -135,7 +103,7 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
 void ProgramInfo::builtin( Position p )
 {
     ProgramInfo::Instruction &insn = instruction( p.pc );
-    CallSite CS( p.I );
+    ::llvm::CallSite CS( p.I );
     ::llvm::Function *F = CS.getCalledFunction();
     std::string name = F->getName().str();
     if ( name == "__divine_interrupt_mask" )
@@ -172,7 +140,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     if ( dyn_cast< ::llvm::CallInst >( p.I ) ||
          dyn_cast< ::llvm::InvokeInst >( p.I ) )
     {
-        CallSite CS( p.I );
+        ::llvm::CallSite CS( p.I );
         ::llvm::Function *F = CS.getCalledFunction();
         if ( F && F->isDeclaration() )
             switch ( F->getIntrinsicID() ) {
@@ -229,7 +197,7 @@ void ProgramInfo::build()
 
         if ( function->begin() == function->end() )
             throw wibble::exception::Consistency(
-                "Interpreter::buildInfo",
+                "ProgramInfo::build",
                 "Can't deal with empty functions." );
 
         functionmap[ function ] = pc.function;
@@ -248,7 +216,7 @@ void ProgramInfo::build()
         {
             if ( block->begin() == block->end() )
                 throw wibble::exception::Consistency(
-                    "Interpreter::buildInfo",
+                    "ProgramInfo::build",
                     "Can't deal with an empty BasicBlock" );
 
             pc.instruction = 0;

@@ -5,10 +5,14 @@
 #include <wibble/exception.h>
 #include <wibble/test.h>
 
+#include <divine/llvm/machine.h>
+#include <divine/llvm/program.h>
+
 #include <llvm/Instructions.h>
 #include <llvm/Constants.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/CallSite.h>
+#include <llvm/Target/TargetData.h>
 
 #include <algorithm>
 #include <cmath>
@@ -24,7 +28,14 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 namespace divine {
 namespace llvm {
 
-using namespace ::llvm;
+using ::llvm::dyn_cast;
+using ::llvm::cast;
+using ::llvm::isa;
+using ::llvm::ICmpInst;
+using ::llvm::FCmpInst;
+namespace Intrinsic = ::llvm::Intrinsic;
+using ::llvm::CallSite;
+using ::llvm::Type;
 
 template< int N, typename _T > struct Z;
 template< int N, typename _T > struct NZ { typedef _T T; };
@@ -152,6 +163,7 @@ struct Evaluator
 
     bool is_signed;
 
+    typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
     std::vector< ProgramInfo::Value > values; /* a withValues stash */
 
@@ -162,7 +174,7 @@ struct Evaluator
         ProgramInfo::Instruction i() { return _evaluator->instruction; }
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
-        TargetData &TD() { return econtext().TD; }
+        ::llvm::TargetData &TD() { return econtext().TD; }
     };
 
     char *dereference( ProgramInfo::Value v, int frame = 0 ) {
@@ -183,24 +195,24 @@ struct Evaluator
             -> decltype( declcheck( a % b ) )
         {
             switch( this->i().opcode ) {
-                case Instruction::FAdd:
-                case Instruction::Add: r = a + b; return;
-                case Instruction::FSub:
-                case Instruction::Sub: r = a - b; return;
-                case Instruction::FMul:
-                case Instruction::Mul: r = a * b; return;
-                case Instruction::FDiv:
-                case Instruction::SDiv:
-                case Instruction::UDiv: r = a / b; return;
-                case Instruction::FRem: r = std::fmod( a, b ); return;
-                case Instruction::URem:
-                case Instruction::SRem: r = a % b; return;
-                case Instruction::And:  r = a & b; return;
-                case Instruction::Or:   r = a | b; return;
-                case Instruction::Xor:  r = a ^ b; return;
-                case Instruction::Shl:  r = a << b; return;
-                case Instruction::AShr:  // XXX?
-                case Instruction::LShr:  r = a >> b; return;
+                case LLVMInst::FAdd:
+                case LLVMInst::Add: r = a + b; return;
+                case LLVMInst::FSub:
+                case LLVMInst::Sub: r = a - b; return;
+                case LLVMInst::FMul:
+                case LLVMInst::Mul: r = a * b; return;
+                case LLVMInst::FDiv:
+                case LLVMInst::SDiv:
+                case LLVMInst::UDiv: r = a / b; return;
+                case LLVMInst::FRem: r = std::fmod( a, b ); return;
+                case LLVMInst::URem:
+                case LLVMInst::SRem: r = a % b; return;
+                case LLVMInst::And:  r = a & b; return;
+                case LLVMInst::Or:   r = a | b; return;
+                case LLVMInst::Xor:  r = a ^ b; return;
+                case LLVMInst::Shl:  r = a << b; return;
+                case LLVMInst::AShr:  // XXX?
+                case LLVMInst::LShr:  r = a >> b; return;
             }
             assert_die();
         }
@@ -361,18 +373,19 @@ struct Evaluator
         {
             int total = 0;
 
-            gep_type_iterator I = gep_type_begin( this->i().op ),
-                              E = gep_type_end( this->i().op );
+            ::llvm::gep_type_iterator
+                  I = ::llvm::gep_type_begin( this->i().op ),
+                  E = ::llvm::gep_type_end( this->i().op );
 
             int meh = 1;
             for (; I != E; ++I, ++meh) {
-                if (StructType *STy = dyn_cast<StructType>(*I)) {
-                    const StructLayout *SLO = this->TD().getStructLayout(STy);
-                    const ConstantInt *CPU = cast<ConstantInt>(I.getOperand()); /* meh */
+                if (::llvm::StructType *STy = dyn_cast< ::llvm::StructType >(*I)) {
+                    const ::llvm::StructLayout *SLO = this->TD().getStructLayout(STy);
+                    const ::llvm::ConstantInt *CPU = cast< ::llvm::ConstantInt >( I.getOperand() ); /* meh */
                     int index = CPU->getZExtValue();
                     total += SLO->getElementOffset( index );
                 } else {
-                    const SequentialType *ST = cast<SequentialType>(*I);
+                    const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( *I );
                     int index = this->evaluator().withValues< Get< int > >(
                         this->i().operand( meh ) );
                     total += index * this->TD().getTypeAllocSize( ST->getElementType() );
@@ -402,7 +415,7 @@ struct Evaluator
     };
 
     void implement_alloca() {
-        AllocaInst *I = cast< AllocaInst >( instruction.op );
+        ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getType()->getElementType();  // Type to be allocated
 
         int count = withValues< Get< int > >( instruction.operand( 0 ) );
@@ -443,7 +456,7 @@ struct Evaluator
 
         ccontext.leave();
 
-        if ( isa< InvokeInst >( caller.op ) )
+        if ( isa< ::llvm::InvokeInst >( caller.op ) )
             jumpTo( caller.operand( -2 ) );
     }
 
@@ -485,7 +498,7 @@ struct Evaluator
         instruction = info.instruction( ccontext.pc() );
         assert( instruction.op );
 
-        if ( !isa<PHINode>( instruction.op ) )
+        if ( !isa< ::llvm::PHINode >( instruction.op ) )
             return;  // Nothing fancy to do
 
         MachineState::Frame &original = ccontext.frame();
@@ -495,7 +508,7 @@ struct Evaluator
         copy = ccontext.frame();
 
         std::copy( original.memory, original.memory + framesize, copy.memory );
-        while ( PHINode *PN = dyn_cast<PHINode>( instruction.op ) ) {
+        while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
             auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
             char *value = ( v.global || v.constant ) ?
@@ -510,7 +523,7 @@ struct Evaluator
 
     void implement_call() {
         CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
-        Function *F = CS.getCalledFunction();
+        ::llvm::Function *F = CS.getCalledFunction();
 
         if ( F && F->isDeclaration() ) {
 
@@ -555,7 +568,7 @@ struct Evaluator
 
         /* TODO varargs */
 
-        assert( !isa<PHINode>( instruction.op ) );
+        assert( !isa< ::llvm::PHINode >( instruction.op ) );
     }
 
     /******** Dispatch ********/
@@ -563,70 +576,70 @@ struct Evaluator
     void run() {
         is_signed = false;
         switch ( instruction.opcode ) {
-            case Instruction::GetElementPtr:
+            case LLVMInst::GetElementPtr:
                 implement< GetElement >( 2 ); break;
-            case Instruction::Select:
+            case LLVMInst::Select:
                 implement< Select, 3 >( 3 ); break;
-            case Instruction::ICmp:
+            case LLVMInst::ICmp:
                 implement< ICmp >(); break;
-            case Instruction::FCmp:
+            case LLVMInst::FCmp:
                 implement< FCmp >(); break;
-            case Instruction::ZExt:
-            case Instruction::FPExt:
-            case Instruction::UIToFP:
-            case Instruction::FPToUI:
-            case Instruction::PtrToInt:
-            case Instruction::IntToPtr:
-            case Instruction::FPTrunc:
-            case Instruction::Trunc:
+            case LLVMInst::ZExt:
+            case LLVMInst::FPExt:
+            case LLVMInst::UIToFP:
+            case LLVMInst::FPToUI:
+            case LLVMInst::PtrToInt:
+            case LLVMInst::IntToPtr:
+            case LLVMInst::FPTrunc:
+            case LLVMInst::Trunc:
                 implement< Copy >(); break;
 
-            case Instruction::Br:
+            case LLVMInst::Br:
                 implement_br(); break;
-            case Instruction::IndirectBr:
+            case LLVMInst::IndirectBr:
                 implement_indirectBr(); break;
-            case Instruction::Switch:
+            case LLVMInst::Switch:
                 implement_switch(); break;
-            case Instruction::Call:
-            case Instruction::Invoke:
+            case LLVMInst::Call:
+            case LLVMInst::Invoke:
                 implement_call(); break;
-            case Instruction::Ret:
+            case LLVMInst::Ret:
                 implement_ret(); break;
 
-            case Instruction::SExt:
-            case Instruction::SIToFP:
-            case Instruction::FPToSI:
+            case LLVMInst::SExt:
+            case LLVMInst::SIToFP:
+            case LLVMInst::FPToSI:
                 is_signed = true;
                 implement< Copy >(); break;
 
-            case Instruction::BitCast:
+            case LLVMInst::BitCast:
                 implement< BitCast >(); break;
 
-            case Instruction::Load:
+            case LLVMInst::Load:
                 implement< Load >(); break;
-            case Instruction::Store:
+            case LLVMInst::Store:
                 implement< Store >(); break;
-            case Instruction::Alloca:
+            case LLVMInst::Alloca:
                 implement_alloca(); break;
 
-            case Instruction::FAdd:
-            case Instruction::Add:
-            case Instruction::FSub:
-            case Instruction::Sub:
-            case Instruction::FMul:
-            case Instruction::Mul:
-            case Instruction::FDiv:
-            case Instruction::SDiv:
-            case Instruction::UDiv:
-            case Instruction::FRem:
-            case Instruction::URem:
-            case Instruction::SRem:
-            case Instruction::And:
-            case Instruction::Or:
-            case Instruction::Xor:
-            case Instruction::Shl:
-            case Instruction::AShr:
-            case Instruction::LShr:
+            case LLVMInst::FAdd:
+            case LLVMInst::Add:
+            case LLVMInst::FSub:
+            case LLVMInst::Sub:
+            case LLVMInst::FMul:
+            case LLVMInst::Mul:
+            case LLVMInst::FDiv:
+            case LLVMInst::SDiv:
+            case LLVMInst::UDiv:
+            case LLVMInst::FRem:
+            case LLVMInst::URem:
+            case LLVMInst::SRem:
+            case LLVMInst::And:
+            case LLVMInst::Or:
+            case LLVMInst::Xor:
+            case LLVMInst::Shl:
+            case LLVMInst::AShr:
+            case LLVMInst::LShr:
                 implement< Arithmetic >(); break;
 
             default: assert_die();
