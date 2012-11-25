@@ -8,7 +8,7 @@
 #include <llvm/Instructions.h>
 #include <llvm/Constants.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
-#include <llvm/Support/InstVisitor.h>
+#include <llvm/Support/CallSite.h>
 
 #include <algorithm>
 #include <cmath>
@@ -115,11 +115,14 @@ MATCH( 4, decons< 3 >( x ), decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x )
 /* Dummy implementation of a ControlContext, useful for Evaluator for
  * control-flow-free snippets (like ConstantExpr). */
 struct ControlContext {
-    void enter( PC ) { assert_die(); }
+    bool jumped;
+    int choice;
+    void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
     MachineState::Frame &frame( int tid = -1, int depth = 0 ) { assert_die(); }
     PC &pc() { assert_die(); }
     void new_thread( PC ) { assert_die(); }
+    int stackDepth() { assert_die(); }
 };
 
 template< typename X >
@@ -137,7 +140,7 @@ struct Dummy {
  * and malloc( int ).
  */
 template < typename EvalContext, typename ControlContext >
-struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext > >
+struct Evaluator
 {
     ProgramInfo &info;
     EvalContext &econtext;
@@ -179,7 +182,7 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
                          X &b = Dummy< X >::v() )
             -> decltype( declcheck( a % b ) )
         {
-            switch( this->i().op->getOpcode() ) {
+            switch( this->i().opcode ) {
                 case Instruction::FAdd:
                 case Instruction::Add: r = a + b; return;
                 case Instruction::FSub:
@@ -398,8 +401,9 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
         }
     };
 
-    void visitAllocaInst(AllocaInst &I) {
-        Type *ty = I.getType()->getElementType();  // Type to be allocated
+    void implement_alloca() {
+        AllocaInst *I = cast< AllocaInst >( instruction.op );
+        Type *ty = I->getType()->getElementType();  // Type to be allocated
 
         int count = withValues< Get< int > >( instruction.operand( 0 ) );
         int size = econtext.TD.getTypeAllocSize(ty); /* possibly aggregate */
@@ -427,14 +431,14 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
         switchBB( to );
     }
 
-    void visitReturnInst(ReturnInst &I) {
+    void implement_ret() {
         if ( ccontext.stackDepth() == 1 ) {
             ccontext.leave();
             return;
         }
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
-        if ( I.getNumOperands() ) /* return value */
+        if ( instruction.values.size() > 1 ) /* return value */
             withValues< CopyResult >( caller.result(), instruction.operand( 0 ) );
 
         ccontext.leave();
@@ -443,9 +447,9 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
             jumpTo( caller.operand( -2 ) );
     }
 
-    void visitBranchInst(BranchInst &I)
+    void implement_br()
     {
-        if ( I.isUnconditional() )
+        if ( instruction.values.size() == 2 )
             jumpTo( instruction.operand( 0 ) );
         else {
             if ( withValues< IsTrue >( instruction.operand( 0 ) ) )
@@ -455,27 +459,11 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
         }
     }
 
-    void visitSwitchInst(SwitchInst &I) {
+    void implement_switch() {
         assert_die();
-#if 0
-        GenericValue CondVal = getOperandValue(I.getOperand(0), SF());
-        Type *ElTy = I.getOperand(0)->getType();
-
-        // Check to see if any of the cases match...
-        BasicBlock *Dest = 0;
-        for (unsigned i = 2, e = I.getNumOperands(); i != e; i += 2)
-            if (executeICMP_EQ(CondVal, getOperandValue(I.getOperand(i), SF()), ElTy)
-                .IntVal != 0) {
-                Dest = cast<BasicBlock>(I.getOperand(i+1));
-                break;
-            }
-
-        if (!Dest) Dest = I.getDefaultDest();   // No cases matched: use default
-        SwitchToNewBasicBlock(Dest, SF());
-#endif
     }
 
-    void visitIndirectBrInst(IndirectBrInst &I) {
+    void implement_indirectBr() {
         Pointer target = withValues< Get< Pointer > >( instruction.operand( 0 ) );
         jumpTo( *reinterpret_cast< PC * >( dereference( target ) ) );
     }
@@ -520,7 +508,8 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
         std::copy( copy.memory, copy.memory + framesize, original.memory );
     }
 
-    void visitCallSite(CallSite CS) {
+    void implement_call() {
+        CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
         Function *F = CS.getCalledFunction();
 
         if ( F && F->isDeclaration() ) {
@@ -572,16 +561,8 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
     /******** Dispatch ********/
 
     void run() {
-        this->visit( instruction.op );
-    }
-
-    void visitBinaryOperator(BinaryOperator &) {
-        implement< Arithmetic >();
-    }
-
-    void visitInstruction(Instruction &I) {
         is_signed = false;
-        switch ( I.getOpcode() ) {
+        switch ( instruction.opcode ) {
             case Instruction::GetElementPtr:
                 implement< GetElement >( 2 ); break;
             case Instruction::Select:
@@ -600,6 +581,18 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
             case Instruction::Trunc:
                 implement< Copy >(); break;
 
+            case Instruction::Br:
+                implement_br(); break;
+            case Instruction::IndirectBr:
+                implement_indirectBr(); break;
+            case Instruction::Switch:
+                implement_switch(); break;
+            case Instruction::Call:
+            case Instruction::Invoke:
+                implement_call(); break;
+            case Instruction::Ret:
+                implement_ret(); break;
+
             case Instruction::SExt:
             case Instruction::SIToFP:
             case Instruction::FPToSI:
@@ -613,6 +606,30 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
                 implement< Load >(); break;
             case Instruction::Store:
                 implement< Store >(); break;
+            case Instruction::Alloca:
+                implement_alloca(); break;
+
+            case Instruction::FAdd:
+            case Instruction::Add:
+            case Instruction::FSub:
+            case Instruction::Sub:
+            case Instruction::FMul:
+            case Instruction::Mul:
+            case Instruction::FDiv:
+            case Instruction::SDiv:
+            case Instruction::UDiv:
+            case Instruction::FRem:
+            case Instruction::URem:
+            case Instruction::SRem:
+            case Instruction::And:
+            case Instruction::Or:
+            case Instruction::Xor:
+            case Instruction::Shl:
+            case Instruction::AShr:
+            case Instruction::LShr:
+                implement< Arithmetic >(); break;
+
+            default: assert_die();
         }
     }
 
@@ -649,14 +666,18 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
                     case 4: return implement< Fun >( p, i, e, consPtr< uint32_t >( mem, list ) );
                     case 8: return implement< Fun >( p, i, e, consPtr< uint64_t >( mem, list ) );
                 }
-            case Value::Pointer: return implement< Fun >( p, i, e, consPtr< Pointer >( mem, list ) );
+            case Value::Pointer:
+                return implement< Fun >( p, i, e, consPtr< Pointer >( mem, list ) );
+            case Value::CodePointer:
+                return implement< Fun >( p, i, e, consPtr< PC >( mem, list ) );
             case Value::Float: switch ( v.width ) {
                 case sizeof(float):
                     return implement< Fun >( p, i, e, consPtr< float >( mem, list ) );
                 case sizeof(double):
                     return implement< Fun >( p, i, e, consPtr< double >( mem, list ) );
             }
-            case Value::Void: return implement< Fun >( p, i, e, list ); /* ignore void items */
+            case Value::Void:
+                return implement< Fun >( p, i, e, list ); /* ignore void items */
         }
 
         assert_die();
@@ -684,11 +705,6 @@ struct Evaluator : ::llvm::InstVisitor< Evaluator< EvalContext, ControlContext >
     typename Fun::T withValues( Values... vs ) {
         values.clear();
         return _withValues< Fun >( vs... );
-    }
-
-    void check() {
-        int32_t a, b, c;
-        // match( Arithmetic(), Nil() ); // cons( &a, cons( &b, Nil() ) ) );
     }
 };
 

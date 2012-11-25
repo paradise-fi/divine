@@ -233,10 +233,14 @@ struct MachineState
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
     }
 
+    char *globalmem() {
+        return state().get( Globals() ).memory;
+    }
+
     char *dereference( Pointer p ) {
         assert( validate( p ) );
         if ( globalPointer( p ) )
-             return state().get( Globals() ).memory + p.offset;
+            return globalmem() + p.offset;
         else if ( heap().owns( p ) )
             return heap().dereference( p );
         else
@@ -260,7 +264,7 @@ struct MachineState
             block = stack( tid ).get( stack( tid ).get().length() - frame - 1 ).memory;
 
         if ( v.global )
-            block = state().get( Globals() ).memory;
+            block = globalmem();
 
         if ( v.constant )
             block = &_info.constdata[0];

@@ -52,10 +52,7 @@ divine::Blob Interpreter::initial( Function *f )
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var, ++ idx ) {
         auto val = info.globals[ idx ];
         if ( var->hasInitializer() )
-            assert_die();
-            /* info.storeGV( state.dereference( val ),
-                          getConstantValue( var->getInitializer() ),
-                          var->getInitializer()->getType(), val.width ); */
+            info.storeConstant( val, var->getInitializer(), state.globalmem() );
     }
 
     int tid = state.new_thread(); // switches automagically

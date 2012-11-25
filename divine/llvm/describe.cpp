@@ -148,7 +148,7 @@ std::string Interpreter::describe( bool detailed ) {
         if ( state.stack( c ).get().length() &&
              info.instruction( state.frame( c ).pc ).op )
         {
-            const Instruction &insn = *info.instruction( state.frame( c ).pc ).op;
+            const Instruction &insn = cast< const Instruction >( *info.instruction( state.frame( c ).pc ).op );
             const LLVMContext &ctx = insn.getContext();
             const DebugLoc &loc = insn.getDebugLoc();
             const Function *f = insn.getParent()->getParent();

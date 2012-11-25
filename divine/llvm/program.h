@@ -52,13 +52,16 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     uint32_t segment:16; /* at most 64k objects */
     uint32_t offset:15; /* each at most 32kB */
     Pointer operator+( int relative ) {
-        return Pointer( segment, offset + relative );
+        return Pointer( heap, segment, offset + relative );
     }
     explicit Pointer( int global )
         : heap( false ), segment( 1 ), offset( global )
     {}
     Pointer( int segment, int offset )
         : heap( true ), segment( segment ), offset( offset )
+    {}
+    Pointer( bool heap, int segment, int offset )
+        : heap( heap ), segment( segment ), offset( offset )
     {}
     Pointer() : heap( false ), segment( 0 ), offset( 0 ) {}
     bool null() { return !heap && !segment; }
@@ -83,7 +86,7 @@ enum Builtin {
 };
 
 struct ProgramInfo {
-    ::llvm::TargetData target;
+    ::llvm::TargetData TD;
     ::llvm::IntrinsicLowering *IL;
     ::llvm::Module *module;
 
@@ -112,12 +115,13 @@ struct ProgramInfo {
     };
 
     struct Instruction {
+        unsigned opcode;
         std::vector< Value > values;
         Value &result() { return values[0]; }
         Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
 
         int builtin; /* non-zero if this is a call to a builtin */
-        ::llvm::Instruction *op; /* the actual operation */
+        ::llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
         Instruction() : op( nullptr ), builtin( NotBuiltin ) {}
         /* next instruction is in the same BB unless op == NULL */
     };
@@ -213,7 +217,7 @@ struct ProgramInfo {
         storeConstant( result, c );
     }
 
-    void storeConstant( Value &result, ::llvm::Constant * );
+    void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
 
     struct Position {
         PC pc;
@@ -228,13 +232,40 @@ struct ProgramInfo {
     Value insert( int function, ::llvm::Value *val );
     void build();
 
-    ProgramInfo( ::llvm::Module *m ) : module( m ), target( m )
+    ProgramInfo( ::llvm::Module *m ) : module( m ), TD( m )
     {
         constdatasize = 0;
         globalsize = 0;
-        IL = new ::llvm::IntrinsicLowering( target );
+        IL = new ::llvm::IntrinsicLowering( TD );
         build();
     }
+};
+
+struct GlobalContext {
+    ProgramInfo &info;
+    ::llvm::TargetData &TD;
+    char *global;
+
+    Pointer malloc( int ) { assert_die(); }
+
+    char *dereference( Pointer p ) {
+        if ( !p.heap )
+            return global + p.offset;
+        assert_die();
+    }
+
+    char *dereference( ProgramInfo::Value v, int = 0 ) {
+        if( v.constant )
+            return &info.constdata[ v.offset ];
+        else if ( v.global )
+            return global + v.offset;
+        else
+            assert_die();
+    }
+
+    GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, char *global )
+        : info( i ), TD( TD ), global( global )
+    {}
 };
 
 }
