@@ -52,7 +52,9 @@ struct TestLLVM {
         Function *f = _function();
         auto *mem = builder.CreateAlloca(Type::getInt32Ty(ctx), 0, "foo");
         builder.CreateStore(ConstantInt::get(ctx, APInt(32, 33)), mem);
-        builder.CreateRet(ConstantInt::get(ctx, APInt(32, 1)));
+        BasicBlock *BB = BasicBlock::Create(ctx, "tail", f);
+        builder.SetInsertPoint( BB );
+        builder.CreateBr( BB );
         return f;
     }
 
@@ -95,6 +97,7 @@ struct TestLLVM {
                     assert( !fin.valid() ); // only one allowed
                     fin = b;
                 });
+            ini = fin;
             assert( fin.valid() );
         }
 
@@ -192,9 +195,9 @@ struct TestLLVM {
 
     Test memory1()
     {
-        divine::Blob b = _ith( code_mem(), 1 );
+        divine::Blob b = _ith( code_mem(), 2 );
         assert_eq( _descr( code_mem(), b ),
-                   "0: <testf> [ ret i32 1 ] [ foo = <0:0> 33 ]\n" );
+                   "0: <testf> [ br label %tail ] [ foo = <0:0> 33 ]\n" );
     }
 
     Test idempotency()
