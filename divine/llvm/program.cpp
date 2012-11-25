@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
 #define NO_RTTI
+
 #include <wibble/exception.h>
 
 #include <divine/llvm/program.h>
@@ -9,17 +10,12 @@
 #include <llvm/Type.h>
 #include <llvm/GlobalVariable.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
+#include <llvm/Support/CallSite.h>
 #include <llvm/Constants.h>
 
 using namespace divine::llvm;
 using ::llvm::isa;
 using ::llvm::dyn_cast;
-
-static void handleBB( ProgramInfo *info, ProgramInfo::Value &result, ::llvm::BasicBlock *b )
-{
-    assert( info->blockmap.count( b ) );
-    info->storeConstant( result, info->blockmap[ b ] );
-}
 
 static bool isCodePointer( ::llvm::Value *val )
 {
@@ -31,16 +27,24 @@ static bool isCodePointer( ::llvm::Value *val )
 void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
 {
     result.width = target.getTypeAllocSize( val->getType() );
-    if ( val->getType()->isVoidTy() )
+
+    if ( val->getType()->isVoidTy() ) {
         result.width = 0;
+        result.type = Value::Void;
+    }
 
     if ( val->getType()->isPointerTy() ) {
-        result.pointer = !isCodePointer( val );
+        result.type = Value::Pointer;
         result.width = 4;
     }
 
-    if ( isCodePointer( val ) )
+    if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
+        result.type = Value::Float;
+
+    if ( isCodePointer( val ) ) {
+        result.type = Value::CodePointer;
         result.width = 4;
+    }
 }
 
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
@@ -53,29 +57,22 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     Value result; /* not seen yet, needs to be allocated */
     initValue( val, result );
 
-    if ( auto F = dyn_cast< ::llvm::Function >( val ) )
-        storeConstant( result, PC( functionmap[ F ], 0, 0 ) );
-    else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) )
-        handleBB( this, result, B->getBasicBlock() );
-    else if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) )
-        handleBB( this, result, B );
+    if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) )
+        makeConstant( result, blockmap[ B ] );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
-        if ( result.pointer ) {
-            result.global = true;
-            if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
-                assert( G->hasInitializer() ); /* extern globals are not allowed */
-                if ( G->isConstant() )
-                    storeConstant( result, interpreter.getConstantValue( G->getInitializer() ),
-                                   C->getType() );
-                else {
-                    Value pointee;
-                    initValue( G->getInitializer(), pointee );
-                    allocateValue( 0, pointee );
-                    globals.push_back( pointee );
-                    storeConstant( result, Pointer( pointee.offset ) );
-                }
-            } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
-        } else storeConstant( result, interpreter.getConstantValue( C ), C->getType() );
+        result.global = true;
+        if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
+            assert( G->hasInitializer() ); /* extern globals are not allowed */
+            if ( G->isConstant() )
+                makeLLVMConstant( result, G->getInitializer() );
+            else {
+                Value pointee;
+                initValue( G->getInitializer(), pointee );
+                allocateValue( 0, pointee );
+                globals.push_back( pointee );
+                makeConstant( result, Pointer( pointee.offset ) );
+            }
+        } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
 
     if ( function && !result.global && !result.constant ) {
@@ -88,6 +85,26 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     return result;
 }
 
+void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C )
+{
+    if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {
+        assert_die();
+    } else if ( auto I = dyn_cast< ConstantInt >( C ) ) {
+        const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
+        std::copy( mem, mem + v.width, &constant< uint8_t >( v ) );
+    } else if ( C->getType()->isPointerTy() ) {
+        if ( auto F = dyn_cast< ::llvm::Function >( C ) )
+            constant< PC >( v ) = PC( functionmap[ F ], 0, 0 );
+        else if ( auto B = dyn_cast< ::llvm::BlockAddress >( C ) )
+            constant< PC >( v ) = blockmap[ B->getBasicBlock() ];
+        else if ( auto B = dyn_cast< ::llvm::BasicBlock >( C ) )
+            constant< PC >( v ) = blockmap[ B ];
+        else if ( isa< ConstantPointerNull >( C ) )
+            constant< Pointer >( v ) = Pointer();
+        else assert_die();
+    } else assert_die();
+}
+
 /* This is silly. */
 ProgramInfo::Position ProgramInfo::lower( Position p )
 {
@@ -96,7 +113,7 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
     auto insert = p.I;
 
     if ( !first ) --insert;
-    interpreter.IL->LowerIntrinsicCall( cast< CallInst >( p.I ) );
+    IL->LowerIntrinsicCall( cast< CallInst >( p.I ) );
     if ( first ) insert = BB->begin();
 
     return Position( p.pc, insert );
@@ -157,42 +174,21 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
             builtin( p );
     }
 
-    insn.operands.resize( p.I->getNumOperands() );
+    insn.values.resize( 1 + p.I->getNumOperands() );
     for ( int i = 0; i < p.I->getNumOperands(); ++i ) {
         ::llvm::Value *v = p.I->getOperand( i );
         insert( p.pc.function, v ); /* use-before-def can actually happen */
         assert( valuemap.count( v ) );
-        insn.operands[ i ] = valuemap[ v ];
+        insn.values[ i + 1 ] = valuemap[ v ];
     }
     pcmap.insert( std::make_pair( p.I, p.pc ) );
-    insn.result = insert( p.pc.function, &*p.I );
+    insn.result() = insert( p.pc.function, &*p.I );
 
     p.pc.instruction ++; p.I ++; /* next please */
     return p;
 }
 
-void ProgramInfo::storeGV( char *where, GenericValue GV, Type *ty, int width )
-{
-    if ( ty->isIntegerTy() ) { /* StoreValueToMemory is buggy for (at least) integers... */
-        const uint8_t *mem = reinterpret_cast< const uint8_t * >( GV.IntVal.getRawData() );
-        std::copy( mem, mem + width, where );
-    } else {
-        interpreter.StoreValueToMemory(
-            GV, reinterpret_cast< GenericValue * >( where ), ty );
-    }
-}
-
-void ProgramInfo::storeConstant( Value &result, GenericValue GV, Type *ty )
-{
-    result.constant = true;
-    if ( !result.pointer )
-        assert_eq( result.width, target.getTypeStoreSize( ty ) );
-    else
-        assert_eq( result.width, 4 );
-    storeGV( allocateConstant( result ), GV, ty, result.width );
-}
-
-void ProgramInfo::build( Module *module )
+void ProgramInfo::build()
 {
     PC pc( 0, 0, 0 );
     PC lastpc;

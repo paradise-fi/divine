@@ -5,11 +5,15 @@
 
 #include <llvm/Function.h>
 #include <llvm/Target/TargetData.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/CodeGen/IntrinsicLowering.h>
 #include <map>
 
 #ifndef DIVINE_LLVM_PROGRAM_H
 #define DIVINE_LLVM_PROGRAM_H
+
+namespace llvm {
+class IntrinsicLowering;
+};
 
 namespace divine {
 namespace llvm {
@@ -79,30 +83,38 @@ enum Builtin {
 };
 
 struct ProgramInfo {
-    ::llvm::TargetData &target;
-    /* required for getConstantValue/StoreValueToMemory */
-    Interpreter &interpreter;
+    ::llvm::TargetData target;
+    ::llvm::IntrinsicLowering *IL;
+    ::llvm::Module *module;
 
     struct Value {
         bool global:1;
         bool constant:1;
-        bool pointer:1;
-        uint32_t offset:20;
+        enum { Pointer, Integer, Float, Aggregate, CodePointer, Void } type:3;
+        uint32_t offset:18;
         uint32_t width:9;
 
         bool operator<( Value v ) const {
-            return *reinterpret_cast< const uint32_t * >( this ) < *reinterpret_cast< const uint32_t * >( &v );
+            return *reinterpret_cast< const uint32_t * >( this )
+                 < *reinterpret_cast< const uint32_t * >( &v );
         }
 
+        bool pointer() { return type == Pointer; }
+        bool integer() { return type == Integer; }
+        bool isfloat() { return type == Float; }
+        bool aggregate() { return type == Aggregate; }
+        bool codePointer() { return type == CodePointer; }
+
         Value()
-            : global( false ), constant( false ), pointer( false ),
+            : global( false ), constant( false ), type( Integer ),
               offset( 0 ), width( 0 )
         {}
     };
 
     struct Instruction {
-        Value result;
-        std::vector< Value > operands;
+        std::vector< Value > values;
+        Value &result() { return values[0]; }
+        Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
 
         int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::Instruction *op; /* the actual operation */
@@ -188,16 +200,20 @@ struct ProgramInfo {
         }
     }
 
-    void storeGV( char *where, ::llvm::GenericValue GV, ::llvm::Type *ty, int width );
-
     template< typename T >
-    void storeConstant( Value &result, T value ) {
+    void makeConstant( Value &result, T value ) {
         assert_eq( result.width, sizeof( T ) );
         allocateConstant( result );
         constant< T >( result ) = value;
     }
 
-    void storeConstant( Value &result, ::llvm::GenericValue GV, ::llvm::Type *ty );
+    void makeLLVMConstant( Value &result, ::llvm::Constant *c )
+    {
+        allocateConstant( result );
+        storeConstant( result, c );
+    }
+
+    void storeConstant( Value &result, ::llvm::Constant * );
 
     struct Position {
         PC pc;
@@ -210,12 +226,14 @@ struct ProgramInfo {
     void builtin( Position );
     void initValue( ::llvm::Value *val, Value &result );
     Value insert( int function, ::llvm::Value *val );
-    void build( ::llvm::Module *m );
+    void build();
 
-    ProgramInfo( ::llvm::TargetData &td, Interpreter &i ) : target( td ), interpreter( i )
+    ProgramInfo( ::llvm::Module *m ) : module( m ), target( m )
     {
         constdatasize = 0;
         globalsize = 0;
+        IL = new ::llvm::IntrinsicLowering( target );
+        build();
     }
 };
 

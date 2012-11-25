@@ -2,7 +2,9 @@
 // Describe the interpreter's state in a human-readable fashion.
 
 #include <divine/llvm/interpreter.h>
-#include "llvm/Analysis/DebugInfo.h"
+#include <llvm/Analysis/DebugInfo.h>
+#include <llvm/ADT/StringMap.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace llvm;
 using namespace divine::llvm;
@@ -51,7 +53,7 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
         res = ptr + " <...>";
     } else {
         if ( state.validate( p ) ) {
-            Describe pointee = describeValue( pointeeTy, dereferencePointer( p ), seen );
+            Describe pointee = describeValue( pointeeTy, dereference( p ), seen );
             res = ptr + " " + pointee.first;
         } else
             res = ptr + " (not mapped)";

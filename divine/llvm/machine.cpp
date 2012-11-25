@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
 #include <divine/llvm/machine.h>
 
@@ -114,7 +114,7 @@ void MachineState::trace( Frame &f, Canonic &canonic )
     auto vals = _info.function( f.pc ).values;
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         canonic.stack += val->width;
-        if ( val->pointer )
+        if ( val->pointer() )
             trace( *reinterpret_cast< Pointer * >( &f.memory[val->offset] ), canonic );
     }
     align( canonic.stack, 4 );
@@ -154,7 +154,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     address.advance( sizeof( PC ) );
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
-        if ( val->pointer ) {
+        if ( val->pointer() ) {
             Pointer from = *reinterpret_cast< Pointer * >( from_addr );
             Pointer to = canonic[ from ];
             address.as< Pointer >() = to;
