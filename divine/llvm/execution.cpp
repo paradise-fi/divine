@@ -19,7 +19,6 @@ void Interpreter::evaluate()
     Eval eval( info, *this, *this );
     eval.instruction = instruction();
     eval.run();
-    eval.check();
 }
 
 void Interpreter::evaluateSwitchBB( PC to )
