@@ -52,6 +52,7 @@ struct MachineState
     };
 
     struct Globals {
+        /* TODO Needs a bitmap to track pointers. */
         char memory[0];
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, a._info->globalsize );
@@ -156,7 +157,7 @@ struct MachineState
             pointer.resize( end / 4 );
             std::fill( memory.begin() + start, memory.end(), 0 );
             std::fill( pointer.begin() + start / 4, pointer.end(), 0 );
-            return Pointer( segment + segshift, 0 );
+            return Pointer( true, segment + segshift, 0 );
         }
 
         bool owns( Pointer p ) {
@@ -222,7 +223,7 @@ struct MachineState
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
     bool globalPointer( Pointer p ) {
-        return !p.heap && p.segment == 1;
+        return !p.heap && p.segment >= 1;
     }
 
     bool validate( Pointer p ) {
@@ -240,7 +241,7 @@ struct MachineState
     char *dereference( Pointer p ) {
         assert( validate( p ) );
         if ( globalPointer( p ) )
-            return globalmem() + p.offset;
+            return globalmem() + _info.globalPointerOffset( p );
         else if ( heap().owns( p ) )
             return heap().dereference( p );
         else

@@ -57,6 +57,9 @@ Pointer MachineState::followPointer( Pointer p )
     if ( !validate( p ) )
         return Pointer();
 
+    if ( globalPointer( p ) )
+        return Pointer(); /* TODO! */
+
     Pointer next = *reinterpret_cast< Pointer * >( dereference( p ) );
     if ( heap().owns( p ) ) {
         if ( heap().isPointer( p ) )
@@ -70,6 +73,12 @@ int MachineState::pointerSize( Pointer p )
 {
     if ( !validate( p ) )
         return 0;
+
+    /*
+     * Pointers into global memory are not used for copying during
+     * canonization, so we don't actually need to know their size.
+     */
+    assert( !globalPointer( p ) );
 
     if ( heap().owns( p ) )
         return heap().size( p );
@@ -97,7 +106,7 @@ struct divine::llvm::Canonic
             ++ segcount;
             allocated += ms.pointerSize( idx );
         }
-        return Pointer( segmap[ int( idx.segment ) ], idx.offset );
+        return Pointer( idx.heap, segmap[ int( idx.segment ) ], idx.offset );
     }
 };
 
@@ -124,7 +133,7 @@ void MachineState::trace( Frame &f, Canonic &canonic )
 
 void MachineState::snapshot( Pointer from, Pointer to, Canonic &canonic, Heap &heap )
 {
-    if ( !validate( from ) || to.segment < canonic.segdone )
+    if ( !validate( from ) || !from.heap || to.segment < canonic.segdone )
         return; /* invalid or done */
     assert_eq( to.segment, canonic.segdone );
     canonic.segdone ++;
@@ -171,6 +180,8 @@ divine::Blob MachineState::snapshot()
     Canonic canonic( *this );
     int live_threads = _thread_count;
 
+    /* TODO trace the global memory! */
+
     for ( int tid = 0; tid < _thread_count; ++tid ) {
         if ( !stack( tid ).get().length() ) { /* leave out dead threads */
             -- live_threads;
@@ -190,7 +201,7 @@ divine::Blob MachineState::snapshot()
     StateAddress address( &_info, b, _alloc._slack );
     address = state().sub( Flags() ).copy( address );
     assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
-    address = state().sub( Globals() ).copy( address );
+    address = state().sub( Globals() ).copy( address ); /* TODO run through canonizer, too! */
 
     /* skip the heap */
     Heap *_heap = &address.as< Heap >();

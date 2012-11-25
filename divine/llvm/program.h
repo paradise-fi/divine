@@ -54,12 +54,6 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     Pointer operator+( int relative ) {
         return Pointer( heap, segment, offset + relative );
     }
-    explicit Pointer( int global )
-        : heap( false ), segment( 1 ), offset( global )
-    {}
-    Pointer( int segment, int offset )
-        : heap( true ), segment( segment ), offset( offset )
-    {}
     Pointer( bool heap, int segment, int offset )
         : heap( heap ), segment( segment ), offset( offset )
     {}
@@ -219,6 +213,12 @@ struct ProgramInfo {
 
     void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
 
+    int globalPointerOffset( Pointer p ) {
+        assert_leq( p.segment, int( globals.size() ) - 1 );
+        assert_leq( p.offset, globals[ p.segment ].width );
+        return globals[ p.segment ].offset + p.offset;
+    }
+
     struct Position {
         PC pc;
         ::llvm::BasicBlock::iterator I;
@@ -250,7 +250,7 @@ struct GlobalContext {
 
     char *dereference( Pointer p ) {
         if ( !p.heap )
-            return global + p.offset;
+            return global + info.globalPointerOffset( p );
         assert_die();
     }
 

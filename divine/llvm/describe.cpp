@@ -238,8 +238,8 @@ void MachineState::dump( std::ostream &r ) {
 
     r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data = ";
     for ( int i = 0; i < heap().segcount; ++ i ) {
-        char *where = heap().dereference( Pointer( i, 0 ) );
-        int size = heap().size( Pointer( i, 0 ) );
+        char *where = heap().dereference( Pointer( true, i, 0 ) );
+        int size = heap().size( Pointer( true, i, 0 ) );
         for ( int j = 0; j < size; j += 4 )
             r << fmtInteger( where, 32 ) << " ";
         if ( i < heap().segcount - 1 )

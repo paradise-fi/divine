@@ -71,7 +71,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                 initValue( G->getInitializer(), pointee );
                 allocateValue( 0, pointee );
                 globals.push_back( pointee );
-                makeConstant( result, Pointer( pointee.offset ) );
+                makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
             }
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
@@ -207,6 +207,15 @@ void ProgramInfo::build()
 {
     PC pc( 0, 0, 0 );
     PC lastpc;
+
+    /* null pointers are heap = 0, segment = 0, where segment is an index into
+     * the "globals" vector */
+    Value nullpage;
+    nullpage.offset = 0;
+    nullpage.width = 0;
+    nullpage.global = true;
+    nullpage.constant = false;
+    globals.push_back( nullpage );
 
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
         insert( 0, &*var );
