@@ -95,13 +95,22 @@ struct PartitionedStore : TableUtils< HashSet< typename Graph::Node, Hasher >, H
     }
 };
 
-#if 0
+
+template< typename Hasher >
+struct HcHasher : Hasher
+{
+    bool equal(Blob a, Blob b) {
+        return true;
+    }
+};
+
 template< typename Graph, typename Hasher, typename Statistics >
-struct HcStore : public TableUtils< HashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
+struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hasher> >, HcHasher<Hasher>, Statistics >
 {
     static_assert( wibble::TSame< typename Graph::Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
-    typedef TableUtils< Set< Graph >, Hasher, Statistics > Utils;
+    typedef TableUtils< HashSet< typename Graph::Node, HcHasher<Hasher> >, HcHasher<Hasher>, Statistics > Utils;
+    typedef typename Graph::Node Node;
 
     Graph &m_graph;
 
@@ -122,22 +131,28 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, Hasher >, Has
     void store( Blob s, hash_t h ) {
         // store just a stub containing state information
         Blob stub = m_graph.base().alloc.new_blob( 0 );
-        Statistics::global().hashadded( this->id , memSize( stub ) );
-        Statistics::global().hashsize( this->id, this->table.size() );
+//        Statistics::global().hashadded( this->id , memSize( stub ) );
+//        Statistics::global().hashsize( this->id, this->table.size() );
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
-        this->seen().insertHinted( stub, h );
-        assert( this->seen().equal( s, stub ) );
+        this->table.insertHinted( stub, h );
+        assert( this->equal( s, stub ) );
     }
 
     void update( Blob s, hash_t h ) {
         // update state information in hashtable
         Blob stub = this->table.getHinted( s, h, NULL );
-        assert( this->table.valid( stub ) );
+        assert( this->valid( stub ) );
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
     }
 
+    template< typename W >
+    int owner( W &w, Node s, hash_t hint = 0 ) {
+        if ( hint )
+            return hint % w.peers();
+        else
+            return this->hash( s ) % w.peers();
+    }
 };
-#endif
 
 }
 }

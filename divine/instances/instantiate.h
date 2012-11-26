@@ -70,7 +70,7 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
 template< template< typename > class A, typename G, template< typename > class T, typename S >
 algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
     if ( meta.algorithm.hashCompaction )
-        abort(); // return makeAlgorithm< A, G, T, S, visitor::HcStore< G, algorithm::Hasher, S > >( meta );
+        return makeAlgorithm< A, G, T, S, visitor::HcStore< G, algorithm::Hasher, S > >( meta );
     else
         return makeAlgorithm< A, G, T, S, visitor::PartitionedStore< G, algorithm::Hasher, S > >( meta );
 }
