@@ -1,3 +1,3 @@
-#property G(!a)
+#property !(F(a))
 #property F(a)
 
