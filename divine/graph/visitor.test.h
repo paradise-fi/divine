@@ -76,9 +76,9 @@ struct TestVisitor {
         NMTree( int _n, int _m ) : n( _n ), m( _m ) {}
         NMTree() : n( 0 ), m( 0 ) {}
 
-        template< typename Hash, typename Worker >
-        int owner( Hash &hash, Worker &worker, Node n, hash_t = 0 ) {
-            return hash( n ) % worker.peers();
+        template< typename Hasher, typename Worker >
+        int owner( Hasher &hasher, Worker &worker, Node n, hash_t = 0 ) {
+            return hasher.hash( n ) % worker.peers();
         }
     };
 
@@ -205,6 +205,60 @@ struct TestVisitor {
         }
 
         ParallelCheck( std::pair< G, int > init, bool master = false )
+        {
+            m_graph = init.first;
+            expected = init.second;
+            if ( master ) {
+                int i = 32;
+                while ( expected % i ) i--;
+                this->becomeMaster( i, init );
+            }
+        }
+    };
+
+    template< typename G >
+    struct PartitionCheck : Parallel< Topology< Transition< G > >::template Local,
+                                     PartitionCheck< G > >,
+                           Check< G >
+    {
+        typedef PartitionCheck< G > This;
+        typedef This Listener;
+        typedef typename G::Node Node;
+        typedef typename G::Label Label;
+        typedef G Graph;
+        Node make( int n ) { return makeNode< Node >( n ); }
+        int expected;
+
+        G m_graph;
+
+        static TransitionAction transition( This &c, Node f, Node t, Label label ) {
+            return parallel_transition( &c, f, t, label );
+        }
+
+        void _visit() { // parallel
+            assert_eq( expected % this->peers(), 0 );
+            PartitionedStore< G > store( m_graph );
+            store.id = this;
+            Partitioned<This, This> partitioned(*this, *this, m_graph, store);
+            Node initial = m_graph.initial();
+            if ( node( initial ) % this->peers() == this->id() )
+                partitioned.queue(Node(), initial, Label());
+            partitioned.processQueue();
+        }
+
+        void visit() {
+            std::vector< int > edgevec, nodevec;
+
+            this->topology().parallel( &PartitionCheck< G >::_visit );
+
+            this->topology().collect( edgevec, &PartitionCheck< G >::_edges );
+            this->topology().collect( nodevec, &PartitionCheck< G >::_nodes );
+
+            this->edges() = std::accumulate( edgevec.begin(), edgevec.end(), 0 );
+            this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
+        }
+
+        PartitionCheck( std::pair< G, int > init, bool master = false )
         {
             m_graph = init.first;
             expected = init.second;
@@ -369,6 +423,14 @@ struct TestVisitor {
         examples( _parallel< TerminableCheck, Blob > );
     }
 
+    Test partition_int() {
+	examples( _parallel< PartitionCheck, int > ) ;
+    }
+
+/*    Test partition_blob() {
+	examples( _parallel< PartitionCheck, Blob > );
+    }
+*/
 #if 0
     template< typename G >
     struct SimpleParReach : DomainWorker< SimpleParReach< G > >
