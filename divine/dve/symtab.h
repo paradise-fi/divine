@@ -9,6 +9,7 @@ namespace divine {
 namespace dve {
 
 struct Channel;
+std::ostream & dumpChannel( std::ostream &os, Channel * chan, char * data);
 
 struct NS {
     enum Namespace { Process, Variable, Channel, State, Initialiser, InitState, Flag };
@@ -258,14 +259,17 @@ struct SymTab : NS {
             for ( std::map< std::string, int >::const_iterator i = tabs[ ns ].begin();
                   i != tabs[ ns ].end(); ++i ) {
                 Symbol s( context, i->second );
-                o << i->first << " = " << (s.item().is_array ? "[" : "");
-                if ( ns == NS::Channel )
-                    ;
-                else
+                if ( ns == NS::Channel ) {
+                    divine::dve::Channel* const chan = channels.find(i->first)->second;
+                    dumpChannel( o, chan, s.getref( mem ) );
+                }
+                else {
+                    o << i->first << " = " << (s.item().is_array ? "[" : "");
                     o << s.deref( mem );
-                for ( int j = 1; j < s.item().array; j++ )
-                    o << ", " << s.deref( mem, j );
-                o << (s.item().is_array ? "], " : ", ");
+                    for ( int j = 1; j < s.item().array; j++ )
+                        o << ", " << s.deref( mem, j );
+                    o << (s.item().is_array ? "], " : ", ");
+                }
                 if (ns == Process) {
                     child(s)->dump(o, mem);
                 }

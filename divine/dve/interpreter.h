@@ -78,6 +78,8 @@ struct Channel {
 
     bool _valid;
 
+    std::ostream& dump( std::ostream &os, char * data );
+
     char * item(char * data, int i) {
         assert( _valid );
         return data + i*context.offset;
