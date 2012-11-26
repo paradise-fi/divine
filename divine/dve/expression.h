@@ -15,8 +15,8 @@ namespace dve {
 
 struct EvalContext {
     struct ImmValue {
-        int value;
-        uint8_t error;
+        int value:24;
+        uint8_t error:8;
         ImmValue ( int v ) : value( v ), error( 0 ) {}
         ImmValue ( ErrorState state ) : value( 0 ), error( state.error ) {}
         ImmValue () : value( 0 ), error( 0 ) {}
@@ -105,7 +105,11 @@ struct Expression {
                 if ( op.id == TI::Div || op.id == TI::Mod )
                     if ( b.value == 0 )
                         return EvalContext::ImmValue( ErrorState::e_divByZero );
-                return binop( op, a.value, b.value );
+                int result = binop( op, a.value, b.value );
+                EvalContext::ImmValue retval = result;
+                if (retval.value != result)
+                    return ErrorState::e_overflow;
+                return retval;
         }
     }
 
