@@ -83,6 +83,7 @@ static inline char *make( CustomSetup *setup, char **to )
 {
     int total = setup->state_size + setup->slack;
     *to = (char *) pool_allocate_blob( setup->cpool, total );
+    memset ((*to) + 4, 0, setup->slack);
     return ((*to) + setup->slack + 4); // FIXME; 4 = BlobHeader size
 }
 
