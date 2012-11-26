@@ -15,8 +15,8 @@ extern int assertFailure;
 struct Location {
     const char *file;
     int line, iteration;
-    const char *stmt;
-    Location( const char *f, int l, const char *st, int iter = -1 )
+    std::string stmt;
+    Location( const char *f, int l, std::string st, int iter = -1 )
         : file( f ), line( l ), iteration( iter ), stmt( st ) {}
 };
 
@@ -47,6 +47,8 @@ struct Location {
 #define assert_list_eq(x, y) ((void)0)
 #endif
 
+#define assert_unreachable(x...) assert_die_fn( LOCATION( wibble::str::fmtf(x) ) )
+#define assert_unimplemented() assert_die_fn( LOCATION( "not imlemented" ) )
 #define assert_die() assert_die_fn( LOCATION( "forbidden code path tripped" ) )
 
 struct AssertFailed {
