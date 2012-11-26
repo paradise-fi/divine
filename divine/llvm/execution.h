@@ -365,6 +365,7 @@ struct Evaluator
     };
 
     typedef Get< bool > IsTrue;
+    typedef Get< int > GetInt;
 
     /******** Memory access & conversion ********/
 
@@ -387,8 +388,7 @@ struct Evaluator
                     total += SLO->getElementOffset( index );
                 } else {
                     const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( *I );
-                    int index = this->evaluator().withValues< Get< int > >(
-                        this->i().operand( meh ) );
+                    int index = this->evaluator().withValues( GetInt(), this->i().operand( meh ) );
                     total += index * this->TD().getTypeAllocSize( ST->getElementType() );
                 }
             }
@@ -419,7 +419,7 @@ struct Evaluator
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getType()->getElementType();  // Type to be allocated
 
-        int count = withValues< Get< int > >( instruction.operand( 0 ) );
+        int count = withValues( GetInt(), instruction.operand( 0 ) );
         int size = econtext.TD.getTypeAllocSize(ty); /* possibly aggregate */
 
         unsigned alloc = std::max( 1, count * size );
@@ -453,7 +453,7 @@ struct Evaluator
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
         if ( instruction.values.size() > 1 ) /* return value */
-            withValues< CopyResult >( caller.result(), instruction.operand( 0 ) );
+            withValues( CopyResult(), caller.result(), instruction.operand( 0 ) );
 
         ccontext.leave();
 
@@ -466,7 +466,7 @@ struct Evaluator
         if ( instruction.values.size() == 2 )
             jumpTo( instruction.operand( 0 ) );
         else {
-            if ( withValues< IsTrue >( instruction.operand( 0 ) ) )
+            if ( withValues( IsTrue(), instruction.operand( 0 ) ) )
                 jumpTo( instruction.operand( 2 ) );
             else
                 jumpTo( instruction.operand( 1 ) );
@@ -478,7 +478,7 @@ struct Evaluator
     }
 
     void implement_indirectBr() {
-        Pointer target = withValues< Get< Pointer > >( instruction.operand( 0 ) );
+        Pointer target = withValues( Get< Pointer >(), instruction.operand( 0 ) );
         jumpTo( *reinterpret_cast< PC * >( dereference( target ) ) );
     }
 
@@ -542,17 +542,17 @@ struct Evaluator
             switch( instruction.builtin ) {
                 case NotBuiltin: break;
                 case BuiltinChoice:
-                    ccontext.choice = withValues< Get< int > >( instruction.operand( 0 ) );
+                    ccontext.choice = withValues( GetInt(), instruction.operand( 0 ) );
                     return;
                 case BuiltinAssert:
-                    ccontext.flags().assert = !withValues< Get< int > >( instruction.operand( 0 ) );
+                    ccontext.flags().assert = !withValues( GetInt(), instruction.operand( 0 ) );
                     return;
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;
                 case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
                 case BuiltinGetTID: assert_die(); /* TODO */
                 case BuiltinNewThread:
-                    Pointer entry = withValues< Get< Pointer > >( instruction.operand( 0 ) );
+                    Pointer entry = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     /* As far as LLVM is concerned, entry is a Pointer, but in fact it's a PC. */
                     ccontext.new_thread( *reinterpret_cast< PC * >( &entry ) );
                     return; /* TODO result! */
@@ -569,7 +569,7 @@ struct Evaluator
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < CS.arg_size(); ++i )
-            withValues< CopyArg >( function.values[ i ], instruction.operand( i ) );
+            withValues( CopyArg(), function.values[ i ], instruction.operand( i ) );
 
         /* TODO varargs */
 
@@ -582,9 +582,9 @@ struct Evaluator
         is_signed = false;
         switch ( instruction.opcode ) {
             case LLVMInst::GetElementPtr:
-                implement< GetElement >( 2 ); break;
+                implement( GetElement(), 2 ); break;
             case LLVMInst::Select:
-                implement< Select, 3 >( 3 ); break;
+                implement< Select >(); break;
             case LLVMInst::ICmp:
                 implement< ICmp >(); break;
             case LLVMInst::FCmp:
@@ -652,21 +652,20 @@ struct Evaluator
     }
 
     template< typename Fun, typename I, typename Cons >
-    typename Fun::T implement( wibble::NotPreferred, I i, I e, Cons list ) {
+    typename Fun::T implement( wibble::NotPreferred, I i, I e, Cons list, Fun = Fun() ) {
         assert_die(); /* could not match parameters */
     }
 
     template< typename Fun, typename I, typename Cons >
-    auto implement( wibble::Preferred, I i, I e, Cons list )
+    auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
         -> typename wibble::TPair< decltype( match( Fun(), list ) ), typename Fun::T >::Second
     {
         typedef ProgramInfo::Value Value;
         wibble::Preferred p;
 
         if ( i == e ) {
-            Fun instance;
-            instance._evaluator = this;
-            return match( instance, list );
+            fun._evaluator = this;
+            return match( fun, list );
         }
 
         Value v = *i++;
@@ -674,55 +673,55 @@ struct Evaluator
 
         switch ( v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.width ) {
-                    case 1: return implement< Fun >( p, i, e, consPtr<  int8_t >( mem, list ) );
-                    case 2: return implement< Fun >( p, i, e, consPtr< int16_t >( mem, list ) );
-                    case 4: return implement< Fun >( p, i, e, consPtr< int32_t >( mem, list ) );
-                    case 8: return implement< Fun >( p, i, e, consPtr< int64_t >( mem, list ) );
+                    case 1: return implement( p, i, e, consPtr<  int8_t >( mem, list ), fun );
+                    case 4: return implement( p, i, e, consPtr< int32_t >( mem, list ), fun );
+                    case 2: return implement( p, i, e, consPtr< int16_t >( mem, list ), fun );
+                    case 8: return implement( p, i, e, consPtr< int64_t >( mem, list ), fun );
                 } else switch ( v.width ) {
-                    case 1: return implement< Fun >( p, i, e, consPtr<  uint8_t >( mem, list ) );
-                    case 2: return implement< Fun >( p, i, e, consPtr< uint16_t >( mem, list ) );
-                    case 4: return implement< Fun >( p, i, e, consPtr< uint32_t >( mem, list ) );
-                    case 8: return implement< Fun >( p, i, e, consPtr< uint64_t >( mem, list ) );
+                    case 1: return implement( p, i, e, consPtr<  uint8_t >( mem, list ), fun );
+                    case 4: return implement( p, i, e, consPtr< uint32_t >( mem, list ), fun );
+                    case 2: return implement( p, i, e, consPtr< uint16_t >( mem, list ), fun );
+                    case 8: return implement( p, i, e, consPtr< uint64_t >( mem, list ), fun );
                 }
             case Value::Pointer:
-                return implement< Fun >( p, i, e, consPtr< Pointer >( mem, list ) );
+                return implement( p, i, e, consPtr< Pointer >( mem, list ), fun );
             case Value::CodePointer:
-                return implement< Fun >( p, i, e, consPtr< PC >( mem, list ) );
+                return implement( p, i, e, consPtr< PC >( mem, list ), fun );
             case Value::Float: switch ( v.width ) {
                 case sizeof(float):
-                    return implement< Fun >( p, i, e, consPtr< float >( mem, list ) );
+                    return implement( p, i, e, consPtr< float >( mem, list ), fun );
                 case sizeof(double):
-                    return implement< Fun >( p, i, e, consPtr< double >( mem, list ) );
+                    return implement( p, i, e, consPtr< double >( mem, list ), fun );
             }
             case Value::Void:
-                return implement< Fun >( p, i, e, list ); /* ignore void items */
+                return implement( p, i, e, list, fun ); /* ignore void items */
         }
 
         assert_die();
     }
 
     template< typename Fun, int Limit = 3 >
-    typename Fun::T implement( int limit = 0 )
+    typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
     {
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
-        return implement< Fun >( wibble::Preferred(), i, e, Nil() );
+        return implement( wibble::Preferred(), i, e, Nil(), fun );
     }
 
     template< typename Fun >
-    typename Fun::T _withValues() {
-        return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil() );
+    typename Fun::T _withValues( Fun fun ) {
+        return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil(), fun );
     }
 
     template< typename Fun, typename... Values >
-    typename Fun::T _withValues( ProgramInfo::Value v, Values... vs ) {
+    typename Fun::T _withValues( Fun fun, ProgramInfo::Value v, Values... vs ) {
         values.push_back( v );
-        return _withValues< Fun >( vs... );
+        return _withValues< Fun >( fun, vs... );
     }
 
     template< typename Fun, typename... Values >
-    typename Fun::T withValues( Values... vs ) {
+    typename Fun::T withValues( Fun fun, Values... vs ) {
         values.clear();
-        return _withValues< Fun >( vs... );
+        return _withValues< Fun >( fun, vs... );
     }
 };
 
