@@ -29,7 +29,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
             constant< PC >( v ) = blockmap[ B ];
         else if ( isa< ::llvm::ConstantPointerNull >( C ) )
             constant< Pointer >( v ) = Pointer();
-        else assert_die();
+        else assert_unreachable( "unknown constant pointer type" );
     } else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
         ; /* nothing to do, everything is zeroed by default */
     else if ( auto CA = dyn_cast< ::llvm::ConstantArray >( C ) ) {
@@ -44,9 +44,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         const char *raw = CDS->getRawDataValues().data();
         std::copy( raw, raw + v.width, econtext.dereference( v ) );
     } else if ( auto CV = dyn_cast< ::llvm::ConstantVector >( C ) )
-        assert_die(); /* don't know how to handle yet */
+        assert_unimplemented();
     else if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) )
-        assert_die();
-    else assert_die();
+        assert_unimplemented();
+    else assert_unreachable( "unknown constant type" );
 }
 

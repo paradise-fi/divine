@@ -491,7 +491,7 @@ struct Evaluator
     }
 
     void implement_switch() {
-        assert_die();
+        assert_unimplemented();
     }
 
     void implement_indirectBr() {
@@ -551,9 +551,10 @@ struct Evaluator
                 case Intrinsic::trap:
                 case Intrinsic::vaend:
                 case Intrinsic::vacopy:
-                    assert_die(); /* TODO */
+                    assert_unimplemented(); /* TODO */
                 default:
-                    assert_die(); /* We lowered everything in buildInfo. */
+                    /* We lowered everything in buildInfo. */
+                    assert_unreachable( "unexpected intrinsic" );
             }
 
             switch( instruction.builtin ) {
@@ -667,7 +668,7 @@ struct Evaluator
             case LLVMInst::LShr:
                 implement< Arithmetic >(); break;
 
-            default: assert_die();
+            default: assert_unreachable( "unknown opcode %d", instruction.opcode );
         }
     }
 
