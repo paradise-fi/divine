@@ -76,7 +76,9 @@ enum Builtin {
     BuiltinMask = 2,
     BuiltinUnmask = 3,
     BuiltinGetTID = 4,
-    BuiltinNewThread = 5
+    BuiltinNewThread = 5,
+    BuiltinAssert = 6,
+    BuiltinAp = 7
 };
 
 struct ProgramInfo {

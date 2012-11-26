@@ -116,6 +116,10 @@ void ProgramInfo::builtin( Position p )
         insn.builtin = BuiltinNewThread;
     else if ( name == "__divine_choice" )
         insn.builtin = BuiltinChoice;
+    else if ( name == "__divine_assert" )
+        insn.builtin = BuiltinAssert;
+    else if ( name == "__divine_ap" )
+        insn.builtin = BuiltinAp;
     else throw wibble::exception::Consistency(
         "ProgramInfo::builtin",
         "Can't call an undefined function <" + name + ">" );

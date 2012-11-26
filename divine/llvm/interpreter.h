@@ -34,7 +34,9 @@ struct Interpreter
     int choice;
 
     void parseProperties( Module *M );
-    bool observable() {
+    bool observable( const std::set< PC > &s ) {
+        if ( s.empty() )
+            return false; /* this already caused an interrupt, if applicable */
         return isa< StoreInst >( instruction().op );
     }
 
@@ -118,15 +120,20 @@ struct Interpreter
             state.switch_thread( tid );
         assert( state.stack().get().length() );
 
+        flags().assert = false;
+
         while ( true ) {
-            /* do not execute the instruction yet! */
-            if ( ( observable() && !pc().masked && !seen.empty() ) ||
-                 seen.count( pc() ) ) {
+            if ( !pc().masked && ( observable( seen ) || seen.count( pc() ) ) ) {
                 yield( state.snapshot() );
                 return;
             }
 
-            state.flags().assert = false;
+            if ( flags().assert ) { /* assert always triggers a yield */
+                yield( state.snapshot() );
+                return;
+            }
+
+            flags().assert = false;
             jumped = false;
             choice = 0;
             seen.insert( pc() );
@@ -164,6 +171,7 @@ struct Interpreter
     /* ControlContext interface. */
     int stackDepth() { return state.stack().get().length(); }
     MachineState::Frame &frame( int depth = 0 ) { return state.frame( -1, depth ); }
+    MachineState::Flags &flags() { return state.flags(); }
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
     void new_thread( Function *f );

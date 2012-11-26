@@ -131,6 +131,7 @@ struct ControlContext {
     void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
     MachineState::Frame &frame( int tid = -1, int depth = 0 ) { assert_die(); }
+    MachineState::Flags &flags() { assert_die(); }
     PC &pc() { assert_die(); }
     void new_thread( PC ) { assert_die(); }
     int stackDepth() { assert_die(); }
@@ -542,6 +543,9 @@ struct Evaluator
                 case NotBuiltin: break;
                 case BuiltinChoice:
                     ccontext.choice = withValues< Get< int > >( instruction.operand( 0 ) );
+                    return;
+                case BuiltinAssert:
+                    ccontext.flags().assert = !withValues< Get< int > >( instruction.operand( 0 ) );
                     return;
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;
