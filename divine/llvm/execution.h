@@ -367,16 +367,17 @@ struct Evaluator
 
     template< typename _T >
     struct Set : Implementation {
-        typedef _T T;
-        T v;
+        typedef _T Arg;
+        Arg v;
 
-        template< typename X = T >
-        auto operator()( X &r = Dummy< X >::v() ) -> decltype( static_cast< X >( v ) )
+        template< typename X = int >
+        auto operator()( X &r = Dummy< X >::v() )
+            -> decltype( declcheck( static_cast< X >( v ) ) )
         {
             r = static_cast< X >( v );
         }
 
-        Set( T v ) : v( v ) {}
+        Set( Arg v ) : v( v ) {}
     };
 
     typedef Get< bool > IsTrue;
