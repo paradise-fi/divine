@@ -130,7 +130,7 @@ struct ControlContext {
     int choice;
     void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
-    MachineState::Frame &frame( int tid = -1, int depth = 0 ) { assert_die(); }
+    MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
     PC &pc() { assert_die(); }
     void new_thread( PC ) { assert_die(); }
