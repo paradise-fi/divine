@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h> //malloc
+#include <string.h> //memset
 
 #include "../divine/generator/cesmi-client.h"
 
@@ -37,7 +38,8 @@ struct state {
 static inline struct state *make( CESMISetup *setup, char **to ) {
     int size = sizeof( struct state ) + setup->slack;
     *to = pool_allocate_blob( setup->cpool, size );
-    return (struct state *) ((*to) + setup->slack + 4); // FIXME
+    memset ( (*to) + BlobHeaderSize , 0, setup->slack );
+    return (struct state *) ((*to) + setup->slack + BlobHeaderSize);
 }
 
 void get_system_initial( CESMISetup *setup, char **to )
@@ -48,9 +50,9 @@ void get_system_initial( CESMISetup *setup, char **to )
 
 int get_system_successor( CESMISetup *setup, int handle, char *from, char **to )
 {
-    struct state *in = (struct state *) (from + setup->slack + 4);
+    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
 
-    if (in->a < 1024 && in->b < 1024 && handle < 3) {
+    if (in->a < 4 && in->b < 4 && handle < 3) {
         struct state *out = make( setup, to );
         *out = *in;
         switch (handle) {
@@ -67,7 +69,7 @@ void system_setup( CESMISetup *s ) {
 
 char *show_system_node( CESMISetup *setup, char *from )
 {
-    struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
+    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
     char * ret = (char *) malloc ( 50 );  // FIXME
     sprintf (ret, "a:%d, b:%d\n", in->a, in->b );
     return ret;
@@ -75,8 +77,8 @@ char *show_system_node( CESMISetup *setup, char *from )
 
 char *show_system_transition( CESMISetup *setup, char *from, char *to )
 {
-    struct state *in = (struct state *) (from + setup->slack + 4); //FIXME
-    struct state *out = (struct state *) (to + setup->slack + 4); //FIXME
+    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
+    struct state *out = (struct state *) (to + setup->slack + BlobHeaderSize);
     char * ret = (char *) malloc ( 50 );  // FIXME
     if (in->a != out->a)
       sprintf (ret, "a++" );
@@ -88,6 +90,6 @@ char *show_system_transition( CESMISetup *setup, char *from, char *to )
 //Atomic proposition a: (a>b)
 int prop_a( CESMISetup *setup, char *from )
 {
-    struct state *in = (struct state *) (from + setup->slack + 4);  //FIXME
+    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
     return (in->a > in->b);
 }

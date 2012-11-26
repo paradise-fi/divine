@@ -7,6 +7,8 @@
 
 #define HINTCOUNT 128
 
+const int BlobHeaderSize = 4;
+
 typedef char *CBlob;
 
 typedef struct CPoolGroup
