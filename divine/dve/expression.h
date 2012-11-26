@@ -38,20 +38,20 @@ struct EvalContext {
         Value () : ival() {}
     };
 
-    Value pop() {
+    ImmValue pop() {
         assert( !stack.empty() );
-        Value v = stack.back();
+        ImmValue v = stack.back();
         DEBUG(std::cerr << "-[" << v.value << "]");
         stack.pop_back();
         return v;
     }
 
-    void push( Value a ) {
+    void push( ImmValue a ) {
         DEBUG(std::cerr << "+[" << a.value << "]");
         stack.push_back( a );
     }
 
-    std::vector< Value > stack;
+    std::vector< ImmValue > stack;
     char *mem;
 };
 
@@ -65,11 +65,11 @@ struct Expression {
         // elements currently on the stack
 
         // Subscript = array index operation; the first operand is the symbol
-        // id of the array, while the other is the array subscript
+        // id of the array (placed on static stack), while the other is the array subscript
         Token op;
-        EvalContext::Value arg;
+        EvalContext::Value arg1, arg2;
 
-        Item( Token op, EvalContext::Value arg ) : op( op ), arg( arg ) {}
+        Item( Token op, EvalContext::Value arg1, EvalContext::Value arg2 = 0 ) : op( op ), arg1( arg1 ), arg2( arg2 ) {}
     };
 
     std::vector< Item > rpn;
@@ -138,43 +138,41 @@ struct Expression {
 
     void step( EvalContext &ctx, Item &i ) {
         EvalContext::ImmValue a, b;
-        Symbol p, s;
         DEBUG(for ( int x = 0; x < ctx.stack.size(); ++ x )
                   std::cerr << ctx.stack[ x ].value << " ";
               std::cerr << i.op);
 
         switch (i.op.id) {
             case TI::Identifier:
-                ctx.push( i.arg.symbol.deref( ctx.mem ) ); break;
+                ctx.push( i.arg1.symbol.deref( ctx.mem ) ); break;
             case TI::Reference:
+                assert_die(); // Obsolete pathway
+                break;
             case TI::Constant:
-                ctx.push( i.arg ); break;
+                ctx.push( i.arg1.ival ); break;
             case TI::Subscript:
-                b = ctx.pop().ival;
-                s = ctx.pop().symbol;
+                b = ctx.pop();
                 if ( b.error )
                     ctx.push( b.error );
-                else if ( b.value < 0 || (s.item().is_array && s.item().array <= b.value ) )
-                    ctx.push( EvalContext::Value( ErrorState::e_arrayCheck ) );
+                else if ( b.value < 0 || (i.arg1.symbol.item().is_array && i.arg1.symbol.item().array <= b.value ) )
+                    ctx.push( ErrorState::e_arrayCheck );
                 else
-                    ctx.push( s.deref( ctx.mem, b.value ) );
+                    ctx.push( i.arg1.symbol.deref( ctx.mem, b.value ) );
                 break;
             case TI::Period:
-                s = ctx.pop().symbol;
-                p = ctx.pop().symbol;
-                ctx.push( s.deref( ctx.mem ) == p.deref( ctx.mem ) );
+                ctx.push( i.arg1.symbol.deref( ctx.mem ) == i.arg2.symbol.deref( ctx.mem ) );
                 break;
             case TI::Bool_Not:
-                a = ctx.pop().ival;
+                a = ctx.pop();
                 ctx.push( !a.value );
                 break;
             case TI::Tilde:
-                a = ctx.pop().ival;
+                a = ctx.pop();
                 ctx.push( ~a.value );
                 break;
             default:
-                b = ctx.pop().ival;
-                a = ctx.pop().ival;
+                b = ctx.pop();
+                a = ctx.pop();
                 ctx.push( binop( i.op, a, b ) );
         }
         DEBUG(std::cerr << std::endl);
@@ -186,18 +184,18 @@ struct Expression {
             step( ctx, *i );
         assert_eq( ctx.stack.size(), (size_t) 1 );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
-        EvalContext::Value retval = ctx.pop();
-        if ( retval.ival.error ) {
-            assert( !retval.ival.errState().padding() );
+        EvalContext::ImmValue retval = ctx.pop();
+        if ( retval.error ) {
+            assert( !retval.errState().padding() );
             if ( err )
-                err->error |= retval.ival.error;
+                err->error |= retval.error;
             return true; // Black magic - We want to have transition to the error state
         }
-        return retval.ival.value;
+        return retval.value;
     }
 
-    void rpn_push( Token op, EvalContext::Value v ) {
-        rpn.push_back( Item( op, v ) );
+    void rpn_push( Token op, EvalContext::Value v1, EvalContext::Value v2 = 0 ) {
+        rpn.push_back( Item( op, v1, v2 ) );
     }
 
     void build( const SymTab &sym, const parse::Expression &ex ) {
@@ -212,9 +210,7 @@ struct Expression {
                 SymTab::State, right->ident.name() );
             assert( process.valid() );
             assert( state.valid() );
-            rpn_push( Token( TI::Reference, "<synthetic>" ), process );
-            rpn_push( Token( TI::Reference, "<synthetic>" ), state );
-            rpn_push( ex.op, 0 );
+            rpn_push( ex.op, process, state );
             return;
         }
 
@@ -223,13 +219,11 @@ struct Expression {
             if ( v.ident.valid() ) {
                 Symbol ident = sym.lookup( SymTab::Variable, v.ident.name() );
                 Token t = v.ident.token;
-                if ( v.idx )
-                    t.id = TI::Reference;
-                rpn_push( t, ident );
                 if ( v.idx ) {
+                    t.id = TI::Subscript;
                     build( sym, *v.idx );
-                    rpn_push( Token( TI::Subscript, "<synthetic>" ), 0 );
                 }
+                rpn_push( t, ident );
             } else
                 rpn_push( v.value.token, v.value.value );
         }
