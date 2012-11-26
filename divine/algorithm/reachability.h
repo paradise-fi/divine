@@ -172,7 +172,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         progress() << std::endl;
 
         safetyBanner( !goal.valid() );
-        if ( goal.valid() ) {
+        if ( goal.valid() && this->meta().output.wantCe ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }
