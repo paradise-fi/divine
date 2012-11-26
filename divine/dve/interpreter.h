@@ -5,6 +5,8 @@
 #include <divine/dve/symtab.h>
 #include <divine/dve/expression.h>
 
+#include <memory>
+
 #ifndef DIVINE_DVE_INTERPRETER_H
 #define DIVINE_DVE_INTERPRETER_H
 
@@ -73,7 +75,7 @@ struct Channel {
 
     Symbol thischan;
 
-    SymContext context;
+    std::shared_ptr< SymContext > context;
     std::vector< Symbol > components;
 
     bool _valid;
@@ -82,12 +84,12 @@ struct Channel {
 
     char * item(char * data, int i) {
         assert( _valid );
-        return data + i*context.offset;
+        return data + i*context->offset;
     }
 
     int & count(char * data) {
         assert( _valid );
-        char *place = data + bufsize*context.offset;
+        char *place = data + bufsize*context->offset;
         return *reinterpret_cast< int * >( place );
     }
 
@@ -96,14 +98,11 @@ struct Channel {
         char * data = thischan.getref( ctx.mem, 0 );
         char * _item = item( data, count( data ) );
         assert_eq( values.size(), components.size() );
+
         for ( unsigned i = 0; i < values.size(); i++ ) {
-            /* Prevents segfault probably caused by copying this class to other
-             * threads and not updating pointers properly.
-             * Will look into it later
-             */
-            components[ i ].context = &context;
             components[ i ].set( _item, 0, values[ i ], err );
         }
+
         count( data )++;
     }
 
@@ -112,12 +111,14 @@ struct Channel {
         char * data = thischan.getref( ctx.mem, 0 );
         std::vector< int > retval;
         retval.resize( components.size() );
+
         for ( unsigned i = 0; i < components.size(); i++ ) {
-            components[ i ].context = &context; // Prevents segfault (See enqueue)
             retval[ i ] = components[ i ].deref( data, 0 );
         }
-        memmove( data, item( data, 1 ), context.offset * ( --count( data ) ) );
-        memset( item( data, count( data ) ), 0, context.offset );
+
+        memmove( data, item( data, 1 ), context->offset * ( --count( data ) ) );
+        memset( item( data, count( data ) ), 0, context->offset );
+
         return retval;
     }
 
@@ -143,22 +144,24 @@ struct Channel {
 
     Channel() : _valid( false ) {}
 
-    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl ) : is_compound( 1 ),  is_array( 0 ), size( 1 ), _valid( true )
+    Channel( SymTab &sym, const parse::ChannelDeclaration &chandecl )
+        : is_compound( 1 ),  is_array( 0 ), size( 1 ),
+        context( new SymContext() ), _valid( true )
     {
         is_buffered = chandecl.is_buffered;
         bufsize = chandecl.size;
         name = chandecl.name;
         components.resize( chandecl.components.size() );
         for( unsigned i = 0; i < chandecl.components.size(); i++ ) {
-            context.ids.push_back( SymContext::Item() );
-            SymContext::Item &it = context.ids[ context.id ];
-            it.offset = context.offset;
+            context->ids.push_back( SymContext::Item() );
+            SymContext::Item &it = context->ids[ context->id ];
+            it.offset = context->offset;
             it.width = chandecl.components[ i ];
-            context.offset += it.width;
-            components[ i ] =  Symbol( &context, context.id );
-            context.id++;
+            context->offset += it.width;
+            components[ i ] =  Symbol( context.get(), context->id );
+            context->id++;
         }
-        width = bufsize * context.offset + sizeof( int );
+        width = bufsize * context->offset + sizeof( int );
         if ( is_buffered )
             thischan = sym.allocate( NS::Channel, *this );
     }
