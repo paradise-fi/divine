@@ -25,16 +25,10 @@ struct QueueFrontend {
         deadlocked = true;
 
         Node from = self().front();
-        bool permanent = visitor::permanent( from );
-        visitor::setPermanent( from );
-
         self().g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
                 next( from, n, label );
             } );
-
-        visitor::setPermanent( from, permanent );
-        self().g.release( from ); // Hm.
     }
 
     template< typename Dead >
@@ -47,6 +41,7 @@ struct QueueFrontend {
     void processClosed( Close close ) {
         if ( !self().empty() ) {
             close( self().front() );
+            self().g.release( self().front() );
             self().pop_front();
         }
     }
@@ -133,6 +128,7 @@ struct Stack {
 
         while ( !empty() && _stack.back().first == Expanded ) {
             close( _stack.back().second.first );
+            g.release( _stack.back().second.first );
             _stack.pop_back();
         }
 

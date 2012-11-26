@@ -160,10 +160,8 @@ struct Common {
         if ( !store.alias( to, _to ) )
             graph.release( _to );
 
-        if ( tact != IgnoreTransition ) {
+        if ( tact != IgnoreTransition )
             graph.release( to );
-            graph.release( from );
-        }
 
         if ( tact == TerminateOnTransition || eact == TerminateOnState )
             this->terminate();
