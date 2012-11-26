@@ -419,7 +419,11 @@ struct Evaluator
         void operator()( R &r = Dummy< R >::v(),
                          Pointer p = Dummy< Pointer >::v() )
         {
-            r = *reinterpret_cast< R * >( this->econtext().dereference( p ) );
+            char *target = this->econtext().dereference( p );
+            if ( target )
+                r = *reinterpret_cast< R * >( target );
+            else
+                this->ccontext().flags().invalid_dereference = true;
         }
     };
 
@@ -428,7 +432,11 @@ struct Evaluator
         void operator()( L &l = Dummy< L >::v(),
                          Pointer p = Dummy< Pointer >::v() )
         {
-            *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
+            char *target = this->econtext().dereference( p );
+            if ( target )
+                *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
+            else
+                this->ccontext().flags().invalid_dereference = true;
         }
     };
 

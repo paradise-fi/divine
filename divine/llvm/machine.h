@@ -239,8 +239,9 @@ struct MachineState
     }
 
     char *dereference( Pointer p ) {
-        assert( validate( p ) );
-        if ( globalPointer( p ) )
+        if( !validate( p ) )
+            return nullptr;
+        else if ( globalPointer( p ) )
             return globalmem() + _info.globalPointerOffset( p );
         else if ( heap().owns( p ) )
             return heap().dereference( p );
