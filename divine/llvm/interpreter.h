@@ -32,6 +32,7 @@ struct Interpreter
 
     bool jumped;
     int choice;
+    int tid;
 
     void parseProperties( Module *M );
     bool observable( const std::set< PC > &s ) {
@@ -96,7 +97,7 @@ struct Interpreter
 
     template< typename Yield >
     void run( Blob b, Yield yield ) {
-        state.rewind( b, -1 ); int tid = 0;
+        state.rewind( b, -1 ); tid = 0;
         int threads = state._thread_count;
         while ( threads ) {
             run( tid, yield );
@@ -175,8 +176,9 @@ struct Interpreter
     MachineState::Flags &flags() { return state.flags(); }
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
-    void new_thread( Function *f );
-    void new_thread( PC pc );
+    int new_thread( Function *f );
+    int new_thread( PC pc );
+    int threadId() { return tid; }
     PC &pc() { return state._frame->pc; }
 };
 

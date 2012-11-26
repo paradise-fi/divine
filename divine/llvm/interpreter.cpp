@@ -66,16 +66,17 @@ divine::Blob Interpreter::initial( Function *f )
     return result;
 }
 
-void Interpreter::new_thread( PC pc )
+int Interpreter::new_thread( PC pc )
 {
     int current = state._thread;
     int tid = state.new_thread();
     state.enter( pc.function );
     state.switch_thread( current );
+    return tid;
 }
 
-void Interpreter::new_thread( Function *f )
+int Interpreter::new_thread( Function *f )
 {
-    new_thread( PC( info.functionmap[ f ], 0, 0 ) );
+    return new_thread( PC( info.functionmap[ f ], 0, 0 ) );
 }
 

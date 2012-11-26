@@ -133,8 +133,9 @@ struct ControlContext {
     MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
     PC &pc() { assert_die(); }
-    void new_thread( PC ) { assert_die(); }
+    int new_thread( PC ) { assert_die(); }
     int stackDepth() { assert_die(); }
+    int threadId() { assert_die(); }
 };
 
 template< typename X >
@@ -364,8 +365,23 @@ struct Evaluator
         }
     };
 
+    template< typename _T >
+    struct Set : Implementation {
+        typedef _T T;
+        T v;
+
+        template< typename X = T >
+        auto operator()( X &r = Dummy< X >::v() ) -> decltype( static_cast< X >( v ) )
+        {
+            r = static_cast< X >( v );
+        }
+
+        Set( T v ) : v( v ) {}
+    };
+
     typedef Get< bool > IsTrue;
     typedef Get< int > GetInt;
+    typedef Set< int > SetInt;
 
     /******** Memory access & conversion ********/
 
@@ -550,12 +566,15 @@ struct Evaluator
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;
                 case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
-                case BuiltinGetTID: assert_die(); /* TODO */
+                case BuiltinGetTID:
+                    withValues( SetInt( ccontext.threadId() ), instruction.result() );
+                    return;
                 case BuiltinNewThread:
                     Pointer entry = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     /* As far as LLVM is concerned, entry is a Pointer, but in fact it's a PC. */
-                    ccontext.new_thread( *reinterpret_cast< PC * >( &entry ) );
-                    return; /* TODO result! */
+                    int tid = ccontext.new_thread( *reinterpret_cast< PC * >( &entry ) );
+                    withValues( SetInt( tid ), instruction.result() );
+                    return;
             }
         }
 
