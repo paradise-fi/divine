@@ -678,7 +678,7 @@ struct Evaluator
 
     template< typename Fun, typename I, typename Cons >
     auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
-        -> typename wibble::TPair< decltype( match( Fun(), list ) ), typename Fun::T >::Second
+        -> typename wibble::TPair< decltype( match( fun, list ) ), typename Fun::T >::Second
     {
         typedef ProgramInfo::Value Value;
         wibble::Preferred p;
