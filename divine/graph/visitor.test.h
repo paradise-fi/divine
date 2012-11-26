@@ -427,10 +427,10 @@ struct TestVisitor {
 	examples( _parallel< PartitionCheck, int > ) ;
     }
 
-/*    Test partition_blob() {
+    void partition_blob() { /* TODO */
 	examples( _parallel< PartitionCheck, Blob > );
     }
-*/
+
 #if 0
     template< typename G >
     struct SimpleParReach : DomainWorker< SimpleParReach< G > >
