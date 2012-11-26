@@ -1,4 +1,4 @@
-all check divine clean lcov-report install:
+all check divine clean lcov-report install unit functional:
 	$(MAKE) -C _build $(@)
 dist:
 	$(MAKE) -C _build package_source
