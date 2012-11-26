@@ -72,13 +72,14 @@ static std::ostream &operator<<( std::ostream &o, Pointer p ) {
 
 enum Builtin {
     NotBuiltin = 0,
-    BuiltinChoice = 1,
-    BuiltinMask = 2,
-    BuiltinUnmask = 3,
-    BuiltinGetTID = 4,
-    BuiltinNewThread = 5,
-    BuiltinAssert = 6,
-    BuiltinAp = 7
+    BuiltinChoice,
+    BuiltinMask,
+    BuiltinUnmask,
+    BuiltinInterrupt,
+    BuiltinGetTID,
+    BuiltinNewThread,
+    BuiltinAssert,
+    BuiltinAp
 };
 
 struct ProgramInfo {

@@ -549,6 +549,7 @@ struct Evaluator
                     return;
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;
+                case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
                 case BuiltinGetTID: assert_die(); /* TODO */
                 case BuiltinNewThread:
                     Pointer entry = withValues< Get< Pointer > >( instruction.operand( 0 ) );

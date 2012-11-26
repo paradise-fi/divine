@@ -112,6 +112,8 @@ void ProgramInfo::builtin( Position p )
         insn.builtin = BuiltinMask;
     else if ( name == "__divine_interrupt_unmask" )
         insn.builtin = BuiltinUnmask;
+    else if ( name == "__divine_interrupt" )
+        insn.builtin = BuiltinInterrupt;
     else if ( name == "__divine_get_tid" )
         insn.builtin = BuiltinGetTID;
     else if ( name == "__divine_new_thread" )
