@@ -178,16 +178,17 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
 divine::Blob MachineState::snapshot()
 {
     Canonic canonic( *this );
-    int live_threads = _thread_count;
+    int dead_threads = 0;
 
     /* TODO trace the global memory! */
 
     for ( int tid = 0; tid < _thread_count; ++tid ) {
         if ( !stack( tid ).get().length() ) { /* leave out dead threads */
-            -- live_threads;
+            ++ dead_threads;
             continue;
         }
 
+        dead_threads = 0; /* non-tail dead threads become zombies */
         canonic.stack += sizeof( Stack );
         eachframe( stack( tid ), [&]( Frame &fr ) {
                 canonic.stack += sizeof( Frame );
@@ -211,13 +212,10 @@ divine::Blob MachineState::snapshot()
     address.advance( size_heap( canonic.segcount, canonic.allocated ) );
     assert_eq( size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
-    address.as< int >() = live_threads;
+    address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
 
-    for ( int tid = 0; tid < _thread_count; ++tid ) {
-        if ( !stack( tid ).get().length() )
-            continue;
-
+    for ( int tid = 0; tid < _thread_count - dead_threads; ++tid ) {
         address.as< int >() = stack( tid ).get().length();
         address.advance( sizeof( int ) );
         eachframe( stack( tid ), [&]( Frame &fr ) {
