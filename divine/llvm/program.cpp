@@ -68,9 +68,11 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
             assert( G->hasInitializer() ); /* extern globals are not allowed */
-            pointee.constant = G->isConstant();
             initValue( G->getInitializer(), pointee );
-            allocateValue( 0, pointee );
+            if ( (pointee.constant = G->isConstant()) )
+                makeLLVMConstant( pointee, G->getInitializer() );
+            else
+                allocateValue( 0, pointee );
             globals.push_back( pointee );
             makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
         } else makeLLVMConstant( result, C );

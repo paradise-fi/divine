@@ -48,11 +48,13 @@ divine::Blob Interpreter::initial( Function *f )
     pre_initial.clear();
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 
-    int idx = 0;
-    for ( auto var = module->global_begin(); var != module->global_end(); ++ var, ++ idx ) {
-        auto val = info.globals[ idx ];
-        if ( var->hasInitializer() )
-            info.storeConstant( val, var->getInitializer(), state.globalmem() );
+    for ( auto var = module->global_begin(); var != module->global_end(); ++ var ) {
+        auto val = info.valuemap[ &*var ];
+        if ( !var->isConstant() && var->hasInitializer() ) {
+            assert( val.constant ); /* the pointer */
+            Pointer p = *reinterpret_cast< Pointer * >( dereference( val ) );
+            info.storeConstant( info.globals[ p.segment ], var->getInitializer(), state.globalmem() );
+        }
     }
 
     int tid = state.new_thread(); // switches automagically
