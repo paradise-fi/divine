@@ -127,8 +127,6 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         }
         if ( meta.algorithm.por ) {
             return makeAlgorithmPOR< A, generator::LegacyDve >( meta );
-        } else if ( meta.algorithm.labels || meta.algorithm.traceLabels ) {
-            return makeAlgorithmN< A, generator::LegacyDve >( meta );
         } else
 #endif
         {
