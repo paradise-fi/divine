@@ -113,8 +113,30 @@ struct Dve : public Common< Blob > {
         return str.str();
     }
 
-    /// currently only dummy method
     std::string showTransition( Node from, Node to, Label ) {
+        if ( !from.valid() || !to.valid() )
+            return "";
+
+        updateMem( from );
+        dve::System::Continuation p;
+
+        p = system->enabled( ctx, p );
+
+        while ( system->valid( ctx, p ) ) {
+            Blob b = alloc.new_blob( stateSize() );
+            memcpy( mem( b ), mem( from ), stateSize() );
+            updateMem( b );
+            system->apply( ctx, p );
+
+            if ( b.compare( to, alloc._slack, b.size() ) == 0 ) {
+                std::stringstream str;
+                system->printTrans( str, p );
+                return str.str();
+            }
+
+            updateMem( from );
+            p = system->enabled( ctx, p );
+        }
         return "";
     }
 

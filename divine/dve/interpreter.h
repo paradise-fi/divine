@@ -657,6 +657,12 @@ struct System {
             return property->is_accepting[ property->state( ctx ) ];
         return false;
     }
+
+    std::ostream& printTrans( std::ostream &o, Continuation c ) {
+        o << "Process: " << c.process << std::endl;
+        o << "Transition: " << c.transition << std::endl;
+        o << "Property: " << c.property;
+    }
 };
 
 }
