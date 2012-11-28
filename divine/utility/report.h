@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <string>
 
 #include <divine/utility/version.h>
 #include <divine/utility/meta.h>
@@ -14,6 +15,7 @@ namespace divine {
 struct Report
 {
     sysinfo::Info sysinfo;
+    std::string execCommand;
 
     int m_signal;
     bool m_finished, m_dumped;
@@ -38,6 +40,8 @@ struct Report
             return;
         m_dumped = true;
 
+        if (execCommand.size() > 0)
+            o << "Execution-command: " << execCommand << std::endl << std::endl;
         o << BuildInfo() << std::endl;
         o << sysinfo << std::endl;
         o << meta << std::endl;

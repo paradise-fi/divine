@@ -2,6 +2,7 @@
 #include <wibble/test.h> // for assert
 #include <queue>
 #include <iostream>
+#include <sstream>
 
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
@@ -117,6 +118,13 @@ struct Main {
           compile( opts )
     {
         Output::_output = makeStdIO( std::cerr );
+
+        {
+            ostringstream execCommStr;
+            for(size_t i = 0; i < argc; ++i)
+                execCommStr << argv[i] << " ";
+            report.execCommand = execCommStr.str();
+        }
 
         setupSignals();
         setupCommandline();
