@@ -712,6 +712,7 @@ struct Evaluator
                     case 2: return implement( p, i, e, consPtr< uint16_t >( mem, list ), fun );
                     case 8: return implement( p, i, e, consPtr< uint64_t >( mem, list ), fun );
                 }
+                assert_unreachable( "Wrong integer width %d", v.width );
             case Value::Pointer:
                 return implement( p, i, e, consPtr< Pointer >( mem, list ), fun );
             case Value::CodePointer:
