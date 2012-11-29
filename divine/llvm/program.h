@@ -60,6 +60,14 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     Pointer() : heap( false ), segment( 0 ), offset( 0 ) {}
     bool null() { return !heap && !segment; }
 
+    operator uint32_t() const {
+        return *reinterpret_cast< const uint32_t * >( this );
+    }
+
+    Pointer( uint32_t x ) {
+        *reinterpret_cast< uint32_t * >( this ) = x;
+    }
+
     bool operator<=( Pointer o ) const {
         return std::make_tuple( int( heap ), int( segment ), int( offset ) )
             <= std::make_tuple( int( o.heap ), int( o.segment ), int( o.offset ) );

@@ -194,7 +194,7 @@ struct Evaluator
         auto operator()( X &r = Dummy< X >::v(),
                          X &a = Dummy< X >::v(),
                          X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a % b ) )
+            -> decltype( declcheck( a + b, a % b, std::fmod( a, b ) ) )
         {
             switch( this->i().opcode ) {
                 case LLVMInst::FAdd:
