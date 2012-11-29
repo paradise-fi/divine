@@ -169,6 +169,8 @@ struct Evaluator
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
     std::vector< ValueRef > values; /* a withValues stash */
+    std::vector< bool > pointers;
+    ValueRef result;
 
     struct Implementation {
         typedef Unit T;
@@ -178,6 +180,7 @@ struct Evaluator
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
         ::llvm::TargetData &TD() { return econtext().TD; }
+        bool resultIsPointer( std::vector< bool > ) { return false; }
     };
 
     template< typename X >
@@ -217,9 +220,12 @@ struct Evaluator
             }
             assert_die();
         }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0] || x[1]; }
     };
 
     struct Select : Implementation {
+        int _selected;
         template< typename R = int, typename C = int >
         auto operator()( R &r = Dummy< R >::v(),
                          C &a = Dummy< C >::v(),
@@ -227,8 +233,10 @@ struct Evaluator
                          R &c = Dummy< R >::v() )
             -> decltype( declcheck( r = a ? b : c ) )
         {
+            _selected = a ? 1 : 2;
             r = a ? b : c;
         }
+        bool resultIsPointer( std::vector< bool > x ) { return x[ _selected ]; }
     };
 
     struct ICmp : Implementation {
@@ -313,6 +321,8 @@ struct Evaluator
         {
             r = l;
         }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
     };
 
     struct BitCast : Implementation {
@@ -326,6 +336,8 @@ struct Evaluator
             std::copy( from, from + sizeof( R ), to );
             return Unit();
         }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
     };
 
     template< typename _T >
@@ -387,20 +399,25 @@ struct Evaluator
             r = p + total;
             return Unit();
         }
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
     };
 
     struct Load : Implementation {
+        bool _pointer;
+
         template< typename R = int >
         Unit operator()( R &r = Dummy< R >::v(),
                          Pointer p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
-            if ( target )
+            if ( target ) {
+                _pointer = this->econtext().isPointer( p );
                 r = *reinterpret_cast< R * >( target );
-            else
+            } else
                 this->ccontext().flags().invalid_dereference = true;
             return Unit();
         }
+        bool resultIsPointer( std::vector< bool > ) { return _pointer; }
     };
 
     struct Store : Implementation {
@@ -409,9 +426,11 @@ struct Evaluator
                          Pointer p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
-            if ( target )
+            if ( target ) {
                 *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
-            else
+                /* NB. This is only ever called on active frames. Hopefully. */
+                this->econtext().setPointer( p, this->econtext().isPointer( ValueRef( this->i().operand( 0 ) ) ) );
+            } else
                 this->ccontext().flags().invalid_dereference = true;
             return Unit();
         }
@@ -428,6 +447,7 @@ struct Evaluator
         Pointer &p = *reinterpret_cast< Pointer * >(
             dereference( instruction.result() ) );
         p = econtext.malloc( alloc );
+        econtext.setPointer( instruction.result(), true );
     }
 
     /******** Control flow ********/
@@ -517,6 +537,9 @@ struct Evaluator
             char *value = econtext.dereference( v );
             char *result = copy.dereference( info, instruction.result() );
             std::copy( value, value + v.width, result );
+            if ( !v.global && !v.constant )
+                copy.setPointer( info, instruction.result(), original.isPointer( info, v ) );
+            /* else TODO! */
             copy.pc.instruction ++;
             instruction = info.instruction( copy.pc );
         }
@@ -670,11 +693,14 @@ struct Evaluator
 
         if ( i == e ) {
             fun._evaluator = this;
-            return match( fun, list );
+            auto retval = match( fun, list );
+            econtext.setPointer( result, fun.resultIsPointer( pointers ) );
+            return retval;
         }
 
         ValueRef v = *i++;
         char *mem = dereference( v );
+        pointers.push_back( econtext.isPointer( v ) );
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
@@ -709,17 +735,22 @@ struct Evaluator
     template< typename Fun, int Limit = 3 >
     typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
     {
+        pointers.clear();
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
+        result = instruction.result();
         return implement( wibble::Preferred(), i, e, Nil(), fun );
     }
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
+        pointers.clear();
         return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil(), fun );
     }
 
     template< typename Fun, typename... Values >
     typename Fun::T _withValues( Fun fun, ValueRef v, Values... vs ) {
+        if ( values.empty() )
+            result = v;
         values.push_back( v );
         return _withValues< Fun >( fun, vs... );
     }
