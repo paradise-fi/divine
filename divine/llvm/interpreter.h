@@ -97,9 +97,14 @@ struct Interpreter
 
     template< typename Yield >
     void run( Blob b, Yield yield ) {
-        state.rewind( b, -1 ); tid = 0;
+        state.rewind( b, -1 ); /* rewind first to get sense of thread count */
+        tid = 0;
+        /* cache, to avoid problems with thread creation/destruction */
         int threads = state._thread_count;
+
         while ( threads ) {
+            while ( tid < threads && !state.stack( tid ).get().length() )
+                ++tid;
             run( tid, yield );
             if ( ++tid == threads )
                 break;
