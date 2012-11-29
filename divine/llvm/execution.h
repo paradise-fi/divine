@@ -133,7 +133,7 @@ struct ControlContext {
     MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
     PC &pc() { assert_die(); }
-    int new_thread( PC ) { assert_die(); }
+    int new_thread( PC, Pointer ) { assert_die(); }
     int stackDepth() { assert_die(); }
     int threadId() { assert_die(); }
 };
@@ -580,9 +580,9 @@ struct Evaluator
                     withValues( SetInt( ccontext.threadId() ), instruction.result() );
                     return;
                 case BuiltinNewThread:
-                    Pointer entry = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-                    /* As far as LLVM is concerned, entry is a Pointer, but in fact it's a PC. */
-                    int tid = ccontext.new_thread( *reinterpret_cast< PC * >( &entry ) );
+                    PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
+                    Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
+                    int tid = ccontext.new_thread( entry, arg );
                     withValues( SetInt( tid ), instruction.result() );
                     return;
             }

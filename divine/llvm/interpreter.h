@@ -177,7 +177,7 @@ struct Interpreter
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
     int new_thread( Function *f );
-    int new_thread( PC pc );
+    int new_thread( PC pc, Pointer arg );
     int threadId() { return tid; }
     PC &pc() { return state._frame->pc; }
 };
