@@ -165,9 +165,15 @@ struct Evaluator
 
     bool is_signed;
 
+    struct ValueRef {
+        ProgramInfo::Value v;
+        int frame;
+        ValueRef( ProgramInfo::Value v, int frame = 0 ) : v( v ), frame( frame ) {}
+    };
+
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
-    std::vector< ProgramInfo::Value > values; /* a withValues stash */
+    std::vector< ValueRef > values; /* a withValues stash */
 
     struct Implementation {
         typedef void T;
@@ -182,6 +188,7 @@ struct Evaluator
     char *dereference( ProgramInfo::Value v, int frame = 0 ) {
         return econtext.dereference( v, frame ); /* we don't care about other threads */
     }
+    char *dereference( ValueRef v ) { return dereference( v.v, v.frame ); }
     char *dereference( Pointer p ) { return econtext.dereference( p ); }
 
     template< typename... X >
@@ -315,32 +322,6 @@ struct Evaluator
             r = l;
         }
     };
-
-    /*
-     * NB. Tricksy bit. The argument values are INVALID in here, because they
-     * may be coming from a function whose frame is not on the top of the
-     * stack.  I.e. the Frame vs Values are mismatched. This is no big deal
-     * because we never dereference l, instead we grab the value from the
-     * correct frame using the "values" stash directly.
-     */
-    template< int out, int in >
-    struct CopyOut : Implementation {
-        template< typename X = int, typename Y = int >
-        auto operator()( X &r = Dummy< X >::v(),
-                         Y &l = Dummy< Y >::v() )
-            -> decltype( declcheck( r = l ) )
-        {
-            *reinterpret_cast< X * >(
-                this->econtext().dereference(
-                    this->evaluator().values[ 0 ], out ) ) =
-                *reinterpret_cast< Y * >(
-                    this->econtext().dereference(
-                        this->evaluator().values[ 1 ], in ) );
-        }
-    };
-
-    typedef CopyOut< 0, 1 > CopyArg;
-    typedef CopyOut< 1, 0 > CopyResult;
 
     struct BitCast : Implementation {
         template< typename R = int, typename L = int >
@@ -478,7 +459,7 @@ struct Evaluator
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
         if ( instruction.values.size() > 1 ) /* return value */
-            withValues( CopyResult(), caller.result(), instruction.operand( 0 ) );
+            withValues( Copy(), ValueRef( caller.result(), 1 ), instruction.operand( 0 ) );
 
         ccontext.leave();
 
@@ -598,7 +579,7 @@ struct Evaluator
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < CS.arg_size(); ++i )
-            withValues( CopyArg(), function.values[ i ], instruction.operand( i ) );
+            withValues( Copy(), function.values[ i ], ValueRef( instruction.operand( i ), 1 ) );
 
         /* TODO varargs */
 
@@ -697,27 +678,27 @@ struct Evaluator
             return match( fun, list );
         }
 
-        Value v = *i++;
+        ValueRef v = *i++;
         char *mem = dereference( v );
 
-        switch ( v.type ) {
-            case Value::Integer: if ( is_signed ) switch ( v.width ) {
+        switch ( v.v.type ) {
+            case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
                     case 1: return implement( p, i, e, consPtr<  int8_t >( mem, list ), fun );
                     case 4: return implement( p, i, e, consPtr< int32_t >( mem, list ), fun );
                     case 2: return implement( p, i, e, consPtr< int16_t >( mem, list ), fun );
                     case 8: return implement( p, i, e, consPtr< int64_t >( mem, list ), fun );
-                } else switch ( v.width ) {
+                } else switch ( v.v.width ) {
                     case 1: return implement( p, i, e, consPtr<  uint8_t >( mem, list ), fun );
                     case 4: return implement( p, i, e, consPtr< uint32_t >( mem, list ), fun );
                     case 2: return implement( p, i, e, consPtr< uint16_t >( mem, list ), fun );
                     case 8: return implement( p, i, e, consPtr< uint64_t >( mem, list ), fun );
                 }
-                assert_unreachable( "Wrong integer width %d", v.width );
+                assert_unreachable( "Wrong integer width %d", v.v.width );
             case Value::Pointer:
                 return implement( p, i, e, consPtr< Pointer >( mem, list ), fun );
             case Value::CodePointer:
                 return implement( p, i, e, consPtr< PC >( mem, list ), fun );
-            case Value::Float: switch ( v.width ) {
+            case Value::Float: switch ( v.v.width ) {
                 case sizeof(float):
                     return implement( p, i, e, consPtr< float >( mem, list ), fun );
                 case sizeof(double):
@@ -743,7 +724,7 @@ struct Evaluator
     }
 
     template< typename Fun, typename... Values >
-    typename Fun::T _withValues( Fun fun, ProgramInfo::Value v, Values... vs ) {
+    typename Fun::T _withValues( Fun fun, ValueRef v, Values... vs ) {
         values.push_back( v );
         return _withValues< Fun >( fun, vs... );
     }
