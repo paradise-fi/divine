@@ -514,8 +514,7 @@ struct Evaluator
         while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
             auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
-            char *value = ( v.global || v.constant ) ?
-                          econtext.dereference( v ) : original.dereference( info, v );
+            char *value = econtext.dereference( v );
             char *result = copy.dereference( info, instruction.result() );
             std::copy( value, value + v.width, result );
             copy.pc.instruction ++;
