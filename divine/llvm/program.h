@@ -269,6 +269,11 @@ struct GlobalContext {
 
     Pointer malloc( int ) { assert_die(); }
 
+    bool isPointer( ValueRef ) { return false; }
+    bool isPointer( Pointer ) { return false; }
+    void setPointer( ValueRef, bool ) {}
+    void setPointer( Pointer, bool ) {}
+
     char *dereference( Pointer p ) {
         if ( !p.heap )
             return global + info.globalPointerOffset( p );

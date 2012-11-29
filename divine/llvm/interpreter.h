@@ -175,6 +175,9 @@ struct Interpreter
     char *dereference( Pointer p ) { return state.dereference( p ); }
     Pointer malloc( int size ) { return state.nursery.malloc( size ); }
 
+    template< typename X > bool isPointer( X p ) { return state.isPointer( p ); }
+    template< typename X > void setPointer( X p, bool is ) { state.setPointer( p, is ); }
+
     /* ControlContext interface. */
     int stackDepth() { return state.stack().get().length(); }
     MachineState::Frame &frame( int depth = 0 ) { return state.frame( -1, depth ); }

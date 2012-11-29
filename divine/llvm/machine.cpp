@@ -52,21 +52,8 @@ int MachineState::new_thread()
     return _thread;
 }
 
-Pointer MachineState::followPointer( Pointer p )
-{
-    if ( !validate( p ) )
-        return Pointer();
-
-    if ( globalPointer( p ) )
-        return Pointer(); /* TODO! */
-
-    Pointer next = *reinterpret_cast< Pointer * >( dereference( p ) );
-    if ( heap().owns( p ) ) {
-        if ( heap().isPointer( p ) )
-            return next;
-    } else if ( nursery.isPointer( p ) )
-        return next;
-    return Pointer();
+Pointer &MachineState::followPointer( Pointer p ) {
+    return *reinterpret_cast< Pointer * >( dereference( p ) );
 }
 
 int MachineState::pointerSize( Pointer p )
@@ -99,7 +86,7 @@ struct divine::llvm::Canonic
     {}
 
     Pointer operator[]( Pointer idx ) {
-        if ( !idx.heap )
+        if ( !idx.heap || !ms.validate( idx ) )
             return idx;
         if ( !segmap.count( idx.segment ) ) {
             segmap.insert( std::make_pair( int( idx.segment ), segcount ) );
@@ -114,7 +101,8 @@ void MachineState::trace( Pointer p, Canonic &canonic )
 {
     if ( p.heap ) {
         canonic[ p ];
-        trace( followPointer( p ), canonic );
+        if ( isPointer( p ) )
+            trace( followPointer( p ), canonic );
     }
 }
 
@@ -128,30 +116,42 @@ void MachineState::trace( Frame &f, Canonic &canonic )
     canonic.stack += sizeof( f ) + f.framesize( _info );
 }
 
-
-
-void MachineState::snapshot( Pointer from, Pointer to, Canonic &canonic, Heap &heap )
+void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, Heap &heap )
 {
-    if ( !validate( from ) || !from.heap || to.segment < canonic.segdone )
-        return; /* invalid or done */
-    assert_eq( to.segment, canonic.segdone );
+    if ( !original.heap || freed.count( original.segment ) )
+        return; /* do not touch */
+
+    /* clear invalid pointers, in case they would accidentally become valid later */
+    if ( !validate( original ) ) {
+        edit = Pointer();
+        return;
+    }
+
+    edit = canonic[ original ]; /* canonize */
+
+    if ( original.segment < canonic.segdone )
+        return; /* we already followed this pointer */
+
+    Pointer edited = edit;
+    assert_eq( original.segment, canonic.segdone );
     canonic.segdone ++;
-    int size = pointerSize( from );
-    heap.jumptable( to ) = canonic.boundary / 4;
+
+    /* Re-allocate the object... */
+    int size = pointerSize( original );
+    heap.jumptable( edit ) = canonic.boundary / 4;
     canonic.boundary += size;
 
-    /* Work in 4 byte steps, since pointers are 4 bytes and 4-byte aligned. */
-    from.offset = to.offset = 0;
-    for ( ; from.offset < size; from.offset += 4, to.offset += 4 ) {
-        Pointer p = followPointer( from ), q = canonic[ p ];
-        heap.setPointer( to, !p.null() );
-        if ( p.null() ) /* not a pointer, make a straight copy */
-            std::copy( dereference( from ), dereference( from ) + 4,
-                       heap.dereference( to ) );
-        else { /* recurse */
-            *reinterpret_cast< Pointer * >( heap.dereference( to ) ) = q;
-            snapshot( p, q, canonic, heap );
-        }
+    /* And trace it. We work in 4 byte steps, pointers are 4 bytes and 4-byte aligned. */
+    original.offset = edited.offset = 0;
+    for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
+        bool recurse = this->isPointer( original );
+        heap.setPointer( edit, recurse );
+        if ( recurse ) /* points to a pointer, recurse */
+            snapshot( *heap.dereference< Pointer >( edited ),
+                      followPointer( original ), canonic, heap );
+        else
+            std::copy( dereference( original ), dereference( original ) + 4,
+                       heap.dereference( edited ) );
     }
 }
 
@@ -163,11 +163,10 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
 
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
-        if ( val->pointer() ) {
+        if ( f.isPointer( _info, *val ) ) {
+            target.setPointer( _info, *val, true );
             Pointer from = *reinterpret_cast< Pointer * >( from_addr );
-            Pointer to = canonic[ from ];
-            *target.dereference< Pointer >( _info, *val ) = to;
-            snapshot( from, to, canonic, heap );
+            snapshot( *target.dereference< Pointer >( _info, *val ), from, canonic, heap );
         } else
             std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
     }

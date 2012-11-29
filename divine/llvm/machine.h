@@ -41,13 +41,32 @@ struct MachineState
         }
 
         int framesize( ProgramInfo &i ) {
-            int size = datasize( i );
+            int size = datasize( i ) + size_bitmap( datasize( i ), 1 );
             align( size, 4 );
             return size;
         }
 
         int datasize( ProgramInfo &i ) {
             return i.function( pc ).datasize;
+        }
+
+        uint8_t &bitmap( ProgramInfo &i, ProgramInfo::Value v ) {
+            return *(memory + datasize( i ) + v.offset / 32);
+        }
+
+        uint8_t mask( ProgramInfo::Value v ) {
+            return 1 << ((v.offset % 32) / 4);
+        }
+
+        bool isPointer( ProgramInfo &i, ProgramInfo::Value v ) {
+            return bitmap( i, v ) & mask( v );
+        }
+
+        void setPointer( ProgramInfo &i, ProgramInfo::Value v, bool ptr ) {
+            if ( ptr )
+                bitmap( i, v ) |= mask( v );
+            else
+                bitmap( i, v ) &= ~mask( v );
         }
 
         StateAddress advance( StateAddress a, int ) {
@@ -77,9 +96,10 @@ struct MachineState
         return 2 * (2 + segcount - segcount % 2);
     }
 
-    static int size_bitmap( int bytecount ) {
-        /* NB. 4 * (x / 32) is NOT the same as x / 8 */
-        return 4 * (bytecount / 32) + ((bytecount % 32) ? 4 : 0);
+    static int size_bitmap( int bytecount, int align = 4 ) {
+        int size = bytecount / 32 + ((bytecount % 32) ? 1 : 0); /* bytes */
+        llvm::align( size, align );
+        return size;
     }
 
     static int size_heap( int segcount, int bytecount ) {
@@ -252,6 +272,21 @@ struct MachineState
         return state().get( Globals() ).memory;
     }
 
+    bool isPointer( Pointer p ) {
+        if ( nursery.owns( p ) )
+            return nursery.isPointer( p );
+        if ( heap().owns( p ) )
+            return heap().isPointer( p );
+        return false;
+    }
+
+    void setPointer( Pointer p, bool is ) {
+        if ( nursery.owns( p ) )
+            nursery.setPointer( p, is );
+        if ( heap().owns( p ) )
+            heap().setPointer( p, is );
+    }
+
     char *dereference( Pointer p ) {
         if( !validate( p ) )
             return nullptr;
@@ -270,6 +305,21 @@ struct MachineState
         if ( v.tid != _thread || v.frame )
             f = &stack( v.tid ).get( stack( v.tid ).get().length() - v.frame - 1 );
         return *f;
+    }
+
+    bool isPointer( ValueRef v ) {
+        if ( v.tid < 0 )
+            v.tid = _thread;
+        if ( !v.v.global && !v.v.constant )
+            return frame( v ).isPointer( _info, v.v );
+        return false;
+    }
+
+    void setPointer( ValueRef v, bool is ) {
+        if ( v.tid < 0 )
+            v.tid = _thread;
+        if ( !v.v.global && !v.v.constant )
+            return frame( v ).setPointer( _info, v.v, is );
     }
 
     /*
@@ -364,11 +414,11 @@ struct MachineState
     int new_thread();
 
     int pointerSize( Pointer p );
-    Pointer followPointer( Pointer p );
+    Pointer &followPointer( Pointer p );
 
     void trace( Pointer p, Canonic &canonic );
     void trace( Frame &f, Canonic &canonic );
-    void snapshot( Pointer from, Pointer to, Canonic &canonic, Heap &heap );
+    void snapshot( Pointer &edit, Pointer original, Canonic &canonic, Heap &heap );
     void snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
     void rewind( Blob, int thread = 0 );
