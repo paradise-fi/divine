@@ -76,7 +76,8 @@ int Interpreter::new_thread( PC pc, Pointer arg )
      * possibly empty frame, thus avoiding havoc. */
     if ( !arg.null() )
         *reinterpret_cast< Pointer * >( dereference( info.function( pc ).values[ 0 ] ) ) = arg;
-    state.switch_thread( current );
+    if ( current >= 0 )
+        state.switch_thread( current );
     return tid;
 }
 
