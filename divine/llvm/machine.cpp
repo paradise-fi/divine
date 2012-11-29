@@ -188,7 +188,9 @@ divine::Blob MachineState::snapshot()
             continue;
         }
 
-        dead_threads = 0; /* non-tail dead threads become zombies */
+        /* non-tail dead threads become zombies, with 4 byte overhead; put them back */
+        canonic.stack += dead_threads * sizeof( Stack );
+        dead_threads = 0;
         canonic.stack += sizeof( Stack );
         eachframe( stack( tid ), [&]( Frame &fr ) {
                 canonic.stack += sizeof( Frame );
