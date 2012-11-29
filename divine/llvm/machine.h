@@ -34,21 +34,33 @@ struct MachineState
 
     struct Frame {
         PC pc;
-        char memory[0];
+        uint8_t memory[0];
+
+        void clear( ProgramInfo &i ) {
+            std::fill( memory, memory + framesize( i ), 0 );
+        }
 
         int framesize( ProgramInfo &i ) {
-            return i.function( pc ).framesize;
+            int size = datasize( i );
+            align( size, 4 );
+            return size;
+        }
+
+        int datasize( ProgramInfo &i ) {
+            return i.function( pc ).datasize;
         }
 
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, sizeof( Frame ) + framesize( *a._info ) );
         }
-        char *dereference( ProgramInfo &i, ProgramInfo::Value v ) {
-            assert_leq( v.offset, framesize( i ) );
-            assert_leq( v.offset + v.width, framesize( i ) );
-            return memory + v.offset;
-        }
         int end() { return 0; }
+
+        template< typename T = char >
+        T *dereference( ProgramInfo &i, ProgramInfo::Value v ) {
+            assert_leq( v.offset, datasize( i ) );
+            assert_leq( v.offset + v.width, datasize( i ) );
+            return reinterpret_cast< T * >( memory + v.offset );
+        }
     };
 
     struct Globals {
@@ -135,9 +147,11 @@ struct MachineState
             return p.heap && p.segment < segcount;
         }
 
-        char *dereference( Pointer p ) {
+        template< typename T = char >
+        T *dereference( Pointer p ) {
             assert( owns( p ) );
-            return _memory + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p );
+            return reinterpret_cast< T * >(
+                _memory + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p ) );
         }
     };
 
@@ -257,21 +271,21 @@ struct MachineState
      */
     char *dereference( ProgramInfo::Value v, int tid = -1, int frame = 0 )
     {
-        char *block = _frame->memory;
-
         if ( tid < 0 )
             tid = _thread;
 
-        if ( !v.global && !v.constant && ( frame || tid != _thread ) )
-            block = stack( tid ).get( stack( tid ).get().length() - frame - 1 ).memory;
-
-        if ( v.global )
-            block = globalmem();
+        if ( !v.global && !v.constant ) {
+            Frame *f = _frame;
+            if ( tid != _thread || frame )
+                f = &stack( tid ).get( stack( tid ).get().length() - frame - 1 );
+            return f->dereference( _info, v );
+        }
 
         if ( v.constant )
-            block = &_info.constdata[0];
+            return &_info.constdata[v.offset];
 
-        return block + v.offset;
+        if ( v.global )
+            return globalmem() + v.offset;
     }
 
     Lens< Threads > threads() {
@@ -308,7 +322,6 @@ struct MachineState
     }
 
     void enter( int function ) {
-        int framesize = _info.functions[ function ].framesize;
         int depth = stack().get().length();
         bool masked = depth ? frame().pc.masked : false;
         stack().get().length() ++;
@@ -316,7 +329,7 @@ struct MachineState
         _frame = &stack().get( depth );
         _frame->pc = PC( function, 0, 0 );
         _frame->pc.masked = masked; /* inherit */
-        std::fill( _frame->memory, _frame->memory + framesize, 0 );
+        _frame->clear( _info );
     }
 
     void leave() {

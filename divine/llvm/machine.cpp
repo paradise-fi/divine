@@ -122,11 +122,10 @@ void MachineState::trace( Frame &f, Canonic &canonic )
 {
     auto vals = _info.function( f.pc ).values;
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        canonic.stack += val->width;
         if ( val->pointer() )
             trace( *reinterpret_cast< Pointer * >( &f.memory[val->offset] ), canonic );
     }
-    align( canonic.stack, 4 );
+    canonic.stack += sizeof( f ) + f.framesize( _info );
 }
 
 
@@ -159,20 +158,22 @@ void MachineState::snapshot( Pointer from, Pointer to, Canonic &canonic, Heap &h
 void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address )
 {
     auto vals = _info.function( f.pc ).values;
-    address.as< PC >() = f.pc;
-    address.advance( sizeof( PC ) );
+    Frame &target = address.as< Frame >();
+    target.pc = f.pc;
+
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
         if ( val->pointer() ) {
             Pointer from = *reinterpret_cast< Pointer * >( from_addr );
             Pointer to = canonic[ from ];
-            address.as< Pointer >() = to;
+            *target.dereference< Pointer >( _info, *val ) = to;
             snapshot( from, to, canonic, heap );
         } else
-            std::copy( from_addr, from_addr + val->width, address.dereference() );
-        address.advance( val->width );
+            std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
     }
-    align( address.offset, 4 );
+
+    address = target.advance( address, 0 );
+    assert_eq( address.offset % 4, 0 );
 }
 
 divine::Blob MachineState::snapshot()
@@ -193,7 +194,6 @@ divine::Blob MachineState::snapshot()
         dead_threads = 0;
         canonic.stack += sizeof( Stack );
         eachframe( stack( tid ), [&]( Frame &fr ) {
-                canonic.stack += sizeof( Frame );
                 trace( fr, canonic );
             } );
     }

@@ -233,8 +233,6 @@ void ProgramInfo::build()
                 p = insert( p );
             p = insert( p ); // end of block
         }
-
-        align( this->function( pc ).framesize, 4 );
     }
 
     align( globalsize, 4 );

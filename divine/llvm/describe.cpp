@@ -260,9 +260,11 @@ void MachineState::dump( std::ostream &r ) {
                     return;
                 }
                 auto fun = _info.function( f.pc );
-                r << "[" << fun.framesize << " bytes] ";
+                r << "[" << fun.datasize << " bytes] ";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i )
-                    r << "[" << i->offset << "]" << fmtInteger( f.memory + i->offset, i->width * 8 ) << " ";
+                    r << "[" << i->offset << "]" <<
+                        fmtInteger( reinterpret_cast< char * >( f.memory ) +
+                                    i->offset, i->width * 8 ) << " ";
                 r << std::endl;
             });
     }

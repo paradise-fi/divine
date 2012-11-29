@@ -142,14 +142,14 @@ struct ProgramInfo {
     };
 
     struct Function {
-        int framesize;
+        int datasize;
         std::vector< Value > values;
         std::vector< BB > blocks;
         BB &block( PC pc ) {
             assert_leq( int( pc.block ), int( blocks.size() ) - 1 );
             return blocks[ pc.block ];
         }
-        Function() : framesize( 0 ) {}
+        Function() : datasize( 0 ) {}
     };
 
     std::vector< Function > functions;
@@ -200,8 +200,8 @@ struct ProgramInfo {
         result.constant = false;
         if ( fun ) {
             result.global = false;
-            result.offset = functions[ fun ].framesize;
-            functions[ fun ].framesize += result.width;
+            result.offset = functions[ fun ].datasize;
+            functions[ fun ].datasize += result.width;
         } else {
             result.global = true;
             result.offset = globalsize;
