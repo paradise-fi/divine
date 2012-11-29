@@ -541,8 +541,8 @@ struct Evaluator
                           econtext.dereference( v ) : original.dereference( info, v );
             char *result = copy.dereference( info, instruction.result() );
             std::copy( value, value + v.width, result );
-            ccontext.pc().instruction ++;
-            instruction = info.instruction( ccontext.pc() );
+            copy.pc.instruction ++;
+            instruction = info.instruction( copy.pc );
         }
         std::copy( copy.memory, copy.memory + framesize, original.memory );
     }
