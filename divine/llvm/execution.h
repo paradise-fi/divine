@@ -36,6 +36,7 @@ using ::llvm::FCmpInst;
 namespace Intrinsic = ::llvm::Intrinsic;
 using ::llvm::CallSite;
 using ::llvm::Type;
+using wibble::Unit;
 
 template< int N, typename _T > struct Z;
 template< int N, typename _T > struct NZ { typedef _T T; };
@@ -170,7 +171,7 @@ struct Evaluator
     std::vector< ValueRef > values; /* a withValues stash */
 
     struct Implementation {
-        typedef void T;
+        typedef Unit T;
         Evaluator< EvalContext, ControlContext > *_evaluator;
         Evaluator< EvalContext, ControlContext > &evaluator() { return *_evaluator; }
         ProgramInfo::Instruction i() { return _evaluator->instruction; }
@@ -183,7 +184,7 @@ struct Evaluator
     char *dereference( X x ) { return econtext.dereference( x ); }
 
     template< typename... X >
-    static void declcheck( X... ) {}
+    static Unit declcheck( X... ) {}
 
     /******** Arithmetic & comparisons *******/
 
@@ -196,23 +197,23 @@ struct Evaluator
         {
             switch( this->i().opcode ) {
                 case LLVMInst::FAdd:
-                case LLVMInst::Add: r = a + b; return;
+                case LLVMInst::Add: r = a + b; return Unit();
                 case LLVMInst::FSub:
-                case LLVMInst::Sub: r = a - b; return;
+                case LLVMInst::Sub: r = a - b; return Unit();
                 case LLVMInst::FMul:
-                case LLVMInst::Mul: r = a * b; return;
+                case LLVMInst::Mul: r = a * b; return Unit();
                 case LLVMInst::FDiv:
                 case LLVMInst::SDiv:
-                case LLVMInst::UDiv: r = a / b; return;
-                case LLVMInst::FRem: r = std::fmod( a, b ); return;
+                case LLVMInst::UDiv: r = a / b; return Unit();
+                case LLVMInst::FRem: r = std::fmod( a, b ); return Unit();
                 case LLVMInst::URem:
-                case LLVMInst::SRem: r = a % b; return;
-                case LLVMInst::And:  r = a & b; return;
-                case LLVMInst::Or:   r = a | b; return;
-                case LLVMInst::Xor:  r = a ^ b; return;
-                case LLVMInst::Shl:  r = a << b; return;
+                case LLVMInst::SRem: r = a % b; return Unit();
+                case LLVMInst::And:  r = a & b; return Unit();
+                case LLVMInst::Or:   r = a | b; return Unit();
+                case LLVMInst::Xor:  r = a ^ b; return Unit();
+                case LLVMInst::Shl:  r = a << b; return Unit();
                 case LLVMInst::AShr:  // XXX?
-                case LLVMInst::LShr:  r = a >> b; return;
+                case LLVMInst::LShr:  r = a >> b; return Unit();
             }
             assert_die();
         }
@@ -238,16 +239,16 @@ struct Evaluator
             -> decltype( declcheck( r = a < b ) )
         {
             switch (dyn_cast< ICmpInst >( this->i().op )->getPredicate()) {
-                case ICmpInst::ICMP_EQ:  r = a == b; return;
-                case ICmpInst::ICMP_NE:  r = a != b; return;
+                case ICmpInst::ICMP_EQ:  r = a == b; return Unit();
+                case ICmpInst::ICMP_NE:  r = a != b; return Unit();
                 case ICmpInst::ICMP_ULT:
-                case ICmpInst::ICMP_SLT: r = a < b; return;
+                case ICmpInst::ICMP_SLT: r = a < b; return Unit();
                 case ICmpInst::ICMP_UGT:
-                case ICmpInst::ICMP_SGT: r = a > b; return;
+                case ICmpInst::ICMP_SGT: r = a > b; return Unit();
                 case ICmpInst::ICMP_ULE:
-                case ICmpInst::ICMP_SLE: r = a <= b; return;
+                case ICmpInst::ICMP_SLE: r = a <= b; return Unit();
                 case ICmpInst::ICMP_UGE:
-                case ICmpInst::ICMP_SGE: r = a >= b; return;
+                case ICmpInst::ICMP_SGE: r = a >= b; return Unit();
                 default: assert_die();
             }
         }
@@ -261,10 +262,10 @@ struct Evaluator
             -> decltype( declcheck( r = isnan( a ) && isnan( b ) ) )
         {
             switch ( dyn_cast< FCmpInst >( this->i().op )->getPredicate() ) {
-                case FCmpInst::FCMP_FALSE: r = false; return;
-                case FCmpInst::FCMP_TRUE:  r = true;  return;
-                case FCmpInst::FCMP_ORD:   r = !isnan( a ) && !isnan( b ); return;
-                case FCmpInst::FCMP_UNO:   r = isnan( a ) || isnan( b );   return;
+                case FCmpInst::FCMP_FALSE: r = false; return Unit();
+                case FCmpInst::FCMP_TRUE:  r = true;  return Unit();
+                case FCmpInst::FCMP_ORD:   r = !isnan( a ) && !isnan( b ); return Unit();
+                case FCmpInst::FCMP_UNO:   r = isnan( a ) || isnan( b );   return Unit();
 
                 case FCmpInst::FCMP_UEQ:
                 case FCmpInst::FCMP_UNE:
@@ -274,7 +275,7 @@ struct Evaluator
                 case FCmpInst::FCMP_UGT:
                     if ( isnan( a ) || isnan( b ) ) {
                         r = true;
-                        return;
+                        return Unit();
                     }
                     break;
                 default: assert_die();
@@ -282,21 +283,21 @@ struct Evaluator
 
             switch ( dyn_cast< FCmpInst >( this->i().op )->getPredicate() ) {
                 case FCmpInst::FCMP_OEQ:
-                case FCmpInst::FCMP_UEQ: r = a == b; return;
+                case FCmpInst::FCMP_UEQ: r = a == b; return Unit();
                 case FCmpInst::FCMP_ONE:
-                case FCmpInst::FCMP_UNE: r = a != b; return;
+                case FCmpInst::FCMP_UNE: r = a != b; return Unit();
 
                 case FCmpInst::FCMP_OLT:
-                case FCmpInst::FCMP_ULT: r = a < b; return;
+                case FCmpInst::FCMP_ULT: r = a < b; return Unit();
 
                 case FCmpInst::FCMP_OGT:
-                case FCmpInst::FCMP_UGT: r = a > b; return;
+                case FCmpInst::FCMP_UGT: r = a > b; return Unit();
 
                 case FCmpInst::FCMP_OLE:
-                case FCmpInst::FCMP_ULE: r = a <= b; return;
+                case FCmpInst::FCMP_ULE: r = a <= b; return Unit();
 
                 case FCmpInst::FCMP_OGE:
-                case FCmpInst::FCMP_UGE: r = a >= b; return;
+                case FCmpInst::FCMP_UGE: r = a >= b; return Unit();
                 default: assert_die();
             }
         }
@@ -316,13 +317,14 @@ struct Evaluator
 
     struct BitCast : Implementation {
         template< typename R = int, typename L = int >
-        void operator()( R &r = Dummy< R >::v(),
+        Unit operator()( R &r = Dummy< R >::v(),
                          L &l = Dummy< L >::v() )
         {
             char *from = reinterpret_cast< char * >( &l );
             char *to = reinterpret_cast< char * >( &r );
             assert_eq( sizeof( R ), sizeof( L ) );
             std::copy( from, from + sizeof( R ), to );
+            return Unit();
         }
     };
 
@@ -359,7 +361,7 @@ struct Evaluator
     /******** Memory access & conversion ********/
 
     struct GetElement : Implementation {
-        void operator()( Pointer &r = Dummy< Pointer >::v(),
+        Unit operator()( Pointer &r = Dummy< Pointer >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
         {
             int total = 0;
@@ -383,12 +385,13 @@ struct Evaluator
             }
 
             r = p + total;
+            return Unit();
         }
     };
 
     struct Load : Implementation {
         template< typename R = int >
-        void operator()( R &r = Dummy< R >::v(),
+        Unit operator()( R &r = Dummy< R >::v(),
                          Pointer p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
@@ -396,12 +399,13 @@ struct Evaluator
                 r = *reinterpret_cast< R * >( target );
             else
                 this->ccontext().flags().invalid_dereference = true;
+            return Unit();
         }
     };
 
     struct Store : Implementation {
         template< typename L = int >
-        void operator()( L &l = Dummy< L >::v(),
+        Unit operator()( L &l = Dummy< L >::v(),
                          Pointer p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
@@ -409,6 +413,7 @@ struct Evaluator
                 *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
             else
                 this->ccontext().flags().invalid_dereference = true;
+            return Unit();
         }
     };
 
