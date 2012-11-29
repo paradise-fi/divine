@@ -171,7 +171,7 @@ struct Interpreter
     }
 
     /* EvalContext interface. */
-    char *dereference( ProgramInfo::Value v, int frame = 0 ) { return state.dereference( v, -1, frame ); }
+    char *dereference( ValueRef v ) { return state.dereference( v ); }
     char *dereference( Pointer p ) { return state.dereference( p ); }
     Pointer malloc( int size ) { return state.nursery.malloc( size ); }
 

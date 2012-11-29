@@ -263,29 +263,34 @@ struct MachineState
             return nursery.dereference( p );
     }
 
+    Frame &frame( ValueRef v ) {
+        assert( !v.v.global );
+        assert( !v.v.constant );
+        Frame *f = _frame;
+        if ( v.tid != _thread || v.frame )
+            f = &stack( v.tid ).get( stack( v.tid ).get().length() - v.frame - 1 );
+        return *f;
+    }
+
     /*
      * Get a pointer to the value storage corresponding to "v". If "v" is a
      * local variable, look into thread "thread" (default, i.e. -1, for the
      * currently executing one) and in frame "frame" (default, i.e. 0 is the
      * topmost frame, 1 is the frame just below that, etc...).
      */
-    char *dereference( ProgramInfo::Value v, int tid = -1, int frame = 0 )
+    char *dereference( ValueRef v )
     {
-        if ( tid < 0 )
-            tid = _thread;
+        if ( v.tid < 0 )
+            v.tid = _thread;
 
-        if ( !v.global && !v.constant ) {
-            Frame *f = _frame;
-            if ( tid != _thread || frame )
-                f = &stack( tid ).get( stack( tid ).get().length() - frame - 1 );
-            return f->dereference( _info, v );
-        }
+        if ( !v.v.global && !v.v.constant )
+            return frame( v ).dereference( _info, v.v );
 
-        if ( v.constant )
-            return &_info.constdata[v.offset];
+        if ( v.v.constant )
+            return &_info.constdata[v.v.offset];
 
-        if ( v.global )
-            return globalmem() + v.offset;
+        if ( v.v.global )
+            return globalmem() + v.v.offset;
     }
 
     Lens< Threads > threads() {

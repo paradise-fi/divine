@@ -252,6 +252,16 @@ struct ProgramInfo {
     }
 };
 
+struct ValueRef {
+    ProgramInfo::Value v;
+    int frame;
+    int tid;
+    ValueRef( ProgramInfo::Value v = ProgramInfo::Value(),
+              int frame = 0, int tid = -1 )
+        : v( v ), frame( frame ), tid( tid )
+    {}
+};
+
 struct GlobalContext {
     ProgramInfo &info;
     ::llvm::TargetData &TD;
@@ -265,11 +275,11 @@ struct GlobalContext {
         assert_die();
     }
 
-    char *dereference( ProgramInfo::Value v, int = 0 ) {
-        if( v.constant )
-            return &info.constdata[ v.offset ];
-        else if ( v.global )
-            return global + v.offset;
+    char *dereference( ValueRef v ) {
+        if( v.v.constant )
+            return &info.constdata[ v.v.offset ];
+        else if ( v.v.global )
+            return global + v.v.offset;
         else
             assert_die();
     }

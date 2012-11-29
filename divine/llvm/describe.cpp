@@ -117,7 +117,7 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
     if ( isa< BasicBlock >( val ) )
         name = ""; // ignore, but include in anonymous counter
 
-    char *where = state.dereference( info.valuemap[ val ], thread );
+    char *where = state.dereference( ValueRef( info.valuemap[ val ], 0, thread ) );
     if ( type->isPointerTy() )
         value = describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
     else

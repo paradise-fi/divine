@@ -165,12 +165,6 @@ struct Evaluator
 
     bool is_signed;
 
-    struct ValueRef {
-        ProgramInfo::Value v;
-        int frame;
-        ValueRef( ProgramInfo::Value v, int frame = 0 ) : v( v ), frame( frame ) {}
-    };
-
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
     std::vector< ValueRef > values; /* a withValues stash */
@@ -185,11 +179,8 @@ struct Evaluator
         ::llvm::TargetData &TD() { return econtext().TD; }
     };
 
-    char *dereference( ProgramInfo::Value v, int frame = 0 ) {
-        return econtext.dereference( v, frame ); /* we don't care about other threads */
-    }
-    char *dereference( ValueRef v ) { return dereference( v.v, v.frame ); }
-    char *dereference( Pointer p ) { return econtext.dereference( p ); }
+    template< typename X >
+    char *dereference( X x ) { return econtext.dereference( x ); }
 
     template< typename... X >
     static void declcheck( X... ) {}
