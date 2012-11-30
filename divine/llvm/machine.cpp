@@ -110,8 +110,8 @@ void MachineState::trace( Frame &f, Canonic &canonic )
 {
     auto vals = _info.function( f.pc ).values;
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        if ( val->pointer() )
-            trace( *reinterpret_cast< Pointer * >( &f.memory[val->offset] ), canonic );
+        if ( f.isPointer( _info, *val ) )
+            trace( *f.dereference< Pointer >( _info, *val ), canonic );
     }
     canonic.stack += sizeof( f ) + f.framesize( _info );
 }
@@ -129,11 +129,11 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
 
     edit = canonic[ original ]; /* canonize */
 
-    if ( original.segment < canonic.segdone )
+    if ( edit.segment < canonic.segdone )
         return; /* we already followed this pointer */
 
     Pointer edited = edit;
-    assert_eq( original.segment, canonic.segdone );
+    assert_eq( edit.segment, canonic.segdone );
     canonic.segdone ++;
 
     /* Re-allocate the object... */
