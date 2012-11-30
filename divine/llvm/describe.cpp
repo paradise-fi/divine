@@ -238,10 +238,15 @@ void MachineState::dump( std::ostream &r ) {
 
     r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data = ";
     for ( int i = 0; i < heap().segcount; ++ i ) {
+        Pointer p = Pointer( true, i, 0 );
         char *where = heap().dereference( Pointer( true, i, 0 ) );
         int size = heap().size( Pointer( true, i, 0 ) );
-        for ( int j = 0; j < size; j += 4 )
-            r << fmtInteger( where, 32 ) << " ";
+        for ( ; p.offset < size; p.offset += 4 ) {
+            if ( heap().isPointer( p ) ) {
+                r << followPointer( p ) << " ";
+            } else
+                r << fmtInteger( where + p.offset, 32 ) << " ";
+        }
         if ( i < heap().segcount - 1 )
             r << "| ";
     }
@@ -254,8 +259,12 @@ void MachineState::dump( std::ostream &r ) {
         Pointer p( true, i + nursery.segshift, 0 );
         char *where = nursery.dereference( p );
         int size = nursery.size( p );
-        for ( int j = 0; j < size; j += 4 )
-            r << fmtInteger( where, 32 ) << " ";
+        for ( ; p.offset < size; p.offset += 4 ) {
+            if ( nursery.isPointer( p ) )
+                r << followPointer( p ) << " ";
+            else
+                r << fmtInteger( where + p.offset, 32 ) << " ";
+        }
         if ( i < nursery.offsets.size() - 1 )
             r << "| ";
     }
@@ -275,10 +284,13 @@ void MachineState::dump( std::ostream &r ) {
                 }
                 auto fun = _info.function( f.pc );
                 r << "[" << fun.datasize << " bytes] ";
-                for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i )
-                    r << "[" << i->offset << "]" <<
-                        fmtInteger( reinterpret_cast< char * >( f.memory ) +
-                                    i->offset, i->width * 8 ) << " ";
+                for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
+                    r << "[" << i->offset << "]";
+                    if ( f.isPointer( _info, *i ) )
+                        r << *f.dereference< Pointer >( _info, *i ) << " ";
+                    else
+                        r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";
+                }
                 r << std::endl;
             });
     }
