@@ -221,7 +221,7 @@ struct Evaluator
             assert_die();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0] || x[1]; }
+        bool resultIsPointer( std::vector< bool > x ) { return x[1] || x[2]; }
     };
 
     struct Select : Implementation {
@@ -322,7 +322,7 @@ struct Evaluator
             r = l;
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
+        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
     };
 
     struct BitCast : Implementation {
@@ -337,7 +337,7 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
+        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
     };
 
     template< typename _T >
@@ -349,12 +349,15 @@ struct Evaluator
         {
             return static_cast< T >( l );
         }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
     };
 
     template< typename _T >
     struct Set : Implementation {
         typedef _T Arg;
         Arg v;
+        bool _pointer;
 
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v() )
@@ -363,7 +366,9 @@ struct Evaluator
             r = static_cast< X >( v );
         }
 
-        Set( Arg v ) : v( v ) {}
+        bool resultIsPointer( std::vector< bool > x ) { return _pointer; } /* noop */
+
+        Set( Arg v, bool ptr = false ) : v( v ), _pointer( ptr ) {}
     };
 
     typedef Get< bool > IsTrue;
@@ -399,7 +404,7 @@ struct Evaluator
             r = p + total;
             return Unit();
         }
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; }
+        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
     };
 
     struct Load : Implementation {
