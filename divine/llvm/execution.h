@@ -540,8 +540,8 @@ struct Evaluator
             if ( !v.global && !v.constant )
                 copy.setPointer( info, instruction.result(), original.isPointer( info, v ) );
             /* else TODO! */
-            copy.pc.instruction ++;
-            instruction = info.instruction( copy.pc );
+            ccontext.pc().instruction ++;
+            instruction = info.instruction( ccontext.pc() );
         }
         std::copy( copy.memory, copy.memory + framesize, original.memory );
     }
