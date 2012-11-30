@@ -621,10 +621,16 @@ struct Evaluator
             }
         }
 
-        assert ( !F->isDeclaration() );
+        int functionid;
 
-        /* TODO (performance) Use an operand Value here instead. */
-        int functionid = info.functionmap[ F ];
+        if ( F ) {
+            assert ( !F->isDeclaration() );
+            /* TODO (performance) Use an operand Value here instead. */
+            functionid = info.functionmap[ F ];
+        } else {
+            functionid = withValues( Get< PC >(), instruction.operand( 0 ) ).function;
+        }
+
         ccontext.enter( functionid ); /* push a new frame */
         ccontext.jumped = true;
 
