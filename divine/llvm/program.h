@@ -68,6 +68,16 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
         *reinterpret_cast< uint32_t * >( this ) = x;
     }
 
+    /* For conversion of function pointers to plain pointers. */
+    Pointer( PC x ) {
+        *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
+    }
+
+    Pointer &operator=( PC x ) {
+        *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
+        return *this;
+    }
+
     bool operator<=( Pointer o ) const {
         return std::make_tuple( int( heap ), int( segment ), int( offset ) )
             <= std::make_tuple( int( o.heap ), int( o.segment ), int( o.offset ) );
