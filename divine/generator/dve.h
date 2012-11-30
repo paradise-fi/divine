@@ -128,13 +128,13 @@ struct Dve : public Common< Blob > {
             updateMem( b );
             system->apply( ctx, p );
 
+            updateMem( from );
             if ( b.compare( to, alloc._slack, b.size() ) == 0 ) {
                 std::stringstream str;
-                system->printTrans( str, p );
+                system->printTrans( str, ctx, p );
                 return str.str();
             }
 
-            updateMem( from );
             p = system->enabled( ctx, p );
         }
         return "";

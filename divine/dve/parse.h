@@ -88,6 +88,8 @@ struct RValue : Parser {
         value = Constant( context() );
     }
 
+    std::ostream& dump( std::ostream &o );
+
     RValue( Context &c ) : Parser( c ), idx( 0 ) {
         either( &RValue::reference, &RValue::constant );
     }
@@ -114,6 +116,24 @@ struct Expression : Parser {
     void rvalue() {
         RValue _rval( context() );
         rval = new RValue( _rval );
+    }
+
+    std::ostream& dump( std::ostream &o ) {
+        if ( lhs && rhs ) {
+            o << "(";
+            lhs->dump( o );
+            o << ") " << op.data << " (";
+            rhs->dump( o );
+            o << ")";
+        }
+        else if ( lhs ) {
+            o << op.data;
+            lhs->dump( o );
+        }
+        else {
+            rval->dump( o );
+        }
+        return o;
     }
 
     // TODO: Use the precedence climbing algorithm here, as it is likely
@@ -161,6 +181,17 @@ struct ExpressionList : Parser {
     std::vector< Expression > explist;
     bool compound;
     
+    std::ostream& dump( std::ostream &o ) {
+        o << "{";
+        for( auto it = explist.begin(); it != explist.end(); it++ ) {
+            if ( it != explist.begin() )
+                o << ",";
+            it->dump( o );
+        }
+        o << "}";
+        return o;
+    }
+
     ExpressionList( Context &c ) : Parser( c )
     {
         if ( next( Token::BlockOpen ) ) {
@@ -182,6 +213,16 @@ inline void RValue::subscript() {
     eat( Token::IndexClose );
 }
 
+inline std::ostream& RValue::dump( std::ostream &o ) {
+    if ( ident.valid() ) {
+        o << ident.name();
+    }
+    else {
+        o << value.value;
+    }
+    return o;
+}
+
 struct LValue : Parser {
     Identifier ident;
     Expression idx;
@@ -190,6 +231,11 @@ struct LValue : Parser {
         eat( Token::IndexOpen );
         idx = Expression( context() );
         eat( Token::IndexClose );
+    }
+
+    std::ostream& dump( std::ostream &o ) {
+        o << ident.name();
+        return o;
     }
 
     LValue( Context &c ) : Parser( c ) {
@@ -203,6 +249,17 @@ struct LValueList: Parser {
     std::vector< LValue > lvlist;
     bool compound;
     
+    std::ostream& dump( std::ostream &o ) {
+        o << "{";
+        for( auto it = lvlist.begin(); it != lvlist.end(); it++ ) {
+            if ( it != lvlist.begin() )
+                o << ",";
+            it->dump( o );
+        }
+        o << "}";
+        return o;
+    }
+
     LValueList( Context &c ) : Parser( c )
     {
         if ( next( Token::BlockOpen ) ) {
@@ -220,6 +277,14 @@ struct LValueList: Parser {
 struct Assignment : Parser {
     LValue lhs;
     Expression rhs;
+
+    std::ostream& dump( std::ostream &o ) {
+        lhs.dump( o );
+        o << " = ";
+        rhs.dump( o );
+        return o;
+    }
+
     Assignment( Context &c ) : Parser( c ) {
         lhs = LValue( c );
         eat( Token::Assignment );
@@ -240,6 +305,21 @@ struct SyncExpr : Parser {
 
     void expressions() {
         exprlist = ExpressionList( context() );
+    }
+
+    std::ostream& dump( std::ostream &o ) {
+        o << chan.name();
+        if ( write ) {
+            o << "!";
+            if ( exprlist.valid() )
+                exprlist.dump( o );
+        }
+        else {
+            o << "?";
+            if ( lvallist.valid() )
+                lvallist.dump( o );
+        }
+        return o;
     }
 
     SyncExpr( Context &c ) : Parser( c ) {
@@ -437,6 +517,25 @@ struct Transition : Parser {
         eat( Token::Sync );
         syncexpr = SyncExpr( context() );
         semicolon();
+    }
+
+    std::ostream& dump( std::ostream &o ) {
+        o << from.name() << " -> " << to.name() << " { ";
+        o << "guard ";
+        for ( auto grd = guards.begin(); grd != guards.end(); grd++ ) {
+            grd->dump( o );
+            o << ",";
+        }
+        o << "; sync ";
+        if ( syncexpr.valid() )
+            syncexpr.dump( o );
+        o << "; effect ";
+        for ( auto eff = effects.begin(); eff != effects.end(); eff++) {
+            eff->dump( o );
+            o << ",";
+        }
+        o << ";}";
+        return o;
     }
 
     Transition( Context &c ) : Parser( c ) {

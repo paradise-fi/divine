@@ -167,6 +167,7 @@ struct Channel {
 
 struct Transition {
     Symbol process;
+    std::string procname;
     Symbol from, to;
 
     Channel *sync_channel;
@@ -233,9 +234,21 @@ struct Transition {
         flags.set( ctx.mem, 0, sflags );
     }
 
+    std::ostream& dump( std::ostream &o ) {
+        o << procname << ": ";
+        parse.dump( o );
+        return o;
+    }
+
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
         : process( proc ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
+        procname = "";
+        for ( auto it = sym.parent->tabs[ NS::Process ].begin(); it != sym.parent->tabs[ NS::Process ].end(); it++ ) {
+            if ( it->second == process.id) {
+                procname = it->first;
+            }
+        }
         for ( size_t i = 0; i < t.guards.size(); ++ i )
             guards.push_back( Expression( sym, t.guards[i] ) );
         for ( size_t i = 0; i < t.effects.size(); ++ i )
@@ -658,10 +671,18 @@ struct System {
         return false;
     }
 
-    std::ostream& printTrans( std::ostream &o, Continuation c ) {
-        o << "Process: " << c.process << std::endl;
-        o << "Transition: " << c.transition << std::endl;
-        o << "Property: " << c.property;
+    std::ostream& printTrans( std::ostream &o, EvalContext &ctx, Continuation c ) {
+        Transition &trans = processes[ c.process ].transition( ctx, c.transition );
+        trans.dump( o );
+        if ( trans.sync ) {
+            o << std::endl;
+            trans.sync->dump( o );
+        }
+        if ( property ) {
+            o << std::endl;
+            property->transition( ctx, c.property ).dump( o );
+        }
+        return o;
     }
 };
 
