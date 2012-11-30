@@ -17,7 +17,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         for ( int i = 0; i < CE->getNumOperands(); ++i ) // now the operands
             comp.values.push_back( insert( 0, CE->getOperand( i ) ) );
         eval.run(); /* compute and write out the value */
-    } else if ( auto I = dyn_cast< ::llvm::ConstantInt >( C ) ) {
+    } else if ( isa< ::llvm::UndefValue >( C ) )
+            ; /* Nothing to do. */
+    else if ( auto I = dyn_cast< ::llvm::ConstantInt >( C ) ) {
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
         std::copy( mem, mem + v.width, econtext.dereference( v ) );
     } else if ( C->getType()->isPointerTy() ) {
