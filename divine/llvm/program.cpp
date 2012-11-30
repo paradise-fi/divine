@@ -156,7 +156,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
         ::llvm::Function *F = CS.getCalledFunction();
         if ( F && F->isDeclaration() )
             switch ( F->getIntrinsicID() ) {
-                case ::llvm::Intrinsic::not_intrinsic:
+                case ::llvm::Intrinsic::not_intrinsic: builtin( p ); break;
                 case ::llvm::Intrinsic::trap:
                 case ::llvm::Intrinsic::vastart:
                 case ::llvm::Intrinsic::vacopy:
@@ -165,8 +165,6 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 case ::llvm::Intrinsic::dbg_value: p.I++; return p;
                 default: return lower( p );
             }
-        if ( F->isDeclaration() )
-            builtin( p );
     }
 
     insn.values.resize( 1 + p.I->getNumOperands() );
