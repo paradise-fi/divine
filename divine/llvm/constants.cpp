@@ -31,7 +31,10 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
             constant< PC >( v ) = blockmap[ B ];
         else if ( isa< ::llvm::ConstantPointerNull >( C ) )
             constant< Pointer >( v ) = Pointer();
-        else assert_unreachable( "unknown constant pointer type" );
+        else {
+            C->dump();
+            assert_unreachable( "unknown constant pointer type" );
+        }
     } else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
         ; /* nothing to do, everything is zeroed by default */
     else if ( auto CA = dyn_cast< ::llvm::ConstantArray >( C ) ) {
@@ -49,6 +52,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         assert_unimplemented();
     else if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) )
         assert_unimplemented();
-    else assert_unreachable( "unknown constant type" );
+    else {
+        C->dump();
+        assert_unreachable( "unknown constant type" );
+    }
 }
 
