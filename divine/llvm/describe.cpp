@@ -301,3 +301,18 @@ void MachineState::dump( std::ostream &r ) {
 void MachineState::dump() {
     dump( std::cerr );
 }
+
+void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
+    op->dump();
+    for ( int i = 0; i < values.size(); ++i ) {
+        ProgramInfo::Value v = values[i];
+        std::cerr << "  " << i << ": " << (v.constant ? "constant" : (v.global ? "global" : "local"))
+                  << ", type " << v.type << " at " << v.offset << ", width = " << v.width;
+        if ( !v.constant && !v.global ) {
+            std::cerr << ", value = " << fmtInteger( state.dereference( v ), v.width * 8 );
+            std::cerr << ", pointer = " << state.isPointer( v );
+        } /* else
+             std::cerr << ", value = " << fmtInteger( info.dereference( v ), v.width * 8 ); */
+        std::cerr << std::endl;
+    }
+}

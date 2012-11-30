@@ -18,7 +18,7 @@ class IntrinsicLowering;
 namespace divine {
 namespace llvm {
 
-struct Interpreter;
+struct MachineState;
 
 void static align( int &v, int a ) {
     if ( v % a )
@@ -137,6 +137,7 @@ struct ProgramInfo {
         std::vector< Value > values;
         Value &result() { return values[0]; }
         Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
+        void dump( ProgramInfo &info, MachineState &state );
 
         int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
