@@ -30,7 +30,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         else if ( auto B = dyn_cast< ::llvm::BasicBlock >( C ) )
             constant< PC >( v ) = blockmap[ B ];
         else if ( isa< ::llvm::ConstantPointerNull >( C ) )
-            constant< Pointer >( v ) = Pointer();
+            ; /* Do nothing. Globals are zeroed out by default. */
         else {
             C->dump();
             assert_unreachable( "unknown constant pointer type" );
