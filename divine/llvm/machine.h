@@ -271,6 +271,8 @@ struct MachineState
 
     Pointer malloc( int size ) { return nursery.malloc( size ); }
     void free( Pointer p ) {
+        if ( p.null() )
+            return; /* nothing to do */
         assert( p.heap );
         assert( validate( p ) );
         freed.insert( p.segment );
