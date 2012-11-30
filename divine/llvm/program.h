@@ -48,9 +48,9 @@ struct PC : wibble::mixin::Comparable< PC >
  * segment boundaries through pointer arithmetic or any other manipulation.
  */
 struct Pointer : wibble::mixin::Comparable< Pointer > {
-    bool heap:1; /* make a (0, 0) pointer different from NULL */
-    uint32_t segment:16; /* at most 64k objects */
     uint32_t offset:15; /* each at most 32kB */
+    uint32_t segment:16; /* at most 64k objects */
+    bool heap:1; /* make a (0, 0) pointer different from NULL */
     Pointer operator+( int relative ) {
         return Pointer( heap, segment, offset + relative );
     }
