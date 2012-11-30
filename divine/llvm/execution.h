@@ -366,6 +366,7 @@ struct Evaluator
             -> decltype( declcheck( static_cast< X >( v ) ) )
         {
             r = static_cast< X >( v );
+            return Unit();
         }
 
         bool resultIsPointer( std::vector< bool > x ) { return _pointer; } /* noop */
