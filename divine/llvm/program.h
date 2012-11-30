@@ -111,7 +111,7 @@ struct ProgramInfo {
     struct Value {
         bool global:1;
         bool constant:1;
-        enum { Pointer, Integer, Float, Aggregate, CodePointer, Void } type:3;
+        enum { Void, Pointer, Integer, Float, Aggregate, CodePointer } type:3;
         uint32_t offset:18;
         uint32_t width:9;
 
