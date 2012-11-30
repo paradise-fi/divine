@@ -89,7 +89,8 @@ enum Builtin {
     BuiltinAssert,
     BuiltinMalloc,
     BuiltinFree,
-    BuiltinAp
+    BuiltinAp,
+    BuiltinMemcpy
 };
 
 struct ProgramInfo {

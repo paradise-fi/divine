@@ -443,6 +443,19 @@ struct Evaluator
         }
     };
 
+    struct Memcpy : Implementation {
+        Unit operator()( Pointer &r = Dummy< Pointer >::v(),
+                         Pointer &l = Dummy< Pointer >::v(),
+                         int &t = Dummy< int >::v() )
+        {
+            memcpy( this->econtext().dereference( r ),
+                    this->econtext().dereference( l ), t );
+            return Unit();
+        }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
+    };
+
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getType()->getElementType();  // Type to be allocated
@@ -604,6 +617,7 @@ struct Evaluator
                     Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     econtext.free( v ); return;
                 }
+                case BuiltinMemcpy: implement< Memcpy >(); return;
             }
         }
 

@@ -128,6 +128,8 @@ void ProgramInfo::builtin( Position p )
         insn.builtin = BuiltinMalloc;
     else if ( name == "__divine_free" )
         insn.builtin = BuiltinFree;
+    else if ( name == "memcpy" )
+        insn.builtin = BuiltinMemcpy;
     else throw wibble::exception::Consistency(
         "ProgramInfo::builtin",
         "Can't call an undefined function <" + name + ">" );
