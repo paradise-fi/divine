@@ -583,12 +583,23 @@ struct Evaluator
                 case BuiltinGetTID:
                     withValues( SetInt( ccontext.threadId() ), instruction.result() );
                     return;
-                case BuiltinNewThread:
+                case BuiltinNewThread: {
                     PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
                     Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
                     int tid = ccontext.new_thread( entry, arg );
                     withValues( SetInt( tid ), instruction.result() );
                     return;
+                }
+                case BuiltinMalloc: {
+                    int size = withValues( Get< int >(), instruction.operand( 0 ) );
+                    Pointer result = econtext.malloc( size );
+                    withValues( Set< Pointer >( result, true ), instruction.result() );
+                    return;
+                }
+                case BuiltinFree: {
+                    Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                    econtext.free( v ); return;
+                }
             }
         }
 

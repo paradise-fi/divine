@@ -124,6 +124,10 @@ void ProgramInfo::builtin( Position p )
         insn.builtin = BuiltinAssert;
     else if ( name == "__divine_ap" )
         insn.builtin = BuiltinAp;
+    else if ( name == "__divine_malloc" )
+        insn.builtin = BuiltinMalloc;
+    else if ( name == "__divine_free" )
+        insn.builtin = BuiltinFree;
     else throw wibble::exception::Consistency(
         "ProgramInfo::builtin",
         "Can't call an undefined function <" + name + ">" );

@@ -15,6 +15,7 @@ void MachineState::rewind( Blob to, int thread )
 
     _thread_count = threads().get().length();
     nursery.reset( heap().segcount );
+    freed.clear();
 
     if ( thread >= 0 && thread < threads().get().length() )
         switch_thread( thread );
@@ -99,7 +100,7 @@ struct divine::llvm::Canonic
 
 void MachineState::trace( Pointer p, Canonic &canonic )
 {
-    if ( p.heap ) {
+    if ( p.heap && !freed.count( p.segment ) ) {
         canonic[ p ];
         if ( isPointer( p ) )
             trace( followPointer( p ), canonic );

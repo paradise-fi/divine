@@ -233,6 +233,8 @@ struct MachineState
 
     Blob _blob, _stack;
     Nursery nursery;
+    std::set< int > freed;
+
     ProgramInfo &_info;
     Allocator &_alloc;
     int _thread; /* the currently scheduled thread */
@@ -261,7 +263,17 @@ struct MachineState
     }
 
     bool validate( Pointer p ) {
-        return !p.null() && ( globalPointer( p ) || heap().owns( p ) || nursery.owns( p ) );
+        return !p.null() &&
+            ( globalPointer( p ) ||
+              ( !freed.count( p.segment ) &&
+                ( heap().owns( p ) || nursery.owns( p ) ) ) );
+    }
+
+    Pointer malloc( int size ) { return nursery.malloc( size ); }
+    void free( Pointer p ) {
+        assert( p.heap );
+        assert( validate( p ) );
+        freed.insert( p.segment );
     }
 
     Lens< State > state() {

@@ -87,6 +87,8 @@ enum Builtin {
     BuiltinGetTID,
     BuiltinNewThread,
     BuiltinAssert,
+    BuiltinMalloc,
+    BuiltinFree,
     BuiltinAp
 };
 
@@ -268,6 +270,7 @@ struct GlobalContext {
     char *global;
 
     Pointer malloc( int ) { assert_die(); }
+    void free( Pointer ) { assert_die(); }
 
     bool isPointer( ValueRef ) { return false; }
     bool isPointer( Pointer ) { return false; }
