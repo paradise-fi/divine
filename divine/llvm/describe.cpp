@@ -247,6 +247,20 @@ void MachineState::dump( std::ostream &r ) {
     }
     r << std::endl;
 
+    r << "nursery: segcount = " << nursery.offsets.size() - 1
+      << ", size = " << nursery.offsets[ nursery.offsets.size() - 1 ]
+      << ", data = ";
+    for ( int i = 0; i < nursery.offsets.size() - 1; ++ i ) {
+        Pointer p( true, i + nursery.segshift, 0 );
+        char *where = nursery.dereference( p );
+        int size = nursery.size( p );
+        for ( int j = 0; j < size; j += 4 )
+            r << fmtInteger( where, 32 ) << " ";
+        if ( i < nursery.offsets.size() - 1 )
+            r << "| ";
+    }
+    r << std::endl;
+
     for ( int i = 0; i < _thread_count; ++ i ) {
         int count = 0;
         r << "thread " << i << ", stack depth = " << stack( i ).get().length() << std::endl;
