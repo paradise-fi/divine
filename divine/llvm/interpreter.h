@@ -2,6 +2,8 @@
 
 #define NO_RTTI
 
+#include <wibble/maybe.h>
+
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
 #include <divine/graph/allocator.h> // hmm.
@@ -18,6 +20,7 @@ namespace divine {
 namespace llvm {
 
 struct Interpreter;
+using wibble::Maybe;
 
 using namespace ::llvm;
 
@@ -186,7 +189,7 @@ struct Interpreter
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
     int new_thread( Function *f );
-    int new_thread( PC pc, Pointer arg );
+    int new_thread( PC pc, Maybe< Pointer > arg, bool = false );
     int threadId() { return tid; }
     PC &pc() { return state._frame->pc; }
 };

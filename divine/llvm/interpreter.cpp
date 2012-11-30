@@ -66,16 +66,16 @@ divine::Blob Interpreter::initial( Function *f )
     return result;
 }
 
-int Interpreter::new_thread( PC pc, Pointer arg )
+int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
 {
     int current = state._thread;
     int tid = state.new_thread();
     state.enter( pc.function );
-    /* Trick. If arg is null, the copy would have no effect. But if the
-     * function has no parameter and arg is null, we avoid writing into a
-     * possibly empty frame, thus avoiding havoc. */
-    if ( !arg.null() )
-        *reinterpret_cast< Pointer * >( dereference( info.function( pc ).values[ 0 ] ) ) = arg;
+    if ( !arg.nothing() ) {
+        auto v = info.function( pc ).values[ 0 ];
+        frame().setPointer( info, v, ptr );
+        *frame().dereference< Pointer >( info, v ) = arg.value();
+    }
     if ( current >= 0 )
         state.switch_thread( current );
     return tid;
@@ -83,6 +83,6 @@ int Interpreter::new_thread( PC pc, Pointer arg )
 
 int Interpreter::new_thread( Function *f )
 {
-    return new_thread( PC( info.functionmap[ f ], 0, 0 ), Pointer() );
+    return new_thread( PC( info.functionmap[ f ], 0, 0 ), Maybe< Pointer >::Nothing() );
 }
 

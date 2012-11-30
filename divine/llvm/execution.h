@@ -4,6 +4,7 @@
 
 #include <wibble/exception.h>
 #include <wibble/test.h>
+#include <wibble/maybe.h>
 
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
@@ -37,6 +38,7 @@ namespace Intrinsic = ::llvm::Intrinsic;
 using ::llvm::CallSite;
 using ::llvm::Type;
 using wibble::Unit;
+using wibble::Maybe;
 
 template< int N, typename _T > struct Z;
 template< int N, typename _T > struct NZ { typedef _T T; };
@@ -134,7 +136,7 @@ struct ControlContext {
     MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
     PC &pc() { assert_die(); }
-    int new_thread( PC, Pointer ) { assert_die(); }
+    int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
     int stackDepth() { assert_die(); }
     int threadId() { assert_die(); }
 };
@@ -586,7 +588,9 @@ struct Evaluator
                 case BuiltinNewThread: {
                     PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
                     Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
-                    int tid = ccontext.new_thread( entry, arg );
+                    int tid = ccontext.new_thread(
+                        entry, Maybe< Pointer >::Just( arg ),
+                        ccontext.frame().isPointer( info, instruction.operand( 1 ) ) );
                     withValues( SetInt( tid ), instruction.result() );
                     return;
                 }
