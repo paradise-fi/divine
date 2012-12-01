@@ -101,9 +101,12 @@ struct divine::llvm::Canonic
 void MachineState::trace( Pointer p, Canonic &canonic )
 {
     if ( p.heap && !freed.count( p.segment ) ) {
+        int size = pointerSize( p );
         canonic[ p ];
-        if ( isPointer( p ) )
-            trace( followPointer( p ), canonic );
+        for ( p.offset = 0; p.offset < size; p.offset += 4 )
+            if ( isPointer( p ) ) {
+                trace( followPointer( p ), canonic );
+            }
     }
 }
 
