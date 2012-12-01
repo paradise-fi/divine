@@ -173,7 +173,7 @@ struct Evaluator
     std::vector< ValueRef > values; /* a withValues stash */
     typedef std::vector< bool > Pointers;
     std::vector< Pointers > pointers;
-    ValueRef result;
+    std::vector< ValueRef > result;
 
     struct Implementation {
         typedef Unit T;
@@ -742,8 +742,9 @@ struct Evaluator
         if ( i == e ) {
             fun._evaluator = this;
             auto retval = match( fun, list );
-            econtext.setPointer( result, fun.resultIsPointer( pointers.back() ) );
+            econtext.setPointer( result.back(), fun.resultIsPointer( pointers.back() ) );
             pointers.pop_back();
+            result.pop_back();
             return retval;
         }
 
@@ -786,7 +787,7 @@ struct Evaluator
     {
         pointers.push_back( Pointers() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
-        result = instruction.result();
+        result.push_back( instruction.result() );
         return implement( wibble::Preferred(), i, e, Nil(), fun );
     }
 
@@ -799,7 +800,7 @@ struct Evaluator
     template< typename Fun, typename... Values >
     typename Fun::T _withValues( Fun fun, ValueRef v, Values... vs ) {
         if ( values.empty() )
-            result = v;
+            result.push_back( v );
         values.push_back( v );
         return _withValues< Fun >( fun, vs... );
     }
