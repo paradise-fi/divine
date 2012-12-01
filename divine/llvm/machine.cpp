@@ -149,7 +149,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
     original.offset = edited.offset = 0;
     for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
         bool recurse = this->isPointer( original );
-        heap.setPointer( edit, recurse );
+        heap.setPointer( edited, recurse );
         if ( recurse ) /* points to a pointer, recurse */
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
