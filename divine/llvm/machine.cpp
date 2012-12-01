@@ -29,6 +29,10 @@ void MachineState::resnap()
     if ( _blob_private && _blob.valid() )
         _blob.free( _alloc.pool() );
 
+    nursery.reset( heap().segcount );
+    freed.clear();
+    problems.clear();
+
     _blob_private = true;
     _blob = snap;
 }
