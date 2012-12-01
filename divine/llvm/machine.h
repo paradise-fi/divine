@@ -164,7 +164,7 @@ struct MachineState
         uint16_t &bitmap( Pointer p ) {
             assert( owns( p ) );
             return reinterpret_cast< uint16_t * >(
-                _memory + size_jumptable( segcount ) )[ p.segment / 64 ];
+                _memory + size_jumptable( segcount ) )[ offset( p ) / 64 ];
         }
 
         int offset( Pointer p ) {
