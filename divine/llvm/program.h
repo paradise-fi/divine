@@ -32,8 +32,12 @@ struct PC : wibble::mixin::Comparable< PC >
     uint32_t instruction:10;
     bool masked:1;
 
-    explicit PC( int f = 0, int b = 0, int i = 0 )
+    PC( int f, int b, int i )
         : function( f ), block( b ), instruction( i ), masked( false )
+    {}
+
+    PC()
+        : function( 0 ), block( 0 ), instruction( 0 ), masked( false )
     {}
 
     bool operator<= ( PC o ) const {
