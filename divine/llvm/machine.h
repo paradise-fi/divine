@@ -230,7 +230,7 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.heap && (p.segment - segshift < offsets.size() - 1);
+            return p.heap && p.segment >= segshift && p.segment - segshift < offsets.size() - 1;
         }
 
         int offset( Pointer p ) {
@@ -254,6 +254,8 @@ struct MachineState
 
         char *dereference( Pointer p ) {
             assert( owns( p ) );
+            assert_leq( offset( p ), offsets[ offsets.size() - 1 ] );
+            assert_leq( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
             return &memory[ offset( p ) ];
         }
 
