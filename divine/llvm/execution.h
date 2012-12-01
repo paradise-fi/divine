@@ -323,6 +323,7 @@ struct Evaluator
             -> decltype( declcheck( r = l ) )
         {
             r = l;
+            return Unit();
         }
 
         bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
