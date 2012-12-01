@@ -41,7 +41,7 @@ struct Report
         m_dumped = true;
 
         if (execCommand.size() > 0)
-            o << "Execution-command: " << execCommand << std::endl << std::endl;
+            o << "Execution-Command: " << execCommand << std::endl << std::endl;
         o << BuildInfo() << std::endl;
         o << sysinfo << std::endl;
         o << meta << std::endl;
