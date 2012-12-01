@@ -617,7 +617,7 @@ struct Evaluator
                     Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
                     int tid = ccontext.new_thread(
                         entry, Maybe< Pointer >::Just( arg ),
-                        ccontext.frame().isPointer( info, instruction.operand( 1 ) ) );
+                        econtext.isPointer( instruction.operand( 1 ) ) );
                     withValues( SetInt( tid ), instruction.result() );
                     return;
                 }
