@@ -114,7 +114,7 @@ auto decons( Cons c ) -> typename UnPtr< decltype( ConsAt< I >::get( c ) ) >::T 
 }
 
 #define MATCH(l, expr...) template< typename F, typename X > \
-    auto match( F f, X x ) -> \
+    auto match( F &f, X x ) -> \
         typename wibble::TPair< typename Eq< l, X::length >::Yes, decltype( f( expr ) ) >::Second \
     { return f( expr ); }
 
@@ -417,6 +417,7 @@ struct Evaluator
 
     struct Load : Implementation {
         bool _pointer;
+        Load() : _pointer( false ) {}
 
         template< typename R = int >
         Unit operator()( R &r = Dummy< R >::v(),
