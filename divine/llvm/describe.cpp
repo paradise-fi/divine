@@ -129,6 +129,19 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
     return name.empty() ? "" : name + " = " + value;
 }
 
+std::string fileline( const Instruction &insn )
+{
+    const LLVMContext &ctx = insn.getContext();
+    const DebugLoc &loc = insn.getDebugLoc();
+    const Function *f = insn.getParent()->getParent();
+    DILocation des( loc.getAsMDNode( ctx ) );
+    if ( des.getLineNumber() )
+        return des.getFilename().str() +
+               std::string( ":" ) +
+               wibble::str::fmt( des.getLineNumber() );
+    return "";
+}
+
 std::string Interpreter::describe( bool detailed ) {
     std::stringstream s;
     std::vector< std::string > globals;
@@ -149,13 +162,11 @@ std::string Interpreter::describe( bool detailed ) {
              info.instruction( state.frame( c ).pc ).op )
         {
             const Instruction &insn = cast< const Instruction >( *info.instruction( state.frame( c ).pc ).op );
-            const LLVMContext &ctx = insn.getContext();
-            const DebugLoc &loc = insn.getDebugLoc();
             const Function *f = insn.getParent()->getParent();
-            DILocation des( loc.getAsMDNode( ctx ) );
+            std::string fl = fileline( insn );
             locs << "<" << f->getName().str() << ">";
-            if ( des.getLineNumber() )
-                locs << " [ " << des.getFilename().str() << ":" << des.getLineNumber() << " ]";
+            if ( !fl.empty() )
+                locs << " [ " << fl << " ]";
             else {
                 std::string descr;
                 raw_string_ostream descr_stream( descr );
@@ -304,15 +315,22 @@ void MachineState::dump() {
 
 void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
     op->dump();
+    std::string fl = isa< ::llvm::Instruction >( op ) ? fileline( *cast< ::llvm::Instruction >( op ) ) : "";
+    if ( !fl.empty() )
+        std::cerr << "  location: " << fl << std::endl;
     for ( int i = 0; i < values.size(); ++i ) {
         ProgramInfo::Value v = values[i];
-        std::cerr << "  " << i << ": " << (v.constant ? "constant" : (v.global ? "global" : "local"))
+        if ( !i )
+            std::cerr << "  result: ";
+        else
+            std::cerr << "  operand " << i - 1 << ": ";
+        std::cerr << (v.constant ? "constant" : (v.global ? "global" : "local"))
                   << ", type " << v.type << " at " << v.offset << ", width = " << v.width;
-        if ( !v.constant && !v.global ) {
+        if ( !v.constant ) {
             std::cerr << ", value = " << fmtInteger( state.dereference( v ), v.width * 8 );
             std::cerr << ", pointer = " << state.isPointer( v );
-        } /* else
-             std::cerr << ", value = " << fmtInteger( info.dereference( v ), v.width * 8 ); */
+        } else
+             std::cerr << ", value = " << fmtInteger( &info.constdata[ v.offset ], v.width * 8 );
         std::cerr << std::endl;
     }
 }
