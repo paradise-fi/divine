@@ -20,6 +20,9 @@ using ::llvm::cast;
 
 static bool isCodePointer( ::llvm::Value *val )
 {
+    if ( auto ty = dyn_cast< ::llvm::PointerType >( val->getType() ) )
+        return ty->getElementType()->isFunctionTy();
+
     return isa< ::llvm::Function >( val ) ||
            isa< ::llvm::BlockAddress >( val ) ||
            isa< ::llvm::BasicBlock >( val );
