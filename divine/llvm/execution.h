@@ -537,6 +537,7 @@ struct Evaluator
     void switchBB( PC target )
     {
         PC origin = ccontext.pc();
+        target.masked = origin.masked;
         ccontext.pc() = target;
         ccontext.jumped = true;
 
