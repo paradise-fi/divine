@@ -101,6 +101,7 @@ struct Interpreter
     template< typename Yield >
     void run( Blob b, Yield yield ) {
         state.rewind( b, -1 ); /* rewind first to get sense of thread count */
+        state.flags().clear();
         tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
         int threads = state._thread_count;
@@ -112,6 +113,7 @@ struct Interpreter
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
+            state.flags().clear();
         }
     }
 
@@ -130,20 +132,12 @@ struct Interpreter
             state.switch_thread( tid );
         assert( state.stack().get().length() );
 
-        flags().clear();
-
         while ( true ) {
             if ( !pc().masked && ( observable( seen ) || seen.count( pc() ) ) ) {
                 yield( state.snapshot() );
                 return;
             }
 
-            if ( flags().bad() ) { /* assert & co. always trigger a yield */
-                yield( state.snapshot() );
-                return;
-            }
-
-            flags().clear();
             jumped = false;
             choice = 0;
             seen.insert( pc() );
