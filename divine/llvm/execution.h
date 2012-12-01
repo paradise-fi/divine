@@ -612,7 +612,7 @@ struct Evaluator
                 }
                 case BuiltinMalloc: {
                     int size = withValues( Get< int >(), instruction.operand( 0 ) );
-                    Pointer result = econtext.malloc( size );
+                    Pointer result = size ? econtext.malloc( size ) : Pointer();
                     withValues( Set< Pointer >( result, true ), instruction.result() );
                     return;
                 }
