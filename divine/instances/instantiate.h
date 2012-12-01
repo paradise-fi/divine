@@ -123,7 +123,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         if ( meta.algorithm.fairness ) {
             if ( meta.algorithm.por )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-            return makeAlgorithmN< A, generator::LegacyDve >( meta );
+            return makeAlgorithm< A, graph::FairGraph< generator::LegacyDve > >( meta );
         }
         if ( meta.algorithm.por ) {
             return makeAlgorithmPOR< A, generator::LegacyDve >( meta );
