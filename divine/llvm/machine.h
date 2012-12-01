@@ -401,6 +401,8 @@ struct MachineState
 
         if ( v.v.global )
             return reinterpret_cast< char * >( global().memory + v.v.offset );
+
+        assert_unreachable( "Impossible Value." );
     }
 
     Lens< Threads > threads() {

@@ -409,7 +409,10 @@ struct Evaluator
             r = p + total;
             return Unit();
         }
-        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
+        bool resultIsPointer( std::vector< bool > x ) {
+            assert_leq( 2, x.size() );
+            return x[1];
+        }
     };
 
     struct Load : Implementation {
