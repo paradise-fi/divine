@@ -51,6 +51,7 @@ struct LegacyCommon : Common< _State > {
         assert( s.valid() );
         // works only with dve_explicit_system_t
         dve_explicit_system_t* system = dynamic_cast< dve_explicit_system_t* >( legacy_system() );
+        assert( system );
 
         state_t legacy = this->alloc.legacy_state( s );
         enabled_trans_container_t enabled_trans( *system );
