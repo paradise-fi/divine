@@ -180,7 +180,7 @@ std::string describeProblem( ProgramInfo &info, MachineState::Problem bad )
             s << "!! INVALID DEREFERENCE in thread "; break;
     }
     s << int( bad.tid ) << " at ";
-    s << locinfo( info, bad.where, true );
+    s << locinfo( info, bad.where, bad.what != MachineState::Problem::Assert );
     return s.str();
 }
 
