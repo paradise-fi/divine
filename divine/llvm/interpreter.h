@@ -130,7 +130,7 @@ struct Interpreter
             state.switch_thread( tid );
         assert( state.stack().get().length() );
 
-        flags().assert = false;
+        flags().clear();
 
         while ( true ) {
             if ( !pc().masked && ( observable( seen ) || seen.count( pc() ) ) ) {
@@ -138,12 +138,12 @@ struct Interpreter
                 return;
             }
 
-            if ( flags().assert ) { /* assert always triggers a yield */
+            if ( flags().bad() ) { /* assert & co. always trigger a yield */
                 yield( state.snapshot() );
                 return;
             }
 
-            flags().assert = false;
+            flags().clear();
             jumped = false;
             choice = 0;
             seen.insert( pc() );

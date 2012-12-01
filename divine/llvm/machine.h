@@ -289,6 +289,12 @@ struct MachineState
         uint64_t invalid_argument:1;
         uint64_t ap:48;
         uint64_t buchi:12;
+        void clear() {
+            assert = null_dereference = invalid_dereference = invalid_argument = 0;
+        }
+        bool bad() {
+            return assert || null_dereference || invalid_dereference || invalid_argument;
+        }
     };
 
     typedef lens::Array< Frame > Stack;
