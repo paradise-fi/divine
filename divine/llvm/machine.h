@@ -113,8 +113,9 @@ struct MachineState
                 bitmap( i, p ) &= ~mask( i, p );
         }
 
-        bool owns( ProgramInfo &, Pointer p ) {
-            return !p.heap && p.segment >= 1;
+        bool owns( ProgramInfo &i, Pointer p ) {
+            return !p.heap && p.segment >= 1 && p.segment < i.globals.size() &&
+                   !i.globals[p.segment].constant;
         }
 
         template< typename T = char >
