@@ -167,8 +167,9 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
 
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
-        if ( f.isPointer( _info, *val ) ) {
-            target.setPointer( _info, *val, true );
+        bool recurse = f.isPointer( _info, *val );
+        target.setPointer( _info, *val, recurse );
+        if ( recurse ) {
             Pointer from = *reinterpret_cast< Pointer * >( from_addr );
             snapshot( *target.dereference< Pointer >( _info, *val ), from, canonic, heap );
         } else
