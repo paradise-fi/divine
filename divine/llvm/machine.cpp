@@ -16,6 +16,7 @@ void MachineState::rewind( Blob to, int thread )
     _thread_count = threads().get().length();
     nursery.reset( heap().segcount );
     freed.clear();
+    problems.clear();
 
     if ( thread >= 0 && thread < threads().get().length() )
         switch_thread( thread );
@@ -211,12 +212,28 @@ divine::Blob MachineState::snapshot()
             } );
     }
 
+    int problemcount = flags().problemcount + problems.size();
     Blob b = _alloc.new_blob(
-        size( canonic.stack, canonic.allocated, canonic.segcount ) );
+        size( canonic.stack, canonic.allocated, canonic.segcount,
+              flags().problem ? problemcount : 0 ) );
 
     StateAddress address( &_info, b, _alloc._slack );
-    address = state().sub( Flags() ).copy( address );
-    assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
+    Flags &fl = address.as< Flags >();
+    fl = flags();
+    fl.problemcount = 0;
+    address.advance( sizeof( Flags ) );
+
+    if ( fl.problem ) {
+        for ( int i = 0; i < problemcount; ++i ) {
+            address.advance( sizeof( Problem ) );
+            fl.problems[ i ] =
+                i < flags().problemcount ?
+                    flags().problems[ i ] :
+                    problems[ i - flags().problemcount ];
+        }
+        fl.problemcount = problemcount;
+    }
+
     Globals *_global = &address.as< Globals >();
     address = state().sub( Globals() ).copy( address );
 
@@ -258,3 +275,13 @@ divine::Blob MachineState::snapshot()
     return b;
 }
 
+
+void MachineState::problem( MachineState::Problem::What w )
+{
+    Problem p;
+    p.what = w;
+    p.where = frame().pc;
+    p.tid = _thread;
+    problems.push_back( p );
+    flags().problem = 1;
+}

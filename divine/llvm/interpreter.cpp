@@ -44,7 +44,7 @@ void Interpreter::parseProperties( Module *M )
 
 divine::Blob Interpreter::initial( Function *f )
 {
-    Blob pre_initial = alloc.new_blob( state.size( 0, 0, 0 ) );
+    Blob pre_initial = alloc.new_blob( state.size( 0, 0, 0, 0 ) );
     pre_initial.clear();
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 

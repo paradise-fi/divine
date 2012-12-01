@@ -72,7 +72,7 @@ struct LLVM : Common< Blob > {
 
     bool isGoal( Node n ) {
         auto fl = flags( n );
-        return fl.assert || fl.null_dereference || fl.invalid_dereference || fl.invalid_argument;
+        return fl.bad();
     }
 
     bool isAccepting( Node n ) {

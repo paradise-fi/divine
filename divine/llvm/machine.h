@@ -268,9 +268,18 @@ struct MachineState
         }
     };
 
+    struct Problem {
+        enum What { Assert, InvalidDereference };
+        PC where;
+        uint8_t what;
+        uint8_t tid;
+        uint16_t _padding;
+    };
+
     Blob _blob, _stack;
     Nursery nursery;
     std::set< int > freed;
+    std::vector< Problem > problems;
 
     ProgramInfo &_info;
     Allocator &_alloc;
@@ -283,18 +292,24 @@ struct MachineState
     using Lens = lens::Lens< StateAddress, T >;
 
     struct Flags {
-        uint64_t assert:1;
-        uint64_t null_dereference:1;
-        uint64_t invalid_dereference:1;
-        uint64_t invalid_argument:1;
-        uint64_t ap:48;
+        uint64_t problemcount:7;
+        uint64_t problem:1;
+        uint64_t ap:44;
         uint64_t buchi:12;
+        Problem problems[0];
+
         void clear() {
-            assert = null_dereference = invalid_dereference = invalid_argument = 0;
+            problem = 0;
         }
+
         bool bad() {
-            return assert || null_dereference || invalid_dereference || invalid_argument;
+            return problem;
         }
+
+        StateAddress advance( StateAddress a, int ) {
+            return StateAddress( a, 0, sizeof( Flags ) + problemcount * sizeof( Problem ) );
+        }
+        int end() { return 0; }
     };
 
     typedef lens::Array< Frame > Stack;
@@ -488,9 +503,11 @@ struct MachineState
     void snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
     void rewind( Blob, int thread = 0 );
+    void problem( Problem::What );
 
-    int size( int stack, int heapbytes, int heapsegs ) {
+    int size( int stack, int heapbytes, int heapsegs, int problems ) {
         return sizeof( Flags ) +
+               sizeof( Problem ) * problems +
                sizeof( int ) + /* thread count */
                stack + size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }

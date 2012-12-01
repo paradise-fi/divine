@@ -142,6 +142,48 @@ std::string fileline( const Instruction &insn )
     return "";
 }
 
+std::string locinfo( ProgramInfo &info, PC pc,
+                     bool instruction = false,
+                     Function **fun = nullptr )
+{
+    auto user = info.instruction( pc ).op;
+    if ( !isa< ::llvm::Instruction >( user ) )
+        return "<non-code location>";
+
+    std::stringstream locs;
+    Instruction &insn = *cast< Instruction >( user );
+    Function *f = insn.getParent()->getParent();
+    std::string fl = fileline( insn );
+    locs << "<" << f->getName().str() << ">";
+
+    if ( fun )
+        *fun = f;
+
+    if ( !fl.empty() )
+        locs << " [ " << fl << " ]";
+    if ( fl.empty() || instruction ) {
+        std::string descr;
+        raw_string_ostream descr_stream( descr );
+        descr_stream << insn;
+        locs << " <<" << std::string( descr, 1, std::string::npos ) << " >>";
+    }
+    return locs.str();
+}
+
+std::string describeProblem( ProgramInfo &info, MachineState::Problem bad )
+{
+    std::stringstream s;
+    switch ( bad.what ) {
+        case MachineState::Problem::Assert:
+            s << "!! ASSERTION FAILED in thread "; break;
+        case MachineState::Problem::InvalidDereference:
+            s << "!! INVALID DEREFERENCE in thread "; break;
+    }
+    s << int( bad.tid ) << " at ";
+    s << locinfo( info, bad.where, true );
+    return s.str();
+}
+
 std::string Interpreter::describe( bool detailed ) {
     std::stringstream s;
     std::vector< std::string > globals;
@@ -156,23 +198,16 @@ std::string Interpreter::describe( bool detailed ) {
 
     for ( int c = 0; c < state._thread_count; ++c ) {
         std::vector< std::string > vec;
-        std::stringstream locs;
+        std::string location;
 
         if ( state.stack( c ).get().length() &&
              info.instruction( state.frame( c ).pc ).op )
         {
-            const Instruction &insn = cast< const Instruction >( *info.instruction( state.frame( c ).pc ).op );
-            const Function *f = insn.getParent()->getParent();
-            std::string fl = fileline( insn );
-            locs << "<" << f->getName().str() << ">";
-            if ( !fl.empty() )
-                locs << " [ " << fl << " ]";
-            else {
-                std::string descr;
-                raw_string_ostream descr_stream( descr );
-                descr_stream << insn;
-                locs << " [" << std::string( descr, 1, std::string::npos ) << " ]";
-            }
+            Function *f = nullptr;
+            location = locinfo( info, state.frame( c ).pc, false, &f );
+
+            if ( !f )
+                break;
 
             int _anonymous = 0;
             int *anonymous = detailed ? &_anonymous : nullptr;
@@ -186,25 +221,17 @@ std::string Interpreter::describe( bool detailed ) {
                     describeValue( &*v, c, &seen, anonymous, &vec );
             }
         } else
-            locs << "<null>";
+            location = "<null>";
 
-        s << c << ": " << locs.str() << " " << wibble::str::fmt( vec ) << std::endl;
+        s << c << ": " << location << " " << wibble::str::fmt( vec ) << std::endl;
     }
+
+    MachineState::Flags &flags = state.flags();
+    for ( int i = 0; i < flags.problemcount; ++i )
+        s << describeProblem( info, flags.problems[i] ) << std::endl;
 
     if ( !state._thread_count )
         s << "! EXIT" << std::endl;
-
-    if ( state.flags().assert )
-        s << "! ASSERTION FAILED" << std::endl;
-
-    if ( state.flags().invalid_argument )
-        s << "! INVALID ARGUMENT" << std::endl;
-
-    if ( state.flags().invalid_dereference )
-        s << "! INVALID DEREFERENCE" << std::endl;
-
-    if ( state.flags().null_dereference )
-        s << "! NULL DEREFERENCE" << std::endl;
 
 #if 0
     if ( flags.ap ) {
@@ -231,8 +258,7 @@ std::string Interpreter::describe( bool detailed ) {
 void MachineState::dump( std::ostream &r ) {
     Flags &fl = flags();
 
-    r << "flags: [ " << fl.assert << " " << fl.null_dereference << " " << fl.invalid_dereference
-      << " " << fl.invalid_argument << " " << fl.ap << " " << fl.buchi << " ]" << std::endl;
+    /* TODO problem/flag stuff */
 
     r << "globals: [ ";
     for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ )
