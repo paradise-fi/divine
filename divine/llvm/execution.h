@@ -446,16 +446,22 @@ struct Evaluator
     };
 
     struct Memcpy : Implementation {
-        Unit operator()( Pointer &r = Dummy< Pointer >::v(),
-                         Pointer &l = Dummy< Pointer >::v(),
-                         int &t = Dummy< int >::v() )
+        template< typename I = int >
+        auto operator()( Pointer &ret = Dummy< Pointer >::v(),
+                         Pointer &dest = Dummy< Pointer >::v(),
+                         Pointer &src = Dummy< Pointer >::v(),
+                         I &nmemb = Dummy< I >::v() )
+            /* (void *) 3 is silly, but nullptr here crashes g++ 4.7 */
+            -> decltype( declcheck( memcpy( (void *)3, (void *)4, nmemb ) ) )
         {
-            memcpy( this->econtext().dereference( r ),
-                    this->econtext().dereference( l ), t );
+            /* TODO check bounds! */
+            memcpy( this->econtext().dereference( dest ),
+                    this->econtext().dereference( src ), nmemb );
+            ret = dest;
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
+        bool resultIsPointer( std::vector< bool > x ) { return x[1]; } /* copy status from dest */
     };
 
     void implement_alloca() {
@@ -620,7 +626,7 @@ struct Evaluator
                     Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     econtext.free( v ); return;
                 }
-                case BuiltinMemcpy: implement< Memcpy >(); return;
+                case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
             }
         }
 
