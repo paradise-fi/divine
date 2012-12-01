@@ -171,7 +171,8 @@ struct Evaluator
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
     std::vector< ValueRef > values; /* a withValues stash */
-    std::vector< bool > pointers;
+    typedef std::vector< bool > Pointers;
+    std::vector< Pointers > pointers;
     ValueRef result;
 
     struct Implementation {
@@ -734,13 +735,14 @@ struct Evaluator
         if ( i == e ) {
             fun._evaluator = this;
             auto retval = match( fun, list );
-            econtext.setPointer( result, fun.resultIsPointer( pointers ) );
+            econtext.setPointer( result, fun.resultIsPointer( pointers.back() ) );
+            pointers.pop_back();
             return retval;
         }
 
         ValueRef v = *i++;
         char *mem = dereference( v );
-        pointers.push_back( econtext.isPointer( v ) );
+        pointers.back().push_back( econtext.isPointer( v ) );
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
@@ -775,7 +777,7 @@ struct Evaluator
     template< typename Fun, int Limit = 3 >
     typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
     {
-        pointers.clear();
+        pointers.push_back( Pointers() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
         result = instruction.result();
         return implement( wibble::Preferred(), i, e, Nil(), fun );
@@ -783,7 +785,7 @@ struct Evaluator
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
-        pointers.clear();
+        pointers.push_back( Pointers() );
         return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil(), fun );
     }
 
