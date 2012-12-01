@@ -181,7 +181,16 @@ divine::Blob MachineState::snapshot()
     Canonic canonic( *this );
     int dead_threads = 0;
 
-    /* TODO trace the global memory! */
+    /* TODO inefficient, split globals into globals and constants */
+    for ( int i = 0; i < _info.globals.size(); ++i ) {
+        ProgramInfo::Value v = _info.globals[i];
+        if ( v.constant )
+            continue;
+        Pointer p( false, i, 0 );
+        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+            if ( global().isPointer( _info, p ) )
+                trace( followPointer( p ), canonic );
+    }
 
     for ( int tid = 0; tid < _thread_count; ++tid ) {
         if ( !stack( tid ).get().length() ) { /* leave out dead threads */
@@ -204,7 +213,8 @@ divine::Blob MachineState::snapshot()
     StateAddress address( &_info, b, _alloc._slack );
     address = state().sub( Flags() ).copy( address );
     assert_eq( address.offset, _alloc._slack + sizeof( Flags ) );
-    address = state().sub( Globals() ).copy( address ); /* TODO run through canonizer, too! */
+    Globals *_global = &address.as< Globals >();
+    address = state().sub( Globals() ).copy( address );
 
     /* skip the heap */
     Heap *_heap = &address.as< Heap >();
@@ -216,6 +226,17 @@ divine::Blob MachineState::snapshot()
 
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
+
+    for ( int i = 0; i < _info.globals.size(); ++i ) {
+        ProgramInfo::Value v = _info.globals[i];
+        if ( v.constant )
+            continue;
+        Pointer p( false, i, 0 );
+        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+            if ( global().isPointer( _info, p ) )
+                snapshot( *(_global->dereference< Pointer >( _info, p )),
+                          followPointer( p ), canonic, *_heap );
+    }
 
     for ( int tid = 0; tid < _thread_count - dead_threads; ++tid ) {
         address.as< int >() = stack( tid ).get().length();

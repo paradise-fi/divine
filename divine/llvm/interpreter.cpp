@@ -53,7 +53,8 @@ divine::Blob Interpreter::initial( Function *f )
         if ( !var->isConstant() && var->hasInitializer() ) {
             assert( val.constant ); /* the pointer */
             Pointer p = *reinterpret_cast< Pointer * >( dereference( val ) );
-            info.storeConstant( info.globals[ p.segment ], var->getInitializer(), state.globalmem() );
+            info.storeConstant( info.globals[ p.segment ], var->getInitializer(),
+                                reinterpret_cast< char * >( state.global().memory ) );
         }
     }
 

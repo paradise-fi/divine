@@ -83,12 +83,46 @@ struct MachineState
     };
 
     struct Globals {
-        /* TODO Needs a bitmap to track pointers. */
-        char memory[0];
+        uint8_t memory[0];
+
         StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, a._info->globalsize );
+            return StateAddress( a, 0, size( *a._info ) );
         }
         int end() { return 0; }
+
+        static int size( ProgramInfo &i ) {
+            return i.globalsize + size_bitmap( i.globalsize );
+        }
+
+        uint8_t &bitmap( ProgramInfo &i, Pointer p ) {
+            return *(memory + i.globalsize + i.globalPointerOffset( p ) / 32);
+        }
+
+        uint8_t mask( ProgramInfo &i, Pointer v ) {
+            return 1 << ((i.globalPointerOffset( v ) % 32) / 4);
+        }
+
+        bool isPointer( ProgramInfo &i, Pointer p ) {
+            return bitmap( i, p ) & mask( i, p );
+        }
+
+        void setPointer( ProgramInfo &i, Pointer p, bool ptr ) {
+            if ( ptr )
+                bitmap( i, p ) |= mask( i, p );
+            else
+                bitmap( i, p ) &= ~mask( i, p );
+        }
+
+        bool owns( ProgramInfo &, Pointer p ) {
+            return !p.heap && p.segment >= 1;
+        }
+
+        template< typename T = char >
+        T *dereference( ProgramInfo &i, Pointer p ) {
+            assert( owns( i, p ) );
+            return reinterpret_cast< T * >(
+                memory + i.globalPointerOffset( p ) );
+        }
     };
 
     static int size_jumptable( int segcount ) {
@@ -259,7 +293,7 @@ struct MachineState
     typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
 
     bool globalPointer( Pointer p ) {
-        return !p.heap && p.segment >= 1;
+        return global().owns( _info, p );
     }
 
     bool validate( Pointer p ) {
@@ -282,15 +316,13 @@ struct MachineState
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
     }
 
-    char *globalmem() {
-        return state().get( Globals() ).memory;
-    }
-
     bool isPointer( Pointer p ) {
         if ( nursery.owns( p ) )
             return nursery.isPointer( p );
         if ( heap().owns( p ) )
             return heap().isPointer( p );
+        if ( globalPointer( p ) )
+            return global().isPointer( _info, p );
         return false;
     }
 
@@ -299,13 +331,15 @@ struct MachineState
             nursery.setPointer( p, is );
         if ( heap().owns( p ) )
             heap().setPointer( p, is );
+        if ( globalPointer( p ) )
+            global().setPointer( _info, p, is );
     }
 
     char *dereference( Pointer p ) {
         if( !validate( p ) )
             return nullptr;
         else if ( globalPointer( p ) )
-            return globalmem() + _info.globalPointerOffset( p );
+            return global().dereference( _info, p );
         else if ( heap().owns( p ) )
             return heap().dereference( p );
         else
@@ -324,16 +358,19 @@ struct MachineState
     bool isPointer( ValueRef v ) {
         if ( v.tid < 0 )
             v.tid = _thread;
-        if ( !v.v.global && !v.v.constant )
-            return frame( v ).isPointer( _info, v.v );
-        return false;
+        if ( v.v.constant )
+            return false; /* can't point to heap by definition */
+        assert( !v.v.global );
+        return frame( v ).isPointer( _info, v.v );
     }
 
     void setPointer( ValueRef v, bool is ) {
         if ( v.tid < 0 )
             v.tid = _thread;
-        if ( !v.v.global && !v.v.constant )
-            return frame( v ).setPointer( _info, v.v, is );
+        if ( v.v.constant )
+            return;
+        assert( !v.v.global );
+        frame( v ).setPointer( _info, v.v, is );
     }
 
     /*
@@ -354,7 +391,7 @@ struct MachineState
             return &_info.constdata[v.v.offset];
 
         if ( v.v.global )
-            return globalmem() + v.v.offset;
+            return reinterpret_cast< char * >( global().memory + v.v.offset );
     }
 
     Lens< Threads > threads() {
@@ -376,6 +413,10 @@ struct MachineState
 
     Heap &heap() {
         return state().get( Heap() );
+    }
+
+    Globals &global() {
+        return state().get( Globals() );
     }
 
     Frame &frame( int thread = -1, int idx = 0 ) {
@@ -440,7 +481,7 @@ struct MachineState
     int size( int stack, int heapbytes, int heapsegs ) {
         return sizeof( Flags ) +
                sizeof( int ) + /* thread count */
-               stack + size_heap( heapsegs, heapbytes ) + _info.globalsize;
+               stack + size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
