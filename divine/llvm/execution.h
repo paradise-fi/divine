@@ -317,7 +317,7 @@ struct Evaluator
     /******** Register access & conversion *******/
 
     struct Copy : Implementation {
-        template< typename X = int, typename Y = int >
+        template< typename X = int, typename Y = X >
         auto operator()( X &r = Dummy< X >::v(),
                          Y &l = Dummy< Y >::v() )
             -> decltype( declcheck( r = l ) )
@@ -329,7 +329,7 @@ struct Evaluator
     };
 
     struct BitCast : Implementation {
-        template< typename R = int, typename L = int >
+        template< typename R = int, typename L = R >
         Unit operator()( R &r = Dummy< R >::v(),
                          L &l = Dummy< L >::v() )
         {
