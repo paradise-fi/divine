@@ -32,7 +32,7 @@ static inline CPoolGroup *pool_group( CPool *pool, int n ) {
 #if defined(__cplusplus) && defined(O_POOLS)
 namespace divine {
     struct Pool;
-};
+}
 #endif
 
 #ifdef __cplusplus

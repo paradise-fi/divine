@@ -87,6 +87,14 @@ struct CESMI : public Common< Blob > {
         exit( 1 );
     }
 
+    template< typename T >
+    void getsym( T *result, const char *name ) {
+        static_assert( sizeof( T ) == sizeof( void * ), "pointer size mismatch" );
+        union { T sym; void *ptr; };
+        ptr = dlsym( dl.handle, name );
+        *result = sym;
+    }
+
     void read( std::string path ) {
         // dlopen does not like path-less shared objects outside lib locations
         if ( wibble::str::basename( path ) == path )
@@ -97,17 +105,17 @@ struct CESMI : public Common< Blob > {
         if( !dl.handle )
             die( "FATAL: Error loading \"%s\".\n%s", path.c_str(), dlerror() );
 
-        dl.get_initial = (dl_get_initial_t) dlsym(dl.handle, "get_initial");
-        dl.setup = (dl_setup_t) dlsym(dl.handle, "setup");
-        dl.get_successor = (dl_get_successor_t) dlsym(dl.handle, "get_successor");
-        dl.is_accepting = (dl_is_accepting_t) dlsym(dl.handle, "is_accepting");
-        dl.show_node = (dl_show_node_t) dlsym(dl.handle, "show_node");
-        dl.show_transition = (dl_show_transition_t) dlsym(dl.handle, "show_transition");
-        dl.cache_successors = (dl_cache_successors_t) dlsym(dl.handle, "cache_successors");
+        getsym( &dl.get_initial, "get_initial" );
+        getsym( &dl.setup, "setup" );
+        getsym( &dl.get_successor, "get_successor" );
+        getsym( &dl.is_accepting, "is_accepting" );
+        getsym( &dl.show_node, "show_node" );
+        getsym( &dl.show_transition, "show_transition" );
+        getsym( &dl.cache_successors, "cache_successors" );
 
-        if( !dl.get_initial )
+        if ( !dl.get_initial )
             die( "FATAL: Could not resolve get_initial." );
-        if( !dl.get_successor )
+        if ( !dl.get_successor )
             die( "FATAL: Could not resolve get_successor." );
 
 #ifndef O_POOLS
