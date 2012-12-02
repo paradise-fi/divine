@@ -460,7 +460,15 @@ struct Evaluator
             /* (void *) 3 is silly, but nullptr here crashes g++ 4.7 */
             -> decltype( declcheck( memcpy( (void *)3, (void *)4, nmemb ) ) )
         {
-            /* TODO check bounds! */
+            Pointer dend = dest, send = src;
+            dend.offset += nmemb - 1;
+            send.offset += nmemb - 1;
+
+            if ( !this->econtext().dereference( dend ) || !this->econtext().dereference( send ) ) {
+                this->ccontext().problem( Problem::InvalidDereference );
+                return Unit();
+            }
+
             memcpy( this->econtext().dereference( dest ),
                     this->econtext().dereference( src ), nmemb );
             ret = dest;
