@@ -209,7 +209,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void draw() {
-        dot += "digraph {";
+        dot += "digraph { graph [ fontame = Courier ]\n";
 
         initial = this->graph().initial();
         extension( initial ).serial = 1;
