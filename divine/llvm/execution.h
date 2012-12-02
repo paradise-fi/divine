@@ -412,7 +412,7 @@ struct Evaluator
             return Unit();
         }
         bool resultIsPointer( std::vector< bool > x ) {
-            assert_leq( 2, x.size() );
+            assert_leq( 2U, x.size() );
             return x[1];
         }
     };

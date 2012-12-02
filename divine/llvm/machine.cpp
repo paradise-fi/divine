@@ -16,7 +16,7 @@ void MachineState::rewind( Blob to, int thread )
     nursery.reset( heap().segcount );
     freed.clear();
     problems.clear();
-    for ( int i = 0; i < _stack.size(); ++i ) /* deactivate detached stacks */
+    for ( int i = 0; i < int( _stack.size() ); ++i ) /* deactivate detached stacks */
         _stack[i].first = false;
 
     if ( thread >= 0 && thread < _thread_count )
@@ -122,7 +122,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
         return; /* we already followed this pointer */
 
     Pointer edited = edit;
-    assert_eq( edit.segment, canonic.segdone );
+    assert_eq( int( edit.segment ), canonic.segdone );
     canonic.segdone ++;
 
     /* Re-allocate the object... */
@@ -171,7 +171,7 @@ divine::Blob MachineState::snapshot()
     int dead_threads = 0;
 
     /* TODO inefficient, split globals into globals and constants */
-    for ( int i = 0; i < _info.globals.size(); ++i ) {
+    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
         ProgramInfo::Value v = _info.globals[i];
         if ( v.constant )
             continue;
@@ -232,7 +232,7 @@ divine::Blob MachineState::snapshot()
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
 
-    for ( int i = 0; i < _info.globals.size(); ++i ) {
+    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
         ProgramInfo::Value v = _info.globals[i];
         if ( v.constant )
             continue;
