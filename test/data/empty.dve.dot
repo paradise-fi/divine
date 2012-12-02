@@ -1,2 +1,3 @@
-digraph {2 [shape=circle ]
+digraph { node [ fontname = Courier ]
+2 [shape=circle ]
 }
