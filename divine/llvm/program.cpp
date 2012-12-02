@@ -173,7 +173,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     }
 
     insn.values.resize( 1 + p.I->getNumOperands() );
-    for ( int i = 0; i < p.I->getNumOperands(); ++i ) {
+    for ( int i = 0; i < int( p.I->getNumOperands() ); ++i ) {
         ::llvm::Value *v = p.I->getOperand( i );
         insert( p.pc.function, v ); /* use-before-def can actually happen */
         assert( valuemap.count( v ) );

@@ -29,9 +29,9 @@ struct Interpreter
     TargetData TD;
     std::map< std::string, std::string > properties;
     ::llvm::Module *module; /* The bitcode. */
-    MachineState state; /* the state we are dealing with */
     ProgramInfo info;
     Allocator &alloc;
+    MachineState state; /* the state we are dealing with */
 
     bool jumped;
     int choice;
@@ -61,7 +61,7 @@ struct Interpreter
         MDNode *enums = node( module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
         if ( !enums )
             return NULL;
-        for ( int i = 0; i < enums->getNumOperands(); ++i ) {
+        for ( int i = 0; i < int( enums->getNumOperands() ); ++i ) {
             MDNode *n = cast< MDNode >( enums->getOperand(i) );
             MDString *name = cast< MDString >( n->getOperand(2) );
             if ( name->getString() == lookup )

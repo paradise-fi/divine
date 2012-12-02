@@ -191,7 +191,7 @@ struct Evaluator
     char *dereference( X x ) { return econtext.dereference( x ); }
 
     template< typename... X >
-    static Unit declcheck( X... ) {}
+    static Unit declcheck( X... ) { return Unit(); }
 
     /******** Arithmetic & comparisons *******/
 
@@ -239,6 +239,7 @@ struct Evaluator
         {
             _selected = a ? 1 : 2;
             r = a ? b : c;
+            return Unit();
         }
         bool resultIsPointer( std::vector< bool > x ) { return x[ _selected ]; }
     };
@@ -458,7 +459,7 @@ struct Evaluator
                          Pointer &src = Dummy< Pointer >::v(),
                          I &nmemb = Dummy< I >::v() )
             /* (void *) 3 is silly, but nullptr here crashes g++ 4.7 */
-            -> decltype( declcheck( memcpy( (void *)3, (void *)4, nmemb ) ) )
+            -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
         {
             Pointer dend = dest, send = src;
             dend.offset += nmemb - 1;
@@ -664,7 +665,7 @@ struct Evaluator
 
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
-        for ( int i = 0; i < CS.arg_size() && i < function.values.size(); ++i )
+        for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.values.size() ); ++i )
             withValues( Copy(), function.values[ i ], ValueRef( instruction.operand( i ), 1 ) );
         if ( CS.arg_size() > function.values.size() )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */

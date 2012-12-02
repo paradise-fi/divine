@@ -238,7 +238,8 @@ struct MachineState
         }
 
         bool owns( Pointer p ) {
-            return p.heap && p.segment >= segshift && p.segment - segshift < offsets.size() - 1;
+            return p.heap && p.segment >= segshift &&
+                   p.segment - segshift < int( offsets.size() ) - 1;
         }
 
         int offset( Pointer p ) {
@@ -432,7 +433,7 @@ struct MachineState
     }
 
     void detach_stack( int thread ) {
-        if ( _stack.size() <= thread )
+        if ( int( _stack.size() ) <= thread )
             _stack.resize( thread + 1, std::make_pair( false, Blob() ) );
 
         if ( _stack[thread].first )
@@ -458,7 +459,7 @@ struct MachineState
         if ( thread < 0 )
             thread = _thread;
 
-        if ( thread < _stack.size() && _stack[thread].first )
+        if ( thread < int( _stack.size() ) && _stack[thread].first )
             return Lens< Stack >( StateAddress( &_info, _stack[thread].second, 0 ) );
         else
             return _blob_stack( thread );
@@ -502,7 +503,6 @@ struct MachineState
          * length is used to compute the offset of the following stack. */
         detach_stack( _thread );
 
-        int fun = frame().pc.function;
         auto &s = stack().get();
         s.length() --;
         if ( stack().get().length() )

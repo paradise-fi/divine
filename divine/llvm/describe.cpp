@@ -28,7 +28,7 @@ Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, Desc
     if ( isa< ArrayType >( t )) {
         delim[0] = '['; delim[1] = ']';
         const ArrayType *arr = cast< ArrayType >( t );
-        for ( int i = 0; i < arr->getNumElements(); ++ i ) {
+        for ( int i = 0; i < int( arr->getNumElements() ); ++ i ) {
             sub = describeValue( arr->getElementType(), where, seen );
             vec.push_back( sub.first );
             assert_neq( sub.second, where );
@@ -48,7 +48,7 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
     std::string res;
     Type *pointeeTy = cast< PointerType >( t )->getElementType();
     if ( isa< FunctionType >( pointeeTy ) ) {
-        res = "@<???>"; // TODO functionIndex.right( idx )->getName().str();
+        res = "@<some function>"; // TODO functionIndex.right( idx )->getName().str();
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
@@ -67,11 +67,11 @@ static std::string fmtInteger( char *where, int bits ) {
         return "<null>";
 
     switch ( bits ) {
-        case 64: return wibble::str::fmt( *(int64_t*) where);
-        case 32: return wibble::str::fmt( *(int32_t*) where);
-        case 16: return wibble::str::fmt( *(int16_t*) where);
-        case 8: return wibble::str::fmt( int( *(int8_t *) where ) );
-        case 1: return wibble::str::fmt( *(bool *) where );
+        case 64: return wibble::str::fmt( *reinterpret_cast< int64_t* >( where ) );
+        case 32: return wibble::str::fmt( *reinterpret_cast< int32_t* >( where ) );
+        case 16: return wibble::str::fmt( *reinterpret_cast< int16_t* >( where ) );
+        case 8: return wibble::str::fmt( int( *reinterpret_cast< int8_t * >( where ) ) );
+        case 1: return wibble::str::fmt( *reinterpret_cast< bool * >( where ) );
         default: return "<" + wibble::str::fmt( bits ) + "-bit integer>";
     }
 }
@@ -136,7 +136,6 @@ std::string fileline( const Instruction &insn )
 {
     const LLVMContext &ctx = insn.getContext();
     const DebugLoc &loc = insn.getDebugLoc();
-    const Function *f = insn.getParent()->getParent();
     DILocation des( loc.getAsMDNode( ctx ) );
     if ( des.getLineNumber() )
         return des.getFilename().str() +
@@ -261,7 +260,6 @@ std::string Interpreter::describe( bool detailed ) {
 }
 
 void MachineState::dump( std::ostream &r ) {
-    Flags &fl = flags();
 
     /* TODO problem/flag stuff */
 
@@ -297,7 +295,7 @@ void MachineState::dump( std::ostream &r ) {
     r << "nursery: segcount = " << nursery.offsets.size() - 1
       << ", size = " << nursery.offsets[ nursery.offsets.size() - 1 ]
       << ", data = ";
-    for ( int i = 0; i < nursery.offsets.size() - 1; ++ i ) {
+    for ( int i = 0; i < int( nursery.offsets.size() ) - 1; ++ i ) {
         Pointer p( true, i + nursery.segshift, 0 );
         char *where = nursery.dereference( p );
         int size = nursery.size( p );
@@ -307,7 +305,7 @@ void MachineState::dump( std::ostream &r ) {
             else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
         }
-        if ( i < nursery.offsets.size() - 1 )
+        if ( i < int( nursery.offsets.size() ) - 1 )
             r << "| ";
     }
     r << std::endl;
@@ -320,7 +318,7 @@ void MachineState::dump( std::ostream &r ) {
                   << f.pc.function << ":" << f.pc.block << ":"
                   << f.pc.instruction << "), data = ";
                 ++ count;
-                if ( f.pc.function >= _info.functions.size() ) {
+                if ( f.pc.function >= int( _info.functions.size() ) ) {
                     r << "<invalid PC>" << std::endl;
                     return;
                 }
@@ -349,7 +347,7 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
     std::string fl = isa< ::llvm::Instruction >( op ) ? fileline( *cast< ::llvm::Instruction >( op ) ) : "";
     if ( !fl.empty() )
         std::cerr << "  location: " << fl << std::endl;
-    for ( int i = 0; i < values.size(); ++i ) {
+    for ( int i = 0; i < int( values.size() ); ++i ) {
         ProgramInfo::Value v = values[i];
         if ( !i )
             std::cerr << "  result: ";

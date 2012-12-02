@@ -14,7 +14,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         comp.op = CE;
         comp.opcode = CE->getOpcode();
         comp.values.push_back( v ); /* the result comes first */
-        for ( int i = 0; i < CE->getNumOperands(); ++i ) // now the operands
+        for ( int i = 0; i < int( CE->getNumOperands() ); ++i ) // now the operands
             comp.values.push_back( insert( 0, CE->getOperand( i ) ) );
         eval.run(); /* compute and write out the value */
     } else if ( isa< ::llvm::UndefValue >( C ) )
@@ -39,7 +39,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         ; /* nothing to do, everything is zeroed by default */
     else if ( auto CA = dyn_cast< ::llvm::ConstantArray >( C ) ) {
         Value sub = v; /* inherit offset & global/constant status */
-        for ( int i = 0; i < CA->getNumOperands(); ++i ) {
+        for ( int i = 0; i < int( CA->getNumOperands() ); ++i ) {
             initValue( C->getOperand( i ), sub );
             storeConstant( sub, cast< ::llvm::Constant >( C->getOperand( i ) ), global );
             sub.offset += sub.width;
@@ -48,9 +48,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         assert_eq( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
         const char *raw = CDS->getRawDataValues().data();
         std::copy( raw, raw + v.width, econtext.dereference( v ) );
-    } else if ( auto CV = dyn_cast< ::llvm::ConstantVector >( C ) )
+    } else if ( dyn_cast< ::llvm::ConstantVector >( C ) )
         assert_unimplemented();
-    else if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) )
+    else if ( dyn_cast< ::llvm::ConstantStruct >( C ) )
         assert_unimplemented();
     else {
         C->dump();

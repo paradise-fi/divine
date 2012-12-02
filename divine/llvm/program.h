@@ -13,7 +13,7 @@
 
 namespace llvm {
 class IntrinsicLowering;
-};
+}
 
 namespace divine {
 namespace llvm {
@@ -60,9 +60,9 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
         return Pointer( heap, segment, offset + relative );
     }
     Pointer( bool heap, int segment, int offset )
-        : heap( heap ), segment( segment ), offset( offset )
+        : offset( offset ), segment( segment ), heap( heap )
     {}
-    Pointer() : heap( false ), segment( 0 ), offset( 0 ) {}
+    Pointer() : offset( 0 ), segment( 0 ), heap( false ) {}
     bool null() { return !heap && !segment; }
 
     operator uint32_t() const {
@@ -109,9 +109,9 @@ enum Builtin {
 };
 
 struct ProgramInfo {
-    ::llvm::TargetData TD;
     ::llvm::IntrinsicLowering *IL;
     ::llvm::Module *module;
+    ::llvm::TargetData TD;
 
     struct Value {
         bool global:1;
@@ -146,7 +146,7 @@ struct ProgramInfo {
 
         int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
-        Instruction() : op( nullptr ), builtin( NotBuiltin ) {}
+        Instruction() : builtin( NotBuiltin ), op( nullptr ) {}
         /* next instruction is in the same BB unless op == NULL */
     };
 
