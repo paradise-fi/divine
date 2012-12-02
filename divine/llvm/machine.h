@@ -288,7 +288,6 @@ struct MachineState
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
-    bool _blob_private;
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
@@ -546,7 +545,7 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
-        : _info( i ), _alloc( alloc ), _blob_private( false )
+        : _info( i ), _alloc( alloc )
     {
         _thread_count = 0;
         _frame = nullptr;

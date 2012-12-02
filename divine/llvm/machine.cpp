@@ -6,10 +6,6 @@ using namespace divine::llvm;
 
 void MachineState::rewind( Blob to, int thread )
 {
-    if ( _blob_private && _blob.valid() )
-        _blob.free( _alloc.pool() );
-
-    _blob_private = false;
     _blob = to;
     _thread = -1; // special
 
