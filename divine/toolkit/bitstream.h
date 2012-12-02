@@ -21,7 +21,7 @@ struct base {
 
     void clear() { bits.clear(); }
     bool empty() { return bits.empty(); }
-    size_t size() { return bits.size(); }
+    int size() { return bits.size(); }
     void shift() { bits.pop_front(); }
     uint32_t &front() { return bits.front(); }
     void push( uint32_t i ) { bits.push_back( i ); }
@@ -46,7 +46,7 @@ template<> struct base< block > {
         maybeclear();
         return bits.empty();
     }
-    size_t size() { return bits.size() - offset; }
+    int size() { return bits.size() - offset; }
     void shift() {
         ++ offset;
         maybeclear();

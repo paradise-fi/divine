@@ -64,7 +64,7 @@ struct Blob
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
-    explicit Blob( BlobHeader *s ) : ptr( (char*) s ) {}
+    explicit Blob( BlobHeader *s ) : ptr( reinterpret_cast< char* >( s ) ) {}
     explicit Blob( char *s, bool s_is_data = false )
         : ptr( s_is_data ? s - sizeof( BlobHeader ) : s )
     {

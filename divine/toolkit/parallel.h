@@ -51,7 +51,7 @@ struct ThreadVector {
     std::vector< R > m_threads;
 
     R &thread( int i ) {
-        assert_leq( i, m_threads.size() - 1 );
+        assert_leq( i, int( m_threads.size() ) - 1 );
         return m_threads[ i ];
     }
 

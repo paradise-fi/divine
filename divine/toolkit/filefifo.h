@@ -1,3 +1,5 @@
+// -*- C++ -*-
+
 #ifndef DIVINE_FILEFIFO_H
 #define DIVINE_FILEFIFO_H
 
@@ -226,7 +228,7 @@ protected:
         if ( sizeof( ptr ) > 4 ) {
             ptr |= uint64_t( *it++ ) << 32;
         }
-        return (char*) ptr;
+        return reinterpret_cast< char* >( ptr );
     }
 
     void saveNodes() {
@@ -310,7 +312,7 @@ protected:
         bfr.push_back( 0 ); // place zero into length field of next block to prevent reading that block
 
         file.seekp( wpos );
-        file.write( (char*) &bfr.front(), bfr.size()*4 );
+        file.write( reinterpret_cast< char* >( &bfr.front() ), bfr.size()*4 );
         wpos += (bfr.size() - 1) * 4;
         if ( !file.good() ) {
              std::cerr << "WARNING: Writing fifo to disk failed" << std::endl;
@@ -335,7 +337,7 @@ protected:
         std::fstream &file = files[ rfile ];
         file.seekg( rpos );
         uint32_t length = 0;
-        file.read( (char*) &length, sizeof( length ) );
+        file.read( reinterpret_cast< char* >( &length ), sizeof( length ) );
         if ( !file.good() ) {
             std::cerr << "ERROR: Reading FAILED, aborting" << std::endl;
             closeFiles();
@@ -348,7 +350,7 @@ protected:
             return read( n );
         }
         std::vector< uint32_t > bfr( length );
-        file.read( (char*) &bfr.front(), length*4 );
+        file.read( reinterpret_cast< char* >( &bfr.front() ), length*4 );
         rpos += (length + 1) * 4;
 
         std::vector< uint32_t >::const_iterator it = bfr.begin();
