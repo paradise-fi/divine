@@ -100,7 +100,10 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
 
     if ( !first ) --insert;
     IL->LowerIntrinsicCall( cast< ::llvm::CallInst >( p.I ) );
-    if ( first ) insert = BB->begin();
+    if ( first )
+        insert = BB->begin();
+    else
+        insert ++;
 
     return Position( p.pc, insert );
 }
