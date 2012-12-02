@@ -646,13 +646,20 @@ struct Evaluator
         } else
             functionid = withValues( Get< PC >(), instruction.operand( -1 ) ).function;
 
+        if ( !functionid ) {
+            ccontext.problem( Problem::InvalidArgument ); /* function 0 does not exist */
+            return;
+        }
+
         ccontext.enter( functionid ); /* push a new frame */
         ccontext.jumped = true;
 
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
-        for ( int i = 0; i < CS.arg_size(); ++i )
+        for ( int i = 0; i < CS.arg_size() && i < function.values.size(); ++i )
             withValues( Copy(), function.values[ i ], ValueRef( instruction.operand( i ), 1 ) );
+        if ( CS.arg_size() > function.values.size() )
+            ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
 
         /* TODO varargs */
 
