@@ -5,6 +5,7 @@
 #ifndef DIVINE_GENERATOR_CESMI_CLIENT_H
 #define DIVINE_GENERATOR_CESMI_CLIENT_H
 
+
 #define HINTCOUNT 128
 
 const int BlobHeaderSize = 4;
@@ -25,9 +26,11 @@ typedef struct CPool {
     char *group_array;
 } CPool;
 
+#ifndef DIVINE_GENERATOR_CESMI_H
 static inline CPoolGroup *pool_group( CPool *pool, int n ) {
     return (CPoolGroup *)(pool->group_array + n * pool->group_struct_size);
 }
+#endif
 
 #if defined(__cplusplus) && defined(O_POOLS)
 namespace divine {
