@@ -211,7 +211,7 @@ struct TestCommandlineEngine {
         ArgList::iterator i = engine.parseList(opts);
         assert(i == opts.end());
         assert_eq(opts.size(), 0u);
-        assert_eq(engine.foundCommand(), (Engine*)0);
+        assert_eq(engine.foundCommand(), static_cast<Engine*>(0));
         assert_eq(engine.scramble_yell->stringValue(), string());
         assert_eq(engine.scramble_random->boolValue(), false);
         assert_eq(engine.fix_yell->stringValue(), string());

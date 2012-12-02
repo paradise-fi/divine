@@ -168,7 +168,7 @@ std::string urlencode(const std::string& str)
 			res += *i;
 		else {
 			char buf[4];
-			snprintf(buf, 4, "%%%02x", (unsigned)(unsigned char)*i);
+			snprintf(buf, 4, "%%%02x", static_cast<unsigned>(static_cast<unsigned char>(*i)));
 			res += buf;
 		}
 	}
@@ -185,7 +185,7 @@ std::string urldecode(const std::string& str)
 			// If there's a partial %something at the end, ignore it
 			if (i >= str.size() - 2)
 				return res;
-			res += (char)strtoul(str.substr(i+1, 2).c_str(), 0, 16);
+			res += static_cast<char>(strtoul(str.substr(i+1, 2).c_str(), 0, 16));
 			i += 2;
 		}
 		else
@@ -201,7 +201,7 @@ static const char invbase64(const T& idx)
 {
 	static const char data[] = {62,0,0,0,63,52,53,54,55,56,57,58,59,60,61,0,0,0,0,0,0,0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,0,0,0,0,0,0,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51};
 	if (idx < 43) return 0;
-	if ((unsigned)idx > 43 + (sizeof(data)/sizeof(data[0]))) return 0;
+	if (static_cast<unsigned>(idx) > 43 + (sizeof(data)/sizeof(data[0]))) return 0;
 	return data[idx - 43];
 }
 

@@ -108,7 +108,7 @@ std::string readFile( const std::string &file )
     in.seekg(0, std::ios::end);
     length = in.tellg();
     in.seekg(0, std::ios::beg);
-    char *buffer = (char *) alloca( length );
+    char *buffer = static_cast<char *>( alloca( length ) );
 
     in.read(buffer, length);
     return std::string( buffer, length );

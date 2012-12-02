@@ -13,7 +13,7 @@ struct TestBuffer {
     Test emptiness() {
         Buffer buf;
         assert_eq(buf.size(), 0u);
-        assert_eq(buf.data(), (void*)0);
+        assert_eq(buf.data(), static_cast<void*>(0));
 
 		// Empty buffers should be equal
 		Buffer buf1;
@@ -26,13 +26,13 @@ struct TestBuffer {
     Test nonemptiness() {
         // Nonempty buffers should be properly nonempty
         Buffer buf(1);
-		((char*)buf.data())[0] = 'a';
+        (static_cast<char*>(buf.data()))[0] = 'a';
         assert_eq(buf.size(), 1u);
         assert(buf.data() != 0);
 
 		// Nonempty buffers should compare by content
 		Buffer buf1(1);
-		((char*)buf1.data())[0] = 'z';
+		(static_cast<char*>(buf1.data()))[0] = 'z';
 		assert(buf == buf);
 		assert(buf1 == buf1);
 		assert(!(buf == buf1));
@@ -40,7 +40,7 @@ struct TestBuffer {
 		assert(buf < buf1);
 		assert(!(buf1 < buf));
 
-		((char*)buf1.data())[0] = 'a';
+		(static_cast<char*>(buf1.data()))[0] = 'a';
 		assert(buf == buf1);
 		assert(!(buf != buf1));
 		assert(!(buf < buf1));
@@ -83,7 +83,7 @@ struct TestBuffer {
         Buffer buf(str, 4, true);
 	
         assert_eq(buf.size(), 4u);
-        assert_eq((void*)str, buf.data());
+        assert_eq(static_cast<void*>(str), buf.data());
     }
 };
 

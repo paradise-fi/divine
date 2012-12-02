@@ -34,7 +34,7 @@ int Int::parse(const std::string& val)
 			throw exception::BadOption("value " + val + " must be numeric");
 	return strtoul(val.c_str(), NULL, 10);
 }
-bool Int::toBool(const int& val) { return (bool)val; }
+bool Int::toBool(const int& val) { return static_cast<bool>(val); }
 int Int::toInt(const int& val) { return val; }
 std::string Int::toString(const int& val) { return str::fmt(val); }
 

@@ -249,10 +249,10 @@ struct Map {
 
     char f_space[ sizeof( F ) ];
     F &f() {
-        return *reinterpret_cast< F * >( f_space );
+        return *(F *)f_space;
     }
     const F &f() const {
-        return *reinterpret_cast< const F * >( f_space );
+        return *(const F *)f_space;
     }
 
     typedef typename F::result_type Type;

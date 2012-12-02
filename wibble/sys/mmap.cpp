@@ -103,7 +103,7 @@ void MMap::map(const std::string& filename)
 			throw wibble::exception::System("opening index file " + filename);
 
 		size = lseek(fd, 0, SEEK_END);
-		if (size == (off_t)-1)
+		if (size == static_cast< off_t >(-1))
 			throw wibble::exception::System("reading the size of index file " + filename);
 		if (size == 0)
 			throw wibble::exception::Consistency("ensuring that there is data in the index",

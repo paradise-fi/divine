@@ -29,7 +29,7 @@ namespace sys {
 #ifdef POSIX
 void* Thread::Starter(void* parm)
 {
-	return ((Thread*)parm)->main();
+        return (static_cast<Thread*>(parm)->main());
 }
 #endif
 

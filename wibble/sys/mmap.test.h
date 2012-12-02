@@ -32,13 +32,13 @@ struct TestMMap {
         assert_eq(map.filename, string());
         assert_eq(map.fd, -1);
         assert_eq(map.size, 0u);
-        assert_eq(map.buf, (const char*)0);
+        assert_eq(map.buf, static_cast<const char*>(0));
 
     	map.map("/bin/sh");
         assert_eq(map.filename, "/bin/sh");
         assert(map.fd != -1);
         assert(map.size != 0u);
-        assert(map.buf != (const char*)0);
+        assert(map.buf != static_cast<const char*>(0));
     	assert_eq(map.buf[1], 'E');
     	assert_eq(map.buf[2], 'L');
     	assert_eq(map.buf[3], 'F');
@@ -47,12 +47,12 @@ struct TestMMap {
         assert_eq(map.filename, string());
         assert_eq(map.fd, -1);
         assert_eq(map.size, 0u);
-        assert_eq(map.buf, (const char*)0);
+        assert_eq(map.buf, static_cast<const char*>(0));
 
         assert_eq(map1.filename, "/bin/sh");
         assert(map1.fd != -1);
         assert(map1.size != 0u);
-        assert(map1.buf != (const char*)0);
+        assert(map1.buf != static_cast<const char*>(0));
     	assert_eq(map1.buf[1], 'E');
     	assert_eq(map1.buf[2], 'L');
     	assert_eq(map1.buf[3], 'F');
@@ -61,7 +61,7 @@ struct TestMMap {
         assert_eq(map1.filename, string());
         assert_eq(map1.fd, -1);
         assert_eq(map1.size, 0u);
-        assert_eq(map1.buf, (const char*)0);
+        assert_eq(map1.buf, static_cast<const char*>(0));
 #endif
     }
 };

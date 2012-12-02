@@ -186,7 +186,7 @@ int TCPServer::accept_loop()
         int fd = -1;
         {
             SignalInstaller sigs(*this);
-            fd = accept(sock, (sockaddr*)&peer_addr, (socklen_t*)&peer_addr_len);
+            fd = accept(sock, reinterpret_cast<sockaddr*>(&peer_addr), static_cast<socklen_t*>(&peer_addr_len));
             if (fd == -1)
             {
                 if (errno == EINTR)
@@ -197,7 +197,7 @@ int TCPServer::accept_loop()
 
         // Resolve the peer
         char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
-        int gaires = getnameinfo((struct sockaddr *)&peer_addr,
+        int gaires = getnameinfo(reinterpret_cast<struct sockaddr *>(&peer_addr),
                 peer_addr_len,
                 hbuf, NI_MAXHOST,
                 sbuf, NI_MAXSERV,
@@ -205,7 +205,7 @@ int TCPServer::accept_loop()
         if (gaires == 0)
         {
             string hostname = hbuf;
-            gaires = getnameinfo((struct sockaddr *)&peer_addr,
+            gaires = getnameinfo(reinterpret_cast<struct sockaddr *>(&peer_addr),
                     peer_addr_len,
                     hbuf, NI_MAXHOST,
                     sbuf, NI_MAXSERV,

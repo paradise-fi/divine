@@ -94,7 +94,7 @@ public:
 	{
 		if (cursor + ofs + sizeof(T) >= size())
 			throw wibble::exception::Consistency("reading from buffer", "tried to read past the end of the buffer");
-		return (const T*)data(ofs);
+		return static_cast<const T*>(data(ofs));
 	}
 
 	/**

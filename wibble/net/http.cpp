@@ -156,10 +156,10 @@ bool Request::read_buf(std::string& res, size_t size)
     size_t pos = 0;
     while (true)
     {
-        ssize_t r = read(sock, (void*)((char*)res.data() + pos), size - pos);
+        ssize_t r = read(sock, static_cast< void* >(const_cast< char* >(res.data()) + pos), size - pos);
         if (r < 0)
             throw wibble::exception::System("reading data from socket");
-        if ((size_t)r == size - pos)
+        if (static_cast<size_t>(r) == size - pos)
             break;
         else if (r == 0)
         {
