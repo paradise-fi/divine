@@ -47,18 +47,19 @@ void Statistics::format( std::ostream &o ) {
     matrix( o, diff );
 
     if ( !gnuplot ) {
+        int nthreads = threads.size();
         label( o, "local", false );
         int sum = 0;
-        for ( int i = 0; i < threads.size(); ++ i )
+        for ( int i = 0; i < nthreads; ++ i )
             printv( o, 9, thread( i ).enq - thread( i ).deq, &sum );
         printv( o, 10, sum, 0 );
         o << std::endl;
 
         label( o, "totals", false );
         sum = 0;
-        for ( int j = 0; j < threads.size(); ++ j ) {
+        for ( int j = 0; j < nthreads; ++ j ) {
             int t = thread( j ).enq - thread( j ).deq;
-            for ( int i = 0; i < threads.size(); ++ i ) {
+            for ( int i = 0; i < nthreads; ++ i ) {
                 t += thread( i ).sent[ j ] - thread( j ).received[ i ];
             }
             printv( o, 9, t, &sum );
@@ -68,29 +69,29 @@ void Statistics::format( std::ostream &o ) {
 
         label( o, "HASHTABLES" );
         sum = 0;
-        for ( int i = 0; i < threads.size(); ++ i )
+        for ( int i = 0; i < nthreads; ++ i )
             printv( o, 9, thread( i ).hashused, &sum );
         printv( o, 10, sum, 0 );
 
         o << std::endl;
         sum = 0;
-        for ( int i = 0; i < threads.size(); ++ i )
+        for ( int i = 0; i < nthreads; ++ i )
             printv( o, 9, thread( i ).hashsize, &sum );
         printv( o, 10, sum, 0 );
         o << std::endl;
 
         label( o, "MEMORY EST" );
         long memSum = 0;
-        for ( int j = 0; j < threads.size(); ++ j ) {
+        for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
             long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(hash_t);
-            for ( int i = 0; i < threads.size(); ++ i)
+            for ( int i = 0; i < nthreads; ++ i)
                 threadMem += thread( i ).memSent[ j ] - thread( j ).memReceived[ i ];
             memSum += threadMem;
             printv(o, 9, threadMem / 1024, 0 );
         }
         printv( o, 10, memSum / 1024, 0 );
-        o << std::endl << std::setw(10 * threads.size())
+        o << std::endl << std::setw(10 * nthreads)
           << "> Used: " << std::setw(11) << memUsed() << std::endl;
     }
 }
