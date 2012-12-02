@@ -170,17 +170,19 @@ std::string locinfo( ProgramInfo &info, PC pc,
     return locs.str();
 }
 
-std::string describeProblem( ProgramInfo &info, MachineState::Problem bad )
+std::string describeProblem( ProgramInfo &info, Problem bad )
 {
     std::stringstream s;
     switch ( bad.what ) {
-        case MachineState::Problem::Assert:
-            s << "!! ASSERTION FAILED in thread "; break;
-        case MachineState::Problem::InvalidDereference:
-            s << "!! INVALID DEREFERENCE in thread "; break;
+        case Problem::Assert:
+            s << "ASSERTION FAILED"; break;
+        case Problem::InvalidDereference:
+            s << "BAD DEREFERENCE"; break;
+        case Problem::InvalidArgument:
+            s << "BAD ARGUMENT"; break;
     }
-    s << int( bad.tid ) << " at ";
-    s << locinfo( info, bad.where, bad.what != MachineState::Problem::Assert );
+    s << " (thread " << int( bad.tid ) << "): ";
+    s << locinfo( info, bad.where, bad.what != Problem::Assert );
     return s.str();
 }
 
@@ -231,7 +233,7 @@ std::string Interpreter::describe( bool detailed ) {
         s << describeProblem( info, flags.problems[i] ) << std::endl;
 
     if ( !state._thread_count )
-        s << "! EXIT" << std::endl;
+        s << "EXIT" << std::endl;
 
 #if 0
     if ( flags.ap ) {

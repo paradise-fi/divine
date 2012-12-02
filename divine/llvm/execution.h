@@ -135,7 +135,7 @@ struct ControlContext {
     void leave() { assert_die(); }
     MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
-    void problem( MachineState::Problem::What ) { assert_die(); }
+    void problem( Problem::What ) { assert_die(); }
     PC &pc() { assert_die(); }
     int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
     int stackDepth() { assert_die(); }
@@ -429,7 +429,7 @@ struct Evaluator
                 _pointer = this->econtext().isPointer( p );
                 r = *reinterpret_cast< R * >( target );
             } else
-                this->ccontext().problem( MachineState::Problem::InvalidDereference );
+                this->ccontext().problem( Problem::InvalidDereference );
             return Unit();
         }
         bool resultIsPointer( std::vector< bool > ) { return _pointer; }
@@ -446,7 +446,7 @@ struct Evaluator
                 /* NB. This is only ever called on active frames. Hopefully. */
                 this->econtext().setPointer( p, this->econtext().isPointer( ValueRef( this->i().operand( 0 ) ) ) );
             } else
-                this->ccontext().problem( MachineState::Problem::InvalidDereference );
+                this->ccontext().problem( Problem::InvalidDereference );
             return Unit();
         }
     };
@@ -606,7 +606,7 @@ struct Evaluator
                     return;
                 case BuiltinAssert:
                     if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
-                        ccontext.problem( MachineState::Problem::Assert );
+                        ccontext.problem( Problem::Assert );
                     return;
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;

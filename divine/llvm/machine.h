@@ -12,6 +12,14 @@ namespace llvm {
 
 struct Canonic;
 
+struct Problem {
+    enum What { Assert, InvalidDereference, InvalidArgument };
+    PC where;
+    uint8_t what;
+    uint8_t tid;
+    uint16_t _padding;
+};
+
 struct MachineState
 {
     struct StateAddress : lens::LinearAddress
@@ -266,14 +274,6 @@ struct MachineState
             offsets.push_back( 0 );
             pointer.clear();
         }
-    };
-
-    struct Problem {
-        enum What { Assert, InvalidDereference };
-        PC where;
-        uint8_t what;
-        uint8_t tid;
-        uint16_t _padding;
     };
 
     Blob _blob, _stack;

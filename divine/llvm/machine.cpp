@@ -280,7 +280,7 @@ divine::Blob MachineState::snapshot()
 }
 
 
-void MachineState::problem( MachineState::Problem::What w )
+void MachineState::problem( Problem::What w )
 {
     Problem p;
     p.what = w;
