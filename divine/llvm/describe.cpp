@@ -63,6 +63,9 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
 }
 
 static std::string fmtInteger( char *where, int bits ) {
+    if ( !where )
+        return "<null>";
+
     switch ( bits ) {
         case 64: return wibble::str::fmt( *(int64_t*) where);
         case 32: return wibble::str::fmt( *(int32_t*) where);
@@ -281,7 +284,7 @@ void MachineState::dump( std::ostream &r ) {
         char *where = heap().dereference( Pointer( true, i, 0 ) );
         int size = heap().size( Pointer( true, i, 0 ) );
         for ( ; p.offset < size; p.offset += 4 ) {
-            if ( heap().isPointer( p ) ) {
+            if ( validate( p ) && heap().isPointer( p ) ) {
                 r << followPointer( p ) << " ";
             } else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
