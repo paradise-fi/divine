@@ -1,3 +1,6 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast" // this file will be deleted soon anyway
+
 /*!\file
  * The main contribution of this file is a class state_t and methods
  * for the work with it (especially new_state(), delete_state(),
@@ -174,3 +177,5 @@ namespace divine
 #endif //DOXYGEN_PROCESSING
 
 #endif
+
+#pragma GCC diagnostic pop
