@@ -90,9 +90,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     std::string escape( std::string s ) {
-        char buf[ s.length() * 2 ];
+        std::string buf;
+        buf.resize( s.length() * 2 );
         int i = 0, j = 0;
-        while ( size_t( i ) < s.length() ) {
+        while ( i < int( s.length() ) ) {
             char c = s[ i ++ ];
             if ( c == '\\' || c == '\n' || c == '"' )
                 buf[ j++ ] = '\\';
@@ -101,8 +102,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             else
                 buf[ j++ ] = c;
         }
-        buf[ j ] = 0;
-        return buf;
+        return std::string( buf, 0, j );
     }
 
     std::string label( Node n ) {
