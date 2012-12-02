@@ -16,7 +16,6 @@
 using namespace wibble;
 using namespace commandline;
 using namespace sys;
-using namespace divine;
 
 namespace divine {
 

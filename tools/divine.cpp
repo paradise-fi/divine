@@ -61,7 +61,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
         Props props;
         this->graph().getProperties( std::back_inserter( props ) );
         std::cout << "Available properties (" << props.size() << "):" << std::endl;
-        for ( int i = 0; i < props.size(); ++i )
+        for ( int i = 0; i < int( props.size() ); ++i )
             std::cout << " " << i + 1 << ") "
                       << props[i].first << ": " << props[i].second << std::endl;
     }
