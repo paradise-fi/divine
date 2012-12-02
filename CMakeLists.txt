@@ -63,8 +63,6 @@ option( SMALL "reduce size of the binary, disabling optional features" OFF )
 ## MISC OPTION IMPLEMENTATION
 ##
 
-add_definitions( -Wold-style-cast )
-
 if( WIN32 )
   # PE Executables have fixed stack size and the BISON parser needs a big one
   appendFlag( "EXE_LINKER;SHARED_LINKER" "-Wl,--stack,10485760" )
@@ -318,6 +316,12 @@ set( DIVINE_INCLUDES
   ${MPI_INCLUDE_PATH}
   ${LLVM_INCLUDE_DIRS}
   ${divine_SOURCE_DIR}/divine/legacy )
+
+add_definitions( -Wold-style-cast )
+if ( LLVM )
+    # suppress warnings coming from LLVM headers
+    add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
+endif( LLVM )
 
 ##########################################
 ## SOURCE DIRECTORIES
