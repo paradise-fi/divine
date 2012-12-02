@@ -276,7 +276,9 @@ struct MachineState
         }
     };
 
-    Blob _blob, _stack;
+    Blob _blob;
+    /* those stacks experienced an entry and fit in _blob no more */
+    std::vector< std::pair< bool, Blob > > _stack;
     Nursery nursery;
     std::set< int > freed;
     std::vector< Problem > problems;
@@ -426,14 +428,40 @@ struct MachineState
 
     Lens< Stack > _blob_stack( int i ) {
         assert_leq( 0, i );
+        assert_leq( i, threads().get().length() - 1 );
         return state().sub( Threads(), i );
     }
 
-    Lens< Stack > stack( int thread = -1 ) {
-        if ( thread == _thread || thread < 0 ) {
-            assert_leq( 0, _thread );
-            return Lens< Stack >( StateAddress( &_info, _stack, 0 ) );
-        } else
+    void detach_stack( int thread ) {
+        if ( _stack.size() <= thread )
+            _stack.resize( thread + 1, std::make_pair( false, Blob() ) );
+
+        if ( _stack[thread].first )
+            return;
+
+        _stack[thread].first = true;
+
+        if ( !_stack[thread].second.valid() )
+            _stack[thread].second = Blob( 4096 );
+
+        _stack[thread].second.get< int >() = 0; /* clear any pre-existing state */
+
+        if ( thread < threads().get().length() ) {
+            StateAddress newstack( &_info, _stack[thread].second, 0 );
+            _blob_stack( thread ).copy( newstack );
+            assert_eq( _blob_stack( thread ).get().length(),
+                       stack( thread ).get().length() );
+        }
+    }
+
+    Lens< Stack > stack( int thread = -1 )
+    {
+        if ( thread < 0 )
+            thread = _thread;
+
+        if ( thread < _stack.size() && _stack[thread].first )
+            return Lens< Stack >( StateAddress( &_info, _stack[thread].second, 0 ) );
+        else
             return _blob_stack( thread );
     }
 
@@ -458,6 +486,7 @@ struct MachineState
     }
 
     void enter( int function ) {
+        detach_stack( _thread );
         int depth = stack().get().length();
         bool masked = depth ? frame().pc.masked : false;
         stack().get().length() ++;
@@ -469,6 +498,11 @@ struct MachineState
     }
 
     void leave() {
+        /* TODO this isn't very efficient and shouldn't be necessary, but we
+         * currently can't keep partially empty stacks in the blob, since their
+         * length is used to compute the offset of the following stack. */
+        detach_stack( _thread );
+
         int fun = frame().pc.function;
         auto &s = stack().get();
         s.length() --;
@@ -490,7 +524,6 @@ struct MachineState
         }
     }
 
-    void resnap();
     void switch_thread( int thread );
     int new_thread();
 
@@ -513,7 +546,7 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Allocator &alloc )
-        : _stack( 4096 ), _info( i ), _alloc( alloc ), _blob_private( false )
+        : _info( i ), _alloc( alloc ), _blob_private( false )
     {
         _thread_count = 0;
         _frame = nullptr;

@@ -17,42 +17,23 @@ void MachineState::rewind( Blob to, int thread )
     nursery.reset( heap().segcount );
     freed.clear();
     problems.clear();
+    for ( int i = 0; i < _stack.size(); ++i ) /* deactivate detached stacks */
+        _stack[i].first = false;
 
-    if ( thread >= 0 && thread < threads().get().length() )
+    if ( thread >= 0 && thread < _thread_count )
         switch_thread( thread );
-}
 
-void MachineState::resnap()
-{
-    Blob snap = snapshot();
-
-    if ( _blob_private && _blob.valid() )
-        _blob.free( _alloc.pool() );
-
-    nursery.reset( heap().segcount );
-    freed.clear();
-    problems.clear();
-
-    _blob_private = true;
-    _blob = snap;
 }
 
 void MachineState::switch_thread( int thread )
 {
-    resnap();
-
-    assert_leq( thread, threads().get().length() - 1 );
     _thread = thread;
-
-    StateAddress stackaddr( &_info, _stack, 0 );
-    _blob_stack( _thread ).copy( stackaddr );
-    assert( stack().get().length() );
     _frame = &stack().get( stack().get().length() - 1 );
 }
 
 int MachineState::new_thread()
 {
-    resnap();
+    detach_stack( _thread_count );
     _thread = _thread_count ++;
     stack().get().length() = 0;
     return _thread;
