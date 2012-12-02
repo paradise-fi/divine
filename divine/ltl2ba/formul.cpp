@@ -1085,7 +1085,7 @@ bool LTL_formul_t::is_pure_event()
 		}
 		break;
         default:
-            std:cerr << "Unexpected value of variable \"what\"" << std::endl;
+            std::cerr << "Unexpected value of variable \"what\"" << std::endl;
             assert_die();
             return false; //unreachable
             break;
