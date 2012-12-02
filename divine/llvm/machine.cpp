@@ -6,7 +6,10 @@ using namespace divine::llvm;
 
 void MachineState::rewind( Blob to, int thread )
 {
-    _blob = to;
+    _blob.free( _alloc.pool() );
+    _blob = Blob( _alloc.pool(), to.size() );
+    to.copyTo( _blob );
+
     _thread = -1; // special
 
     _thread_count = threads().get().length();
