@@ -33,7 +33,7 @@ public:
   }
 
   void remove (unsigned int elem) {
-	data[word_pos] &= ((unsigned int)(-1) - (1 << inword_pos));
+	data[word_pos] &= (unsigned( -1 ) - (1 << inword_pos));
   }
 
   bool contains (unsigned int elem) const {
