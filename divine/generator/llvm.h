@@ -88,7 +88,7 @@ struct LLVM : Common< Blob > {
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
             s += "\nLTL: " + wibble::str::fmt( buchi ) + " (";
-            for ( int i = 0; i < prop_next[ buchi ].size(); ++i ) {
+            for ( int i = 0; i < int( prop_next[ buchi ].size() ); ++i ) {
                 int next = prop_next[buchi][i];
                 s += wibble::str::fmt( prop_trans[next].first ) + " -> " +
                      wibble::str::fmt( prop_trans[next].second ) + "; ";
@@ -121,7 +121,7 @@ struct LLVM : Common< Blob > {
     int literal_id( std::string lit ) {
         MDNode *ap = interpreter().findEnum( "AP" );
         assert( ap );
-        for ( int i = 0; i < ap->getNumOperands(); ++i ) {
+        for ( int i = 0; i < int( ap->getNumOperands() ); ++i ) {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );
             assert_die();
@@ -154,13 +154,13 @@ struct LLVM : Common< Blob > {
         initial = b.get_init_nodes();
         accept = b.get_accept_nodes();
 
-        assert_eq( initial.size(), 1 );
+        assert_eq( initial.size(), 1U );
         prop_initial = initial.front()->name;
         prop_next.resize( nodes.size() );
         prop_accept.resize( nodes.size(), false );
 
         for ( NodeList::iterator n = nodes.begin(); n != nodes.end(); ++n ) {
-            assert_leq( (*n)->name, nodes.size() );
+            assert_leq( (*n)->name, int( nodes.size() ) );
             int nid = (*n)->name - 1;
 
             for ( TransList::const_iterator t = b.get_node_adj(*n).begin();
