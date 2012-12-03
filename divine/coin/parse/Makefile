@@ -12,9 +12,9 @@ YINPUT=coin.yy
 LINPUT=coin.l
 YBASE=$(YINPUT:.yy=.tab)
 
-PARSER_SRC=$(YBASE).cc
+PARSER_SRC=$(YBASE).cpp
 PARSER_H=$(YBASE).hh
-LEXER_SRC=lex.$(LINPUT:.l=.cc)
+LEXER_SRC=lex.$(LINPUT:.l=.cpp)
 
 GENERATED=$(PARSER_SRC) $(PARSER_H) $(LEXER_SRC)
 
@@ -26,7 +26,7 @@ $(PARSER_SRC) $(PARSER_H): $(YINPUT)
 $(LEXER_SRC): $(LINPUT) coin_common.hh $(PARSER_H)
 	$(LEX) $(LFLAGS) -o $@ $<
 
-%.o: %.cc
+%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o: %.c
