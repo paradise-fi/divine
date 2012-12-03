@@ -77,7 +77,7 @@ only|onlyL		{ return T_ONLY; }
 		  yylval.string[MAXLEN - 1] = '\0';
   		  return T_ID; }	
 
-[ \t]+		{ yylloc_step(); }
+[ \t\r]+		{ yylloc_step(); }
 
 \n+		{ yylloc_line(yyleng); }
 
