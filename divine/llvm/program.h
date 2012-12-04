@@ -175,6 +175,7 @@ struct ProgramInfo {
     std::vector< Value > globals;
     std::vector< char > constdata;
     int globalsize, constdatasize;
+    int framealign;
 
     std::map< const ::llvm::Value *, Value > valuemap;
     std::map< const ::llvm::Instruction *, PC > pcmap;
@@ -261,6 +262,7 @@ struct ProgramInfo {
     void initValue( ::llvm::Value *val, Value &result );
     Value insert( int function, ::llvm::Value *val );
     void build();
+    void pass();
 
     ProgramInfo( ::llvm::Module *m ) : module( m ), TD( m )
     {

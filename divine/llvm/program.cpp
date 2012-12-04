@@ -64,6 +64,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     Value result; /* not seen yet, needs to be allocated */
     initValue( val, result );
 
+    if ( result.width % framealign )
+        return Value(); /* ignore for now, later pass will assign this one */
+
     if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) )
         makeConstant( result, blockmap[ B ] );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
@@ -179,8 +182,8 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     for ( int i = 0; i < int( p.I->getNumOperands() ); ++i ) {
         ::llvm::Value *v = p.I->getOperand( i );
         insert( p.pc.function, v ); /* use-before-def can actually happen */
-        assert( valuemap.count( v ) );
-        insn.values[ i + 1 ] = valuemap[ v ];
+        if ( valuemap.count( v ) )
+            insn.values[ i + 1 ] = valuemap[ v ];
     }
     pcmap.insert( std::make_pair( p.I, p.pc ) );
     insn.result() = insert( p.pc.function, &*p.I );
@@ -191,9 +194,6 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
 
 void ProgramInfo::build()
 {
-    PC pc( 0, 0, 0 );
-    PC lastpc;
-
     /* null pointers are heap = 0, segment = 0, where segment is an index into
      * the "globals" vector */
     Value nullpage;
@@ -203,10 +203,23 @@ void ProgramInfo::build()
     nullpage.constant = false;
     globals.push_back( nullpage );
 
+    framealign = 1;
+
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
         insert( 0, &*var );
 
-    pc.function = 1;
+    framealign = 4;
+    pass();
+
+    framealign = 1;
+    pass();
+}
+
+void ProgramInfo::pass()
+{
+    PC pc( 1, 0, 0 );
+    int _framealign = framealign;
+
     for ( auto function = module->begin(); function != module->end(); ++ function )
     {
         if ( function->isDeclaration() )
@@ -218,12 +231,20 @@ void ProgramInfo::build()
                 "ProgramInfo::build",
                 "Can't deal with empty functions." );
 
+        makeFit( functions, pc.function );
         functionmap[ function ] = pc.function;
         pc.block = 0;
 
+        framealign = 1; /* force all args to go in in the first pass */
+
         /* TODO: va_args; implement as a Pointer */
-        for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg )
+        for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
             insert( pc.function, &*arg );
+        }
+
+        framealign = _framealign;
+
+        align( this->function( pc ).datasize, framealign );
 
         int blockid = 0;
         for ( auto block = function->begin(); block != function->end(); ++block, ++blockid )
