@@ -81,11 +81,16 @@ struct divine::llvm::Canonic
         }
         return Pointer( idx.heap, segmap[ int( idx.segment ) ], idx.offset );
     }
+
+    bool seen( Pointer p ) {
+        if ( segmap.count( p.segment ) )
+            return true;
+    }
 };
 
 void MachineState::trace( Pointer p, Canonic &canonic )
 {
-    if ( p.heap && !freed.count( p.segment ) ) {
+    if ( p.heap && !freed.count( p.segment ) && !canonic.seen( p ) ) {
         int size = pointerSize( p );
         canonic[ p ];
         for ( p.offset = 0; p.offset < size; p.offset += 4 )
