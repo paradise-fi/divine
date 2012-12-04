@@ -263,7 +263,8 @@ struct MachineState
 
         char *dereference( Pointer p ) {
             assert( owns( p ) );
-            assert_leq( offset( p ), offsets[ offsets.size() - 1 ] );
+            if ( offset( p ) >= offsets[ offsets.size() - 1 ] )
+                return nullptr;
             assert_leq( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
             return &memory[ offset( p ) ];
         }
