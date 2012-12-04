@@ -339,6 +339,10 @@ struct MachineState
         freed.insert( p.segment );
     }
 
+    bool isPrivate( int tid, Pointer p );
+    bool isPrivate( Pointer p, Frame &, Canonic & );
+    bool isPrivate( Pointer p, Pointer, Canonic & );
+
     Lens< State > state() {
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
     }

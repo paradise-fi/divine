@@ -41,8 +41,11 @@ struct Interpreter
     bool observable( const std::set< PC > &s ) {
         if ( s.empty() )
             return false; /* this already caused an interrupt, if applicable */
-        return isa< StoreInst >( instruction().op )
-            || instruction().builtin == BuiltinInterrupt;
+        if ( isa< StoreInst >( instruction().op ) ) {
+            Pointer *p = reinterpret_cast< Pointer * >( dereference( instruction().operand( 1 ) ) );
+            return p && !state.isPrivate( state._thread, *p );
+        }
+        return instruction().builtin == BuiltinInterrupt;
     }
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at

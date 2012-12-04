@@ -274,3 +274,74 @@ void MachineState::problem( Problem::What w )
     problems.push_back( p );
     flags().problem = 1;
 }
+
+bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
+{
+    if ( p.heap && needle.segment == p.segment )
+        return false;
+
+    if ( canonic.seen( p ) )
+        return true;
+
+    canonic[p];
+
+    if ( p.heap && !freed.count( p.segment ) ) {
+        int size = pointerSize( p );
+        for ( p.offset = 0; p.offset < size; p.offset += 4 )
+            if ( isPointer( p ) ) {
+                if ( !isPrivate( needle, followPointer( p ), canonic ) )
+                    return false;
+            }
+    }
+
+    return true;
+}
+
+bool MachineState::isPrivate( Pointer needle, Frame &f, Canonic &canonic )
+{
+    auto vals = _info.function( f.pc ).values;
+    for ( auto val = vals.begin(); val != vals.end(); ++val ) {
+        if ( f.isPointer( _info, *val ) )
+            if ( !isPrivate( needle, *f.dereference< Pointer >( _info, *val ), canonic ) )
+                return false;
+    }
+    return true;
+}
+
+bool MachineState::isPrivate( int tid, Pointer needle )
+{
+    if ( !needle.heap ) /* globals are never private */
+        return false;
+
+    bool found = false;
+
+    Canonic canonic( *this );
+
+    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
+        ProgramInfo::Value v = _info.globals[i];
+        if ( v.constant )
+            continue;
+        Pointer p( false, i, 0 );
+        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+            if ( global().isPointer( _info, p ) )
+                if ( !isPrivate( needle, followPointer( p ), canonic ) )
+                    return false;
+    }
+
+    struct Found {};
+
+    try {
+        for ( int search = 0; search < _thread_count; ++search ) {
+            if ( tid == search || found )
+                continue;
+            eachframe( stack( search ), [&]( Frame &fr ) {
+                    if ( !isPrivate( needle, fr, canonic ) )
+                        throw Found();
+                } );
+        }
+    } catch ( Found ) {
+        return false;
+    }
+
+    return true; /* not found */
+}
