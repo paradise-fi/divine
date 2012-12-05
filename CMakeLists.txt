@@ -32,7 +32,7 @@ option( LTL3BA "use ltl3ba for LTL to BA translation" ON )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
 option( LEGACY "include the legacy DVE and BYMOC interpreters" ON )
-option( HASH_COMPACTION "enable Hash Compaction" OFF )
+option( HASH_COMPACTION "enable Hash Compaction" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
