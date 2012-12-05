@@ -52,7 +52,7 @@ Coin::~Coin() {
     if (coin_system) {
         delete coin_system;
     }
-    for (int i = 0; i < tree_nodes.size(); i++) {
+    for (unsigned i = 0; i < tree_nodes.size(); i++) {
         delete tree_nodes[i];
     }
     tree_nodes.clear();
@@ -365,7 +365,7 @@ void Coin::init() {
 
     if (por) {
         coin_system->precompute();
-        for(int i = 0; i < tree_nodes.size(); i++) {
+        for(unsigned i = 0; i < tree_nodes.size(); i++) {
             delete tree_nodes[i];
         }
         tree_nodes.clear();
