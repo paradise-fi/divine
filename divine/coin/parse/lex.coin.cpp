@@ -135,7 +135,7 @@ typedef unsigned int flex_uint32_t;
  * we want to instead treat it as an 8-bit unsigned char, hence the
  * double cast.
  */
-#define YY_SC_TO_UI(c) ((unsigned int) (unsigned char) c)
+#define YY_SC_TO_UI(c) (static_cast< unsigned int >( static_cast< unsigned char >( c )))
 
 /* Enter a start condition.  This macro really ought to take a parameter,
  * but we do it the disgusting crufty way forced on us by the ()-less
@@ -294,7 +294,7 @@ static int yy_n_chars;		/* number of characters read into yy_ch_buf */
 int coin_yyleng;
 
 /* Points to current character in buffer. */
-static char *yy_c_buf_p = (char *) 0;
+static char *yy_c_buf_p = static_cast< char * >( 0 );
 static int yy_init = 0;		/* whether we need to initialize */
 static int yy_start = 0;	/* start state number */
 
@@ -353,7 +353,7 @@ void coin_yyfree (void *  );
 
 typedef unsigned char YY_CHAR;
 
-FILE *coin_yyin = (FILE *) 0, *coin_yyout = (FILE *) 0;
+FILE *coin_yyin = static_cast< FILE * >( 0 ), *coin_yyout = static_cast< FILE * >( 0 );
 
 typedef int yy_state_type;
 
@@ -374,7 +374,7 @@ static void yy_fatal_error (yyconst char msg[]  );
  */
 #define YY_DO_BEFORE_ACTION \
 	(yytext_ptr) = yy_bp; \
-	coin_yyleng = (size_t) (yy_cp - yy_bp); \
+	coin_yyleng = static_cast< size_t >(yy_cp - yy_bp); \
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
@@ -618,7 +618,9 @@ extern int coin_yywrap (void );
 #endif
 #endif
 
+#if 0  // unused
     static void yyunput (int c,char *buf_ptr  );
+#endif // unused
     
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char *,yyconst char *,int );
@@ -659,12 +661,12 @@ static int input (void );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		int n; \
+		size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( coin_yyin )) != EOF && c != '\n'; ++n ) \
-			buf[n] = (char) c; \
+			buf[n] = static_cast< char >( c ); \
 		if ( c == '\n' ) \
-			buf[n++] = (char) c; \
+			buf[n++] = static_cast< char >( c ); \
 		if ( c == EOF && ferror( coin_yyin ) ) \
 			YY_FATAL_ERROR( "input in flex scanner failed" ); \
 		result = n; \
@@ -800,11 +802,11 @@ yy_match:
 				}
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
-				yy_current_state = (int) yy_def[yy_current_state];
+				yy_current_state = static_cast< int >( yy_def[yy_current_state] );
 				if ( yy_current_state >= 104 )
-					yy_c = yy_meta[(unsigned int) yy_c];
+					yy_c = yy_meta[static_cast< unsigned int >( yy_c )];
 				}
-			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
+			yy_current_state = yy_nxt[yy_base[yy_current_state] + static_cast< unsigned int >( yy_c )];
 			++yy_cp;
 			}
 		while ( yy_base[yy_current_state] != 122 );
@@ -974,7 +976,7 @@ case YY_STATE_EOF(INITIAL):
 	case YY_END_OF_BUFFER:
 		{
 		/* Amount of text matched not including the EOB char. */
-		int yy_amount_of_matched_text = (int) (yy_cp - (yytext_ptr)) - 1;
+		int yy_amount_of_matched_text = static_cast< int >(yy_cp - (yytext_ptr)) - 1;
 
 		/* Undo the effects of YY_DO_BEFORE_ACTION. */
 		*yy_cp = (yy_hold_char);
@@ -1140,7 +1142,7 @@ static int yy_get_next_buffer (void)
 	/* Try to read more data. */
 
 	/* First move last chars to start of buffer. */
-	number_to_move = (int) ((yy_c_buf_p) - (yytext_ptr)) - 1;
+	number_to_move = static_cast< int >((yy_c_buf_p) - (yytext_ptr)) - 1;
 
 	for ( i = 0; i < number_to_move; ++i )
 		*(dest++) = *(source++);
@@ -1163,7 +1165,7 @@ static int yy_get_next_buffer (void)
 			YY_BUFFER_STATE b = YY_CURRENT_BUFFER;
 
 			int yy_c_buf_p_offset =
-				(int) ((yy_c_buf_p) - b->yy_ch_buf);
+				static_cast< int >((yy_c_buf_p) - b->yy_ch_buf);
 
 			if ( b->yy_is_our_buffer )
 				{
@@ -1174,9 +1176,9 @@ static int yy_get_next_buffer (void)
 				else
 					b->yy_buf_size *= 2;
 
-				b->yy_ch_buf = (char *)
+				b->yy_ch_buf = static_cast< char * >(
 					/* Include room in for 2 EOB chars. */
-					coin_yyrealloc((void *) b->yy_ch_buf,b->yy_buf_size + 2  );
+					coin_yyrealloc(static_cast< void * >( b->yy_ch_buf ),b->yy_buf_size + 2  ) );
 				}
 			else
 				/* Can't grow it, we don't own it. */
@@ -1198,7 +1200,7 @@ static int yy_get_next_buffer (void)
 
 		/* Read in more data. */
 		YY_INPUT( (&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move]),
-			(yy_n_chars), (size_t) num_to_read );
+			(yy_n_chars), static_cast< size_t >( num_to_read ));
 
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars = (yy_n_chars);
 		}
@@ -1222,10 +1224,10 @@ static int yy_get_next_buffer (void)
 	else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
-	if ((yy_size_t) ((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+	if (static_cast< yy_size_t >((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
 		/* Extend the array by 50%, plus the number we really need. */
 		yy_size_t new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
-		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) coin_yyrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
+		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = static_cast< char * >( coin_yyrealloc(static_cast< void * >( YY_CURRENT_BUFFER_LVALUE->yy_ch_buf ),new_size  ) );
 		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
 			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
 	}
@@ -1258,11 +1260,11 @@ static int yy_get_next_buffer (void)
 			}
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
-			yy_current_state = (int) yy_def[yy_current_state];
+			yy_current_state = static_cast< int >( yy_def[yy_current_state] );
 			if ( yy_current_state >= 104 )
-				yy_c = yy_meta[(unsigned int) yy_c];
+				yy_c = yy_meta[static_cast< unsigned int >( yy_c )];
 			}
-		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
+		yy_current_state = yy_nxt[yy_base[yy_current_state] + static_cast< unsigned int >( yy_c )];
 		}
 
 	return yy_current_state;
@@ -1286,16 +1288,17 @@ static int yy_get_next_buffer (void)
 		}
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
-		yy_current_state = (int) yy_def[yy_current_state];
+		yy_current_state = static_cast< int >( yy_def[yy_current_state] );
 		if ( yy_current_state >= 104 )
-			yy_c = yy_meta[(unsigned int) yy_c];
+			yy_c = yy_meta[static_cast< unsigned int >( yy_c )];
 		}
-	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
+	yy_current_state = yy_nxt[yy_base[yy_current_state] + static_cast< unsigned int >( yy_c )];
 	yy_is_jam = (yy_current_state == 103);
 
 	return yy_is_jam ? 0 : yy_current_state;
 }
 
+#if 0  // unused
     static void yyunput (int c, register char * yy_bp )
 {
 	register char *yy_cp;
@@ -1317,8 +1320,8 @@ static int yy_get_next_buffer (void)
 		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
 			*--dest = *--source;
 
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
+		yy_cp += static_cast< int >(dest - source);
+		yy_bp += static_cast< int >(dest - source);
 		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
 			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
 
@@ -1326,12 +1329,13 @@ static int yy_get_next_buffer (void)
 			YY_FATAL_ERROR( "flex scanner push-back overflow" );
 		}
 
-	*--yy_cp = (char) c;
+	*--yy_cp = static_cast< char >( c );
 
 	(yytext_ptr) = yy_bp;
 	(yy_hold_char) = *yy_cp;
 	(yy_c_buf_p) = yy_cp;
 }
+#endif // unused
 
 #ifndef YY_NO_INPUT
 #ifdef __cplusplus
@@ -1399,7 +1403,7 @@ static int yy_get_next_buffer (void)
 			}
 		}
 
-	c = *(unsigned char *) (yy_c_buf_p);	/* cast for 8-bit char's */
+	c = *reinterpret_cast< unsigned char * >(yy_c_buf_p);	/* cast for 8-bit char's */
 	*(yy_c_buf_p) = '\0';	/* preserve coin_yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
 
@@ -1478,7 +1482,7 @@ static void coin_yy_load_buffer_state  (void)
 {
 	YY_BUFFER_STATE b;
     
-	b = (YY_BUFFER_STATE) coin_yyalloc(sizeof( struct yy_buffer_state )  );
+	b = static_cast< YY_BUFFER_STATE >( coin_yyalloc(sizeof( struct yy_buffer_state )  ) );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in coin_yy_create_buffer()" );
 
@@ -1487,7 +1491,7 @@ static void coin_yy_load_buffer_state  (void)
 	/* yy_ch_buf has to be 2 characters longer than the size given because
 	 * we need to put in 2 end-of-buffer characters.
 	 */
-	b->yy_ch_buf = (char *) coin_yyalloc(b->yy_buf_size + 2  );
+	b->yy_ch_buf = static_cast< char * >( coin_yyalloc(b->yy_buf_size + 2  ) );
 	if ( ! b->yy_ch_buf )
 		YY_FATAL_ERROR( "out of dynamic memory in coin_yy_create_buffer()" );
 
@@ -1509,12 +1513,12 @@ static void coin_yy_load_buffer_state  (void)
 		return;
 
 	if ( b == YY_CURRENT_BUFFER ) /* Not sure if we should pop here. */
-		YY_CURRENT_BUFFER_LVALUE = (YY_BUFFER_STATE) 0;
+		YY_CURRENT_BUFFER_LVALUE = static_cast< YY_BUFFER_STATE >( 0 );
 
 	if ( b->yy_is_our_buffer )
-		coin_yyfree((void *) b->yy_ch_buf  );
+		coin_yyfree(static_cast< void * >( b->yy_ch_buf ) );
 
-	coin_yyfree((void *) b  );
+	coin_yyfree(static_cast< void * >( b ) );
 }
 
 #ifndef __cplusplus
@@ -1642,9 +1646,9 @@ static void coin_yyensure_buffer_stack (void)
 		 * immediate realloc on the next call.
          */
 		num_to_alloc = 1;
-		(yy_buffer_stack) = (struct yy_buffer_state**)coin_yyalloc
+		(yy_buffer_stack) = static_cast< struct yy_buffer_state** >( coin_yyalloc
 								(num_to_alloc * sizeof(struct yy_buffer_state*)
-								);
+								) );
 		if ( ! (yy_buffer_stack) )
 			YY_FATAL_ERROR( "out of dynamic memory in coin_yyensure_buffer_stack()" );
 								  
@@ -1661,10 +1665,10 @@ static void coin_yyensure_buffer_stack (void)
 		int grow_size = 8 /* arbitrary grow size */;
 
 		num_to_alloc = (yy_buffer_stack_max) + grow_size;
-		(yy_buffer_stack) = (struct yy_buffer_state**)coin_yyrealloc
+		(yy_buffer_stack) = static_cast< struct yy_buffer_state** >( coin_yyrealloc
 								((yy_buffer_stack),
 								num_to_alloc * sizeof(struct yy_buffer_state*)
-								);
+								) );
 		if ( ! (yy_buffer_stack) )
 			YY_FATAL_ERROR( "out of dynamic memory in coin_yyensure_buffer_stack()" );
 
@@ -1690,7 +1694,7 @@ YY_BUFFER_STATE coin_yy_scan_buffer  (char * base, yy_size_t  size )
 		/* They forgot to leave room for the EOB's. */
 		return 0;
 
-	b = (YY_BUFFER_STATE) coin_yyalloc(sizeof( struct yy_buffer_state )  );
+	b = static_cast< YY_BUFFER_STATE >( coin_yyalloc(sizeof( struct yy_buffer_state )  ) );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in coin_yy_scan_buffer()" );
 
@@ -1739,7 +1743,7 @@ YY_BUFFER_STATE coin_yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
-	buf = (char *) coin_yyalloc(n  );
+	buf = static_cast< char * >( coin_yyalloc(n  ) );
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in coin_yy_scan_bytes()" );
 
@@ -1876,7 +1880,7 @@ static int yy_init_globals (void)
     (yy_buffer_stack) = 0;
     (yy_buffer_stack_top) = 0;
     (yy_buffer_stack_max) = 0;
-    (yy_c_buf_p) = (char *) 0;
+    (yy_c_buf_p) = static_cast< char * >( 0 );
     (yy_init) = 0;
     (yy_start) = 0;
 
@@ -1885,8 +1889,8 @@ static int yy_init_globals (void)
     coin_yyin = stdin;
     coin_yyout = stdout;
 #else
-    coin_yyin = (FILE *) 0;
-    coin_yyout = (FILE *) 0;
+    coin_yyin = static_cast< FILE * >( 0 );
+    coin_yyout = static_cast< FILE * >( 0 );
 #endif
 
     /* For future reference: Set errno on error, since we are called by
@@ -1943,7 +1947,7 @@ static int yy_flex_strlen (yyconst char * s )
 
 void *coin_yyalloc (yy_size_t  size )
 {
-	return (void *) malloc( size );
+	return static_cast< void * >( malloc( size ) );
 }
 
 void *coin_yyrealloc  (void * ptr, yy_size_t  size )
@@ -1955,12 +1959,12 @@ void *coin_yyrealloc  (void * ptr, yy_size_t  size )
 	 * any pointer type to void*, and deal with argument conversions
 	 * as though doing an assignment.
 	 */
-	return (void *) realloc( (char *) ptr, size );
+	return static_cast< void * >( realloc( static_cast< char * >( ptr ), size ) );
 }
 
 void coin_yyfree (void * ptr )
 {
-	free( (char *) ptr );	/* see coin_yyrealloc() for (char *) cast */
+	free( static_cast< char * >( ptr ) );	/* see coin_yyrealloc() for (char *) cast */
 }
 
 #define YYTABLES_NAME "yytables"

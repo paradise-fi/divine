@@ -219,7 +219,7 @@ typedef short int yytype_int16;
 # endif
 #endif
 
-#define YYSIZE_MAXIMUM ((YYSIZE_T) -1)
+#define YYSIZE_MAXIMUM (static_cast< YYSIZE_T >( -1 ))
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -405,7 +405,7 @@ union yyalloc
 #define YYMAXUTOK   270
 
 #define YYTRANSLATE(YYX)						\
-  ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
+  (static_cast< unsigned int >(YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
 
 /* YYTRANSLATE[YYLEX] -- Bison symbol number corresponding to YYLEX.  */
 static const yytype_uint8 yytranslate[] =
@@ -1385,7 +1385,7 @@ yyparse ()
       {
 	yytype_int16 *yyss1 = yyss;
 	union yyalloc *yyptr =
-	  (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
+	  static_cast< union yyalloc * >( YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize)) );
 	if (! yyptr)
 	  goto yyexhaustedlab;
 	YYSTACK_RELOCATE (yyss_alloc, yyss);
@@ -1403,7 +1403,7 @@ yyparse ()
       yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
-		  (unsigned long int) yystacksize));
+		  static_cast< unsigned long int >( yystacksize )));
 
       if (yyss + yystacksize - 1 <= yyssp)
 	YYABORT;
@@ -1772,7 +1772,7 @@ yyerrlab:
 	      yyalloc = YYSTACK_ALLOC_MAXIMUM;
 	    if (yymsg != yymsgbuf)
 	      YYSTACK_FREE (yymsg);
-	    yymsg = (char *) YYSTACK_ALLOC (yyalloc);
+	    yymsg = static_cast< char * >( YYSTACK_ALLOC (yyalloc) );
 	    if (yymsg)
 	      yymsg_alloc = yyalloc;
 	    else
