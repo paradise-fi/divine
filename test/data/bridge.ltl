@@ -1,0 +1,11 @@
+
+#define time1 (time < 60)
+#define time2 (time <= 60)
+#define safe1 (Viking1.safe)
+#define safe2 (Viking2.safe)
+#define safe3 (Viking3.safe)
+#define safe4 (Viking4.safe)
+
+#property !F( time1 && safe1 && safe2 && safe3 && safe4 )
+
+#property !F( time2 && safe1 && safe2 && safe3 && safe4 )

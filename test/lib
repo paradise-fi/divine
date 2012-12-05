@@ -117,6 +117,31 @@ llvm_small() {
     check statespace 106 186 0 1
 }
 
+timed_small() {
+    wrapper=$1; shift
+    test "$O_TIMED" = "ON" || return 0
+
+    check clear
+    run $wrapper data/timed_arithm.xml "$@"
+    check reachability_valid
+    check statespace 46 52 0 0
+
+    check clear
+    run $wrapper data/timed_clock.xml "$@"
+    check reachability_valid
+    check statespace 226 236 0 0
+
+    check clear
+    run $wrapper data/bridge.xml --property=0 "$@"
+    check ltl_invalid
+    check statespace 2915 7014 0 0
+    check clear
+
+    run $wrapper data/bridge.xml --property=1 "$@"
+    check ltl_valid
+    check statespace 3337 8151 399 0
+}
+
 coin_small() {
     :
 }
@@ -125,6 +150,7 @@ all_small() {
     dve_small "$@"
     llvm_small "$@"
     coin_small "$@"
+    timed_small "$@"
 }
 
 chmod +x check run
