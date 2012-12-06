@@ -768,6 +768,9 @@ struct Evaluator
             case LLVMInst::LShr:
                 implement< Arithmetic >(); break;
 
+            case LLVMInst::Fence: /* noop until we have reordering simulation */
+                break;
+
             default: assert_unreachable( "unknown opcode %d", instruction.opcode );
         }
     }
