@@ -155,6 +155,11 @@ struct Dummy {
  * EvalContext provides access to the register file and memory. It needs to
  * provide at least TargetData, dereference( Value ), dereference( Pointer )
  * and malloc( int ).
+ *
+ * BEWARE. The non-const references in argument lists of Implementations are
+ * necessary to restrict matching to exact same types, since const references
+ * and lvalues allow conversions through temporaries to happen. This is
+ * undesirable. Please watch out to not modify right-hand values accidentally.
  */
 template < typename EvalContext, typename ControlContext >
 struct Evaluator
@@ -336,7 +341,7 @@ struct Evaluator
         Unit operator()( R &r = Dummy< R >::v(),
                          L &l = Dummy< L >::v() )
         {
-            char *from = reinterpret_cast< char * >( &l );
+            const char *from = reinterpret_cast< const char * >( &l );
             char *to = reinterpret_cast< char * >( &r );
             assert_eq( sizeof( R ), sizeof( L ) );
             std::copy( from, from + sizeof( R ), to );
@@ -423,7 +428,7 @@ struct Evaluator
 
         template< typename R = int >
         Unit operator()( R &r = Dummy< R >::v(),
-                         Pointer p = Dummy< Pointer >::v() )
+                         Pointer &p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
             if ( target ) {
@@ -439,7 +444,7 @@ struct Evaluator
     struct Store : Implementation {
         template< typename L = int >
         Unit operator()( L &l = Dummy< L >::v(),
-                         Pointer p = Dummy< Pointer >::v() )
+                         Pointer &p = Dummy< Pointer >::v() )
         {
             char *target = this->econtext().dereference( p );
             if ( target ) {
