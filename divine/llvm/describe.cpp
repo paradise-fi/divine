@@ -9,34 +9,32 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Describe Interpreter::describeAggregate( Type *t, char *where, DescribeSeen &seen ) {
+std::string Interpreter::describeAggregate( Type *t, Pointer where, DescribeSeen &seen )
+{
     char delim[2];
     std::vector< std::string > vec;
-    Describe sub;
 
     if ( isa< StructType >( t ) ) {
         delim[0] = '{'; delim[1] = '}';
         const StructType *stru = cast< StructType >( t );
-        for ( Type::subtype_iterator st = stru->element_begin();
-              st != stru->element_end(); ++ st ) {
-            sub = describeValue( (*st), where, seen );
-            vec.push_back( sub.first );
-            where = sub.second;
+        for ( auto st = stru->element_begin(); st != stru->element_end(); ++ st )
+        {
+            vec.push_back( describeValue( (*st), where, seen ) );
+            where = where + int( TD.getTypeAllocSize( *st ) );
         }
     }
 
     if ( isa< ArrayType >( t )) {
         delim[0] = '['; delim[1] = ']';
         const ArrayType *arr = cast< ArrayType >( t );
-        for ( int i = 0; i < int( arr->getNumElements() ); ++ i ) {
-            sub = describeValue( arr->getElementType(), where, seen );
-            vec.push_back( sub.first );
-            assert_neq( sub.second, where );
-            where = sub.second;
+        for ( int i = 0; i < int( arr->getNumElements() ); ++ i )
+        {
+            vec.push_back( describeValue( arr->getElementType(), where, seen ) );
+            where = where + int( TD.getTypeAllocSize( arr->getElementType() ) );
         }
     }
 
-    return std::make_pair( wibble::str::fmt_container( vec, delim[0], delim[1] ), where );
+    return wibble::str::fmt_container( vec, delim[0], delim[1] );
 }
 
 std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen )
@@ -46,17 +44,16 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
 
     std::string ptr = wibble::str::fmt( p );
     std::string res;
-    Type *pointeeTy = cast< PointerType >( t )->getElementType();
+    Type *pointeeTy = isa< PointerType >( t ) ? cast< PointerType >( t )->getElementType() : t;
     if ( isa< FunctionType >( pointeeTy ) ) {
         res = "@<some function>"; // TODO functionIndex.right( idx )->getName().str();
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
-        if ( state.validate( p ) ) {
-            Describe pointee = describeValue( pointeeTy, dereference( p ), seen );
-            res = ptr + " " + pointee.first;
-        } else
-            res = ptr + " (not mapped)";
+        if ( state.validate( p ) )
+            res = "@(" + ptr + "| " + describeValue( pointeeTy, p, seen ) + ")";
+        else
+            res = "@(" + ptr + "| invalid)";
         seen.insert( std::make_pair( p, pointeeTy ) );
     }
     return res;
@@ -76,34 +73,24 @@ static std::string fmtInteger( char *where, int bits ) {
     }
 }
 
-Interpreter::Describe Interpreter::describeValue( Type *t, char *where, DescribeSeen &seen ) {
-    std::string res;
-    if ( t->isIntegerTy() ) {
-        res = fmtInteger( where, t->getPrimitiveSizeInBits() );
-        where += t->getPrimitiveSizeInBits() / 8;
-    } else if ( t->isPointerTy() ) {
-        res = describePointer( t, *reinterpret_cast< Pointer* >( where ), seen );
-        where += sizeof( Pointer );
+std::string Interpreter::describeValue( Type *t, Pointer where, DescribeSeen &seen )
+{
+    if ( t->isAggregateType() ) {
+        return describeAggregate( t, where, seen );
+    } else if ( state.isPointer( where ) ) {
+        return describePointer( t, state.followPointer( where ), seen );
+    } else if ( t->isIntegerTy() || t->isPointerTy() ) {
+        return fmtInteger( state.dereference( where ), TD.getTypeAllocSize( t ) * 8 );
     } else if ( t->getPrimitiveSizeInBits() ) {
-        res = "<weird scalar>";
-        where += t->getPrimitiveSizeInBits() / 8;
-    } else if ( t->isAggregateType() ) {
-        Describe sub = describeAggregate( t, where, seen );
-        res = sub.first;
-        where = sub.second;
-    } else res = "<weird type>";
-    return std::make_pair( res, where );
+        return "<weird scalar>";
+    } else return "<weird type>";
 }
 
-std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
-                                        DescribeSeen *seen,
-                                        int *anonymous,
+std::string Interpreter::describeValue( const ::llvm::Value *val, ValueRef vref, Pointer where,
+                                        DescribeSeen &seen, int *anonymous,
                                         std::vector< std::string > *container )
 {
     std::string name, value;
-    DescribeSeen _seen;
-    if ( !seen )
-        seen = &_seen;
 
     Type *type = val->getType();
     auto vname = val->getValueName();
@@ -118,13 +105,31 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, int thread,
         name = "%" + wibble::str::fmt( (*anonymous)++ );
 
     if ( isa< BasicBlock >( val ) )
-        name = ""; // ignore, but include in anonymous counter
+        return "";
 
-    char *where = state.dereference( ValueRef( info.valuemap[ val ], 0, thread ) );
-    if ( type->isPointerTy() )
-        value = describePointer( type, *reinterpret_cast< Pointer * >( where ), *seen );
-    else
-        value = describeValue( type, where, *seen ).first;
+    return describeValue( std::make_pair( type, name ), vref, where, seen, anonymous, container );
+}
+
+std::string Interpreter::describeValue( std::pair< ::llvm::Type *, std::string > val, ValueRef vref,
+                                        Pointer where, DescribeSeen &seen, int *anonymous,
+                                        std::vector< std::string > *container )
+{
+    if ( where.null() && !vref.v.width )
+        return "";
+
+    ::llvm::Type *type = val.first;
+    std::string name = val.second;
+    std::string value;
+
+    if ( !where.null() ) {
+        value = describePointer( type, where, seen );
+    } else { /* scalar */
+        if ( state.isPointer( vref ) ) {
+            char *mem = state.dereference( vref );
+            value = describePointer( type, *reinterpret_cast< Pointer * >( mem ), seen );
+        } else
+            value = fmtInteger( state.dereference( vref ), vref.v.width * 8 );
+    }
 
     if ( container && !name.empty() )
         container->push_back( name + " = " + value );
@@ -194,8 +199,8 @@ std::string Interpreter::describe( bool detailed ) {
 
     DescribeSeen seen;
 
-    for ( auto v = module->global_begin(); v != module->global_end(); ++v )
-        describeValue( &*v, 0, &seen, nullptr, &globals );
+    for ( auto i = info.globalinfo.begin(); i != info.globalinfo.end(); ++i )
+        describeValue( i->second, ValueRef(), i->first, seen, nullptr, &globals );
 
     if ( globals.size() )
         s << "global: " << wibble::str::fmt( globals ) << std::endl;
@@ -217,12 +222,14 @@ std::string Interpreter::describe( bool detailed ) {
             int *anonymous = detailed ? &_anonymous : nullptr;
 
             for ( auto arg = f->arg_begin(); arg != f->arg_end(); ++ arg )
-                describeValue( &*arg, c, &seen, anonymous, &vec );
+                describeValue( &*arg, ValueRef( info.valuemap[ &*arg ], 0, c ), Pointer(),
+                               seen, anonymous, &vec );
 
             for ( auto block = f->begin(); block != f->end(); ++block ) {
-                describeValue( &*block, c, &seen, anonymous, &vec );
+                describeValue( &*block, ValueRef(), Pointer(), seen, anonymous, &vec ); // just for counting
                 for ( auto v = block->begin(); v != block->end(); ++v )
-                    describeValue( &*v, c, &seen, anonymous, &vec );
+                    describeValue( &*v, ValueRef( info.valuemap[ &*v ], 0, c), Pointer(),
+                                   seen, anonymous, &vec );
             }
         } else
             location = "<null>";

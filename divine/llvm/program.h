@@ -90,7 +90,7 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
 };
 
 static std::ostream &operator<<( std::ostream &o, Pointer p ) {
-    return o << "<" << p.segment << ":" << p.offset << ">";
+    return o << p.segment << ":" << p.offset;
 }
 
 enum Builtin {
@@ -173,6 +173,7 @@ struct ProgramInfo {
 
     std::vector< Function > functions;
     std::vector< Value > globals;
+    std::map< Pointer, std::pair< ::llvm::Type *, std::string > > globalinfo;
     std::vector< char > constdata;
     int globalsize, constdatasize;
     int framealign;

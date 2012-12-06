@@ -75,15 +75,16 @@ struct Interpreter
 
     explicit Interpreter(Allocator &a, Module *M);
 
-    typedef std::pair< std::string, char * > Describe;
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 
-    Describe describeAggregate( Type *t, char *where, DescribeSeen& );
-    Describe describeValue( Type *t, char *where, DescribeSeen& );
+    std::string describeAggregate( Type *t, Pointer where, DescribeSeen& );
+    std::string describeValue( Type *t, Pointer where, DescribeSeen& );
     std::string describePointer( Type *t, Pointer p, DescribeSeen& );
-    std::string describeValue( const ::llvm::Value *, int thread,
-                               DescribeSeen * = nullptr,
-                               int *anonymous = nullptr,
+    std::string describeValue( const ::llvm::Value *, ValueRef vref, Pointer p,
+                               DescribeSeen &, int *anonymous = nullptr,
+                               std::vector< std::string > *container = nullptr );
+    std::string describeValue( std::pair< ::llvm::Type *, std::string >, ValueRef vref, Pointer p,
+                               DescribeSeen &, int *anonymous = nullptr,
                                std::vector< std::string > *container = nullptr );
     std::string describe( bool detailed = false );
 
