@@ -49,7 +49,6 @@ void handler( int s ) {
 
 struct InfoBase {
     virtual generator::PropertyType propertyType() = 0;
-    virtual void read( std::string s ) = 0;
     virtual ~InfoBase() {};
 };
 
@@ -69,10 +68,6 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     int id() { return 0; }
     virtual generator::PropertyType propertyType() {
         return this->graph().propertyType();
-    }
-
-    virtual void read( std::string s ) {
-        this->graph().read( s );
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
@@ -618,7 +613,6 @@ struct Main {
             InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
             assert( ib );
 
-            ib->read( meta.input.model );
             if ( ib->propertyType() == generator::AC_None )
                 meta.algorithm.algorithm = meta::Algorithm::Reachability;
             else {
