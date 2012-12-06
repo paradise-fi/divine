@@ -1,5 +1,6 @@
 appendFlag( "CXX;C" "-Wno-write-strings" )
 appendFlag( "CXX;C" "-Wno-parentheses" )
+appendFlag( "CXX;C" "-Wno-old-style-cast" )
 
 project( libutap )
 

@@ -46,6 +46,11 @@ if( LTL3BA )
   target_link_libraries( divine ltl3ba )
 endif( LTL3BA )
 
+if( TIMED )
+  target_link_libraries( divine dbm )
+  target_link_libraries( divine utap )
+endif( TIMED )
+
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )
 else( WIN32 )

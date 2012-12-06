@@ -12,6 +12,7 @@
 #include <divine/generator/llvm.h>
 #include <divine/generator/coin.h>
 #include <divine/generator/cesmi.h>
+#include <divine/generator/timed.h>
 #include <divine/generator/dummy.h>
 
 #ifndef DIVINE_SELECT_H
@@ -180,6 +181,11 @@ algorithm::Algorithm *selectGraph( Meta &meta )
     } else if ( wibble::str::endsWith( meta.input.model, ".b" ) ) {
         meta.input.modelType = "NIPS";
         return makeAlgorithmN< A, generator::LegacyBymoc >( meta );
+#endif
+#if defined(O_TIMED)
+	} else if ( wibble::str::endsWith( meta.input.model, ".xml" ) ) {
+		meta.input.modelType = "Timed";
+		return makeAlgorithmN< A, generator::Timed >( meta );
 #endif
     } else if ( wibble::str::endsWith( meta.input.model, ".so" ) ) {
         meta.input.modelType = "CESMI";

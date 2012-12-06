@@ -28,6 +28,7 @@ option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
 option( DVE "include the DVE interpreter in the build" ON )
 option( COIN "include the CoIn interpreter in the build" ON )
+option( TIMED "include timed automata interpreter in the build" ON )
 option( LTL3BA "use ltl3ba for LTL to BA translation" ON )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
@@ -196,6 +197,22 @@ if( COIN )
   endif( HAVE_UNORDERED_SET )
 endif( COIN )
 
+if ( TIMED )
+  find_package( Boost )
+  find_package( LibXml2 )
+  if( NOT LIBXML2_FOUND )
+    message( "-- WARNING: Could not find LibXml2. Disabling timed automata support." )
+    set( TIMED OFF )
+  elseif( NOT Boost_FOUND )
+    message( "-- WARNING: Could not find Boost. Disabling timed automata support." )
+    set( TIMED OFF )
+  else()
+    include_directories( ${LIBXML2_INCLUDE_DIR} )
+    list( APPEND ADDITIONAL_LIBS ${LIBXML2_LIBRARIES} )
+    add_definitions( -DO_TIMED )
+  endif()
+endif()
+
 if( LLVM )
   include( FindLLVM )
   if( NOT LLVM_FOUND )
@@ -317,6 +334,8 @@ endif( GUI )
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/external/libutap/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/external/dbm/include
   ${divine_BINARY_DIR}
   ${MPI_INCLUDE_PATH}
   ${LLVM_INCLUDE_DIRS}
@@ -347,6 +366,11 @@ if( LTL2DSTAR )
     add_subdirectory( external/ltl2ba )
   endif()
   add_subdirectory( external/ltl2dstar )
+endif()
+
+if( TIMED )
+  add_subdirectory( external/libutap )
+  add_subdirectory( external/dbm )
 endif()
 
 if( MURPHI )

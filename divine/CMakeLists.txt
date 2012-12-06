@@ -38,6 +38,10 @@ if( DVE )
     file( GLOB SRC_DVE dve/*.cpp )
 endif( DVE )
 
+if ( TIMED )
+    file( GLOB SRC_TIMED timed/*.cpp )
+endif( TIMED )
+
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
@@ -80,7 +84,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC} ${SRC_LEGACY}
+    ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake"
     toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp )
