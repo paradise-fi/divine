@@ -20,9 +20,10 @@ namespace llvm {
 
 struct MachineState;
 
-void static align( int &v, int a ) {
+static int align( int v, int a ) {
     if ( v % a )
-        v += a - (v % a);
+        return v + a - (v % a);
+    return v;
 }
 
 struct PC : wibble::mixin::Comparable< PC >

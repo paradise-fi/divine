@@ -249,7 +249,8 @@ void ProgramInfo::pass()
 
         framealign = _framealign;
 
-        align( this->function( pc ).datasize, framealign );
+        this->function( pc ).datasize =
+            align( this->function( pc ).datasize, framealign );
 
         int blockid = 0;
         for ( auto block = function->begin(); block != function->end(); ++block, ++blockid )
@@ -271,6 +272,6 @@ void ProgramInfo::pass()
         }
     }
 
-    align( globalsize, 4 );
+    globalsize = align( globalsize, 4 );
 }
 

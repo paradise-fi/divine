@@ -49,9 +49,7 @@ struct MachineState
         }
 
         int framesize( ProgramInfo &i ) {
-            int size = datasize( i ) + size_bitmap( datasize( i ), 1 );
-            align( size, 4 );
-            return size;
+            return align( datasize( i ) + size_bitmap( datasize( i ), 1 ), 4 );
         }
 
         int datasize( ProgramInfo &i ) {
@@ -140,9 +138,7 @@ struct MachineState
     }
 
     static int size_bitmap( int bytecount, int align = 4 ) {
-        int size = bytecount / 32 + ((bytecount % 32) ? 1 : 0); /* bytes */
-        llvm::align( size, align );
-        return size;
+        return llvm::align( bytecount / 32 + ((bytecount % 32) ? 1 : 0), 4 );
     }
 
     static int size_heap( int segcount, int bytecount ) {
@@ -227,8 +223,7 @@ struct MachineState
         Pointer malloc( int size ) {
             int segment = offsets.size() - 1;
             int start = offsets[ segment ];
-            int end = start + size;
-            align( end, 4 );
+            int end = align( start + size, 4 );
             offsets.push_back( end );
             memory.resize( end );
             pointer.resize( end / 4 );
