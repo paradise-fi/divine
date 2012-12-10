@@ -126,6 +126,14 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
         meta.input.modelType = "DVE";
+#if defined (O_DVE) && !defined(O_SMALL)
+        if ( meta.algorithm.fairness ) {
+            if ( meta.algorithm.por )
+                std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
+            return makeAlgorithm< A, graph::FairGraph< generator::Dve > >( meta );
+        }
+#endif
+
 #if defined(O_LEGACY) && !defined(O_SMALL)
         if ( meta.algorithm.fairness ) {
             if ( por )
