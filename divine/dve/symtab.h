@@ -116,7 +116,7 @@ struct Symbol {
 
     template< typename T >
     inline void setval( char * place, int value, ErrorState &err ) {
-        if ( value != (int)(T)value )
+        if ( value != static_cast<int>(static_cast<T>(value)) )
             err |= ErrorState::i_overflow;
         *reinterpret_cast< T * >( place ) = value;
     }

@@ -186,7 +186,7 @@ struct Expression {
         assert( ctx.stack.empty() );
         for ( std::vector< Item >::iterator i = rpn.begin(); i != rpn.end(); ++i )
             step( ctx, *i );
-        assert_eq( ctx.stack.size(), (size_t) 1 );
+        assert_eq( ctx.stack.size(), static_cast<size_t>( 1) );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::ImmValue retval = ctx.pop();
         if ( retval.error ) {

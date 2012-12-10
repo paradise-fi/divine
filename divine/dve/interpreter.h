@@ -286,7 +286,7 @@ static inline void declare( SymTab &symtab, const parse::Decls &decls )
         }
         // TODO: add proper runtime check for array size validity
         assert_leq( 0, i->size );
-        while ( init.size() < (unsigned)i->size )
+        while ( init.size() < static_cast<unsigned>(i->size) )
             init.push_back( 0 );
         symtab.constant( NS::Initialiser, i->name, init );
     }
@@ -512,7 +512,7 @@ struct System {
         sflags.commited_dirty = 0;
         sflags.commited = 0;
         for ( size_t i = 0; i < processes.size(); i++ ) {
-            sflags.commited |= (bool)processes[i].commited( ctx );
+            sflags.commited |= static_cast<bool>(processes[i].commited( ctx ));
         }
         flags.set( ctx.mem, 0, sflags );
     }

@@ -110,7 +110,7 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
         this->match( frag( TRUE ), TI::Constant );
         this->match( frag( FALSE ), TI::Constant );
 
-        for ( TI::TokenId i = TI::IndexOpen; i < TI::GenBuchi; i = (TI::TokenId) (i + 1) )
+        for ( TI::TokenId i = TI::IndexOpen; i < TI::GenBuchi; i = static_cast<TI::TokenId>(i + 1) )
             this->match( tokenName[i], i );
 
         this->match( frag( SEMICOL ), Token::Punctuation );
