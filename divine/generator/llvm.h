@@ -42,6 +42,7 @@ struct LLVM : Common< Blob > {
     std::vector< PropTrans > prop_trans;
     std::vector< bool > prop_accept;
     int prop_initial;
+    std::set< meta::Algorithm::Reduction > reduce;
 
     bool use_property;
 
@@ -181,6 +182,25 @@ struct LLVM : Common< Blob > {
             prop_accept[(*n)->name - 1] = true;
     }
 
+    void applyReductions() {
+        if ( reduce.count( meta::Algorithm::Tau ) )
+            interpreter().tauminus = true;
+        if ( reduce.count( meta::Algorithm::TauPlus ) ) {
+            interpreter().tauminus = true;
+            interpreter().tauplus = true;
+        }
+        if ( reduce.count( meta::Algorithm::TauStores ) ) {
+            interpreter().tauminus = true;
+            interpreter().taustores = true;
+        }
+    }
+
+    void useReductions( std::set< meta::Algorithm::Reduction > r ) {
+        reduce = r;
+        if ( _interpreter )
+            applyReductions();
+    }
+
     divine::llvm::Interpreter &interpreter() {
         if (_interpreter)
             return *_interpreter;
@@ -196,6 +216,7 @@ struct LLVM : Common< Blob > {
         _interpreter = new divine::llvm::Interpreter( alloc, m );
         _interpreter_2 = new divine::llvm::Interpreter( alloc, m );
         _module = m;
+        applyReductions();
 
         return *_interpreter;
     }
