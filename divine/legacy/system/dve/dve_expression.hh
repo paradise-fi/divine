@@ -73,12 +73,12 @@ struct compacted_t {
     if (ptr->arity > 1)
       {
 	//return right();
-	return reinterpret_cast<compacted_viewer_t*>((char*)ptr + ptr->r_offset);
+	return reinterpret_cast<compacted_viewer_t*>(reinterpret_cast<char*>(ptr) + ptr->r_offset);
       }
     else
       {
 	//return left();
-	return reinterpret_cast<compacted_viewer_t*>((char*)ptr+sizeof(compacted_viewer_t));  
+	return reinterpret_cast<compacted_viewer_t*>(reinterpret_cast<char*>(ptr)+sizeof(compacted_viewer_t));  
       }
   }
 
@@ -86,7 +86,7 @@ struct compacted_t {
   /*!Returns pointer to the first subexpression in a given compacted subexpression.*/
   compacted_viewer_t* first() const
   {
-    return reinterpret_cast<compacted_viewer_t*>((char*)ptr+sizeof(compacted_viewer_t));  
+    return reinterpret_cast<compacted_viewer_t*>(reinterpret_cast<char*>(ptr)+sizeof(compacted_viewer_t));  
   }
 
   //!Returns pointers to left subexpression
@@ -94,14 +94,14 @@ struct compacted_t {
   compacted_viewer_t* left() const
   {
     //if arity==0 then left() points to the value stored inside expression
-    return reinterpret_cast<compacted_viewer_t*>((char*)ptr+sizeof(compacted_viewer_t));  
+    return reinterpret_cast<compacted_viewer_t*>(reinterpret_cast<char*>(ptr)+sizeof(compacted_viewer_t));  
   }
   
   //!Returns pointers to right subexpression
   /*!Returns pointer to the right subexpression in a given compacted subexpression.*/
   compacted_viewer_t* right() const
   {
-    return reinterpret_cast<compacted_viewer_t*>((char*)ptr+ptr->r_offset);
+    return reinterpret_cast<compacted_viewer_t*>(reinterpret_cast<char*>(ptr)+ptr->r_offset);
   }
   
   //!Returns arity
@@ -122,14 +122,14 @@ struct compacted_t {
   /*!Returns value of a T_NAT leaf in compacted expression.*/
   all_values_t get_value() const
   {
-    return *((all_values_t*)((char*)ptr + sizeof(compacted_viewer_t)));
+    return *(reinterpret_cast<all_values_t*>(reinterpret_cast<char*>(ptr) + sizeof(compacted_viewer_t)));
   }
   
   //!Returns gid of stored in T_ID, T_SQUARE_BRACKET, or T_DOT leaf
   /*!Returns gid of stored in T_ID, T_SQUARE_BRACKET, or T_DOT leaf in compacted expression.*/
   size_int_t get_gid() const
   {
-    return *((size_int_t*)((char*)ptr + sizeof(compacted_viewer_t)));
+    return *(reinterpret_cast<size_int_t*>(reinterpret_cast<char*>(ptr) + sizeof(compacted_viewer_t)));
   }
 
   compacted_t(): ptr(NULL) {}

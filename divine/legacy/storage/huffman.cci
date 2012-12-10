@@ -58,7 +58,7 @@ char* huffman_compress(state_t q, int &size, int oversize)
 	// Encode input stream
 	for (size_int_t i=0; i<q.size; i++)
 	{
-		symbol=(unsigned char)q.ptr[i];
+		symbol=static_cast<unsigned char>(q.ptr[i]);
 		HuffWritebits(sym[symbol].code, sym[symbol].bits);
 	}
 	
@@ -76,12 +76,12 @@ char* huffman_compress(state_t q, int &size, int oversize)
 	char *result=new char[size + oversize];
 	if (q.size>=(UCHAR_MAX/2))
 	  {
-	    *(unsigned char*)(result) = 1+(UCHAR_MAX/2)+((unsigned char)(q.size/(UCHAR_MAX+1)));
-	    *(unsigned char*)(result+1) = (unsigned char)(q.size%(UCHAR_MAX+1));
+	    *reinterpret_cast<unsigned char*>(result) = 1+(UCHAR_MAX/2)+(static_cast<unsigned char>(q.size/(UCHAR_MAX+1)));
+	    *reinterpret_cast<unsigned char*>(result+1) = static_cast<unsigned char>(q.size%(UCHAR_MAX+1));
 	  }
 	else
 	  {
-	    *(unsigned char*)(result) = (unsigned char)q.size;
+	    *reinterpret_cast<unsigned char*>(result) = static_cast<unsigned char>(q.size);
 	  }
 	
 	memcpy(result + 
@@ -100,11 +100,11 @@ bool huffman_decompress(state_t &q, char* r, int size, int oversize)
 	int space_for_size = sizeof(unsigned char);
 	unsigned char * temp_ptr = stream.ptr;
 
-	size_t q_size=(size_t)(*((unsigned char*)r));
+	size_t q_size=static_cast<size_t>(*(reinterpret_cast<unsigned char*>(r)));
 	if (q_size > (UCHAR_MAX/2))
 	  {
 	    q_size = (q_size & (UCHAR_MAX/2))*(UCHAR_MAX+1) +
-	      (*((unsigned char*)r+1));
+	      (*(reinterpret_cast<unsigned char*>(r)+1));
 	    space_for_size += sizeof(unsigned char);
 	  }
 	//cout <<"q_size="<<q_size<<endl;
@@ -117,7 +117,7 @@ bool huffman_decompress(state_t &q, char* r, int size, int oversize)
 	// copy the coded vector to stream
 	// omitting initial space for storing the original size	
 	// memcpy(stream.ptr, r + space_for_size, size - space_for_size ); 
-	stream.ptr = (unsigned char*)r + space_for_size;
+ 	stream.ptr = reinterpret_cast<unsigned char*>(r) + space_for_size;
 
 	code=0;
 	bits=0;
@@ -137,7 +137,7 @@ bool huffman_decompress(state_t &q, char* r, int size, int oversize)
 			if (((code>>(32-sym[k].bits))<<(32-sym[k].bits)) 
 					== (sym[k].code << (32-sym[k].bits)) )
 			{
-				q.ptr[i]=(char) k;
+				q.ptr[i]=static_cast<char>(k);
 				code<<=sym[k].bits;
 				bits-=sym[k].bits;
 				break;

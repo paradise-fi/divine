@@ -64,14 +64,14 @@ namespace divine
  /* FUNCTIONS for reading a part of state */
  inline byte_t state_pos_to_byte(const state_t state,
                                   const std::size_t pos)
- { return ((byte_t *)(state.ptr))[pos]; }
+ { return (reinterpret_cast<byte_t *>(state.ptr))[pos]; }
  
  inline sshort_int_t state_pos_to_int(const state_t state,
                                 const std::size_t pos)
  {
   //fisrt it's addressed and dereferenced as byte, then we gain its address
   //and convert it to int address and then we dereferece it
-  return (*((sshort_int_t *)(&((byte_t *)(state.ptr))[pos])));
+  return (*(reinterpret_cast<sshort_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos])));
  }
  
  inline ushort_int_t state_pos_to_uint(const state_t state,
@@ -79,30 +79,30 @@ namespace divine
  {
   //fisrt it's addressed and dereferenced as byte, then we gain its address
   //and convert it to int address and then we dereferece it
-  return (*((ushort_int_t *)(&((byte_t *)(state.ptr))[pos])));
+  return (*(reinterpret_cast<ushort_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos])));
  }
  
  inline ulong_int_t state_pos_to_ulong_int(const state_t state,
                                 const std::size_t pos)
- { return (*((ulong_int_t *)(&((byte_t *)(state.ptr))[pos]))); }
+ { return (*(reinterpret_cast<ulong_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos]))); }
  
  /* FUNCTIONS for writing a part fo state */
  
  inline void byte_to_state_pos(const state_t state, const std::size_t pos,
                              const byte_t value)
- { ((byte_t *)(state.ptr))[pos] = value; }
+ { (reinterpret_cast<byte_t *>(state.ptr))[pos] = value; }
  
  inline void int_to_state_pos(const state_t state, const std::size_t pos,
                             const sshort_int_t value)
- { (*((sshort_int_t *)(&((byte_t *)(state.ptr))[pos]))) = value; }
+ { (*(reinterpret_cast<sshort_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos]))) = value; }
  
  inline void uint_to_state_pos(const state_t state, const std::size_t pos,
                              const ushort_int_t value)
- { (*((ushort_int_t *)(&((byte_t *)(state.ptr))[pos]))) = value; }
+ { (*(reinterpret_cast<ushort_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos]))) = value; }
  
  inline void ulong_int_to_state_pos(const state_t state,
        const std::size_t pos, const ulong_int_t value)
- { (*((ulong_int_t *)(&((byte_t *)(state.ptr))[pos]))) = value; }
+ { (*(reinterpret_cast<ulong_int_t *>(&(reinterpret_cast<byte_t *>(state.ptr))[pos]))) = value; }
  
 
  /* TEMPLATE FUNCTIONS for more general access to the functions declared

@@ -368,7 +368,7 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
  array_sizes = new size_int_t[var_count];
 
  if (parameters) delete ES_p_parameters_t(parameters);
- parameters = (void *)(new ES_parameters_t);
+ parameters = reinterpret_cast<void *>(new ES_parameters_t);
  ES_p_parameters_t(parameters)->state_positions_var = state_positions_var;
  ES_p_parameters_t(parameters)->state_positions_state = state_positions_state;
  ES_p_parameters_t(parameters)->state_positions_proc = state_positions_proc;
@@ -452,7 +452,7 @@ void dve_explicit_system_t::another_read_stuff(bool do_expr_compaction)
   {
    dve_transition_t * transition =dynamic_cast<dve_transition_t*>(get_transition(j));
        
-   byte_t * glob_filter = (byte_t *)(calloc(global_position.size,sizeof(byte_t)));
+   byte_t * glob_filter = reinterpret_cast<byte_t *>(calloc(global_position.size,sizeof(byte_t)));
    const bit_string_t & b_str = transition->get_glob_mask();
    if (b_str.get_bit_count()!=glob_count)
      terr << "Unexpected error: <bit_string_t>.get_bits()!=glob_count"
