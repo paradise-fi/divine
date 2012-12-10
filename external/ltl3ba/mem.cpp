@@ -35,7 +35,7 @@
 #include "ltl3ba.h"
 
 #if 1
-#define log(e, u, d)	event[e][(int) u] += (long) d;
+#define log(e, u, d)	event[e][static_cast<int>(u)] += static_cast<long>(d);
 #else
 #define log(e, u, d)
 #endif
@@ -52,8 +52,8 @@
 extern	unsigned long All_Mem;
 extern	int tl_verbose;
 
-ATrans *atrans_list = (ATrans *)0;
-GTrans *gtrans_list = (GTrans *)0;
+ATrans *atrans_list = nullptr;
+GTrans *gtrans_list = nullptr;
 
 int aallocs = 0, afrees = 0, apool = 0;
 int gallocs = 0, gfrees = 0, gpool = 0;
@@ -69,8 +69,8 @@ static long	req[A_LARGE];
 static long	event[NREVENT][A_LARGE];
 
 void reinitMem() {
-    atrans_list = (ATrans *)0;
-    gtrans_list = (GTrans *)0;
+    atrans_list = nullptr;
+    gtrans_list = nullptr;
 
     aallocs = 0, afrees = 0, apool = 0;
     gallocs = 0, gfrees = 0, gpool = 0;
@@ -90,23 +90,23 @@ tl_emalloc(int U)
   	long r, u;
 	void *rp;
 
-	u = (long) ((U-1)/sizeof(union M) + 2);
+	u = static_cast<long>((U-1)/sizeof(union M) + 2);
 
 	if (u >= A_LARGE)
 	{	log(ALLOC, 0, 1);
 		if (tl_verbose)
 		printf("tl_spin: memalloc %ld bytes\n", u);
-		m = (union M *) emalloc((int) u*sizeof(union M));
-		All_Mem += (unsigned long) u*sizeof(union M);
+		m = reinterpret_cast<union M *>( emalloc(static_cast<int>(u*sizeof(union M))));
+		All_Mem += static_cast<unsigned long> (u*sizeof(union M));
 	} else
 	{	if (!freelist[u])
 		{	r = req[u] += req[u] ? req[u] : 1;
 			if (r >= NOTOOBIG)
 				r = req[u] = NOTOOBIG;
 			log(POOL, u, r);
-			freelist[u] = (union M *)
-				emalloc((int) r*u*sizeof(union M));
-			All_Mem += (unsigned long) r*u*sizeof(union M);
+			freelist[u] = reinterpret_cast<union M *>
+				(emalloc(static_cast<int>( r*u*sizeof(union M))));
+			All_Mem += static_cast<unsigned long>(r*u*sizeof(union M));
 			m = freelist[u] + (r-2)*u;
 			for ( ; m >= freelist[u]; m -= u)
 				m->link = m+u;
@@ -120,19 +120,19 @@ tl_emalloc(int U)
 	for (r = 1; r < u; )
 		(&m->size)[r++] = 0;
 
-	rp = (void *) (m+1);
+	rp = reinterpret_cast<void *>(m+1);
 	memset(rp, 0, U);
 	return rp;
 }
 
 void
 tfree(void *v)
-{	union M *m = (union M *) v;
+{	union M *m = reinterpret_cast<union M *>(v);
 	long u;
 
 	--m;
 	if ((m->size&0xFF000000) != A_USER)
-		Fatal("releasing a free block", (char *)0);
+		Fatal("releasing a free block", nullptr);
 
 	u = (m->size &= 0xFFFFFF);
 	if (u >= A_LARGE)
@@ -148,14 +148,14 @@ tfree(void *v)
 ATrans* emalloc_atrans() {
   ATrans *result;
   if(!atrans_list) {
-    result = (ATrans *)tl_emalloc(sizeof(ATrans));
+    result = reinterpret_cast<ATrans *>(tl_emalloc(sizeof(ATrans)));
     result->bad_nodes = new_set(0);
     apool++;
   }
   else {
     result = atrans_list;
     atrans_list = atrans_list->nxt;
-    result->nxt = (ATrans *)0;
+    result->nxt = nullptr;
     clear_set(result->bad_nodes, 0);
   }
   aallocs++;
@@ -192,7 +192,7 @@ void free_all_atrans() {
 GTrans* emalloc_gtrans() {
   GTrans *result;
   if(!gtrans_list) {
-    result = (GTrans *)tl_emalloc(sizeof(GTrans));
+    result = reinterpret_cast<GTrans *>(tl_emalloc(sizeof(GTrans)));
     result->final = new cset(0);
     gpool++;
   }

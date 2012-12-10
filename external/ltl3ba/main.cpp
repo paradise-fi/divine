@@ -144,8 +144,8 @@ char *
 emalloc(int n)
 {       char *tmp;
 
-        if (!(tmp = (char *) malloc(n)))
-                fatal("not enough memory", (char *)0);
+        if (!(tmp = reinterpret_cast<char *>( malloc(n))))
+                fatal("not enough memory", nullptr);
         memset(tmp, 0, n);
         return tmp;
 }
@@ -477,7 +477,7 @@ non_fatal(const char *s1, char *s2)
 void
 tl_yyerror(const char *s1)
 {
-	Fatal(s1, (char *) 0);
+	Fatal(s1, nullptr);
 }
 
 void

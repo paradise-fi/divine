@@ -71,7 +71,7 @@ static void
 getword(int first, int (*tst)(int))
 {	int i=0; char c;
 
-	ltl3ba_yytext[i++]= (char ) first;
+	ltl3ba_yytext[i++]= static_cast<char>(first);
 	while (tst(c = tl_Getchar()))
 		ltl3ba_yytext[i++] = c;
 	ltl3ba_yytext[i] = '\0';
@@ -108,7 +108,7 @@ tl_lex(void)
 
 	do {
 		c = tl_Getchar();
-		ltl3ba_yytext[0] = (char ) c;
+		ltl3ba_yytext[0] = static_cast<char>(c);
 		ltl3ba_yytext[1] = '\0';
 
 		if (c <= 0)
@@ -176,8 +176,8 @@ tl_lookup(char *s)
 		if (strcmp(sp->name, s) == 0)
 			return sp;
 
-	sp = (Symbol *) tl_emalloc(sizeof(Symbol));
-	sp->name = (char *) tl_emalloc(strlen(s) + 1);
+	sp = reinterpret_cast<Symbol *> (tl_emalloc(sizeof(Symbol)));
+	sp->name = reinterpret_cast<char *> (tl_emalloc(strlen(s) + 1));
 	strcpy(sp->name, s);
 	sp->next = symtab[h];
 	symtab[h] = sp;
@@ -187,7 +187,7 @@ tl_lookup(char *s)
 
 Symbol *
 getsym(Symbol *s)
-{	Symbol *n = (Symbol *) tl_emalloc(sizeof(Symbol));
+{	Symbol *n = reinterpret_cast<Symbol *>(tl_emalloc(sizeof(Symbol)));
 
 	n->name = s->name;
 	return n;

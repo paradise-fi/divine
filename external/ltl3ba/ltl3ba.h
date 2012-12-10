@@ -376,9 +376,9 @@ class AProd {
   public:
     
     AProd(void)
-      { prod = emalloc_atrans(); prod->label = bdd_true(); trans = (std::map<cset, ATrans*> *) 0; }
+      { prod = emalloc_atrans(); prod->label = bdd_true(); trans = nullptr; }
     AProd(int i, std::map<cset, ATrans*> *t) 
-      { prod = (ATrans *) 0; astate = i; trans = t; if (trans) { curr_trans = trans->begin(); last_trans = --trans->end();} }
+      { prod = nullptr; astate = i; trans = t; if (trans) { curr_trans = trans->begin(); last_trans = --trans->end();} }
     ~AProd(void) {if (prod) free_atrans(prod, 0); }
 
     int astate;
@@ -484,8 +484,13 @@ inline void cGTrans::erase(std::map<GState*, std::map<cset, bdd> >::iterator &tx
   trans.erase(tx);
 }
 
-#define ZN	(Node *)0
-#define ZS	(Symbol *)0
+#ifdef __cplusplus
+  #define ZN	nullptr
+  #define ZS	nullptr
+#else
+  #define ZN	(Node *)0
+  #define ZS	(Symbol *)0
+#endif
 #define Nhash	255    	
 #define True	tl_nn(TRUE,  ZN, ZN)
 #define False	tl_nn(FALSE, ZN, ZN)
@@ -501,5 +506,5 @@ typedef Node	*Nodeptr;
 #define Explain(x)	{ if (tl_verbose) tl_explain(x); }
 
 #define Assert(x, y)	{ if (!(x)) { tl_explain(y); \
-			  Fatal(": assertion failed\n",(char *)0); } }
+			  Fatal(": assertion failed\n",reinterpret_cast<char *>(0)); } }
 #define min(x,y)        ((x<y)?x:y)

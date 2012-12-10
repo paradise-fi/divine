@@ -53,7 +53,7 @@ void reinitSet() {
 
 int *new_set(int type) /* creates a new set */
 {
-  return (int *)tl_emalloc(set_size(type) * sizeof(int));
+  return reinterpret_cast<int *>(tl_emalloc(set_size(type) * sizeof(int)));
 }
 
 int *clear_set(int *l, int type) /* clears the set */
@@ -250,7 +250,7 @@ int *list_set(int *l, int type) /* transforms a set into a list */
     for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
 	size++;
-  list = (int *)tl_emalloc(size * sizeof(int));
+  list = reinterpret_cast<int *>(tl_emalloc(size * sizeof(int)));
   list[0] = size;
   size = 1;
   for(i = 0; i < set_size(type); i++)

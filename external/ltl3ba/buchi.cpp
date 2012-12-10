@@ -102,7 +102,7 @@ BState *remove_bstate(BState *s, BState *s1) /* removes a state */
   s->nxt->prv = s->prv;
   if (s->trans)
     delete s->trans;
-  s->trans = (map<BState*, bdd> *)0;
+  s->trans = nullptr;
   s->nxt = bremoved->nxt;
   bremoved->nxt = s;
   s->prv = s1;
@@ -205,7 +205,7 @@ int simplify_bstates() /* eliminates redundant states */
 
   for (s = bstates->nxt; s != bstates; s = s->nxt) {
     if(s->trans->empty()) { /* s has no transitions */
-      s = remove_bstate(s, (BState *)0);
+       s = remove_bstate(s, nullptr);
       changed++;
       continue;
     }
@@ -249,7 +249,7 @@ int simplify_bstates() /* eliminates redundant states */
 int bdfs(BState *s) {
   map<BState*, bdd>::iterator t;
   BScc *c;
-  BScc *scc = (BScc *)tl_emalloc(sizeof(BScc));
+  BScc *scc = reinterpret_cast<BScc *>(tl_emalloc(sizeof(BScc)));
   scc->bstate = s;
   scc->rank = b_rank;
   scc->theta = b_rank++;
@@ -366,7 +366,7 @@ void basic_bisim_reduction() {
   // Build a new Buchi automaton
   bstate_count = 0;
   btrans_count = 0;
-  stack = (BState *) tl_emalloc(sizeof(BState)); /* sentinel */
+  stack = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* sentinel */
   stack->nxt = stack;
   stack->prv = stack;
   for (cn_i = color_nodes.begin(); cn_i != color_nodes.end(); cn_i++) {
@@ -416,8 +416,8 @@ BState* add_state(int col, map<int, BState*>& color_dict) {
     return color_dict[col];
   }
   
-  BState* s = (BState *) tl_emalloc(sizeof(BState)); /* creates a new state */
-  s->gstate = (GState*) 0;
+  BState* s = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* creates a new state */
+  s->gstate = nullptr;
   s->id = col;
   s->incoming = col;
   s->final = -1;
@@ -594,7 +594,7 @@ void strong_fair_sim_reduction() {
   }
   
   // Build a new Buchi automaton
-  stack = (BState *) tl_emalloc(sizeof(BState)); /* sentinel */
+  stack = reinterpret_cast<BState *> (tl_emalloc(sizeof(BState))); /* sentinel */
   stack->nxt = stack;
   stack->prv = stack;
   bstate_count = 0;
@@ -787,7 +787,7 @@ BState *find_bstate(GState *state, int final, BState *s)
   if(s != bremoved) return s;
 #endif
 
-  s = (BState *)tl_emalloc(sizeof(BState)); /* creates a new state */
+  s = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* creates a new state */
   s->gstate = state;
   s->id = (state)->id;
   s->incoming = 0;
@@ -855,13 +855,13 @@ void make_btrans(BState *s) /* creates all the transitions from a state */
   if(tl_simp_fly) {
     if(s->trans->empty()) { /* s has no transitions */
       delete s->trans;
-      s->trans = (map<BState*, bdd> *)0;
-      s->prv = (BState *)0;
+      s->trans = nullptr;
+      s->prv = nullptr;
       s->nxt = bremoved->nxt;
       bremoved->nxt = s;
       for(s1 = bremoved->nxt; s1 != bremoved; s1 = s1->nxt)
         if(s1->prv == s)
-          s1->prv = (BState *)0;
+          s1->prv = nullptr;
       return;
     }
     bstates->trans = s->trans;
@@ -872,7 +872,7 @@ void make_btrans(BState *s) /* creates all the transitions from a state */
     if(s1 != bstates) { /* s and s1 are equivalent */
       decrement_incoming(s->trans);
       delete s->trans;
-      s->trans = (map<BState*, bdd> *)0;
+      s->trans = nullptr;
       s->prv = s1;
       s->nxt = bremoved->nxt;
       bremoved->nxt = s;
@@ -1130,13 +1130,13 @@ std::string get_buchi_symbol(int i) {
 void mk_buchi() 
 {/* generates a Buchi automaton from the generalized Buchi automaton */
   int i;
-  BState *s = (BState *)tl_emalloc(sizeof(BState));
+  BState *s = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState)));
   map<GState*, map<cset, bdd> >::iterator gt;
   map<cset, bdd>::iterator gt2;
   map<BState*, bdd>::iterator t1, tx;
   accept = final[0] - 1;
 #ifdef DICT
-  bsDict = (map<GState*, BState*> **) tl_emalloc(final[0]*sizeof(map<GState*, BState*>*));
+  bsDict = reinterpret_cast<map<GState*, BState*> **>( tl_emalloc(final[0]*sizeof(map<GState*, BState*>*)));
   for (i = 0; i < final[0]; i++) {
     bsDict[i] = new map<GState*, BState*>();
   }
@@ -1146,11 +1146,11 @@ void mk_buchi()
   if(tl_stats) getrusage(RUSAGE_SELF, &tr_debut);
 #endif
 
-  bstack        = (BState *)tl_emalloc(sizeof(BState)); /* sentinel */
+  bstack        = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* sentinel */
   bstack->nxt   = bstack;
-  bremoved      = (BState *)tl_emalloc(sizeof(BState)); /* sentinel */
+  bremoved      = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* sentinel */
   bremoved->nxt = bremoved;
-  bstates       = (BState *)tl_emalloc(sizeof(BState)); /* sentinel */
+  bstates       = reinterpret_cast<BState *>(tl_emalloc(sizeof(BState))); /* sentinel */
   bstates->nxt  = s;
   bstates->prv  = s;
 

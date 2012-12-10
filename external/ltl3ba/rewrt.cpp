@@ -379,7 +379,7 @@ out:
 #endif
 	if (!can)
 	{	if (!dflt)
-			fatal("cannot happen, Canonical", (char *) 0);
+			fatal("cannot happen, Canonical", nullptr);
 		return dflt;
 	}
 

@@ -39,11 +39,11 @@ typedef struct Cache {
 	struct Cache *nxt;
 } Cache;
 
-static Cache	*stored = (Cache *) 0;
+static Cache	*stored = nullptr;
 static unsigned long	Caches, CacheHits;
 
 void reinitCache() {
-    stored = (Cache *) 0;
+    stored = nullptr;
     Caches = CacheHits = 0;
 }
 
@@ -87,7 +87,7 @@ cached(Node *n)
 		return m;
 
 	Caches++;
-	d = (Cache *) tl_emalloc(sizeof(Cache));
+	d = reinterpret_cast<Cache *>(tl_emalloc(sizeof(Cache)));
 	d->before = dupnode(n);
 	d->after  = Canonical(n); /* n is released */
 
@@ -119,14 +119,14 @@ releasenode(int all_levels, Node *n)
 		releasenode(1, n->rgt);
 		n->rgt = ZN;
 	}
-	tfree((void *) n);
+	tfree(n);
 }
 
 Node *
 tl_nn(int t, Node *ll, Node *rl)
-{	Node *n = (Node *) tl_emalloc(sizeof(Node));
+{	Node *n = reinterpret_cast<Node *>(tl_emalloc(sizeof(Node)));
 
-	n->ntyp = (short) t;
+	n->ntyp = static_cast<short>(t);
 	n->lft  = ll;
 	n->rgt  = rl;
 
@@ -139,7 +139,7 @@ getnode(Node *p)
 
 	if (!p) return p;
 
-	n =  (Node *) tl_emalloc(sizeof(Node));
+	n =  reinterpret_cast<Node *>(tl_emalloc(sizeof(Node)));
 	n->ntyp = p->ntyp;
 	n->sym  = p->sym; /* same name */
 	n->lft  = p->lft;
@@ -220,7 +220,7 @@ sameform(Node *a, Node *b)
 	case FALSE:
 		return 1;
 	case PREDICATE:
-		if (!a->sym || !b->sym) fatal("sameform...", (char *) 0);
+		if (!a->sym || !b->sym) fatal("sameform...",nullptr);
 		return !strcmp(a->sym->name, b->sym->name);
 
 	case NOT:
@@ -242,7 +242,7 @@ sameform(Node *a, Node *b)
 
 	default:
 		printf("type: %d\n", a->ntyp);
-		fatal("cannot happen, sameform", (char *) 0);
+		fatal("cannot happen, sameform", nullptr);
 	}
 
 	return 0;
@@ -344,6 +344,6 @@ anywhere(int tok, Node *srch, Node *in)
 	case  OR:	return any_lor(srch, in);
 	case   0:	return any_term(srch, in);
 	}
-	fatal("cannot happen, anywhere", (char *) 0);
+	fatal("cannot happen, anywhere", nullptr);
 	return 0;
 }

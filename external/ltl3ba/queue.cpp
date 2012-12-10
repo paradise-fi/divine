@@ -19,13 +19,13 @@ int is_full(Queue *q) {
 Queue* create_queue(int max_size) {
   Queue *q;
   
-  q = (Queue *) tl_emalloc(sizeof(struct Queue));
+  q = reinterpret_cast<Queue *>(tl_emalloc(sizeof(struct Queue)));
   
   if (q != NULL) {
     q->max = max_size;
     q->size = 0;
     q->front = 0;
-    q->data = (int*) tl_emalloc(max_size * sizeof(int));
+    q->data = reinterpret_cast<int*>( tl_emalloc(max_size * sizeof(int)));
     if (q->data == NULL) {
       tfree(q);
       return NULL;

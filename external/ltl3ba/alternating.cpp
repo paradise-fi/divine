@@ -134,7 +134,7 @@ void do_merge_trans(ATrans **result, ATrans *trans1, ATrans *trans2)
 { /* merges two transitions */
   if(!trans1 || !trans2) {
     free_atrans(*result, 0);
-    *result = (ATrans *)0;
+    *result = nullptr;
     return;
   }
   if(!*result)
@@ -142,7 +142,7 @@ void do_merge_trans(ATrans **result, ATrans *trans1, ATrans *trans2)
   (*result)->label = trans1->label & trans2->label;
   if((*result)->label == bdd_false()) {
     free_atrans(*result, 0);
-    *result = (ATrans *)0;
+    *result = nullptr;
   }
 }
 
@@ -176,7 +176,7 @@ map<cset, ATrans*> *boolean(Node *p) /* computes the transitions to boolean node
 {
   ATrans *t;
   map<cset, ATrans*>::iterator t1, t2;
-  map<cset, ATrans*> *lft, *rgt, *result = (map<cset, ATrans*> *)0;
+  map<cset, ATrans*> *lft, *rgt, *result = nullptr;
 
   switch(p->ntyp) {
   case TRUE:
@@ -249,7 +249,7 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
 {
   ATrans *t;
   map<cset, ATrans*>::iterator t1, t2;
-  map<cset, ATrans*> *lft, *rgt, *result = (map<cset, ATrans*> *)0;
+  map<cset, ATrans*> *lft, *rgt, *result = nullptr;
   cset to(0);
   int node = already_done(p);
   if(node >= 0) return transition[node];
@@ -353,8 +353,8 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
     add_set(final_set, node_id);
     if (is_G(p->rgt)) {
       if (!UG_succ) {
-        UG_succ = (int *) tl_emalloc(nodes_num * sizeof(int));
-        UG_pred = (int *) tl_emalloc(nodes_num * sizeof(int));
+        UG_succ = reinterpret_cast<int *>(tl_emalloc(nodes_num * sizeof(int)));
+        UG_pred = reinterpret_cast<int *>(tl_emalloc(nodes_num * sizeof(int)));
         is_Gs = make_set(-1, 0);
         is_UG = make_set(-1, 0);
       }
@@ -626,7 +626,7 @@ void simplify_astates() /* simplifies the alternating automaton */
     if (!in_set(acc, i)) { /* frees unaccessible states */
       label[i] = ZN;
       free_atrans_map(transition[i]);
-      transition[i] = (map<cset, ATrans*> *)0;
+      transition[i] = nullptr;
       continue;
     }
     astate_count++;
@@ -825,9 +825,9 @@ void mk_alternating(Node *p) /* generates an alternating automaton for p */
 #endif
 
   node_size = calculate_node_size(p) + 1; /* number of states in the automaton */
-  label = (Node **) tl_emalloc(node_size * sizeof(Node *));
-  transition = (map<cset, ATrans*> **) tl_emalloc(node_size * sizeof(map<cset, ATrans*> *));
-  predecessors = (int **) tl_emalloc(node_size * sizeof(int *));
+  label = reinterpret_cast<Node **>(tl_emalloc(node_size * sizeof(Node *)));
+  transition = reinterpret_cast<map<cset, ATrans*> **>(tl_emalloc(node_size * sizeof(map<cset, ATrans*> *)));
+  predecessors = reinterpret_cast<int **>(tl_emalloc(node_size * sizeof(int *)));
   nodes_num = node_size;
   node_size = node_size / (8 * sizeof(int)) + 1;
   INFp_nodes = make_set(-1, 0);
@@ -842,7 +842,7 @@ void mk_alternating(Node *p) /* generates an alternating automaton for p */
 
   sym_size = calculate_sym_size(p); /* number of predicates */
   predicates = sym_size;
-  if(sym_size) sym_table = (char **) tl_emalloc(sym_size * sizeof(char *));
+  if(sym_size) sym_table = reinterpret_cast<char **>(tl_emalloc(sym_size * sizeof(char *)));
   sym_size = sym_size / (8 * sizeof(int)) + 1;
 
   if (predicates > 2)

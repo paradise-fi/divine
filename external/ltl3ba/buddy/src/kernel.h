@@ -177,7 +177,11 @@ extern bddCacheStat bddcachestats;
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
+#ifdef __cplusplus
+#define NEW(t,n) (reinterpret_cast<t*>(malloc(sizeof(t)*(n))))
+#else
 #define NEW(t,n) ( (t*)malloc(sizeof(t)*(n)) )
+#endif
 
 
 /*=== KERNEL PROTOTYPES ================================================*/
