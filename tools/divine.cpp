@@ -91,6 +91,7 @@ struct Main {
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
     BoolOption *o_por, *o_fair, *o_hashCompaction;
+    StringOption *o_reduce;
     BoolOption *o_noDeadlocks, *o_noGoals;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
@@ -282,6 +283,9 @@ struct Main {
             "gnuplot-statistics", '\0', "gnuplot-statistics", "",
             "output statistics in a gnuplot-friendly format" );
 
+        o_reduce = reduce->add< StringOption >(
+            "reduce", '\0', "reduce", "",
+            "configure reductions (input language dependent) [default = tau+,taustore,heap]" );
         o_por = reduce->add< BoolOption >(
             "por", '\0', "por", "",
             "enable partial order reduction" );
@@ -462,6 +466,20 @@ struct Main {
 
     bool m_noMC;
 
+    std::set< meta::Algorithm::Reduction > parseReductions( std::string s ) {
+        wibble::str::Split splitter( ",", s );
+        std::set< meta::Algorithm::Reduction > r;
+        std::transform( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ),
+                        [&]( std::string s ) {
+                            if ( s == "tau" ) return meta::Algorithm::Tau;
+                            if ( s == "tau+" ) return meta::Algorithm::TauPlus;
+                            if ( s == "por" ) return meta::Algorithm::POR;
+                            if ( s == "taustores" ) return meta::Algorithm::TauStores;
+                            if ( s == "heap" ) return meta::Algorithm::Heap;
+                        } );
+        return r;
+    }
+
     void parseCommandline()
     {
         std::string input;
@@ -516,7 +534,12 @@ struct Main {
         meta.algorithm.findDeadlocks = !o_noDeadlocks->boolValue();
         meta.algorithm.findGoals = !o_noGoals->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
-        meta.algorithm.por = o_por->boolValue();
+        if ( o_reduce->boolValue() )
+            meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
+        else
+            meta.algorithm.reduce = parseReductions( "tau+,taustores,heap" );
+        if ( o_por->boolValue() )
+            meta.algorithm.reduce.insert( meta::Algorithm::POR );
         meta.algorithm.hashSeed = (uint32_t) o_seed->intValue();
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
