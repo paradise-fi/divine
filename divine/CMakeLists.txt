@@ -110,6 +110,15 @@ endif()
 
 target_link_libraries( libdivine ${MPI_LIBRARIES} )
 
+if( LTL3BA )
+  target_link_libraries( libdivine ltl3ba )
+endif( LTL3BA )
+
+if( TIMED )
+  target_link_libraries( libdivine dbm )
+  target_link_libraries( libdivine utap )
+endif()
+
 target_link_libraries( divine-test libdivine wibble )
 
 if( NOT WIN32 )
