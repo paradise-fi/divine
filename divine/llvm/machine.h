@@ -49,15 +49,19 @@ struct MachineState
         }
 
         int framesize( ProgramInfo &i ) {
-            return align( datasize( i ) + size_bitmap( datasize( i ), 1 ), 4 );
+            return align( datasize( i ) + 2 * size_bitmap( datasize( i ), 1 ), 4 );
         }
 
         int datasize( ProgramInfo &i ) {
             return i.function( pc ).datasize;
         }
 
-        uint8_t &bitmap( ProgramInfo &i, ProgramInfo::Value v ) {
+        uint8_t &pbitmap( ProgramInfo &i, ProgramInfo::Value v ) {
             return *(memory + datasize( i ) + v.offset / 32);
+        }
+
+        uint8_t &abitmap( ProgramInfo &i, ProgramInfo::Value v ) {
+            return *(memory + datasize( i ) + size_bitmap( datasize( i ), 1 ) + v.offset / 32);
         }
 
         uint8_t mask( ProgramInfo::Value v ) {
@@ -65,14 +69,14 @@ struct MachineState
         }
 
         bool isPointer( ProgramInfo &i, ProgramInfo::Value v ) {
-            return bitmap( i, v ) & mask( v );
+            return pbitmap( i, v ) & mask( v );
         }
 
         void setPointer( ProgramInfo &i, ProgramInfo::Value v, bool ptr ) {
             if ( ptr )
-                bitmap( i, v ) |= mask( v );
+                pbitmap( i, v ) |= mask( v );
             else
-                bitmap( i, v ) &= ~mask( v );
+                pbitmap( i, v ) &= ~mask( v );
         }
 
         StateAddress advance( StateAddress a, int ) {
