@@ -17,6 +17,9 @@ using namespace divine::llvm;
 Interpreter::Interpreter(Allocator &alloc, Module *M)
     : TD( M ), module( M ), info( M ), alloc( alloc ), state( info, alloc )
 {
+    tauplus = false;
+    taustores = false;
+    tauminus = false;
     parseProperties( M );
 }
 

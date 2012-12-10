@@ -37,11 +37,21 @@ struct Interpreter
     int choice;
     int tid;
 
+    bool tauminus, tauplus, taustores;
+
     void parseProperties( Module *M );
-    bool observable( const std::set< PC > &s ) {
-        if ( s.empty() )
+    bool observable( const std::set< PC > &s )
+    {
+        if ( !tauminus )
+            return true;
+
+        if ( tauplus && s.empty() )
             return false; /* this already caused an interrupt, if applicable */
+
         if ( isa< StoreInst >( instruction().op ) ) {
+            if ( !taustores )
+                return true;
+
             Pointer *p = reinterpret_cast< Pointer * >( dereference( instruction().operand( 1 ) ) );
             return p && !state.isPrivate( state._thread, *p );
         }
@@ -137,9 +147,23 @@ struct Interpreter
         assert( state.stack().get().length() );
 
         while ( true ) {
-            if ( !pc().masked && ( observable( seen ) || seen.count( pc() ) ) ) {
-                yield( state.snapshot() );
-                return;
+
+            if ( !pc().masked && !seen.empty() ) {
+                if ( tauplus ) {
+                    if ( observable( seen ) || seen.count( pc() ) ) {
+                        yield( state.snapshot() );
+                        return;
+                    }
+                } else if ( tauminus ) {
+                    /* look at seen too, because jumps might have been masked */
+                    if ( observable( seen ) || jumped || seen.count( pc() ) ) {
+                        yield( state.snapshot() );
+                        return;
+                    }
+                } else {
+                    yield( state.snapshot() );
+                    return;
+                }
             }
 
             jumped = false;
