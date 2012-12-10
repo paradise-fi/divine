@@ -19,7 +19,7 @@ struct Dve : public Common< Blob > {
     typedef typename Common::Label Label;
 
     template< typename Yield >
-    void successors( Node from, Yield yield ) {
+    void enabledConts( Node from, Yield yield ) {
         if ( !from.valid() )
             return;
 
@@ -29,14 +29,26 @@ struct Dve : public Common< Blob > {
         p = system->enabled( ctx, p );
 
         while ( system->valid( ctx, p ) ) {
-            Blob b = alloc.new_blob( stateSize() );
-            memcpy( mem( b ), mem( from ), stateSize() );
-            updateMem( b );
-            system->apply( ctx, p );
-            yield( b, Label() );
+            if ( !yield( p ) )
+                return;
             updateMem( from );
             p = system->enabled( ctx, p );
         }
+    }
+
+    template< typename Yield >
+    void successors( Node from, Yield yield ) {
+        enabledConts(
+            from,
+            [&]( dve::System::Continuation p ) {
+                Blob b = this->alloc.new_blob( stateSize() );
+                memcpy( mem( b ), mem( from ), stateSize() );
+                updateMem( b );
+                this->system->apply( this->ctx, p );
+                yield( b, Label() );
+                return true;
+            }
+        );
     }
 
     Node initial() {
@@ -117,27 +129,27 @@ struct Dve : public Common< Blob > {
         if ( !from.valid() || !to.valid() )
             return "";
 
-        updateMem( from );
-        dve::System::Continuation p;
+        std::string transLabel = "";
 
-        p = system->enabled( ctx, p );
+        enabledConts( from, [&]( dve::System::Continuation p ) {
+                Blob b = this->alloc.new_blob( stateSize() );
+                memcpy( mem( b ), mem( from ), stateSize() );
+                updateMem( b );
 
-        while ( system->valid( ctx, p ) ) {
-            Blob b = alloc.new_blob( stateSize() );
-            memcpy( mem( b ), mem( from ), stateSize() );
-            updateMem( b );
-            system->apply( ctx, p );
+                this->system->apply( this->ctx, p );
 
-            updateMem( from );
-            if ( b.compare( to, alloc._slack, b.size() ) == 0 ) {
-                std::stringstream str;
-                system->printTrans( str, ctx, p );
-                return str.str();
+                updateMem( from );
+                if ( b.compare( to, this->alloc._slack, b.size() ) == 0 ) {
+                    std::stringstream str;
+                    this->system->printTrans( str, this->ctx, p );
+                    transLabel = str.str();
+                    return false;
+                }
+                return true;
             }
+        );
 
-            p = system->enabled( ctx, p );
-        }
-        return "";
+        return transLabel;
     }
 
     void release( Node s ) { s.free( pool() ); }
