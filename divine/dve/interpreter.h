@@ -171,6 +171,7 @@ struct Channel {
 struct Transition {
     Symbol process;
     std::string procname;
+    int procIndex;
     Symbol from, to;
 
     Channel *sync_channel;
@@ -244,7 +245,7 @@ struct Transition {
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
-        : process( proc ), sync_channel( 0 ), sync( 0 ), parse( t )
+        : process( proc ), procIndex( -1 ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
         procname = "";
         for ( auto it = sym.parent->tabs[ NS::Process ].begin(); it != sym.parent->tabs[ NS::Process ].end(); it++ ) {
@@ -420,6 +421,12 @@ struct Process {
             }
         }
     }
+
+    void setProcIndex( int pid ) {
+        for( auto &i : readers ) {
+            i.procIndex = pid;
+        }
+    }
 };
 
 struct System {
@@ -428,6 +435,7 @@ struct System {
     std::vector< Process > properties;
     std::vector< Channel > channels;
     Process *property;
+    int propID;
 
     Symbol flags, errFlags;
 
@@ -443,7 +451,7 @@ struct System {
     };
 
     System( const parse::System &sys )
-        : property( 0 )
+        : property( 0 ), propID( -1 )
     {
         assert( !sys.synchronous ); // XXX
 
@@ -480,6 +488,10 @@ struct System {
 
         // compute synchronisations
         for ( size_t i = 0; i < processes.size(); ++ i ) {
+            processes[ i ].setProcIndex( i );
+        }
+
+        for ( size_t i = 0; i < processes.size(); ++ i ) {
             for ( size_t j = 0; j < processes.size(); ++ j ) {
                 if ( i == j )
                     continue;
@@ -489,10 +501,12 @@ struct System {
 
         // find the property process
         if ( sys.property.valid() ) {
-            Symbol propid = symtab.lookup( NS::Process, sys.property );
+            Symbol _propid = symtab.lookup( NS::Process, sys.property );
             for ( size_t i = 0; i < processes.size(); ++ i ) {
-                if ( processes[ i ].id == propid )
+                if ( processes[ i ].id == _propid ) {
                     property = &processes[ i ];
+                    propID = i;
+                }
             }
 
             assert( property );
@@ -605,6 +619,32 @@ struct System {
             cont.property = property->enabled( ctx, cont.property, cont.err );
 
         return cont;
+    }
+
+    bool processAffected( EvalContext &ctx, Continuation cont, int pid ) {
+        if ( cont.process == getProcIndex( pid ) )
+            return true;
+        Transition &trans = processes[ cont.process ].transition( ctx, cont.transition );
+        if ( trans.sync ) {
+            assert_leq( 0, trans.sync->procIndex );
+            if (trans.sync->procIndex == getProcIndex( pid ) )
+                return true;
+        }
+        return false;
+    }
+
+    int getProcIndex( int pid ) {
+        if ( propID < 0 )
+            return pid;
+        if ( pid < propID )
+            return pid;
+        return pid - 1;
+    }
+
+    int processCount() {
+        if ( propID >=0 )
+            return processes.size() - 1;
+        return processes.size();
     }
 
     void initial( EvalContext &ctx ) {

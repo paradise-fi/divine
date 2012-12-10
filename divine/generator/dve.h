@@ -51,6 +51,27 @@ struct Dve : public Common< Blob > {
         );
     }
 
+    template< typename Yield >
+    void processSuccessors( Node from, Yield yield, int pid, bool include ) {
+        enabledConts(
+            from,
+            [&]( dve::System::Continuation p ) {
+                if ( this->system->processAffected( this->ctx, p, pid ) != include )
+                    return true;
+                Blob b = this->alloc.new_blob( stateSize() );
+                memcpy( mem( b ), mem( from ), stateSize() );
+                updateMem( b );
+                this->system->apply( this->ctx, p );
+                yield( b, Label() );
+                return true;
+            }
+        );
+    }
+
+    int processCount() {
+        return system->processCount();
+    }
+
     Node initial() {
         Blob b = alloc.new_blob( stateSize() );
         updateMem( b );
