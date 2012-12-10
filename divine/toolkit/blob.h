@@ -87,6 +87,9 @@ struct Blob
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
+    friend class Pool;
+
+// private:
     template< typename A >
     void free( A &a ) {
         if ( !valid() )

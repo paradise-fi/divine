@@ -3,6 +3,8 @@
 #include <vector>
 #include <iostream>
 
+#include <divine/toolkit/blob.h>
+
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
 
@@ -219,6 +221,105 @@ struct Pool {
     {
         return steal( _ptr, size );
     }
+
+    // Blob manipulation function
+    void free( Blob& blob )
+    {
+        blob.free( *this );
+    }
+
+    bool valid( const Blob& blob ) const
+    {
+        return blob.valid();
+    }
+
+    BlobHeader& header( Blob& blob ) const
+    {
+        return blob.header();
+    }
+
+    const BlobHeader& header( const Blob& blob ) const
+    {
+        return blob.header();
+    }
+
+    template< typename T >
+    T& get( Blob& blob, int off = 0 ) const
+    {
+        return blob.get<T>(off);
+    }
+
+    template< typename T >
+    int get( Blob& blob, int off, T& t ) const
+    {
+        blob.get(off, t);
+    }
+
+    template< typename T >
+    int put( Blob& blob, int off, T t )
+    {
+        blob.put(off, t);
+    }
+
+    void copyTo( const Blob& source, Blob& where ) const
+    {
+        source.copyTo( where );
+    }
+
+    template< typename O >
+    O write32( const Blob& blob, O o ) const
+    {
+        return blob.write32( o );
+    }
+
+    void setSize( Blob& blob, size_t size ) const
+    {
+        blob.setSize( size );
+    }
+
+    void clear( Blob& blob, int from = 0, int to = 0, char pattern = 0 ) const
+    {
+        blob.clear( from, to, pattern );
+    }
+
+    int size( const Blob& blob ) const
+    {
+        blob.size();
+    }
+
+    char* data( const Blob& blob ) const
+    {
+        blob.data();
+    }
+
+    char* pointer( const Blob blob ) const
+    {
+        blob.pointer();
+    }
+
+    int32_t* pointer32( const Blob& blob ) const
+    {
+        blob.pointer32();
+    }
+
+    int compare( const Blob& x, const Blob& y, int b, int e ) const
+    {
+        return x.compare( y, b, e );
+    }
+
+#ifndef DIVINE_EMBED
+    hash_t hash( const Blob& blob ) const
+    {
+        return blob.hash();
+    }
+
+    hash_t hash( const Blob& blob, int from, int to, uint32_t salt = 0 ) const
+    {
+        return blob.hash( from, to, salt );
+    }
+
+#endif
+
 };
 
 #endif
