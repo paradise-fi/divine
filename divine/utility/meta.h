@@ -38,6 +38,7 @@ struct Execution {
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, Compact, Probabilistic };
+    enum Reduction { POR, Tau, TauPlus, TauStores, Heap };
 
     Type algorithm;
     std::string name;
@@ -50,7 +51,8 @@ struct Algorithm {
     bool findGoals;
     bool hashCompaction;
     bool onlyQualitative, iterativeOptimization;
-    bool por, fairness;
+    bool fairness;
+    std::set< Reduction > reduce;
 
     Algorithm() : algorithm( Info ),
                   hashSeed( 0 ),
@@ -58,7 +60,7 @@ struct Algorithm {
                   labels( false ), traceLabels( false ),
                   findDeadlocks( true ), findGoals( true ),
                   hashCompaction( false ), onlyQualitative( false ), iterativeOptimization( true ),
-                  por( false ), fairness( false ) {}
+                  fairness( false ) {}
 };
 
 struct Output {

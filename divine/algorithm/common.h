@@ -98,6 +98,7 @@ struct Algorithm
         typename Self::Graph *g = new typename Self::Graph;
         g->read( meta().input.model );
         g->useProperty( meta().input );
+        g->useReductions( meta().algorithm.reduce );
         g->setDomainSize( meta().execution.thisNode,
                           meta().execution.nodes,
                           meta().execution.nodes * meta().execution.threads );

@@ -76,15 +76,20 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
 {
     o << "Algorithm: " << a.name << std::endl;
     o << "Transformations: ";
-    if ( a.por )
-        o << "POR";
-    else if ( a.fairness )
-        o << "fairness";
-    else
-        o << "none";
-    o << std::endl;
+    std::vector< std::string > txt;
 
-    return o;
+    for ( auto r = a.reduce.begin(); r != a.reduce.end(); ++r )
+        switch ( *r ) {
+            case Algorithm::POR: txt.push_back( "POR" ); break;
+            case Algorithm::TauPlus: txt.push_back( "tau+" ); break;
+            case Algorithm::Tau: txt.push_back( "tau" ); break;
+            case Algorithm::Heap: txt.push_back( "heap" ); break;
+        }
+
+    if ( a.fairness )
+        txt.push_back( "fairness" );
+
+    return o << wibble::str::fmt( txt ) << std::endl;
 }
 
 std::ostream &operator<<( std::ostream &o, Execution a )

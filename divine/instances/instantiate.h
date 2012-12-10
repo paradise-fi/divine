@@ -122,15 +122,17 @@ algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
 template< template< typename > class A >
 algorithm::Algorithm *selectGraph( Meta &meta )
 {
+    bool por = meta.algorithm.reduce.count( meta::Algorithm::POR );
+
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
         meta.input.modelType = "DVE";
 #if defined(O_LEGACY) && !defined(O_SMALL)
         if ( meta.algorithm.fairness ) {
-            if ( meta.algorithm.por )
+            if ( por )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
             return makeAlgorithm< A, graph::FairGraph< generator::LegacyDve > >( meta );
         }
-        if ( meta.algorithm.por ) {
+        if ( por ) {
             return makeAlgorithmPOR< A, generator::LegacyDve >( meta );
         } else
 #endif
@@ -153,13 +155,13 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 #if defined(O_COIN) && !defined(O_SMALL)
     } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
         meta.input.modelType = "CoIn";
-        if ( meta.algorithm.por ) {
+        if ( por ) {
             return makeAlgorithmPOR< A, generator::Coin >( meta );
         } else {
             return makeAlgorithmN< A, generator::Coin >( meta );
         }
 #endif
-    } else if ( meta.algorithm.por ) {
+    } else if ( por ) {
         std::cerr << "FATAL: Partial order reduction is not supported for this input type."
                   << std::endl;
         return NULL;

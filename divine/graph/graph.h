@@ -44,6 +44,7 @@ struct Base {
     }
 
     void useProperty( meta::Input & ) {}
+    void useReductions( std::set< meta::Algorithm::Reduction > ) {}
 
     /// Makes a nonpermanent copy of a state
     Node copyState( Node n ) {
@@ -121,6 +122,10 @@ struct Transform {
 
     void useProperty( meta::Input &n ) {
         base().useProperty( n );
+    }
+
+    void useReductions( std::set< meta::Algorithm::Reduction > r ) {
+        base().useReductions( r );
     }
 
     /// Returns an owner id of the state n
