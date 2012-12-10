@@ -287,7 +287,8 @@ struct Partitioned {
         {
             This &n = *l.second;
             if ( n.owner( t, hint ) != n.worker.id() ) {
-                assert_eq( n.owner( f ), n.worker.id() );
+                if (n._store.valid( f ) )
+                    assert_eq( n.owner( f ), n.worker.id() );
                 n.queueAny( f, t, label, hint );
                 return visitor::IgnoreTransition;
             }

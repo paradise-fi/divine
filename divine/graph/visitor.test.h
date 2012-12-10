@@ -232,7 +232,12 @@ struct TestVisitor {
         G m_graph;
 
         static TransitionAction transition( This &c, Node f, Node t, Label label ) {
-            return parallel_transition( &c, f, t, label );
+            if ( node( f ) ) {
+                c.edges() ++;
+                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                c.t_seen.insert( std::make_pair( f, t ) );
+            }
+            return FollowTransition;
         }
 
         void _visit() { // parallel
@@ -240,9 +245,7 @@ struct TestVisitor {
             PartitionedStore< G > store( m_graph );
             store.id = this;
             Partitioned<This, This> partitioned(*this, *this, m_graph, store);
-            Node initial = m_graph.initial();
-            if ( node( initial ) % this->peers() == this->id() )
-                partitioned.queue(Node(), initial, Label());
+            partitioned.queue(Node(), m_graph.initial(), Label());
             partitioned.processQueue();
         }
 
@@ -427,7 +430,7 @@ struct TestVisitor {
 	examples( _parallel< PartitionCheck, int > ) ;
     }
 
-    void partition_blob() { /* TODO */
+    Test partition_blob() {
 	examples( _parallel< PartitionCheck, Blob > );
     }
 
