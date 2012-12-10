@@ -40,6 +40,7 @@ std::ostream &operator<<( std::ostream &o, BuildInfo a )
 #else
         o << "Debug: enabled" << std::endl;
 #endif
+        o << "Compile-Flags: " << divineCompileFlags << std::endl;
 
 #ifdef O_MPI
         int vers, subvers;

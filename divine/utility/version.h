@@ -7,6 +7,8 @@
 #ifndef DIVINE_VERSION_H
 #define DIVINE_VERSION_H
 
+extern const char* divineCompileFlags;
+
 namespace divine {
 const char *versionString();
 const char *buildDateString();

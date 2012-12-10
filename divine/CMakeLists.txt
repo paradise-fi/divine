@@ -63,6 +63,14 @@ add_custom_command(
 set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
 set_source_files_properties( "${SHA1}.cpp" PROPERTIES GENERATED ON )
 
+get_property( DIVINE_COMPILE_FLAGS DIRECTORY PROPERTY COMPILE_DEFINITIONS )
+string(REPLACE ";" " " DCF_OUT "${DIVINE_COMPILE_FLAGS}")
+add_custom_command(
+  OUTPUT divinecompileflags.cpp
+  VERBATIM
+  COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${DCF_OUT}\\\";\">divinecompileflags.cpp"
+)
+
 macro( stringify file )
   string( REPLACE "." "_" fileu "${file}" )
   string( REPLACE "/" "_" fileu "${fileu}" )
@@ -86,7 +94,7 @@ set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
-    "${SHA1}.cpp" "${SHA1}.cpp.fake"
+    "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
     toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp )
 
 add_library( libdivine-instances STATIC ${SRC_instances} )
