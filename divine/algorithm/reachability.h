@@ -66,10 +66,8 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
         static visitor::TransitionAction transition( This &r, Node f, Node t, Label )
         {
-            if ( !r.extension( t ).parent.valid() ) {
+            if ( !r.extension( t ).parent.valid() )
                 r.extension( t ).parent = f;
-                visitor::setPermanent( f );
-            }
             r.shared.stats.addEdge( r.graph(), f, t );
 
             if ( r.meta().algorithm.findGoals && r.graph().isGoal( t ) ) {
