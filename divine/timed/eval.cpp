@@ -489,6 +489,8 @@ std::pair< const Evaluator::VarData*, int > Evaluator::getArray( int procId, con
     do {
         indices.push_back( eval( procId, sub[ 1 ] ) );
         sub = sub[ 0 ];
+        int32_t offset = eval( procId, sub.getType().getArraySize().getRange().first );
+        indices.back() -= offset;
     } while ( sub.getKind() == ARRAY );
     assert( sub.getKind() == IDENTIFIER );
     const VarData& var = getVarData( procId, sub.getSymbol() );
@@ -613,9 +615,14 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
 
         // save the symbol so it can be used in property
         auto type = p.uid.getType();
-        if ( type.isArray() ) { // partial instances are represended as arrays of processes
+        if ( type.isProcessSet() ) { // partial instances are represended as arrays of processes
             vector< int > arrSizes;
-            int size = getArraySizes( -1, type, arrSizes );
+            int size = 1;
+            for ( int i = 0; i < type.size(); ++i ) {
+                auto r = evalRange( -1, type[ i ] );
+                arrSizes.push_back( r.second - r.first + 1 );
+                size *= arrSizes.back();
+            }
             // insert array of processes or do nothing if we have already seen this uid
             vars.insert( make_pair( make_pair( p.uid, -1 ), VarData( Type::PROCESS, PrefixType::NONE, pId, arrSizes, size ) ) );
         } else {
