@@ -58,7 +58,7 @@ private:
     };
 
     const VarData &getVarData( int procId, const UTAP::symbol_t & s ) const;
-    VarData &getVarData( int procId, const UTAP::symbol_t & s );
+    const VarData &getVarData( int procId, const UTAP::expression_t &expr );
     const FuncData &getFuncData( int procId, const UTAP::symbol_t & s ) const;
     std::pair< const VarData*, int > getArray( int procId, const UTAP::expression_t& e, int *pSize = NULL ) ;
     Clocks clocks;

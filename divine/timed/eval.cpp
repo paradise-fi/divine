@@ -68,23 +68,26 @@ int Evaluator::getArraySizes ( int procId, const type_t &type, vector< int > &ou
 }
 
 const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::symbol_t & s ) const {
-    auto varL = vars.find( make_pair( s, procId ) );    // local
-    decltype(varL) varG;
-    if ( varL == vars.end() )
-        varG = vars.find( make_pair( s, -1 ) );        // global
+    auto var = vars.find( make_pair( s, procId ) );    // local
+    if ( var == vars.end() )
+        var = vars.find( make_pair( s, -1 ) );        // global
 
-    assert( varL != vars.end() || varG != vars.end() );
-    return varL == vars.end() ? varG->second : varL->second;
+    assert( var != vars.end() );
+    return var->second;
 }
 
-Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::symbol_t & s ) {
-    auto varL = vars.find( make_pair( s, procId ) );    // local
-    decltype(varL) varG;
-    if ( varL == vars.end() )
-        varG = vars.find( make_pair( s, -1 ) );        // global
-
-    assert( varL != vars.end() || varG != vars.end() );
-    return varL == vars.end() ? varG->second : varL->second;
+const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::expression_t &expr ) {
+    if ( expr.getKind() == DOT ) {
+        assert( procId == -1 );
+        procId = resolveId( -1, expr[0] );
+        auto proc = reinterpret_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
+        symbol_t symbol = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
+        auto var = vars.find( make_pair( symbol, procId ) );
+        assert( var != vars.end() );
+        return var->second;
+    }
+    assert( expr.getKind() == IDENTIFIER );
+    return getVarData( procId, expr.getSymbol() );
 }
 
 const Evaluator::FuncData &Evaluator::getFuncData( int procId, const UTAP::symbol_t & s ) const {
@@ -112,7 +115,7 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
             const VarData &var = *(p.first);
             if ( var.prefix == PrefixType::CONSTANT ) {
                 const int32_t *varContent = getValue( procId, s );
-                if ( p.second+pSize >= var.elementsCount ) {
+                if ( p.second+pSize > var.elementsCount ) {
                     emitError( ERR_ARRAY_INDEX );
                     return;
                 }
@@ -483,17 +486,16 @@ int32_t Evaluator::ternop( int procId, const Constants::kind_t op, const express
 // if the result is a value, returns index of that value and sets pSize to 1
 // if the result is still an array, returns index to the first element of the array and pSize is set to its size
 std::pair< const Evaluator::VarData*, int > Evaluator::getArray( int procId, const expression_t& e, int *pSize ) {
-    assert( e.getKind() == ARRAY );
+    assert( e.getKind() == ARRAY || e.getKind() == IDENTIFIER || e.getKind() == DOT );
     std::vector< uint32_t > indices;
     expression_t sub = e;
-    do {
+    while ( sub.getKind() == ARRAY ) {
         indices.push_back( eval( procId, sub[ 1 ] ) );
         sub = sub[ 0 ];
         int32_t offset = eval( procId, sub.getType().getArraySize().getRange().first );
         indices.back() -= offset;
-    } while ( sub.getKind() == ARRAY );
-    assert( sub.getKind() == IDENTIFIER );
-    const VarData& var = getVarData( procId, sub.getSymbol() );
+    }
+    const VarData& var = getVarData( procId, sub );
     int size = var.elementsCount;
     int index = 0;
     reverse( indices.begin(), indices.end() );
@@ -953,8 +955,7 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
                     auto location = reinterpret_cast< const state_t* >( symb.getData() );   // get location
                     return locations[ pId ] == location->locNr;
                 } else {
-                    assert( false );
-                    return false;
+                    return *getValue( getVarData( procId, expr ) );
                 }
             }
             return unop( procId, expr.getKind(), expr[0] ) ;
