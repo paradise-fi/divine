@@ -83,8 +83,7 @@ struct divine::llvm::Canonic
     }
 
     bool seen( Pointer p ) {
-        if ( segmap.count( p.segment ) )
-            return true;
+        return segmap.count( p.segment );
     }
 };
 
