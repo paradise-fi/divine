@@ -501,6 +501,26 @@ struct Evaluator
         bool resultIsPointer( std::vector< bool > x ) { return x[1]; } /* copy status from dest */
     };
 
+    struct Switch : Implementation {
+        template< typename X = int >
+        Unit operator()( X &condition = Dummy< X >::v() )
+        {
+            for ( int o = 2; o < this->i().values.size() - 1; o += 2 )
+            {
+                X &v = *reinterpret_cast< X * >(
+                    this->evaluator().dereference( this->i().operand( o ) ) );
+                if ( v == condition ) {
+                    this->evaluator().jumpTo( this->i().operand( o + 1 ) );
+                    return Unit();
+                }
+            }
+            this->evaluator().jumpTo( this->i().operand( 1 ) );
+            return Unit();
+        }
+
+        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
+    };
+
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getType()->getElementType();  // Type to be allocated
@@ -558,10 +578,6 @@ struct Evaluator
             else
                 jumpTo( instruction.operand( 1 ) );
         }
-    }
-
-    void implement_switch() {
-        assert_unimplemented();
     }
 
     void implement_indirectBr() {
@@ -725,7 +741,7 @@ struct Evaluator
             case LLVMInst::IndirectBr:
                 implement_indirectBr(); break;
             case LLVMInst::Switch:
-                implement_switch(); break;
+                implement( Switch(), 2 ); break;
             case LLVMInst::Call:
             case LLVMInst::Invoke:
                 implement_call(); break;
