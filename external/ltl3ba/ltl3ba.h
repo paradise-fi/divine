@@ -256,7 +256,7 @@ typedef struct Queue {
 
 Queue* create_queue(int max_size);
 void free_queue(Queue *q);
-int is_empty(Queue *q);
+int empty(Queue *q);
 int is_full(Queue *q);
 int push(Queue *q, int elem);
 int pop(Queue *q);

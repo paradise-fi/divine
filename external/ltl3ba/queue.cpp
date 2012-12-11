@@ -8,7 +8,7 @@
 
 extern FILE *tl_out;
 
-int is_empty(Queue *q) {
+int empty(Queue *q) {
   return (q->size == 0);
 }
 
@@ -49,7 +49,7 @@ int push(Queue *q, int elem) {
 }
 
 int pop(Queue *q) {
-  if (is_empty(q))
+  if (empty(q))
     return -1;
 
   int elem = q->data[q->front];

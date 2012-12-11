@@ -42,7 +42,8 @@
 /* among existing states.             Comment to disable.              */
 #define DICT
 
-using namespace std;
+using std::map;
+using std::pair;
 
 /********************************************************************\
 |*              Structures and shared variables                     *|

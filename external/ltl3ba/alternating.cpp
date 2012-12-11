@@ -747,7 +747,7 @@ void oteckuj(int nodes_num) {
       }
     }
   
-  while (!is_empty(q)) {
+  while (!empty(q)) {
     node = pop(q);
     rem_set(in_queue, node);
     n = label[node];
