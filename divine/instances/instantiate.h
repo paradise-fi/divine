@@ -128,7 +128,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         meta.input.modelType = "DVE";
 #if defined (O_DVE) && !defined(O_SMALL)
         if ( meta.algorithm.fairness ) {
-            if ( meta.algorithm.por )
+            if ( por )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
             return makeAlgorithm< A, graph::FairGraph< generator::Dve > >( meta );
         }
