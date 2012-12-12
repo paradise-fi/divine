@@ -80,7 +80,7 @@ const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::express
     if ( expr.getKind() == DOT ) {
         assert( procId == -1 );
         procId = resolveId( -1, expr[0] );
-        auto proc = reinterpret_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
+        auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
         symbol_t symbol = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
         auto var = vars.find( make_pair( symbol, procId ) );
         assert( var != vars.end() );
@@ -91,13 +91,12 @@ const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::express
 }
 
 const Evaluator::FuncData &Evaluator::getFuncData( int procId, const UTAP::symbol_t & s ) const {
-    auto funL = funs.find( make_pair( s, procId ) );    // local
-    decltype(funL) funG;
-    if ( funL == funs.end() )
-        funG = funs.find( make_pair( s, -1 ) );        // global
+    auto fun = funs.find( make_pair( s, procId ) );    // local
+    if ( fun == funs.end() )
+        fun = funs.find( make_pair( s, -1 ) );        // global
 
-    assert( funL != funs.end() || funG != funs.end() );
-    return funL == funs.end() ? funG->second : funL->second;
+    assert( fun != funs.end() );
+    return fun->second;
 }
 
 void Evaluator::parseArrayValue(   const expression_t &exp,
@@ -345,7 +344,6 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
             }
         }
 
-        return 1;
     } else if ( a.getType().isDiff() || b.getType().isDiff() ) {
         int clock_idL, clock_idR, value;
         if ( a.getType().isDiff() ) {
@@ -949,10 +947,10 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
         case 1:
             if ( expr.getKind() == DOT ) {
                 int pId = resolveId( -1, expr[0] );
-                auto proc = reinterpret_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
+                auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
                 symbol_t symb = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
                 if ( symb.getType().isLocation() ) {
-                    auto location = reinterpret_cast< const state_t* >( symb.getData() );   // get location
+                    auto location = static_cast< const state_t* >( symb.getData() );   // get location
                     return locations[ pId ] == location->locNr;
                 } else {
                     return *getValue( getVarData( procId, expr ) );
@@ -975,10 +973,10 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
     return 0;
 }
 
-void Evaluator::setData( int32_t *d, Locations l ) {
+void Evaluator::setData( char *d, Locations l ) {
     error = 0;
-    data = d;
-    clocks.setData( ((char*)data) + getReqSize() - clocks.getReqSize() );
+    data = reinterpret_cast< int32_t* >( d );
+    clocks.setData( d + getReqSize() - clocks.getReqSize() );
     locations = l;
 }
 
@@ -993,7 +991,7 @@ void Evaluator::extrapolate() {
 int Evaluator::resolveId( int procId, const expression_t& expr ) { 
     assert( expr.getType().is( CHANNEL ) || expr.getType().is( CLOCK ) || expr.getType().is( PROCESS ) );
     if ( expr.getKind() != ARRAY ) {
-        return getVarData( procId, expr.getSymbol() ).offset;
+        return getVarData( procId, expr ).offset;
     } else {
         auto p = getArray( procId, expr );
         return p.first->offset + p.second;

@@ -136,7 +136,7 @@ public:
     void extrapolate();
 
     // set data and locations to work on, resets error flag
-    void setData( int32_t *d, Locations );
+    void setData( char *d, Locations );
 
     // read global system declarations
     void processDeclGlobals( UTAP::TimedAutomataSystem &sys );

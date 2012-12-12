@@ -328,8 +328,7 @@ void addConj( UTAP::expression_t& a, const UTAP::expression_t& b ) {
 }
 
 bool isClockExpr( const UTAP::expression_t& e ) {
-    return  e.getType().isIntegral() // integrals are both guard and boolean
-        || (e.getType().isGuard() && !e.getType().isBoolean());
+    return (e.getType().isGuard() && !e.getType().isIntegral());
 }
 
 bool isDiffExpr( const UTAP::expression_t& e ) {

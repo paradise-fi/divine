@@ -48,7 +48,7 @@ private:
     // set node to work on
     void setData( char *d ) {
         locs.setSource( d );
-        eval.setData( reinterpret_cast< int32_t* >( d + offVar ), locs );
+        eval.setData( d + offVar, locs );
     }
 
     // copy given state to _succ_ and set _succ_ as the current working state
