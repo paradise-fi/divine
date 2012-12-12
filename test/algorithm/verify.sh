@@ -1,0 +1,48 @@
+. lib
+
+verify_dve() {
+    test "$O_DVE" = "ON" || test "$O_LEGACY" = "ON" || return 0
+
+    check clear
+    run verify data/assert.dve
+    check report Algorithm Reachability
+    check report Property-Type reachability
+    check reachability_goal
+
+    check clear
+    run verify data/test1.dve
+    check report Algorithm OWCTY
+    check report Property-Type neverclaim
+    check ltl_invalid
+
+    check clear
+    run verify data/test1.dve -w 1
+    check report Algorithm "Nested DFS"
+    check report Property-Type neverclaim
+    check ltl_invalid
+}
+
+verify_timed() {
+    test "$O_TIMED" = "ON" || return 0
+
+    check clear
+    run verify data/bridge.xml --property=-1
+    check report Algorithm Reachability
+    check report Property-Type reachability
+	check reachability_valid
+
+    check clear
+    run verify data/bridge.xml --property=0 -w 1
+    check report Algorithm "Nested DFS"
+    check report Property-Type LTL
+    check ltl_invalid
+
+    check clear
+    run verify data/bridge.xml --property=1
+    check report Algorithm OWCTY
+    check report Property-Type LTL
+    check ltl_valid
+}
+
+verify_dve
+verify_timed

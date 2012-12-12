@@ -12,6 +12,7 @@ ndfs() { ann "divine nested-dfs --report" "$@" "2> progress | capture"; }
 owcty() { ann "divine owcty --report" "$@" "2> progress | capture"; }
 reachability() { ann "divine reachability --report" "$@" "2> progress | capture"; }
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
+verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" "$@"; }
 
