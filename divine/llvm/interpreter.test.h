@@ -161,7 +161,7 @@ struct TestLLVM {
         assert_eq( _descr( code_add(), b ),
                    "0: <testf> << %meh = add i32 1, 2 >> [ meh = 0 ]\n" );
 
-        b = _ith( code_add(), 1 );
+        b = _ith( code_add(), 2 );
         assert_eq( _descr( code_add(), b ),
                    "0: <testf> << %meh = add i32 1, 2 >> [ meh = 3 ]\n" );
     }
@@ -181,14 +181,14 @@ struct TestLLVM {
         divine::Blob b = _ith( code_callarg(), 0 );
         assert_eq( _descr( code_callarg(), b ),
                    "0: <testf> << %0 = call i32 @helper(i32 7) >> []\n" );
-        b = _ith( code_callarg(), 1 );
+        b = _ith( code_callarg(), 3 );
         assert_eq( _descr( code_callarg(), b ),
                    "0: <helper> << %meh = add i32 %0, %0 >> [ meh = 14 ]\n" );
     }
 
     Test describe6()
     {
-        divine::Blob b = _ith( code_callret(), 1 );
+        divine::Blob b = _ith( code_callret(), 3 );
         assert_eq( _descr( code_callret(), b ),
                    "0: <testf> << %meh = call i32 @helper() >> [ meh = 42 ]\n" );
     }
