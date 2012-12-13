@@ -44,14 +44,15 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
 
     std::string ptr = wibble::str::fmt( p );
     std::string res;
-    Type *pointeeTy = isa< PointerType >( t ) ? cast< PointerType >( t )->getElementType() : t;
+    bool need_deref = isa< PointerType >( t );
+    Type *pointeeTy = need_deref ? cast< PointerType >( t )->getElementType() : t;
     if ( isa< FunctionType >( pointeeTy ) ) {
         res = "@<some function>"; // TODO functionIndex.right( idx )->getName().str();
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
         if ( state.validate( p ) )
-            res = "@(" + ptr + "| " + describeValue( pointeeTy, p, seen ) + ")";
+            res = "@(" + ptr + "| " + describeValue( pointeeTy, need_deref ? state.followPointer( p ) : p, seen ) + ")";
         else
             res = "@(" + ptr + "| invalid)";
         seen.insert( std::make_pair( p, pointeeTy ) );
