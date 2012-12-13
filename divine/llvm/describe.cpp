@@ -78,7 +78,7 @@ std::string Interpreter::describeValue( Type *t, Pointer where, DescribeSeen &se
 {
     if ( t->isAggregateType() ) {
         return describeAggregate( t, where, seen );
-    } else if ( state.isPointer( where ) ) {
+    } else if ( where.offset % 4 == 0 && state.isPointer( where ) ) {
         return describePointer( t, state.followPointer( where ), seen );
     } else if ( t->isIntegerTy() || t->isPointerTy() ) {
         return fmtInteger( state.dereference( where ), TD.getTypeAllocSize( t ) * 8 );
