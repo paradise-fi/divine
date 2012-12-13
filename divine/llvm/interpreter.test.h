@@ -197,7 +197,7 @@ struct TestLLVM {
     {
         divine::Blob b = _ith( code_mem(), 2 );
         assert_eq( _descr( code_mem(), b ),
-                   "0: <testf> << br label %tail >> [ foo = <0:0> 33 ]\n" );
+                   "0: <testf> << br label %tail >> [ foo = @(0:0| 33) ]\n" );
     }
 
     Test idempotency()
