@@ -450,7 +450,8 @@ struct Evaluator
             if ( target ) {
                 *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
                 /* NB. This is only ever called on active frames. Hopefully. */
-                this->econtext().setPointer( p, this->econtext().isPointer( ValueRef( this->i().operand( 0 ) ) ) );
+                this->econtext().setPointer( p, this->econtext().isPointer(
+                                                 ValueRef( this->i().operand( 0 ) ) ) );
             } else
                 this->ccontext().problem( Problem::InvalidDereference );
             return Unit();
