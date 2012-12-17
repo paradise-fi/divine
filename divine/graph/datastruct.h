@@ -4,8 +4,10 @@
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/lockedqueue.h>
 #include <divine/graph/store.h>
+#include <divine/toolkit/shmem.h>
 
 #include <deque>
+#include <memory>
 
 #ifndef DIVINE_DATASTRUCT_H
 #define DIVINE_DATASTRUCT_H
@@ -157,22 +159,30 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
 {
     typedef std::deque< typename G::Node > Chunk;
     typedef divine::LockedQueue< Chunk > ChunkQ;
-    typedef typename G::Node T;
+    typedef typename G::Node Node;
     typedef G Graph;
+    typedef ApproximateCounter Termination;
+    typedef Termination::Shared Terminator;
+    typedef std::shared_ptr< Termination::Shared > TerminatorPtr;
+
+    typedef std::shared_ptr< ChunkQ > ChunkQPtr;
 
     Graph &g;
 
-    const unsigned maxChunkSize;
+    int id;
+
+    unsigned maxChunkSize;
     unsigned chunkSize;
-    ChunkQ *_chunkq;
+    ChunkQPtr _chunkq;
+    Termination termination;
 
     Chunk outgoing;
     Chunk incoming;
 
-    ChunkQ &chunkq() { assert( _chunkq ); return *_chunkq; }
-    SharedQueue( ChunkQ &q ) : maxChunkSize( 1024 ), chunkSize( 8 ), _chunkq( &q )
+    ChunkQ &chunkq() { assert( _chunkq.get() ); return *_chunkq; }
+    SharedQueue( ChunkQPtr ch, Graph& g, TerminatorPtr t ) : g( g ), id( 0 ), maxChunkSize( 1024 ), chunkSize( 8 ), _chunkq( ch ), termination( *t )
     {
-	outgoing.reserve( chunkSize );
+        //outgoing.reserve( chunkSize );
     }
 
     ~SharedQueue() { flush(); }
@@ -182,40 +192,45 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
      * when the queue is empty.
      */
     void flush() {
-	if ( !outgoing.empty() ) {
-	    Chunk tmp;
-	    tmp.reserve( chunkSize );
-	    std::swap( outgoing, tmp );
-	    chunkq().push( std::move( tmp ) );
+        if ( !outgoing.empty() ) {
+            Chunk tmp;
+            std::swap( outgoing, tmp );
+            chunkq().push( std::move( tmp ) );
 
-	    /* A quickstart trick -- make first few chunks smaller. */
-	    if ( chunkSize < maxChunkSize )
-		chunkSize = std::max( 2 * chunkSize, maxChunkSize );
-	}
+            /* A quickstart trick -- make first few chunks smaller. */
+            if ( chunkSize < maxChunkSize )
+                chunkSize = std::max( 2 * chunkSize, maxChunkSize );
+        }
     }
 
-    void push( const T &b ) {
+    void push( const Node &b ) {
         /* TODO statistics */
-	outgoing.push_back( b );
-	if ( outgoing.size() >= chunkSize )
-	    flush();
+        ++termination;
+        outgoing.push_back( b );
+        if ( outgoing.size() >= chunkSize )
+            flush();
     }
 
-    T front() { return incoming.front(); }
+    Node front() { return incoming.front(); }
     void pop_front() {
+        --termination;
         incoming.pop_front();
+    }
+
+    bool empty() {
         if ( incoming.empty() ) /* try to get a fresh one */
             incoming = chunkq().pop();
+        return incoming.empty();
     }
-
-    bool empty() { return incoming.empty(); }
     void clear() {
         incoming.clear();
         while ( !chunkq().empty )
             chunkq().pop();
     }
-
-    SharedQueue( Graph &_g ) : g( _g ) {}
+    // removed
+    //SharedQueue( Graph &_g ) : g( _g ) {}
+    SharedQueue( void ) = delete;
+    SharedQueue( const SharedQueue& s) = default;
 
     /* No r-value push because it's not necessary for Blob. */
 };
