@@ -621,10 +621,14 @@ struct System {
         return cont;
     }
 
+    Transition & getTransition( EvalContext &ctx, Continuation cont ) {
+        return processes[ cont.process ].transition( ctx, cont.transition );
+    }
+
     bool processAffected( EvalContext &ctx, Continuation cont, int pid ) {
         if ( cont.process == getProcIndex( pid ) )
             return true;
-        Transition &trans = processes[ cont.process ].transition( ctx, cont.transition );
+        Transition &trans = getTransition( ctx, cont );
         if ( trans.sync ) {
             assert_leq( 0, trans.sync->procIndex );
             if (trans.sync->procIndex == getProcIndex( pid ) )
