@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <divine/utility/statistics.h>
+#include <divine/toolkit/sharedhashset.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -105,6 +106,20 @@ struct PartitionedStore : TableUtils< HashSet< typename Graph::Node, Hasher >, H
     }
 };
 
+
+template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
+           typename Statistics = NoStatistics >
+struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
+{
+    typedef typename Graph::Node T;
+    typedef TableUtils< SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics > Super;
+    typedef SharedStore< Graph, Hasher, Statistics > This;
+
+    SharedStore( Graph & ) : Super( 65536 ) {}
+    SharedStore( unsigned size ) : Super( size ) {}
+
+    void update( T s, hash_t h ) {}
+};
 
 template< typename Hasher >
 struct HcHasher : Hasher
