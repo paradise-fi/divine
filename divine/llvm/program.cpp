@@ -31,25 +31,20 @@ static bool isCodePointer( ::llvm::Value *val )
 
 void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
 {
-    result.width = TD.getTypeAllocSize( val->getType() );
-
     if ( val->getType()->isVoidTy() ) {
         result.width = 0;
         result.type = Value::Void;
-    }
-
-    if ( val->getType()->isPointerTy() ) {
+    } else if ( val->getType()->isPointerTy() ) {
         result.type = Value::Pointer;
         result.width = 4;
-    }
+    } else if ( isCodePointer( val ) ) {
+        result.type = Value::CodePointer;
+        result.width = 4;
+    } else
+        result.width = TD.getTypeAllocSize( val->getType() );
 
     if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
         result.type = Value::Float;
-
-    if ( isCodePointer( val ) ) {
-        result.type = Value::CodePointer;
-        result.width = 4;
-    }
 
     if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( val ) )
         result.width = CDS->getNumElements() * CDS->getElementByteSize();
