@@ -37,6 +37,20 @@ struct Dve : public Common< Blob > {
     }
 
     template< typename Yield >
+    void processConts( Node from, Yield yield, int pid, bool include ) {
+        enabledConts(
+            from,
+            [&]( dve::System::Continuation p ) {
+                if ( this->system->processAffected( this->ctx, p, pid ) != include )
+                    return true;
+                if ( !yield( p ) )
+                    return false;
+                return true;
+            }
+        );
+    }
+
+    template< typename Yield >
     void successors( Node from, Yield yield ) {
         enabledConts(
             from,
@@ -53,18 +67,18 @@ struct Dve : public Common< Blob > {
 
     template< typename Yield >
     void processSuccessors( Node from, Yield yield, int pid, bool include ) {
-        enabledConts(
+        processConts(
             from,
             [&]( dve::System::Continuation p ) {
-                if ( this->system->processAffected( this->ctx, p, pid ) != include )
-                    return true;
                 Blob b = this->alloc.new_blob( stateSize() );
                 memcpy( mem( b ), mem( from ), stateSize() );
                 updateMem( b );
                 this->system->apply( this->ctx, p );
                 yield( b, Label() );
                 return true;
-            }
+            },
+            pid,
+            include
         );
     }
 
