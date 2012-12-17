@@ -55,8 +55,10 @@ struct ApproximateCounter {
     enum { step = 100000 };
 
     struct Shared {
-	std::atomic< unsigned > counter;
-	Shared() : counter( 0 ) {}
+        std::atomic< unsigned > counter;
+        Shared() : counter( 0 ) {}
+
+        Shared( const Shared& ) = delete;
     };
 
     Shared &shared;
@@ -66,35 +68,37 @@ struct ApproximateCounter {
     ~ApproximateCounter() { sync(); }
 
     void sync() {
-	if ( local > 0 ) {
-	    shared.counter -= local;
-	    local = 0;
-	}
+        if ( local > 0 ) {
+            shared.counter -= local;
+            local = 0;
+        }
     }
 
     ApproximateCounter& operator++() {
-	if ( local == 0 ) {
-	    shared.counter += step;
-	    local = step;
-	}
+        if ( local == 0 ) {
+            shared.counter += step;
+            local = step;
+        }
 
-	--local;
+        --local;
 
-	return *this;
+        return *this;
     }
 
     ApproximateCounter &operator--() {
-	++local;
-	return *this;
+        ++local;
+        return *this;
     }
 
     bool isZero() {
-	/* user is responsible for calling sync(), this method is called way
-	 * too often */
-	return shared.counter == 0;
+        /* user is responsible for calling sync(), this method is called way
+        * too often */
+        return shared.counter == 0;
     }
 
-    ApproximateCounter( const ApproximateCounter & ) = delete;
+    ApproximateCounter( const ApproximateCounter &a )
+        : shared( a.shared ), local( a.local )
+    {}
     ApproximateCounter operator=( const ApproximateCounter & ) = delete;
 };
 
