@@ -24,23 +24,30 @@ namespace divine {
  */
 template < typename T, typename Hasher = default_hasher< T > >
 struct SharedHashSet {
+
+    typedef T Item;
+
     enum { maxCollisions = 65536 };
 
     struct Cell {
-	std::atomic< hash_t > hashLock;
-	T value;
+        std::atomic< hash_t > hashLock;
+        T value;
 
-	/* TODO: parallel table initialization */
-	Cell() : hashLock( 0 ) {}
-	Cell( const Cell & ) : hashLock( 0 ) {}
+        /* TODO: parallel table initialization */
+        Cell() : hashLock( 0 ) {}
+        Cell( const Cell & ) : hashLock( 0 ) {}
     };
 
     unsigned mask;
     std::vector< Cell > table;
     Hasher hasher;
+    unsigned _size;
 
+    unsigned size() const { return _size; }
+
+    /* TODO: need to revision of store change */
     explicit SharedHashSet( unsigned size, Hasher h = Hasher() )
-        : mask( 0 ), hasher( h )
+        : mask( 0 ), hasher( h ), _size( size )
     {
         while ((size = size >> 1))
             mask |= size;
@@ -62,49 +69,52 @@ struct SharedHashSet {
      * Insert an element into the set. Returns true if the element was added,
      * false if it was already in the set.
      */
-    bool insert( const T &x ) {
-	hash_t h = hasher.hash( x ) << 1;
+    bool insert( const Item &x ) {
+        return insertHinted( x, hasher.hash( x ) );
+    }
+    bool insertHinted( const Item &x, hash_t h) {
+        h <<= 1;
 
-	for ( unsigned i = 0; i < maxCollisions; ++i ) {
-	    Cell &cell = table[ index( h, i ) ];
-	    hash_t chl = cell.hashLock;
+        for ( unsigned i = 0; i < maxCollisions; ++i ) {
+            Cell &cell = table[ index( h, i ) ];
+            hash_t chl = cell.hashLock;
 
-	    if ( chl == 0 ) { /* empty → insert */
-		/* Strong CAS since it won't be called twice. */
-		if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
-		    cell.value = x;
-		    cell.hashLock.exchange( h & ~1 ); /* We need a barrier here. */
-		    return true;
-		}
-	    }
+            if ( chl == 0 ) { /* empty → insert */
+                /* Strong CAS since it won't be called twice. */
+                if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
+                    cell.value = x;
+                    cell.hashLock.exchange( h & ~1 ); /* We need a barrier here. */
+                    return true;
+                }
+            }
 
-	    if ( (chl | 1) == (h | 1) ) { /* hashes match → compare */
-		/* Wait until value write finishes. */
-		if ( chl & 1 )
-		    while ( cell.hashLock & 1 );
+            if ( (chl | 1) == (h | 1) ) { /* hashes match → compare */
+                /* Wait until value write finishes. */
+                if ( chl & 1 )
+                    while ( cell.hashLock & 1 );
 
-		/* The wait here is not really necessary because x86 supports
-		 * 8-byte CAS and x86_64 supports 16-byte CAS. We don't use it
-		 * (yet) as the code would be less readable and, more
-		 * importantly, gcc doesn't provide an API for 16-byte CAS.
-		 * TODO: Remove the wait. */
+                /* The wait here is not really necessary because x86 supports
+                 * 8-byte CAS and x86_64 supports 16-byte CAS. We don't use it
+                 * (yet) as the code would be less readable and, more
+                 * importantly, gcc doesn't provide an API for 16-byte CAS.
+                 * TODO: Remove the wait. */
 
-		if ( hasher.equal( cell.value, x ) )
-		    return false;
-	    }
+                if ( hasher.equal( cell.value, x ) )
+                    return false;
+            }
 
-	    /* not empty and not equal → reprobe */
-	}
+            /* not empty and not equal → reprobe */
+        }
 
-	std::cerr << "too many collisions" << std::endl;
-	abort();
-	return false;
+        std::cerr << "too many collisions" << std::endl;
+        abort();
+        return false;
     }
 
-    bool has( const T &x ) {
-	hash_t h = hasher.hash( x ) << 1;
+    bool has( const Item &x ) {
+        hash_t h = hasher.hash( x ) << 1;
 
-	for ( unsigned i = 0; i < maxCollisions; ++i ) {
+        for ( unsigned i = 0; i < maxCollisions; ++i ) {
             Cell &cell = table[ index( h, i ) ];
             hash_t chl = cell.hashLock;
 
@@ -116,8 +126,34 @@ struct SharedHashSet {
                 return true;
         }
 
-	std::cerr << "too many collisions" << std::endl;
-	abort(); return false;
+        std::cerr << "too many collisions" << std::endl;
+        abort(); return false;
+    }
+
+    Item get( const Item &x ) {
+        return getHinted( x, hasher.hash( x ) );
+    }
+
+    Item getHinted( const Item &x, hash_t h, bool* has = nullptr ) {
+
+        h <<= 1;
+
+        for ( unsigned i = 0; i < maxCollisions; ++i ) {
+            Cell &cell = table[ index( h, i ) ];
+            hash_t chl = cell.hashLock;
+
+            if (chl == 0) {
+                if (has) *has = false;
+                return Item();
+            }
+
+            if ( (chl | 1) == (h | 1) && hasher.equal( cell.value, x ) ) {
+                if (has) *has = true;
+                return cell.value;
+            }
+        }
+        std::cerr << "too many collisions" << std::endl;
+        abort(); return x;
     }
 
     SharedHashSet( const SharedHashSet & ) = delete;
