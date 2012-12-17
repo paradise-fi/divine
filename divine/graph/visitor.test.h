@@ -3,6 +3,7 @@
 #include <wibble/sfinae.h>
 #include <cmath> // for pow
 #include <tuple>
+#include <memory>
 
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h>
@@ -274,6 +275,74 @@ struct TestVisitor {
     };
 
     template< typename G >
+    struct SharedCheck : Parallel< Topology< Transition< G > >::template Local,
+                                     SharedCheck< G > >,
+                           Check< G >
+    {
+        typedef SharedCheck< G > This;
+        typedef This Listener;
+        typedef typename G::Node Node;
+        typedef typename G::Label Label;
+        typedef SharedStore< G > Store;
+        typedef typename Shared< This, This >::ChunkQ ChunkQ;
+        typedef typename Shared< This, This >::Terminator Terminator;
+        typedef G Graph;
+        Node make( int n ) { return makeNode< Node >( n ); }
+        int expected;
+
+        enum { defaultSharedHashSetSize = 65536 };
+
+        G m_graph;
+        typename Shared< This, This >::StorePtr store;
+        typename Shared< This, This >::ChunkQPtr chunkq;
+        typename Shared< This, This >::TerminatorPtr terminator;
+
+        static TransitionAction transition( This &c, Node f, Node t, Label label ) {
+            if ( node( f ) ) {
+                c.edges() ++;
+                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                c.t_seen.insert( std::make_pair( f, t ) );
+            }
+            return FollowTransition;
+        }
+
+        void _visit() { // parallel
+            assert_eq( expected % this->peers(), 0 );
+            Shared< This, This > shared( *this, *this, m_graph, store, chunkq, terminator );
+            shared.queue( Node(), m_graph.initial(), Label() );
+            shared.processQueue();
+        }
+
+        void visit() {
+            std::vector< int > edgevec, nodevec;
+
+            this->topology().parallel( &SharedCheck< G >::_visit );
+
+            this->topology().collect( edgevec, &SharedCheck< G >::_edges );
+            this->topology().collect( nodevec, &SharedCheck< G >::_nodes );
+
+            this->edges() = std::accumulate( edgevec.begin(), edgevec.end(), 0 );
+            this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
+        }
+
+        SharedCheck( std::pair< G, int > init, bool master = false ) :
+            expected( init.second ),
+            m_graph( init.first ),
+            store( std::make_shared< Store >( defaultSharedHashSetSize ) ),
+            chunkq( std::make_shared< ChunkQ >() ),
+            terminator( std::make_shared< Terminator >() )
+        {
+            if ( master ) {
+                int i = 32;
+                while ( expected % i ) i--;
+                this->becomeMaster( i, *this );
+            }
+        }
+
+        SharedCheck( const SharedCheck& s ) = default;
+    };
+
+    template< typename G >
     struct TerminableCheck : Parallel< Topology< Transition< G > >::template Local,
                                        TerminableCheck< G > >,
                              Check< G >
@@ -431,7 +500,15 @@ struct TestVisitor {
     }
 
     Test partition_blob() {
-	examples( _parallel< PartitionCheck, Blob > );
+        examples( _parallel< PartitionCheck, Blob > );
+    }
+
+    Test shared_int() {
+        examples( _parallel< SharedCheck, int > );
+    }
+
+    void shared_blob() {
+        examples( _parallel< SharedCheck, Blob > );
     }
 
 #if 0
