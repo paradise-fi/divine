@@ -182,7 +182,22 @@ struct BFV : Common< Queue, S > {
     BFV( typename S::Listener &n,
          typename S::Graph &g,
          typename S::Store &s )
-        : Common< Queue, S >( n, g, s, typename Super::Queue( g ) ) {}
+        : Super( n, g, s, typename Super::Queue( g ) ) {}
+};
+
+template< typename S >
+struct BFVShared : Common< SharedQueue, S > {
+    typedef Common< SharedQueue, S > Super;
+    typedef typename S::Store Store;
+    BFVShared( typename S::Listener &l,
+               typename S::Graph &g,
+               typename S::Store &s,
+               typename Super::Queue::ChunkQPtr ch,
+               typename Super::Queue::TerminatorPtr t )
+              : Super( l, g, s, typename Super::Queue( ch, g, t ) ) {}
+
+    inline typename Super::Queue& open() { return Super::_queue; }
+    //inline typename Super::Queue& open() { return this->_queue; }
 };
 
 template< typename S >
@@ -192,7 +207,7 @@ struct DFV : Common< Stack, S > {
     DFV( typename S::Listener &n,
          typename S::Graph &g,
          typename S::Store &s )
-        : Common< Stack, S >( n, g, s, typename Super::Queue( g ) ) {}
+        : Super( n, g, s, typename Super::Queue( g ) ) {}
 };
 
 template< typename S, typename Worker >
