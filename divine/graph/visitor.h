@@ -1,8 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 
-#include <fstream>
-#include <vector>
-
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -349,23 +346,27 @@ struct Shared {
     typedef Shared< S, Worker > This;
     typedef typename S::Graph Graph;
     typedef typename S::Node Node;
+    typedef typename S::Label Label;
     typedef typename S::Store Store;
+    typedef typename S::Statistics Statistics;
     typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
+    typedef typename Chunker::ChunkQ ChunkQ;
+    typedef typename Chunker::Terminator Terminator;
+    typedef typename Chunker::TerminatorPtr TerminatorPtr;
     typedef SharedHashSet< Blob > Table;
-    typedef ApproximateCounter Termination;
 
-    Chunker open;
-    Store closed;
-    Termination::Shared termination_sh;
-    Termination termination;
+    typedef std::shared_ptr< Store > StorePtr;
+    typedef std::shared_ptr< ChunkQ > ChunkQPtr;
+
+    BFVShared< S > bfv;
+    StorePtr closed;
 
     Worker &worker;
     typename S::Listener &notify;
-    typename S::Graph &graph;
-    typedef typename S::Statistics Statistics;
 
-    inline void queue( Node from, Node to, hash_t hint = 0 ) {
-        assert_die();
+    inline void queue( Node from, Node to, Label label ) {
+        setIds();
+        bfv.queue( from, to, label );
     }
 
     visitor::TransitionAction transition( Node f, Node t ) {
@@ -383,48 +384,49 @@ struct Shared {
         return eact;
     }
 
-    template< typename Slave >
-    void run( Slave &slave ) {
+    void run() {
         worker.restart();
-	while ( !termination.isZero() ) {
-	    /* Take a whole chunk of work. */
-	    auto chunk = open.pop();
-	    if ( open.empty() ) {
-		/* Whenever queue is empty, we push the current chunk to queue
-		 * and synchronize the termination balance, then try again. */
-		open.flush();
-		termination.sync();
-		continue;
-	    }
+        //assert_die();
+        while ( !bfv.open().termination.isZero() ) {
+            /* Take a whole chunk of work. */
+            if ( bfv.open().empty() ) {
+                /* Whenever queue is empty, we push the current chunk to queue
+                * and synchronize the termination balance, then try again. */
+                bfv.open().flush();
+                bfv.open().termination.sync();
+                continue;
+            }
 
-            slave.processQueue();
+            bfv.processQueue();
+            //assert_die();
         }
     }
 
-    template< typename T >
-    void setIds( T &bfv ) {
+    inline void setIds() {
         bfv.store.id = &worker;
-        bfv._queue.id = worker.id();
+        bfv.open().id = worker.id();
     }
 
     void exploreFrom( Node initial ) {
-        BFV< S > bfv( notify, graph, closed );
-        setIds( bfv );
+        setIds();
         if ( worker.id() == 0 ) {
             bfv.exploreFrom( unblob< Node >( initial ) );
         }
-        run( bfv );
+        run();
     }
 
-    void processQueue() {
-        BFV< S > bfv( notify, graph, closed );
-        setIds( bfv );
-        run( bfv );
+    inline void processQueue() {
+        setIds();
+        run();
     }
 
-    Shared( typename S::Listener &l, Worker &w, Graph &g, Store &s )
-        : worker( w ), notify( l ), graph( g ), closed( s ), termination( termination_sh )
-    {}
+    Shared( typename S::Listener &l, Worker &w, Graph &g, StorePtr s, ChunkQPtr ch, TerminatorPtr t )
+        : bfv( l, g, *s, ch, t ), closed( s ), worker( w ), notify( l )//, graph( g )
+    {
+//        setI
+    }
+    // incorrect: // need to allow shallow copy because of shared store (closed) and lockedqueue (chunkq)
+    Shared( const Shared& s ) = default;
 };
 
 }
