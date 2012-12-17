@@ -25,10 +25,8 @@ struct TestDatastruct {
         assert_eq( count, 2 );
     }
 
-    template< template< typename, typename > class Q >
-    void _queue() {
-        generator::Dummy d;
-        Q< generator::Dummy, NoStatistics > q( d );
+    template< typename Q >
+    void _queue(generator::Dummy& d, Q& q) {
         int count = 0;
 
         init( d );
@@ -84,7 +82,21 @@ struct TestDatastruct {
     }
 
     Test queue() {
-        _queue< Queue >();
+        generator::Dummy d;
+        Queue< generator::Dummy, NoStatistics > q( d );
+        _queue( d, q );
+    }
+
+    Test sharedQueue() {
+        generator::Dummy d;
+        typedef SharedQueue< generator::Dummy, NoStatistics > Queue;
+        Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
+        Queue::ChunkQPtr ch = std::make_shared< Queue::ChunkQ >();
+
+        Queue q( ch, d, t );
+        q.maxChunkSize = 1;
+        q.chunkSize = 1;
+        _queue( d, q );
     }
 
     Test stack() {
