@@ -1,4 +1,7 @@
 // -*- C++ -*-
+#include <utility>
+#include <memory>
+
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
@@ -75,7 +78,13 @@ struct TableUtils
     bool alias( T a, T b ) { return visitor::alias( a, b ); }
     void setSize( int sz ) { table.setSize( sz ); }
 
-    TableUtils() : id( 0 ) {}
+    TableUtils() : id( nullptr ) {}
+    /* TODO: need to revision of this change */
+    template< typename... Args >
+    TableUtils( Args&&... args ) :
+        table( std::forward< Args >( args )... ),
+        id( nullptr )
+    {}
 };
 
 template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
