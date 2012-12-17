@@ -24,14 +24,16 @@ struct LockedQueue {
 
     explicit LockedQueue( unsigned sz ) : empty( true ) {}
 
+    LockedQueue( void ) : empty( true ) {}// added
+
     void push( const T &x ) {
-        wibble::sys::MutexLockT< Mutex > lk( m );
+	std::lock_guard< Mutex > lk( m );
 	q.push_back( x );
 	empty = false;
     }
 
     void push( T &&x ) {
-        wibble::sys::MutexLockT< Mutex > lk( m );
+	std::lock_guard< Mutex > lk( m );
 	q.push_back( std::move( x ) );
 	empty = false;
     }
@@ -40,24 +42,24 @@ struct LockedQueue {
      * Pops a whole chunk, to be processed by one thread as a whole.
      */
     T pop() {
-	T ret;
+        T ret;
 
-	/* Prevent threads from contending for a lock if the queue is empty. */
-	if ( empty )
-	    return ret;
+        /* Prevent threads from contending for a lock if the queue is empty. */
+        if ( empty )
+            return ret;
 
-        wibble::sys::MutexLockT< Mutex > lk( m );
+	std::lock_guard< Mutex > lk( m );
 
-	if ( q.empty() )
-	    return ret;
+        if ( q.empty() )
+            return ret;
 
-	ret = std::move( q.front() );
-	q.pop_front();
+        ret = std::move( q.front() );
+        q.pop_front();
 
-	if ( q.empty() )
-	    empty = true;
+        if ( q.empty() )
+            empty = true;
 
-	return ret;
+        return ret;
     }
 
     LockedQueue( const LockedQueue & ) = delete;
