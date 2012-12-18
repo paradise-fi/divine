@@ -4,6 +4,9 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <dbm/fed.h>
+
+typedef dbm::fed_t Federation;
 
 class Clocks {
     unsigned int dim;

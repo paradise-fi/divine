@@ -1520,7 +1520,7 @@ namespace dbm
 
     inline void dbm_t::setEmpty(cindex_t dim)
     {
-        idbmPtr = (idbm_t*) ((dim << 1) | 1);
+        idbmPtr = (idbm_t*)(uintptr_t) ((dim << 1) | 1);
     }
 
     inline void dbm_t::setPtr(idbm_t* ptr)
