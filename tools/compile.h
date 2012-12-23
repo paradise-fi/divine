@@ -6,6 +6,7 @@
 #include <wibble/regexp.h>
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
+#include <wibble/sys/process.h>
 #include "dvecompile.h"
 #include <unistd.h>
 
@@ -23,9 +24,11 @@ extern const char *generator_cesmi_client_h_str;
 extern const char *toolkit_pool_h_str;
 extern const char *toolkit_blob_h_str;
 extern const char *compile_defines_str;
+extern const char *llvm_usr_h_str;
 extern const char *llvm_usr_pthread_h_str;
 extern const char *llvm_usr_pthread_cpp_str;
-extern const char *llvm_usr_h_str;
+extern const char *llvm_usr_cstdlib_h_str;
+extern const char *llvm_usr_cstdlib_cpp_str;
 
 using namespace wibble;
 
@@ -48,11 +51,14 @@ struct Compile {
         exit( 1 );
     }
 
-    static void run( std::string command ) {
+    static void run( std::string command, void (*trap)(void*) = NULL, void *trap_arg = NULL ) {
         int status = system( command.c_str() );
 #ifdef POSIX
-        if ( status != -1 && WEXITSTATUS( status ) != 0 )
+        if ( status != -1 && WEXITSTATUS( status ) != 0 ) {
+            if ( trap )
+                trap( trap_arg );
             die( "Error running external command: " + command );
+        }
 #endif
     }
 
@@ -116,27 +122,72 @@ struct Compile {
 	run ( "rm -f " + cesmi_aux );
     }
 
-    void compileLLVM( std::string in, std::string cflags ) {
-        std::string name( str::basename(in), 0, str::basename(in).rfind( '.' ) );
+    struct FilePath {
+        // filepath = joinpath(abspath, basename)
+        std::string basename;
+        std::string abspath;
+    };
+
+    static void _cleanupLLVM( void* _tmp_dir ) {
+        FilePath* tmp_dir = reinterpret_cast< FilePath* >( _tmp_dir );
+        chdir( tmp_dir->abspath.c_str() );
+        run ( "rm -rf " + tmp_dir->basename );
+    }
+
+    void compileLLVM( std::string in, std::string cflags ) {       
+        // create temporary directory to compile in
         char tmp_dir_template[] = "__tmpXXXXXX";
-        std::string tmp_dir = mkdtemp(tmp_dir_template);
-        std::string usr_h = tmp_dir + "/usr.h";
-        std::string pthread_h = tmp_dir + "/pthread.h";
-        std::string pthread_cpp = tmp_dir + "/pthread.cpp";
-        std::string pthread_bc = tmp_dir + "/pthread.bc";
-        std::string unlinked = tmp_dir + "/_" + name + ".bc";
-        std::string linked = name + ".bc";
+        FilePath tmp_dir;
+        tmp_dir.abspath = process::getcwd();
+        tmp_dir.basename = mkdtemp( tmp_dir_template );
 
-        fs::writeFile(usr_h, llvm_usr_h_str);
-        fs::writeFile(pthread_h, llvm_usr_pthread_h_str);
-        fs::writeFile(pthread_cpp, llvm_usr_pthread_cpp_str);
+        // input
+        std::string in_basename ( str::basename(in), 0, str::basename(in).rfind( '.' ) );
+          // user-space
+        std::string usr_h = "usr.h";
+          // pthread
+        std::string pthread_h = "pthread.h";
+        std::string pthread_cpp = "pthread.cpp";
+        std::string pthread_bc = "pthread.bc";
+          // cstdlib
+        std::string cstdlib_h = "cstdlib"; // note: no extension
+        std::string cstdlib_cpp = "cstdlib.cpp";
+        std::string cstdlib_bc = "cstdlib.bc";
 
-        std::string flags = "-c -emit-llvm -g -I'" + tmp_dir + "' " + cflags;
-        runCompiler("clang", pthread_cpp, pthread_bc, flags);
-        runCompiler("clang", in, unlinked, flags);
-        run("llvm-link " + unlinked + " " + pthread_bc + " -o " + linked);
+        // output
+        std::string unlinked = str::joinpath( tmp_dir.basename, "_" + in_basename + ".bc" );
+        std::string linked = in_basename + ".bc";
 
-        run ( "rm -rf " + tmp_dir );
+        // prepare cleanup
+        void (*trap)(void*) = _cleanupLLVM;
+        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
+
+        // enter tmp directory
+        chdir( tmp_dir.basename.c_str() );
+
+        // copy library files from memory to the directory
+        fs::writeFile ( usr_h, llvm_usr_h_str );
+        fs::writeFile ( pthread_h, llvm_usr_pthread_h_str );
+        fs::writeFile ( pthread_cpp, llvm_usr_pthread_cpp_str );
+        fs::writeFile ( cstdlib_h, llvm_usr_cstdlib_h_str );
+        fs::writeFile ( cstdlib_cpp, llvm_usr_cstdlib_cpp_str );
+
+        // compile
+          // libraries
+        std::string flags = "-c -emit-llvm -g " + cflags;
+        run ( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_bc, trap, trap_arg );
+        run ( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_bc, trap, trap_arg );
+          // leave tmp directory
+        chdir( tmp_dir.abspath.c_str() );
+          // input file
+        run ( "clang " + flags + " -I'" + tmp_dir.basename + "' " + in + " -o " + unlinked, trap, trap_arg );
+
+        // link
+        run ( "llvm-link " + unlinked + " " + str::joinpath( tmp_dir.basename, cstdlib_bc ) + " " +
+              str::joinpath( tmp_dir.basename, pthread_bc ) + " -o " + linked, trap, trap_arg );
+
+        // cleanup
+        trap( trap_arg );
     }
 
     void main() {
@@ -149,13 +200,13 @@ struct Compile {
             compileMurphi( input );
         else if ( ( str::endsWith( input, ".c" ) || str::endsWith( input, ".cpp" ) ||
                     str::endsWith( input, ".cc" ) || str::endsWith( input, ".C" )) )
-            if (o_cesmi->boolValue())
+            if ( o_cesmi->boolValue() )
                 compileCESMI( input );
-            else if (o_llvm->boolValue())
+            else if ( o_llvm->boolValue() )
                 compileLLVM( input, o_cflags->stringValue() );
             else {
-                std::cerr << "Do not know wheter to process input file as of CESMI type ";
-                std::cerr <<  "(use --cesmi or -c) or generate output file in LLVM bytecode format ";
+                std::cerr << "Do not know whether to process input file as of CESMI type ";
+                std::cerr << "(use --cesmi or -c) or generate output file in LLVM bytecode format ";
                 std::cerr << "(use --llvm or -l)." << std::endl;
             }
         else {

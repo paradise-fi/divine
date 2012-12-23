@@ -31,7 +31,8 @@ endif( COIN )
 
 if( LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp )
-    STRING(REPLACE "llvm/usr-pthread.cpp" "" SRC_LLVM "${SRC_LLVM}")
+    STRING( REPLACE "llvm/usr-pthread.cpp" "" SRC_LLVM "${SRC_LLVM}" )
+    STRING( REPLACE "llvm/usr-cstdlib.cpp" "" SRC_LLVM "${SRC_LLVM}" )
     file( GLOB llvmtesth llvm/*.test.h )
 endif( LLVM )
 
@@ -90,6 +91,8 @@ stringify( toolkit/blob.h )
 stringify( llvm/usr.h )
 stringify( llvm/usr-pthread.h )
 stringify( llvm/usr-pthread.cpp )
+stringify( llvm/usr-cstdlib.h )
+stringify( llvm/usr-cstdlib.cpp )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
@@ -100,7 +103,8 @@ add_library( libdivine STATIC
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
     toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp
-    llvm_usr_h_str.cpp llvm_usr_pthread_h_str.cpp llvm_usr_pthread_cpp_str.cpp)
+    llvm_usr_h_str.cpp llvm_usr_pthread_h_str.cpp llvm_usr_pthread_cpp_str.cpp
+    llvm_usr_cstdlib_cpp_str.cpp llvm_usr_cstdlib_h_str.cpp )
 
 add_library( libdivine-instances STATIC ${SRC_instances} )
 
