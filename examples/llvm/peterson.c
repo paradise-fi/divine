@@ -3,15 +3,21 @@
  * compiled with -DBUG, the algorithm is incorrect but runs without tripping
  * assertions more often than not.
  *
- * verify with:
- *  $ clang -DDIVINE -c -emit-llvm [flags] -o peterson.bc peterson.c
- *  $ divine reachability peterson.bc --ignore-deadlocks
- * execute with:
- *  $ clang [flags] -o peterson.exe peterson.c
+ * Verify with:
+ *  $ divine compile --llvm [--cflags=" < flags > "] peterson.c
+ *  $ divine reachability peterson.bc --ignore-deadlocks [-d]
+ * Execute with:
+ *  $ clang [ < flags > ] -lpthread -o peterson.exe peterson.c
  *  $ ./peterson.exe
  */
 
-#include "divine-llvm.h"
+#include <pthread.h>
+#include <cstdlib>
+
+// For native execution (in future we will provide cassert).
+#ifndef DIVINE
+#include <cassert>
+#endif
 
 struct state {
     int flag[2];
@@ -27,9 +33,9 @@ struct p {
 
 enum AP { wait1, critical1, wait2, critical2 };
 
-LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
+// LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
 /* TODO: progress fails due to lack of fairness */
-LTL(exclusion, G(!(critical1 && critical2))); // OK
+// LTL(exclusion, G(!(critical1 && critical2))); // OK
 
 void * thread( void *in ) __attribute__((noinline));
 void * thread( void *in ) {
@@ -41,11 +47,11 @@ void * thread( void *in ) {
 #endif
     p->s->turn = 1 - p->id;
 
-    ap( p->id ? wait1 : wait2 );
+    // ap( p->id ? wait1 : wait2 );
     while ( p->s->flag[1 - p->id] == 1 && p->s->turn == 1 - p->id ) ;
 
     p->s->in_critical[p->id] = 1;
-    ap( p->id ? critical1 : critical2 );
+    // ap( p->id ? critical1 : critical2 );
     assert( !p->s->in_critical[1 - p->id] );
     p->s->in_critical[p->id] = 0;
 

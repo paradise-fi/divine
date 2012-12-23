@@ -4,30 +4,31 @@
  * This program is a simple test case for the divine intra-thread fifo, the
  * tool's main shared-memory communication primitive. We fire off two threads,
  * a writer and a reader. The writer pushes 3 values, while the reader checks
- * that the values written match the values read, that the fifo is empty /
- * non-empty at the right places &c. Compiling with -DBUG turns off "volatile"
- * and with -O2 leads to assertion failures.
+ * that the values written match the values read, that the fifo is
+ * empty/non-empty at the right places &c.
  *
- * Compile with: clang -c -emit-llvm -O2 [-DBUG] -o fifo.ll fifo.cpp
- *
- * NOTE: With -O0, the state space is probably too big to fit into memory of an
- * average modern machine. The -O2 version without -DBUG has 18086 states,
- * while the buggy one has 50446.
+ * Verify with:
+ *  $ divine compile --llvm [--cflags=" < flags > "] fifo.cpp
+ *  $ divine reachability fifo.bc --ignore-deadlocks [-d]
+ * Execute with:
+ *  $ clang [ < flags > ] -lpthread -o fifo.exe fifo.cpp
+ *  $ ./fifo.exe
  */
-
-#ifdef BUG
-#define volatile
-#endif
 
 /*
- * Declarations of the divine builtins. Required in C++. Eventually should be
- * provided in a header form by divine. Such a header should also provide
- * new/delete based on the builtin malloc/free. When that is done, it should be
- * possible to #include unmodified fifo.h here. We substitute malloc/free
- * manually for now.
+ * Future versions of DiVinE should also provide new/delete based on the builtin
+ * malloc/free. When that is done, it should be possible to #include unmodified
+ * fifo.h here. We substitute malloc/free manually for now.
  */
 
-#include "divine-llvm.h"
+#include <pthread.h>
+#include <cstdlib>
+
+// For native execution (in future we will provide cassert).
+#ifndef DIVINE
+#include <cassert>
+#endif
+
 const int cacheLine = 64;
 
 /**
@@ -91,7 +92,7 @@ public:
     }
 
     Node *mkNode() {
-        Node *n = (Node *)malloc_guaranteed(sizeof (Node));
+        Node *n = (Node *)malloc(sizeof (Node));
         n->read = n->write = n->buffer;
         n->next = 0;
         return n;
@@ -174,7 +175,7 @@ void * reader( void * in ) {
          assert( i == j );
          assert( !f->empty() );
          f->pop();
-	 if (i<2) assert (!f->empty() ); //should assert non-deterministically
+	 // if (i<2) assert (!f->empty() ); //should assert non-deterministically
    }
    assert( f->empty() );
    while ( true );
@@ -183,7 +184,7 @@ void * reader( void * in ) {
 
 
 void * writer( void * in) {
-  Fifo< int > * volatile f = (Fifo< int >*) in;
+   Fifo< int > * volatile f = (Fifo< int >*) in;
    for ( int i = 0; i < 3; ++i )
          f->push( i );
    while( true );

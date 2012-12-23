@@ -20,16 +20,26 @@
  * Thus at least two consumers and two items to process are needed to have
  * assertion violated in some run of the program.
  *
- * Current implementation of conditional variables in DiVinE - LLVM interpreter
- * also takes into consideration that pthread_cond_signal can send signal to more
- * than one thread (as it is defined in the POSIX specifications).
+ * Current implementation of conditional variables in Pthread library
+ * provided within DiVinE also takes into consideration that pthread_cond_signal
+ * can send signal to more than one thread (as it is defined in the POSIX specifications).
  * However spurious wakeup is not yet implemented.
+ *
+ * Verify with:
+ *  $ divine compile --llvm [--cflags=" < flags > "] pthread_cond_variables.c
+ *  $ divine reachability pthread_cond_variables.bc --ignore-deadlocks [-d]
+ * Execute with:
+ *  $ clang [ < flags > ] -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
+ *  $ ./pthread_cond_variables.exe
  */
 
-#include "divine-llvm.h"
+#include <pthread.h>
+#include <cstdlib>
 
+// For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include "unistd.h"
+#include <cassert>
+#include <unistd.h>
 #endif
 
 #define NUM_CONSUMERS         2
@@ -41,91 +51,99 @@ volatile int dequeued = 0;
 pthread_mutex_t queue_mutex;
 pthread_cond_t queue_emptiness_cv;
 
-void *consumer(void *arg)
+void *consumer( void *arg )
 {
-    int id = (int) arg;
-    while (1) {
+    (void) arg;
+    while ( 1 ) {
 
-        pthread_mutex_lock(&queue_mutex);
+        pthread_mutex_lock( &queue_mutex );
         
-        #ifdef BUG
-        if (dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0) {
-        #else // correct
-        while (dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0) {
-        #endif
+#ifdef BUG
+        if ( dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0 ) {
+#else // correct
+        while ( dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0 ) {
+#endif
+#ifdef TRACE
             trace( "Consumer ID = %d is going to sleep.", id );
-            pthread_cond_wait(&queue_emptiness_cv, &queue_mutex);
+#endif
+            pthread_cond_wait( &queue_emptiness_cv, &queue_mutex );
+#ifdef TRACE
             trace( "Consumer ID = %d was woken up.", id );
+#endif
         }
 
-        if (dequeued == NUM_ITEMS_TO_PROCESS) {
-            pthread_mutex_unlock(&queue_mutex);
+        if ( dequeued == NUM_ITEMS_TO_PROCESS ) {
+            pthread_mutex_unlock( &queue_mutex );
             break;
         } 
 
         // dequeue
-        assert(enqueued>0);
+        assert( enqueued > 0 ); // fails if macro BUG is defined
         ++dequeued;
         --enqueued;
+#ifdef TRACE
         trace( "Consumer ID = %d dequeued an item.", id );
+#endif
 
-        pthread_mutex_unlock(&queue_mutex);
+        pthread_mutex_unlock( &queue_mutex );
 
         // here the thread would do some work with dequeued item (in his local space)
-        #ifndef DIVINE
-        sleep(1);
-        #endif
+#ifndef DIVINE
+        sleep( 1 );
+#endif
     }
     return NULL;
 }
 
-int main (void)
+int main( void )
 {
   int i;
-  pthread_t threads[NUM_CONSUMERS];
+  pthread_t * threads = ( pthread_t * )( malloc( sizeof( pthread_t ) * NUM_CONSUMERS ) );
+  if ( !threads )
+      return 1;
 
   // initialize mutex and condition variable objects
-  pthread_mutex_init(&queue_mutex, NULL);
-  pthread_cond_init (&queue_emptiness_cv, NULL);
+  pthread_mutex_init( &queue_mutex, NULL );
+  pthread_cond_init ( &queue_emptiness_cv, NULL );
 
   // create and start all consumers
-  for (i=0; i<NUM_CONSUMERS; i++) {
-      pthread_create(&threads[i], 0, consumer, (void*)(i+1));
+  for ( i=0; i<NUM_CONSUMERS; i++ ) {
+      pthread_create( &threads[i], 0, consumer, ( void* )( i+1 ) );
   }
 
   // producer:
-  for (i=0; i<NUM_ITEMS_TO_PROCESS; i++) {
+  for ( i=0; i<NUM_ITEMS_TO_PROCESS; i++ ) {
       // here the main thread would produce some item to process
-      #ifndef DIVINE
+#ifndef DIVINE
       sleep(1);
-      #endif
+#endif
 
-      pthread_mutex_lock(&queue_mutex);
+      pthread_mutex_lock( &queue_mutex );
 
       //enqueue
       enqueued++;
 
       // wake up at least one consumer
-      pthread_cond_signal(&queue_emptiness_cv);
+      pthread_cond_signal( &queue_emptiness_cv );
 
-      pthread_mutex_unlock(&queue_mutex);
+      pthread_mutex_unlock( &queue_mutex );
   }
 
   // when it is finnished, wake up all consumers
-  pthread_cond_broadcast(&queue_emptiness_cv);
+  pthread_cond_broadcast( &queue_emptiness_cv );
 
   // wait for all threads to complete
-  for (i=0; i<NUM_CONSUMERS; i++) {
-      pthread_join(threads[i], NULL);
+  for ( i=0; i<NUM_CONSUMERS; i++ ) {
+      pthread_join( threads[i], NULL );
   }
 
-  assert(enqueued == 0);
-  assert(dequeued == NUM_ITEMS_TO_PROCESS);  
+  assert( enqueued == 0 );
+  assert( dequeued == NUM_ITEMS_TO_PROCESS );
 
   // clean up and exit
-  pthread_mutex_destroy(&queue_mutex);
-  pthread_cond_destroy(&queue_emptiness_cv);
-  pthread_exit(NULL);
+  pthread_mutex_destroy( &queue_mutex );
+  pthread_cond_destroy ( &queue_emptiness_cv );
+  free( threads );
 
   return 0;
 }
