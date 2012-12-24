@@ -5,9 +5,7 @@
 #include <divine/algorithm/por-c3.h>
 #include <divine/graph/fairness.h>
 
-#include <divine/generator/legacy.h>
 #include <divine/generator/compact.h>
-
 #include <divine/generator/dve.h>
 #include <divine/generator/llvm.h>
 #include <divine/generator/coin.h>
@@ -134,28 +132,8 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         }
 #endif
 
-#if defined(O_LEGACY) && !defined(O_SMALL)
-        if ( meta.algorithm.fairness ) {
-            if ( por )
-                std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-            return makeAlgorithm< A, graph::FairGraph< generator::LegacyDve > >( meta );
-        }
-        if ( por ) {
-            return makeAlgorithmPOR< A, generator::LegacyDve >( meta );
-        } else
-#endif
-        {
 #if defined(O_DVE)
-            return makeAlgorithmN< A, generator::Dve >( meta );
-#endif
-#if defined(O_LEGACY)
-            return makeAlgorithmN< A, generator::LegacyDve >( meta );
-#endif
-        }
-#if defined(O_LEGACY) && !defined(O_SMALL)
-    } else if ( wibble::str::endsWith( meta.input.model, ".probdve" ) ) {
-        meta.input.modelType = "ProbDVE";
-        return makeAlgorithmN< A, generator::LegacyProbDve >( meta );
+        return makeAlgorithmN< A, generator::Dve >( meta );
 #endif
     } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
         meta.input.modelType = "Compact";
@@ -187,11 +165,6 @@ algorithm::Algorithm *selectGraph( Meta &meta )
         return NULL;
 #endif
 
-#if defined(O_LEGACY) && !defined(O_SMALL)
-    } else if ( wibble::str::endsWith( meta.input.model, ".b" ) ) {
-        meta.input.modelType = "NIPS";
-        return makeAlgorithmN< A, generator::LegacyBymoc >( meta );
-#endif
 #if defined(O_TIMED)
 	} else if ( wibble::str::endsWith( meta.input.model, ".xml" ) ) {
 		meta.input.modelType = "Timed";
