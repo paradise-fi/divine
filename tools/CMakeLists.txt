@@ -35,7 +35,6 @@ if( NOT WIN32 )
     target_link_libraries( divine rt )
 endif()
 
-add_executable( divine.simulate simulator.cpp )
 add_executable( divine.simple simple.cpp )
 
 if( LTL2DSTAR )
@@ -49,15 +48,7 @@ else( WIN32 )
 endif( WIN32 )
 
 install( TARGETS divine
-                 divine.simulate
          DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
-
-if( NOT WIN32 )
-  # This code uses raw pthreads, so no-go on win32.
-  add_executable( divine.probabilistic probabilistic.cpp )
-  target_link_libraries( divine.probabilistic lpsolve )
-  install( TARGETS divine.probabilistic DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
-endif( NOT WIN32 )
 
 set( PROMELA_JARS "BUNDLE" CACHE STRING "Either path to the ProMeLa/NIPS JAR files or BUNDLE" )
 
