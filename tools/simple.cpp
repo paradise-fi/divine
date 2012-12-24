@@ -5,7 +5,7 @@
 #include <wibble/sys/fs.h>
 
 #include <divine/utility/meta.h>
-#include <divine/generator/legacy.h>
+#include <divine/generator/dve.h>
 #include <divine/algorithm/simple.h>
 #include <divine/utility/report.h>
 
@@ -38,13 +38,13 @@ struct Main {
         Report report;
 
         meta.algorithm.name = "Simple Reachability";
-        meta.input.modelType = "Legacy DVE";
+        meta.input.modelType = "DVE";
 
         try {
             Mpi mpi;
             struct Setup : SetupT< Topology< std::pair< Blob, Blob > >::Mpi > {
                 using Statistics = NoStatistics;
-                using Graph = generator::LegacyDve;
+                using Graph = generator::Dve;
                 using Store = visitor::PartitionedStore< Graph, algorithm::Hasher >;
             };
             algorithm::Simple< Setup > alg( meta, true );
