@@ -32,7 +32,6 @@ option( TIMED "include timed automata interpreter in the build" ON )
 option( LTL3BA "use ltl3ba for LTL to BA translation" ON )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
-option( LEGACY "include the legacy DVE and BYMOC interpreters" ON )
 option( HASH_COMPACTION "enable Hash Compaction" ON )
 
 option( MANUAL "build pdf/html manual" ON )
@@ -134,10 +133,6 @@ if( DVE )
   else()
     message( "-- WARNING: C++11 unrestricted unions not available. Disabling DVE support." )
   endif()
-endif()
-
-if( LEGACY )
-    add_definitions( -DO_LEGACY )
 endif()
 
 if( HASH_COMPACTION )
