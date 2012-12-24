@@ -29,8 +29,8 @@ struct Base {
     bool isAccepting( Node s ) { return false; }
 
     // for multi-set acceptance conditions (Rabin, Streett, ...)
-    bool isInAccepting( Node s, const size_int_t acc_group ) { return false; }
-    bool isInRejecting( Node s, const size_int_t acc_group ) { return false; }
+    bool isInAccepting( Node s, int acc_group ) { return false; }
+    bool isInRejecting( Node s, int acc_group ) { return false; }
     unsigned acceptingGroupCount() { return 0; }
 
     // HACK: Inform the graph of the compute domain geometry, required by the
@@ -101,9 +101,9 @@ struct Transform {
 
     PropertyType propertyType() { return base().propertyType(); }
 
-    bool isInAccepting( Node s, const size_int_t acc_group ) {
+    bool isInAccepting( Node s, int acc_group ) {
         return base().isInAccepting( s, acc_group ); }
-    bool isInRejecting( Node s, const size_int_t acc_group ) {
+    bool isInRejecting( Node s, int acc_group ) {
         return base().isInRejecting( s, acc_group ); }
     unsigned acceptingGroupCount() { return base().acceptingGroupCount(); }
 

@@ -293,7 +293,7 @@ struct Compact : public Common< Blob > {
      * Is state s in the acc_group set of the acceptance condition or
      * in the accepting set of the acc_group pair?
      */
-    bool isInAccepting( Node s, const size_int_t acc_group ) {
+    bool isInAccepting( Node s, int acc_group ) {
         assert( initialized );
 
         assert( acPropertyType != AC_None );
@@ -308,7 +308,7 @@ struct Compact : public Common< Blob > {
     /**
      * Is state s in the acc_group set of the acceptance condition?
      */
-    bool isInRejecting( Node s, const size_int_t acc_group ) {
+    bool isInRejecting( Node s, int acc_group ) {
         assert( initialized );
 
         assert( acPropertyType != AC_None );

@@ -76,7 +76,7 @@ struct FairGraph : NonPORGraph< G > {
         return extension( s ).copy == 0 && this->base().isAccepting( s );
     }
 
-    bool isInAccepting( Node s, const size_int_t acc_group ) {
+    bool isInAccepting( Node s, int acc_group ) {
         return extension( s ).copy == 0 && this->base().isInAccepting( s, acc_group );
     }
 
