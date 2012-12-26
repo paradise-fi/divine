@@ -29,16 +29,16 @@ enum LTL_syntax_el_t {ltl_box, ltl_diamond, ltl_not, ltl_next, ltl_until,
 
 class LTL_parse_t {
 private:
-	string formule;
+	std::string formule;
         
 	/* helping method */
-	LTL_syntax_el_t get_syntax_el(int& i, string& pred);
+	LTL_syntax_el_t get_syntax_el(int& i, std::string& pred);
 
 public:
 	LTL_parse_t(); // constructor
 	LTL_parse_t(const LTL_parse_t& a); // copy constructor
 	/* constructor with reading string as a formula */
-	LTL_parse_t(string& s);
+	LTL_parse_t(std::string& s);
 	~LTL_parse_t(); // destructor
 
 	/* syntax checking of readed formula and translation to instance
@@ -46,7 +46,7 @@ public:
 	bool syntax_check(LTL_formul_t& F);
 
 	/* reading formula from string */
-	void nacti(string& s);
+	void nacti(std::string& s);
 
 	/* Nacteni formule ze souboru v nasledujicim formatu:
 		* radek zacinajici znakem '#' je komentar

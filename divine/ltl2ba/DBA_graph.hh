@@ -22,10 +22,10 @@
 namespace divine {
 #endif //DOXYGEN_PROCESSING
 
-typedef pair<set<int>,set<int> > set_pair_t;
-typedef map<int, KS_BA_node_t*> node_list_t;
-typedef map<set_pair_t,int> set_pair_list_t;
-typedef map<int,int> pure_state_to_state_t;
+typedef std::pair<std::set<int>,std::set<int> > set_pair_t;
+typedef std::map<int, KS_BA_node_t*> node_list_t;
+typedef std::map<set_pair_t,int> set_pair_list_t;
+typedef std::map<int,int> pure_state_to_state_t;
 
 struct DBA_node_t;
 class BA_opt_graph_t;
@@ -38,14 +38,14 @@ struct DBA_trans_t {
 struct DBA_node_t : public KS_BA_node_t {
        set_pair_t sets;
        int pure_name;
-       list<DBA_trans_t> adj;
+       std::list<DBA_trans_t> adj;
 
      
        DBA_node_t(int N,set_pair_t S);
        DBA_node_t(int N,int M);
 	virtual ~DBA_node_t();
 
-	virtual list<KS_BA_node_t*> get_adj() const;
+	virtual std::list<KS_BA_node_t*> get_adj() const;
        
 };
 
@@ -65,10 +65,10 @@ protected:
         void clear();
        
         /* adding node to automaton */
-        pair<DBA_node_t*,bool> add_node(set_pair_t S);
-        pair<DBA_node_t*,bool> add_node_s(set_pair_t S);
+        std::pair<DBA_node_t*,bool> add_node(set_pair_t S);
+        std::pair<DBA_node_t*,bool> add_node_s(set_pair_t S);
         
-        pair<DBA_node_t*,bool> add_pure_node(int N);
+        std::pair<DBA_node_t*,bool> add_pure_node(int N);
 	
 	/* adding transition *p_from --(t_label)--> *p_to */
 	void add_trans(DBA_node_t *p_from, DBA_node_t *p_to,
@@ -76,7 +76,7 @@ protected:
 
 	
 	
-        list<DBA_trans_t>& get_node_adj(KS_BA_node_t* p_N);
+        std::list<DBA_trans_t>& get_node_adj(KS_BA_node_t* p_N);
 
 
 	/* writing graph on output (in propriet format) */
@@ -87,13 +87,13 @@ protected:
 
         virtual KS_BA_node_t* add_node(int name);
         virtual void transpose(KS_BA_graph_t& Gt) const;
-        virtual void SCC(list<list<int> >& SCC_list);
+        virtual void SCC(std::list<std::list<int> >& SCC_list);
 
         //void determinization(BA_opt_graph_t G);
         
         BA_opt_graph_t transform();
               
-        list<BA_trans_t> Complete(list<BA_trans_t> trans);    
+        std::list<BA_trans_t> Complete(std::list<BA_trans_t> trans);    
         
         void semideterminization(BA_opt_graph_t G);
 

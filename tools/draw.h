@@ -124,12 +124,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
     void dotNode( Node n, bool dashed = false ) {
         stringstream str;
-
-        if ( bfs && extension( n ).distance > currentdist ) {
-            str << "} { rank = same; ";
-            currentdist = extension( n ).distance;
-        }
-
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
@@ -152,7 +146,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void dotEdge( Node f, Node t, Label a, std::string color = "") {
-        stringstream str;
+        std::stringstream str;
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
 

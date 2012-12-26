@@ -97,7 +97,7 @@ void Buchi::buildEmpty() {
     nodes.resize( 1 );
     nodes[ 0 ].isAcc = false;
     nodes[ 0 ].tr.resize( 1 );
-    nodes[ 0 ].tr[ 0 ] = make_pair( 0, 0 );
+    nodes[ 0 ].tr[ 0 ] = std::make_pair( 0, 0 );
     initId = 0;
 }
 

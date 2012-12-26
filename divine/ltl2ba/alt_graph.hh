@@ -35,7 +35,7 @@ struct ALT_vwaa_node_t;
 struct ALT_vwaa_trans_t {
 	LTL_label_t t_label; /* conjunction of literals;
 		empty conjunction = true */
-	list<ALT_vwaa_node_t*> target;
+	std::list<ALT_vwaa_node_t*> target;
 
 	void clear();
 	void op_times(ALT_vwaa_trans_t& T1, ALT_vwaa_trans_t& T2);
@@ -48,7 +48,7 @@ struct ALT_vwaa_trans_t {
 struct ALT_vwaa_node_t {
 	int name; // number of node
 	LTL_formul_t label; // name of node
-	list<ALT_vwaa_trans_t> adj;
+	std::list<ALT_vwaa_trans_t> adj;
 
 	bool pom; // helping variable
 
@@ -68,16 +68,16 @@ struct ALT_gba_trans_t {
 /* node of GBA */
 struct ALT_gba_node_t {
 	int name;
-	list<ALT_vwaa_node_t*> node_label; // conjuction of states
-	list<ALT_gba_trans_t*> adj;
+	std::list<ALT_vwaa_node_t*> node_label; // conjuction of states
+	std::list<ALT_gba_trans_t*> adj;
 
 	ALT_gba_node_t() { }
 	~ALT_gba_node_t(); // also delete transitions
 };
 
-typedef pair<list<list<ALT_vwaa_node_t*> >, ALT_gba_node_t*>
+typedef std::pair<std::list<std::list<ALT_vwaa_node_t*> >, ALT_gba_node_t*>
 ALT_eq_gba_nodes_t;
-typedef list< pair<list<list<ALT_vwaa_node_t*> >, ALT_gba_node_t*> >
+typedef std::list< std::pair<std::list<std::list<ALT_vwaa_node_t*> >, ALT_gba_node_t*> >
 ALT_list_eq_gba_nodes_t;
 
 /* Buchi automaton */
@@ -95,27 +95,27 @@ struct ALT_ba_node_t {
 	int name;
 	int citac;
 	ALT_gba_node_t *p_old;
-	list<ALT_ba_trans_t> adj;
+	std::list<ALT_ba_trans_t> adj;
 };
 
 /* main class */
 class ALT_graph_t {
 private:
 	/* alternating automaton */
-	map<int, ALT_vwaa_node_t*> vwaa_node_list;
-	list<list<ALT_vwaa_node_t*> > vwaa_init_nodes;
-	list<ALT_vwaa_node_t*> vwaa_accept_nodes;
+	std::map<int, ALT_vwaa_node_t*> vwaa_node_list;
+	std::list<std::list<ALT_vwaa_node_t*> > vwaa_init_nodes;
+	std::list<ALT_vwaa_node_t*> vwaa_accept_nodes;
 
 	/* GBA */
-	list<ALT_gba_node_t*> gba_node_list;
-	list<list<ALT_gba_trans_t*> > acc_set;
-	list<ALT_gba_node_t*> gba_init_nodes;
+	std::list<ALT_gba_node_t*> gba_node_list;
+	std::list<std::list<ALT_gba_trans_t*> > acc_set;
+	std::list<ALT_gba_node_t*> gba_init_nodes;
 	/* equivalent nodes */
 	ALT_list_eq_gba_nodes_t gba_equiv_nodes;
 
 	/* Buchi automaton */
-	list<ALT_ba_node_t*> ba_node_list;
-	list<ALT_ba_node_t*> ba_init_nodes, ba_accept_nodes;
+	std::list<ALT_ba_node_t*> ba_node_list;
+	std::list<ALT_ba_node_t*> ba_init_nodes, ba_accept_nodes;
 
 	int timer;
 	bool simp_GBA; // simplifying GBA (on-the-fly)
@@ -135,20 +135,20 @@ private:
 	ALT_vwaa_node_t* add_vwaa_node(const LTL_formul_t& F, int n);
 	ALT_vwaa_node_t* add_vwaa_node(const LTL_formul_t& F);
 
-	void op_times(list<ALT_vwaa_trans_t>& J1,
-		list<ALT_vwaa_trans_t>& J2,
-		list<ALT_vwaa_trans_t>& JV);
-	void op_sum(list<ALT_vwaa_trans_t>& J1,
-		list<ALT_vwaa_trans_t>& J2,
-		list<ALT_vwaa_trans_t>& JV);
-	void op_over(LTL_formul_t& F, list<list<ALT_vwaa_node_t*> >& LV);
+	void op_times(std::list<ALT_vwaa_trans_t>& J1,
+		std::list<ALT_vwaa_trans_t>& J2,
+		std::list<ALT_vwaa_trans_t>& JV);
+	void op_sum(std::list<ALT_vwaa_trans_t>& J1,
+		std::list<ALT_vwaa_trans_t>& J2,
+		std::list<ALT_vwaa_trans_t>& JV);
+	void op_over(LTL_formul_t& F, std::list<std::list<ALT_vwaa_node_t*> >& LV);
 
-	void mkdelta(ALT_vwaa_node_t *p_N, list<ALT_vwaa_trans_t>& LV);
-	void mkDELTA(LTL_formul_t& F, list<ALT_vwaa_trans_t>& LV);
+	void mkdelta(ALT_vwaa_node_t *p_N, std::list<ALT_vwaa_trans_t>& LV);
+	void mkDELTA(LTL_formul_t& F, std::list<ALT_vwaa_trans_t>& LV);
 
 	/* methods of  GBA */
 	ALT_gba_node_t*
-		find_gba_node(const list<ALT_vwaa_node_t*>& node_label);
+		find_gba_node(const std::list<ALT_vwaa_node_t*>& node_label);
 
 	bool less_eq(ALT_vwaa_trans_t& T1, ALT_vwaa_trans_t& T2);
 	bool is_acc_trans(ALT_vwaa_trans_t& T, ALT_vwaa_node_t *p_ac_N);
@@ -156,11 +156,11 @@ private:
 
 	bool tr_implies(ALT_gba_trans_t *p_T1, ALT_gba_trans_t *p_T2);
 
-	ALT_gba_node_t* mknode(const list<ALT_vwaa_node_t*>& LN, bool& b);
+	ALT_gba_node_t* mknode(const std::list<ALT_vwaa_node_t*>& LN, bool& b);
 		/* create node with LN; if new node - b = 'true';
 		return pointer to the node */
 	void mkdelta(ALT_gba_node_t *p_N,
-		list<ALT_gba_node_t*>& new_nodes);
+		std::list<ALT_gba_node_t*>& new_nodes);
 
 	/* removing redundant transitions from p_N->adj */
 	void simp_gba_trans(ALT_gba_node_t *p_N);
@@ -200,9 +200,9 @@ public:
 	void vypis_BA();
 
 	/* Methods for reading Buchi automaton */
-	list<ALT_ba_node_t*> get_all_BA_nodes() const;
-	list<ALT_ba_node_t*> get_init_BA_nodes() const;
-	list<ALT_ba_node_t*> get_accept_BA_nodes() const;
+	std::list<ALT_ba_node_t*> get_all_BA_nodes() const;
+	std::list<ALT_ba_node_t*> get_init_BA_nodes() const;
+	std::list<ALT_ba_node_t*> get_accept_BA_nodes() const;
 
 	ALT_graph_t& operator=(const ALT_graph_t& G);
 };

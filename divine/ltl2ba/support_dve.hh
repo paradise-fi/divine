@@ -41,20 +41,20 @@ namespace divine {
 L_ltl = list of (unprocessed) LTL formulae
 L_prop = list of at. propositions in LTL formulae
 */
-bool read_ltl_file(std::istream& fr, list<LTL_parse_t>& L_ltl,
-	list<map<string, string> >& L_prop);
+bool read_ltl_file(std::istream& fr, std::list<LTL_parse_t>& L_ltl,
+	std::list<std::map<std::string, std::string> >& L_prop);
 
 /* setings of at. propositions */
-void reg_ltl_at_props(map<string, string> *p_AP);
+void reg_ltl_at_props(std::map<std::string, std::string> *p_AP);
 
 /* 'file_name[.dve]' is DiVinE source file. Automaton will writen to new 
 source file "file_name.prop'n'.dve" */
 #ifndef CC_ONLY_OPT
 /* writing GBA */
-void output_to_file(const ltl_graph_t& G, string file_name, int n = 0);
+void output_to_file(const ltl_graph_t& G, std::string file_name, int n = 0);
 #endif
 
-void output_to_file(const BA_graph_t& G, string file_name, int n = 0);
+void output_to_file(const BA_graph_t& G, std::string file_name, int n = 0);
 
 #ifndef CC_ONLY_OPT
 /* writing GBA */

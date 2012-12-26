@@ -28,18 +28,18 @@ namespace divine {
 
 //typedef list<int> LTL_list_int_t;
 
-typedef set<int> LTL_acc_set_t; // type - set of accept states
+typedef std::set<int> LTL_acc_set_t; // type - set of accept states
 // type - set of set of accept states
-typedef vector<LTL_acc_set_t> LTL_set_acc_set_t; 
+typedef std::vector<LTL_acc_set_t> LTL_set_acc_set_t; 
 
 /* node of Generalized Buchi automaton */
 struct ltl_gba_node_t {
 	int name;
-	set<int> incoming;
-	list<LTL_formul_t> set_new, set_old, set_next;
+	std::set<int> incoming;
+	std::list<LTL_formul_t> set_new, set_old, set_next;
 
-	void get_label(list<LTL_formul_t>& L) const;
-	void get_label(list<LTL_literal_t>& L) const;
+	void get_label(std::list<LTL_formul_t>& L) const;
+	void get_label(std::list<LTL_literal_t>& L) const;
 
 	bool is_initial() const;
 
@@ -59,26 +59,26 @@ struct ltl_ba_node_t {
 	int old_name, citac; // node is pair <old_name, citac (counter)>
 	LTL_label_t n_label;
 	bool initial, accept;
-	list<ltl_ba_node_t*> adj;
+	std::list<ltl_ba_node_t*> adj;
 };
 
 /* main class */
 class ltl_graph_t {
 private:
 	/* GBA */
-	list<ltl_gba_node_t> node_set; // list of nodes of GBA
+	std::list<ltl_gba_node_t> node_set; // list of nodes of GBA
 	LTL_set_acc_set_t set_acc_set; // set of accepting sets
 
 	/* BA */
-	map<int, ltl_ba_node_t*> ba_node_set;
+	std::map<int, ltl_ba_node_t*> ba_node_set;
 
 
 	int timer;
 
 	/* Helping methods for expand() */
-	bool find_gba_node(const list<LTL_formul_t>& old,
-		const list<LTL_formul_t>& next,
-		list<ltl_gba_node_t>::iterator& p_N);
+	bool find_gba_node(const std::list<LTL_formul_t>& old,
+		const std::list<LTL_formul_t>& next,
+		std::list<ltl_gba_node_t>::iterator& p_N);
 
 	/* expansion of node */
 	void expand(ltl_gba_node_t& N);
@@ -116,18 +116,18 @@ public:
 	*/
 
 	/* list of succesors of node */
-	bool get_gba_node_adj(int name, list<int>& L) const;
-	bool get_gba_node_adj(int name, list<ltl_gba_node_t>& L) const;
+	bool get_gba_node_adj(int name, std::list<int>& L) const;
+	bool get_gba_node_adj(int name, std::list<ltl_gba_node_t>& L) const;
 
 	/* node label */
-	bool get_gba_node_label(int name, list<LTL_formul_t>& L) const;
-	bool get_gba_node_label(int name, list<LTL_literal_t>& L) const;
+	bool get_gba_node_label(int name, std::list<LTL_formul_t>& L) const;
+	bool get_gba_node_label(int name, std::list<LTL_literal_t>& L) const;
 
 	bool find_gba_node(int name, ltl_gba_node_t& N) const;
 
 	/* initial nodes of GBA */
-	void get_gba_init_nodes(list<int>& L) const;
-	void get_gba_init_nodes(list<ltl_gba_node_t>& L) const;
+	void get_gba_init_nodes(std::list<int>& L) const;
+	void get_gba_init_nodes(std::list<ltl_gba_node_t>& L) const;
 
 	/* set of accepting sets
 	set_acc_set_t = vector<set<int> >
@@ -135,8 +135,8 @@ public:
 	const LTL_set_acc_set_t& get_gba_set_acc_set() const;
 
 	/* all nodes of GBA */
-	const list<ltl_gba_node_t>& get_all_gba_nodes() const;
-	void get_all_gba_nodes(list<int>& L) const;
+	const std::list<ltl_gba_node_t>& get_all_gba_nodes() const;
+	void get_all_gba_nodes(std::list<int>& L) const;
 
 	/* writing GBA on output */
 	void vypis_GBA(std::ostream& vystup,
@@ -146,13 +146,13 @@ public:
 
 
 	/* initial nodes of BA */
-	list<ltl_ba_node_t*> get_ba_init_nodes() const;
+	std::list<ltl_ba_node_t*> get_ba_init_nodes() const;
 
 	/* accepting nodes of BA */
-	list<ltl_ba_node_t*> get_ba_accept_nodes() const;
+	std::list<ltl_ba_node_t*> get_ba_accept_nodes() const;
 
 	/* all nodes of BA */
-	const map<int, ltl_ba_node_t*>& get_all_ba_nodes() const;
+	const std::map<int, ltl_ba_node_t*>& get_all_ba_nodes() const;
 
 
 	/* writing BA on output */

@@ -141,7 +141,7 @@ struct Combine {
         LTL_parse_t ltlParse( ltl );
         LTL_formul_t ltlFormula;
         if ( !ltlParse.syntax_check( ltlFormula ) ) {
-            std::cerr << "Syntax error in LTL formula: " << ltl << endl;
+            std::cerr << "Syntax error in LTL formula: " << ltl << std::endl;
             return "";
         }
         ltlFormula = ltlFormula.negace();
@@ -164,7 +164,7 @@ struct Combine {
         LTL_parse_t ltlParse( ltl );
         LTL_formul_t ltlFormula, ltlFormulaNeg;
         if ( !ltlParse.syntax_check( ltlFormula ) ) {
-            std::cerr << "Syntax error in LTL formula: " << ltl << endl;
+            std::cerr << "Syntax error in LTL formula: " << ltl << std::endl;
             return "";
         }
         ltlFormulaNeg = ltlFormula.negace();

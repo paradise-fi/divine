@@ -23,8 +23,6 @@ namespace divine {
 #define BA_WEAK 2
 #define BA_TERMINAL 3
 
-//using namespace std;
-
 struct BA_node_t;
 
 /* transition of Buchi automaton */
@@ -35,14 +33,14 @@ struct BA_trans_t {
 
 /* node/state of Buchi automaton */
 struct BA_node_t : public KS_BA_node_t {
-	list<BA_trans_t> adj;
+	std::list<BA_trans_t> adj;
        
 	BA_node_t();
 	BA_node_t(const BA_node_t& N); // do not copy 'adj'
 	BA_node_t(int N);
 	virtual ~BA_node_t();
 
-	virtual list<KS_BA_node_t*> get_adj() const;
+	virtual std::list<KS_BA_node_t*> get_adj() const;
 };
 
 /* Buchi automaton */
@@ -79,9 +77,9 @@ public:
 	virtual bool del_node(KS_BA_node_t *p_N);
 
 	/* get list of succesors (transitions) */
-	const list<BA_trans_t>&
+	const std::list<BA_trans_t>&
 		get_node_adj(const KS_BA_node_t* p_N) const;
-	list<BA_trans_t>& get_node_adj(KS_BA_node_t* p_N);
+	std::list<BA_trans_t>& get_node_adj(KS_BA_node_t* p_N);
 
 	BA_graph_t& operator=(const BA_graph_t& G);
 
@@ -92,14 +90,14 @@ public:
 	virtual void transpose(KS_BA_graph_t& Gt) const;
 
 	/* strongly conected components */
-	virtual void SCC(list<list<int> >& SCC_list);
+	virtual void SCC(std::list<std::list<int> >& SCC_list);
 
 	/* writing graph on output (in propriet format) */
 	virtual void vypis(std::ostream& vystup,
 		bool strict_output = false) const;
 	virtual void vypis(bool strict_output = false) const;
 
-        list<BA_trans_t> Complete(list<BA_trans_t> trans);
+        std::list<BA_trans_t> Complete(std::list<BA_trans_t> trans);
  
         bool DFS_s(KS_BA_node_t* p_N);
 

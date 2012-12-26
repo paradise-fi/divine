@@ -116,7 +116,7 @@ struct Main {
         Output::_output = makeStdIO( std::cerr );
 
         {
-            ostringstream execCommStr;
+            std::ostringstream execCommStr;
             for(size_t i = 0; i < argc; ++i)
                 execCommStr << argv[i] << " ";
             report.execCommand = execCommStr.str();

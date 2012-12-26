@@ -23,13 +23,13 @@ class BA_opt_graph_t : public BA_graph_t {
 protected:
 
 	/* 'true' if and only if the SCC is 'fixed formula ball' */
-	bool is_ball(const list<int>& SCC_tree);
+	bool is_ball(const std::list<int>& SCC_tree);
 
 	/* 'true' if and only if there is a accepting node reachable form
 		*p_N
 		- in list L is "path" from *p_N to acc. node
 	*/
-	bool reach_accept(KS_BA_node_t* p_N, list<KS_BA_node_t*>& L);
+	bool reach_accept(KS_BA_node_t* p_N, std::list<KS_BA_node_t*>& L);
 
 public:
 	BA_opt_graph_t();

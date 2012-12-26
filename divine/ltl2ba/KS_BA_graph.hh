@@ -14,8 +14,6 @@
 
 //#include "deb/deb.hh"
 
-using namespace std;
-
 namespace divine {
 #endif //DOXYGEN_PROCESSING
 
@@ -28,8 +26,8 @@ namespace divine {
 /* SCC contains acc. node and does not contains cycle without acc. node */
 #define SCC_TYPE_2 2
 
-typedef pair<int, int> two_nodes_t;
-typedef list<two_nodes_t> list_two_nodes_t;
+typedef std::pair<int, int> two_nodes_t;
+typedef std::list<two_nodes_t> list_two_nodes_t;
 
 inline bool operator<(const two_nodes_t& T1, const two_nodes_t& T2)
 {
@@ -52,28 +50,28 @@ struct KS_BA_node_t {
 	KS_BA_node_t(int N);
 	virtual ~KS_BA_node_t();
 
-	virtual list<KS_BA_node_t*> get_adj() const = 0;
+	virtual std::list<KS_BA_node_t*> get_adj() const = 0;
 };
 
 /* main class - general graph */
 class KS_BA_graph_t {
 public:
-	map<int, KS_BA_node_t*> node_list;
+	std::map<int, KS_BA_node_t*> node_list;
 
 	int timer;
 
 /* helping methods */
 private:
 	/* type of SCC C */
-	int SCC_type(const list<int>& C);
+	int SCC_type(const std::list<int>& C);
 
 protected:
 	/* helping methods for not_emptiness() */
-	bool dfs1(KS_BA_node_t *p_N, list<int>& S);
-	bool dfs2(KS_BA_node_t *p_N, const list<int>& S, list<int>& C);
+	bool dfs1(KS_BA_node_t *p_N, std::list<int>& S);
+	bool dfs2(KS_BA_node_t *p_N, const std::list<int>& S, std::list<int>& C);
       
 protected:
-	void DFS_visit(KS_BA_node_t *p_N, list<int>& DFS_tree);
+	void DFS_visit(KS_BA_node_t *p_N, std::list<int>& DFS_tree);
 	void DFS_visit(KS_BA_node_t *p_N);
 	
 
@@ -110,9 +108,9 @@ public:
 	KS_BA_node_t* set_accept(int name, bool b = true);
 
 	/* reading graph */
-	list<KS_BA_node_t*> get_all_nodes() const;
-	list<KS_BA_node_t*> get_init_nodes() const;
-	list<KS_BA_node_t*> get_accept_nodes() const;
+	std::list<KS_BA_node_t*> get_all_nodes() const;
+	std::list<KS_BA_node_t*> get_init_nodes() const;
+	std::list<KS_BA_node_t*> get_accept_nodes() const;
 
 	int e_size() const; // number of transitions
 	int n_size() const; // number of nodes
@@ -129,22 +127,22 @@ public:
 
 	/* Depth First Search: DFS_forest is list of list of nodes, where
 		the nodes are in one DF-tree */
-	void DFS(list<list<int> >& DFS_forest);
+	void DFS(std::list<std::list<int> >& DFS_forest);
 	/* only set variables KS_BA_node_t::pom to finish time */
 	void DFS();
 
 	/* compute strongly conected components */
-	virtual void SCC(list<list<int> >& SCC_list) = 0;
+	virtual void SCC(std::list<std::list<int> >& SCC_list) = 0;
 
 	/* Vypocet SCC vcetne jejich typu; prvni polozka je typ
 	(SCC_TYPE_i), druha je seznam uzlu patricich do dane komponenty */
 	/* compute SCC with their types */
-	virtual void SCCt(list<pair<int, list<int> > >& SCC_type_list);
+	virtual void SCCt(std::list<std::pair<int, std::list<int> > >& SCC_type_list);
 
 	/* neprazdnost Buchiho automatu + "protipriklad"
 	(u nekterych odvozenych trid muze byt jina implementace) */
 	/* not emptiness of Buchi automaton + "counterexample" */
-	virtual bool not_emptiness(list<int>& S);
+	virtual bool not_emptiness(std::list<int>& S);
 };
 
 #ifndef DOXYGEN_PROCESSING

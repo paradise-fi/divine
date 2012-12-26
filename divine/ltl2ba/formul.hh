@@ -20,8 +20,6 @@
 
 //#include "deb/deb.hh"
 
-using namespace std;
-
 namespace divine {
 
 #endif // DOXYGEN_PROCESSING
@@ -40,7 +38,7 @@ struct LTL_binar_op_t { // (*arg1) op (*arg2)
 /* literal node */
 struct LTL_literal_t {
 	bool negace; // false = negation
-	string predikat;
+	std::string predikat;
 
 	inline bool operator==(const LTL_literal_t& L) const {
 		return((negace == L.negace) &&
@@ -63,7 +61,7 @@ struct LTL_literal_t {
 
 std::ostream& operator<<(std::ostream& vystup, LTL_literal_t L);
 
-typedef list<LTL_literal_t> LTL_label_t;
+typedef std::list<LTL_literal_t> LTL_label_t;
 
 /* Type of formula (returned by method typ()): */
 #define LTL_EMPTY   0 // Empty formula
@@ -144,8 +142,8 @@ public:
 	void clear(); // deleting formula
 
 	/* Methods for replacing actual instance */
-	void add_literal(string pred);
-	void add_literal(bool neg, string pred); //neg = false -> negation
+	void add_literal(std::string pred);
+	void add_literal(bool neg, std::string pred); //neg = false -> negation
 	void add_binar_op(LTL_oper_t op, LTL_formul_t& arg1,
 		LTL_formul_t& arg2);
 	void add_bool(bool b);
@@ -157,7 +155,7 @@ public:
 	/* if type of formula is correct, methods will return 'true' and
 	requested information in their arguments. In other case, methods
 	will return 'false' */
-	bool get_literal(bool& neg, string& pred) const;
+	bool get_literal(bool& neg, std::string& pred) const;
 	bool get_binar_op(LTL_oper_t& op, LTL_formul_t& arg1,
 		LTL_formul_t& arg2) const;
 	bool get_binar_op(LTL_oper_t& op) const;
@@ -190,20 +188,20 @@ public:
 /* helping, useful functions */
 
 /* comparsion of 2 lists of formulae */
-bool LTL_equiv_labels(const list<LTL_formul_t>& L1,
-	const list<LTL_formul_t>& L2);
-bool LTL_equiv_labels(const list<LTL_literal_t>& L1,
-	const list<LTL_literal_t>& L2);
+bool LTL_equiv_labels(const std::list<LTL_formul_t>& L1,
+	const std::list<LTL_formul_t>& L2);
+bool LTL_equiv_labels(const std::list<LTL_literal_t>& L1,
+	const std::list<LTL_literal_t>& L2);
 
 /* 'true' is returned when L1 \subseteq L2 */
-bool LTL_subset_label(const list<LTL_formul_t>& L1,
-	const list<LTL_formul_t>& L2);
-bool LTL_subset_label(const list<LTL_literal_t>& L1,
-	const list<LTL_literal_t>& L2);
+bool LTL_subset_label(const std::list<LTL_formul_t>& L1,
+	const std::list<LTL_formul_t>& L2);
+bool LTL_subset_label(const std::list<LTL_literal_t>& L1,
+	const std::list<LTL_literal_t>& L2);
 
 /* 'true' is returned when label is contradiction (for example <p, !p>) */
-bool LTL_is_contradiction(list<LTL_formul_t>& L);
-bool LTL_is_contradiction(const list<LTL_literal_t>& L);
+bool LTL_is_contradiction(std::list<LTL_formul_t>& L);
+bool LTL_is_contradiction(const std::list<LTL_literal_t>& L);
 
 #ifndef DOXYGEN_PROCESSING
 }
