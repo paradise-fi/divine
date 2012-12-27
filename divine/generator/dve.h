@@ -115,7 +115,7 @@ struct Dve : public Common< Blob > {
     }
 
     PropertyType propertyType() {
-        return AC_None;
+        return system->property ? AC_Buchi : AC_None;
     }
 
     int stateSize() {
