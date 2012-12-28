@@ -31,7 +31,7 @@ private:
         unsigned int initial;
     };
 
-    typedef SuccessorList< EdgeInfo* > SuccList;
+    typedef std::vector< EnabledInfo< const EdgeInfo* > > EnabledList;
 
     Evaluator eval;
     UTAP::TimedAutomataSystem sys;
@@ -77,29 +77,35 @@ private:
 
     bool evalInv();
 
-    void listSuccessors( char* source, SuccList& succs, unsigned int& begin );
+    void listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &urgent );
 
-    // Slices a zone.
-    // The source is read from the top of the blocklist and it is assumed that setData was called on in previously
-    // Resulting sucessors are pushed into the blocklist if their invariant holds
-    void slice( SuccList& list, const std::vector< Cut >& cuts );
-
-    // Assumes the current working state is list.back() and creates one or more successors from it
-    // if the error flag is set, single error state is produced instead
-    void makeSucc( SuccList& list ) {
-        if ( eval.error ) {
-            list.setInfo( list.getLastEdge(), std::numeric_limits< int >::max(), 0 );   // maximum priority
-            makeErrState( list.back(), eval.error );
-            list.push_back();
-        } else {
-            slice( list, eval.clockDiffrenceExprs );
+    // Calls given callback for each state created by slicing source
+    template < typename Func >
+    void slice( char* source, const std::vector< Cut >& cuts, Func fun ) {
+        if ( cuts.empty() ) {   // avoid unnecessary copying
+            setData( source );
+            if ( evalInv() ) {
+                this->eval.extrapolate();
+                fun( source );
+            }
+            return;
         }
-    }
 
-    // Assumes the current working state is list.back() and creates one or more successors from it
-    void makeTimeSucc( SuccList& list ) {
-        assert( !eval.error );
-        slice( list, cutClocks );
+        std::vector< char > srcCopy( stateSize() );
+        memcpy( &srcCopy[0], source, stateSize() );
+
+        assert( cuts.size() < 32 );
+        for ( unsigned int sel = 0; sel < (1 << cuts.size()); ++sel ) {
+            newSucc( source, &srcCopy[0] );
+            bool possible = true;
+            for ( unsigned int i = 0; i < cuts.size(); ++i ) {
+                possible = possible && eval.evalBool( cuts[ i ].pId, (sel & (1 << i)) ? cuts[ i ].pos : cuts[ i ].neg );
+            }
+            if ( possible && evalInv() ) {
+                this->eval.extrapolate();
+                fun( source );
+            }
+        }
     }
 
     int edgePrio( const EdgeInfo* e ) {
@@ -120,11 +126,88 @@ public:
 
     template < typename Func >
     void genSuccs( char* source, Func callback ) {
-        SuccList succs( stateSize(), sys.hasPriorityDeclaration() );
-        unsigned int begin;
-        listSuccessors( source, succs, begin );
+        bool urgent;
+        BlockList bl( stateSize(), 1 );
+        EnabledList einf;
+        listEnabled( source, bl, einf, urgent );
 
-        succs.for_each( callback, begin );
+        // generate time successors
+        if ( !urgent ) {
+            newSucc( bl.back(), source );
+            eval.up();
+            bool selfLoop = false;
+            slice( bl.back(), cutClocks, [ this, &callback, source, &selfLoop ] ( char* data ) {
+                if ( memcmp( data, source, stateSize() ) == 0 )
+                    selfLoop = true;
+                else
+                    callback( data, nullptr );
+            });
+
+#ifndef TIMED_NO_POR
+            // If we are in non-urgent state and there is no time self-loop, skip all the transition successors
+            // because then there is a time successor with a strictly greater zone with all the successors this state would have.
+            // Reduces state-space, but breaks the LTL next operator
+            if ( !selfLoop )
+                return;
+#endif
+        }
+
+        // finalize priorities
+        PrioVal nextPrio( sys.hasPriorityDeclaration() );
+        PrioVal maxPrio( false );
+        if ( sys.hasPriorityDeclaration() ) { // if priorities are used, compute the highest priority
+            for ( auto it = einf.begin(); it != einf.end(); it++ ) {
+                assert( it->valid );
+                it->prio.finalize();
+                it->prio.updateMax( nextPrio );
+            }
+        }
+
+        setData( source );
+        Federation fed = eval.getFederation();  // create federation from source zone
+        unsigned int remaining;
+
+        do {
+            Federation current = fed;
+            remaining = 0;
+            maxPrio = nextPrio; // stores current maximum priority
+            nextPrio = PrioVal( sys.hasPriorityDeclaration() ); // stores the highest priority lower than maxPrio
+            for ( unsigned int i = 0; i < einf.size(); i++ ) {
+                if ( einf[ i ].valid ) {
+                    if ( !einf[ i ].prio.equal( maxPrio ) ) { // if successor has lower priority
+                        remaining++;
+                        einf[ i ].prio.updateMax( nextPrio );
+                        continue;
+                    }
+                    setData( bl[ i ] );
+                    Federation inter = eval.zoneIntersection( current );
+                    if ( inter.isEmpty() )
+                        continue;
+                    fed -= inter;
+
+                    for ( auto dbm = inter.begin(); dbm != inter.end(); ++dbm ) {
+                        newSucc( bl.back(), bl[ i ] );
+                        eval.assignZone( dbm() );
+
+                        for ( auto &e : einf[ i ].edges )
+                            applyEdge( e );
+
+                        const EdgeInfo *lastEdge = einf[ i ].edges[ 0 ];
+                        slice( bl.back(), eval.clockDiffrenceExprs, [ lastEdge, &callback ] ( char* data ) {
+                            callback( data, lastEdge );
+                        });
+                    }
+                    einf[ i ].valid = false;
+                }
+            }
+        } while ( remaining > 0 && !fed.isEmpty() ); // quit if there is no remaining state and we still have a non-empty federation
+
+        if ( !fed.isEmpty() ) { // if some valutions do not have outcomming edges
+            if ( urgent || fed.isUnbounded() ) {
+                makeErrState( bl.back(), ERR_DEADLOCK ); // create artifical deadlock state
+                callback( bl.back(), nullptr );
+            }
+        }
     }
 
     // get location of the property automaton
@@ -159,6 +242,6 @@ public:
     int isErrState( char* d );
 
     enum Err {
-        ERR_INVARIANT = 200
+        ERR_INVARIANT = 200, ERR_DEADLOCK = 201
     };
 };

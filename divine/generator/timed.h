@@ -37,7 +37,7 @@ struct Timed : public Common< Blob > {
         if ( gen.isErrState( mem( from ) ) )
             return;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
-        gen.genSuccs( mem( from ), [ this, &btrans, &yield ] ( const char* succ, const TAGen::EdgeInfo* ) mutable {
+        gen.genSuccs( mem( from ), [ this, &btrans, yield ] ( const char* succ, const TAGen::EdgeInfo* ) mutable {
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
                 Node n = alloc.new_blob( gen.stateSize() );
                 memcpy( mem( n ), succ, gen.stateSize() );
@@ -57,7 +57,8 @@ struct Timed : public Common< Blob > {
     }
 
     bool isGoal( Node n ) {
-        return gen.isErrState( mem( n ) );
+        int err = gen.isErrState( mem( n ) );
+        return err && err != TAGen::ERR_DEADLOCK;
     }
 
     std::string showNode( Node n ) {

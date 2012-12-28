@@ -982,7 +982,7 @@ void Evaluator::setData( char *d, Locations l ) {
 
 void Evaluator::extrapolate() {
     computeLocalBounds();
-    clocks.extrapolate();
+    clocks.extrapolate( clockDiffrenceExprs.empty() );
 }
 
 /*

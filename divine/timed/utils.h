@@ -28,6 +28,7 @@ bool nextSelection( std::vector< unsigned int >& sel, const std::vector< std::ve
     // "increment" _sel_
     unsigned int pos;
     for ( pos = 0; pos < sel.size(); ++pos ) {
+        assert( v[ pos ].size() );
         if ( ++sel[ pos ] == v[ pos ].size() )
             sel[ pos ] = 0;
         else break;

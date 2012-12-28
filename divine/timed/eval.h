@@ -172,6 +172,18 @@ public:
         clocks.up();
     }
 
+    Federation getFederation() const {
+        return clocks.createFed();
+    }
+
+    Federation zoneIntersection( Federation fed ) const {
+        return clocks.intersection( fed );
+    }
+
+    void assignZone( const raw_t* src ) {
+        clocks.assignZone( src );
+    }
+
     // return number of bytes required to store variable values and clock zone
     unsigned int getReqSize() {
         return initValues.size() * sizeof(int32_t) + clocks.getReqSize();

@@ -10,7 +10,7 @@ typedef dbm::fed_t Federation;
 
 class Clocks {
     unsigned int dim;
-    int32_t *data;
+    raw_t *data;
     std::vector< int32_t > bounds; // maximal lower and upper bounds
 
     // prind bounds from DBM
@@ -31,16 +31,19 @@ public:
     // set clock count
     void resize( unsigned int clocks );
 
-    void extrapolate();
+	// performs clock extrapolation based on currently set limits
+	// if the argument is true, diagonal extrapolation is performed,
+	// which can break constraints including clock differences
+    void extrapolate( bool diagonal = true );
 
     // Returns number of bytes required to store clocks (always multiple of 4)
     unsigned int getReqSize() const {
-        return dim * dim * sizeof( int32_t );
+        return dim * dim * sizeof( raw_t );
     }
 
     // Set data to work on, has to have at least getReqSize() bytes
     void setData( char *ptr ) {
-        data = reinterpret_cast< int32_t* >( ptr );
+        data = reinterpret_cast< raw_t* >( ptr );
     }
 
     // Set valuation to the initial region (reset all clocks)
@@ -88,8 +91,25 @@ public:
         return o;
     }
 
+    // Returns true if the described zone is empty
     bool isEmpty() {
         return *data != 1;
+    }
+
+    // Return federation equal to current zone
+    Federation createFed() const {
+        return Federation( data, dim );
+    }
+
+    // returns the intersection of the current zone and given federation
+    Federation intersection( Federation fed ) const {
+        assert( fed.getDimension() == dim );
+        return fed & data;
+    }
+
+    // set zone from given pointer, dimensions have to be equal
+    void assignZone( const raw_t* src ) {
+        memcpy( data, src, getReqSize() );
     }
 };
 

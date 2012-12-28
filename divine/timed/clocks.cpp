@@ -138,10 +138,9 @@ bool Clocks::updateUpperBound( unsigned int id, int32_t limit ) {
     return false;
 }
 
-void Clocks::extrapolate() {
-#ifndef NO_DIAGONAL
-    dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
-#else
-    dbm_extrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
-#endif
+void Clocks::extrapolate( bool diagonal ) {
+    if ( diagonal )
+        dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
+    else
+        dbm_extrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
 }

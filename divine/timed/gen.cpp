@@ -20,6 +20,8 @@ std::string errString( int code ) {
         return "Negative clock assignment";
     case TAGen::ERR_INVARIANT:
         return "Invariant does not hold";
+	case TAGen::ERR_DEADLOCK:
+		return "Time deadlock";
     default:
         return "Unknown error";
     }
@@ -97,37 +99,15 @@ bool TAGen::evalInv() {
     return true;
 }
 
-void TAGen::slice( TAGen::SuccList& list, const std::vector< Cut >& cuts ) {
-    if ( cuts.empty() ) {
-        if ( evalInv() ) {
-            this->eval.extrapolate();
-            list.push_back();
-        }
-        return;
-    }
-    std::vector< char > srcCopy( stateSize() );
-    memcpy( &srcCopy[0], list.back(), stateSize() );
+void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &urgent ) {
+    assert( bl.size() == einf.size() + 1 );
 
-    for ( unsigned int sel = 0; sel < (1 << cuts.size()); ++sel ) {
-        newSucc( list.back(), &srcCopy[0] );
-        bool possible = true;
-        for ( unsigned int i = 0; i < cuts.size(); ++i ) {
-            possible = possible && eval.evalBool( cuts[ i ].pId, (sel & (1 << i)) ? cuts[ i ].pos : cuts[ i ].neg );
-        }
-        if ( possible && evalInv() ) {
-            this->eval.extrapolate();
-            list.push_back();
-        }
-    }
-}
-
-void TAGen::listSuccessors( char* source, SuccList& succs, unsigned int& begin ) {
     std::vector< EdgeInfo* > trans; // non-synchronizing transitions and sending ends of synchronizations
     std::map< chan_id, std::vector< EdgeInfo* > > sync; // receiving ends
     bool inUrgent = false;
     std::set< int > commit;   // set of processes in a commited location
-    begin = 0;
 
+    setData( source );
     // find possible transitions and synchronizations
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
@@ -140,7 +120,7 @@ void TAGen::listSuccessors( char* source, SuccList& succs, unsigned int& begin )
                 assert( !tr->sync.empty() );
                 setData( source );  // resets error flag
                 chan_id chan = eval.evalChan( nInst, tr->sync );
-                if ( !eval.error )
+                if ( !eval.error )	// invalid receiving end is not an error, just ignore it
                     sync[ chan ].push_back( &*tr );
             } else {
                 trans.push_back( &*tr );
@@ -148,10 +128,9 @@ void TAGen::listSuccessors( char* source, SuccList& succs, unsigned int& begin )
         }
     }
 
-    // process synchronizations
     for ( auto itr = trans.begin(); itr != trans.end(); ++itr ) {
-        newSucc( succs.back(), source );
-        // continue if the guard holds ar there was an error while evaluating the guard (makeSucc will produce an error state if the error flag is set)
+        newSucc( bl.back(), source );
+        // continue if the guard holds ar there was an error while evaluating the guard
         if ( !evalGuard( *itr ) && !eval.error ) continue;
 
         if ( (*itr)->syncType == UTAP::Constants::SYNC_BANG ) {
@@ -159,90 +138,67 @@ void TAGen::listSuccessors( char* source, SuccList& succs, unsigned int& begin )
             chan_id chan = eval.evalChan( (*itr)->procId, (*itr)->sync );
 
             if ( eval.error )
-                makeSucc( succs );
+                /*makeSucc( succs )*/;
             else if ( eval.isChanBcast( chan ) ) {
                 // n-ary synchronization
                 bool fromCommit = commit.empty() || commit.count( (*itr)->procId );
-                succs.setInfo( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
                 std::vector< std::vector< EdgeInfo* > > receivers;  // enabled receiving edges for each process
                 int lastPID = -1;
                 for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
                     if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
+                    assert( (*recv)->assign.getType().isIntegral() );
                     if ( !evalGuard( *recv ) ) continue;    // this does not change the state, because broadcast guards can not contain clocks
                     if ( (*recv)->procId != lastPID ) { // edges in _sync_ are sorted by process id
                         receivers.push_back( std::vector< EdgeInfo* >() );
                         lastPID = (*recv)->procId;
                         fromCommit = fromCommit || commit.count( (*recv)->procId );
-                        succs.appendPriority( edgePrio( *recv ) );
                     }
                     receivers.back().push_back( *recv );
                 }
                 if ( !fromCommit ) continue;    // skip if system is in commited state, but no participant is in commited location
                 if ( eval.error ) {     // if there was an error while evaluating guards, create an error state and quit
-                    makeSucc( succs );
+                    /*makeSucc( succs )*/;
                     continue;
                 }
 
+                // at this point, the transition is considered to be enabled
                 std::vector< unsigned int > sel( receivers.size() );    // combination of edges from _receivers_
                 do {
-                    newSucc( succs.back(), source );
-                    evalGuard( *itr );  // already evaluated earlier, needed here for clock constraints
-                    // at this point, the transition is considered to be enabled
                     inUrgent = inUrgent || eval.isChanUrgent( chan );
-                    applyEdge( *itr );
-                    for ( unsigned int i = 0; i < sel.size(); i++ )
-                        applyEdge( receivers[ i ][ sel[ i ] ] );
-                    makeSucc( succs );
+                    einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
+                    for ( unsigned int i = 0; i < sel.size(); i++ ) {
+                        const EdgeInfo *edge = receivers[ i ][ sel[ i ] ];
+                        einf.back().addEdge( edge, edgePrio( edge ) );
+                    }
+                    bl.duplicate_back();
                 } while ( nextSelection( sel, receivers ) );
             } else {
                 // binary synchronization
                 for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
                     if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
-                    newSucc( succs.back(), source );
+                    newSucc( bl.back(), source );
                     evalGuard( *itr );  // already evaluated earlier, needed here for clock constraints
                     if ( !evalGuard( *recv ) ) continue;
                     // if in commited state, at least one synchronizing process has to be in commited location
                     if ( !commit.empty() && !commit.count( (*itr)->procId ) && !commit.count( (*recv)->procId ) ) continue;
                     // at this point, the transition is considered to be enabled
                     inUrgent = inUrgent || eval.isChanUrgent( chan );
-                    succs.setInfo( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
-                    succs.appendPriority( edgePrio( *recv ) );
-                    applyEdge( *itr );
-                    applyEdge( *recv );
-                    makeSucc( succs );
+                    einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
+                    einf.back().addEdge( *recv, edgePrio( *recv ) );
+                    bl.push_back();
                 }
             }
         } else {
             // no synchronization
             if ( !commit.empty() && !commit.count( (*itr)->procId ) ) continue;
             // at this point, the transition is considered to be enabled
-            succs.setInfo( *itr, sys.getTauPriority(), edgePrio( *itr ) );
-            applyEdge( *itr );
-            makeSucc( succs );
+            einf.emplace_back( *itr, sys.getTauPriority(), edgePrio( *itr ) );
+            bl.push_back();
         }
+        assert( bl.size() == einf.size() + 1 );
     }
 
-    succs.finalizePriorities();
-
-    if ( !inUrgent && commit.empty() ) {
-        unsigned int timedIndex = succs.count(); // beginning of time sucessors in the successor list
-
-        newSucc( succs.back(), source );
-        eval.up();
-        makeTimeSucc( succs );
-
-#ifndef TIMED_NO_POR
-        // If we are in non-urgent state and there is no time self-loop, skip all the transition successors
-        // because then there is a time successor with a strictly greater zone with all the successors this state would have.
-        // Reduces state-space, but breaks the LTL next operator
-        bool selfLoop = false;
-        for ( unsigned int i = timedIndex; i < succs.size() - 1; i++ ) {
-            selfLoop = selfLoop || ( memcmp( succs[ i ], source, stateSize() ) == 0 );
-        }
-        if ( !selfLoop )
-            begin = timedIndex; // skip to time successors
-#endif
-    }
+    urgent = inUrgent || !commit.empty();
 }
 
 void TAGen::read( const std::string& path ) {

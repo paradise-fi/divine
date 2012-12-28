@@ -20,14 +20,19 @@ public:
         memcpy( back(), ptr, block );
     }
 
+    void duplicate_back() {
+        push_back();
+        memcpy( back(), back() - block, block );
+    }
+
     char* back() {
         assert( !v.empty() );
-        return &v[ v.size() - block ];
+        return &*v.end() - block;
     }
 
     const char* back() const {
         assert( !v.empty() );
-        return &v[ v.size() - block ];
+        return &*v.end() - block;
     }
 
     void assign_back( const void* ptr ) {
@@ -62,138 +67,74 @@ public:
     }
 };
 
-/*
-Structure for storing generated successors.
-The top-most successor (obtainable with back()) is typically used to construct the new state and if everything succeeds,
-push_back() is called, which creates new block of memory to work on.
-Each batch of sucessors has to be preceded by a call to setInfo, which can be used to set priorities and custom information.
-All priorities except the first one (= process priorities) are sorted before comparison, the edge/channel priority is always
-compared first.
-*/
-template < typename EdgeInfo  >
-class SuccessorList {
-    struct Info {
-        unsigned int index;
-        EdgeInfo edge;
-        std::vector< int > prio;
-
-        Info( unsigned int _index, EdgeInfo _edge )
-            : index( _index ), edge( _edge ), prio() {}
-
-        Info( unsigned int _index, EdgeInfo _edge, const std::initializer_list< int >& list )
-            : index( _index ), edge( _edge ) , prio( list ) {}
-
-        bool equalPrio( const std::vector< int >& max ) const {
-            for ( unsigned int i = 0; i < max.size(); i++ ) {
-                assert( i < prio.size() );
-                if ( prio[ i ] < max[ i ] )
-                    return false;
-                assert( max[ i ] == prio[ i ] );
-                assert( i <= 1 || max[ i-1 ] >= max[ i ] );
-            }
-            return true;
-        }
-
-        void updateMaxPrio( std::vector< int >& max ) {
-            // leave the first element, sort the rest
-            assert( prio.size() > 1 );
-            std::sort( prio.begin() + 1, prio.end(), [] ( int a, int b ) { return a > b; } );
-            unsigned int end = std::min( prio.size(), max.size() );
-            // update maximum
-            for ( unsigned int i = 0; i < end; i++ ) {
-                if ( prio[ i ] < max[ i ] )     // lower than max priority - ignore
-                    return;
-                if ( prio[ i ] > max[ i ] ) {   // higher than max priority - set the new maximum
-                    max = prio;
-                    return;
-                }
-            }
-            // equal to max priority - truncate max if necessary
-            max.resize( end );
-        }
-    };
-
-    BlockList bl;
-    std::vector< int > maxPrio;
-    std::vector< Info > info;
+// Priority valuation. The first value is the most significant, other values have equal valuation.
+class PrioVal {
+    std::vector< int > v;
 
 public:
-    // Takes the size of each state and maximum number of priorities (0 disables priorities)
-    SuccessorList( unsigned int stateSize, bool useProrities ) : bl( stateSize, 1 ), maxPrio() {
-        if ( useProrities )
-            maxPrio.push_back( std::numeric_limits< int >::min() );
+	// With b = true, the lowest priority is constructed
+	// With b = false, the priority that is equal to any other is constructed
+    explicit PrioVal( bool b ) : v() {
+        if ( b )
+            v.push_back( std::numeric_limits< int >::min() );
     }
 
-    // Set custom information, edge priority and priority of the first process
-    void setInfo( EdgeInfo edge, int chanPrio, int firstPrio ) {
-        assert( !bl.empty() );
-        info.push_back( Info( bl.size()-1, edge, { chanPrio, firstPrio } ) );
+	// Costructs a priority by specifying first two values
+    PrioVal( int p1, int p2 ) : v({ p1, p2 }) {}
+
+	// Append additional values
+    void append( int p ) {
+        v.push_back( p );
     }
 
-    // Set priority of additional processes
-    void appendPriority( int p ) {
-        assert( !info.empty() );
-        info.back().prio.push_back( p );
+	// Finalize a priority valuation by sorting all values except the first one
+    void finalize() {
+        // leave the first element, sort the rest
+        assert( v.size() > 1 );
+        std::sort( v.begin() + 1, v.end(), [] ( int a, int b ) { return a > b; } );
     }
 
-    // Returns cutom information from the last setInfo call
-    EdgeInfo getLastEdge() {
-        assert( !info.empty() );
-        return info.back().edge;
-    }
-
-    void push_back() {
-        bl.push_back();
-    }
-
-    // Returns size including the top-most state
-    unsigned int size() const {
-        return bl.size();
-    }
-
-    // Returns size excluding the top-most state
-    unsigned int count() const {
-        assert( !bl.empty() );
-        return bl.size() - 1;
-    }
-
-    char *back() {
-        return bl.back();
-    }
-
-    char *operator[]( unsigned int i ) {
-        return bl[ i ];
-    }
-
-    // Sorts all priorities and computes the highest priority.
-    // Priorities do not work properly if this is not called.
-    // Sucessors added after this call are considered to have priority aqual to the highest pririty
-    void finalizePriorities() {
-        if ( !maxPrio.empty() ) {
-            for ( auto i = info.begin(); i != info.end(); ++i ) {
-                assert( i->prio.size() >= 2 );
-                i->updateMaxPrio( maxPrio );
+	// Updates max if it is lower than current priority
+    bool updateMax( PrioVal& max ) const {
+        unsigned int size = std::min( v.size(), max.v.size() );
+        for ( unsigned int i = 0; i < size; i++ ) {
+            assert( i <= 1 || v[ i-1 ]>= v[ i ] );
+            if ( v[ i ] < max.v[ i ] )     // lower than max priority - ignore
+                return false;
+            if ( v[ i ] > max.v[ i ] ) {   // higher than max priority - set the new maximum
+                max.v = v;
+                return true;
             }
         }
-        info.push_back( Info( bl.size()-1, NULL ) );
+        // equal to max priority - truncate max if necessary
+        max.v.resize( size );
+        return true;
     }
 
-    // Calls custom callback for all successors (except the top-most one) that have the highest priority
-    // Second argument can be used to skip given number of stored successors
-    template < typename Func >
-    void for_each( Func callback, unsigned int begin = 0 ) {
-        unsigned int s = begin;
-        for ( auto inf = info.begin(); inf+1 < info.end(); ++inf ) {
-            unsigned int end = (inf+1)->index;
-            if ( s < end && inf->equalPrio( maxPrio ) ) {
-                for ( ; s < end; ++s ) {
-                    callback( bl[ s ], inf->edge );
-                }
-            } else
-                s = end;
+	// Check for equality
+    bool equal( const PrioVal& max ) const {
+        for ( unsigned int i = 0; i < max.v.size(); i++ ) {
+            assert( i < v.size() );
+            if ( v[ i ] < max.v[ i ] )
+                return false;
+            assert( max.v[ i ] == v[ i ] );
+            assert( i <= 1 || max.v[ i-1 ] >= max.v[ i ] );
         }
-        unsigned int end = bl.size()-1;
-        for ( ; s < end; ++s )
-            callback( bl[ s ], NULL );
+        return true;
+    }
+};
+
+// Structure holding information about enabled state (priority, custom information about edges)
+template < typename EdgeInfo >
+struct EnabledInfo {
+    PrioVal prio;
+    std::vector< EdgeInfo > edges;
+    bool valid;
+
+    EnabledInfo( EdgeInfo edge, int chanPrio, int edgePrio ) : prio( chanPrio, edgePrio ), edges({ edge }), valid( true ) {}
+
+    void addEdge( EdgeInfo edge, int edgePrio ) {
+        edges.push_back( edge );
+        prio.append( edgePrio );
     }
 };
