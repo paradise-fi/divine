@@ -38,7 +38,7 @@
 #include <stdlib.h>
 #include <cstddef>
 
-namespace base
+namespace base2
 {
     /** Simple (and fast) item allocator.
      * The interest of it, compared
@@ -183,5 +183,25 @@ namespace base
     };
 
 } // namespace base
+
+namespace base
+{
+	// Fake allocator
+	template < typename ITEM >
+	class ItemAllocator
+	{
+	public:
+		ItemAllocator( int dummy = 0 ) {}
+
+		ITEM* allocate() {
+			return new ITEM();
+		}
+
+		void deallocate( ITEM* item ) {
+			assert( item );
+			delete item;
+		}
+	};
+}
 
 #endif // INCLUDE_BASE_ITEMALLOCATOR_H

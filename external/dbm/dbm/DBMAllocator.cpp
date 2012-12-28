@@ -59,20 +59,26 @@ namespace dbm
     ///< Wrapper function
     void* dbm_new(cindex_t dim)
     {
-        return dbm_allocator.alloc(dim);
+        //return dbm_allocator.alloc(dim);
+#ifdef ENABLE_STORE_MINGRAPH
+       static_ assert( false );
+#else
+        return new int32_t[intsizeof(idbm_t)+dim*dim];
+#endif
     }
 
     ///< Wrapper function
     void dbm_delete(idbm_t *dbm)
     {
         assert(dbm);
-        dbm_allocator.dealloc(dbm);
+        //dbm_allocator.dealloc(dbm);
+        delete [] reinterpret_cast<int32_t*>(dbm);
     }
 
     ///< Wrapper function
     void cleanUp()
     {
-        dbm_allocator.cleanUp();
+        //dbm_allocator.cleanUp();
     }
 
 #endif // ENABLE_DBM_NEW
