@@ -110,7 +110,7 @@ llvm_small() {
     check clear
     run llvm_assemble data/global.ll "$@"
     check reachability_goal
-    check statespace 44 82 0 1
+    check statespace 46 87 0 0
 }
 
 timed_small() {
