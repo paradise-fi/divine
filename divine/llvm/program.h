@@ -79,6 +79,10 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
         *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
     }
 
+    operator PC() const {
+        return *reinterpret_cast< const PC * >( this );
+    }
+
     Pointer &operator=( PC x ) {
         *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
         return *this;
