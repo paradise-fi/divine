@@ -688,9 +688,12 @@ struct Evaluator
         int functionid;
 
         if ( F ) {
-            assert ( !F->isDeclaration() );
-            /* TODO (performance) Use an operand Value here instead. */
-            functionid = info.functionmap[ F ];
+            if ( F->isDeclaration() )
+                assert_unreachable( "Cannot call undefined function: %s", F->getName().str().c_str() );
+            else {
+                /* TODO (performance) Use an operand Value here instead. */
+                functionid = info.functionmap[ F ];
+            }
         } else
             functionid = withValues( Get< PC >(), instruction.operand( -1 ) ).function;
 
@@ -794,7 +797,7 @@ struct Evaluator
 
     template< typename Fun, typename I, typename Cons >
     typename Fun::T implement( wibble::NotPreferred, I i, I e, Cons list, Fun = Fun() ) {
-        assert_die(); /* could not match parameters */
+        assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
     }
 
     template< typename Fun, typename I, typename Cons >
