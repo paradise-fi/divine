@@ -117,13 +117,11 @@ let
     full = mkbuild { name = "full"; inputs = { pkgs }:
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
 
-    ubuntu1204_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204i386; extras = extra_debs; };
-    ubuntu1110_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110i386; extras = extra_debs; };
-    fedora16_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora16i386; extras = extra_rpms; };
+    ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
+    fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms; };
 
-    ubuntu1204_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1204x86_64; extras = extra_debs; mem = 3072; };
-    ubuntu1110_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1110x86_64; extras = extra_debs; mem = 3072; };
-    fedora16_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora16x86_64; extras = extra_rpms; };
+    ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs; mem = 3072; };
+    fedora17_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora17x86_64; extras = extra_rpms; };
 
     win7_i386_small = mkwin windows7_img "-DSMALL=ON";
     win7_i386 = mkwin windows7_img "";
