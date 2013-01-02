@@ -131,10 +131,10 @@ struct TestLLVM {
 
     Test successor3()
     {
-        assert_eq( wibble::str::fmt( _ith( code_add(), 1 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2, 3, 0 ]" );
         assert_eq( wibble::str::fmt( _ith( code_add(), 2 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2, 3, 0 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2, 3, 0, 0 ]" );
+        assert_eq( wibble::str::fmt( _ith( code_add(), 4 ) ),
+                   "[ 0, 0, 0, 0, 1, 1, 2, 3, 0, 0 ]" );
     }
 
     Test describe1()
