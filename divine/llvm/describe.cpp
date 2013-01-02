@@ -44,15 +44,14 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
 
     std::string ptr = wibble::str::fmt( p );
     std::string res;
-    bool need_deref = isa< PointerType >( t );
-    Type *pointeeTy = need_deref ? cast< PointerType >( t )->getElementType() : t;
+    Type *pointeeTy = cast< PointerType >( t )->getElementType();
     if ( isa< FunctionType >( pointeeTy ) ) {
         res = "@<some function>"; // TODO functionIndex.right( idx )->getName().str();
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
         if ( state.validate( p ) )
-            res = "@(" + ptr + "| " + describeValue( pointeeTy, need_deref ? state.followPointer( p ) : p, seen ) + ")";
+            res = "@(" + ptr + "| " + describeValue( pointeeTy, p, seen ) + ")";
         else
             res = "@(" + ptr + "| invalid)";
         seen.insert( std::make_pair( p, pointeeTy ) );
@@ -76,15 +75,19 @@ static std::string fmtInteger( char *where, int bits ) {
 
 std::string Interpreter::describeValue( Type *t, Pointer where, DescribeSeen &seen )
 {
-    if ( t->isAggregateType() ) {
+    if ( t->isAggregateType() )
         return describeAggregate( t, where, seen );
-    } else if ( where.offset % 4 == 0 && state.isPointer( where ) ) {
-        return describePointer( t, state.followPointer( where ), seen );
-    } else if ( t->isIntegerTy() || t->isPointerTy() ) {
+    if ( t->isPointerTy() ) {
+        if ( where.offset % 4 == 0 && state.isPointer( where ) )
+            return describePointer( t, state.followPointer( where ), seen );
+        else
+            return describePointer( t, Pointer(), seen );
+    }
+    if ( t->isIntegerTy() )
         return fmtInteger( state.dereference( where ), TD.getTypeAllocSize( t ) * 8 );
-    } else if ( t->getPrimitiveSizeInBits() ) {
+    if ( t->getPrimitiveSizeInBits() )
         return "<weird scalar>";
-    } else return "<weird type>";
+    return "<weird type>";
 }
 
 std::string Interpreter::describeValue( const ::llvm::Value *val, ValueRef vref, Pointer where,
@@ -123,11 +126,11 @@ std::string Interpreter::describeValue( std::pair< ::llvm::Type *, std::string >
     std::string value;
 
     if ( !where.null() ) {
-        value = describePointer( type, where, seen );
+        value = describeValue( type, where, seen );
     } else { /* scalar */
         if ( state.isPointer( vref ) ) {
             char *mem = state.dereference( vref );
-            value = describePointer( type, *reinterpret_cast< Pointer * >( mem ), seen );
+            value = describeValue( type, *reinterpret_cast< Pointer * >( mem ), seen );
         } else
             value = fmtInteger( state.dereference( vref ), vref.v.width * 8 );
     }
