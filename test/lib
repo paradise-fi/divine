@@ -108,9 +108,14 @@ llvm_small() {
     test "$O_LLVM" = "ON" || return 0
 
     check clear
-    run llvm_assemble data/global.ll "$@"
-    check reachability_goal
+    run llvm_assemble data/global-ok.ll "$@"
+    check reachability_valid
     check statespace 46 87 0 0
+
+    check clear
+    run llvm_assemble data/global-bug.ll "$@"
+    check reachability_goal
+    check statespace 26 48 0 0
 }
 
 timed_small() {
