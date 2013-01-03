@@ -128,9 +128,9 @@ std::string Interpreter::describeValue( std::pair< ::llvm::Type *, std::string >
     if ( !where.null() ) {
         value = describeValue( type, where, seen );
     } else { /* scalar */
-        if ( state.isPointer( vref ) ) {
+        if ( type->isPointerTy() && state.isPointer( vref ) ) {
             char *mem = state.dereference( vref );
-            value = describeValue( type, *reinterpret_cast< Pointer * >( mem ), seen );
+            value = describePointer( type, *reinterpret_cast< Pointer * >( mem ), seen );
         } else
             value = fmtInteger( state.dereference( vref ), vref.v.width * 8 );
     }
