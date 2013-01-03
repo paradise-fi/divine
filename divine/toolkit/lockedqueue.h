@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>,
 //                 2011 Tomáš Janoušek <tomi@nomi.cz>
 
-#include <mutex>
+#include <wibble/sys/mutex.h>
 #include <divine/toolkit/shmem.h>
 
 #ifndef DIVINE_LOCKEDQUEUE_H
@@ -25,13 +25,13 @@ struct LockedQueue {
     explicit LockedQueue( unsigned sz ) : empty( true ) {}
 
     void push( const T &x ) {
-	std::lock_guard< Mutex > lk( m );
+        wibble::sys::MutexLockT< Mutex > lk( m );
 	q.push_back( x );
 	empty = false;
     }
 
     void push( T &&x ) {
-	std::lock_guard< Mutex > lk( m );
+        wibble::sys::MutexLockT< Mutex > lk( m );
 	q.push_back( std::move( x ) );
 	empty = false;
     }
@@ -46,7 +46,7 @@ struct LockedQueue {
 	if ( empty )
 	    return ret;
 
-	std::lock_guard< Mutex > lk( m );
+        wibble::sys::MutexLockT< Mutex > lk( m );
 
 	if ( q.empty() )
 	    return ret;
