@@ -139,7 +139,7 @@ struct Compile {
         char tmp_dir_template[] = "__tmpXXXXXX";
         FilePath tmp_dir;
         tmp_dir.abspath = process::getcwd();
-        tmp_dir.basename = mkdtemp( tmp_dir_template );
+        tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
 
         // input
         std::string in_basename ( str::basename(in), 0, str::basename(in).rfind( '.' ) );
