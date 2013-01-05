@@ -31,12 +31,8 @@
 #include <windows.h>
 #include <queue>
 #include <time.h>
-struct timespec 
-{
-  time_t   tv_sec;        /* seconds */
-  long     tv_nsec;       /* nanoseconds */
-};
 #endif
+
 #include <errno.h>
 
 namespace wibble {
@@ -502,6 +498,7 @@ public:
 			throw wibble::exception::System(res, "waiting on a pthread condition");
 	}
 
+#ifdef POSIX
 	/**
 	 * Wait on the condition, locking with l.  l is unlocked before waiting and
 	 * locked again before returning.  If the time abstime is reached before
@@ -513,6 +510,7 @@ public:
 	 *   the condition is signaled.
 	 */
 	bool wait(MutexLock& l, const struct timespec& abstime);
+#endif
 };
 
 }
