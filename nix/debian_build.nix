@@ -17,13 +17,16 @@ vmTools.runInLinuxImage (stdenv.mkDerivation (
   {
     doCheck = true;
     prefix = "/usr";
-    prePhases = "installExtraDebsPhase sysInfoPhase";
+    prePhases = "setBuildDir installExtraDebsPhase sysInfoPhase";
   }
 
   // removeAttrs args ["vmTools"] //
 
   {
     name = name + "-" + diskImage.name + (if src ? version then "-" + src.version else "");
+
+    NIX_BUILD_TOP = "/var/tmp";
+    setBuildDir = "cd /var/tmp";
 
     # !!! cut&paste from rpm-build.nix
     postHook = ''
