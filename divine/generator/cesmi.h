@@ -137,6 +137,7 @@ struct CESMI : public Common< Blob > {
     }
 
     PropertyType propertyType() {
+        call_setup();
         return setup.has_property ? AC_Buchi : AC_None;
     }
 
