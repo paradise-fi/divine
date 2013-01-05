@@ -32,7 +32,7 @@ let
      name = "divine";
      src = jobs.tarball;
      diskImage = diskFun { extraPackages = extras; };
-     configurePhase = ":";
+     configurePhase = "echo -DCMAKE_BUILD_TYPE=${buildType} > pkgbuildflags";
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
    };
