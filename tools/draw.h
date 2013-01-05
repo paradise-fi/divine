@@ -196,9 +196,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
             int drop = trans[ i ] - 1;
             this->graph().successors( from, [&]( Node n, Label ) {
-                    -- drop;
-                    if ( drop != 0 )
+                    if ( drop > 0 ) {
+                        -- drop;
                         return;
+                    }
                     to = intrace->get( n );
                     if ( !to.valid() ) {
                         to = n;
@@ -212,6 +213,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             intrace_trans.insert( std::make_pair( extension( from ).serial,
                                                   extension( to ).serial ) );
             from = to;
+            to = Blob();
         }
     }
 
