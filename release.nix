@@ -27,7 +27,7 @@ let
                  "libqt4-dev" "libboost-dev" "libncurses5-dev" ];
   extra_rpms = [ "cmake" ];
 
-  mkVM = { VM, extras, diskFun, mem ? 2047 }:
+  mkVM = { VM, extras, diskFun, mem ? 3072 }:
    VM rec {
      name = "divine";
      src = jobs.tarball;
