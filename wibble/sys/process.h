@@ -30,6 +30,9 @@ namespace wibble {
 namespace sys {
 namespace process {
 
+/// Get the absolute path of the current working directory
+std::string getcwd();
+
 #ifdef POSIX
 
 /// Pretty-print the return value of a process into a string
@@ -37,9 +40,6 @@ std::string formatStatus(int status);
 
 /// Change working directory
 void chdir(const std::string& dir);
-
-/// Get the absolute path of the current working directory
-std::string getcwd();
 
 /// Change root directory
 void chroot(const std::string& dir);

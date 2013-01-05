@@ -319,5 +319,27 @@ void setOpenFilesLimit(int value) { setLimit(RLIMIT_NOFILE, value); }
 }
 }
 }
+#elif defined(_WIN32)
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+namespace wibble {
+namespace sys {
+namespace process {
+
+std::string getcwd()
+{
+	char *buf = (char *)alloca( 4096 );
+	if (::getcwd(buf, 4096) == NULL)
+		throw wibble::exception::System("getting the current working directory");
+	return buf;
+}
+
+}
+}
+}
+
 #endif
 // vim:set ts=4 sw=4:
