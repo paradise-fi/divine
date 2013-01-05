@@ -1,4 +1,4 @@
-{stdenv, fetchurl, writeScript}:
+{stdenv, fetchurl, writeScript, p7zip, ruben ? true}:
  
 let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}"; sha256 = hash; };
  in stdenv.mkDerivation rec {
@@ -9,7 +9,9 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
     mkdir -p $out
     mkdir mingw && cd mingw
     for f in $pkgs; do
-       tar xaf $f
+       tar xaf $f || ${p7zip}/bin/7z x $f
+       test -d mingw32 && cp -R mingw32/* .
+       rm -rf mingw32
     done
     echo "D:\\ /tools" > etc/fstab
     cd ..
@@ -19,11 +21,11 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   unpack = "tar xzf $package/package.tar.gz";
   install = "set PATH=%PATH%;D:\\mingw\\bin";
 
-  pkgs = [ libgmp libintl_msys libintl_mingw libmpc libmpfr libiconv
-           libregex libregex_msys libtermcap libgcc regex_dev tar
-           gcc_core gcc_cpp gcc_libstdcpp binutils bash make msys_core perl
+  pkgs = toolchain ++ [ libgmp libintl_msys libintl_mingw libmpc libmpfr libiconv
+           libregex libregex_msys libtermcap regex_dev tar
+           bash make msys_core perl
            zlib libbz2 libcrypt libexpat sed grep coreutils coreutils_ext
-           diffutils m4 w32api mingw_rt ];
+           diffutils m4 ];
 
   libgmp = mingw {
     pkg = "libgmp-5.0.1-1-mingw32-dll-10.tar.lzma";
@@ -122,5 +124,12 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   mingw_rt = mingw {
     pkg = "mingwrt-3.20-mingw32-dev.tar.gz";
     hash = "1wi850pirpc10sfrvmglg11gkh5vmr53hkh3lc42agh9371if5x4"; };
+
+  toolchain =
+    if ruben
+       then [ (fetchurl {
+                url = "mirror://sourceforge/mingw-w64/i686-w64-mingw32-gcc-4.7-1-stdthread-win32_rubenvb.7z";
+                sha256 = "1mzz4j5nca3vyf6vnrnb3gs5i8knqjdmla734nyk60y75ny8na5b"; }) ]
+       else [ gcc_core gcc_cpp gcc_libstdcpp binutils w32api mingw_rt ];
 
 }
