@@ -8,6 +8,10 @@
 #include <errno.h>
 #include <malloc.h> // alloca on win32 seems to live there
 
+#ifdef _WIN32
+#include <io.h>
+#endif
+
 #ifdef HAVE_CONFIG_H
 /* Conditionally include config.h so there is a way of enabling the fast
  * Directory::isdir implementation if HAVE_STRUCT_DIRENT_D_TYPE is available
@@ -209,6 +213,13 @@ bool Directory::isdir(const const_iterator& i) const
     return false;
 }
 
+std::string mkdtemp( std::string tmpl )
+{
+    char *_tmpl = reinterpret_cast< char * >( alloca( tmpl.size() + 1 ) );
+    strcpy( _tmpl, tmpl.c_str() );
+    return ::mkdtemp( _tmpl );
+}
+
 #endif
 
 #ifdef _WIN32
@@ -216,6 +227,22 @@ bool access(const std::string &s, int m)
 {
 	return 1; /* FIXME */
 }
+
+std::string mkdtemp( std::string tmpl )
+{
+    char *_tmpl = reinterpret_cast< char * >( alloca( tmpl.size() + 1 ) );
+    strcpy( _tmpl, tmpl.c_str() );
+
+    if ( _mktemp_s( _tmpl, tmpl.size() + 1 ) == 0 ) {
+        if ( ::mkdir( _tmpl ) == 0 )
+            return _tmpl;
+        else
+            throw wibble::exception::System("creating temporary directory");
+    } else {
+        throw wibble::exception::System("creating temporary directory path");
+    }
+}
+
 #endif
 
 }

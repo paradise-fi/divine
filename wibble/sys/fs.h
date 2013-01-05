@@ -31,6 +31,9 @@ bool exists(const std::string& s);
  */
 std::string abspath(const std::string& pathname);
 
+// Create a temporary directory based on a template.
+std::string mkdtemp( std::string templ );
+
 /// Create the given directory, if it does not already exists.
 /// It will complain if the given pathname already exists but is not a
 /// directory.
