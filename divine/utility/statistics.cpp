@@ -140,12 +140,10 @@ void Statistics::snapshot() {
 
 void *Statistics::main() {
     while ( true ) {
-        if ( !mpi.master() ) {
+        if ( mpi.master() ) {
             wibble::sys::sleep( 1 );
             snapshot();
-        }
-
-        if ( mpi.master() ) {
+        } else {
             wibble::sys::usleep( 200 * 1000 );
             send();
         }
