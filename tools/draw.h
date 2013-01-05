@@ -33,11 +33,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     };
 
     Node initial;
-    int drawn, maxdist, serial;
+    int drawn, maxdist, currentdist, serial;
 
-    std::string dot, output, render, trace;
+    std::string dot_nodes, dot_edges, output, render, trace;
     bool labels;
     bool traceLabels;
+    bool bfs;
 
     HashSet< Node, algorithm::Hasher > *intrace;
     std::set< std::pair< int, int > > intrace_trans;
@@ -61,7 +62,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return visitor::ExpandState;
     }
 
-    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label l)
+    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label l )
     {
         if ( draw.extension( t ).serial == 0 ) {
             if ( !draw.intrace->has( t ) )
@@ -123,6 +124,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
     void dotNode( Node n, bool dashed = false ) {
         stringstream str;
+
+        if ( bfs && extension( n ).distance > currentdist ) {
+            str << "} { rank = same; ";
+            currentdist = extension( n ).distance;
+        }
+
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
@@ -141,7 +148,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             str << "label=\"" << escape( label( n ) ) << "\"";
 
         str << "]\n";
-        dot += str.str();
+        dot_nodes += str.str();
     }
 
     void dotEdge( Node f, Node t, Label a, std::string color = "") {
@@ -164,7 +171,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             str << "]";
         }
         str << std::endl;
-        dot += str.str();
+        dot_edges += str.str();
     }
 
     // TODO: We leak some memory here, roughly linear to the trace size, i.e. not too bad
@@ -209,8 +216,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void draw() {
-        dot += "digraph { node [ fontname = Courier ]\n";
-
         initial = this->graph().initial();
         extension( initial ).serial = 1;
         extension( initial ).distance = 1;
@@ -225,10 +230,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             visitor.processQueue();
         } while ( this->graph().porEliminateLocally( *this ) );
 
-        dot += "}";
+        if ( bfs )
+            dot_nodes = "{" + dot_nodes + "}";
     }
 
     void graphviz() {
+        std::string dot = "digraph { node [ fontname = Courier ]\n" + dot_nodes + "\n" + dot_edges + "\n}";
         if ( output.empty() ) {
             if ( render.empty() )
                 render = "dot -Tx11";
@@ -254,6 +261,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         traceLabels = labels || m.algorithm.traceLabels;
         drawn = 0;
         serial = 1;
+        currentdist = 0;
+        bfs = false;
     }
 
     void run() {
