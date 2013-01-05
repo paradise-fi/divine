@@ -49,6 +49,7 @@ std::string graph_to_cpp(const BA_opt_graph_t &g)
     s << "extern \"C\" int setup( CESMISetup *setup ) {" << std::endl;
     s << "    setup->slack += sizeof(int);" << std::endl;
     s << "    system_setup( setup );" << std::endl;
+    s << "    setup->has_property = 1;" << std::endl;
     s << "}" << std::endl;
 
     s << "extern \"C\" void get_initial( CESMISetup *setup, char **to ) {" << std::endl;
@@ -158,6 +159,7 @@ std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > s
     s << "extern \"C\" int setup( CESMISetup *setup ) {" << std::endl;
     s << "    setup->slack += sizeof(int);" << std::endl;
     s << "    system_setup( setup );" << std::endl;
+    s << "    setup->has_property = 1;" << std::endl;
     s << "}" << std::endl;
 
     s << "extern \"C\" void get_initial( CESMISetup *setup, char **to ) {" << std::endl;
