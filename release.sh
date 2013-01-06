@@ -15,12 +15,12 @@ die() {
     test -n "$really" && exit 1 || true
 }
 
-test -f divine/version.cpp || die "Doesn't look like a divine source tree to me..."
+test -f divine/utility/version.cpp || die "Doesn't look like a divine source tree to me..."
 
 if test -n "$1"; then
     name="$1"
 else
-    version_=$(grep "^#define DIVINE_VERSION" divine/version.cpp)
+    version_=$(grep "^#define DIVINE_VERSION" divine/utility/version.cpp)
     version=$(echo $version_ | sed -e 's,#define DIVINE_VERSION "\([^"]*\)",\1,')
     name="divine-$version"
 fi
