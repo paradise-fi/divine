@@ -46,7 +46,7 @@ struct Algorithm {
 
     int maxDistance;
 
-    bool labels, traceLabels; /* for drawing */
+    bool labels, traceLabels, bfsLayout; /* for drawing */
     bool findDeadlocks;
     bool findGoals;
     bool hashCompaction;
@@ -57,7 +57,7 @@ struct Algorithm {
     Algorithm() : algorithm( Info ),
                   hashSeed( 0 ),
                   maxDistance( 32 ),
-                  labels( false ), traceLabels( false ),
+                  labels( false ), traceLabels( false ), bfsLayout( false ),
                   findDeadlocks( true ), findGoals( true ),
                   hashCompaction( false ), onlyQualitative( false ), iterativeOptimization( true ),
                   fairness( false ) {}

@@ -92,7 +92,7 @@ struct Main {
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
     IntOption *o_seed;
-    BoolOption *o_labels, *o_traceLabels;
+    BoolOption *o_labels, *o_traceLabels, *o_bfsLayout;
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_trail, *o_gnuplot;
     StringOption *o_property;
@@ -354,6 +354,8 @@ struct Main {
             "labels", 'l', "labels", "", "draw state labels" );
         o_traceLabels = drawing->add< BoolOption >(
             "trace-labels", '\0', "trace-labels", "", "draw state labels, in trace only" );
+        o_bfsLayout = drawing->add< BoolOption >(
+            "bfs-layout", '\0', "bfs-layout", "", "ask dot to lay out BFS layers in rows" );
 
         // compact options
         o_findBackEdges = compact->add< BoolOption >(
@@ -552,6 +554,7 @@ struct Main {
         meta.output.filterProgram = o_render->stringValue();
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
+        meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
         meta.input.trace = o_drawTrace->stringValue();
 
         setupLimits();

@@ -264,7 +264,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         drawn = 0;
         serial = 1;
         currentdist = 0;
-        bfs = false;
+        bfs = m.algorithm.bfsLayout;
     }
 
     void run() {
