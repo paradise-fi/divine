@@ -132,7 +132,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     void collect() {
         deadlocked = false;
         for ( int i = 0; i < int( shareds.size() ); ++i ) {
-            shared.stats.merge( shareds[ i ].stats );
+            shareds[ i ].stats.update( meta().statistics );
             if ( shareds[ i ].goal.valid() ) {
                 goal = shareds[ i ].goal;
                 if ( shareds[ i ].deadlocked )
@@ -158,8 +158,8 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 break;
         }
 
-        progress() << shared.stats.states << " states, "
-                   << shared.stats.transitions << " edges" << std::flush;
+        progress() << meta().statistics.visited << " states, "
+                   << meta().statistics.transitions << " edges" << std::flush;
 
         if ( goal.valid() ) {
             if ( deadlocked )
@@ -178,7 +178,6 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         meta().input.propertyType = meta::Input::Reachability;
         result().propertyHolds = goal.valid() ? meta::Result::No : meta::Result::Yes;
         result().fullyExplored = goal.valid() ? meta::Result::No : meta::Result::Yes;
-        shared.stats.update( meta().statistics );
     }
 };
 
