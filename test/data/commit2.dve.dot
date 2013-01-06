@@ -1,18 +1,20 @@
 digraph { node [ fontname = Courier ]
 2 [shape=circle ]
-2 -> 3
 3 [shape=circle ]
-2 -> 4
 4 [shape=circle ]
-3 -> 5
 5 [shape=circle ]
-4 -> 6
 6 [shape=circle ]
+7 [shape=circle ]
+8 [shape=circle ]
+9 [shape=circle ]
+
+2 -> 3
+2 -> 4
+3 -> 5
+4 -> 6
 4 -> 2
 5 -> 7
-7 [shape=circle ]
 6 -> 8
-8 [shape=circle ]
 8 -> 9
-9 [shape=circle ]
+
 }
