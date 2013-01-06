@@ -71,9 +71,5 @@ echo
 
 echo -e "Configuration complete. You may use \"ccmake _build\" or \n\
 supply options of form -DOPTION=value to this script, if you need to \n\
-adjust any of the configuration options. Your build will use the \n\
-following values:"
+adjust any of the configuration options."
 echo
-
-$CMAKE -L -N _build | grep -v OUTPUT_PATH:PATH | grep -v CMAKE_BUILD_TYPE | \
-    grep -v CMAKE_BACKWARDS_COMPAT
