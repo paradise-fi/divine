@@ -1,3 +1,25 @@
+DiVinE 2.91 (3.0 alpha 1; 7.1.2013)
+===================================
+
+- LLVM backend for model checking of C/C++ programs.
+- A new DVE language interpreter.
+- Support for (weak) fairness restrictions.
+- Support for verification of models based on timed automata, using the Uppaal
+  modelling language and arbitrary untimed LTL formulas.
+- Hash compaction (optional): conserve memory in exchange for a small
+  possibility of missing a counterexample.
+- Allow spilling of long queues on disk to free memory for hash tables.
+- Run verification in-process in the GUI.
+- divine compile --llvm: Call clang to compile a C or C++ program using a
+  special implementation of "pthreads" library, producing LLVM bitcode suitable
+  for verification with divine.
+- divine compile --cesmi: Conveniently build C and C++ modules for the divine
+  CESMI loader.
+- Use Intel ThreadBuildingBlocks memory allocator by default (HOARD can still
+  be activated at configure time).
+- Improved Windows support.
+- Many bugfixes and minor improvements.
+
 DiVinE 2.5.2 (4.12.2012)
 ========================
 
