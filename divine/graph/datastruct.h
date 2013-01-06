@@ -59,7 +59,10 @@ struct Queue : QueueFrontend< Graph, Queue< Graph, Statistics > >
     int id;
 
     Node front() { return _queue.front(); }
-    void pop_front() { _queue.pop_front(); }
+    void pop_front() {
+        Statistics::global().dequeue( id, sizeof( Node ) );
+        _queue.pop_front();
+    }
 
     void reserve( int n ) { _queue.reserve( n ); }
     int size() { return _queue.size(); } // XXX misleading?
