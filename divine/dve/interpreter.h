@@ -448,6 +448,9 @@ struct System {
         bool operator==( const Continuation &o ) const {
             return process == o.process && property == o.property && transition == o.transition;
         }
+        bool operator!=( const Continuation &o ) const {
+            return !this->operator==( o );
+        }
     };
 
     System( const parse::System &sys )
