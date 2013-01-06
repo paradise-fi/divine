@@ -231,8 +231,12 @@ endif()
 
 if( MANUAL )
   find_program( PANDOC pandoc )
+  find_program( PDFLATEX pdflatex )
+  find_program( BIBTEX bibtex )
   if ( PANDOC )
-    # nothing to do
+    if ( NOT PDFLATEX OR NOT BIBTEX )
+      message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
+    endif()
   else()
     disabling( "MANUAL" " (build pdf/html documentation)" "Could not find pandoc.")
     set( MANUAL OFF )
