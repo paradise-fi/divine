@@ -6,6 +6,8 @@
 #ifndef DIVINE_GENERATOR_DVE_H
 #define DIVINE_GENERATOR_DVE_H
 
+#include <deque>
+#include <vector>
 #include <divine/dve/interpreter.h>
 
 namespace divine {
@@ -68,6 +70,126 @@ struct Dve : public Common< Blob > {
                 return true;
             }
         );
+    }
+
+    bool isDiamond( Node from, size_t process,
+                    std::deque< dve::System::Continuation > ampleSet,
+                    std::deque< dve::System::Continuation > indepSet ) 
+    {
+        std::deque< Node > ampleNodes, indepNodes;
+        std::vector< std::deque< Node > > ampleNodesSuccs;
+        ampleNodesSuccs.resize( ampleSet.size() );
+        bool ok = true;
+        for ( auto i: ampleSet ) {
+            yieldSuccessor( from, i, [&]( Node n ) { ampleNodes.push_back( n ); } );
+            auto indepIt = indepSet.cbegin();
+            processConts(
+                ampleNodes.back(),
+                [&]( dve::System::Continuation p ) {
+                    if ( indepIt == indepSet.cend() || *indepIt != p ) {
+                        ok = false;
+                        return false;
+                    }
+                    yieldSuccessor(
+                        ampleNodes.back(),
+                        p,
+                        [&]( Node n ) { 
+                            ampleNodesSuccs[ ampleNodes.size() - 1 ].push_back( n );
+                        }
+                    );
+                    indepIt++;
+                    return true;
+                },
+                process,
+                false
+            );
+            if ( !ok || indepIt != indepSet.cend() )
+                return false;
+        }
+        for ( auto i: indepSet ) {
+            yieldSuccessor( from, i, [&]( Node n ) { indepNodes.push_back( n ); } );
+            auto ampleIt = ampleSet.cbegin();
+            auto ampleNSIt = ampleNodesSuccs.begin();
+            processConts(
+                indepNodes.back(),
+                [&]( dve::System::Continuation p ) {
+                    if ( ampleIt == ampleSet.cend() || *ampleIt != p ) {
+                        ok = false;
+                        return false;
+                    }
+                    assert( ampleNSIt != ampleNodesSuccs.end() );
+                    assert( !ampleNSIt->empty() );
+                    yieldSuccessor(
+                        indepNodes.back(),
+                        p,
+                        [&]( Node n ) {
+                            if ( n.compare( ampleNSIt->front(), this->alloc._slack, n.size() ) != 0 )
+                                ok = false;
+                            ampleNSIt->pop_front();
+                        }
+                    );
+                    if ( !ok )
+                        return false;
+                    ampleIt++;
+                    ampleNSIt++;
+                    return true;
+                },
+                process,
+                true
+            );
+            if ( !ok || ampleIt != ampleSet.cend() )
+                return false;
+        }
+        return true;
+    }
+
+    template< typename Yield >
+    void ample( Node from, Yield yield ) {
+        std::deque< dve::System::Continuation > ampleCands, indep;
+        for (size_t i = 0; i < system->processCount(); i++ ) {
+            bool tryNext = false;
+            processConts(
+                from,
+                [&]( dve::System::Continuation p ) {
+                    dve::Transition &trans = this->system->getTransition( this->ctx, p );
+                    if ( trans.sync ) {
+                        tryNext = true;
+                        return false;
+                    }
+                    ampleCands.push_back( p );
+                    return true;
+                },
+                i,
+                true
+            );
+
+            if ( tryNext || ampleCands.empty() ) {
+                ampleCands.clear();
+                continue;
+            }
+
+            processConts(
+                from,
+                [&]( dve::System::Continuation p ) {
+                    indep.push_back( p );
+                    return true;
+                },
+                i,
+                false
+            );
+            if ( !isDiamond( from, i, ampleCands, indep ) ) {
+                ampleCands.clear();
+                indep.clear();
+                continue;
+            }
+            while ( !ampleCands.empty() ) {
+                dve::System::Continuation p = ampleCands.front();
+                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
+                ampleCands.pop_front();
+            }
+            return;
+        }
+        successors( from, yield );
     }
 
     template< typename Yield >
