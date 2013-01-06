@@ -59,6 +59,8 @@ struct Pipe {
                 }
             } while ( !done() );
 
+            wibble::sys::MutexLock __l( mutex );
+            running = false;
             if ( close )
                 ::close( fd );
 
@@ -111,8 +113,10 @@ struct Pipe {
     }
 
     void close() {
+        wibble::sys::MutexLock __l( writer.mutex );
         writer.close = true;
-        writer.run( fd, "" );
+        if ( !writer.running )
+            ::close( fd );
     }
 
     bool valid() {
