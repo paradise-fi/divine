@@ -100,6 +100,9 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
     }
 };
 
+ALGORITHM_RPC( Simple );
+ALGORITHM_RPC_ID( Simple, 1, _visit );
+
 }
 }
 
