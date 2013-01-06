@@ -11,6 +11,9 @@ endif(COMMAND cmake_policy)
 SET( CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" )
 SET( CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" )
 
+SET( CMAKE_CXX_FLAGS_RELWITHDEBUG "-O3 -g" )
+SET( CMAKE_C_FLAGS_RELWITHDEBUG "-O3 -g" )
+
 if(NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
