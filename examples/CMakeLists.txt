@@ -1,4 +1,5 @@
-find_program( GHC ghc )
+## so far disable GHC since Haskell examples doesn't work
+# find_program( GHC ghc )
 
 set( GHCFLAGS -O2 -threaded )
 
@@ -30,8 +31,8 @@ if( GHC )
       endif()
   endif()
 else( GHC )
-  message( "-- WARNING: Could not find GHC. Not compiling haskell example models." )
-  message( "   (to tell me where GHC lives, use -DGHC=/path/to/ghc, thanks!)" )
+##  message( "-- WARNING: Could not find GHC. Not compiling haskell example models." )
+##  message( "   (to tell me where GHC lives, use -DGHC=/path/to/ghc, thanks!)" )
 endif( GHC )
 
 if( HS_EXAMPLES )
