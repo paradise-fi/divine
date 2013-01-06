@@ -154,7 +154,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                     dfs.runInner( dfs.graph(), n );
             }
 
-            if ( !dfs.ce_stack.empty() ) {
+            if ( dfs.valid && !dfs.ce_stack.empty() ) {
                 assert_eq( n.pointer(), dfs.ce_stack.front().pointer() );
                 dfs.ce_stack.pop_front();
             }
