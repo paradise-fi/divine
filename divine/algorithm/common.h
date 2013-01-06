@@ -110,6 +110,7 @@ struct Algorithm
         typename Self::Store *s = new typename Self::Store( self.graph() );
         s->hasher().setSeed( meta().algorithm.hashSeed );
         s->hasher().setSlack( self.graph().setSlack( m_slack ) );
+        s->setSize( meta().execution.initialTable );
         s->id = &self;
         return s;
     }

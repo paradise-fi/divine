@@ -73,6 +73,7 @@ struct TableUtils
     hash_t hash( T s ) { return hasher().hash( s ); }
     bool equal( T a, T b ) { return hasher().equal( a, b ); }
     bool alias( T a, T b ) { return visitor::alias( a, b ); }
+    void setSize( int sz ) { table.setSize( sz ); }
 
     TableUtils() : id( 0 ) {}
 };
