@@ -275,7 +275,8 @@ struct Parallel : Terminable, WithID {
     /// Submit a message.
     void submit( int from, int to, typename Comms::T value ) {
         assert( from < peers() );
-        return comms().submit( from, to, value );
+        comms().submit( from, to, value );
+        topology().wakeup( to );
     }
 
     Comms &comms() {
@@ -329,6 +330,7 @@ struct Local
     }
 
     int peers() { return m_slaves.size(); }
+    void wakeup( int id ) { barrier().wakeup( &m_slaves[ id ] ); }
 
     auto parallel( void (Instance::*fun)() )
          -> decltype( rpc::check_void< void (Instance::*)() >( fun ) )
@@ -381,6 +383,7 @@ struct Mpi : MpiMonitor
     Barrier< Terminable > &barrier() { return m_local.barrier(); }
 
     int peers() { return m_local.peers() * mpi.size(); } // XXX
+    void wakeup( int id ) { m_local.wakeup( id - mpi.rank() * m_local.m_slaves.size() ); } // ick
 
     Mpi( const Mpi& ) = delete;
 

@@ -387,6 +387,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             i = std::get< 0 >( b ).read32( &pool, i );
             i = std::get< 1 >( b ).read32( &pool, i );
             // TODO: load the label here... probably just use bitstream
+            // TODO: *wakeup*
             comms().submit( from, to, b );
         }
         ++ recv;
