@@ -51,15 +51,20 @@ struct Dve : public Common< Blob > {
     }
 
     template< typename Yield >
+    void yieldSuccessor( Node from, dve::System::Continuation p, Yield yield) {
+        Blob b = alloc.new_blob( stateSize() );
+        memcpy( mem( b ), mem( from ), stateSize() );
+        updateMem( b );
+        system->apply( ctx, p );
+        yield( b );
+    }
+
+    template< typename Yield >
     void successors( Node from, Yield yield ) {
         enabledConts(
             from,
             [&]( dve::System::Continuation p ) {
-                Blob b = this->alloc.new_blob( stateSize() );
-                memcpy( mem( b ), mem( from ), stateSize() );
-                updateMem( b );
-                this->system->apply( this->ctx, p );
-                yield( b, Label() );
+                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
                 return true;
             }
         );
@@ -70,11 +75,7 @@ struct Dve : public Common< Blob > {
         processConts(
             from,
             [&]( dve::System::Continuation p ) {
-                Blob b = this->alloc.new_blob( stateSize() );
-                memcpy( mem( b ), mem( from ), stateSize() );
-                updateMem( b );
-                this->system->apply( this->ctx, p );
-                yield( b, Label() );
+                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
                 return true;
             },
             pid,
