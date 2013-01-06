@@ -17,6 +17,10 @@ if( HOARD )
   link_libraries( hoard )
 endif( HOARD )
 
+if( TBBMALLOC )
+  link_libraries( tbbmalloc )
+endif()
+
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 
 set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )

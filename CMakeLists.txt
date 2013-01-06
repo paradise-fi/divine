@@ -48,7 +48,8 @@ option( HASH_COMPACTION "enable Hash Compaction" ON )
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
 option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
-option( HOARD "use HOARD SMP memory allocator" ON )
+option( HOARD "use HOARD SMP memory allocator" OFF )
+option( TBBMALLOC "use Intel TBB memory allocator" ON )
 
 option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
 
@@ -98,6 +99,11 @@ if( PERFORMANCE )
     disabling( "PERFORMANCE" "" "Overriden by SMALL." )
   endif()
 endif( PERFORMANCE )
+
+if( HOARD AND TBBMALLOC )
+    disabling( "HOARD" "" "Overriden by TBBMALLOC." )
+    set( HOARD OFF )
+endif()
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
@@ -370,6 +376,10 @@ add_subdirectory( external/lpsolve )
 if( HOARD )
   add_subdirectory( external/hoard )
 endif( HOARD )
+
+if( TBBMALLOC )
+  add_subdirectory( external/tbbmalloc )
+endif()
 
 if( LTL2DSTAR )
   if ( NOT LTL3BA )
