@@ -130,6 +130,8 @@ algorithm::Algorithm *selectGraph( Meta &meta )
                 std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
             return makeAlgorithm< A, graph::FairGraph< generator::Dve > >( meta );
         }
+        if ( por )
+            return makeAlgorithmPOR< A, generator::Dve >( meta );
 #endif
 
 #if defined(O_DVE)
