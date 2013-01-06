@@ -52,7 +52,8 @@ struct Pool {
 
     struct Group
     {
-        int item, used, total;
+        int item;
+        int used, total; /* XXX: Deprecated, but part of CESMI ABI. */
         char **free; // reuse allocation
         char *current; // tail allocation
         char *last; // bumper
@@ -87,7 +88,6 @@ struct Pool {
         b.start = new char[ s ];
         g->current = b.start;
         g->last = b.start + s;
-        g->total += s;
         g->blocks.push_back( b );
     }
 
@@ -128,7 +128,7 @@ struct Pool {
         g.blocks.push_back( b );
         g.current = b.start;
         g.last = b.start + b.size;
-        g.total = b.size;
+        g.total = 1;
         m_groups.resize( std::max( bytes / 4 + 1, int( m_groups.size() ) ), Group() );
 
         ffi_update();
@@ -137,7 +137,6 @@ struct Pool {
         m_groups[ bytes / 4 ] = g;
         assert_neq( g.total, 0 );
         assert( group( bytes ) );
-        assert_eq( group( bytes )->total, g.total );
         return group( bytes );
     }
 
@@ -161,8 +160,6 @@ struct Pool {
             ret = g->current;
             g->current += bytes;
         }
-        g->used += bytes;
-        assert( g->used <= g->total );
 
         return ret;
     }
@@ -197,8 +194,6 @@ struct Pool {
         assert( size );
         Group *g = group( size );
         release( g, ptr, size );
-        assert( g->used >= size );
-        g->used -= size;
     }
 
     template< typename T >
@@ -216,7 +211,6 @@ struct Pool {
         if ( !g )
             g = createGroup( size );
         assert( g );
-        g->total += size;
         release( g, ptr, size );
     }
 
