@@ -59,7 +59,10 @@ let
     buildScript = ''
       set -ex
       mkdir build && cd build
-      cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -DHOARD=OFF -DCMAKE_BUILD_TYPE=${buildType} ${flags} ../source
+      # Windows/mingw breaks on big files :-(
+      bt=${buildType}
+      test "$bt" = "RelWithDebInfo" && echo ${flags} | grep -v SMALL && bt=Release
+      cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -BUILD_DCMAKE_TYPE=$bt ${flags} ../source
       make
       mkdir E:\\nix-support
       make unit || touch E:\\nix-support\\failed
