@@ -117,8 +117,9 @@ let
     mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
     gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
     llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
     full = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 ]; };
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ]; };
 
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
     fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms; };
