@@ -55,6 +55,8 @@ head -n1 NEWS | grep -q "DiVinE $version" || \
 ## BUILD ###############
 echo populating the tarball...
 
+IFS="
+"
 for f in `darcs query manifest`; do
     mkdir -p "$name/`dirname $f`"
     cp "$f" "$name/$f"
@@ -78,8 +80,8 @@ cd $name
 make
 make check
 
-echo version: `./_build/tools/divine --version`
-./_build/tools/divine --version | grep "^DiVinE version $version$" # no hashes in there
+./_build/tools/divine --version
+./_build/tools/divine --version | egrep "^DiVinE version $version( |$)" # no hashes in there
 cd ..
 rm -rf $name
 
