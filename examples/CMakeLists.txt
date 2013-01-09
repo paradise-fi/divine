@@ -13,9 +13,10 @@ add_custom_target(
 endmacro( haskell_so )
 
 add_custom_target( examples )
+include_directories( ${CMAKE_SOURCE_DIR} )
 
 if( NOT WIN32 ) # currently fails to build on windows
-add_library( BenchmarkC MODULE BenchmarkC.c )
+add_library( BenchmarkC MODULE cesmi/BenchmarkC.c )
 set_target_properties( BenchmarkC PROPERTIES EXCLUDE_FROM_ALL ON PREFIX "" )
 add_dependencies( examples BenchmarkC )
 endif()
@@ -41,7 +42,7 @@ add_dependencies( examples BenchmarkHs )
 endif( HS_EXAMPLES )
 
 if( WIN32 )
-  file( GLOB DVE_SAMPLE *.dve )
+  file( GLOB DVE_SAMPLE dve/*.dve )
 
   install( FILES ${DVE_SAMPLE} DESTINATION examples COMPONENT examples )
 endif( WIN32 )

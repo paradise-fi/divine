@@ -29,7 +29,7 @@
 #include <stdlib.h> //malloc
 #include <string.h> //memset
 
-#include "../divine/generator/cesmi-client.h"
+#include <divine/generator/cesmi-client.h> // XXX
 
 struct state {
     int16_t a, b;
