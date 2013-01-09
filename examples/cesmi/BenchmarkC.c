@@ -2,58 +2,49 @@
  * This is an example of usage of the CESMI interface.
  * This file is processed by the DiVinE model checker as follows:
  *
- * 1) First we compile BenchmarkC.c into BenchmarkC.so and BenchmarkC.o
+ * 1) First we compile BenchmarkC.c into BenchmarkC.so:
  *
  *	$ divine compile --cesmi BenchmarkC.c
  *
- * 2) BenchmarkC.so can be used as input model to the DiVinE model checker,
- *    should anybody be interested in the state space graph of it, see e.g.
+ * 2) BenchmarkC.so can be used as input model to the DiVinE model checker:
  *
+ *      $ divine info BenchmarkC.so
  * 	$ divine draw -l BenchmarkC.so
  * 	$ divine metrics BenchmarkC.so
  *
- * 3) BenchmarkC.o is used for model checking purposes. First, the file must be combined
- *    with LTL formulas as listed in BenchmarkC.ltl:
- *
- *	$ divine combine -f BenchmarkC.ltl BenchmarkC.o
- *
- *    The previous command creates two new files in the working directory, BenchmarkC.prop1.so
- *    and BenchmarkC.prop2.so, which can be used as inputs to the model checker.
- *
- * 	$ divine verify BenchmarkC.prop1.so
- *
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h> //malloc
 #include <string.h> //memset
 
-#include <divine/generator/cesmi-client.h> // XXX
+#include <divine/cesmi/usr-cesmi.h> // XXX
 
-struct state {
+struct state
+{
     int16_t a, b;
 };
 
-static inline struct state *make( CESMISetup *setup, char **to ) {
-    int size = sizeof( struct state ) + setup->slack;
-    *to = pool_allocate_blob( setup->cpool, size );
-    memset ( (*to) + BlobHeaderSize , 0, setup->slack );
-    return (struct state *) ((*to) + setup->slack + BlobHeaderSize);
-}
-
-void get_system_initial( CESMISetup *setup, char **to )
+int get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
 {
-    struct state *s = make( setup, to );
+    if ( handle > 1 )
+        return 0;
+
+    *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+    struct state *s = (struct state *) to->memory;
     s->a = s->b = 0;
+    return 2;
 }
 
-int get_system_successor( CESMISetup *setup, int handle, char *from, char **to )
+int get_successor( cesmi_setup *setup, int handle, char *from, cesmi_node *to )
 {
-    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
+    struct state *in = (struct state *) from;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
-        struct state *out = make( setup, to );
+        *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+        struct state *out = (struct state *) to->memory;
         *out = *in;
         switch (handle) {
         case 1: out->a ++; return 2;
@@ -63,33 +54,34 @@ int get_system_successor( CESMISetup *setup, int handle, char *from, char **to )
     return 0;
 }
 
-void system_setup( CESMISetup *s ) {
-    s->state_size = sizeof( struct state );
+void setup( cesmi_setup *s )
+{
+    s->property_count = 2;
 }
 
-char *show_system_node( CESMISetup *setup, char *from )
+int get_property_type( cesmi_setup *s, int n )
 {
-    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
-    char * ret = (char *) malloc ( 50 );  // FIXME
-    sprintf (ret, "a:%d, b:%d\n", in->a, in->b );
-    return ret;
+    switch ( n ) {
+    case 0: return cesmi_pt_goal;
+    case 1: return cesmi_pt_deadlock;
+    }
+    return -1;
 }
 
-char *show_system_transition( CESMISetup *setup, char *from, char *to )
+char *show_node( cesmi_setup *setup, char *from )
 {
-    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
-    struct state *out = (struct state *) (to + setup->slack + BlobHeaderSize);
-    char * ret = (char *) malloc ( 50 );  // FIXME
-    if (in->a != out->a)
-      sprintf (ret, "a++" );
-    else
-      sprintf (ret, "b++" );
-    return ret;
+    struct state *in = (struct state *) from;
+    char *result;
+    asprintf( &result, "a:%d, b:%d\n", in->a, in->b );
+    return result;
 }
 
-//Atomic proposition a: (a>b)
-int prop_a( CESMISetup *setup, char *from )
+char *show_transition( cesmi_setup *setup, char *from, int handle )
 {
-    struct state *in = (struct state *) (from + setup->slack + BlobHeaderSize);
-    return (in->a > in->b);
+    struct state *in = (struct state *) from;
+    switch (handle) {
+    case 1: return strdup( "a++" );
+    case 2: return strdup( "b++" );
+    }
+    return NULL;
 }
