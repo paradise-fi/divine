@@ -130,17 +130,17 @@ timed_small() {
     check clear
     run $wrapper data/timed_clock.xml "$@"
     check reachability_valid
-    check statespace 226 236 0 0
+    check statespace 226 227 0 0
 
     check clear
     run $wrapper data/bridge.xml --property=0 "$@"
     check ltl_invalid
-    check statespace 2915 7014 0 0
+    check statespace 2882 5157 0 0
     check clear
 
     run $wrapper data/bridge.xml --property=1 "$@"
     check ltl_valid
-    check statespace 3337 8151 399 0
+    check statespace 3316 5951 399 0
 }
 
 coin_small() {
