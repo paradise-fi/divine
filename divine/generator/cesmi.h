@@ -11,10 +11,16 @@
 #ifndef DIVINE_GENERATOR_CESMI_H
 #define DIVINE_GENERATOR_CESMI_H
 
-#include <divine/generator/cesmi-client.h>
+/*
+ * Add alloc function to setup, to make the interface more opaque.
+ */
 
 namespace divine {
 namespace generator {
+
+namespace cesmi {
+#include <divine/cesmi/usr-cesmi.h>
+};
 
 /**
  * A binary model loader. The model is expected to be a shared object (i.e. .so
@@ -27,32 +33,32 @@ struct CESMI : public Common< Blob > {
     typedef typename Common::Label Label;
     std::string file;
 
-    typedef void (*dl_setup_t)(CESMISetup *);
-    typedef void (*dl_get_initial_t)(CESMISetup *, char **);
-    typedef int (*dl_get_successor_t)(CESMISetup *, int, char *, char **);
-    typedef bool (*dl_is_accepting_t)(CESMISetup *, char *);
-    typedef char *(*dl_show_node_t)(CESMISetup *, char *);
-    typedef char *(*dl_show_transition_t)(CESMISetup *, char *, char *);
-    typedef void (*dl_cache_successors_t)(CESMISetup *, SuccessorCache *);
-
     struct Dl {
         void *handle;
-        dl_get_initial_t get_initial;
-        dl_get_successor_t get_successor;
-        dl_is_accepting_t is_accepting;
-        dl_show_node_t show_node;
-        dl_show_transition_t show_transition;
-        dl_setup_t setup;
-        dl_cache_successors_t cache_successors;
 
-        Dl() : get_initial( 0 ), get_successor( 0 ), is_accepting( 0 ), show_node( 0 ),
-               show_transition( 0 ), setup( 0 ), cache_successors( 0 ) {}
+        decltype( &cesmi::setup             ) setup;
+        decltype( &cesmi::get_property_type ) get_property_type;
+        decltype( &cesmi::show_property     ) show_property;
+
+        decltype( &cesmi::get_initial       ) get_initial;
+        decltype( &cesmi::get_successor     ) get_successor;
+        decltype( &cesmi::get_flags         ) get_flags;
+
+        decltype( &cesmi::show_node         ) show_node;
+        decltype( &cesmi::show_transition   ) show_transition;
+
+        Dl() : get_initial( 0 ), get_successor( 0 ), get_flags( 0 ), show_node( 0 ),
+               show_transition( 0 ), setup( 0 ), get_property_type( 0 ), show_property( 0 ) {}
     } dl;
 
-    CESMISetup setup;
+    cesmi::cesmi_setup setup;
+
+    char *data( Blob b ) {
+        return b.data() + alloc._slack;
+    }
 
     template< typename Yield >
-    void successors( Node s, Yield yield ) {
+    void _successors( Node s, Yield yield ) {
         int handle = 1;
         if ( !s.valid() )
             return;
@@ -60,24 +66,28 @@ struct CESMI : public Common< Blob > {
         call_setup();
 
         while ( handle ) {
-            char *state;
-            handle = dl.get_successor( &setup, handle, s.pointer(), &state );
+            cesmi::cesmi_node state;
+            handle = dl.get_successor( &setup, handle, data( s ), &state );
             if ( handle )
-                yield( Blob( state ), Label() );
+                yield( Blob( state.handle ), handle );
         }
     }
 
-    Node initial() {
-        char *state;
-        call_setup();
-        assert_eq( setup.pool, &pool() );
-        dl.get_initial( &setup, &state );
-        return Blob( state );
+    template< typename Yield >
+    void successors( Node s, Yield yield ) {
+        _successors( s, [yield]( Node n, int ) { yield( n, Label() ); } );
     }
 
     template< typename Q >
     void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+        int handle = 1;
+        call_setup();
+        while ( handle ) {
+            cesmi::cesmi_node state;
+            handle = dl.get_initial( &setup, handle, &state );
+            if ( handle )
+                q.queue( Node(), Blob( state.handle ), Label() );
+        } while ( handle );
     }
 
     void die( const char *fmt, ... ) __attribute__((noreturn)) {
@@ -105,13 +115,16 @@ struct CESMI : public Common< Blob > {
         if( !dl.handle )
             die( "FATAL: Error loading \"%s\".\n%s", path.c_str(), dlerror() );
 
-        getsym( &dl.get_initial, "get_initial" );
         getsym( &dl.setup, "setup" );
+        getsym( &dl.get_property_type, "get_property_type" );
+        getsym( &dl.show_property, "show_property" );
+
+        getsym( &dl.get_initial, "get_initial" );
         getsym( &dl.get_successor, "get_successor" );
-        getsym( &dl.is_accepting, "is_accepting" );
+        getsym( &dl.get_flags , "get_flags" );
+
         getsym( &dl.show_node, "show_node" );
         getsym( &dl.show_transition, "show_transition" );
-        getsym( &dl.cache_successors, "cache_successors" );
 
         if ( !dl.get_initial )
             die( "FATAL: Could not resolve get_initial." );
@@ -123,46 +136,66 @@ struct CESMI : public Common< Blob > {
 #endif
     }
 
-    void call_setup()
-    {
-        if ( setup.setup_done )
-            return;
-
-        setup.has_property = 0;
-        setup.slack = alloc._slack;
-        setup.pool = &pool();
-        if ( dl.setup )
-            dl.setup( &setup );
-        setup.setup_done = true;
+    static cesmi::cesmi_node make_node( void *handle, int size ) {
+        CESMI *_this = reinterpret_cast< CESMI * >( handle );
+        int slack = _this->alloc._slack;
+        Blob b( _this->alloc.pool(), size + slack );
+        b.clear( 0, slack );
+        cesmi::cesmi_node n;
+        n.memory = b.data() + slack;
+        n.handle = b.ptr;
+        return n;
     }
 
+    void call_setup()
+    {
+        if ( setup.instance_initialised )
+            return;
+
+        setup.property_count = 0;
+        setup.allocation_handle = this;
+        setup.make_node = &make_node;
+        setup.instance = 0;
+        setup.instance_initialised = 0;
+
+        if ( dl.setup )
+            dl.setup( &setup );
+
+        setup.instance_initialised = 1;
+    }
+
+    /* XXX this interface is wrong */
     PropertyType propertyType() {
         call_setup();
-        return setup.has_property ? AC_Buchi : AC_None;
+        switch ( dl.get_property_type( &setup, 0 ) ) {
+            case cesmi::cesmi_pt_buchi: return AC_Buchi;
+            case cesmi::cesmi_pt_goal: return AC_None;
+        }
+        return AC_None; /* Duh. */
     }
 
     CESMI() {
-        setup.setup_done = false;
+        setup.instance_initialised = 0;
     }
 
     CESMI( const CESMI &other ) {
         dl = other.dl;
-        setup.setup_done = false;
+        setup.instance_initialised = 0;
     }
 
-
-    bool isGoal( Node s ) { return false; } // XXX
-
-    bool isAccepting( Node s ) {
-        if ( dl.is_accepting )
-            return dl.is_accepting( &setup, s.pointer() );
+    uint64_t flags( Node s ) {
+        if ( dl.get_flags )
+            return dl.get_flags( &setup, data( s ) );
         else
-            return false;
+            return 0;
     }
+
+    bool isGoal( Node s ) { return flags( s ) & cesmi::cesmi_goal; }
+    bool isAccepting( Node s ) { return flags( s ) & cesmi::cesmi_accepting; }
 
     std::string showNode( Node s ) {
         if ( dl.show_node ) {
-            char *fmt = dl.show_node( &setup, s.pointer() );
+            char *fmt = dl.show_node( &setup, data( s ) );
             std::string s( fmt );
             ::free( fmt );
             return s;
@@ -171,8 +204,16 @@ struct CESMI : public Common< Blob > {
     }
 
     std::string showTransition( Node from, Node to, Label ) {
+        char *fmt = nullptr;
+
         if ( dl.show_transition ) {
-            char *fmt = dl.show_transition( &setup, from.pointer(), to.pointer() );
+            _successors( from, [&]( Node n, int handle ) {
+                    if ( to.compare( n, alloc._slack, 0 ) == 0 )
+                        fmt = dl.show_transition( &setup, data( from ), handle );
+                } );
+        }
+
+        if ( fmt ) {
             std::string s( fmt );
             ::free( fmt );
             return s;
@@ -180,6 +221,7 @@ struct CESMI : public Common< Blob > {
             return "";
     }
 
+    Node initial() { assert_die(); }
     void release( Node s ) { s.free( pool() ); }
 };
 

@@ -70,6 +70,10 @@ struct Blob
     {
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
+    explicit Blob( void *s ) : ptr( reinterpret_cast< char * >( s ) )
+    {
+        assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
+    }
 
     template< typename A >
     void free( A &a ) {
