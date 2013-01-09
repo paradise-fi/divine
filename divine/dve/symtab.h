@@ -274,16 +274,14 @@ struct SymTab : NS {
                     child(s)->dump(o, mem);
                 }
             }
-            o << std::endl;
         }
 
         if ( parent )
-            return o;
+            return o << std::endl;
 
         StateFlags flags;
         lookup( Flag, "Flags" ).deref( mem, 0, flags );
-        o << flags;
-        return o;
+        return o << std::endl << flags << std::endl;
     }
 };
 
