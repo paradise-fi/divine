@@ -1,0 +1,6 @@
+#define inRange1 (x >= 10 && x <= 30 )
+#define inRange2 (x >= 10 && x <= 42 )
+
+#property FG inRange1
+
+#property FG inRange2
