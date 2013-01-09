@@ -150,6 +150,17 @@ struct Timed : public Common< Blob > {
     PropertyType propertyType() {
         return hasLTL ? AC_Buchi : AC_None;
     }
+
+    template< typename O >
+    O getProperties( O o ) {
+        std::stringstream ss;
+        for ( unsigned int i = 0; i < ltlProps.size(); i++ ) {
+            ss.str( "" );
+            ss << i;
+            *o++ = std::make_pair( ss.str(), ltlProps[ i ] );
+        }
+        return o;
+    }
 };
 
 }
