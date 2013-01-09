@@ -36,8 +36,7 @@ void Evaluator::computeChannelPriorities( UTAP::TimedAutomataSystem &sys ) {
 
 void Evaluator::emitError( int code ) {
     assert( code != 0 );
-    if ( !error )   // remember only the first error
-        error = code;
+    throw EvalError( code );
 }
 
 UTAP::type_t Evaluator::getBasicType( const UTAP::type_t &type ) {
@@ -115,8 +114,7 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
             if ( var.prefix == PrefixType::CONSTANT ) {
                 const int32_t *varContent = getValue( procId, s );
                 if ( p.second+pSize > var.elementsCount ) {
-                    emitError( ERR_ARRAY_INDEX );
-                    return;
+                    emitError( EvalError::ARRAY_INDEX );
                 }
                 for ( int i = p.second; i < p.second + pSize; i++ )
                     output.push_back( varContent[ i ] );
@@ -235,8 +233,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                     
                     for ( int i = 0; i < size; i++ ) {
                         if ( !inRange( procId, s, vals[ i ] ) ) {
-                            emitError( ERR_OUT_OF_RANGE );
-                            break;
+                            emitError( EvalError::OUT_OF_RANGE );
                         }
                         metaValues[ i + it->second.offset ] = vals[ i ];
                     }
@@ -254,7 +251,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                 vars.insert( make_pair( make_pair( s, procId ),
                     VarData( Type::SCALAR, prefix, initValues.size(), ranges ) ) );
                 if ( !inRange( procId, s, value ) )
-                    emitError( ERR_OUT_OF_RANGE );
+                    emitError( EvalError::OUT_OF_RANGE );
                 initValues.push_back( value );
             } else {
                 auto it = vars.find( make_pair( s, procId ) );
@@ -262,11 +259,11 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                     vars.insert( it, make_pair( make_pair( s, procId),
                                 VarData( Type::SCALAR, prefix, metaValues.size(), ranges ) ) );
                     if ( !inRange( procId, s, value ) )
-                        emitError( ERR_OUT_OF_RANGE );
+                        emitError( EvalError::OUT_OF_RANGE );
                     metaValues.push_back( value );
                 } else {
                     if ( !inRange( procId, s, value ) )
-                        emitError( ERR_OUT_OF_RANGE );
+                        emitError( EvalError::OUT_OF_RANGE );
                     metaValues[ it->second.offset ] = value;
                 }
             }
@@ -395,18 +392,16 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
     case DIV:
         b_num = eval( procId, b );
         if ( b_num == 0 ) {
-            emitError( ERR_DIVIDE_BY_ZERO );
-            return -1;
-        } else
-            return eval( procId, a ) / b_num;
+            emitError( EvalError::DIVIDE_BY_ZERO );
+        }
+        return eval( procId, a ) / b_num;
     case ASSMOD:
     case MOD:
         b_num = eval( procId, b );
         if ( b_num == 0 ) {
-            emitError( ERR_DIVIDE_BY_ZERO );
-            return -1;
-        } else
-            return eval( procId, a ) % b_num;
+            emitError( EvalError::DIVIDE_BY_ZERO );
+        }
+        return eval( procId, a ) % b_num;
 
     case ASSAND:
     case BIT_AND:   return eval( procId, a ) & eval( procId, b );
@@ -418,13 +413,13 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
     case BIT_LSHIFT:
         b_num = eval( procId, b );
         if ( (b_num & 31) != b_num )
-            emitError( ERR_SHIFT );
+            emitError( EvalError::SHIFT );
         return eval( procId, a ) << b_num;
     case ASSRSHIFT:
     case BIT_RSHIFT:
         b_num = eval( procId, b );
         if ( (b_num & 31) != b_num )
-            emitError( ERR_SHIFT );
+            emitError( EvalError::SHIFT );
         return eval( procId, a ) >> b_num;
 
     case AND:   return eval( procId, a) && eval( procId, b);
@@ -499,8 +494,7 @@ std::pair< const Evaluator::VarData*, int > Evaluator::getArray( int procId, con
     reverse( indices.begin(), indices.end() );
     for ( int i = 0; i < indices.size(); i++ ) {
         if ( indices[ i ] >= var.arraySizes[ i ] ) {
-            emitError( ERR_ARRAY_INDEX );
-            return std::make_pair( &var, 0 );
+            emitError( EvalError::ARRAY_INDEX );
         }
         size /= var.arraySizes[ i ];
         index += size * indices[ i ];
@@ -529,8 +523,7 @@ void Evaluator::assign( const expression_t& lval, int32_t val, int pId ) {
         clocks.set( index, val );
     else {      // assign to variable
         if ( !var.first->inRange( val ) ) {
-            emitError( ERR_OUT_OF_RANGE );
-            return;
+            emitError( EvalError::OUT_OF_RANGE );
         }
         assert( data );
         data[ index ] = val;
@@ -554,8 +547,7 @@ void Evaluator::assign( const expression_t& lexp, const expression_t& rexp, int 
         assert ( pEnd - pSrc <= arr.first->elementsCount );
         while ( pSrc != pEnd ) {
             if ( !arr.first->inRange( *pSrc ) ) {
-                emitError( ERR_OUT_OF_RANGE );
-                return;
+                emitError( EvalError::OUT_OF_RANGE );
             }
             *pDest++ = *pSrc++;
         }
@@ -596,7 +588,6 @@ bool Evaluator::isChanBcast( int ch ) const {
 }
 
 void Evaluator::processDeclGlobals( UTAP::TimedAutomataSystem &sys ) {
-    error = 0;
     assert( ProcessTable.empty() );
     
     for ( const function_t &f : sys.getGlobals().functions )
@@ -749,8 +740,7 @@ void Evaluator::evalCmd( int procId, const expression_t& expr ) {
     if ( dest_sym.getType().isClock() ) {
         int value =  eval( procId, expr[ 1 ] );
         if ( value < 0 ) {
-            emitError( ERR_NEG_CLOCK );
-            return;
+            emitError( EvalError::NEG_CLOCK );
         }
         clocks.set( resolveId( procId, expr[0]), value );
         return;
@@ -844,8 +834,7 @@ int32_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
             if ( stmt_info.iterCount < range_len ) {
                 const VarData &var = getVarData( procId, iter_stmt->symbol );
                 if ( !inRange( procId, iter_stmt->symbol, stmt_info.iterCount + r.first ) ) {
-                    emitError( ERR_OUT_OF_RANGE );
-                    return -1;
+                    emitError( EvalError::OUT_OF_RANGE );
                 }
                 metaValues[ var.offset ] = stmt_info.iterCount + r.first;
                 ++stmt_info.iterCount;
@@ -974,7 +963,6 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
 }
 
 void Evaluator::setData( char *d, Locations l ) {
-    error = 0;
     data = reinterpret_cast< int32_t* >( d );
     clocks.setData( d + getReqSize() - clocks.getReqSize() );
     locations = l;

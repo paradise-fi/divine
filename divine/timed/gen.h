@@ -82,28 +82,37 @@ private:
     // Calls given callback for each state created by slicing source
     template < typename Func >
     void slice( char* source, const std::vector< Cut >& cuts, Func fun ) {
-        if ( cuts.empty() ) {   // avoid unnecessary copying
+        if ( cuts.empty() ) {   // avoid unnecessary copying when no slicing is needed
             setData( source );
-            if ( evalInv() ) {
-                this->eval.extrapolate();
-                fun( source );
-            }
+            fun( source );
             return;
         }
 
-        std::vector< char > srcCopy( stateSize() );
-        memcpy( &srcCopy[0], source, stateSize() );
+        BlockList bl( stateSize() );
+        bl.push_back( source );
+        std::vector< int > next({ 0 });
 
-        assert( cuts.size() < 32 );
-        for ( unsigned int sel = 0; sel < (1 << cuts.size()); ++sel ) {
-            newSucc( source, &srcCopy[0] );
-            bool possible = true;
-            for ( unsigned int i = 0; i < cuts.size(); ++i ) {
-                possible = possible && eval.evalBool( cuts[ i ].pId, (sel & (1 << i)) ? cuts[ i ].pos : cuts[ i ].neg );
-            }
-            if ( possible && evalInv() ) {
-                this->eval.extrapolate();
-                fun( source );
+        while ( !next.empty() ) {
+            assert( next.size() == bl.size() );
+            if ( next.back() == 2 ) {
+                bl.pop_back();
+                next.pop_back();
+            } else {
+                if ( next.size() - 1 < cuts.size() ) {
+                    bl.duplicate_back();
+                    setData( bl.back() );
+                    const Cut& cut = cuts[ next.size() - 1 ];
+                    if ( eval.evalBool( cut.pId, next.back()++ == 0 ? cut.pos : cut.neg ) ) {
+                        next.push_back( 0 );
+                    } else {
+                        bl.pop_back();
+                    }
+                } else {
+                    setData( bl.back() );
+                    fun( bl.back() );
+                    bl.pop_back();
+                    next.pop_back();
+                }
             }
         }
     }
@@ -129,27 +138,35 @@ public:
         bool urgent;
         BlockList bl( stateSize(), 1 );
         EnabledList einf;
-        listEnabled( source, bl, einf, urgent );
+        try {
+            listEnabled( source, bl, einf, urgent );
+        } catch ( EvalError& e ) {
+            makeErrState( bl.back(), e.getErr() ); // create error state
+            callback( bl.back(), nullptr );
+        }
 
         // generate time successors
         if ( !urgent ) {
             newSucc( bl.back(), source );
             eval.up();
-            bool selfLoop = false;
-            slice( bl.back(), cutClocks, [ this, &callback, source, &selfLoop ] ( char* data ) {
-                if ( memcmp( data, source, stateSize() ) == 0 )
-                    selfLoop = true;
-                else
-                    callback( data, nullptr );
-            });
+            if ( evalInv() ) {
+                eval.extrapolate();
+                bool selfLoop = false;
+                slice( bl.back(), cutClocks, [ this, &callback, source, &selfLoop ] ( char* data ) {
+                    if ( memcmp( data, source, stateSize() ) == 0 )
+                        selfLoop = true;
+                    else
+                        callback( data, nullptr );
+                });
 
 #ifndef TIMED_NO_POR
-            // If we are in non-urgent state and there is no time self-loop, skip all the transition successors
-            // because then there is a time successor with a strictly greater zone with all the successors this state would have.
-            // Reduces state-space, but breaks the LTL next operator
-            if ( !selfLoop )
-                return;
+                // If we are in non-urgent state and there is no time self-loop, skip all the transition successors
+                // because then there is a time successor with a strictly greater zone with all the successors this state would have.
+                // Reduces state-space, but breaks the LTL next operator
+                if ( !selfLoop )
+                    return;
 #endif
+            }
         }
 
         // finalize priorities
@@ -167,13 +184,21 @@ public:
         Federation fed = eval.getFederation();  // create federation from source zone
         unsigned int remaining;
 
+        // generate edge successors
         do {
             Federation current = fed;
             remaining = 0;
             maxPrio = nextPrio; // stores current maximum priority
             nextPrio = PrioVal( sys.hasPriorityDeclaration() ); // stores the highest priority lower than maxPrio
             for ( unsigned int i = 0; i < einf.size(); i++ ) {
-                if ( einf[ i ].valid ) {
+                if ( !einf[ i ].valid ) continue;
+                const EdgeInfo *lastEdge = einf[ i ].edges[ 0 ];
+
+                try {
+                    int err = isErrState( bl[ i ] );
+                    if ( err ) // if this is an error successor, rethrow the exception
+                        throw EvalError( err );
+
                     if ( !einf[ i ].prio.equal( maxPrio ) ) { // if successor has lower priority
                         remaining++;
                         einf[ i ].prio.updateMax( nextPrio );
@@ -191,20 +216,25 @@ public:
 
                         for ( auto &e : einf[ i ].edges )
                             applyEdge( e );
+                        if ( !evalInv() )
+                            continue;
 
-                        const EdgeInfo *lastEdge = einf[ i ].edges[ 0 ];
-                        slice( bl.back(), eval.clockDiffrenceExprs, [ lastEdge, &callback ] ( char* data ) {
+                        slice( bl.back(), eval.clockDiffrenceExprs, [ this, lastEdge, &callback ] ( char* data ) mutable {
+                            eval.extrapolate(); // extrapolation has to be done after slicing by diagonal constraints top ensure correctness
                             callback( data, lastEdge );
                         });
                     }
-                    einf[ i ].valid = false;
+                } catch ( EvalError& e ) {
+                    makeErrState( bl.back(), e.getErr() ); // create an error state
+                    callback( bl.back(), lastEdge );
                 }
+                einf[ i ].valid = false;
             }
         } while ( remaining > 0 && !fed.isEmpty() ); // quit if there is no remaining state and we still have a non-empty federation
 
         if ( !fed.isEmpty() ) { // if some valutions do not have outcomming edges
             if ( urgent || fed.isUnbounded() ) {
-                makeErrState( bl.back(), ERR_DEADLOCK ); // create artifical deadlock state
+                makeErrState( bl.back(), EvalError::TIMELOCK ); // create artifical deadlock state
                 callback( bl.back(), nullptr );
             }
         }
@@ -240,8 +270,4 @@ public:
 
     // returns nonzero if in error state
     int isErrState( char* d );
-
-    enum Err {
-        ERR_INVARIANT = 200, ERR_DEADLOCK = 201
-    };
 };

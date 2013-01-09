@@ -5,28 +5,6 @@
 #include <sstream>
 #include <limits>
 
-std::string errString( int code ) {
-    assert( code != 0 );
-    switch ( code ) {
-    case Evaluator::ERR_DIVIDE_BY_ZERO:
-        return "Divide by zero";
-    case Evaluator::ERR_ARRAY_INDEX:
-        return "Array index out of bounds";
-    case Evaluator::ERR_OUT_OF_RANGE:
-        return "Out of range variable assignment";
-    case Evaluator::ERR_SHIFT:
-        return "Invalid shift operation";
-    case Evaluator::ERR_NEG_CLOCK:
-        return "Negative clock assignment";
-    case TAGen::ERR_INVARIANT:
-        return "Invariant does not hold";
-	case TAGen::ERR_DEADLOCK:
-		return "Time deadlock";
-    default:
-        return "Unknown error";
-    }
-}
-
 void TAGen::EdgeInfo::assignSubst( const EdgeInfo& ei, const UTAP::symbol_t& sym, const UTAP::expression_t& expr ) {
     guard = ei.guard.subst( sym, expr );
     assign = ei.assign.subst( sym, expr );
@@ -118,10 +96,12 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
         for ( auto tr = s.edges.begin(); tr != s.edges.end(); ++tr ) {
             if ( tr->syncType == UTAP::Constants::SYNC_QUE ) {
                 assert( !tr->sync.empty() );
-                setData( source );  // resets error flag
-                chan_id chan = eval.evalChan( nInst, tr->sync );
-                if ( !eval.error )	// invalid receiving end is not an error, just ignore it
+                try {
+                    chan_id chan = eval.evalChan( nInst, tr->sync );
                     sync[ chan ].push_back( &*tr );
+                } catch ( EvalError& ) {
+                    // invalid receiving end is not an error, just ignore it
+                }
             } else {
                 trans.push_back( &*tr );
             }
@@ -129,70 +109,69 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
     }
 
     for ( auto itr = trans.begin(); itr != trans.end(); ++itr ) {
-        newSucc( bl.back(), source );
-        // continue if the guard holds ar there was an error while evaluating the guard
-        if ( !evalGuard( *itr ) && !eval.error ) continue;
+        try {
+            newSucc( bl.back(), source );
+            if ( !evalGuard( *itr ) ) continue;
 
-        if ( (*itr)->syncType == UTAP::Constants::SYNC_BANG ) {
-            assert( !(*itr)->sync.empty() );
-            chan_id chan = eval.evalChan( (*itr)->procId, (*itr)->sync );
+            if ( (*itr)->syncType == UTAP::Constants::SYNC_BANG ) {
+                assert( !(*itr)->sync.empty() );
+                chan_id chan = eval.evalChan( (*itr)->procId, (*itr)->sync );
 
-            if ( eval.error )
-                /*makeSucc( succs )*/;
-            else if ( eval.isChanBcast( chan ) ) {
-                // n-ary synchronization
-                bool fromCommit = commit.empty() || commit.count( (*itr)->procId );
-                std::vector< std::vector< EdgeInfo* > > receivers;  // enabled receiving edges for each process
-                int lastPID = -1;
-                for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
-                    if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
-                    assert( (*recv)->assign.getType().isIntegral() );
-                    if ( !evalGuard( *recv ) ) continue;    // this does not change the state, because broadcast guards can not contain clocks
-                    if ( (*recv)->procId != lastPID ) { // edges in _sync_ are sorted by process id
-                        receivers.push_back( std::vector< EdgeInfo* >() );
-                        lastPID = (*recv)->procId;
-                        fromCommit = fromCommit || commit.count( (*recv)->procId );
+                if ( eval.isChanBcast( chan ) ) {
+                    // n-ary synchronization
+                    bool fromCommit = commit.empty() || commit.count( (*itr)->procId );
+                    std::vector< std::vector< EdgeInfo* > > receivers;  // enabled receiving edges for each process
+                    int lastPID = -1;
+                    for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
+                        if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
+                        assert( (*recv)->assign.getType().isIntegral() );
+                        if ( !evalGuard( *recv ) ) continue;    // this does not change the state, because broadcast guards can not contain clocks
+                        if ( (*recv)->procId != lastPID ) { // edges in _sync_ are sorted by process id
+                            receivers.push_back( std::vector< EdgeInfo* >() );
+                            lastPID = (*recv)->procId;
+                            fromCommit = fromCommit || commit.count( (*recv)->procId );
+                        }
+                        receivers.back().push_back( *recv );
                     }
-                    receivers.back().push_back( *recv );
-                }
-                if ( !fromCommit ) continue;    // skip if system is in commited state, but no participant is in commited location
-                if ( eval.error ) {     // if there was an error while evaluating guards, create an error state and quit
-                    /*makeSucc( succs )*/;
-                    continue;
-                }
+                    if ( !fromCommit ) continue;    // skip if system is in commited state, but no participant is in commited location
 
-                // at this point, the transition is considered to be enabled
-                std::vector< unsigned int > sel( receivers.size() );    // combination of edges from _receivers_
-                do {
-                    inUrgent = inUrgent || eval.isChanUrgent( chan );
-                    einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
-                    for ( unsigned int i = 0; i < sel.size(); i++ ) {
-                        const EdgeInfo *edge = receivers[ i ][ sel[ i ] ];
-                        einf.back().addEdge( edge, edgePrio( edge ) );
-                    }
-                    bl.duplicate_back();
-                } while ( nextSelection( sel, receivers ) );
-            } else {
-                // binary synchronization
-                for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
-                    if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
-                    newSucc( bl.back(), source );
-                    evalGuard( *itr );  // already evaluated earlier, needed here for clock constraints
-                    if ( !evalGuard( *recv ) ) continue;
-                    // if in commited state, at least one synchronizing process has to be in commited location
-                    if ( !commit.empty() && !commit.count( (*itr)->procId ) && !commit.count( (*recv)->procId ) ) continue;
                     // at this point, the transition is considered to be enabled
-                    inUrgent = inUrgent || eval.isChanUrgent( chan );
-                    einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
-                    einf.back().addEdge( *recv, edgePrio( *recv ) );
-                    bl.push_back();
+                    std::vector< unsigned int > sel( receivers.size() );    // combination of edges from _receivers_
+                    do {
+                        inUrgent = inUrgent || eval.isChanUrgent( chan );
+                        einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
+                        for ( unsigned int i = 0; i < sel.size(); i++ ) {
+                            const EdgeInfo *edge = receivers[ i ][ sel[ i ] ];
+                            einf.back().addEdge( edge, edgePrio( edge ) );
+                        }
+                        bl.duplicate_back();
+                    } while ( nextSelection( sel, receivers ) );
+                } else {
+                    // binary synchronization
+                    for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
+                        if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
+                        newSucc( bl.back(), source );
+                        evalGuard( *itr );  // already evaluated earlier, needed here to properly constrain zone
+                        if ( !evalGuard( *recv ) ) continue;
+                        // if in commited state, at least one synchronizing process has to be in commited location
+                        if ( !commit.empty() && !commit.count( (*itr)->procId ) && !commit.count( (*recv)->procId ) ) continue;
+                        // at this point, the transition is considered to be enabled
+                        inUrgent = inUrgent || eval.isChanUrgent( chan );
+                        einf.emplace_back( *itr, eval.getChanPriority( chan ), edgePrio( *itr ) );
+                        einf.back().addEdge( *recv, edgePrio( *recv ) );
+                        bl.push_back();
+                    }
                 }
+            } else {
+                // no synchronization
+                if ( !commit.empty() && !commit.count( (*itr)->procId ) ) continue;
+                // at this point, the transition is considered to be enabled
+                einf.emplace_back( *itr, sys.getTauPriority(), edgePrio( *itr ) );
+                bl.push_back();
             }
-        } else {
-            // no synchronization
-            if ( !commit.empty() && !commit.count( (*itr)->procId ) ) continue;
-            // at this point, the transition is considered to be enabled
+        } catch ( EvalError& e ) {
             einf.emplace_back( *itr, sys.getTauPriority(), edgePrio( *itr ) );
+            makeErrState( bl.back(), e.getErr() );
             bl.push_back();
         }
         assert( bl.size() == einf.size() + 1 );
@@ -219,15 +198,19 @@ void TAGen::read( const std::string& path ) {
         throw std::runtime_error( "Error reading input model." );
     }
 
-    // initialize evaluator
-    eval.processDeclGlobals( sys );
-
     std::vector< UTAP::instance_t > instances;
-    for ( auto inst = sys.getProcesses().begin(); inst != sys.getProcesses().end(); ++inst ) {
-        processInstance( *inst, instances );
-    }
+    // initialize evaluator
+    try {
+        eval.processDeclGlobals( sys );
 
-    eval.processDecl( instances );
+        for ( auto inst = sys.getProcesses().begin(); inst != sys.getProcesses().end(); ++inst ) {
+            processInstance( *inst, instances );
+        }
+
+        eval.processDecl( instances );
+    } catch ( EvalError& e ) {
+        throw std::runtime_error( std::string( "Error when processing declarations: " ) + e.what() );
+    }
 
     // fill internal structures
     int nInst = 0;
@@ -256,9 +239,6 @@ void TAGen::read( const std::string& path ) {
     offVar = Locations::getReqSize( procs.size() + 2 );
     // add required space for variables and clocks
     size = offVar + eval.getReqSize();
-
-    if ( eval.error )
-        throw std::runtime_error( "Error when processing declarations: " + errString( eval.error ) );
 }
 
 void TAGen::initial( char* d ) {
@@ -269,7 +249,7 @@ void TAGen::initial( char* d ) {
 
     eval.initial();
     if ( !evalInv() ) {
-        makeErrState( d, ERR_INVARIANT );
+        makeErrState( d, EvalError::INVARIANT );
     } else {
         eval.extrapolate();
     }
@@ -332,16 +312,17 @@ bool TAGen::evalPropGuard( char* d, const TAGen::PropGuard& g ) {
     setData( d );
     if ( g.expr.empty() )
         return true;
-    bool ret = eval.evalBool( -1, g.expr );
-    if ( eval.error )
-        throw std::runtime_error( "Error while evaluating property: " + errString( eval.error ) );
-    return ret;
+    try {
+        return eval.evalBool( -1, g.expr );
+    } catch ( EvalError& e ) {
+        throw std::runtime_error( std::string( "Error while evaluating property: " ) + e.what() );
+    }
 }
 
 std::string TAGen::showNode( char* d ) {
     int err = isErrState( d );
     if ( err ) {
-        return "Error:" + errString( err );
+        return std::string( "Error:" ) + EvalError::reason( err );
     } else {
         std::stringstream str;
         setData( d );

@@ -58,7 +58,7 @@ struct Timed : public Common< Blob > {
 
     bool isGoal( Node n ) {
         int err = gen.isErrState( mem( n ) );
-        return err && err != TAGen::ERR_DEADLOCK;
+        return err && err != EvalError::TIMELOCK;
     }
 
     std::string showNode( Node n ) {

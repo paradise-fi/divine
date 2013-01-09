@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <cassert>
 #include <utap/utap.h>
+#include <stdexcept>
 
 #ifndef DIVINE_TIMED_UTILS_H
 #define DIVINE_TIMED_UTILS_H
@@ -63,6 +64,49 @@ public:
 
     static unsigned int getReqSize( unsigned int count ) {
         return (sizeof( loc_id ) * count + 3) & ~3;
+    }
+};
+
+class EvalError : public std::exception {
+    int err;
+
+public:
+    enum {
+        DIVIDE_BY_ZERO = 200, ARRAY_INDEX, OUT_OF_RANGE, SHIFT, NEG_CLOCK, INVARIANT, TIMELOCK
+    };
+
+    static const char* reason( int code ) {
+        assert( code != 0 );
+        switch ( code ) {
+        case DIVIDE_BY_ZERO:
+            return "Divide by zero";
+        case ARRAY_INDEX:
+            return "Array index out of bounds";
+        case OUT_OF_RANGE:
+            return "Out of range variable assignment";
+        case SHIFT:
+            return "Invalid shift operation";
+        case NEG_CLOCK:
+            return "Negative clock assignment";
+        case INVARIANT:
+            return "Invariant does not hold";
+        case TIMELOCK:
+            return "Time deadlock";
+        default:
+            return "Unknown error";
+        }
+    }
+
+    EvalError( int _err ) : std::exception(), err( _err ) {
+        assert( err != 0 );
+    }
+
+    virtual const char* what() const throw() {
+        return reason( errno );
+    }
+
+    int getErr() const {
+        return err;
     }
 };
 

@@ -121,7 +121,7 @@ private:
         StatementInfo( const UTAP::Statement* s, int ic = 0 ) : stmt( s ), iterCount( ic ) {}
     };
     void pushStatements( int, std::vector< StatementInfo > &, StatementInfo );
-    void emitError( int code );
+    void emitError( int code ) __attribute__((noreturn));
     void setClockLimits( int procId, const UTAP::expression_t &exp, std::vector< std::pair< int32_t, int32_t > > & );
     int32_t evalFunCall( int procId, const UTAP::expression_t &exp );
     int resolveId( int procId, const UTAP::expression_t& expr );
@@ -211,10 +211,6 @@ public:
             return ProcessTable[p].uid.getName();
     }
 
-    enum { ERR_DIVIDE_BY_ZERO = 100, ERR_ARRAY_INDEX, ERR_OUT_OF_RANGE, ERR_SHIFT, ERR_NEG_CLOCK };
-
-    // error flag; can be set by eval* calls and is reset to 0 when setData is called
-    int error;
 };
 
 #endif
