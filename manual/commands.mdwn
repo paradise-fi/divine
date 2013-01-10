@@ -1,0 +1,93 @@
+The main entry point is the binary called `divine`.
+
+Synopsis
+========
+
+    divine info <model file>
+    divine combine [-f <formula file>] <model file>
+    divine compile [--cesmi|--llvm] <model file>
+    divine metrics <model file>
+    divine verify [...] <model file>
+
+Printing model metadata
+=======================
+
+    divine info {model}
+
+To obtain basic data about a model, use `divine info`.
+
+Using LTL properties
+====================
+
+    divine combine [-f formula.ltl] [-p N] [-o] [-q] model.dve
+    divine combine [-f formula.ltl] [-p N] [-o] [-q] model.mdve [P1=VAL] [P2=VAL] ...
+
+Some of the input languages have intrinsic support for specifying LTL
+properties. In these cases, all suitable LTL properties are automatically made
+available for model checking via the `--property` switch to `divine verify`
+(see below). However, since the DVE language currently lacks support for
+specifying LTL directly, the formulas need to be provided in a separate file
+with an `.ltl` suffix. The `combine` subcommand can be used to translate the
+LTL formula into an Buchi automaton which is then included in the DVE file. One
+DVE file is generated for each LTL formula found in the `.ltl` file.
+
+Without the -p (--property) and -o (--stdout) options, the output of `divine
+combine` looks like this:
+
+    $ divine combine peterson.dve -f peterson.ltl
+    peterson.prop1.dve: G(p0cs->F(!p0cs))
+    peterson.prop2.dve: G((!p0cs)->Fp0cs)
+    peterson.prop3.dve: GFsomeoneincs
+
+    $ divine verify peterson.prop1.dve
+    ...
+
+To pick a specific formula, use -p N. In this case, -o can be used to direct
+the generated model to standard output.
+
+Model checking
+==============
+
+    divine verify [--reachability|--owcty|--map|--nested-dfs]
+                  [--property <name>]
+                  [--fair]
+                  [--reduce <reduction>]
+                  [--report]
+                  [--no-counterexample]
+                  [--display-counterexample]
+                  [--statistics [--curses]]
+                  <model file>
+
+This command is the main workhorse of model checking. It automatically selects
+an appropriate algorithm for model checking based on the property type, and an
+appropriate model loader / state space generation backend according to the
+input file.
+
+(TODO example)
+
+Options
+-------
+
+- `--reachability --owcty --map --nested-dfs`: Override the algorithm to use.
+- `--property name`: Select which property to model-check. Use `divine info` to
+  obtain a list of properties available in any given model.
+- `--fair`: Only consider runs that are weakly fair. This option is only
+  currently available for DVE models and is mainly useful when checking LTL
+  properties. This avoids counterexamples which rely on one of the processes of
+  the system never making any progress even though it is not blocked.
+- `--reduce`: This option directs the model checker to use heuristics which
+  usually make the process faster and/or use less memory. Not all reductions
+  are available with all model types. The default is to enable all reductions,
+  namely `tau+,taustore,heap,por`. To disable state space reductions, specify
+  `--reduce none`. In addition, `tau` is available as a weaker alternative to
+  `tau+`. The `tau`, `taustore` and `heap` reductions are only available with
+  the LLVM backend. The `por` reduction is available with CoIn and DVE inputs
+  and may be available with some CESMI models. To specify multiple reductions,
+  provide them as a comma-separated list.
+- `--no-counterexample`: Disable generation of counterexamples. This is mainly
+  useful for benchmarking verification speed.
+- `--report`: At the end of a verification run, produce a comprehensive,
+  machine-readable report.
+- `--statistics` [`--curses`]: Print realtime statistics during verification,
+  optionally using curses for neater output. Useful as entertainment, for
+  diagnosing performance issues and to impress laymen.
