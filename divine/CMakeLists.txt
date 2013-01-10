@@ -83,6 +83,7 @@ macro( stringify file )
     COMMAND sh ${STRINGIFY} "${fileu}" "${CMAKE_CURRENT_SOURCE_DIR}/${file}"
     VERBATIM
     )
+  list( APPEND STRINGIFIED "${fileu}_str.cpp" )
 endmacro( stringify )
 
 stringify( toolkit/pool.h )
@@ -102,9 +103,7 @@ add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
-    toolkit_pool_h_str.cpp toolkit_blob_h_str.cpp generator_cesmi_client_h_str.cpp
-    llvm_usr_h_str.cpp llvm_usr_pthread_h_str.cpp llvm_usr_pthread_cpp_str.cpp
-    llvm_usr_cstdlib_cpp_str.cpp llvm_usr_cstdlib_h_str.cpp )
+    ${STRINGIFIED} )
 
 add_library( libdivine-instances STATIC ${SRC_instances} )
 
