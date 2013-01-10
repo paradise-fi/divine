@@ -14,6 +14,7 @@ typedef struct {
 typedef struct {
     void *allocation_handle;
     cesmi_node (*make_node)( void *handle, int size );
+    cesmi_node (*clone_node)( void *handle, cesmi_node orig );
     void *instance; // per-instance data; never touched by DiVinE
     int property_count;
     int instance_initialised;
@@ -27,11 +28,11 @@ extern "C" {
 
       void  setup             ( cesmi_setup * );
        int  get_initial       ( cesmi_setup *, int, cesmi_node * );
-       int  get_successor     ( cesmi_setup *, int, char *, cesmi_node * );
-  uint64_t  get_flags         ( cesmi_setup *, char * );
+       int  get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
+  uint64_t  get_flags         ( cesmi_setup *, cesmi_node );
         int get_property_type ( cesmi_setup *, int );
-      char *show_node         ( cesmi_setup *, char * );
-      char *show_transition   ( cesmi_setup *, char *, int );
+      char *show_node         ( cesmi_setup *, cesmi_node );
+      char *show_transition   ( cesmi_setup *, cesmi_node, int );
 const char *show_property     ( cesmi_setup *, int );
 
 #ifdef __cplusplus

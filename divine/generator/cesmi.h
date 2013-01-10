@@ -47,14 +47,24 @@ struct CESMI : public Common< Blob > {
         decltype( &cesmi::show_node         ) show_node;
         decltype( &cesmi::show_transition   ) show_transition;
 
-        Dl() : get_initial( 0 ), get_successor( 0 ), get_flags( 0 ), show_node( 0 ),
-               show_transition( 0 ), setup( 0 ), get_property_type( 0 ), show_property( 0 ) {}
+        Dl() :
+            setup( nullptr ),
+            get_property_type( nullptr ),
+            show_property( nullptr ),
+            get_initial( nullptr ),
+            get_successor( nullptr ),
+            get_flags( nullptr ),
+            show_node( nullptr ),
+            show_transition( nullptr )
+        {}
     } dl;
 
     cesmi::cesmi_setup setup;
 
-    char *data( Blob b ) {
-        return b.data() + alloc._slack;
+    cesmi::cesmi_node data( Blob b ) {
+        cesmi::cesmi_node n = { .handle = b.ptr,
+                                .memory = b.data() + alloc._slack };
+        return n;
     }
 
     template< typename Yield >
@@ -147,6 +157,20 @@ struct CESMI : public Common< Blob > {
         return n;
     }
 
+    static cesmi::cesmi_node clone_node( void *handle, cesmi::cesmi_node orig ) {
+        CESMI *_this = reinterpret_cast< CESMI * >( handle );
+        Blob origb( orig.handle );
+        Blob b( _this->alloc.pool(), origb.size() );
+
+        int slack = _this->alloc._slack;
+        origb.copyTo( b );
+        b.clear( 0, slack );
+        cesmi::cesmi_node n;
+        n.memory = b.data() + slack;
+        n.handle = b.ptr;
+        return n;
+    }
+
     void call_setup()
     {
         if ( setup.instance_initialised )
@@ -155,6 +179,7 @@ struct CESMI : public Common< Blob > {
         setup.property_count = 0;
         setup.allocation_handle = this;
         setup.make_node = &make_node;
+        setup.clone_node = &clone_node;
         setup.instance = 0;
         setup.instance_initialised = 0;
 
