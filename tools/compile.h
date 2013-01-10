@@ -118,12 +118,12 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
         std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
 
-        chdir( tmp_dir.basename.c_str() );
-
         void (*trap)(void*) = _cleanup_tmpdir;
         void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
+        chdir( tmp_dir.basename.c_str() );
         fs::writeFile( "cesmi.h", llvm_usr_h_str );
+        chdir( tmp_dir.abspath.c_str() );
 
         std::string flags = "-shared -g -O2 -fPIC " + cflags;
         run ( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so", trap, trap_arg );
