@@ -123,7 +123,13 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void dotNode( Node n, bool dashed = false ) {
-        stringstream str;
+        std::stringstream str;
+
+        if ( bfs && extension( n ).distance > currentdist ) {
+            str << "} { rank = same; ";
+            currentdist = extension( n ).distance;
+        }
+
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
