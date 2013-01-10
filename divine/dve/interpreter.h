@@ -347,7 +347,7 @@ struct Process {
 
     Transition &transition( EvalContext &ctx, int i ) {
         assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
-        assert_leq( i, trans[ state( ctx ) ].size() );
+        assert_leq( i, int( trans[ state( ctx ) ].size() ) );
         assert_leq( 1, i );
         return trans[ state( ctx ) ][ i - 1 ];
     }

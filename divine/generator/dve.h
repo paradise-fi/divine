@@ -146,7 +146,7 @@ struct Dve : public Common< Blob > {
     template< typename Yield >
     void ample( Node from, Yield yield ) {
         std::deque< dve::System::Continuation > ampleCands, indep;
-        for (size_t i = 0; i < system->processCount(); i++ ) {
+        for ( int i = 0; i < system->processCount(); i++ ) {
             bool tryNext = false;
             processConts(
                 from,
