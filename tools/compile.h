@@ -109,7 +109,7 @@ struct Compile {
     static void _cleanup_tmpdir( void* _tmp_dir ) {
         FilePath* tmp_dir = reinterpret_cast< FilePath* >( _tmp_dir );
         chdir( tmp_dir->abspath.c_str() );
-        run ( "rm -rf " + tmp_dir->basename );
+        wibble::sys::fs::rmtree( tmp_dir->basename );
     }
 
     void compileCESMI( std::string in, std::string cflags ) {
