@@ -100,38 +100,34 @@ struct Compile {
 
     void compileMurphi( std::string in );
 
-    void compileCESMI( std::string in ) {
-	std::string name( str::basename(in), 0, str::basename(in).rfind( '.' ) );
-	std::string cesmi_aux = name + "_cesmi_aux";
-	std::string comp;
-	if ( str::endsWith( in , ".c") ) {
-	    comp = "gcc";
-	    cesmi_aux = cesmi_aux + ".c";
-	}
-	else {
-	    comp = "g++";
-	    cesmi_aux = cesmi_aux + ".cpp";
-	}
-
-	// CESMI interface with system_ prefix     model.c -> model.o, model.so
-        runCompiler( comp , str::basename( in ), name + ".o" , "-g -c -O2 -fPIC");
-
-	//  system_ model.c -> model.noprop.so
-	run ( "sed 's/_system_/_/' " + str::basename( in ) + "| sed 's/system_setup/setup/' >" + cesmi_aux );
-	runCompiler( comp , cesmi_aux, name + ".so", "-g -O2 -fPIC -shared" );
-	run ( "rm -f " + cesmi_aux );
-    }
-
     struct FilePath {
         // filepath = joinpath(abspath, basename)
         std::string basename;
         std::string abspath;
     };
 
-    static void _cleanupLLVM( void* _tmp_dir ) {
+    static void _cleanup_tmpdir( void* _tmp_dir ) {
         FilePath* tmp_dir = reinterpret_cast< FilePath* >( _tmp_dir );
         chdir( tmp_dir->abspath.c_str() );
         run ( "rm -rf " + tmp_dir->basename );
+    }
+
+    void compileCESMI( std::string in, std::string cflags ) {
+        FilePath tmp_dir;
+        tmp_dir.abspath = process::getcwd();
+        tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
+        std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
+
+        chdir( tmp_dir.basename.c_str() );
+
+        void (*trap)(void*) = _cleanup_tmpdir;
+        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
+
+        fs::writeFile( "cesmi.h", llvm_usr_h_str );
+
+        std::string flags = "-shared -g -O2 -fPIC " + cflags;
+        run ( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so", trap, trap_arg );
+        trap( trap_arg );
     }
 
     void compileLLVM( std::string in, std::string cflags ) {       
@@ -159,7 +155,7 @@ struct Compile {
         std::string linked = in_basename + ".bc";
 
         // prepare cleanup
-        void (*trap)(void*) = _cleanupLLVM;
+        void (*trap)(void*) = _cleanup_tmpdir;
         void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
         // enter tmp directory
@@ -201,7 +197,7 @@ struct Compile {
         else if ( ( str::endsWith( input, ".c" ) || str::endsWith( input, ".cpp" ) ||
                     str::endsWith( input, ".cc" ) || str::endsWith( input, ".C" )) )
             if ( o_cesmi->boolValue() )
-                compileCESMI( input );
+                compileCESMI( input, o_cflags->stringValue() );
             else if ( o_llvm->boolValue() )
                 compileLLVM( input, o_cflags->stringValue() );
             else {
