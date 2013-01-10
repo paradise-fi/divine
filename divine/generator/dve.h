@@ -76,25 +76,26 @@ struct Dve : public Common< Blob > {
                     std::deque< dve::System::Continuation > ampleSet,
                     std::deque< dve::System::Continuation > indepSet )
     {
-        std::deque< Node > ampleNodes, indepNodes;
+        Node currentNode;
         std::vector< std::deque< Node > > ampleNodesSuccs;
         ampleNodesSuccs.resize( ampleSet.size() );
         bool ok = true;
+        int index = 0;
         for ( auto i: ampleSet ) {
-            yieldSuccessor( from, i, [&]( Node n ) { ampleNodes.push_back( n ); } );
+            yieldSuccessor( from, i, [&]( Node n ) { currentNode = n; } );
             auto indepIt = indepSet.cbegin();
             processConts(
-                ampleNodes.back(),
+                currentNode,
                 [&]( dve::System::Continuation p ) {
                     if ( indepIt == indepSet.cend() || *indepIt != p ) {
                         ok = false;
                         return false;
                     }
                     yieldSuccessor(
-                        ampleNodes.back(),
+                        currentNode,
                         p,
                         [&]( Node n ) {
-                            ampleNodesSuccs[ ampleNodes.size() - 1 ].push_back( n );
+                            ampleNodesSuccs[ index ].push_back( n );
                         }
                     );
                     indepIt++;
@@ -103,15 +104,24 @@ struct Dve : public Common< Blob > {
                 process,
                 false
             );
-            if ( !ok || indepIt != indepSet.cend() )
+            currentNode.free( alloc._pool );
+            if ( !ok || indepIt != indepSet.cend() ) {
+                for ( auto q: ampleNodesSuccs ) {
+                    while ( !q.empty() ) {
+                        q.front().free( alloc._pool );
+                        q.pop_front();
+                    }
+                }
                 return false;
+            }
+            index++;
         }
         for ( auto i: indepSet ) {
-            yieldSuccessor( from, i, [&]( Node n ) { indepNodes.push_back( n ); } );
+            yieldSuccessor( from, i, [&]( Node n ) { currentNode = n; } );
             auto ampleIt = ampleSet.cbegin();
             auto ampleNSIt = ampleNodesSuccs.begin();
             processConts(
-                indepNodes.back(),
+                currentNode,
                 [&]( dve::System::Continuation p ) {
                     if ( ampleIt == ampleSet.cend() || *ampleIt != p ) {
                         ok = false;
@@ -120,12 +130,14 @@ struct Dve : public Common< Blob > {
                     assert( ampleNSIt != ampleNodesSuccs.end() );
                     assert( !ampleNSIt->empty() );
                     yieldSuccessor(
-                        indepNodes.back(),
+                        currentNode,
                         p,
                         [&]( Node n ) {
                             if ( n.compare( ampleNSIt->front(), this->alloc._slack, n.size() ) != 0 )
                                 ok = false;
+                            ampleNSIt->front().free( alloc._pool );
                             ampleNSIt->pop_front();
+                            n.free( alloc._pool );
                         }
                     );
                     if ( !ok )
@@ -137,8 +149,16 @@ struct Dve : public Common< Blob > {
                 process,
                 true
             );
-            if ( !ok || ampleIt != ampleSet.cend() )
+            currentNode.free( alloc._pool );
+            if ( !ok || ampleIt != ampleSet.cend() ) {
+                for ( auto q: ampleNodesSuccs ) {
+                    while ( !q.empty() ) {
+                        q.front().free( alloc._pool );
+                        q.pop_front();
+                    }
+                }
                 return false;
+            }
         }
         return true;
     }
