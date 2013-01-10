@@ -51,7 +51,6 @@ struct Combine {
 
     bool have_ltl;
     bool probabilistic;
-    bool compiled;
 
     std::string input, ltl, defs;
     std::string in_data, ltl_data, ltl_defs, system;
@@ -250,27 +249,6 @@ struct Combine {
         output( id, dve, ltl );
     }
 
-    void ltl_to_cpp( int id, std::string ltl ) {
-        announce( id, ltl );
-        std::string filename = outFile( id, ".cpp" );
-        std::ofstream f( filename.c_str() );
-        f << "#include <malloc.h>" << std::endl;
-        f << "#include <algorithm>" << std::endl;
-	f << "#include <cassert>" << std::endl;
-        f << divine::compile_defines_str << std::endl;
-        f << divine::generator_cesmi_client_h_str << std::endl;
-        f << divine::toolkit_blob_h_str << std::endl;
-        f << "using namespace divine;" << std::endl;
-#ifdef O_LTL3BA
-        ltl3baTranslation( ltl );
-        f << buchi_to_cpp( get_buchi_states(), get_buchi_accept(), get_buchi_all_symbols() );
-#else
-        f << graph_to_cpp( buchi( ltl, probabilistic ) );
-#endif
-        f.close();
-        Compile::gplusplus( filename + " " + input, outFile( id ) );
-    }
-
     void parseOptions() {
         try {
             if ( !opts.hasNext() )
@@ -295,11 +273,9 @@ struct Combine {
     int main() {
         parseOptions();
 
-        compiled = str::endsWith( input, ".o" );
         probabilistic = str::endsWith( input, "probdve" );
-        if ( compiled )
-            ext = ".so";
-        else if ( probabilistic )
+
+        if ( probabilistic )
             ext = ".probdve";
         else if ( str::endsWith( input, "dve" ) )
             ext = ".dve";
@@ -310,8 +286,7 @@ struct Combine {
         if ( !fs::access( input, R_OK ) )
             die( "FATAL: Can't open '" + input + "' for reading." );
 
-        if ( !compiled )
-            in_data = fs::readFile( input ) + "\n";
+        in_data = fs::readFile( input ) + "\n";
 
         if ( have_ltl ) {
             if ( !fs::access( ltl, R_OK ) )
@@ -335,16 +310,9 @@ struct Combine {
                die( "FATAL: Nothing to do." );
         }
 
-        if ( compiled )
-            combine_compiled();
-        else
-            combine_dve();
+        combine_dve();
 
         return 0;
-    }
-
-    void combine_compiled() {
-        process_ltl( &Combine::ltl_to_cpp );
     }
 
     void combine_dve() {
