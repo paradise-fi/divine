@@ -74,7 +74,7 @@ struct Dve : public Common< Blob > {
 
     bool isDiamond( Node from, size_t process,
                     std::deque< dve::System::Continuation > ampleSet,
-                    std::deque< dve::System::Continuation > indepSet ) 
+                    std::deque< dve::System::Continuation > indepSet )
     {
         std::deque< Node > ampleNodes, indepNodes;
         std::vector< std::deque< Node > > ampleNodesSuccs;
@@ -93,7 +93,7 @@ struct Dve : public Common< Blob > {
                     yieldSuccessor(
                         ampleNodes.back(),
                         p,
-                        [&]( Node n ) { 
+                        [&]( Node n ) {
                             ampleNodesSuccs[ ampleNodes.size() - 1 ].push_back( n );
                         }
                     );
