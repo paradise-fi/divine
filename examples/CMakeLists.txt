@@ -13,10 +13,13 @@ add_custom_target(
 endmacro( haskell_so )
 
 add_custom_target( examples )
-include_directories( ${CMAKE_SOURCE_DIR} )
 
 if( NOT WIN32 ) # currently fails to build on windows
-add_library( BenchmarkC MODULE cesmi/BenchmarkC.c )
+add_custom_command(
+  OUTPUT BenchmarkC.so
+  DEPENDS divine
+  COMMAND divine compile --cesmi ${CMAKE_CURRENT_SOURCE_DIR}/cesmi/BenchmarkC.c )
+add_custom_target( BenchmarkC DEPENDS BenchmarkC.so )
 set_target_properties( BenchmarkC PROPERTIES EXCLUDE_FROM_ALL ON PREFIX "" )
 add_dependencies( examples BenchmarkC )
 endif()

@@ -20,7 +20,7 @@
 #include <stdlib.h> //malloc
 #include <string.h> //memset
 
-#include <divine/cesmi/usr-cesmi.h> // XXX
+#include <cesmi.h>
 
 struct state
 {
