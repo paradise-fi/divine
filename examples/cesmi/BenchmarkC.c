@@ -38,9 +38,9 @@ int get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
     return 2;
 }
 
-int get_successor( cesmi_setup *setup, int handle, char *from, cesmi_node *to )
+int get_successor( cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
 {
-    struct state *in = (struct state *) from;
+    struct state *in = (struct state *) from.memory;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
         *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
@@ -68,17 +68,17 @@ int get_property_type( cesmi_setup *s, int n )
     return -1;
 }
 
-char *show_node( cesmi_setup *setup, char *from )
+char *show_node( cesmi_setup *setup, cesmi_node from )
 {
-    struct state *in = (struct state *) from;
+    struct state *in = (struct state *) from.memory;
     char *result;
     asprintf( &result, "a:%d, b:%d\n", in->a, in->b );
     return result;
 }
 
-char *show_transition( cesmi_setup *setup, char *from, int handle )
+char *show_transition( cesmi_setup *setup, cesmi_node from, int handle )
 {
-    struct state *in = (struct state *) from;
+    struct state *in = (struct state *) from.memory;
     switch (handle) {
     case 1: return strdup( "a++" );
     case 2: return strdup( "b++" );
