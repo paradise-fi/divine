@@ -122,11 +122,11 @@ struct Compile {
         void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
         chdir( tmp_dir.basename.c_str() );
-        fs::writeFile( "cesmi.h", llvm_usr_h_str );
+        fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
         chdir( tmp_dir.abspath.c_str() );
 
         std::string flags = "-shared -g -O2 -fPIC " + cflags;
-        run ( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so", trap, trap_arg );
+        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so " + in, trap, trap_arg );
         trap( trap_arg );
     }
 
