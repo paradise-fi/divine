@@ -24,7 +24,7 @@ struct LockedQueue {
 
     explicit LockedQueue( unsigned sz ) : empty( true ) {}
 
-    LockedQueue( void ) : empty( true ) {}// added
+    LockedQueue( void ) : empty( true ) {}
 
     void push( const T &x ) {
 	std::lock_guard< Mutex > lk( m );
@@ -42,7 +42,7 @@ struct LockedQueue {
      * Pops a whole chunk, to be processed by one thread as a whole.
      */
     T pop() {
-        T ret;
+        T ret = T();
 
         /* Prevent threads from contending for a lock if the queue is empty. */
         if ( empty )

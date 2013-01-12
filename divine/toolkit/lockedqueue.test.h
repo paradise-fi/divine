@@ -1,0 +1,93 @@
+#pragma once
+
+#include <atomic>
+#include <algorithm>
+//#include <list>
+//#include <iostream>
+
+#include "lockedqueue.h"
+#include <wibble/sys/thread.h>
+
+using namespace divine;
+
+/*template< typename T >
+std::ostream& operator<<( std::ostream& out, const std::list< T >& l ) {
+    bool begin = true;
+    for ( auto i : l ) {
+        if ( begin )
+            begin = false;
+        else
+            out << " ";
+        out << i;
+    }
+    return out;
+}
+*/
+struct TestLockedQueue {
+
+    typedef void Test;
+
+    static std::atomic< int > work;
+
+    struct Producent : wibble::sys::Thread {
+        LockedQueue< int >* q;
+        int produce;
+        std::atomic< int >* work;
+        void* main() {
+            for ( int i = 1; i <= produce; ++i)
+                q->push( i );
+            --*work;
+            return 0;
+        }
+    };
+    struct Consumer : wibble::sys::Thread {
+
+        LockedQueue< int >* q;
+        int consumed;
+        std::atomic<  int >* work;
+        void* main() {
+            consumed = 0;
+            while( !q->empty || *work ) {
+                if ( !q->pop() ) {
+                    if ( *work )
+                        continue;
+                    return nullptr;
+                }
+                consumed++;
+            }
+            return nullptr;
+        }
+    };
+
+    Test stress() {
+        const int threads = 3;
+        std::atomic< int > work( threads );
+
+        Producent* producents = new Producent[ threads ];
+        Consumer* consumers = new Consumer[ threads ];
+
+        LockedQueue< int > queue;
+
+        for ( int i = 0; i < threads; ++i ) {
+            producents[ i ].produce = 10000;
+            consumers[ i ].work = producents[ i ].work = &work;
+            consumers[ i ].q = producents[ i ].q = &queue;
+            producents[ i ].start();
+            consumers[ i ].start();
+        }
+        for ( int i = 0; i < threads; ++i ) {
+            producents[ i ].join();
+            consumers[ i ].join();
+        }
+        int inserts = std::accumulate( producents, producents + threads, 0,
+                                       []( int v, const Producent& p ) -> int {
+                                           return v + p.produce;
+                                    } );
+        int reads = std::accumulate( consumers, consumers + threads, 0,
+                                     []( int v, const Consumer& c) -> int {
+                                         return v + c.consumed;
+                                    } );
+        assert_eq( reads, inserts );
+        assert( queue.empty );
+    }
+};
