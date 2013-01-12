@@ -39,6 +39,24 @@ std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > s
 std::string graph_to_cpp(const BA_opt_graph_t &g);
 #endif
 
+namespace divine {
+
+template< typename F, typename G >
+static inline void parse_ltl( std::string file, F ltl, G definition )
+{
+    wibble::Splitter lines( "\n", 0 );
+    wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
+    wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
+
+    std::vector< std::string >::iterator i;
+    for ( Splitter::const_iterator ln = lines.begin( file ); ln != lines.end(); ++ln ) {
+        if ( prop.match( *ln ) )
+            ltl( prop[1] );
+        if ( def.match( *ln ) )
+            definition( def[1] );
+    }
+}
+
 struct Combine {
     Engine *cmd_combine;
     IntOption *o_propId;
@@ -198,24 +216,18 @@ struct Combine {
 
     template< typename F >
     void process_ltl( F each ) {
-        wibble::Splitter lines( "\n", 0 );
-        wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
-        wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
-
-        std::vector< std::string >::iterator i;
-        for ( Splitter::const_iterator ln = lines.begin( ltl_data ); ln != lines.end(); ++ln ) {
-            if ( prop.match( *ln ) )
-                ltl_formulae.push_back( prop[1] );
-            if ( def.match( *ln ) )
-                ltl_defs += "\n#define " + def[1];
-        }
+        parse_ltl( ltl_data, [&]( std::string f ) {
+                this->ltl_formulae.push_back( f );
+            }, [&]( std::string d ) {
+                this->ltl_defs += "\n#define " + d;
+            } );
 
         int id = 1;
-        for ( i = ltl_formulae.begin(); i != ltl_formulae.end(); ++i, ++id ) {
+        for ( auto i = ltl_formulae.begin(); i != ltl_formulae.end(); ++i, ++id ) {
             if ( o_propId->intValue() && o_propId->intValue() != id )
                 continue;
 
-            (this->*each)( id, *i );
+            each( id, *i );
         }
     }
 
@@ -334,9 +346,11 @@ struct Combine {
         }
         in_data = std::string( in_data, 0, off );
 
-        process_ltl( &Combine::ltl_to_dve );
+        process_ltl( [&]( int i, std::string ltl ) { return ltl_to_dve( i, ltl ); } );
     }
 
 };
+
+}
 
 #endif
