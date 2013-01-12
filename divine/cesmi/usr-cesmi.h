@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
+#include "stdint.h"
+
 #ifndef DIVINE_GENERATOR_CESMI_CLIENT_H
 #define DIVINE_GENERATOR_CESMI_CLIENT_H
 
@@ -18,6 +20,7 @@ typedef struct {
     void *instance; // per-instance data; never touched by DiVinE
     int property_count;
     int instance_initialised;
+    int property;
     /* extensions at the end are ABI-compatible */
 } cesmi_setup;
 
