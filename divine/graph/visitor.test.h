@@ -510,7 +510,7 @@ struct TestVisitor {
         examples( _parallel< SharedCheck, int > );
     }
 
-    void shared_blob() {
+    Test shared_blob() {
         examples( _parallel< SharedCheck, Blob > );
     }
 
