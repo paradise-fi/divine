@@ -140,10 +140,6 @@ struct CESMI : public Common< Blob > {
             die( "FATAL: Could not resolve get_initial." );
         if ( !dl.get_successor )
             die( "FATAL: Could not resolve get_successor." );
-
-#ifndef O_POOLS
-        die( "FATAL: Pool support is required for the CESMI generator." );
-#endif
     }
 
     static cesmi::cesmi_node make_node( void *handle, int size ) {
