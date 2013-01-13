@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>,
 //                 2011 Tomáš Janoušek <tomi@nomi.cz>
 
-#include <wibble/sys/mutex.h>
+#include <mutex>
 #include <divine/toolkit/shmem.h>
 
 #ifndef DIVINE_LOCKEDQUEUE_H
@@ -15,14 +15,13 @@ namespace divine {
  * to be fast enough because it's accessed very rarely and it needs to
  * allocate or free memory even less often.
  */
+// note: std::deque of int, not of std:vector
 template < typename T >
 struct LockedQueue {
     typedef SpinLock Mutex;
     Mutex m;
     bool empty;
     std::deque< T > q;
-
-    explicit LockedQueue( unsigned sz ) : empty( true ) {}
 
     LockedQueue( void ) : empty( true ) {}
 
