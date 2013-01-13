@@ -21,17 +21,17 @@ struct SpinLock {
     SpinLock() : b( false ) {}
 
     void lock() {
-	while ( true ) {
-	    while ( b );
-	    if ( !b.exchange( true ) )
-		break;
-	}
+        while ( true ) {
+            while ( b );
+            if ( !b.exchange( true ) )
+                break;
+        }
     }
 
     void unlock() {
-	/* Exchange instead of assignment forces memory barrier and prevents
-	 * gcc from reordering. */
-	b.exchange( false );
+        /* Exchange instead of assignment forces memory barrier and prevents
+        * gcc from reordering. */
+        b.exchange( false );
     }
 
     SpinLock( const SpinLock & ) = delete;
