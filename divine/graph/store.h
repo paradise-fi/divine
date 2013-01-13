@@ -160,7 +160,7 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hash
         return found;
     }
 
-    void store( Blob s, hash_t h ) {
+    void store( Blob s, hash_t h, bool * ) {
         // store just a stub containing state information
         Blob stub = m_graph.base().alloc.new_blob( 0 );
 //        Statistics::global().hashadded( this->id , memSize( stub ) );
