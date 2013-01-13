@@ -18,9 +18,9 @@ typedef struct {
     cesmi_node (*make_node)( void *handle, int size );
     cesmi_node (*clone_node)( void *handle, cesmi_node orig );
     void *instance; // per-instance data; never touched by DiVinE
-    int property_count;
+    int property_count; /* filled in by setup */
+    int property; /* filled in by loader */
     int instance_initialised;
-    int property;
     /* extensions at the end are ABI-compatible */
 } cesmi_setup;
 
@@ -29,14 +29,14 @@ typedef struct {
 extern "C" {
 #endif
 
-      void  setup             ( cesmi_setup * );
-       int  get_initial       ( cesmi_setup *, int, cesmi_node * );
-       int  get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
-  uint64_t  get_flags         ( cesmi_setup *, cesmi_node );
-        int get_property_type ( cesmi_setup *, int );
-      char *show_node         ( cesmi_setup *, cesmi_node );
-      char *show_transition   ( cesmi_setup *, cesmi_node, int );
-const char *show_property     ( cesmi_setup *, int );
+    void  setup             ( cesmi_setup * );
+     int  get_initial       ( cesmi_setup *, int, cesmi_node * );
+     int  get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
+uint64_t  get_flags         ( cesmi_setup *, cesmi_node );
+     int  get_property_type ( cesmi_setup *, int );
+    char *show_node         ( cesmi_setup *, cesmi_node );
+    char *show_transition   ( cesmi_setup *, cesmi_node, int );
+    char *show_property     ( cesmi_setup *, int );
 
 #ifdef __cplusplus
 }

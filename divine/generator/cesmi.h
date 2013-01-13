@@ -195,6 +195,35 @@ struct CESMI : public Common< Blob > {
         return AC_None; /* Duh. */
     }
 
+    std::string propertyName( int i ) {
+        char *descr = dl.show_property ? dl.show_property( &setup, i ) : nullptr;
+        std::string r = descr ? std::string( descr ) : ("p_" + wibble::str::fmt( i + 1 ));
+        ::free( descr );
+        return r;
+    }
+
+    template< typename O >
+    O getProperties( O o ) {
+        call_setup();
+        for ( int i = 0; i < setup.property_count; ++i ) {
+            const char *type = "(unknown)";
+            switch (dl.get_property_type ? dl.get_property_type( &setup, i ) : cesmi::cesmi_pt_deadlock) {
+                case cesmi::cesmi_pt_deadlock: type = "(deadlock reachability)"; break;
+                case cesmi::cesmi_pt_goal: type = "(goal state reachability)"; break;
+                case cesmi::cesmi_pt_buchi: type = "(neverclaim / LTL verification)"; break;
+            }
+            *o++ = std::make_pair( propertyName( i ), std::string( type ) );
+        }
+    }
+
+    void useProperty( meta::Input &in ) {
+        call_setup();
+        for ( int i = 0; i < setup.property_count; ++i ) {
+            if ( in.propertyName == propertyName( i ) )
+                setup.property = i;
+        }
+    }
+
     CESMI() {
         setup.instance_initialised = 0;
     }
