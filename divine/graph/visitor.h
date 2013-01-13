@@ -139,11 +139,22 @@ struct Common {
 
         Node to = store.fetch( _to, hint, &had );
 
+        /**
+         * There is an important part of correct behaviour of shared visitor.
+         * If you fetch node from store and the node still does not exists
+         * you have to know whether any other thread saved this node into the shared hash table
+         * before this thread.
+         *
+         * Note: Only shared store changes `had` value.
+         */
         tact = S::transition( notify, from, to, label );
         if ( tact != IgnoreTransition && !had ) {
             store.store( to, hint, &had );
         }
-
+        /**
+         * If this thread attempted to store the node and the node has been already stored before,
+         * this node CANNOT be pushed into the working queue to be processed.
+         */
         if ( tact == ExpandTransition ||
              (tact == FollowTransition && !had) ) {
             eact = S::expansion( notify, to );
