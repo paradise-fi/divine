@@ -157,13 +157,13 @@ struct Stack {
 template < typename G, typename Statistics >
 struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
 {
-    typedef std::deque< typename G::Node > Chunk;
-    typedef divine::LockedQueue< Chunk > ChunkQ;
-    typedef typename G::Node Node;
     typedef G Graph;
+    typedef typename Graph::Node Node;
+    typedef std::deque< Node > Chunk;
+    typedef divine::LockedQueue< Chunk > ChunkQ;
     typedef ApproximateCounter Termination;
     typedef Termination::Shared Terminator;
-    typedef std::shared_ptr< Termination::Shared > TerminatorPtr;
+    typedef std::shared_ptr< Terminator > TerminatorPtr;
 
     typedef std::shared_ptr< ChunkQ > ChunkQPtr;
 
@@ -179,11 +179,9 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
     Chunk outgoing;
     Chunk incoming;
 
-    ChunkQ &chunkq() { assert( _chunkq.get() ); return *_chunkq; }
+    ChunkQ &chunkq() { return *_chunkq; }
     SharedQueue( ChunkQPtr ch, Graph& g, TerminatorPtr t ) : g( g ), id( 0 ), maxChunkSize( 1024 ), chunkSize( 8 ), _chunkq( ch ), termination( *t )
-    {
-        //outgoing.reserve( chunkSize );
-    }
+    {}
 
     ~SharedQueue() { flush(); }
 
@@ -199,7 +197,7 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
 
             /* A quickstart trick -- make first few chunks smaller. */
             if ( chunkSize < maxChunkSize )
-                chunkSize = std::max( 2 * chunkSize, maxChunkSize );
+                chunkSize = std::min( 2 * chunkSize, maxChunkSize );
         }
     }
 
@@ -211,7 +209,9 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
             flush();
     }
 
-    Node front() { return incoming.front(); }
+    Node front() {
+        return incoming.front();
+    }
     void pop_front() {
         --termination;
         incoming.pop_front();
@@ -228,7 +228,6 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
             chunkq().pop();
     }
     // removed
-    //SharedQueue( Graph &_g ) : g( _g ) {}
     SharedQueue( void ) = delete;
     SharedQueue( const SharedQueue& s) = default;
 
