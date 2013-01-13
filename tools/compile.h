@@ -36,7 +36,7 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm;
+    BoolOption *o_cesmi, *o_llvm, *o_keep;
     StringOption *o_cflags;
 
     void die_help( std::string bla )
@@ -118,7 +118,7 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
         std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
 
-        void (*trap)(void*) = _cleanup_tmpdir;
+        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
         void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
         chdir( tmp_dir.basename.c_str() );
@@ -127,7 +127,8 @@ struct Compile {
 
         std::string flags = "-shared -g -O2 -fPIC " + cflags;
         run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so " + in, trap, trap_arg );
-        trap( trap_arg );
+             trap, trap_arg );
+        if ( trap ) trap( trap_arg );
     }
 
     void compileLLVM( std::string in, std::string cflags ) {       
@@ -155,7 +156,7 @@ struct Compile {
         std::string linked = in_basename + ".bc";
 
         // prepare cleanup
-        void (*trap)(void*) = _cleanup_tmpdir;
+        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
         void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
         // enter tmp directory
@@ -183,7 +184,7 @@ struct Compile {
               str::joinpath( tmp_dir.basename, pthread_bc ) + " -o " + linked, trap, trap_arg );
 
         // cleanup
-        trap( trap_arg );
+        if (trap) trap( trap_arg );
     }
 
     void main() {
@@ -224,6 +225,10 @@ struct Compile {
         o_llvm = cmd_compile->add< BoolOption >(
             "llvm", 'l', "llvm", "",
             "generate output file in LLVM bytecode format" );
+
+        o_keep = cmd_compile->add< BoolOption >(
+            "keep-build-directory", '\0', "keep-build-directory", "",
+            "do not erase intermediate files after a compile" );
 
         o_cflags = cmd_compile->add< StringOption >(
             "cflags", 'f', "cflags", "",
