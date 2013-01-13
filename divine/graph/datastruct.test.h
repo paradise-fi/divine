@@ -2,6 +2,7 @@
 
 #include <divine/graph/datastruct.h>
 #include <divine/generator/dummy.h>
+#include <wibble/sys/thread.h>
 
 using namespace divine;
 
@@ -97,6 +98,92 @@ struct TestDatastruct {
         q.maxChunkSize = 1;
         q.chunkSize = 1;
         _queue( d, q );
+    }
+
+    template< typename Queue >
+    struct Worker : wibble::sys::Thread
+    {
+
+        std::shared_ptr< Queue > queue;
+        int add;
+        int interleaveAdd;
+        int count;
+        int i;
+        void* main() {
+            bool stopPushing = false;
+            for ( int i = 0; i < add; ++i ) {
+                queue->push( i );
+            }
+            queue->flush();
+            queue->termination.sync();
+            while ( !queue->termination.isZero() ) {
+
+                if ( queue->empty() ) {
+                    queue->termination.sync();
+                    continue;
+                }
+
+                if ( i < interleaveAdd ) {
+                    queue->push( i );
+                    ++i;
+                }
+
+                if ( !stopPushing && i == interleaveAdd ) {
+                    queue->flush();
+                    stopPushing = true;
+                }
+
+                queue->pop_front();
+                ++count;
+            }
+            return nullptr;
+        }
+
+        Worker() : queue(), add( 0 ), count( 0 ), i( 0 )
+        {}
+
+    };
+
+    template< typename N >
+    struct DummyGraph {
+        typedef N Node;
+
+        struct Label {
+            short probability;
+            Label( short p = 0 ) : probability( p ) {}
+        };
+    };
+
+    Test sharedQueueMultiStress() {
+
+        const int threads = 4;
+        const int amount = 32 * 1024;
+
+        typedef SharedQueue< DummyGraph< int >, NoStatistics > Queue;
+        Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
+        Queue::ChunkQPtr ch = std::make_shared< Queue::ChunkQ >();
+        DummyGraph< int > g;
+
+        Worker< Queue >* workers = new Worker< Queue >[ threads ];
+
+        std::size_t shouldBe = 0;
+
+        for ( int i = 0;  i < threads; ++i ) {
+            workers[ i ].queue = std::make_shared< Queue >( ch, g, t );
+            shouldBe += workers[ i ].add = amount * (1 + i);
+            workers[ i ].interleaveAdd = amount;
+            workers[ i ].start();
+        }
+
+        std::size_t sum = 0;
+        for ( int i = 0; i < threads; ++i) {
+            workers[ i ].join();
+            sum += workers[ i ].count;
+            shouldBe+= workers[ i ].i;
+        }
+
+        assert_eq( sum, shouldBe );
+        delete[] workers;
     }
 
     Test stack() {
