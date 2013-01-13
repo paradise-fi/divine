@@ -141,7 +141,7 @@ struct Common {
 
         tact = S::transition( notify, from, to, label );
         if ( tact != IgnoreTransition && !had ) {
-            store.store( to, hint );
+            store.store( to, hint, &had );
         }
 
         if ( tact == ExpandTransition ||
@@ -422,11 +422,9 @@ struct Shared {
 
     Shared( typename S::Listener &l, Worker &w, Graph &g, StorePtr s, ChunkQPtr ch, TerminatorPtr t )
         : bfv( l, g, *s, ch, t ), closed( s ), worker( w ), notify( l )//, graph( g )
-    {
-//        setI
-    }
-    // incorrect: // need to allow shallow copy because of shared store (closed) and lockedqueue (chunkq)
-    Shared( const Shared& s ) = default;
+    {}
+
+    Shared( const Shared& s ) = delete;
 };
 
 }

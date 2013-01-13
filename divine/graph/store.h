@@ -65,7 +65,7 @@ struct TableUtils
     }
 
     // Store node in hash table
-    void store( T s, hash_t h ) {
+    void store( T s, hash_t h, bool* ) {
         Statistics::global().hashadded( id->id(), memSize( s ) );
         Statistics::global().hashsize( id->id(), table.size() );
         table.insertHinted( s, h );
@@ -119,6 +119,13 @@ struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, 
     SharedStore( unsigned size ) : Super( size ) {}
 
     void update( T s, hash_t h ) {}
+
+    void store( T s, hash_t h, bool* had ) {
+        Statistics::global().hashadded( Super::id->id(), memSize( s ) );
+        Statistics::global().hashsize( Super::id->id(), Super::table.size() );
+        *had = !Super::table.insertHinted( s, h );
+        setPermanent( s );
+    }
 };
 
 template< typename Hasher >
