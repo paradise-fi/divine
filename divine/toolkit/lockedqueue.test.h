@@ -29,7 +29,7 @@ struct TestLockedQueue {
 
     static std::atomic< int > work;
 
-    struct Producent : wibble::sys::Thread {
+    struct Producer : wibble::sys::Thread {
         LockedQueue< int >* q;
         int produce;
         std::atomic< int >* work;
@@ -63,7 +63,7 @@ struct TestLockedQueue {
         const int threads = 3;
         std::atomic< int > work( threads );
 
-        Producent* producents = new Producent[ threads ];
+        Producer* producents = new Producer[ threads ];
         Consumer* consumers = new Consumer[ threads ];
 
         LockedQueue< int > queue;
@@ -80,7 +80,7 @@ struct TestLockedQueue {
             consumers[ i ].join();
         }
         int inserts = std::accumulate( producents, producents + threads, 0,
-                                       []( int v, const Producent& p ) -> int {
+                                       []( int v, const Producer& p ) -> int {
                                            return v + p.produce;
                                     } );
         int reads = std::accumulate( consumers, consumers + threads, 0,
