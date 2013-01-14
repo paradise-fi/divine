@@ -65,7 +65,7 @@ struct TableUtils
     }
 
     // Store node in hash table
-    void store( T s, hash_t h, bool* ) {
+    void store( T s, hash_t h, bool * = nullptr ) {
         Statistics::global().hashadded( id->id(), memSize( s ) );
         Statistics::global().hashsize( id->id(), table.size() );
         table.insertHinted( s, h );
@@ -120,10 +120,12 @@ struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, 
 
     void update( T s, hash_t h ) {}
 
-    void store( T s, hash_t h, bool* had ) {
+    void store( T s, hash_t h, bool* had = nullptr ) {
         Statistics::global().hashadded( Super::id->id(), memSize( s ) );
         Statistics::global().hashsize( Super::id->id(), Super::table.size() );
-        *had = !Super::table.insertHinted( s, h );
+        bool _had = !Super::table.insertHinted( s, h );
+        if ( had )
+            *had = _had;
         setPermanent( s );
     }
 };
@@ -160,7 +162,7 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hash
         return found;
     }
 
-    void store( Blob s, hash_t h, bool * ) {
+    void store( Blob s, hash_t h, bool * = nullptr ) {
         // store just a stub containing state information
         Blob stub = m_graph.base().alloc.new_blob( 0 );
 //        Statistics::global().hashadded( this->id , memSize( stub ) );
