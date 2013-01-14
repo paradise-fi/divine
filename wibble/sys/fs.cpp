@@ -11,6 +11,9 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <windows.h>
+#include <tchar.h>
+#include <shellapi.h>
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -243,7 +246,29 @@ std::string mkdtemp( std::string tmpl )
         throw wibble::exception::System("creating temporary directory path");
     }
 }
+void rmtree( const std::string& dir ) {
+  int len = _tcslen( lpszDir );
+  TCHAR *pszFrom = new TCHAR[ len + 2 ];
+  _tcscpy( pszFrom, dir.c_str() );
+  pszFrom[ len ] = 0;
+  pszFrom[ len + 1 ] = 0;
 
+  SHFILEOPSTRUCT fileop;
+  fileop.hwnd   = NULL;    // no status display
+  fileop.wFunc  = FO_DELETE;  // delete operation
+  fileop.pFrom  = pszFrom;  // source file name as double null terminated string
+  fileop.pTo    = NULL;    // no destination needed
+  fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
+
+  fileop.fAnyOperationsAborted = FALSE;
+  fileop.lpszProgressTitle     = NULL;
+  fileop.hNameMappings         = NULL;
+
+  int ret = SHFileOperation( &fileop );
+  delete[] pszFrom;
+  if ( ret )
+      throw wibble::exception::System( "deleting directory" );
+}
 #endif
 
 }
