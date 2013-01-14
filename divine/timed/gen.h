@@ -40,11 +40,6 @@ private:
     std::vector< ProcessInfo > procs;
     Locations locs;
 
-    // vector used for zone slicing that is needed for deciding properties involving clocks and difference constraints
-    // _cutClocks_ contains expressions involving single clock and is applied after the up operation
-    // _eval.clockDiffrenceExprs_ contains clock differences and is applied after clock updates
-    std::vector< Cut > cutClocks;
-
     // set node to work on
     void setData( char *d ) {
         locs.setSource( d );
@@ -79,36 +74,55 @@ private:
 
     void listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &urgent );
 
-    // Calls given callback for each state created by slicing source
+    /* Extrapolation correct for clock differences.
+     * The idea is to cut the source zone by all clock difference constraints, extrapolate resulting zones
+     * and then make sure they satsfy only those constraints they satisfied before the extrapolation.
+     * _cuts_ has to contain all clock difference constraints used by the automaton, if it is empty, simple extrapolation is done
+     *
+     * Source:
+     * Bengtsson, Johan and Yi, Wang. On Clock Difference Constraints and Termination in Reachability Analysis of Timed Automata.
+     * In Formal Methods and Software Engineering. Springer Springer 2003.
+     */
     template < typename Func >
-    void slice( char* source, const std::vector< Cut >& cuts, Func fun ) {
-        if ( cuts.empty() ) {   // avoid unnecessary copying when no slicing is needed
+    void extrapolateDiff( char* source, const std::vector< Cut >& cuts, Func fun ) {
+        if ( cuts.empty() ) {   // avoid unnecessary computations when no slicing is needed
             setData( source );
+            eval.extrapolate();
             fun( source );
             return;
         }
 
+        // For performace reasons, slicing is done by traversing a tree
+        // _bl_ stores our trace, _next_ tells us which branch to take
         BlockList bl( stateSize() );
         bl.push_back( source );
         std::vector< int > next({ 0 });
 
         while ( !next.empty() ) {
             assert( next.size() == bl.size() );
-            if ( next.back() == 2 ) {
+            if ( next.back() == 2 ) { // if we already completed both branches, go up
                 bl.pop_back();
                 next.pop_back();
             } else {
-                if ( next.size() - 1 < cuts.size() ) {
+                if ( next.size() - 1 < cuts.size() ) { // process inner nodes
                     bl.duplicate_back();
                     setData( bl.back() );
                     const Cut& cut = cuts[ next.size() - 1 ];
-                    if ( eval.evalBool( cut.pId, next.back()++ == 0 ? cut.pos : cut.neg ) ) {
+                    next.back()++;
+                    if ( eval.evalBool( cut.pId, next.back() == 1 ? cut.pos : cut.neg ) ) {
                         next.push_back( 0 );
-                    } else {
+                    } else { // if the result is empty, abandon this branch
                         bl.pop_back();
                     }
-                } else {
+                } else { // process leaf nodes
                     setData( bl.back() );
+                    eval.extrapolate();
+                    // constrain this zone by all constraints it was cut by
+                    for ( unsigned int i = 0; i < cuts.size(); i++ ) {
+                        const Cut& cut = cuts[ i ];
+                        eval.evalBool( cut.pId, next[ i ] == 1 ? cut.pos : cut.neg );
+                    }
+                    // emit state and go up
                     fun( bl.back() );
                     bl.pop_back();
                     next.pop_back();
@@ -145,30 +159,6 @@ public:
             callback( bl.back(), nullptr );
         }
 
-        // generate time successors
-        if ( !urgent ) {
-            newSucc( bl.back(), source );
-            eval.up();
-            if ( evalInv() ) {
-                eval.extrapolate();
-                bool selfLoop = false;
-                slice( bl.back(), cutClocks, [ this, &callback, source, &selfLoop ] ( char* data ) {
-                    if ( memcmp( data, source, stateSize() ) == 0 )
-                        selfLoop = true;
-                    else
-                        callback( data, nullptr );
-                });
-
-#ifndef TIMED_NO_POR
-                // If we are in non-urgent state and there is no time self-loop, skip all the transition successors
-                // because then there is a time successor with a strictly greater zone with all the successors this state would have.
-                // Reduces state-space, but breaks the LTL next operator
-                if ( !selfLoop )
-                    return;
-#endif
-            }
-        }
-
         // finalize priorities
         PrioVal nextPrio( sys.hasPriorityDeclaration() );
         PrioVal maxPrio( false );
@@ -192,7 +182,7 @@ public:
             nextPrio = PrioVal( sys.hasPriorityDeclaration() ); // stores the highest priority lower than maxPrio
             for ( unsigned int i = 0; i < einf.size(); i++ ) {
                 if ( !einf[ i ].valid ) continue;
-                const EdgeInfo *lastEdge = einf[ i ].edges[ 0 ];
+                const EdgeInfo *edge = einf[ i ].edges[ 0 ];
 
                 try {
                     int err = isErrState( bl[ i ] );
@@ -216,17 +206,14 @@ public:
 
                         for ( auto &e : einf[ i ].edges )
                             applyEdge( e );
-                        if ( !evalInv() )
-                            continue;
 
-                        slice( bl.back(), eval.clockDiffrenceExprs, [ this, lastEdge, &callback ] ( char* data ) mutable {
-                            eval.extrapolate(); // extrapolation has to be done after slicing by diagonal constraints top ensure correctness
-                            callback( data, lastEdge );
+                        makeSucc( bl.back(), [ &callback, edge ] ( const char* s ) {
+                            callback( s, edge );
                         });
                     }
                 } catch ( EvalError& e ) {
                     makeErrState( bl.back(), e.getErr() ); // create an error state
-                    callback( bl.back(), lastEdge );
+                    callback( bl.back(), edge );
                 }
                 einf[ i ].valid = false;
             }
@@ -238,6 +225,30 @@ public:
                 callback( bl.back(), nullptr );
             }
         }
+    }
+
+    template < typename Func >
+    void makeSucc( char* succ, Func callback ) {
+        bool urgent;
+        BlockList bl( stateSize(), 1 );
+        EnabledList el;
+        try {
+            listEnabled( succ, bl, el, urgent );
+            setData( succ );
+
+            if ( !evalInv() )
+                return;
+
+            if ( !urgent ) {
+                eval.up();
+                evalInv();
+            }
+        } catch ( EvalError& e ) {
+            makeErrState( bl.back(), e.getErr() ); // create error state
+            callback( bl.back() );
+        }
+
+        extrapolateDiff( succ, eval.clockDiffrenceExprs, callback );
     }
 
     // get location of the property automaton

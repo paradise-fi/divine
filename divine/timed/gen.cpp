@@ -184,7 +184,6 @@ void TAGen::read( const std::string& path ) {
     // clear internal containers
     states.clear();
     procs.clear();
-    cutClocks.clear();
     sys.~TimedAutomataSystem(); // this is the only functional way to reset TimedAutomataSystem
     new (&sys) UTAP::TimedAutomataSystem;
     eval = Evaluator();
@@ -248,10 +247,15 @@ void TAGen::initial( char* d ) {
         locs.set( proc - procs.begin(), proc->initial );
 
     eval.initial();
-    if ( !evalInv() ) {
+    unsigned int count = 0;
+    makeSucc( d, [ this, &count, d ] ( const char* s ) {
+        assert( count <= 1 );
+        count++;
+        memcpy( d, s, stateSize() );
+    });
+
+    if ( !count ) {
         makeErrState( d, EvalError::INVARIANT );
-    } else {
-        eval.extrapolate();
     }
 }
 
@@ -288,10 +292,8 @@ TAGen::PropGuard TAGen::buildPropGuard( const std::vector< std::pair< bool, std:
             if ( isDiffExpr( tmp ) ) {  // evaluator manages its own collection of all difference constraints
                 eval.setClockLimits( -1, tmp );
             } else {
-                if ( addCut( tmp, -1, cutClocks ) ) {   // remember the expression for slicing
-                    eval.setClockLimits( -1, cutClocks.back().pos );        // adjust clock limits if necessary
-                    eval.setClockLimits( -1, cutClocks.back().neg );
-                }
+                eval.setClockLimits( -1, tmp );        // adjust clock limits
+                eval.setClockLimits( -1, negIneq( tmp ) );
             }
             addConj( g.expr, lit->first ? tmp : negIneq( tmp ) );
         } else {

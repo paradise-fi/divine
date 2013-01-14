@@ -169,6 +169,7 @@ public:
 
     // perform clock "up" operation (release upper constraints)
     void up() {
+        assert( !clocks.isEmpty() );
         clocks.up();
     }
 

@@ -102,7 +102,7 @@ public:
     }
 
     virtual const char* what() const throw() {
-        return reason( errno );
+        return reason( err );
     }
 
     int getErr() const {

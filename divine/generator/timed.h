@@ -44,7 +44,6 @@ struct Timed : public Common< Blob > {
                 Node n = alloc.new_blob( gen.stateSize() );
                 memcpy( mem( n ), succ, gen.stateSize() );
                 if ( gen.evalPropGuard( mem( n ), propGuards[ btr->second ] ) ) {
-                    assert( memcmp( mem( n ), succ, gen.stateSize() ) == 0 );   // after guard evaluation, we should get empty zone or unchaged state
                     gen.setPropLoc( mem( n ), btr->first );
                     yield( n, Label() );
                 } else {
