@@ -61,6 +61,39 @@ struct TestSharedHashset
         b.join();
     }
 
+    void multi( SharedHashSet< int >* set, std::size_t count, int from, int to ) {
+        Insert< int > *field = new Insert< int >[ count ];
+
+        for ( std::size_t i = 0; i < count; ++i ) {
+            field[ i ].from = from;
+            field[ i ].to = to;
+            field[ i ].set = set;
+            field[ i ].overlap = true;
+        }
+
+        for ( std::size_t i = 0; i < count; ++i )
+            field[ i ].start();
+
+        for ( std::size_t i = 0; i < count; ++i )
+            field[ i ].join();
+
+    }
+
+    Test multistress() {
+        SharedHashSet< int > set( 20 * 32 * 1024 );
+        multi( &set, 10, 1, 32 * 1024 );
+
+        for  ( int i = 1; i < 32 * 1024; ++i ) {
+            assert( set.has( i ) );
+        }
+        int count = 0;
+        for ( auto& i : set.table ) {
+            if ( i.value )
+                ++count;
+        }
+        assert_eq( count, 32 * 1024 - 1 );
+    }
+
     Test parstress() {
         SharedHashSet< int > set( 64*1024 );
         par( &set, 1, 16*1024, 8*1024, 32*1024 );
