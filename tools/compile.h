@@ -24,6 +24,8 @@ using namespace sys;
 namespace divine {
 
 extern const char *cesmi_usr_cesmi_h_str;
+extern const char *cesmi_usr_ltl_cpp_str;
+extern const char *cesmi_usr_ltl_h_str;
 extern const char *toolkit_pool_h_str;
 extern const char *toolkit_blob_h_str;
 extern const char *compile_defines_str;
@@ -117,6 +119,14 @@ struct Compile {
         wibble::sys::fs::rmtree( tmp_dir->basename );
     }
 
+    void propswitch( std::ostream &o, int c, std::string fun, std::string args ) {
+        o << "    switch ( property ) {" << std::endl;
+        for ( int i = 0; i < c; ++i )
+            o << "        case " << i << ": return " << fun << "_" << i << args << ";" << std::endl;
+        o <<     "        default: abort();" << std::endl;
+        o << "    };" << std::endl;
+    }
+
     void compileCESMI( std::string in, std::string cflags ) {
         FilePath tmp_dir;
         tmp_dir.abspath = process::getcwd();
@@ -130,8 +140,43 @@ struct Compile {
         fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
         chdir( tmp_dir.abspath.c_str() );
 
-        std::string flags = "-shared -g -O2 -fPIC " + cflags;
-        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so " + in, trap, trap_arg );
+        std::string extras, ltlincludes;
+        int ltlcount = 0;
+        while ( opts.hasNext() ) {
+            std::string extra = opts.next();
+            if ( wibble::str::endsWith( extra, ".ltl" ) ) {
+                std::string ltlpath = tmp_dir.basename + "/" + wibble::str::basename( extra ) + ".h";
+                std::string code = "#include <cesmi.h>\n";
+                parse_ltl( wibble::sys::fs::readFile( extra ), [&]( std::string formula ) {
+                        code += ltl_to_c( ltlcount++, formula );
+                    }, [&]( std::string ) {} );
+                wibble::sys::fs::writeFile( ltlpath, code );
+                ltlincludes += "#include <" + wibble::str::basename( extra ) + ".h>\n";
+            } else
+                extras += " " + extra;
+        }
+
+        if ( ltlcount ) {
+            std::string impl = tmp_dir.basename + "/cesmi-ltl",
+                        aggr = tmp_dir.basename + "/ltl-aggregate.cpp";
+            wibble::sys::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
+            wibble::sys::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
+            extras += " " + impl + ".cpp";
+            std::ofstream aggr_s( aggr.c_str() );
+            aggr_s << "#include <stdlib.h>" << std::endl;
+            aggr_s << ltlincludes << std::endl;
+            aggr_s << "extern \"C\" int buchi_accepting( int property, int id ) {\n";
+            propswitch( aggr_s, ltlcount, "buchi_accepting", "( id )" );
+            aggr_s << "}" << std::endl;
+            aggr_s << "extern \"C\" int buchi_next( int property, int from, int transition, cesmi_setup *setup, cesmi_node n ) {\n";
+            propswitch( aggr_s, ltlcount, "buchi_next", "( from, transition, setup, n )" );
+            aggr_s << "}" << std::endl;
+            aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
+            extras += " " + aggr;
+        }
+
+        std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
+        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so " + in + extras,
              trap, trap_arg );
         if ( trap ) trap( trap_arg );
     }
