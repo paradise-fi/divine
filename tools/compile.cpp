@@ -1,14 +1,95 @@
-#include "compile.h"
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 
-#ifdef O_MURPHI
+#include "compile.h"
+#include "combine.h"
+
 bool mucompile( const char *, const char * );
 
 namespace divine {
 
 using namespace wibble;
 
+#ifdef O_LTL3BA
+void print_buchi_trans_label(bdd label, std::ostream& out) {
+    std::stringstream s;
+	  while (label != bddfalse) {
+        bdd current = bdd_satone(label);
+        label -= current;
+
+        out << "(";
+        while (current != bddtrue && current != bddfalse) {
+            bdd high = bdd_high(current);
+            if (high == bddfalse) {
+                out << "!prop_" << get_buchi_symbol(bdd_var(current)) << "( setup, n )";
+                current = bdd_low(current);
+            } else {
+                out << "prop_" << get_buchi_symbol(bdd_var(current)) << "( setup, n )";;
+                current = high;
+            }
+            if (current != bddtrue && current != bddfalse) out << " && ";
+        }
+        out << ")";
+        if (label != bddfalse) out << " || ";
+    }
+}
+
+std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::string > symbols )
+{
+    std::stringstream s, decls;
+    typedef std::map<BState*, bdd> TransMap;
+
+    BState *n;
+    int nodes = 1;
+
+    s << "int buchi_accepting_" << id << "( int id ) {" << std::endl;
+    for ( n = bstates->prv; n != bstates; n = n->prv ) {
+        n->incoming = nodes++;
+        if ( n->final == accept )
+            s << "    if ( id == " << n->incoming << " ) return true;" << std::endl;
+    }
+    s << "    return false;" << std::endl;
+    s << "}" << std::endl;
+    s << std::endl;
+
+    s << "int buchi_next_" << id
+      << "( int from, int transition, cesmi_setup *setup, cesmi_node n ) {"
+      << std::endl;
+    int buchi_next = 0;
+    for ( n = bstates->prv; n != bstates; n = n->prv ) {
+        for ( TransMap::iterator t = n->trans->begin(); t != n->trans->end(); ++t ) {
+            s << "    if ( transition == " << buchi_next << " ) {" << std::endl;
+            s << "        if ( from == " << n->incoming;
+            if ( t->second != bdd_true() ) {
+                s << " && ";
+                print_buchi_trans_label(t->second, s);
+            }
+            s << " )" << std::endl;
+            s << "             return transition + 1;" << std::endl;
+            s << "        ++ transition;" << std::endl;
+            s << "    }" << std::endl;
+            ++ buchi_next;
+        }
+    }
+
+    s << "    return 0;" << std::endl;
+    s << "}" << std::endl;
+
+    for ( std::list< std::string >::iterator i = symbols.begin(); i != symbols.end(); ++ i )
+        decls << "extern \"C\" bool prop_" << *i << "( cesmi_setup *setup, cesmi_node n );" << std::endl;
+
+    return decls.str() + "\n" + s.str();
+}
+
+std::string ltl_to_c( int id, std::string ltl )
+{
+    Combine::ltl3baTranslation( ltl );
+    return buchi_to_c( id, get_buchi_states(), get_buchi_accept(), get_buchi_all_symbols() );
+}
+
+#endif
+
+#ifdef O_MURPHI
 void Compile::compileMurphi( std::string in ) {
     std::string outfile = str::basename( in ) + ".cpp";
     if (!mucompile( in.c_str(), outfile.c_str() ))
@@ -60,15 +141,12 @@ extern \"C\" int get_successor( CustomSetup *setup, int h, Blob from, Blob *to )
 
     runCompiler( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
 }
-
-}
 #else
-
-namespace divine {
 
 void Compile::compileMurphi( std::string ) {
     die( "FATAL: This binary does not support compiling murphi models." );
 }
 
-}
 #endif
+
+}

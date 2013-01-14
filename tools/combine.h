@@ -9,8 +9,6 @@
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
 
-#include "compile.h"
-
 #ifndef DIVINE_COMBINE_H
 #define DIVINE_COMBINE_H
 
@@ -21,17 +19,19 @@ int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& 
 #endif
 
 #ifdef O_LTL3BA
+#include <external/ltl3ba/ltl3ba.h>
+#undef min // SIGH
 int main_ltl3ba(int argc, char *argv[], std::ostream& out);
 struct BState;
 BState* get_buchi_states();
 int get_buchi_accept();
 std::list<std::string> get_buchi_all_symbols();
+
 #endif
 
 using namespace wibble;
 using namespace commandline;
 using namespace sys;
-using namespace divine;
 
 #ifdef O_LTL3BA
 std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > symbols);
@@ -176,7 +176,7 @@ struct Combine {
 
 #ifdef O_LTL3BA
     /// Translates ltl formula to Buchi automaton using ltl3ba
-    std::string ltl3baTranslation( std::string ltl ) {
+    static std::string ltl3baTranslation( std::string ltl ) {
         std::stringstream automatonStream, formulaStream;
         LTL_parse_t ltlParse( ltl );
         LTL_formul_t ltlFormula, ltlFormulaNeg;

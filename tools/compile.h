@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
+#include <unistd.h>
+
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
@@ -7,8 +9,9 @@
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
 #include <wibble/sys/process.h>
+
 #include "dvecompile.h"
-#include <unistd.h>
+#include "combine.h"
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -29,6 +32,8 @@ extern const char *llvm_usr_pthread_h_str;
 extern const char *llvm_usr_pthread_cpp_str;
 extern const char *llvm_usr_cstdlib_h_str;
 extern const char *llvm_usr_cstdlib_cpp_str;
+
+std::string ltl_to_c( int id, std::string ltl );
 
 using namespace wibble;
 
