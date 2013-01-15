@@ -48,7 +48,7 @@ void handler( int s ) {
 }
 
 struct InfoBase {
-    virtual generator::PropertyType propertyType() = 0;
+    virtual generator::PropertyType propertyType( std::string prop ) = 0;
     virtual ~InfoBase() {};
 };
 
@@ -58,6 +58,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
         Props props;
+        this->graph().read( this->meta().input.model );
         this->graph().getProperties( std::back_inserter( props ) );
         std::cout << "Available properties (" << props.size() << "):" << std::endl;
         for ( int i = 0; i < int( props.size() ); ++i )
@@ -66,8 +67,8 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     int id() { return 0; }
-    virtual generator::PropertyType propertyType() {
-        return this->graph().propertyType();
+    virtual generator::PropertyType propertyType( std::string s ) {
+        return this->graph().propertyType( s );
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
@@ -80,25 +81,24 @@ struct Main {
     Report report;
     Meta meta;
 
-    Engine *cmd_reachability, *cmd_owcty, *cmd_ndfs, *cmd_map, *cmd_verify,
-        *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_probabilistic, *cmd_info;
-    OptionGroup *common, *drawing, *compact, *input, *ce, *probabilistic, *probabilisticCommon, *reduce;
+    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info;
+    OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
-    BoolOption *o_por, *o_fair, *o_hashCompaction;
+    BoolOption *o_fair, *o_hashCompaction;
     StringOption *o_reduce;
-    BoolOption *o_noDeadlocks, *o_noGoals;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
     IntOption *o_seed;
     BoolOption *o_labels, *o_traceLabels, *o_bfsLayout;
     StringOption *o_drawTrace, *o_output, *o_render;
-    StringOption *o_trail, *o_gnuplot;
+    StringOption *o_gnuplot;
     StringOption *o_property;
     BoolOption *o_findBackEdges, *o_textFormat;
     StringOption *o_compactOutput;
-    BoolOption *o_onlyQualitative, *o_disableIterativeOptimization, *o_simpleOutput; // probabilistic options
+
+    BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
 
     int argc;
     const char **argv;
@@ -126,8 +126,13 @@ struct Main {
         setupCommandline();
         parseCommandline();
 
-        if ( m_noMC ) {
-            noMC();
+        if ( opts.foundCommand() == compile.cmd_compile ) {
+            compile.main();
+            return;
+        }
+
+        if ( opts.foundCommand() == combine.cmd_combine ) {
+            combine.main();
             return;
         }
 
@@ -190,8 +195,6 @@ struct Main {
         exit( 1 );
     }
 
-    void FIXME( std::string x ) __attribute__((noreturn)) { die( x ); }
-
     void setupSignals()
     {
         for ( int i = 0; i <= 32; ++i ) {
@@ -216,40 +219,23 @@ struct Main {
         cmd_metrics = opts.addEngine( "metrics",
                                       "<input>",
                                       "state space metrics");
-        cmd_reachability = opts.addEngine( "reachability",
-                                           "<input>",
-                                           "reachability analysis");
         cmd_verify = opts.addEngine( "verify",
                                      "<input>",
                                      "verification" );
-        cmd_owcty = opts.addEngine( "owcty", "<input>",
-                                    "one-way catch them young cycle detection");
-        cmd_ndfs = opts.addEngine( "nested-dfs", "<input>",
-                                   "nested dfs cycle detection" );
-        cmd_map = opts.addEngine( "map", "<input>",
-                                  "maximum accepting predecessor "
-                                  "cycle detection" );
-
         cmd_draw = opts.addEngine( "draw",
                                    "<input>",
                                    "draw (part of) the state space" );
         cmd_compact = opts.addEngine( "compact",
                                       "<input>",
-                                      "compact state space representation" );
-        cmd_probabilistic = opts.addEngine( "probabilistic",
-                                      "<input>",
-                                      "qualitative/quantitative analysis" );
-
+                                      "build compact state space representation" );
         cmd_info = opts.addEngine( "info",
                                    "<input>",
                                    "show information about a model" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
-        compact = opts.createGroup( "Compact Options" );
+        compact = opts.createGroup( "Compacting Options" );
         input = opts.createGroup( "Input Options" );
-        probabilistic = opts.createGroup( "Probabilistic Options" );
-        probabilisticCommon = opts.createGroup( "Common Options" );
         reduce = opts.createGroup( "Reduction Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
@@ -280,22 +266,10 @@ struct Main {
 
         o_reduce = reduce->add< StringOption >(
             "reduce", '\0', "reduce", "",
-            "configure reductions (input language dependent) [default = tau+,taustore,heap]" );
-        o_por = reduce->add< BoolOption >(
-            "por", '\0', "por", "",
-            "enable partial order reduction" );
-
+            "configure reductions (input language dependent) [default = tau+,taustore,heap,por]" );
         o_fair = reduce->add< BoolOption >(
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
-
-        o_noGoals = cmd_reachability->add< BoolOption >(
-            "ignore-goals", '\0', "ignore-goals", "",
-            "ignore goal states" );
-
-        o_noDeadlocks = cmd_reachability->add< BoolOption >(
-            "ignore-deadlocks", '\0', "ignore-deadlocks", "",
-            "ignore deadlock states" );
 
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
@@ -306,7 +280,7 @@ struct Main {
             "disk-fifo", '\0', "disk-fifo", "",
             "save long queues on disk to reduce memory usage" );
 
-        o_hashCompaction = cmd_reachability->add< BoolOption >(
+        o_hashCompaction = cmd_verify->add< BoolOption >(
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
 
@@ -327,14 +301,10 @@ struct Main {
             "display-counterexample", 'd', "display-counterexample", "",
             "display the counterexample after finishing" );
 
-        o_trail = ce->add< StringOption >(
-            "trail", 't', "trail", "",
-            "file to output trail to (default: input-file.trail)" );
-
         // input options
         o_dummy = input->add< BoolOption >(
             "dummy", '\0', "dummy", "",
-            "use a \"dummy\" benchmarking model instead of a real input" );
+            "use a \"dummy\" benchmarking model instead of real input" );
 
         // drawing options
         o_distance = drawing->add< IntOption >(
@@ -357,7 +327,7 @@ struct Main {
         o_bfsLayout = drawing->add< BoolOption >(
             "bfs-layout", '\0', "bfs-layout", "", "ask dot to lay out BFS layers in rows" );
 
-        // compact options
+        // compaction options
         o_findBackEdges = compact->add< BoolOption >(
             "find-back-transitions", 'b', "find-back-transitions", "",
             "find also backward transitions" );
@@ -368,56 +338,29 @@ struct Main {
             "compact-output", 'm', "compact-output", "",
             "where to output the compacted state space (default: ./input-file.compact, -: stdout)" );
 
-        // probabilistic options
-        o_onlyQualitative = probabilistic->add< BoolOption >(
-            "qualitative", 'l', "qualitative", "",
-            "only qualitative analysis (default: quantitative)" );
-
-        o_disableIterativeOptimization = probabilistic->add< BoolOption >(
-            "non-iterative", 'd', "non-iterative", "",
-            "disable iterative optimization for quantitative analysis" );
-
-        o_simpleOutput = probabilistic->add< BoolOption >(
-            "simple-output", 's', "simple-output", "",
-            "disable verbose output" );
-        probabilisticCommon->add( o_workers );
-        probabilisticCommon->add( o_report );
+        // verify options
+        o_ndfs = cmd_verify->add< BoolOption >(
+            "ndfs", 0, "ndfs", "", "force use of Nested DFS" );
+        o_map = cmd_verify->add< BoolOption >(
+            "map", 0, "map", "", "force use of MAP" );
+        o_owcty = cmd_verify->add< BoolOption >(
+            "owcty", 0, "owcty", "", "force use of OWCTY" );
+        o_reachability = cmd_verify->add< BoolOption >(
+            "reachability", 0, "reachability", "", "force reachability" );
 
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
 	cmd_metrics->add( input );
 
-        cmd_reachability->add( common );
-        cmd_reachability->add( ce );
-        cmd_reachability->add( reduce );
-	cmd_reachability->add( input );
-
-        cmd_owcty->add( common );
-        cmd_owcty->add( ce );
-        cmd_owcty->add( reduce );
-	cmd_owcty->add( input );
-
-        cmd_map->add( common );
-        cmd_map->add( ce );
-        cmd_map->add( reduce );
-	cmd_map->add( input );
-
-        cmd_ndfs->add( common );
-        cmd_ndfs->add( ce );
-        cmd_ndfs->add( reduce );
-	cmd_ndfs->add( input );
-
         cmd_verify->add( common );
         cmd_verify->add( ce );
         cmd_verify->add( reduce );
+	cmd_verify->add( input );
 
         cmd_compact->add( common );
         cmd_compact->add( compact );
         cmd_compact->add( reduce );
         cmd_compact->add( input );
-
-        cmd_probabilistic->add( probabilisticCommon );
-        cmd_probabilistic->add( probabilistic );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -461,9 +404,8 @@ struct Main {
     }
 
 
-    bool m_noMC;
-
-    std::set< meta::Algorithm::Reduction > parseReductions( std::string s ) {
+    std::set< meta::Algorithm::Reduction > parseReductions( std::string s )
+    {
         wibble::str::Split splitter( ",", s );
         std::set< meta::Algorithm::Reduction > r;
         std::transform( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ),
@@ -473,6 +415,9 @@ struct Main {
                             if ( s == "por" ) return meta::Algorithm::POR;
                             if ( s == "taustores" ) return meta::Algorithm::TauStores;
                             if ( s == "heap" ) return meta::Algorithm::Heap;
+                            throw wibble::exception::OutOfRange(
+                                "reduction", "'" + s + "' is not a known reduction type;\n"
+                                "tau, tau+, por, taustores and heap are allowed" );
                         } );
         return r;
     }
@@ -492,12 +437,10 @@ struct Main {
             }
 
             if ( opts.foundCommand() == combine.cmd_combine
-                 || opts.foundCommand() == compile.cmd_compile ) {
-                m_noMC = true;
+                 || opts.foundCommand() == compile.cmd_compile )
+            {
                 return;
             }
-
-            m_noMC = false;
 
             if ( !opts.hasNext() ) {
                 if ( o_dummy->boolValue() )
@@ -524,31 +467,22 @@ struct Main {
         // else default (currently set to 2)
 
         meta.input.model = input;
-        meta.input.propertyName = o_property->stringValue();
+        meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
         meta.output.wantCe = !o_noCe->boolValue();
         meta.output.textFormat = o_textFormat->boolValue();
         meta.output.backEdges = o_findBackEdges->boolValue();
-        meta.algorithm.findDeadlocks = !o_noDeadlocks->boolValue();
-        meta.algorithm.findGoals = !o_noGoals->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
         if ( o_reduce->boolValue() )
             meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
         else
-            meta.algorithm.reduce = parseReductions( "tau+,taustores,heap" );
-        if ( o_por->boolValue() )
-            meta.algorithm.reduce.insert( meta::Algorithm::POR );
+            meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por" );
         meta.algorithm.hashSeed = (uint32_t) o_seed->intValue();
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
-        if ( !o_dispCe->boolValue() && !o_trail->boolValue() && !o_report->boolValue() )
+        if ( !o_dispCe->boolValue() && !o_report->boolValue() )
             meta.output.wantCe = false;
-
-        // probabilistic options
-        meta.algorithm.onlyQualitative = o_onlyQualitative->boolValue();
-        meta.algorithm.iterativeOptimization = !o_disableIterativeOptimization->boolValue();
-        meta.output.quiet = o_simpleOutput->boolValue();
 
         meta.algorithm.maxDistance = o_distance->intValue();
         meta.output.filterProgram = o_render->stringValue();
@@ -559,21 +493,7 @@ struct Main {
 
         setupLimits();
 
-        if ( o_trail->boolValue() ) {
-            if ( o_trail->stringValue() == "" ) {
-                std::string t = std::string( input, 0,
-                                             input.rfind( '.' ) );
-                t += ".trail";
-                meta.output.trailFile = t;
-            } else
-                meta.output.trailFile = o_trail->stringValue();
-        }
-
         meta.output.file = o_output->stringValue();
-
-        if ( o_dispCe->boolValue() ) {
-            meta.output.ceFile = "-";
-        }
 
         if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
@@ -581,22 +501,8 @@ struct Main {
         if ( opts.foundCommand() == cmd_draw ) {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Draw;
-        } else if ( opts.foundCommand() == cmd_info ) {
+        } else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
-        } else if ( opts.foundCommand() == cmd_ndfs ) {
-            meta.algorithm.algorithm = meta::Algorithm::Ndfs;
-            if ( !o_workers->boolValue() )
-                meta.execution.threads = 1;
-        } else if ( opts.foundCommand() == cmd_owcty )
-            meta.algorithm.algorithm = meta::Algorithm::Owcty;
-        else if ( opts.foundCommand() == cmd_reachability ) {
-            if ( !meta.algorithm.findGoals && !meta.algorithm.findDeadlocks )
-                std::cerr << "WARNING: Both deadlock and goal detection is disabled."
-                          << "Only state count " << std::endl << "statistics will be tracked "
-                          << "(\"divine metrics\" would have been more efficient)." << std::endl;
-            meta.algorithm.algorithm = meta::Algorithm::Reachability;
-        } else if ( opts.foundCommand() == cmd_map )
-            meta.algorithm.algorithm = meta::Algorithm::Map;
         else if ( opts.foundCommand() == cmd_metrics )
             meta.algorithm.algorithm = meta::Algorithm::Metrics;
         else if ( opts.foundCommand() == cmd_compact ) {
@@ -610,19 +516,51 @@ struct Main {
             }
 
             meta.algorithm.algorithm = meta::Algorithm::Compact;
-        } else if ( opts.foundCommand() == cmd_probabilistic ) {
-            meta.algorithm.algorithm = meta::Algorithm::Probabilistic;
         } else if ( opts.foundCommand() == cmd_verify ) {
             InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
+            auto pt = ib->propertyType( meta.input.propertyName );
             assert( ib );
 
-            if ( ib->propertyType() == generator::AC_None )
+            /* the default algorithms based on property types */
+            switch ( pt ) {
+                case generator::PT_Deadlock:
+                case generator::PT_Goal:
+                    meta.algorithm.algorithm = meta::Algorithm::Reachability;
+                    break;
+                case generator::PT_Buchi:
+                    if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
+                        meta.algorithm.algorithm = meta::Algorithm::Owcty;
+                    else
+                        meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                    break;
+            }
+
+            if ( o_ndfs->boolValue() ) {
+                if ( pt != generator::PT_Buchi )
+                    std::cerr << "WARNING: NDFS is only suitable for LTL/Büchi properties." << std::endl;
+
+                meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                if ( !o_workers->boolValue() )
+                    meta.execution.threads = 1;
+            }
+
+            if ( o_reachability->boolValue() ) {
+                if ( pt == generator::PT_Buchi )
+                    std::cerr << "WARNING: Reachability is not suitable for checking LTL/Büchi properties."
+                              << std::endl;
                 meta.algorithm.algorithm = meta::Algorithm::Reachability;
-            else {
-                if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
-                    meta.algorithm.algorithm = meta::Algorithm::Owcty;
-                else
-                    meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+            }
+
+            if ( o_owcty->boolValue() ) {
+                if ( pt != generator::PT_Buchi )
+                    std::cerr << "WARNING: OWCTY is only suitable for LTL/Büchi properties." << std::endl;
+                meta.algorithm.algorithm = meta::Algorithm::Owcty;
+            }
+
+            if ( o_map->boolValue() ) {
+                if ( pt != generator::PT_Buchi )
+                    std::cerr << "WARNING: MAP is only suitable for LTL/Büchi properties." << std::endl;
+                meta.algorithm.algorithm = meta::Algorithm::Map;
             }
 
             delete ib;
@@ -631,99 +569,8 @@ struct Main {
             die( "FATAL: Internal error in commandline parser." );
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
-        if (opts.foundCommand() != cmd_ndfs) // ndfs uses shared table
+        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs ) // ndfs needs a shared table
             meta.execution.initialTable /= meta.execution.threads;
-    }
-
-#if 0
-    template< typename Graph, typename Stats >
-    void selectAlgorithm()
-    {
-        if ( m_run == RunVerify ) {
-            Graph temp;
-            temp.read( meta.input.model );
-
-            if ( temp.propertyType() != generator::AC_None && meta.execution.threads > 1 )
-                m_run = RunOwcty;
-            else {
-                if ( temp.propertyType() != generator::AC_None )
-                    m_run = RunNdfs;
-                else
-                    m_run = RunReachability;
-            }
-        }
-
-        switch ( m_run ) {
-            case RunDraw:
-                meta.algorithm.name = "Draw";
-                return run< Draw< Graph >, Stats >();
-            case RunInfo:
-                meta.algorithm.name = "Info";
-                return run< Info< Graph >, Stats >();
-            default:
-                die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
-        }
-    }
-
-    void runProbabilistic() {
-        meta.algorithm.name = "Probabilistic";
-        try {
-            assert( meta.input.model.substr( meta.input.model.rfind( '.' ) ) == ".compact" );
-
-            algorithm::Probabilistic< algorithm::NonPORGraph< generator::Compact > > alg( &meta );
-            alg.domain().mpi.init();
-            alg.init( &alg.domain() );
-            alg.domain().mpi.start();
-            report.mpiInfo( alg.domain().mpi );
-
-            alg.run();
-        } catch ( std::exception &e ) {
-            die( std::string( "FATAL: " ) + e.what() );
-        } catch ( const char* s ) {
-            die( std::string( "FATAL: " ) + s );
-        }
-    }
-
-    template< typename Stats, typename T >
-    typename T::IsDomainWorker setupParallel( Preferred, T &t ) {
-        t.domain().mpi.init();
-        t.init( &t.domain(), o_diskfifo->intValue() );
-        if ( t.domain().mpi.master() )
-            setupCurses();
-        Stats::global().useDomain( t.domain() );
-        if ( statistics )
-            Stats::global().start();
-        t.domain().mpi.start();
-        report.mpiInfo( t.domain().mpi );
-        return wibble::Unit();
-    }
-
-    template< typename Stats, typename T >
-    wibble::Unit setupParallel( NotPreferred, T &t ) {
-        t.init();
-        setupCurses();
-        if ( statistics )
-            Stats::global().start();
-        return wibble::Unit();
-    }
-
-    template< typename Algorithm, typename Stats >
-    void run() {
-        try {
-            Algorithm alg( &meta );
-            setupParallel< Stats >( Preferred(), alg );
-            alg.run();
-        } catch (std::exception &e) {
-            die( std::string( "FATAL: " ) + e.what() );
-        }
-    }
-#endif
-
-    void noMC() {
-        if ( opts.foundCommand() == compile.cmd_compile )
-            compile.main();
-        if ( opts.foundCommand() == combine.cmd_combine )
-            combine.main();
     }
 
 };
