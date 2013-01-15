@@ -453,7 +453,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         }
 
         bool valid = cycleFound() ? false : ( shared.size == 0 );
-        livenessBanner( valid );
+        resultBanner( valid );
 
         if ( want_ce && !valid ) {
             counterexample();

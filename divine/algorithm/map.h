@@ -297,7 +297,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         meta().statistics.deadlocks = -1; /* did not count */
         meta().statistics.transitions = -1; /* cannot count */
 
-        livenessBanner( valid );
+        resultBanner( valid );
 
         if ( !valid && want_ce ) {
             progress() << " generating counterexample...     " << std::flush;

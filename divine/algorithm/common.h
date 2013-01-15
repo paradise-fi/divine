@@ -74,20 +74,11 @@ struct Algorithm
         return Output::output().progress();
     }
 
-    void livenessBanner( bool valid ) {
+    void resultBanner( bool valid ) {
         progress() << " ===================================== " << std::endl
                    << ( valid ?
-                      "       Accepting cycle NOT found       " :
-                      "         Accepting cycle FOUND         " )
-                   << std::endl
-                   << " ===================================== " << std::endl;
-    }
-
-    void safetyBanner( bool valid ) {
-        progress() << " ===================================== " << std::endl
-                   << ( valid ?
-                      "          Goal state NOT found         " :
-                      "            Goal state FOUND           " )
+                      "           The property HOLDS          " :
+                      "       The property DOES NOT hold      " )
                    << std::endl
                    << " ===================================== " << std::endl;
     }

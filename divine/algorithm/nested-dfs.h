@@ -110,7 +110,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             inner.join();
 
         progress() << "done" << std::endl;
-        livenessBanner( valid );
+        resultBanner( valid );
 
         if ( !valid ) {
             if ( parallel )
