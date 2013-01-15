@@ -72,6 +72,8 @@ private:
 
     bool evalInv();
 
+    bool isUrgent( char* source );
+
     void listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &urgent );
 
     /* Extrapolation correct for clock differences.
@@ -229,11 +231,8 @@ public:
 
     template < typename Func >
     void makeSucc( char* succ, Func callback ) {
-        bool urgent;
-        BlockList bl( stateSize(), 1 );
-        EnabledList el;
         try {
-            listEnabled( succ, bl, el, urgent );
+            bool urgent = isUrgent( succ );
             setData( succ );
 
             if ( !evalInv() )
@@ -244,8 +243,8 @@ public:
                 evalInv();
             }
         } catch ( EvalError& e ) {
-            makeErrState( bl.back(), e.getErr() ); // create error state
-            callback( bl.back() );
+            makeErrState( succ, e.getErr() ); // create error state
+            callback( succ );
         }
 
         extrapolateDiff( succ, eval.clockDiffrenceExprs, callback );

@@ -180,6 +180,42 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
     urgent = inUrgent || !commit.empty();
 }
 
+bool TAGen::isUrgent( char* source ) {
+    bool urgentChan = false;
+
+    setData( source );
+    // find possible transitions and synchronizations
+    int nInst = 0;
+    for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
+        StateInfo& s = (*proc)[ locs.get( nInst ) ];
+        if ( s.urgent || s.commit )
+            return true;
+        for ( auto tr = s.edges.begin(); tr != s.edges.end(); ++tr ) {
+            if ( tr->syncType == UTAP::Constants::SYNC_BANG ) {
+                try {
+                    chan_id chan = eval.evalChan( nInst, tr->sync );
+                    urgentChan = urgentChan || eval.isChanUrgent( chan );
+                } catch ( EvalError& ) {
+                    // ignore errors here, they will be caught later
+                }
+            }
+        }
+    }
+
+    if ( !urgentChan )
+        return false;
+
+    bool urgent;
+    BlockList bl( stateSize(), 1 );
+    EnabledList el;
+    try {
+        listEnabled( source, bl, el, urgent );
+    } catch ( EvalError& ) {
+        // ignore errors here, they will be caught later
+    }
+    return urgent;
+}
+
 void TAGen::read( const std::string& path ) {
     // clear internal containers
     states.clear();
