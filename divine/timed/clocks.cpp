@@ -48,6 +48,15 @@ void Clocks::resize( unsigned int clocks ) {
     bounds[ dim ] = bounds[ 0 ] = 0;
 }
 
+std::ostream& Clocks::print_name( std::ostream& o, unsigned int id ) const {
+    if ( id - 1 < names.size() && !names[ id - 1 ].empty() ) {
+        o << names[ id - 1 ];
+    } else {
+        o << "x" << id;
+    }
+    return o;
+}
+
 void Clocks::print( std::ostream& o ) const {
     for ( unsigned int i = 0; i < dim; i++ )
         if ( data[ i * dim + i ] != dbm_LE_ZERO ) {
@@ -74,7 +83,7 @@ const char* Clocks::boundEq( int32_t bound ) {
 void Clocks::rowFmt( std::ostream& o, unsigned int& count, bool printed ) {
     if ( !printed )
         return;
-    if ( ++count % 3u == 0 )
+    if ( ++count % 2u == 0 )
         o << "\n";
     else
         o << "\t";
@@ -87,7 +96,7 @@ bool Clocks::print_c( std::ostream& o, unsigned int i ) const {
     if ( lower != dbm_LE_ZERO )
         o << ( -dbm_raw2bound( lower ) ) << boundEq( lower );
     if ( lower != dbm_LE_ZERO || upper != dbm_LS_INFINITY )
-        o << "x" << i;
+        print_name( o, i );
     else
         return false;
     if ( upper != dbm_LS_INFINITY )
@@ -101,13 +110,20 @@ bool Clocks::print_d( std::ostream& o, unsigned int i, unsigned int j ) const {
     raw_t lower = data[ j * dim + i ];
     if ( lower != dbm_LS_INFINITY )
         o << ( -dbm_raw2bound( lower ) ) << boundEq( lower );
-    if ( lower != dbm_LS_INFINITY || upper != dbm_LS_INFINITY )
-        o << "x" << i << "-x" << j;
-    else
+    if ( lower != dbm_LS_INFINITY || upper != dbm_LS_INFINITY ) {
+        print_name( o, i );
+        o << "-";
+        print_name( o, j );
+    } else
         return false;
     if ( upper != dbm_LS_INFINITY )
         o << boundEq( upper ) << dbm_raw2bound( upper );
     return true;
+}
+
+void Clocks::setName( unsigned int id, const std::string& name ) {
+    names.resize( std::max( id + 1, unsigned( names.size() ) ) );
+    names[ id ] = name;
 }
 
 void Clocks::setLowerBound( unsigned int id, int32_t limit ) {

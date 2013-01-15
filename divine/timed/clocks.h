@@ -16,6 +16,7 @@ class Clocks {
     unsigned int dim;
     raw_t *data;
     std::vector< int32_t > bounds; // maximal lower and upper bounds
+    std::vector< std::string > names;
 
     // prind bounds from DBM
     void print( std::ostream& o ) const;
@@ -30,6 +31,8 @@ class Clocks {
     bool print_c( std::ostream& o, unsigned int i ) const;
 
     bool print_d( std::ostream& o, unsigned int i, unsigned int j ) const;
+
+    std::ostream& print_name( std::ostream& o, unsigned int id ) const;
 
 public:
     // set clock count
@@ -89,6 +92,8 @@ public:
     // Set the highest value a clock can be compared to from above,
     // if the current bound is higher than given one, it is not changed and false is returned
     bool updateUpperBound( unsigned int id, int32_t limit );
+
+    void setName( unsigned int id, const std::string& name );
 
     friend std::ostream& operator<<( std::ostream& o, const Clocks& c ) {
         c.print( o );

@@ -171,15 +171,21 @@ void Evaluator::processSingleDecl( const symbol_t &s,
     } else if ( basicType.isClock() ) {
         if ( s.getName() == "t(0)" ) // we dont need to save global timer
             return;
+        std::string basename = ( procId < 0 ? "" : getProcessName( procId ) + "." ) + s.getName();
         if ( type.isArray() ) {
             vector< int > arrSizes;
             int size = getArraySizes( procId, type, arrSizes );
             vars[ make_pair( s, procId) ] = VarData ( Type::CLOCK, variablePrefix,
                                                         ClockTable.size(), arrSizes, size );
-            for ( int i = 0; i < size; i++ )
+            for ( int i = 0; i < size; i++ ) {
+                std::stringstream ss( basename );
+                ss << "[" << i << "]";
+                clocks.setName( ClockTable.size(), ss.str() );
                 ClockTable.push_back( &s );
+            }
         } else {
             vars[ make_pair(s, procId) ] = VarData( Type::CLOCK, variablePrefix, ClockTable.size() );
+            clocks.setName( ClockTable.size(), basename );
             ClockTable.push_back( &s );
         }
     } else {
@@ -620,20 +626,20 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
             vars[ make_pair( p.uid, -1 ) ] = VarData ( Type::PROCESS, PrefixType::NONE, pId );
         }
 
+        ProcessTable.push_back( p );
+
         // template parametres
         for ( const pair< symbol_t, expression_t > &m : p.mapping )
-            processSingleDecl( m.first, m.second, ProcessTable.size() );
+            processSingleDecl( m.first, m.second, ProcessTable.size() - 1 );
 
         // fuctions
         for ( const function_t &f : p.templ->functions )
-            processFunctionDecl( f, ProcessTable.size() );
+            processFunctionDecl( f, ProcessTable.size() - 1 );
 
         // local variables
         assert( p.templ );
         for ( const variable_t &v : p.templ->variables )
-            processSingleDecl( v.uid, v.expr, ProcessTable.size() );
-        
-        ProcessTable.push_back( p );
+            processSingleDecl( v.uid, v.expr, ProcessTable.size() - 1 );
     }
 
     // compute clock limits
