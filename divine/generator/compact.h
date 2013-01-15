@@ -274,17 +274,14 @@ struct Compact : public Common< Blob > {
         return resSlack;
     }
 
-    /// Was the property automaton specified in the underlying state space?
-    bool hasProperty() { return acPropertyType != AC_None; }
-
-    /// Acceptance condition type
-    PropertyType acType() { return acPropertyType; }
+    // Acceptance condition type. FIXME.
+    PropertyType propertyType( std::string ) { return acPropertyType; }
 
     /// Is state s in the accepting set?
     bool isAccepting( Node s ) {
         assert( initialized );
 
-        if ( acPropertyType == AC_None )
+        if ( acPropertyType == PT_Deadlock )
             return false;
         return isInAccepting( s, 0 );
     }
@@ -296,11 +293,11 @@ struct Compact : public Common< Blob > {
     bool isInAccepting( Node s, int acc_group ) {
         assert( initialized );
 
-        assert( acPropertyType != AC_None );
+        assert( acPropertyType != PT_Deadlock );
         assert( acc_group < acCount );
 
         unsigned group = acc_group;
-        if ( acPropertyType == AC_Rabin || acPropertyType == AC_Streett )
+        if ( acPropertyType == PT_Rabin || acPropertyType == PT_Streett )
             group *= 2;
         return getCompactState( s ).ac[ group ];
     }
@@ -311,9 +308,9 @@ struct Compact : public Common< Blob > {
     bool isInRejecting( Node s, int acc_group ) {
         assert( initialized );
 
-        assert( acPropertyType != AC_None );
+        assert( acPropertyType != PT_Deadlock );
         assert( acc_group < acCount );
-        assert( acPropertyType == AC_Rabin || acPropertyType == AC_Streett );
+        assert( acPropertyType == PT_Rabin || acPropertyType == PT_Streett );
 
         return getCompactState( s ).ac[ acc_group * 2 + 1 ];
     }
@@ -643,7 +640,7 @@ struct Compact : public Common< Blob > {
             compactFile >> label >> acTypeNum;
             assert_eq( label, compact::cfAC );
             parent->acPropertyType = static_cast< PropertyType >( acTypeNum );
-            if ( parent->acPropertyType != AC_None )
+            if ( parent->acPropertyType != PT_Deadlock )
                 compactFile >> parent->acCount;
         }
 

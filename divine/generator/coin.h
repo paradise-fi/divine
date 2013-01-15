@@ -219,9 +219,9 @@ public:
     int setSlack( int s );
     
     /// Type of accepting condition
-    PropertyType propertyType() {
+    PropertyType propertyType( std::string ) {
 	// we only support Buchi property automaton
-      	return property ? AC_Buchi : AC_None;
+      	return property ? PT_Buchi : PT_Deadlock;
     }
 
 private:

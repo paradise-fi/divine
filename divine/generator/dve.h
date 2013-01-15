@@ -259,20 +259,26 @@ struct Dve : public Common< Blob > {
     template< typename O >
     O getProperties( O o ) {
         assert( system );
-        if ( system->property )
-            *o++ = std::make_pair( wibble::str::fmt( system->property->id ), "" );
+        *o++ = std::make_pair( "deadlock", "(deadlock reachability)" );
+        if ( system->property ) /* FIXME. Bogus. */
+            *o++ = std::make_pair( wibble::str::fmt( system->property->id ),
+                                   "(Büchi neverclaim property)" );
         for ( int i = 0; i < system->properties.size(); ++i )
-            *o++ = std::make_pair( wibble::str::fmt( system->properties[i].id ), "" );
+            *o++ = std::make_pair( wibble::str::fmt( system->properties[i].id ),
+                                   "(Büchi neverclaim property)" );
         return o;
     }
 
     void useProperty( meta::Input &i ) {
-        if ( i.propertyName == "none" )
+        if ( i.propertyName == "deadlock" )
             system->property = NULL;
     }
 
-    PropertyType propertyType() {
-        return system->property ? AC_Buchi : AC_None;
+    PropertyType propertyType( std::string n ) {
+        if ( n == "deadlock" )
+            return PT_Deadlock;
+        else
+            return PT_Buchi; /* kinda bogus too */
     }
 
     int stateSize() {

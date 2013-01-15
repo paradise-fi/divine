@@ -10,7 +10,7 @@ namespace divine {
 namespace graph {
 
 /// Types of acceptance condition
-enum PropertyType { AC_None, AC_Buchi, AC_GenBuchi, AC_Muller, AC_Rabin, AC_Streett };
+enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_Rabin, PT_Streett };
 
 template< typename _Node >
 struct Base {
@@ -23,7 +23,11 @@ struct Base {
     void initPOR() {}
 
     /// Acceptance condition type. This should be overriden in subclasses.
-    PropertyType propertyType() { return AC_None; }
+    PropertyType propertyType( std::string s ) {
+        if ( s == "deadlock" )
+            return PT_Deadlock;
+        throw wibble::exception::Consistency( "unexpected property type " + s, "graph::Base" );
+    }
 
     // for single-set acceptance conditions (Buchi)
     bool isAccepting( Node s ) { return false; }
@@ -40,6 +44,7 @@ struct Base {
 
     template< typename O >
     O getProperties( O o ) {
+        *o++ = std::make_pair( "deadlock", "(deadlock detection)" );
         return o;
     }
 
@@ -99,7 +104,7 @@ struct Transform {
         base().setDomainSize( mpiRank, mpiSize, peersCount );
     }
 
-    PropertyType propertyType() { return base().propertyType(); }
+    PropertyType propertyType( std::string p ) { return base().propertyType( p ); }
 
     bool isInAccepting( Node s, int acc_group ) {
         return base().isInAccepting( s, acc_group ); }

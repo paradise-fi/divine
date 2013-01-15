@@ -185,16 +185,6 @@ struct CESMI : public Common< Blob > {
         setup.instance_initialised = 1;
     }
 
-    /* XXX this interface is wrong */
-    PropertyType propertyType() {
-        call_setup();
-        switch ( dl.get_property_type( &setup, 0 ) ) {
-            case cesmi::cesmi_pt_buchi: return AC_Buchi;
-            case cesmi::cesmi_pt_goal: return AC_None;
-        }
-        return AC_None; /* Duh. */
-    }
-
     std::string propertyName( int i ) {
         char *descr = dl.show_property ? dl.show_property( &setup, i ) : nullptr;
         std::string r = descr ? std::string( descr ) : ("p_" + wibble::str::fmt( i + 1 ));
@@ -221,6 +211,19 @@ struct CESMI : public Common< Blob > {
         for ( int i = 0; i < setup.property_count; ++i ) {
             if ( in.propertyName == propertyName( i ) )
                 setup.property = i;
+        }
+    }
+
+    PropertyType propertyType( std::string p ) {
+        call_setup();
+        for ( int i = 0; i < setup.property_count; ++i ) {
+            if ( p == propertyName( i ) )
+                switch ( dl.get_property_type( &setup, 0 ) ) {
+                    case cesmi::cesmi_pt_buchi: return PT_Buchi;
+                    case cesmi::cesmi_pt_goal: return PT_Goal;
+                    case cesmi::cesmi_pt_deadlock: return PT_Deadlock;
+                    default: assert_unreachable( "bad CESMI property type" );
+                }
         }
     }
 
