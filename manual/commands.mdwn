@@ -14,7 +14,19 @@ Printing model metadata
 
     divine info {model}
 
-To obtain basic data about a model, use `divine info`.
+To obtain basic data about a model, use `divine info`. The key part of the
+information provided is the list of properties available in the model, and the
+name of a property needs should be passed to the `--property` option of `draw`,
+`metrics` or `verify` subcommands:
+
+    $ divine info examples/dve/peterson-liveness.dve
+    Available properties (2):
+     1) deadlock: (deadlock reachability)
+     2) 45: (Büchi neverclaim property)
+
+In this case, the model has two properties, `deadlock` and `45` (the latter
+being a neverclaim property generated from an LTL formula, see section on
+`divine combine` below).
 
 Using LTL properties
 ====================
@@ -63,14 +75,16 @@ an appropriate algorithm for model checking based on the property type, and an
 appropriate model loader / state space generation backend according to the
 input file.
 
-(TODO example)
+    $ divine verify examples/dve/peterson-liveness.dve --property deadlock
+    $ 
 
 Options
 -------
 
 - `--reachability --owcty --map --nested-dfs`: Override the algorithm to use.
 - `--property name`: Select which property to model-check. Use `divine info` to
-  obtain a list of properties available in any given model.
+  obtain a list of properties available in any given model. Defaults to
+  `deadlock`.
 - `--fair`: Only consider runs that are weakly fair. This option is only
   currently available for DVE models and is mainly useful when checking LTL
   properties. This avoids counterexamples which rely on one of the processes of
