@@ -349,7 +349,7 @@ struct Main {
 
         // verify options
         o_ndfs = cmd_verify->add< BoolOption >(
-            "ndfs", 0, "ndfs", "", "force use of Nested DFS" );
+            "nested-dfs", 0, "nested-dfs", "", "force use of Nested DFS" );
         o_map = cmd_verify->add< BoolOption >(
             "map", 0, "map", "", "force use of MAP" );
         o_owcty = cmd_verify->add< BoolOption >(
