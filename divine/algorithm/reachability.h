@@ -82,11 +82,12 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
         static visitor::DeadlockAction deadlocked( This &r, Node n )
         {
+            r.shared.stats.addDeadlock();
+
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::IgnoreDeadlock;
 
             r.shared.goal = r.graph().clone( n );
-            r.shared.stats.addDeadlock();
             r.shared.deadlocked = true;
             return visitor::TerminateOnDeadlock;
         }
