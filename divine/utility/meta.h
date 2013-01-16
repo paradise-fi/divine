@@ -47,7 +47,6 @@ struct Algorithm {
 
     bool labels, traceLabels, bfsLayout; /* for drawing */
     bool hashCompaction;
-    bool onlyQualitative, iterativeOptimization;
     bool fairness;
     graph::ReductionSet reduce;
 
@@ -55,7 +54,7 @@ struct Algorithm {
                   hashSeed( 0 ),
                   maxDistance( 32 ),
                   labels( false ), traceLabels( false ), bfsLayout( false ),
-                  hashCompaction( false ), onlyQualitative( false ), iterativeOptimization( true ),
+                  hashCompaction( false ),
                   fairness( false ) {}
 };
 
