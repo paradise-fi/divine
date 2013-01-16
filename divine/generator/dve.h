@@ -256,29 +256,20 @@ struct Dve : public Common< Blob > {
         }
     }
 
-    template< typename O >
-    O getProperties( O o ) {
+    template< typename Y >
+    void properties( Y yield ) {
         assert( system );
-        *o++ = std::make_pair( "deadlock", "(deadlock reachability)" );
+        yield( "deadlock", "(deadlock reachability)", PT_Deadlock );
         if ( system->property ) /* FIXME. Bogus. */
-            *o++ = std::make_pair( wibble::str::fmt( system->property->id ),
-                                   "(Büchi neverclaim property)" );
+            yield( "LTL", "(Büchi neverclaim property)", PT_Buchi );
         for ( int i = 0; i < system->properties.size(); ++i )
-            *o++ = std::make_pair( wibble::str::fmt( system->properties[i].id ),
-                                   "(Büchi neverclaim property)" );
-        return o;
+            yield( wibble::str::fmt( system->properties[i].id ),
+                   "(Büchi neverclaim property)", PT_Buchi );
     }
 
-    void useProperty( meta::Input &i ) {
-        if ( i.propertyName == "deadlock" )
-            system->property = NULL;
-    }
-
-    PropertyType propertyType( std::string n ) {
+    void useProperty( std::string n ) {
         if ( n == "deadlock" )
-            return PT_Deadlock;
-        else
-            return PT_Buchi; /* kinda bogus too */
+            system->property = NULL;
     }
 
     ReductionSet useReductions( ReductionSet r ) {

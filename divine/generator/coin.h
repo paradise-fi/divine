@@ -217,12 +217,6 @@ public:
      * Sets the extra space allocated for every Node.
      */
     int setSlack( int s );
-    
-    /// Type of accepting condition
-    PropertyType propertyType( std::string ) {
-	// we only support Buchi property automaton
-      	return property ? PT_Buchi : PT_Deadlock;
-    }
 
 private:
 

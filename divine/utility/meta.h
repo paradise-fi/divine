@@ -13,16 +13,15 @@ namespace divine {
 namespace meta {
 
 struct Input {
-    enum PT { NoProperty, LTL, Neverclaim, Reachability };
     std::string modelType;
     std::string model;
     std::string property;
     std::string propertyName;
     std::string trace;
-    PT propertyType;
+    graph::PropertyType propertyType;
     bool dummygen;
 
-    Input() : propertyType( NoProperty ), dummygen( false ) {}
+    Input() : propertyType( graph::PT_Goal ), dummygen( false ) {}
 };
 
 struct Execution {
@@ -47,8 +46,6 @@ struct Algorithm {
     int maxDistance;
 
     bool labels, traceLabels, bfsLayout; /* for drawing */
-    bool findDeadlocks;
-    bool findGoals;
     bool hashCompaction;
     bool onlyQualitative, iterativeOptimization;
     bool fairness;
@@ -58,7 +55,6 @@ struct Algorithm {
                   hashSeed( 0 ),
                   maxDistance( 32 ),
                   labels( false ), traceLabels( false ), bfsLayout( false ),
-                  findDeadlocks( true ), findGoals( true ),
                   hashCompaction( false ), onlyQualitative( false ), iterativeOptimization( true ),
                   fairness( false ) {}
 };
@@ -97,7 +93,7 @@ struct Result
 
 std::ostream &operator<<( std::ostream &o, meta::Result::R v );
 std::ostream &operator<<( std::ostream &o, meta::Result::CET v );
-std::ostream &operator<<( std::ostream &o, meta::Input::PT v );
+std::ostream &operator<<( std::ostream &o, graph::PropertyType v );
 std::ostream &operator<<( std::ostream &o, meta::Input i );
 std::ostream &operator<<( std::ostream &o, meta::Result r );
 std::ostream &operator<<( std::ostream &o, meta::Algorithm a );

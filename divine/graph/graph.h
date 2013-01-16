@@ -23,13 +23,6 @@ struct Base {
     Pool &pool() { return alloc.pool(); }
     void initPOR() {}
 
-    /// Acceptance condition type. This should be overriden in subclasses.
-    PropertyType propertyType( std::string s ) {
-        if ( s == "deadlock" )
-            return PT_Deadlock;
-        throw wibble::exception::Consistency( "unexpected property type " + s, "graph::Base" );
-    }
-
     // for single-set acceptance conditions (Buchi)
     bool isAccepting( Node s ) { return false; }
 
@@ -43,13 +36,12 @@ struct Base {
     void setDomainSize( unsigned /* mpiRank */ = 0, unsigned /* mpiSize */ = 1,
                         unsigned /* peersCount */ = 1 ) {}
 
-    template< typename O >
-    O getProperties( O o ) {
-        *o++ = std::make_pair( "deadlock", "(deadlock detection)" );
-        return o;
+    template< typename Y >
+    void properties( Y yield ) {
+        yield( "deadlock", "(deadlock detection)", PT_Deadlock );
     }
 
-    void useProperty( meta::Input & ) {}
+    void useProperty( std::string ) {}
 
     virtual ReductionSet useReductions( ReductionSet ) {
         return ReductionSet();
@@ -108,8 +100,6 @@ struct Transform {
         base().setDomainSize( mpiRank, mpiSize, peersCount );
     }
 
-    PropertyType propertyType( std::string p ) { return base().propertyType( p ); }
-
     bool isInAccepting( Node s, int acc_group ) {
         return base().isInAccepting( s, acc_group ); }
     bool isInRejecting( Node s, int acc_group ) {
@@ -124,12 +114,12 @@ struct Transform {
     int setSlack( int s ) { return base().setSlack( s ); }
     Node clone( Node n ) { return base().clone( n ); }
 
-    template< typename O >
-    O getProperties( O o ) {
-        return base().getProperties( o );
+    template< typename Y >
+    void properties( Y yield ) {
+        return base().properties( yield );
     }
 
-    void useProperty( meta::Input &n ) {
+    void useProperty( std::string n ) {
         base().useProperty( n );
     }
 

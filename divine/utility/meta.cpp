@@ -22,13 +22,12 @@ std::ostream &operator<<( std::ostream &o, Result::CET t )
     return o;
 }
 
-std::ostream &operator<<( std::ostream &o, Input::PT t )
+std::ostream &operator<<( std::ostream &o, graph::PropertyType t )
 {
     switch (t) {
-        case Input::NoProperty: return o << "none";
-        case Input::Neverclaim: return o << "neverclaim";
-        case Input::LTL: return o << "LTL";
-        case Input::Reachability: return o << "reachability";
+        case graph::PT_Deadlock: return o << "deadlock";
+        case graph::PT_Goal: return o << "goal";
+        case graph::PT_Buchi: return o << "neverclaim";
     }
     return o;
 }

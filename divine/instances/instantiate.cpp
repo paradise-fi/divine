@@ -16,15 +16,12 @@ algorithm::Algorithm *select( Meta &m )
 
         case meta::Algorithm::Owcty:
             m.algorithm.name = "OWCTY";
-            m.input.propertyType = meta::Input::Neverclaim; // XXX
             return selectOWCTY( m );
         case meta::Algorithm::Map:
             m.algorithm.name = "MAP";
-            m.input.propertyType = meta::Input::Neverclaim; // XXX
             return selectMAP( m );
         case meta::Algorithm::Ndfs:
             m.algorithm.name = "Nested DFS";
-            m.input.propertyType = meta::Input::Neverclaim; // XXX
             return selectNDFS( m );
 
         default:

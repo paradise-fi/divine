@@ -70,7 +70,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 r.extension( t ).parent = f;
             r.shared.stats.addEdge( r.graph(), f, t );
 
-            if ( r.meta().algorithm.findGoals && r.graph().isGoal( t ) ) {
+            if ( r.meta().input.propertyType == graph::PT_Goal && r.graph().isGoal( t ) ) {
                 r.shared.goal = r.graph().clone( t );
                 r.shared.deadlocked = false;
                 return visitor::TerminateOnTransition;
@@ -82,7 +82,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
         static visitor::DeadlockAction deadlocked( This &r, Node n )
         {
-            if ( !r.meta().algorithm.findDeadlocks )
+            if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::IgnoreDeadlock;
 
             r.shared.goal = r.graph().clone( n );
@@ -175,7 +175,6 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }
 
-        meta().input.propertyType = meta::Input::Reachability;
         result().propertyHolds = goal.valid() ? meta::Result::No : meta::Result::Yes;
         result().fullyExplored = goal.valid() ? meta::Result::No : meta::Result::Yes;
     }

@@ -192,38 +192,31 @@ struct CESMI : public Common< Blob > {
         return r;
     }
 
-    template< typename O >
-    O getProperties( O o ) {
+    template< typename Y >
+    void properties( Y yield ) {
         call_setup();
         for ( int i = 0; i < setup.property_count; ++i ) {
+            auto name = propertyName( i );
             const char *type = "(unknown)";
             switch (dl.get_property_type ? dl.get_property_type( &setup, i ) : cesmi::cesmi_pt_deadlock) {
-                case cesmi::cesmi_pt_deadlock: type = "(deadlock reachability)"; break;
-                case cesmi::cesmi_pt_goal: type = "(goal state reachability)"; break;
-                case cesmi::cesmi_pt_buchi: type = "(neverclaim / LTL verification)"; break;
+                case cesmi::cesmi_pt_deadlock:
+                    yield( name, "(deadlock reachability)", PT_Deadlock );
+                    continue;
+                case cesmi::cesmi_pt_goal:
+                    yield( name, "(goal state reachability)", PT_Goal );
+                    continue;
+                case cesmi::cesmi_pt_buchi:
+                    yield( name, "(neverclaim / LTL verification)", PT_Buchi );
+                    continue;
             }
-            *o++ = std::make_pair( propertyName( i ), std::string( type ) );
         }
     }
 
-    void useProperty( meta::Input &in ) {
+    void useProperty( std::string n ) {
         call_setup();
         for ( int i = 0; i < setup.property_count; ++i ) {
-            if ( in.propertyName == propertyName( i ) )
+            if ( n == propertyName( i ) )
                 setup.property = i;
-        }
-    }
-
-    PropertyType propertyType( std::string p ) {
-        call_setup();
-        for ( int i = 0; i < setup.property_count; ++i ) {
-            if ( p == propertyName( i ) )
-                switch ( dl.get_property_type( &setup, 0 ) ) {
-                    case cesmi::cesmi_pt_buchi: return PT_Buchi;
-                    case cesmi::cesmi_pt_goal: return PT_Goal;
-                    case cesmi::cesmi_pt_deadlock: return PT_Deadlock;
-                    default: assert_unreachable( "bad CESMI property type" );
-                }
         }
     }
 

@@ -57,18 +57,22 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 {
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
-        Props props;
         this->graph().read( this->meta().input.model );
-        this->graph().getProperties( std::back_inserter( props ) );
-        std::cout << "Available properties (" << props.size() << "):" << std::endl;
-        for ( int i = 0; i < int( props.size() ); ++i )
-            std::cout << " " << i + 1 << ") "
-                      << props[i].first << ": " << props[i].second << std::endl;
+        std::cout << "Available properties:" << std::endl;
+        this->graph().properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
+                std::cout << " * " << name << ": " << descr << std::endl;
+            } );
     }
 
     int id() { return 0; }
+
     virtual generator::PropertyType propertyType( std::string s ) {
-        return this->graph().propertyType( s );
+        graph::PropertyType pt = graph::PT_Deadlock;
+        this->graph().properties( [&] ( std::string name, std::string, graph::PropertyType t ) {
+                if ( s == name )
+                    pt = t;
+            } );
+        return pt;
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
@@ -174,6 +178,7 @@ struct Main {
         Statistics::global().setup( a->meta() );
         if ( meta.output.statistics )
             Statistics::global().start();
+
 
         mpi.start();
         a->run();
@@ -524,8 +529,9 @@ struct Main {
             meta.algorithm.algorithm = meta::Algorithm::Compact;
         } else if ( opts.foundCommand() == cmd_verify ) {
             InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
-            auto pt = ib->propertyType( meta.input.propertyName );
             assert( ib );
+
+            auto pt = meta.input.propertyType = ib->propertyType( meta.input.propertyName );
 
             /* the default algorithms based on property types */
             switch ( pt ) {

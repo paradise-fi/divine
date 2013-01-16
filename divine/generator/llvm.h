@@ -112,11 +112,12 @@ struct LLVM : Common< Blob > {
         file = _file;
     }
 
-    template< typename O >
-    O getProperties( O o ) {
-        return std::copy( interpreter().properties.begin(),
-                          interpreter().properties.end(),
-                          o );
+    template< typename Y >
+    void properties( Y yield ) {
+        yield( "deadlock", "(deadlock reachability)", PT_Deadlock );
+        yield( "assert", "(assertion violations)", PT_Goal );
+        for ( auto p : interpreter().properties )
+            yield( p.first, p.second, PT_Buchi );
     }
 
     int literal_id( std::string lit ) {
@@ -132,16 +133,13 @@ struct LLVM : Common< Blob > {
         assert_die();
     }
 
-    void useProperty( meta::Input &i ) {
-        std::string name = i.propertyName, ltl;
+    void useProperty( std::string name ) {
+        std::string ltl;
 
         if ( interpreter().properties.count( name ) )
             ltl = interpreter().properties[ name ];
         if ( ltl.empty() )
             return;
-
-        i.property = ltl;
-        i.propertyType = meta::Input::LTL;
 
         use_property = true;
         BA_opt_graph_t b = buchi( ltl );
