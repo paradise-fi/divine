@@ -18,8 +18,8 @@ modelling formalisms to CESMI modules: a compiler for the DVE language (which
 is also supported directly through an interpreter) and a compiler for the
 MurPHI language, adapted from the original MurPHI model compiler.
 
-The Specification
------------------
+The CESMI Specification
+=======================
 
 CESMI is a set of APIs (Application Programming Interface) to represent model
 checking problems in a form independent of a specific model-checker. The API is
@@ -42,20 +42,21 @@ We will lay out the basic requirements for a CESMI module in this section. The
 C prototypes of the individual calls exposed in the API of the module are as
 follows:
 
-          void  setup             ( cesmi_setup * );
-           int  get_initial       ( cesmi_setup *, int, cesmi_node * );
-           int  get_successor     ( cesmi_setup *, int, char *, cesmi_node * );
-      uint64_t  get_flags         ( cesmi_setup *, char * );
-            int get_property_type ( cesmi_setup *, int );
-          char *show_node         ( cesmi_setup *, char * );
-          char *show_transition   ( cesmi_setup *, char *, int );
-    const char *show_property     ( cesmi_setup *, int );
+        void setup             ( cesmi_setup * );
+         int get_initial       ( cesmi_setup *, int, cesmi_node * );
+         int get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
+    uint64_t get_flags         ( cesmi_setup *, cesmi_node );
+         int get_property_type ( cesmi_setup *, int );
+       char *show_node         ( cesmi_setup *, cesmi_node );
+       char *show_transition   ( cesmi_setup *, cesmi_node, int );
+       char *show_property     ( cesmi_setup *, int );
 
 Only `get_initial` and `get_successor` are mandatory, the rest of the
 functionality is optional, and the loader must substitute suitable defaults.
 
-The `setup` call *may* set up any per-instance state, and keep it in the
-`instance` pointer of the `cesmi_setup` structure, which has the C definition:
+The `setup` call *may* set up per-instance state, however, if it does, it
+*must* keep it all through the `instance` pointer of the `cesmi_setup`
+structure, which has the following C definition:
 
     typedef struct {
         void *allocation_handle;
@@ -100,3 +101,5 @@ The `memory` pointer *must not* be passed to `free`. The module should only
 call `make_node` at a point where it is known that a state will be generated,
 along with its size, otherwise, it will cause undesirable memory leaks.
 
+Building CESMI Modules with DiVinE
+==================================
