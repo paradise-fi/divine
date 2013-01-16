@@ -87,6 +87,7 @@ struct Main {
     IntOption *o_diskfifo;
     BoolOption *o_fair, *o_hashCompaction;
     StringOption *o_reduce;
+    BoolOption *o_noreduce;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
@@ -267,6 +268,9 @@ struct Main {
         o_reduce = reduce->add< StringOption >(
             "reduce", '\0', "reduce", "",
             "configure reductions (input language dependent) [default = tau+,taustore,heap,por]" );
+        o_noreduce = reduce->add< BoolOption >(
+            "no-reduce", '\0', "no-reduce", "",
+            "disable all state space reductions" );
         o_fair = reduce->add< BoolOption >(
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
@@ -472,10 +476,12 @@ struct Main {
         meta.output.textFormat = o_textFormat->boolValue();
         meta.output.backEdges = o_findBackEdges->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
-        if ( o_reduce->boolValue() )
-            meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
-        else
-            meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por" );
+        if ( !o_noreduce->boolValue() ) {
+            if ( o_reduce->boolValue() )
+                meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
+            else
+                meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por" );
+        }
         meta.algorithm.hashSeed = (uint32_t) o_seed->intValue();
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
