@@ -1,4 +1,4 @@
 . lib
 
-run reachability --por data/por.dve
+run reachability --reduce=por data/por.dve
 check reachability_deadlock

@@ -20,11 +20,11 @@ map peterson-liveness.dve
 check_valid
 
 for t in 1 4 5 6; do
-    map test$t.dve
+    map --property=LTL test$t.dve
     check_invalid
 done
 
 for t in 2 3; do
-    map test$t.dve
+    map --property=LTL test$t.dve
     check_valid
 done

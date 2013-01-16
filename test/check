@@ -34,40 +34,37 @@ report_print() {
 ltl_valid() {
     report Finished Yes
     report Property-Type neverclaim || return 0
+    report Algorithm Reachability && return 0
     report Property-Holds Yes
 }
 
 ltl_invalid() {
     report Finished Yes
     report Property-Type neverclaim || return 0
+    report Algorithm Reachability && return 0
     report Property-Holds No
 }
 
 reachability_valid() {
     report Finished Yes
-    report Property-Type reachability || return 0
+    report Algorithm Reachability || return 0
     report Property-Holds Yes
 }
 
 reachability_deadlock() {
     report Finished Yes
-    report Property-Type reachability || return 0
+    report Property-Type deadlock || return 0
+    report Algorithm Reachability || return 0
     report Property-Holds No
     report CE-Type deadlock
 }
 
 reachability_goal() {
     report Finished Yes
-    report Property-Type reachability || return 0
+    report Property-Type goal || return 0
+    report Algorithm Reachability || return 0
     report Property-Holds No
     report CE-Type goal
-}
-
-reachability_any() {
-    report Finished Yes
-    report Property-Type reachability || return 0
-    report Property-Holds No
-    report CE-Type goal || report CE-Type deadlock
 }
 
 statespace() {

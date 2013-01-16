@@ -7,14 +7,14 @@ ann() {
 
 capture() { tee report | sed -e "s,^,  | ,"; }
 
-map() { ann "divine map --report" "$@" "2> progress | capture"; }
-ndfs() { ann "divine nested-dfs --report" "$@" "2> progress | capture"; }
-owcty() { ann "divine owcty --report" "$@" "2> progress | capture"; }
-reachability() { ann "divine reachability --report" "$@" "2> progress | capture"; }
+map() { ann "divine verify --map --report" "$@" "2> progress | capture"; }
+ndfs() { ann "divine verify --nested-dfs --report" "$@" "2> progress | capture"; }
+owcty() { ann "divine verify --owcty --report" "$@" "2> progress | capture"; }
+reachability() { ann "divine verify --reachability --report" "$@" "2> progress | capture"; }
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
-info() { ann "divine info" "$@"; }
+info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce,,g"); }
 
 mpi() {
     test "$O_MPI" = "YES" || exit 200;
@@ -22,27 +22,38 @@ mpi() {
     ann "$MPIEXEC -H localhost,localhost divine" "$@" "--report 2> progress | capture"
 }
 
+fixreduce() {
+    if echo "$@" | grep -q "reduce="; then
+        "$@"
+    else
+        "$@" --no-reduce
+    fi
+}
+
 identity() {
     file=$1
-    shift
-    "$@" "$file"
+    property=$2
+    shift 2
+    fixreduce "$@" "$property" "$file"
 }
 
 dve_compile() {
     file=$1
-    shift
+    property=$2
+    shift 2
 
     ann divine compile $file
-    "$@" `basename $file.so`
+    fixreduce "$@" "$property" `basename $file.so`
 }
 
 llvm_assemble() {
     file=$1
-    shift
+    property=$2
+    shift 2
 
     out=`basename $file .ll`.bc
     ann llvm-as -o=$out $file
-    "$@" $out
+    fixreduce "$@" "$property" $out
 }
 
 "$@"
