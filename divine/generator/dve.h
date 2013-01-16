@@ -260,6 +260,7 @@ struct Dve : public Common< Blob > {
     void properties( Y yield ) {
         assert( system );
         yield( "deadlock", "(deadlock reachability)", PT_Deadlock );
+        yield( "assert", "(assertion violation)", PT_Goal );
         if ( system->property ) /* FIXME. Bogus. */
             yield( "LTL", "(Büchi neverclaim property)", PT_Buchi );
         for ( int i = 0; i < system->properties.size(); ++i )
