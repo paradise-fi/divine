@@ -6,6 +6,7 @@
 #include <divine/graph/compact.h>
 
 #include <algorithm>
+#include <fstream>
 
 #ifndef DIVINE_GENERATOR_COMPACT_H
 #define DIVINE_GENERATOR_COMPACT_H
