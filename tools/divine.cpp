@@ -408,17 +408,17 @@ struct Main {
     }
 
 
-    std::set< meta::Algorithm::Reduction > parseReductions( std::string s )
+    graph::ReductionSet parseReductions( std::string s )
     {
         wibble::str::Split splitter( ",", s );
-        std::set< meta::Algorithm::Reduction > r;
+        graph::ReductionSet r;
         std::transform( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ),
                         [&]( std::string s ) {
-                            if ( s == "tau" ) return meta::Algorithm::Tau;
-                            if ( s == "tau+" ) return meta::Algorithm::TauPlus;
-                            if ( s == "por" ) return meta::Algorithm::POR;
-                            if ( s == "taustores" ) return meta::Algorithm::TauStores;
-                            if ( s == "heap" ) return meta::Algorithm::Heap;
+                            if ( s == "tau" ) return graph::R_Tau;
+                            if ( s == "tau+" ) return graph::R_TauPlus;
+                            if ( s == "por" ) return graph::R_POR;
+                            if ( s == "taustores" ) return graph::R_TauStores;
+                            if ( s == "heap" ) return graph::R_Heap;
                             throw wibble::exception::OutOfRange(
                                 "reduction", "'" + s + "' is not a known reduction type;\n"
                                 "tau, tau+, por, taustores and heap are allowed" );

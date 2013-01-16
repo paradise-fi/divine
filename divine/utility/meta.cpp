@@ -80,10 +80,10 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
 
     for ( auto r = a.reduce.begin(); r != a.reduce.end(); ++r )
         switch ( *r ) {
-            case Algorithm::POR: txt.push_back( "POR" ); break;
-            case Algorithm::TauPlus: txt.push_back( "tau+" ); break;
-            case Algorithm::Tau: txt.push_back( "tau" ); break;
-            case Algorithm::Heap: txt.push_back( "heap" ); break;
+            case graph::R_POR: txt.push_back( "POR" ); break;
+            case graph::R_TauPlus: txt.push_back( "tau+" ); break;
+            case graph::R_Tau: txt.push_back( "tau" ); break;
+            case graph::R_Heap: txt.push_back( "heap" ); break;
         }
 
     if ( a.fairness )

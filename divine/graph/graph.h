@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 
 #include <divine/graph/allocator.h>
-#include <divine/utility/meta.h>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -11,6 +10,8 @@ namespace graph {
 
 /// Types of acceptance condition
 enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_Rabin, PT_Streett };
+enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap };
+typedef std::set< ReductionType > ReductionSet;
 
 template< typename _Node >
 struct Base {
@@ -49,7 +50,10 @@ struct Base {
     }
 
     void useProperty( meta::Input & ) {}
-    void useReductions( std::set< meta::Algorithm::Reduction > ) {}
+
+    virtual ReductionSet useReductions( ReductionSet ) {
+        return ReductionSet();
+    }
 
     /// Makes a nonpermanent copy of a state
     Node copyState( Node n ) {
@@ -129,8 +133,8 @@ struct Transform {
         base().useProperty( n );
     }
 
-    void useReductions( std::set< meta::Algorithm::Reduction > r ) {
-        base().useReductions( r );
+    ReductionSet useReductions( ReductionSet r ) {
+        return base().useReductions( r );
     }
 
     /// Returns an owner id of the state n

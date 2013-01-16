@@ -2,6 +2,7 @@
 #include <wibble/test.h> // for assert
 #include <iostream>
 #include <fstream>
+#include <divine/graph/graph.h>
 #include <divine/utility/sysinfo.h>
 #include <stdint.h>
 
@@ -38,7 +39,6 @@ struct Execution {
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, Compact, Probabilistic };
-    enum Reduction { POR, Tau, TauPlus, TauStores, Heap };
 
     Type algorithm;
     std::string name;
@@ -52,7 +52,7 @@ struct Algorithm {
     bool hashCompaction;
     bool onlyQualitative, iterativeOptimization;
     bool fairness;
-    std::set< Reduction > reduce;
+    graph::ReductionSet reduce;
 
     Algorithm() : algorithm( Info ),
                   hashSeed( 0 ),

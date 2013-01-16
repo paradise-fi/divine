@@ -281,6 +281,12 @@ struct Dve : public Common< Blob > {
             return PT_Buchi; /* kinda bogus too */
     }
 
+    ReductionSet useReductions( ReductionSet r ) {
+        if ( r.count( R_POR ) )
+            return ReductionSet( { R_POR } );
+        return ReductionSet();
+    }
+
     int stateSize() {
         return system->symtab.context->offset;
     }
