@@ -31,17 +31,24 @@ report_print() {
     cat value
 }
 
+ltl_algorithm() {
+    report Algorithm OWCTY && return 0
+    report Algorithm "Nested DFS" && return 0
+    report Algorithm MAP && return 0
+    return 1
+}
+
 ltl_valid() {
     report Finished Yes
     report Property-Type neverclaim || return 0
-    report Algorithm Reachability && return 0
+    ltl_algorithm || return 0
     report Property-Holds Yes
 }
 
 ltl_invalid() {
     report Finished Yes
     report Property-Type neverclaim || return 0
-    report Algorithm Reachability && return 0
+    ltl_algorithm || return 0
     report Property-Holds No
 }
 
