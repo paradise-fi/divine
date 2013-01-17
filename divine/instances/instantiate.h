@@ -149,10 +149,6 @@ algorithm::Algorithm *selectGraph( Meta &meta )
             return makeAlgorithmN< A, generator::Coin >( meta );
         }
 #endif
-    } else if ( por ) {
-        std::cerr << "FATAL: Partial order reduction is not supported for this input type."
-                  << std::endl;
-        return NULL;
     } else if ( wibble::str::endsWith( meta.input.model, ".bc" ) ) {
         meta.input.modelType = "LLVM";
 #ifdef O_LLVM
