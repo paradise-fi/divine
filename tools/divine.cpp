@@ -49,6 +49,7 @@ void handler( int s ) {
 
 struct InfoBase {
     virtual generator::PropertyType propertyType( std::string prop ) = 0;
+    virtual generator::ReductionSet filterReductions( generator::ReductionSet ) = 0;
     virtual ~InfoBase() {};
 };
 
@@ -73,6 +74,10 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
                     pt = t;
             } );
         return pt;
+    }
+
+    virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
+        return this->graph().useReductions( rs );
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
@@ -509,6 +514,11 @@ struct Main {
         if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
+        InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
+        assert( ib );
+        auto pt = meta.input.propertyType = ib->propertyType( meta.input.propertyName );
+        meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
+
         if ( opts.foundCommand() == cmd_draw ) {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Draw;
@@ -527,11 +537,8 @@ struct Main {
             }
 
             meta.algorithm.algorithm = meta::Algorithm::Compact;
-        } else if ( opts.foundCommand() == cmd_verify ) {
-            InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
-            assert( ib );
 
-            auto pt = meta.input.propertyType = ib->propertyType( meta.input.propertyName );
+        } else if ( opts.foundCommand() == cmd_verify ) {
 
             /* the default algorithms based on property types */
             switch ( pt ) {
