@@ -126,7 +126,6 @@ struct LLVM : Common< Blob > {
         for ( int i = 0; i < int( ap->getNumOperands() ); ++i ) {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );
-            assert_die();
             if ( name->getString() == lit )
                 return 1 + cast< ConstantInt >( it->getOperand(2) )->getValue().getZExtValue();
         }
