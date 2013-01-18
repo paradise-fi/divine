@@ -73,18 +73,11 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        LtlCE< Graph, wibble::Unit, wibble::Unit > ce;
+        LtlCE< Graph, wibble::Unit, wibble::Unit, wibble::Unit > ce;
         ce.generateLinear( *this, this->graph(), ce_stack );
         ce.generateLasso( *this, this->graph(), ce_lasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
-    }
-
-    // this is the entrypoint for full expansion... I know the name isn't best,
-    // but that's what PORGraph uses
-    void queue( Node from, Node to, Label ) {
-        visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
-        visitor.exploreFrom( to );
     }
 
     void run() {
@@ -96,12 +89,15 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
 
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
-        this->graph().queueInitials( visitor );
+        this->graph().initials( [&]( Node f, Node t, Label l ) { visitor.queue( f, t, l ); } );
         visitor.processQueue();
 
         while ( valid && !toexpand.empty() ) {
             if ( !this->graph().full( toexpand.front() ) )
-                this->graph().fullexpand( *this, toexpand.front() );
+                this->graph().fullexpand( [&]( Node, Node t, Label ) {
+                        visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
+                        visitor.exploreFrom( t );
+                    }, toexpand.front() );
             toexpand.pop_front();
         }
 

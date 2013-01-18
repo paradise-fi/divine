@@ -178,20 +178,18 @@ struct PORGraph : graph::Transform< G > {
         return to_expand.size() > 0;
     }
 
-    template< typename Visitor >
-    void queueInitials( Visitor &v ) {
+    template< typename Yield >
+    void initials( Yield yield ) {
         if ( to_expand.size() == 0 )
-            this->base().queueInitials( v );
+            this->base().initials( yield );
 
-        for ( typename std::set< Node >::iterator i = to_expand.begin();
-              i != to_expand.end(); ++i ) {
-            fullexpand( v, *i );
-        }
+        for ( auto i : to_expand )
+            fullexpand( yield, i );
         to_expand.clear();
     }
 
-    template< typename Visitor >
-    void fullexpand( Visitor &v, Node n ) {
+    template< typename Yield >
+    void fullexpand( Yield yield, Node n ) {
         extension( n ).full = true;
         std::set< std::pair< Node, Label > > all, ample, out;
         std::vector< std::pair< Node, Label > > extra;
@@ -213,7 +211,7 @@ struct PORGraph : graph::Transform< G > {
 
         for ( auto i = out.begin(); i != out.end(); ++i ) {
             const_cast< Blob* >( &i->first )->header().permanent = 1;
-            v.queue( n, i->first, i->second );
+            yield( n, i->first, i->second );
         }
     }
 };

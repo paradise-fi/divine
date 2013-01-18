@@ -324,17 +324,10 @@ struct Compact : public Common< Blob > {
         return fromStateId <= id && toStateId >= id;
     }
 
-    /// Returns the initial state
-    Node initial() {
+    template< typename Yield >
+    void initials( Yield yield ) {
         assert( initialized );
-
-        return getAnyState( initialState );
-    }
-
-    /// Enques initial state
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+        yield( Node(), getAnyState( initialState ), Label() );
     }
 
     /// Releases memory used by state s

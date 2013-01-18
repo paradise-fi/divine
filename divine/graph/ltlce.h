@@ -34,21 +34,22 @@ typename BS::bitstream &operator>>( BS &bs, CeShared< Node > &sh )
               >> sh.current_hash >> sh.current_updated;
 }
 
-template< typename G, typename Shared, typename Extension >
+template< typename G, typename Shared, typename Extension, typename Hasher >
 struct LtlCE {
     typedef typename G::Node Node;
     typedef typename G::Label Label;
-    typedef LtlCE< G, Shared, Extension > This;
+    typedef LtlCE< G, Shared, Extension, Hasher > This;
 
     G *_g;
     Shared *_shared;
+    Hasher *_hasher;
 
     std::ostream *_o_ce, *_o_trail;
 
     G &g() { assert( _g ); return *_g; }
     Shared &shared() { assert( _shared ); return *_shared; }
 
-    LtlCE() : _g( 0 ), _shared( 0 ), _o_ce( 0 ), _o_trail( 0 ) {}
+    LtlCE() : _g( 0 ), _shared( 0 ), _hasher( nullptr ), _o_ce( 0 ), _o_trail( 0 ) {}
     ~LtlCE() {
         if ( ( _o_ce != &std::cerr ) && ( _o_ce != &std::cout ) )
             divine::safe_delete( _o_ce );
@@ -56,10 +57,16 @@ struct LtlCE {
             divine::safe_delete( _o_trail );
     }
 
-    void setup( G &g, Shared &s )
+    void setup( G &g, Shared &s, Hasher &h )
     {
         _g = &g;
         _shared = &s;
+        _hasher = &h;
+    }
+
+    bool equal( Node a, Node b ) {
+        assert( _hasher );
+        return _hasher->equal( a, b );
     }
 
     Extension &extension( Node n ) {
@@ -93,6 +100,17 @@ struct LtlCE {
         }
     }
 
+    int whichInitial( Node n ) {
+        int res = 0, i = 0;
+        g().initials( [&]( Node, Node o, Label ) {
+                ++ i;
+                if ( this->equal( n, o ) )
+                    res = i;
+                this->g().release( o ); /* leaving out this-> trips an ICE */
+            } );
+        return res;
+    }
+
     // -------------------------------------
     // -- Local cycle discovery
     // --
@@ -106,7 +124,7 @@ struct LtlCE {
         }
 
         static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
-            if ( from.valid() && to == t.shared().ce.initial ) {
+            if ( from.valid() && t.whichInitial( to ) ) {
                 t.extension( to ).parent = from;
                 return visitor::TerminateOnTransition;
             }
@@ -126,7 +144,8 @@ struct LtlCE {
 
         assert( shared().ce.initial.valid() );
         if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {
-            shared().ce.initial = a.store().fetch( shared().ce.initial, a.store().hash( shared().ce.initial ) );
+            shared().ce.initial = a.store().fetch( shared().ce.initial,
+                                                   a.store().hash( shared().ce.initial ) );
             visitor.queue( Blob(), shared().ce.initial, Label() );
         }
         visitor.processQueue();
@@ -230,16 +249,20 @@ struct LtlCE {
     // -- Lasso counterexample generation
     // --
 
-    template< typename Domain, typename Alg >
-    Traces parentTrace( Domain &d, Alg &a, Node stop ) {
+    template< typename Domain, typename Alg, typename Stop >
+    Traces parentTrace( Domain &d, Alg &a, Stop stop ) {
         Trace trace;
         NumericTrace numTrace;
         shared().ce.current = shared().ce.initial;
         shared().ce.successor = Node(); // !valid()
         shared().ce.successorPos = 0;
         while ( shared().ce.current.valid() ) {
-            if ( a.store().hasher().equal( shared().ce.current, stop ) && !numTrace.empty() )
+            auto stopped = stop( shared().ce.current );
+            if ( stopped.first && !numTrace.empty() ) {
+                if ( stopped.second )
+                    numTrace.push_back( stopped.second );
                 break;
+            }
             shared().ce.current_updated = false;
             d.ring( &Alg::_parentTrace );
             assert( shared().ce.current_updated );
@@ -256,20 +279,28 @@ struct LtlCE {
     }
 
     template< typename Domain, typename Alg >
-    void linear( Domain &d, Alg &a,
-                 Traces (This::*traceFnc)( Domain&, Alg&, Node ) = &This::parentTrace )
+    void linear( Domain &d, Alg &a )
     {
-        generateLinear( a, g(), (this->*traceFnc)( d, a, g().initial() ) );
+        generateLinear( a, g(), parentTrace(
+                            d, a, [this]( Node n ) {
+                                return std::make_pair( bool( this->whichInitial( n ) ),
+                                                       this->whichInitial( n ) );
+                            } ) );
     }
 
     template< typename Domain, typename Alg >
-    void lasso( Domain &d, Alg &a,
-                Traces (This::*traceFnc)( Domain&, Alg&, Node ) = &This::parentTrace ) {
-        linear( d, a, traceFnc );
+    void lasso( Domain &d, Alg &a )
+    {
+        linear( d, a );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
-
-        generateLasso( a, g(), (this->*traceFnc)( d, a, shared().ce.initial ) );
+        generateLasso(
+            a, g(), parentTrace(
+                d, a, [this]( Node n ) {
+                    return std::make_pair(
+                        this->equal( n, this->shared().ce.initial ),
+                        0 );
+                } ) );
     }
 };
 

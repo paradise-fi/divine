@@ -229,16 +229,12 @@ struct Dve : public Common< Blob > {
         return system->processCount();
     }
 
-    Node initial() {
+    template< typename Yield >
+    void initials( Yield yield ) {
         Blob b = alloc.new_blob( stateSize() );
         updateMem( b );
         system->initial( ctx );
-        return b;
-    }
-
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+        yield( Node(), b, Label() );
     }
 
     void read( std::string path ) {

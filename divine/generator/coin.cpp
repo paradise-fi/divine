@@ -115,7 +115,7 @@ void Coin::initPOR() {
     por = true;
 }
 
-Coin::Node Coin::initial() {
+Coin::Node Coin::_initial() {
     getCoinSystem();
 
     Blob b = newNode();

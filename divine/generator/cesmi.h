@@ -67,8 +67,8 @@ struct CESMI : public Common< Blob > {
         return n;
     }
 
-    template< typename Yield >
-    void _successors( Node s, Yield yield ) {
+    template< typename Yield, typename Get >
+    void _successors( Node s, Yield yield, Get get ) {
         int handle = 1;
         if ( !s.valid() )
             return;
@@ -77,7 +77,7 @@ struct CESMI : public Common< Blob > {
 
         while ( handle ) {
             cesmi::cesmi_node state;
-            handle = dl.get_successor( &setup, handle, data( s ), &state );
+            handle = get( &setup, handle, data( s ), &state );
             if ( handle )
                 yield( Blob( state.handle ), handle );
         }
@@ -85,19 +85,18 @@ struct CESMI : public Common< Blob > {
 
     template< typename Yield >
     void successors( Node s, Yield yield ) {
-        _successors( s, [yield]( Node n, int ) { yield( n, Label() ); } );
+        _successors( s, [yield]( Node n, int ) { yield( n, Label() ); }, dl.get_successor );
     }
 
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        int handle = 1;
-        call_setup();
-        while ( handle ) {
-            cesmi::cesmi_node state;
-            handle = dl.get_initial( &setup, handle, &state );
-            if ( handle )
-                q.queue( Node(), Blob( state.handle ), Label() );
-        } while ( handle );
+    template< typename Yield >
+    void initials( Yield yield )
+    {
+        _successors( Node(), [yield]( Node n, int ) { yield( Node(), n, Label() ); },
+                     [this]( cesmi::cesmi_setup *s, int h,
+                             cesmi::cesmi_node, cesmi::cesmi_node *to ) -> int
+                     {
+                         return this->dl.get_initial( s, h, to );
+                     } );
     }
 
     void die( const char *fmt, ... ) __attribute__((noreturn)) {
@@ -256,7 +255,7 @@ struct CESMI : public Common< Blob > {
             _successors( from, [&]( Node n, int handle ) {
                     if ( to.compare( n, alloc._slack, 0 ) == 0 )
                         fmt = dl.show_transition( &setup, data( from ), handle );
-                } );
+                }, dl.get_successor );
         }
 
         if ( fmt ) {

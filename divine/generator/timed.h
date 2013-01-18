@@ -1,3 +1,5 @@
+// -*- C++ -*-
+
 #ifdef O_TIMED
 #ifndef DIVINE_GENERATOR_TIMED_H
 #define DIVINE_GENERATOR_TIMED_H
@@ -95,20 +97,16 @@ struct Timed : public Common< Blob > {
         return str;
     }
 
-    Node initial() {
+    template< typename Yield >
+    void initials( Yield yield ) {
         Node n = alloc.new_blob( gen.stateSize() );
         gen.initial( mem( n ) );
         if ( !gen.isErrState( mem( n ) ) )
             gen.setPropLoc( mem( n ), buchi.getInitial() );
-        return n;
+        yield( Node(), n, Label() );
     }
 
     void release( Node s ) { s.free( pool() ); }
-
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
-    }
 
     void read( std::string file ) {
         gen.read( file );

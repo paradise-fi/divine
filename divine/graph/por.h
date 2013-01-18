@@ -21,8 +21,8 @@ struct NonPORGraph : graph::Transform< G > {
     void porTransition( Node, Node, void (*)( Node, int ) ) {}
     bool full( Node ) { return true; }
 
-    template< typename Visitor >
-    void fullexpand( Visitor &v, Node n ) {}
+    template< typename Yield >
+    void fullexpand( Yield, Node ) {}
 
     template< typename Algorithm >
     void _porEliminate( Algorithm & ) {}
@@ -39,11 +39,11 @@ struct NonPORGraph : graph::Transform< G > {
         return false;
     }
 
-    template< typename Q >
-    void queueInitials( Q &q ) {
+    template< typename Yield >
+    void initials( Yield yield ) {
         if ( eliminate_done )
             return;
-        this->base().queueInitials( q );
+        this->base().initials( yield );
     }
 };
 

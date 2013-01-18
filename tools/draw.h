@@ -28,11 +28,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef NoStatistics Statistics;
 
     struct Extension {
+        int initial;
         int distance;
         int serial;
     };
 
-    Node initial;
     int drawn, maxdist, currentdist, serial;
 
     std::string dot_nodes, dot_edges, output, render, trace;
@@ -71,8 +71,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 draw.extension( t ) = draw.extension( draw.intrace->get( t ) );
         }
 
-        if ( !f.valid() )
-            return visitor::FollowTransition;
+        if ( draw.extension( t ).initial == 1 ) {
+            draw.extension( t ).initial ++;
+            return visitor::ExpandTransition;
+        }
 
         std::string color;
         if ( draw.intrace_trans.count(
@@ -115,7 +117,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     std::string color( Node n ) {
-        if ( n == initial )
+        if ( extension( n ).initial )
             return "magenta";
         if ( intrace->has( n ) )
             return "red";
@@ -187,8 +189,16 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
              std::getline( split, each, ',' );
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
-        Node from = initial, to;
-        for ( int i = 0; size_t( i ) < trans.size(); ++ i ) {
+        Node from, to;
+        this->graph().initials( [&trans, &from]( Node, Node n, Label ) {
+                if ( trans.front() == 1 )
+                    from = n;
+                trans.front() --;
+            } );
+
+        assert( from.valid() );
+
+        for ( int i = 1; size_t( i ) < trans.size(); ++ i ) {
             if ( intrace->get( from ).valid() )
                 from = intrace->get( from );
             else
@@ -218,9 +228,13 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void draw() {
-        initial = this->graph().initial();
-        extension( initial ).serial = 1;
-        extension( initial ).distance = 1;
+
+        this->graph().initials( [this]( Node f, Node t, Label l ) {
+                this->store().store( t, this->store().hash( t ) );
+                this->extension( t ).serial = this->serial++;
+                this->extension( t ).distance = 1;
+                this->extension( t ).initial = 1;
+            } );
 
         loadTrace();
 
@@ -228,7 +242,9 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             visitor( *this, this->graph(), this->store() );
 
         do {
-            this->graph().queueInitials( visitor );
+            this->graph().initials( [&visitor]( Node f, Node t, Label l ) {
+                    visitor.queue( f, t, l );
+                } );
             visitor.processQueue();
         } while ( this->graph().porEliminateLocally( *this ) );
 

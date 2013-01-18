@@ -84,8 +84,6 @@ struct Transform {
     G &base() { return _base; }
     Pool &pool() { return base().pool(); }
 
-    Node initial() { return base().initial(); } // XXX remove
-
     template< typename Yield >
     void successors( Node st, Yield yield ) { base().successors( st, yield ); }
     void release( Node s ) { base().release( s ); }
@@ -106,9 +104,9 @@ struct Transform {
         return base().isInRejecting( s, acc_group ); }
     unsigned acceptingGroupCount() { return base().acceptingGroupCount(); }
 
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        base().queueInitials( q );
+    template< typename Yield >
+    void initials( Yield yield ) {
+        base().initials( yield );
     }
 
     int setSlack( int s ) { return base().setSlack( s ); }

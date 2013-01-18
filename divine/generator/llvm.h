@@ -46,16 +46,13 @@ struct LLVM : Common< Blob > {
 
     bool use_property;
 
-    Node initial() {
+    template< typename Yield >
+    void initials( Yield yield )
+    {
         assert( _module );
         Function *f = _module->getFunction( "main" );
         assert( f );
-        return interpreter().initial( f );
-    }
-
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+        yield( Node(), interpreter().initial( f ), Label() );
     }
 
     bool buchi_enabled( PropGuard guard, unsigned ap ) {

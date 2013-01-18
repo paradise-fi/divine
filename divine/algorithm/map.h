@@ -99,7 +99,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         VertexId oldmap;
     };
 
-    LtlCE< Graph, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -161,10 +161,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             if ( m.shared.iteration == 1 )
                 m.graph().porTransition( f, t, 0 );
 
-            if ( !f.valid() ) {
-                assert( m.store().equal( t, m.graph().initial() ) );
+            if ( !f.valid() )
                 return m.updateIteration( t );
-            }
 
             if ( !m.extension( t ).parent.valid() )
                 m.extension( t ).parent = f;
@@ -260,7 +258,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( this->graph(), shared );
+        ce.setup( this->graph(), shared, this->store().hasher() );
         ce._parentTrace( *this, this->store() );
         return shared;
     }
@@ -303,7 +301,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             progress() << " generating counterexample...     " << std::flush;
             assert( cycle_node.valid() );
             shared.ce.initial = cycle_node;
-            ce.setup( this->graph(), shared );
+            ce.setup( this->graph(), shared, this->store().hasher() );
             ce.lasso( *this, *this );
             progress() << "done" << std::endl;
             result().ceType = meta::Result::Cycle;

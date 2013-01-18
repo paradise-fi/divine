@@ -130,11 +130,11 @@ public:
      *
      * \return initial node
      */
-    Node initial();
+    Node _initial();
 
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+    template< typename Yield >
+    void initials( Yield yield ) {
+        yield( Node(), _initial(), Label() );
     }
 
     /**

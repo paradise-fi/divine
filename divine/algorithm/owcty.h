@@ -70,7 +70,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         unsigned map_owner:9; // handle up to 512 MPI nodes
     };
 
-    LtlCE< Graph, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
 
     // ------------------------------------------------------
     // -- generally useful utilities
@@ -369,7 +369,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( this->graph(), shared ); // XXX this will be done many times needlessly
+        ce.setup( this->graph(), shared, this->store().hasher() );
         ce._parentTrace( *this, this->store() );
         return shared;
     }
@@ -389,7 +389,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         assert( cycleFound() );
         shared.ce.initial = cycleNode();
 
-        ce.setup( this->graph(), shared );
+        ce.setup( this->graph(), shared, this->store().hasher() );
         ce.lasso( *this, *this );
         progress() << "done" << std::endl;
     }

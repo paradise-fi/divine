@@ -21,15 +21,11 @@ struct Dummy : Common< Blob > {
         return b.get< Content >( alloc._slack );
     }
 
-    Node initial() {
+    template< typename Yield >
+    void initials( Yield yield ) {
         Blob b = alloc.new_blob( sizeof( Content ) );
         content( b ) = std::make_pair( 0, 0 );
-        return b;
-    }
-
-    template< typename Q >
-    void queueInitials( Q &q ) {
-        q.queue( Node(), initial(), Label() );
+        yield( Node(), b, Label() );
     }
 
     template< typename Yield >

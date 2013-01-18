@@ -49,7 +49,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         Blob parent;
     };
 
-    LtlCE< Graph, Shared, Extension > ce;
+    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
 
     Extension &extension( Node n ) {
         return n.template get< Extension >();
@@ -118,14 +118,14 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
     Shared _parentTrace( Shared sh ) {
         shared = sh;
-        ce.setup( this->graph(), shared ); // XXX this will be done many times needlessly
+        ce.setup( this->graph(), shared, this->store().hasher() );
         ce._parentTrace( *this, this->store() );
         return shared;
     }
 
     void counterexample( Node n ) {
         shared.ce.initial = n;
-        ce.setup( this->graph(), shared );
+        ce.setup( this->graph(), shared, this->store().hasher() );
         ce.linear( *this, *this );
         ce.goal( *this, n );
     }
