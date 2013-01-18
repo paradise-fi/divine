@@ -77,9 +77,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                 allocateValue( 0, pointee );
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
-            if ( !G->isConstant() )
-                globalinfo[ p ] = std::make_pair( G->getInitializer()->getType(),
-                                                  G->getValueName()->getKey() );
+            ( G->isConstant() ? constinfo[ p ] : globalinfo[ p ] )
+                = std::make_pair( G->getInitializer()->getType(),
+                                  G->getValueName()->getKey() );
             makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );

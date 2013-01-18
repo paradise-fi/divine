@@ -25,23 +25,20 @@ Interpreter::Interpreter(Allocator &alloc, Module *M)
 
 void Interpreter::parseProperties( Module *M )
 {
-    for (Module::const_global_iterator var = M->global_begin(); var != M->global_end(); ++var)
-    {
-        if ( var->isConstant() )
+    auto prefix = "__divine_LTL_";
+
+    for ( auto v : info.constinfo ) {
+        auto id = v.second.second;
+
+        if ( std::string( id, 0, strlen( prefix ) ) != prefix )
             continue;
 
-        // GlobalVariable type is always a pointer, so dereference it first
-        Type *ty = var->getType()->getTypeAtIndex(unsigned(0));
-        assert( ty );
-
-        assert( !var->isDeclaration() ); // can't handle extern's yet
-        if ( std::string( var->getName().str(), 0, 6 ) == "__LTL_" ) {
-            std::string name( var->getName().str(), 6, std::string::npos );
-            assert_die();
-            // GenericValue GV = getConstantValue(var->getInitializer());
-            // properties[name] = std::string( (char*) GV.PointerVal );
-            continue; // do not emit this one
-        }
+        std::string name( id, strlen( prefix ), std::string::npos );
+        GlobalContext ctx( info, TD, nullptr );
+        auto val = info.globals[ v.first.segment ];
+        auto valptr = *reinterpret_cast< Pointer * >( ctx.dereference( val ) );
+        auto str = info.globals[ valptr.segment ];
+        properties[ name ] = ctx.dereference( str );
     }
 }
 

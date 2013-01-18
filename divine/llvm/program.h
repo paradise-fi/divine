@@ -178,7 +178,7 @@ struct ProgramInfo {
 
     std::vector< Function > functions;
     std::vector< Value > globals;
-    std::map< Pointer, std::pair< ::llvm::Type *, std::string > > globalinfo;
+    std::map< Pointer, std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
     std::vector< char > constdata;
     int globalsize, constdatasize;
     int framealign;
