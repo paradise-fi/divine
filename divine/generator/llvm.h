@@ -58,9 +58,40 @@ struct LLVM : Common< Blob > {
         q.queue( Node(), initial(), Label() );
     }
 
+    bool buchi_enabled( PropGuard guard, unsigned ap ) {
+        for ( auto g : guard ) {
+            if ( g < 0 && (ap & (1 << (-g - 1))) ) return false;
+            if ( g > 0 && !(ap & (1 << ( g - 1))) ) return false;
+        }
+        return true;
+    }
+
     template< typename Yield >
     void successors( Node st, Yield yield ) {
-        interpreter().run( st, [&]( Node n ){ yield( n, Label() ); } );
+        interpreter().run( st, [&]( Node n ){
+                std::vector< int > buchi_succs;
+                for ( auto next : prop_next[ flags( n ).buchi ] ) {
+                    auto trans = prop_trans[ next ];
+                    if ( buchi_enabled( trans.first, flags( n ).ap ) )
+                        buchi_succs.push_back( trans.second );
+                }
+
+                if ( buchi_succs.empty() ) {
+                    this->release( n );
+                    return;
+                }
+
+                while ( buchi_succs.size() > 1 ) {
+                    Blob b( this->pool(), n.size() );
+                    n.copyTo( b );
+                    flags( b ).buchi = buchi_succs.back();
+                    buchi_succs.pop_back();
+                    yield( b, Label() );
+                }
+
+                flags( n ).buchi = buchi_succs.front();
+                yield( n, Label() );
+            } );
     }
 
     void release( Node s ) {
