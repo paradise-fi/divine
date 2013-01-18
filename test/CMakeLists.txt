@@ -19,4 +19,3 @@ add_custom_target( functional
 
 add_dependencies( functional examples )
 add_dependencies( functional divine )
-add_dependencies( functional divine.simple )

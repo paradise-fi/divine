@@ -32,7 +32,7 @@ if( NOT WIN32 )
     target_link_libraries( divine rt )
 endif()
 
-add_executable( divine.simple simple.cpp )
+add_executable( divine.simple EXCLUDE_FROM_ALL simple.cpp )
 
 if( LTL2DSTAR )
   target_link_libraries( divine ltl2dstar )
