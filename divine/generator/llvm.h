@@ -65,6 +65,8 @@ struct LLVM : Common< Blob > {
 
     template< typename Yield >
     void successors( Node st, Yield yield ) {
+        if ( !use_property )
+            return interpreter().run( st, [&]( Node n ) { yield( n, Label() ); } );
         interpreter().run( st, [&]( Node n ){
                 std::vector< int > buchi_succs;
                 for ( auto next : prop_next[ flags( n ).buchi ] ) {
