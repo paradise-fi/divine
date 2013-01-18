@@ -277,7 +277,7 @@ struct Main {
 
         o_reduce = reduce->add< StringOption >(
             "reduce", '\0', "reduce", "",
-            "configure reductions (input language dependent) [default = tau+,taustore,heap,por]" );
+            "configure reductions (input language dependent) [default = tau+,taustores,heap,por]" );
         o_noreduce = reduce->add< BoolOption >(
             "no-reduce", '\0', "no-reduce", "",
             "disable all state space reductions" );
@@ -304,7 +304,7 @@ struct Main {
 
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
-            "select a (non-default) property" );
+            "select a property [default=deadlock]" );
 
         // counterexample options
         o_noCe = ce->add< BoolOption >(
