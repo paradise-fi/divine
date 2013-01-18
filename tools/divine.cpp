@@ -294,7 +294,7 @@ struct Main {
             "disk-fifo", '\0', "disk-fifo", "",
             "save long queues on disk to reduce memory usage" );
 
-        o_hashCompaction = cmd_verify->add< BoolOption >(
+        o_hashCompaction = common->add< BoolOption >(
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
 
