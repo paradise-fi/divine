@@ -146,6 +146,13 @@ struct Blob
         std::copy( data(), data() + size(), where.data() );
     }
 
+    void copyTo( Blob& where, int start, int whereStart, int length ) const
+    {
+        assert( where.size() >= whereStart + length );
+        assert( size() >= start + length );
+        std::copy( data() + start, data() + start + length, where.data() + whereStart );
+    }
+
     template< typename O >
     O write32( O o ) const
     {
