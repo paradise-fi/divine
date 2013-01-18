@@ -656,6 +656,9 @@ struct Evaluator
                     if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
                         ccontext.problem( Problem::Assert );
                     return;
+                case BuiltinAp:
+                    ccontext.flags().ap |= (1 << withValues( GetInt(), instruction.operand( 0 ) ));
+                    return;
                 case BuiltinMask: ccontext.pc().masked = true; return;
                 case BuiltinUnmask: ccontext.pc().masked = false; return;
                 case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */

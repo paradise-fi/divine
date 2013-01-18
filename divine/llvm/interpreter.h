@@ -55,7 +55,7 @@ struct Interpreter
             Pointer *p = reinterpret_cast< Pointer * >( dereference( instruction().operand( 1 ) ) );
             return p && !state.isPrivate( state._thread, *p );
         }
-        return instruction().builtin == BuiltinInterrupt;
+        return instruction().builtin == BuiltinInterrupt || instruction().builtin == BuiltinAp;
     }
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
@@ -116,6 +116,7 @@ struct Interpreter
     void run( Blob b, Yield yield ) {
         state.rewind( b, -1 ); /* rewind first to get sense of thread count */
         state.flags().clear();
+        state.flags().ap = 0; /* TODO */
         tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
         int threads = state._thread_count;
@@ -128,6 +129,7 @@ struct Interpreter
                 break;
             state.rewind( b, -1 );
             state.flags().clear();
+            state.flags().ap = 0; /* TODO */
         }
     }
 
