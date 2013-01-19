@@ -1,22 +1,22 @@
 digraph { node [ fontname = Courier ]
-2 [shape=circle ]
+1 [ fillcolor = magenta style=filled shape=circle ]
+2 [peripheries=2 shape=circle ]
 3 [peripheries=2 shape=circle ]
-4 [peripheries=2 shape=circle ]
+4 [shape=circle ]
 5 [shape=circle ]
 6 [shape=circle ]
-7 [shape=circle ]
 
-2 -> 3
+1 -> 2
+1 -> 3
 2 -> 4
+2 -> 5
 3 -> 5
 3 -> 6
-4 -> 6
-4 -> 7
+4 -> 4
+4 -> 5
 5 -> 5
-5 -> 6
+5 -> 5
+6 -> 5
 6 -> 6
-6 -> 6
-7 -> 6
-7 -> 7
 
 }

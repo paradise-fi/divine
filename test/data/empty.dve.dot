@@ -1,5 +1,5 @@
 digraph { node [ fontname = Courier ]
-2 [shape=circle ]
+1 [ fillcolor = magenta style=filled shape=circle ]
 
 
 }

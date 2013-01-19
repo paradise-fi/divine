@@ -1,4 +1,5 @@
 digraph { node [ fontname = Courier ]
+1 [ fillcolor = magenta style=filled shape=circle ]
 2 [shape=circle ]
 3 [shape=circle ]
 4 [shape=circle ]
@@ -6,19 +7,18 @@ digraph { node [ fontname = Courier ]
 6 [shape=circle ]
 7 [shape=circle ]
 8 [shape=circle ]
-9 [shape=circle ]
 
+1 -> 2
 2 -> 3
-3 -> 4
+2 -> 4
 3 -> 5
+3 -> 6
 4 -> 6
-4 -> 7
 5 -> 7
-6 -> 8
+6 -> 7
+6 -> 4
 7 -> 8
-7 -> 5
-8 -> 9
+7 -> 6
 8 -> 7
-9 -> 8
 
 }
