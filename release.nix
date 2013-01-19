@@ -42,7 +42,7 @@ let
     pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
-       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.haskellPackages.pandoc ] ++ inputs { inherit pkgs; };
+       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ];
        checkPhase = ''
           make unit || touch $out/nix-support/failed
@@ -112,6 +112,17 @@ let
             cp divine-*.tar.gz $out/tarballs
         '';
       };
+
+    manual =
+     let tex = pkgs.texLiveAggregationFun { paths = [ pkgs.texLive pkgs.lmodern ]; };
+          in pkgs.releaseTools.nixBuild {
+              name = "divine-manual";
+              src = jobs.tarball;
+              buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.haskellPackages.pandoc tex ];
+              buildPhase = "make manual website";
+              installPhase = "cp -R manual $out/manual; cp -R website $out/website/";
+              checkPhase = ":";
+          };
 
     minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
     mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
