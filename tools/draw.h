@@ -231,7 +231,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         this->graph().initials( [this]( Node f, Node t, Label l ) {
                 this->store().store( t, this->store().hash( t ) );
-                this->extension( t ).serial = this->serial++;
+                this->extension( t ).serial = ++this->serial;
                 this->extension( t ).distance = 1;
                 this->extension( t ).initial = 1;
             } );
@@ -278,7 +278,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         labels = m.algorithm.labels;
         traceLabels = labels || m.algorithm.traceLabels;
         drawn = 0;
-        serial = 1;
+        serial = 0;
         currentdist = 0;
         bfs = m.algorithm.bfsLayout;
     }
