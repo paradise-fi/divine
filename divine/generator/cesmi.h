@@ -68,13 +68,10 @@ struct CESMI : public Common< Blob > {
     }
 
     template< typename Yield, typename Get >
-    void _successors( Node s, Yield yield, Get get ) {
+    void _successors( Node s, Yield yield, Get get )
+    {
         int handle = 1;
-        if ( !s.valid() )
-            return;
-
         call_setup();
-
         while ( handle ) {
             cesmi::cesmi_node state;
             handle = get( &setup, handle, data( s ), &state );
@@ -85,6 +82,8 @@ struct CESMI : public Common< Blob > {
 
     template< typename Yield >
     void successors( Node s, Yield yield ) {
+        if ( !s.valid() )
+            return;
         _successors( s, [yield]( Node n, int ) { yield( n, Label() ); }, dl.get_successor );
     }
 
@@ -255,7 +254,7 @@ struct CESMI : public Common< Blob > {
     std::string showTransition( Node from, Node to, Label ) {
         char *fmt = nullptr;
 
-        if ( dl.show_transition ) {
+        if ( dl.show_transition && from.valid() ) {
             _successors( from, [&]( Node n, int handle ) {
                     if ( to.compare( n, alloc._slack, 0 ) == 0 )
                         fmt = dl.show_transition( &setup, data( from ), handle );
