@@ -98,25 +98,33 @@ them in this section.
                             [-i N|--initial-table=N]
                             [--hash-compaction]
 
-* `-w N` or `--workers=N`: The number of threads to use for verification. The
-  default is 2. For optimal performance, each thread should get one otherwise
-  mostly idle CPU core. Your mileage may vary with hyper-threading (it is best
-  to run a few benchmarks on your system to find the best configuration).
-* `--max-memory=N`: Limit the amount of memory `divine` is allowed to
-  allocate. This is mainly useful to limit swapping. When the verification
-  exceeds available RAM, it will usually take extremely long time to finish and
-  put prohibitive strain on the IO subsystem. It is recommended that you do not
-  allow `divine` to swap excessively, either using this option or by other
-  means.
-* `--max-time=N`: Put a limit of N seconds on the maximal running time.
-* `--disk-fifo=N`: Most of the memory used by the verifier is split between
-  hash tables and queues. This option tells `divine` to use disk storage for
-  long queues, since the impact of high latency is much smaller for queues than
-  it is for hash tables. This allows more of RAM to be used for hash tables,
-  improving overall performance for large models.
-* `--statistics [--curses]`: Print realtime statistics during verification,
-  optionally using curses for neater output. Useful as entertainment, for
-  diagnosing performance issues and to impress laymen.
+`-w N | --workers=N`
+:    The number of threads to use for verification. The default is 2. For optimal
+     performance, each thread should get one otherwise mostly idle CPU
+     core. Your mileage may vary with hyper-threading (it is best to run a few
+     benchmarks on your system to find the best configuration).
+
+`--max-memory=N`
+:    Limit the amount of memory `divine` is allowed to allocate. This is mainly
+     useful to limit swapping. When the verification exceeds available RAM, it
+     will usually take extremely long time to finish and put prohibitive strain
+     on the IO subsystem. It is recommended that you do not allow `divine` to
+     swap excessively, either using this option or by other means.
+
+`--max-time=N`
+:    Put a limit of N seconds on the maximal running time.
+
+`--disk-fifo=N`
+:    Most of the memory used by the verifier is split between hash tables and
+     queues. This option tells `divine` to use disk storage for long queues,
+     since the impact of high latency is much smaller for queues than it is for
+     hash tables. This allows more of RAM to be used for hash tables, improving
+     overall performance for large models. 
+
+`--statistics [--curses]`
+:    Print realtime statistics during verification, optionally using curses for
+     neater output. Useful as entertainment, for diagnosing performance issues
+     and to impress laymen.
 
 State space metrics & visualisation
 -----------------------------------
@@ -159,24 +167,35 @@ input file.
 
 ### Options
 
-* `--reachability --owcty --map --nested-dfs`: Override the algorithm to use.
-* `--property name`: Select which property to model-check. Use `divine info` to
-  obtain a list of properties available in any given model. Defaults to
-  `deadlock`.
-* `--fair`: Only consider runs that are weakly fair. This option is only
-  currently available for DVE models and is mainly useful when checking LTL
-  properties. This avoids counterexamples which rely on one of the processes of
-  the system never making any progress even though it is not blocked.
-* `--reduce`: This option directs the model checker to use heuristics which
-  usually make the process faster and/or use less memory. Not all reductions
-  are available with all model types. The default is to enable all reductions,
-  namely `tau+,taustore,heap,por`. To disable state space reductions, specify
-  `--reduce none`. In addition, `tau` is available as a weaker alternative to
-  `tau+`. The `tau`, `taustore` and `heap` reductions are only available with
-  the LLVM backend. The `por` reduction is available with CoIn and DVE inputs
-  and may be available with some CESMI models. To specify multiple reductions,
-  provide them as a comma-separated list.
-* `--no-counterexample`: Disable generation of counterexamples. This is mainly
-  useful for benchmarking verification speed.
-* `--report`: At the end of a verification run, produce a comprehensive,
-  machine-readable report.
+`--reachability --owcty --map --nested-dfs`
+:    Override the algorithm to use.
+
+`--property name`
+:    Select which property to model-check. Use `divine info` to
+     obtain a list of properties available in any given model. Defaults to
+     `deadlock`.
+
+`--fair`
+:    Only consider runs that are weakly fair. This option is only
+     currently available for DVE models and is mainly useful when checking LTL
+     properties. This avoids counterexamples which rely on one of the processes of
+     the system never making any progress even though it is not blocked.
+
+`--reduce`
+:    This option directs the model checker to use heuristics which
+     usually make the process faster and/or use less memory. Not all reductions
+     are available with all model types. The default is to enable all reductions,
+     namely `tau+,taustore,heap,por`. To disable state space reductions, specify
+     `--reduce none`. In addition, `tau` is available as a weaker alternative to
+     `tau+`. The `tau`, `taustore` and `heap` reductions are only available with
+     the LLVM backend. The `por` reduction is available with CoIn and DVE inputs
+     and may be available with some CESMI models. To specify multiple reductions,
+     provide them as a comma-separated list.
+
+`--no-counterexample`
+:    Disable generation of counterexamples. This is mainly
+     useful for benchmarking verification speed.
+
+`--report`
+:    At the end of a verification run, produce a comprehensive,
+     machine-readable report.
