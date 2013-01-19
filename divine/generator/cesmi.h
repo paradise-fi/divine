@@ -171,6 +171,7 @@ struct CESMI : public Common< Blob > {
         if ( setup.instance_initialised )
             return;
 
+        setup.property = 0;
         setup.property_count = 0;
         setup.allocation_handle = this;
         setup.make_node = &make_node;
@@ -214,9 +215,12 @@ struct CESMI : public Common< Blob > {
     void useProperty( std::string n ) {
         call_setup();
         for ( int i = 0; i < setup.property_count; ++i ) {
-            if ( n == propertyName( i ) )
+            if ( n == propertyName( i ) ) {
                 setup.property = i;
+                return;
+            }
         }
+        throw wibble::exception::Consistency( "Unknown property " + n + ". Please consult divine info." );
     }
 
     CESMI() {
