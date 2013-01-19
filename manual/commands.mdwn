@@ -119,7 +119,7 @@ them in this section.
      queues. This option tells `divine` to use disk storage for long queues,
      since the impact of high latency is much smaller for queues than it is for
      hash tables. This allows more of RAM to be used for hash tables, improving
-     overall performance for large models. 
+     overall performance for large models. **Currently not implemented.**
 
 `--statistics [--curses]`
 :    Print realtime statistics during verification, optionally using curses for
@@ -167,10 +167,10 @@ input file.
 
 ### Options
 
-`--reachability --owcty --map --nested-dfs`
+`--reachability, --owcty, --map, --nested-dfs`
 :    Override the algorithm to use.
 
-`--property name`
+`--property=name`
 :    Select which property to model-check. Use `divine info` to
      obtain a list of properties available in any given model. Defaults to
      `deadlock`.
@@ -181,12 +181,12 @@ input file.
      properties. This avoids counterexamples which rely on one of the processes of
      the system never making any progress even though it is not blocked.
 
-`--reduce`
+`--reduce=X, --no-reduce`
 :    This option directs the model checker to use heuristics which
      usually make the process faster and/or use less memory. Not all reductions
      are available with all model types. The default is to enable all reductions,
      namely `tau+,taustore,heap,por`. To disable state space reductions, specify
-     `--reduce none`. In addition, `tau` is available as a weaker alternative to
+     `--no-reduce`. In addition, `tau` is available as a weaker alternative to
      `tau+`. The `tau`, `taustore` and `heap` reductions are only available with
      the LLVM backend. The `por` reduction is available with CoIn and DVE inputs
      and may be available with some CESMI models. To specify multiple reductions,
