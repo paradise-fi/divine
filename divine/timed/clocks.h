@@ -4,7 +4,11 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#define TRUE TRUE_DBM
+#define FALSE FALSE_DBM
 #include <dbm/fed.h>
+#undef TRUE
+#undef FALSE
 
 typedef dbm::fed_t Federation;
 
