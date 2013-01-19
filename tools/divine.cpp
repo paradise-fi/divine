@@ -58,7 +58,6 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 {
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
-        this->graph().read( this->meta().input.model );
         std::cout << "Available properties:" << std::endl;
         this->graph().properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
                 std::cout << " * " << name << ": " << descr << std::endl;
