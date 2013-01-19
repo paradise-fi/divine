@@ -119,9 +119,9 @@ struct Timed : public Common< Blob > {
         Buchi::readLTLFile( fileBase + ".ltl", ltlProps, ltlDefs );
     }
 
-    void useProperty( meta::Input &i ) {
+    void useProperty( std::string n ) {
         propGuards.resize( 1 );
-        int propId = std::atoi( i.propertyName.c_str() );
+        int propId = std::atoi( n.c_str() );
 
         hasLTL = false;
         if ( propId >= 0 && propId < ltlProps.size() )  {
@@ -134,30 +134,20 @@ struct Timed : public Common< Blob > {
                 }
             );
         }
-        if ( hasLTL ) {
-            i.property = ltlProps[ propId ];
-            i.propertyType = meta::Input::LTL;
-        } else {
-            i.propertyName = "None";
-            i.propertyType = meta::Input::NoProperty;
+        if ( !hasLTL )
             buchi.buildEmpty();
-        }
         assert( buchi.size() > 0 );
     }
 
-    PropertyType propertyType() {
-        return hasLTL ? AC_Buchi : AC_None;
-    }
-
-    template< typename O >
-    O getProperties( O o ) {
+    template< typename Y >
+    void properties( Y yield ) {
         std::stringstream ss;
+        yield( "deadlock", "(deadlock reachability)", PT_Deadlock );
         for ( unsigned int i = 0; i < ltlProps.size(); i++ ) {
             ss.str( "" );
             ss << i;
-            *o++ = std::make_pair( ss.str(), ltlProps[ i ] );
+            yield( ss.str(), ltlProps[ i ], PT_Buchi );
         }
-        return o;
     }
 };
 
