@@ -514,7 +514,8 @@ struct Main {
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
-        assert( ib );
+        if ( !ib )
+            die( "Fatal error encountered while processing input." );
         auto pt = meta.input.propertyType = ib->propertyType( meta.input.propertyName );
         meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
 
