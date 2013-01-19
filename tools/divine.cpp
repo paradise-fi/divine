@@ -80,7 +80,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     Info( Meta m, bool = false ) : Algorithm( m ) {
-        this->init( this );
+        this->init( this, false );
     }
 };
 
