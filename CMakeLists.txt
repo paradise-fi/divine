@@ -427,7 +427,8 @@ add_subdirectory( test )
 ###############################################
 ## MAKE INSTALL
 ##
-## FIXME: better dependency detection
+
+include( GNUInstallDirs )
 
 if( WIN32 )
   install(FILES README RENAME README.txt DESTINATION ./ COMPONENT sys)
@@ -435,7 +436,7 @@ if( WIN32 )
   install(FILES AUTHORS RENAME AUTHORS.txt DESTINATION ./ COMPONENT sys)
   install(FILES NEWS RENAME NEWS.txt DESTINATION ./ COMPONENT sys)
 else()
-  install(FILES README COPYING AUTHORS NEWS DESTINATION share/doc/divine)
+  install( FILES README COPYING AUTHORS NEWS DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR} COMPONENT doc )
 endif()
 
 if( WIN32 )

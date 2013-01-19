@@ -27,3 +27,12 @@ add_custom_command(
 )
 
 add_custom_target( manual ALL DEPENDS ${PDFMAN} manual.html divine.1 )
+
+include( GNUInstallDirs )
+
+if( WIN32 )
+  install( FILES manual.html DESTINATION ./ COMPONENT sys )
+else()
+  install( FILES divine.1 DESTINATION ${CMAKE_INSTALL_FULL_MANDIR}/man1 COMPONENT doc )
+  install( FILES manual.html ${PDFMAN} DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR} COMPONENT doc )
+endif()
