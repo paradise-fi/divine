@@ -165,6 +165,9 @@ struct LLVM : Common< Blob > {
     void useProperty( std::string name ) {
         std::string ltl;
 
+        if ( name == "deadlock" || name == "assert" )
+            return;
+
         if ( interpreter().properties.count( name ) )
             ltl = interpreter().properties[ name ];
         if ( ltl.empty() )
