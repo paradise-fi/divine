@@ -84,6 +84,9 @@ int buchi_get_successor( cesmi_setup *setup, int handle,
 }
 
 uint64_t buchi_flags( cesmi_setup *setup, cesmi_node n ) {
+    if ( buchi_property( setup ) < 0 )
+        return 0;
+
     if ( buchi_accepting( buchi_property( setup ), *buchi_state( n ) ) )
         return cesmi_accepting;
     return 0;
