@@ -168,7 +168,7 @@ struct LLVM : Common< Blob > {
         if ( interpreter().properties.count( name ) )
             ltl = interpreter().properties[ name ];
         if ( ltl.empty() )
-            throw wibble::exception::Consistency( "Unknown property " + n + ". Please consult divine info." );
+            throw wibble::exception::Consistency( "Unknown property " + name + ". Please consult divine info." );
 
         use_property = true;
         BA_opt_graph_t b = buchi( ltl );
