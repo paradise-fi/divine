@@ -246,28 +246,28 @@ std::string mkdtemp( std::string tmpl )
         throw wibble::exception::System("creating temporary directory path");
     }
 }
+// Use strictly ANSI variant of structures and functions.
 void rmtree( const std::string& dir ) {
-  int len = _tcslen( lpszDir );
-  TCHAR *pszFrom = new TCHAR[ len + 2 ];
-  _tcscpy( pszFrom, dir.c_str() );
-  pszFrom[ len ] = 0;
-  pszFrom[ len + 1 ] = 0;
+    // Use double null terminated path.
+    int len = dir.size();
+    char* from = reinterpret_cast< char* >( alloca( len + 2 ) );
+    strcpy( from, dir.c_str() );
+    from [ len + 1 ] = '\0';
 
-  SHFILEOPSTRUCT fileop;
-  fileop.hwnd   = NULL;    // no status display
-  fileop.wFunc  = FO_DELETE;  // delete operation
-  fileop.pFrom  = pszFrom;  // source file name as double null terminated string
-  fileop.pTo    = NULL;    // no destination needed
-  fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
+    SHFILEOPSTRUCTA fileop;
+    fileop.hwnd   = NULL;    // no status display
+    fileop.wFunc  = FO_DELETE;  // delete operation
+    fileop.pFrom  = from;  // source file name as double null terminated string
+    fileop.pTo    = NULL;    // no destination needed
+    fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
 
-  fileop.fAnyOperationsAborted = FALSE;
-  fileop.lpszProgressTitle     = NULL;
-  fileop.hNameMappings         = NULL;
+    fileop.fAnyOperationsAborted = FALSE;
+    fileop.lpszProgressTitle     = NULL;
+    fileop.hNameMappings         = NULL;
 
-  int ret = SHFileOperation( &fileop );
-  delete[] pszFrom;
-  if ( ret )
-      throw wibble::exception::System( "deleting directory" );
+    int ret = SHFileOperationA( &fileop );
+    if ( ret )// only zero return value is without error
+        throw wibble::exception::System( "deleting directory" );
 }
 #endif
 
