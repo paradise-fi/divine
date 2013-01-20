@@ -52,15 +52,6 @@ struct Statistics {
         s.accepting += accepting;
     }
 
-    void print( std::ostream &o ) {
-        o << " ===================================== " << std::endl
-          << std::setw( 12 ) << states << " states" << std::endl
-          << std::setw( 12 ) << transitions << " transitions" << std::endl
-          << std::setw( 12 ) << accepting << " accepting" << std::endl
-          << std::setw( 12 ) << deadlocks << " deadlocks " << std::endl
-          << " ===================================== " << std::endl;
-    }
-
     void merge( Statistics other ) {
         states += other.states;
         transitions += other.transitions;
@@ -93,18 +84,24 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
                  Parallel< Setup::template Topology, Metrics< Setup > >
 {
     typedef Metrics< Setup > This;
-    ALGORITHM_CLASS( Setup, algorithm::Statistics );
+    struct Shared : algorithm::Statistics {
+        bool need_expand;
+    };
+
+    ALGORITHM_CLASS( Setup, Shared );
 
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, Node st )
         {
             t.shared.addNode( t.graph(), st );
+            t.graph().porExpansion( st );
             return visitor::ExpandState;
         }
 
         static visitor::TransitionAction transition( This &t, Node from, Node to, Label )
         {
             t.shared.addEdge( t.graph(), from, to );
+            t.graph().porTransition( from, to, 0 );
             return visitor::FollowTransition;
         }
 
@@ -118,6 +115,17 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         this->visit( this, Main() );
     }
 
+    void _por_worker() {
+        this->graph()._porEliminate( *this );
+    }
+
+    Shared _por( Shared sh ) {
+        shared = sh;
+        if ( this->graph().porEliminate( *this, *this ) )
+            shared.need_expand = true;
+        return shared;
+    }
+
     Metrics( Meta m, bool master = false )
         : Algorithm( m, 0 )
     {
@@ -126,16 +134,37 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         this->init( this );
     }
 
+    void banner( std::ostream &o ) {
+        auto &s = meta().statistics;
+        o << " ===================================== " << std::endl
+          << std::setw( 12 ) << s.visited << " states" << std::endl
+          << std::setw( 12 ) << s.transitions << " transitions" << std::endl
+          << std::setw( 12 ) << s.accepting << " accepting" << std::endl
+          << std::setw( 12 ) << s.deadlocks << " deadlocks " << std::endl
+          << " ===================================== " << std::endl;
+    }
+
+    void collect() {
+        for ( auto s : shareds )
+            s.update( meta().statistics );
+    }
+
     void run() {
         progress() << "  exploring... \t\t\t " << std::flush;
         parallel( &This::_visit );
+        collect();
         progress() << "done" << std::endl;
 
-        for ( int i = 0; i < int( shareds.size() ); ++i ) {
-            shared.merge( shareds[ i ] );
-        }
+        do {
+            shared.need_expand = false;
+            ring( &This::_por );
+            if ( shared.need_expand ) {
+                parallel( &This::_visit );
+                collect();
+            }
+        } while ( shared.need_expand );
 
-        shared.print( progress() );
+        banner( progress() );
 
         result().fullyExplored = meta::Result::Yes;
         shared.update( meta().statistics );
@@ -144,6 +173,8 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
 
 ALGORITHM_RPC( Metrics );
 ALGORITHM_RPC_ID( Metrics, 1, _visit );
+ALGORITHM_RPC_ID( Metrics, 2, _por );
+ALGORITHM_RPC_ID( Metrics, 3, _por_worker );
 
 }
 }
