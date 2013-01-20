@@ -30,6 +30,7 @@ macro( resources )
 endmacro()
 
 page( ../HACKING development.html )
+page( ../NEWS whatsnew.html )
 pages( ../manual title.mdwn overview.mdwn using.mdwn language.mdwn )
 pages( . contact.mdwn download.mdwn index.mdwn )
 resources( style.css button.png button-over.png divine-logo.png trac-logo.png )
