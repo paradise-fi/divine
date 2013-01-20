@@ -87,6 +87,13 @@ std::string ltl_to_c( int id, std::string ltl )
     return buchi_to_c( id, get_buchi_states(), get_buchi_accept(), get_buchi_all_symbols() );
 }
 
+#else
+
+std::string ltl_to_c( int id, std::string ltl )
+{
+    assert_unimplemented();
+}
+
 #endif
 
 #ifdef O_MURPHI

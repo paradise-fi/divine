@@ -33,13 +33,13 @@ using namespace wibble;
 using namespace commandline;
 using namespace sys;
 
+namespace divine {
+
 #ifdef O_LTL3BA
 std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > symbols);
 #else
 std::string graph_to_cpp(const BA_opt_graph_t &g);
 #endif
-
-namespace divine {
 
 template< typename F, typename G >
 static inline void parse_ltl( std::string file, F ltl, G definition )
