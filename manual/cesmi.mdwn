@@ -42,14 +42,18 @@ We will lay out the basic requirements for a CESMI module in this section. The
 C prototypes of the individual calls exposed in the API of the module are as
 follows:
 
-        void setup             ( cesmi_setup * );
-         int get_initial       ( cesmi_setup *, int, cesmi_node * );
-         int get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
-    uint64_t get_flags         ( cesmi_setup *, cesmi_node );
-         int get_property_type ( cesmi_setup *, int );
-       char *show_node         ( cesmi_setup *, cesmi_node );
-       char *show_transition   ( cesmi_setup *, cesmi_node, int );
-       char *show_property     ( cesmi_setup *, int );
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+    void setup             ( cesmi_setup * );
+     int get_initial       ( cesmi_setup *, int, cesmi_node * );
+     int get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
+uint64_t get_flags         ( cesmi_setup *, cesmi_node );
+     int get_property_type ( cesmi_setup *, int );
+   char *show_node         ( cesmi_setup *, cesmi_node );
+   char *show_transition   ( cesmi_setup *, cesmi_node, int );
+   char *show_property     ( cesmi_setup *, int );
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Only `get_initial` and `get_successor` are mandatory, the rest of the
 functionality is optional, and the loader must substitute suitable defaults.
@@ -58,14 +62,18 @@ The `setup` call *may* set up per-instance state, however, if it does, it
 *must* keep it all through the `instance` pointer of the `cesmi_setup`
 structure, which has the following C definition:
 
-    typedef struct {
-        void *allocation_handle;
-        cesmi_node (*make_node)( void *handle, int size );
-        void *instance; // per-instance data; never touched by DiVinE
-        int property_count;
-        int instance_initialised;
-        /* extensions at the end are ABI-compatible */
-    } cesmi_setup;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+typedef struct {
+    void *allocation_handle;
+    cesmi_node (*make_node)( void *handle, int size );
+    void *instance; // per-instance data; never touched by DiVinE
+    int property_count;
+    int instance_initialised;
+    /* extensions at the end are ABI-compatible */
+} cesmi_setup;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For each instance of the CESMI module created by the loader, there is a unique
 `cesmi_setup` value which is passed to all calls into the module. At the time of
@@ -89,10 +97,14 @@ passing the `allocation_handle` as its first parameter, and size of the bit
 vector it requires. The loader might need to store additional data with the
 state, hence it returns a structure with two pointers in it.
 
-    typedef struct {
-        void *handle;
-        char *memory;
-    } cesmi_node;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+typedef struct {
+    void *handle;
+    char *memory;
+} cesmi_node;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The `memory` field of the returned structure is for use by the CESMI module to
 store state information. The module *must not* alter the `handle` -- it must be
@@ -103,3 +115,71 @@ along with its size, otherwise, it will cause undesirable memory leaks.
 
 Building CESMI Modules with DiVinE
 ==================================
+
+The CESMI module more or less represents a generic oriented graph. It is
+intentionally kept as simple as reasonably possible: apart from the graph
+itself and human-readable descriptions of edges and vertices, the only further
+information exposed in the interface about the graph is a set of per-state
+flags, which are used to encode the vertex properties interesting for model
+checking: whether the state is a goal state, or whether it is an accepting
+state of a Büchi automaton. This means that for the purpose of LTL model
+checking, the CESMI module must expose a product automaton of the negative
+claim Büchi translation of the LTL formula and of the system.
+
+While this makes the specification and the loader much simpler, it also adds
+substantial amount of work for the module authors. What more, this task is
+repetitive, since large part of the work is the same from model to model:
+constructing the Büchi automaton from an LTL formula and synchronising its
+guards with the system, based on values of atomic propositions of the formula.
+
+To this end, DiVinE provides a small framework to help you build CESMI modules
+suitable for LTL model checking out of a system description and a set of LTL
+formulas, exposed via the `divine compile --cesmi` sub-command.
+
+When using `divine compile--cesmi`, you should always `#include "cesmi.h"` --
+this will allow the C/C++ compiler to check your function prototypes against
+those mandated by the CESMI specification. It will also give you access to the
+`struct` types `cesmi_setup` and `cesmi_node` and the `cesmi_flags` /
+`cesmi_property_type` enums.
+
+To add LTL formula(s) to your CESMI module, you should additionally `#include
+"cesmi-ltl.h"` which provides a number of helper functions to make your job
+easier. To get access to "cesmi-ltl.h", you must provide a file with LTL
+formulas on the commandline, say `divine compile --cesmi mymodule.c
+mymodule.ltl`. In this case, `divine` will generate code for traversing the
+Büchi automaton from each LTL formula and links it to your module. To use this
+generated code, you should use the following APIs:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+uint64_t buchi_flags( cesmi_setup *setup, cesmi_node n );
+
+int buchi_get_initial( cesmi_setup *setup, int handle, cesmi_node *to, get_initial_t next );
+int buchi_get_successor( cesmi_setup *setup, int handle, cesmi_node from,
+                         cesmi_node *to, get_successor_t next );
+char *buchi_show_node( cesmi_setup *setup, cesmi_node from, show_node_t next );
+char *buchi_show_transition( cesmi_setup *setup, cesmi_node from, int handle, show_transition_t next );
+
+char *buchi_show_property( cesmi_setup *setup, int property );
+void buchi_setup( cesmi_setup *setup );
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each of the `buchi_` functions corresponds to one of the CESMI functions:
+`buchi_get_initial` to `get_initial`, etc. When implementing your CESMI module,
+you should implement a CESMI-compatible function under a different name, say
+`_get_initial` and implement the CESMI `get_initial` like this:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+int get_initial( cesmi_setup *s, int h, cesmi_node *n ) {
+    return buchi_get_initial( s, h, n, _get_initial );
+}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a full example, please refer to `examples/cesmi/withltl.c` shipped in
+DiVinE source tarballs. Compile and test it like this:
+
+    $ divine compile --cesmi examples/cesmi/withltl.c examples/cesmi/withltl.ltl
+    $ divine metrics withltl.so --property=p_3
