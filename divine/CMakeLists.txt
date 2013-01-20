@@ -65,12 +65,10 @@ add_custom_command(
 set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
 set_source_files_properties( "${SHA1}.cpp" PROPERTIES GENERATED ON )
 
-get_property( DIVINE_COMPILE_FLAGS DIRECTORY PROPERTY COMPILE_DEFINITIONS )
-string(REPLACE ";" " " DCF_OUT "${DIVINE_COMPILE_FLAGS}")
 add_custom_command(
   OUTPUT divinecompileflags.cpp
   VERBATIM
-  COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${DCF_OUT}\\\";\">divinecompileflags.cpp"
+  COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">divinecompileflags.cpp"
 )
 
 macro( stringify file )

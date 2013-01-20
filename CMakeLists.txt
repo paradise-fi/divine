@@ -364,6 +364,14 @@ if ( LLVM )
     add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
 endif( LLVM )
 
+if ( MPI )
+    add_definitions( -isystem ${MPI_INCLUDE_PATH} )
+endif()
+
+get_property( BUILDOPTS1 DIRECTORY PROPERTY COMPILE_DEFINITIONS )
+string(REPLACE ";" " " BUILDOPTS2 "${BUILDOPTS1}")
+string(REPLACE "O_" "" BUILDOPTS "${BUILDOPTS2}")
+
 ##########################################
 ## SOURCE DIRECTORIES
 ##
@@ -480,16 +488,11 @@ set( CPACK_PACKAGE_VERSION ${VERSION_STRING} )
 
 message( "## -----------------------------------------------------------------" )
 message( "## Version: ${VERSION_STRING}" )
-
-get_property( BUILDOPTS DIRECTORY PROPERTY COMPILE_DEFINITIONS )
-string(REPLACE ";" " " BUILDOPTS2 "${BUILDOPTS}")
-string(REPLACE "O_" "" BUILDOPTS3 "${BUILDOPTS2}")
-message( "## Build options: ${BUILDOPTS3}" )
+message( "## Build options: ${BUILDOPTS}" )
 if ( DISABLED )
     message( "## Requested but *disabled*:${DISABLED}" )
 endif()
 message( "## -----------------------------------------------------------------" )
-
 
 set( CPACK_PACKAGE_INSTALL_DIRECTORY
       "DiVinE ${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
