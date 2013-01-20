@@ -49,8 +49,7 @@ struct LLVM : Common< Blob > {
     template< typename Yield >
     void initials( Yield yield )
     {
-        assert( _module );
-        Function *f = _module->getFunction( "main" );
+        Function *f = interpreter().module->getFunction( "main" );
         assert( f );
         yield( Node(), interpreter().initial( f ), Label() );
     }
@@ -261,7 +260,7 @@ struct LLVM : Common< Blob > {
         return *_interpreter;
     }
 
-    LLVM() : _interpreter( 0 ), use_property( false ) {}
+    LLVM() : _interpreter( 0 ), _module( nullptr ), use_property( false ) {}
     LLVM( const LLVM &other ) {
         *this = other;
         _interpreter = 0;
