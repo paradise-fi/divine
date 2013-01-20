@@ -214,9 +214,9 @@ divine::Blob MachineState::snapshot()
     if ( fl.problem ) {
         for ( int i = 0; i < problemcount; ++i ) {
             address.advance( sizeof( Problem ) );
-            fl.problems[ i ] =
+            fl.problems( i ) =
                 i < flags().problemcount ?
-                    flags().problems[ i ] :
+                    flags().problems( i ) :
                     problems[ i - flags().problemcount ];
         }
         fl.problemcount = problemcount;

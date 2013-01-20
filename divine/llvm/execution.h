@@ -613,7 +613,7 @@ struct Evaluator
         MachineState::Frame &copy = tmp.get< MachineState::Frame >();
         copy = ccontext.frame();
 
-        std::copy( original.memory, original.memory + framesize, copy.memory );
+        std::copy( original.memory(), original.memory() + framesize, copy.memory() );
         while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
             auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
@@ -626,7 +626,7 @@ struct Evaluator
             ccontext.pc().instruction ++;
             instruction = info.instruction( ccontext.pc() );
         }
-        std::copy( copy.memory, copy.memory + framesize, original.memory );
+        std::copy( copy.memory(), copy.memory() + framesize, original.memory() );
     }
 
     void implement_call() {

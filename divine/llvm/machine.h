@@ -40,12 +40,18 @@ struct MachineState
         }
     };
 
-    struct Frame {
+    template< typename F >
+    struct WithMemory {
+        uint8_t *memory() {
+            return reinterpret_cast< uint8_t * >( this ) + sizeof( F );
+        }
+    };
+
+    struct Frame : WithMemory< Frame > {
         PC pc;
-        uint8_t memory[0];
 
         void clear( ProgramInfo &i ) {
-            std::fill( memory, memory + framesize( i ), 0 );
+            std::fill( memory(), memory() + framesize( i ), 0 );
         }
 
         int framesize( ProgramInfo &i ) {
@@ -57,11 +63,11 @@ struct MachineState
         }
 
         uint8_t &pbitmap( ProgramInfo &i, ProgramInfo::Value v ) {
-            return *(memory + datasize( i ) + v.offset / 32);
+            return *(memory() + datasize( i ) + v.offset / 32);
         }
 
         uint8_t &abitmap( ProgramInfo &i, ProgramInfo::Value v ) {
-            return *(memory + datasize( i ) + size_bitmap( datasize( i ), 1 ) + v.offset / 32);
+            return *(memory() + datasize( i ) + size_bitmap( datasize( i ), 1 ) + v.offset / 32);
         }
 
         uint8_t mask( ProgramInfo::Value v ) {
@@ -88,13 +94,11 @@ struct MachineState
         T *dereference( ProgramInfo &i, ProgramInfo::Value v ) {
             assert_leq( int( v.offset ), datasize( i ) );
             assert_leq( int( v.offset + v.width ), datasize( i ) );
-            return reinterpret_cast< T * >( memory + v.offset );
+            return reinterpret_cast< T * >( memory() + v.offset );
         }
     };
 
-    struct Globals {
-        uint8_t memory[0];
-
+    struct Globals : WithMemory< Globals > {
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, size( *a._info ) );
         }
@@ -105,7 +109,7 @@ struct MachineState
         }
 
         uint8_t &bitmap( ProgramInfo &i, Pointer p ) {
-            return *(memory + i.globalsize + i.globalPointerOffset( p ) / 32);
+            return *(memory() + i.globalsize + i.globalPointerOffset( p ) / 32);
         }
 
         uint8_t mask( ProgramInfo &i, Pointer v ) {
@@ -132,7 +136,7 @@ struct MachineState
         T *dereference( ProgramInfo &i, Pointer p ) {
             assert( owns( i, p ) );
             return reinterpret_cast< T * >(
-                memory + i.globalPointerOffset( p ) );
+                memory() + i.globalPointerOffset( p ) );
         }
     };
 
@@ -152,16 +156,15 @@ struct MachineState
             size_bitmap( bytecount );
     }
 
-    struct Heap {
+    struct Heap : WithMemory< Heap > {
         int segcount;
-        char _memory[0];
 
         int size() {
             return jumptable( segcount ) * 4;
         }
 
         uint16_t &jumptable( int segment ) {
-            return reinterpret_cast< uint16_t * >( _memory )[ segment ];
+            return reinterpret_cast< uint16_t * >( memory() )[ segment ];
         }
 
         uint16_t &jumptable( Pointer p ) {
@@ -172,7 +175,7 @@ struct MachineState
         uint16_t &bitmap( Pointer p ) {
             assert( owns( p ) );
             return reinterpret_cast< uint16_t * >(
-                _memory + size_jumptable( segcount ) )[ offset( p ) / 64 ];
+                memory() + size_jumptable( segcount ) )[ offset( p ) / 64 ];
         }
 
         int offset( Pointer p ) {
@@ -214,7 +217,7 @@ struct MachineState
         T *dereference( Pointer p ) {
             assert( owns( p ) );
             return reinterpret_cast< T * >(
-                _memory + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p ) );
+                memory() + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p ) );
         }
     };
 
@@ -293,12 +296,15 @@ struct MachineState
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
 
-    struct Flags {
+    struct Flags : WithMemory< Flags >
+    {
         uint64_t problemcount:7;
         uint64_t problem:1;
         uint64_t ap:44;
         uint64_t buchi:12;
-        Problem problems[0];
+        Problem &problems( int i ) {
+            return *( reinterpret_cast< Problem * >( memory() ) + i );
+        }
 
         void clear() {
             problem = 0;
@@ -421,7 +427,7 @@ struct MachineState
             return &_info.constdata[v.v.offset];
 
         if ( v.v.global )
-            return reinterpret_cast< char * >( global().memory + v.v.offset );
+            return reinterpret_cast< char * >( global().memory() + v.v.offset );
 
         assert_unreachable( "Impossible Value." );
     }

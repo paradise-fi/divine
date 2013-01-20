@@ -243,7 +243,7 @@ std::string Interpreter::describe( bool detailed ) {
 
     MachineState::Flags &flags = state.flags();
     for ( int i = 0; i < flags.problemcount; ++i )
-        s << describeProblem( info, flags.problems[i] ) << std::endl;
+        s << describeProblem( info, flags.problems(i) ) << std::endl;
 
     if ( !state._thread_count )
         s << "EXIT" << std::endl;
