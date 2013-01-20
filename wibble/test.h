@@ -47,7 +47,7 @@ struct Location {
 #define assert_list_eq(x, y) ((void)0)
 #endif
 
-#define assert_unreachable(x...) assert_die_fn( LOCATION( wibble::str::fmtf(x) ) )
+#define assert_unreachable(...) assert_die_fn( LOCATION( wibble::str::fmtf(__VA_ARGS__) ) )
 #define assert_unimplemented() assert_die_fn( LOCATION( "not imlemented" ) )
 #define assert_die() assert_die_fn( LOCATION( "forbidden code path tripped" ) )
 
