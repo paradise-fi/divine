@@ -36,9 +36,9 @@ void* Thread::Starter(void* parm)
 #ifdef _WIN32
 unsigned __stdcall Thread::Starter(void* parm)
 {
-	void* vptemp = ((Thread*)parm)->main();
-        ((Thread*)parm)->_result = vptemp;
-	return (unsigned)vptemp;
+	void* vptemp = reinterpret_cast< Thread* >( parm )->main();
+        reinterpret_cast< Thread* >( parm )->_result = vptemp;
+	return unsigned( vptemp );
 }
 #endif
 

@@ -110,7 +110,7 @@ void MMap::map(const std::string& filename)
 										"the mmap index file " + filename + " is empty");
 
 		// Map the file into memory
-		if ((buf = (const char*)::mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+		if ( ( buf = reinterpret_cast< const char* >( ::mmap( 0, size, PROT_READ, MAP_PRIVATE, fd, 0 ) ) ) == MAP_FAILED )
 			throw wibble::exception::System("mmapping file " + filename);
 	} catch (...) {
 		unmap();
@@ -124,7 +124,7 @@ void MMap::unmap()
 	if (buf)
 	{
 		if (buf != MAP_FAILED)
-			munmap((void*)buf, size);
+			munmap(const_cast<char*>(buf), size);
 		buf = 0;
 		size = 0;
 	}
