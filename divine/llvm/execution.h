@@ -13,7 +13,13 @@
 #include <llvm/Constants.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/CallSite.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/Config/config.h>
+#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
+  #include <llvm/Target/TargetData.h>
+#else
+  #include <llvm/DataLayout.h>
+  #define TargetData DataLayout
+#endif
 
 #include <algorithm>
 #include <cmath>

@@ -4,7 +4,15 @@
 #include <wibble/test.h>
 
 #include <llvm/Function.h>
-#include <llvm/Target/TargetData.h>
+
+#include <llvm/Config/config.h>
+#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
+  #include <llvm/Target/TargetData.h>
+#else
+  #include <llvm/DataLayout.h>
+  #define TargetData DataLayout
+#endif
+
 #include <llvm/CodeGen/IntrinsicLowering.h>
 #include <map>
 

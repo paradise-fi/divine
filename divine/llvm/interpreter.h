@@ -11,7 +11,13 @@
 #include <llvm/Function.h>
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/Config/config.h>
+#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
+  #include <llvm/Target/TargetData.h>
+#else
+  #include <llvm/DataLayout.h>
+  #define TargetData DataLayout
+#endif
 
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H

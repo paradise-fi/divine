@@ -2,7 +2,12 @@
 // Describe the interpreter's state in a human-readable fashion.
 
 #include <divine/llvm/interpreter.h>
-#include <llvm/Analysis/DebugInfo.h>
+#include <llvm/Config/config.h>
+#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
+  #include <llvm/Analysis/DebugInfo.h>
+#else
+  #include <llvm/DebugInfo.h>
+#endif
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Support/raw_ostream.h>
 
