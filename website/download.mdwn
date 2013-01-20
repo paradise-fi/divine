@@ -22,10 +22,10 @@ Download: **[divine-2.5.2.tar.gz] [1]**, see [what's new] [2].  An installer for
 32 bit windows: **[divine-2.5-win32.exe] [4]**. Windows binaries will be made
 available on demand: please [contact us] [3].
 
-[1]: divine-2.5.2.tar.gz
+[1]: download/divine-2.5.2.tar.gz
 [2]: whatsnew.html
 [3]: contact.html
-[4]: divine-2.5-win32.exe
+[4]: download/divine-2.5-win32.exe
 
 Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
 it directly from our version control system. If you have the [darcs] [1] system
@@ -36,33 +36,33 @@ installed then the latest source code tarball can be obtained as follows:
 Archive of old releases
 -----------------------
 
-* [divine-2.4.tar.gz](divine-2.4.tar.gz)  
-  [divine-2.4-win32.exe](divine-2.4-win32.exe) (Windows installer)
-* [divine-2.3.tar.gz](divine-2.3.tar.gz)
-* [divine-2.2.tar.gz](divine-2.2.tar.gz)
-* [divine-2.1.1.tar.gz](divine-2.1.1.tar.gz)  
-  [divine-2.1.1.exe](divine-2.1.1.exe) (Windows CLI)  
-  [divine-2.1.1-win32.exe](divine-2.1.1-win32.exe) (Windows installer)
-* [divine-2.1.tar.gz](divine-2.1.tar.gz)
-* [divine-2.0.tar.gz](divine-2.0.tar.gz)
+* [divine-2.4.tar.gz](download/divine-2.4.tar.gz)  
+  [divine-2.4-win32.exe](download/divine-2.4-win32.exe) (Windows installer)
+* [divine-2.3.tar.gz](download/divine-2.3.tar.gz)
+* [divine-2.2.tar.gz](download/divine-2.2.tar.gz)
+* [divine-2.1.1.tar.gz](download/divine-2.1.1.tar.gz)  
+  [divine-2.1.1.exe](download/divine-2.1.1.exe) (Windows CLI)  
+  [divine-2.1.1-win32.exe](download/divine-2.1.1-win32.exe) (Windows installer)
+* [divine-2.1.tar.gz](download/divine-2.1.tar.gz)
+* [divine-2.0.tar.gz](download/divine-2.0.tar.gz)
 
 DiVinE Multi-Core:
 
-* [divine-mc-1.4.tar.gz](divine-mc-1.4.tar.gz)
-* [divine-mc-1.3.1.tar.gz](divine-mc-1.3.1.tar.gz)
-* [divine-mc-1.3.tar.gz](divine-mc-1.3.tar.gz)
-* [divine-mc-1.2.1.tar.gz](divine-mc-1.2.1.tar.gz)
-* [divine-mc-1.1.tar.gz](divine-mc-1.1.tar.gz)
-* [divine-mc-1.0-beta1.tar.gz](divine-mc-1.0-beta1.tar.gz)
+* [divine-mc-1.4.tar.gz](download/divine-mc-1.4.tar.gz)
+* [divine-mc-1.3.1.tar.gz](download/divine-mc-1.3.1.tar.gz)
+* [divine-mc-1.3.tar.gz](download/divine-mc-1.3.tar.gz)
+* [divine-mc-1.2.1.tar.gz](download/divine-mc-1.2.1.tar.gz)
+* [divine-mc-1.1.tar.gz](download/divine-mc-1.1.tar.gz)
+* [divine-mc-1.0-beta1.tar.gz](download/divine-mc-1.0-beta1.tar.gz)
 
 DiVinE Cluster:
 
-* [divine-cluster-0.8.3.tar.gz](divine-cluster-0.8.3.tar.gz)
-* [divine-cluster-0.8.2.tar.gz](divine-cluster-0.8.2.tar.gz)
-* [divine-cluster-0.8.0.tar.gz](divine-cluster-0.8.0.tar.gz)
-* [divine-0.7.2.tar.gz](divine-0.7.2.tar.gz)
-* [divine-0.7.1.tar.gz](divine-0.7.1.tar.gz)
-* [divine-0.7.0.tar.gz](divine-0.7.0.tar.gz)
+* [divine-cluster-0.8.3.tar.gz](download/divine-cluster-0.8.3.tar.gz)
+* [divine-cluster-0.8.2.tar.gz](download/divine-cluster-0.8.2.tar.gz)
+* [divine-cluster-0.8.0.tar.gz](download/divine-cluster-0.8.0.tar.gz)
+* [divine-0.7.2.tar.gz](download/divine-0.7.2.tar.gz)
+* [divine-0.7.1.tar.gz](download/divine-0.7.1.tar.gz)
+* [divine-0.7.0.tar.gz](download/divine-0.7.0.tar.gz)
 
 Installation
 ============
