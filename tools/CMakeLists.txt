@@ -27,7 +27,7 @@ set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
 set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
 
 add_executable( divine divine.cpp dvecompile.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
-target_link_libraries( divine lpsolve )
+# target_link_libraries( divine lpsolve )
 if( NOT WIN32 )
     target_link_libraries( divine rt )
 endif()

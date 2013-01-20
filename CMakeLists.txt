@@ -376,7 +376,7 @@ add_custom_target( check )
 add_custom_target( unit )
 
 add_subdirectory( wibble )
-add_subdirectory( external/lpsolve )
+# add_subdirectory( external/lpsolve )
 
 if( HOARD )
   add_subdirectory( external/hoard )
