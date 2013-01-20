@@ -120,7 +120,11 @@ let
               src = jobs.tarball;
               buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.haskellPackages.pandoc tex ];
               buildPhase = "make manual website";
-              installPhase = "cp -R manual $out/manual; cp -R website $out/website/";
+              installPhase = ''
+                mkdir $out/manual $out/website
+                cp manual/manual.pdf manual/manual.html $out/manual/
+                cp website/*.html website/*.png website/*.css $out/website/
+              '';
               checkPhase = ":";
           };
 
