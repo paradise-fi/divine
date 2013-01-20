@@ -112,14 +112,17 @@ struct SharedHashSet {
     }
 
     bool has( const Item &x ) {
-        hash_t h = hasher.hash( x ) << 1;
+        return has( x, hasher.hash( x ) );
+    }
+
+    bool has( const Item &x, hash_t h ) {
+        h <<= 1;
 
         for ( unsigned i = 0; i < maxCollisions; ++i ) {
             Cell &cell = table[ index( h, i ) ];
             hash_t chl = cell.hashLock;
 
             if ( chl == 0 ) {
-                // std::cerr << "index = " << index( h, i ) << ", h = " << h << ", i = " << i << ", chl = " << chl << std::endl;
                 return false;
             }
             if ( (chl | 1) == (h | 1) && ( hasher.equal( cell.value, x ) ) )
