@@ -34,13 +34,13 @@ verify_timed() {
     check clear
     run verify data/bridge.xml --property=0 -w 1
     check report Algorithm "Nested DFS"
-    check report Property-Type LTL
+    check report Property-Type neverclaim
     check ltl_invalid
 
     check clear
     run verify data/bridge.xml --property=1
     check report Algorithm OWCTY
-    check report Property-Type LTL
+    check report Property-Type neverclaim
     check ltl_valid
 }
 
