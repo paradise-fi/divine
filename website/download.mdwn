@@ -98,9 +98,9 @@ Instructions
                         
       cd _build/tools
       ./divine help
-      ./divine reachability ../../examples/shuffle.dve
-      ./divine owcty ../../examples/peterson-liveness.dve
-      ./divine owcty ../../examples/peterson-naive.dve
+      ./divine verify ../../examples/shuffle.dve
+      ./divine verify ../../examples/peterson-liveness.dve
+      ./divine verify ../../examples/peterson-naive.dve
                      
 * There is no need to install the binary, it is self-contained. However,
   if you like, you can install divine for more convenient access:
