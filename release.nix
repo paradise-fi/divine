@@ -56,6 +56,7 @@ let
     img = image;
     src = jobs.tarball;
     name = "divine";
+    mem = "2048M";
     buildScript = ''
       set -ex
       mkdir build && cd build
