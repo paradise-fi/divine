@@ -101,10 +101,10 @@ div#footer { padding: .5ex;
              text-align: left;
              padding: 2px;
              padding-left: 8px;
-             min-width: 170px;
+             min-width: 120px;
              height: 18px;
              background-image: url('button.png');
-             background-position: left center;
+             background-position: right center;
              background-repeat: no-repeat; }
 
 #sidebar a:link { color: white; }
