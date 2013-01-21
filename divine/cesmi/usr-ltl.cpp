@@ -81,6 +81,7 @@ int buchi_get_successor( cesmi_setup *setup, int handle,
             if ( system_handle( handle ) == 1 ) { /* system was deadlocked */
                 *to = setup->clone_node( setup->allocation_handle, from );
                 *buchi_state( *to ) = bs;
+                return combine_handles( bh + 1, 1 );
             }
             return buchi_get_successor( setup, combine_handles( bh + 1, 1 ), from, to, next );
         }
