@@ -65,14 +65,14 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
                 print_buchi_trans_label(t->second, s);
             }
             s << " )" << std::endl;
-            s << "             return transition + 1;" << std::endl;
-            s << "        ++ transition;" << std::endl;
+            s << "             return " << t->first->incoming << ";" << std::endl;
+            s << "        return 0;" << std::endl;
             s << "    }" << std::endl;
             ++ buchi_next;
         }
     }
 
-    s << "    return 0;" << std::endl;
+    s << "    return -1;" << std::endl;
     s << "}" << std::endl;
 
     for ( std::list< std::string >::iterator i = symbols.begin(); i != symbols.end(); ++ i )

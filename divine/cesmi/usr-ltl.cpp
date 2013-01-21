@@ -61,22 +61,28 @@ int buchi_get_successor( cesmi_setup *setup, int handle,
         return next( setup, handle, from, to );
 
     cesmi_setup over = override_setup( setup );
-    int bs = buchi_next( buchi_property( setup ), *buchi_state( from ),
-                         buchi_handle( handle ), setup, system_state( from ) );
+    int bh = buchi_handle( handle ), bs = 0;
 
-    if ( bs ) { /* the buchi automaton can move */
+    do {
+        bs = buchi_next( buchi_property( setup ), *buchi_state( from ),
+                         bh, setup, system_state( from ) );
+        if ( !bs )
+            ++ bh;
+    } while ( bs == 0 );
+
+    if ( bs > 0 ) { /* the buchi automaton can move */
         int system = next( &over, system_handle( handle ), system_state( from ), to );
 
         if ( system ) {
             to->memory -= sizeof( int ); /* adjust back */
             *buchi_state( *to ) = bs;
-            return combine_handles( buchi_handle( handle ), system );
+            return combine_handles( bh, system );
         } else {
             if ( system_handle( handle ) == 1 ) { /* system was deadlocked */
                 *to = setup->clone_node( setup->allocation_handle, from );
                 *buchi_state( *to ) = bs;
             }
-            return buchi_get_successor( setup, combine_handles( buchi_handle( handle ) + 1, 1 ), from, to, next );
+            return buchi_get_successor( setup, combine_handles( bh + 1, 1 ), from, to, next );
         }
     }
 
