@@ -199,10 +199,10 @@ struct CESMI : public Common< Blob > {
             const char *type = "(unknown)";
             switch (dl.get_property_type ? dl.get_property_type( &setup, i ) : cesmi::cesmi_pt_deadlock) {
                 case cesmi::cesmi_pt_deadlock:
-                    yield( name, "(deadlock reachability)", PT_Deadlock );
+                    yield( name, "(deadlock freedom)", PT_Deadlock );
                     continue;
                 case cesmi::cesmi_pt_goal:
-                    yield( name, "(goal state reachability)", PT_Goal );
+                    yield( name, "(safety)", PT_Goal );
                     continue;
                 case cesmi::cesmi_pt_buchi:
                     yield( name, "(neverclaim / LTL verification)", PT_Buchi );

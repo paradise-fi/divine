@@ -38,7 +38,7 @@ struct Base {
 
     template< typename Y >
     void properties( Y yield ) {
-        yield( "deadlock", "(deadlock detection)", PT_Deadlock );
+        yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
     }
 
     void useProperty( std::string ) {}

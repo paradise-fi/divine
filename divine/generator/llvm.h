@@ -143,8 +143,8 @@ struct LLVM : Common< Blob > {
 
     template< typename Y >
     void properties( Y yield ) {
-        yield( "deadlock", "(deadlock reachability)", PT_Deadlock );
-        yield( "assert", "(assertion violations)", PT_Goal );
+        yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
+        yield( "assert", "(assertion safety)", PT_Goal );
         for ( auto p : interpreter().properties )
             yield( p.first, p.second, PT_Buchi );
     }
