@@ -1,3 +1,5 @@
+% A Hacker's Guide to DiVinE
+
 Introduction
 ============
 
@@ -134,12 +136,14 @@ Divine uses libwibble, a general-purpose utility library for C++ for several
 things. Most importantly, the threading abstraction is provided by this library
 and comes with a pthread-based and a win32-based implementation.
 
-Parallel Programming Toolkit
-----------------------------
+The Toolkit
+-----------
 
-There are a number of modules in the divine library that implement fairly
-general-purpose concepts, often particularly suited for parallel
-high-performance computing. These are:
+In **divine/toolkit**, you will find the parts of divine that are most
+generic. High-performance hash tables, a very simple RPC protocol over MPI,
+memory allocation, parallel execution and distributed termination
+detection. This code is not really specific to model checking or graph
+exploration, but is geared toward high-performance computing.
 
 * **parallel.h**: A simple parallel work domain using shared memory and
   threads. Used as a basic building block for parallel sections of other code.
@@ -147,22 +151,23 @@ high-performance computing. These are:
   in the implementation of parallel.h.
 * **fifo.h**: A simple one-way communication primitive for shared memory,
   without locking. Used by parallel.h to implement inter-thread communication.
-* **hashmap.h**: An older implementation of a hash table, possibly with
-  associated values. *Currently not used.*
 * **hashset.h**: The current implementation of a hash table for use as a
   set. Primarily intended to use with **Blob** objects.
 * **blob.h**: A semi-smart pointer. Addresses an object with known size and a
   couple of flag bits. No reference counting.
-* **pool.h**: A very fast, simple allocator, suitable for allocating huge
+* **pool.h**: A very fast, very simple allocator, suitable for allocating huge
   numbers of objects that only come in a small number of different sizes.
+* **rpc.h**: A generic but very simple marshalling/demarshalling layer, used in
+  implementing MPI.
 * **mpi.h**: Implementation of the MPI layer, built on top of the work domain
-  implementation available in parallel.h.
+  implementation available in parallel.h. Semi-transparent for client code, see
+  also rpc.h.
 
 Graph Traversal
 ---------------
 
-Another set of modules of the divine library implements parallel graph
-traversal utilities. These are:
+Another set of modules of the divine library implements a graph interface and
+parallel graph traversal utilities. These live in **divine/graph**.
 
 * **datastruct.h**: Implements the data structures for graph traversal, a BFS
   queue and a DFS stack, tailored for use with the generic graph visitor.
@@ -174,12 +179,65 @@ traversal utilities. These are:
 Algorithms
 ----------
 
-TBD.
+The actual model-checking algorithms can be found under
+**divine/algorithm**. The common infrastructure is found in **common.h**, and
+builds heavily on the parallel primitives from **toolkit**.
+
+* **owcty.h**: The staple parallel algorithm for detecting accepting cycles.
+* **nested-dfs.h**: Nested DFS search, another staple algorithm, but sequential.
+* **map.h.**: Maximal Accepting Predecessor, a parallel algorithm like OWCTY,
+  but usually slower.
+* **reachability.h**: Parallel reachability analysis, search for deadlock or
+  goal states. (See also section on generators below.)
+* **metrics.h**: A very efficient parallel state space generator. Suitable for
+  obtaining state space statistics and for benchmarking.
 
 Generators
 ----------
 
-TBD
+The state space generators, or system interpreters, are a major part of
+DiVinE. Each is usually split into two parts, the bulk of the implementation of
+a given language living under its own subdirectory in **divine/**, and a
+comparatively small *adaptor* -- a piece of code that implements a standardised
+graph-traversal interface on top of the interpreter -- found under
+**divine/generator**. The adaptor interface is declared in **divine/graph**.
+
+The currently available generators are:
+
+* **divine/cesmi**: Not a language interpreter, but a binary interface for
+  shared objects. See the [user manual] [1] for the specification of its
+  API/ABI.
+* **divine/dve**: The DVE language. The most traditional of DiVinE input
+  languages.
+* **divine/timed**: Interpreter for UPPAAL Timed Automata.
+* **divine/llvm**: LLVM bitcode interpreter, suitable for verifying C(++) code.
+* **divine/coin**: CoIn, aka Component-Interaction Automata.
+
+[1]: manual.html#the-cesmi-specification
+
+Instances
+---------
+
+The basic components of divine are implemented as C++ templates, for various
+reasons (performance, static type safety). As such, a "configuration" of
+divine: the input language interpreter, the model checking algorithm and the
+state storage subsystem need to be combined at compile time, obtaining a single
+tight unit with minimal configuration-related branching in the hot code
+paths. The code in **divine/instances** takes care of both instructing the
+compiler to emit code for the sensible combinations of modules, as well as
+provide the code to translate runtime configuration into the correct entry
+point of the combined system.
+
+LTL to Büchi translation
+------------------------
+
+In order to perform LTL model checking, DiVinE needs to translate LTL formulas
+into Büchi automata. There are currently two components which implement this
+translation, the "traditional" ltl2ba which has been part of DiVinE since
+forever, found in **divine/ltl2ba** and a "modern" implementation based on the
+unrelated external tool called, confusingly, "LTL2BA". The implementation
+shipped with DiVinE is however called LTL3BA and is found in
+**external/ltl3ba**. There is a compile time option to enable/disable LTL3BA.
 
 Tools
 -----
@@ -203,9 +261,6 @@ modules may move to the library over time.
   dve/mdve/ltl files into raw DVE.
 * **simple.cpp**: A stand-alone implementation of a very simple parallel,
   shared-memory reachability. Mainly useful for pedagogical purposes.
-* **probabilistic.cpp**: A standalone shared-memory probabilistic model
-  checker, for the ProbDVE language. **Unmaintained.**
-* **simulator.cpp**: A legacy DVE simulator. **Unmaintained.**
 
 GUI
 ---
