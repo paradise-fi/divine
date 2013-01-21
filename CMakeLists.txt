@@ -364,10 +364,6 @@ if ( LLVM )
     add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
 endif( LLVM )
 
-if ( MPI )
-    add_definitions( -isystem ${MPI_INCLUDE_PATH} )
-endif()
-
 get_property( BUILDOPTS1 DIRECTORY PROPERTY COMPILE_DEFINITIONS )
 string(REPLACE ";" " " BUILDOPTS2 "${BUILDOPTS1}")
 string(REPLACE "O_" "" BUILDOPTS "${BUILDOPTS2}")
