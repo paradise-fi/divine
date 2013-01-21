@@ -18,14 +18,19 @@ Binaries are only available for 32-bit Windows.  Please note that DiVinE
 Cluster and DiVinE Multi-Core have been discontinued and that ProbDiVinE is
 distributed as a part of the main DiVinE package.
 
-Download: **[divine-2.5.2.tar.gz] [1]**, see [what's new] [2].  An installer for
-32 bit windows: **[divine-2.5-win32.exe] [4]**. Windows binaries will be made
-available on demand: please [contact us] [3].
+Download: **[divine-2.5.2.tar.gz] [1]**.  An installer for 32 bit windows:
+**[divine-2.5-win32.exe] [4]**. Windows binaries will be made available on
+demand: please [contact us] [3].
+
+The current *development* version is **[divine-2.92.tar.gz] [5]**. Binaries of
+development snapshots can be [obtained from hydra] [6].
 
 [1]: download/divine-2.5.2.tar.gz
 [2]: whatsnew.html
 [3]: contact.html
 [4]: download/divine-2.5-win32.exe
+[5]: download/divine-2.92.tar.gz
+[6]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
 
 Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
 it directly from our version control system. If you have the [darcs] [1] system
