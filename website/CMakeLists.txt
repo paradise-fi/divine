@@ -1,12 +1,17 @@
-macro( page from to )
+macro( page to srcdir )
+  set( sources "" )
+  foreach( source ${ARGN} )
+    list( APPEND sources "${srcdir}/${source}" )
+  endforeach()
   add_custom_command(
     OUTPUT ${to}
-    DEPENDS ${from} template.html
+    DEPENDS ${sources} template.html
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND pandoc --to=html -s
             -o ${CMAKE_CURRENT_BINARY_DIR}/${to}
             --template template.html
-            ${from}
+            --toc
+            ${sources}
   )
   list( APPEND pages ${to} )
 endmacro()
@@ -14,7 +19,7 @@ endmacro()
 macro( pages sourcedir )
   foreach( source ${ARGN} )
     string( REPLACE ".mdwn" ".html" target "${source}" )
-    page( ${sourcedir}/${source} ${target} )
+    page( ${target} ${sourcedir} ${source} )
   endforeach()
 endmacro()
 
@@ -29,9 +34,10 @@ macro( resources )
   endforeach()
 endmacro()
 
-page( ../HACKING development.html )
-page( ../NEWS whatsnew.html )
-pages( ../manual title.mdwn overview.mdwn using.mdwn language.mdwn )
+page( development.html .. HACKING )
+page( whatsnew.html .. NEWS )
+page( manual.html ../manual title.mdwn overview.mdwn commands.mdwn
+                            using.mdwn language.mdwn cesmi.mdwn )
 pages( . contact.mdwn download.mdwn index.mdwn )
 resources( style.css button.png button-over.png divine-logo.png trac-logo.png )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} )
