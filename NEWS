@@ -1,3 +1,15 @@
+DiVinE 2.92 (3.0 alpha 2 ; 21.1.2013)
+=====================================
+
+- Implement detection of time deadlocks in timed automata verification.
+- An overhauled, more flexible CESMI interface & documentation.
+- Implement a new approach to CESMI + LTL in `divine compile --cesmi`.
+- New CLI interface and accompanying documentation (manpage, manual section).
+- Enable all applicable reductions by default (`--no-reduce` to disable).
+- Re-enable LTL properties for LLVM bitcode.
+- Consistently support models with multiple initial states.
+- Many bugfixes.
+
 DiVinE 2.91 (3.0 alpha 1; 7.1.2013)
 ===================================
 
