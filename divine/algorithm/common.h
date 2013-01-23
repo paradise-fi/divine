@@ -75,12 +75,12 @@ struct Algorithm
     }
 
     void resultBanner( bool valid ) {
-        progress() << " ===================================== " << std::endl
+        progress() << " ============================================= " << std::endl
                    << ( valid ?
-                      "           The property HOLDS          " :
-                      "       The property DOES NOT hold      " )
+                      "               The property HOLDS          " :
+                      "           The property DOES NOT hold      " )
                    << std::endl
-                   << " ===================================== " << std::endl;
+                   << " ============================================= " << std::endl;
     }
 
     /// Initializes the graph generator by reading a file

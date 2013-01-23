@@ -48,7 +48,7 @@ void handler( int s ) {
 }
 
 struct InfoBase {
-    virtual generator::PropertyType propertyType( std::string prop ) = 0;
+    virtual void propertyInfo( std::string prop, Meta &m ) = 0;
     virtual generator::ReductionSet filterReductions( generator::ReductionSet ) = 0;
     virtual ~InfoBase() {};
 };
@@ -66,13 +66,13 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 
     int id() { return 0; }
 
-    virtual generator::PropertyType propertyType( std::string s ) {
-        graph::PropertyType pt = graph::PT_Deadlock;
-        this->graph().properties( [&] ( std::string name, std::string, graph::PropertyType t ) {
-                if ( s == name )
-                    pt = t;
+    virtual void propertyInfo( std::string s, Meta &m ) {
+        this->graph().properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
+                if ( s == name ) {
+                    m.input.property = des;
+                    m.input.propertyType = t;
+                }
             } );
-        return pt;
     }
 
     virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
@@ -185,6 +185,17 @@ struct Main {
 
 
         mpi.start();
+
+        if ( mpi.master() && opts.foundCommand() != cmd_info ) {
+            auto a = meta.algorithm.name;
+            std::cerr << " input: " << meta.input.model << std::endl
+                      << " property " << meta.input.propertyName
+                      << ": " << meta.input.property << std::endl
+                      << " " << std::string( (44 - a.size()) / 2, '-' )
+                      << " " << a << " " << std::string( (44 - a.size()) / 2 , '-' )
+                      << std::endl;
+        }
+
         a->run();
 
         report.finished();
@@ -516,12 +527,16 @@ struct Main {
         InfoBase *ib = dynamic_cast< InfoBase * >( selectGraph< Info >( meta ) );
         if ( !ib )
             die( "Fatal error encountered while processing input." );
-        auto pt = meta.input.propertyType = ib->propertyType( meta.input.propertyName );
+
+        ib->propertyInfo( meta.input.propertyName, meta );
         meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
+
+        auto pt = meta.input.propertyType;
 
         if ( opts.foundCommand() == cmd_draw ) {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Draw;
+            meta.algorithm.name = "Draw";
         } else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )

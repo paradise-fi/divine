@@ -196,16 +196,16 @@ struct CESMI : public Common< Blob > {
         call_setup();
         for ( int i = 0; i < setup.property_count; ++i ) {
             auto name = propertyName( i );
-            const char *type = "(unknown)";
+            const char *type = "unknown";
             switch (dl.get_property_type ? dl.get_property_type( &setup, i ) : cesmi::cesmi_pt_deadlock) {
                 case cesmi::cesmi_pt_deadlock:
-                    yield( name, "(deadlock freedom)", PT_Deadlock );
+                    yield( name, "deadlock freedom", PT_Deadlock );
                     continue;
                 case cesmi::cesmi_pt_goal:
-                    yield( name, "(safety)", PT_Goal );
+                    yield( name, "safety", PT_Goal );
                     continue;
                 case cesmi::cesmi_pt_buchi:
-                    yield( name, "(neverclaim / LTL verification)", PT_Buchi );
+                    yield( name, "neverclaim / LTL verification", PT_Buchi );
                     continue;
             }
         }

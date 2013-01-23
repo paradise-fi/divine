@@ -136,12 +136,12 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
 
     void banner( std::ostream &o ) {
         auto &s = meta().statistics;
-        o << " ===================================== " << std::endl
+        o << " ============================================= " << std::endl
           << std::setw( 12 ) << s.visited << " states" << std::endl
           << std::setw( 12 ) << s.transitions << " transitions" << std::endl
           << std::setw( 12 ) << s.accepting << " accepting" << std::endl
           << std::setw( 12 ) << s.deadlocks << " deadlocks " << std::endl
-          << " ===================================== " << std::endl;
+          << " ============================================= " << std::endl;
     }
 
     void collect() {

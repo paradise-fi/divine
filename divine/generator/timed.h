@@ -145,7 +145,7 @@ struct Timed : public Common< Blob > {
     template< typename Y >
     void properties( Y yield ) {
         std::stringstream ss;
-        yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
+        yield( "deadlock", "deadlock freedom", PT_Deadlock );
         for ( unsigned int i = 0; i < ltlProps.size(); i++ ) {
             ss.str( "" );
             ss << i;

@@ -255,12 +255,12 @@ struct Dve : public Common< Blob > {
     template< typename Y >
     void properties( Y yield ) {
         assert( system );
-        yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
-        yield( "assert", "(assertion safety)", PT_Goal );
+        yield( "deadlock", "deadlock freedom", PT_Deadlock );
+        yield( "assert", "assertion safety", PT_Goal );
         if ( system->property ) /* FIXME. Bogus. */
-            yield( "LTL", "(Büchi neverclaim property)", PT_Buchi );
+            yield( "LTL", "Büchi neverclaim property", PT_Buchi );
         for ( auto p : system->properties )
-            yield( wibble::str::fmt( p.id ), "(Büchi neverclaim property)", PT_Buchi );
+            yield( wibble::str::fmt( p.id ), "Büchi neverclaim property", PT_Buchi );
     }
 
     void useProperty( std::string n ) {

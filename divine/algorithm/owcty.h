@@ -406,8 +406,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     void printIteration( int i ) {
-        progress() << "------------- iteration " << i
-                   << " ------------- " << std::endl;
+        progress() << " ---------------- iteration " << i
+                   << " ---------------- " << std::endl;
     }
 
     void updateResult() {
