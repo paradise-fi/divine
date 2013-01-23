@@ -506,7 +506,7 @@ struct Evaluator
         template< typename X = int >
         Unit operator()( X &condition = Dummy< X >::v() )
         {
-            for ( int o = 2; o < this->i().values.size() - 1; o += 2 )
+            for ( int o = 2; o < int( this->i().values.size() ) - 1; o += 2 )
             {
                 X &v = *reinterpret_cast< X * >(
                     this->evaluator().dereference( this->i().operand( o ) ) );

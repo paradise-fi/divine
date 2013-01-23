@@ -502,7 +502,7 @@ struct Main {
             else
                 meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por" );
         }
-        meta.algorithm.hashSeed = (uint32_t) o_seed->intValue();
+        meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();
 
