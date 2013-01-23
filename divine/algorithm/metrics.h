@@ -153,7 +153,6 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         progress() << "  exploring... \t\t\t " << std::flush;
         parallel( &This::_visit );
         collect();
-        progress() << "done" << std::endl;
 
         do {
             shared.need_expand = false;
@@ -164,6 +163,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
             }
         } while ( shared.need_expand );
 
+        progress() << "done" << std::endl;
         banner( progress() );
 
         result().fullyExplored = meta::Result::Yes;
