@@ -256,7 +256,7 @@ struct CESMI : public Common< Blob > {
 
         if ( dl.show_transition && from.valid() ) {
             _successors( from, [&]( Node n, int handle ) {
-                    if ( to.compare( n, alloc._slack, 0 ) == 0 )
+                    if ( to.compare( n, alloc._slack, n.size() ) == 0 )
                         fmt = dl.show_transition( &setup, data( from ), handle );
                 }, dl.get_successor );
         }
