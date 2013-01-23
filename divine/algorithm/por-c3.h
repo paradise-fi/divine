@@ -144,6 +144,7 @@ struct PORGraph : graph::Transform< G > {
     // gives true iff there are nodes that need expanding
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &d, Alg &a ) {
+        to_expand.clear();
         while ( !to_check.empty() ) {
             d.parallel( &Alg::_por_worker );
 
@@ -162,6 +163,7 @@ struct PORGraph : graph::Transform< G > {
         typedef POREliminate< typename Algorithm::Setup > Elim;
         visitor::BFV< Elim > visitor( *this, *this, a.store() );
 
+        to_expand.clear();
         while ( !to_check.empty() ) {
             Elim::init( *this, visitor );
             visitor.processQueue();
@@ -182,10 +184,10 @@ struct PORGraph : graph::Transform< G > {
     void initials( Yield yield ) {
         if ( to_expand.size() == 0 )
             this->base().initials( yield );
-
-        for ( auto i : to_expand )
-            fullexpand( yield, i );
-        to_expand.clear();
+        else {
+            for ( auto i : to_expand )
+                fullexpand( yield, i );
+        }
     }
 
     template< typename Yield >
