@@ -266,6 +266,9 @@ struct Dve : public Common< Blob > {
     void useProperty( std::string n ) {
         if ( n == "deadlock" )
             system->property = NULL;
+        for ( auto &p : system->properties )
+            if ( n == wibble::str::fmt( p.id ) )
+                system->property = &p;
     }
 
     ReductionSet useReductions( ReductionSet r ) {
