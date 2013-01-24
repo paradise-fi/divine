@@ -180,7 +180,12 @@ struct Compile {
         }
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ".so " + in + extras,
+#ifdef POSIX
+        std::string ext = ".so";
+#elif defined(_WIN32)
+        std::string ext = ".dll";
+#endif
+        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ext + " " + in + extras,
              trap, trap_arg );
         if ( trap ) trap( trap_arg );
     }
