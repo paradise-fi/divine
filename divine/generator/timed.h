@@ -121,10 +121,16 @@ struct Timed : public Common< Blob > {
 
     void useProperty( std::string n ) {
         propGuards.resize( 1 );
+        int propId;
 
-        int propId = (n == "deadlock") ? -1 : std::atoi( n.c_str() );
-        if ( propId >= int( ltlProps.size() ) )
-            throw wibble::exception::Consistency( "Unknown property " + n + ". Please consult divine info." );
+        if ( n == "deadlock" )
+            propId = -1;
+        else {
+            propId = std::atoi( n.c_str() );
+            if ( propId >= int( ltlProps.size() ) || propId < 0 )
+                throw wibble::exception::Consistency( "Unknown property " + n +
+                                                      ". Please consult divine info." );
+        }
 
         hasLTL = false;
         if ( propId >= 0 && propId < ltlProps.size() )  {
