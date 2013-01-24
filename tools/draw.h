@@ -190,19 +190,22 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
         Node from, to;
-        this->graph().initials( [&trans, &from]( Node, Node n, Label ) {
+        this->graph().initials( [&]( Node, Node n, Label ) {
                 if ( trans.front() == 1 )
-                    from = n;
+                    from = this->store().fetch( n, this->store().hash( n ) );
                 trans.front() --;
             } );
 
         assert( from.valid() );
 
-        for ( int i = 1; size_t( i ) < trans.size(); ++ i ) {
+        for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
             if ( intrace->get( from ).valid() )
                 from = intrace->get( from );
             else
                 intrace->insert( from );
+
+            if ( i == trans.size() ) /* done */
+                break;
 
             int drop = trans[ i ] - 1;
             this->graph().successors( from, [&]( Node n, Label ) {
@@ -210,13 +213,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                         -- drop;
                         return;
                     }
-                    to = intrace->get( n );
-                    if ( !to.valid() ) {
+                    if ( !to.valid() )
                         to = n;
-                        intrace->insert( to );
-                    }
                 } );
 
+            if ( intrace->has( to ) )
+                to = intrace->get( to );
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;
@@ -230,10 +232,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     void draw() {
 
         this->graph().initials( [this]( Node f, Node t, Label l ) {
-                this->store().store( t, this->store().hash( t ) );
                 this->extension( t ).serial = ++this->serial;
                 this->extension( t ).distance = 1;
                 this->extension( t ).initial = 1;
+                this->store().store( t, this->store().hash( t ) );
             } );
 
         loadTrace();
