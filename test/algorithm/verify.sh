@@ -26,7 +26,7 @@ verify_timed() {
     test "$O_TIMED" = "ON" || return 0
 
     check clear
-    run verify data/bridge.xml --property=-1
+    run verify data/bridge.xml --property=deadlock
     check report Algorithm Reachability
     check report Property-Type deadlock
 	check reachability_valid
