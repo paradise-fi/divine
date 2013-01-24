@@ -24,6 +24,7 @@ using namespace sys;
 namespace divine {
 
 extern const char *cesmi_usr_cesmi_h_str;
+extern const char *cesmi_usr_cesmi_cpp_str;
 extern const char *cesmi_usr_ltl_cpp_str;
 extern const char *cesmi_usr_ltl_h_str;
 extern const char *toolkit_pool_h_str;
@@ -138,6 +139,7 @@ struct Compile {
 
         chdir( tmp_dir.basename.c_str() );
         fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
+        fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
         chdir( tmp_dir.abspath.c_str() );
 
         std::string extras, ltlincludes;
@@ -155,6 +157,8 @@ struct Compile {
             } else
                 extras += " " + extra;
         }
+
+        extras += " " + tmp_dir.basename + "/cesmi.cpp";
 
         if ( ltlcount ) {
             std::string impl = tmp_dir.basename + "/cesmi-ltl",

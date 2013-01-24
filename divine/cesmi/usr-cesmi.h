@@ -1,6 +1,9 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
 #include "stdint.h"
+#ifdef _WIN32
+#include <stdarg.h>
+#endif
 
 #ifndef DIVINE_GENERATOR_CESMI_CLIENT_H
 #define DIVINE_GENERATOR_CESMI_CLIENT_H
@@ -27,6 +30,11 @@ typedef struct {
 /* prototypes that CESMI modules need to implement */
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef _WIN32 /* augh; but very useful for show_node/show_transition */
+int vasprintf(char **result, const char *format, va_list aq);
+int asprintf(char **result, const char *format, ...);
 #endif
 
     void  setup             ( cesmi_setup * );
