@@ -191,6 +191,28 @@ std::string Info::architecture() {
     return "Unknown";
 }
 
+ResourceGuard::ResourceGuard()
+    : time( 0 ), memory( 0 )
+{}
+
+void *ResourceGuard::main() {
+    Info info;
+    while ( true ) {
+        info.update();
+
+        if ( memory && info.peakVmSize() > memory )
+            throw ResourceLimit( "Memory limit exceeded: used "
+                                 + wibble::str::fmt( info.peakVmSize() ) + "K / "
+                                 + wibble::str::fmt( memory ) + "K." );
+        if ( time && info.wallTime() > time )
+            throw ResourceLimit( "Time limit exceeded: used "
+                                 + wibble::str::fmt( info.wallTime() ) + "s / "
+                                 + wibble::str::fmt( time ) + "s." );
+        wibble::sys::sleep( 1 );
+    }
+    return nullptr;
+}
+
 }
 
 std::ostream &operator<<( std::ostream &o, sysinfo::Info i )

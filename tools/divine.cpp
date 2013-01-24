@@ -393,37 +393,24 @@ struct Main {
     }
 
     void setupLimits() {
-        if ( o_time->intValue() != 0 ) {
-#ifdef POSIX
-            if ( o_time->intValue() < 0 ) {
-                die( "FATAL: cannot have negative time limit" );
-            }
-            alarm( o_time->intValue() );
-#else
-            die( "FATAL: --max-time is not supported on win32." );
-#endif
-        }
+        int64_t time, memory;
+        time = o_time->intValue();
+        memory = o_mem->intValue();
 
-        if ( o_mem->intValue() != 0 ) {
-            if ( o_mem->intValue() < 0 ) {
-                die( "FATAL: cannot have negative memory limit" );
-            }
-            if ( o_mem->intValue() < 16 ) {
-                die( "FATAL: we really need at least 16M of memory" );
-            }
-#ifdef POSIX
-            struct rlimit limit;
-            limit.rlim_cur = limit.rlim_max = o_mem->intValue() * 1024 * 1024;
-            if (setrlimit( RLIMIT_AS, &limit ) != 0) {
-                int err = errno;
-                std::cerr << "WARNING: Could not set memory limit to "
-                          << o_mem->intValue() << "MB. System said: "
-                          << strerror(err) << std::endl;
-            }
-#else
-            std::cerr << "WARNING: Setting memory limit not supported "
-                      << "on this platform."  << std::endl;
-#endif
+        if ( time < 0 )
+            die( "FATAL: cannot have negative time limit" );
+
+        if ( memory < 0 )
+            die( "FATAL: cannot have negative memory limit" );
+
+        if ( memory && memory < 256 )
+            die( "FATAL: we really need at least 256M of memory" );
+
+        if ( time || memory ) {
+            auto rg = new sysinfo::ResourceGuard();
+            rg->memory = memory * 1024;
+            rg->time = time;
+            rg->start();
         }
     }
 
