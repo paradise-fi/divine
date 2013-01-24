@@ -70,13 +70,14 @@ struct CESMI : public Common< Blob > {
     template< typename Yield, typename Get >
     void _successors( Node s, Yield yield, Get get )
     {
-        int handle = 1;
+        int handle = 1, old = 1;
         call_setup();
         while ( handle ) {
             cesmi::cesmi_node state;
             handle = get( &setup, handle, data( s ), &state );
             if ( handle )
-                yield( Blob( state.handle ), handle );
+                yield( Blob( state.handle ), old );
+            old = handle;
         }
     }
 
