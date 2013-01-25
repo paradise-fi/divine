@@ -50,11 +50,11 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
+        seen.insert( std::make_pair( p, pointeeTy ) );
         if ( state.validate( p ) )
             res = "@(" + ptr + "| " + describeValue( pointeeTy, p, seen ) + ")";
         else
             res = "@(" + ptr + "| invalid)";
-        seen.insert( std::make_pair( p, pointeeTy ) );
     }
     return res;
 }
