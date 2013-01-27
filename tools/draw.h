@@ -121,6 +121,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return "magenta";
         if ( intrace->has( n ) )
             return "red";
+        if ( this->graph().isGoal( n ) )
+            return "yellow";
         return "";
     }
 
