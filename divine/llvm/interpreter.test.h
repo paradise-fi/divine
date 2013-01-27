@@ -1,6 +1,12 @@
 #include <divine/llvm/interpreter.h>
-#include "llvm/LLVMContext.h"
-#include "llvm/Support/IRBuilder.h"
+#include <llvm/LLVMContext.h>
+
+#include <llvm/Config/config.h>
+#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
+#  include <llvm/Support/IRBuilder.h>
+#else
+#  include <llvm/IRBuilder.h>
+#endif
 
 using namespace llvm;
 namespace dlvm = divine::llvm;
