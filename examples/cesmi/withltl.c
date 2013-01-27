@@ -99,7 +99,11 @@ int  get_successor( cesmi_setup *s, int h, cesmi_node n, cesmi_node *t ) {
 }
 
 uint64_t get_flags( cesmi_setup *s, cesmi_node n ) {
-    return buchi_flags( s, n );
+    struct state *state = (struct state *) n.memory;
+    int fl = 0;
+    if ( state->b == 2 )
+        fl = cesmi_goal;
+    return fl | buchi_flags( s, n );
 }
 
 char *show_node( cesmi_setup *s, cesmi_node n ) {
