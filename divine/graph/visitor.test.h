@@ -288,7 +288,6 @@ struct TestVisitor {
         typedef typename Shared< This, This >::Terminator Terminator;
         typedef G Graph;
         Node make( int n ) { return makeNode< Node >( n ); }
-        bool master;
         int expected;
 
         enum { defaultSharedHashSetSize = 65536 };
@@ -310,7 +309,7 @@ struct TestVisitor {
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
             Shared< This, This > shared( *this, *this, m_graph, store, chunkq, terminator );
-            if ( master )
+            if ( !this->m_id )
                 shared.queue( Node(), m_graph.initial(), Label() );
             shared.processQueue();
         }
@@ -328,7 +327,6 @@ struct TestVisitor {
         }
 
         SharedCheck( std::pair< G, int > init, bool master = false ) :
-            master( master ),
             expected( init.second ),
             m_graph( init.first ),
             store( std::make_shared< Store >( defaultSharedHashSetSize ) ),
