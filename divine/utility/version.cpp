@@ -12,9 +12,9 @@ extern const char *DIVINE_SOURCE_SHA;
 extern const char *DIVINE_BUILD_DATE;
 
 // You need to update the version number *and* the SHA to current release one.
-#define DIVINE_VERSION "2.92"
-#define DIVINE_RELSTATE " (3.0 alpha 2)"
-#define DIVINE_RELEASE_SHA "9340d20cb6dec9ee3e2e16467954a1a8d4318c0d"
+#define DIVINE_VERSION "2.93"
+#define DIVINE_RELSTATE " (3.0 alpha 3)"
+#define DIVINE_RELEASE_SHA "9b94c6b7d6a52dd6a08071742ad3cecefa66875d"
 
 namespace divine {
 
