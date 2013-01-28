@@ -91,8 +91,7 @@ test -z "$really" && {
 }
 
 echo uploading and updating NEWS...
-scp $name.tar.gz anna.fi.muni.cz:/srv/www/divine-pages/
-scp NEWS anna.fi.muni.cz:/srv/www/divine-pages/
-ssh anna.fi.muni.cz chmod 644 /srv/www/divine-pages/{$name.tar.gz,NEWS}
+chmod 644 $name.tar.gz
+scp $name.tar.gz anna.fi.muni.cz:/srv/www/divine/download/
 
 echo "now it's up to you... announce, add download links, open champagne"
