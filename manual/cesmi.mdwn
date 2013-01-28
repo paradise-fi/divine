@@ -113,6 +113,20 @@ The `memory` pointer *must not* be passed to `free`. The module should only
 call `make_node` at a point where it is known that a state will be generated,
 along with its size, otherwise, it will cause undesirable memory leaks.
 
+Human-readable Labels
+---------------------
+
+To aid in reading counterexamples or when exploring the state space, it is
+often very useful to have human-readable labels assigned to system states
+and/or transitions. To this end, CESMI specifies (optional) functions
+`show_node` and `show_transition`. Both should return a heap-allocated (with
+`malloc`) string. The case of `show_node` is straightforward, it only gets the
+state itself. For `show_transition`, the origin state of the transition is
+given, plus a handle. The handle is treated the same way as in `get_successor`:
+`show_transition` must give the description of the first **enabled** transition
+in the given origin state, or, if no such transition exists, return a `NULL`
+pointer.
+
 Building CESMI Modules with DiVinE
 ==================================
 
