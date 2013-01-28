@@ -119,8 +119,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     std::string color( Node n ) {
         if ( extension( n ).initial )
             return "magenta";
-        if ( intrace->has( n ) )
+        if ( intrace->has( n ) ) {
+            if ( this->graph().isGoal( n ) )
+                return "orange";
             return "red";
+        }
         if ( this->graph().isGoal( n ) )
             return "yellow";
         return "";
