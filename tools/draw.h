@@ -219,6 +219,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                         to = n;
                 } );
 
+            if ( !to.valid() )
+                throw wibble::exception::Consistency(
+                    "The trace " + trace + " is invalid, not enough successors "
+                    "at step " + wibble::str::fmt( i ) + " (" + wibble::str::fmt( trans[ i ] ) + " requested)" );
             if ( intrace->has( to ) )
                 to = intrace->get( to );
             if ( !extension( to ).serial )
