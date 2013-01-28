@@ -1,3 +1,12 @@
+DiVinE 2.93 (3.0 alpha 3 ; 28.1.2013)
+=====================================
+
+- New implementation of resource limits (--max-memory, --max-time) which
+  circumvents the previous 2G limit and also works on Windows.
+- `divine compile --cesmi` now works on Windows as well.
+- Builds with LLVM 3.1 and 3.2.
+- Many bugfixes.
+
 DiVinE 2.92 (3.0 alpha 2 ; 21.1.2013)
 =====================================
 
