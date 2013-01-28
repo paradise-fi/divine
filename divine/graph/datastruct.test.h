@@ -114,12 +114,12 @@ struct TestDatastruct {
             for ( int i = 0; i < add; ++i ) {
                 queue->push( i );
             }
-            queue->flush();
             queue->termination.sync();
             while ( !queue->termination.isZero() ) {
 
                 if ( queue->empty() ) {
                     queue->termination.sync();
+                    queue->flush();
                     continue;
                 }
 
@@ -129,7 +129,6 @@ struct TestDatastruct {
                 }
 
                 if ( !stopPushing && i == interleaveAdd ) {
-                    queue->flush();
                     stopPushing = true;
                 }
 
