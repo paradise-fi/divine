@@ -88,6 +88,42 @@ structure. The CESMI loader *may* call `setup` multiple times with a different
 parameter (in the same address space), and the resulting CESMI module instances
 *must* be fully isolated.
 
+Handling State
+--------------
+
+The functions `get_initial` and `get_successor` (and by extension,
+`show_transition`, see below) need to maintain state between invocations to be
+able to work with reasonable efficiency. The `handle` system allows a limited
+amount of state to be passed around safely (namely a single integer). To obtain
+all successors of a vertex, the CESMI loader first calls `get_successor` with
+`handle` value 1. The implementation of `get_successor` then returns the first
+successor and a `handle` value to obtain the next successor. When there are no
+further successors to return, it should give a 0 handle. When a vertex has no
+successors, the response to `get_successor( setup, state, 1, result )` should
+be 0, and `result` should be left untouched. The same principle applies to
+`get_initial`. An example implementation of `get_successor` might look like
+this:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+int get_successor( cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
+{
+    struct state *in = (struct state *) from.memory;
+
+    if (in->a < 4 && in->b < 4 && handle < 3) {
+        *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+        struct state *out = (struct state *) to->memory;
+        *out = *in;
+        switch (handle) {
+        case 1: out->a ++; return 2;
+        case 2: out->b ++; return 3;
+        }
+    }
+    return 0;
+}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Memory Management
 -----------------
 
