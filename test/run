@@ -17,7 +17,7 @@ draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce,,g"); }
 
 mpi() {
-    test "$O_MPI" = "YES" || exit 200;
+    test "$O_MPI" = "ON" || exit 200;
     "$MPIEXEC" > /dev/null 2>&1 || exit 200; # probably not found
     ann "$MPIEXEC -H localhost,localhost divine" "$@" "--report 2> progress | capture"
 }

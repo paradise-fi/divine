@@ -1,5 +1,5 @@
 . lib
 
-dve_small mpi owcty -w 1
-dve_small mpi owcty -w 2
+dve_small mpi verify --owcty -w 1
+dve_small mpi verify --owcty -w 2
 

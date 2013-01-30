@@ -1,4 +1,4 @@
 . lib
 
-dve_small mpi map -w 1
-dve_small mpi map -w 2
+dve_small mpi verify --map -w 1
+dve_small mpi verify --map -w 2
