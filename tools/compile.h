@@ -10,8 +10,9 @@
 #include <wibble/sys/exec.h>
 #include <wibble/sys/process.h>
 
-#include "dvecompile.h"
 #include "combine.h"
+#include <divine/dve/compiler.h>
+#include <unistd.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -92,6 +93,13 @@ struct Compile {
     void compileDve( std::string in ) {
 #ifdef O_LEGACY
         dve_compiler compiler;
+//*
+#elif defined O_DVE
+        dve::compiler::DveCompiler compiler;
+//*/
+#else
+        die( "FATAL: The DVE compiler requires DVE backend." );
+#endif
         compiler.read( in.c_str() );
         compiler.analyse();
 
@@ -101,9 +109,6 @@ struct Compile {
         compiler.print_generator();
 
         gplusplus( outfile, str::basename( in ) + ".so" );
-#else
-        die( "FATAL: The DVE compiler requires LEGACY code." );
-#endif
     }
 
     void compileMurphi( std::string in );

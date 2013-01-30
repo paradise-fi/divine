@@ -496,6 +496,7 @@ struct Assertion : Parser {
 
 struct Transition : Parser {
     Identifier from, to;
+    Identifier proc;
     std::vector< Expression > guards;
     std::vector< Assignment > effects;
     SyncExpr syncexpr;
@@ -623,6 +624,10 @@ struct Automaton : Parser {
         }
 
         eat( Token::BlockClose );
+
+        for( Transition &t : trans ) {
+            t.proc = name;
+        }
     }
 };
 
