@@ -5,18 +5,18 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] peterson.c
- *  $ divine reachability peterson.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert peterson.bc [-d]
  * Execute with:
  *  $ clang [ < flags > ] -lpthread -o peterson.exe peterson.c
  *  $ ./peterson.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include <cassert>
+#include "stdlib.h"
+#include "assert.h"
 #endif
 
 struct state {

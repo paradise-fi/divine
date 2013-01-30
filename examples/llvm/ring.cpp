@@ -4,9 +4,9 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] ring.cpp
- *  $ divine reachability ring.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert ring.bc [-d]
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o ring.exe ring.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o ring.exe ring.cpp
  *  $ ./ring.exe
  */
 

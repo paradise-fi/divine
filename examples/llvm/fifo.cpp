@@ -9,9 +9,10 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] fifo.cpp
- *  $ divine reachability fifo.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert fifo.bc [-d]
+ * 
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o fifo.exe fifo.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o fifo.exe fifo.cpp
  *  $ ./fifo.exe
  */
 

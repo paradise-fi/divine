@@ -1,17 +1,15 @@
 /*
- * This is an example of usage of the CESMI interface.
+ * This is an example of usage of the CESMI interface with LTL properties.
  * This file is processed by the DiVinE model checker as follows:
  *
- * 1) First we compile BenchmarkC.c into BenchmarkC.so:
+ * 1) First we compile input files:
  *
- *	$ divine compile --cesmi BenchmarkC.c
+ *	$ divine compile --cesmi withltl.c withltl.ltl
  *
- * 2) BenchmarkC.so can be used as input model to the DiVinE model checker:
+ * 2) Now withltl.so can be used as input model to the DiVinE model checker:
  *
- *      $ divine info BenchmarkC.so
- * 	$ divine draw -l BenchmarkC.so
- * 	$ divine metrics BenchmarkC.so
- *
+ *      $ divine info withltl.so
+ *      $ divine verify -p 1 withltl.so
  */
 
 #define _GNU_SOURCE

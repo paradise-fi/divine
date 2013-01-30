@@ -9,18 +9,18 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] pthread_mutex.c
- *  $ divine reachability pthread_mutex.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert pthread_mutex.bc [-d]
  * Execute with:
  *  $ clang [ < flags > ] -lpthread -o pthread_mutex.exe pthread_mutex.cpp
  *  $ ./pthread_mutex.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include <cassert>
+#include "stdlib.h"
+#include "assert.h"
 #endif
 
 int _critical = 0;

@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE // asprintf
+#endif
 #include <stdio.h>
 #include <malloc.h>
 

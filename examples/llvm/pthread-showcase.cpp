@@ -5,18 +5,18 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] pthread-showcase.cpp
- *  $ divine reachability pthread-showcase.bc --ignore-deadlocks [-d]
+ *  $ divine pthread-showcase.bc -p assert [-d]
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o pthread-showcase.exe pthread-showcase.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o pthread-showcase.exe pthread-showcase.cpp
  *  $ ./pthread-showcase.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
 #include <cassert>
+#include <cstdlib>
 #endif
 
 #define THREADS 2

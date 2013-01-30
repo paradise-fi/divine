@@ -6,20 +6,25 @@
  * When compiled with macro BUG defined (--cflags="-DBUG"), locking is disabled
  * and therefore assertion violation is detected.
  *
- * Verify with:
+ * Verify for deadlock freedom with:
  *  $ divine compile --llvm [--cflags=" < flags > "] global.c
- *  $ divine reachability global.bc --ignore-deadlocks [-d]
+ *  $ divine verify global.bc -p deadlock [-d]
+ *
+ * Verify for assertion safety (no assertion violation)
+ *  $ divine compile --llvm [--cflags=" < flags > "] global.c
+ *  $ divine verify global.bc -p assert [-d]
+ *
  * Execute with:
  *  $ clang [ < flags > ] -lpthread -o global.exe global.c
  *  $ ./global.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
+#include "stdlib.h"
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include <cassert>
+#include "assert.h"
 #endif
 
 int i = 33;

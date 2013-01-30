@@ -91,6 +91,7 @@ std::string ltl_to_c( int id, std::string ltl )
 
 std::string ltl_to_c( int id, std::string ltl )
 {
+    std::cerr<<"DiVinE was built without LTL3BA support, which is required."<<std::endl;
     assert_unimplemented();
 }
 

@@ -11,18 +11,18 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] pthread_rwlock.c
- *  $ divine reachability pthread_rwlock.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert pthread_rwlock.bc [-d]
  * Execute with:
  *  $ clang [ < flags > ] -lpthread -o pthread_rwlock.exe pthread_rwlock.cpp
  *  $ ./pthread_rwlock.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include <cassert>
+#include "stdlib.h"
+#include "assert.h"
 #endif
 
 #define NUM_OF_READERS     2

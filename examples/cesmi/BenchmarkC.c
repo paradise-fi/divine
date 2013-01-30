@@ -78,7 +78,6 @@ char *show_node( cesmi_setup *setup, cesmi_node from )
 
 char *show_transition( cesmi_setup *setup, cesmi_node from, int handle )
 {
-    struct state *in = (struct state *) from.memory;
     switch (handle) {
     case 1: return strdup( "a++" );
     case 2: return strdup( "b++" );

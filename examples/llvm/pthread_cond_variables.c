@@ -27,19 +27,19 @@
  *
  * Verify with:
  *  $ divine compile --llvm [--cflags=" < flags > "] pthread_cond_variables.c
- *  $ divine reachability pthread_cond_variables.bc --ignore-deadlocks [-d]
+ *  $ divine verify -p assert pthread_cond_variables.bc [-d]
  * Execute with:
  *  $ clang [ < flags > ] -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
  *  $ ./pthread_cond_variables.exe
  */
 
 #include <pthread.h>
-#include <cstdlib>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
-#include <cassert>
-#include <unistd.h>
+#include "stdlib.h"
+#include "assert.h"
+#include "unistd.h"
 #endif
 
 #define NUM_CONSUMERS         2
