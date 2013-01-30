@@ -89,7 +89,7 @@ struct Main {
     Report report;
     Meta meta;
 
-    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info;
+    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info, *cmd_tracer;
     OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
@@ -104,6 +104,7 @@ struct Main {
     StringOption *o_drawTrace, *o_output, *o_render;
     StringOption *o_gnuplot;
     StringOption *o_property;
+    StringOption *o_inputTrace;
     BoolOption *o_findBackEdges, *o_textFormat;
     StringOption *o_compactOutput;
 
@@ -252,6 +253,9 @@ struct Main {
         cmd_info = opts.addEngine( "info",
                                    "<input>",
                                    "show information about a model" );
+        cmd_tracer = opts.addEngine( "tracer",
+                                   "<input>",
+                                   "interactive exploration of the state-space" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -371,6 +375,11 @@ struct Main {
             "owcty", 0, "owcty", "", "force use of OWCTY" );
         o_reachability = cmd_verify->add< BoolOption >(
             "reachability", 0, "reachability", "", "force reachability" );
+
+        // tracer options
+        o_inputTrace = cmd_tracer->add< StringOption >(
+            "trace", '\0', "trace", "",
+            "generate states of a numeric trace and exit" );
 
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
@@ -502,7 +511,10 @@ struct Main {
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
-        meta.input.trace = o_drawTrace->stringValue();
+        if ( opts.foundCommand() == cmd_tracer )
+            meta.input.trace = o_inputTrace->stringValue();
+        else
+            meta.input.trace = o_drawTrace->stringValue();
 
         setupLimits();
 
@@ -524,6 +536,9 @@ struct Main {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Draw;
             meta.algorithm.name = "Draw";
+        } else if ( opts.foundCommand() == cmd_tracer ) {
+            meta.execution.threads = 1; // never runs in parallel
+            meta.algorithm.algorithm = meta::Algorithm::Tracer;
         } else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )

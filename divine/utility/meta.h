@@ -37,7 +37,7 @@ struct Execution {
 
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
-                Draw, Info, Compact, Probabilistic };
+                Draw, Info, Compact, Probabilistic, Tracer };
 
     Type algorithm;
     std::string name;
