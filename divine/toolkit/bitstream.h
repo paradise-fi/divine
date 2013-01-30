@@ -25,7 +25,8 @@ struct base {
     void shift() { bits.pop_front(); }
     uint32_t &front() { return bits.front(); }
     void push( uint32_t i ) { bits.push_back( i ); }
-    base() : pool( 0 ) {}
+    base() : pool( nullptr ) {}
+    base( Pool& p ) : pool( &p ) {}
 };
 
 struct block : std::vector< uint32_t > {};
@@ -53,7 +54,8 @@ template<> struct base< block > {
     }
     void push( uint32_t i ) { bits.push_back( i ); }
     uint32_t &front() { return bits[ offset ]; }
-    base() : offset( 0 ), pool( 0 ) {}
+    base() : offset( 0 ), pool( nullptr ) {}
+    base( Pool& p ) : offset( 0 ), pool( &p ) { }
 };
 
 template< typename B, typename X > struct container {};
