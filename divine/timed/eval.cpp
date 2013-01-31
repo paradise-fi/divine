@@ -103,22 +103,32 @@ const Evaluator::FuncData &Evaluator::getFuncData( int procId, const UTAP::symbo
 void Evaluator::parseArrayValue(   const expression_t &exp,
                         vector< int32_t > &output,
                         int procId ) {
-    if ( exp.getType().isArray() ) {
+    if ( exp.getType().isArray() || exp.getType().isRecord() ) {
         if ( exp.getKind() == LIST ) {
             int arraySize = eval( procId, exp.getType().getArraySize().getRange().second ) + 1;
             for ( int i = 0; i < arraySize; i++ )
                 parseArrayValue( exp[i], output, procId );
         } else {
-            symbol_t s = exp.getSymbol();
-            int pSize;
-            auto p = getArray( procId, exp, &pSize );
-            const VarData &var = *(p.first);
-            if ( var.prefix == PrefixType::CONSTANT ) {
-                const int32_t *varContent = getValue( procId, s );
-                if ( p.second+pSize > var.elementsCount ) {
-                    emitError( EvalError::ARRAY_INDEX );
+            expression_t init_exp = exp;
+            while ( init_exp.getKind() == FUNCALL )
+                init_exp = evalFunCall( procId, init_exp );
+            if ( init_exp.getType().isArray() ) {
+                symbol_t s = init_exp.getSymbol();
+                int pSize;
+                auto p = getArray( procId, init_exp, &pSize );
+                const VarData &var = *(p.first);
+                if ( var.prefix == PrefixType::CONSTANT ) {
+                    const int32_t *varContent = getValue( procId, s );
+                    if ( p.second+pSize > var.elementsCount ) {
+                        emitError( EvalError::ARRAY_INDEX );
+                    }
+                    for ( int i = p.second; i < p.second + pSize; i++ )
+                        output.push_back( varContent[ i ] );
                 }
-                for ( int i = p.second; i < p.second + pSize; i++ )
+            } else {
+                symbol_t s = init_exp.getSymbol();
+                const int32_t *varContent = getValue( procId, s );
+                for ( int i = 0; i < init_exp.getType().getRecordSize(); i++ )
                     output.push_back( varContent[ i ] );
             }
         }
@@ -210,12 +220,20 @@ void Evaluator::processSingleDecl( const symbol_t &s,
         else
             default_value = 0;
         
-        if ( type.isArray() ) {
+        if ( type.isArray() || type.isRecord() ) {
             /*
              *  ARRAY value
              */
 
             PrefixType prefix = basicType.is( CONSTANT ) ? PrefixType::CONSTANT : variablePrefix;
+
+            if ( type.isRecord() ) {
+                for ( int i = 0; i  < type.getRecordSize(); i++ ) {
+                    if ( type.getSub( i ).isArray() || type.getSub( i ).isRecord() )
+                        throw runtime_error( "Nested structures and structures "
+                                                "with arrays are not supported." );
+                }
+            }
 
             vector< int > arrSizes;
             int size = getArraySizes( procId, type, arrSizes );
@@ -522,6 +540,8 @@ void Evaluator::assign( const expression_t& lval, int32_t val, int pId ) {
         var = make_pair( &getVarData( pId, lval.getSymbol() ), 0 );
     else if ( lval.getKind() == ARRAY )
         var = getArray( pId, lval );
+    else if ( lval.getKind() == DOT )
+        var = make_pair( &getVarData( pId, lval[0].getSymbol() ), lval.getIndex() );
     else
         assert( false );
     int index = var.first->offset + var.second;
@@ -543,17 +563,23 @@ void Evaluator::assign( const expression_t& lval, int32_t val, int pId ) {
 }
 
 void Evaluator::assign( const expression_t& lexp, const expression_t& rexp, int pId ) {
-    if ( rexp.getType().is( ARRAY ) ) { // assign array to array
+    if ( rexp.getKind() == FUNCALL ) {
+        assign( lexp, evalFunCall( pId, rexp ), pId );
+        return;
+    }
+
+    if ( rexp.getType().isArray() || rexp.getType().isRecord() ) { // assign array to array
+
         int size;
         auto arr = getArray( pId, lexp );
-        int32_t *pDest = data + arr.first->offset + arr.second;
-        arr = getArray( pId, rexp, &size );
         int32_t *data;
         if ( arr.first->prefix == PrefixType::LOCAL )
             data = &metaValues[0];
         else
             data = Evaluator::data;
         
+        int32_t *pDest = data + arr.first->offset + arr.second;
+        arr = getArray( pId, rexp, &size );
         int32_t *pSrc = data + arr.first->offset + arr.second;
         int32_t *pEnd = pSrc + size;
         assert ( pEnd - pSrc <= arr.first->elementsCount );
@@ -820,7 +846,7 @@ void Evaluator::pushStatements( int procId, vector< StatementInfo > &stack, Stat
     }
 }
 
-int32_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
+const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
     const symbol_t &sym_f = exp[0].getSymbol();
     const FuncData &fdata = getFuncData( procId, sym_f );
     assert( fdata.fun );
@@ -902,17 +928,17 @@ int32_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
             // UTAP does not know switch, case, default keywords
             cerr << "Switch statement is not supported" << endl;
             assert( false );
-            return 0;
+            return expression_t::createConstant( 0 );
 
         } else if ( dynamic_cast< const CaseStatement* >( stmt ) ) {
             cerr << "Case statement is not supported" << endl;
             assert( false );
-            return 0;
+            return expression_t::createConstant( 0 );
         
         } else if ( dynamic_cast< const DefaultStatement* >( stmt ) ) {
             cerr << "Default statement is not supported" << endl;
             assert( false );
-            return 0;
+            return expression_t::createConstant( 0 );
         
         } else if ( dynamic_cast< const IfStatement* >( stmt ) ) {
             const IfStatement *eval_stmt = dynamic_cast< const IfStatement* >( stmt );
@@ -931,36 +957,37 @@ int32_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
             // delete current block + one more statement (while/for "header")
             cerr << "Break statement is not supported" << endl;
             assert( false );
-            return 0;
+            return expression_t::createConstant( 0 );
 
         } else if ( dynamic_cast< const ContinueStatement* >( stmt ) ) {
             cerr << "Continue statement is not supported" << endl;
             assert( false );
-            return 0;
+            return expression_t::createConstant( 0 );
         
         } else if ( dynamic_cast< const ReturnStatement* >( stmt ) ) {
-            return eval( procId, dynamic_cast< const ReturnStatement* >( stmt )->value );
+            return dynamic_cast< const ReturnStatement* >( stmt )->value;
         
         } else {
             cerr << "Unknown statement type" << std::endl;
             assert( false );
-        
+            return expression_t::createConstant( 0 );
         }
     }
     
-    return 0;
+    return expression_t::createConstant( 0 );
 }
 
 int32_t Evaluator::eval( int procId, const expression_t& expr ) {
     if ( expr.empty() )
         return 1;
+    if ( expr.getKind() == RECORD || expr.getKind() == LIST )
+        return 1;
 
     assert( !expr.getType().isClock() );
     assert( !expr.getType().isChannel() );
-    assert( !expr.getType().is( LIST ) );
 
     if ( expr.getKind() == FUNCALL )
-        return evalFunCall( procId, expr );
+        return eval( procId, evalFunCall( procId, expr ) );
 
     switch ( expr.getSize() ) {
         case 3:
@@ -969,14 +996,19 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
             return  binop( procId, expr.getKind(), expr[0], expr[1] );
         case 1:
             if ( expr.getKind() == DOT ) {
-                int pId = resolveId( -1, expr[0] );
-                auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
-                symbol_t symb = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
-                if ( symb.getType().isLocation() ) {
-                    auto location = static_cast< const state_t* >( symb.getData() );   // get location
-                    return locations[ pId ] == location->locNr;
+                if ( expr[0].getType().isRecord() ) {
+                    int index = expr.getIndex();
+                    return getValue( procId, expr[0].getSymbol() )[ index ];
                 } else {
-                    return *getValue( getVarData( procId, expr ) );
+                    int pId = resolveId( -1, expr[0] );
+                    auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
+                    symbol_t symb = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
+                    if ( symb.getType().isLocation() ) {
+                        auto location = static_cast< const state_t* >( symb.getData() );   // get location
+                        return locations[ pId ] == location->locNr;
+                    } else {
+                        return *getValue( getVarData( procId, expr ) );
+                    }
                 }
             }
             return unop( procId, expr.getKind(), expr[0] ) ;

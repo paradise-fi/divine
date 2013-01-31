@@ -124,7 +124,7 @@ private:
     void pushStatements( int, std::vector< StatementInfo > &, StatementInfo );
     void emitError( int code ) __attribute__((noreturn));
     void setClockLimits( int procId, const UTAP::expression_t &exp, std::vector< std::pair< int32_t, int32_t > > & );
-    int32_t evalFunCall( int procId, const UTAP::expression_t &exp );
+    const UTAP::expression_t evalFunCall( int procId, const UTAP::expression_t &exp );
     int resolveId( int procId, const UTAP::expression_t& expr );
 
 public:
