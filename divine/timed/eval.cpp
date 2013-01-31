@@ -134,6 +134,10 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                         int procId,
                         bool local ) {
 
+    if ( s.getType().is( META ) )
+        cerr << "Meta variables are not supported. " << s.getName()
+             << " will be part of the state." << endl;
+
     const type_t& type = s.getType();
     const type_t& basicType = getBasicType( type );
 
