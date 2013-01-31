@@ -124,7 +124,6 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
                     int lastPID = -1;
                     for ( auto recv = sync[ chan ].begin(); recv != sync[ chan ].end(); ++recv ) {
                         if ( (*itr)->procId == (*recv)->procId ) continue;  // prevent synchronization with itself
-                        assert( (*recv)->assign.getType().isIntegral() );
                         if ( !evalGuard( *recv ) ) continue;    // this does not change the state, because broadcast guards can not contain clocks
                         if ( (*recv)->procId != lastPID ) { // edges in _sync_ are sorted by process id
                             receivers.push_back( std::vector< EdgeInfo* >() );
@@ -348,6 +347,7 @@ TAGen::PropGuard TAGen::buildPropGuard( const std::vector< std::pair< bool, std:
 
 bool TAGen::evalPropGuard( char* d, const TAGen::PropGuard& g ) {
     setData( d );
+    assert( !isErrState( d ) );
     if ( g.expr.empty() )
         return true;
     try {

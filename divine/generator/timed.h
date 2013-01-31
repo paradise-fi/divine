@@ -43,7 +43,9 @@ struct Timed : public Common< Blob > {
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
                 Node n = alloc.new_blob( gen.stateSize() );
                 memcpy( mem( n ), succ, gen.stateSize() );
-                if ( gen.evalPropGuard( mem( n ), propGuards[ btr->second ] ) ) {
+                if ( gen.isErrState( mem( n ) ) ) {
+                    yield( n, Label() );
+                } else if ( gen.evalPropGuard( mem( n ), propGuards[ btr->second ] ) ) {
                     gen.setPropLoc( mem( n ), btr->first );
                     yield( n, Label() );
                 } else {
@@ -54,6 +56,8 @@ struct Timed : public Common< Blob > {
     }
 
     bool isAccepting( Node n ) {
+        if ( gen.isErrState( mem( n ) ) )
+            return false;
         return buchi.isAccepting( gen.getPropLoc( mem( n ) ) );
     }
 
@@ -77,8 +81,10 @@ struct Timed : public Common< Blob > {
             char* copy = &tmp[0];
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
                 memcpy( copy, succ, gen.stateSize() );
-                if ( !gen.evalPropGuard( copy, propGuards[ btr->second ] ) ) continue;
-                gen.setPropLoc( copy, btr->first );
+                if ( !gen.isErrState( copy ) ) {
+                    if ( !gen.evalPropGuard( copy, propGuards[ btr->second ] ) ) continue;
+                    gen.setPropLoc( copy, btr->first );
+                }
                 if ( memcmp( copy, mem( to ), gen.stateSize() ) == 0 ) {
                     if ( e ) {
                         if ( e->syncType >= 0 )
