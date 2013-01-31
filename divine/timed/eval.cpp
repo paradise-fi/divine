@@ -6,7 +6,9 @@
 #include "clocks.h"
 #include "eval.h"
 #include <utap/utap.h>
-#include <dbm/dbm.h>
+
+// #define LOCATION_BASED_EXTRAPOLATION_OFF
+// #define LU_EXTRAPOLATION_OFF
 
 using namespace UTAP;
 using namespace UTAP::Constants;
@@ -652,6 +654,9 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
     fixedClockLimits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
 
     computeLocClockLimits( procs );
+#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
+    computeLocalBounds();
+#endif
 }
 
 // after collectResets, out[c] is true iff the clock _c_ is reseted on the edge _e_
@@ -674,19 +679,31 @@ void Evaluator::computeLocClockLimits( const vector< instance_t > &procs ) {
     int i = 0;
     for ( const instance_t &p : procs ) {
         for ( state_t &s : p.templ->states ) {
+#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
+            setClockLimits( i, s.invariant, fixedClockLimits );
+#else
             limitsVector limits;
             limits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
             setClockLimits( i, s.invariant, limits );
             locClockLimits[ i ][ s.locNr ] = limits;
+#endif
         }
         for ( edge_t &e : p.templ->edges ) {
+#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
+            setClockLimits( i, e.guard, fixedClockLimits );
+#else
             symbol_t src = e.src->uid;
             limitsVector &limits = locClockLimits[ i ][ e.src->locNr ];
             assert( limits.size() == ClockTable.size() );
             setClockLimits( i, e.guard, limits );
+#endif
         }
         ++i;
     }
+
+#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
+    return;
+#endif
 
     bool change = true;
     while ( change ) {
@@ -721,11 +738,18 @@ void Evaluator::computeLocClockLimits( const vector< instance_t > &procs ) {
 void Evaluator::computeLocalBounds() {
     vector< pair< int32_t, int32_t > > bounds = fixedClockLimits;
     assert( fixedClockLimits.size() == ClockTable.size() );
+
     for ( int proc = 0; proc < ProcessTable.size(); ++proc ) {
         for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
             auto &b = locClockLimits[ proc ][ locations[ proc ] ][ clk ];
             bounds[ clk ].first = max( b.first, bounds[ clk ].first );
             bounds[ clk ].second = max( b.second, bounds[ clk ].second );
+#endif
+#ifdef LU_EXTRAPOLATION_OFF
+            bounds[ clk ].first =
+            bounds[ clk ].second = max( bounds[ clk ].first, bounds[ clk ].second );
+#endif
         }
     }
 
@@ -979,8 +1003,10 @@ void Evaluator::setData( char *d, Locations l ) {
 }
 
 void Evaluator::extrapolate() {
+#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
     computeLocalBounds();
-    clocks.extrapolate( clockDiffrenceExprs.empty() );
+#endif
+    clocks.extrapolate( );
 }
 
 /*

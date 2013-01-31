@@ -2,6 +2,8 @@
 #include <external/dbm/include/dbm/dbm.h>
 #include <external/dbm/include/dbm/print.h>
 
+// #define LU_EXTRAPOLATION_OFF
+
 void Clocks::up() {
     assert( dbm_isValid( data, dim ) );
     dbm_up( data, dim );
@@ -154,10 +156,10 @@ bool Clocks::updateUpperBound( unsigned int id, int32_t limit ) {
     return false;
 }
 
-void Clocks::extrapolate( bool diagonal ) {
-    assert( !isEmpty() );
-    if ( diagonal )
-        dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
-    else
-        dbm_extrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
+void Clocks::extrapolate() {
+#ifdef LU_EXTRAPOLATION_OFF
+    dbm_diagonalExtrapolateMaxBounds( data, dim, &bounds[ 0 ] );
+#else
+    dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
+#endif
 }

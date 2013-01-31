@@ -41,7 +41,7 @@ public:
 	// performs clock extrapolation based on currently set limits
 	// if the argument is true, diagonal extrapolation is performed,
 	// which can break constraints including clock differences
-    void extrapolate( bool diagonal = true );
+    void extrapolate();
 
     // Returns number of bytes required to store clocks (always multiple of 4)
     unsigned int getReqSize() const {
