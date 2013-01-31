@@ -106,6 +106,7 @@ private:
     int32_t *getValue( const VarData &var );
     int32_t *getValue( int procId, const UTAP::symbol_t& s );
     bool inRange( int procId, const UTAP::symbol_t& s, int32_t value ) const;
+    std::pair < int32_t, int32_t > getRange( int procId, const UTAP::expression_t &expr );
     void collectResets( int pId, const UTAP::template_t &templ, const UTAP::edge_t &e, std::vector< bool > & out );
 
     typedef std::vector< std::pair< int32_t, int32_t > >  limitsVector;

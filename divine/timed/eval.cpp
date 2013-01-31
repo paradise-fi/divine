@@ -1017,6 +1017,16 @@ std::ostream& operator<<( std::ostream& o, Evaluator& e ) {
     return o;
 }
 
+
+static bool isConstant( const expression_t &expr ) {
+    set< symbol_t > reads;
+    expr.collectPossibleReads( reads );
+    for ( const symbol_t &r : reads )
+        if ( !r.getType().isConstant() )
+            return false;
+    return true;
+}
+
 void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr ) {
     setClockLimits( procId, expr, fixedClockLimits );
 }
@@ -1029,9 +1039,20 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
             setClockLimits( procId, expr[1], out );
             setClockLimits( procId, expr[2], out );
         case 2:
-            if (expr[0].getKind() == ARRAY && expr[0].getType().isClock() ) {
-                const VarData &var = getVarData( procId, expr[0].getSymbol() );
-                int32_t limit = eval( procId, expr[1] );
+            if (   ( expr[0].getKind() == ARRAY && expr[0].getType().isClock() )
+                || ( expr[1].getKind() == ARRAY && expr[1].getType().isClock() )) {
+
+                int clock_index, limit_index;
+                if ( expr[0].getType().isClock() ) {
+                    clock_index = 0;
+                    limit_index = 1;
+                } else {
+                    clock_index = 1;
+                    limit_index = 0;
+                }
+
+                const VarData &var = getVarData( procId, expr[clock_index].getSymbol() );
+                int32_t limit = getRange( procId, expr[ limit_index ] ).second;
 
                 for ( int clockIndex = var.offset; clockIndex < var.offset + var.elementsCount; ++clockIndex ) {
                     assert( clockIndex < ClockTable.size() );
@@ -1046,11 +1067,11 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
                 int32_t limit;
                 int clockIndexl, clockIndexr;
                 if ( expr[0].getType().isDiff() ) {
-                    limit = eval( procId, expr[1] );
+                    limit = abs( getRange( procId, expr[ 1 ] ).second );
                     clockIndexl = resolveId( procId, expr[0][0] );
                     clockIndexr = resolveId( procId, expr[0][1] );
                 } else {
-                    limit = eval( procId, expr[0] );
+                    limit = abs( getRange( procId, expr[ 0 ] ).second );
                     clockIndexl = resolveId( procId, expr[1][0] );
                     clockIndexr = resolveId( procId, expr[1][1] );
                 }
@@ -1068,11 +1089,11 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
                 int32_t limit;
                 if ( expr[1].getType().isClock() ) {
                     clockIndex = resolveId( procId, expr[1] );
-                    limit = eval( procId, expr[0] );
+                    limit = abs( getRange( procId, expr[ 0 ] ).second );
                     upper = !upper;
                 } else {
                     clockIndex = resolveId( procId, expr[0] );
-                    limit = eval( procId, expr[1] );
+                    limit = abs( getRange( procId, expr[ 1 ] ).second );
                 }
                 if ( expr.getKind() == EQ ) {
                     if ( out[ clockIndex ].first < limit )
@@ -1097,6 +1118,32 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
             break;
         case 0:
             break;
+    }
+}
+
+pair < int32_t, int32_t > Evaluator::getRange( int procId, const expression_t &expr ) {
+    if ( isConstant( expr ) )
+        return make_pair( eval( procId, expr ), eval( procId, expr ) );
+    else if ( expr.getKind() == IDENTIFIER )
+        return evalRange( procId, expr.getType() );
+    else if ( expr.getKind() == PLUS ) {
+        auto rl = getRange( procId, expr[0] ) , rr = getRange( procId, expr[1] );
+        return make_pair( rl.first + rr.first, rl.second + rr.second );
+    } else if ( expr.getKind() == MINUS ) {
+        auto rl = getRange( procId, expr[0] ) , rr = getRange( procId, expr[1] );
+        return make_pair( rl.first - rr.second, rl.second - rr.first );
+    } else if ( expr.getKind() == MAX ) {
+        auto rl = getRange( procId, expr[0] ) , rr = getRange( procId, expr[1] );
+        return make_pair( max( rl.first, rr.first ), max( rl.second, rr.second) );
+    } else if ( expr.getKind() == MIN ) {
+        auto rl = getRange( procId, expr[0] ) , rr = getRange( procId, expr[1] );
+        return make_pair( min( rl.first, rr.first ), min( rl.second, rr.second) );
+    } else if ( expr.getKind() == INLINEIF ) {
+        auto rtrue = getRange( procId, expr[1] );
+        auto rfalse = getRange( procId, expr[2] );
+        return make_pair( min( rtrue.first, rfalse.first), max( rtrue.second, rfalse.second) );
+    } else {
+        return ( make_pair( numeric_limits< int >::min(), numeric_limits< int >::max() ) );
     }
 }
 
