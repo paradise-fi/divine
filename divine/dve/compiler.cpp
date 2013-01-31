@@ -26,6 +26,21 @@ void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr, std::strin
     }
 }
 
+void DveCompiler::write_C( parse::RValue & expr, std::ostream & ostr,
+                           std::string state_name, std::string context  )
+{
+    if ( expr.ident.valid() ) {
+        ostr << state_name << "." << getVariable( expr.ident.name(), context );
+        if ( expr.idx && expr.idx->valid() ) {
+            ostr << "[ ";
+            write_C( *expr.idx, ostr, state_name, context );
+            ostr << " ]";
+        }
+    } else {
+        ostr << expr.value.value;
+    }
+}
+
 void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state_name, std::string context )
 {
     std::map< TI::TokenId, const char * > op;
@@ -78,14 +93,8 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
         write_C( *expr.lhs, ostr, state_name, context );
         ostr << " )";
     }
-    else {
-        if ( expr.rval->ident.valid() ) {
-            ostr << state_name << "." << getVariable( expr.rval->ident.name(), context );
-        }
-        else {
-            ostr << expr.rval->value.value;
-        }
-    }
+    else
+        write_C( *expr.rval, ostr, state_name, context );
 
 }
 

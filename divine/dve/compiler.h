@@ -105,6 +105,7 @@ struct DveCompiler
     void write_C( parse::Expression & expr, std::ostream & ostr, std::string state_name, std::string context );
 
     void write_C( parse::LValue & expr, std::ostream & ostr, std::string state_name, std::string context );
+    void write_C( parse::RValue & expr, std::ostream & ostr, std::string state_name, std::string context );
 
     bool m_if_disjoint;
     bool m_if_empty;
