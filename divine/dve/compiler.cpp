@@ -138,15 +138,7 @@ void DveCompiler::gen_header()
 
     line( compile_defines_str );
 
-    line( divine::toolkit_pool_h_str );
-    line();
-
-    line( divine::toolkit_blob_h_str );
-    line();
-
-    line( "using namespace divine;" );
-
-    //line( divine::generator_cesmi_client_h_str );
+    line( divine::cesmi_usr_cesmi_h_str );
     line();
 }
 
@@ -283,12 +275,13 @@ void DveCompiler::gen_initial_state()
 {
     //setAllocator( new Allocator );
 
-    append( "extern \"C\" void get_initial( CESMISetup *setup, Blob *out )" );
+    append( "int get_initial( cesmi_setup *setup, int handle, cesmi_node *out )" );
 
     block_begin();
-    line( "Blob b( *(setup->pool), state_size + setup->slack );" );
-    line( "b.clear();" );
-    line( "state_struct_t &_out = b.get< state_struct_t >( setup->slack );");
+    line( "if ( handle != 1 ) return 0;" );
+    line( "*out = setup->make_node( setup->allocation_handle, state_size );" );
+    line( "memset( out->memory, 0, state_size );" );
+    line( "state_struct_t &_out = *reinterpret_cast< state_struct_t * >( out->memory );");
 
     std::string process = "_out";
     for ( parse::Declaration &decl : ast->decls ) {
@@ -334,7 +327,7 @@ void DveCompiler::gen_initial_state()
             }
         }
     }
-    line( "*out = b;" );
+    line( "return 2;" );
     block_end();
 
     line();
@@ -613,25 +606,14 @@ void DveCompiler::transition_effect( ExtTransition * et, string in, string out )
 }
 
 void DveCompiler::new_output_state() {
-    line( "divine::Blob blob_out( *(setup->pool), setup->slack + state_size );" );
-    line( "state_struct_t *out = &blob_out.get< state_struct_t >( setup->slack );" );
-    line( "blob_out.clear( 0, setup->slack );" );
+    line( "cesmi_node blob_out = setup->make_node( setup->allocation_handle, state_size );" );
+    line( "state_struct_t *out = reinterpret_cast< state_struct_t * >( blob_out.memory );" );
     line( "*out = *in;" );
 }
 
 void DveCompiler::yield_state() {
-    if ( many ) {
-        line( "if (buf_out->space() < 2) {" );
-        line( "    buf_out->unadd( states_emitted );" );
-        line( "    return;" );
-        line( "}");
-        line( "buf_out->add( (*buf_in)[ 0 ] );" );
-        line( "buf_out->add( blob_out );" );
-        line( "++states_emitted;" );
-    } else {
-        line( "*to = blob_out;" );
-        line( "return " + fmt( current_label ) + ";" );
-    }
+    line( "*to = blob_out;" );
+    line( "return " + fmt( current_label ) + ";" );
 }
 
 void DveCompiler::gen_successors()
@@ -772,10 +754,10 @@ void DveCompiler::gen_is_accepting()
     if(!have_property)
         return;
 
-    line( "extern \"C\" bool is_accepting( CESMISetup *setup, Blob b )" );
+    line( "uint64_t get_flags( cesmi_setup *setup, cesmi_node n )" );
     block_begin();
 
-    line( "state_struct_t &state = b.get< state_struct_t >( setup->slack );" );
+    line( "state_struct_t &state = *reinterpret_cast< state_struct_t * >( n.memory );" );
     size_t i;
 
     parse::Process &property = getProcess( ast->property.name() );
@@ -785,11 +767,11 @@ void DveCompiler::gen_is_accepting()
            if_begin( true );
            if_clause( in_state( property, i, "state" ) );
            if_end();
-           line( "    return true;" );
+           line( "    return cesmi_accepting;" );
        }
     }
 
-    line( "return false;" );
+    line( "return 0;" );
     block_end();
 
     line();
@@ -802,9 +784,8 @@ void DveCompiler::print_generator()
     gen_state_struct();
     gen_initial_state();
 
-    line( "extern \"C\" void setup( CESMISetup *setup ) {" );
-    line( "    setup->state_size = state_size;" );
-    line( "    setup->has_property = " + fmt( have_property ) + ";" );
+    line( "void setup( cesmi_setup *setup ) {" );
+    line( "    setup->property_count = 1 + " + fmt( have_property ) + ";" );
     line( "}" );
 
     many = false;
@@ -812,9 +793,9 @@ void DveCompiler::print_generator()
 
     gen_is_accepting();
 
-    line( "extern \"C\" int get_successor( CESMISetup *setup, int next_state, Blob from, Blob *to ) " );
+    line( "int get_successor( cesmi_setup *setup, int next_state, cesmi_node from, cesmi_node *to ) " );
     block_begin();
-    line( "const state_struct_t *in = &from.get< state_struct_t >( setup->slack );" );
+    line( "const state_struct_t *in = reinterpret_cast< state_struct_t * >( from.memory );" );
     line( "bool system_in_deadlock = false;" );
     line( "goto switch_state;" );
 
@@ -833,31 +814,6 @@ void DveCompiler::print_generator()
     block_end();
 
     block_end();
-
-    // many = true;
-    // current_label = 0;
-#if 0
-    line( "extern \"C\" void get_many_successors( int slack, char *_pool, char *," );
-    line( "                                       char *_buf_in, char *_buf_outf, char *_buf_outs ) " );
-    block_begin();
-    line( "divine::Pool *pool = (divine::Pool *) _pool;" );
-    line( "typedef divine::Circular< divine::Blob, 0 > Buffer;" );
-    line( "Buffer *buf_in = (Buffer *) _buf_in;" );
-    line( "Buffer *buf_out = (Buffer *) _buf_out;" );
-    line( "int states_emitted;" );
-    line( "bool system_in_deadlock;" );
-    line( "state_struct_t *in;" );
-
-    line( "next:" );
-    line( "system_in_deadlock = true;" );
-    line( "states_emitted = 0;" );
-    line( "in = (state_struct_t*) ((*buf_in)[ 0 ].data() + slack);" );
-    gen_successors();
-    line( "buf_in->drop( 1 );" );
-    line( "if ( buf_in->empty() ) return;" );
-    line( "goto next;" );
-    block_end();
-#endif
 }
 
 }
