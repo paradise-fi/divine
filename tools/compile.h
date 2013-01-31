@@ -91,12 +91,8 @@ struct Compile {
     }
 
     void compileDve( std::string in ) {
-#ifdef O_LEGACY
-        dve_compiler compiler;
-//*
-#elif defined O_DVE
+#if defined O_DVE
         dve::compiler::DveCompiler compiler;
-//*/
 #else
         die( "FATAL: The DVE compiler requires DVE backend." );
 #endif
