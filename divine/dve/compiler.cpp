@@ -306,7 +306,7 @@ void DveCompiler::gen_initial_state()
 
     for ( parse::Process &p : ast->processes ) {
         process = std::string( "_out." ) + p.name.name();
-        for ( parse::Declaration &decl : ast->decls ) {
+        for ( parse::Declaration &decl : p.decls ) {
             std::string var = process + "." + decl.name;
             if ( decl.is_array ) {
                 for ( size_t i = 0; i < decl.initial.size(); i++ ) {
