@@ -790,6 +790,20 @@ void DveCompiler::print_generator()
     line( "    setup->property_count = 1 + " + fmt( have_property ) + ";" );
     line( "}" );
 
+    line( "int get_property_type( cesmi_setup *setup, int n ) {" );
+    line( "    switch ( n ) {" );
+    line( "    case 0: return cesmi_pt_deadlock;" );
+    line( "    case 1: return cesmi_pt_buchi;" );
+    line( "    }" );
+    line( "}" );
+
+    line( "char *show_property( cesmi_setup *setup, int n ) {" );
+    line( "    switch ( n ) {" );
+    line( "    case 0: return strdup( \"deadlock\" );" );
+    line( "    case 1: return strdup( \"LTL\" );" );
+    line( "    }" );
+    line( "}" );
+
     many = false;
     current_label = 1;
 
