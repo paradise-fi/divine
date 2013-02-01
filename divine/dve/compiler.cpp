@@ -61,6 +61,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
 
     op[ TI::Bool_Not ] = "!"; op[ TI::Tilde ] = "~";
 
+    assert( op.count( expr.op.id ) );
     if ( expr.lhs && expr.rhs ) {
         ostr << "(" ;
         switch ( expr.op.id ) {
