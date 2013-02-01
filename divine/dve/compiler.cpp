@@ -55,7 +55,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
     op[ TI::And ] = "&"; op[ TI::Or ] = "|"; op[ TI::Xor ] = "^";
     op[ TI::LShift ] = "<<"; op[ TI::RShift ] = ">>";
 
-    op[ TI::Bool_And ] = "&&"; op[ TI::Bool_Not ] = "||";
+    op[ TI::Bool_And ] = "&&"; op[ TI::Bool_Or ] = "||";
 
     op[ TI::Assignment ] = "=";
 
@@ -63,7 +63,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
 
     assert( op.count( expr.op.id ) );
     if ( expr.lhs && expr.rhs ) {
-        ostr << "(" ;
+        ostr << "(";
         switch ( expr.op.id ) {
             case TI::Period:
             {
@@ -90,7 +90,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
         ostr << ")";
     }
     else if ( expr.lhs ) {
-        ostr << op[ expr.op.id ] << "( ";
+        ostr << op[ expr.op.id ] << "(";
         write_C( *expr.lhs, ostr, state_name, context );
         ostr << " )";
     }
@@ -251,7 +251,7 @@ void DveCompiler::gen_state_struct()
             declare( typeOf( chandecl.components[j] ), "x" + fmt( j ) );
         }
         block_end();
-        line( "content" + fmt( chandecl.size ) + "];" );
+        line( "content[" + fmt( chandecl.size ) + "];" );
         block_end();
         line( "__attribute__((__packed__)) " + chandecl.name + ";" );
     }
