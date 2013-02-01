@@ -149,6 +149,7 @@ coin_small() {
 
 all_small() {
     dve_small "$@"
+    dve_compiled_small "$@"
     llvm_small "$@"
     coin_small "$@"
     timed_small "$@"
