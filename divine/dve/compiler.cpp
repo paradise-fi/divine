@@ -752,28 +752,34 @@ void DveCompiler::gen_successors()
 
 void DveCompiler::gen_is_accepting()
 {
-    // not compulsory, so don't bother if not needed
-    if(!have_property)
-        return;
-
     line( "uint64_t get_flags( cesmi_setup *setup, cesmi_node n )" );
     block_begin();
 
     line( "state_struct_t &state = *reinterpret_cast< state_struct_t * >( n.memory );" );
-    size_t i;
+    line( "uint64_t f = 0;" );
 
-    parse::Process &property = getProcess( ast->property.name() );
-
-    for ( i = 0; i < property.states.size(); i++ ) {
-       if ( isAccepting( property, i ) ) {
-           if_begin( true );
-           if_clause( in_state( property, i, "state" ) );
-           if_end();
-           line( "    return cesmi_accepting;" );
-       }
+    if ( have_property ) {
+        parse::Process &property = getProcess( ast->property.name() );
+        for ( int i = 0; i < int( property.states.size() ); i++ ) {
+            if ( isAccepting( property, i ) ) {
+                if_begin( true );
+                if_clause( in_state( property, i, "state" ) );
+                if_end();
+                line( "    f |= cesmi_accepting;" );
+            }
+        }
     }
 
-    line( "return 0;" );
+    for ( auto &p : ast->processes )
+        for ( auto &a : p.asserts ) {
+            if_begin( false );
+            if_clause( in_state( p, getStateId( p, a.state.name() ), "state" ) );
+            if_cexpr_clause( &a.expr, "state", p.name.name() );
+            if_end();
+            line( "; else f |= cesmi_goal;" );
+        }
+
+    line( "return f;" );
     block_end();
 
     line();
@@ -787,20 +793,22 @@ void DveCompiler::print_generator()
     gen_initial_state();
 
     line( "void setup( cesmi_setup *setup ) {" );
-    line( "    setup->property_count = 1 + " + fmt( have_property ) + ";" );
+    line( "    setup->property_count = 2 + " + fmt( have_property ) + ";" );
     line( "}" );
 
     line( "int get_property_type( cesmi_setup *setup, int n ) {" );
     line( "    switch ( n ) {" );
     line( "    case 0: return cesmi_pt_deadlock;" );
-    line( "    case 1: return cesmi_pt_buchi;" );
+    line( "    case 1: return cesmi_pt_goal;" );
+    line( "    case 2: return cesmi_pt_buchi;" );
     line( "    }" );
     line( "}" );
 
     line( "char *show_property( cesmi_setup *setup, int n ) {" );
     line( "    switch ( n ) {" );
     line( "    case 0: return strdup( \"deadlock\" );" );
-    line( "    case 1: return strdup( \"LTL\" );" );
+    line( "    case 1: return strdup( \"assert\" );" );
+    line( "    case 2: return strdup( \"LTL\" );" );
     line( "    }" );
     line( "}" );
 
