@@ -181,12 +181,14 @@ public:
         return nodes.size();
     }
 
+    typedef std::map< std::string, std::string > StringMap;
+
     // read LTL file, builds list of properties and definitions
     // returns true if at leas one property was read
-    static bool readLTLFile( const std::string& fname, std::vector< std::string >& props, std::map< std::string, std::string >& defs );
+    static bool readLTLFile( const std::string& fname, std::vector< std::string >& props, StringMap& defs );
 
     // prints automaton constructed from given property in dve format
-    static std::ostream& printAutomaton( std::ostream& o, const std::string& property, const std::map< std::string, std::string >& defs = std::map< std::string, std::string >() );
+    static std::ostream& printAutomaton( std::ostream& o, const std::string& property, const StringMap& defs = StringMap() );
 };
 
 }
