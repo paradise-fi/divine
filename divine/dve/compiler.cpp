@@ -60,6 +60,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
     op[ TI::Assignment ] = "=";
 
     op[ TI::Bool_Not ] = "!"; op[ TI::Tilde ] = "~";
+    op[ TI::Invalid ] = "XXX";
 
     assert( op.count( expr.op.id ) );
     if ( expr.lhs && expr.rhs ) {
