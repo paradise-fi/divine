@@ -283,6 +283,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     {
         this->init( this );
         maxdist = m.algorithm.maxDistance;
+        if ( maxdist <= 0 )
+            throw wibble::exception::Consistency(
+                "The --distance specified (" + wibble::str::fmt( maxdist ) +
+                " is too small, must be at least 1." );
         output = m.output.file;
         render = m.output.filterProgram;
         trace = m.input.trace;
