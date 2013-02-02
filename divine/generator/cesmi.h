@@ -18,6 +18,13 @@
 namespace divine {
 namespace generator {
 
+static const char * const cesmi_ext =
+#if defined(_WIN32)
+    ".dll";
+#else
+    ".so";
+#endif
+
 namespace cesmi {
 #include <divine/cesmi/usr-cesmi.h>
 };

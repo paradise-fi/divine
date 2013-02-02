@@ -12,7 +12,7 @@
 
 #include "combine.h"
 #include <divine/dve/compiler.h>
-#include <unistd.h>
+#include <divine/generator/cesmi.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -104,7 +104,7 @@ struct Compile {
         compiler.setOutput( out );
         compiler.print_generator();
 
-        gplusplus( outfile, str::basename( in ) + ".so" );
+        gplusplus( outfile, str::basename( in ) + generator::cesmi_ext );
     }
 
     void compileMurphi( std::string in );
@@ -181,12 +181,8 @@ struct Compile {
         }
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-#ifdef POSIX
-        std::string ext = ".so";
-#elif defined(_WIN32)
-        std::string ext = ".dll";
-#endif
-        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename + ext + " " + in + extras,
+        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
+             generator::cesmi_ext + " " + in + extras,
              trap, trap_arg );
         if ( trap ) trap( trap_arg );
     }

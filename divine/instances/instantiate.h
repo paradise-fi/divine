@@ -168,11 +168,7 @@ algorithm::Algorithm *selectGraph( Meta &meta )
 		meta.input.modelType = "Timed";
 		return makeAlgorithmN< A, generator::Timed >( meta );
 #endif
-#if defined(_WIN32)
-    } else if ( wibble::str::endsWith( meta.input.model, ".dll" ) ) {
-#else
-    } else if ( wibble::str::endsWith( meta.input.model, ".so" ) ) {
-#endif
+    } else if ( wibble::str::endsWith( meta.input.model, generator::cesmi_ext ) ) {
         meta.input.modelType = "CESMI";
         return makeAlgorithmN< A, generator::CESMI >( meta );
 #ifndef O_SMALL
