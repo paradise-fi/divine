@@ -1,6 +1,6 @@
 . lib
 
-dve_small mpi verify --reachability -w 1
+dve_small mpi_verify --reachability -w 1
 
 run mpi verify --reachability data/shuffle.dve
 check reachability_valid

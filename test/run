@@ -16,6 +16,9 @@ verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce,,g"); }
 
+mpi_verify() { mpi verify "$@"; }
+mpi_metrics() { mpi metrics "$@"; }
+
 mpi() {
     test "$O_MPI" = "ON" || exit 200;
     "$MPIEXEC" > /dev/null 2>&1 || exit 200; # probably not found
