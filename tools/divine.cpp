@@ -390,6 +390,9 @@ struct Main {
         cmd_verify->add( reduce );
 	cmd_verify->add( input );
 
+        cmd_simulate->add( common );
+        cmd_simulate->add( reduce );
+
         cmd_compact->add( common );
         cmd_compact->add( compact );
         cmd_compact->add( reduce );
