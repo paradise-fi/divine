@@ -155,8 +155,12 @@ all_small() {
 }
 
 chmod +x check run
+
 PATH=".:$PATH"
 extracheck=:
+export cesmiext=.so
+test "$WIN32" = 1 && cesmiext=.dll
+
 set -vex -o pipefail
 trap "check debris" EXIT
 

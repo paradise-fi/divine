@@ -46,7 +46,7 @@ dve_compile() {
     shift 2
 
     ann divine compile $file
-    fixreduce "$@" "$property" `basename $file.so`
+    fixreduce "$@" "$property" `basename $file$cesmiext`
 }
 
 llvm_assemble() {
