@@ -13,9 +13,9 @@ algorithm::Algorithm *select( Meta &m )
         case meta::Algorithm::Metrics:
             m.algorithm.name = "Metrics";
             return selectMetrics( m );
-        case meta::Algorithm::Tracer:
-            m.algorithm.name = "Tracer";
-            return selectTracer( m );
+        case meta::Algorithm::Simulate:
+            m.algorithm.name = "Simulate";
+            return selectSimulate( m );
 
         case meta::Algorithm::Owcty:
             m.algorithm.name = "OWCTY";

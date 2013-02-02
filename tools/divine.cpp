@@ -89,7 +89,7 @@ struct Main {
     Report report;
     Meta meta;
 
-    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info, *cmd_tracer;
+    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info, *cmd_simulate;
     OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     IntOption *o_diskfifo;
@@ -253,9 +253,9 @@ struct Main {
         cmd_info = opts.addEngine( "info",
                                    "<input>",
                                    "show information about a model" );
-        cmd_tracer = opts.addEngine( "tracer",
-                                   "<input>",
-                                   "interactive exploration of the state-space" );
+        cmd_simulate = opts.addEngine( "simulate",
+                                       "<input>",
+                                       "explore a state-space interactively" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -376,8 +376,8 @@ struct Main {
         o_reachability = cmd_verify->add< BoolOption >(
             "reachability", 0, "reachability", "", "force reachability" );
 
-        // tracer options
-        o_inputTrace = cmd_tracer->add< StringOption >(
+        // simulate options
+        o_inputTrace = cmd_simulate->add< StringOption >(
             "trace", '\0', "trace", "",
             "generate states of a numeric trace and exit" );
 
@@ -512,7 +512,7 @@ struct Main {
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
-        if ( opts.foundCommand() == cmd_tracer )
+        if ( opts.foundCommand() == cmd_simulate )
             meta.input.trace = o_inputTrace->stringValue();
         else
             meta.input.trace = o_drawTrace->stringValue();
@@ -537,9 +537,9 @@ struct Main {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Draw;
             meta.algorithm.name = "Draw";
-        } else if ( opts.foundCommand() == cmd_tracer ) {
+        } else if ( opts.foundCommand() == cmd_simulate ) {
             meta.execution.threads = 1; // never runs in parallel
-            meta.algorithm.algorithm = meta::Algorithm::Tracer;
+            meta.algorithm.algorithm = meta::Algorithm::Simulate;
         } else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )

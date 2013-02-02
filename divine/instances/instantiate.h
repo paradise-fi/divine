@@ -192,7 +192,7 @@ algorithm::Algorithm *selectMetrics( Meta &m );
 algorithm::Algorithm *selectReachability( Meta &m );
 algorithm::Algorithm *selectProbabilistic( Meta &m );
 algorithm::Algorithm *selectCompact( Meta &m );
-algorithm::Algorithm *selectTracer( Meta &m );
+algorithm::Algorithm *selectSimulate( Meta &m );
 
 algorithm::Algorithm *select( Meta &m );
 

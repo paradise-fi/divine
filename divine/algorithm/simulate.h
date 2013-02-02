@@ -5,7 +5,7 @@ namespace divine {
 namespace algorithm {
 
 template< typename Setup >
-struct Tracer : Algorithm, AlgorithmUtils< Setup >, Sequential
+struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 {
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
@@ -252,7 +252,7 @@ struct Tracer : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
     }
 
-    Tracer( Meta m, bool = true ) : Algorithm( m, sizeof( Extension ) ) {
+    Simulate( Meta m, bool = true ) : Algorithm( m, sizeof( Extension ) ) {
         this->init( this );
         printEdges = true;
         autoSuccs = false;
