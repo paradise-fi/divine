@@ -60,11 +60,10 @@ struct Algorithm {
 
 struct Output {
     bool quiet;
-    bool wantCe;
+    bool wantCe, displayCe;
     bool textFormat, backEdges;
     bool statistics;
     std::string filterProgram;
-    std::string trailFile, ceFile;
     std::string file;
 
     Output() : quiet( false ), wantCe( false ), textFormat( false ), backEdges( false ), statistics( false ) {}

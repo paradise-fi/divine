@@ -44,18 +44,11 @@ struct LtlCE {
     Shared *_shared;
     Hasher *_hasher;
 
-    std::ostream *_o_ce, *_o_trail;
-
     G &g() { assert( _g ); return *_g; }
     Shared &shared() { assert( _shared ); return *_shared; }
 
-    LtlCE() : _g( 0 ), _shared( 0 ), _hasher( nullptr ), _o_ce( 0 ), _o_trail( 0 ) {}
-    ~LtlCE() {
-        if ( ( _o_ce != &std::cerr ) && ( _o_ce != &std::cout ) )
-            divine::safe_delete( _o_ce );
-        if ( ( _o_trail != &std::cerr ) && ( _o_trail != &std::cout ) )
-            divine::safe_delete( _o_trail );
-    }
+    LtlCE() : _g( 0 ), _shared( 0 ), _hasher( nullptr ) {}
+    ~LtlCE() {}
 
     void setup( G &g, Shared &s, Hasher &h )
     {
@@ -173,22 +166,13 @@ struct LtlCE {
         return result;
     }
 
-    std::ostream &filestream( std::ostream *&stream, std::string file ) {
-        if ( !stream ) {
-            if ( file.empty() )
-                stream = new std::stringstream();
-            else if ( file == "-" )
-                stream = &std::cerr;
-            else
-                stream = new std::ofstream( file.c_str() );
-        }
-        return *stream;
+    template < typename A >
+    std::ostream &o_ce( A &a )
+    {
+        static struct : std::streambuf {} buf;
+        static std::ostream null(&buf);
+        return a.meta().output.displayCe ? std::cerr : null;
     }
-
-    template < typename A >
-    std::ostream &o_ce( A &a ) { return filestream( _o_ce, a.meta().output.ceFile ); }
-    template < typename A >
-    std::ostream &o_trail( A &a ) { return filestream( _o_trail, a.meta().output.trailFile ); }
 
     /// Generates traces; when numTrace is null, computes a numeric trace sequentially in a single thread
     template< typename Alg, typename T >
@@ -208,7 +192,6 @@ struct LtlCE {
         }
 
         for ( int i = ntrace.size() - 1; i >= 0; --i ) {
-            o_trail( a ) << ntrace[ i ] << std::endl;
             o_tr_str << ntrace[ i ] << ",";
         }
 
@@ -224,21 +207,18 @@ struct LtlCE {
     template< typename Alg, typename T >
     void generateLinear( Alg &a, G &_g, T trace ) {
         o_ce( a ) << std::endl << "===== Trace from initial =====" << std::endl << std::endl;
-        o_trail( a ) << "# from initial" << std::endl;
         a.result().iniTrail = generateTrace( a, _g, trace );
     }
 
     template< typename Alg, typename T >
     void generateLasso( Alg &a, G &_g, T trace ) {
         o_ce( a ) << std::endl << "===== The cycle =====" << std::endl << std::endl;
-        o_trail( a ) << "# cycle" << std::endl;
         a.result().cycleTrail = generateTrace( a, _g, trace );
     }
 
     template< typename Alg, typename T >
     void goal( Alg &a, T goal ) {
         o_ce( a ) << std::endl << "===== The goal =====" << std::endl << std::endl;
-        o_trail( a ) << "# goal" << std::endl;
 
         std::vector< T > trace;
         trace.push_back( goal );

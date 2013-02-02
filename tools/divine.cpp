@@ -506,6 +506,7 @@ struct Main {
         if ( !o_dispCe->boolValue() && !o_report->boolValue() )
             meta.output.wantCe = false;
 
+        meta.output.displayCe = o_dispCe->boolValue();
         meta.algorithm.maxDistance = o_distance->intValue();
         meta.output.filterProgram = o_render->stringValue();
         meta.algorithm.labels = o_labels->boolValue();
