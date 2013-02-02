@@ -378,12 +378,17 @@ struct Mpi : MpiMonitor
     MpiForwarder< Comms > m_mpiForwarder;
     bitblock async_retval;
     int request_source;
+    int _pernode;
 
     Comms &comms() { return m_local.comms(); }
     Barrier< Terminable > &barrier() { return m_local.barrier(); }
 
     int peers() { return m_local.peers() * mpi.size(); } // XXX
-    void wakeup( int id ) { m_local.wakeup( id - mpi.rank() * m_local.m_slaves.size() ); } // ick
+    void wakeup( int id ) {
+        int start = mpi.rank() * _pernode, end = start + _pernode;
+        if ( id >= start && id < end )
+            m_local.wakeup( id - start );
+    }
 
     Mpi( const Mpi& ) = delete;
 
@@ -401,6 +406,7 @@ struct Mpi : MpiMonitor
         mpi.registerMonitor( TAG_PARALLEL, *this );
         mpi.registerMonitor( TAG_INTERRUPT, *this );
         comms().resize( pernode * mpi.size() );
+        _pernode = pernode;
     }
 
     template< typename Bit >
