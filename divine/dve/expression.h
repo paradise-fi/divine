@@ -202,7 +202,7 @@ struct Expression {
         rpn.push_back( Item( op, v1, v2 ) );
     }
 
-    void build( const SymTab &sym, const parse::Expression &ex ) {
+    void build( const SymTab &sym, const parse::Expression &ex, const SymTab * immscope = 0 ) {
         if ( ex.op.id == TI::Period ) {
             assert( ex.lhs );
             assert( ex.rhs );
@@ -218,10 +218,22 @@ struct Expression {
             return;
         }
 
+        if ( ex.op.id == TI::Arrow ) {
+            assert( ex.lhs );
+            assert( ex.rhs );
+            parse::RValue *left = ex.lhs->rval;
+            Symbol process = sym.lookup( SymTab::Process, left->ident );
+            const SymTab * procVars = sym.toplevel()->child( process );
+            build( sym, *ex.rhs, procVars );
+            return;
+        }
+
         if ( ex.rval ) {
             parse::RValue &v = *ex.rval;
             if ( v.ident.valid() ) {
-                Symbol ident = sym.lookup( SymTab::Variable, v.ident.name() );
+                if ( !immscope )
+                    immscope = &sym;
+                Symbol ident = immscope->lookup( SymTab::Variable, v.ident.name() );
                 Token t = v.ident.token;
                 if ( v.idx ) {
                     t.id = TI::Subscript;
