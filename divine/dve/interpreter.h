@@ -435,7 +435,6 @@ struct System {
     std::vector< Process > properties;
     std::vector< Channel > channels;
     Process *property;
-    int propID;
 
     Symbol flags, errFlags;
 
@@ -454,7 +453,7 @@ struct System {
     };
 
     System( const parse::System &sys )
-        : property( 0 ), propID( -1 )
+        : property( 0 )
     {
         assert( !sys.synchronous ); // XXX
 
@@ -542,9 +541,6 @@ struct System {
     bool processEnabled( EvalContext &ctx, Continuation &cont ) {
         Process &p = processes[ cont.process ];
 
-        if ( &p == property ) // property process cannot progress alone
-            return false;
-
         // try other property transitions first
         if ( cont.transition && property && property->valid( ctx, cont.property ) ) {
             cont.property = property->enabled( ctx, cont.property, cont.err );
@@ -575,8 +571,6 @@ struct System {
             bool commitEnable = false;
             for ( size_t i = 0; i < processes.size(); i++ ) {
                 Process &pa = processes[ i ];
-                if ( &pa == property )
-                    continue;
                 if ( pa.commited( ctx ) && pa.available( ctx ) ) {
                     commitEnable = true;
                     break;
@@ -646,16 +640,10 @@ struct System {
     }
 
     int getProcIndex( int pid ) {
-        if ( propID < 0 )
-            return pid;
-        if ( pid < propID )
-            return pid;
-        return pid - 1;
+        return pid;
     }
 
     int processCount() {
-        if ( propID >=0 )
-            return processes.size() - 1;
         return processes.size();
     }
 
