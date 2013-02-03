@@ -471,14 +471,20 @@ struct System {
 
         // ensure validity of pointers into the process array
         processes.reserve( sys.processes.size() );
-        properties.reserve( sys.properties.size() );
+        properties.reserve( sys.properties.size() + 1 );
 
         for ( parse::Procs::const_iterator i = sys.processes.begin();
               i != sys.processes.end(); ++i )
         {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
-            processes.push_back( Process( &symtab, id, *i ) );
-            symtab.children[id] = &processes.back().symtab;
+            if ( i->name.name() == sys.property.name() ) {
+                properties.push_back( Process( &symtab, id, *i ) );
+                symtab.children[id] = &properties.back().symtab;
+            }
+            else {
+                processes.push_back( Process( &symtab, id, *i ) );
+                symtab.children[id] = &processes.back().symtab;
+            }
         }
 
         for ( parse::Props::const_iterator i = sys.properties.begin();
@@ -505,10 +511,9 @@ struct System {
         // find the property process
         if ( sys.property.valid() ) {
             Symbol _propid = symtab.lookup( NS::Process, sys.property );
-            for ( size_t i = 0; i < processes.size(); ++ i ) {
-                if ( processes[ i ].id == _propid ) {
-                    property = &processes[ i ];
-                    propID = i;
+            for ( size_t i = 0; i < properties.size(); ++ i ) {
+                if ( properties[ i ].id == _propid ) {
+                    property = &properties[ i ];
                 }
             }
 
@@ -658,6 +663,9 @@ struct System {
         flags.set(ctx.mem, 0, StateFlags::f_none);
         for ( size_t i = 0; i < processes.size(); ++i ) {
             initial( ctx, processes[i].symtab, NS::Variable, NS::Initialiser );
+        }
+        for ( size_t i = 0; i < properties.size(); ++i ) {
+            initial( ctx, properties[i].symtab, NS::Variable, NS::Initialiser );
         }
         initial( ctx, symtab, NS::Variable, NS::Initialiser );
         initial( ctx, symtab, NS::Process, NS::InitState );
