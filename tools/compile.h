@@ -93,9 +93,6 @@ struct Compile {
     void compileDve( std::string in ) {
 #if defined O_DVE
         dve::compiler::DveCompiler compiler;
-#else
-        die( "FATAL: The DVE compiler requires DVE backend." );
-#endif
         compiler.read( in.c_str() );
         compiler.analyse();
 
@@ -104,7 +101,7 @@ struct Compile {
         compiler.setOutput( out );
         compiler.print_generator();
 
-        gplusplus( outfile, str::basename( in ) + generator::cesmi_ext );
+        gplusplus( outfile, str::basename( in ) + ".so" );
     }
 
     void compileMurphi( std::string in );
