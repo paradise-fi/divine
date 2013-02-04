@@ -257,17 +257,21 @@ struct Dve : public Common< Blob > {
         assert( system );
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
         yield( "assert", "assertion safety", PT_Goal );
-        if ( system->property ) /* FIXME. Bogus. */
-            yield( "LTL", "Büchi neverclaim property", PT_Buchi );
-        for ( auto p : system->properties )
-            yield( wibble::str::fmt( p.id ), "Büchi neverclaim property", PT_Buchi );
+        int i = 0;
+        for ( auto p : system->properties ) {
+            yield( "LTL" + (i ? wibble::str::fmt( i ) : ""), "Büchi neverclaim property", PT_Buchi );
+            ++ i;
+        }
     }
 
     void useProperty( std::string n ) {
         system->property = NULL;
-        for ( auto &p : system->properties )
-            if ( n == wibble::str::fmt( p.id ) )
+        int i = 0;
+        for ( auto &p : system->properties ) {
+            if ( n == "LTL" + (i ? wibble::str::fmt( i ) : "") )
                 system->property = &p;
+            ++ i;
+        }
     }
 
     ReductionSet useReductions( ReductionSet r ) {
