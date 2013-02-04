@@ -26,7 +26,6 @@ struct BState;
 BState* get_buchi_states();
 int get_buchi_accept();
 std::list<std::string> get_buchi_all_symbols();
-
 #endif
 
 using namespace wibble;

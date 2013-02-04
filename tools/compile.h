@@ -101,7 +101,10 @@ struct Compile {
         compiler.setOutput( out );
         compiler.print_generator();
 
-        gplusplus( outfile, str::basename( in ) + ".so" );
+        gplusplus( outfile, str::basename( in ) + generator::cesmi_ext );
+#else
+        die( "FATAL: The DVE compiler requires DVE backend." );
+#endif
     }
 
     void compileMurphi( std::string in );
