@@ -33,9 +33,9 @@ int buchi_property( const cesmi_setup *cs ) {
 cesmi_node buchi_make_node( void *meh, int size )
 {
     const cesmi_setup *setup = (const cesmi_setup *) meh;
-    cesmi_node result = setup->make_node( setup->allocation_handle, size + 4 );
+    cesmi_node result = setup->make_node( setup->allocation_handle, size + sizeof( int ) );
     *buchi_state( result ) = 1;
-    result.memory += 4;
+    result.memory += sizeof( int );
     return result;
 }
 
