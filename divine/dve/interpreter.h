@@ -244,6 +244,22 @@ struct Transition {
         return o;
     }
 
+    void init( SymTab &sym ) {
+        for ( size_t i = 0; i < parse.guards.size(); ++ i )
+            guards.push_back( Expression( sym, parse.guards[i] ) );
+        for ( size_t i = 0; i < parse.effects.size(); ++ i )
+            effect.push_back( std::make_pair( LValue( sym, parse.effects[i].lhs ),
+                                              Expression( sym, parse.effects[i].rhs ) ) );
+
+        if ( parse.syncexpr.valid() ) {
+            sync_channel = sym.lookupChannel( parse.syncexpr.chan );
+            if ( parse.syncexpr.write )
+                sync_expr = ExpressionList( sym, parse.syncexpr.exprlist );
+            else if ( parse.syncexpr.lvallist.valid() )
+                sync_lval = LValueList( sym, parse.syncexpr.lvallist );
+        }
+    }
+
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
         : process( proc ), procIndex( -1 ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
@@ -253,23 +269,11 @@ struct Transition {
                 procname = it->first;
             }
         }
-        for ( size_t i = 0; i < t.guards.size(); ++ i )
-            guards.push_back( Expression( sym, t.guards[i] ) );
-        for ( size_t i = 0; i < t.effects.size(); ++ i )
-            effect.push_back( std::make_pair( LValue( sym, t.effects[i].lhs ),
-                                              Expression( sym, t.effects[i].rhs ) ) );
+
         from = sym.lookup( NS::State, t.from );
         assert( from.valid() );
         to = sym.lookup( NS::State, t.to );
         assert( to.valid() );
-
-        if ( t.syncexpr.valid() ) {
-            sync_channel = sym.lookupChannel( t.syncexpr.chan );
-            if ( t.syncexpr.write )
-                sync_expr = ExpressionList( sym, t.syncexpr.exprlist );
-            else if ( t.syncexpr.lvallist.valid() )
-                sync_lval = LValueList( sym, t.syncexpr.lvallist );
-        }
 
         flags = sym.lookup( NS::Flag, "Flags" );
     }
@@ -297,6 +301,7 @@ struct Process {
     Symbol id;
     SymTab symtab;
 
+    std::vector< Transition > all_trans;
     std::vector< std::vector< Transition > > trans;
     std::vector< std::vector< Transition > > state_readers;
 
@@ -389,21 +394,27 @@ struct Process {
 
         for ( std::vector< parse::Transition >::const_iterator i = proc.trans.begin();
               i != proc.trans.end(); ++i ) {
-            Symbol from = symtab.lookup( NS::State, i->from.name() );
             Transition t( symtab, id, *i );
             t.from_commited = is_commited[ t.from.deref( 0 ) ];
             t.to_commited = is_commited[ t.to.deref( 0 ) ];
-            if ( i->syncexpr.valid() && !t.sync_channel->is_buffered ) {
-                if ( i->syncexpr.write )
+            all_trans.push_back( t );
+        }
+
+    }
+
+    void init() {
+        for ( Transition &t : all_trans ) {
+            t.init( symtab );
+            if ( t.parse.syncexpr.valid() && !t.sync_channel->is_buffered ) {
+                if ( t.parse.syncexpr.write )
                     writers.push_back( t );
                 else {
                     readers.push_back( t );
                     state_readers[ t.from.deref() ].push_back( t );
                 }
             } else
-                trans[ from.deref() ].push_back( t );
+                trans[ t.from.deref() ].push_back( t );
         }
-
     }
 
     void setupSyncs( std::vector< Transition > &readers )
@@ -493,6 +504,14 @@ struct System {
             Symbol id = symtab.allocate( NS::Process, i->name.name(), 4 );
             properties.push_back( Process( &symtab, id, *i ) );
             symtab.children[id] = &properties.back().symtab;
+        }
+
+        for ( Process &p : processes ) {
+            p.init();
+        }
+
+        for ( Process &p : properties ) {
+            p.init();
         }
 
         // compute synchronisations
