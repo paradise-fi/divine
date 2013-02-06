@@ -263,10 +263,29 @@ void DveCompiler::gen_state_struct()
 
     for ( parse::Process &p : ast->processes ) {
         start_process();
+
         for ( parse::Declaration &decl : p.decls ) {
             ensure_process();
             declare( typeOf( decl.width ), decl.name, ( decl.is_array ? decl.size : 0 ) );
         }
+
+        for ( parse::ChannelDeclaration &chandecl : p.chandecls ) {
+            if ( !chandecl.is_buffered )
+                continue;
+            line( "struct" );
+            block_begin();
+            declare( "uint16_t", "number_of_items" );
+            line( "struct" );
+            block_begin();
+            for ( size_t j = 0; j < chandecl.components.size(); j++ ) {
+                declare( typeOf( chandecl.components[j] ), "x" + fmt( j ) );
+            }
+            block_end();
+            line( "content[" + fmt( chandecl.size ) + "];" );
+            block_end();
+            line( "__attribute__((__packed__)) " + chandecl.name + ";" );
+        }
+
         end_process( p.name.name() );
     }
 
@@ -339,11 +358,22 @@ void DveCompiler::gen_initial_state()
     line();
 }
 
+std::map< std::string, std::vector< parse::Transition * > >::iterator DveCompiler::getTransitionVector( parse::Process &proc, parse::SyncExpr & chan ) {
+     parse::Identifier chanProc = getChannelProc( proc, chan );
+    if ( !chanProc.valid() ) {
+        return channel_map.find( chan.chan.name() );
+    }
+    else {
+        return procChanMap[ chanProc.name() ].find( chan.chan.name() );
+    }
+}
+
 void DveCompiler::analyse_transition(
+    parse::Process & p,
     parse::Transition * t,
     vector< ExtTransition > &ext_transition_vector )
 {
-    if ( !t->syncexpr.valid() || t->syncexpr.write || chanIsBuffered( t->syncexpr.chan ) ) {
+    if ( !t->syncexpr.valid() || t->syncexpr.write || chanIsBuffered( p, t->syncexpr ) ) {
         // transition not of type SYNC_ASK
         if ( !have_property ) {
             // no properties, just add to ext_transition vector
@@ -369,8 +399,8 @@ void DveCompiler::analyse_transition(
     }
     else {
         // transition of type SYNC_ASK
-        iter_channel_map = channel_map.find( t->syncexpr.chan.name() );
-        if ( iter_channel_map != channel_map.end() ) {
+        iter_channel_map = getTransitionVector( p, t->syncexpr );
+        if ( iter_channel_map != channel_map.end() && iter_channel_map != procChanMap[ getChannelProc( p, t->syncexpr ).name() ].end() ) {
             // channel of this transition is found
             // (strange test, no else part for if statement)
             // assume: channel should always be present
@@ -409,14 +439,18 @@ void DveCompiler::analyse_transition(
     }
 }
 
-bool DveCompiler::chanIsBuffered( parse::Identifier chan ) {
-    for ( parse::ChannelDeclaration &chandecl : ast->chandecls ) {
-        if ( chandecl.name == chan.name() ) {
-            return chandecl.is_buffered;
-        }
+bool DveCompiler::chanIsBuffered( parse::Process & proc, parse::SyncExpr & chan ) {
+    return getChannel( proc, chan ).is_buffered;
+}
+
+void DveCompiler::insertTransition( parse::Process & proc, parse::Transition & t ) {
+    parse::Identifier chanProc = getChannelProc( proc, t.syncexpr );
+    if ( !chanProc.valid() ) {
+        channel_map[ t.syncexpr.chan.name() ].push_back( &t );
     }
-    std::cerr << "Internal error" << std::endl;
-    exit( -1 );
+    else {
+        procChanMap[ chanProc.name() ][ t.syncexpr.chan.name() ].push_back( &t );
+    }
 }
 
 void DveCompiler::analyse()
@@ -427,18 +461,8 @@ void DveCompiler::analyse()
     // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
     for ( parse::Process &p : ast->processes ) {
         for ( parse::Transition &t : p.trans ) {
-            if ( t.syncexpr.valid() && t.syncexpr.write && !chanIsBuffered( t.syncexpr.chan ) ) {
-                iter_channel_map = channel_map.find( t.syncexpr.chan.name() );
-                if ( iter_channel_map == channel_map.end() ) {
-                    vector< parse::Transition * > transitionVector;
-                    transitionVector.push_back( &t );
-                    channel_map.insert( pair< std::string, vector< parse::Transition * > >(
-                        t.syncexpr.chan.name(), transitionVector
-                    ) );
-                }
-                else {
-                    iter_channel_map->second.push_back( &t );
-                }
+            if ( t.syncexpr.valid() && t.syncexpr.write && !chanIsBuffered( p, t.syncexpr ) ) {
+                insertTransition( p, t );
             }
 
             if ( p.name.name() == ast->property.name() ) {
@@ -449,7 +473,7 @@ void DveCompiler::analyse()
     for ( parse::Process &p : ast->processes ) {
         for ( parse::Transition &t : p.trans ) {
             if (
-                    (!t.syncexpr.valid() || !t.syncexpr.write || chanIsBuffered( t.syncexpr.chan ) ) 
+                    (!t.syncexpr.valid() || !t.syncexpr.write || chanIsBuffered( p, t.syncexpr ) ) 
                     && ( p.name.name() != ast->property.name() )
             ) {
                 // not syncronized sender without buffer and not a property transition
@@ -461,7 +485,7 @@ void DveCompiler::analyse()
                     map< std::string, vector< ExtTransition > > processTransitionMap;
                     vector< ExtTransition > extTransitionVector;
 
-                    analyse_transition( &t, extTransitionVector );
+                    analyse_transition( p, &t, extTransitionVector );
 
                     // for this process state, add the ext transitions
                     processTransitionMap.insert(
@@ -483,7 +507,7 @@ void DveCompiler::analyse()
                     //new state in current process
                     if ( iter_process_transition_map == iter_transition_map->second.end() ) {
                         vector< ExtTransition > extTransitionVector;
-                        analyse_transition( &t, extTransitionVector );
+                        analyse_transition( p, &t, extTransitionVector );
 
                         // and reinsert result
                         iter_transition_map->second.insert(
@@ -493,7 +517,7 @@ void DveCompiler::analyse()
                         );
                     }
                     else
-                        analyse_transition( &t, iter_process_transition_map->second );
+                        analyse_transition( p, &t, iter_process_transition_map->second );
                 }
             }
         }
@@ -517,12 +541,12 @@ void DveCompiler::transition_guard( ExtTransition * et, std::string in )
     else
     {
         if ( et->first->syncexpr.valid() ) {
-            std::string chan = et->first->syncexpr.chan.name();
+            parse::SyncExpr chan = et->first->syncexpr;
             if ( et->first->syncexpr.write ) {
-                if_clause( relate( channel_items( chan, in ), "<", fmt( channel_capacity( chan ) ) ) );
+                if_clause( relate( channel_items( et->first->proc.name(), chan, in ), "<", fmt( channel_capacity( et->first->proc.name(), chan ) ) ) );
             }
             else {
-                if_clause( relate( channel_items( chan, in ), ">", fmt( 0 ) ) );
+                if_clause( relate( channel_items( et->first->proc.name(), chan, in ), ">", fmt( 0 ) ) );
             }
         }
     }
@@ -550,33 +574,33 @@ void DveCompiler::transition_effect( ExtTransition * et, string in, string out )
     }
     else if ( et->first->syncexpr.valid() )
     {
-        std::string chan = et->first->syncexpr.chan.name();
+        parse::SyncExpr chan = et->first->syncexpr;
         if( et->first->syncexpr.write )
         {
             for ( size_t s = 0; s < et->first->syncexpr.exprlist.explist.size(); s++ ) {
                 assign(
-                    channel_item_at( chan, channel_items( chan, in ), s, out ),
+                    channel_item_at( et->first->proc.name(), chan, channel_items( et->first->proc.name(), chan, in ), s, out ),
                     cexpr( et->first->syncexpr.exprlist.explist[ s ], in, et->first->proc.name() )
                 );
             }
-            line( channel_items( chan, out ) + "++;" );
+            line( channel_items( et->first->proc.name(), chan, out ) + "++;" );
         }
         else
         {
             for ( size_t s = 0; s < et->first->syncexpr.lvallist.lvlist.size(); s++ ) {
                 assign(
                     cexpr( et->first->syncexpr.lvallist.lvlist[ s ], out, et->first->proc.name() ),
-                    channel_item_at( chan, "0", s, in )
+                    channel_item_at( et->first->proc.name(), chan, "0", s, in )
                 );
             }
-            line( channel_items( chan, out ) + "--;" );
+            line( channel_items( et->first->proc.name(), chan, out ) + "--;" );
 
-            line( "for(size_t i = 1 ; i <= " + channel_items( chan, out ) + "; i++)" );
+            line( "for(size_t i = 1 ; i <= " + channel_items( et->first->proc.name(), chan, out ) + "; i++)" );
             block_begin();
             for(size_t s = 0;s < et->first->syncexpr.lvallist.lvlist.size() ;s++)
             {
-                assign( channel_item_at( chan, "i-1", s, out ), channel_item_at( chan, "i", s, in ) );
-                assign( channel_item_at( chan, "i", s, out ), "0" );
+                assign( channel_item_at( et->first->proc.name(), chan, "i-1", s, out ), channel_item_at( et->first->proc.name(), chan, "i", s, in ) );
+                assign( channel_item_at( et->first->proc.name(), chan, "i", s, out ), "0" );
             }
             block_end();
         }

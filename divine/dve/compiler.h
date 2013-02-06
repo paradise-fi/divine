@@ -39,11 +39,13 @@ struct DveCompiler
     bool have_property;
     map< std::string, map< std::string, vector< ExtTransition > > > transition_map;
     map< std::string, vector< parse::Transition* > > channel_map;
+    map< std::string, map< std::string, vector< parse::Transition * > > > procChanMap;
 
     vector< parse::Transition* > property_transitions;
     vector< parse::Transition* >::iterator iter_property_transitions;
 
     map< std::string, vector< parse::Transition* > >::iterator iter_channel_map;
+    map< std::string, map< std::string, vector< parse::Transition * > > >::iterator iter_procChanMap;
     vector< parse::Transition* >::iterator iter_transition_vector;
     map< std::string, vector< ExtTransition > >::iterator iter_process_transition_map;
     map< std::string, map< std::string, vector< ExtTransition > > >::iterator iter_transition_map;
@@ -96,9 +98,13 @@ struct DveCompiler
           in_process( false ), process_empty( true )
     {}
 
-    bool chanIsBuffered( parse::Identifier chan );
+    void insertTransition( parse::Process & proc, parse::Transition & trans );
+    
+    std::map< std::string, std::vector< parse::Transition * > >::iterator getTransitionVector( parse::Process &proc, parse::SyncExpr & chan );
 
-    void analyse_transition( parse::Transition * t,
+    bool chanIsBuffered( parse::Process & proc, parse::SyncExpr & chan );
+
+    void analyse_transition( parse::Process & p, parse::Transition * t,
                              vector< ExtTransition > &ext_transition_vector );
     void analyse();
 
@@ -164,18 +170,73 @@ struct DveCompiler
         return state + "._control." + p.name.name();
     }
 
-    std::string channel_items( std::string chan, std::string state ) {
-        return state + "." + chan + ".number_of_items";
+    std::string channel_items( std::string p, parse::SyncExpr & chan, std::string state ) {
+        return channel_items( getProcess( p ), chan, state );
     }
 
-    std::string channel_item_at( std::string chan, std::string pos, int x, std::string state ) {
-        return state + "." + chan + ".content[" + pos + "].x" + wibble::str::fmt( x );
+    std::string channel_items( parse::Process & p, parse::SyncExpr & chan, std::string state ) {
+        parse::Identifier chanProc = getChannelProc( p, chan );
+        if ( !chanProc.valid() )
+            return state + "." + chan.chan.name() + ".number_of_items";
+        else
+            return state + "." + p.name.name() + "." + chan.chan.name() + ".number_of_items";
     }
 
-    parse::ChannelDeclaration & getChannel( std::string chan ) {
-        for ( parse::ChannelDeclaration &c : ast->chandecls ) {
-            if ( c.name == chan )
-                return c;
+    std::string channel_item_at( std::string p, parse::SyncExpr & chan, std::string pos, int x, std::string state ) {
+        return channel_item_at( getProcess( p ), chan, pos, x, state );
+    }
+
+    std::string channel_item_at( parse::Process & p, parse::SyncExpr & chan, std::string pos, int x, std::string state ) {
+        parse::Identifier chanProc = getChannelProc( p, chan );
+        if ( !chanProc.valid() )
+            return state + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+        else
+            return state + "." + p.name.name() + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+    }
+
+    parse::ChannelDeclaration & getChannel( std::string proc, parse::SyncExpr & chan ) {
+        return getChannel( getProcess( proc ), chan );
+    }
+
+    parse::ChannelDeclaration & getChannel( parse::Process & proc, parse::SyncExpr & chan ) {
+        if ( chan.proc.valid() ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.name() ).chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return c;
+            }
+        }
+        else {
+            for ( parse::ChannelDeclaration &c : proc.chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return c;
+            }
+            for ( parse::ChannelDeclaration &c : ast->chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return c;
+            }
+        }
+    }
+
+    parse::Identifier getChannelProc( std::string proc, parse::SyncExpr & chan ) {
+        return getChannelProc( getProcess( proc ), chan );
+    }
+
+    parse::Identifier getChannelProc( parse::Process & proc, parse::SyncExpr & chan ) {
+        if ( chan.proc.valid() ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.name() ).chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return chan.proc;
+            }
+        }
+        else {
+            for ( parse::ChannelDeclaration &c : proc.chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return proc.name;
+            }
+            for ( parse::ChannelDeclaration &c : ast->chandecls ) {
+                if ( c.name == chan.chan.name() )
+                    return parse::Identifier();
+            }
         }
     }
 
@@ -188,8 +249,12 @@ struct DveCompiler
         return name;
     }
 
-    int channel_capacity( std::string chan ) {
-        return getChannel( chan ).size;
+    int channel_capacity( std::string proc, parse::SyncExpr & chan ) {
+        return channel_capacity( getProcess( proc ), chan );
+    }
+
+    int channel_capacity( parse::Process & proc, parse::SyncExpr & chan ) {
+        return getChannel( proc, chan ).size;
     }
 
     void transition_guard( ExtTransition * et, std::string in );
