@@ -569,7 +569,6 @@ static inline void declarations( Parser &p, std::vector< Declaration > &decls, s
     }
 }
 
-template< bool IsProperty >
 struct Automaton : Parser {
     Identifier name;
     std::vector< Declaration > decls;
@@ -595,7 +594,7 @@ struct Automaton : Parser {
     }
 
     Automaton( Context &c ) : Parser( c ) {
-        eat( IsProperty ? Token::Property : Token::Process );
+        eat( Token::Process );
         name = Identifier( c );
         eat( Token::BlockOpen );
 
@@ -635,8 +634,8 @@ struct Automaton : Parser {
     }
 };
 
-typedef Automaton< false > Process;
-typedef Automaton< true > Property;
+typedef Automaton Process;
+typedef Automaton Property;
 
 struct System : Parser {
     std::vector< Declaration > decls;
@@ -651,13 +650,29 @@ struct System : Parser {
         property = Identifier( context() );
     }
 
+    void process() {
+        processes.push_back( Process( context() ) );
+    }
+
+    void propDef() {
+        eat( Token::Property );
+        either( &System::procProperty, &System::LTLProperty );
+    }
+
+    void procProperty() {
+        properties.push_back( Property( context() ) );
+    }
+
+    void LTLProperty() {
+        fail( "not yet supported" );
+    }
+
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
         declarations( *this, decls, chandecls );
 
-        many< Process >( std::back_inserter( processes ) );
-        many< Property >( std::back_inserter( properties ) );
+        while ( maybe( &System::process, &System::propDef ) );
 
         eat( Token::System );
 

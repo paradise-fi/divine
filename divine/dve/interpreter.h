@@ -364,8 +364,7 @@ struct Process {
         return trans[ state( ctx ) ][ i - 1 ];
     }
 
-    template< bool X >
-    Process( SymTab *parent, Symbol id, const parse::Automaton< X > &proc )
+    Process( SymTab *parent, Symbol id, const parse::Automaton &proc )
         : id( id ), symtab( parent )
     {
         int states = 0;
