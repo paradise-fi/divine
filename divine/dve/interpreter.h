@@ -252,7 +252,12 @@ struct Transition {
                                               Expression( sym, parse.effects[i].rhs ) ) );
 
         if ( parse.syncexpr.valid() ) {
-            sync_channel = sym.lookupChannel( parse.syncexpr.chan );
+            if ( parse.syncexpr.proc.valid() ) {
+                Symbol chanProc = sym.lookup( NS::Process, parse.syncexpr.proc );
+                sync_channel = sym.toplevel()->child( chanProc )->lookupChannel( parse.syncexpr.chan );
+            }
+            else
+                sync_channel = sym.lookupChannel( parse.syncexpr.chan );
             if ( parse.syncexpr.write )
                 sync_expr = ExpressionList( sym, parse.syncexpr.exprlist );
             else if ( parse.syncexpr.lvallist.valid() )
@@ -312,6 +317,8 @@ struct Process {
 
     std::vector< std::vector< Expression > > asserts;
 
+    std::vector< Channel > channels;
+
     int state( EvalContext &ctx ) {
         return id.deref( ctx.mem );
     }
@@ -370,6 +377,13 @@ struct Process {
             if ( proc.inits.size() && i->name() == proc.inits.front().name() )
                 parent->constant( NS::InitState, proc.name.name(), states );
             symtab.constant( NS::State, i->name(), states++ );
+        }
+
+        // declare channels
+        channels.resize( proc.chandecls.size() );
+        for( size_t i = 0; i < proc.chandecls.size(); i++ ) {
+            channels[i] = Channel( symtab, proc.chandecls[i] );
+            symtab.channels[ proc.chandecls[i].name ] =  &channels[i];
         }
 
         assert_eq( states, proc.states.size() );
