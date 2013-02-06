@@ -311,10 +311,10 @@ struct Parser {
     }
 
     template< typename F, typename G >
-    void maybe( F f, G g ) {
+    bool maybe( F f, G g ) {
         if ( maybe( f ) )
-            return;
-        maybe( g );
+            return true;
+        return maybe( g );
     }
 
     template< typename F, typename G >
@@ -325,12 +325,12 @@ struct Parser {
     }
 
     template< typename F, typename G, typename H >
-    void maybe( F f, G g, H h ) {
+    bool maybe( F f, G g, H h ) {
         if ( maybe( f ) )
-            return;
+            return true;
         if ( maybe( g ) )
-            return;
-        maybe( h );
+            return true;
+        return maybe( h );
     }
 
     template< typename F >
