@@ -359,6 +359,13 @@ set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}/divine/legacy )
 
 add_definitions( -Wold-style-cast )
+
+if ( MPI )
+    foreach ( path ${MPI_INCLUDE_PATH} )
+        add_definitions( -isystem ${path} )
+    endforeach()
+endif( MPI )
+
 if ( LLVM )
     # suppress warnings coming from LLVM headers
     add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
