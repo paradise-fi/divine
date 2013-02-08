@@ -62,6 +62,10 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
     op[ TI::Bool_Not ] = "!"; op[ TI::Tilde ] = "~";
     op[ TI::Invalid ] = "XXX";
 
+    op[ TI::Period ] = "XXX";
+    op[ TI::Arrow ] = "XXX";
+    op[ TI::Imply ] = "XXX";
+
     assert( op.count( expr.op.id ) );
     if ( expr.lhs && expr.rhs ) {
         ostr << "(";
