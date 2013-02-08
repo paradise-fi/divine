@@ -38,13 +38,13 @@ int asprintf(char **result, const char *format, ...);
 #endif
 
     void  setup             ( cesmi_setup * );
-     int  get_initial       ( cesmi_setup *, int, cesmi_node * );
-     int  get_successor     ( cesmi_setup *, int, cesmi_node, cesmi_node * );
-uint64_t  get_flags         ( cesmi_setup *, cesmi_node );
-     int  get_property_type ( cesmi_setup *, int );
-    char *show_node         ( cesmi_setup *, cesmi_node );
-    char *show_transition   ( cesmi_setup *, cesmi_node, int );
-    char *show_property     ( cesmi_setup *, int );
+     int  get_initial       ( const cesmi_setup *, int, cesmi_node * );
+     int  get_successor     ( const cesmi_setup *, int, cesmi_node, cesmi_node * );
+uint64_t  get_flags         ( const cesmi_setup *, cesmi_node );
+     int  get_property_type ( const cesmi_setup *, int );
+    char *show_node         ( const cesmi_setup *, cesmi_node );
+    char *show_transition   ( const cesmi_setup *, cesmi_node, int );
+    char *show_property     ( const cesmi_setup *, int );
 
 #ifdef __cplusplus
 }
