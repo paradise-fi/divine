@@ -39,6 +39,13 @@ cesmi_node buchi_make_node( void *meh, int size )
     return result;
 }
 
+cesmi_setup system_setup( const cesmi_setup *setup )
+{
+    cesmi_setup r = *setup;
+    r.instance = ( (struct buchi_setup *) setup->instance )->instance;
+    return r;
+}
+
 cesmi_setup override_setup( const cesmi_setup *setup )
 {
     cesmi_setup r = *setup;
@@ -49,20 +56,24 @@ cesmi_setup override_setup( const cesmi_setup *setup )
 
 int buchi_get_initial( const cesmi_setup *setup, int handle, cesmi_node *to, get_initial_t next )
 {
-    if ( buchi_property( setup ) < 0 )
-        return next( setup, handle, to );
+    cesmi_setup sys_setup = system_setup( setup );
 
-    cesmi_setup over = override_setup( setup );
+    if ( buchi_property( setup ) < 0 )
+        return next( &sys_setup, handle, to );
+
+    cesmi_setup over = override_setup( &sys_setup );
     return combine_handles( 0, next( &over, handle, to ) );
 }
 
 int buchi_get_successor( const cesmi_setup *setup, int handle,
                          cesmi_node from, cesmi_node *to, get_successor_t next )
 {
-    if ( buchi_property( setup ) < 0 )
-        return next( setup, handle, from, to );
+    cesmi_setup sys_setup = system_setup( setup );
 
-    cesmi_setup over = override_setup( setup );
+    if ( buchi_property( setup ) < 0 )
+        return next( &sys_setup, handle, from, to );
+
+    cesmi_setup over = override_setup( &sys_setup );
     int bh = buchi_handle( handle ), bs = 0;
 
     do {
@@ -103,10 +114,12 @@ uint64_t buchi_flags( const cesmi_setup *setup, cesmi_node n ) {
 
 char *buchi_show_node( const cesmi_setup *setup, cesmi_node from, show_node_t next )
 {
-    if ( buchi_property( setup ) < 0 )
-        return next( setup, from );
+    cesmi_setup sys_setup = system_setup( setup );
 
-    char *system = next( setup, system_state( from ) );
+    if ( buchi_property( setup ) < 0 )
+        return next( &sys_setup, from );
+
+    char *system = next( &sys_setup, system_state( from ) );
     char *res = 0;
     asprintf( &res, "%s [LTL: %d]", system, *buchi_state( from ) );
     free( system );
@@ -115,11 +128,13 @@ char *buchi_show_node( const cesmi_setup *setup, cesmi_node from, show_node_t ne
 
 char *buchi_show_transition( const cesmi_setup *setup, cesmi_node from, int handle, show_transition_t next )
 {
+    cesmi_setup sys_setup = system_setup( setup );
+
     if ( buchi_property( setup ) < 0 )
-        return next( setup, from, handle );
+        return next( &sys_setup, from, handle );
 
     /* TODO LTL labels? */
-    return next( setup, system_state( from ), system_handle( handle ) );
+    return next( &sys_setup, system_state( from ), system_handle( handle ) );
 }
 
 void buchi_setup( cesmi_setup *setup )
