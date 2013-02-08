@@ -443,7 +443,8 @@ struct System {
         unsigned property:16; // active property transition; 0 = none
         unsigned transition:32; // active process transition; 0 = none
         ErrorState err;
-        Continuation() : process( 0 ), property( 0 ), transition( 0 ), err( ErrorState::e_none ) {}
+        bool deadlocked;
+        Continuation() : process( 0 ), property( 0 ), transition( 0 ), err( ErrorState::e_none ), deadlocked( 0 ) {}
         bool operator==( const Continuation &o ) const {
             return process == o.process && property == o.property && transition == o.transition;
         }
@@ -603,7 +604,7 @@ struct System {
     }
 
     Continuation enabled( EvalContext &ctx, Continuation cont ) {
-        bool system_deadlock = cont == Continuation();
+        cont.deadlocked = cont == Continuation() || cont.deadlocked;
         cont.err.error = ErrorState::i_none;
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
@@ -615,9 +616,9 @@ struct System {
             cont = enabledAll( ctx, cont );
         }
 
-        system_deadlock = system_deadlock && cont.process >= processes.size();
+        cont.deadlocked = cont.deadlocked && cont.process >= processes.size();
 
-        if ( system_deadlock && property )
+        if ( cont.deadlocked && property )
             cont.property = property->enabled( ctx, cont.property, cont.err );
 
         return cont;
