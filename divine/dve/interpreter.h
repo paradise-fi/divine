@@ -629,6 +629,8 @@ struct System {
     }
 
     bool processAffected( EvalContext &ctx, Continuation cont, int pid ) {
+        if ( cont.process >= processes.size() )
+            return true;
         if ( cont.process == getProcIndex( pid ) )
             return true;
         Transition &trans = getTransition( ctx, cont );

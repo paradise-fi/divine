@@ -171,6 +171,8 @@ struct Dve : public Common< Blob > {
             processConts(
                 from,
                 [&]( dve::System::Continuation p ) {
+                    if ( p.process >= this->system->processes.size() )
+                        return true;
                     dve::Transition &trans = this->system->getTransition( this->ctx, p );
                     if ( trans.sync ) {
                         tryNext = true;
