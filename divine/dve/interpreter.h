@@ -719,11 +719,13 @@ struct System {
     }
 
     std::ostream& printTrans( std::ostream &o, EvalContext &ctx, Continuation c ) {
-        Transition &trans = processes[ c.process ].transition( ctx, c.transition );
-        trans.dump( o );
-        if ( trans.sync ) {
-            o << std::endl;
-            trans.sync->dump( o );
+        if ( c.process < processes.size() ) {
+            Transition &trans = processes[ c.process ].transition( ctx, c.transition );
+            trans.dump( o );
+            if ( trans.sync ) {
+                o << std::endl;
+                trans.sync->dump( o );
+            }
         }
         if ( property ) {
             o << std::endl;
