@@ -281,7 +281,7 @@ void DveCompiler::gen_initial_state()
 {
     //setAllocator( new Allocator );
 
-    append( "int get_initial( cesmi_setup *setup, int handle, cesmi_node *out )" );
+    append( "int get_initial( const cesmi_setup *setup, int handle, cesmi_node *out )" );
 
     block_begin();
     line( "if ( handle != 1 ) return 0;" );
@@ -756,7 +756,7 @@ void DveCompiler::gen_successors()
 
 void DveCompiler::gen_is_accepting()
 {
-    line( "uint64_t get_flags( cesmi_setup *setup, cesmi_node n )" );
+    line( "uint64_t get_flags( const cesmi_setup *setup, cesmi_node n )" );
     block_begin();
 
     line( "state_struct_t &state = *reinterpret_cast< state_struct_t * >( n.memory );" );
@@ -800,7 +800,7 @@ void DveCompiler::print_generator()
     line( "    setup->property_count = 2 + " + fmt( have_property ) + ";" );
     line( "}" );
 
-    line( "int get_property_type( cesmi_setup *setup, int n ) {" );
+    line( "int get_property_type( const cesmi_setup *setup, int n ) {" );
     line( "    switch ( n ) {" );
     line( "    case 0: return cesmi_pt_deadlock;" );
     line( "    case 1: return cesmi_pt_goal;" );
@@ -808,7 +808,7 @@ void DveCompiler::print_generator()
     line( "    }" );
     line( "}" );
 
-    line( "char *show_property( cesmi_setup *setup, int n ) {" );
+    line( "char *show_property( const cesmi_setup *setup, int n ) {" );
     line( "    switch ( n ) {" );
     line( "    case 0: return strdup( \"deadlock\" );" );
     line( "    case 1: return strdup( \"assert\" );" );
@@ -821,7 +821,7 @@ void DveCompiler::print_generator()
 
     gen_is_accepting();
 
-    line( "int get_successor( cesmi_setup *setup, int next_state, cesmi_node from, cesmi_node *to ) " );
+    line( "int get_successor( const cesmi_setup *setup, int next_state, cesmi_node from, cesmi_node *to ) " );
     block_begin();
     line( "const state_struct_t *in = reinterpret_cast< state_struct_t * >( from.memory );" );
     line( "bool system_in_deadlock = false;" );
