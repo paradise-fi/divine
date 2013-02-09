@@ -190,7 +190,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             if ( m.extension( t ).map < map ) {
                 // we are *not* the MAP of our successors anymore, so not a
                 // candidate for elimination (shrinking), remove from set
-                if ( m.isAccepting( t ) && m.extension( t ).elim )
+                // elim == 0 means we are candidate for elimination now
+                if ( m.isAccepting( t ) && m.extension( t ).elim == 0 )
                     m.extension( t ).elim = 1;
                 m.extension( t ).map = map;
                 return visitor::ExpandTransition;
