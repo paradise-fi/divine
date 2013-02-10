@@ -17,8 +17,13 @@ namespace dve {
 
 namespace compiler {
 
-void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr, std::string state_name, std::string context  ) {
-    ostr << state_name << "." << getVariable( expr.ident.name(), context );
+void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr,
+                           std::string state_name, std::string context,
+                           std::string immcontext )
+{
+    if ( immcontext == "" )
+        immcontext = context;
+    ostr << state_name << "." << getVariable( expr.ident.name(), immcontext );
     if ( expr.idx.valid() ) {
         ostr << "[ ";
         write_C( expr.idx, ostr, state_name, context );
@@ -27,10 +32,13 @@ void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr, std::strin
 }
 
 void DveCompiler::write_C( parse::RValue & expr, std::ostream & ostr,
-                           std::string state_name, std::string context  )
+                           std::string state_name, std::string context,
+                           std::string immcontext )
 {
+    if ( immcontext == "" )
+        immcontext = context;
     if ( expr.ident.valid() ) {
-        ostr << state_name << "." << getVariable( expr.ident.name(), context );
+        ostr << state_name << "." << getVariable( expr.ident.name(), immcontext );
         if ( expr.idx && expr.idx->valid() ) {
             ostr << "[ ";
             write_C( *expr.idx, ostr, state_name, context );
@@ -41,7 +49,9 @@ void DveCompiler::write_C( parse::RValue & expr, std::ostream & ostr,
     }
 }
 
-void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state_name, std::string context )
+void DveCompiler::write_C( parse::Expression & expr, ostream& ostr,
+                           string state_name, std::string context,
+                           std::string immcontext )
 {
     std::map< TI::TokenId, const char * > op;
 
@@ -78,7 +88,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
             }
                 break;
             case TI::Arrow:
-                write_C( *expr.rhs, ostr, state_name, expr.lhs->rval->ident.name() );
+                write_C( *expr.rhs, ostr, state_name, context, expr.lhs->rval->ident.name() );
                 break;
             case TI::Imply:
                 ostr << "!( ";
@@ -100,7 +110,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr, string state
         ostr << " )";
     }
     else
-        write_C( *expr.rval, ostr, state_name, context );
+        write_C( *expr.rval, ostr, state_name, context, immcontext );
 
 }
 

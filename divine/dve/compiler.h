@@ -108,10 +108,10 @@ struct DveCompiler
                              vector< ExtTransition > &ext_transition_vector );
     void analyse();
 
-    void write_C( parse::Expression & expr, std::ostream & ostr, std::string state_name, std::string context );
+    void write_C( parse::Expression & expr, std::ostream & ostr, std::string state_name, std::string context, std::string immcontext = "" );
 
-    void write_C( parse::LValue & expr, std::ostream & ostr, std::string state_name, std::string context );
-    void write_C( parse::RValue & expr, std::ostream & ostr, std::string state_name, std::string context );
+    void write_C( parse::LValue & expr, std::ostream & ostr, std::string state_name, std::string context, std::string immcontext = "" );
+    void write_C( parse::RValue & expr, std::ostream & ostr, std::string state_name, std::string context, std::string immcontext = "" );
 
     bool m_if_disjoint;
     bool m_if_empty;
