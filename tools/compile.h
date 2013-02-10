@@ -161,24 +161,24 @@ struct Compile {
 
         extras += " " + tmp_dir.basename + "/cesmi.cpp";
 
-        if ( ltlcount ) {
-            std::string impl = tmp_dir.basename + "/cesmi-ltl",
-                        aggr = tmp_dir.basename + "/ltl-aggregate.cpp";
-            wibble::sys::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
-            wibble::sys::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
-            extras += " " + impl + ".cpp";
-            std::ofstream aggr_s( aggr.c_str() );
-            aggr_s << "#include <stdlib.h>" << std::endl;
-            aggr_s << ltlincludes << std::endl;
-            aggr_s << "extern \"C\" int buchi_accepting( int property, int id ) {\n";
-            propswitch( aggr_s, ltlcount, "buchi_accepting", "( id )" );
-            aggr_s << "}" << std::endl;
-            aggr_s << "extern \"C\" int buchi_next( int property, int from, int transition, cesmi_setup *setup, cesmi_node n ) {\n";
-            propswitch( aggr_s, ltlcount, "buchi_next", "( from, transition, setup, n )" );
-            aggr_s << "}" << std::endl;
-            aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
-            extras += " " + aggr;
-        }
+        std::string impl = tmp_dir.basename + "/cesmi-ltl",
+                    aggr = tmp_dir.basename + "/ltl-aggregate.cpp";
+        wibble::sys::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
+        wibble::sys::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
+        extras += " " + impl + ".cpp";
+
+        std::ofstream aggr_s( aggr.c_str() );
+        aggr_s << "#include <stdlib.h>" << std::endl;
+        aggr_s << "#include <cesmi.h>" << std::endl;
+        aggr_s << ltlincludes << std::endl;
+        aggr_s << "extern \"C\" int buchi_accepting( int property, int id ) {\n";
+        propswitch( aggr_s, ltlcount, "buchi_accepting", "( id )" );
+        aggr_s << "}" << std::endl;
+        aggr_s << "extern \"C\" int buchi_next( int property, int from, int transition, cesmi_setup *setup, cesmi_node n ) {\n";
+        propswitch( aggr_s, ltlcount, "buchi_next", "( from, transition, setup, n )" );
+        aggr_s << "}" << std::endl;
+        aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
+        extras += " " + aggr;
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
         run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
