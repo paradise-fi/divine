@@ -28,7 +28,7 @@ struct state
     int16_t a, b;
 };
 
-int _get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
+int _get_initial( const cesmi_setup *setup, int handle, cesmi_node *to )
 {
     if ( handle > 1 )
         return 0;
@@ -39,7 +39,7 @@ int _get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
     return 2;
 }
 
-int _get_successor( cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
+int _get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
 {
     struct state *in = (struct state *) from.memory;
 
@@ -61,7 +61,7 @@ void setup( cesmi_setup *s )
     buchi_setup( s );
 }
 
-int get_property_type( cesmi_setup *s, int n )
+int get_property_type( const cesmi_setup *s, int n )
 {
     switch ( n ) {
     case 0: return cesmi_pt_goal;
@@ -71,7 +71,7 @@ int get_property_type( cesmi_setup *s, int n )
     return -1;
 }
 
-char *_show_node( cesmi_setup *setup, cesmi_node from )
+char *_show_node( const cesmi_setup *setup, cesmi_node from )
 {
     struct state *in = (struct state *) from.memory;
     char *result;
@@ -79,7 +79,7 @@ char *_show_node( cesmi_setup *setup, cesmi_node from )
     return result;
 }
 
-char *_show_transition( cesmi_setup *setup, cesmi_node from, int handle )
+char *_show_transition( const cesmi_setup *setup, cesmi_node from, int handle )
 {
     struct state *in = (struct state *) from.memory;
     switch (handle) {
@@ -90,27 +90,27 @@ char *_show_transition( cesmi_setup *setup, cesmi_node from, int handle )
 }
 
 
-int get_initial( cesmi_setup *s, int h, cesmi_node *n ) {
+int get_initial( const cesmi_setup *s, int h, cesmi_node *n ) {
     return buchi_get_initial( s, h, n, _get_initial );
 }
 
-int  get_successor( cesmi_setup *s, int h, cesmi_node n, cesmi_node *t ) {
+int  get_successor( const cesmi_setup *s, int h, cesmi_node n, cesmi_node *t ) {
     return buchi_get_successor( s, h, n, t, _get_successor );
 }
 
-uint64_t get_flags( cesmi_setup *s, cesmi_node n ) {
+uint64_t get_flags( const cesmi_setup *s, cesmi_node n ) {
     return buchi_flags( s, n );
 }
 
-char *show_node( cesmi_setup *s, cesmi_node n ) {
+char *show_node( const cesmi_setup *s, cesmi_node n ) {
     return buchi_show_node( s, n, _show_node );
 }
 
-char *show_transition( cesmi_setup *s, cesmi_node n, int h ) {
+char *show_transition( const cesmi_setup *s, cesmi_node n, int h ) {
     return buchi_show_transition( s, n, h, _show_transition );
 }
 
-int prop_a( cesmi_setup *s, cesmi_node n ) {
+int prop_a( const cesmi_setup *s, cesmi_node n ) {
     struct state *in = (struct state *) n.memory;
     return in->a == 2;
 }
