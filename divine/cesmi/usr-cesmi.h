@@ -16,10 +16,11 @@ typedef struct {
     char *memory;
 } cesmi_node;
 
-typedef struct {
-    void *allocation_handle;
-    cesmi_node (*make_node)( void *handle, int size );
-    cesmi_node (*clone_node)( void *handle, cesmi_node orig );
+typedef struct cesmi_setup {
+    void *loader;
+    cesmi_node (*make_node)( const struct cesmi_setup *setup, int size );
+    cesmi_node (*clone_node)( const struct cesmi_setup *setup, cesmi_node orig );
+    int (*add_property)( struct cesmi_setup *setup, char *id, char *desc, int type );
     void *instance; // per-instance data; never touched by DiVinE
     int property_count; /* filled in by setup */
     int property; /* filled in by loader */

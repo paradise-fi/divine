@@ -30,10 +30,10 @@ int buchi_property( const cesmi_setup *cs ) {
     return cs->property - s->property_count;
 }
 
-cesmi_node buchi_make_node( void *meh, int size )
+cesmi_node buchi_make_node( const cesmi_setup *setup, int size )
 {
-    const cesmi_setup *setup = (const cesmi_setup *) meh;
-    cesmi_node result = setup->make_node( setup->allocation_handle, size + sizeof( int ) );
+    cesmi_setup *orig = (cesmi_setup *) setup->loader;
+    cesmi_node result = orig->make_node( orig, size + sizeof( int ) );
     *buchi_state( result ) = 1;
     result.memory += sizeof( int );
     return result;
@@ -50,7 +50,7 @@ cesmi_setup override_setup( const cesmi_setup *setup )
 {
     cesmi_setup r = *setup;
     r.make_node = &buchi_make_node;
-    r.allocation_handle = (void *) setup;
+    r.loader = (void *) setup;
     return r;
 }
 
@@ -92,7 +92,7 @@ int buchi_get_successor( const cesmi_setup *setup, int handle,
             return combine_handles( bh, system );
         } else {
             if ( system_handle( handle ) == 1 ) { /* system was deadlocked */
-                *to = setup->clone_node( setup->allocation_handle, from );
+                *to = setup->clone_node( setup, from );
                 *buchi_state( *to ) = bs;
                 return combine_handles( bh + 1, 1 );
             }
@@ -143,5 +143,6 @@ void buchi_setup( cesmi_setup *setup )
     s->instance = setup->instance;
     s->property_count = setup->property_count;
     setup->instance = s;
-    setup->property_count += buchi_property_count;
+    while ( setup->property_count < s->property_count + buchi_property_count )
+        setup->add_property( setup, NULL, NULL, cesmi_pt_buchi );
 }

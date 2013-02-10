@@ -32,7 +32,7 @@ int get_initial( const cesmi_setup *setup, int handle, cesmi_node *to )
     if ( handle > 1 )
         return 0;
 
-    *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+    *to = setup->make_node( setup, sizeof( struct state ) );
     struct state *s = (struct state *) to->memory;
     s->a = s->b = 0;
     return 2;
@@ -43,7 +43,7 @@ int get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_
     struct state *in = (struct state *) from.memory;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
-        *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+        *to = setup->make_node( setup, sizeof( struct state ) );
         struct state *out = (struct state *) to->memory;
         *out = *in;
         switch (handle) {

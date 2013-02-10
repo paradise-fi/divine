@@ -314,7 +314,7 @@ void DveCompiler::gen_initial_state()
 
     block_begin();
     line( "if ( handle != 1 ) return 0;" );
-    line( "*out = setup->make_node( setup->allocation_handle, state_size );" );
+    line( "*out = setup->make_node( setup, state_size );" );
     line( "memset( out->memory, 0, state_size );" );
     line( "state_struct_t &_out = *reinterpret_cast< state_struct_t * >( out->memory );");
 
@@ -646,7 +646,7 @@ void DveCompiler::transition_effect( ExtTransition * et, string in, string out )
 }
 
 void DveCompiler::new_output_state() {
-    line( "cesmi_node blob_out = setup->make_node( setup->allocation_handle, state_size );" );
+    line( "cesmi_node blob_out = setup->make_node( setup, state_size );" );
     line( "state_struct_t *out = reinterpret_cast< state_struct_t * >( blob_out.memory );" );
     line( "*out = *in;" );
 }
@@ -831,23 +831,10 @@ void DveCompiler::print_generator()
     gen_initial_state();
 
     line( "void setup( cesmi_setup *setup ) {" );
-    line( "    setup->property_count = 2 + " + fmt( have_property ) + ";" );
-    line( "}" );
-
-    line( "int get_property_type( const cesmi_setup *setup, int n ) {" );
-    line( "    switch ( n ) {" );
-    line( "    case 0: return cesmi_pt_deadlock;" );
-    line( "    case 1: return cesmi_pt_goal;" );
-    line( "    case 2: return cesmi_pt_buchi;" );
-    line( "    }" );
-    line( "}" );
-
-    line( "char *show_property( const cesmi_setup *setup, int n ) {" );
-    line( "    switch ( n ) {" );
-    line( "    case 0: return strdup( \"deadlock\" );" );
-    line( "    case 1: return strdup( \"assert\" );" );
-    line( "    case 2: return strdup( \"LTL\" );" );
-    line( "    }" );
+    line( "    setup->add_property( setup, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );" );
+    line( "    setup->add_property( setup, strdup( \"assert\" ), NULL, cesmi_pt_goal );" );
+    if ( have_property )
+        line( "    setup->add_property( setup, strdup( \"LTL\" ), NULL, cesmi_pt_buchi );" );
     line( "}" );
 
     many = false;

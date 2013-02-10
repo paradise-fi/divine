@@ -132,8 +132,6 @@ struct CESMI : public Common< Blob > {
             die( "FATAL: Error loading \"%s\".\n%s", path.c_str(), dlerror() );
 
         getsym( &dl.setup, "setup" );
-        getsym( &dl.get_property_type, "get_property_type" );
-        getsym( &dl.show_property, "show_property" );
 
         getsym( &dl.get_initial, "get_initial" );
         getsym( &dl.get_successor, "get_successor" );
@@ -148,8 +146,8 @@ struct CESMI : public Common< Blob > {
             die( "FATAL: Could not resolve get_successor." );
     }
 
-    static cesmi::cesmi_node make_node( void *handle, int size ) {
-        CESMI *_this = reinterpret_cast< CESMI * >( handle );
+    static cesmi::cesmi_node make_node( const cesmi::cesmi_setup *setup, int size ) {
+        CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         int slack = _this->alloc._slack;
         Blob b( _this->alloc.pool(), size + slack );
         b.clear( 0, slack );
@@ -159,8 +157,8 @@ struct CESMI : public Common< Blob > {
         return n;
     }
 
-    static cesmi::cesmi_node clone_node( void *handle, cesmi::cesmi_node orig ) {
-        CESMI *_this = reinterpret_cast< CESMI * >( handle );
+    static cesmi::cesmi_node clone_node( const cesmi::cesmi_setup *setup, cesmi::cesmi_node orig ) {
+        CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         Blob origb( orig.handle );
         Blob b( _this->alloc.pool(), origb.size() );
 
@@ -173,16 +171,67 @@ struct CESMI : public Common< Blob > {
         return n;
     }
 
+    struct Property {
+        std::string id, description;
+        graph::PropertyType type;
+        int seqno;
+    };
+
+    std::vector< Property > _properties;
+
+    static int add_property( cesmi::cesmi_setup *setup, char *id, char *desc, int type )
+    {
+        CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
+
+        Property p = { .id = id ?: "", .description = desc ?: "" };
+        ::free( id );
+        ::free( desc );
+
+        std::string defd;
+
+        switch ( type ) {
+            case cesmi::cesmi_pt_goal:
+                p.type = PT_Goal;
+                defd = "safety";
+                break;
+            case cesmi::cesmi_pt_deadlock:
+                p.type = PT_Deadlock;
+                defd = "deadlock freedom";
+                break;
+            case cesmi::cesmi_pt_buchi:
+                p.type = PT_Buchi;
+                defd = "neverclaim / LTL verification";
+                break;
+            default: assert_unreachable( "unknown CESMI property type %d", type );
+        }
+
+        p.seqno = _this->_properties.size();
+
+        if ( p.id.empty() )
+            p.id = "p_" + wibble::str::fmt( p.seqno + 1 );
+
+        if ( p.description.empty() )
+            p.description = defd;
+
+        _this->_properties.push_back( p );
+        setup->property_count ++;
+
+        assert_eq( setup->property_count, _this->_properties.size() );
+        return p.seqno;
+    }
+
     void call_setup()
     {
         if ( setup.instance_initialised )
             return;
 
+        _properties.clear();
         setup.property = 0;
         setup.property_count = 0;
-        setup.allocation_handle = this;
+        setup.loader = this;
         setup.make_node = &make_node;
         setup.clone_node = &clone_node;
+        setup.add_property = &add_property;
         setup.instance = 0;
         setup.instance_initialised = 0;
 
@@ -192,41 +241,23 @@ struct CESMI : public Common< Blob > {
         setup.instance_initialised = 1;
     }
 
-    std::string propertyName( int i ) {
-        char *descr = dl.show_property ? dl.show_property( &setup, i ) : nullptr;
-        std::string r = descr ? std::string( descr ) : ("p_" + wibble::str::fmt( i + 1 ));
-        ::free( descr );
-        return r;
-    }
-
     template< typename Y >
-    void properties( Y yield ) {
+    void properties( Y yield )
+    {
         call_setup();
-        for ( int i = 0; i < setup.property_count; ++i ) {
-            auto name = propertyName( i );
-            const char *type = "unknown";
-            switch (dl.get_property_type ? dl.get_property_type( &setup, i ) : cesmi::cesmi_pt_deadlock) {
-                case cesmi::cesmi_pt_deadlock:
-                    yield( name, "deadlock freedom", PT_Deadlock );
-                    continue;
-                case cesmi::cesmi_pt_goal:
-                    yield( name, "safety", PT_Goal );
-                    continue;
-                case cesmi::cesmi_pt_buchi:
-                    yield( name, "neverclaim / LTL verification", PT_Buchi );
-                    continue;
-            }
-        }
+        for ( auto p : _properties )
+            yield( p.id, p.description, p.type );
     }
 
-    void useProperty( std::string n ) {
+    void useProperty( std::string n )
+    {
         call_setup();
-        for ( int i = 0; i < setup.property_count; ++i ) {
-            if ( n == propertyName( i ) ) {
-                setup.property = i;
+        for ( auto p : _properties )
+            if ( n == p.id ) {
+                setup.property = p.seqno;
                 return;
             }
-        }
+
         throw wibble::exception::Consistency( "Unknown property " + n + ". Please consult divine info." );
     }
 

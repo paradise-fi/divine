@@ -25,7 +25,6 @@ int buchi_get_successor( const cesmi_setup *setup, int handle, cesmi_node from,
 char *buchi_show_node( const cesmi_setup *setup, cesmi_node from, show_node_t next );
 char *buchi_show_transition( const cesmi_setup *setup, cesmi_node from, int handle, show_transition_t next );
 
-char *buchi_show_property( const cesmi_setup *setup, int property );
 void buchi_setup( cesmi_setup *setup );
 
 #ifdef __cplusplus
