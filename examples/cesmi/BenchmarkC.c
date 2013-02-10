@@ -27,7 +27,7 @@ struct state
     int16_t a, b;
 };
 
-int get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
+int get_initial( const cesmi_setup *setup, int handle, cesmi_node *to )
 {
     if ( handle > 1 )
         return 0;
@@ -38,7 +38,7 @@ int get_initial( cesmi_setup *setup, int handle, cesmi_node *to )
     return 2;
 }
 
-int get_successor( cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
+int get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
 {
     struct state *in = (struct state *) from.memory;
 
@@ -59,7 +59,7 @@ void setup( cesmi_setup *s )
     s->property_count = 2;
 }
 
-int get_property_type( cesmi_setup *s, int n )
+int get_property_type( const cesmi_setup *s, int n )
 {
     switch ( n ) {
     case 0: return cesmi_pt_goal;
@@ -68,7 +68,7 @@ int get_property_type( cesmi_setup *s, int n )
     return -1;
 }
 
-char *show_node( cesmi_setup *setup, cesmi_node from )
+char *show_node( const cesmi_setup *setup, cesmi_node from )
 {
     struct state *in = (struct state *) from.memory;
     char *result;
@@ -76,7 +76,7 @@ char *show_node( cesmi_setup *setup, cesmi_node from )
     return result;
 }
 
-char *show_transition( cesmi_setup *setup, cesmi_node from, int handle )
+char *show_transition( const cesmi_setup *setup, cesmi_node from, int handle )
 {
     switch (handle) {
     case 1: return strdup( "a++" );
