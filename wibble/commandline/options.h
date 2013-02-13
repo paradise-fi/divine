@@ -60,13 +60,13 @@ class Option : public Managed
 protected:
 	bool m_isset;
 
-	Option(const std::string& name) : m_name(name), m_isset(false) {}
+	Option(const std::string& name) : m_name(name), m_isset(false), hidden(false) {}
 	Option(const std::string& name,
 			char shortName,
 			const std::string& longName,
 			const std::string& usage = std::string(),
 			const std::string& description = std::string())
-		: m_name(name), m_isset(false), usage(usage), description(description)
+		: m_name(name), m_isset(false), usage(usage), description(description), hidden(false)
 	{
 		if (shortName != 0)
 			shortNames.push_back(shortName);
