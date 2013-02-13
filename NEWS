@@ -1,3 +1,12 @@
+DiVinE 2.94 (3.0 beta 1 ; 13.2.2013)
+====================================
+
+- Substantial updates to the CESMI interface (see manual).
+- Re-introduce the DVE->CESMI compiler (`divine compile file.dve`).
+- A new interactive subcommand, `divine simulate`.
+- Updates and improvements to timed automata support.
+- A number of bugfixes.
+
 DiVinE 2.93 (3.0 alpha 3 ; 28.1.2013)
 =====================================
 
