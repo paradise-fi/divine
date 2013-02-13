@@ -47,7 +47,7 @@ option( HASH_COMPACTION "enable Hash Compaction" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
-option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" ON )
+option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" OFF )
 option( HOARD "use HOARD SMP memory allocator" OFF )
 option( TBBMALLOC "use Intel TBB memory allocator" ON )
 
