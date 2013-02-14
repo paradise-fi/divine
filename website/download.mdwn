@@ -23,8 +23,8 @@ distributed as a part of the main DiVinE package.
 Download: **[divine-2.5.2.tar.gz] [1]**.  An installer for 32 bit windows:
 **[divine-2.5-win32.exe] [3]**.
 
-The current *development* version is **[divine-2.93.tar.gz] [4]** (3.0 alpha
-3). Binaries of development snapshots can be [obtained from hydra] [5].
+The current *development* version is **[divine-2.94.tar.gz] [4]** (3.0 beta
+1). Binaries of development snapshots can be [obtained from hydra] [5].
 
 Please consult [release notes] [2] for a summary of changes between releases.
 
