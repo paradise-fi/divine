@@ -62,6 +62,8 @@
 #define _RLOCK_COUNTER_MASK        0xFF0000
 #define _RWLOCK_ATTR_SHARING_MASK  0x1
 
+#define _BARRIER_COUNT_MASK        0xFFFE0000
+
 /* TEMPORARY */
 #ifdef NEW_INTERP_BUGS
 #define bool int
@@ -1211,9 +1213,9 @@ void pthread_cleanup_pop( int execute ) {
          _ReadLock representation:
            {
              .rlock: information about reader
-                 ----------------------------------------------------------
-                | *free* | lock counter: 8 bit | (reader gid + 1): 16 bits |
-                 ----------------------------------------------------------
+                 -----------------------------------------------------------
+                | *free* | lock counter: 8 bits | (reader gid + 1): 16 bits |
+                 -----------------------------------------------------------
              .next: pointer to the next node, if there is any (representing another thread)
             }
      }
@@ -1443,19 +1445,76 @@ int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
 }
 
 /* Barrier */
+
+/*
+  pthread_barrier_t representation:
+
+   { .counter:
+        -----------------------------------------------------------------------------------------------
+       | the number of threads to synchronize: 15 bits | < the rest is the same as in pthread_cond_t > |
+        -----------------------------------------------------------------------------------------------
+     .mutex: NOT USED
+   }
+*/
+
 int pthread_barrier_destroy( pthread_barrier_t *barrier ) {
-    /* TODO */
+    PTHREAD_VISIBLE_FUN_BEGIN()
+
+    if ( barrier == NULL )
+        return EINVAL;
+
+    pthread_cond_destroy( barrier );
     return 0;
 }
 
-int pthread_barrier_init( pthread_barrier_t *barrier, const pthread_barrierattr_t * attr, unsigned count ) {
-    /* TODO */
+int pthread_barrier_init( pthread_barrier_t *barrier, const pthread_barrierattr_t * attr /* TODO: barrier attributes */,
+                          unsigned count ) {
+    PTHREAD_VISIBLE_FUN_BEGIN()
+
+    if ( count == 0 || barrier == NULL )
+        return EINVAL;
+
+    // make sure that no thread is blocked on the barrier
+    // (probably better alternative when compared to: return EBUSY)
+    __divine_assert( ( barrier->counter & _COND_COUNTER_MASK ) == 0 );
+
+    // Set the number of threads that must call pthread_barrier_wait() before
+    // any of them successfully return from the call.
+    barrier->counter = ( count << 17 );
+    barrier->counter |= _INITIALIZED_COND;
     return 0;
 }
 
 int pthread_barrier_wait( pthread_barrier_t *barrier ) {
-    /* TODO */
-    return 0;
+    PTHREAD_VISIBLE_FUN_BEGIN()
+
+    if ( barrier == NULL || !( barrier->counter & _INITIALIZED_COND ) )
+        return EINVAL;
+
+    int ltid = __divine_get_tid();
+    int ret = 0;
+    int counter = barrier->counter & _COND_COUNTER_MASK;
+    int release_count = barrier->counter >> 17;
+
+    if ( (counter + 1) == release_count ) {
+        pthread_cond_broadcast( barrier );
+        ret = PTHREAD_BARRIER_SERIAL_THREAD;
+    } else {
+        // WARNING: this is not immune from spurious wakeup.
+        // As of this writing, spurious wakeup is not implemented (and probably never will).
+
+        // fall asleep
+        Thread* thread = threads[ltid];
+        thread->sleeping = true;
+        thread->condition = barrier;
+
+        _cond_adjust_count( barrier, 1 ); // one more thread is blocked on this barrier
+
+        // sleeping
+        WAIT_OR_CANCEL( thread->sleeping )
+    }
+
+    return ret;
 }
 
 /* Barrier attributes */

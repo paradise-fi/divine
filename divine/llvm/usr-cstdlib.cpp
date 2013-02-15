@@ -31,3 +31,13 @@ void free( void * p) {
 void _ZSt9terminatev( void ) {
     // TODO?
 }
+
+
+/* Operators new & delete */
+void _Znwm( void ) {
+    // TODO?
+}
+
+void _Znam( void ) {
+    // TODO?
+}

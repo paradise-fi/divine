@@ -51,7 +51,7 @@
 #define PTHREAD_RWLOCK_INITIALIZER     { .wlock = ( PTHREAD_PROCESS_PRIVATE << 16  ) | _INITIALIZED_RWLOCK, \
                                          .rlocks = NULL }
 
-#define PTHREAD_BARRIER_SERIAL_THREAD  0 /* TODO */
+#define PTHREAD_BARRIER_SERIAL_THREAD  1
 
 /* Data types */
 
@@ -83,7 +83,7 @@ typedef struct {
 } pthread_rwlock_t;
 typedef int pthread_rwlockattr_t;
 
-typedef int pthread_barrier_t;
+typedef pthread_cond_t pthread_barrier_t;
 typedef int pthread_barrierattr_t;
 
 /* Function prototypes */
@@ -197,9 +197,9 @@ int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *, int * ) NOINLIN
 int pthread_rwlockattr_init( pthread_rwlockattr_t * ) NOINLINE;
 int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *, int ) NOINLINE NO_EFFECT;
 
-int pthread_barrier_destroy( pthread_barrier_t * ) NOINLINE UNSUPPORTED_USER;
-int pthread_barrier_init( pthread_barrier_t *, const pthread_barrierattr_t *, unsigned ) NOINLINE UNSUPPORTED_USER;
-int pthread_barrier_wait( pthread_barrier_t * ) NOINLINE UNSUPPORTED_USER;
+int pthread_barrier_destroy( pthread_barrier_t * ) NOINLINE;
+int pthread_barrier_init( pthread_barrier_t *, const pthread_barrierattr_t *, unsigned ) NOINLINE;
+int pthread_barrier_wait( pthread_barrier_t * ) NOINLINE;
 
 int pthread_barrierattr_destroy( pthread_barrierattr_t * ) NOINLINE UNSUPPORTED_USER;
 int pthread_barrierattr_getpshared( const pthread_barrierattr_t *, int * ) NOINLINE UNSUPPORTED_USER;

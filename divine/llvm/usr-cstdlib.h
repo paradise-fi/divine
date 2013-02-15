@@ -31,6 +31,7 @@ extern "C" {
 void * malloc( size_t size ) NOINLINE;
 void free( void * ) NOINLINE;
 void _ZSt9terminatev( void );
+void _Znwm( void );
 
 #ifdef __cplusplus
 }
