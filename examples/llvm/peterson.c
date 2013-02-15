@@ -47,11 +47,11 @@ void * thread( void *in ) {
 #endif
     p->s->turn = 1 - p->id;
 
-    // ap( p->id ? wait1 : wait2 );
+    ap( p->id ? wait1 : wait2 );
     while ( p->s->flag[1 - p->id] == 1 && p->s->turn == 1 - p->id ) ;
 
     p->s->in_critical[p->id] = 1;
-    // ap( p->id ? critical1 : critical2 );
+    ap( p->id ? critical1 : critical2 );
     assert( !p->s->in_critical[1 - p->id] );
     p->s->in_critical[p->id] = 0;
 

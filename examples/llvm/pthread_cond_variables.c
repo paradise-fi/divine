@@ -42,8 +42,8 @@
 #include "unistd.h"
 #endif
 
-#define NUM_CONSUMERS         2
-#define NUM_ITEMS_TO_PROCESS  2
+#define NUM_OF_CONSUMERS         2
+#define NUM_OF_ITEMS_TO_PROCESS  2
 
 volatile int enqueued = 0;
 volatile int dequeued = 0;
@@ -59,9 +59,9 @@ void *consumer( void *arg )
         pthread_mutex_lock( &queue_mutex );
         
 #ifdef BUG
-        if ( dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0 ) {
+        if ( dequeued < NUM_OF_ITEMS_TO_PROCESS && enqueued == 0 ) {
 #else // correct
-        while ( dequeued < NUM_ITEMS_TO_PROCESS && enqueued == 0 ) {
+        while ( dequeued < NUM_OF_ITEMS_TO_PROCESS && enqueued == 0 ) {
 #endif
 #ifdef TRACE
             trace( "Consumer ID = %d is going to sleep.", id );
@@ -72,7 +72,7 @@ void *consumer( void *arg )
 #endif
         }
 
-        if ( dequeued == NUM_ITEMS_TO_PROCESS ) {
+        if ( dequeued == NUM_OF_ITEMS_TO_PROCESS ) {
             pthread_mutex_unlock( &queue_mutex );
             break;
         } 
@@ -98,7 +98,7 @@ void *consumer( void *arg )
 int main( void )
 {
   int i;
-  pthread_t * threads = ( pthread_t * )( malloc( sizeof( pthread_t ) * NUM_CONSUMERS ) );
+  pthread_t * threads = ( pthread_t * )( malloc( sizeof( pthread_t ) * NUM_OF_CONSUMERS ) );
   if ( !threads )
       return 1;
 
@@ -107,12 +107,12 @@ int main( void )
   pthread_cond_init ( &queue_emptiness_cv, NULL );
 
   // create and start all consumers
-  for ( i=0; i<NUM_CONSUMERS; i++ ) {
+  for ( i=0; i<NUM_OF_CONSUMERS; i++ ) {
       pthread_create( &threads[i], 0, consumer, ( void* )( i+1 ) );
   }
 
   // producer:
-  for ( i=0; i<NUM_ITEMS_TO_PROCESS; i++ ) {
+  for ( i=0; i<NUM_OF_ITEMS_TO_PROCESS; i++ ) {
       // here the main thread would produce some item to process
 #ifndef DIVINE
       sleep(1);
@@ -133,12 +133,12 @@ int main( void )
   pthread_cond_broadcast( &queue_emptiness_cv );
 
   // wait for all threads to complete
-  for ( i=0; i<NUM_CONSUMERS; i++ ) {
+  for ( i=0; i<NUM_OF_CONSUMERS; i++ ) {
       pthread_join( threads[i], NULL );
   }
 
   assert( enqueued == 0 );
-  assert( dequeued == NUM_ITEMS_TO_PROCESS );
+  assert( dequeued == NUM_OF_ITEMS_TO_PROCESS );
 
   // clean up and exit
   pthread_mutex_destroy( &queue_mutex );

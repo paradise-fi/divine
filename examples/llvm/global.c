@@ -20,11 +20,11 @@
  */
 
 #include <pthread.h>
-#include "stdlib.h"
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
 #include "assert.h"
+#include "stdlib.h"
 #endif
 
 int i = 33;
