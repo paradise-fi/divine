@@ -179,6 +179,7 @@ struct Compile {
         aggr_s << "}" << std::endl;
         aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
         extras += " " + aggr;
+        aggr_s.close();
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
         run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
