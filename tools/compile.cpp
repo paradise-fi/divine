@@ -21,10 +21,10 @@ void print_buchi_trans_label(bdd label, std::ostream& out) {
         while (current != bddtrue && current != bddfalse) {
             bdd high = bdd_high(current);
             if (high == bddfalse) {
-                out << "!prop_" << get_buchi_symbol(bdd_var(current)) << "( setup, n )";
+                out << "!prop_" << get_buchi_symbol(bdd_var(current)) << "( &sys_setup, n )";
                 current = bdd_low(current);
             } else {
-                out << "prop_" << get_buchi_symbol(bdd_var(current)) << "( setup, n )";;
+                out << "prop_" << get_buchi_symbol(bdd_var(current)) << "( &sys_setup, n )";;
                 current = high;
             }
             if (current != bddtrue && current != bddfalse) out << " && ";
@@ -54,6 +54,8 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
 
     s << "int buchi_next_" << id
       << "( int from, int transition, cesmi_setup *setup, cesmi_node n ) {"
+      << std::endl
+      << "    cesmi_setup sys_setup = system_setup( setup );"
       << std::endl;
     int buchi_next = 0;
     for ( n = bstates->prv; n != bstates; n = n->prv ) {
@@ -77,6 +79,8 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
 
     for ( std::list< std::string >::iterator i = symbols.begin(); i != symbols.end(); ++ i )
         decls << "extern \"C\" bool prop_" << *i << "( cesmi_setup *setup, cesmi_node n );" << std::endl;
+
+    decls << "cesmi_setup system_setup( const cesmi_setup *setup );" << std::endl;
 
     return decls.str() + "\n" + s.str();
 }
