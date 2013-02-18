@@ -81,8 +81,12 @@ void reinitBuchi() {
 |*              Simplification of the Buchi automaton               *|
 \********************************************************************/
 
-void decrement_incoming(map<BState*, bdd> *trans) {
-  map<BState*, bdd>::iterator t;
+bool BStateComp::operator() (const BState* l, const BState* r) const {
+  return (l->id < r->id || (l->id == r->id && l->incoming < r->incoming));
+}
+
+void decrement_incoming(map<BState*, bdd, BStateComp> *trans) {
+  map<BState*, bdd, BStateComp>::iterator t;
   for(t = trans->begin(); t != trans->end(); t++)
       t->first->incoming--;
 }
@@ -115,7 +119,7 @@ BState *remove_bstate(BState *s, BState *s1) /* removes a state */
 void retarget_all_btrans()
 {             /* redirects transitions before removing a state from the automaton */
   BState *s;
-  map<BState*, bdd>::iterator t, tx;
+  map<BState*, bdd, BStateComp>::iterator t, tx;
   for (s = bstates->nxt; s != bstates; s = s->nxt)
     for (t = s->trans->begin(); t != s->trans->end(); )
       if (!t->first->trans) { /* t->to has been removed */
@@ -421,7 +425,7 @@ BState* add_state(int col, map<int, BState*>& color_dict) {
   s->id = col;
   s->incoming = col;
   s->final = -1;
-  s->trans = new map<BState*, bdd>();
+  s->trans = new map<BState*, bdd, BStateComp>();
   color_dict[col] = s;
   bstate_count++;
   return s;
@@ -792,7 +796,7 @@ BState *find_bstate(GState *state, int final, BState *s)
   s->id = (state)->id;
   s->incoming = 0;
   s->final = final;
-  s->trans = new map<BState*, bdd>();
+  s->trans = new map<BState*, bdd, BStateComp>();
   s->nxt = bstack->nxt;
   bstack->nxt = s;
 
@@ -1160,7 +1164,7 @@ void mk_buchi()
   s->incoming = 1;
   s->final = 0;
   s->gstate = 0;
-  s->trans = new map<BState*, bdd>();
+  s->trans = new map<BState*, bdd, BStateComp>();
 #ifdef DICT
   bsDict[0]->insert(pair<GState*, BState*>(0, s));
 #endif

@@ -117,16 +117,26 @@ typedef struct GState {
   struct GState *prv;
 } GState;
 
+struct GStateComp {
+  bool operator() (const GState* l, const GState* r) const;
+};
+
+struct BStateComp;
+
 typedef struct BState {
   struct GState *gstate;
   int id;
   int incoming;
   int final;
   //         to    label
-  std::map<BState*, bdd> *trans;
+  std::map<BState*, bdd, BStateComp> *trans;
   struct BState *nxt;
   struct BState *prv;
 } BState;
+
+struct BStateComp {
+  bool operator() (const BState* l, const BState* r) const;
+};
 
 typedef struct GScc {
   struct GState *gstate;
@@ -441,7 +451,7 @@ class cGTrans {
     void erase(std::map<GState*, std::map<cset, bdd> >::iterator &tx);
     
   private:
-    std::map<GState*, std::map<cset, bdd> > trans;
+    std::map<GState*, std::map<cset, bdd>, GStateComp> trans;
 };
 
 //inline bool cGTrans::operator<(const cGTrans &t) const {
@@ -469,10 +479,10 @@ inline size_t cGTrans::size(void) {
   return trans.size();
 }
 
-inline std::map<GState*, std::map<cset, bdd> >::iterator cGTrans::begin() {
+inline std::map<GState*, std::map<cset, bdd>, GStateComp>::iterator cGTrans::begin() {
   return trans.begin();
 }
-inline std::map<GState*, std::map<cset, bdd> >::iterator cGTrans::end() {
+inline std::map<GState*, std::map<cset, bdd>, GStateComp>::iterator cGTrans::end() {
   return trans.end();
 }
 
@@ -480,7 +490,7 @@ inline std::map<cset, bdd>& cGTrans::operator[] (GState* x) {
   return trans[x];
 }
 
-inline void cGTrans::erase(std::map<GState*, std::map<cset, bdd> >::iterator &tx) {
+inline void cGTrans::erase(std::map<GState*, std::map<cset, bdd>, GStateComp>::iterator &tx) {
   trans.erase(tx);
 }
 
