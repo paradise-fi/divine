@@ -117,6 +117,8 @@ struct LtlCE {
         }
 
         static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
+            if ( !from.valid() )
+                return visitor::ExpandTransition;
             if ( from.valid() && t.whichInitial( to ) ) {
                 t.extension( to ).parent = from;
                 return visitor::TerminateOnTransition;
