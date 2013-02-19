@@ -56,16 +56,7 @@ int get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_
 
 void setup( cesmi_setup *s )
 {
-    s->property_count = 2;
-}
-
-int get_property_type( const cesmi_setup *s, int n )
-{
-    switch ( n ) {
-    case 0: return cesmi_pt_goal;
-    case 1: return cesmi_pt_deadlock;
-    }
-    return -1;
+    s->add_property( s, strdup( "deadlock" ), NULL, cesmi_pt_deadlock );
 }
 
 char *show_node( const cesmi_setup *setup, cesmi_node from )

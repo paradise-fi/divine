@@ -9,7 +9,7 @@
  * 2) Now withltl.so can be used as input model to the DiVinE model checker:
  *
  *      $ divine info withltl.so
- *      $ divine verify -p 1 withltl.so
+ *      $ divine verify -p p_1 withltl.so
  */
 
 #define _GNU_SOURCE
@@ -31,7 +31,7 @@ int _get_initial( const cesmi_setup *setup, int handle, cesmi_node *to )
     if ( handle > 1 )
         return 0;
 
-    *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+    *to = setup->make_node( setup, sizeof( struct state ) );
     struct state *s = (struct state *) to->memory;
     s->a = s->b = 0;
     return 2;
@@ -42,7 +42,7 @@ int _get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi
     struct state *in = (struct state *) from.memory;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
-        *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+        *to = setup->make_node( setup, sizeof( struct state ) );
         struct state *out = (struct state *) to->memory;
         *out = *in;
         switch (handle) {
@@ -55,18 +55,9 @@ int _get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi
 
 void setup( cesmi_setup *s )
 {
-    s->property_count = 2;
+    s->add_property( s, NULL, NULL, cesmi_pt_goal );
+    s->add_property( s, NULL, NULL, cesmi_pt_deadlock );
     buchi_setup( s );
-}
-
-int get_property_type( const cesmi_setup *s, int n )
-{
-    switch ( n ) {
-    case 0: return cesmi_pt_goal;
-    case 1: return cesmi_pt_deadlock;
-    default: return cesmi_pt_buchi; // xxx
-    }
-    return -1;
 }
 
 char *_show_node( const cesmi_setup *setup, cesmi_node from )
