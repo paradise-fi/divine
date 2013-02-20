@@ -63,8 +63,9 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
             s << "    if ( transition == " << buchi_next << " ) {" << std::endl;
             s << "        if ( from == " << n->incoming;
             if ( t->second != bdd_true() ) {
-                s << " && ";
+                s << " && ( ";
                 print_buchi_trans_label(t->second, s);
+                s << " ) ";
             }
             s << " )" << std::endl;
             s << "             return " << t->first->incoming << ";" << std::endl;
