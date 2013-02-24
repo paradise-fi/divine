@@ -1,0 +1,16 @@
+process X {
+    int a = 0, b = 0;
+    state x;
+    init x;
+    trans
+ x -> x { guard a < 4 && b < 4; effect a = a + 1; },
+ x -> x { guard a < 4 && b < 4; effect b = b + 1; };
+}
+process LTL_property {
+state q1;
+init q1;
+accept q1;
+trans
+q1 -> q1 { guard (not ((X->a == 2))); };
+}
+system async property LTL_property;

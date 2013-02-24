@@ -93,6 +93,13 @@ for_dve_small() {
     check reachability_valid
     check statespace 6 6 0 0
 
+    check clear
+    run $wrapper data/B.prop1.dve --property=deadlock "$@"
+    check statespace 24 32 0 8
+
+    check clear
+    run $wrapper data/B.prop1.dve --property=LTL "$@"
+    check statespace 14 18 14 4
 }
 
 dve_small() {
