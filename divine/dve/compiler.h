@@ -26,6 +26,8 @@ struct ExtTransition
     parse::Transition *first;
     parse::Transition *second; //only when first transition is synchronized;
     parse::Transition *property; // transition of property automaton
+
+    ExtTransition() : synchronized( 0 ), first( 0 ), second( 0 ), property( 0 ) {}
 };
 
 struct DveCompiler
@@ -37,18 +39,18 @@ struct DveCompiler
     System * system;
 
     bool have_property;
-    map< std::string, map< std::string, vector< ExtTransition > > > transition_map;
+    map< std::string, map< std::string, vector< vector< ExtTransition > > > > transition_map;
     map< std::string, vector< parse::Transition* > > channel_map;
     map< std::string, map< std::string, vector< parse::Transition * > > > procChanMap;
 
-    vector< parse::Transition* > property_transitions;
+    vector< vector< parse::Transition* > > property_transitions;
     vector< parse::Transition* >::iterator iter_property_transitions;
 
     map< std::string, vector< parse::Transition* > >::iterator iter_channel_map;
     map< std::string, map< std::string, vector< parse::Transition * > > >::iterator iter_procChanMap;
     vector< parse::Transition* >::iterator iter_transition_vector;
-    map< std::string, vector< ExtTransition > >::iterator iter_process_transition_map;
-    map< std::string, map< std::string, vector< ExtTransition > > >::iterator iter_transition_map;
+    map< std::string, vector< vector< ExtTransition > > >::iterator iter_process_transition_map;
+    map< std::string, map< std::string, vector< vector< ExtTransition > > > >::iterator iter_transition_map;
     vector< ExtTransition >::iterator iter_ext_transition_vector;
 
     string m_line;
@@ -89,6 +91,9 @@ struct DveCompiler
         outline();
     }
 
+    void declare( vector< parse::Declaration > & decls,
+                  vector < parse::ChannelDeclaration > & chandecls );
+    void initVars( vector< parse::Declaration > & decls, string process );
     void start_process();
     void ensure_process();
     void end_process( std::string name );
@@ -105,7 +110,7 @@ struct DveCompiler
     bool chanIsBuffered( parse::Process & proc, parse::SyncExpr & chan );
 
     void analyse_transition( parse::Process & p, parse::Transition * t,
-                             vector< ExtTransition > &ext_transition_vector );
+                             vector< vector< ExtTransition > > & ext_transition_vector );
     void analyse();
 
     void write_C( parse::Expression & expr, std::ostream & ostr, std::string state_name, std::string context, std::string immcontext = "" );
@@ -116,10 +121,15 @@ struct DveCompiler
     bool m_if_disjoint;
     bool m_if_empty;
 
-    void if_begin( bool disjoint ) {
+    void boolexp_begin( bool disjoint ) {
         m_if_empty = true;
         m_if_disjoint = disjoint;
-        append( "if ( " );
+        append( " ( " );
+    }
+
+    void if_begin( bool disjoint ) {
+        append( "if" );
+        boolexp_begin( disjoint );
     }
 
     void if_clause( std::string c ) {
@@ -139,6 +149,10 @@ struct DveCompiler
         if (!expr)
             return;
         if_clause( cexpr( *expr, state, context ) );
+    }
+
+    void boolexp_end() {
+        if_end();
     }
 
     void if_end() {
@@ -327,11 +341,24 @@ struct DveCompiler
                 return p;
     }
 
+    parse::Property & getProperty( int i ) {
+        if ( have_property ) {
+            if ( i == 0 )
+                return getProcess( ast->property.name() );
+            return ast->properties[ i - 1 ];
+        }
+        return ast->properties[ i ];
+    }
+
+    int propCount() {
+        return have_property ? ast->properties.size() + 1 : ast->properties.size();
+    }
+
     void yield_state();
     void new_output_state();
 
     void gen_constants();
-    void gen_successors();
+    void gen_successors( int property );
     void gen_is_accepting();
     void gen_header();
     void gen_state_struct();

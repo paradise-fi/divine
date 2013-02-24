@@ -227,6 +227,36 @@ void DveCompiler::end_process( std::string name ) {
     line( "__attribute__((__packed__)) " + name + ";" );
 }
 
+void DveCompiler::declare( vector< parse::Declaration >& decls,
+                           vector< parse::ChannelDeclaration >& chandecls )
+{
+    for ( parse::Declaration &decl : decls ) {
+        if ( !decl.is_const ) {
+            ensure_process();
+            declare( typeOf( decl.width ), decl.name, ( decl.is_array ? decl.size : 0 ) );
+        }
+    }
+
+    for ( parse::ChannelDeclaration &chandecl : chandecls ) {
+        if ( !chandecl.is_buffered )
+            continue;
+        ensure_process();
+        line( "struct" );
+        block_begin();
+        declare( "uint16_t", "number_of_items" );
+        line( "struct" );
+        block_begin();
+        for ( size_t j = 0; j < chandecl.components.size(); j++ ) {
+            declare( typeOf( chandecl.components[j] ), "x" + fmt( j ) );
+        }
+        block_end();
+        line( "content[" + fmt( chandecl.size ) + "];" );
+        block_end();
+        line( "__attribute__((__packed__)) " + chandecl.name + ";" );
+    }
+}
+
+
 void DveCompiler::gen_state_struct()
 {
     string name;
@@ -248,53 +278,20 @@ void DveCompiler::gen_state_struct()
     block_end();
     line( "__attribute__((__packed__)) _control;" );
 
-    for ( parse::Declaration &decl : ast->decls ) {
-        if ( !decl.is_const ) {
-            declare( typeOf( decl.width ), decl.name, ( decl.is_array ? decl.size : 0 ) );
-        }
-    }
-
-    for ( parse::ChannelDeclaration &chandecl : ast->chandecls ) {
-        if ( !chandecl.is_buffered )
-            continue;
-        line( "struct" );
-        block_begin();
-        declare( "uint16_t", "number_of_items" );
-        line( "struct" );
-        block_begin();
-        for ( size_t j = 0; j < chandecl.components.size(); j++ ) {
-            declare( typeOf( chandecl.components[j] ), "x" + fmt( j ) );
-        }
-        block_end();
-        line( "content[" + fmt( chandecl.size ) + "];" );
-        block_end();
-        line( "__attribute__((__packed__)) " + chandecl.name + ";" );
-    }
+    declare( ast->decls, ast->chandecls );
 
     for ( parse::Process &p : ast->processes ) {
         start_process();
 
-        for ( parse::Declaration &decl : p.decls ) {
-            ensure_process();
-            declare( typeOf( decl.width ), decl.name, ( decl.is_array ? decl.size : 0 ) );
-        }
+        declare( p.decls, p.chandecls );
 
-        for ( parse::ChannelDeclaration &chandecl : p.chandecls ) {
-            if ( !chandecl.is_buffered )
-                continue;
-            line( "struct" );
-            block_begin();
-            declare( "uint16_t", "number_of_items" );
-            line( "struct" );
-            block_begin();
-            for ( size_t j = 0; j < chandecl.components.size(); j++ ) {
-                declare( typeOf( chandecl.components[j] ), "x" + fmt( j ) );
-            }
-            block_end();
-            line( "content[" + fmt( chandecl.size ) + "];" );
-            block_end();
-            line( "__attribute__((__packed__)) " + chandecl.name + ";" );
-        }
+        end_process( p.name.name() );
+    }
+
+    for ( parse::Property &p : ast->properties ) {
+        start_process();
+
+        declare( p.decls, p.chandecls );
 
         end_process( p.name.name() );
     }
@@ -306,20 +303,9 @@ void DveCompiler::gen_state_struct()
     line();
 }
 
-void DveCompiler::gen_initial_state()
+void DveCompiler::initVars( vector< parse::Declaration > & decls, string process )
 {
-    //setAllocator( new Allocator );
-
-    append( "int get_initial( const cesmi_setup *setup, int handle, cesmi_node *out )" );
-
-    block_begin();
-    line( "if ( handle != 1 ) return 0;" );
-    line( "*out = setup->make_node( setup, state_size );" );
-    line( "memset( out->memory, 0, state_size );" );
-    line( "state_struct_t &_out = *reinterpret_cast< state_struct_t * >( out->memory );");
-
-    std::string process = "_out";
-    for ( parse::Declaration &decl : ast->decls ) {
+    for ( parse::Declaration &decl : decls ) {
         std::string var = process + "." + decl.name;
         if ( decl.is_array ) {
             for ( size_t i = 0; i < decl.initial.size(); i++ ) {
@@ -336,26 +322,36 @@ void DveCompiler::gen_initial_state()
             }
         }
     }
+}
+
+
+void DveCompiler::gen_initial_state()
+{
+    //setAllocator( new Allocator );
+
+    append( "int get_initial( const cesmi_setup *setup, int handle, cesmi_node *out )" );
+
+    block_begin();
+    line( "if ( handle != 1 ) return 0;" );
+    line( "*out = setup->make_node( setup, state_size );" );
+    line( "memset( out->memory, 0, state_size );" );
+    line( "state_struct_t &_out = *reinterpret_cast< state_struct_t * >( out->memory );");
+
+    initVars( ast->decls, "_out" );
 
     for ( parse::Process &p : ast->processes ) {
-        process = std::string( "_out." ) + p.name.name();
-        for ( parse::Declaration &decl : p.decls ) {
-            std::string var = process + "." + decl.name;
-            if ( decl.is_array ) {
-                for ( size_t i = 0; i < decl.initial.size(); i++ ) {
-                    std::stringstream strstr;
-                    decl.initial[ i ].dump( strstr );
-                    assign( var + "[" + fmt( i ) + "]", strstr.str() );
-                }
-            }
-            else {
-                if ( decl.initial.size() > 0 ) {
-                    std::stringstream strstr;
-                    decl.initial[ 0 ].dump( strstr );
-                    assign( var, strstr.str() );
-                }
+        initVars( p.decls, std::string( "_out." ) + p.name.name() );
+
+        for ( int i = 0; i < p.states.size(); i++ ) {
+            if ( p.states[ i ].name() == p.inits[ 0 ].name() ) {
+                assign( process_state( p, "_out" ), fmt( i ) );
             }
         }
+    }
+
+    for ( parse::Property &p : ast->properties ) {
+        initVars( p.decls, std::string( "_out." ) + p.name.name() );
+
         for ( int i = 0; i < p.states.size(); i++ ) {
             if ( p.states[ i ].name() == p.inits[ 0 ].name() ) {
                 assign( process_state( p, "_out" ), fmt( i ) );
@@ -381,30 +377,31 @@ std::map< std::string, std::vector< parse::Transition * > >::iterator DveCompile
 void DveCompiler::analyse_transition(
     parse::Process & p,
     parse::Transition * t,
-    vector< ExtTransition > &ext_transition_vector )
+    vector< vector< ExtTransition > > & ext_transition_vector )
 {
     if ( !t->syncexpr.valid() || t->syncexpr.write || chanIsBuffered( p, t->syncexpr ) ) {
         // transition not of type SYNC_ASK
-        if ( !have_property ) {
-            // no properties, just add to ext_transition vector
-            ExtTransition extTrans;
-            extTrans.synchronized = false;
-            extTrans.first = t;
-            ext_transition_vector.push_back( extTrans );
-        }
-        else {
+        // Add a set of transitions without any property
+        ExtTransition extTrans;
+        extTrans.synchronized = false;
+        extTrans.first = t;
+        ext_transition_vector[ 0 ].push_back( extTrans );
+
+        int i = 1;
+        for ( auto & propTrans : property_transitions ) {
             // this transition is not a property, but there are properties
             // forall properties, add this transition to ext_transition_vector
-            for( iter_property_transitions = property_transitions.begin();
-                iter_property_transitions != property_transitions.end();
+            for( iter_property_transitions = propTrans.begin();
+                iter_property_transitions != propTrans.end();
                 iter_property_transitions++ )
             {
                 ExtTransition extTrans;
                 extTrans.synchronized = false;
                 extTrans.first = t;
                 extTrans.property = (*iter_property_transitions);
-                ext_transition_vector.push_back( extTrans );
+                ext_transition_vector[ i ].push_back( extTrans );
             }
+            i++;
         }
     }
     else {
@@ -420,19 +417,19 @@ void DveCompiler::analyse_transition(
                 iter_transition_vector++ )
             {
                 if ( t->proc.name() != (*iter_transition_vector)->proc.name() ) {
-                    if ( !have_property ) {
-                        // system has no properties, so add only once without property
-                        ExtTransition extTrans;
-                        extTrans.synchronized = true;
-                        extTrans.first = t;
-                        extTrans.second = (*iter_transition_vector);
-                        ext_transition_vector.push_back( extTrans );
-                    }
-                    else {
+                    // Add a set of transitions without any property
+                    ExtTransition extTrans;
+                    extTrans.synchronized = true;
+                    extTrans.first = t;
+                    extTrans.second = (*iter_transition_vector);
+                    ext_transition_vector[ 0 ].push_back( extTrans );
+
+                    int i = 1;
+                    for ( auto & propTrans : property_transitions ) {
                         // system has properties, so forall properties, add the combination if this transition,
                         // the transition that also uses this channel and the property
-                        for(iter_property_transitions = property_transitions.begin();
-                            iter_property_transitions != property_transitions.end();
+                        for(iter_property_transitions = propTrans.begin();
+                            iter_property_transitions != propTrans.end();
                             iter_property_transitions++)
                         {
                             ExtTransition extTrans;
@@ -440,8 +437,9 @@ void DveCompiler::analyse_transition(
                             extTrans.first = t;
                             extTrans.second = (*iter_transition_vector);
                             extTrans.property = (*iter_property_transitions);
-                            ext_transition_vector.push_back( extTrans );
+                            ext_transition_vector[ i ].push_back( extTrans );
                         }
+                        i++;
                     }
                 }
             }
@@ -467,6 +465,7 @@ void DveCompiler::analyse()
 {
     parse::Transition * transition;
     have_property = ast->property.valid();
+    property_transitions.resize( propCount() );
 
     // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
     for ( parse::Process &p : ast->processes ) {
@@ -476,10 +475,19 @@ void DveCompiler::analyse()
             }
 
             if ( p.name.name() == ast->property.name() ) {
-                property_transitions.push_back( &t );
+                property_transitions[ 0 ].push_back( &t );
             }
         }
     }
+
+    int i = ( have_property ? 1 : 0 );
+    for ( parse::Property &p : ast->properties ) {
+        for ( parse::Transition &t : p.trans ) {
+            property_transitions[ i ].push_back( &t );
+        }
+        i++;
+    }
+
     for ( parse::Process &p : ast->processes ) {
         for ( parse::Transition &t : p.trans ) {
             if (
@@ -492,20 +500,21 @@ void DveCompiler::analyse()
                 //new process it means that new state in process is also new
                 if ( iter_transition_map == transition_map.end() ) {
                     // new process, add to transition map
-                    map< std::string, vector< ExtTransition > > processTransitionMap;
-                    vector< ExtTransition > extTransitionVector;
+                    map< std::string, vector< vector< ExtTransition > > > processTransitionMap;
+                    vector< vector< ExtTransition > > extTransitionVector;
+                    extTransitionVector.resize( propCount() + 1 );
 
                     analyse_transition( p, &t, extTransitionVector );
 
                     // for this process state, add the ext transitions
                     processTransitionMap.insert(
-                        pair< std::string, vector< ExtTransition > >(
+                        pair< std::string, vector< vector< ExtTransition > > >(
                             t.from.name(), extTransitionVector
                         )
                     );
                     // then add this vector to the transition map for this process
                     transition_map.insert(
-                        pair< std::string, map< std::string, vector< ExtTransition > > >(
+                        pair< std::string, map< std::string, vector< vector< ExtTransition > > > >(
                             p.name.name(), processTransitionMap
                         )
                     );
@@ -516,12 +525,13 @@ void DveCompiler::analyse()
 
                     //new state in current process
                     if ( iter_process_transition_map == iter_transition_map->second.end() ) {
-                        vector< ExtTransition > extTransitionVector;
+                        vector< vector< ExtTransition > > extTransitionVector;
+                        extTransitionVector.resize( propCount() + 1 );
                         analyse_transition( p, &t, extTransitionVector );
 
                         // and reinsert result
                         iter_transition_map->second.insert(
-                            pair< std::string, vector< ExtTransition > >(
+                            pair< std::string, vector< vector< ExtTransition > > >(
                                 t.from.name(), extTransitionVector
                             )
                         );
@@ -560,9 +570,9 @@ void DveCompiler::transition_guard( ExtTransition * et, std::string in )
             }
         }
     }
-    if(have_property)
+    if( et->property )
     {
-        parse::Process &property = getProcess( ast->property.name() );
+        parse::Process &property = getProcess( et->property->proc.name() );
         if_clause( in_state( property,
                              getStateId( property, et->property->from.name() ), in ) );
         for ( parse::Expression &exp : et->property->guards )
@@ -638,7 +648,7 @@ void DveCompiler::transition_effect( ExtTransition * et, string in, string out )
         }
     }
 
-    if( have_property ) //change of the property process state
+    if( et->property ) //change of the property process state
         assign(
             process_state( getProcess( et->property->proc.name() ), out ),
             fmt( getStateId( getProcess( et->property->proc.name() ), et->property->to.name() ) )
@@ -656,9 +666,17 @@ void DveCompiler::yield_state() {
     line( "return " + fmt( current_label ) + ";" );
 }
 
-void DveCompiler::gen_successors()
+void DveCompiler::gen_successors( int prop )
 {
     string in = "(*in)", out = "(*out)", space = "";
+
+    current_label = 1;
+
+    line( "int get_successor" + fmt( prop ) + "( const cesmi_setup *setup, int next_state, cesmi_node from, cesmi_node *to ) " );
+    block_begin();
+    line( "const state_struct_t *in = reinterpret_cast< state_struct_t * >( from.memory );" );
+    line( "bool system_in_deadlock = false;" );
+    line( "goto switch_state;" );
 
     new_label();
     if_begin( true );
@@ -688,8 +706,8 @@ void DveCompiler::gen_successors()
                     if_end(); block_begin();
 
                     for (
-                            iter_ext_transition_vector = iter_process_transition_map->second.begin();
-                            iter_ext_transition_vector != iter_process_transition_map->second.end();
+                            iter_ext_transition_vector = iter_process_transition_map->second[ prop ].begin();
+                            iter_ext_transition_vector != iter_process_transition_map->second[ prop ].end();
                             iter_ext_transition_vector++
                     ) {
                         // !! jak je to s property synchronizaci v comitted stavech !!
@@ -738,8 +756,8 @@ void DveCompiler::gen_successors()
                 if_end(); block_begin();
 
                 for (
-                            iter_ext_transition_vector = iter_process_transition_map->second.begin();
-                            iter_ext_transition_vector != iter_process_transition_map->second.end();
+                            iter_ext_transition_vector = iter_process_transition_map->second[ prop ].begin();
+                            iter_ext_transition_vector != iter_process_transition_map->second[ prop ].end();
                             iter_ext_transition_vector++
                 ) {
                     new_label();
@@ -764,27 +782,43 @@ void DveCompiler::gen_successors()
     if_clause( "system_in_deadlock" );
     if_end(); block_begin();
 
-    parse::Process &property = getProcess( ast->property.name() );
+    if ( prop ) {
+        parse::Process &property = getProperty( prop - 1 );
 
-    for(iter_property_transitions = property_transitions.begin();
-        iter_property_transitions != property_transitions.end();
-        iter_property_transitions++)
-    {
-        new_label();
-        if_begin( false );
+        for(iter_property_transitions = property_transitions[ prop - 1 ].begin();
+            iter_property_transitions != property_transitions[ prop - 1 ].end();
+            iter_property_transitions++)
+        {
+            new_label();
+            if_begin( false );
 
-        if_clause( in_state( property, getStateId( property, (*iter_property_transitions)->from.name() ), in ) );
-        for ( parse::Expression &exp : (*iter_property_transitions)->guards )
-            if_cexpr_clause( &exp, in, ast->property.name() );
+            if_clause( in_state( property, getStateId( property, (*iter_property_transitions)->from.name() ), in ) );
+            for ( parse::Expression &exp : (*iter_property_transitions)->guards )
+                if_cexpr_clause( &exp, in, ast->property.name() );
 
-        if_end(); block_begin();
-        new_output_state();
+            if_end(); block_begin();
+            new_output_state();
 
-        assign( process_state( property, out ), fmt( getStateId( property, (*iter_property_transitions)->to.name() ) ) );
+            assign( process_state( property, out ), fmt( getStateId( property, (*iter_property_transitions)->to.name() ) ) );
 
-        yield_state();
-        block_end();
+            yield_state();
+            block_end();
+        }
     }
+    block_end();
+
+    new_label();
+    line( "return 0;" );
+
+    line( "switch_state: switch( next_state )" );
+    block_begin();
+    for(int i=1; i < current_label; i++)
+        if (i==1)
+            line( "case " + fmt( i ) + ": system_in_deadlock = true; goto l" + fmt( i ) + ";" );
+        else
+            line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
+    block_end();
+
     block_end();
 }
 
@@ -796,18 +830,10 @@ void DveCompiler::gen_is_accepting()
     line( "state_struct_t &state = *reinterpret_cast< state_struct_t * >( n.memory );" );
     line( "uint64_t f = 0;" );
 
-    if ( have_property ) {
-        parse::Process &property = getProcess( ast->property.name() );
-        for ( int i = 0; i < int( property.states.size() ); i++ ) {
-            if ( isAccepting( property, i ) ) {
-                if_begin( true );
-                if_clause( in_state( property, i, "state" ) );
-                if_end();
-                line( "    f |= cesmi_accepting;" );
-            }
-        }
-    }
+    line( "switch ( setup->property )" );
+    block_begin();
 
+    line( "case 1:" );
     for ( auto &p : ast->processes )
         for ( auto &a : p.asserts ) {
             if_begin( false );
@@ -816,6 +842,22 @@ void DveCompiler::gen_is_accepting()
             if_end();
             line( "; else f |= cesmi_goal;" );
         }
+    line( "return f;" );
+
+    for ( int j = 0; j < propCount(); j++ ) {
+    line( "case " + fmt( j + 2 ) + ":");
+        parse::Process &property = getProperty( j );
+        for ( int i = 0; i < int( property.states.size() ); i++ ) {
+            if ( isAccepting( property, i ) ) {
+                if_begin( true );
+                if_clause( in_state( property, i, "state" ) );
+                if_end();
+                line( "    f |= cesmi_accepting;" );
+            }
+        }
+        line( "return f;" );
+    }
+    block_end();
 
     line( "return f;" );
     block_end();
@@ -833,33 +875,29 @@ void DveCompiler::print_generator()
     line( "void setup( cesmi_setup *setup ) {" );
     line( "    setup->add_property( setup, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );" );
     line( "    setup->add_property( setup, strdup( \"assert\" ), NULL, cesmi_pt_goal );" );
-    if ( have_property )
-        line( "    setup->add_property( setup, strdup( \"LTL\" ), NULL, cesmi_pt_buchi );" );
+    for ( int i = 0; i < propCount(); i++ ) {
+        line( "    setup->add_property( setup, strdup( \"LTL" + (i ? fmt( i ) : "") + "\" ), NULL, cesmi_pt_buchi );" );
+    }
     line( "}" );
 
     many = false;
-    current_label = 1;
 
     gen_is_accepting();
 
+    for ( int i = 0; i < propCount() + 1; i++ )
+        gen_successors( i );
+
     line( "int get_successor( const cesmi_setup *setup, int next_state, cesmi_node from, cesmi_node *to ) " );
     block_begin();
-    line( "const state_struct_t *in = reinterpret_cast< state_struct_t * >( from.memory );" );
-    line( "bool system_in_deadlock = false;" );
-    line( "goto switch_state;" );
 
-    gen_successors();
-
-    new_label();
-    line( "return 0;" );
-
-    line( "switch_state: switch( next_state )" );
+    line( "switch ( setup->property )" );
     block_begin();
-    for(int i=1; i < current_label; i++)
-        if (i==1)
-            line( "case " + fmt( i ) + ": system_in_deadlock = true; goto l" + fmt( i ) + ";" );
-        else
-            line( "case " + fmt( i ) + ": goto l" + fmt( i ) + ";" );
+    line( "case 0: " );
+    for ( int i = 0; i < propCount() + 1; i++ ) {
+        line( "case " + fmt( i + 1 ) + ":" );
+        line( "return get_successor" + fmt( i ) + "( setup, next_state, from, to );");
+    }
+
     block_end();
 
     block_end();
