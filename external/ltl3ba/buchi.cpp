@@ -82,7 +82,7 @@ void reinitBuchi() {
 \********************************************************************/
 
 bool BStateComp::operator() (const BState* l, const BState* r) const {
-  return (l->id < r->id || (l->id == r->id && l->incoming < r->incoming));
+  return (l->id < r->id || (l->id == r->id && l->order < r->order));
 }
 
 void decrement_incoming(map<BState*, bdd, BStateComp> *trans) {
@@ -796,6 +796,7 @@ BState *find_bstate(GState *state, int final, BState *s)
   s->id = (state)->id;
   s->incoming = 0;
   s->final = final;
+  s->order = final;
   s->trans = new map<BState*, bdd, BStateComp>();
   s->nxt = bstack->nxt;
   bstack->nxt = s;

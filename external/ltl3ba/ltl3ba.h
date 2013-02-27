@@ -128,6 +128,7 @@ typedef struct BState {
   int id;
   int incoming;
   int final;
+  int order;
   //         to    label
   std::map<BState*, bdd, BStateComp> *trans;
   struct BState *nxt;
