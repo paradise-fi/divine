@@ -13,8 +13,6 @@
 #ifndef TOOLS_DVECOMPILE_H
 #define TOOLS_DVECOMPILE_H
 
-using namespace std;
-
 namespace divine {
 namespace dve {
 
@@ -39,22 +37,22 @@ struct DveCompiler
     System * system;
 
     bool have_property;
-    map< std::string, map< std::string, vector< vector< ExtTransition > > > > transition_map;
-    map< std::string, vector< parse::Transition* > > channel_map;
-    map< std::string, map< std::string, vector< parse::Transition * > > > procChanMap;
+    std::map< std::string, std::map< std::string, std::vector< std::vector< ExtTransition > > > > transition_map;
+    std::map< std::string, std::vector< parse::Transition* > > channel_map;
+    std::map< std::string, std::map< std::string, std::vector< parse::Transition * > > > procChanMap;
 
-    vector< vector< parse::Transition* > > property_transitions;
-    vector< parse::Transition* >::iterator iter_property_transitions;
+    std::vector< std::vector< parse::Transition* > > property_transitions;
+    std::vector< parse::Transition* >::iterator iter_property_transitions;
 
-    map< std::string, vector< parse::Transition* > >::iterator iter_channel_map;
-    map< std::string, map< std::string, vector< parse::Transition * > > >::iterator iter_procChanMap;
-    vector< parse::Transition* >::iterator iter_transition_vector;
-    map< std::string, vector< vector< ExtTransition > > >::iterator iter_process_transition_map;
-    map< std::string, map< std::string, vector< vector< ExtTransition > > > >::iterator iter_transition_map;
-    vector< ExtTransition >::iterator iter_ext_transition_vector;
+    std::map< std::string, std::vector< parse::Transition* > >::iterator iter_channel_map;
+    std::map< std::string, std::map< std::string, std::vector< parse::Transition * > > >::iterator iter_procChanMap;
+    std::vector< parse::Transition* >::iterator iter_transition_vector;
+    std::map< std::string, std::vector< std::vector< ExtTransition > > >::iterator iter_process_transition_map;
+    std::map< std::string, std::map< std::string, std::vector< std::vector< ExtTransition > > > >::iterator iter_transition_map;
+    std::vector< ExtTransition >::iterator iter_ext_transition_vector;
 
-    string m_line;
-    ostream *m_output;
+    std::string m_line;
+    std::ostream *m_output;
     int m_indent;
     bool in_process, process_empty;
 
@@ -79,7 +77,7 @@ struct DveCompiler
     void append( std::string l ) { m_line += l; }
 
     void outline() {
-        ostream &out = *m_output;
+        std::ostream &out = *m_output;
         for ( int i = 0; i < m_indent; ++i )
             out << "    ";
         out << m_line << std::endl;
@@ -91,9 +89,9 @@ struct DveCompiler
         outline();
     }
 
-    void declare( vector< parse::Declaration > & decls,
-                  vector < parse::ChannelDeclaration > & chandecls );
-    void initVars( vector< parse::Declaration > & decls, string process );
+    void declare( std::vector< parse::Declaration > & decls,
+                  std::vector < parse::ChannelDeclaration > & chandecls );
+    void initVars( std::vector< parse::Declaration > & decls, std::string process );
     void start_process();
     void ensure_process();
     void end_process( std::string name );
@@ -110,7 +108,7 @@ struct DveCompiler
     bool chanIsBuffered( parse::Process & proc, parse::SyncExpr & chan );
 
     void analyse_transition( parse::Process & p, parse::Transition * t,
-                             vector< vector< ExtTransition > > & ext_transition_vector );
+                             std::vector< std::vector< ExtTransition > > & ext_transition_vector );
     void analyse();
 
     void write_C( parse::Expression & expr, std::ostream & ostr, std::string state_name, std::string context, std::string immcontext = "" );

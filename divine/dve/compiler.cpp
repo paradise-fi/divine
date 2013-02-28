@@ -3,6 +3,7 @@
 #include <divine/generator/common.h>
 //*
 using namespace wibble::str;
+using namespace std;
 
 namespace divine {
 const char *compile_defines_str = "\
