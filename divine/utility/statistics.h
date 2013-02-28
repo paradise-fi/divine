@@ -38,15 +38,15 @@ struct NoStatistics {
 
 struct Statistics : wibble::sys::Thread, MpiMonitor {
     struct PerThread {
-        std::vector< int > sent;
-        std::vector< int > received;
-        int enq, deq;
-        int hashsize;
-        int hashused;
-        int memQueue;
-        int memHashes;
-        std::vector< int > memSent;
-        std::vector< int > memReceived;
+        std::vector< int64_t > sent;
+        std::vector< int64_t > received;
+        int64_t enq, deq;
+        int64_t hashsize;
+        int64_t hashused;
+        int64_t memQueue;
+        int64_t memHashes;
+        std::vector< int64_t > memSent;
+        std::vector< int64_t > memReceived;
     };
 
     std::vector< PerThread * > threads;

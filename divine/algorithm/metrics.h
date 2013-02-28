@@ -18,7 +18,7 @@ namespace algorithm {
  * structure with collected data (for the report).
  */
 struct Statistics {
-    int states, transitions, accepting, deadlocks, expansions;
+    int64_t states, transitions, accepting, deadlocks, expansions;
 
     Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), deadlocks( 0 ), expansions( 0 ) {}
 
