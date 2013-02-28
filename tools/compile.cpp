@@ -35,6 +35,8 @@ std::string ltl_to_c( int id, std::string ltl )
         return guards.size() - 1;
     });
 
+    s << "char buchi_formula_" << id << "[] = \"LTL: " << ltl << "\";\n";
+
     /* the states are numbered 0, ..., buchi.size() - 1; however, CESMI uses 0
      * for special purpose (transition not applicable), so we add 1 to the
      * state numbers everywhere */

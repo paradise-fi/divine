@@ -9,10 +9,11 @@ struct buchi_setup {
 extern "C" {
 #endif
 
-/* Code for buchi_next is generated from the LTL formula by divine compile. */
+/* Code for the following four functions is generated from the LTL formula by divine compile. */
 int buchi_initial( int property );
 int buchi_next( int property, int from, int transition, const cesmi_setup *setup, cesmi_node evalstate );
 int buchi_accepting( int property, int id );
+char *buchi_formula( int propery );
 
 typedef int (*get_initial_t)( const cesmi_setup *setup, int handle, cesmi_node *to );
 typedef int (*get_successor_t)( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to );

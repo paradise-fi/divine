@@ -181,6 +181,11 @@ struct Compile {
         propswitch( aggr_s, ltlcount, "buchi_initial", "" );
         aggr_s << "}" << std::endl;
         aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
+
+        aggr_s << "extern \"C\" char *buchi_formula( int property ) {\n";
+        propswitch( aggr_s, ltlcount, "buchi_formula", "" );
+        aggr_s << "}" << std::endl;
+
         extras += " " + aggr;
         aggr_s.close();
 

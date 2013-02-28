@@ -3,6 +3,7 @@
 #endif
 #include <stdio.h>
 #include <malloc.h>
+#include <string.h>
 
 #include <cesmi.h>
 #include <cesmi-ltl.h>
@@ -145,9 +146,10 @@ char *buchi_show_transition( const cesmi_setup *setup, cesmi_node from, int hand
 void buchi_setup( cesmi_setup *setup )
 {
     struct buchi_setup *s = (struct buchi_setup *) malloc( sizeof( struct buchi_setup ) );
+    int id = 0;
     s->instance = setup->instance;
     s->property_count = setup->property_count;
     setup->instance = s;
     while ( setup->property_count < s->property_count + buchi_property_count )
-        setup->add_property( setup, NULL, NULL, cesmi_pt_buchi );
+        setup->add_property( setup, NULL, strdup( buchi_formula( id++ ) ), cesmi_pt_buchi );
 }
