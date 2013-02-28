@@ -22,10 +22,10 @@ cat manifest 2> /dev/null | while read REPLY; do
 done
 
 do_cmake_inst() {
-    CMAKE_VER=2.6.4;
+    CMAKE_VER=2.8.9;
     CMAKE_DIR="cmake-$CMAKE_VER";
     CMAKE_TAR="$CMAKE_DIR.tar.gz";
-    CMAKE_URL="http://www.cmake.org/files/v2.6/$CMAKE_TAR";
+    CMAKE_URL="http://www.cmake.org/files/v2.8/$CMAKE_TAR";
     if ! test -e "$CMAKE_TAR"; then
         if type -p curl >& /dev/null; then
             curl $CMAKE_URL -o cmake-$CMAKE_VER.tar.gz || die "Error downloading cmake, plase install manually.";
