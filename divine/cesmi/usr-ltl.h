@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 /* Code for buchi_next is generated from the LTL formula by divine compile. */
+int buchi_initial( int property );
 int buchi_next( int property, int from, int transition, const cesmi_setup *setup, cesmi_node evalstate );
 int buchi_accepting( int property, int id );
 

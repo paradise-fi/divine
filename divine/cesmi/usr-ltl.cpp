@@ -34,7 +34,6 @@ cesmi_node buchi_make_node( const cesmi_setup *setup, int size )
 {
     cesmi_setup *orig = (cesmi_setup *) setup->loader;
     cesmi_node result = orig->make_node( orig, size + sizeof( int ) );
-    *buchi_state( result ) = 1;
     result.memory += sizeof( int );
     return result;
 }
@@ -62,7 +61,13 @@ int buchi_get_initial( const cesmi_setup *setup, int handle, cesmi_node *to, get
         return next( &sys_setup, handle, to );
 
     cesmi_setup over = override_setup( &sys_setup );
-    return combine_handles( 0, next( &over, handle, to ) );
+    int new_handle = combine_handles( 0, next( &over, handle, to ) );
+
+    if ( new_handle ) { /* to has not been created otherwise */
+        to->memory -= sizeof( int ); /* adjust back */
+        *buchi_state( *to ) = buchi_initial( buchi_property( setup ) );
+    }
+    return new_handle;
 }
 
 int buchi_get_successor( const cesmi_setup *setup, int handle,

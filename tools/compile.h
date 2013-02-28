@@ -177,6 +177,9 @@ struct Compile {
         aggr_s << "extern \"C\" int buchi_next( int property, int from, int transition, cesmi_setup *setup, cesmi_node n ) {\n";
         propswitch( aggr_s, ltlcount, "buchi_next", "( from, transition, setup, n )" );
         aggr_s << "}" << std::endl;
+        aggr_s << "extern \"C\" int buchi_initial( int property ) {\n";
+        propswitch( aggr_s, ltlcount, "buchi_initial", "" );
+        aggr_s << "}" << std::endl;
         aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
         extras += " " + aggr;
         aggr_s.close();

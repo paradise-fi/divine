@@ -3,6 +3,7 @@
 
 #include "compile.h"
 #include "combine.h"
+#include <divine/utility/buchi.h>
 
 bool mucompile( const char *, const char * );
 
@@ -10,43 +11,40 @@ namespace divine {
 
 using namespace wibble;
 
-#ifdef O_LTL3BA
-void print_buchi_trans_label(bdd label, std::ostream& out) {
-    std::stringstream s;
-	  while (label != bddfalse) {
-        bdd current = bdd_satone(label);
-        label -= current;
-
-        out << "(";
-        while (current != bddtrue && current != bddfalse) {
-            bdd high = bdd_high(current);
-            if (high == bddfalse) {
-                out << "!prop_" << get_buchi_symbol(bdd_var(current)) << "( &sys_setup, n )";
-                current = bdd_low(current);
-            } else {
-                out << "prop_" << get_buchi_symbol(bdd_var(current)) << "( &sys_setup, n )";;
-                current = high;
-            }
-            if (current != bddtrue && current != bddfalse) out << " && ";
-        }
-        out << ")";
-        if (label != bddfalse) out << " || ";
-    }
-}
-
-std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::string > symbols )
+std::string ltl_to_c( int id, std::string ltl )
 {
     std::stringstream s, decls;
-    typedef std::map<BState*, bdd> TransMap;
+    Buchi buchi;
+    std::vector< std::string > guards ( 1 ); /* guards[0] is a dummy element */
+    std::set< std::string > symbols;
+    buchi.build( ltl, [ &guards, &symbols ]( const Buchi::DNFClause &clause ) -> int {
+        if ( clause.empty() )
+            return 0;
+        guards.emplace_back();
+        for ( auto lit = clause.begin(); lit != clause.end(); ++lit ) {
+            if ( lit != clause.begin() )
+                guards.back() += " && ";
+            if ( !lit->first )
+                guards.back() += "!";
+            guards.back() += "prop_";
+            guards.back() += lit->second;
+            guards.back() += "( &sys_setup, n )";
+            symbols.insert( lit->second );
+        }
 
-    BState *n;
-    int nodes = 1;
+        return guards.size() - 1;
+    });
+
+    /* the states are numbered 0, ..., buchi.size() - 1; however, CESMI uses 0
+     * for special purpose (transition not applicable), so we add 1 to the
+     * state numbers everywhere */
+
+    s << "int buchi_initial_" << id << " = " << buchi.getInitial() + 1 << ";\n\n";
 
     s << "int buchi_accepting_" << id << "( int id ) {" << std::endl;
-    for ( n = bstates->prv; n != bstates; n = n->prv ) {
-        n->incoming = nodes++;
-        if ( n->final == accept )
-            s << "    if ( id == " << n->incoming << " ) return true;" << std::endl;
+    for ( unsigned i = 0; i < buchi.size(); ++i ) {
+        if ( buchi.isAccepting( i ) )
+            s << "    if ( id == " << i + 1 << " ) return true;" << std::endl;
     }
     s << "    return false;" << std::endl;
     s << "}" << std::endl;
@@ -58,17 +56,15 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
       << "    cesmi_setup sys_setup = system_setup( setup );"
       << std::endl;
     int buchi_next = 0;
-    for ( n = bstates->prv; n != bstates; n = n->prv ) {
-        for ( TransMap::iterator t = n->trans->begin(); t != n->trans->end(); ++t ) {
+    for ( unsigned i = 0; i < buchi.size(); ++i ) {
+        for ( const auto & tr : buchi.transitions( i ) ) {
             s << "    if ( transition == " << buchi_next << " ) {" << std::endl;
-            s << "        if ( from == " << n->incoming;
-            if ( t->second != bdd_true() ) {
-                s << " && ( ";
-                print_buchi_trans_label(t->second, s);
-                s << " ) ";
+            s << "        if ( from == " << i + 1;
+            if ( tr.second ) {
+                s << " && ( " << guards[ tr.second ] << " ) ";
             }
             s << " )" << std::endl;
-            s << "             return " << t->first->incoming << ";" << std::endl;
+            s << "             return " << tr.first + 1 << ";" << std::endl;
             s << "        return 0;" << std::endl;
             s << "    }" << std::endl;
             ++ buchi_next;
@@ -78,29 +74,13 @@ std::string buchi_to_c( int id, BState* bstates, int accept, std::list< std::str
     s << "    return -1;" << std::endl;
     s << "}" << std::endl;
 
-    for ( std::list< std::string >::iterator i = symbols.begin(); i != symbols.end(); ++ i )
-        decls << "extern \"C\" bool prop_" << *i << "( cesmi_setup *setup, cesmi_node n );" << std::endl;
+    for ( const auto & s : symbols )
+        decls << "extern \"C\" bool prop_" << s << "( cesmi_setup *setup, cesmi_node n );" << std::endl;
 
     decls << "cesmi_setup system_setup( const cesmi_setup *setup );" << std::endl;
 
     return decls.str() + "\n" + s.str();
 }
-
-std::string ltl_to_c( int id, std::string ltl )
-{
-    Combine::ltl3baTranslation( ltl );
-    return buchi_to_c( id, get_buchi_states(), get_buchi_accept(), get_buchi_all_symbols() );
-}
-
-#else
-
-std::string ltl_to_c( int id, std::string ltl )
-{
-    std::cerr<<"DiVinE was built without LTL3BA support, which is required."<<std::endl;
-    assert_unimplemented();
-}
-
-#endif
 
 #ifdef O_MURPHI
 void Compile::compileMurphi( std::string in ) {
