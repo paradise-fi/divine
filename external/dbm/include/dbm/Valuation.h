@@ -167,7 +167,7 @@ namespace dbm
      */
     static inline
     DoubleValuation& operator += (DoubleValuation& d, int32_t v)
-    { return d += (double) v; }
+    { return d += static_cast<double>(v); }
 }
 
 #endif // INCLUDE_DBM_VALUATION_H

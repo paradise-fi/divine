@@ -135,7 +135,7 @@ namespace base
          */
         uint32_t hash() const
         {
-            return hash_computeU32((uint32_t*)data, intsizeof(T[capa]), capa);
+            return hash_computeU32(static_cast<uint32_t*>(data), intsizeof(T[capa]), capa);
         }
 
         /** copy all pointed elements from a pointer.

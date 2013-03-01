@@ -108,7 +108,7 @@ namespace base2
         void deallocate(ITEM *item)
         {
             assert(item);
-            AllocCell_t *cell = (AllocCell_t*) item;
+            AllocCell_t *cell = static_cast<AllocCell_t*>(item);
             cell->next = freeItem;
             freeItem = cell;
         }
@@ -124,7 +124,7 @@ namespace base2
             while(p)
             {
                 AllocPool_t *next = p->next;
-                delete [] (char*) p;
+                delete [] static_cast<char*> (p);
                 p = next;
             }
         }
@@ -136,9 +136,9 @@ namespace base2
         void addPool()
         {
             // Add new pool to list of pools
-            AllocPool_t *newPool = (AllocPool_t*)
+            AllocPool_t *newPool = static_cast<AllocPool_t*>(
                 new char[sizeof(AllocPool_t)+
-                         sizeof(AllocCell_t[numberOfItems])];
+                         sizeof(AllocCell_t[numberOfItems])]);
             newPool->next = pool;
             pool = newPool;
 

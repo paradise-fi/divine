@@ -52,7 +52,7 @@ namespace dbm
     /// @return true if ptr is a non null pointer, mainly for debugging.
     static inline bool isPointer(const void *ptr)
     {
-        return (((uintptr_t)ptr) & 3) == 0 && ptr != NULL;
+        return ((reinterpret_cast<uintptr_t>(ptr) & 3) == 0 && ptr != NULL);
     }
 
     /********************************************************
@@ -1011,7 +1011,7 @@ namespace dbm
     {
         assert(!isEmpty());
         return dbm_writeToMinDBMWithOffset(const_dbm(), pdim(),
-                                           (BOOL)minimizeGraph, (BOOL)tryConstraints16,
+                                           static_cast<BOOL>(minimizeGraph), static_cast<BOOL>(tryConstraints16),
                                            c_alloc, offset);
     }
 
@@ -1024,7 +1024,7 @@ namespace dbm
         assert(!isEmpty());
         return dbm_writeAnalyzedDBM(const_dbm(), pdim(),
                                     bitMatrix, nbConstraints,
-                                    (BOOL)tryConstraints16, c_alloc, offset);
+                                    static_cast<BOOL>(tryConstraints16), c_alloc, offset);
     }
 
     inline dbm_t dbm_t::readFromMinDBM(cindex_t dim, mingraph_t ming)
@@ -1207,7 +1207,7 @@ namespace dbm
 
     inline bool dbm_t::constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict)
     {
-        return !isEmpty() && ptr_constrain(i, j, dbm_boundbool2raw(b,(BOOL)isStrict));
+        return !isEmpty() && ptr_constrain(i, j, dbm_boundbool2raw(b,static_cast<BOOL>(isStrict)));
     }
 
     inline bool dbm_t::constrain(const constraint_t& c)
@@ -1487,7 +1487,7 @@ namespace dbm
     
     inline uintptr_t dbm_t::uval() const
     {
-        return (uintptr_t) idbmPtr;
+        return reinterpret_cast<uintptr_t>(idbmPtr);
     }
 
     inline void dbm_t::incRef() const
@@ -1520,7 +1520,7 @@ namespace dbm
 
     inline void dbm_t::setEmpty(cindex_t dim)
     {
-        idbmPtr = (idbm_t*)(uintptr_t) ((dim << 1) | 1);
+        idbmPtr = reinterpret_cast<idbm_t*>(static_cast<uintptr_t>((dim << 1) | 1));
     }
 
     inline void dbm_t::setPtr(idbm_t* ptr)
@@ -2116,7 +2116,7 @@ namespace dbm
 
     inline bool fed_t::constrain(cindex_t i, cindex_t j, int32_t b, bool isStrict)
     {
-        return constrain(i, j, dbm_boundbool2raw(b, (BOOL)isStrict));
+        return constrain(i, j, dbm_boundbool2raw(b, static_cast<BOOL>(isStrict)));
     }
     
     inline bool fed_t::constrain(const constraint_t& c)
