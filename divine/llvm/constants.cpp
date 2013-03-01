@@ -37,9 +37,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         }
     } else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
         ; /* nothing to do, everything is zeroed by default */
-    else if ( auto CA = dyn_cast< ::llvm::ConstantArray >( C ) ) {
+    else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
         Value sub = v; /* inherit offset & global/constant status */
-        for ( int i = 0; i < int( CA->getNumOperands() ); ++i ) {
+        for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
             initValue( C->getOperand( i ), sub );
             storeConstant( sub, cast< ::llvm::Constant >( C->getOperand( i ) ), global );
             sub.offset += sub.width;
@@ -49,8 +49,6 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         const char *raw = CDS->getRawDataValues().data();
         std::copy( raw, raw + v.width, econtext.dereference( v ) );
     } else if ( dyn_cast< ::llvm::ConstantVector >( C ) )
-        assert_unimplemented();
-    else if ( dyn_cast< ::llvm::ConstantStruct >( C ) )
         assert_unimplemented();
     else {
         C->dump();
