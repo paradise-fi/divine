@@ -353,6 +353,8 @@ struct MachineState
     }
 
     bool isPointer( Pointer p ) {
+        if ( p.offset % 4 != 0 )
+            return false;
         if ( nursery.owns( p ) )
             return nursery.isPointer( p );
         if ( heap().owns( p ) )
