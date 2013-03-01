@@ -84,6 +84,8 @@ struct Main : RunFeedback {
 #ifdef POSIX
     void testDied()
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
         /* std::cerr << "test died: " << test << "/"
            << suites[suite].testCount << std::endl; */
         if ( WIFEXITED( status_code ) ) {
@@ -103,6 +105,7 @@ struct Main : RunFeedback {
         ++ test; // continue with next test
         test_ok = 0;
         suite_failed ++;
+#pragma GCC diagnostic pop
     }
 #endif
 
@@ -110,12 +113,15 @@ struct Main : RunFeedback {
         // std::cerr << line << std::endl;
         if ( line == "done" ) { // finished
 #ifdef POSIX
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
             if ( want_fork ) {
                 finished = waitpid( pid, &status_code, 0 );
                 assert_eq( pid, finished );
                 assert( WIFEXITED( status_code ) );
                 assert_eq( WEXITSTATUS( status_code ), 0 );
             }
+#pragma GCC diagnostic pop
 #endif
             std::cout << "overall " << total_ok << "/"
                       << total_ok + total_failed

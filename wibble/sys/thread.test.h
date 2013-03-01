@@ -21,7 +21,7 @@ struct TestThread {
         void* main()
         {
             res = val;
-            return (void*)val;
+            return reinterpret_cast<void*>(val);
         }
     public:
         Thread1(int& res, int val) : res(res), val(val) {}
@@ -57,7 +57,7 @@ struct TestThread {
 
 	Thread1 assigner(val, 42);
 	assigner.start();
-	assert_eq(assigner.join(), (void*)42);
+	assert_eq(assigner.join(), reinterpret_cast<void*>(42));
 	assert_eq(val, 42);
     }
 
@@ -77,7 +77,7 @@ struct TestThread {
 		done = true;
         }
         incrementer.quit();
-        assert_eq(incrementer.join(), (void*)0);
+        assert_eq(incrementer.join(), static_cast<void*>(0));
     }
 
 };

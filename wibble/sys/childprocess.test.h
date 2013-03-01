@@ -74,8 +74,11 @@ struct TestChildprocess {
         int res = child.wait();
 
         // Check that it was indeed terminated by signal 2
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
         assert(WIFSIGNALED(res));
         assert_eq(WTERMSIG(res), 2);
+#pragma GCC diagnostic pop
 #endif
     }
 

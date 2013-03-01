@@ -191,8 +191,11 @@ struct Pipe {
             if ( eof() )
                 return;
 #ifdef POSIX
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"           
             FD_SET( fd, &fds );
             select( fd + 1, &fds, 0, 0, 0 );
+#pragma GCC diagnostic pop
 #else
             sleep( 1 );
 #endif

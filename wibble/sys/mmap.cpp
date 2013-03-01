@@ -97,7 +97,8 @@ void MMap::map(const std::string& filename)
 
 	try {
 		this->filename = filename;
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 		// Open the file
 		if ((fd = open(filename.c_str(), O_RDONLY)) == -1)
 			throw wibble::exception::System("opening index file " + filename);
@@ -112,6 +113,7 @@ void MMap::map(const std::string& filename)
 		// Map the file into memory
 		if ( ( buf = reinterpret_cast< const char* >( ::mmap( 0, size, PROT_READ, MAP_PRIVATE, fd, 0 ) ) ) == MAP_FAILED )
 			throw wibble::exception::System("mmapping file " + filename);
+#pragma GCC diagnostic pop               
 	} catch (...) {
 		unmap();
 		throw;
@@ -120,6 +122,8 @@ void MMap::map(const std::string& filename)
 
 void MMap::unmap()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 	// Unmap and close the file
 	if (buf)
 	{
@@ -134,6 +138,7 @@ void MMap::unmap()
 		fd = -1;
 	}
 	filename.clear();
+#pragma GCC diagnostic pop
 }
 
 }

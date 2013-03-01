@@ -57,11 +57,14 @@ string formatStatus(int status)
 {
 	stringstream b_status;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 	bool exited_normally = WIFEXITED(status);
 	int exit_code = exited_normally ? WEXITSTATUS(status) : -1;
 	bool dumped_core = status & 128;
 	bool signaled = WIFSIGNALED(status);
 	int signal = signaled ? WTERMSIG(status) : 0;
+#pragma GCC diagnostic pop
 
 	if (exited_normally)
 		if (exit_code == 0)

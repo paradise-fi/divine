@@ -287,6 +287,9 @@ int ChildProcess::wait(struct rusage* ru)
 void ChildProcess::waitForSuccess() {
     int r = wait();
 #ifdef POSIX
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
     if ( WIFEXITED( r ) ) {
         if ( WEXITSTATUS( r ) )
             throw exception::Generic(
@@ -300,6 +303,7 @@ void ChildProcess::waitForSuccess() {
             str::fmtf( "Subprocess terminated by signal %d.",
                        WTERMSIG( r ) ) );
     throw exception::Generic( "Error waiting for subprocess." );
+#pragma GCC diagnostic pop
 #endif
 }
 
