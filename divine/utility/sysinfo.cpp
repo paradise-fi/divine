@@ -192,7 +192,7 @@ std::string Info::architecture() {
 }
 
 ResourceGuard::ResourceGuard()
-    : time( 0 ), memory( 0 )
+    : memory( 0 ), time( 0 )
 {}
 
 void *ResourceGuard::main() {

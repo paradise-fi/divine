@@ -63,11 +63,14 @@ struct Compile {
     static void run( std::string command, void (*trap)(void*) = NULL, void *trap_arg = NULL ) {
         int status = system( command.c_str() );
 #ifdef POSIX
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
         if ( status != -1 && WEXITSTATUS( status ) != 0 ) {
             if ( trap )
                 trap( trap_arg );
             die( "Error running external command: " + command );
         }
+#pragma GCC diagnostic pop
 #endif
     }
 

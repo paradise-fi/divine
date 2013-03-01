@@ -28,6 +28,7 @@ std::ostream &operator<<( std::ostream &o, graph::PropertyType t )
         case graph::PT_Deadlock: return o << "deadlock";
         case graph::PT_Goal: return o << "goal";
         case graph::PT_Buchi: return o << "neverclaim";
+        default: return o << "unknonw";
     }
     return o;
 }

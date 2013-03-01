@@ -36,7 +36,10 @@ Report *_report = 0;
 Meta *_meta = 0;
 
 void handler( int s ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
     signal( s, SIG_DFL );
+#pragma GCC diagnostic pop
 
     sysinfo::Info i;
     Output::output().cleanup();
@@ -572,6 +575,9 @@ struct Main {
                         meta.algorithm.algorithm = meta::Algorithm::Owcty;
                     else
                         meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                    break;
+                default:
+                    meta.algorithm.algorithm = meta::Algorithm::Reachability;
                     break;
             }
 

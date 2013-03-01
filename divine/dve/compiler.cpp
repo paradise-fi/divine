@@ -465,6 +465,7 @@ void DveCompiler::insertTransition( parse::Process & proc, parse::Transition & t
 void DveCompiler::analyse()
 {
     parse::Transition * transition;
+    (void) transition;
     have_property = ast->property.valid();
     property_transitions.resize( propCount() );
 

@@ -359,7 +359,7 @@ set( DIVINE_INCLUDES
   ${LLVM_INCLUDE_DIRS}
   ${divine_SOURCE_DIR}/divine/legacy )
 
-add_definitions( -Wold-style-cast )
+appendFlag( "CXX" "-Wold-style-cast" )
 
 if ( MPI )
     foreach ( path ${MPI_INCLUDE_PATH} )

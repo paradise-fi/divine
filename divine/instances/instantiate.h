@@ -121,6 +121,7 @@ template< template< typename > class A >
 algorithm::Algorithm *selectGraph( Meta &meta )
 {
     bool por = meta.algorithm.reduce.count( graph::R_POR );
+    (void) por;
 
     if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
         meta.input.modelType = "DVE";
