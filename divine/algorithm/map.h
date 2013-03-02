@@ -184,8 +184,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                     return m.updateIteration( t );
 
             VertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
-            if ( m.isAccepting( t ) )
-                map = std::max( map, m.makeId( t ) );
+            if ( m.isAccepting( f ) )
+                map = std::max( map, m.makeId( f ) );
 
             if ( m.extension( t ).map < map ) {
                 // we are *not* the MAP of our successors anymore, so not a
