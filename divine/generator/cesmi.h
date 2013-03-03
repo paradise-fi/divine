@@ -175,6 +175,9 @@ struct CESMI : public Common< Blob > {
         std::string id, description;
         graph::PropertyType type;
         int seqno;
+        Property( const char *id, const char *desc )
+            : id ( id ? id : "" ), description( desc ? desc : "" )
+        {}
     };
 
     std::vector< Property > _properties;
@@ -183,7 +186,8 @@ struct CESMI : public Common< Blob > {
     {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
 
-        Property p = { .id = id ?: "", .description = desc ?: "" };
+        Property p( id, desc );
+
         ::free( id );
         ::free( desc );
 
