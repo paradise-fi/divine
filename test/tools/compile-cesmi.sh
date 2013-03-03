@@ -1,7 +1,7 @@
 . lib
 
 divine compile --cesmi data/withltl.c data/withltl.ltl
-divine info withltl$cesmiext | grep neverclaim
+divine info withltl$cesmiext | grep LTL
 
 run metrics withltl$cesmiext --property=p_1
 check statespace 24 32 0 8
