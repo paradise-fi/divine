@@ -97,40 +97,39 @@ void Compile::compileMurphi( std::string in ) {
 " + mu + compile_defines_str + toolkit_pool_h_str + toolkit_blob_h_str + cesmi_usr_cesmi_h_str + cesmi_usr_cesmi_cpp_str + "\
 \n\
 using namespace divine;\n\
-extern \"C\" void setup( CustomSetup *s ) {\n\
-    if ( !MuGlobal::init_once() ) return;\n\
+extern \"C\" void setup( cesmi_setup *s ) {\n\
+    s->add_property( s, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );\n\
+    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; \n\
+    pthread_mutex_lock( &mutex ); \n\
+    if ( !MuGlobal::init() ) { pthread_mutex_unlock( &mutex ); return; }\n\
     args = new argclass( 0, NULL ); // FIXME\n\
-    std::cerr << \"symmetry: \" << args->symmetry_reduction.value << \", \"\n\
-              << args->multiset_reduction.value << \", \"\n\
-              << args->sym_alg.mode << std::endl;\n\
+    pthread_mutex_unlock( &mutex ); \n\
 }\n\
 \n\
-extern \"C\" void get_initial( CustomSetup *setup, Blob *to ) {\n\
+extern \"C\" int get_initial( const cesmi_setup *setup, int h, cesmi_node *to ) {\n\
+    if ( h > 1 ) return 0; \n\
     MuGlobal::get().startgen->Code( 0 );\n\
-    Blob b_out( *(setup->pool), setup->slack + sizeof( state ) );\n\
-    b_out.clear( 0, setup->slack );\n\
-    *to = b_out;\n\
-    StateCopy( &b_out.get< state >( setup->slack ), workingstate );\n\
+    *to = setup->make_node( setup, sizeof( state ) );\n\
+    StateCopy( reinterpret_cast< state * >( to->memory ), workingstate );\n\
+    return 2; \n\
 }\n\
 \n\
-extern \"C\" int get_successor( CustomSetup *setup, int h, Blob from, Blob *to ) {\n\
+extern \"C\" int get_successor( const cesmi_setup *setup, int h, cesmi_node from, cesmi_node *to ) {\n\
     unsigned rule = h - 1;\n\
-    StateCopy( workingstate, &from.get< state >( setup->slack ) );\n\
+    StateCopy( workingstate, reinterpret_cast< state * >( from.memory ) );\n\
   another:\n\
     MuGlobal::get().nextgen->SetNextEnabledRule( rule );\n\
     if ( rule >= numrules )\n\
         return 0;\n\
     MuGlobal::get().nextgen->Code( rule );\n\
-    if ( StateCmp( workingstate, &from.get< state >( setup->slack ) ) == 0 ) {\n\
+    if ( StateCmp( workingstate, reinterpret_cast< state * >( from.memory ) ) == 0 ) {\n\
         ++ rule;\n\
         goto another;\n\
     }\n\
     MuGlobal::get().symmetry->Normalize( workingstate ); // workingstate->Normalize();\n\
     \n\
-    Blob b_out( *(setup->pool), setup->slack + sizeof( state ) );\n\
-    b_out.clear( 0, setup->slack );\n\
-    *to = b_out;\n\
-    StateCopy( &b_out.get< state >( setup->slack ), workingstate );\n\
+    *to = setup->make_node( setup, sizeof( state ) );\n\
+    StateCopy( reinterpret_cast< state * >( to->memory ), workingstate );\n\
     return rule + 2;\n\
 }\n" );
 
