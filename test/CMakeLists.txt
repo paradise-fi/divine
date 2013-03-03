@@ -14,6 +14,7 @@ add_custom_target( functional
     "O_POOLS='${POOLS}'"
     "O_LEGACY='${LEGACY}'"
     "O_TIMED='${TIMED}'"
+    "O_MURPHI='${MURPHI}'"
     "O_LLVM='${LLVM}'" ${tests}
 )
 

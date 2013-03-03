@@ -149,6 +149,15 @@ timed_small() {
     check statespace 2593 5239 277 303
 }
 
+murphi_small() {
+    test "$O_MURPHI" = "ON" || return 0
+
+    check clear
+    run dve_compile data/abp.m --property=deadlock "$@"
+    check reachability_valid
+    check statespace 80 144 0 0
+}
+
 coin_small() {
     :
 }
@@ -159,6 +168,7 @@ all_small() {
     llvm_small "$@"
     coin_small "$@"
     timed_small "$@"
+    murphi_small "$@"
 }
 
 chmod +x check run
