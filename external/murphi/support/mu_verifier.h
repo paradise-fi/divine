@@ -80,11 +80,6 @@
 
 extern "C" int remove(const char *filename);
 
-// GDP, ET : Needed for Red Hat 7.1
-#ifndef SYSCONF_RDCL
-extern "C" long sysconf(int name);
-#endif
-
 
 /****************************************
   General Constants
