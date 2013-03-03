@@ -94,7 +94,7 @@ void Compile::compileMurphi( std::string in ) {
     sys::fs::deleteIfExists( outfile );
 
     sys::fs::writeFile( outfile, "\
-" + mu + compile_defines_str + toolkit_pool_h_str + toolkit_blob_h_str + generator_cesmi_client_h_str + "\
+" + mu + compile_defines_str + toolkit_pool_h_str + toolkit_blob_h_str + cesmi_usr_cesmi_h_str + cesmi_usr_cesmi_cpp_str + "\
 \n\
 using namespace divine;\n\
 extern \"C\" void setup( CustomSetup *s ) {\n\
@@ -134,7 +134,7 @@ extern \"C\" int get_successor( CustomSetup *setup, int h, Blob from, Blob *to )
     return rule + 2;\n\
 }\n" );
 
-    runCompiler( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
+    gplusplus( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
 }
 #else
 
