@@ -69,17 +69,21 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
-            assert( G->hasInitializer() ); /* extern globals are not allowed */
-            initValue( G->getInitializer(), pointee );
-            if ( (pointee.constant = G->isConstant()) )
-                makeLLVMConstant( pointee, G->getInitializer() );
-            else
+            if ( G->hasInitializer() ) {
+                initValue( G->getInitializer(), pointee );
+                if ( (pointee.constant = G->isConstant()) )
+                    makeLLVMConstant( pointee, G->getInitializer() );
+                else
+                    allocateValue( 0, pointee );
+            } else
                 allocateValue( 0, pointee );
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
-            ( G->isConstant() ? constinfo[ p ] : globalinfo[ p ] )
-                = std::make_pair( G->getInitializer()->getType(),
-                                  G->getValueName()->getKey() );
+            if ( G->hasInitializer() ) {
+                ( G->isConstant() ? constinfo[ p ] : globalinfo[ p ] )
+                    = std::make_pair( G->getInitializer()->getType(),
+                                      G->getValueName()->getKey() );
+            }
             makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
