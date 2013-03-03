@@ -48,7 +48,7 @@
  *  $ divine compile --llvm [--cflags=" < flags > "] lamport_nonatomic2.cpp
  *  $ divine verify -p assert lamport_nonatomic2.bc [-d]
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
  *  $ ./lamport_nonatomic2.exe
  */
 
@@ -67,8 +67,8 @@
 enum AP { wait0, critical0, wait1, critical1 };
 
 #ifdef DIVINE
-// LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-// LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
+LTL(exclusion, G(!(critical0 && critical1)));
 #endif
 
 int _critical = 0;

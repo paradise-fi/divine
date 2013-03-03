@@ -14,7 +14,7 @@
  *  $ divine compile --llvm [--cflags=" < flags > "] szymanski.cpp
  *  $ divine verify -p assert szymanski.bc [-d]
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o szymanski.exe szymanski.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o szymanski.exe szymanski.cpp
  *  $ ./szymanski.exe
  */
 
@@ -33,8 +33,8 @@
 enum AP { wait0, critical0, wait1, critical1 };
 
 #ifdef DIVINE
-// LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-// LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
+LTL(exclusion, G(!(critical0 && critical1)));
 #endif
 
 typedef enum { non_participant    = 1,

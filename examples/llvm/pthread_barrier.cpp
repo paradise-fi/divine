@@ -7,7 +7,7 @@
  *  $ divine compile --llvm [--cflags=" < flags > "] pthread_barrier.c
  *  $ divine verify -p assert pthread_barrier.bc [-d]
  * Execute with:
- *  $ clang [ < flags > ] -lpthread -o pthread_barrier.exe pthread_barrier.cpp
+ *  $ clang++ [ < flags > ] -lpthread -o pthread_barrier.exe pthread_barrier.cpp
  *  $ ./pthread_barrier.exe
  */
 

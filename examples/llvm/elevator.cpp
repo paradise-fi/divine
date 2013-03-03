@@ -69,9 +69,9 @@ void info( const T&... args) {
 enum AP { waiting1, in_elevator1, out1, in_elevator2 };
 
 #ifdef DIVINE
-// LTL(exclusion, G(!(in_elevator1 && in_elevator2)));
-// LTL(progress1, G(waiting1 -> F(in_elevator1)));
-// LTL(progress2, G(in_elevator1 -> F(out1)));
+LTL(exclusion, G(!(in_elevator1 && in_elevator2)));
+LTL(progress1, G(waiting1 -> F(in_elevator1)));
+LTL(progress2, G(in_elevator1 -> F(out1)));
 #endif
 
 template< typename T, int size >

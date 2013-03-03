@@ -39,8 +39,8 @@
 enum AP { wait0, critical0, wait1, critical1 };
 
 #ifdef DIVINE
-// LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-// LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
+LTL(exclusion, G(!(critical0 && critical1)));
 #endif
 
 // Protocol constants - do not change!
