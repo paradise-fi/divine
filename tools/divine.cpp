@@ -577,8 +577,7 @@ struct Main {
                         meta.algorithm.algorithm = meta::Algorithm::Ndfs;
                     break;
                 default:
-                    meta.algorithm.algorithm = meta::Algorithm::Reachability;
-                    break;
+                    assert_unimplemented();
             }
 
             if ( o_ndfs->boolValue() ) {
