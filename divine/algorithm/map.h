@@ -184,14 +184,14 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                     return m.updateIteration( t );
 
             VertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
-            if ( m.isAccepting( f ) )
-                map = std::max( map, m.makeId( f ) );
+            if ( m.isAccepting( t ) )
+                map = std::max( map, m.makeId( t ) );
 
             if ( m.extension( t ).map < map ) {
                 // we are *not* the MAP of our successors anymore, so not a
                 // candidate for elimination (shrinking), remove from set
                 // elim == 0 means we are candidate for elimination now
-                if ( m.isAccepting( t ) && m.extension( t ).elim == 0 )
+                if ( m.isAccepting( t ) && m.extension( t ).elim == 0 && m.makeId( t ) < map )
                     m.extension( t ).elim = 1;
                 m.extension( t ).map = map;
                 return visitor::ExpandTransition;
