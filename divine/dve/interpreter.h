@@ -6,6 +6,7 @@
 #include <divine/dve/expression.h>
 
 #include <memory>
+#include <unordered_set>
 
 #ifndef DIVINE_DVE_INTERPRETER_H
 #define DIVINE_DVE_INTERPRETER_H
@@ -56,7 +57,15 @@ struct LValueList {
             (*lvals_it).set( ctx, *it, err );
         }
     }
-    
+
+    std::unordered_set< SymId > getSymbols() {
+        std::unordered_set< SymId > symbols;
+        for ( LValue l : lvals ) {
+            symbols.insert( l.symbol.id );
+        }
+        return symbols;
+    }
+
     LValueList( const SymTab &tab, parse::LValueList lvl )
         : _valid( lvl.valid() )
     {
@@ -187,6 +196,8 @@ struct Transition {
     
     parse::Transition parse;
 
+    std::unordered_set< SymId > symDepends, symChanges, symReads;
+
     bool from_commited, to_commited;
     Symbol flags;
 
@@ -263,6 +274,32 @@ struct Transition {
             else if ( parse.syncexpr.lvallist.valid() )
                 sync_lval = LValueList( sym, parse.syncexpr.lvallist );
         }
+    }
+
+    void gatherSymbols() {
+        for ( auto e : effect ) {
+            symChanges.insert( e.first.symbol.id );
+            auto symbols = e.second.getSymbols();
+            symReads.insert( symbols.begin(), symbols.end() );
+        }
+
+        for ( Expression g : guards ) {
+            auto symbols = g.getSymbols();
+            symDepends.insert( symbols.begin(), symbols.end() );
+        }
+
+        if ( sync_expr.valid() ) {
+            auto symbols = sync_expr.getSymbols();
+            symReads.insert( symbols.begin(), symbols.end() );
+        }
+
+        if ( sync_lval.valid() ) {
+            auto symbols = sync_lval.getSymbols();
+            symReads.insert( symbols.begin(), symbols.end() );
+        }
+
+        if ( sync )
+            sync->gatherSymbols();
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
@@ -446,6 +483,12 @@ struct Process {
         }
     }
 
+    void gatherSymbols() {
+        for ( auto &tv : trans)
+            for ( Transition &t : tv )
+                t.gatherSymbols();
+    }
+
     void setProcIndex( int pid ) {
         for( auto &i : readers ) {
             i.procIndex = pid;
@@ -551,6 +594,13 @@ struct System {
 
             assert( property );
         }
+    }
+
+    void PORInit() {
+        for ( Process &p : processes )
+            p.gatherSymbols();
+        for ( Process &p : properties )
+            p.gatherSymbols();
     }
 
     bool assertValid( EvalContext &ctx ) {

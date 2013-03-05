@@ -277,8 +277,10 @@ struct Dve : public Common< Blob > {
     }
 
     ReductionSet useReductions( ReductionSet r ) {
-        if ( r.count( R_POR ) )
+        if ( r.count( R_POR ) ) {
+            system->PORInit();
             return ReductionSet( { R_POR } );
+        }
         return ReductionSet();
     }
 

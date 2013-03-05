@@ -4,6 +4,7 @@
 #include <divine/dve/symtab.h>
 #include <divine/dve/flag.h>
 #include <vector>
+#include <unordered_set>
 
 #ifndef DIVINE_DVE_EXPRESSION_H
 #define DIVINE_DVE_EXPRESSION_H
@@ -258,6 +259,22 @@ struct Expression {
             rpn_push( ex.op, 0 );
     }
 
+    std::unordered_set< SymId > getSymbols() {
+        std::unordered_set< SymId > symbols;
+        for ( Item it : rpn ) {
+            switch( it.op.id ) {
+                case TI::Period:
+                case TI::Identifier:
+                case TI::Subscript:
+                    symbols.insert( it.arg1.symbol.id );
+                    break;
+                default:
+                    break;
+            }
+        }
+        return symbols;
+    }
+
     Expression( const SymTab &sym, const parse::Expression &ex )
         : _valid( ex.valid() )
     {
@@ -283,7 +300,16 @@ struct ExpressionList {
         }
         return retval;
     }
-    
+
+    std::unordered_set< SymId > getSymbols() {
+        std::unordered_set< SymId > symbols;
+        for ( Expression e : exprs ) {
+            auto syms = e.getSymbols();
+            symbols.insert( syms.begin(), syms.end() );
+        }
+        return symbols;
+    }
+
     ExpressionList( const SymTab &tab, parse::ExpressionList explist )
         : _valid( explist.valid() )
     {
