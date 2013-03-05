@@ -13,10 +13,6 @@ struct NonPORGraph : graph::Transform< G > {
 
     typedef typename G::Node Node;
 
-    bool eliminate_done;
-
-    NonPORGraph() : eliminate_done( false ) {}
-
     void porExpansion( Node ) {}
     void porTransition( Node, Node, void (*)( Node, int ) ) {}
     bool full( Node ) { return true; }
@@ -29,20 +25,16 @@ struct NonPORGraph : graph::Transform< G > {
 
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &, Alg & ) {
-        eliminate_done = true;
         return false;
     }
 
     template< typename Table >
     bool porEliminateLocally( Table & ) {
-        eliminate_done = true;
         return false;
     }
 
     template< typename Yield >
     void initials( Yield yield ) {
-        if ( eliminate_done )
-            return;
         this->base().initials( yield );
     }
 };
