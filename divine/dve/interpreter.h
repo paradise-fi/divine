@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <unordered_set>
+#include <algorithm>
 
 #ifndef DIVINE_DVE_INTERPRETER_H
 #define DIVINE_DVE_INTERPRETER_H
@@ -197,6 +198,7 @@ struct Transition {
     parse::Transition parse;
 
     std::unordered_set< SymId > symDepends, symChanges, symReads;
+    std::unordered_set< Transition * > pre, dep;
 
     bool from_commited, to_commited;
     Symbol flags;
@@ -300,6 +302,111 @@ struct Transition {
 
         if ( sync )
             sync->gatherSymbols();
+    }
+
+    bool isInPre( Transition & t ) {
+        std::vector< SymId > intersection;
+        if ( t.to == from )
+            return true;
+
+        std::set_intersection(
+            t.symChanges.begin(), t.symChanges.end(),
+            symDepends.begin(), symDepends.end(),
+            std::back_inserter( intersection )
+        );
+        if ( !intersection.empty() ) {
+            intersection.clear();
+            return true;
+        }
+
+        if ( sync_channel && sync_channel->is_buffered
+                && t.sync_channel && t.sync_channel->is_buffered
+                && sync_channel == t.sync_channel )
+        {
+            if ( sync_expr.valid() && t.sync_lval.valid() )
+                return true;
+            if ( sync_lval.valid() && t.sync_expr.valid() )
+                return true;
+        }
+
+        return false;
+    }
+
+    void buildPreSet( std::vector< Transition > &trans ) {
+        for ( Transition &t : trans ) {
+                if ( &t == this )
+                    continue;
+                if ( isInPre( t ) )
+                    pre.insert( &t );
+                if ( t.sync && isInPre( *t.sync ) )
+                    pre.insert( &t );
+        }
+
+        if ( sync ) {
+            sync->buildPreSet( trans );
+            pre.insert( sync->pre.begin(), sync->pre.end() );
+        }
+    }
+
+    bool isInDep( Transition & t, const std::vector< SymId > union1 ) {
+        std::vector< SymId > union2, intersection;
+        std::set_union(
+            t.symDepends.begin(), t.symDepends.end(),
+            t.symChanges.begin(), t.symChanges.end(),
+            std::back_inserter( union2 )
+        );
+        std::set_intersection(
+            union1.begin(), union1.end(),
+            t.symChanges.begin(), t.symChanges.end(),
+            std::back_inserter( intersection )
+        );
+        std::set_intersection(
+            union2.begin(), union2.end(),
+            symChanges.begin(), symChanges.end(),
+            std::back_inserter( intersection )
+        );
+        if ( !intersection.empty() ) {
+            intersection.clear();
+            return true;
+        }
+
+        if ( procIndex == t.procIndex )
+            return true;
+
+        if ( sync_channel && sync_channel->is_buffered
+                && t.sync_channel && t.sync_channel->is_buffered
+                && sync_channel == t.sync_channel )
+        {
+            if ( sync_expr.valid() && t.sync_expr.valid() )
+                return true;
+            if ( sync_lval.valid() && t.sync_lval.valid() )
+                return true;
+        }
+
+        return false;
+    }
+
+    void buildDepSet( std::vector< Transition > &trans ) {
+        std::vector< SymId > union1;
+        std::set_union(
+            symDepends.begin(), symDepends.end(),
+            symChanges.begin(), symChanges.end(),
+            std::back_inserter( union1 )
+        );
+
+        for ( Transition &t : trans ) {
+                if ( &t == this )
+                    continue;
+                if ( isInDep( t, union1 ) )
+                    dep.insert( &t );
+                if ( t.sync && isInDep( *t.sync, union1 ) )
+                    dep.insert( &t );
+        }
+
+        if ( sync ) {
+            sync->buildDepSet( trans );
+            dep.insert( sync->dep.begin(), sync->dep.end() );
+        }
     }
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
@@ -489,6 +596,20 @@ struct Process {
                 t.gatherSymbols();
     }
 
+    void buildPreSet( Process & proc ) {
+        for ( std::vector< Transition > &tv : trans )
+            for ( Transition &t : tv )
+                for ( std::vector< Transition > &ftv : proc.trans )
+                    t.buildPreSet( ftv );
+    }
+
+    void buildDepSet( Process & proc ) {
+        for ( std::vector< Transition > &tv : trans )
+            for ( Transition &t : tv )
+                for ( std::vector< Transition > &ftv : proc.trans )
+                    t.buildDepSet( ftv );
+    }
+
     void setProcIndex( int pid ) {
         for( auto &i : readers ) {
             i.procIndex = pid;
@@ -601,6 +722,12 @@ struct System {
             p.gatherSymbols();
         for ( Process &p : properties )
             p.gatherSymbols();
+
+        for ( Process &p1 : processes )
+            for ( Process &p2 : processes ) {
+                p1.buildPreSet( p2 );
+                p1.buildDepSet( p2 );
+            }
     }
 
     bool assertValid( EvalContext &ctx ) {
