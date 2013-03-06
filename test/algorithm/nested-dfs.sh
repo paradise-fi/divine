@@ -1,4 +1,4 @@
 . lib
 
-dve_small ndfs -w 1
-dve_small ndfs -w 2
+all_small ndfs -w 1
+all_small ndfs -w 2
