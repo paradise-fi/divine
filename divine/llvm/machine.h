@@ -13,11 +13,12 @@ namespace llvm {
 struct Canonic;
 
 struct Problem {
-    enum What { Assert, InvalidDereference, InvalidArgument };
+    enum What { NoProblem, Assert, InvalidDereference, InvalidArgument };
     PC where;
     uint8_t what;
     uint8_t tid;
     uint16_t _padding;
+    Problem() : what( NoProblem ), tid( -1 ), _padding( 0 ) {}
 };
 
 struct MachineState
