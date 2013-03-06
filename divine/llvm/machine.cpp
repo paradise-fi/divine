@@ -166,7 +166,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     }
 
     address = target.advance( address, 0 );
-    assert_eq( address.offset % 4, 0 );
+    assert_eq( (address.offset - _alloc._slack) % 4, 0 );
 }
 
 divine::Blob MachineState::snapshot()
@@ -258,7 +258,7 @@ divine::Blob MachineState::snapshot()
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
     assert_eq( address.offset, b.size() );
-    assert_eq( b.size() % 4, 0 );
+    assert_eq( (b.size() - _alloc._slack) % 4, 0 );
 
     return b;
 }
