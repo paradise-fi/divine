@@ -145,6 +145,11 @@ struct Interpreter
     template< typename Yield >
     void run( int tid, Yield yield ) {
         std::set< PC > seen;
+        run( tid, yield, seen );
+    }
+
+    template< typename Yield >
+    void run( int tid, Yield yield, std::set< PC > &seen ) {
 
         if ( !state._thread_count )
             return; /* no more successors for you */
@@ -190,7 +195,7 @@ struct Interpreter
                     state.rewind( fork, tid );
                     choose( i );
                     advance();
-                    run( tid, yield );
+                    run( tid, yield, seen );
                 }
                 fork.free( alloc.pool() );
                 return;
