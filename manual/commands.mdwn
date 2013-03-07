@@ -43,13 +43,14 @@ name of a property needs should be passed to the `--property` option of `draw`,
 `metrics` or `verify` subcommands:
 
     $ divine info examples/dve/peterson-liveness.dve
-    Available properties (2):
-     1) deadlock: (deadlock reachability)
-     2) 45: (Büchi neverclaim property)
+    Available properties:
+     * deadlock: deadlock freedom
+     * assert: assertion safety
+     * LTL: Büchi neverclaim property
 
-In this case, the model has two properties, `deadlock` and `45` (the latter
-being a neverclaim property generated from an LTL formula, see section on
-`divine combine` below).
+In this case, the model has three properties, `deadlock`, `assert` and `LTL`
+(the last being a neverclaim property generated from an LTL formula, see
+section on `divine combine` below).
 
 Using LTL properties
 --------------------
