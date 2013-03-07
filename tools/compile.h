@@ -90,7 +90,7 @@ struct Compile {
     }
 
     static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
-	runCompiler ("g++", in, out, flags + "-g -O2 -fPIC -shared");
+	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
     void compileDve( std::string in ) {
