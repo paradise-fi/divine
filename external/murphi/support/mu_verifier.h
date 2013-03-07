@@ -212,16 +212,7 @@ struct MuGlobal {
     static bool initialised;
     static pthread_mutex_t mutex;
     static MuGlobal &get();
-    static bool init_once() {
-        pthread_mutex_lock( &mutex );
-        if ( initialised ) {
-            pthread_mutex_unlock( &mutex );
-            return false;
-        }
-        initialised = true;
-        pthread_mutex_unlock( &mutex );
-        return true;
-    }
+    static bool init_once( int ac, char **av );
 
 public:
     state *working;

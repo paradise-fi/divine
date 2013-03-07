@@ -78,6 +78,17 @@
 // saved value for the old new handler.
 // void (*oldnh)() = NULL;       
 
+bool MuGlobal::init_once( int ac, char **av ) {
+    pthread_mutex_lock( &mutex );
+    if ( initialised ) {
+        pthread_mutex_unlock( &mutex );
+        return false;
+    }
+    initialised = true;
+    args = new argclass( ac, av );
+    pthread_mutex_unlock( &mutex );
+    return true;
+}
 
 /****************************************
   The Main() function:
