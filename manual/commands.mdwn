@@ -65,10 +65,24 @@ available for model checking via the `--property` switch to `divine verify`
 specifying LTL directly, the formulas need to be provided in a separate file
 with an `.ltl` suffix. The `combine` subcommand can be used to translate the
 LTL formula into an Buchi automaton which is then included in the DVE file. One
-DVE file is generated for each LTL formula found in the `.ltl` file.
+DVE file is generated for each LTL formula found in the `.ltl` file. The `.ltl`
+file would look, for example, like this:
 
-Without the -p (--property) and -o (--stdout) options, the output of `divine
-combine` looks like this:
+    #define a_0 (active == 0)
+    #define a_1 (active == 1)
+
+    #define w_0 (waiting[0] == 1)
+    #define w_1 (waiting[1] == 1)
+
+    #define c_0 (P_0.CS)
+    #define c_1 (P_1.CS)
+
+    #property G(F(c_0)) && G(F(c_1))
+    #property ((GF(a_0 && w_0)) -> GF(c_0)) && ((GF(a_1 && w_1)) -> GF(c_1))
+
+Each `#define` gives a symbolic name for an atomic proposition, and each
+`#property` specifies a single LTL formula. Without the -p (--property) and -o
+(--stdout) options, the output of `divine combine` looks like this:
 
     $ divine combine peterson.dve -f peterson.ltl
     peterson.prop1.dve: G(p0cs->F(!p0cs))
@@ -78,8 +92,9 @@ combine` looks like this:
     $ divine verify peterson.prop1.dve
     ...
 
-To pick a specific formula, use -p N. In this case, -o can be used to direct
-the generated model to standard output.
+To pick a specific formula, use -p N (with N being the sequence number of a
+`#property` in the `.ltl` file, in this case 1 or 2). When -p is in effect,
+`-o` can be used to direct the generated DVE file to standard output.
 
 Configuring the parallel model checking engine
 ----------------------------------------------
