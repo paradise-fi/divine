@@ -80,7 +80,7 @@ private:
   inline void lCheck();
 
 public:
-  StatePtr() {}
+  StatePtr() { sp = 0; }
   StatePtr(state* s);
   StatePtr(unsigned long l);
 
@@ -125,11 +125,13 @@ public:
   state()
   : previous()
   {
-    memset((void *)bits, 0, (size_t)BLOCKS_IN_WORLD);   // Uli: avoid bzero
+      memset( bits, 0, ( reinterpret_cast< char * >( &previous ) - reinterpret_cast< char * >( &bits ) ) );
   };
   state(state * s) 
   {
-    StateCopy(this, s); 
+    StateCopy(this, s);
+    memset( reinterpret_cast< char * >( &bits ) + sizeof( bits ), 0,
+            ( reinterpret_cast< char * >( &previous ) - reinterpret_cast< char * >( &bits ) ) );
   };
 
 friend void StateCopy(state * l, state * r);
