@@ -304,6 +304,9 @@ struct Transition {
             symReads.insert( symbols.begin(), symbols.end() );
         }
 
+        if ( from != to )
+            symChanges.insert( process.id );
+
         if ( sync )
             sync->gatherSymbols();
     }
