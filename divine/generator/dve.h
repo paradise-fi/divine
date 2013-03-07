@@ -72,100 +72,21 @@ struct Dve : public Common< Blob > {
         );
     }
 
-    bool isDiamond( Node from, size_t process,
-                    std::deque< dve::System::Continuation > ampleSet,
-                    std::deque< dve::System::Continuation > indepSet )
-    {
-        Node currentNode;
-        std::vector< std::deque< Node > > ampleNodesSuccs;
-        ampleNodesSuccs.resize( ampleSet.size() );
-        bool ok = true;
-        int index = 0;
-        for ( auto i: ampleSet ) {
-            yieldSuccessor( from, i, [&]( Node n ) { currentNode = n; } );
-            auto indepIt = indepSet.cbegin();
-            processConts(
-                currentNode,
-                [&]( dve::System::Continuation p ) {
-                    if ( indepIt == indepSet.cend() || *indepIt != p ) {
-                        ok = false;
-                        return false;
-                    }
-                    yieldSuccessor(
-                        currentNode,
-                        p,
-                        [&]( Node n ) {
-                            ampleNodesSuccs[ index ].push_back( n );
-                        }
-                    );
-                    indepIt++;
-                    return true;
-                },
-                process,
-                false
-            );
-            currentNode.free( alloc._pool );
-            if ( !ok || indepIt != indepSet.cend() ) {
-                for ( auto q: ampleNodesSuccs ) {
-                    while ( !q.empty() ) {
-                        q.front().free( alloc._pool );
-                        q.pop_front();
-                    }
-                }
-                return false;
-            }
-            index++;
-        }
-        for ( auto i: indepSet ) {
-            yieldSuccessor( from, i, [&]( Node n ) { currentNode = n; } );
-            auto ampleIt = ampleSet.cbegin();
-            auto ampleNSIt = ampleNodesSuccs.begin();
-            processConts(
-                currentNode,
-                [&]( dve::System::Continuation p ) {
-                    if ( ampleIt == ampleSet.cend() || *ampleIt != p ) {
-                        ok = false;
-                        return false;
-                    }
-                    assert( ampleNSIt != ampleNodesSuccs.end() );
-                    assert( !ampleNSIt->empty() );
-                    yieldSuccessor(
-                        currentNode,
-                        p,
-                        [&]( Node n ) {
-                            if ( n.compare( ampleNSIt->front(), this->alloc._slack, n.size() ) != 0 )
-                                ok = false;
-                            ampleNSIt->front().free( alloc._pool );
-                            ampleNSIt->pop_front();
-                            n.free( alloc._pool );
-                        }
-                    );
-                    if ( !ok )
-                        return false;
-                    ampleIt++;
-                    ampleNSIt++;
-                    return true;
-                },
-                process,
-                true
-            );
-            currentNode.free( alloc._pool );
-            if ( !ok || ampleIt != ampleSet.cend() ) {
-                for ( auto q: ampleNodesSuccs ) {
-                    while ( !q.empty() ) {
-                        q.front().free( alloc._pool );
-                        q.pop_front();
-                    }
-                }
-                return false;
-            }
-        }
+    bool POR_C1( dve::Transition & ampleTrans, dve::Transition & indepTrans ) {
+        if ( ampleTrans.pre.count( &indepTrans ) || ampleTrans.dep.count( &indepTrans ) )
+            return false;
         return true;
+    }
+
+    bool POR_C2( dve::Transition & ampleTrans ) {
+        if ( !system->property )
+            return true;
+        return !ampleTrans.visible[ system->property ];
     }
 
     template< typename Yield >
     void ample( Node from, Yield yield ) {
-        std::deque< dve::System::Continuation > ampleCands, indep;
+        std::deque< dve::System::Continuation > ampleCands;
         for ( int i = 0; i < system->processCount(); i++ ) {
             bool tryNext = false;
             processConts(
@@ -173,8 +94,8 @@ struct Dve : public Common< Blob > {
                 [&]( dve::System::Continuation p ) {
                     if ( p.process >= this->system->processes.size() )
                         return true;
-                    dve::Transition &trans = this->system->getTransition( this->ctx, p );
-                    if ( trans.sync ) {
+                    dve::Transition &ampleCandidate = this->system->getTransition( this->ctx, p );
+                    if ( !POR_C2( ampleCandidate ) ) {
                         tryNext = true;
                         return false;
                     }
@@ -193,17 +114,25 @@ struct Dve : public Common< Blob > {
             processConts(
                 from,
                 [&]( dve::System::Continuation p ) {
-                    indep.push_back( p );
+                    dve::Transition &indep = this->system->getTransition( this->ctx, p );
+                    for ( dve::System::Continuation &ac : ampleCands ) {
+                        dve::Transition &ampleCandidate = this->system->getTransition( this->ctx, ac );
+                        if ( !POR_C1( ampleCandidate, indep ) ) {
+                            tryNext = true;
+                            return false;
+                        }
+                    }
                     return true;
                 },
                 i,
                 false
             );
-            if ( !isDiamond( from, i, ampleCands, indep ) ) {
+
+            if ( tryNext ) {
                 ampleCands.clear();
-                indep.clear();
                 continue;
             }
+
             while ( !ampleCands.empty() ) {
                 dve::System::Continuation p = ampleCands.front();
                 yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
