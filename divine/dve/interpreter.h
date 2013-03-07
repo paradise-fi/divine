@@ -338,10 +338,8 @@ struct Transition {
             symDepends.begin(), symDepends.end(),
             std::back_inserter( intersection )
         );
-        if ( !intersection.empty() ) {
-            intersection.clear();
+        if ( !intersection.empty() )
             return true;
-        }
 
         if ( sync_channel && sync_channel->is_buffered
                 && t.sync_channel && t.sync_channel->is_buffered
@@ -389,10 +387,8 @@ struct Transition {
             symChanges.begin(), symChanges.end(),
             std::back_inserter( intersection )
         );
-        if ( !intersection.empty() ) {
-            intersection.clear();
+        if ( !intersection.empty() )
             return true;
-        }
 
         if ( procIndex == t.procIndex )
             return true;
@@ -445,10 +441,7 @@ struct Transition {
             symChanges.begin(), symChanges.end(),
             std::back_inserter( intersection )
         );
-        if ( !intersection.empty() ) {
-            intersection.clear();
-            return true;
-        }
+        return intersection.empty();
     }
 
     void setVisibility( Process * prop );
