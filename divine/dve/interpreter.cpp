@@ -30,7 +30,7 @@ std::ostream & Channel::dump( std::ostream &os, char * data )
     return os;
 }
 
-void Transition::setVisibility( Process * prop ) {
+void Transition::computeVisibility( Process * prop ) {
     visible[ prop ] = false;
     for ( std::vector< Transition > &tv : prop->trans )
         for ( Transition &t : tv )
@@ -40,7 +40,7 @@ void Transition::setVisibility( Process * prop ) {
             }
 
     if ( sync ) {
-        sync->setVisibility( prop );
+        sync->computeVisibility( prop );
         visible[ prop ] |= sync->visible[ prop ];
     }
 }

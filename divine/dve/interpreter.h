@@ -445,7 +445,7 @@ struct Transition {
         return intersection.empty();
     }
 
-    void setVisibility( Process * prop );
+    void computeVisibility( Process * prop );
 
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
         : process( proc ), procIndex( -1 ), sync_channel( 0 ), sync( 0 ), parse( t )
@@ -648,10 +648,10 @@ struct Process {
                     t.buildDepSet( ftv );
     }
 
-    void setVisibility( Process & prop ) {
+    void computeVisibility( Process & prop ) {
         for ( std::vector< Transition > &tv : trans )
             for ( Transition &t : tv )
-                t.setVisibility( &prop );
+                t.computeVisibility( &prop );
     }
 
     void setProcIndex( int pid ) {
@@ -779,7 +779,7 @@ struct System {
             }
 
             for ( Process &prop : properties )
-                p1.setVisibility( prop );
+                p1.computeVisibility( prop );
         }
     }
 
