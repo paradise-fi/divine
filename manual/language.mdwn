@@ -1,5 +1,5 @@
 
-# Quick Guide: The DVE Specification Language
+# The DVE Specification Language
 
 DVE specification language has been created as a language that is both easy to
 interpret and sufficiently powerful to express interesting problems for the
