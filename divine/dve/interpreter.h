@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 
 #ifndef DIVINE_DVE_INTERPRETER_H
@@ -178,6 +179,8 @@ struct Channel {
 
 };
 
+struct Process;
+
 struct Transition {
     Symbol process;
     std::string procname;
@@ -199,6 +202,7 @@ struct Transition {
 
     std::unordered_set< SymId > symDepends, symChanges, symReads;
     std::unordered_set< Transition * > pre, dep;
+    std::unordered_map< Process *, bool > visible;
 
     bool from_commited, to_commited;
     Symbol flags;
@@ -409,6 +413,26 @@ struct Transition {
         }
     }
 
+    bool isVisible( Transition &t ) {
+        std::vector< SymId > intersection;
+        std::set_intersection(
+            t.symDepends.begin(), t.symDepends.end(),
+            symChanges.begin(), symChanges.end(),
+            std::back_inserter( intersection )
+        );
+        std::set_intersection(
+            t.symReads.begin(), t.symReads.end(),
+            symChanges.begin(), symChanges.end(),
+            std::back_inserter( intersection )
+        );
+        if ( !intersection.empty() ) {
+            intersection.clear();
+            return true;
+        }
+    }
+
+    void setVisibility( Process * prop );
+
     Transition( SymTab &sym, Symbol proc, parse::Transition t )
         : process( proc ), procIndex( -1 ), sync_channel( 0 ), sync( 0 ), parse( t )
     {
@@ -610,6 +634,12 @@ struct Process {
                     t.buildDepSet( ftv );
     }
 
+    void setVisibility( Process & prop ) {
+        for ( std::vector< Transition > &tv : trans )
+            for ( Transition &t : tv )
+                t.setVisibility( &prop );
+    }
+
     void setProcIndex( int pid ) {
         for( auto &i : readers )
             i.procIndex = pid;
@@ -728,11 +758,15 @@ struct System {
         for ( Process &p : properties )
             p.gatherSymbols();
 
-        for ( Process &p1 : processes )
+        for ( Process &p1 : processes ) {
             for ( Process &p2 : processes ) {
                 p1.buildPreSet( p2 );
                 p1.buildDepSet( p2 );
             }
+
+            for ( Process &prop : properties )
+                p1.setVisibility( prop );
+        }
     }
 
     bool assertValid( EvalContext &ctx ) {
