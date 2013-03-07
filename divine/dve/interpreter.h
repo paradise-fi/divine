@@ -60,10 +60,21 @@ struct LValueList {
         }
     }
 
-    std::unordered_set< SymId > getSymbols() {
+    std::unordered_set< SymId > getChangedSymbols() {
         std::unordered_set< SymId > symbols;
         for ( LValue l : lvals ) {
             symbols.insert( l.symbol.id );
+        }
+        return symbols;
+    }
+
+    std::unordered_set< SymId > getReadSymbols() {
+        std::unordered_set< SymId > symbols;
+        for ( LValue l : lvals ) {
+            if ( l.symbol.item().is_array ) {
+                auto syms = l.idx.getSymbols();
+                symbols.insert( syms.begin(), syms.end() );
+            }
         }
         return symbols;
     }
@@ -287,6 +298,10 @@ struct Transition {
             symChanges.insert( e.first.symbol.id );
             auto symbols = e.second.getSymbols();
             symReads.insert( symbols.begin(), symbols.end() );
+            if ( e.first.symbol.item().is_array ) {
+                symbols = e.first.idx.getSymbols();
+                symReads.insert( symbols.begin(), symbols.end() );
+            }
         }
 
         for ( Expression g : guards ) {
@@ -300,8 +315,10 @@ struct Transition {
         }
 
         if ( sync_lval.valid() ) {
-            auto symbols = sync_lval.getSymbols();
+            auto symbols = sync_lval.getReadSymbols();
             symReads.insert( symbols.begin(), symbols.end() );
+            symbols = sync_lval.getChangedSymbols();
+            symChanges.insert( symbols.begin(), symbols.end() );
         }
 
         if ( from != to )
