@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <unordered_set>
+#include <set>
 #include <unordered_map>
 #include <algorithm>
 
@@ -211,7 +212,7 @@ struct Transition {
     
     parse::Transition parse;
 
-    std::unordered_set< SymId > symDepends, symChanges, symReads;
+    std::set< SymId > symDepends, symChanges, symReads;
     std::unordered_set< Transition * > pre, dep;
     std::unordered_map< Process *, bool > visible;
 
