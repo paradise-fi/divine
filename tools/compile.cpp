@@ -99,11 +99,7 @@ void Compile::compileMurphi( std::string in ) {
 using namespace divine;\n\
 extern \"C\" void setup( cesmi_setup *s ) {\n\
     s->add_property( s, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );\n\
-    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; \n\
-    pthread_mutex_lock( &mutex ); \n\
-    if ( !MuGlobal::init() ) { pthread_mutex_unlock( &mutex ); return; }\n\
-    args = new argclass( 0, NULL ); // FIXME\n\
-    pthread_mutex_unlock( &mutex ); \n\
+    if ( !MuGlobal::init_once( 0, NULL ) ) return;\n\
 }\n\
 \n\
 extern \"C\" int get_initial( const cesmi_setup *setup, int h, cesmi_node *to ) {\n\
