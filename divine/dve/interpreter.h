@@ -611,9 +611,14 @@ struct Process {
     }
 
     void setProcIndex( int pid ) {
-        for( auto &i : readers ) {
+        for( auto &i : readers )
             i.procIndex = pid;
-        }
+        for ( auto &i : writers )
+            i.procIndex = pid;
+
+        for ( auto &tv : trans )
+            for ( auto &t : tv )
+                t.procIndex = pid;
     }
 };
 
