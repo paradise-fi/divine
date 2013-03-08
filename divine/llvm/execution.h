@@ -880,6 +880,8 @@ struct Evaluator
                 case sizeof(double):
                     return implement( p, i, e, consPtr< double >( mem, list ), fun );
             }
+            case Value::Aggregate:
+                return implement( p, i, e, consPtr< void >( mem, list ), fun );
             case Value::Void:
                 return implement( p, i, e, list, fun ); /* ignore void items */
         }

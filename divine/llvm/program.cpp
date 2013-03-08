@@ -40,14 +40,20 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
     } else if ( isCodePointer( val ) ) {
         result.type = Value::CodePointer;
         result.width = 4;
-    } else
+    } else {
         result.width = TD.getTypeAllocSize( val->getType() );
+        if ( val->getType()->isIntegerTy() )
+            result.type = Value::Integer;
+        else if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
+            result.type = Value::Float;
+        else
+            result.type = Value::Aggregate;
+    }
 
-    if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
-        result.type = Value::Float;
-
-    if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( val ) )
+    if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( val ) ) {
+        result.type = Value::Aggregate;
         result.width = CDS->getNumElements() * CDS->getElementByteSize();
+    }
 }
 
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
