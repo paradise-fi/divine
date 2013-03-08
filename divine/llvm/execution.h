@@ -207,6 +207,7 @@ struct Evaluator
     /******** Arithmetic & comparisons *******/
 
     struct Arithmetic : Implementation {
+        static const int arity = 3;
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v(),
                          X &a = Dummy< X >::v(),
@@ -241,6 +242,7 @@ struct Evaluator
 
     struct Select : Implementation {
         int _selected;
+        static const int arity = 4;
         template< typename R = int, typename C = int >
         auto operator()( R &r = Dummy< R >::v(),
                          C &a = Dummy< C >::v(),
@@ -256,6 +258,7 @@ struct Evaluator
     };
 
     struct ICmp : Implementation {
+        static const int arity = 3;
         template< typename R = int, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
                          X &a = Dummy< X >::v(),
@@ -279,6 +282,7 @@ struct Evaluator
     };
 
     struct FCmp : Implementation {
+        static const int arity = 3;
         template< typename R = int, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
                          X &a = Dummy< X >::v(),
@@ -330,6 +334,7 @@ struct Evaluator
     /******** Register access & conversion *******/
 
     struct Copy : Implementation {
+        static const int arity = 2;
         template< typename X = int, typename Y = X >
         auto operator()( X &r = Dummy< X >::v(),
                          Y &l = Dummy< Y >::v() )
@@ -343,6 +348,7 @@ struct Evaluator
     };
 
     struct BitCast : Implementation {
+        static const int arity = 2;
         template< typename R = int, typename L = R >
         Unit operator()( R &r = Dummy< R >::v(),
                          L &l = Dummy< L >::v() )
@@ -359,6 +365,7 @@ struct Evaluator
 
     template< typename _T >
     struct Get : Implementation {
+        static const int arity = 1;
         typedef _T T;
 
         template< typename X = T >
@@ -375,6 +382,7 @@ struct Evaluator
         typedef _T Arg;
         Arg v;
         bool _pointer;
+        static const int arity = 1;
 
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v() )
@@ -396,6 +404,7 @@ struct Evaluator
     /******** Memory access & conversion ********/
 
     struct GetElement : Implementation {
+        static const int arity = 2;
         Unit operator()( Pointer &r = Dummy< Pointer >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
         {
@@ -432,6 +441,7 @@ struct Evaluator
         bool _pointer;
         Load() : _pointer( false ) {}
 
+        static const int arity = 2;
         template< typename R = int >
         Unit operator()( R &r = Dummy< R >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
@@ -448,6 +458,7 @@ struct Evaluator
     };
 
     struct Store : Implementation {
+        static const int arity = 2;
         template< typename L = int >
         Unit operator()( L &l = Dummy< L >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
@@ -468,6 +479,7 @@ struct Evaluator
     };
 
     struct Memcpy : Implementation {
+        static const int arity = 4;
         template< typename I = int >
         auto operator()( Pointer &ret = Dummy< Pointer >::v(),
                          Pointer &_dest = Dummy< Pointer >::v(),
@@ -512,6 +524,7 @@ struct Evaluator
     };
 
     struct Switch : Implementation {
+        static const int arity = 1;
         template< typename X = int >
         Unit operator()( X &condition = Dummy< X >::v() )
         {
@@ -814,19 +827,31 @@ struct Evaluator
 
     template< typename Fun, typename I, typename Cons >
     auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
-        -> typename wibble::TPair< decltype( match( fun, list ) ), typename Fun::T >::Second
+        -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
+                                                  typename Eq< true, (Fun::arity == Cons::length) >::Yes >,
+                                   typename Fun::T >::Second
+    {
+        typedef ProgramInfo::Value Value;
+
+        assert( i == e );
+        fun._evaluator = this;
+        auto retval = match( fun, list );
+        econtext.setPointer( result.back(), fun.resultIsPointer( pointers.back() ) );
+        pointers.pop_back();
+        result.pop_back();
+        return retval;
+    }
+
+    template< typename Fun, typename I, typename Cons >
+    auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
+        -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
+                                                  typename Eq< true, (Fun::arity > Cons::length) >::Yes >,
+                                   typename Fun::T >::Second
     {
         typedef ProgramInfo::Value Value;
         wibble::Preferred p;
 
-        if ( i == e ) {
-            fun._evaluator = this;
-            auto retval = match( fun, list );
-            econtext.setPointer( result.back(), fun.resultIsPointer( pointers.back() ) );
-            pointers.pop_back();
-            result.pop_back();
-            return retval;
-        }
+        assert( i != e );
 
         ValueRef v = *i++;
         char *mem = dereference( v );
