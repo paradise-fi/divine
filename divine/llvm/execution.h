@@ -485,7 +485,6 @@ struct Evaluator
                          Pointer &_dest = Dummy< Pointer >::v(),
                          Pointer &_src = Dummy< Pointer >::v(),
                          I &nmemb = Dummy< I >::v() )
-            /* (void *) 3 is silly, but nullptr here crashes g++ 4.7 */
             -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
         {
             Pointer dest = _dest, src = _src;
