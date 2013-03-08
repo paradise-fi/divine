@@ -492,7 +492,9 @@ struct Evaluator
             dend.offset += nmemb - 1;
             send.offset += nmemb - 1;
 
-            if ( !this->econtext().dereference( dend ) || !this->econtext().dereference( send ) ) {
+            if ( !this->econtext().dereference( dest ) || !this->econtext().dereference( src ) ||
+                 !this->econtext().dereference( dend ) || !this->econtext().dereference( send ) )
+            {
                 this->ccontext().problem( Problem::InvalidDereference );
                 return Unit();
             }
