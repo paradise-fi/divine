@@ -403,32 +403,33 @@ struct Evaluator
 
     /******** Memory access & conversion ********/
 
+    int compositeOffset( ::llvm::Type *t, int current, int end )
+    {
+        if ( current == end )
+            return 0;
+
+        int offset = 0;
+        int index = withValues( GetInt(), instruction.operand( current ) );
+
+        if (::llvm::StructType *STy = dyn_cast< ::llvm::StructType >( t )) {
+            const ::llvm::StructLayout *SLO = econtext.TD.getStructLayout(STy);
+            offset = SLO->getElementOffset( index );
+        } else {
+            const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( t );
+            offset = index * econtext.TD.getTypeAllocSize( ST->getElementType() );
+        }
+        return offset +
+            compositeOffset( cast< ::llvm::CompositeType >( t )->getTypeAtIndex( current ),
+                             current + 1, end );
+    }
+
     struct GetElement : Implementation {
         static const int arity = 2;
         Unit operator()( Pointer &r = Dummy< Pointer >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
         {
-            int total = 0;
-
-            ::llvm::gep_type_iterator
-                  I = ::llvm::gep_type_begin( this->i().op ),
-                  E = ::llvm::gep_type_end( this->i().op );
-
-            int meh = 1;
-            for (; I != E; ++I, ++meh) {
-                if (::llvm::StructType *STy = dyn_cast< ::llvm::StructType >(*I)) {
-                    const ::llvm::StructLayout *SLO = this->TD().getStructLayout(STy);
-                    const ::llvm::ConstantInt *CPU = cast< ::llvm::ConstantInt >( I.getOperand() ); /* meh */
-                    int index = CPU->getZExtValue();
-                    total += SLO->getElementOffset( index );
-                } else {
-                    const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( *I );
-                    int index = this->evaluator().withValues( GetInt(), this->i().operand( meh ) );
-                    total += index * this->TD().getTypeAllocSize( ST->getElementType() );
-                }
-            }
-
-            r = p + total;
+            r = p + this->evaluator().compositeOffset(
+                this->i().op->getOperand(0)->getType(), 1, this->i().values.size() - 1 );
             return Unit();
         }
         bool resultIsPointer( std::vector< bool > x ) {
