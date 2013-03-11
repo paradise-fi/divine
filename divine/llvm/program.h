@@ -305,10 +305,10 @@ struct GlobalContext {
     Pointer malloc( int ) { assert_die(); }
     void free( Pointer ) { assert_die(); }
 
-    bool isPointer( ValueRef ) { return false; }
-    bool isPointer( Pointer ) { return false; }
-    void setPointer( ValueRef, bool ) {}
-    void setPointer( Pointer, bool ) {}
+    bool isPointer( ValueRef, int offset = 0 ) { return false; }
+    bool isPointer( Pointer, int offset = 0 ) { return false; }
+    void setPointer( ValueRef, bool, int offset = 0 ) {}
+    void setPointer( Pointer, bool, int offset = 0 ) {}
 
     char *dereference( Pointer p ) {
         if ( !p.heap )

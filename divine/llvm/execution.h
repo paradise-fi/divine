@@ -644,8 +644,8 @@ struct Evaluator
             char *value = econtext.dereference( v );
             char *result = copy.dereference( info, instruction.result() );
             std::copy( value, value + v.width, result );
-            if ( !v.global && !v.constant )
-                copy.setPointer( info, instruction.result(), original.isPointer( info, v ) );
+            if ( !v.global && !v.constant ) /* XXX iterate, or further generalize memcopy */
+                copy.setPointer( info, instruction.result(), original.isPointer( info, v, 0 ), 0 );
             /* else TODO! */
             ccontext.pc().instruction ++;
             instruction = info.instruction( ccontext.pc() );

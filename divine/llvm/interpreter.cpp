@@ -74,7 +74,7 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
     state.enter( pc.function );
     if ( !arg.nothing() ) {
         auto v = info.function( pc ).values[ 0 ];
-        frame().setPointer( info, v, ptr );
+        frame().setPointer( info, v, ptr, 0 );
         *frame().dereference< Pointer >( info, v ) = arg.value();
     }
     if ( current >= 0 )

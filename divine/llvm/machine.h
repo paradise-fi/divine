@@ -75,11 +75,13 @@ struct MachineState
             return 1 << ((v.offset % 32) / 4);
         }
 
-        bool isPointer( ProgramInfo &i, ProgramInfo::Value v ) {
+        bool isPointer( ProgramInfo &i, ProgramInfo::Value v, int offset ) {
+            v.offset += offset; /* beware of dragons */
             return pbitmap( i, v ) & mask( v );
         }
 
-        void setPointer( ProgramInfo &i, ProgramInfo::Value v, bool ptr ) {
+        void setPointer( ProgramInfo &i, ProgramInfo::Value v, bool ptr, int offset ) {
+            v.offset += offset; /* beware of dragons */
             if ( ptr )
                 pbitmap( i, v ) |= mask( v );
             else
@@ -353,7 +355,8 @@ struct MachineState
         return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
     }
 
-    bool isPointer( Pointer p ) {
+    bool isPointer( Pointer p, int offset = 0 ) {
+        p.offset += offset; /* beware of dragons! */
         if ( p.offset % 4 != 0 )
             return false;
         if ( nursery.owns( p ) )
@@ -365,7 +368,8 @@ struct MachineState
         return false;
     }
 
-    void setPointer( Pointer p, bool is ) {
+    void setPointer( Pointer p, bool is, int offset = 0 ) {
+        p.offset += offset; /* beware of dragons! */
         if ( nursery.owns( p ) )
             nursery.setPointer( p, is );
         if ( heap().owns( p ) )
@@ -394,22 +398,22 @@ struct MachineState
         return *f;
     }
 
-    bool isPointer( ValueRef v ) {
+    bool isPointer( ValueRef v, int offset = 0 ) {
         if ( v.tid < 0 )
             v.tid = _thread;
         if ( v.v.constant )
             return false; /* can't point to heap by definition */
         assert( !v.v.global );
-        return frame( v ).isPointer( _info, v.v );
+        return frame( v ).isPointer( _info, v.v, offset );
     }
 
-    void setPointer( ValueRef v, bool is ) {
+    void setPointer( ValueRef v, bool is, int offset = 0 ) {
         if ( v.tid < 0 )
             v.tid = _thread;
         if ( v.v.constant )
             return;
         assert( !v.v.global );
-        frame( v ).setPointer( _info, v.v, is );
+        frame( v ).setPointer( _info, v.v, is, offset );
     }
 
     /*
