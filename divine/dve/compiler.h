@@ -191,7 +191,7 @@ struct DveCompiler
         if ( !chanProc.valid() )
             return state + "." + chan.chan.name() + ".number_of_items";
         else
-            return state + "." + p.name.name() + "." + chan.chan.name() + ".number_of_items";
+            return state + "." + chanProc.name() + "." + chan.chan.name() + ".number_of_items";
     }
 
     std::string channel_item_at( std::string p, parse::SyncExpr & chan, std::string pos, int x, std::string state ) {
@@ -203,7 +203,7 @@ struct DveCompiler
         if ( !chanProc.valid() )
             return state + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
         else
-            return state + "." + p.name.name() + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+            return state + "." + chanProc.name() + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
     }
 
     parse::ChannelDeclaration & getChannel( std::string proc, parse::SyncExpr & chan ) {
