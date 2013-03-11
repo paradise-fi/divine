@@ -27,8 +27,6 @@ struct TestLockedQueue {
 
     typedef void Test;
 
-    static std::atomic< int > work;
-
     struct Producer : wibble::sys::Thread {
         LockedQueue< int >* q;
         int produce;
@@ -47,13 +45,11 @@ struct TestLockedQueue {
         std::atomic<  int >* work;
         void* main() {
             consumed = 0;
-            while( !q->empty || *work ) {
-                if ( !q->pop() ) {
-                    if ( *work )
-                        continue;
-                    return nullptr;
+            while( *work ) {
+                while( !q->empty ) {
+                    if ( q->pop() )
+                        consumed++;
                 }
-                consumed++;
             }
             return nullptr;
         }
@@ -87,6 +83,7 @@ struct TestLockedQueue {
                                      []( int v, const Consumer& c) -> int {
                                          return v + c.consumed;
                                     } );
+        assert_eq( queue.q.size(), 0 );
         assert_eq( reads, inserts );
         assert( queue.empty );
     }
