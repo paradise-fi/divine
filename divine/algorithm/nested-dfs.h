@@ -51,14 +51,14 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     struct : wibble::sys::Thread {
         Fifo< Node > process;
         This *outer;
-        Graph graph;
+        std::shared_ptr< Graph > graph;
 
         void *main() {
             while ( outer->valid ) {
                 if ( !process.empty() ) {
                     Node n = process.front();
                     process.pop();
-                    outer->runInner( graph, n ); // run the inner loop
+                    outer->runInner( *graph, n ); // run the inner loop
                 } else {
                     if ( outer->finished )
                         return 0;
@@ -84,7 +84,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         progress() << " searching...\t\t\t" << std::flush;
 
         if ( parallel ) {
-            inner.graph = this->graph();
+            inner.graph->setSlack( this->m_slack );
             inner.start();
         }
 
@@ -205,6 +205,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
             this->store().table.m_maxsize = m.execution.initialTable; // XXX
+            inner.graph = std::shared_ptr< Graph >( this->initGraph( *this ) );
         }
         finished = false;
         inner.outer = this;
