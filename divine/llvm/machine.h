@@ -447,7 +447,7 @@ struct MachineState
     bool inBounds( Pointer p, int byteoff )
     {
         p.offset += byteoff;
-        return defererence( p );
+        return dereference( p );
     }
 
     Lens< Threads > threads() {
