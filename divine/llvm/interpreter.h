@@ -216,6 +216,7 @@ struct Interpreter
 
     template< typename X > bool isPointer( X p, int o = 0 ) { return state.isPointer( p, o ); }
     template< typename X > void setPointer( X p, bool is, int o = 0 ) { state.setPointer( p, is, o ); }
+    template< typename X > void inBounds( X p, int o ) { return state.inBounds( p, o ); }
 
     /* ControlContext interface. */
     int stackDepth() { return state.stack().get().length(); }

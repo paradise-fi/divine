@@ -439,6 +439,17 @@ struct MachineState
         assert_unreachable( "Impossible Value." );
     }
 
+    bool inBounds( ValueRef v, int byteoff )
+    {
+        return byteoff < v.v.width;
+    }
+
+    bool inBounds( Pointer p, int byteoff )
+    {
+        p.offset += byteoff;
+        return defererence( p );
+    }
+
     Lens< Threads > threads() {
         return state().sub( Threads() );
     }

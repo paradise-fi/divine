@@ -310,6 +310,10 @@ struct GlobalContext {
     void setPointer( ValueRef, bool, int offset = 0 ) {}
     void setPointer( Pointer, bool, int offset = 0 ) {}
 
+    /* TODO */
+    bool inBounds( ValueRef, int ) { return true; }
+    bool inBounds( Pointer, int ) { return true; }
+
     char *dereference( Pointer p ) {
         if ( !p.heap )
             return global + info.globalPointerOffset( p );
