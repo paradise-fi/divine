@@ -479,44 +479,48 @@ struct Evaluator
         }
     };
 
+    int pointerUnalignment( Pointer p ) { return p.offset % 4; }
+    int pointerUnalignment( ValueRef r ) { return 0; }
+
+    template < typename From, typename To >
+    bool memcopy( From f, To t, int bytes )
+    {
+        char *from = econtext.dereference( f ),
+             *to = econtext.dereference( t );
+
+        if ( !from || !to )
+            return false;
+        /* TODO make this a separate error? */
+        if ( !econtext.inBounds( f, bytes - 1 ) || !econtext.inBounds( t, bytes - 1 ) )
+            return false;
+
+        memcpy( to, from, bytes );
+
+        /* check whether we are writing over part of something that might have
+         * been a pointer */
+        if ( pointerUnalignment( t ) )
+            econtext.setPointer( t, false, -pointerUnalignment( t ) );
+
+        int f_offset = 0, t_offset = pointerUnalignment( t );
+        while ( f_offset < bytes ) {
+            econtext.setPointer( t, econtext.isPointer( f, f_offset ), t_offset );
+            f_offset += 4;
+            t_offset += 4;
+        }
+        return true;
+    }
+
     struct Memcpy : Implementation {
         static const int arity = 4;
         template< typename I = int >
         auto operator()( Pointer &ret = Dummy< Pointer >::v(),
-                         Pointer &_dest = Dummy< Pointer >::v(),
-                         Pointer &_src = Dummy< Pointer >::v(),
+                         Pointer &dest = Dummy< Pointer >::v(),
+                         Pointer &src = Dummy< Pointer >::v(),
                          I &nmemb = Dummy< I >::v() )
             -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
         {
-            Pointer dest = _dest, src = _src;
-            Pointer dend = dest, send = src;
-            dend.offset += nmemb - 1;
-            send.offset += nmemb - 1;
-
-            if ( !this->econtext().dereference( dest ) || !this->econtext().dereference( src ) ||
-                 !this->econtext().dereference( dend ) || !this->econtext().dereference( send ) )
-            {
+            if ( !this->evaluator().memcopy( src, dest, nmemb ) )
                 this->ccontext().problem( Problem::InvalidDereference );
-                return Unit();
-            }
-
-            memcpy( this->econtext().dereference( dest ),
-                    this->econtext().dereference( src ), nmemb );
-
-            if ( dest.offset % 4 ) { /* partialy overwritten pointer is no longer a pointer */
-                Pointer partial = dest;
-                partial.offset -= dest.offset % 4;
-                this->econtext().setPointer( partial, false );
-            }
-
-            dest.offset = align( dest.offset, 4 );
-            src.offset = align( src.offset, 4 );
-
-            while ( dest.offset < dend.offset + 1 ) {
-                this->econtext().setPointer( dest, this->econtext().isPointer( src ) );
-                dest.offset += 4;
-                src.offset += 4;
-            }
 
             ret = dest;
             return Unit();
