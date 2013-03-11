@@ -21,7 +21,7 @@ template < typename T >
 struct LockedQueue {
     typedef SpinLock Mutex;
     Mutex m;
-    bool empty;
+    volatile bool empty;
     std::deque< T > q;
 
     LockedQueue( void ) : empty( true ) {}
