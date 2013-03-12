@@ -196,6 +196,8 @@ std::string describeProblem( ProgramInfo &info, Problem bad )
             s << "BAD DEREFERENCE"; break;
         case Problem::InvalidArgument:
             s << "BAD ARGUMENT"; break;
+        case Problem::OutOfBounds:
+            s << "BOUND CHECK FAILED"; break;
     }
     s << " (thread " << int( bad.tid ) << "): ";
     s << locinfo( info, bad.where, bad.what != Problem::Assert );
