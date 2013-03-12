@@ -419,7 +419,7 @@ struct Evaluator
             offset = index * econtext.TD.getTypeAllocSize( ST->getElementType() );
         }
         return offset +
-            compositeOffset( cast< ::llvm::CompositeType >( t )->getTypeAtIndex( current ),
+            compositeOffset( cast< ::llvm::CompositeType >( t )->getTypeAtIndex( index ),
                              current + 1, end );
     }
 
