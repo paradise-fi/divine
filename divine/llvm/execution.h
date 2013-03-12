@@ -479,35 +479,43 @@ struct Evaluator
         }
     };
 
-    int pointerUnalignment( Pointer p ) { return p.offset % 4; }
-    int pointerUnalignment( ValueRef r ) { return 0; }
+    int pointerUnalignment( Pointer p, int off ) { return (p.offset + off) % 4; }
+    int pointerUnalignment( ValueRef, int off ) { return off % 4; }
 
     template < typename From, typename To >
-    bool memcopy( From f, To t, int bytes )
+    Problem::What memcopy( From f, int f_offset, To t, int t_offset, int bytes )
     {
         char *from = econtext.dereference( f ),
              *to = econtext.dereference( t );
 
         if ( !from || !to )
-            return false;
-        /* TODO make this a separate error? */
-        if ( !econtext.inBounds( f, bytes - 1 ) || !econtext.inBounds( t, bytes - 1 ) )
-            return false;
+            return Problem::InvalidDereference;
 
-        memcpy( to, from, bytes );
+        if ( !econtext.inBounds( f, f_offset + bytes - 1 ) ||
+             !econtext.inBounds( t, t_offset + bytes - 1 ) )
+            return Problem::OutOfBounds;
+
+        memcpy( to + t_offset, from + f_offset, bytes );
+
+        int unalign = pointerUnalignment( t, t_offset ),
+            align = 4 - unalign;
 
         /* check whether we are writing over part of something that might have
          * been a pointer */
-        if ( pointerUnalignment( t ) )
-            econtext.setPointer( t, false, -pointerUnalignment( t ) );
+        if ( unalign )
+            econtext.setPointer( t, false, t_offset - unalign );
 
-        int f_offset = 0, t_offset = pointerUnalignment( t );
-        while ( f_offset < bytes ) {
-            econtext.setPointer( t, econtext.isPointer( f, f_offset ), t_offset );
-            f_offset += 4;
-            t_offset += 4;
+        /* If f_offset + align is actually unaligned, that's OK because that
+         * means we are copying from an unaligned address to an aligned one,
+         * and the result is not a pointer. */
+        int from_offset = f_offset + align, to_offset = t_offset + align;
+        while ( from_offset < bytes ) {
+            econtext.setPointer( t, econtext.isPointer( f, from_offset ), to_offset );
+            from_offset += 4;
+            to_offset += 4;
         }
-        return true;
+
+        return Problem::NoProblem;
     }
 
     struct Memcpy : Implementation {
@@ -519,8 +527,8 @@ struct Evaluator
                          I &nmemb = Dummy< I >::v() )
             -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
         {
-            if ( !this->evaluator().memcopy( src, dest, nmemb ) )
-                this->ccontext().problem( Problem::InvalidDereference );
+            if ( auto problem = this->evaluator().memcopy( src, 0, dest, 0, nmemb ) )
+                this->ccontext().problem( problem );
 
             ret = dest;
             return Unit();
