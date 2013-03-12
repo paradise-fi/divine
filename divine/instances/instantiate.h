@@ -153,10 +153,13 @@ algorithm::Algorithm *selectGraph( Meta &meta )
     } else if ( wibble::str::endsWith( meta.input.model, ".bc" ) ) {
         meta.input.modelType = "LLVM";
 #ifdef O_LLVM
-        if ( meta.execution.threads > 1 && !::llvm::llvm_start_multithreaded() ) {
-            std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                      << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-            return NULL;
+        if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
+        {
+            if ( !::llvm::llvm_start_multithreaded() ) {
+                std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
+                          << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
+                return NULL;
+            }
         }
         return makeAlgorithmN< A, generator::LLVM >( meta );
 #else
