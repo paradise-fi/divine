@@ -429,14 +429,14 @@ struct Evaluator
 
     void implement_store() {
         Pointer to = withValues( Get< Pointer >(), instruction.operand( 1 ) );
-        auto r = memcopy( instruction.operand( 0 ), to, instruction.operand( 0 ).width );
-        assert_eq( r, Problem::NoProblem );
+        if ( auto r = memcopy( instruction.operand( 0 ), to, instruction.operand( 0 ).width ) )
+            ccontext.problem( r );
     }
 
     void implement_load() {
         Pointer from = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-        auto r = memcopy( from, instruction.result(), instruction.result().width );
-        assert_eq( r, Problem::NoProblem );
+        if ( auto r = memcopy( from, instruction.result(), instruction.result().width ) )
+            ccontext.problem( r );
     }
 
     template < typename From, typename To >
