@@ -291,9 +291,10 @@ struct ValueRef {
     ProgramInfo::Value v;
     int frame;
     int tid;
+    int offset;
     ValueRef( ProgramInfo::Value v = ProgramInfo::Value(),
-              int frame = 0, int tid = -1 )
-        : v( v ), frame( frame ), tid( tid )
+              int frame = 0, int tid = -1, int off = 0 )
+        : v( v ), frame( frame ), tid( tid ), offset( off )
     {}
 };
 
@@ -305,10 +306,10 @@ struct GlobalContext {
     Pointer malloc( int ) { assert_die(); }
     void free( Pointer ) { assert_die(); }
 
-    bool isPointer( ValueRef, int offset = 0 ) { return false; }
-    bool isPointer( Pointer, int offset = 0 ) { return false; }
-    void setPointer( ValueRef, bool, int offset = 0 ) {}
-    void setPointer( Pointer, bool, int offset = 0 ) {}
+    bool isPointer( ValueRef ) { return false; }
+    bool isPointer( Pointer ) { return false; }
+    void setPointer( ValueRef, bool ) {}
+    void setPointer( Pointer, bool ) {}
 
     /* TODO */
     bool inBounds( ValueRef, int ) { return true; }
@@ -322,9 +323,9 @@ struct GlobalContext {
 
     char *dereference( ValueRef v ) {
         if( v.v.constant )
-            return &info.constdata[ v.v.offset ];
+            return &info.constdata[ v.v.offset + v.offset ];
         else if ( v.v.global )
-            return global + v.v.offset;
+            return global + v.v.offset + v.offset;
         else
             assert_die();
     }

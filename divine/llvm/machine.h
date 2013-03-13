@@ -398,22 +398,22 @@ struct MachineState
         return *f;
     }
 
-    bool isPointer( ValueRef v, int offset = 0 ) {
+    bool isPointer( ValueRef v ) {
         if ( v.tid < 0 )
             v.tid = _thread;
         if ( v.v.constant )
             return false; /* can't point to heap by definition */
         assert( !v.v.global );
-        return frame( v ).isPointer( _info, v.v, offset );
+        return frame( v ).isPointer( _info, v.v, v.offset );
     }
 
-    void setPointer( ValueRef v, bool is, int offset = 0 ) {
+    void setPointer( ValueRef v, bool is ) {
         if ( v.tid < 0 )
             v.tid = _thread;
         if ( v.v.constant )
             return;
         assert( !v.v.global );
-        frame( v ).setPointer( _info, v.v, is, offset );
+        frame( v ).setPointer( _info, v.v, is, v.offset );
     }
 
     /*
@@ -428,20 +428,20 @@ struct MachineState
             v.tid = _thread;
 
         if ( !v.v.global && !v.v.constant )
-            return frame( v ).dereference( _info, v.v );
+            return frame( v ).dereference( _info, v.v ) + v.offset;
 
         if ( v.v.constant )
-            return &_info.constdata[v.v.offset];
+            return &_info.constdata[ v.v.offset + v.offset ];
 
         if ( v.v.global )
-            return reinterpret_cast< char * >( global().memory() + v.v.offset );
+            return reinterpret_cast< char * >( global().memory() + v.v.offset + v.offset );
 
         assert_unreachable( "Impossible Value." );
     }
 
     bool inBounds( ValueRef v, int byteoff )
     {
-        return byteoff < v.v.width;
+        return v.offset + byteoff < v.v.width;
     }
 
     bool inBounds( Pointer p, int byteoff )

@@ -214,8 +214,8 @@ struct Interpreter
     Pointer malloc( int size ) { return state.malloc( size ); }
     void free( Pointer p ) { return state.free( p ); }
 
-    template< typename X > bool isPointer( X p, int o = 0 ) { return state.isPointer( p, o ); }
-    template< typename X > void setPointer( X p, bool is, int o = 0 ) { state.setPointer( p, is, o ); }
+    template< typename X > bool isPointer( X p ) { return state.isPointer( p ); }
+    template< typename X > void setPointer( X p, bool is ) { state.setPointer( p, is ); }
     template< typename X > bool inBounds( X p, int o ) { return state.inBounds( p, o ); }
 
     /* ControlContext interface. */

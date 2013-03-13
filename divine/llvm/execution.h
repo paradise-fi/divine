@@ -348,7 +348,7 @@ struct Evaluator
     };
 
     void implement_bitcast() {
-        auto r = memcopy( instruction.operand( 0 ), 0, instruction.result(), 0, instruction.result().width );
+        auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
         assert_eq( r, Problem::NoProblem );
     }
 
@@ -429,50 +429,52 @@ struct Evaluator
 
     void implement_store() {
         Pointer to = withValues( Get< Pointer >(), instruction.operand( 1 ) );
-        auto r = memcopy( instruction.operand( 0 ), 0, to, 0, instruction.operand( 0 ).width );
+        auto r = memcopy( instruction.operand( 0 ), to, instruction.operand( 0 ).width );
         assert_eq( r, Problem::NoProblem );
     }
 
     void implement_load() {
         Pointer from = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-        auto r = memcopy( from, 0, instruction.result(), 0, instruction.result().width );
+        auto r = memcopy( from, instruction.result(), instruction.result().width );
         assert_eq( r, Problem::NoProblem );
     }
 
-    int pointerUnalignment( Pointer p, int off ) { return (p.offset + off) % 4; }
-    int pointerUnalignment( ValueRef, int off ) { return off % 4; }
-
     template < typename From, typename To >
-    Problem::What memcopy( From f, int f_offset, To t, int t_offset, int bytes )
+    Problem::What memcopy( From f, To t, int bytes )
     {
         char *from = econtext.dereference( f ),
              *to = econtext.dereference( t );
+        int f_end = f.offset + bytes;
 
         if ( !from || !to )
             return Problem::InvalidDereference;
 
-        if ( !econtext.inBounds( f, f_offset + bytes - 1 ) ||
-             !econtext.inBounds( t, t_offset + bytes - 1 ) )
+        if ( !econtext.inBounds( f, bytes - 1 ) ||
+             !econtext.inBounds( t, bytes - 1 ) )
             return Problem::OutOfBounds;
 
-        memcpy( to + t_offset, from + f_offset, bytes );
+        memcpy( to, from, bytes );
 
-        int unalign = pointerUnalignment( t, t_offset ),
-            align = 4 - unalign;
+        int unalignment = t.offset % 4;
 
         /* check whether we are writing over part of something that might have
          * been a pointer */
-        if ( unalign )
-            econtext.setPointer( t, false, t_offset - unalign );
+        t.offset -= unalignment;
+        f.offset -= unalignment;
+        econtext.setPointer( t, false );
 
-        /* If f_offset + align is actually unaligned, that's OK because that
+        if ( unalignment ) {
+            f.offset += 4;
+            t.offset += 4;
+        }
+
+        /* If f.offset + align is actually unaligned, that's OK because that
          * means we are copying from an unaligned address to an aligned one,
          * and the result is not a pointer. */
-        int from_offset = f_offset + align, to_offset = t_offset + align;
-        while ( from_offset < bytes ) {
-            econtext.setPointer( t, econtext.isPointer( f, from_offset ), to_offset );
-            from_offset += 4;
-            to_offset += 4;
+        while ( f.offset < f_end ) {
+            econtext.setPointer( t, econtext.isPointer( f ) );
+            f.offset += 4;
+            t.offset += 4;
         }
 
         return Problem::NoProblem;
@@ -487,7 +489,7 @@ struct Evaluator
                          I &nmemb = Dummy< I >::v() )
             -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
         {
-            if ( auto problem = this->evaluator().memcopy( src, 0, dest, 0, nmemb ) )
+            if ( auto problem = this->evaluator().memcopy( src, dest, nmemb ) )
                 this->ccontext().problem( problem );
 
             ret = dest;
@@ -557,7 +559,7 @@ struct Evaluator
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
         if ( instruction.values.size() > 1 ) /* return value */
-            memcopy( instruction.operand( 0 ), 0, ValueRef( caller.result(), 1 ), 0, caller.result().width );
+            memcopy( instruction.operand( 0 ), ValueRef( caller.result(), 1 ), caller.result().width );
 
         ccontext.leave();
 
@@ -707,7 +709,7 @@ struct Evaluator
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.values.size() ); ++i )
-            memcopy( ValueRef( instruction.operand( i ), 1 ), 0, function.values[ i ], 0,
+            memcopy( ValueRef( instruction.operand( i ), 1 ), function.values[ i ],
                      function.values[ i ].width );
         if ( CS.arg_size() > function.values.size() )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
