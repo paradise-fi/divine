@@ -357,91 +357,119 @@ struct Partitioned {
  * you are ready for some serious debugging (throw in some gcc errors for fun
  * and profit).
  */
-
-template< typename S, typename Worker >
 struct Shared {
-    typedef Shared< S, Worker > This;
-    typedef typename S::Graph Graph;
-    typedef typename S::Node Node;
-    typedef typename S::Label Label;
-    typedef typename S::Store Store;
-    typedef typename S::Statistics Statistics;
-    typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
-    typedef typename Chunker::ChunkQ ChunkQ;
-    typedef typename Chunker::Terminator Terminator;
-    typedef typename Chunker::TerminatorPtr TerminatorPtr;
-    typedef SharedHashSet< Blob > Table;
+    template< typename S >
+    struct Data {
+        typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
+        typedef typename Chunker::ChunkQ ChunkQ;
+        typedef typename Chunker::Terminator Terminator;
+        typedef typename Chunker::TerminatorPtr TerminatorPtr;
+        typedef SharedHashSet< Blob > Table;
 
-    typedef std::shared_ptr< Store > StorePtr;
-    typedef std::shared_ptr< ChunkQ > ChunkQPtr;
+        typedef typename S::Store Store;
+        typedef std::shared_ptr< Store > StorePtr;
+        typedef std::shared_ptr< ChunkQ > ChunkQPtr;
 
-    BFVShared< S > bfv;
-    StorePtr closed;
+        ChunkQPtr chunkq;
+        TerminatorPtr terminator;
+        StorePtr store;
 
-    Worker &worker;
-    typename S::Listener &notify;
+        Data() :
+            chunkq( std::make_shared< ChunkQ >() ),
+            terminator( std::make_shared< Terminator >() ),
+            store( std::make_shared< Store >() )
+            {}
+        Data( const Data& ) = default;
+    };
 
-    inline void queue( Node from, Node to, Label label ) {
-        setIds();
-        bfv.queue( from, to, label );
-    }
+    template< typename S, typename Worker >
+    struct Implementation {
+        typedef Implementation< S, Worker > This;
+        typedef typename S::Graph Graph;
+        typedef typename S::Node Node;
+        typedef typename S::Label Label;
+        typedef typename S::Store Store;
+        typedef typename S::Statistics Statistics;
 
-    visitor::TransitionAction transition( Node f, Node t ) {
-        visitor::TransitionAction tact = S::transition( notify, f, t );
-        if ( tact == TerminateOnTransition )
-            worker.interrupt();
-        return tact;
-    }
+        typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
+        typedef typename Chunker::ChunkQ ChunkQ;
+        typedef typename Chunker::Terminator Terminator;
+        typedef typename Chunker::TerminatorPtr TerminatorPtr;
+        typedef SharedHashSet< Blob > Table;
 
-    visitor::ExpansionAction expansion( Node n ) {
-        assert_eq( owner( n ), worker.id() );
-        ExpansionAction eact = S::expansion( notify, n );
-        if ( eact == TerminateOnState )
-            worker.interrupt();
-        return eact;
-    }
+        typedef std::shared_ptr< Store > StorePtr;
+        typedef std::shared_ptr< ChunkQ > ChunkQPtr;
 
-    void run() {
-        worker.restart();
-        //assert_die();
-        while ( !bfv.open().termination.isZero() ) {
-            /* Take a whole chunk of work. */
-            if ( bfv.open().empty() ) {
-                /* Whenever queue is empty, we push the current chunk to queue
-                * and synchronize the termination balance, then try again. */
-                bfv.open().flush();
-                bfv.open().termination.sync();
-                continue;
-            }
+        BFVShared< S > bfv;
+        StorePtr closed;
 
-            bfv.processQueue();
+        Worker &worker;
+        typename S::Listener &notify;
+
+        inline void queue( Node from, Node to, Label label ) {
+            setIds();
+            bfv.queue( from, to, label );
+        }
+
+        visitor::TransitionAction transition( Node f, Node t ) {
+            visitor::TransitionAction tact = S::transition( notify, f, t );
+            if ( tact == TerminateOnTransition )
+                worker.interrupt();
+            return tact;
+        }
+
+        visitor::ExpansionAction expansion( Node n ) {
+            assert_eq( owner( n ), worker.id() );
+            ExpansionAction eact = S::expansion( notify, n );
+            if ( eact == TerminateOnState )
+                worker.interrupt();
+            return eact;
+        }
+
+        void run() {
+            worker.restart();
             //assert_die();
+            while ( !bfv.open().termination.isZero() ) {
+                /* Take a whole chunk of work. */
+                if ( bfv.open().empty() ) {
+                    /* Whenever queue is empty, we push the current chunk to queue
+                    * and synchronize the termination balance, then try again. */
+                    bfv.open().flush();
+                    bfv.open().termination.sync();
+                    continue;
+                }
+
+                bfv.processQueue();
+                //assert_die();
+            }
         }
-    }
 
-    inline void setIds() {
-        bfv.store.id = &worker;
-        bfv.open().id = worker.id();
-    }
-
-    void exploreFrom( Node initial ) {
-        setIds();
-        if ( worker.id() == 0 ) {
-            bfv.exploreFrom( unblob< Node >( initial ) );
+        inline void setIds() {
+            bfv.store.id = &worker;
+            bfv.open().id = worker.id();
         }
-        run();
-    }
 
-    inline void processQueue() {
-        setIds();
-        run();
-    }
+        void exploreFrom( Node initial ) {
+            setIds();
+            if ( worker.id() == 0 ) {
+                bfv.exploreFrom( unblob< Node >( initial ) );
+            }
+            run();
+        }
 
-    Shared( typename S::Listener &l, Worker &w, Graph &g, StorePtr s, ChunkQPtr ch, TerminatorPtr t )
-        : bfv( l, g, *s, ch, t ), closed( s ), worker( w ), notify( l )//, graph( g )
-    {}
+        inline void processQueue() {
+            setIds();
+            run();
+        }
 
-    Shared( const Shared& s ) = delete;
+        Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s, Data< typename S::AlgorithmSetup >& d )
+            : bfv( l, g, *(d.store), d.chunkq, d.terminator ), closed( d.store ), worker( w ), notify( l )
+        {}
+
+        Implementation( const Implementation& s )
+            : bfv( s.bfv ), closed( s.closed ), worker( s.worker ), notify( s.notify )
+        {}
+    };
 };
 
 }
