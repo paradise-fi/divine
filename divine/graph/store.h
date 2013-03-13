@@ -130,6 +130,13 @@ struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, 
             *had = _had;
         setPermanent( s );
     }
+
+    T fetch( T s, hash_t h, bool* had = nullptr ) {
+        bool _had = Super::table.has( s, h );
+        if ( had )
+            *had = _had;
+        return s;
+    }
 };
 
 template< typename Hasher >
