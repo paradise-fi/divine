@@ -80,12 +80,12 @@ struct MachineState
             return pbitmap( i, v ) & mask( v );
         }
 
-        void setPointer( ProgramInfo &i, ProgramInfo::Value v, bool ptr, int offset ) {
-            v.offset += offset; /* beware of dragons */
+        void setPointer( ProgramInfo &i, ValueRef v, bool ptr ) {
+            v.v.offset += v.offset; /* beware of dragons */
             if ( ptr )
-                pbitmap( i, v ) |= mask( v );
+                pbitmap( i, v.v ) |= mask( v.v );
             else
-                pbitmap( i, v ) &= ~mask( v );
+                pbitmap( i, v.v ) &= ~mask( v.v );
         }
 
         StateAddress advance( StateAddress a, int ) {
@@ -94,10 +94,10 @@ struct MachineState
         int end() { return 0; }
 
         template< typename T = char >
-        T *dereference( ProgramInfo &i, ProgramInfo::Value v ) {
-            assert_leq( int( v.offset ), datasize( i ) );
-            assert_leq( int( v.offset + v.width ), datasize( i ) );
-            return reinterpret_cast< T * >( memory() + v.offset );
+        T *dereference( ProgramInfo &i, ValueRef v ) {
+            assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
+            assert_leq( int( v.v.offset + v.offset + v.v.width ), datasize( i ) );
+            return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
         }
     };
 
@@ -413,7 +413,7 @@ struct MachineState
         if ( v.v.constant )
             return;
         assert( !v.v.global );
-        frame( v ).setPointer( _info, v.v, is, v.offset );
+        frame( v ).setPointer( _info, v, is );
     }
 
     /*
@@ -428,7 +428,7 @@ struct MachineState
             v.tid = _thread;
 
         if ( !v.v.global && !v.v.constant )
-            return frame( v ).dereference( _info, v.v ) + v.offset;
+            return frame( v ).dereference( _info, v );
 
         if ( v.v.constant )
             return &_info.constdata[ v.v.offset + v.offset ];
@@ -587,6 +587,24 @@ struct MachineState
     void dump( std::ostream & );
     void dump();
 };
+
+struct FrameContext {
+    ProgramInfo &info;
+    MachineState::Frame &frame;
+
+    template< typename X > bool isPointer( X x ) { return frame.isPointer( info, x ); }
+    template< typename X > void setPointer( X x, bool s ) { frame.setPointer( info, x, s ); }
+    template< typename X > char *dereference( X x ) { return frame.dereference( info, x ); }
+    template< typename X > bool inBounds( X x, int off ) {
+        x.offset += off;
+        return dereference( x );
+    }
+
+    FrameContext( ProgramInfo &i, MachineState::Frame &f )
+        : info( i ), frame( f )
+    {}
+};
+
 
 }
 }

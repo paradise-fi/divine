@@ -439,18 +439,18 @@ struct Evaluator
             ccontext.problem( r );
     }
 
-    template < typename From, typename To >
-    Problem::What memcopy( From f, To t, int bytes )
+    template < typename From, typename To, typename FromC, typename ToC >
+    Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
     {
-        char *from = econtext.dereference( f ),
-             *to = econtext.dereference( t );
+        char *from = fromc.dereference( f ),
+             *to = toc.dereference( t );
         int f_end = f.offset + bytes;
 
         if ( !from || !to )
             return Problem::InvalidDereference;
 
-        if ( !econtext.inBounds( f, bytes - 1 ) ||
-             !econtext.inBounds( t, bytes - 1 ) )
+        if ( !fromc.inBounds( f, bytes - 1 ) ||
+             !toc.inBounds( t, bytes - 1 ) )
             return Problem::OutOfBounds;
 
         memcpy( to, from, bytes );
@@ -459,25 +459,32 @@ struct Evaluator
 
         /* check whether we are writing over part of something that might have
          * been a pointer */
-        t.offset -= unalignment;
-        f.offset -= unalignment;
-        econtext.setPointer( t, false );
 
         if ( unalignment ) {
-            f.offset += 4;
+            t.offset -= unalignment;
+            toc.setPointer( t, false );
+            f.offset += 4 - unalignment;
             t.offset += 4;
         }
 
         /* If f.offset + align is actually unaligned, that's OK because that
          * means we are copying from an unaligned address to an aligned one,
          * and the result is not a pointer. */
-        while ( f.offset < f_end ) {
-            econtext.setPointer( t, econtext.isPointer( f ) );
+        while ( f.offset + 4 <= f_end ) {
+            toc.setPointer( t, fromc.isPointer( f ) );
             f.offset += 4;
             t.offset += 4;
         }
 
+        if ( f.offset + 4 < f_end ) /* partial overwrite at the end */
+            toc.setPointer( t, false );
+
         return Problem::NoProblem;
+    }
+
+    template < typename From, typename To >
+    Problem::What memcopy( From f, To t, int bytes ) {
+        return memcopy( f, t, bytes, econtext, econtext );
     }
 
     struct Memcpy : Implementation {
@@ -623,12 +630,8 @@ struct Evaluator
         while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
             auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
-            char *value = econtext.dereference( v );
-            char *result = copy.dereference( info, instruction.result() );
-            std::copy( value, value + v.width, result );
-            if ( !v.global && !v.constant ) /* XXX iterate, or further generalize memcopy */
-                copy.setPointer( info, instruction.result(), original.isPointer( info, v, 0 ), 0 );
-            /* else TODO! */
+            FrameContext copyctx( info, copy );
+            memcopy( v, instruction.result(), v.width, econtext, copyctx );
             ccontext.pc().instruction ++;
             instruction = info.instruction( ccontext.pc() );
         }

@@ -153,7 +153,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
         bool recurse = f.isPointer( _info, *val, 0 ); /* XXX iterate, aggregate values */
-        target.setPointer( _info, *val, recurse, 0 );
+        target.setPointer( _info, *val, recurse );
         if ( recurse ) {
             Pointer from = *reinterpret_cast< Pointer * >( from_addr );
             snapshot( *target.dereference< Pointer >( _info, *val ), from, canonic, heap );
