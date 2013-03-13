@@ -38,10 +38,6 @@ int MachineState::new_thread()
     return _thread;
 }
 
-Pointer &MachineState::followPointer( Pointer p ) {
-    return *reinterpret_cast< Pointer * >( dereference( p ) );
-}
-
 int MachineState::pointerSize( Pointer p )
 {
     if ( !validate( p ) )

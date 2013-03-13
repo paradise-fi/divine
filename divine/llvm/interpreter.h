@@ -93,13 +93,16 @@ struct Interpreter
 
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 
-    std::string describeAggregate( Type *t, Pointer where, DescribeSeen& );
-    std::string describeValue( Type *t, Pointer where, DescribeSeen& );
     std::string describePointer( Type *t, Pointer p, DescribeSeen& );
-    std::string describeValue( const ::llvm::Value *, ValueRef vref, Pointer p,
+
+    template< typename Ptr > std::string describeAggregate( Type *t, Ptr where, DescribeSeen& );
+    template< typename Ptr > std::string describeValue( Type *t, Ptr where, DescribeSeen& );
+    template< typename Ptr >
+    std::string describeValue( const ::llvm::Value *, ValueRef vref, Ptr p,
                                DescribeSeen &, int *anonymous = nullptr,
                                std::vector< std::string > *container = nullptr );
-    std::string describeValue( std::pair< ::llvm::Type *, std::string >, ValueRef vref, Pointer p,
+    template< typename Ptr >
+    std::string describeValue( std::pair< ::llvm::Type *, std::string >, ValueRef vref, Ptr p,
                                DescribeSeen &, int *anonymous = nullptr,
                                std::vector< std::string > *container = nullptr );
     std::string describe( bool detailed = false );

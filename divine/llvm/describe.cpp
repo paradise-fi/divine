@@ -14,7 +14,8 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-std::string Interpreter::describeAggregate( Type *t, Pointer where, DescribeSeen &seen )
+template< typename Ptr >
+std::string Interpreter::describeAggregate( Type *t, Ptr where, DescribeSeen &seen )
 {
     char delim[2];
     std::vector< std::string > vec;
@@ -25,7 +26,7 @@ std::string Interpreter::describeAggregate( Type *t, Pointer where, DescribeSeen
         for ( auto st = stru->element_begin(); st != stru->element_end(); ++ st )
         {
             vec.push_back( describeValue( (*st), where, seen ) );
-            where = where + int( TD.getTypeAllocSize( *st ) );
+            where.offset += TD.getTypeAllocSize( *st );
         }
     }
 
@@ -35,7 +36,7 @@ std::string Interpreter::describeAggregate( Type *t, Pointer where, DescribeSeen
         for ( int i = 0; i < int( arr->getNumElements() ); ++ i )
         {
             vec.push_back( describeValue( arr->getElementType(), where, seen ) );
-            where = where + int( TD.getTypeAllocSize( arr->getElementType() ) );
+            where.offset += TD.getTypeAllocSize( arr->getElementType() );
         }
     }
 
@@ -78,12 +79,13 @@ static std::string fmtInteger( char *where, int bits ) {
     }
 }
 
-std::string Interpreter::describeValue( Type *t, Pointer where, DescribeSeen &seen )
+template< typename Ptr >
+std::string Interpreter::describeValue( Type *t, Ptr where, DescribeSeen &seen )
 {
     if ( t->isAggregateType() )
         return describeAggregate( t, where, seen );
     if ( t->isPointerTy() ) {
-        if ( where.offset % 4 == 0 && state.isPointer( where ) )
+        if ( state.isPointer( where ) )
             return describePointer( t, state.followPointer( where ), seen );
         else
             return describePointer( t, Pointer(), seen );
@@ -95,7 +97,8 @@ std::string Interpreter::describeValue( Type *t, Pointer where, DescribeSeen &se
     return "<weird type>";
 }
 
-std::string Interpreter::describeValue( const ::llvm::Value *val, ValueRef vref, Pointer where,
+template< typename Ptr >
+std::string Interpreter::describeValue( const ::llvm::Value *val, ValueRef vref, Ptr where,
                                         DescribeSeen &seen, int *anonymous,
                                         std::vector< std::string > *container )
 {
@@ -119,8 +122,9 @@ std::string Interpreter::describeValue( const ::llvm::Value *val, ValueRef vref,
     return describeValue( std::make_pair( type, name ), vref, where, seen, anonymous, container );
 }
 
+template< typename Ptr >
 std::string Interpreter::describeValue( std::pair< ::llvm::Type *, std::string > val, ValueRef vref,
-                                        Pointer where, DescribeSeen &seen, int *anonymous,
+                                        Ptr where, DescribeSeen &seen, int *anonymous,
                                         std::vector< std::string > *container )
 {
     if ( where.null() && !vref.v.width )
@@ -136,7 +140,9 @@ std::string Interpreter::describeValue( std::pair< ::llvm::Type *, std::string >
         if ( type->isPointerTy() && state.isPointer( vref ) ) {
             char *mem = state.dereference( vref );
             value = describePointer( type, *reinterpret_cast< Pointer * >( mem ), seen );
-        } else
+        } else if ( vref.v.type == ProgramInfo::Value::Aggregate )
+            value = describeAggregate( type, vref, seen );
+        else
             value = fmtInteger( state.dereference( vref ), vref.v.width * 8 );
     }
 

@@ -555,7 +555,11 @@ struct MachineState
     int new_thread();
 
     int pointerSize( Pointer p );
-    Pointer &followPointer( Pointer p );
+    template< typename V >
+    Pointer &followPointer( V p ) {
+        return *reinterpret_cast< Pointer * >( dereference( p ) );
+    }
+
 
     void trace( Pointer p, Canonic &canonic );
     void trace( Frame &f, Canonic &canonic );
