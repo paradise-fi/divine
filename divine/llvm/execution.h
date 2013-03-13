@@ -557,7 +557,7 @@ struct Evaluator
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
         if ( instruction.values.size() > 1 ) /* return value */
-            memcopy( ValueRef( caller.result(), 1 ), 0, instruction.operand( 0 ), 0, caller.result().width );
+            memcopy( instruction.operand( 0 ), 0, ValueRef( caller.result(), 1 ), 0, caller.result().width );
 
         ccontext.leave();
 
@@ -707,8 +707,8 @@ struct Evaluator
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.values.size() ); ++i )
-            memcopy( function.values[ i ], 0, ValueRef( instruction.operand( i ), 1 ), 0,
-                     instruction.operand( i ).width );
+            memcopy( ValueRef( instruction.operand( i ), 1 ), 0, function.values[ i ], 0,
+                     function.values[ i ].width );
         if ( CS.arg_size() > function.values.size() )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
 
