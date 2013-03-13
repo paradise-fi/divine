@@ -41,9 +41,10 @@ struct Hasher {
     bool valid( Blob a ) const { return a.valid(); }
 };
 
-template< typename _Listener, typename AlgorithmSetup >
-struct Visit : AlgorithmSetup, visitor::SetupBase {
+template< typename _Listener, typename _AlgorithmSetup >
+struct Visit : _AlgorithmSetup, visitor::SetupBase {
     typedef _Listener Listener;
+    typedef _AlgorithmSetup AlgorithmSetup;
     typedef typename AlgorithmSetup::Graph::Node Node;
     typedef typename AlgorithmSetup::Graph::Label Label;
 
