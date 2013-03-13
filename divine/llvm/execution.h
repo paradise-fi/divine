@@ -333,7 +333,7 @@ struct Evaluator
 
     /******** Register access & conversion *******/
 
-    struct Copy : Implementation {
+    struct Convert : Implementation {
         static const int arity = 2;
         template< typename X = int, typename Y = X >
         auto operator()( X &r = Dummy< X >::v(),
@@ -557,7 +557,7 @@ struct Evaluator
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
         if ( instruction.values.size() > 1 ) /* return value */
-            withValues( Copy(), ValueRef( caller.result(), 1 ), instruction.operand( 0 ) );
+            memcopy( ValueRef( caller.result(), 1 ), 0, instruction.operand( 0 ), 0, caller.result().width );
 
         ccontext.leave();
 
@@ -707,7 +707,8 @@ struct Evaluator
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.values.size() ); ++i )
-            withValues( Copy(), function.values[ i ], ValueRef( instruction.operand( i ), 1 ) );
+            memcopy( function.values[ i ], 0, ValueRef( instruction.operand( i ), 1 ), 0,
+                     instruction.operand( i ).width );
         if ( CS.arg_size() > function.values.size() )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
 
@@ -737,7 +738,7 @@ struct Evaluator
             case LLVMInst::IntToPtr:
             case LLVMInst::FPTrunc:
             case LLVMInst::Trunc:
-                implement< Copy >(); break;
+                implement< Convert >(); break;
 
             case LLVMInst::Br:
                 implement_br(); break;
@@ -755,7 +756,7 @@ struct Evaluator
             case LLVMInst::SIToFP:
             case LLVMInst::FPToSI:
                 is_signed = true;
-                implement< Copy >(); break;
+                implement< Convert >(); break;
 
             case LLVMInst::BitCast:
                 implement_bitcast(); break;
