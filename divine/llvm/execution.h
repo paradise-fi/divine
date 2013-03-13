@@ -438,46 +438,17 @@ struct Evaluator
         }
     };
 
-    struct Load : Implementation {
-        bool _pointer;
-        Load() : _pointer( false ) {}
+    void implement_store() {
+        Pointer to = withValues( Get< Pointer >(), instruction.operand( 1 ) );
+        auto r = memcopy( instruction.operand( 0 ), 0, to, 0, instruction.operand( 0 ).width );
+        assert_eq( r, Problem::NoProblem );
+    }
 
-        static const int arity = 2;
-        template< typename R = int >
-        Unit operator()( R &r = Dummy< R >::v(),
-                         Pointer &p = Dummy< Pointer >::v() )
-        {
-            char *target = this->econtext().dereference( p );
-            if ( target ) {
-                _pointer = this->econtext().isPointer( p );
-                r = *reinterpret_cast< R * >( target );
-            } else
-                this->ccontext().problem( Problem::InvalidDereference );
-            return Unit();
-        }
-        bool resultIsPointer( std::vector< bool > ) { return _pointer; }
-    };
-
-    struct Store : Implementation {
-        static const int arity = 2;
-        template< typename L = int >
-        Unit operator()( L &l = Dummy< L >::v(),
-                         Pointer &p = Dummy< Pointer >::v() )
-        {
-            char *target = this->econtext().dereference( p );
-            if ( target ) {
-                *reinterpret_cast< L * >( this->econtext().dereference( p ) ) = l;
-                /* NB. This is only ever called on active frames. Hopefully. */
-                bool isptr = this->econtext().isPointer( ValueRef( this->i().operand( 0 ) ) );
-                if ( isptr && p.offset % 4 != 0 )
-                    assert_unreachable( "unaligned pointer store" );
-                if ( p.offset % 4 == 0 )
-                     this->econtext().setPointer( p, isptr );
-            } else
-                this->ccontext().problem( Problem::InvalidDereference );
-            return Unit();
-        }
-    };
+    void implement_load() {
+        Pointer from = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+        auto r = memcopy( from, 0, instruction.result(), 0, instruction.result().width );
+        assert_eq( r, Problem::NoProblem );
+    }
 
     int pointerUnalignment( Pointer p, int off ) { return (p.offset + off) % 4; }
     int pointerUnalignment( ValueRef, int off ) { return off % 4; }
@@ -801,9 +772,9 @@ struct Evaluator
                 implement< BitCast >(); break;
 
             case LLVMInst::Load:
-                implement< Load >(); break;
+                implement_load(); break;
             case LLVMInst::Store:
-                implement< Store >(); break;
+                implement_store(); break;
             case LLVMInst::Alloca:
                 implement_alloca(); break;
 
