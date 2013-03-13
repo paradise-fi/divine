@@ -154,6 +154,23 @@ void ProgramInfo::builtin( Position p )
         "Can't call an undefined function <" + name + ">" );
 }
 
+template< typename Insn >
+void ProgramInfo::insertIndices( Position p )
+{
+    Insn *I = cast< Insn >( p.I );
+    ProgramInfo::Instruction &insn = instruction( p.pc );
+
+    int shift = insn.values.size();
+    insn.values.resize( shift + I->getNumIndices() );
+
+    for ( int i = 0; i < I->getNumIndices(); ++i ) {
+        Value v;
+        v.width = sizeof( unsigned );
+        makeConstant( v, I->getIndices()[ i ] );
+        insn.values[ shift + i ] = v;
+    }
+}
+
 ProgramInfo::Position ProgramInfo::insert( Position p )
 {
     makeFit( functions, p.pc.function );
@@ -195,6 +212,10 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
         if ( valuemap.count( v ) )
             insn.values[ i + 1 ] = valuemap[ v ];
     }
+
+    if ( isa< ::llvm::ExtractValueInst >( p.I ) )
+        insertIndices< ::llvm::ExtractValueInst >( p );
+
     pcmap.insert( std::make_pair( p.I, p.pc ) );
     insn.result() = insert( p.pc.function, &*p.I );
 

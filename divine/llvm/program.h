@@ -270,6 +270,7 @@ struct ProgramInfo {
         Position( PC pc, ::llvm::BasicBlock::iterator I ) : pc( pc ), I( I ) {}
     };
 
+    template< typename Insn > void insertIndices( Position p );
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
     void builtin( Position );

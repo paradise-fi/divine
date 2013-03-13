@@ -534,6 +534,14 @@ struct Evaluator
         econtext.setPointer( instruction.result(), true );
     }
 
+    void implement_extractvalue() {
+        auto r = memcopy( ValueRef( instruction.operand( 0 ), 0, -1,
+                                    compositeOffset( instruction.op->getOperand(0)->getType(), 1,
+                                                     instruction.values.size() - 1 ) ),
+                          instruction.result(), instruction.result().width );
+        assert_eq( r, Problem::NoProblem );
+    }
+
     /******** Control flow ********/
 
     void jumpTo( ProgramInfo::Value v )
@@ -769,6 +777,9 @@ struct Evaluator
                 implement_store(); break;
             case LLVMInst::Alloca:
                 implement_alloca(); break;
+
+            case LLVMInst::ExtractValue:
+                implement_extractvalue(); break;
 
             case LLVMInst::FAdd:
             case LLVMInst::Add:
