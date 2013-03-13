@@ -347,21 +347,10 @@ struct Evaluator
         bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
     };
 
-    struct BitCast : Implementation {
-        static const int arity = 2;
-        template< typename R = int, typename L = R >
-        Unit operator()( R &r = Dummy< R >::v(),
-                         L &l = Dummy< L >::v() )
-        {
-            const char *from = reinterpret_cast< const char * >( &l );
-            char *to = reinterpret_cast< char * >( &r );
-            assert_eq( sizeof( R ), sizeof( L ) );
-            std::copy( from, from + sizeof( R ), to );
-            return Unit();
-        }
-
-        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
-    };
+    void implement_bitcast() {
+        auto r = memcopy( instruction.operand( 0 ), 0, instruction.result(), 0, instruction.result().width );
+        assert_eq( r, Problem::NoProblem );
+    }
 
     template< typename _T >
     struct Get : Implementation {
@@ -769,7 +758,7 @@ struct Evaluator
                 implement< Copy >(); break;
 
             case LLVMInst::BitCast:
-                implement< BitCast >(); break;
+                implement_bitcast(); break;
 
             case LLVMInst::Load:
                 implement_load(); break;
