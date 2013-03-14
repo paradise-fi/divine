@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <wibble/string.h>
 
+#include <divine/toolkit/hashset.h>
 #include <divine/utility/statistics.h>
 #include <divine/utility/output.h>
 
@@ -84,7 +85,7 @@ void Statistics::format( std::ostream &o ) {
         long memSum = 0;
         for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
-            long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(hash_t);
+            long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(HashSet< Blob >::Cell);
             for ( int i = 0; i < nthreads; ++ i)
                 threadMem += thread( i ).memSent[ j ] - thread( j ).memReceived[ i ];
             memSum += threadMem;
