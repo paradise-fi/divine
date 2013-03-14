@@ -5,7 +5,7 @@ skip() { exit 200; }
 
 for_dve_small() {
     wrapper=$1; shift
-    test "$O_DVE" = "ON" || test "$O_LEGACY" = "ON"|| return 0
+    test "$O_DVE" = "ON" || return 0
 
     check clear
     run $wrapper data/empty.dve --property=deadlock "$@"
