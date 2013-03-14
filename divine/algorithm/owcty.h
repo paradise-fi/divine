@@ -464,13 +464,15 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         meta().statistics.deadlocks = -1; /* did not count */
     }
 
-    Owcty( Meta m, bool master = false )
-        : Algorithm( m, sizeof( Extension ) )
+    Owcty( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
-        shared.size = 0;
-        if ( master )
-            this->becomeMaster( m.execution.threads, m );
         this->init( this );
+        this->becomeMaster( m.execution.threads, this );
+    }
+
+    Owcty( Owcty *master ) : Algorithm( master->meta(), sizeof( Extension ) )
+    {
+        this->init( this, master );
     }
 };
 

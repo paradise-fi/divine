@@ -108,12 +108,15 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return shared;
     }
 
-    Reachability( Meta m, bool master = false )
-        : Algorithm( m, sizeof( Extension ) )
+    Reachability( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
-        if ( master )
-            this->becomeMaster( m.execution.threads, m );
         this->init( this );
+        this->becomeMaster( m.execution.threads, this );
+    }
+
+    Reachability( Reachability *master ) : Algorithm( master->meta(), sizeof( Extension ) )
+    {
+        this->init( this, master );
     }
 
     Shared _parentTrace( Shared sh ) {

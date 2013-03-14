@@ -113,7 +113,7 @@ struct Timed : public Common< Blob > {
 
     void release( Node s ) { s.free( pool() ); }
 
-    void read( std::string file ) {
+    void read( std::string file, Timed * = nullptr ) {
         gen.read( file );
 
         // replace extension with .ltl and try to read properties

@@ -126,13 +126,17 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         return shared;
     }
 
-    Metrics( Meta m, bool master = false )
-        : Algorithm( m, 0 )
+    Metrics( Meta m ) : Algorithm( m, 0 )
     {
-        if ( master )
-            this->becomeMaster( m.execution.threads, m );
         this->init( this );
+        this->becomeMaster( m.execution.threads, this );
     }
+
+    Metrics( Metrics *master ) : Algorithm( master->meta(), 0 )
+    {
+        this->init( this, master );
+    }
+
 
     void banner( std::ostream &o ) {
         auto &s = meta().statistics;

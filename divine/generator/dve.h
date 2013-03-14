@@ -168,7 +168,7 @@ struct Dve : public Common< Blob > {
         yield( Node(), b, Label() );
     }
 
-    void read( std::string path ) {
+    void read( std::string path, Dve * = nullptr ) {
         std::ifstream file;
         file.open( path.c_str() );
         dve::IOStream stream( file );

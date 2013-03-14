@@ -192,8 +192,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
     };
 
-    NestedDFS( Meta m, bool = false )
-        : Algorithm( m, sizeof( Extension ) )
+    NestedDFS( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
         valid = true;
         this->init( this );

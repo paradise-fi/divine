@@ -131,8 +131,11 @@ struct LLVM : Common< Blob > {
         exit( 1 );
     }
 
-    void read( std::string file ) {
-        bitcode = std::make_shared< divine::llvm::BitCode >( file );
+    void read( std::string file, LLVM *blueprint = nullptr ) {
+        if ( blueprint )
+            bitcode = blueprint->bitcode;
+        else
+            bitcode = std::make_shared< divine::llvm::BitCode >( file );
     }
 
     template< typename Y >

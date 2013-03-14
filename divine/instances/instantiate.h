@@ -63,7 +63,7 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
         typedef S Statistics;
         typedef St Store;
     };
-    return new A< Setup >( meta, true );
+    return new A< Setup >( meta );
 }
 
 template< template< typename > class A, typename G, template< typename > class T, typename S >

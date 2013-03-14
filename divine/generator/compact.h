@@ -843,7 +843,7 @@ struct Compact : public Common< Blob > {
     };
 
     /// Initializes compact state space by reading input file
-    void read( std::string path ) {
+    void read( std::string path, Compact * = nullptr ) {
         assert( !initialized );
         initialized = slackInitialized;
 

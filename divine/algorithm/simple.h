@@ -76,12 +76,15 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
         } while ( !this->idle() ) ; // until termination detection succeeds
     }
 
-    Simple( Meta m, bool master = false )
-        : Algorithm( m, 0 )
+    Simple( Meta m ) : Algorithm( m, 0 )
     {
-        if ( master )
-            this->becomeMaster( m.execution.threads, m );
         this->init( this );
+        this->becomeMaster( m.execution.threads, this );
+    }
+
+    Simple( Simple *master ) : Algorithm( master->meta(), 0 )
+    {
+        this->init( this, master );
     }
 
     void run() {

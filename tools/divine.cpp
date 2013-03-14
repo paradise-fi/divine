@@ -59,10 +59,12 @@ struct InfoBase {
 template< typename Setup >
 struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, virtual InfoBase, Sequential
 {
+    typename Setup::Graph g;
+
     void run() {
         typedef std::vector< std::pair< std::string, std::string > > Props;
         std::cout << "Available properties:" << std::endl;
-        this->graph().properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
+        g.properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
                 std::cout << " * " << name << ": " << descr << std::endl;
             } );
     }
@@ -70,7 +72,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     int id() { return 0; }
 
     virtual void propertyInfo( std::string s, Meta &m ) {
-        this->graph().properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
+        g.properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
                 if ( s == name ) {
                     m.input.property = des;
                     m.input.propertyType = t;
@@ -79,11 +81,11 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
-        return this->graph().useReductions( rs );
+        return g.useReductions( rs );
     }
 
-    Info( Meta m, bool = false ) : Algorithm( m ) {
-        this->init( this, false );
+    Info( Meta m ) : Algorithm( m ) {
+        g.read( m.input.model );
     }
 };
 

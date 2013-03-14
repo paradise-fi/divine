@@ -77,7 +77,7 @@ struct Dummy : Common< Blob > {
 	  return "7";
     }
 
-    void read( std::string ) {}
+    void read( std::string, Dummy * = nullptr ) {}
 };
 
 }

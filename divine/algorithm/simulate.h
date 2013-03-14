@@ -252,7 +252,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
     }
 
-    Simulate( Meta m, bool = true ) : Algorithm( m, sizeof( Extension ) ) {
+    Simulate( Meta m ) : Algorithm( m, sizeof( Extension ) ) {
         this->init( this );
         printEdges = true;
         autoSuccs = false;

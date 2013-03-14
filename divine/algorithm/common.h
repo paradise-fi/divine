@@ -85,11 +85,10 @@ struct Algorithm
 
     /// Initializes the graph generator by reading a file
     template< typename Self >
-    typename Self::Graph *initGraph( Self &self, bool property = true ) {
+    typename Self::Graph *initGraph( Self &self, Self *master = nullptr ) {
         typename Self::Graph *g = new typename Self::Graph;
-        g->read( meta().input.model );
-        if ( property )
-            g->useProperty( meta().input.propertyName );
+        g->read( meta().input.model, master ? &master->graph() : nullptr );
+        g->useProperty( meta().input.propertyName );
         meta().algorithm.reduce =
             g->useReductions( meta().algorithm.reduce );
         g->setDomainSize( meta().execution.thisNode,
@@ -152,8 +151,8 @@ struct AlgorithmUtils
     std::shared_ptr< Graph > m_graph;
 
     template< typename Self >
-    void init( Self *self, bool property = true ) {
-        m_graph = std::shared_ptr< Graph >( self->initGraph( *self, property ) );
+    void init( Self *self, Self *master = nullptr ) {
+        m_graph = std::shared_ptr< Graph >( self->initGraph( *self, master ) );
         m_store = std::shared_ptr< Store >( self->initStore( *self ) );
     }
 

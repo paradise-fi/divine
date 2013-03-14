@@ -309,12 +309,15 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         }
     }
 
-    Map( Meta m, bool master = false )
-        : Algorithm( m, sizeof( Extension ) )
+    Map( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
-        if ( master )
-            this->becomeMaster( m.execution.threads, m );
         this->init( this );
+        this->becomeMaster( m.execution.threads, this );
+    }
+
+    Map( Map *master ) : Algorithm( master->meta(), sizeof( Extension ) )
+    {
+        this->init( this, master );
     }
 
 };

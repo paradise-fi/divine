@@ -206,7 +206,7 @@ public:
      *
      * \param path  input file
      */
-    void read(std::string path);
+    void read(std::string path, Coin * = nullptr );
 
     /**
      * Assignment operator

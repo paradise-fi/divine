@@ -121,7 +121,13 @@ struct CESMI : public Common< Blob > {
         *result = sym;
     }
 
-    void read( std::string path ) {
+    void read( std::string path, CESMI *blueprint = nullptr )
+    {
+        if ( blueprint ) {
+            dl = blueprint->dl;
+            return;
+        }
+
         // dlopen does not like path-less shared objects outside lib locations
         if ( wibble::str::basename( path ) == path )
             path = "./" + path;

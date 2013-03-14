@@ -92,7 +92,9 @@ struct Transform {
     bool isAccepting( Node s ) { return base().isAccepting( s ); }
     std::string showNode( Node s ) { return base().showNode( s ); }
     std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
-    void read( std::string path ) { base().read( path ); }
+    void read( std::string path, Transform< G > *blueprint = nullptr ) {
+        base().read( path, blueprint ? &blueprint->_base : nullptr );
+    }
     void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
                         const unsigned peersCount = 1 ) {
         base().setDomainSize( mpiRank, mpiSize, peersCount );
