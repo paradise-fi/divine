@@ -19,6 +19,12 @@
   #define TargetData DataLayout
 #endif
 
+#include <llvm/ADT/OwningPtr.h>
+#include <llvm/LLVMContext.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/system_error.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H
 
@@ -30,20 +36,43 @@ using wibble::Maybe;
 
 using namespace ::llvm;
 
+struct BitCode {
+    OwningPtr< MemoryBuffer > input;
+    LLVMContext *ctx;
+    ::llvm::Module *module; /* The bitcode. */
+    ProgramInfo *info;
+
+    BitCode( std::string file )
+    {
+        ctx = new ::llvm::LLVMContext();
+        MemoryBuffer::getFile( file, input );
+        module = ParseBitcodeFile( &*input, *ctx );
+        info = new ProgramInfo( module );
+        assert( module );
+    }
+
+    ~BitCode() {
+        delete info;
+        delete module;
+        delete ctx;
+    }
+};
+
 struct Interpreter
 {
-    TargetData TD;
-    std::map< std::string, std::string > properties;
-    ::llvm::Module *module; /* The bitcode. */
-    ProgramInfo info;
     Allocator &alloc;
+    std::shared_ptr< BitCode > bc;
+    TargetData TD;
     MachineState state; /* the state we are dealing with */
+    std::map< std::string, std::string > properties;
 
     bool jumped;
     int choice;
     int tid;
 
     bool tauminus, tauplus, taustores;
+
+    ProgramInfo &info() { return *bc->info; }
 
     void parseProperties( Module *M );
     bool observable( const std::set< PC > &s )
@@ -65,7 +94,7 @@ struct Interpreter
     }
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
-    ProgramInfo::Instruction instruction() { return info.instruction( pc() ); }
+    ProgramInfo::Instruction instruction() { return info().instruction( pc() ); }
     MDNode *node( MDNode *root ) { return root; }
 
     template< typename N, typename... Args >
@@ -76,8 +105,8 @@ struct Interpreter
     }
 
     MDNode *findEnum( std::string lookup ) {
-        assert( module );
-        MDNode *enums = node( module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
+        assert( bc->module );
+        MDNode *enums = node( bc->module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
         if ( !enums )
             return NULL;
         for ( int i = 0; i < int( enums->getNumOperands() ); ++i ) {
@@ -89,7 +118,7 @@ struct Interpreter
         return NULL;
     }
 
-    explicit Interpreter(Allocator &a, Module *M);
+    explicit Interpreter(Allocator &a, std::shared_ptr< BitCode > bc);
 
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 

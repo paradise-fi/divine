@@ -216,7 +216,7 @@ std::string Interpreter::describe( bool detailed ) {
 
     DescribeSeen seen;
 
-    for ( auto i = info.globalinfo.begin(); i != info.globalinfo.end(); ++i )
+    for ( auto i = info().globalinfo.begin(); i != info().globalinfo.end(); ++i )
         describeValue( i->second, ValueRef(), i->first, seen, nullptr, &globals );
 
     if ( globals.size() )
@@ -227,10 +227,10 @@ std::string Interpreter::describe( bool detailed ) {
         std::string location;
 
         if ( state.stack( c ).get().length() &&
-             info.instruction( state.frame( c ).pc ).op )
+             info().instruction( state.frame( c ).pc ).op )
         {
             Function *f = nullptr;
-            location = locinfo( info, state.frame( c ).pc, false, &f );
+            location = locinfo( info(), state.frame( c ).pc, false, &f );
 
             if ( !f )
                 break;
@@ -239,13 +239,13 @@ std::string Interpreter::describe( bool detailed ) {
             int *anonymous = detailed ? &_anonymous : nullptr;
 
             for ( auto arg = f->arg_begin(); arg != f->arg_end(); ++ arg )
-                describeValue( &*arg, ValueRef( info.valuemap[ &*arg ], 0, c ), Pointer(),
+                describeValue( &*arg, ValueRef( info().valuemap[ &*arg ], 0, c ), Pointer(),
                                seen, anonymous, &vec );
 
             for ( auto block = f->begin(); block != f->end(); ++block ) {
                 describeValue( &*block, ValueRef(), Pointer(), seen, anonymous, &vec ); // just for counting
                 for ( auto v = block->begin(); v != block->end(); ++v )
-                    describeValue( &*v, ValueRef( info.valuemap[ &*v ], 0, c), Pointer(),
+                    describeValue( &*v, ValueRef( info().valuemap[ &*v ], 0, c), Pointer(),
                                    seen, anonymous, &vec );
             }
         } else
@@ -256,7 +256,7 @@ std::string Interpreter::describe( bool detailed ) {
 
     MachineState::Flags &flags = state.flags();
     for ( int i = 0; i < flags.problemcount; ++i )
-        s << describeProblem( info, flags.problems(i) ) << std::endl;
+        s << describeProblem( info(), flags.problems(i) ) << std::endl;
 
     if ( !state._thread_count )
         s << "EXIT" << std::endl;

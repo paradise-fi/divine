@@ -5,13 +5,8 @@
 #include <iostream>
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/ADT/OwningPtr.h>
-#include <llvm/LLVMContext.h>
-#include <llvm/Module.h>
 #include <llvm/Constants.h>
-#include <llvm/Support/system_error.h>
+#include <llvm/Module.h>
 
 #include <divine/generator/common.h>
 #include <divine/llvm/interpreter.h>
@@ -27,11 +22,9 @@ using namespace ::llvm;
 
 struct LLVM : Common< Blob > {
     typedef Blob Node;
-    divine::llvm::Interpreter *_interpreter, *_interpreter_2;
-    Module *_module;
-    OwningPtr< MemoryBuffer > *_input;
-    LLVMContext *ctx;
-    std::string file;
+    std::shared_ptr< divine::llvm::BitCode > bitcode;
+    divine::llvm::Interpreter *_interpreter;
+    std::shared_ptr< divine::llvm::Interpreter > _interpreter_2;
     Node _initial;
     typedef wibble::Unit Label;
 
@@ -49,7 +42,8 @@ struct LLVM : Common< Blob > {
     template< typename Yield >
     void initials( Yield yield )
     {
-        Function *f = interpreter().module->getFunction( "main" );
+        interpreter();
+        Function *f = bitcode->module->getFunction( "main" );
         assert( f );
         yield( Node(), interpreter().initial( f ), Label() );
     }
@@ -137,8 +131,8 @@ struct LLVM : Common< Blob > {
         exit( 1 );
     }
 
-    void read( std::string _file ) {
-        file = _file;
+    void read( std::string file ) {
+        bitcode = std::make_shared< divine::llvm::BitCode >( file );
     }
 
     template< typename Y >
@@ -244,27 +238,23 @@ struct LLVM : Common< Blob > {
         if (_interpreter)
             return *_interpreter;
 
-        _input = new OwningPtr< MemoryBuffer >();
-        ctx = new LLVMContext();
-        MemoryBuffer::getFile( file, *_input );
-        Module *m = ParseBitcodeFile( &**_input, *ctx );
-
-        assert( m );
-        std::string err;
-
-        _interpreter = new divine::llvm::Interpreter( alloc, m );
-        _interpreter_2 = new divine::llvm::Interpreter( alloc, m );
-        _module = m;
+        _interpreter = new divine::llvm::Interpreter( alloc, bitcode );
+        if ( !_interpreter_2 )
+            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( alloc, bitcode );
         applyReductions();
 
         return *_interpreter;
     }
 
-    LLVM() : _interpreter( 0 ), _module( nullptr ), use_property( false ) {}
+    LLVM() : _interpreter( 0 ), use_property( false ) {}
     LLVM( const LLVM &other ) {
         *this = other;
         _interpreter = 0;
         _initial = Node();
+    }
+
+    ~LLVM() {
+        delete _interpreter;
     }
 
 };

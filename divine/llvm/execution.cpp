@@ -16,14 +16,14 @@ void Interpreter::choose( int32_t result )
 
 void Interpreter::evaluate()
 {
-    Eval eval( info, *this, *this );
+    Eval eval( info(), *this, *this );
     eval.instruction = instruction();
     eval.run();
 }
 
 void Interpreter::evaluateSwitchBB( PC to )
 {
-    Eval eval( info, *this, *this );
+    Eval eval( info(), *this, *this );
     eval.instruction = instruction();
     eval.switchBB( to );
 }

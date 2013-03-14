@@ -14,30 +14,30 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Interpreter(Allocator &alloc, Module *M)
-    : TD( M ), module( M ), info( M ), alloc( alloc ), state( info, alloc )
+Interpreter::Interpreter( Allocator &alloc, std::shared_ptr< BitCode > bc )
+    : alloc( alloc ), bc( bc ), TD( bc->module ), state( info(), alloc )
 {
     tauplus = false;
     taustores = false;
     tauminus = false;
-    parseProperties( M );
+    parseProperties( bc->module );
 }
 
 void Interpreter::parseProperties( Module *M )
 {
     auto prefix = "__divine_LTL_";
 
-    for ( auto v : info.constinfo ) {
+    for ( auto v : info().constinfo ) {
         auto id = v.second.second;
 
         if ( std::string( id, 0, strlen( prefix ) ) != prefix )
             continue;
 
         std::string name( id, strlen( prefix ), std::string::npos );
-        GlobalContext ctx( info, TD, nullptr );
-        auto val = info.globals[ v.first.segment ];
+        GlobalContext ctx( info(), TD, nullptr );
+        auto val = info().globals[ v.first.segment ];
         auto valptr = *reinterpret_cast< Pointer * >( ctx.dereference( val ) );
-        auto str = info.globals[ valptr.segment ];
+        auto str = info().globals[ valptr.segment ];
         properties[ name ] = ctx.dereference( str );
     }
 }
@@ -48,19 +48,19 @@ divine::Blob Interpreter::initial( Function *f )
     pre_initial.clear();
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 
-    for ( auto var = module->global_begin(); var != module->global_end(); ++ var ) {
-        auto val = info.valuemap[ &*var ];
+    for ( auto var = bc->module->global_begin(); var != bc->module->global_end(); ++ var ) {
+        auto val = info().valuemap[ &*var ];
         if ( !var->isConstant() && var->hasInitializer() ) {
             assert( val.constant ); /* the pointer */
             Pointer p = *reinterpret_cast< Pointer * >( dereference( val ) );
-            info.storeConstant( info.globals[ p.segment ], var->getInitializer(),
-                                reinterpret_cast< char * >( state.global().memory() ) );
+            info().storeConstant( info().globals[ p.segment ], var->getInitializer(),
+                                  reinterpret_cast< char * >( state.global().memory() ) );
         }
     }
 
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...
-    state.enter( info.functionmap[ f ] );
+    state.enter( info().functionmap[ f ] );
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
     pre_initial.free( alloc.pool() );
@@ -73,9 +73,9 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
     int tid = state.new_thread();
     state.enter( pc.function );
     if ( !arg.nothing() ) {
-        auto v = info.function( pc ).values[ 0 ];
-        frame().setPointer( info, v, ptr );
-        *frame().dereference< Pointer >( info, v ) = arg.value();
+        auto v = info().function( pc ).values[ 0 ];
+        frame().setPointer( info(), v, ptr );
+        *frame().dereference< Pointer >( info(), v ) = arg.value();
     }
     if ( current >= 0 )
         state.switch_thread( current );
@@ -84,6 +84,6 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
 
 int Interpreter::new_thread( Function *f )
 {
-    return new_thread( PC( info.functionmap[ f ], 0, 0 ), Maybe< Pointer >::Nothing() );
+    return new_thread( PC( info().functionmap[ f ], 0, 0 ), Maybe< Pointer >::Nothing() );
 }
 
