@@ -50,9 +50,10 @@ wibble::Unit setupParallel( NotPreferred, T &t )
 template< typename G >
 using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
 
-template< template< typename > class T >
+template< template< typename > class T, typename V = visitor::Partitioned >
 struct SetupT {
     template< typename X > using Topology = T< X >;
+    typedef V Visitor;
 };
 
 template< template< typename > class A, typename G, template< typename > class T, typename S,
