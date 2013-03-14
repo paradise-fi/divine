@@ -55,6 +55,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     bool gnuplot;
     std::ostream *output;
+    int memBaseline;
 
     void enqueue( int id , int size ) {
         thread( id ).enq ++;
@@ -106,9 +107,9 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
     static int second( int, int b ) { return b; }
     static int diff( int a, int b ) { return a - b; }
 
-    static int memUsed() {
+    int memUsed() {
         sysinfo::Info i;
-        return i.peakVmSize();
+        return i.peakVmSize() - memBaseline;
     }
 
     void resize( int s );
@@ -129,6 +130,8 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
         output = 0;
         gnuplot = false;
         resize( 1 );
+        sysinfo::Info i;
+        memBaseline = i.peakVmSize();
     }
 
     static Statistics &global() {
