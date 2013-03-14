@@ -126,8 +126,9 @@ struct Algorithm
 
     template< typename Self, typename Setup >
     void visit( Self *self, Setup setup ) {
-        visitor::Partitioned< Setup, Self >
-            visitor( *self, *self, self->graph(), self->store() );
+        typename Setup::Visitor::template Implementation< Setup, Self >
+            visitor( *self, *self, self->graph(), self->store(), self->data );
+
         setup.queueInitials( *self, visitor );
         visitor.processQueue();
     }

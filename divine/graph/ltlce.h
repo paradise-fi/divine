@@ -134,8 +134,8 @@ struct LtlCE {
     template< typename Algorithm >
     void _traceCycle( Algorithm &a ) {
         typedef FindCycle< typename Algorithm::Setup > Find;
-        visitor::Partitioned< Find, Algorithm >
-            visitor( *this, a, a.graph(), a.store() );
+        typename Find::Visitor::template Implementation< Find, Algorithm >
+            visitor( *this, a, a.graph(), a.store(), a.data );
 
         assert( shared().ce.initial.valid() );
         if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {

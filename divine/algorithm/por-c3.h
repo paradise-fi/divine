@@ -133,8 +133,8 @@ struct PORGraph : graph::Transform< G > {
     template< typename Algorithm >
     void _porEliminate( Algorithm &a ) {
         typedef POREliminate< typename Algorithm::Setup > Elim;
-        visitor::Partitioned< Elim, Algorithm >
-            visitor( *this, a, *this, a.store() );
+        typename Elim::Visitor::template Implementation< Elim, Algorithm >
+            visitor( *this, a, *this, a.store(), a.data );
 
         Elim::init( *this, visitor );
         visitor.processQueue();
