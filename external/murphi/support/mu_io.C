@@ -436,23 +436,8 @@ void argclass::PrintInfo( void )
 {
   if (print_license.value) PrintLicense();
   
-  cout << "This program should be regarded as a DEBUGGING aid, not as a \n"
-       << "certifier of correctness.\n";
-  
-  if (!print_license.value)
-    cout << "Call with the -l flag or read the license file for terms\n"
-         << "and conditions of use.\n";
-  
-  if (!print_options.value)
-    cout << "Run this program with \"-h\" for the list of options.\n";
-  
-  cout << "\nBugs, questions, and comments should be directed to\n"
-       << "\"murphi@verify.stanford.edu\".\n"
-       << "\n"
-       << "Murphi compiler last modified date: " << MURPHI_DATE << '\n'
-       << "Include files   last modified date: " << INCLUDE_FILE_DATE << '\n'
-       << "====================================="
-       << "=====================================\n"; 
+  cerr << " NB. Murphi is a DEBUGGING aid, not a "
+       << "certifier of correctness. :(\n";
   // cout.flush();
   
   if (print_options.value) PrintOptions();
