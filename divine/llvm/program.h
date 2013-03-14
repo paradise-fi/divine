@@ -2,6 +2,7 @@
 
 #include <wibble/mixin.h>
 #include <wibble/test.h>
+#include <divine/toolkit/blob.h> // for align
 
 #include <llvm/Function.h>
 
@@ -27,12 +28,6 @@ namespace divine {
 namespace llvm {
 
 struct MachineState;
-
-static int align( int v, int a ) {
-    if ( v % a )
-        return v + a - (v % a);
-    return v;
-}
 
 struct PC : wibble::mixin::Comparable< PC >
 {

@@ -149,7 +149,7 @@ struct MachineState
     }
 
     static int size_bitmap( int bytecount, int align = 4 ) {
-        return llvm::align( bytecount / 32 + ((bytecount % 32) ? 1 : 0), 4 );
+        return divine::align( bytecount / 32 + ((bytecount % 32) ? 1 : 0), 4 );
     }
 
     static int size_heap( int segcount, int bytecount ) {

@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net
 
-// #include <cstdint> requires C++0x : - (
-#include <stdint.h>
+#include <cstdint>
 #include <deque> // for fmt
 #include <cstring> // size_t ... d'oh
 
@@ -14,6 +13,12 @@
 #define DIVINE_BLOB_H
 
 namespace divine {
+
+static int align( int v, int a ) {
+    if ( v % a )
+        return v + a - (v % a);
+    return v;
+}
 
 typedef uint32_t hash_t;
 
@@ -170,12 +175,7 @@ struct Blob
 
     static size_t allocationSize( size_t size )
     {
-        size_t bytes = size + sizeof( BlobHeader );
-        bytes += 3;
-        bytes = ~bytes;
-        bytes |= 3;
-        bytes = ~bytes;
-        return bytes;
+        return align( size + sizeof( BlobHeader ), 4 );
     }
 
     char *data() const
