@@ -28,9 +28,9 @@ struct TestLockedQueue {
     typedef void Test;
 
     struct Producer : wibble::sys::Thread {
-        LockedQueue< int >* q;
+        LockedQueue< int > *q;
         int produce;
-        std::atomic< int >* work;
+        std::atomic< int > *work;
         void* main() {
             for ( int i = 1; i <= produce; ++i)
                 q->push( i );
@@ -40,9 +40,9 @@ struct TestLockedQueue {
     };
     struct Consumer : wibble::sys::Thread {
 
-        LockedQueue< int >* q;
+        LockedQueue< int > *q;
         int consumed;
-        std::atomic<  int >* work;
+        std::atomic< int > *work;
         void* main() {
             consumed = 0;
             while( *work ) {
@@ -59,8 +59,8 @@ struct TestLockedQueue {
         const int threads = 3;
         std::atomic< int > work( threads );
 
-        Producer* producents = new Producer[ threads ];
-        Consumer* consumers = new Consumer[ threads ];
+        Producer *producents = new Producer[ threads ];
+        Consumer *consumers = new Consumer[ threads ];
 
         LockedQueue< int > queue;
 
