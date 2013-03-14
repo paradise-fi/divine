@@ -4742,7 +4742,6 @@ int generate_ruleset()
 
 void declare_global(vardecl *d) {
     d->global = true;
-    fprintf(stderr, "marking %s as global\n", d->mu_name );
     fprintf(codefile, "%s %s;\n", d->gettype()->mu_name, d->mu_name);
 }
 
