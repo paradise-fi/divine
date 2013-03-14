@@ -7,7 +7,7 @@ run metrics withltl$cesmiext --property=p_1
 check statespace 24 32 0 8
 
 run metrics withltl$cesmiext --property=p_3
-check statespace 38 66 24 0
+if test "$O_LTL3BA" = ON; then check statespace 38 66 24 0; else check statespace 48 89 24 0; fi
 run verify withltl$cesmiext --property=p_3
 check ltl_invalid
 

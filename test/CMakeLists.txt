@@ -10,6 +10,7 @@ add_custom_target( functional
     "MPIEXEC='${MPIEXEC}'"
     "WIN32='${WIN32}'"
     "O_DVE='${DVE}'"
+    "O_LTL3BA='${LTL3BA}'"
     "O_MPI='${MPI}'"
     "O_POOLS='${POOLS}'"
     "O_LEGACY='${LEGACY}'"
