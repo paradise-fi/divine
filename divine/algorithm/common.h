@@ -142,14 +142,15 @@ struct Algorithm
 };
 
 template< typename _Setup >
-struct AlgorithmUtils
-{
+struct AlgorithmUtils {
     typedef _Setup Setup;
     typedef typename Setup::Store Store;
     typedef typename Setup::Graph Graph;
 
     std::shared_ptr< Store > m_store;
     std::shared_ptr< Graph > m_graph;
+
+    typename Setup::Visitor::template Data< Setup > data;
 
     template< typename Self >
     void init( Self *self, Self *master = nullptr ) {
