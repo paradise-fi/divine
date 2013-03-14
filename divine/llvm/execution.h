@@ -636,6 +636,7 @@ struct Evaluator
             instruction = info.instruction( ccontext.pc() );
         }
         std::copy( copy.memory(), copy.memory() + framesize, original.memory() );
+        tmp.free();
     }
 
     void implement_call() {
