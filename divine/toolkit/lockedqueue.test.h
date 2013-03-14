@@ -47,9 +47,13 @@ struct TestLockedQueue {
             consumed = 0;
             while( *work ) {
                 while( !q->empty ) {
-                    if ( q->pop() )
-                        consumed++;
+                    if( q->pop() )
+                        ++consumed;
                 }
+            }
+            while( !q->empty ) {
+                if( q->pop() )
+                    ++consumed;
             }
             return nullptr;
         }
