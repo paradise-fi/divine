@@ -44,6 +44,7 @@ option( LTL3BA "use ltl3ba for LTL to BA translation" OFF )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
 option( HASH_COMPACTION "enable Hash Compaction" ON )
+option( COMPRESSION "enable losseless compression" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
@@ -154,6 +155,10 @@ endif()
 
 if( HASH_COMPACTION )
     add_definitions( -DO_HASH_COMPACTION )
+endif()
+
+if( COMPRESSION )
+    add_definitions( -DO_COMPRESSION )
 endif()
 
 if( MPIDEBUG )
