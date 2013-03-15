@@ -15,12 +15,19 @@ struct TestLLVM {
     LLVMContext &ctx;
     IRBuilder<> builder;
     divine::Allocator alloc;
+    std::shared_ptr< Module > module;
 
     TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {}
 
+    std::shared_ptr< dlvm::BitCode > bitcode() {
+        return std::make_shared< dlvm::BitCode >( module );
+    }
+
     Function *_function( Module *m = NULL, const char *name = "testf", int pcount = 0 ) {
-        if ( !m )
-            m = new Module( "testm", ctx );
+        if ( !m ) {
+            module = std::make_shared< Module >( "testm", ctx );
+            m = module.get();
+        }
         std::vector< Type * > args;
         for ( int i = 0; i < pcount; ++ i )
             args.push_back( Type::getInt32Ty( ctx ) );
@@ -93,7 +100,7 @@ struct TestLLVM {
     }
 
     divine::Blob _ith( Function *f, int step ) {
-        dlvm::Interpreter interpreter( alloc, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, bitcode() );
         divine::Blob ini = interpreter.initial( f ), fin;
         fin = ini;
 
@@ -111,7 +118,7 @@ struct TestLLVM {
     }
 
     std::string _descr( Function *f, divine::Blob b ) {
-        dlvm::Interpreter interpreter( alloc, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, bitcode() );
         interpreter.rewind( b );
         return interpreter.describe();
     }
@@ -119,7 +126,7 @@ struct TestLLVM {
     Test initial()
     {
         Function *main = code_ret();
-        dlvm::Interpreter i( alloc, main->getParent() );
+        dlvm::Interpreter i( alloc, bitcode() );
         i.initial( main );
     }
 
@@ -153,7 +160,7 @@ struct TestLLVM {
     Test describe2()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( alloc, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, bitcode() );
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
@@ -209,7 +216,7 @@ struct TestLLVM {
     Test idempotency()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( alloc, f->getParent() );
+        dlvm::Interpreter interpreter( alloc, bitcode() );
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();

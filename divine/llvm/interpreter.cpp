@@ -15,12 +15,12 @@ using namespace llvm;
 using namespace divine::llvm;
 
 Interpreter::Interpreter( Allocator &alloc, std::shared_ptr< BitCode > bc )
-    : alloc( alloc ), bc( bc ), TD( bc->module ), state( info(), alloc )
+    : alloc( alloc ), bc( bc ), TD( bc->module.get() ), state( info(), alloc )
 {
     tauplus = false;
     taustores = false;
     tauminus = false;
-    parseProperties( bc->module );
+    parseProperties( bc->module.get() );
 }
 
 void Interpreter::parseProperties( Module *M )

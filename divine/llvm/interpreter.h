@@ -39,21 +39,27 @@ using namespace ::llvm;
 struct BitCode {
     OwningPtr< MemoryBuffer > input;
     LLVMContext *ctx;
-    ::llvm::Module *module; /* The bitcode. */
+    std::shared_ptr< ::llvm::Module > module; /* The bitcode. */
     ProgramInfo *info;
 
     BitCode( std::string file )
     {
         ctx = new ::llvm::LLVMContext();
         MemoryBuffer::getFile( file, input );
-        module = ParseBitcodeFile( &*input, *ctx );
-        info = new ProgramInfo( module );
+        module.reset( ParseBitcodeFile( &*input, *ctx ) );
+        info = new ProgramInfo( module.get() );
         assert( module );
+    }
+
+    BitCode( std::shared_ptr< ::llvm::Module > m )
+        : ctx( nullptr ), module( m )
+    {
+        assert( module );
+        info = new ProgramInfo( module.get() );
     }
 
     ~BitCode() {
         delete info;
-        delete module;
         delete ctx;
     }
 };
