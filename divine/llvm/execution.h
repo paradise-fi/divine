@@ -549,6 +549,19 @@ struct Evaluator
         assert_eq( r, Problem::NoProblem );
     }
 
+    void implement_insertvalue() { /* NB. Implemented against spec, UNTESTED! */
+        /* first copy the original */
+        auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
+        assert_eq( r, Problem::NoProblem );
+        /* write the new value over the selected field */
+        r = memcopy( instruction.operand( 1 ),
+                     ValueRef( instruction.result(), 0, -1,
+                               compositeOffset( instruction.op->getOperand(0)->getType(), 2,
+                                                instruction.values.size() - 1 ) ),
+                     instruction.operand( 1 ).width );
+        assert_eq( r, Problem::NoProblem );
+    }
+
     /******** Control flow ********/
 
     void jumpTo( ProgramInfo::Value v )
@@ -784,6 +797,8 @@ struct Evaluator
 
             case LLVMInst::ExtractValue:
                 implement_extractvalue(); break;
+            case LLVMInst::InsertValue:
+                implement_insertvalue(); break;
 
             case LLVMInst::FAdd:
             case LLVMInst::Add:
