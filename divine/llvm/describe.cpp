@@ -350,7 +350,7 @@ void MachineState::dump( std::ostream &r ) {
                 r << "[" << fun.datasize << " bytes] ";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
                     r << "[" << i->offset << "]";
-                    if ( f.isPointer( _info, *i, 0 ) )
+                    if ( f.isPointer( _info, *i ) )
                         r << *f.dereference< Pointer >( _info, *i ) << " ";
                     else
                         r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";

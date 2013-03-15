@@ -75,9 +75,9 @@ struct MachineState
             return 1 << ((v.offset % 32) / 4);
         }
 
-        bool isPointer( ProgramInfo &i, ProgramInfo::Value v, int offset ) {
-            v.offset += offset; /* beware of dragons */
-            return pbitmap( i, v ) & mask( v );
+        bool isPointer( ProgramInfo &i, ValueRef v ) {
+            v.v.offset += v.offset; /* beware of dragons */
+            return pbitmap( i, v.v ) & mask( v.v );
         }
 
         void setPointer( ProgramInfo &i, ValueRef v, bool ptr ) {
@@ -404,7 +404,7 @@ struct MachineState
         if ( v.v.constant )
             return false; /* can't point to heap by definition */
         assert( !v.v.global );
-        return frame( v ).isPointer( _info, v.v, v.offset );
+        return frame( v ).isPointer( _info, v );
     }
 
     void setPointer( ValueRef v, bool is ) {

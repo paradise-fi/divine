@@ -95,13 +95,27 @@ void MachineState::trace( Pointer p, Canonic &canonic )
     }
 }
 
+template< typename Fun >
+void forPointers( MachineState::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
+{
+    if ( f.isPointer( i, v ) )
+        fun( v, *f.dereference< Pointer >( i, v ) );
+/*
+    while ( v.offset < v.v.width - 4 ) {
+        v.offset += 4;
+        if ( f.isPointer( i, v ) )
+            fun( v, *f.dereference< Pointer >( i, v ) );
+    }
+*/
+}
+
 void MachineState::trace( Frame &f, Canonic &canonic )
 {
     auto vals = _info.function( f.pc ).values;
-    for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        if ( f.isPointer( _info, *val, 0 ) ) /* XXX iterate, aggregate values! */
-            trace( *f.dereference< Pointer >( _info, *val ), canonic );
-    }
+    for ( auto val : vals )
+        forPointers( f, _info, val, [&]( ValueRef, Pointer p ) {
+                this->trace( p, canonic );
+            } );
     canonic.stack += sizeof( f ) + f.framesize( _info );
 }
 
@@ -154,13 +168,12 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
 
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
         char *from_addr = f.dereference( _info, *val );
-        bool recurse = f.isPointer( _info, *val, 0 ); /* XXX iterate, aggregate values */
-        target.setPointer( _info, *val, recurse );
-        if ( recurse ) {
-            Pointer from = *reinterpret_cast< Pointer * >( from_addr );
-            snapshot( *target.dereference< Pointer >( _info, *val ), from, canonic, heap );
-        } else
-            std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
+        /* make a straight copy first, we will rewrite pointers next */
+        std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
+        forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
+                target.setPointer( _info, v, true );
+                snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
+            } );
     }
 
     address = target.advance( address, 0 );
@@ -296,13 +309,17 @@ bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
 
 bool MachineState::isPrivate( Pointer needle, Frame &f, Canonic &canonic )
 {
+    bool result = true;
+
     auto vals = _info.function( f.pc ).values;
-    for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        if ( f.isPointer( _info, *val, 0 ) ) /* XXX iterate, aggregate values */
-            if ( !isPrivate( needle, *f.dereference< Pointer >( _info, *val ), canonic ) )
-                return false;
+    for ( auto val : vals ) {
+        forPointers( f, _info, val, [&]( ValueRef, Pointer p ) {
+                if ( !isPrivate( needle, p, canonic ) )
+                    result = false;
+            } );
+        if ( !result ) break; /* bail early */
     }
-    return true;
+    return result;
 }
 
 bool MachineState::isPrivate( int tid, Pointer needle )
