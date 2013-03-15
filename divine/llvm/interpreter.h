@@ -59,6 +59,9 @@ struct BitCode {
     }
 
     ~BitCode() {
+        if ( ctx )
+            assert_eq( module.use_count(), 1 );
+        module.reset();
         delete info;
         delete ctx;
     }
