@@ -224,6 +224,7 @@ struct TestVisitor {
     {
         typedef PartitionCheck< G > This;
         typedef This Listener;
+        typedef This AlgorithmSetup;
         typedef typename G::Node Node;
         typedef typename G::Label Label;
         typedef G Graph;
@@ -245,7 +246,8 @@ struct TestVisitor {
             assert_eq( expected % this->peers(), 0 );
             PartitionedStore< G > store( m_graph );
             store.id = this;
-            Partitioned<This, This> partitioned(*this, *this, m_graph, store);
+            Partitioned::Data< This > data;
+            Partitioned::Implementation<This, This> partitioned( *this, *this, m_graph, store, data );
             partitioned.queue(Node(), m_graph.initial(), Label());
             partitioned.processQueue();
         }
@@ -281,11 +283,10 @@ struct TestVisitor {
     {
         typedef SharedCheck< G > This;
         typedef This Listener;
+        typedef This AlgorithmSetup;
         typedef typename G::Node Node;
         typedef typename G::Label Label;
         typedef SharedStore< G > Store;
-        typedef typename Shared< This, This >::ChunkQ ChunkQ;
-        typedef typename Shared< This, This >::Terminator Terminator;
         typedef G Graph;
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
@@ -293,9 +294,7 @@ struct TestVisitor {
         enum { defaultSharedHashSetSize = 65536 };
 
         G m_graph;
-        typename Shared< This, This >::StorePtr store;
-        typename Shared< This, This >::ChunkQPtr chunkq;
-        typename Shared< This, This >::TerminatorPtr terminator;
+        typename Shared::Data< This > data;
 
         static TransitionAction transition( This &c, Node f, Node t, Label label ) {
             if ( node( f ) ) {
@@ -308,7 +307,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Shared< This, This > shared( *this, *this, m_graph, store, chunkq, terminator );
+            Shared::Implementation< This, This > shared( *this, *this, m_graph, *data.store, data );
             if ( !this->m_id )
                 shared.queue( Node(), m_graph.initial(), Label() );
             shared.processQueue();
@@ -328,10 +327,7 @@ struct TestVisitor {
 
         SharedCheck( std::pair< G, int > init, bool master = false ) :
             expected( init.second ),
-            m_graph( init.first ),
-            store( std::make_shared< Store >( defaultSharedHashSetSize ) ),
-            chunkq( std::make_shared< ChunkQ >() ),
-            terminator( std::make_shared< Terminator >() )
+            m_graph( init.first )
         {
             if ( master ) {
                 int i = 32;
@@ -539,8 +535,9 @@ struct TestVisitor {
 
         void _visit() { // parallel
             typedef Setup< G, SimpleParReach< G > > VisitorSetup;
-            Partitioned< VisitorSetup, SimpleParReach< G > >
-                vis( shared.g, *this, *this );
+            Partitioned::Data< This > data;
+            Partitioned::Implementation< VisitorSetup, SimpleParReach< G > >
+                vis( shared.g, *this, *this, data );
             vis.exploreFrom( shared.initial );
         }
 
