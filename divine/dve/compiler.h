@@ -227,6 +227,8 @@ struct DveCompiler
                     return c;
             }
         }
+        std::cerr << "ERROR: Couldn't find channel " << chan.chan.name() << std::endl;
+        throw;
     }
 
     parse::Identifier getChannelProc( std::string proc, parse::SyncExpr & chan ) {
@@ -250,6 +252,8 @@ struct DveCompiler
                     return parse::Identifier();
             }
         }
+        std::cerr << "ERROR: Couldn't find channel " << chan.chan.name() << std::endl;
+        throw;
     }
 
     std::string getVariable( std::string name, std::string context ) {
@@ -337,6 +341,8 @@ struct DveCompiler
         for ( parse::Process &p : ast->processes )
             if ( p.name.name() == proc )
                 return p;
+        std::cerr << "ERROR: Couldn't find process " << proc << std::endl;
+        throw;
     }
 
     parse::Property & getProperty( int i ) {
