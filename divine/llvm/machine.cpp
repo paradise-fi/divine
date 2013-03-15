@@ -107,8 +107,10 @@ void MachineState::trace( Frame &f, Canonic &canonic )
 
 void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, Heap &heap )
 {
-    if ( !original.heap || freed.count( original.segment ) )
-        return; /* do not touch */
+    if ( !original.heap ) { /* non-heap pointers are always canonic */
+        edit = original;
+        return;
+    }
 
     /* clear invalid pointers, in case they would accidentally become valid later */
     if ( !validate( original ) ) {
