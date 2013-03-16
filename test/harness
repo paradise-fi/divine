@@ -36,7 +36,8 @@ for t_ in $tests; do
         echo $t | grep -q $T || continue
     }
     printf "Running %-40s" "$t ..."
-    out=`bash $t_ 2>&1`
+    outf=`mktemp output.XXXXXX`
+    bash $t_ > $outf 2>&1
     ret=$?
     if test $ret = 0; then
 	echo " passed."
@@ -49,11 +50,12 @@ for t_ in $tests; do
 	# fancy formatting...
 	printf -- "--- Output: $t -"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
-	printf "%s\n" "$out"
+	cat $outf;
 	printf -- "--- End: $t ----"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
 	failed="$failed $t"
     fi
+    rm -f $outf
 done
 
 if test -n "$skipped"; then
