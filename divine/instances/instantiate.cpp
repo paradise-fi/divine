@@ -6,6 +6,7 @@ namespace divine {
 
 algorithm::Algorithm *select( Meta &m )
 {
+    using namespace instantiate;
     switch( m.algorithm.algorithm ) {
         case meta::Algorithm::Reachability:
             m.algorithm.name = "Reachability";

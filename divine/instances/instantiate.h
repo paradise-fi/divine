@@ -1,206 +1,172 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
+#include <divine/instances/definitions.h>
 #include <divine/utility/meta.h>
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/por-c3.h>
-#include <divine/graph/fairness.h>
 
-#include <divine/generator/compact.h>
-#include <divine/generator/dve.h>
-#include <divine/generator/llvm.h>
-#include <divine/generator/coin.h>
-#include <divine/generator/cesmi.h>
-#include <divine/generator/timed.h>
-#include <divine/generator/dummy.h>
-
-#ifndef DIVINE_SELECT_H
-#define DIVINE_SELECT_H
+#ifndef DIVINE_INSTANCES_INSTANTIATE
+#define DIVINE_INSTANCES_INSTANTIATE
 
 namespace divine {
 
-/*
-template< typename Stats, typename T >
-typename T::IsDomainWorker setupParallel( Preferred, T &t )
-{
-    t.domain().mpi.init();
-    t.init( &t.domain(), m.execution.diskFifo );
+namespace instantiate {
 
-    if ( m.output.curses && t.domain().mpi.master() )
-        Output::_output = makeCurses();
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* makeAlgorithm( Meta& meta ) {
 
-    Stats::global().useDomain( t.domain() );
-    if ( statistics )
-        Stats::global().start();
-    t.domain().mpi.start();
-    report.mpiInfo( t.domain().mpi );
-    return wibble::Unit();
-}
-
-template< typename Stats, typename T >
-wibble::Unit setupParallel( NotPreferred, T &t )
-{
-    t.init();
-    setupCurses();
-    if ( statistics )
-        Stats::global().start();
-    return wibble::Unit();
-}
-*/
-
-template< typename G >
-using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
-
-template< template< typename > class T, typename V = visitor::Partitioned >
-struct SetupT {
-    template< typename X > using Topology = T< X >;
-    typedef V Visitor;
-};
-
-template< template< typename > class A, typename G, template< typename > class T, typename S,
-          typename St >
-algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
-    struct Setup : SetupT< T > {
-        typedef G Graph;
-        typedef S Statistics;
-        typedef St Store;
-    };
-    return new A< Setup >( meta );
-}
-
-template< template< typename > class A, typename G, template< typename > class T, typename S >
-algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
-    if ( meta.algorithm.hashCompaction )
-#if O_HASH_COMPACTION
-        return makeAlgorithm< A, G, T, S, visitor::HcStore< G, algorithm::Hasher, S > >( meta );
-    else
-#else
-        std::cerr << "Hash compaction is disabled, running without compaction (consider recompiling with -DO_HASH_COMPACTION)" << std::endl;
-#endif
-        return makeAlgorithm< A, G, T, S, visitor::PartitionedStore< G, algorithm::Hasher, S > >( meta );
-}
-
-template< template< typename > class A, typename G, template< typename > class T >
-algorithm::Algorithm *makeAlgorithm( Meta &meta )
-{
-#ifdef O_PERFORMANCE
-    if ( !meta.output.statistics )
-        return makeAlgorithm< A, G, T, divine::NoStatistics >( meta );
-    else
-#endif
-        return makeAlgorithm< A, G, T, divine::Statistics >( meta );
-}
-
-template< template< typename > class A, typename G >
-algorithm::Algorithm *makeAlgorithm( Meta &meta )
-{
-#ifdef O_PERFORMANCE
-    if ( meta.execution.nodes == 1 )
-        return makeAlgorithm< A, G, Topology< Transition< G > >::template Local >( meta );
-    else
-#endif
-        return makeAlgorithm< A, G, Topology< Transition< G > >::template Mpi >( meta );
-}
-
-template< template< typename > class A, typename Graph >
-algorithm::Algorithm *makeAlgorithmN( Meta &meta )
-{
-    return makeAlgorithm< A, graph::NonPORGraph< Graph > >( meta );
-}
-
-template< template< typename > class A, typename Graph >
-algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
-{
-#ifdef O_PERFORMANCE
-    if ( !meta.output.statistics )
-        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::NoStatistics > >( meta );
-    else
-#endif
-        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::Statistics > >( meta );
-}
-
-template< template< typename > class A >
-algorithm::Algorithm *selectGraph( Meta &meta )
-{
-    bool por = meta.algorithm.reduce.count( graph::R_POR );
-    (void) por;
-
-    if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
-        meta.input.modelType = "DVE";
-#if defined (O_DVE) && !defined(O_SMALL)
-        if ( meta.algorithm.fairness ) {
-            if ( por )
-                std::cerr << "Fairness with POR is not supported, disabling POR" << std::endl;
-            return makeAlgorithm< A, graph::FairGraph< generator::Dve > >( meta );
+        if ( !SelectAlgorithm< algo >::available )
+            std::cerr << "Missing algorithm: "
+                << ShowT< Algorithm, algo >::value  << std::endl;
+        if ( !SelectGenerator< generator >::available )
+            std::cerr << "Missing generator: "
+                << ShowT< Generator, generator >::value << std::endl;
+        if ( !SelectTransform< transform >::available ) {
+            std::cerr << "Missing graf transformation: "
+                << ShowT< Transform, transform >::value
+                << ", disabling transformations." << std::endl;
+            return makeAlgorithm< algo, generator, Transform::None,
+                   store, visitor, topology, statistics >( meta );
         }
-        if ( por )
-            return makeAlgorithmPOR< A, generator::Dve >( meta );
-#endif
-
-#if defined(O_DVE)
-        return makeAlgorithmN< A, generator::Dve >( meta );
-#endif
-    } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
-        meta.input.modelType = "Compact";
-        return makeAlgorithmN< A, generator::Compact >( meta );
-#if defined(O_COIN) && !defined(O_SMALL)
-    } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
-        meta.input.modelType = "CoIn";
-        if ( por ) {
-            return makeAlgorithmPOR< A, generator::Coin >( meta );
-        } else {
-            return makeAlgorithmN< A, generator::Coin >( meta );
+        if ( !SelectStore< store >::available ) {
+            std::cerr << "Missing store: "
+                << ShowT< Store, store >::value
+                << ", using Partitioned instead." << std::endl;
+            return makeAlgorithm< algo, generator, transform,
+                   Store::Partitioned, visitor, topology, statistics >( meta );
         }
-#endif
-    } else if ( wibble::str::endsWith( meta.input.model, ".bc" ) ) {
-        meta.input.modelType = "LLVM";
-#ifdef O_LLVM
-        if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
-        {
-            if ( !::llvm::llvm_start_multithreaded() ) {
-                std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                          << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-                return NULL;
-            }
+        if ( !SelectVisitor< visitor >::available ) {
+            std::cerr << "Missing visitor: "
+                << ShowT< Visitor, visitor >::value
+                << ", using Partitioned instead." << std::endl;
+            return makeAlgorithm< algo, generator, transform,
+                   store, Visitor::Partitioned, topology, statistics >( meta );
         }
-        return makeAlgorithmN< A, generator::LLVM >( meta );
-#else
-        std::cerr << "FATAL: This binary was built without LLVM support." << std::endl;
-        return NULL;
-#endif
+        if ( !SelectTopology< topology >::available )
+            std::cerr << "Missing topology: "
+                << ShowT< Topology, topology >::value << std::endl;
 
-#if defined(O_TIMED)
-	} else if ( wibble::str::endsWith( meta.input.model, ".xml" ) ) {
-		meta.input.modelType = "Timed";
-		return makeAlgorithmN< A, generator::Timed >( meta );
-#endif
-    } else if ( wibble::str::endsWith( meta.input.model, generator::cesmi_ext ) ) {
-        meta.input.modelType = "CESMI";
-        return makeAlgorithmN< A, generator::CESMI >( meta );
-#ifndef O_SMALL
-    } else if ( meta.input.dummygen ) {
-        meta.input.modelType = "dummy";
-        return makeAlgorithmN< A, generator::Dummy >( meta );
-#endif
-    } else {
-        std::cerr << "FATAL: Unknown input file extension." << std::endl;
-        return NULL;
+        AlgorithmSelector< algo, generator, transform, store, visitor,
+            topology, statistics > selector;
+
+        return selector( meta );
     }
 
-    std::cerr << "FATAL: Internal error choosing generator." << std::endl;
-    return NULL;
-}
 
-algorithm::Algorithm *selectOWCTY( Meta &m );
-algorithm::Algorithm *selectMAP( Meta &m );
-algorithm::Algorithm *selectNDFS( Meta &m );
-algorithm::Algorithm *selectMetrics( Meta &m );
-algorithm::Algorithm *selectReachability( Meta &m );
-algorithm::Algorithm *selectProbabilistic( Meta &m );
-algorithm::Algorithm *selectCompact( Meta &m );
-algorithm::Algorithm *selectSimulate( Meta &m );
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectVisitor( Meta& meta ) {
+        return makeAlgorithm< algo, generator, transform, store,
+               Visitor::Partitioned, topology, statistics>( meta );
+    }
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectStore( Meta& meta ) {
+        if ( meta.algorithm.hashCompaction )
+            return selectVisitor< algo, generator, transform, Store::HashCompacted,
+                   visitor, topology, statistics >( meta );
+        return selectVisitor< algo, generator, transform, Store::Partitioned,
+               visitor, topology, statistics >( meta );
+    }
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectStatistics( Meta& meta ) {
+        if ( !meta.output.statistics )
+            return selectStore< algo, generator, transform, store, visitor, topology,
+                   ifPerformance( Statistics::Disabled, Statistics::Enabled )
+                   >( meta );
+        return selectStore< algo, generator, transform, store, visitor, topology,
+               Statistics::Enabled >( meta );
+    }
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectTopology( Meta& meta ) {
+        if ( meta.execution.nodes == 1 )
+            return selectStatistics< algo, generator, transform, store, visitor,
+                   ifPerformance( Topology::Local, Topology::Mpi ), statistics
+                   >( meta );
+        return selectTopology< algo, generator, transform, store,
+               visitor, Topology::Mpi, statistics >( meta );
+    }
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectTransform( Meta& meta ) {
+        static_assert( generator != Generator::NotSelected,
+                "selectGenerator needs to be called before selectTransform" );
+        const bool por = meta.algorithm.reduce.count( graph::R_POR );
+        if ( meta.algorithm.fairness ) {
+            if ( por )
+                std::cerr << "Fairness with POR is not supported, disabling POR"
+                    << std::endl;
+            return selectTopology< algo, generator,
+                   generator == Generator::Dve
+                       ? Transform::Fairness
+                       : Transform::None,
+                   store, visitor, topology, statistics >( meta );
+        }
+        if ( meta.algorithm.reduce.count( graph::R_POR ) )
+            return selectTopology< algo, generator,
+                   generator == Generator::Dve || generator == Generator::Coin
+                       ? Transform::POR
+                       : Transform::None,
+                   store, visitor, topology, statistics >( meta );
+
+        return selectTopology< algo, generator, Transform::None, store,
+                visitor, topology, statistics >( meta );
+    }
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm* selectGenerator( Meta& meta ) {
+        if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
+            meta.input.modelType = "DVE";
+            return selectTransform< algo, Generator::Dve, transform, store, visitor,
+                topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
+            meta.input.modelType = "Compact";
+            return selectTransform< algo, Generator::Compact, transform, store,
+                   visitor, topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
+            meta.input.modelType = "CoIn";
+            return selectTransform< algo, Generator::Coin, transform, store,
+                   visitor, topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, ".bc" ) ) {
+            meta.input.modelType = "LLVM";
+            return selectTransform< algo, Generator::LLVM, transform, store,
+                   visitor, topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, ".xml" ) ) {
+            meta.input.modelType = "Timed";
+            return selectTransform< algo, Generator::Timed, transform, store,
+                   visitor, topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, generator::cesmi_ext ) ) {
+            meta.input.modelType = "CESMI";
+            return selectTransform< algo, Generator::CESMI, transform, store,
+                   visitor, topology, statistics >( meta );
+        } else if ( meta.input.dummygen ) {
+            meta.input.modelType = "dummy";
+            return selectTransform< algo, Generator::Dummy, transform, store,
+                   visitor, topology, statistics >( meta );
+        }
+        std::cerr << "FATAL: Unknown input file extension." << std::endl;
+        std::cerr << "FATAL: Internal error choosing generator." << std::endl;
+        return nullptr;
+    }
+
+    algorithm::Algorithm *selectOWCTY( Meta &m );
+    algorithm::Algorithm *selectMAP( Meta &m );
+    algorithm::Algorithm *selectNDFS( Meta &m );
+    algorithm::Algorithm *selectMetrics( Meta &m );
+    algorithm::Algorithm *selectReachability( Meta &m );
+    algorithm::Algorithm *selectProbabilistic( Meta &m );
+    algorithm::Algorithm *selectCompact( Meta &m );
+    algorithm::Algorithm *selectSimulate( Meta &m );
+}
 
 algorithm::Algorithm *select( Meta &m );
 
 }
 
-#endif
+#endif // DIVINE_INSTANCES_INSTANTIATE
