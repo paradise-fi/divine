@@ -1,6 +1,9 @@
 #include <divine/algorithm/common.h>
 //#include <wibble/regexp.h>
 
+#ifndef DIVINE_ALGORITHM_SIMULATE
+#define DIVINE_ALGORITHM_SIMULATE
+
 namespace divine {
 namespace algorithm {
 
@@ -262,3 +265,5 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
 }
 }
+
+#endif // DIVINE_ALGORITHM_SIMULATE
