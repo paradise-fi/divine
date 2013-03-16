@@ -1,3 +1,16 @@
+DiVinE 2.95 (3.0 beta 2 ; 16.3.2013)
+====================================
+
+- Support pthread barriers in the LLVM runtime.
+- Improvements in the LTL support for `divine compile --cesmi`.
+- Fix statistics tracking in models with > 2^31 states.
+- MURPHI compiler now works with current CESMI.
+- The correctenss bug in MAP is now fixed (`divine verify --map`).
+- New POR C1+C2 implementation for DVE.
+- LLVM backend now supports aggregate registers.
+- Reduce startup overhead for LLVM & DVE and improve cache sharing.
+- Many bugfixes.
+
 DiVinE 2.94 (3.0 beta 1 ; 13.2.2013)
 ====================================
 
