@@ -14,7 +14,8 @@ namespace divine {
 namespace generator {
 
 struct Dve : public Common< Blob > {
-    struct dve::System *system;
+    std::shared_ptr< dve::System > system;
+
     struct dve::EvalContext ctx;
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
@@ -168,7 +169,12 @@ struct Dve : public Common< Blob > {
         yield( Node(), b, Label() );
     }
 
-    void read( std::string path, Dve * = nullptr ) {
+    void read( std::string path, Dve *blueprint = nullptr ) {
+        if ( blueprint ) {
+            system = blueprint->system;
+            return;
+        }
+
         std::ifstream file;
         file.open( path.c_str() );
         dve::IOStream stream( file );
@@ -176,7 +182,7 @@ struct Dve : public Common< Blob > {
         dve::Parser::Context ctx( lexer );
         try {
             dve::parse::System ast( ctx );
-            system = new dve::System( ast );
+            system = std::make_shared< dve::System >( ast );
         } catch (...) {
             ctx.errors( std::cerr );
             throw;
