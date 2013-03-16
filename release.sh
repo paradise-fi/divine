@@ -76,7 +76,7 @@ rm -rf "$name"
 echo validating...
 tar xzf "$name.tar.gz"
 cd $name
-./configure
+./configure -DSMALL=ON
 make
 make check
 
