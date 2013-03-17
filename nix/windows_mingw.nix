@@ -124,6 +124,10 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   mingw_rt = mingw {
     pkg = "mingwrt-3.20-mingw32-dev.tar.gz";
     hash = "1wi850pirpc10sfrvmglg11gkh5vmr53hkh3lc42agh9371if5x4"; };
+  mktemp = mingw {
+    pkg = "mktemp-1.6-2-msys-1.0.13-bin.tar.lzma";
+    hash = "1363102arak4x2cd7z0zl70jjrjkirr1w619gcj7pj8vy8pqky68";
+  };
 
   toolchain =
     if ruben
