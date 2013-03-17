@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net
 
-#include <cstdint>
+#include <stdint.h>
 #include <deque> // for fmt
 #include <cstring> // size_t ... d'oh
 
