@@ -59,4 +59,5 @@ llvm_assemble() {
     fixreduce "$@" "$property" $out
 }
 
+set -e
 "$@"
