@@ -36,6 +36,10 @@ DiVinE):
 DiVinE 3.0 has entered BETA
 ===========================
 
+(2013-03-18) A second beta version has been released, including numerous
+improvements and bugfixes. Get the [source code] [1] or [pre-built binaries]
+[2]! The changelog is here: [what's new](whatsnew.html).
+
 (2013-02-13) A major new version of DIVINE has entered feature freeze, and we
 invite the general public to participate in the beta testing phase of our
 release cycle. Please download the [source code] [1] or [pre-built binaries]
