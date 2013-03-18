@@ -331,9 +331,14 @@ struct MachineState
         return global().owns( _info, p );
     }
 
+    bool constantPointer( Pointer p ) {
+        return  !p.heap && p.segment >= 1 && p.segment < _info.globals.size() &&
+                _info.globals[ p.segment ].constant;
+    }
+
     bool validate( Pointer p ) {
         return !p.null() &&
-            ( globalPointer( p ) ||
+            ( globalPointer( p ) || constantPointer( p ) ||
               ( !freed.count( p.segment ) &&
                 ( heap().owns( p ) || nursery.owns( p ) ) ) );
     }
@@ -383,6 +388,8 @@ struct MachineState
             return nullptr;
         else if ( globalPointer( p ) )
             return global().dereference( _info, p );
+        else if ( constantPointer( p ) )
+            return &_info.constdata[ _info.globalPointerOffset( p ) ];
         else if ( heap().owns( p ) )
             return heap().dereference( p );
         else
