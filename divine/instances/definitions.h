@@ -25,7 +25,7 @@ namespace instantiate {
 
 #define SHOW( TYPE, VAL ) template<> \
     struct ShowT< TYPE, TYPE::VAL > { \
-        constexpr const static char *const value = #VAL; \
+        constexpr const static char* value = #VAL; \
     }
 
     enum class Algorithm {
