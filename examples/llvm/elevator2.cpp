@@ -21,10 +21,10 @@
  * movement.
  *
  * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] elevator2.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator2.cpp
  *  $ divine verify -p assert elevator2.bc [-d]
  * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
+ *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
  *  $ ./elevator2.exe
  */
 

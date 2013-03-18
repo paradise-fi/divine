@@ -16,10 +16,10 @@
  * or the floor one above can be the next to serve (STRATEGY=2).
  *
  * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] elevator.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator.cpp
  *  $ divine verify -p assert elevator.bc [-d]
  * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -lstdc++ -o elevator.exe elevator.cpp
+ *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator.exe elevator.cpp
  *  $ ./elevator.exe
  */
 

@@ -38,10 +38,10 @@
  *          year = "1996" }
  *
  * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] collision.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] collision.cpp
  *  $ divine verify -p assert collision.bc [-d]
  * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -lstdc++ -o collision.exe collision.cpp
+ *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o collision.exe collision.cpp
  *  $ ./collision.exe
  */
 

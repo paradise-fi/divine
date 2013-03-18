@@ -15,7 +15,7 @@
  *
  *
  * Solve with:
- *  $ divine compile --llvm [--cflags=" < flags > "] elevator_planning.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator_planning.cpp
  *  $ divine verify -p assert elevator_planning.bc [-d]
  *
  * Output is rather unintuitive. We actually verify if it holds that
@@ -25,7 +25,7 @@
  *    Counterexample        = solution
  *
  * Run and watch some computational path with:
- *  $ clang++ [ < flags > ] -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
+ *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
  *  $ ./elevator_planning.exe
  */
 
