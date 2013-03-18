@@ -191,7 +191,7 @@ struct Medium {
     }
 
     Medium( Station **stations )
-        : stations( stations ), terminated( false ), buffered( false ) {
+        :  terminated( false ), stations( stations ), buffered( false ) {
         pthread_mutex_init( &mutex, NULL );
     }
 };
