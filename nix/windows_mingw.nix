@@ -25,7 +25,7 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
            libregex libregex_msys libtermcap regex_dev tar
            bash make msys_core perl
            zlib libbz2 libcrypt libexpat sed grep coreutils coreutils_ext
-           diffutils m4 ];
+           diffutils m4 mktemp ];
 
   libgmp = mingw {
     pkg = "libgmp-5.0.1-1-mingw32-dll-10.tar.lzma";
