@@ -96,6 +96,24 @@ To pick a specific formula, use -p N (with N being the sequence number of a
 `#property` in the `.ltl` file, in this case 1 or 2). When -p is in effect,
 `-o` can be used to direct the generated DVE file to standard output.
 
+Syntax of LTL formulas as accepted by DiVinE is as follows:
+
+    F :== un_op F | F bin_op F | (F) | term
+    un_op :== '!' (logical negation)
+        :== 'X' | 'O' (next)
+        :== 'F' | '<>' (future)
+        :== 'G' | '[]' (globally)
+    bin_op :== '&&' | '*' (and)
+        :== '||' | '+' (or)
+        :== '->' (implication)
+        :== '<->' (equivalence) 
+        :== '^' (xor)
+        :== 'U' (unitl)
+        :== 'V' | 'R' (release)
+        :== 'W' (weak until)
+    term :== 'true' | 'false'
+        :== {_a-z}[_0-9a-z]*  (name of an atomic proposition)
+
 Configuring the parallel model checking engine
 ----------------------------------------------
 
