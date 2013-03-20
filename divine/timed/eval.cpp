@@ -641,6 +641,8 @@ void Evaluator::processDeclGlobals( UTAP::TimedAutomataSystem &sys ) {
 void Evaluator::processDecl( const vector< instance_t > &procs ) {
     for ( int pId = 0; pId < procs.size(); ++pId ) {
         const instance_t &p = procs[pId];
+        stringstream ss;
+        ss << p.uid.getName();
 
         // save the symbol so it can be used in property
         auto type = p.uid.getType();
@@ -651,14 +653,18 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
                 auto r = evalRange( -1, type[ i ] );
                 arrSizes.push_back( r.second - r.first + 1 );
                 size *= arrSizes.back();
+                // build name for partial instance
+                ss << ( i ? ',' : '[' );
+                ss << eval( -1, p.mapping.at( p.parameters[i] ) );
             }
+            ss << ']';
             // insert array of processes or do nothing if we have already seen this uid
             vars.insert( make_pair( make_pair( p.uid, -1 ), VarData( Type::PROCESS, PrefixType::NONE, pId, arrSizes, size ) ) );
         } else {
             vars[ make_pair( p.uid, -1 ) ] = VarData ( Type::PROCESS, PrefixType::NONE, pId );
         }
 
-        ProcessTable.push_back( p );
+        ProcessTable.emplace_back( p, ss.str() );
 
         // template parametres
         for ( const pair< symbol_t, expression_t > &m : p.mapping )

@@ -57,6 +57,12 @@ private:
         FuncData( const UTAP::function_t &f ) : fun ( &f ) {}    
     };
 
+    struct NamedInstance : public UTAP::instance_t {
+        std::string name;
+
+        NamedInstance( const UTAP::instance_t& inst, const std::string& n ) : UTAP::instance_t( inst ), name( n ) {}
+    };
+
     const VarData &getVarData( int procId, const UTAP::symbol_t & s ) const;
     const VarData &getVarData( int procId, const UTAP::expression_t &expr );
     const FuncData &getFuncData( int procId, const UTAP::symbol_t & s ) const;
@@ -74,7 +80,7 @@ private:
     std::vector< int32_t > initValues;
     std::vector< int32_t > metaValues; // constants + local variables
 
-    std::vector< UTAP::instance_t > ProcessTable;
+    std::vector< NamedInstance > ProcessTable;
     std::vector< const UTAP::symbol_t* > ClockTable;
     std::vector< const UTAP::symbol_t* > ChannelTable;
     std::vector< int > ChannelPriorities;
@@ -207,11 +213,12 @@ public:
     int getChanPriority( int ch ) const {
         return ChannelPriorities[ ch ];
     };
+
     std::string getProcessName( int p ) const {
-        if ( p == -1)
-            return "global";
+        if ( p == -1 )
+            return "";
         else
-            return ProcessTable[p].uid.getName();
+            return ProcessTable[p].name;
     }
 
     void addSymbol( const UTAP::symbol_t &s, int procId = -1, const UTAP::expression_t &init = UTAP::expression_t() ) {
