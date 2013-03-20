@@ -158,6 +158,22 @@ public:
     }
 #endif
 
+public:
+    // adds state, returns its id
+    int addState() {
+        nodes.emplace_back();
+        return nodes.size() - 1;
+    }
+
+    int duplicateState( int src ) {
+        nodes.push_back( nodes[ src ] );
+        return nodes.size() - 1;
+    }
+
+    void setAccepting( int id, bool isAcc ) {
+        nodes[ id ].isAcc = isAcc;
+    }
+
     // builds BA containing single (non-accepting) state with self-loop
     void buildEmpty();
 
@@ -170,6 +186,10 @@ public:
      * represented as pairs of destination node ids and custom guard numbers assigned during the construction
      */
     const std::vector< std::pair< int, int > >& transitions( int nodeId ) const {
+        return nodes[ nodeId ].tr;
+    }
+
+    std::vector< std::pair< int, int > >& editableTrans( int nodeId ) {
         return nodes[ nodeId ].tr;
     }
 
