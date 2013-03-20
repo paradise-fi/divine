@@ -9,6 +9,23 @@
 namespace divine {
 namespace algorithm {
 
+template< typename T >
+struct AddressCompare {
+    bool operator()( Blob a, Blob b) {
+        return a.ptr < b.ptr;
+    }
+};
+
+template< typename T > struct AddressCompare< std::pair< Blob, T > > {
+    bool operator()( std::pair< Blob, T > a, std::pair< Blob, T > b) {
+        if ( a.first.ptr < b.first.ptr )
+            return true;
+        if ( a.first.ptr == b.first.ptr )
+            return a.second < b.second;
+        return false;
+    }
+};
+
 // Implements a (parallel) check of the POR cycle proviso.
 template< typename G, typename Statistics >
 struct PORGraph : graph::Transform< G > {
@@ -63,7 +80,8 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
-    std::set< Node > to_check, to_expand;
+    template< typename T > using ASet = std::set< T, AddressCompare< T > >;
+    ASet< Node > to_check, to_expand;
 
     void porExpansion( Node n ) {
         to_check.insert( n );
@@ -193,7 +211,7 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void fullexpand( Yield yield, Node n ) {
         extension( n ).full = true;
-        std::set< std::pair< Node, Label > > all, ample, out;
+        ASet< std::pair< Node, Label > > all, ample, out;
         std::vector< std::pair< Node, Label > > extra;
 
         this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
@@ -208,12 +226,12 @@ struct PORGraph : graph::Transform< G > {
                                std::back_inserter( extra ) );
 
         // release the states that we aren't going to use
-        for ( auto i = extra.begin(); i != extra.end(); ++i )
-            this->base().release( i->first );
+        for ( auto i : extra )
+            this->base().release( i.first );
 
-        for ( auto i = out.begin(); i != out.end(); ++i ) {
-            const_cast< Blob* >( &i->first )->header().permanent = 1;
-            yield( n, i->first, i->second );
+        for ( auto i : out ) {
+            const_cast< Blob* >( &i.first )->header().permanent = 1;
+            yield( n, i.first, i.second );
         }
     }
 };
