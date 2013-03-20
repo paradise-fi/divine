@@ -10,7 +10,7 @@ namespace graph {
 
 /// Types of acceptance condition
 enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_Rabin, PT_Streett };
-enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap };
+enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap, R_LU };
 typedef std::set< ReductionType > ReductionSet;
 
 template< typename _Node >

@@ -27,11 +27,8 @@ struct Timed : public Common< Blob > {
     std::vector< std::string > ltlProps;
     std::map< std::string, std::string > ltlDefs;
     std::vector< TAGen::PropGuard > propGuards;
-    bool hasLTL;
-
-    char* mem( Node s ) const {
-        return &s.get< char >( alloc._slack );
-    }
+    bool hasLTL = false;
+    bool nonZeno = false;
 
     template< typename Yield >
     void successors( Node from, Yield yield ) {
@@ -62,8 +59,7 @@ struct Timed : public Common< Blob > {
     }
 
     bool isGoal( Node n ) {
-        int err = gen.isErrState( mem( n ) );
-        return err && err != EvalError::TIMELOCK;
+        return gen.isErrState( mem( n ) );
     }
 
     std::string showNode( Node n ) {
@@ -155,12 +151,101 @@ struct Timed : public Common< Blob > {
 
     template< typename Y >
     void properties( Y yield ) {
-        std::stringstream ss;
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
         for ( unsigned int i = 0; i < ltlProps.size(); i++ ) {
-            ss.str( "" );
-            ss << i;
-            yield( ss.str(), ltlProps[ i ], PT_Buchi );
+            yield( std::to_string( i ), ltlProps[ i ], PT_Buchi );
+        }
+    }
+
+    ReductionSet useReductions( ReductionSet r ) override {
+        ReductionSet applied;
+        if ( r.count( R_LU ) ) {
+            gen.enableLU( true );
+            applied.insert( R_LU );
+        }
+        return applied;
+    }
+
+    // transforms the Buchi automaton so that no zeno runs can be accepting,
+    void excludeZeno() {
+        if ( !nonZeno && hasLTL ) {
+            // useProperty was already called
+            nonZenoBuchi();
+        }
+        nonZeno = true;
+    }
+
+private:
+    char* mem( Node s ) const {
+        return &s.get< char >( alloc._slack );
+    }
+
+    Node newNode( const char* src ) {
+        Node n = alloc.new_blob( gen.stateSize() );
+        memcpy( mem( n ), src, gen.stateSize() );
+        return n;
+    }
+
+    // tries to perform Buchi transition, returs true on succes, false if this transiiton is blocked,
+    // true is also returned for error states, but the automaton is not affected
+    bool doBuchiTrans( char* node, const std::pair< int, int >& btr ) {
+        if ( gen.isErrState( node ) )
+            return true;
+        if ( gen.evalPropGuard( node, propGuards[ btr.second ] ) ) {
+            gen.setPropLoc( node, btr.first );
+            // if doing non-zeno reduction, and an accepting state is reached, reset the auxiliary clock
+            if ( nonZeno && buchi.isAccepting( btr.first ) ) {
+                gen.resetAuxClock();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    std::string buildEdgeLabel( const TAGen::EdgeInfo* e, int propGuard = -1 ) {
+        std::stringstream ss;
+        if ( e ) {
+            if ( e->syncType >= 0 )
+                ss << e->sync.toString() << ( e->syncType == UTAP::Constants::SYNC_QUE ? "?; " : "!; " );
+            ss << e->guard.toString();
+            if ( e->assign.toString() != "1" )
+                ss << "; " << e->assign.toString();
+        } else
+            ss << "time";
+        if ( propGuard > 0 ) {
+            ss << " [" << propGuards[ propGuard ].toString() << "]";
+        }
+        assert( !ss.str().empty() );
+        return ss.str();
+    }
+
+    // to eliminate Zeno runs, we transform the Buchi automaton
+    // to ensure that at least one time unit passes in every accepting cycle
+    void nonZenoBuchi() {
+        gen.addAuxClock();
+        const int oldSize = buchi.size();
+        for ( int i = 0; i < oldSize; i++ ) {
+            if ( buchi.isAccepting( i ) ) {
+                // create accepting copy
+                int copy = buchi.duplicateState( i );
+                buchi.setAccepting( i, false );
+                // remove each edge j --(g)--> i, add edges j --(g && aux<1)--> i and j --(g && aux>=1)--> copy
+                for ( int j = 0; j < buchi.size(); j++ ) {
+                    auto& tr = buchi.editableTrans( j );
+                    const unsigned int nTrans = tr.size();
+                    for ( unsigned int t = 0; t < nTrans; t++ ) {
+                        if ( tr[ t ].first == i ) {
+                            auto auxGuard = gen.addAuxToGuard( propGuards[ tr[ t ].second ] );
+                            // guard of the original edge is changed to "g && aux<1"
+                            propGuards.push_back( auxGuard.first );
+                            tr[ t ].second = propGuards.size() - 1;
+                            // new edge leading to the accepting copy has guard "g && aux>=1"
+                            propGuards.push_back( auxGuard.second );
+                            tr.emplace_back( copy, propGuards.size() - 1 );
+                        }
+                    }
+                }
+            }
         }
     }
 };

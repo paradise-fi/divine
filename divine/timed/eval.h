@@ -69,7 +69,8 @@ private:
     SymTable vars;
     FuncTable funs;
 
-    int32_t *data;
+    int32_t *data = NULL;
+    bool extrapLU = false;
     std::vector< int32_t > initValues;
     std::vector< int32_t > metaValues; // constants + local variables
 
@@ -213,6 +214,17 @@ public:
             return ProcessTable[p].uid.getName();
     }
 
+    void addSymbol( const UTAP::symbol_t &s, int procId = -1, const UTAP::expression_t &init = UTAP::expression_t() ) {
+        processSingleDecl( s, init, procId );
+    }
+
+    void enableLU( bool enable ) {
+        extrapLU = enable;
+    }
+
+    bool usesLU() const {
+        return extrapLU;
+    }
 };
 
 #endif

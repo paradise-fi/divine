@@ -70,6 +70,7 @@ void TAGen::processInstance( const UTAP::instance_t& inst, std::vector< UTAP::in
 bool TAGen::evalInv() {
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
+        assert( locs.get( nInst ) < proc->size() );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         if ( !eval.evalBool( nInst, s.inv ) )
             return false;
@@ -89,6 +90,7 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
     // find possible transitions and synchronizations
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
+        assert( locs.get( nInst ) < proc->size() );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         inUrgent = inUrgent || s.urgent;
         if ( s.commit )
@@ -358,7 +360,7 @@ bool TAGen::evalPropGuard( char* d, const TAGen::PropGuard& g ) {
 }
 
 std::string TAGen::showNode( char* d ) {
-    int err = isErrState( d );
+    int err = getError( d );
     if ( err ) {
         return std::string( "Error:" ) + EvalError::reason( err );
     } else {
@@ -374,12 +376,49 @@ std::string TAGen::showNode( char* d ) {
 
 void TAGen::makeErrState( char* d, int err ) {
     assert( err != 0 );
-    memset( d, 0, stateSize() );
+    // states (except timelocks) are cleared to ensure at most one of each error states exists
+    if ( err != EvalError::TIMELOCK )
+        memset( d, 0, stateSize() );
     locs.setSource( d );
     locs.set( propertyId+1, err );
 }
 
-int TAGen::isErrState( char* d ) {
+int TAGen::getError( char* d ) {
     locs.setSource( d );
     return locs.get( propertyId+1 );
+}
+
+bool TAGen::isErrState( char* d ) {
+    int err = getError( d );
+    return err && (err != EvalError::TIMELOCK);
+}
+
+void TAGen::addAuxClock() {
+    assert( auxResetExpr.empty() );
+    UTAP::symbol_t aux = sys.getGlobals().frame.addSymbol( "_aux", UTAP::type_t::createPrimitive( UTAP::Constants::CLOCK ), NULL );
+    eval.addSymbol( aux, -1 );
+    // create expression "_aux = 0"
+    auxResetExpr = UTAP::expression_t::createBinary( UTAP::Constants::ASSIGN,
+        UTAP::expression_t::createIdentifier( aux ), UTAP::expression_t::createConstant( 0 ) );
+}
+
+void TAGen::resetAuxClock() {
+    assert( !auxResetExpr.empty() );
+    eval.evalCmd( -1, auxResetExpr );
+}
+
+std::pair< TAGen::PropGuard, TAGen::PropGuard > TAGen::addAuxToGuard( const PropGuard& guard ) {
+    assert( !auxResetExpr.empty() );
+    UTAP::expression_t aux = auxResetExpr[ 0 ];
+    UTAP::expression_t
+        auxGuard = UTAP::expression_t::createBinary( UTAP::Constants::GE, aux, UTAP::expression_t::createConstant( 1 ) ),
+        auxNeg   = UTAP::expression_t::createBinary( UTAP::Constants::LT, aux, UTAP::expression_t::createConstant( 1 ) );
+    // set clock limits
+    eval.setClockLimits( -1, auxGuard );
+    eval.setClockLimits( -1, auxNeg );
+
+    auto guards = std::make_pair( guard, guard );
+    addConj( guards.first.expr, auxNeg );
+    addConj( guards.second.expr, auxGuard );
+    return guards;
 }

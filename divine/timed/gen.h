@@ -39,6 +39,7 @@ private:
     std::vector< std::vector< StateInfo > > states;
     std::vector< ProcessInfo > procs;
     Locations locs;
+    UTAP::expression_t auxResetExpr;
 
     // set node to work on
     void setData( char *d ) {
@@ -141,6 +142,11 @@ public:
     class PropGuard {
         UTAP::expression_t expr;
         friend class TAGen;
+
+    public:
+        std::string toString() const {
+            return expr.toString();
+        }
     };
 
     TAGen() : offVar( 0 ), size( 0 ), propertyId( 0 ) {}
@@ -149,8 +155,16 @@ public:
         return size;
     }
 
+    void enableLU( bool enable ) {
+        eval.enableLU( enable );
+    }
+
     template < typename Func >
     void genSuccs( char* source, Func callback ) {
+        // error states and timelocks do not have any successors
+        if ( getError( source ) )
+            return;
+
         bool urgent;
         BlockList bl( stateSize(), 1 );
         EnabledList einf;
@@ -187,7 +201,7 @@ public:
                 const EdgeInfo *edge = einf[ i ].edges[ 0 ];
 
                 try {
-                    int err = isErrState( bl[ i ] );
+                    int err = getError( bl[ i ] );
                     if ( err ) // if this is an error successor, rethrow the exception
                         throw EvalError( err );
 
@@ -278,6 +292,15 @@ public:
     // returns human-readable represenation of the current state
     std::string showNode( char* d );
 
-    // returns nonzero if in error state
-    int isErrState( char* d );
+    // returns true for error states
+    bool isErrState( char* d );
+
+    // returns nonzero for error states or timelocks
+    int getError( char* d );
+
+    void addAuxClock();
+
+    void resetAuxClock();
+
+    std::pair< PropGuard, PropGuard > addAuxToGuard( const PropGuard& guard );
 };
