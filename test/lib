@@ -161,12 +161,12 @@ timed_small() {
     check clear
     run $wrapper data/bridge.xml --property=0 "$@"
     check ltl_valid
-    check statespace 2173 4349 0 274
+    check statespace 2173 4623 0 0
     check clear
 
     run $wrapper data/bridge.xml --property=1 "$@"
     check ltl_invalid
-    check statespace 2593 5239 277 303
+    check statespace 2593 5542 277 0
 }
 
 murphi_small() {
