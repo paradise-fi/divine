@@ -11,9 +11,13 @@
 
 /*
 Interpreter of UPPAAL timed automata models.
-Model is read from *.xml file and one or more LTL properties are read from *.ltl file with the same name. Properties are referred to using numbers, first property
-(with number 0) is used by default. If the given ltl file is not found or property with negative or out-of-range number is selected, property "true" is used.
-Error states, created by out-of-range assignments, division by zero and negative clock assignments are marked as goal for the reachability algorithm.
+Model is read from *.xml file and one or more LTL properties are read from *.ltl file with the same name.
+LTL properties are referred to using numbers, starting from 0.
+When the implicit property, the deadlock freedom, is verified, error states (out-of-range assignments,
+division by zero and negative clock assignments) are marked as goals.
+If the LU transformation is enabled, time-lock detection is turned off, since it
+would produce false positives.
+When an LTL property is verified, the transformation to exclude Zeno runs can be used.
 */
 
 namespace divine {
@@ -33,23 +37,26 @@ struct Timed : public Common< Blob > {
     template< typename Yield >
     void successors( Node from, Yield yield ) {
         assert( from.valid() );
-        if ( gen.isErrState( mem( from ) ) )
-            return;
+        unsigned int nSuccs = 0;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
-        gen.genSuccs( mem( from ), [ this, &btrans, yield ] ( const char* succ, const TAGen::EdgeInfo* ) mutable {
+
+        auto callback = [ this, &btrans, &nSuccs, yield ] ( const char* succ, const TAGen::EdgeInfo* ) mutable {
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
-                Node n = alloc.new_blob( gen.stateSize() );
-                memcpy( mem( n ), succ, gen.stateSize() );
-                if ( gen.isErrState( mem( n ) ) ) {
-                    yield( n, Label() );
-                } else if ( gen.evalPropGuard( mem( n ), propGuards[ btr->second ] ) ) {
-                    gen.setPropLoc( mem( n ), btr->first );
+                Node n = newNode( succ );
+                if ( doBuchiTrans( mem( n ), *btr ) ) {
                     yield( n, Label() );
                 } else {
                     n.free( pool() );
                 }
             }
-        });
+            nSuccs++;
+        };
+
+        gen.genSuccs( mem( from ), callback );
+        // in case of deadlock or time-lock, allow the property automaton to move on its own if veryfing LTL
+        if ( hasLTL && nSuccs == 0 ) {
+            callback( mem( from ), NULL );
+        }
     }
 
     bool isAccepting( Node n ) {
@@ -58,6 +65,7 @@ struct Timed : public Common< Blob > {
         return buchi.isAccepting( gen.getPropLoc( mem( n ) ) );
     }
 
+    // error states are goals, timelocks just show up as deadlocks
     bool isGoal( Node n ) {
         return gen.isErrState( mem( n ) );
     }
@@ -71,29 +79,26 @@ struct Timed : public Common< Blob > {
 
         std::string str;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
-        gen.genSuccs( mem( from ), [ this, &btrans, &str, to ] ( const char* succ, const TAGen::EdgeInfo* e ) {
+        std::vector< char > tmp( gen.stateSize() );
+        char* copy = &tmp[0];
+
+        auto callback = [ this, &btrans, &str, to, copy ] ( const char* succ, const TAGen::EdgeInfo* e ) {
             if ( !str.empty() ) return;
-            std::vector< char > tmp( gen.stateSize() );
-            char* copy = &tmp[0];
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
                 memcpy( copy, succ, gen.stateSize() );
-                if ( !gen.isErrState( copy ) ) {
-                    if ( !gen.evalPropGuard( copy, propGuards[ btr->second ] ) ) continue;
-                    gen.setPropLoc( copy, btr->first );
-                }
+                if ( !doBuchiTrans( copy, *btr ) ) continue;
                 if ( memcmp( copy, mem( to ), gen.stateSize() ) == 0 ) {
-                    if ( e ) {
-                        if ( e->syncType >= 0 )
-                            str = e->sync.toString() + ( e->syncType == UTAP::Constants::SYNC_QUE ? "?; " : "!; " );
-                        str += e->guard.toString();
-                        if ( e->assign.toString() != "1" )
-                            str += "; " + e->assign.toString();
-                    } else
-                        str = "time";
+                    str = buildEdgeLabel( e, btr->first );
                     break;
                 }
             }
-        });
+        };
+
+        gen.genSuccs( mem( from ), callback );
+        // if we verify LTL, automaton can move on its own is system is deadlocked
+        if ( hasLTL && str.empty() ) {
+            callback( mem( from ), NULL );
+        }
         assert( !str.empty() );
         return str;
     }
@@ -147,6 +152,11 @@ struct Timed : public Common< Blob > {
         if ( !hasLTL )
             buchi.buildEmpty();
         assert( buchi.size() > 0 );
+
+        if ( nonZeno && hasLTL ) {
+            // excludeZeno was called first
+            nonZenoBuchi();
+        }
     }
 
     template< typename Y >

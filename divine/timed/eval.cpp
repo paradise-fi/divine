@@ -8,7 +8,6 @@
 #include <utap/utap.h>
 
 // #define LOCATION_BASED_EXTRAPOLATION_OFF
-// #define LU_EXTRAPOLATION_OFF
 
 using namespace UTAP;
 using namespace UTAP::Constants;
@@ -771,23 +770,27 @@ void Evaluator::computeLocalBounds() {
     vector< pair< int32_t, int32_t > > bounds = fixedClockLimits;
     assert( fixedClockLimits.size() == ClockTable.size() );
 
+#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
     for ( int proc = 0; proc < ProcessTable.size(); ++proc ) {
         for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
-#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
             auto &b = locClockLimits[ proc ][ locations[ proc ] ][ clk ];
             bounds[ clk ].first = max( b.first, bounds[ clk ].first );
             bounds[ clk ].second = max( b.second, bounds[ clk ].second );
-#endif
-#ifdef LU_EXTRAPOLATION_OFF
-            bounds[ clk ].first =
-            bounds[ clk ].second = max( bounds[ clk ].first, bounds[ clk ].second );
-#endif
         }
     }
+#endif
 
-    for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
-        clocks.setUpperBound( clk, bounds[clk].first );
-        clocks.setLowerBound( clk, bounds[clk].second );
+    if ( extrapLU ) {
+        for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+            clocks.setUpperBound( clk, bounds[clk].first );
+            clocks.setLowerBound( clk, bounds[clk].second );
+        }
+    } else {
+        for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+            int32_t maximum = max( bounds[ clk ].first, bounds[ clk ].second );
+            clocks.setUpperBound( clk, maximum );
+            clocks.setLowerBound( clk, maximum );
+        }
     }
 }
 

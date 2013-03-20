@@ -471,9 +471,10 @@ struct Main {
                             if ( s == "por" ) return graph::R_POR;
                             if ( s == "taustores" ) return graph::R_TauStores;
                             if ( s == "heap" ) return graph::R_Heap;
+                            if ( s == "LU" ) return graph::R_LU;
                             throw wibble::exception::OutOfRange(
                                 "reduction", "'" + s + "' is not a known reduction type;\n"
-                                "tau, tau+, por, taustores and heap are allowed" );
+                                "tau, tau+, por, taustores, heap and LU are allowed" );
                         } );
         return r;
     }

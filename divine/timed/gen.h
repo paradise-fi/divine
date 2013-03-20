@@ -235,9 +235,9 @@ public:
             }
         } while ( remaining > 0 && !fed.isEmpty() ); // quit if there is no remaining state and we still have a non-empty federation
 
-        if ( !fed.isEmpty() ) { // if some valutions do not have outcomming edges
+        if ( !eval.usesLU() && !fed.isEmpty() ) { // if some valutions do not have outcoming edges (and LU is off since it would have false alarms)
             if ( urgent || fed.isUnbounded() ) {
-                makeErrState( bl.back(), EvalError::TIMELOCK ); // create artifical deadlock state
+                makeErrState( bl.back(), EvalError::TIMELOCK ); // create artifical timelock state
                 callback( bl.back(), nullptr );
             }
         }
