@@ -324,7 +324,7 @@ struct Main {
 
         o_reduce = reduce->add< StringOption >(
             "reduce", '\0', "reduce", "",
-            "configure reductions (input language dependent) [default = tau+,taustores,heap,por]" );
+            "configure reductions (input language dependent) [default = tau+,taustores,heap,por,LU]" );
         o_noreduce = reduce->add< BoolOption >(
             "no-reduce", '\0', "no-reduce", "",
             "disable all state space reductions" );
@@ -533,7 +533,7 @@ struct Main {
             if ( o_reduce->boolValue() )
                 meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
             else
-                meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por" );
+                meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por,LU" );
         }
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
