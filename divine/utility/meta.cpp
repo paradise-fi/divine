@@ -85,6 +85,7 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
             case graph::R_TauStores: txt.push_back( "taustores" ); break;
             case graph::R_Tau: txt.push_back( "tau" ); break;
             case graph::R_Heap: txt.push_back( "heap" ); break;
+            case graph::R_LU: txt.push_back( "LU" ); break;
         }
 
     if ( a.fairness )
