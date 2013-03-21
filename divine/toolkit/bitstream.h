@@ -105,6 +105,50 @@ base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
     return bs << i.first << i.second;
 }
 
+template< typename B, std::size_t I, typename... Tp >
+inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
+writeTuple( base< B > &bs, std::tuple< Tp... >& t ) {}
+
+template< typename B, std::size_t I, typename... Tp >
+inline typename std::enable_if< (I < sizeof...(Tp)), void >::type
+writeTuple( base< B > &bs, std::tuple< Tp... >& t ) {
+    bs << std::get< I >( t );
+    writeTuple< B, I + 1, Tp... >( bs, t );
+}
+
+template< typename B, std::size_t I, typename... Tp >
+inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
+readTuple( base< B > &bs, std::tuple< Tp... >& t ) {}
+
+template< typename B, std::size_t I, typename... Tp >
+inline typename std::enable_if< (I < sizeof...(Tp)), void >::type
+readTuple( base< B > &bs, std::tuple< Tp... >& t ) {
+    bs >> std::get< I >( t );
+    readTuple< B, I + 1, Tp... >( bs, t );
+}
+
+template< typename B, typename... Tp >
+inline base< B > &operator<<( base< B > &bs, std::tuple< Tp... >& t  ) {
+    writeTuple< B, 0 >( bs, t );
+    return bs;
+}
+
+template< typename B, typename... Tp >
+inline base< B > &operator>>( base< B > &bs, std::tuple< Tp... >& t  ) {
+    readTuple< B, 0 >( bs, t );
+    return bs;
+}
+
+template< typename B >
+base< B > &operator<<( base< B > &bs, wibble::Unit ) {
+    return bs;
+}
+
+template< typename B >
+base< B > &operator>>( base< B > &bs, wibble::Unit ) {
+    return bs;
+}
+
 template< typename B, typename T >
 typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
     assert( bs.size() );
