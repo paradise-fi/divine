@@ -51,13 +51,6 @@ release cycle. Please download the [source code] [1] or [pre-built binaries]
  * Weak fairness for DVE.
  * Hash compaction.
 
-There are some known issues that will be fixed during the beta phase:
-
- * Partial order reduction with DVE is broken, please use `--no-reduce`
-   ([ticket 152] [4]).
- * Implementation of the MAP algorithm is incorrect. Please avoid using `verify
-   --map` for the time being ([ticket 118] [5]).
-
 Version 2.5 Now Available
 =========================
 
