@@ -1,4 +1,7 @@
 . lib
 
-all_small ndfs -w 1
-all_small ndfs -w 2
+for COMP in $COMPRESSIONS
+do
+    all_small ndfs -w 1 --compression=$COMP
+    all_small ndfs -w 2 --compression=$COMP
+done
