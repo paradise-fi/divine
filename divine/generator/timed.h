@@ -185,6 +185,13 @@ struct Timed : public Common< Blob > {
         nonZeno = true;
     }
 
+	// for timed automata, enabling fairness actually performs Zeno reduction
+	void fairnessEnabled( bool enabled ) {
+		if ( enabled )
+			excludeZeno();
+		assert( nonZeno == enabled );
+	}
+
 private:
     char* mem( Node s ) const {
         return &s.get< char >( alloc._slack );

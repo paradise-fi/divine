@@ -36,6 +36,10 @@ struct Base {
     void setDomainSize( unsigned /* mpiRank */ = 0, unsigned /* mpiSize */ = 1,
                         unsigned /* peersCount */ = 1 ) {}
 
+	// HACK: Inform the gaph if fairness is enabled,
+	// The timed automata interpreter uses this to enable Zeno reduction
+	void fairnessEnabled( bool ) {}
+
     template< typename Y >
     void properties( Y yield ) {
         yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
@@ -99,6 +103,10 @@ struct Transform {
                         const unsigned peersCount = 1 ) {
         base().setDomainSize( mpiRank, mpiSize, peersCount );
     }
+
+	void fairnessEnabled( bool enabled ) {
+		base().fairnessEnabled( enabled );
+	}
 
     bool isInAccepting( Node s, int acc_group ) {
         return base().isInAccepting( s, acc_group ); }

@@ -100,6 +100,7 @@ struct Algorithm
         g->setDomainSize( meta().execution.thisNode,
                           meta().execution.nodes,
                           meta().execution.nodes * meta().execution.threads );
+		g->fairnessEnabled( meta().algorithm.fairness );
         return g;
     }
 
