@@ -684,6 +684,7 @@ struct System : Parser {
 
         maybe( &System::_property );
         semicolon();
+        context().clearErrors();
     }
 };
 
