@@ -119,9 +119,10 @@ private:
     typedef std::vector< std::pair< int32_t, int32_t > >  limitsVector;
     std::vector< std::map< int32_t, limitsVector> > locClockLimits;
     std::vector< std::pair< int32_t, int32_t > > fixedClockLimits;
-    void computeLocClockLimits( const std::vector< UTAP::instance_t > &procs );
+    void computeLocClockLimits();
     void computeChannelPriorities( UTAP::TimedAutomataSystem &sys );
-   
+	void finalize();
+
     struct StatementInfo {
         const UTAP::Statement *stmt;
         int iterCount;
@@ -223,6 +224,7 @@ public:
 
     void addSymbol( const UTAP::symbol_t &s, int procId = -1, const UTAP::expression_t &init = UTAP::expression_t() ) {
         processSingleDecl( s, init, procId );
+		finalize();
     }
 
     void enableLU( bool enable ) {

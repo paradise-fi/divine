@@ -678,13 +678,16 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
         for ( const variable_t &v : p.templ->variables )
             processSingleDecl( v.uid, v.expr, ProcessTable.size() - 1 );
     }
+	finalize();
+}
 
+void Evaluator::finalize() {
     // compute clock limits
 
     clocks.resize( ClockTable.size() );
     fixedClockLimits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
 
-    computeLocClockLimits( procs );
+    computeLocClockLimits();
 #ifdef LOCATION_BASED_EXTRAPOLATION_OFF
     computeLocalBounds();
 #endif
@@ -704,11 +707,12 @@ void Evaluator::collectResets( int pId, const template_t &templ, const edge_t &e
         out[ resolveId( pId, tmp[0] ) ] = true;
 }
 
-void Evaluator::computeLocClockLimits( const vector< instance_t > &procs ) {
+void Evaluator::computeLocClockLimits() {
+	locClockLimits.clear();
     locClockLimits.resize( ProcessTable.size() );
 
     int i = 0;
-    for ( const instance_t &p : procs ) {
+    for ( const instance_t &p : ProcessTable ) {
         for ( state_t &s : p.templ->states ) {
 #ifdef LOCATION_BASED_EXTRAPOLATION_OFF
             setClockLimits( i, s.invariant, fixedClockLimits );
@@ -741,7 +745,7 @@ void Evaluator::computeLocClockLimits( const vector< instance_t > &procs ) {
         // bounds propagation
         change = false;
         i = 0;
-        for ( const instance_t &p : procs ) {
+        for ( const instance_t &p : ProcessTable ) {
             for ( edge_t &e : p.templ->edges ) {
                 vector< bool > reseted;
                 collectResets( i, *p.templ, e, reseted );

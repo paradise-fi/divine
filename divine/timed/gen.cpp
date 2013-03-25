@@ -278,6 +278,7 @@ void TAGen::read( const std::string& path ) {
 }
 
 void TAGen::initial( char* d ) {
+	assert( stateSize() == offVar + eval.getReqSize() );
     memset( d, 0, stateSize() );
     setData( d );
     for ( auto proc = procs.begin(); proc != procs.end(); ++proc )
@@ -397,6 +398,8 @@ void TAGen::addAuxClock() {
     assert( auxResetExpr.empty() );
     UTAP::symbol_t aux = sys.getGlobals().frame.addSymbol( "_aux", UTAP::type_t::createPrimitive( UTAP::Constants::CLOCK ), NULL );
     eval.addSymbol( aux, -1 );
+	// state size has changed
+	size = offVar + eval.getReqSize();
     // create expression "_aux = 0"
     auxResetExpr = UTAP::expression_t::createBinary( UTAP::Constants::ASSIGN,
         UTAP::expression_t::createIdentifier( aux ), UTAP::expression_t::createConstant( 0 ) );
