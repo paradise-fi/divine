@@ -26,13 +26,13 @@ struct Input {
 
 struct Execution {
     int initialTable;
-    int diskFifo;
+    bool diskFifo;
 
     int threads;
     int nodes;
     int thisNode;
 
-    Execution() : initialTable( 32 ), diskFifo( 0 ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
+    Execution() : initialTable( 32 ), diskFifo( false ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
 };
 
 struct Algorithm {

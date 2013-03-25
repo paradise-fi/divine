@@ -123,6 +123,8 @@ struct Algorithm
     void parallel( void (T::*fun)() ) {
         T *self = static_cast< T * >( this );
 
+        self->comms().enableSaving( self->meta().execution.diskFifo );
+
         self->topology().distribute( self->shared, &T::setShared );
         self->topology().parallel( fun );
         self->shareds.clear();

@@ -117,9 +117,8 @@ template< typename _T >
 struct FifoMatrix
 {
     typedef _T T;
-    typedef divine::Fifo< T > Fifo;
+    typedef divine::DiskFifo< T > Fifo;
     std::vector< std::vector< Fifo > > m_matrix;
-    int fifoParam;
 
     void validate( int from, int to ) {
         assert_leq( from, int( m_matrix.size() ) - 1 );
@@ -163,15 +162,12 @@ struct FifoMatrix
             m_matrix[ i ].resize( size );
     }
 
-    void setup( int param ) {
-        fifoParam = param;
-    }
-
-    void notify( int workerId, Pool *pool ) {
-        /* for ( int i = 0; i < m_matrix.size(); ++i ) {
-            m_matrix[ workerId ][ i ].setup( fifoParam, pool, NULL );
-            m_matrix[ i ][ workerId ].setup( fifoParam, NULL, pool );
-        } */
+    void enableSaving( bool enable = true ) {
+        for ( auto& v : m_matrix ) {
+            for ( auto& fifo : v ) {
+                fifo.enableSaving( enable );
+            }
+        }
     }
 };
 

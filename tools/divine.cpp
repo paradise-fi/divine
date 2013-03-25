@@ -125,7 +125,7 @@ struct Main {
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info, *cmd_simulate;
     OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
-    IntOption *o_diskfifo;
+    BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction;
     StringOption *o_reduce;
     BoolOption *o_noreduce;
@@ -337,9 +337,9 @@ struct Main {
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
 
-        o_diskfifo = common->add< IntOption >(
+        o_diskFifo = common->add< BoolOption >(
             "disk-fifo", '\0', "disk-fifo", "",
-            "save long queues on disk to reduce memory usage" );
+            "save long queues to disk to reduce memory usage" );
 
         o_hashCompaction = common->add< BoolOption >(
             "hash-compaction", '\0', "hash-compaction", "",
@@ -549,6 +549,7 @@ struct Main {
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
+        meta.execution.diskFifo = o_diskFifo->boolValue();
         if ( opts.foundCommand() == cmd_simulate )
             meta.input.trace = o_inputTrace->stringValue();
         else
