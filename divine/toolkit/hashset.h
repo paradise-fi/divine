@@ -68,8 +68,8 @@ struct HashSet
     size_t size() const { return m_table.size(); }
     bool empty() const { return !m_used; }
 
-    int index( int h, int i ) const {
-        const int Q = 1, R = 1, thresh = 16;
+    size_t index( size_t h, size_t i ) const {
+        const size_t Q = 1, R = 1, thresh = 16;
         if ( i <= thresh )
             return (h + i) & m_bits;
         else {
@@ -129,7 +129,7 @@ struct HashSet
         if ( !growing && size_t( m_used ) > (size() / 100) * 75 )
             grow();
 
-        int idx;
+        size_t idx;
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( c.hash, i );
 
