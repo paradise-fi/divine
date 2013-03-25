@@ -1,9 +1,7 @@
-Files under divine/ are copyright (c) 2007, 2008, 2009 by ParaDiSe Laboratory
-member Petr Rockai <me@mornfall.net>, with exception of files under
-divine/legacy, divine/ltl2ba and files divine/dlfcn-win32.{h,c}, see below.
-
-Files under gui/ are copyright (c) 2009 by ParaDiSe Laboratory member Martin
-Moráček <xmoracek@fi.muni.cz>.
+Files under divine/ are copyright (c) 2007-2013, ParaDiSe Laboratory. More
+detailed authorship info can be found inside the files.  Files under gui/ are
+copyright (c) 2009-2013 by ParaDiSe Laboratory member Martin Moráček
+<xmoracek@fi.muni.cz>.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -29,22 +27,18 @@ POSSIBILITY OF SUCH DAMAGE.
 
 --
 
-The files under divine/legacy, divine/ltl2ba, ltl2dstar/, ltl2ba/ and hoard/ are copyrighted by
-their respective authors and covered by the GNU General Public License version
-2, as reproduced below.
-
-DiVinE is (c) 2003-2007 members of the ParaDiSe Laboratory: Jiri
-Barnat, Lubos Brim, Jakub Chaloupka, Jitka Kudrnacova, Pavel Moravec,
-Petr Rockai, Pavel Simecek. Portions of the code are copyright (c)
-2003-2007 Michael Weber.
+The files under divine/ltl2ba and external/ are copyrighted by their respective
+authors and covered by the GNU General Public License version 2, as reproduced
+below, unless specified otherwise.
 
 HOARD is (c) 1998-2007 by Emery Berger <emery@cs.umass.edu>.
 
-ltl2ba is (c) 2001-2007 by Denis Oddoux and Paul Gastin
-
-ltl2dstar is (c) 2005-2007 by Joachim Klein <j.klein@ltl2dstar.de>
-
-The files divine/dlfcn-win32.{h,c} are (c) 2007 Ramiro Polla.
+external/ltl2ba is (c) 2001-2007 by Denis Oddoux and Paul Gastin
+external/ltl2dstar is (c) 2005-2007 by Joachim Klein <j.klein@ltl2dstar.de>
+external/ltl2ba is (c) 2012 Tomáš Babiak (in addition to ltl2ba copyright above)
+external/murphi is (c) 1992-1999 the Board of Trustees of Leland Stanford
+  Junior University, a 4-clause BSD-style license (see external/murphi/mu.h)
+external/dlfcn-win32 is (c) 2007 Ramiro Polla
 
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991

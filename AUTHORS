@@ -1,18 +1,24 @@
-DiVinE (2003-2011), by members of the ParaDiSe Laboratory:
+DiVinE (2003-2013), by members of the ParaDiSe Laboratory:
 
-Jiri Appl
-Jiri Barnat
-Petr Bauch
-Lubos Brim
+Jiří Barnat
+Nikola Beneš
+Vojtěch Havel
+Jan Havlíček
+Jan Kriho
+Milan Lenčo
+Martin Moráček
+Petr Ročkai
+Vladimír Štill
+Jiří Weiser
+
+Former contributors whose code is no longer present:
+Jiří Appl
 Jakub Chaloupka
-Tomas Janousek
-Jitka Kudrnacova
+Tomáš Janoušek
 Pavel Moravec
-Martin Moracek
-Petr Rockai
-Pavel Simecek
-
-Portions of the code have been written by:
+Jitka Kudrnáčová
+Roman Plášil
+Pavel Šimeček
 Michael Weber
 
 HOARD (1998-2007) by Emery Berger <emery@cs.umass.edu>.
@@ -22,5 +28,6 @@ Murphi (1990-1999) by David Dill, Andreas Drexler, Alan Hu, Han Yang,
        Norris Ip, Ralph Melton, Seungjoon Park, Ulrich Stern
 ltl2dstar (2005-2007) by Joachim Klein <j.klein@ltl2dstar.de>
 ltl2ba (2001-2007) by Denis Oddoux, Paul Gastin
+ltl3ba (2012) Tomáš Babiak
 
 See COPYING for authoritative copyright and licence information.
