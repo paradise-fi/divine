@@ -171,22 +171,31 @@ public:
 
 private:
     std::string fileName( int id ) {
+		static std::string path;
+		if ( path.empty() ) {
+			path = "/tmp/";
+			for ( const char *env : {"TMPDIR", "TEMP", "TMP"} ) {
+				const char* p = getenv( env );
+				if ( p ) {
+					path = p;
+					break;
+				}
+			}
+		}
         std::stringstream ss;
-#ifdef POSIX
-        ss << "/tmp/";
-#elif defined _WIN32
-        ss << "%TEMP%\\";
-#endif
         ss << "fifo" << this << '_' << id << ".tmp";
-        return ss.str();
+        return wibble::str::joinpath( path, ss.str() );
     }
 
     void closeFiles() {
         rfile.close();
-        wfile.close();
-        for ( ; rfid <= wfid; rfid++ ) {
+        for ( ; rfid < wfid; rfid++ ) {
             remove( fileName( rfid ).c_str() );
         }
+		if ( wfile.is_open() ) {
+        	wfile.close();
+			remove( fileName( wfid ).c_str() );
+		}
     }
 
     void saveNodes() {
@@ -240,6 +249,9 @@ private:
     }
 
     bool write( Node *n ) {
+		// files exceeding this size are split (0 disables this)
+		const std::streampos MAXSIZE = 2000 * 1024 * 1024;
+
         if ( !wfile.is_open() ) {
             wfile.open( fileName( wfid ).c_str(),
                 std::ios_base::out | std::ios_base::binary | std::ios_base::trunc );
@@ -267,7 +279,7 @@ private:
              return false;
         }
         wpos += toWrite;
-        if ( wpos > 100 * 1000000 ) {
+        if ( MAXSIZE && wpos > MAXSIZE ) {
             wfile.close();
         }
 
@@ -284,10 +296,14 @@ private:
         do {
             if ( rfid == wfid && wpos == rpos )
                 return false; // nothing to read
+            if ( rfid == wfid ) { // prevent reading and writing to the same file
+                wfile.close();
+                wfid++;
+            }
 
             if ( !rfile.is_open() ) {
                 rfile.open( fileName( rfid ).c_str(),
-                    std::ios_base::in | std::ios_base::binary | std::ios_base::trunc );
+                    std::ios_base::in | std::ios_base::binary );
                 if ( !rfile.is_open() ) {
                     std::cerr << "ERROR: Reading FAILED, aborting" << std::endl;
                     closeFiles();
@@ -303,10 +319,6 @@ private:
                 rfile.close();
                 remove( fileName( rfid ).c_str() );
                 rfid++;
-                if ( rfid == wfid ) { // prevent reading and writing to the same file
-                    wfile.close();
-                    wfid++;
-                }
             }
         } while ( length == 0 );
 
