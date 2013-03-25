@@ -50,7 +50,7 @@ UTAP::type_t Evaluator::getBasicType( const UTAP::type_t &type ) {
 
 int Evaluator::getArraySizes ( int procId, const type_t &type, vector< int > &output ) {
     type_t t = type;
-    
+
     int size = 1;
     while ( t.isArray() || t.isRecord() ) {
         if ( t.isArray() ) {
@@ -139,7 +139,7 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
 void Evaluator::processFunctionDecl( const function_t &f, int procId ) {
     funs[ make_pair( f.uid, procId ) ] = FuncData( f );
 }
-    
+
 void Evaluator::processSingleDecl( const symbol_t &s,
                         const expression_t &initializer,
                         int procId,
@@ -156,8 +156,8 @@ void Evaluator::processSingleDecl( const symbol_t &s,
 
     if ( type.is( REF ) && !basicType.is( CONSTANT ) ) {
         symbol_t ref_symbol = initializer.getSymbol();
-    
-        VarData new_vardata( getVarData( procId, ref_symbol ) ); 
+
+        VarData new_vardata( getVarData( procId, ref_symbol ) );
         if ( ref_symbol.getType().isArray() && initializer.getKind() != IDENTIFIER ) {
             int pSize;
             auto p = getArray( procId, initializer, &pSize );
@@ -207,9 +207,9 @@ void Evaluator::processSingleDecl( const symbol_t &s,
         pair< int, int > ranges;
         if ( basicType.is( UTAP::Constants::BOOL ) )
             ranges = make_pair( 0, 1 );
-        else if ( basicType.is( CONSTANT ) ) 
+        else if ( basicType.is( CONSTANT ) )
             ranges = make_pair( numeric_limits< int >::min(), numeric_limits< int >::max() );
-        else 
+        else
             ranges = evalRange( procId, basicType);
 
         int default_value;
@@ -218,7 +218,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
             default_value = ranges.first;
         else
             default_value = 0;
-        
+
         if ( type.isArray() || type.isRecord() ) {
             /*
              *  ARRAY value
@@ -236,9 +236,9 @@ void Evaluator::processSingleDecl( const symbol_t &s,
 
             vector< int > arrSizes;
             int size = getArraySizes( procId, type, arrSizes );
-            
+
             if ( prefix == PrefixType::NONE ) {
-                vars.insert( make_pair( make_pair( s, procId ), 
+                vars.insert( make_pair( make_pair( s, procId ),
                             VarData( Type::ARRAY, prefix, initValues.size(), arrSizes, size, ranges ) ) );
                 if ( initializer.empty() )
                     initValues.insert( initValues.end(), size, default_value );
@@ -259,7 +259,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                         vals.resize( size, default_value );
                     else
                         parseArrayValue( initializer, vals, procId );
-                    
+
                     for ( int i = 0; i < size; i++ ) {
                         if ( !inRange( procId, s, vals[ i ] ) ) {
                             emitError( EvalError::OUT_OF_RANGE );
@@ -299,7 +299,6 @@ void Evaluator::processSingleDecl( const symbol_t &s,
         }
     }
 }
-    
 
 int32_t Evaluator::unop( int procId, const Constants::kind_t op, const expression_t &a ) {
     int result;
@@ -324,14 +323,13 @@ int32_t Evaluator::unop( int procId, const Constants::kind_t op, const expressio
         result = eval( procId, a );
         assign( a, result - 1, procId );
         return result;
-    
-    default: 
+
+    default:
         cerr << "Unknown unop " << op << endl;
         assert( false );
         return 0;
     }
 }
-
 
 int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const expression_t &a,
         const expression_t &b ) {
@@ -357,9 +355,9 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
             clock_id = resolveId( procId, b );
             value = eval( procId, a );
             switch ( op ) {
-            case GT:    return clocks.constrainBelow( clock_id, value, true ); 
+            case GT:    return clocks.constrainBelow( clock_id, value, true );
             case GE:    return clocks.constrainBelow( clock_id, value, false );
-            case LT:    return clocks.constrainAbove( clock_id, value, true ); 
+            case LT:    return clocks.constrainAbove( clock_id, value, true );
             case LE:    return clocks.constrainAbove( clock_id, value, false );
             case EQ:    return clocks.constrainAbove( clock_id, value, false )
                             && clocks.constrainBelow( clock_id, value, false );
@@ -393,9 +391,9 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
             clock_idR = resolveId( procId, b[1] );
             value = eval( procId, a );
             switch ( op ) {
-            case GT:    return clocks.constrainClocks( clock_idL, clock_idR, value, true ); 
+            case GT:    return clocks.constrainClocks( clock_idL, clock_idR, value, true );
             case GE:    return clocks.constrainClocks( clock_idL, clock_idR, value, false );
-            case LT:    return clocks.constrainClocks( clock_idR, clock_idL, -value, true ); 
+            case LT:    return clocks.constrainClocks( clock_idR, clock_idL, -value, true );
             case LE:    return clocks.constrainClocks( clock_idR, clock_idL, -value, false );
             case EQ:    return clocks.constrainClocks( clock_idL, clock_idR, value, false )
                             && clocks.constrainClocks( clock_idR, clock_idL, -value, false );
@@ -406,7 +404,7 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
             }
         }
     }
-    
+
     int32_t b_num;
     pair< const VarData*, int > p;
     switch ( op ) {
@@ -464,7 +462,7 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
 
     case MAX:   return max( eval( procId, a ), eval( procId, b ) );
     case MIN:   return min( eval( procId, a ), eval( procId, b ) );
-    
+
     case ARRAY:
         p = getArray( procId, expression_t::createBinary( ARRAY, a, b ) );
         return getValue( *p.first )[ p.second ];
@@ -549,7 +547,7 @@ void Evaluator::assign( const expression_t& lval, int32_t val, int pId ) {
         data = &metaValues[0];
     else
         data = Evaluator::data;
-    
+
     if ( lval.getType().is( CLOCK ) )   // assign to clock
         clocks.set( index, val );
     else {      // assign to variable
@@ -576,7 +574,7 @@ void Evaluator::assign( const expression_t& lexp, const expression_t& rexp, int 
             data = &metaValues[0];
         else
             data = Evaluator::data;
-        
+
         int32_t *pDest = data + arr.first->offset + arr.second;
         arr = getArray( pId, rexp, &size );
         int32_t *pSrc = data + arr.first->offset + arr.second;
@@ -599,14 +597,14 @@ int32_t *Evaluator::getValue( const VarData &var ) {
     if ( var.prefix == PrefixType::NONE ) {   // get variable
         data = Evaluator::data;
     } else {                                  // get constant or local variable
-        assert( metaValues.size() > 0 ); 
+        assert( metaValues.size() > 0 );
         data = &metaValues[0];
     }
 
     assert( data );
     return data + var.offset;
 }
-    
+
 int32_t *Evaluator::getValue( int procId, const symbol_t& s ) {
     const VarData& var = getVarData( procId, s );
     return getValue( var );
@@ -626,7 +624,7 @@ bool Evaluator::isChanBcast( int ch ) const {
 
 void Evaluator::processDeclGlobals( UTAP::TimedAutomataSystem &sys ) {
     assert( ProcessTable.empty() );
-    
+
     for ( const function_t &f : sys.getGlobals().functions )
         // global functions
         processFunctionDecl( f, -1 );
@@ -702,7 +700,7 @@ void Evaluator::collectResets( int pId, const template_t &templ, const edge_t &e
             out[ resolveId( pId, tmp[0][0] ) ] = true;
         }
         tmp = tmp[1];
-    } 
+    }
     if ( tmp.getKind() == ASSIGN && tmp[0].getType().isClock() )
         out[ resolveId( pId, tmp[0] ) ] = true;
 }
@@ -824,7 +822,7 @@ void Evaluator::evalCmd( int procId, const expression_t& expr ) {
         assign( expr[0], expr[1], procId );
         break;
     case( ASSPLUS ):
-    case( ASSMINUS ): 
+    case( ASSMINUS ):
     case( ASSDIV ):
     case( ASSMOD ):
     case( ASSMULT ):
@@ -853,7 +851,7 @@ void Evaluator::pushStatements( int procId, vector< StatementInfo > &stack, Stat
         reverse_copy( blk_stmt->begin(), blk_stmt->end(), stack.end() - blockSize );
     } else {
         // special case when block consists of only one statement
-        // 
+        //
         // in this case the are no variables in the block
         stack.push_back( block );
     }
@@ -884,10 +882,10 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
         assert( stmt );
 
         if ( dynamic_cast< const EmptyStatement *>( stmt ) ) {
-        
+
         } else if ( dynamic_cast< const ExprStatement* >( stmt ) ) {
             evalCmd( procId, dynamic_cast< const ExprStatement* >( stmt )->expr );
-        
+
         } else if ( dynamic_cast< const ForStatement* >( stmt ) ) {
             const ForStatement *for_stmt = dynamic_cast< const ForStatement* >( stmt );
             if ( stmt_info.iterCount == 0 )
@@ -923,7 +921,7 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
                 pushStatements( procId, statementStack, stmt_info );
                 pushStatements( procId, statementStack, StatementInfo( while_stmt->stat ) );
             }
-        
+
         } else if ( dynamic_cast< const DoWhileStatement* >( stmt ) ) {
             const DoWhileStatement *dowhile_stmt = dynamic_cast< const DoWhileStatement* >( stmt );
             ++stmt_info.iterCount;
@@ -932,11 +930,11 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
                 pushStatements( procId, statementStack, stmt_info );
                 pushStatements( procId, statementStack, StatementInfo( dowhile_stmt->stat ) );
             }
-        
+
         } else if ( dynamic_cast< const BlockStatement* >( stmt ) ) {
             const BlockStatement *blk = dynamic_cast< const BlockStatement* >( stmt );
             pushStatements( procId, statementStack, StatementInfo( blk ) );
-        
+
         } else if ( dynamic_cast< const SwitchStatement* >( stmt ) ) {
             // UTAP does not know switch, case, default keywords
             cerr << "Switch statement is not supported" << endl;
@@ -947,12 +945,12 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
             cerr << "Case statement is not supported" << endl;
             assert( false );
             return expression_t::createConstant( 0 );
-        
+
         } else if ( dynamic_cast< const DefaultStatement* >( stmt ) ) {
             cerr << "Default statement is not supported" << endl;
             assert( false );
             return expression_t::createConstant( 0 );
-        
+
         } else if ( dynamic_cast< const IfStatement* >( stmt ) ) {
             const IfStatement *eval_stmt = dynamic_cast< const IfStatement* >( stmt );
             bool cond_value = eval( procId, eval_stmt->cond );
@@ -963,7 +961,7 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
                 assert( eval_stmt->falseCase );
                 pushStatements( procId, statementStack, StatementInfo( eval_stmt->falseCase ) );
             }
-        
+
         } else if ( dynamic_cast< const BreakStatement* >( stmt ) ) {
             // NOTE: UTAP library declares BreakStatement and ContinueStatement, but UPPAAL does not
             //      know break nor continue keyword...
@@ -976,17 +974,17 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
             cerr << "Continue statement is not supported" << endl;
             assert( false );
             return expression_t::createConstant( 0 );
-        
+
         } else if ( dynamic_cast< const ReturnStatement* >( stmt ) ) {
             return dynamic_cast< const ReturnStatement* >( stmt )->value;
-        
+
         } else {
             cerr << "Unknown statement type" << std::endl;
             assert( false );
             return expression_t::createConstant( 0 );
         }
     }
-    
+
     return expression_t::createConstant( 0 );
 }
 
@@ -1055,9 +1053,9 @@ void Evaluator::extrapolate() {
 }
 
 /*
- *  resolveId() 
+ *  resolveId()
  */
-int Evaluator::resolveId( int procId, const expression_t& expr ) { 
+int Evaluator::resolveId( int procId, const expression_t& expr ) {
     assert( expr.getType().is( CHANNEL ) || expr.getType().is( CLOCK ) || expr.getType().is( PROCESS ) );
     if ( expr.getKind() != ARRAY ) {
         return getVarData( procId, expr ).offset;
@@ -1084,10 +1082,9 @@ std::ostream& operator<<( std::ostream& o, Evaluator& e ) {
         }
     }
     o << e.clocks;
-    
+
     return o;
 }
-
 
 static bool isConstant( const expression_t &expr ) {
     set< symbol_t > reads;
@@ -1101,6 +1098,7 @@ static bool isConstant( const expression_t &expr ) {
 void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr ) {
     setClockLimits( procId, expr, fixedClockLimits );
 }
+
 void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vector< pair< int32_t, int32_t > > &out ) {
     if ( expr.empty() )
         return;
@@ -1217,4 +1215,3 @@ pair < int32_t, int32_t > Evaluator::getRange( int procId, const expression_t &e
         return ( make_pair( numeric_limits< int >::min(), numeric_limits< int >::max() ) );
     }
 }
-

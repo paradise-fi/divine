@@ -25,7 +25,7 @@ private:
         int elementsCount;
 
         std::pair< int, int > ranges;
-       
+
         VarData( ) {}
         VarData( Type t,
                 PrefixType p,
@@ -34,7 +34,7 @@ private:
                                                                 std::numeric_limits< int >::max() ) ) :
                 type( t ), prefix( p ), offset( off ), ranges( r ) {}
         VarData(    Type t, PrefixType p, int off, const std::vector< int > &aS,
-                    int elC, const std::pair< int, int > r = std::make_pair( 
+                    int elC, const std::pair< int, int > r = std::make_pair(
                                                                 std::numeric_limits< int >::min(),
                                                                 std::numeric_limits< int >::max() ) ) :
                 type( t ),
@@ -52,9 +52,9 @@ private:
     struct FuncData {
         // NOTE: _fun_ has to be a pointer as function_t does not copy instances properly
         const UTAP::function_t *fun;
-        
+
         FuncData( ) {}
-        FuncData( const UTAP::function_t &f ) : fun ( &f ) {}    
+        FuncData( const UTAP::function_t &f ) : fun ( &f ) {}
     };
 
     struct NamedInstance : public UTAP::instance_t {
@@ -89,10 +89,9 @@ private:
     void computeLocalBounds();
 
     /*
-     *  getArraySizes returns the size of the whole array (i.e. for a[2][3] 
+     *  getArraySizes returns the size of the whole array (i.e. for a[2][3]
      *  returns 6). Moreover, vector _output_ is filled with the size for each dimension.
      */
-
     int getArraySizes( int procId, const UTAP::type_t &type, std::vector< int > &output );
     void assign( const UTAP::expression_t& lexp, int32_t val, int pId );
     void assign( const UTAP::expression_t& lexp, const UTAP::expression_t& rexp, int pId );
@@ -129,6 +128,7 @@ private:
         StatementInfo( ) { }
         StatementInfo( const UTAP::Statement* s, int ic = 0 ) : stmt( s ), iterCount( ic ) {}
     };
+
     void pushStatements( int, std::vector< StatementInfo > &, StatementInfo );
     void emitError( int code ) __attribute__((noreturn));
     void setClockLimits( int procId, const UTAP::expression_t &exp, std::vector< std::pair< int32_t, int32_t > > & );
@@ -153,7 +153,7 @@ public:
     // read individual process instances; processDeclGlobals has to be called first
     void processDecl( const std::vector< UTAP::instance_t > &procs );
 
-    // evaluate expression and return its value    
+    // evaluate expression and return its value
     int32_t eval( int procId, const UTAP::expression_t& expr );
 
     // run command
@@ -208,7 +208,7 @@ public:
         assert( expr.getType().is( UTAP::Constants::CHANNEL ) );
         return resolveId( procId, expr );
     }
-    
+
     bool isChanUrgent( int ch ) const;
     bool isChanBcast( int ch ) const;
     int getChanPriority( int ch ) const {
