@@ -4,6 +4,7 @@
 #include <divine/dve/parse.h>
 #include <divine/dve/symtab.h>
 #include <divine/dve/expression.h>
+#include <iostream>
 
 #include <memory>
 #include <unordered_set>
@@ -41,6 +42,10 @@ struct LValue {
         : idx( tab, lv.idx ), _valid( lv.valid() )
     {
         symbol = tab.lookup( NS::Variable, lv.ident.name() );
+        if ( symbol.item().is_constant ) {
+            std::cerr << "Cannot use a constant as lvalue!" << std::endl;
+            throw;
+        }
         assert( symbol.valid() );
     }
 
@@ -469,7 +474,8 @@ struct Transition {
 static inline void declare( SymTab &symtab, const parse::Decls &decls )
 {
     for ( parse::Decls::const_iterator i = decls.begin(); i != decls.end(); ++i ) {
-        symtab.allocate( NS::Variable, *i );
+        if ( !i->is_const )
+            symtab.allocate( NS::Variable, *i );
         std::vector< int > init;
         EvalContext ctx;
         for ( size_t j = 0; j < i->initial.size(); ++j ) {
@@ -480,7 +486,7 @@ static inline void declare( SymTab &symtab, const parse::Decls &decls )
         assert_leq( 0, i->size );
         while ( init.size() < static_cast<unsigned>(i->size) )
             init.push_back( 0 );
-        symtab.constant( NS::Initialiser, i->name, init );
+        symtab.constant( i->is_const ? NS::Variable : NS::Initialiser, i->name, init );
     }
 }
 
