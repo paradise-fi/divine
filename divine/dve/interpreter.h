@@ -42,10 +42,8 @@ struct LValue {
         : idx( tab, lv.idx ), _valid( lv.valid() )
     {
         symbol = tab.lookup( NS::Variable, lv.ident.name() );
-        if ( symbol.item().is_constant ) {
-            std::cerr << "Cannot use a constant as lvalue!" << std::endl;
-            throw;
-        }
+        if ( symbol.item().is_constant )
+            lv.fail( "Cannot use a constant as lvalue!", parse::System::Fail::Semantic );
         assert( symbol.valid() );
     }
 
