@@ -167,6 +167,14 @@ timed_small() {
     run $wrapper data/bridge.xml --property=1 "$@"
     check ltl_invalid
     check statespace 2593 5542 277 0
+
+	run $wrapper data/zeno.xml --property=0 "$@"
+	check ltl_invalid
+	check statespace 2 2 2 0
+
+	run $wrapper data/zeno.xml --property=0 --fair "$@"
+	check ltl_valid
+	check statespace 7 8 3 3
 }
 
 murphi_small() {
