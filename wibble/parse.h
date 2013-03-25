@@ -278,6 +278,7 @@ struct Parser {
     typedef ParseContext< Token, Stream > Context;
     Context *ctx;
     typedef typename Context::Fail Fail;
+    int _position;
 
     bool valid() const {
         return ctx;
@@ -292,11 +293,16 @@ struct Parser {
         return context().position;
     }
 
+    void rewind( int i ) {
+        context().rewind( i );
+        _position = context().position;
+    }
+
     void fail( const char *what ) __attribute__((noreturn))
     {
-        Fail f( what, position() );
+        Fail f( what, _position );
         context().failures.push( f );
-        while ( context().failures.top().position < position() )
+        while ( context().failures.top().position < _position )
             context().failures.pop();
         throw f;
     }
@@ -306,7 +312,7 @@ struct Parser {
         if ( t.id == Token::Punctuation && t.data == ";" )
             return;
 
-        context().rewind( 1 );
+        rewind( 1 );
         fail( "semicolon" );
     }
 
@@ -315,7 +321,7 @@ struct Parser {
         if ( t.id == Token::Punctuation && t.data == ":" )
             return;
 
-        context().rewind( 1 );
+        rewind( 1 );
         fail( "colon" );
     }
 
@@ -323,7 +329,7 @@ struct Parser {
         Token t = eat( false );
         if ( t.id == id )
             return t;
-        context().rewind( 1 );
+        rewind( 1 );
         fail( Token::tokenName[id].c_str() );
     }
 
@@ -385,7 +391,7 @@ struct Parser {
             (static_cast< F* >( this )->*f)();
             return true;
         } catch ( Fail fail ) {
-            context().rewind( position() - fallback );
+            rewind( position() - fallback );
             return false;
         }
     }
@@ -396,7 +402,7 @@ struct Parser {
             eat( id );
             return true;
         } catch (Fail) {
-            context().rewind( position() - fallback );
+            rewind( position() - fallback );
             return false;
         }
     }
@@ -410,7 +416,7 @@ struct Parser {
                 *i++ = T( context() );
             }
         } catch (Fail) {
-            context().rewind( position() - fallback );
+            rewind( position() - fallback );
         }
     }
 #if __cplusplus >= 201103L
@@ -445,7 +451,7 @@ struct Parser {
                 (static_cast< F* >( this )->*sep)();
             }
         } catch(Fail) {
-            context().rewind( position() - fallback );
+            rewind( position() - fallback );
         }
     }
 
@@ -458,8 +464,9 @@ struct Parser {
 
     Token eat( bool _fail = true ) {
         Token t = context().remove();
+        _position = context().position;
         if ( _fail && !t.valid() ) {
-            context().rewind( 1 );
+            rewind( 1 );
             fail( "valid token" );
         }
         return t;
@@ -469,7 +476,7 @@ struct Parser {
         Token t = eat( false );
         if ( t.id == id )
             return true;
-        context().rewind( 1 );
+        rewind( 1 );
         return false;
     }
 
