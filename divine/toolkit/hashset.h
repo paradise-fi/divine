@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <tuple>
 #include <wibble/sys/mutex.h>
+#include <divine/toolkit/pool.h>
 
 #ifndef DIVINE_HASHSET_H
 #define DIVINE_HASHSET_H
@@ -15,13 +16,18 @@ typedef uint32_t hash_t;
 // default hash implementation
 template< typename T >
 struct default_hasher {
-    hash_t hash( T t ) const { return t.hash(); }
-    bool valid( T t ) const { return t.valid(); }
-    bool equal( T a, T b )const { return a == b; }
+    Pool& p;
+    default_hasher( Pool& p ) : p( p ) { }
+    hash_t hash( T t ) const { return p.hash( t ); }
+    bool valid( T t ) const { return p.hash( t ); }
+    bool equal( T a, T b )const { return p.compare( a, b ) == 0; }
 };
 
 template<>
 struct default_hasher< int > {
+    template< typename X >
+    default_hasher( X& ) { }
+    default_hasher() = default;
     hash_t hash( int t ) const { return t; }
     bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
