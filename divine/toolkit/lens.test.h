@@ -1,14 +1,18 @@
+#include "divine/toolkit/pool.h"
 #include "divine/toolkit/lens.h"
 #include "divine/toolkit/blob.h"
+
 #include <iostream>
 
 using namespace divine::lens;
 
 struct TestLens {
 
+    divine::Pool pool;
+
     Test tuple() {
         divine::Blob blob( 3 * sizeof( int ) + sizeof( float ) );
-        blob.clear();
+        pool.clear( blob );
 
         struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
         struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
@@ -16,7 +20,7 @@ struct TestLens {
 
         typedef Tuple< IntA, IntB, IntC, float > Foo;
 
-        LinearAddress a( blob, 0 );
+        LinearAddress a( &pool, blob, 0 );
         Lens< LinearAddress, Foo > lens( a );
 
         lens.get( IntA() ) = 1;
@@ -28,11 +32,11 @@ struct TestLens {
 
     Test fixedArray() {
         divine::Blob blob( sizeof( int ) * 10 );
-        blob.clear();
+        pool.clear( blob );
 
         typedef FixedArray< int > Array;
 
-        LinearAddress a( blob, 0 );
+        LinearAddress a( &pool, blob, 0 );
         Lens< LinearAddress, Array > lens( a );
 
         lens.get().length() = 8;
@@ -44,7 +48,7 @@ struct TestLens {
 
     Test basic() {
         divine::Blob blob( 200 );
-        blob.clear();
+        pool.clear( blob );
 
         struct IntArray1 : FixedArray< int > {};
         struct IntArray2 : FixedArray< int > {};
@@ -52,7 +56,7 @@ struct TestLens {
         struct Witch : Tuple< IntArray1, IntArray2 > {};
         struct Doctor: Tuple< IntArray1, int, Witch, float, Matrix > {};
 
-        LinearAddress a( blob, 0 );
+        LinearAddress a( &pool, blob, 0 );
         Lens< LinearAddress, Doctor > lens( a );
 
         lens.get( IntArray1() ).length() = 5;
@@ -104,16 +108,16 @@ struct TestLens {
     Test copy() {
         int size = 2 * sizeof( int );
         divine::Blob blob( size ), copy( size );
-        blob.clear();
-        copy.clear();
+        pool.clear( blob );
+        pool.clear( copy );
 
         struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
         struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
 
         typedef Tuple< IntA, IntB > Foo;
 
-        LinearAddress a( blob, 0 );
-        LinearAddress b( copy, 0 );
+        LinearAddress a( &pool, blob, 0 );
+        LinearAddress b( &pool, copy, 0 );
 
         Lens< LinearAddress, Foo > lens( a );
 
@@ -122,7 +126,7 @@ struct TestLens {
 
         lens.sub( IntA() ).copy( b );
         assert_eq( wibble::str::fmt( copy ), "[ 1, 0 ]" );
-        copy.clear();
+        pool.clear( copy );
 
         lens.copy( b );
         assert_eq( wibble::str::fmt( copy ), "[ 1, 2 ]" );
