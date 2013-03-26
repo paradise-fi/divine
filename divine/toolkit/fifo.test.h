@@ -1,18 +1,20 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
-
+#include <divine/toolkit/pool.h>
 #include <divine/toolkit/fifo.h>
 #include <wibble/sys/thread.h>
 
 using namespace divine;
 
 struct TestFifo {
+    BlobDereference bd;
+
     template< typename T >
     struct Checker : wibble::sys::Thread
     {
         divine::Fifo< T > fifo;
         int terminate;
         int n;
-        
+
         void *main()
         {
             std::vector< int > x;
@@ -61,7 +63,7 @@ struct TestFifo {
             c.start();
             for( int i = 0; i < 128 * 1024; ++i ) {
                 Blob b( sizeof( int ) );
-                b.get< int >() = i;
+                bd.get< int >( b ) = i;
                 c.fifo.push( b );
             }
             c.terminate = true;
