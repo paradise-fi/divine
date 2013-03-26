@@ -200,7 +200,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 trans.front() --;
             } );
 
-        assert( from.valid() );
+        assert( from.getNode().valid() );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
             if ( std::get< 0 >( intrace->get( from ) ).valid() )
