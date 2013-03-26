@@ -448,7 +448,7 @@ struct Shared {
         }
 
         inline void setIds() {
-            bfv.store.id = &worker;
+            bfv.store().id = &worker;
             bfv.open().id = worker.id();
         }
 
