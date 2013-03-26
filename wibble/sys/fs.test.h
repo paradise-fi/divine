@@ -26,7 +26,7 @@ struct TestFs {
         assert(files.find(".") != files.end());
         assert(files.find("..") != files.end());
         assert(files.find("etc") != files.end());
-        assert(files.find("usr") != files.end());
+        assert(files.find("bin") != files.end());
         assert(files.find("tmp") != files.end());
 #endif
     }
