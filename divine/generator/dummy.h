@@ -80,6 +80,12 @@ struct Dummy : Common< Blob > {
     void read( std::string, Dummy * = nullptr ) {}
 };
 
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, Dummy::Label l ) { return bs << l.probability; }
+
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, Dummy::Label &l ) { return bs >> l.probability; }
+
 }
 }
 
