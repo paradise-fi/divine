@@ -72,6 +72,23 @@ struct TableUtils
         setPermanent( s );
     }
 
+    struct iterator {
+        Table *t;
+        size_t n;
+        void bump() {
+            while ( n < t->size() && !t->hasher.valid( (*t)[ n ] ) )
+                ++ n;
+        }
+
+        iterator &operator++() { ++n; bump(); return *this; }
+        bool operator!=( const iterator &o ) const { return o.t != t || o.n != n; }
+        T operator*() { return (*t)[ n ]; }
+        iterator( Table &t, int k ) : t( &t ), n( k ) { bump(); }
+    };
+
+    iterator begin() { return iterator( table, 0 ); }
+    iterator end() { return iterator( table, table.size() ); }
+
     bool has( T s ) { return table.has( s ); }
     bool valid( T a ) { return hasher().valid( a ); }
     hash_t hash( T s ) { return hasher().hash( s ); }
