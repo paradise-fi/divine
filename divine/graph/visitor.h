@@ -97,11 +97,13 @@ struct Common {
 
     Graph &graph;
     Listener &notify;
-    Store &store;
+    Store &_store;
     Queue _queue;
 
+    Store &store() { return _store; }
+
     void expand( Node n ) {
-        if ( store.has( n ) )
+        if ( store().has( n ) )
             return;
         exploreFrom( n );
     }
@@ -132,12 +134,12 @@ struct Common {
         ExpansionAction eact = ExpandState;
 
         bool had = true;
-        hash_t hint = store.hash( _to );
+        hash_t hint = store().hash( _to );
 
         if ( S::transitionHint( notify, from, _to, label, hint ) == IgnoreTransition )
             return;
 
-        Node to = store.fetch( _to, hint, &had );
+        Node to = store().fetch( _to, hint, &had );
 
         /**
          * There is an important part of correct behaviour of shared visitor.
@@ -149,7 +151,7 @@ struct Common {
          */
         tact = S::transition( notify, from, to, label );
         if ( tact != IgnoreTransition && !had ) {
-            store.store( to, hint, &had );
+            store().store( to, hint, &had );
         }
         /**
          * If this thread attempted to store the node and the node has been already stored before,
@@ -163,9 +165,9 @@ struct Common {
         }
 
         if ( tact != IgnoreTransition )
-            store.update( to, hint );
+            store().update( to, hint );
 
-        if ( !store.alias( to, _to ) )
+        if ( !store().alias( to, _to ) )
             graph.release( _to );
 
         if ( tact != IgnoreTransition )
@@ -178,7 +180,7 @@ struct Common {
     void terminate() { _queue.clear(); }
 
     Common( Listener &n, Graph &g, Store &s, Queue q ) :
-        graph( g ), notify( n ), store( s ), _queue( q )
+        graph( g ), notify( n ), _store( s ), _queue( q )
     {
     }
 };
@@ -238,6 +240,7 @@ struct Partitioned {
         typedef Implementation< S, Worker > This;
 
         Store &_store;
+        Store &store() { return _store; }
 
         int owner( Node n, hash_t hint = 0 ) const {
             return graph.owner( _store.hasher(), worker, n, hint );
@@ -326,7 +329,7 @@ struct Partitioned {
 
         template< typename T >
         void setIds( T &bfv ) {
-            bfv.store.id = &worker;
+            bfv._store.id = &worker;
             bfv._queue.id = worker.id();
         }
 
