@@ -2,6 +2,7 @@
 
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/blob.h>
+#include <divine/toolkit/pool.h>
 
 using namespace divine;
 
@@ -46,16 +47,17 @@ struct TestHashset {
     }
 
     Test blobish() {
-        HashSet< Blob > set;
+        Pool p;
+        HashSet< Blob > set( ( typename HashSet< Blob >::Hasher( p ) ) );
         for ( int i = 1; i < 32*1024; ++i ) {
             Blob b( sizeof( int ) );
-            b.get< int >() = i;
+            p.get< int >( b ) = i;
             set.insert( b );
             assert( set.has( b ) );
         }
         for ( int i = 1; i < 32*1024; ++i ) {
             Blob b( sizeof( int ) );
-            b.get< int >() = i;
+            p.get< int >( b ) = i;
             assert( set.has( b ) );
         }
     }
