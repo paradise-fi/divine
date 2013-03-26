@@ -54,7 +54,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         bool limit = t.extension( st ).distance > t.maxdist;
 
         t.dotNode( st, limit );
-        t.graph().porExpansion( st );
 
         if ( limit )
             return visitor::IgnoreState;

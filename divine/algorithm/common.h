@@ -52,6 +52,11 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     void queueInitials( A &a, V &v ) {
         a.graph().initials( [&v] ( Node f, Node n, Label l ) { v.queue( f, n, l ); } );
     }
+
+    template< typename A, typename V >
+    void queuePOR( A &a, V &v ) {
+        a.graph().porExpand( [&v] ( Node f, Node n, Label l ) { v.queueAny( f, n, l ); } );
+    }
 };
 
 struct Algorithm
@@ -125,11 +130,14 @@ struct Algorithm
     }
 
     template< typename Self, typename Setup >
-    void visit( Self *self, Setup setup ) {
+    void visit( Self *self, Setup setup, bool por = false ) {
         typename Setup::Visitor::template Implementation< Setup, Self >
             visitor( *self, *self, self->graph(), self->store(), self->data );
 
-        setup.queueInitials( *self, visitor );
+        if ( por )
+            setup.queuePOR( *self, visitor );
+        else
+            setup.queueInitials( *self, visitor );
         visitor.processQueue();
     }
 

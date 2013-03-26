@@ -86,6 +86,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     typedef Metrics< Setup > This;
     struct Shared : algorithm::Statistics {
         bool need_expand;
+        Shared() : need_expand( false ) {}
     };
 
     ALGORITHM_CLASS( Setup, Shared );
@@ -94,7 +95,6 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         static visitor::ExpansionAction expansion( This &t, Node st )
         {
             t.shared.addNode( t.graph(), st );
-            t.graph().porExpansion( st );
             return visitor::ExpandState;
         }
 
@@ -112,7 +112,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     };
 
     void _visit() { // parallel
-        this->visit( this, Main() );
+        this->visit( this, Main(), shared.need_expand );
     }
 
     void _por_worker() {

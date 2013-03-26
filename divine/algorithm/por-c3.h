@@ -33,6 +33,8 @@ struct PORGraph : graph::Transform< G > {
     typedef typename G::Node Node;
     typedef typename G::Label Label;
 
+    template< typename T > using ASet = std::set< T, AddressCompare< T > >;
+
     int m_algslack;
 
     struct Extension {
@@ -44,6 +46,9 @@ struct PORGraph : graph::Transform< G > {
 
     typedef void (*PredCount)( Node, int );
     PredCount _predCount;
+
+    ASet< Node > to_expand;
+    bool finished;
 
     void updatePredCount( Node t, int v ) {
         extension( t ).predCount = v;
@@ -80,13 +85,6 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
-    template< typename T > using ASet = std::set< T, AddressCompare< T > >;
-    ASet< Node > to_check, to_expand;
-
-    void porExpansion( Node n ) {
-        to_check.insert( n );
-    }
-
     void porTransition( Node f, Node t, PredCount _pc ) {
         _predCount = _pc;
 
@@ -119,31 +117,25 @@ struct PORGraph : graph::Transform< G > {
             return visitor::ForgetTransition;
         }
 
-        template< typename Q >
-        static void init( This &t, Q &q )
+        template< typename V >
+        static void init( This &t, V &v )
         {
-            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
-                  i != t.to_check.end(); i = j )
-            {
-                j = i; ++j;
-                if ( !t.predCount( *i ) || t.extension( *i ).remove ) {
-                    if ( t.predCount( *i ) ) {
-                        t.to_expand.insert( *i );
-                    }
-                    t.updatePredCount( *i, 1 ); // ...
-                    q.queue( Blob(), *i, Label() ); // coming from "nowhere"
-                    t.to_check.erase( i );
-                }
-            }
-        }
+            t.finished = true;
 
-        static void cleanup( This &t )
-        {
-            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
-                  i != t.to_check.end(); i = j ) {
-                j = i; ++j;
-                if ( t.extension ( *i ).done )
-                    t.to_check.erase( i );
+            for ( auto n : v.store() )
+            {
+                if ( t.extension( n ).done )
+                    continue;
+
+                t.finished = false;
+
+                if ( !t.predCount( n ) || t.extension( n ).remove )
+                {
+                    if ( t.predCount( n ) )
+                        t.to_expand.insert( n );
+                    t.updatePredCount( n, 1 ); // ...
+                    v.queue( Blob(), n, Label() ); // coming from "nowhere"
+                }
             }
         }
     };
@@ -156,21 +148,32 @@ struct PORGraph : graph::Transform< G > {
 
         Elim::init( *this, visitor );
         visitor.processQueue();
-        Elim::cleanup( *this );
+    }
+
+    template< typename Store >
+    void breakStalemate( Store &store ) { // this is NOT deterministic :/
+        for ( auto n : store ) {
+            if ( !extension( n ).done ) {
+                updatePredCount( n, 0 );
+                to_expand.insert( n );
+                break;
+            }
+        }
     }
 
     // gives true iff there are nodes that need expanding
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &d, Alg &a ) {
-        to_expand.clear();
-        while ( !to_check.empty() ) {
-            d.parallel( &Alg::_por_worker );
 
-            if ( to_check.empty() )
+        to_expand.clear();
+
+        while ( true ) {
+            d.parallel( &Alg::_por_worker ); // calls _porEliminate
+
+            if ( finished )
                 break;
 
-            updatePredCount( *to_check.begin(), 0 );
-            to_expand.insert( *to_check.begin() );
+            breakStalemate( a.store() );
         }
 
         return to_expand.size() > 0;
@@ -182,30 +185,25 @@ struct PORGraph : graph::Transform< G > {
         visitor::BFV< Elim > visitor( *this, *this, a.store() );
 
         to_expand.clear();
-        while ( !to_check.empty() ) {
+
+        while ( true ) {
             Elim::init( *this, visitor );
             visitor.processQueue();
-            Elim::cleanup( *this );
 
-            if ( to_check.empty() )
+            if ( finished )
                 break;
 
-            // break a stalemate
-            updatePredCount( *to_check.begin(), 0 );
-            to_expand.insert( *to_check.begin() );
+            breakStalemate( a.store() );
         }
 
         return to_expand.size() > 0;
     }
 
     template< typename Yield >
-    void initials( Yield yield ) {
-        if ( to_expand.size() == 0 )
-            this->base().initials( yield );
-        else {
-            for ( auto i : to_expand )
-                fullexpand( yield, i );
-        }
+    void porExpand( Yield yield )
+    {
+        for ( auto n : to_expand )
+            fullexpand( yield, n );
     }
 
     template< typename Yield >
@@ -229,10 +227,8 @@ struct PORGraph : graph::Transform< G > {
         for ( auto i : extra )
             this->base().release( i.first );
 
-        for ( auto i : out ) {
-            const_cast< Blob* >( &i.first )->header().permanent = 1;
+        for ( auto i : out )
             yield( n, i.first, i.second );
-        }
     }
 };
 

@@ -17,6 +17,7 @@ struct ReachabilityShared {
     algorithm::Statistics stats;
     CeShared< Blob > ce;
     bool need_expand;
+    ReachabilityShared() : need_expand( false ) {}
 };
 
 template< typename BS >
@@ -60,7 +61,6 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         static visitor::ExpansionAction expansion( This &r, Node st )
         {
             r.shared.stats.addNode( r.graph(), st );
-            r.graph().porExpansion( st );
             return visitor::ExpandState;
         }
 
@@ -94,7 +94,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     };
 
     void _visit() { // parallel
-        this->visit( this, Main() );
+        this->visit( this, Main(), shared.need_expand );
     }
 
     void _por_worker() {
