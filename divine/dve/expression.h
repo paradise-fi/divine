@@ -235,6 +235,9 @@ struct Expression {
                 if ( !immscope )
                     immscope = &sym;
                 Symbol ident = immscope->lookup( SymTab::Variable, v.ident.name() );
+                if ( !ident.valid() ) {
+                    v.fail( ( "Unresolved identifier: " + v.ident.name() ).c_str(), parse::System::Fail::Semantic );
+                }
                 Token t = v.ident.token;
                 if ( v.idx ) {
                     t.id = TI::Subscript;
