@@ -211,10 +211,18 @@ struct Expression {
             assert( left );
             assert( right );
             Symbol process = sym.lookup( SymTab::Process, left->ident.name() );
+            if ( !process.valid() )
+                left->fail( ( "Couldn't find process: " + left->ident.name() ).c_str(),
+                            parse::System::Fail::Semantic );
             Symbol state = sym.toplevel()->child( process )->lookup(
                 SymTab::State, right->ident.name() );
-            assert( process.valid() );
-            assert( state.valid() );
+            if ( !state.valid() )
+                left->fail( ( "Couldn't find state " + right->ident.name() +
+                              " in process " + left->ident.name() +
+                              " Did you mean " + left->ident.name() +
+                              "->" + right->ident.name() + "?"
+                            ).c_str(),
+                            parse::System::Fail::Semantic );
             rpn_push( ex.op, process, state );
             return;
         }
@@ -224,6 +232,9 @@ struct Expression {
             assert( ex.rhs );
             parse::RValue *left = ex.lhs->rval;
             Symbol process = sym.lookup( SymTab::Process, left->ident );
+            if ( !process.valid() )
+                left->fail( ( "Couldn't find process: " + left->ident.name() ).c_str(),
+                            parse::System::Fail::Semantic );
             const SymTab * procVars = sym.toplevel()->child( process );
             build( sym, *ex.rhs, procVars );
             return;
