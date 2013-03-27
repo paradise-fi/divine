@@ -37,7 +37,7 @@ identity() {
     file=$1
     property=$2
     shift 2
-    fixreduce "$@" "$property" "$file"
+    "$@" "$property" "$file"
 }
 
 dve_compile() {
@@ -46,7 +46,7 @@ dve_compile() {
     shift 2
 
     ann divine compile $file
-    fixreduce "$@" "$property" `basename $file$cesmiext`
+    "$@" "$property" `basename $file$cesmiext`
 }
 
 llvm_assemble() {
@@ -56,8 +56,8 @@ llvm_assemble() {
 
     out=`basename $file .ll`.bc
     ann llvm-as -o=$out $file
-    fixreduce "$@" "$property" $out
+    "$@" "$property" $out
 }
 
 set -e
-"$@"
+fixreduce "$@"
