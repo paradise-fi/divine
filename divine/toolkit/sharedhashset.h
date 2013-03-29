@@ -46,12 +46,20 @@ struct SharedHashSet {
     unsigned size() const { return _size; }
 
     /* TODO: need to revision of store change */
-    explicit SharedHashSet( unsigned size, Hasher h = Hasher() )
-        : mask( 0 ), hasher( h ), _size( size )
-    {
+    explicit SharedHashSet( Hasher h = Hasher() )
+        : mask( 0 ), hasher( h ), _size( 0 )
+    { }
+
+    void setSize( unsigned size ) {
+        _size = size;
+        mask = 0;
         while ((size = size >> 1))
             mask |= size;
         table.resize( mask + 1 );
+    }
+
+    void setHasher( Hasher h ) {
+        hasher = h;
     }
 
     /* TODO: cache-line walking and double hashing */
@@ -157,6 +165,10 @@ struct SharedHashSet {
         }
         std::cerr << "too many collisions" << std::endl;
         abort(); return x;
+    }
+
+    Item operator[]( unsigned index ) {
+        return table[ index ].value;
     }
 
     SharedHashSet( const SharedHashSet & ) = delete;
