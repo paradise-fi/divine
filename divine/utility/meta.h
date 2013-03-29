@@ -47,6 +47,7 @@ struct Algorithm {
 
     bool labels, traceLabels, bfsLayout; /* for drawing */
     bool hashCompaction;
+    bool sharedVisitor;
     bool fairness;
     graph::ReductionSet reduce;
 
@@ -55,6 +56,7 @@ struct Algorithm {
                   maxDistance( 32 ),
                   labels( false ), traceLabels( false ), bfsLayout( false ),
                   hashCompaction( false ),
+                  sharedVisitor( false ),
                   fairness( false ) {}
 };
 
