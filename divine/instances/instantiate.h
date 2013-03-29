@@ -32,14 +32,14 @@ namespace instantiate {
                 << ShowT< Store, store >::value
                 << ", using Partitioned instead." << std::endl;
             return makeAlgorithm< algo, generator, transform,
-                   Store::Partitioned, visitor, topology, statistics >( meta );
+                   Store::Partitioned, Visitor::Partitioned, topology, statistics >( meta );
         }
         if ( !SelectVisitor< visitor >::available ) {
             std::cerr << "Missing visitor: "
                 << ShowT< Visitor, visitor >::value
                 << ", using Partitioned instead." << std::endl;
             return makeAlgorithm< algo, generator, transform,
-                   store, Visitor::Partitioned, topology, statistics >( meta );
+                   Store::Partitioned, Visitor::Partitioned, topology, statistics >( meta );
         }
         if ( !SelectTopology< topology >::available )
             std::cerr << "Missing topology: "
@@ -55,8 +55,12 @@ namespace instantiate {
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
     algorithm::Algorithm* selectVisitor( Meta& meta ) {
-        return makeAlgorithm< algo, generator, transform, store,
-               Visitor::Partitioned, topology, statistics>( meta );
+        if ( meta.algorithm.sharedVisitor )
+            return makeAlgorithm< algo, generator, transform, Store::Shared,
+                   Visitor::Shared, topology, statistics >( meta );
+        else
+            return makeAlgorithm< algo, generator, transform, store,
+                   Visitor::Partitioned, topology, statistics>( meta );
     }
 
     template < Algorithm algo, Generator generator, Transform transform,

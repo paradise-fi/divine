@@ -132,7 +132,7 @@ namespace instantiate {
 #ifdef O_COMPRESSION
 //    STORE_SPEC( Compressed, TreeCompressionStore );
 #endif
-//    STORE_SPEC( Shared, SharedStore );
+    STORE_SPEC( Shared, SharedStore );
 
 #undef STORE_SPEC
 
@@ -148,7 +148,7 @@ namespace instantiate {
     }
 
     VISIT_SPEC( Partitioned );
-//    VISIT_SPEC( Shared );
+    VISIT_SPEC( Shared );
 
 #undef VISIT_SPEC
 
