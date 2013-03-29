@@ -37,7 +37,7 @@ for t_ in $tests; do
     }
     printf "Running %-40s" "$t ..."
     outf=`mktemp output.XXXXXX`
-    bash $t_ > $outf 2>&1
+    if test -n "$INTERACTIVE"; then bash $t_ ; else  bash $t_ > $outf 2>&1; fi
     ret=$?
     if test $ret = 0; then
 	echo " passed."
