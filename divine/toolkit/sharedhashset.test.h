@@ -8,7 +8,8 @@ using namespace divine;
 struct TestSharedHashset
 {
     Test basic() {
-        SharedHashSet< int > set( 8 );
+        SharedHashSet< int > set;
+        set.setSize( 8 );
         assert( !set.has( 1 ) );
         assert( set.insert( 1 ) );
         assert( set.has( 1 ) );
@@ -32,7 +33,8 @@ struct TestSharedHashset
     };
 
     Test stress() {
-        SharedHashSet< int > set( 65536 );
+        SharedHashSet< int > set;
+        set.setSize( 1L << 16 );
         Insert< int > a;
         a.set = &set;
         a.from = 1;
@@ -80,7 +82,8 @@ struct TestSharedHashset
     }
 
     Test multistress() {
-        SharedHashSet< int > set( 20 * 32 * 1024 );
+        SharedHashSet< int > set;
+        set.setSize( 20 * 32 * 1024 );
         multi( &set, 10, 1, 32 * 1024 );
 
         for  ( int i = 1; i < 32 * 1024; ++i ) {
@@ -95,7 +98,8 @@ struct TestSharedHashset
     }
 
     Test parstress() {
-        SharedHashSet< int > set( 64*1024 );
+        SharedHashSet< int > set;
+        set.setSize( 1L << 16 );
         par( &set, 1, 16*1024, 8*1024, 32*1024 );
 
         for ( int i = 1; i < 32*1024; ++i ) {
@@ -104,7 +108,8 @@ struct TestSharedHashset
     }
 
     Test set() {
-        SharedHashSet< int > set( 64*1024 );
+        SharedHashSet< int > set;
+        set.setSize( 1L << 16 );
 
         for ( int i = 1; i < 32*1024; ++i ) {
             assert( !set.has( i ) );
