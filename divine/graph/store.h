@@ -34,22 +34,30 @@ template<> inline void setPermanent( Blob b, bool x ) {
         b.header().permanent = x;
 }
 
-template < typename Table, typename _Hasher, typename Statistics >
+template < typename Self, typename Table, typename _Hasher, typename _Statistics >
 struct TableUtils
 {
     typedef _Hasher Hasher;
+    typedef _Statistics Statistics;
     typedef typename Table::Item T;
 
-    Table table;
+    Self& self() {
+        return *static_cast< Self* >( this );
+    }
+
+    Table& table() {
+        return self().table();
+    }
+
     Hasher &hasher() {
-        return table.hasher;
+        return table().hasher;
     }
 
     WithID *id;
 
     // Retrieve node from hash table
     T fetch( T s, hash_t h, bool *had = 0 ) {
-        T found = table.getHinted( s, h, had );
+        T found = table().getHinted( s, h, had );
 
         if ( alias( s, found ) )
             assert( hasher().valid( found ) );
@@ -67,10 +75,12 @@ struct TableUtils
     // Store node in hash table
     void store( T s, hash_t h, bool * = nullptr ) {
         Statistics::global().hashadded( id->id(), memSize( s ) );
-        Statistics::global().hashsize( id->id(), table.size() );
-        table.insertHinted( s, h );
+        Statistics::global().hashsize( id->id(), table().size() );
+        table().insertHinted( s, h );
         setPermanent( s );
     }
+
+    bool has( T s ) { return table().has( s ); }
 
     struct iterator {
         Table *t;
@@ -86,32 +96,45 @@ struct TableUtils
         iterator( Table &t, int k ) : t( &t ), n( k ) { bump(); }
     };
 
-    iterator begin() { return iterator( table, 0 ); }
-    iterator end() { return iterator( table, table.size() ); }
+    iterator begin() { return iterator( table(), 0 ); }
+    iterator end() { return iterator( table(), table().size() ); }
 
-    bool has( T s ) { return table.has( s ); }
     bool valid( T a ) { return hasher().valid( a ); }
     hash_t hash( T s ) { return hasher().hash( s ); }
     bool equal( T a, T b ) { return hasher().equal( a, b ); }
     bool alias( T a, T b ) { return visitor::alias( a, b ); }
-    void setSize( int sz ) { table.setSize( sz ); }
+    void setSize( size_t sz ) { table().setSize( sz ); }
+    void maxSize( size_t sz ) { table().m_maxsize = sz; }
+    size_t size() { return table().size(); }
 
-    TableUtils() : id( nullptr ) {}
-    /* TODO: need to revision of this change */
-    template< typename... Args >
-    TableUtils( Args&&... args ) :
-        table( std::forward< Args >( args )... ),
+    T operator[]( unsigned index ) { return table()[index]; }
+
+    TableUtils() :
         id( nullptr )
     {}
 };
 
 template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
            typename Statistics = NoStatistics >
-struct PartitionedStore : TableUtils< HashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
+struct PartitionedStore : TableUtils< PartitionedStore< Graph, Hasher, Statistics >, HashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
 {
     typedef typename Graph::Node T;
+    typedef HashSet< T, Hasher > Table;
+    typedef PartitionedStore< Graph, Hasher, Statistics > This;
 
-    PartitionedStore( Graph & ) {}
+    Table _table;
+
+    PartitionedStore() :
+        _table( Hasher() )
+    {}
+    PartitionedStore( Graph &, This * ) :
+        _table( Hasher() )
+    {}
+
+    Table& table() {
+        return _table;
+    }
+
     void update( T s, hash_t h ) {}
 
     template< typename W >
@@ -126,30 +149,50 @@ struct PartitionedStore : TableUtils< HashSet< typename Graph::Node, Hasher >, H
 
 template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
            typename Statistics = NoStatistics >
-struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
+struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics >
 {
     typedef typename Graph::Node T;
-    typedef TableUtils< SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics > Super;
+    typedef SharedHashSet< T, Hasher > Table;
+    typedef std::shared_ptr< Table > TablePtr;
     typedef SharedStore< Graph, Hasher, Statistics > This;
+    typedef TableUtils< This, Table, Hasher, Statistics > Super;
 
-    enum { defaultSharedStoreSize = 65536 };
+    TablePtr _table;
 
-    SharedStore( Graph & ) : Super( defaultSharedStoreSize ) {}
-    SharedStore( unsigned size = defaultSharedStoreSize ) : Super( size ) {}
+    SharedStore( Graph &, This *master ) {
+        if ( master )
+            _table = master->_table;
+        else
+            _table = std::make_shared< Table >();
+    }
+    SharedStore() :
+        _table( std::make_shared< Table >() )
+    {}
+
+    Table& table() {
+        return *_table;
+    }
 
     void update( T s, hash_t h ) {}
 
+    void maxSize( size_t ) {}
+
     void store( T s, hash_t h, bool* had = nullptr ) {
         Statistics::global().hashadded( Super::id->id(), memSize( s ) );
-        Statistics::global().hashsize( Super::id->id(), Super::table.size() );
-        bool _had = !Super::table.insertHinted( s, h );
+        Statistics::global().hashsize( Super::id->id(), table().size() );
+        bool _had = !table().insertHinted( s, h );
         if ( had )
             *had = _had;
         setPermanent( s );
     }
 
+    template< typename W >
+    int owner( W &w, T s, hash_t hint = 0 ) {
+        return w.id();
+    }
+
     T fetch( T s, hash_t h, bool* had = nullptr ) {
-        bool _had = Super::table.has( s, h );
+        bool _had = table().has( s, h );
         if ( had )
             *had = _had;
         return s;
@@ -165,17 +208,26 @@ struct HcHasher : Hasher
 };
 
 template< typename Graph, typename Hasher, typename Statistics >
-struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hasher> >, HcHasher<Hasher>, Statistics >
+struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >, HashSet< typename Graph::Node, HcHasher< Hasher > >, HcHasher< Hasher >, Statistics >
 {
     static_assert( wibble::TSame< typename Graph::Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
-    typedef TableUtils< HashSet< typename Graph::Node, HcHasher<Hasher> >, HcHasher<Hasher>, Statistics > Utils;
     typedef typename Graph::Node Node;
+    typedef HashSet< typename Graph::Node, Hasher > Table;
+    typedef HcStore< Graph, Hasher, Statistics > This;
+    typedef TableUtils< This, Table, HcHasher< Hasher >, Statistics > Utils;
+
 
     Graph &m_graph;
+    Table _table;
 
-    HcStore( Graph &g ) :
-        m_graph( g ) {}
+    HcStore( Graph &g, This * ) :
+        m_graph( g ), _table( HcHasher< Hasher >() )
+    {}
+
+    Table& table() {
+        return _table;
+    }
 
     Blob fetch( Blob s, hash_t h, bool* had = 0 ) {
         Blob found = Utils::fetch( s, h, had );
@@ -194,13 +246,13 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hash
 //        Statistics::global().hashadded( this->id , memSize( stub ) );
 //        Statistics::global().hashsize( this->id, this->table.size() );
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
-        this->table.insertHinted( stub, h );
+        table().insertHinted( stub, h );
         assert( this->equal( s, stub ) );
     }
 
     void update( Blob s, hash_t h ) {
         // update state information in hashtable
-        Blob stub = this->table.getHinted( s, h, NULL );
+        Blob stub = table().getHinted( s, h, NULL );
         assert( this->valid( stub ) );
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
     }
