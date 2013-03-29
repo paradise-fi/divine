@@ -126,7 +126,7 @@ struct Main {
     OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
-    BoolOption *o_fair, *o_hashCompaction;
+    BoolOption *o_fair, *o_hashCompaction, *o_sharedVisitor;
     StringOption *o_reduce;
     BoolOption *o_noreduce;
     BoolOption *o_curses;
@@ -345,6 +345,10 @@ struct Main {
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
 
+        o_sharedVisitor = common->add< BoolOption >(
+            "shared-visitor", '\0', "shared", "",
+            "enable shared visitore instead of partitioned one");
+
         o_seed = common->add< IntOption >(
             "seed", '\0', "seed", "",
             "set seed for hashing, useful with hash-compaction" );
@@ -529,6 +533,7 @@ struct Main {
         meta.output.textFormat = o_textFormat->boolValue();
         meta.output.backEdges = o_findBackEdges->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
+        meta.algorithm.sharedVisitor = o_sharedVisitor->boolValue();
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
                 meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
@@ -646,7 +651,7 @@ struct Main {
             die( "FATAL: Internal error in commandline parser." );
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
-        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs ) // ndfs needs a shared table
+        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs && !meta.algorithm.sharedVisitor ) // ndfs needs a shared table, also Shared visitor have to have size without dividing
             meta.execution.initialTable /= meta.execution.threads;
     }
 
