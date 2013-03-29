@@ -406,12 +406,24 @@ struct Shared {
         BFVShared< S > bfv;
         StorePtr closed;
 
+        Store& store() {
+            return *closed;
+        }
+
         Worker &worker;
         typename S::Listener &notify;
+
+        int owner( Node n, hash_t hint = 0 ) const {
+            return worker.id();
+        }
 
         inline void queue( Node from, Node to, Label label ) {
             setIds();
             bfv.queue( from, to, label );
+        }
+
+        inline void queueAny( Node from, Node to, Label label ) {
+            queue( from, to, label );
         }
 
         visitor::TransitionAction transition( Node f, Node t ) {
