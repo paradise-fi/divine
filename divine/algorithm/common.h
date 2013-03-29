@@ -105,12 +105,12 @@ struct Algorithm
     }
 
     template< typename Self >
-    typename Self::Store *initStore( Self &self ) {
-        typename Self::Store *s = new typename Self::Store( self.graph() );
+    typename Self::Store *initStore( Self &self, Self* master ) {
+        typename Self::Store *s = new typename Self::Store( self.graph(), master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
         s->hasher().setSlack( self.graph().setSlack( m_slack ) );
-        s->setSize( meta().execution.initialTable );
         s->id = &self;
+        s->setSize( meta().execution.initialTable );
         return s;
     }
 
@@ -167,7 +167,9 @@ struct AlgorithmUtils {
     template< typename Self >
     void init( Self *self, Self *master = nullptr ) {
         m_graph = std::shared_ptr< Graph >( self->initGraph( *self, master ) );
-        m_store = std::shared_ptr< Store >( self->initStore( *self ) );
+        if ( master )
+            data = master->data;
+        m_store = std::shared_ptr< Store >( self->initStore( *self, master ) );
     }
 
     Graph &graph() {
