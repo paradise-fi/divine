@@ -118,8 +118,8 @@ struct TestDatastruct {
             while ( !queue->termination.isZero() ) {
 
                 if ( queue->empty() ) {
-                    queue->termination.sync();
                     queue->flush();
+                    queue->termination.sync();
                     continue;
                 }
 
