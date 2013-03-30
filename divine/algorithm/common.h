@@ -106,7 +106,8 @@ struct Algorithm
 
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
-        typename Self::Store *s = new typename Self::Store( self.graph(), master ? &master->store() : nullptr );
+        typename Self::Store *s =
+            new typename Self::Store( self.graph(), master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
         s->hasher().setSlack( self.graph().setSlack( m_slack ) );
         s->id = &self;

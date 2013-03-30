@@ -11,13 +11,13 @@ namespace algorithm {
 
 template< typename T >
 struct AddressCompare {
-    bool operator()( Blob a, Blob b) {
+    bool operator()( Blob a, Blob b ) {
         return a.ptr < b.ptr;
     }
 };
 
 template< typename T > struct AddressCompare< std::pair< Blob, T > > {
-    bool operator()( std::pair< Blob, T > a, std::pair< Blob, T > b) {
+    bool operator()( std::pair< Blob, T > a, std::pair< Blob, T > b ) {
         if ( a.first.ptr < b.first.ptr )
             return true;
         if ( a.first.ptr == b.first.ptr )
