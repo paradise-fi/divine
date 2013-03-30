@@ -127,7 +127,7 @@ struct PartitionedStore : TableUtils< PartitionedStore< Graph, Hasher, Statistic
     PartitionedStore() :
         _table( Hasher() )
     {}
-    PartitionedStore( Graph &, This * ) :
+    PartitionedStore( Graph &, This * = nullptr ) :
         _table( Hasher() )
     {}
 
@@ -159,7 +159,7 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 
     TablePtr _table;
 
-    SharedStore( Graph &, This *master ) {
+    SharedStore( Graph &, This *master = nullptr ) {
         if ( master )
             _table = master->_table;
         else
