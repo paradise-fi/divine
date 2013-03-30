@@ -295,6 +295,7 @@ struct TestVisitor {
 
         G m_graph;
         typename Shared::Data< This > data;
+        SharedStore< G > store;
 
         static TransitionAction transition( This &c, Node f, Node t, Label label ) {
             if ( node( f ) ) {
@@ -307,7 +308,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Shared::Implementation< This, This > shared( *this, *this, m_graph, *data.store, data );
+            Shared::Implementation< This, This > shared( *this, *this, m_graph, store, data );
             if ( !this->m_id )
                 shared.queue( Node(), m_graph.initial(), Label() );
             shared.processQueue();
@@ -332,6 +333,7 @@ struct TestVisitor {
             if ( master ) {
                 int i = 32;
                 while ( expected % i ) i--;
+                store.setSize( 1024 );
                 this->becomeMaster( i, *this );
             }
         }
