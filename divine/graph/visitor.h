@@ -177,7 +177,7 @@ struct Common {
             this->terminate();
     }
 
-    void terminate() { _queue.clear(); }
+    virtual void terminate() { _queue.clear(); }
 
     Common( Listener &n, Graph &g, Store &s, Queue q ) :
         graph( g ), notify( n ), _store( s ), _queue( q )
@@ -207,6 +207,7 @@ struct BFVShared : Common< SharedQueue, S > {
               : Super( l, g, s, typename Super::Queue( ch, g, t ) ) {}
 
     inline typename Super::Queue& open() { return Super::_queue; }
+    virtual void terminate() { Super::terminate(); open().termination.reset(); }
 };
 
 template< typename S >

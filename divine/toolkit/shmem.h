@@ -96,6 +96,8 @@ struct ApproximateCounter {
         return shared.counter == 0;
     }
 
+    void reset() { shared.counter = 0; }
+
     ApproximateCounter( const ApproximateCounter &a )
         : shared( a.shared ), local( a.local )
     {}
