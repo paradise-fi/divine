@@ -207,7 +207,6 @@ struct BFVShared : Common< SharedQueue, S > {
               : Super( l, g, s, typename Super::Queue( ch, g, t ) ) {}
 
     inline typename Super::Queue& open() { return Super::_queue; }
-    //inline typename Super::Queue& open() { return this->_queue; }
 };
 
 template< typename S >
@@ -364,22 +363,15 @@ struct Shared {
     template< typename S >
     struct Data {
         typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
-        typedef typename Chunker::ChunkQ ChunkQ;
-        typedef typename Chunker::Terminator Terminator;
-        typedef typename Chunker::TerminatorPtr TerminatorPtr;
-        typedef SharedHashSet< Blob > Table;
+        typedef SharedHashSet< typename S::Graph::Node > Table;
 
-        typedef typename S::Store Store;
-        typedef std::shared_ptr< Store > StorePtr;
-        typedef std::shared_ptr< ChunkQ > ChunkQPtr;
-
-        ChunkQPtr chunkq;
-        TerminatorPtr terminator;
-        TablePtr table;
+        std::shared_ptr< typename Chunker::ChunkQ > chunkq;
+        std::shared_ptr< typename Chunker::Terminator > terminator;
+        std::shared_ptr< Table > table;
 
         Data() :
-            chunkq( std::make_shared< ChunkQ >() ),
-            terminator( std::make_shared< Terminator >() ),
+            chunkq( std::make_shared< typename Chunker::ChunkQ >() ),
+            terminator( std::make_shared< typename Chunker::Terminator >() ),
             table( std::make_shared< Table >() )
             {}
         Data( const Data& ) = default;
@@ -395,19 +387,12 @@ struct Shared {
         typedef typename S::Statistics Statistics;
 
         typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
-        typedef typename Chunker::ChunkQ ChunkQ;
-        typedef typename Chunker::Terminator Terminator;
-        typedef typename Chunker::TerminatorPtr TerminatorPtr;
-        typedef SharedHashSet< Blob > Table;
 
-        typedef std::shared_ptr< Store > StorePtr;
-        typedef std::shared_ptr< ChunkQ > ChunkQPtr;
-
+        Store closed;
         BFVShared< S > bfv;
-        StorePtr closed;
 
         Store& store() {
-            return *closed;
+            return closed;
         }
 
         Worker &worker;
@@ -443,7 +428,6 @@ struct Shared {
 
         void run() {
             worker.restart();
-            //assert_die();
             while ( !bfv.open().termination.isZero() ) {
                 /* Take a whole chunk of work. */
                 if ( bfv.open().empty() ) {
@@ -455,7 +439,6 @@ struct Shared {
                 }
 
                 bfv.processQueue();
-                //assert_die();
             }
         }
 
@@ -478,11 +461,7 @@ struct Shared {
         }
 
         Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s, Data< typename S::AlgorithmSetup >& d )
-            : bfv( l, g, *(d.store), d.chunkq, d.terminator ), closed( d.store ), worker( w ), notify( l )
-        {}
-
-        Implementation( const Implementation& s )
-            : bfv( s.bfv ), closed( s.closed ), worker( s.worker ), notify( s.notify )
+            : bfv( l, g, s, d.chunkq, d.terminator ), closed( s ), worker( w ), notify( l )
         {}
     };
 };
