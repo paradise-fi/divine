@@ -34,6 +34,7 @@
  */
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution (in future we will provide cassert).
 #ifndef DIVINE
@@ -53,7 +54,9 @@ pthread_cond_t queue_emptiness_cv;
 
 void *consumer( void *arg )
 {
-    (void) arg;
+#ifdef TRACE
+    intptr_t id = ( intptr_t ) arg;
+#endif
     while ( 1 ) {
 
         pthread_mutex_lock( &queue_mutex );
@@ -108,7 +111,7 @@ int main( void )
 
   // create and start all consumers
   for ( i=0; i<NUM_OF_CONSUMERS; i++ ) {
-      pthread_create( &threads[i], 0, consumer, ( void* )( i+1 ) );
+      pthread_create( &threads[i], 0, consumer, ( void* )( intptr_t )( i+1 ) );
   }
 
   // producer:

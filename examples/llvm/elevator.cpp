@@ -16,7 +16,7 @@
  * or the floor one above can be the next to serve (STRATEGY=2).
  *
  * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator.cpp
  *  $ divine verify -p assert elevator.bc [-d]
  * Execute with:
  *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator.exe elevator.cpp
@@ -211,8 +211,8 @@ struct Elevator {
     }
 
     Elevator( int strategy )
-        : current( 1 ), serving( 1 ), waits_for( 0 ), going_to( 0 ),
-          strategy( strategy ), terminated( false ) {}
+        : terminated( false ), current( 1 ), serving( 1 ), waits_for( 0 ),
+          going_to( 0 ), strategy( strategy ) {}
 };
 
 struct Person {

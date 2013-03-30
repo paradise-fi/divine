@@ -43,7 +43,7 @@
  *                  address = "New York, NY, USA",
  *
  * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] leader-unicircle_basic.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_basic.cpp
  *  $ divine verify -p assert leader-unicircle_basic.bc [-d]
  * Execute with:
  *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_basic.exe leader-unicircle_basic.cpp

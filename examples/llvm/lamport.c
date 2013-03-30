@@ -34,6 +34,7 @@
 #define NUM_OF_THREADS  3
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution.
 #ifndef DIVINE
@@ -50,7 +51,7 @@ LTL(exclusion, G(!(critical1 && critical2)));
 #endif
 
 char entering[NUM_OF_THREADS];
-int x, y = 0;
+intptr_t x, y = 0;
 
 int _critical = 0;
 
@@ -62,7 +63,7 @@ void critical() {
 }
 
 void *thread( void *arg ) {
-    int id = (int) arg;
+    intptr_t id = ( intptr_t ) arg;
 
     if ( id == 1 )
         ap( wait1 );
@@ -118,7 +119,7 @@ int main() {
         entering[i] = 0;
 
     for ( i = 0; i < NUM_OF_THREADS; i++ )
-        pthread_create( &threads[i], 0, thread, ( void* )( i + 1 ) );
+        pthread_create( &threads[i], 0, thread, ( void* )( intptr_t )( i + 1 ) );
 
     for ( i = 0; i < NUM_OF_THREADS; i++ )
         pthread_join( threads[i], NULL );

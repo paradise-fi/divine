@@ -27,6 +27,7 @@
 #define NUM_OF_THREADS  2
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution.
 #ifndef DIVINE
@@ -48,7 +49,7 @@ LTL(exclusion, G(!(critical0 && critical1)));
 #define DELTA  1
 
 int *timer;
-int owner = 0;
+intptr_t owner = 0;
 int finished = 0;
 
 int _critical = 0;
@@ -61,7 +62,7 @@ void critical() {
 }
 
 void *fnc_thread( void *arg ) {
-    int id = (int) arg;
+    intptr_t id = (intptr_t) arg;
 
     if ( id == 0 )
         ap( wait0 );
@@ -141,7 +142,7 @@ int main() {
     pthread_create( &threads[0], 0, fnc_timer, NULL );
     for ( i=1; i <= NUM_OF_THREADS; i++ ) {
         timer[i-1] = OFF;
-        pthread_create( &threads[i], 0, fnc_thread, ( void* )( i-1 ) );
+        pthread_create( &threads[i], 0, fnc_thread, ( void* )( intptr_t )( i-1 ) );
     }
 
     for ( i=1; i <= NUM_OF_THREADS; i++ ) {

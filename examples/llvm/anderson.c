@@ -38,6 +38,7 @@
 #define NUM_OF_THREADS  2
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution.
 #ifndef DIVINE
@@ -76,7 +77,7 @@ int fetch_and_add ( int *ptr, int value ) {
 #endif
 
 void *thread( void *arg ) {
-    int id = ( int )arg;
+    intptr_t id = ( intptr_t )arg;
 
 #ifdef BUG                 // incorrect
     int my_place = next++;
@@ -132,7 +133,7 @@ int main() {
     pthread_t threads[NUM_OF_THREADS];
 
     for ( i=0; i < NUM_OF_THREADS; i++ ) {
-        pthread_create( &threads[i], 0, thread, ( void * )( i+1 ) ) ;
+        pthread_create( &threads[i], 0, thread, ( void * )( intptr_t )( i+1 ) ) ;
     }
 
     for ( i=0; i < NUM_OF_THREADS; i++ ) {

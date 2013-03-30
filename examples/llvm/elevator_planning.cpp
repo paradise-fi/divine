@@ -15,7 +15,7 @@
  *
  *
  * Solve with:
- *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator_planning.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator_planning.cpp
  *  $ divine verify -p assert elevator_planning.bc [-d]
  *
  * Output is rather unintuitive. We actually verify if it holds that

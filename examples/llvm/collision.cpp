@@ -32,10 +32,10 @@
  * Source of an original idea:
  *     @inproceedings{
  *          Jensen96modellingand,
- *          author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and Arne Skou",
+ *          author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and Arne Skou",
  *          title = "Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL",
  *          booktitle = "Proceedings of the 2nd International Workshop on the SPIN Verification System",
- *          year = "1996" }
+ *          year = "1996" }
  *
  * Verify with:
  *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] collision.cpp
@@ -191,7 +191,7 @@ struct Medium {
     }
 
     Medium( Station **stations )
-        :  terminated( false ), stations( stations ), buffered( false ) {
+        : terminated( false ), stations( stations ), buffered( false ) {
         pthread_mutex_init( &mutex, NULL );
     }
 };

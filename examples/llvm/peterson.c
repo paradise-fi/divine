@@ -17,6 +17,8 @@
 #ifndef DIVINE
 #include "stdlib.h"
 #include "assert.h"
+
+#define ap( x )
 #endif
 
 struct state {

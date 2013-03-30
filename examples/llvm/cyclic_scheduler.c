@@ -23,6 +23,7 @@
 #define NUM_OF_JOBS        3
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution.
 #ifndef DIVINE
@@ -37,7 +38,7 @@ int job[NUM_OF_CONSUMERS];
 int finished[NUM_OF_CONSUMERS];
 
 void *consumer( void *arg ) {
-    int id = (int) arg;
+    intptr_t id = (intptr_t) arg;
     finished[id] = 0;
 
     for (;;) {
@@ -55,7 +56,7 @@ void *consumer( void *arg ) {
 }
 
 void *scheduler( void *arg ) {
-    int id = (int) arg;
+    intptr_t id = ( intptr_t ) arg;
 
     job[id] = 0;
     pthread_t my_cons;
@@ -85,7 +86,7 @@ int main() {
     for ( i=0; i<NUM_OF_CONSUMERS; i++ ) {
         // Each consumer has its own sub-scheduler.
         // In order to synchronize all this sub-schedulers, technique of token passing is used.
-        pthread_create( &schedulers[i], 0, scheduler, ( void* )( i ) );
+        pthread_create( &schedulers[i], 0, scheduler, ( void* )( intptr_t )( i ) );
     }
 
     for ( i=0; i<NUM_OF_CONSUMERS; i++ ) {

@@ -26,6 +26,7 @@
 #define NUM_OF_THREADS  2
 
 #include <pthread.h>
+#include <stdint.h>
 
 // For native execution.
 #ifndef DIVINE
@@ -54,7 +55,7 @@ void critical() {
 int choosing[NUM_OF_THREADS];
 int number[NUM_OF_THREADS];
 
-void lock( int id ) {
+void lock( intptr_t id ) {
     int max = 0;
     choosing[id] = 1;
     for ( int j = 0; j < NUM_OF_THREADS; j++)
@@ -77,12 +78,12 @@ void lock( int id ) {
     }
 }
 
-void unlock( int id ) {
+void unlock( intptr_t id ) {
     number[id] = 0;
 }
 
 void *thread( void *arg ) {
-    int id = (int) arg;
+    intptr_t id = ( intptr_t ) arg;
 
     if ( id == 0 )
         ap( wait0 );
@@ -110,7 +111,7 @@ int main() {
     for ( i=0; i < NUM_OF_THREADS; i++ ) {
         choosing[i] = 0;
         number[i] = 0;
-        pthread_create( &threads[i], 0, thread, ( void* )( i ) );
+        pthread_create( &threads[i], 0, thread, ( void* )( intptr_t )( i ) );
     }
 
     for ( i=0; i < NUM_OF_THREADS; i++ ) {

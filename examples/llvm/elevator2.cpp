@@ -21,7 +21,7 @@
  * movement.
  *
  * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] elevator2.cpp
+ *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator2.cpp
  *  $ divine verify -p assert elevator2.bc [-d]
  * Execute with:
  *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
@@ -76,19 +76,19 @@ enum AP { r1, r2, c1, c2, open };
 
 #ifdef DIVINE
 // If level 1 is requested, it is served eventually.
-//LTL(property1, G(r1 -> (F(c1 && open))))
+LTL(property1, G(r1 -> (F(c1 && open))));
 
 // If level 1 is requested, it is served as soon as the cab passes.
-//LTL(property2, G(r1 -> (!c1 U (c1 U (c1 && open)))))
+LTL(property2, G(r1 -> (!c1 U (c1 U (c1 && open)))));
 
 // If level 1 is requested, the cab passes the level without serving it at most once.
-//LTL(property3, G(r1 -> (!c1 U (c1 U (!c1 U (c1 U (c1 && open)))))))
+LTL(property3, G(r1 -> (!c1 U (c1 U (!c1 U (c1 U (c1 && open)))))));
 
 // If level 2 is requested, the cab passes the level without serving it at most once.
-//LTL(property4, G(r2 -> (!c2 U (c2 U (!c2 U (c2 U (c2 && open)))))))
+LTL(property4, G(r2 -> (!c2 U (c2 U (!c2 U (c2 U (c2 && open)))))));
 
 // The cab will remain at level 1 forever from some moment.
-//LTL(property5, F(G c1))
+LTL(property5, F(G c1));
 #endif
 
 struct Elevator;
