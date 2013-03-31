@@ -241,6 +241,7 @@ int return_elem(int *l, int type) {
     for(j = 0; j < ltl3ba_mod; j++) 
       if(l[i] & (1 << j))
         return (ltl3ba_mod * i + j);
+  abort();
 }
 
 int *list_set(int *l, int type) /* transforms a set into a list */

@@ -391,9 +391,9 @@ map<cset, ATrans*> *build_alternating(Node *p) /* builds an alternating automato
             }
           }
 /*        } else {
-          tmp = dup_trans(t1->second);  /* q */
+          tmp = dup_trans(t1->second);  q */
 /*          to = t1->first;
-          to.insert(node);  /* Xp && q */
+          to.insert(node);  Xp && q */
 /*          result->insert(pair<cset, ATrans*>(to, tmp));  
         }*/
 

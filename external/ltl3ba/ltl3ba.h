@@ -244,7 +244,6 @@ void rem_set(int *, int);
 void spin_print_set(int *, int*);
 void print_set(int *, int);
 void print_set_neg(int *, int);
-std::ostream &print_set_out(std::ostream &, int *, int);
 int  empty_set(int *, int);
 int  empty_intersect_sets(int *, int *, int);
 int  same_sets(int *, int *, int);
@@ -286,6 +285,8 @@ int is_INFd(Node *);
 int is_GF_component(Node *n);
 
 }
+
+std::ostream &print_set_out(std::ostream &, int *, int);
 
 void allsatPrintHandler(char* , int);
 

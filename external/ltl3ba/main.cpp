@@ -315,6 +315,7 @@ main_function(int argc, char *argv[], FILE* outFile)
         else
         {       usage(1);
         }
+        return 0;
 }
 
 int

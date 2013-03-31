@@ -72,7 +72,7 @@ int is_LTL(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -111,7 +111,7 @@ int is_EVE(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -150,7 +150,7 @@ int is_UNI(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -184,7 +184,7 @@ int is_FIN(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -224,7 +224,7 @@ int is_INFp(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -268,7 +268,7 @@ int is_INFd(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
@@ -306,7 +306,7 @@ int is_GF_inside(Node *n) {
   default:
     printf("Unknown token: ");
     tl_explain(n->ntyp);
-    break;
+    abort();
   }
 }
 
