@@ -27,6 +27,7 @@ endif()
 
 if( COIN )
     file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
+    set_source_files_properties( coin/parse/lex.coin.cpp PROPERTIES COMPILE_DEFINITIONS YY_NO_INPUT=1 )
 endif( COIN )
 
 if( LLVM )

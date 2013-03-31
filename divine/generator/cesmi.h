@@ -69,8 +69,9 @@ struct CESMI : public Common< Blob > {
     cesmi::cesmi_setup setup;
 
     cesmi::cesmi_node data( Blob b ) {
-        cesmi::cesmi_node n = { .handle = b.ptr,
-                                .memory = b.data() + alloc._slack };
+        cesmi::cesmi_node n;
+        n.handle = b.ptr,
+        n.memory = b.data() + alloc._slack;
         return n;
     }
 
@@ -227,7 +228,7 @@ struct CESMI : public Common< Blob > {
         _this->_properties.push_back( p );
         setup->property_count ++;
 
-        assert_eq( setup->property_count, _this->_properties.size() );
+        assert_eq( setup->property_count, int( _this->_properties.size() ) );
         return p.seqno;
     }
 

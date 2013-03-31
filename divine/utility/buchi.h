@@ -54,7 +54,7 @@ public:
 
         for ( auto n = nodeList.begin(); n != nodeList.end(); ++n ) {
             int nid = (*n)->name - 1;
-            assert( nid >= 0 && nid < nodes.size() );
+            assert( nid >= 0 && nid < int( nodes.size() ) );
             nodes[ nid ].isAcc = (*n)->accept;
             if ( (*n)->initial ) {
                 assert( initId < 0 );

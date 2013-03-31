@@ -461,8 +461,9 @@ struct Shared {
             run();
         }
 
-        Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s, Data< typename S::AlgorithmSetup >& d )
-            : bfv( l, g, s, d.chunkq, d.terminator ), closed( s ), worker( w ), notify( l )
+        Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s,
+                        Data< typename S::AlgorithmSetup >& d )
+            : closed( s ), bfv( l, g, s, d.chunkq, d.terminator ), worker( w ), notify( l )
         {}
     };
 };

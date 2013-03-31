@@ -19,7 +19,7 @@ struct Info { /* singleton */
     void update();
 
     std::string architecture();
-    int peakVmSize();
+    uint64_t peakVmSize();
 
     double userTime();
     double systemTime();

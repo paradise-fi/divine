@@ -132,14 +132,14 @@ void Info::stop() {
 #endif
 }
 
-int Info::peakVmSize() {
-    int vmsz = 0;
+uint64_t Info::peakVmSize() {
+    uint64_t vmsz = 0;
 #ifdef __linux
     std::stringstream file;
     file << "/proc/" << uint64_t( getpid() ) << "/status";
     wibble::ERegexp r( "VmPeak:[\t ]*([0-9]+)", 2 );
     if ( matchLine( file.str(), r ) ) {
-        vmsz = atoi( r[1].c_str() );
+        vmsz = atoll( r[1].c_str() );
     }
 #endif
 
