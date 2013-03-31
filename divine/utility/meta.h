@@ -63,12 +63,11 @@ struct Algorithm {
 struct Output {
     bool quiet;
     bool wantCe, displayCe;
-    bool textFormat, backEdges;
     bool statistics;
     std::string filterProgram;
     std::string file;
 
-    Output() : quiet( false ), wantCe( false ), textFormat( false ), backEdges( false ), statistics( false ) {}
+    Output() : quiet( false ), wantCe( false ), statistics( false ) {}
 };
 
 struct Statistics {

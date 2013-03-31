@@ -122,8 +122,8 @@ struct Main {
     Report report;
     Meta meta;
 
-    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_compact, *cmd_info, *cmd_simulate;
-    OptionGroup *common, *drawing, *compact, *input, *reduce, *ce;
+    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info, *cmd_simulate;
+    OptionGroup *common, *drawing, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_sharedVisitor;
@@ -138,8 +138,6 @@ struct Main {
     StringOption *o_gnuplot;
     StringOption *o_property;
     StringOption *o_inputTrace;
-    BoolOption *o_findBackEdges, *o_textFormat;
-    StringOption *o_compactOutput;
 
     BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
 
@@ -280,9 +278,6 @@ struct Main {
         cmd_draw = opts.addEngine( "draw",
                                    "<input>",
                                    "draw (part of) the state space" );
-        cmd_compact = opts.addEngine( "compact",
-                                      "<input>",
-                                      "build compact state space representation" );
         cmd_info = opts.addEngine( "info",
                                    "<input>",
                                    "show information about a model" );
@@ -292,7 +287,6 @@ struct Main {
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
-        compact = opts.createGroup( "Compacting Options" );
         input = opts.createGroup( "Input Options" );
         reduce = opts.createGroup( "Reduction Options" );
         ce = opts.createGroup( "Counterexample Options" );
@@ -392,17 +386,6 @@ struct Main {
         o_bfsLayout = drawing->add< BoolOption >(
             "bfs-layout", '\0', "bfs-layout", "", "ask dot to lay out BFS layers in rows" );
 
-        // compaction options
-        o_findBackEdges = compact->add< BoolOption >(
-            "find-back-transitions", 'b', "find-back-transitions", "",
-            "find also backward transitions" );
-        o_textFormat = compact->add< BoolOption >(
-            "text-format", 't', "text-format", "",
-            "output compact state space in plaintext format" );
-        o_compactOutput = compact->add< StringOption >(
-            "compact-output", 'm', "compact-output", "",
-            "where to output the compacted state space (default: ./input-file.compact, -: stdout)" );
-
         // verify options
         o_ndfs = cmd_verify->add< BoolOption >(
             "nested-dfs", 0, "nested-dfs", "", "force use of Nested DFS" );
@@ -429,11 +412,6 @@ struct Main {
 
         cmd_simulate->add( common );
         cmd_simulate->add( reduce );
-
-        cmd_compact->add( common );
-        cmd_compact->add( compact );
-        cmd_compact->add( reduce );
-        cmd_compact->add( input );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -530,8 +508,6 @@ struct Main {
         meta.input.model = input;
         meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
         meta.output.wantCe = !o_noCe->boolValue();
-        meta.output.textFormat = o_textFormat->boolValue();
-        meta.output.backEdges = o_findBackEdges->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
         meta.algorithm.sharedVisitor = o_sharedVisitor->boolValue();
         if ( !o_noreduce->boolValue() ) {
@@ -587,19 +563,7 @@ struct Main {
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )
             meta.algorithm.algorithm = meta::Algorithm::Metrics;
-        else if ( opts.foundCommand() == cmd_compact ) {
-
-            if ( o_compactOutput->stringValue() == "" ) {
-                meta.output.file = str::basename( input + ".compact" );
-            } else if ( o_compactOutput->stringValue() == "-" ) {
-                meta.output.file = "";
-            } else {
-                meta.output.file = o_compactOutput->stringValue();
-            }
-
-            meta.algorithm.algorithm = meta::Algorithm::Compact;
-
-        } else if ( opts.foundCommand() == cmd_verify ) {
+        else if ( opts.foundCommand() == cmd_verify ) {
 
             /* the default algorithms based on property types */
             switch ( pt ) {
