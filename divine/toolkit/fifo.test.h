@@ -15,7 +15,8 @@ struct TestFifo {
         
         void *main()
         {
-            int x[ n ];
+            std::vector< int > x;
+            x.resize( n );
             for ( int i = 0; i < n; ++i )
                 x[ i ] = 0;
 

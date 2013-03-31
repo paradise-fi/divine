@@ -30,9 +30,9 @@ struct TestBitstream {
         bitstream bs;
         bs << int64_t( 1 ) << int64_t( 2 ) << int64_t( 3 );
         uint64_t x;
-        bs >> x; assert_eq( x, 1 );
-        bs >> x; assert_eq( x, 2 );
-        bs >> x; assert_eq( x, 3 );
+        bs >> x; assert_eq( x, 1ull );
+        bs >> x; assert_eq( x, 2ull );
+        bs >> x; assert_eq( x, 3ull );
         assert( bs.empty() );
     }
 

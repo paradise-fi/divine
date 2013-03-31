@@ -64,10 +64,8 @@ struct TestPool {
         std::vector< Checker > c;
         c.resize( 3 );
         for ( int j = 0; j < 5; ++j ) {
-            for ( int i = 0; i < c.size(); ++i )
-                c[ i ].start();
-            for ( int i = 0; i < c.size(); ++i )
-                c[ i ].join();
+            for ( auto &t : c ) t.start();
+            for ( auto &t : c ) t.join();
         }
     }
 };

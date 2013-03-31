@@ -54,8 +54,8 @@ struct TestParallel {
     void checkValues( X &x, int n, int k ) {
         std::vector< int > values;
         x.topology().collect( values, &X::get );
-        assert_eq( values.size(), n );
-        for ( int i = 0; i < values.size(); ++i )
+        assert_eq( values.size(), size_t( n ) );
+        for ( size_t i = 0; i < values.size(); ++i )
             assert_eq_l( i, values[ i ], k );
     }
 

@@ -46,7 +46,7 @@ struct TestBlob {
     }
 
     Test allocSize() {
-        for ( int i = 0; i < 100; ++i )
+        for ( unsigned i = 0; i < 100; ++i )
             assert( i <= Blob::allocationSize( i ) );
     }
 

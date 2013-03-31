@@ -87,7 +87,7 @@ struct TestLockedQueue {
                                      []( int v, const Consumer& c) -> int {
                                          return v + c.consumed;
                                     } );
-        assert_eq( queue.q.size(), 0 );
+        assert_eq( queue.q.size(), 0u );
         assert_eq( reads, inserts );
         assert( queue.empty );
     }
