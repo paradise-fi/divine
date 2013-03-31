@@ -97,10 +97,6 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     }
 };
 
-static std::ostream &operator<<( std::ostream &o, Pointer p ) {
-    return o << p.segment << ":" << p.offset;
-}
-
 enum Builtin {
     NotBuiltin = 0,
     BuiltinChoice,

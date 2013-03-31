@@ -119,12 +119,12 @@ auto decons( Cons c ) -> typename UnPtr< decltype( ConsAt< I >::get( c ) ) >::T 
     return *c.template get< I >();
 }
 
-#define MATCH(l, expr...) template< typename F, typename X > \
+#define MATCH(l, ...) template< typename F, typename X > \
     auto match( F &f, X x ) -> \
-        typename wibble::TPair< typename Eq< l, X::length >::Yes, decltype( f( expr ) ) >::Second \
-    { return f( expr ); }
+        typename wibble::TPair< typename Eq< l, X::length >::Yes, decltype( f( __VA_ARGS__ ) ) >::Second \
+    { return f( __VA_ARGS__ ); }
 
-MATCH( 0 )
+MATCH( 0, /**/ )
 MATCH( 1, decons< 0 >( x ) )
 MATCH( 2, decons< 1 >( x ), decons< 0 >( x ) )
 MATCH( 3, decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x ) )

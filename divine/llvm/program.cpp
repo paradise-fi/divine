@@ -163,7 +163,7 @@ void ProgramInfo::insertIndices( Position p )
     int shift = insn.values.size();
     insn.values.resize( shift + I->getNumIndices() );
 
-    for ( int i = 0; i < I->getNumIndices(); ++i ) {
+    for ( unsigned i = 0; i < I->getNumIndices(); ++i ) {
         Value v;
         v.width = sizeof( unsigned );
         makeConstant( v, I->getIndices()[ i ] );

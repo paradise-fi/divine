@@ -14,6 +14,10 @@
 using namespace llvm;
 using namespace divine::llvm;
 
+std::ostream &operator<<( std::ostream &o, Pointer p ) {
+    return o << p.segment << ":" << p.offset;
+}
+
 template< typename Ptr >
 std::string Interpreter::describeAggregate( Type *t, Ptr where, DescribeSeen &seen )
 {
