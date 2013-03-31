@@ -181,7 +181,7 @@ bool open_file(string file_name, fstream& fr, fstream& fw, int n = 0)
 bool copy_file(istream& fr, ostream& fw)
 {
 	string s;
-	int stav = 0, i;
+	size_t stav = 0, i;
 
 	size_t npos = string::npos;
 
