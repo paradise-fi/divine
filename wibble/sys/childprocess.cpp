@@ -317,7 +317,7 @@ void ChildProcess::kill(int signal)
     if (::kill(_pid, signal) == -1)
     {
         stringstream str;
-        str << "killing process " + _pid;
+        str << "killing process " << _pid;
         throw wibble::exception::System(str.str());
     }
 #else
