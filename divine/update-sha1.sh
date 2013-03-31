@@ -12,8 +12,7 @@ if test -e manifest; then
     manifest=`cat manifest`;
 else
     if ! test -d _darcs || ! darcs --version > /dev/null; then
-        old="na"
-        new=$empty
+        manifest=`find -type f divine` # assume...
     else
         manifest=`darcs query manifest`
     fi
