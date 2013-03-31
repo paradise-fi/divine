@@ -67,7 +67,7 @@ struct StateFlags {
             uint8_t commited:1;
             uint8_t commited_dirty:1;
             uint8_t fill:6;
-        };
+        } f;
         uint8_t flags;
     };
     static const StateFlags f_commited;

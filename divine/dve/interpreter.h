@@ -264,9 +264,9 @@ struct Transition {
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
         if ( from_commited )
-            sflags.commited_dirty |= !to_commited;
+            sflags.f.commited_dirty |= !to_commited;
         else
-            sflags.commited |= to_commited;
+            sflags.f.commited |= to_commited;
         flags.set( ctx.mem, 0, sflags );
     }
 
@@ -571,7 +571,7 @@ struct Process {
             symtab.channels[ proc.chandecls[i].name ] =  &channels[i];
         }
 
-        assert_eq( states, proc.states.size() );
+        assert_eq( states, int( proc.states.size() ) );
 
         is_accepting.resize( proc.states.size(), false );
         is_commited.resize( proc.states.size(), false );
@@ -797,10 +797,10 @@ struct System {
     void setCommitedFlag( EvalContext &ctx ) {
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
-        sflags.commited_dirty = 0;
-        sflags.commited = 0;
+        sflags.f.commited_dirty = 0;
+        sflags.f.commited = 0;
         for ( size_t i = 0; i < processes.size(); i++ ) {
-            sflags.commited |= static_cast<bool>(processes[i].commited( ctx ));
+            sflags.f.commited |= static_cast<bool>(processes[i].commited( ctx ));
         }
         flags.set( ctx.mem, 0, sflags );
     }
@@ -846,7 +846,7 @@ struct System {
             if ( !commitEnable ) {
                 StateFlags sflags;
                 flags.deref( ctx.mem, 0, sflags );
-                sflags.commited = 0;
+                sflags.f.commited = 0;
                 flags.set( ctx.mem, 0, sflags );
                 return enabledAll( ctx, cont );
             }
@@ -875,7 +875,7 @@ struct System {
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
 
-        if ( sflags.commited ) {
+        if ( sflags.f.commited ) {
             cont = enabledPrioritized( ctx, cont );
         }
         else {
@@ -957,7 +957,7 @@ struct System {
             bail( ctx, c );
         StateFlags sflags;
         flags.deref( ctx.mem, 0, sflags );
-        if ( sflags.commited_dirty )
+        if ( sflags.f.commited_dirty )
             setCommitedFlag( ctx );
 
     }

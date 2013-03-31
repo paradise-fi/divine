@@ -10,7 +10,7 @@ std::ostream & dumpChannel( std::ostream &os, Channel * chan, char * data) {
 std::ostream & Channel::dump( std::ostream &os, char * data )
 {
     os << this->name << " = [";
-    for ( size_t i = 0; i < this->count( data ); i++ ) {
+    for ( int i = 0; i < this->count( data ); i++ ) {
         char * _item = this->item( data, i );
         if (i != 0)
             os << ", ";

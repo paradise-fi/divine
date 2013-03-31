@@ -343,20 +343,22 @@ void DveCompiler::gen_initial_state()
     for ( parse::Process &p : ast->processes ) {
         initVars( p.decls, std::string( "_out." ) + p.name.name() );
 
-        for ( int i = 0; i < p.states.size(); i++ ) {
-            if ( p.states[ i ].name() == p.inits[ 0 ].name() ) {
+        int i = 0;
+        for ( auto s : p.states ) {
+            if ( s.name() == p.inits[ 0 ].name() )
                 assign( process_state( p, "_out" ), fmt( i ) );
-            }
+            ++ i;
         }
     }
 
     for ( parse::Property &p : ast->properties ) {
         initVars( p.decls, std::string( "_out." ) + p.name.name() );
 
-        for ( int i = 0; i < p.states.size(); i++ ) {
-            if ( p.states[ i ].name() == p.inits[ 0 ].name() ) {
+        int i = 0;
+        for ( auto s : p.states ) {
+            if ( p.states[ i ].name() == p.inits[ 0 ].name() )
                 assign( process_state( p, "_out" ), fmt( i ) );
-            }
+            ++ i;
         }
     }
     line( "return 2;" );

@@ -330,9 +330,11 @@ struct DveCompiler
     }
 
     int getStateId( parse::Process &p, std::string state ) {
-        for ( int i = 0; i < p.states.size(); i++ ) {
-            if ( p.states[ i ].name() == state )
+        int i = 0;
+        for ( auto s : p.states ) {
+            if ( s.name() == state )
                 return i;
+            ++ i;
         }
         return -1;
     }
