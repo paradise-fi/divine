@@ -208,15 +208,16 @@ struct HcHasher : Hasher
 };
 
 template< typename Graph, typename Hasher, typename Statistics >
-struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >, HashSet< typename Graph::Node, HcHasher< Hasher > >, HcHasher< Hasher >, Statistics >
+struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
+                                    HashSet< typename Graph::Node, HcHasher< Hasher > >,
+                                    HcHasher< Hasher >, Statistics >
 {
     static_assert( wibble::TSame< typename Graph::Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
     typedef typename Graph::Node Node;
-    typedef HashSet< typename Graph::Node, Hasher > Table;
+    typedef HashSet< typename Graph::Node, HcHasher< Hasher > > Table;
     typedef HcStore< Graph, Hasher, Statistics > This;
     typedef TableUtils< This, Table, HcHasher< Hasher >, Statistics > Utils;
-
 
     Graph &m_graph;
     Table _table;
