@@ -133,7 +133,7 @@ struct Combine {
             extension = ext;
 
         std::ostringstream str;
-        int a = input.rfind( '/' ), b = input.rfind( '.' );
+        auto a = input.rfind( '/' ), b = input.rfind( '.' );
         if ( b == std::string::npos )
             throw wibble::exception::Generic( "Suffix expected." );
         if ( a == std::string::npos )
@@ -327,7 +327,7 @@ struct Combine {
     }
 
     void combine_dve() {
-        int off = in_data.find( "system async" );
+        auto off = in_data.find( "system async" );
         if ( off != std::string::npos )
             system = "system async property LTL_property;\n";
         else {

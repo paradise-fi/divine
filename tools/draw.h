@@ -208,7 +208,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             else
                 intrace->insert( from );
 
-            if ( i == trans.size() ) /* done */
+            if ( i == int( trans.size() ) ) /* done */
                 break;
 
             int drop = trans[ i ] - 1;
