@@ -6,8 +6,8 @@ empty="0000000000000000000000000000000000000000";
 
 cd $from
 
-interesting='\.c$|\.cpp$|\.h$|\.cc$|\.hh$';
-boring='divine/utility/version.cpp$|examples|\.test\.h$';
+interesting='^./divine.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
+boring='utility/version.cpp$|\.test\.h$';
 if test -e manifest; then
     manifest=`cat manifest`;
 else
