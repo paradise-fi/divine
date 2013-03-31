@@ -13,29 +13,16 @@
 #include "combine.h"
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
+#include <divine/utility/strings.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
-
 
 using namespace wibble;
 using namespace commandline;
 using namespace sys;
 
 namespace divine {
-
-extern const char *cesmi_usr_cesmi_h_str;
-extern const char *cesmi_usr_cesmi_cpp_str;
-extern const char *cesmi_usr_ltl_cpp_str;
-extern const char *cesmi_usr_ltl_h_str;
-extern const char *toolkit_pool_h_str;
-extern const char *toolkit_blob_h_str;
-extern const char *compile_defines_str;
-extern const char *llvm_usr_h_str;
-extern const char *llvm_usr_pthread_h_str;
-extern const char *llvm_usr_pthread_cpp_str;
-extern const char *llvm_usr_cstdlib_h_str;
-extern const char *llvm_usr_cstdlib_cpp_str;
 
 std::string ltl_to_c( int id, std::string ltl );
 
