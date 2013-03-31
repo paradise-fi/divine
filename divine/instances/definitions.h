@@ -5,7 +5,6 @@
 #include <divine/algorithm/por-c3.h>
 #include <divine/graph/fairness.h>
 
-#include <divine/generator/compact.h>
 #include <divine/generator/dve.h>
 #include <divine/generator/llvm.h>
 #include <divine/generator/coin.h>
@@ -54,12 +53,11 @@ namespace instantiate {
     SHOW( Transform, NotSelected );
 
     enum class Generator {
-        Dve, Compact, Coin, LLVM, Timed, CESMI, Dummy,
+        Dve, Coin, LLVM, Timed, CESMI, Dummy,
         NotSelected
     };
 
     SHOW( Generator, Dve );
-    SHOW( Generator, Compact );
     SHOW( Generator, Coin );
     SHOW( Generator, LLVM );
     SHOW( Generator, Timed );
@@ -191,7 +189,6 @@ namespace instantiate {
 #ifdef O_DVE
     GEN_SPEC( Dve );
 #endif
-    GEN_SPEC( Compact );
 #if defined( O_COIN ) && !defined( O_SMALL )
     GEN_SPEC( Coin );
 #endif

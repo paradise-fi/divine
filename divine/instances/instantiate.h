@@ -129,10 +129,6 @@ namespace instantiate {
             meta.input.modelType = "DVE";
             return selectTransform< algo, Generator::Dve, transform, store, visitor,
                 topology, statistics >( meta );
-        } else if ( wibble::str::endsWith( meta.input.model, ".compact" ) ) {
-            meta.input.modelType = "Compact";
-            return selectTransform< algo, Generator::Compact, transform, store,
-                   visitor, topology, statistics >( meta );
         } else if ( wibble::str::endsWith( meta.input.model, ".coin" ) ) {
             meta.input.modelType = "CoIn";
             return selectTransform< algo, Generator::Coin, transform, store,
