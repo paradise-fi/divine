@@ -78,7 +78,7 @@ simplerule::simplerule(ste *enclosures,
 		       stmt *body,
 		       bool unfair,
                        int priority)
-:rule(), name( name ), condname(NULL), rulename(NULL), enclosures(enclosures),  condition(condition),
+:rule(), name( NULL ), condname(NULL), rulename(NULL), enclosures(enclosures),  condition(condition),
  locals(locals), body(body), unfair(unfair),
  priority(priority)
 {

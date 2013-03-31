@@ -296,8 +296,8 @@ mulexpr::mulexpr(int op, expr *left, expr *right)
   -- a quantified expression.
   ********************/
 quantexpr::quantexpr(int op, ste *parameter, expr *left)
-:expr(booltype, FALSE, left->has_side_effects() ), parameter(parameter),
- op(op), left(left)
+:expr(booltype, FALSE, left->has_side_effects() ),
+ op(op), parameter(parameter), left(left)
 {
   Error.CondError( !type_equal( left->gettype(), booltype),
 		   "Quantified subexpressions must be boolean.");
@@ -335,8 +335,8 @@ designator::designator(ste *origin,
 		       bool isconst,
 		       bool maybeundefined,
 		       int val)
-:expr(val,type), origin(origin), lvalue(islvalue), left(NULL),
- dclass(Base), maybeundefined(maybeundefined)
+:expr(val,type), left(NULL), origin(origin), lvalue(islvalue),
+ maybeundefined(maybeundefined), dclass(Base)
 {
   constval = isconst;
   sideeffects = 0;

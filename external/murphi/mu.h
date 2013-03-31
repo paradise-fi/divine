@@ -140,7 +140,7 @@ class typedecl;
 class expr;
 class designator;
 class stmt;
-class rule;
+struct rule;
 
 // liveness extension
 enum  live_type { E, AE, EA, U, AIE, AIU };

@@ -257,6 +257,7 @@ void multisettypedecl::generate_permute_function()
           "    array[j].Permute(Perm, i);\n",
           mu_name,              // %s::Permute
           mu_name, mu_name, mu_name,    // %s temp("Permute_%s"...
+          mu_name,
           maximum_size // j-for
           );
   fprintf(codefile,"};\n");
@@ -737,6 +738,7 @@ int multisettypedecl::get_num_limit_locals(typedecl * e)
     return ret;
   case typedecl::Array:
     return 1 + get_num_limit_locals(e->getelementtype());
+  default: abort();
   }
   return 0;
 }
@@ -761,6 +763,7 @@ int arraytypedecl::get_num_limit_locals(typedecl * e)
     return ret;
   case typedecl::Array:
     return 1 + get_num_limit_locals(e->getelementtype());
+  default: abort();
   }
   return 0;
 }
@@ -844,6 +847,7 @@ void arraytypedecl::generate_limit_step2(typedecl * d, const char * var, typedec
 	      fprintf(codefile,
 		      "  }\n");
 	      break;
+            default: abort();
 	    }
 	  }
       case typedecl::Enum:
@@ -866,6 +870,7 @@ void arraytypedecl::generate_limit_step2(typedecl * d, const char * var, typedec
 	fprintf(codefile,
 		"  }\n");
 	break;
+      default: abort();
       }
     }
   else if (e->gettypeclass() == typedecl::Record)
@@ -2365,8 +2370,7 @@ void arraytypedecl::generate_canonicalize_function(symmetryclass& symmetry)
                       d->mu_name, d->getsize(), d->getsize(),
                       d->mu_name, d->getsize(),
                       d->mu_name, d->getsize(),
-                      d->mu_name, d->getsize(),
-                      d->mu_name
+                      d->mu_name, d->getsize()
                       );
             }
         }
@@ -3407,6 +3411,7 @@ void multisettypedecl::generate_limit_step2(const char * var, typedecl * e, int 
 	      fprintf(codefile,
 		      "  }\n");
 	      break;
+            default: abort();
 	    }
 	  }
       case typedecl::Enum:
@@ -3427,6 +3432,7 @@ void multisettypedecl::generate_limit_step2(const char * var, typedecl * e, int 
 	fprintf(codefile,
 		"  }\n");
 	break;
+      default: abort();
       }
     }
   else if (e->gettypeclass() == typedecl::Record)

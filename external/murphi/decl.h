@@ -534,7 +534,7 @@ public:
   void generate_procedure();
 };
 
-class multisetremovestmt;
+struct multisetremovestmt;
 
 class multisetremovelist
 {

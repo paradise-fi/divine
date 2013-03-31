@@ -819,11 +819,11 @@ const char *multisettypedecl::generate_decl()
         maximum_size,  /* array size */
         maximum_size,  /* array size */
         mu_name,  /* name for first constructor */
-        /* maximum_size,  /* max current size */
-        /* CeilLog2(maximum_size+2),  /* max current size */
+        /* maximum_size,  max current size */
+        /* CeilLog2(maximum_size+2),  max current size */
         mu_name,  /* name for second constructor */
-        /* maximum_size,  /* max current size */
-        /* CeilLog2(maximum_size+2),  /* max current size */
+        /* maximum_size,  max current size */
+        /* CeilLog2(maximum_size+2),  max current size */
         mu_name);  /* destructor name */
 
     /* no range-checked operator [] */
@@ -885,8 +885,7 @@ const char *multisettypedecl::generate_decl()
         "  {\n"
         "    return 0;\n"
         "  }\n",
-        mu_name, mu_name,
-        maximum_size
+        mu_name, mu_name
         );
  
     /* comparsion function */
@@ -1151,8 +1150,8 @@ const char *multisettypedecl::generate_decl()
         // "  delete[ OLD_GPP(strlen(current_size[i].name) +1) ] current_size.name; // Should be delete[] \n"
         "}\n",
         mu_name,
-        mu_name,
-        maximum_size);
+        mu_name
+             /*maximum_size*/);
  
     // declare procedures for all multisetcount
     if (msclist != NULL) msclist->generate_procedure();
@@ -2605,9 +2604,9 @@ void multisetcount::generate_procedure()
 }
 const char *multisetcount::generate_code()
 {
-      /* set->gettype()->getelementtype()->generate_code(), /* element type */
-      /* set->gettype()->generate_code(), /* multiset type */
-          /*  multisetcount_num,               /* procedure number */
+      /* set->gettype()->getelementtype()->generate_code(), element type */
+      /* set->gettype()->generate_code(), multiset type */
+          /*  multisetcount_num,               procedure number */
   int num = new_int();
   char *temp = tsprintf("mu__intexpr%d", num);
   fprintf(codefile, "/*** begin multisetcount %d declaration ***/\n", multisetcount_num);

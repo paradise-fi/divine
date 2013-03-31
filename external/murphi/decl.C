@@ -87,11 +87,11 @@ typedecl *decl::gettype( void ) const
 }
 
 decl::decl()
-: TNode(), name(NULL), declared(FALSE)
+  : TNode(), declared(FALSE), name(NULL)
 { }
 
 decl::decl(const char *name)
-: TNode(), name(name), mu_name(NULL), declared(FALSE), global( false )
+  : TNode(), declared(FALSE), global( false ), name(name), mu_name(NULL)
 { 
   mu_name = tsprintf("mu_%s",name);
 }
@@ -109,8 +109,8 @@ designator *decl::getdesignator(ste *origin) const
 typedecl * typedecl::origin = 0;
 
 typedecl::typedecl()
-: decl(), scalarsetlist(NULL), structure(NoScalarset),
-  bitsalloc(0),
+: decl(),
+  bitsalloc(0), scalarsetlist(NULL), structure(NoScalarset),
   already_generated_permute_function(FALSE),
   already_generated_simple_canon_function(FALSE),
   already_generated_canonicalize_function(FALSE),
@@ -127,8 +127,8 @@ typedecl::typedecl()
 };
 
 typedecl::typedecl(const char *name)
-: decl(name), scalarsetlist(NULL), structure(NoScalarset),
-  bitsalloc(0),
+: decl(name),
+  bitsalloc(0), scalarsetlist(NULL), structure(NoScalarset),
   already_generated_permute_function(FALSE)
 {
   static int theTNum = 0;
@@ -246,8 +246,8 @@ subrangetypedecl::subrangetypedecl( expr *left, expr *right)
 arraytypedecl::arraytypedecl(bool interleaved,
 			     typedecl *indextype,
 			     typedecl *elementtype)
-: typedecl(), interleaved(interleaved), indextype(indextype),
-  elementtype( elementtype)
+: typedecl(), indextype(indextype),
+  elementtype( elementtype), interleaved(interleaved)
 {
   Error.CondError (!indextype->issimple(),
 		   "Array index type must be a simple type.");
@@ -282,7 +282,7 @@ arraytypedecl::arraytypedecl(bool interleaved,
 multisettypedecl::multisettypedecl(bool interleaved,
 			     expr *e,
 			     typedecl *elementtype)
-: typedecl(), interleaved(interleaved), elementtype(elementtype), msclist(NULL)
+: typedecl(), elementtype(elementtype), interleaved(interleaved), msclist(NULL)
 {
   Error.CondError(!e->hasvalue(),
 		  "CONST declaration requires constant expression.");
@@ -325,7 +325,7 @@ multisettypedecl::multisettypedecl(bool interleaved,
   class recordtypedecl
   ********************/
 recordtypedecl::recordtypedecl(bool interleaved, ste *fields)
-: typedecl(), interleaved(interleaved), fields(fields)
+: typedecl(), fields(fields), interleaved(interleaved)
 {
   ste *s;
   typedecl *t;
@@ -360,6 +360,7 @@ recordtypedecl::recordtypedecl(bool interleaved, ste *fields)
       case Complex:
 	structure = typedecl::Complex;
 	break;
+      default: abort();
       }
     }
   numbits = sum;
