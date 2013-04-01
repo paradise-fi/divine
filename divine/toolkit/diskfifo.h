@@ -353,7 +353,7 @@ inline void release( T, Pool* ) {
 
 template<>
 inline void release( Blob b, Pool* p ) {
-    b.free( *p );
+    p->free( b );
 }
 
 template< typename N >
