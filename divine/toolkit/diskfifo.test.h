@@ -26,12 +26,12 @@ struct TestDiskFifo {
 		const int MAX = 10 * 1024;
 		for ( int i = 0; i < MAX; i++ ) {
             Blob b( pool, sizeof( int ) );
-            b.get< int >() = i;
+            pool.get< int >( b ) = i;
 			fifo.push( b );
 		}
 		for ( int i = 0; i < MAX; i++ ) {
-			assert_eq( fifo.front().get< int >(), i );
-			fifo.front().free( pool );
+			assert_eq( pool.template get< int >( fifo.front() ), i );
+			pool.free( fifo.front() );
 			fifo.pop();
 		}
 		assert( fifo.empty() );
