@@ -90,6 +90,8 @@ struct Transform {
 
     template< typename Yield >
     void successors( Node st, Yield yield ) { base().successors( st, yield ); }
+    template< typename Yield >
+    void allSuccessors( Node st, Yield yield ) { successors( st, yield ); }
     void release( Node s ) { base().release( s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
     bool isGoal( Node s ) { return base().isGoal( s ); }
