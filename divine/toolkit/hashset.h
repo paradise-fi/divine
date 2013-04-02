@@ -16,11 +16,11 @@ typedef uint32_t hash_t;
 // default hash implementation
 template< typename T >
 struct default_hasher {
-    Pool& p;
-    default_hasher( Pool& p ) : p( p ) { }
-    hash_t hash( T t ) const { return p.hash( t ); }
-    bool valid( T t ) const { return p.hash( t ); }
-    bool equal( T a, T b )const { return p.compare( a, b ) == 0; }
+    Pool& pool;
+    default_hasher( Pool& p ) : pool( p ) { }
+    hash_t hash( T t ) const { return pool.hash( t ); }
+    bool valid( T t ) const { return pool.hash( t ); }
+    bool equal( T a, T b )const { return pool.compare( a, b ) == 0; }
 };
 
 template<>
