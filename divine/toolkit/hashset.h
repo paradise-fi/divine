@@ -206,12 +206,13 @@ struct HashSet
         return m_table[ off ].item;
     }
 
-    HashSet( Hasher h = Hasher(), int initial = 32 )
-        : hasher( h )
+
+    HashSet() : HashSet( Hasher() ) { }
+    HashSet( Hasher h ) : HashSet( h, 32 ) { }
+
+    HashSet( Hasher h, int initial )
+        : m_used( 0 ), m_maxsize( -1 ), growing( false ), hasher( h )
     {
-        growing = false;
-        m_used = 0;
-        m_maxsize = -1;
         setSize( initial );
 
         // assert that default key is invalid, this is assumed
