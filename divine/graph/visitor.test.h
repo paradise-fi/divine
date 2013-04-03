@@ -27,29 +27,29 @@ struct TestHasher< Blob > : default_hasher< Blob > {
 };
 
 template< typename N >
-inline Blob blob( const N &n, Pool p ) {
+inline Blob blob( const N &n, Pool& p ) {
     Blob b( p, sizeof( N ) );
     p.template get< N >( b ) = n;
     return b;
 }
 
 template<>
-inline Blob blob( const Blob &b, Pool ) {
+inline Blob blob( const Blob &b, Pool& ) {
     return b;
 }
 
-template< typename N > int node( N, Pool );
-template< typename N > N makeNode( int, Pool );
+template< typename N > int node( N, Pool& );
+template< typename N > N makeNode( int, Pool& );
 
-template<> int node< Blob >( Blob b, Pool p ) {
+template<> int node< Blob >( Blob b, Pool& p ) {
     if ( b.valid() )
         return p.template get< int >( b );
     else return 0;
 }
-template<> int node< int >( int n, Pool ) { return n; }
+template<> int node< int >( int n, Pool& ) { return n; }
 
-template<> int makeNode< int >( int n, Pool ) { return n; }
-template<> Blob makeNode< Blob >( int n, Pool p ) {
+template<> int makeNode< int >( int n, Pool& ) { return n; }
+template<> Blob makeNode< Blob >( int n, Pool& p ) {
     Blob b( p, sizeof( int ) );
     p.template get< int >( b ) = n;
     return b;
@@ -88,7 +88,7 @@ struct TestVisitor {
             }
         }
 
-        NMTree( Pool p, int _n, int _m ) : n( _n ), m( _m ), p( p ) {}
+        NMTree( Pool& p, int _n, int _m ) : n( _n ), m( _m ), p( p ) {}
 
         template< typename Hasher, typename Worker >
         int owner( Hasher &hasher, Worker &worker, Node n, hash_t = 0 ) {
