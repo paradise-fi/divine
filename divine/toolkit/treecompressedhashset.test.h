@@ -98,7 +98,7 @@ struct TestTreeCompressedHashSet {
         inline void operator ()() {
             Pool p;
             Hasher h( p, slack );
-            TreeCompressedHashSet< HashSet, Blob, Hasher, chunk > set( h );
+            TreeCompressedHashSet< HashSet, Blob, Hasher > set( h, 32 );
 
             std::deque< Blob > blobs;
             for ( int i = 0; i < 1000; ++i ) {
@@ -116,7 +116,7 @@ struct TestTreeCompressedHashSet {
                 Blob b0 = set.get( b );
                 assert( h.valid( b0 ) );
                 assert( p.compare( b, b0, 0, slack ) == 0 );
-                Blob b1 = set.getFull( b );
+                Blob b1 = set.getReassembled( b );
                 assert( h.equal( b, b1 ) );
                 assert( p.compare( b, b1, 0, slack ) == 0 );
                 p.free( b1 );
@@ -131,14 +131,12 @@ struct TestTreeCompressedHashSet {
                 Blob b = blobs.front();
                 blobs.pop_front();
                 assert( p.compare( b, set.get( b ), 0, slack ) == 0 );
-                Blob b1 = set.getFull( b );
+                Blob b1 = set.getReassembled( b );
                 assert( h.equal( b, b1 ) );
                 assert( p.compare( b, b1, 0, slack ) == 0 );
                 p.free( b1 );
                 p.free( b );
             }
-
-            set.freeAll();
         }
 
         Blob randBlob( Pool& p ) {
@@ -154,8 +152,10 @@ struct TestTreeCompressedHashSet {
 
 std::mt19937 TestTreeCompressedHashSet::random = std::mt19937( 0 );
 
+#if TREE_COMPRESSED_TEST_STANDALONE
 int main() {
     TestTreeCompressedHashSet tt;
     tt.basic();
     return 0;
 }
+#endif
