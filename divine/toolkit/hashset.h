@@ -19,7 +19,7 @@ struct default_hasher {
     Pool& pool;
     default_hasher( Pool& p ) : pool( p ) { }
     hash_t hash( T t ) const { return pool.hash( t ); }
-    bool valid( T t ) const { return pool.hash( t ); }
+    bool valid( T t ) const { return t.valid(); }
     bool equal( T a, T b )const { return pool.compare( a, b ) == 0; }
 };
 
