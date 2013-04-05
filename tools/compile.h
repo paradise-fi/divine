@@ -32,7 +32,7 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep;
+    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
     StringOption *o_cflags;
 
     void die_help( std::string bla )
@@ -188,10 +188,21 @@ struct Compile {
 
     void compileLLVM( std::string in, std::string cflags ) {       
         // create temporary directory to compile in
-        char tmp_dir_template[] = "__tmpXXXXXX";
+        char tmp_dir_template[] = "_divine-compile.XXXXXX";
         FilePath tmp_dir;
         tmp_dir.abspath = process::getcwd();
         tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
+
+        // assembly or bitcode?
+        // If both are requested, the former is produced and the latter is ignored.
+        std::string stage, ext;
+        if ( o_assm->boolValue() ) {
+            stage = " -S ";
+            ext = ".llvm";
+        } else {
+            stage = " -c ";
+            ext = ".bc";
+        }
 
         // input
         std::string in_basename ( str::basename(in), 0, str::basename(in).rfind( '.' ) );
@@ -200,15 +211,15 @@ struct Compile {
           // pthread
         std::string pthread_h = "pthread.h";
         std::string pthread_cpp = "pthread.cpp";
-        std::string pthread_bc = "pthread.bc";
+        std::string pthread_comp = "pthread" + ext;
           // cstdlib
         std::string cstdlib_h = "cstdlib"; // note: no extension
         std::string cstdlib_cpp = "cstdlib.cpp";
-        std::string cstdlib_bc = "cstdlib.bc";
+        std::string cstdlib_comp = "cstdlib" + ext;
 
         // output
-        std::string unlinked = str::joinpath( tmp_dir.basename, "_" + in_basename + ".bc" );
-        std::string linked = in_basename + ".bc";
+        std::string unlinked = str::joinpath( tmp_dir.basename, "_" + in_basename + ext );
+        std::string linked = in_basename + ext;
 
         // prepare cleanup
         void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
@@ -226,20 +237,24 @@ struct Compile {
 
         // compile
           // libraries
-        std::string flags = "-c -emit-llvm -g " + cflags;
-        run ( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_bc, trap, trap_arg );
-        run ( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_bc, trap, trap_arg );
+        std::string flags = stage + "-emit-llvm -g " + cflags;
+        run ( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
+        run ( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
           // leave tmp directory
         chdir( tmp_dir.abspath.c_str() );
           // input file
         run ( "clang " + flags + " -I'" + tmp_dir.basename + "' " + in + " -o " + unlinked, trap, trap_arg );
 
         // link
-        run ( "llvm-link " + unlinked + " " + str::joinpath( tmp_dir.basename, cstdlib_bc ) + " " +
-              str::joinpath( tmp_dir.basename, pthread_bc ) + " -o " + linked, trap, trap_arg );
+        if ( !o_assm->boolValue() )
+            stage = "";
+        run ( "llvm-link " + stage + unlinked + " " +
+              str::joinpath( tmp_dir.basename, cstdlib_comp ) + " " +
+              str::joinpath( tmp_dir.basename, pthread_comp ) +
+              " -o " + linked, trap, trap_arg );
 
         // cleanup
-        if (trap) trap( trap_arg );
+        if ( trap ) trap( trap_arg );
     }
 
     void main() {
@@ -254,12 +269,12 @@ struct Compile {
                     str::endsWith( input, ".cc" ) || str::endsWith( input, ".C" )) )
             if ( o_cesmi->boolValue() )
                 compileCESMI( input, o_cflags->stringValue() );
-            else if ( o_llvm->boolValue() )
+            else if ( o_llvm->boolValue() || o_assm->boolValue() )
                 compileLLVM( input, o_cflags->stringValue() );
             else {
                 std::cerr << "Do not know whether to process input file as of CESMI type ";
-                std::cerr << "(use --cesmi or -c) or generate output file in LLVM bytecode format ";
-                std::cerr << "(use --llvm or -l)." << std::endl;
+                std::cerr << "(use --cesmi or -c) or generate output file in LLVM bitcode/assembly file format ";
+                std::cerr << "(use --llvm or -l or --llvm-assembly)." << std::endl;
             }
         else {
             std::cerr << "Do not know how to compile this file type." << std::endl;
@@ -279,7 +294,13 @@ struct Compile {
 
         o_llvm = cmd_compile->add< BoolOption >(
             "llvm", 'l', "llvm", "",
-            "generate output file in LLVM bytecode format" );
+            "compile input C/C++ program and produce LLVM bitecode");
+
+        o_assm = cmd_compile->add< BoolOption >(
+            "llvm-assembly", '\0', "llvm-assembly", "",
+            "compile input C/C++ program and produce LLVM assembly "
+            "(the human-readable textual representation primarily used to help debugging, "
+             "but not supported by DiVinE)");
 
         o_keep = cmd_compile->add< BoolOption >(
             "keep-build-directory", '\0', "keep-build-directory", "",
