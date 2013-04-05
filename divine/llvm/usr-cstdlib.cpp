@@ -41,3 +41,31 @@ void _Znwm( void ) {
 void _Znam( void ) {
     // TODO?
 }
+
+
+/* IOStream */
+
+void _ZNSt8ios_base4InitC1Ev( void ) { // std::ios_base::Init
+    // TODO?
+}
+
+/* Exit */
+void exit( int exit_code ) {
+    // TODO
+    ( void ) exit_code;
+}
+
+int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
+    // TODO
+    ( void ) func;
+    ( void ) arg;
+    ( void ) dso_handle;
+    return 0;
+}
+
+int atexit( void ( *func )( void ) ) {
+    // TODO
+    ( void ) func;
+    return 0;
+}
+

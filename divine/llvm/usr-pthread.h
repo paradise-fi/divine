@@ -137,7 +137,7 @@ int pthread_mutex_trylock( pthread_mutex_t * ) NOINLINE;
 int pthread_mutex_unlock( pthread_mutex_t * ) NOINLINE;
 int pthread_mutex_getprioceiling( const pthread_mutex_t *, int * ) NOINLINE UNSUPPORTED_USER;
 int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) NOINLINE UNSUPPORTED_USER;
-int pthread_mutex_timedlock( pthread_mutex_t *, const struct timespec * ) NOINLINE UNSUPPORTED_USER;
+int pthread_mutex_timedlock( pthread_mutex_t *, const struct timespec * ) NOINLINE;
 
 int pthread_mutexattr_destroy( pthread_mutexattr_t * ) NOINLINE;
 int pthread_mutexattr_init( pthread_mutexattr_t * ) NOINLINE;
@@ -166,7 +166,7 @@ int pthread_cond_init( pthread_cond_t *, const pthread_condattr_t * ) NOINLINE;
 int pthread_cond_signal( pthread_cond_t * ) NOINLINE;
 int pthread_cond_broadcast( pthread_cond_t * ) NOINLINE;
 int pthread_cond_wait( pthread_cond_t *, pthread_mutex_t * ) NOINLINE;
-int pthread_cond_timedwait( pthread_cond_t *, pthread_mutex_t *, const struct timespec * ) NOINLINE UNSUPPORTED_USER;
+int pthread_cond_timedwait( pthread_cond_t *, pthread_mutex_t *, const struct timespec * ) NOINLINE;
 
 int pthread_condattr_destroy( pthread_condattr_t * ) NOINLINE UNSUPPORTED_USER;
 int pthread_condattr_getclock( const pthread_condattr_t *, clockid_t * ) NOINLINE UNSUPPORTED_USER;
@@ -179,7 +179,7 @@ int pthread_once( pthread_once_t *, void (*)(void) ) NOINLINE;
 
 int pthread_setcancelstate( int, int * ) NOINLINE;
 int pthread_setcanceltype( int, int * ) NOINLINE NO_EFFECT;
-int pthread_cancel( pthread_t ) NOINLINE UNSUPPORTED_SYSTEM;
+int pthread_cancel( pthread_t ) NOINLINE NO_EFFECT;
 void pthread_testcancel( void ) NOINLINE;
 void pthread_cleanup_push( void (*)(void *), void * ) NOINLINE;
 void pthread_cleanup_pop( int ) NOINLINE;
@@ -205,6 +205,15 @@ int pthread_barrierattr_destroy( pthread_barrierattr_t * ) NOINLINE UNSUPPORTED_
 int pthread_barrierattr_getpshared( const pthread_barrierattr_t *, int * ) NOINLINE UNSUPPORTED_USER;
 int pthread_barrierattr_init( pthread_barrierattr_t * ) NOINLINE UNSUPPORTED_USER;
 int pthread_barrierattr_setpshared( pthread_barrierattr_t *, int ) NOINLINE UNSUPPORTED_USER;
+
+int sched_get_priority_max(int) NOINLINE NO_EFFECT;
+int sched_get_priority_min(int) NOINLINE NO_EFFECT;
+int sched_getparam(pid_t, struct sched_param *) NOINLINE NO_EFFECT;
+int sched_getscheduler(pid_t) NOINLINE NO_EFFECT;
+int sched_rr_get_interval(pid_t, struct timespec *) NOINLINE NO_EFFECT;
+int sched_setparam(pid_t, const struct sched_param *) NOINLINE NO_EFFECT;
+int sched_setscheduler(pid_t, int, const struct sched_param *) NOINLINE NO_EFFECT;
+int sched_yield(void) NOINLINE NO_EFFECT;
 
 #ifdef __cplusplus
 }

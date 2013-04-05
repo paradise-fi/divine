@@ -46,6 +46,9 @@
 #define LTID( PTID )        ( PTID & 0xFFFF )
 #define PTID( GTID, LTID )  ( ( GTID << 16 ) | LTID )
 
+// thresholds
+#define MILLIARD  1000000000
+
 // bit masks
 #define _THREAD_ATTR_DETACH_MASK   0x1
 
@@ -746,9 +749,21 @@ int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) {
     return 0;
 }
 
-int pthread_mutex_timedlock( pthread_mutex_t *, const struct timespec * ) {
-    /* TODO */
-    return 0;
+int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abstime ) {
+    PTHREAD_VISIBLE_FUN_BEGIN()
+
+    if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
+        return EINVAL;
+    }
+
+    // Consider both scenarios, one in which the mutex could not be locked
+    // before the specified timeout expired, and the other in which
+    // pthread_mutex_timedlock behaves basically the same as pthread_mutex_lock.
+    if ( __divine_choice( 2 ) ) {
+        return pthread_mutex_lock( mutex );
+    } else {
+        return ETIMEDOUT;
+    }
 }
 
 /* Mutex attributes */
@@ -1075,9 +1090,22 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     return 0;
 }
 
-int pthread_cond_timedwait( pthread_cond_t *, pthread_mutex_t *, const struct timespec * ) {
-    /* TODO */
-    return 0;
+int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex,
+                            const struct timespec * abstime) {
+    PTHREAD_VISIBLE_FUN_BEGIN()
+
+    if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
+        return EINVAL;
+    }
+
+    // Consider both scenarios, one in which the time specified by abstime has passed
+    // before the function could finish, and the other in which
+    // pthread_cond_timedwait behaves basically the same as pthread_cond_wait.
+    if ( __divine_choice( 2 ) ) {
+        return pthread_cond_wait( cond, mutex );
+    } else {
+        return ETIMEDOUT;
+    }
 }
 
 /* Attributes of conditional variables */
@@ -1534,6 +1562,47 @@ int pthread_barrierattr_init( pthread_barrierattr_t * ) {
 }
 
 int pthread_barrierattr_setpshared( pthread_barrierattr_t *, int ) {
+    /* TODO */
+    return 0;
+}
+
+/* POSIX Realtime Extension - sched.h */
+int sched_get_priority_max(int) {
+    /* TODO */
+    return 0;
+}
+
+int sched_get_priority_min(int) {
+    /* TODO */
+    return 0;
+}
+
+int sched_getparam(pid_t, struct sched_param *) {
+    /* TODO */
+    return 0;
+}
+
+int sched_getscheduler(pid_t) {
+    /* TODO */
+    return 0;
+}
+
+int sched_rr_get_interval(pid_t, struct timespec *) {
+    /* TODO */
+    return 0;
+}
+
+int sched_setparam(pid_t, const struct sched_param *) {
+    /* TODO */
+    return 0;
+}
+
+int sched_setscheduler(pid_t, int, const struct sched_param *) {
+    /* TODO */
+    return 0;
+}
+
+int sched_yield(void) {
     /* TODO */
     return 0;
 }
