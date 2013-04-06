@@ -33,7 +33,7 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
-    StringOption *o_cflags;
+    StringOption *o_cflags, *o_out;
 
     void die_help( std::string bla )
     {
@@ -186,12 +186,16 @@ struct Compile {
         if ( trap ) trap( trap_arg );
     }
 
-    void compileLLVM( std::string in, std::string cflags ) {       
+    void compileLLVM( std::string first_file, std::string cflags, std::string out ) {
         // create temporary directory to compile in
         char tmp_dir_template[] = "_divine-compile.XXXXXX";
         FilePath tmp_dir;
         tmp_dir.abspath = process::getcwd();
         tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
+
+        // prepare cleanup
+        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
+        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
 
         // assembly or bitcode?
         // If both are requested, the former is produced and the latter is ignored.
@@ -204,8 +208,7 @@ struct Compile {
             ext = ".bc";
         }
 
-        // input
-        std::string in_basename ( str::basename(in), 0, str::basename(in).rfind( '.' ) );
+        // names of library files
           // user-space
         std::string usr_h = "usr.h";
           // pthread
@@ -217,41 +220,56 @@ struct Compile {
         std::string cstdlib_cpp = "cstdlib.cpp";
         std::string cstdlib_comp = "cstdlib" + ext;
 
-        // output
-        std::string unlinked = str::joinpath( tmp_dir.basename, "_" + in_basename + ext );
-        std::string linked = in_basename + ext;
-
-        // prepare cleanup
-        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
-        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
-
         // enter tmp directory
         chdir( tmp_dir.basename.c_str() );
 
-        // copy library files from memory to the directory
-        fs::writeFile ( usr_h, llvm_usr_h_str );
-        fs::writeFile ( pthread_h, llvm_usr_pthread_h_str );
-        fs::writeFile ( pthread_cpp, llvm_usr_pthread_cpp_str );
-        fs::writeFile ( cstdlib_h, llvm_usr_cstdlib_h_str );
-        fs::writeFile ( cstdlib_cpp, llvm_usr_cstdlib_cpp_str );
+        // copy content of library files from memory to the directory
+        fs::writeFile( usr_h, llvm_usr_h_str );
+        fs::writeFile( pthread_h, llvm_usr_pthread_h_str );
+        fs::writeFile( pthread_cpp, llvm_usr_pthread_cpp_str );
+        fs::writeFile( cstdlib_h, llvm_usr_cstdlib_h_str );
+        fs::writeFile( cstdlib_cpp, llvm_usr_cstdlib_cpp_str );
 
-        // compile
-          // libraries
+        // compile libraries
         std::string flags = stage + "-emit-llvm -g " + cflags;
-        run ( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
-        run ( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
-          // leave tmp directory
+        run( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
+        run( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
+
+        // leave tmp directory
         chdir( tmp_dir.abspath.c_str() );
-          // input file
-        run ( "clang " + flags + " -I'" + tmp_dir.basename + "' " + in + " -o " + unlinked, trap, trap_arg );
+
+        // compile input file(s)
+        std::string basename, unlinked, file = first_file, all_unlinked;
+        do {
+            if ( file.empty() ) {
+                file = opts.next();
+            }
+
+            basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
+
+            if ( out.empty() ) {
+                // If the output file name is not specified, than the file name of the first
+                // file in the list is used.
+                out = basename;
+            }
+
+            unlinked = str::joinpath( tmp_dir.basename, "_" + basename + ext );
+            all_unlinked += " " + unlinked;
+
+            run( "clang " + flags + " -I'" + tmp_dir.basename + "' " + file + " -o " + unlinked,
+                 trap, trap_arg );
+
+            file.clear();
+        } while ( opts.hasNext() );
 
         // link
         if ( !o_assm->boolValue() )
             stage = "";
-        run ( "llvm-link " + stage + unlinked + " " +
-              str::joinpath( tmp_dir.basename, cstdlib_comp ) + " " +
-              str::joinpath( tmp_dir.basename, pthread_comp ) +
-              " -o " + linked, trap, trap_arg );
+
+        run( "llvm-link" + stage + all_unlinked + " " +
+             str::joinpath( tmp_dir.basename, cstdlib_comp ) + " " +
+             str::joinpath( tmp_dir.basename, pthread_comp ) +
+             " -o " + out + ext, trap, trap_arg );
 
         // cleanup
         if ( trap ) trap( trap_arg );
@@ -270,11 +288,11 @@ struct Compile {
             if ( o_cesmi->boolValue() )
                 compileCESMI( input, o_cflags->stringValue() );
             else if ( o_llvm->boolValue() || o_assm->boolValue() )
-                compileLLVM( input, o_cflags->stringValue() );
+                compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
             else {
                 std::cerr << "Do not know whether to process input file as of CESMI type ";
                 std::cerr << "(use --cesmi or -c) or generate output file in LLVM bitcode/assembly file format ";
-                std::cerr << "(use --llvm or -l or --llvm-assembly)." << std::endl;
+                std::cerr << "(use --llvm/-l or --llvm-assembly)." << std::endl;
             }
         else {
             std::cerr << "Do not know how to compile this file type." << std::endl;
@@ -294,11 +312,11 @@ struct Compile {
 
         o_llvm = cmd_compile->add< BoolOption >(
             "llvm", 'l', "llvm", "",
-            "compile input C/C++ program and produce LLVM bitecode");
+            "compile input C/C++ program into LLVM bitecode");
 
         o_assm = cmd_compile->add< BoolOption >(
             "llvm-assembly", '\0', "llvm-assembly", "",
-            "compile input C/C++ program and produce LLVM assembly "
+            "compile input C/C++ program into LLVM assembly "
             "(the human-readable textual representation primarily used to help debugging, "
              "but not supported by DiVinE)");
 
@@ -309,6 +327,13 @@ struct Compile {
         o_cflags = cmd_compile->add< StringOption >(
             "cflags", 'f', "cflags", "",
             "set flags for C/C++ compiler" );
+
+        o_out = cmd_compile->add< StringOption >(
+            "output-file", 'o', "output-file", "",
+            "specify the output file name "
+            "(do not include extension, it is chosen and appended automatically), "
+            "this flag is currently only applied in conjunction with --llvm/-l or --llvm-assembly");
+
 
     }
 
