@@ -1,4 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimir Still <xstill@fi.muni.cz>
+#ifndef TREE_COMPRESSED_HASH_SET_H
+#define TREE_COMPRESSED_HASH_SET_H
+
 #include <wibble/test.h> // assert
 #include <tuple>
 #include <algorithm>
@@ -10,22 +13,28 @@
 
 namespace divine {
 
+#define ChunkSize 32
+
     // TreeCompressedHashSetBase :: ( * -> * -> * ) -> * -> * -> int -> *
     // Creates tree compression topology with given chunk size (in bytes)
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class _HashSet,
-        typename Item, typename Hasher = default_hasher< Item >, int ChunkSize = 32>
+        typename _Item, typename _Hasher = default_hasher< _Item > >
     struct TreeCompressedHashSetBase
     {
         static_assert( ChunkSize > 0, "ChunkSize must be positive" );
 
+        typedef _Item Item;
+        typedef _Hasher Hasher;
         typedef _HashSet< Item, Hasher > BaseHashSet;
 
         template< typename... Args >
-        TreeCompressedHashSetBase( Args&&... args ) :
-            m_base( std::forward<Args>( args )... ),
-            m_slack( m_base.hasher.slack ),
-            m_size( 0 )
+        TreeCompressedHashSetBase( Hasher hasher, Args&&... args ) :
+            m_base( Hasher( hasher, hasher.slack + int( sizeof( Leaf ) ) ),
+                    std::forward< Args >( args )... ),
+            m_slack( hasher.slack ),
+            m_size( 0 ),
+            hasher( m_base.hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
@@ -36,12 +45,14 @@ namespace divine {
                     "Algorithm assumes this" );
             static_assert( sizeof( Leaf ) <= offsetof( Fork, right ),
                     "Algorithm assumes this" );
-            m_base.hasher.setSlack( m_slack + int( sizeof( Leaf ) ) );
         }
 
         BaseHashSet m_base;
         const int m_slack;
         size_t m_size;
+        size_t m_maxsize; // XXX
+
+        Hasher& hasher;
 
 #ifndef O_PERFORMANCE
         size_t inserts;
@@ -286,6 +297,10 @@ namespace divine {
 #endif
         }
 
+        Item insertHinted( Item item, hash_t ) {
+            return insert( item );
+        }
+
         Item insert( Item item ) {
             incInserts();
 
@@ -430,6 +445,10 @@ namespace divine {
 
         Item getHinted( Item i, hash_t h, bool* has = nullptr )
         {
+            Item ii = get( i );
+            if ( has != nullptr )
+                *has = valid( ii );
+            return ii;
             assert_unimplemented();
         }
 
@@ -438,6 +457,13 @@ namespace divine {
 
         void clear() {
             m_base.clear();
+        }
+
+        Item operator[]( int off ) {
+            Item i = m_base. m_table[ off ].item;
+            if ( header( i ).root )
+                return reassemble( i );
+            return Item();
         }
     };
 
@@ -448,7 +474,8 @@ namespace divine {
 
 
     template< template< typename, typename > class _HashSet,
-        typename Item, typename Hasher, int ChunkSize>
-    const typename TreeCompressedHashSetBase< _HashSet, Item, Hasher, ChunkSize >::Node
-        TreeCompressedHashSetBase< _HashSet, Item, Hasher, ChunkSize >::Node::invalid;
+        typename Item, typename Hasher >
+    const typename TreeCompressedHashSetBase< _HashSet, Item, Hasher >::Node
+        TreeCompressedHashSetBase< _HashSet, Item, Hasher >::Node::invalid;
 }
+#endif
