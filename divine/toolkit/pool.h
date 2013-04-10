@@ -23,13 +23,19 @@ struct BlobDereference {
     }
 
     template< typename T >
-    T& get( Blob& blob, int off = 0 ) const
+    T& get( Blob blob, int off = 0 )
     {
         return blob.get<T>(off);
     }
 
     template< typename T >
-    int get( Blob& blob, int off, T& t ) const
+    const T& get( const Blob blob, int off = 0 ) const
+    {
+        return blob.get< T >( off );
+    }
+
+    template< typename T >
+    int get( Blob blob, int off, T& t ) const
     {
         return blob.get(off, t);
     }

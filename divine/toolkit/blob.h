@@ -103,7 +103,7 @@ struct Blob
         return ptr;
     }
 
-    bool alias( Blob& other ) {
+    bool alias( Blob& other ) const {
         return ptr == other.ptr;
     }
 
@@ -149,6 +149,11 @@ private:
     template< typename T >
     T &get( int off = 0 ) {
         return *reinterpret_cast< T * >( data() + off );
+    }
+
+    template< typename T >
+    const T& get( int off = 0 ) const {
+        return *reinterpret_cast< const T* >( data() + off );
     }
 
     template< typename T >

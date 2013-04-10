@@ -52,10 +52,15 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     typedef _AlgorithmSetup AlgorithmSetup;
     typedef typename AlgorithmSetup::Graph::Node Node;
     typedef typename AlgorithmSetup::Graph::Label Label;
+    typedef typename AlgorithmSetup::Vertex Vertex;
+    typedef typename AlgorithmSetup::VertexId VertexId;
 
     template< typename A, typename V >
     void queueInitials( A &a, V &v ) {
-        a.graph().initials( [&v] ( Node f, Node n, Label l ) { v.queue( f, n, l ); } );
+        a.graph().initials( [&v] ( Node f, Node n, Label l ) {
+                assert( !f.valid() ); // hm
+                v.queue( Vertex(), n, l );
+            } );
     }
 
     template< typename A, typename V >
@@ -117,8 +122,9 @@ struct Algorithm
             new typename Self::Store( self.graph(), slack,
                     master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
-        s->id = &self;
+        s->hasher().setSlack( self.graph().setSlack( m_slack ) );
         s->setSize( meta().execution.initialTable );
+        s->id = &self;
         return s;
     }
 

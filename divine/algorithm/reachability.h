@@ -11,23 +11,24 @@
 namespace divine {
 namespace algorithm {
 
+template < typename VertexId >
 struct ReachabilityShared {
-    Blob goal;
+    VertexId goal;
     bool deadlocked;
     algorithm::Statistics stats;
-    CeShared< Blob > ce;
+    CeShared< Blob, VertexId > ce;
     bool need_expand;
     ReachabilityShared() : need_expand( false ) {}
 };
 
-template< typename BS >
-typename BS::bitstream &operator<<( BS &bs, ReachabilityShared st )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator<<( BS &bs, ReachabilityShared< VertexId > st )
 {
     return bs << st.goal << st.deadlocked << st.stats << st.ce << st.need_expand;
 }
 
-template< typename BS >
-typename BS::bitstream &operator>>( BS &bs, ReachabilityShared &st )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< VertexId > &st )
 {
     return bs >> st.goal >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
 }
@@ -40,58 +41,68 @@ template< typename Setup >
 struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                       Parallel< Setup::template Topology, Reachability< Setup > >
 {
+    typedef typename Setup::VertexId VertexId;
+    typedef typename Setup::Vertex Vertex;
     typedef Reachability< Setup > This;
-    ALGORITHM_CLASS( Setup, ReachabilityShared );
+    ALGORITHM_CLASS( Setup, ReachabilityShared< VertexId> );
 
-    Node goal;
+    VertexId goal;
     bool deadlocked;
 
     struct Extension {
-        Blob parent;
+        VertexId parent;
     };
 
-    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
+    LtlCE< Setup, Shared, Extension, typename Store::Hasher > ce;
 
     Pool& pool() {
         return this->graph().base().alloc.pool();
     }
 
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n );
+    Extension &extension( Vertex n ) {
+        return pool().template get< Extension >( n.getNode() );
     }
 
     struct Main : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &r, Node st )
+        static visitor::ExpansionAction expansion( This &r, Vertex st )
         {
             r.shared.stats.addNode( r.graph(), st );
+            r.graph().porExpansion( st );
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &r, Node f, Node t, Label )
+        static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
         {
-            if ( !r.extension( t ).parent.valid() )
-                r.extension( t ).parent = f;
-            r.shared.stats.addEdge( r.graph(), f, t );
+            if ( !r.store().valid( r.extension( t ).parent ) ) {
+                r.extension( t ).parent = f.getVertexId();
+                assert( !r.store().valid( f )
+                        || r.store().valid( r.extension( t ).parent ) );
+            }
+            r.shared.stats.addEdge( r.graph(), f.getNode(), t.getNode() );
 
-            if ( r.meta().input.propertyType == graph::PT_Goal && r.graph().isGoal( t ) ) {
-                r.shared.goal = r.graph().clone( t );
+            if ( r.meta().input.propertyType == graph::PT_Goal
+                    && r.graph().isGoal( t.getNode() ) )
+            {
+                r.shared.goal = t.getVertexId();
+                assert( r.store().valid( r.shared.goal ) );
                 r.shared.deadlocked = false;
                 return visitor::TerminateOnTransition;
             }
 
-            r.graph().porTransition( f, t, 0 );
+// XXX            r.graph().porTransition( f, t, 0 );
             return visitor::FollowTransition;
         }
 
-        static visitor::DeadlockAction deadlocked( This &r, Node n )
+        static visitor::DeadlockAction deadlocked( This &r, Vertex n )
         {
             r.shared.stats.addDeadlock();
 
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::IgnoreDeadlock;
 
-            r.shared.goal = r.graph().clone( n );
+            r.shared.goal = n.getVertexId();
+            assert( r.store().valid( r.shared.goal ) );
             r.shared.deadlocked = true;
             return visitor::TerminateOnDeadlock;
         }
@@ -130,18 +141,25 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return shared;
     }
 
-    void counterexample( Node n ) {
+    Shared _successorTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce._successorTrace( *this, this->store() );
+        return shared;
+    }
+
+    void counterexample( VertexId n ) {
         shared.ce.initial = n;
         ce.setup( this->graph(), shared, this->store().hasher() );
-        ce.linear( *this, *this );
-        ce.goal( *this, n );
+        Node goal = ce.linear( *this, *this );
+        ce.goal( *this, goal );
     }
 
     void collect() {
         deadlocked = false;
         for ( int i = 0; i < int( shareds.size() ); ++i ) {
             shareds[ i ].stats.update( meta().statistics );
-            if ( shareds[ i ].goal.valid() ) {
+            if ( this->store().valid( shareds[ i ].goal ) ) {
                 goal = shareds[ i ].goal;
                 if ( shareds[ i ].deadlocked )
                     deadlocked = true;
@@ -155,7 +173,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         parallel( &This::_visit );
         collect();
 
-        while ( !goal.valid() ) {
+        while ( !this->store().valid( goal ) ) {
             shared.need_expand = false;
             ring( &This::_por );
 
@@ -169,7 +187,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         progress() << meta().statistics.visited << " states, "
                    << meta().statistics.transitions << " edges" << std::flush;
 
-        if ( goal.valid() ) {
+        if ( this->store().valid( goal ) ) {
             if ( deadlocked )
                 progress() << ", DEADLOCK";
             else
@@ -177,14 +195,16 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         }
         progress() << std::endl;
 
-        resultBanner( !goal.valid() );
-        if ( goal.valid() && this->meta().output.wantCe ) {
+        resultBanner( !this->store().valid( goal ) );
+        if ( this->store().valid( goal ) && this->meta().output.wantCe ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
         }
 
-        result().propertyHolds = goal.valid() ? meta::Result::No : meta::Result::Yes;
-        result().fullyExplored = goal.valid() ? meta::Result::No : meta::Result::Yes;
+        result().propertyHolds = this->store().valid( goal )
+                                  ? meta::Result::No : meta::Result::Yes;
+        result().fullyExplored = this->store().valid( goal )
+                                  ? meta::Result::No : meta::Result::Yes;
     }
 };
 
@@ -194,6 +214,7 @@ ALGORITHM_RPC_ID( Reachability, 1, _visit );
 ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
 ALGORITHM_RPC_ID( Reachability, 3, _por );
 ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
+ALGORITHM_RPC_ID( Reachability, 5, _successorTrace );
 
 }
 }

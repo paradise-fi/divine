@@ -24,6 +24,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
+    typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::VertexId VertexId;
     typedef This Listener;
     typedef NoStatistics Statistics;
 

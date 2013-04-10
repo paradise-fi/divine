@@ -190,7 +190,7 @@ struct Main {
         algorithm::Algorithm *a = NULL;
 
         if ( opts.foundCommand() == cmd_draw )
-            a = instantiate::selectDraw( meta );
+            a = selectGraph< Draw >( meta );
         if ( opts.foundCommand() == cmd_info )
             a = instantiate::selectInfo( meta );
 

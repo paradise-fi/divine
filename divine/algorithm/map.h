@@ -39,24 +39,24 @@ struct VertexId {
     }
 } __attribute__((packed));
 
-
+template < typename VertexId >
 struct MapShared {
     int expanded, eliminated, accepting;
     int iteration;
-    CeShared< Blob > ce;
+    CeShared< Blob, VertexId > ce;
     algorithm::Statistics stats;
     bool need_expand;
 };
 
-template< typename BS >
-typename BS::bitstream &operator<<( BS &bs, const MapShared &sh )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator<<( BS &bs, const MapShared< VertexId > &sh )
 {
     return bs << sh.stats << sh.ce << sh.iteration << sh.need_expand
               << sh.accepting << sh.expanded << sh.eliminated;
 }
 
-template< typename BS >
-typename BS::bitstream &operator>>( BS &bs, MapShared &sh )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator>>( BS &bs, MapShared< VertexId > &sh )
 {
     return bs >> sh.stats >> sh.ce >> sh.iteration >> sh.need_expand
               >> sh.accepting >> sh.expanded >> sh.eliminated;
@@ -74,38 +74,44 @@ template< typename Setup >
 struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
 {
     typedef Map< Setup > This;
-    ALGORITHM_CLASS( Setup, MapShared );
+    typedef typename Setup::Vertex Vertex;
+    ALGORITHM_CLASS( Setup, MapShared< typename Setup::VertexId > );
 
     int d_eliminated,
         acceptingCount,
         eliminated,
         expanded;
-    Node cycle_node;
+    typename Setup::VertexId cycle_node;
 
-    VertexId makeId( Node n ) {
+    VertexId makeId( Vertex n ) {
         VertexId ret;
-        ret.ptr = reinterpret_cast< intptr_t >( this->pool().data( n ) );
+        ret.ptr = n.getVertexId().weakId();
         ret.owner = this->id();
         return ret;
     }
 
     struct Extension {
-        Blob parent;
+        typename Setup::VertexId parent;
         bool seen:1;
         short iteration:14;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
+        // 3 = not accepting
         unsigned short elim:2;
         VertexId map;
         VertexId oldmap;
     };
 
-    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
+    LtlCE< Setup, Shared, Extension, typename Store::Hasher > ce;
 
-    Extension &extension( Node n ) {
-        return this->pool().template get< Extension >( n );
+    Extension &extension( Vertex n ) {
+        return this->pool().template get< Extension >( n.getNode() );
     }
 
-    visitor::TransitionAction updateIteration( Node t ) {
+    Extension &extension( typename Setup::VertexId id ) {
+        return id.template extension< Extension >( this->pool() );
+    }
+
+    visitor::TransitionAction updateIteration( Vertex t ) {
         int old = extension( t ).iteration;
         extension( t ).iteration = shared.iteration;
         return (old != shared.iteration) ?
@@ -126,28 +132,31 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             assert_eq( shared.eliminated, 0 );
             assert_eq( shared.expanded, 0 );
 
-            if ( shareds[ i ].ce.initial.valid() )
+            if ( this->store().valid( shareds[ i ].ce.initial ) )
                 cycle_node = shareds[ i ].ce.initial;
         }
     }
 
-    bool isAccepting( Node st ) {
-        if ( !this->graph().isAccepting ( st ) )
+    bool isAccepting( Vertex st ) {
+        if ( extension( st ).elim >= 2 )
             return false;
-        if ( extension( st ).elim == 2 )
+        if ( !this->graph().isAccepting ( st.getNode() ) ) {
+            extension( st ).elim = 3;
             return false;
+        }
         return true;
     }
 
     struct Main : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &m, Node st )
+        static visitor::ExpansionAction expansion( This &m, Vertex st )
         {
             ++ m.shared.expanded;
             if ( !m.extension( st ).seen ) {
                 m.extension( st ).seen = true;
-                if ( m.graph().isAccepting ( st ) )
+                if ( m.graph().isAccepting ( st.getNode() ) )
                     ++ m.shared.accepting;
+                m.graph().porExpansion( st );
                 m.shared.stats.addNode( m.graph(), st );
             } else
                 m.shared.stats.addExpansion();
@@ -155,26 +164,28 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &m, Node f, Node t, Label )
+        static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
         {
-            if ( m.shared.iteration == 1 )
-                m.graph().porTransition( f, t, 0 );
+// XXX            if ( m.shared.iteration == 1 )
+// XXX                m.graph().porTransition( f, t, 0 ); // ??
 
-            if ( !f.valid() )
+            if ( !m.store().valid( f ) )
                 return m.updateIteration( t );
 
-            if ( !m.extension( t ).parent.valid() )
-                m.extension( t ).parent = f;
+            if ( !m.store().valid( m.extension( t ).parent ) )
+                m.extension( t ).parent = f.getVertexId();
 
             /* self loop */
-            if ( m.graph().isAccepting( f ) && m.pool().pointer( f ) == m.pool().pointer( t ) ) {
-                m.shared.ce.initial = t;
+            if ( m.graph().isAccepting( f.getNode() ) &&
+                    visitor::equalId( m.store(), f.getVertexId(), t.getVertexId() ) )
+            {
+                m.shared.ce.initial = t.getVertexId();
                 return visitor::TerminateOnTransition;
             }
 
             /* MAP arrived to its origin */
             if ( m.isAccepting( t ) && m.extension( f ).map == m.makeId( t ) ) {
-                m.shared.ce.initial = t;
+                m.shared.ce.initial = t.getVertexId();
                 return visitor::TerminateOnTransition;
             }
 
@@ -207,12 +218,13 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void _cleanup() {
-        for ( size_t i = 0; i < this->store().size(); ++i ) {
-            Node st = this->store()[ i ];
+        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
+            Node st = this->store().table[ i ];
             if ( st.valid() ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = VertexId();
-                if ( isAccepting( st ) ) {
+//                 if ( isAccepting( st ) ) {
+                if ( extension( st ).elim != 3 ) {
                     /* elim == 1 means NOT to be eliminated (!) */
                     if ( extension( st ).elim == 1 )
                         extension( st ).elim = 0;
@@ -241,7 +253,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         parallel( &This::_visit );
         collect();
 
-        while ( !cycle_node.valid() && shared.iteration == 1 ) {
+        while ( !this->store().valid( cycle_node ) && shared.iteration == 1 ) {
             shared.need_expand = false;
             ring( &This::_por );
 
@@ -260,6 +272,13 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         shared = sh;
         ce.setup( this->graph(), shared, this->store().hasher() );
         ce._parentTrace( *this, this->store() );
+        return shared;
+    }
+
+    Shared _successorTrace( Shared sh ) {
+        shared = sh;
+        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce._successorTrace( *this, this->store() );
         return shared;
     }
 
@@ -283,7 +302,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             assert_leq( eliminated, acceptingCount );
             progress() << eliminated << " eliminated, "
                        << expanded << " expanded" << std::endl;
-            valid = !cycle_node.valid();
+            valid = !this->store().valid( cycle_node );
 
             if ( valid )
                 result().fullyExplored = meta::Result::Yes;
@@ -299,7 +318,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
         if ( !valid && want_ce ) {
             progress() << " generating counterexample...     " << std::flush;
-            assert( cycle_node.valid() );
+            assert( this->store().valid( cycle_node ) );
             shared.ce.initial = cycle_node;
             ce.setup( this->graph(), shared, this->store().hasher() );
             ce.lasso( *this, *this );
@@ -328,6 +347,7 @@ ALGORITHM_RPC_ID( Map, 3, _parentTrace );
 ALGORITHM_RPC_ID( Map, 4, _traceCycle );
 ALGORITHM_RPC_ID( Map, 5, _por );
 ALGORITHM_RPC_ID( Map, 6, _por_worker );
+ALGORITHM_RPC_ID( Map, 7, _successorTrace );
 
 }
 }

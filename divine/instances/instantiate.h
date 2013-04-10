@@ -14,40 +14,36 @@ namespace instantiate {
              Store store, Visitor visitor, Topology topology, Statistics statistics >
     algorithm::Algorithm* makeAlgorithm( Meta& meta ) {
 
-        if ( !SelectAlgorithm< algo >::available )
-            std::cerr << "Missing algorithm: "
-                << ShowT< Algorithm, algo >::value  << std::endl;
-        if ( !SelectGenerator< generator >::available )
-            std::cerr << "Missing generator: "
-                << ShowT< Generator, generator >::value << std::endl;
-        if ( !SelectTransform< transform >::available ) {
-            std::cerr << "Missing graf transformation: "
-                << ShowT< Transform, transform >::value
-                << ", disabling transformations." << std::endl;
-            return makeAlgorithm< algo, generator, Transform::None,
-                   store, visitor, topology, statistics >( meta );
-        }
-        if ( !SelectStore< store >::available ) {
-            std::cerr << "Missing store: "
-                << ShowT< Store, store >::value
-                << ", using Partitioned instead." << std::endl;
-            return makeAlgorithm< algo, generator, transform,
-                   Store::Partitioned, Visitor::Partitioned, topology, statistics >( meta );
-        }
-        if ( !SelectVisitor< visitor >::available ) {
-            std::cerr << "Missing visitor: "
-                << ShowT< Visitor, visitor >::value
-                << ", using Partitioned instead." << std::endl;
-            return makeAlgorithm< algo, generator, transform,
-                   Store::Partitioned, Visitor::Partitioned, topology, statistics >( meta );
-        }
-        if ( !SelectTopology< topology >::available )
-            std::cerr << "Missing topology: "
-                << ShowT< Topology, topology >::value << std::endl;
+template< typename Stats, typename T >
+wibble::Unit setupParallel( NotPreferred, T &t )
+{
+    t.init();
+    setupCurses();
+    if ( statistics )
+        Stats::global().start();
+    return wibble::Unit();
+}
+*/
 
-        AlgorithmSelector< algo, generator, transform, store, visitor,
-            topology, statistics > selector;
-    }
+template< typename G >
+using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
+
+template< template< typename > class T, typename V = visitor::Partitioned >
+struct SetupT {
+    template< typename X > using Topology = T< X >;
+    typedef V Visitor;
+};
+
+template< template< typename > class A, typename G, template< typename > class T, typename S,
+          typename St >
+algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
+    struct Setup : SetupT< T > {
+        typedef G Graph;
+        typedef S Statistics;
+        typedef St Store;
+    };
+    return new A< Setup >( meta );
+}
 
 template< template< typename > class A, typename G, template< typename > class T, typename S >
 algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
@@ -61,17 +57,27 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
         return makeAlgorithm< A, G, T, S, visitor::PartitionedStore< G, algorithm::Hasher, S > >( meta );
 }
 
+template< template< typename > class A, typename G, template< typename > class T >
+algorithm::Algorithm *makeAlgorithm( Meta &meta )
+{
+#ifdef O_PERFORMANCE
+    if ( !meta.output.statistics )
+        return makeAlgorithm< A, G, T, divine::NoStatistics >( meta );
+    else
+#endif
+        return makeAlgorithm< A, G, T, divine::Statistics >( meta );
+}
 
-    template < Algorithm algo, Generator generator, Transform transform,
-             Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectVisitor( Meta& meta ) {
-        if ( meta.algorithm.sharedVisitor )
-            return makeAlgorithm< algo, generator, transform, Store::Shared,
-                   Visitor::Shared, topology, statistics >( meta );
-        else
-            return makeAlgorithm< algo, generator, transform, store,
-                   Visitor::Partitioned, topology, statistics>( meta );
-    }
+template< template< typename > class A, typename G >
+algorithm::Algorithm *makeAlgorithm( Meta &meta )
+{
+#ifdef O_PERFORMANCE
+    if ( meta.execution.nodes == 1 )
+        return makeAlgorithm< A, G, Topology< Transition< G > >::template Local >( meta );
+    else
+#endif
+        return makeAlgorithm< A, G, Topology< Transition< G > >::template Mpi >( meta );
+}
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
@@ -83,16 +89,16 @@ algorithm::Algorithm *makeAlgorithm( Meta &meta ) {
                visitor, topology, statistics >( meta );
     }
 
-    template < Algorithm algo, Generator generator, Transform transform,
-             Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectStatistics( Meta& meta ) {
-        if ( !meta.output.statistics )
-            return selectStore< algo, generator, transform, store, visitor, topology,
-                   ifPerformance( Statistics::Disabled, Statistics::Enabled )
-                   >( meta );
-        return selectStore< algo, generator, transform, store, visitor, topology,
-               Statistics::Enabled >( meta );
-    }
+template< template< typename > class A, typename Graph >
+algorithm::Algorithm *makeAlgorithmPOR( Meta &meta )
+{
+#ifdef O_PERFORMANCE
+    if ( !meta.output.statistics )
+        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::NoStatistics > >( meta );
+    else
+#endif
+        return makeAlgorithm< A, algorithm::PORGraph< Graph, divine::Statistics > >( meta );
+}
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >

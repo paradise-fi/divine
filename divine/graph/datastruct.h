@@ -14,20 +14,23 @@
 
 namespace divine {
 
-template< typename Graph, typename Self >
+template< typename Setup, typename Self >
 struct QueueFrontend {
     Self &self() { return *static_cast< Self * >( this ); }
     bool deadlocked;
 
+    typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
+    typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::VertexId VertexId;
 
     template< typename Next >
     void processOpen( Next next ) {
         deadlocked = true;
 
-        Node from = self().front();
-        self().g.successors( from, [&]( Node n, Label label ) {
+        Vertex from = self().front();
+        self().g.successors( from.getNode(), [&]( Node n, Label label ) {
                 deadlocked = false;
                 next( from, n, label );
             } );
@@ -43,7 +46,7 @@ struct QueueFrontend {
     void processClosed( Close close ) {
         if ( !self().empty() ) {
             close( self().front() );
-            self().g.release( self().front() );
+            self().g.release( self().front().getNode() );
             self().pop_front();
         }
     }
@@ -51,25 +54,27 @@ struct QueueFrontend {
     QueueFrontend() : deadlocked( true ) {}
 };
 
-template< typename Graph, typename Statistics >
-struct Queue : QueueFrontend< Graph, Queue< Graph, Statistics > >
+template< typename Setup >
+struct Queue : QueueFrontend< Setup, Queue< Setup > >
 {
-    Graph &g;
+    typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
-    std::deque< Node > _queue;
+    typedef typename Setup::Vertex Vertex;
+    Graph &g;
+    std::deque< Vertex > _queue;
 
     int id;
 
-    Node front() { return _queue.front(); }
+    Vertex front() { return _queue.front(); }
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( Node ) );
+        Statistics::global().dequeue( id, sizeof( Vertex ) );
         _queue.pop_front();
     }
 
     void reserve( int n ) { _queue.reserve( n ); }
     int size() { return _queue.size(); } // XXX misleading?
 
-    void push( const Node &t )
+    void push( const Vertex &t )
     {
         Statistics::global().enqueue( id, sizeof( t ) );
         _queue.push_back( t );
@@ -81,11 +86,13 @@ struct Queue : QueueFrontend< Graph, Queue< Graph, Statistics > >
     Queue( Graph &_g ) : g( _g ), id( 0 ) {}
 };
 
-template< typename Graph, typename Statistics >
+template< typename Setup >
 struct Stack {
+    typedef typename Setup::Graph Graph;
     Graph &g;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
+    typedef typename Setup::Vertex Vertex;
     enum Flag { Fresh, Expanded };
 
     std::deque< std::pair< Flag, std::pair< Node, Label > > > _stack;
@@ -94,7 +101,8 @@ struct Stack {
 
     int _pushes, _pops;
 
-    void push( Node t ) {
+    void push( Vertex tV ) {
+        Node t = tV.getNode();
         _from = t;
         _stack.push_back( std::make_pair( Expanded , std::make_pair( t, Label() ) ) );
         deadlocked = true;
@@ -113,7 +121,7 @@ struct Stack {
             Label l = _stack.back().second.second;
             _stack.pop_back();
             ++ _pops;
-            next( _from, n, l );
+            next( Vertex( _from ), n, l );
         }
     }
 
@@ -121,7 +129,7 @@ struct Stack {
     void processDead( Dead dead ) {
         if ( deadlocked && ! empty() ) {
             assert_eq( _stack.back().first, Expanded );
-            dead( _stack.back().second.first );
+            dead( Vertex( _stack.back().second.first ) );
             deadlocked = false;
         }
     }
@@ -132,7 +140,7 @@ struct Stack {
             return;
 
         while ( !empty() && _stack.back().first == Expanded ) {
-            close( _stack.back().second.first );
+            close( Vertex( _stack.back().second.first ) );
             g.release( _stack.back().second.first );
             _stack.pop_back();
         }
