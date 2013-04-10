@@ -268,7 +268,7 @@ divine::Blob MachineState::snapshot()
 
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
-    assert_eq( address.offset, b.size() );
+    assert_eq( address.offset, _alloc.pool().size( b ) );
     assert_eq( (_alloc.pool().size( b ) - _alloc._slack) % 4, 0 );
 
     return b;
