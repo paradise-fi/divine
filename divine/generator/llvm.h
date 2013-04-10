@@ -74,8 +74,8 @@ struct LLVM : Common< Blob > {
                 }
 
                 while ( buchi_succs.size() > 1 ) {
-                    Blob b( this->pool(), n.size() );
-                    n.copyTo( b );
+                    Blob b( this->pool(), this->pool().size( n ) );
+                    pool().copyTo( n, b );
                     flags( b ).buchi = buchi_succs.back();
                     buchi_succs.pop_back();
                     yield( b, Label() );
