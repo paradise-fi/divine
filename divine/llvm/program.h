@@ -97,6 +97,8 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     }
 };
 
+std::ostream &operator<<( std::ostream &o, Pointer p );
+
 enum Builtin {
     NotBuiltin = 0,
     BuiltinChoice,
