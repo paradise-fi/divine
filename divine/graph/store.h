@@ -352,7 +352,7 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
 
     template< typename... Args >
     TreeCompressedStore( Graph& g, int slack, Args&&... args ) :
-        Base( g, slack, 32, std::forward< Args >( args )... )
+        Base( g, slack, 16, std::forward< Args >( args )... )
     { }
 };
 

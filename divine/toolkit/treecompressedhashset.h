@@ -11,6 +11,8 @@
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 
+#include <iostream>
+
 namespace divine {
 
     // TreeCompressedHashSet :: ( * -> * -> * ) -> * -> * -> *
@@ -25,27 +27,44 @@ namespace divine {
 
         template< typename... Args >
         TreeCompressedHashSet( Hasher hasher, int chunkSize, Args&&... args ) :
-            m_base( Hasher( hasher, hasher.slack + int( sizeof( Leaf ) ) ),
-                    std::forward< Args >( args )... ),
+            m_roots( Hasher( hasher, hasher.slack + int( sizeof( Root ) ) ), args... ),
+            m_forks( Hasher( hasher, 0 ), args... ),
+            m_leafs( Hasher( hasher, 0 ), args... ),
             m_chunkSize( chunkSize ),
             m_slack( hasher.slack ),
             m_size( 0 ),
-            hasher( m_base.hasher )
+            hasher( m_roots.hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
         {
-            static_assert( sizeof( Leaf ) == sizeof( Node ),
+            static_assert( sizeof( RootLeaf ) == sizeof( Root ),
                     "Algorithm assumes this" );
-            static_assert( sizeof( Leaf ) <= offsetof( Fork, left ),
+            static_assert( sizeof( RootLeaf ) <= offsetof( RootFork, left ),
                     "Algorithm assumes this" );
-            static_assert( sizeof( Leaf ) <= offsetof( Fork, right ),
+            static_assert( sizeof( RootLeaf ) <= offsetof( RootFork, right ),
                     "Algorithm assumes this" );
+            static_assert( sizeof( Fork ) == 2 * sizeof( Item ),
+                    "Misaligned Fork structure" );
             assert( chunkSize > 0 );
         }
 
-        BaseHashSet m_base;
-        const int m_slack;
+#ifndef O_PERFORMANCE
+        ~TreeCompressedHashSet() {
+            std::cout << "~TreeCompressedHashSet: "
+                      << "size: " << m_size << ", "
+                      << "inserts: " << inserts << ", "
+                      << "leafReuse: " << leafReuse << ", "
+                      << "forkReuse: " << forkReuse << ", "
+                      << "rootReuse: " << rootReuse << std::endl;
+        }
+#endif
+
+        BaseHashSet m_roots; // stores slack and roots of tree
+                             // (also in case when root leaf)
+        BaseHashSet m_forks; // stores intermediate nodes
+        BaseHashSet m_leafs; // stores leafs if they are not root
+        const int m_slack;   // algorithm slack
         const int m_chunkSize;
         size_t m_size;
 
@@ -59,11 +78,11 @@ namespace divine {
 #endif
 
         inline Pool& pool() {
-            return m_base.hasher.pool;
+            return m_roots.hasher.pool;
         }
 
         inline const Pool& pool() const {
-            return m_base.hasher.pool;
+            return m_roots.hasher.pool;
         }
 
         inline int slack() const {
@@ -71,45 +90,46 @@ namespace divine {
         }
 
         inline bool valid( Item i ) {
-            return m_base.hasher.valid( i );
+            return m_roots.hasher.valid( i );
         }
 
         struct Fork {
-            const int size:24;
-            const bool fork:1;
-            bool root:1;
-            const bool valid:1;
-            const int __pad:5;
             const Item left;
             const Item right;
-            Fork( int size, Item left, Item right, bool root ) : size( size ),
-                fork( true ), root( root ), valid( true ), __pad( 0 ),
+            Fork( Item left, Item right ) : left( left ), right( right ) { }
+        };
+
+        struct RootFork {
+            const int size:24;
+            const bool fork:1;
+            const bool valid:1;
+            const uint64_t __pad:38;
+            const Item left;
+            const Item right;
+            RootFork( int size, Item left, Item right ) : size( size ),
+                fork( true ), valid( true ), __pad( 0 ),
                 left( left ), right( right )
             { }
         };
 
-        struct Leaf {
+        struct RootLeaf {
             const int size:24;
             const bool fork:1;
-            bool root:1;
             const bool valid:1;
-            const int __pad:5;
-            Leaf( int size, bool root ) : size( size ), fork( false ),
-                    root( root ), valid( true ), __pad( 0 )
+            const int __pad:6;
+            RootLeaf( int size ) : size( size ), fork( false ),
+                    valid( true ), __pad( 0 )
             { }
         };
 
-        struct Node {
+        struct Root {
             const int size:24;
             const bool fork:1;
-            const bool root:1;
             const bool valid:1;
             const int __pad:5;
-            static const Node invalid;
+            static const Root invalid;
           private:
-            Node() : size( 0 ), fork( false ), root( false ),
-                    valid( false ), __pad( 0 )
-            { }
+            Root() : size( 0 ), fork( false ), valid( false ), __pad( 0 ) { }
         };
 
         /* The hash table entry layout:
@@ -122,46 +142,57 @@ namespace divine {
          * length is without slack
          */
 
-        inline const Node& header( Item item ) {
+        inline const Root& header( Item item ) {
             if ( !valid( item ) )
-                return Node::invalid;
-            assert( pool().size( item ) >= slack() + int( sizeof( Node ) ) );
-            return pool().template get< Node >( item, slack() );
+                return Root::invalid;
+            assert( pool().size( item ) >= slack() + int( sizeof( Root ) ) );
+            return pool().template get< Root >( item, slack() );
         }
 
-        inline Fork* fork( Item item, bool unsafe = false ) {
-            assert( pool().size( item ) >= slack() + int( sizeof( Fork ) ) );
-            Fork* f = &pool().template get< Fork >( item, slack() );
+        inline RootFork* rootFork( Item item, bool unsafe = false ) {
+            assert( pool().size( item ) >= slack() + int( sizeof( RootFork ) ) );
+            RootFork* f = &pool().template get< RootFork >( item, slack() );
             assert( unsafe || f->fork );
             return f;
         }
 
-        inline Leaf* leaf( Item item, bool unsafe = false ) {
-            assert( pool().size( item ) >= slack() + int( sizeof( Leaf ) ) );
-            Leaf* l = &pool().template get< Leaf >( item, slack() );
+        inline RootLeaf* rootLeaf( Item item, bool unsafe = false ) {
+            assert( pool().size( item ) >= slack() + int( sizeof( RootLeaf ) ) );
+            RootLeaf* l = &pool().template get< RootLeaf >( item, slack() );
             assert( unsafe || !l->fork );
             return l;
+        }
+
+        inline Fork* fork( Item item ) {
+            assert( pool().size( item ) >= int( sizeof( Fork ) ) );
+            return &pool().template get< Fork >( item );
         }
 
         inline char* slackPtr( Item item ) {
             return pool().data( item );
         }
 
-        inline Item initFork( int size, Item left, Item right, bool root ) {
+        inline Item newRoot( Item slackSource, Item left, Item right ) {
+            assert( valid( slackSource ) );
             assert( valid( left ) );
-            // right can be invalid -> unbalanced tree
-            Item it( pool(), slack() + int( sizeof( Fork ) ) );
-            new ( fork( it, true ) ) Fork( size, left, right, root );
-            return it;
+            Item r( pool(), slack() + int( sizeof( RootFork ) ) );
+            new ( rootFork( r, true ) ) RootFork(
+                    pool().size( slackSource ) - slack(), left, right );
+            copySlack( slackSource, r );
+            return r;
         }
 
-        inline Item newRoot( Item left, Item right, Item slackSource ) {
-            assert( valid( slackSource ) );
-            assert( pool().size( slackSource ) - slack() ==
-                    header( left ).size + header( right ).size );
-            Item r = initFork( pool().size( slackSource ) - slack(),
-                        left, right, true );
-            copySlack( slackSource, r );
+        inline Item newRoot( Item source ) {
+            assert( valid( source ) );
+            assert_leq( pool().size( source ), slack() + m_chunkSize );
+            int size = pool().size( source ) + int( sizeof( RootLeaf ) );
+            Item r( pool(), size );
+            size -= slack();
+            new ( rootLeaf( r, true ) ) RootLeaf( size );
+            copySlack( source, r );
+            pool().copyTo( source, r, slack(),
+                    slack() + int( sizeof( RootLeaf ) ), size );
+            return r;
         }
 
         inline void copySlack( Item slackSource, Item root ) {
@@ -169,36 +200,20 @@ namespace divine {
         }
 
         inline Item newFork( Item left, Item right ) {
-            Item f = initFork( header( left ).size + header( right ).size,
-                        left, right, false);
-            std::memset( slackPtr( f ), 0, slack() );
-            std::memset( slackPtr( f ) + slack() + sizeof( Node ), 0,
-                    offsetof( Fork, left ) - sizeof( Node ) );
+            assert( valid( left ) );
+            // right can be invalid -> unbalanced tree
+            Item f( pool(), int( sizeof( Fork ) ) );
+            new ( fork( f ) ) Fork( left, right );
             return f;
         }
 
         inline Item newLeaf( Item source, int start, int length ) {
-            return newLeaf( false, source, start, length );
-        }
-
-        inline Item newLeaf( Item source ) {
-            Item l = newLeaf( true, source, 0,
-                        pool().size( source ) - slack() );
-            pool().copyTo( source, l, slack() );
-            return l;
-        }
-
-        inline Item newLeaf( bool root, Item source, int start, int length )
-        {
             assert( valid( source ) );
-            assert( start >= 0 );
-            assert( length >= 0 );
-            assert( !root || start == 0 );
-            assert( !root || length == pool().size( source ) - slack() );
-            assert( start + length + slack() <= pool().size( source ) );
+            assert_leq( 0, start );
+            assert_leq( 0, length );
+            assert_leq( start + length + slack(), pool().size( source ) );
 
-            Item it( pool(), slack() + int( sizeof( Leaf ) ) + length );
-            new ( leaf( it, true ) ) Leaf( length, root );
+            Item it( pool(), length );
             toLeaf( source, it, start, length );
             return it;
         }
@@ -206,30 +221,29 @@ namespace divine {
         inline void toLeaf( Item source, Item leaf, int sStart, int length ) {
             assert( valid( source ) );
             assert( valid( leaf ) );
-            assert( header( leaf ).size >= length );
-            pool().copyTo( source, leaf, slack() + sStart,
-                    slack() + int( sizeof( Leaf ) ), length );
+            pool().copyTo( source, leaf, slack() + sStart, 0, length );
         }
 
         // copy data from leaf returning leaf size
+        template < bool ROOT >
         inline int fromLeaf( Item l, Item target, int tStart )
         {
             assert( valid( l ) );
-            int size = leaf( l )->size;
-            pool().copyTo( l, target, slack() + int( sizeof( Leaf ) ),
+            int size = pool().size( l );
+            pool().copyTo( l, target, ROOT ? slack() + int( sizeof( RootLeaf ) ) : 0,
                     slack() + tStart, size );
             return size;
         }
 
         Item reassemble( Item item ) {
             assert( valid( item ) );
-            const Node& node = header( item );
-            assert( node.root );
+            assert( m_roots.has( item ) );
+            const Root& node = header( item );
             Item out( pool(), node.size + slack() );
-            pool().copyTo( item, out, slack() );
+            copySlack( item, out );
 
             if ( node.fork ) {
-                Fork* f = fork( item );
+                RootFork* f = rootFork( item );
                 std::stack< Item > stack;
                 stack.push( f->right );
                 stack.push( f->left );
@@ -240,18 +254,17 @@ namespace divine {
                     stack.pop();
                     if ( !valid( ci ) )
                         continue;
-                    const Node& cn = header( ci );
 
-                    if ( cn.fork ) {
+                    if ( m_forks.has( ci ) ) {
                         Fork* cf = fork( ci );
                         stack.push( cf->right );
                         stack.push( cf->left );
                     } else {
-                        position += fromLeaf( ci, out, position );
+                        position += fromLeaf< false >( ci, out, position );
                     }
                 }
             } else {
-                fromLeaf( item, out, 0 );
+                fromLeaf< true >( item, out, 0 );
             }
             return out;
         }
@@ -261,13 +274,7 @@ namespace divine {
         }
 
         bool empty() {
-            return m_base.empty();
-        }
-
-        void freeAll() {
-            for ( typename BaseHashSet::Cell i : m_base.m_table ) {
-                pool().free( i.item );
-            }
+            return m_roots.empty();
         }
 
         inline void incInserts() {
@@ -304,8 +311,8 @@ namespace divine {
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
-                Item it = newLeaf( item );
-                Item it2 = m_base.insert( it );
+                Item it = newRoot( item );
+                Item it2 = m_roots.insert( it );
                 if ( !it.alias( it2 ) ) {
                     pool().free( it );
                     incLeafReuse();
@@ -317,7 +324,7 @@ namespace divine {
             auto initAct = [ this ]( Item source, int position, int size ) -> Item
             {
                 Item ci = this->newLeaf( source, position, size );
-                Item ci2 = this->m_base.insert( ci );
+                Item ci2 = this->m_leafs.insert( ci );
                 if ( !ci.alias( ci2 ) ) {
                     this->pool().free( ci );
                     this->incLeafReuse();
@@ -327,7 +334,7 @@ namespace divine {
             };
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
                 Item fork = this->newFork( l, r );
-                Item fork2 = this->m_base.insert( fork );
+                Item fork2 = this->m_forks.insert( fork );
                 if ( !fork.alias( fork2 ) ) {
                     this->pool().free( fork );
                     this->incForkReuse();
@@ -335,17 +342,14 @@ namespace divine {
                 assert( this->valid( fork2 ) );
                 return fork2;
             };
-            auto rootAct = [ this ]( Item source, Item root ) -> Item {
-                this->copySlack( source, root );
-                Item tableRoot = this->m_base.insert( root );
+            auto rootAct = [ this ]( Item source, Item l, Item r ) -> Item {
+                Item root = this->newRoot( source, l, r );
+                Item tableRoot = this->m_roots.insert( root );
                 if ( !root.alias( tableRoot ) ) {
                     this->incRootReuse();
                     this->pool().free( root );
-                    if ( !this->fork( tableRoot )-> root )
-                        this->copySlack( source, tableRoot );
                 }
                 assert( this->valid( tableRoot ) );
-                this->fork( tableRoot )->root = true;
                 return tableRoot;
             };
             return bottomUpBuild( initAct, forkAct, rootAct, item, size );
@@ -357,42 +361,38 @@ namespace divine {
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
-                Item l = newLeaf( item );
-                Item l2 = m_base.get( l );
+                Item l = newRoot( item );
+                Item l2 = m_roots.get( l );
                 pool().free( l );
-                assert( !valid( l2 ) ||  header( l2 ).size == size );
+                assert( !this->valid( l2 ) ||  this->header( l2 ).size == size );
                 return l2;
             }
 
             auto initAct = [ this ]( Item source, int position, int size ) -> Item
             {
                 Item l = this->newLeaf( source, position, size );
-                Item l2 = this->m_base.get( l );
+                Item l2 = this->m_leafs.get( l );
                 this->pool().free( l );
-                if ( !this->valid( l2 ) ) {
-                    return Item(); // not found
-                } else {
-                    assert( this->header( l2 ).size <= m_chunkSize );
-                    return l2;
-                }
+                return l2;
             };
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
                 Item f = this->newFork( l, r );
-                Item f2 = this->m_base.get( f );
-                if ( !this->valid( f2 ) )
-                    return Item(); // not found
-                assert( this->header( f ).size == this->header( f2 ).size );
+                Item f2 = this->m_forks.get( f );
+                assert( !this->valid( f2 ) ||
+                        this->header( f ).size == this->header( f2 ).size );
                 this->pool().free( f );
                 return f2;
             };
-            auto rootAct = [ this, size ]( Item source, Item root ) -> Item {
-                if ( this->header( root ).root ) {
-                    assert( this->header( root ).size == size );
-                    return root;
-                } else {
-                    // found but is not root -> false positive
-                    return Item();
-                }
+            auto rootAct = [ this, size ]( Item source, Item l, Item r ) -> Item {
+                Item root = this->newRoot( source, l, r );
+                Item tableRoot = this->m_roots.get( root );
+                assert( !this->valid( tableRoot ) ||
+                        this->header( root ).size == this->header( tableRoot ).size );
+                assert( !this->valid( tableRoot ) ||
+                        this->pool().size( source ) - this->slack() ==
+                        this->header( tableRoot ).size );
+                this->pool().free( root );
+                return tableRoot;
             };
             return bottomUpBuild( initAct, forkAct, rootAct, item, size );
         }
@@ -422,8 +422,8 @@ namespace divine {
                     Item r = items.front();
                     items.pop();
                     cont = valid( r );
-                    if ( !cont && items.empty() ) {
-                        return rootAct( source, l );
+                    if ( cont && items.size() == 1 ) {
+                        return rootAct( source, l, r );
                     }
                     Item f = forkAct( l, r );
                     if ( valid( f ) )
@@ -453,20 +453,17 @@ namespace divine {
         }
 
         void clear() {
-            m_base.clear();
+            m_roots.clear();
         }
 
         Item operator[]( int off ) {
-            Item i = m_base. m_table[ off ].item;
-            if ( header( i ).root )
-                return reassemble( i );
-            return Item();
+            return reassemble( m_roots[ off ] );
         }
     };
 
     template< template< typename, typename > class _HashSet,
         typename Item, typename Hasher >
-    const typename TreeCompressedHashSet< _HashSet, Item, Hasher >::Node
-        TreeCompressedHashSet< _HashSet, Item, Hasher >::Node::invalid;
+    const typename TreeCompressedHashSet< _HashSet, Item, Hasher >::Root
+        TreeCompressedHashSet< _HashSet, Item, Hasher >::Root::invalid;
 }
 #endif
