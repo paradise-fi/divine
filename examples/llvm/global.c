@@ -1,22 +1,38 @@
 /*
- * This program is a simple demonstration of non-atomicity of integer incrementation,
- * showing that such operation should be protected with mutex to be immune from
- * concurrent access.
+ * Name
+ * ====================
+ *  Global
  *
- * When compiled with macro BUG defined (--cflags="-DBUG"), locking is disabled
- * and therefore assertion violation is detected.
+ * Category
+ * ====================
+ *  Test
  *
- * Verify for deadlock freedom with:
- *  $ divine compile --llvm [--cflags=" < flags > "] global.c
- *  $ divine verify global.bc -p deadlock [-d]
+ * Short description
+ * ====================
+ *  Demonstration of a non-atomicity of integer incrementation.
  *
- * Verify for assertion safety (no assertion violation)
- *  $ divine compile --llvm [--cflags=" < flags > "] global.c
- *  $ divine verify global.bc -p assert [-d]
+ * Long description
+ * ====================
+ *  This program is a simple demonstration of a non-atomicity of integer incrementation,
+ *  showing that such operation should be protected with mutex to be immune from
+ *  concurrent access.
  *
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o global.exe global.c
- *  $ ./global.exe
+ *  When compiled with macro `BUG` defined (`--cflags="-DBUG"`), locking is disabled
+ *  and therefore assertion violation is detected.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] global.c
+ *     $ divine verify global.bc -p assert [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o global.exe global.c
+ *     $ ./global.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #include <pthread.h>
@@ -49,6 +65,7 @@ void* thread( void *x ) {
 
 int main() {
     pthread_t tid;
+
 #ifndef BUG
     pthread_mutex_init( &mutex, NULL );
 #endif

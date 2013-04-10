@@ -1,48 +1,74 @@
 /*
- * We assume that a number of stations are connected on an Ethernet-like medium,
- * that is, the basic protocol is of type CSMA/CD. On the top of this basic protocol
- * we want to design a protocol without collisions. This is a simple solution
- * with a dedicated master station, which in turn asks the other stations if they
- * want to transmit data to another station.
+ * Name
+ * ====================
+ *  Collision
  *
- * Original idea comes from the paper listed below. Authors of this paper presented
- * a model which assumes an existence of some dedicated links between the master station
- * and slaves stations. Throught this links the master can obtain current state
- * of each slave and figure out when is the right time to pass the token to the next
- * slave in the row. However the actual token is send over the ethernet instead,
- * hence different channels are used to manage token passing.
- * In order to eliminate this discrepancy and make the algorithm a bit more practical,
- * we present a modified version in which all communication between master and slave
- * stations goes throught the ethernet medium. This is done by implementing a new message
- * type representing the token being returned from a slave to the master.
- * If the thread that received the token is not interested to send any message, a message
- * returning the token to the master is send immediately (more precisely -- when the medium
- * becomes free). Otherwise the token owner sends a message wrapping both actual data and
- * the token to the recipient of his choice, which is than obligated to return the token
- * to the master immediately after the message receipt (without having permission to
- * use it).
+ * Category
+ * ====================
+ *  Communication protocol
  *
- * When a message is send over the ethernet medium, it gets broadcasted to all connected
- * stations (except the one from which it came from). Inherently this operation isn't
- * atomic, and so when a slave receives the token, even thought it has got the permission
- * to send a message, it can't start doing so immediately, but has to wait until the last
- * broadcast finnishes and medium becomes free. This is violated when the program is built
- * with a macro BUG defined.
+ * Short description
+ * ====================
+ *  Collision avoidance protocol.
  *
- * Source of an original idea:
- *     @inproceedings{
- *          Jensen96modellingand,
- *          author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and Arne Skou",
- *          title = "Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL",
- *          booktitle = "Proceedings of the 2nd International Workshop on the SPIN Verification System",
- *          year = "1996" }
+ * Long description
+ * ====================
+ *  We assume that a number of stations are connected on an *Ethernet-like* medium,
+ *  that is, the basic protocol is of type *CSMA/CD*. On the top of this basic protocol
+ *  we want to design a protocol without collisions. This is a simple solution
+ *  with a dedicated master station, which in turn asks the other stations if they
+ *  want to transmit data to another station.
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] collision.cpp
- *  $ divine verify -p assert collision.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o collision.exe collision.cpp
- *  $ ./collision.exe
+ *  Original idea comes from the paper listed among references.
+ *  Authors of this paper presented a model which assumes an existence of some
+ *  dedicated links between the master station and slave stations.
+ *  Throught this links the master can obtain current state of each slave and
+ *  figure out when is the right time to pass the token to the next slave in the row.
+ *  However the actual token is send over the ethernet instead, hence different
+ *  channels are used to manage token passing.
+ *  In order to eliminate this discrepancy and make the algorithm a bit more practical,
+ *  we present a modified version in which all communication between master and slave
+ *  stations goes throught the ethernet medium. This is done by implementing a new message
+ *  type representing the token being returned from a slave to the master.
+ *  If the thread that received the token is not interested to send any message, a message
+ *  returning the token to the master is send immediately (more precisely -- when the medium
+ *  becomes free). Otherwise the token owner sends a message wrapping both actual data and
+ *  the token to the recipient of his choice, which is than obligated to return the token
+ *  to the master immediately after the message receipt (without having permission to
+ *  use it).
+ *
+ *  When a message is send over the ethernet medium, it gets broadcasted to all connected
+ *  stations (except the one from which it came from). Inherently this operation isn't
+ *  atomic, and so when a slave receives the token, even thought it has got the permission
+ *  to send a message, it can't start doing so immediately, but has to wait until the last
+ *  broadcast finnishes and medium becomes free. This is violated when the program is built
+ *  with a macro `BUG` defined.
+ *
+ * References:
+ * --------------------
+ *
+ *  1. Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL.
+ *
+ *           @inproceedings{
+ *               Jensen96modellingand,
+ *               author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and Arne Skou",
+ *               title = "Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL",
+ *               booktitle = "Proceedings of the 2nd International Workshop on the SPIN Verification System",
+ *               year = "1996" }
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] collision.cpp
+ *     $ divine verify -p assert collision.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o collision.exe collision.cpp
+ *     $ ./collision.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 // A number of stations connected to the ethernet (includes the master).

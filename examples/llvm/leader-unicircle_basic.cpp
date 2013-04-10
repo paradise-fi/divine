@@ -1,53 +1,80 @@
 /*
- * A simulation of a "Basic" O(n*log(n)) unidirectional distributed algorithm for extrema
- * finding in a circle.
+ * Name
+ * ====================
+ *  Leader in uni-circle (Basic algorithm)
  *
- * Given n processes in a ring, communicating only with message passing to its right
- * neighbour, the unidirectional circular extrema-finding problem (more likely known as a leader
- * election problem) is to select a maximum (or minimum) process.
- * Each process has a unique value, called ID, in a set with a total order. These values
- * may be transmitted and compared. All processes are identical (except for their IDs) and n,
- * the number of processes, is not initially known.
+ * Category
+ * ====================
+ *  Leader election
  *
- * The algorithm presented here is due to Danny Dolev and Maria M. Klawe and Michael Rodeh [1]
- * as well as Gary L. Peterson [2] who had submitted their papers at around the same time.
- * Even thought the algorithm is quite simple, it has some good properties, especially the
- * upper bound on message passes, which is only: 2*n*log(n) + O(n).
+ * Short description
+ * ====================
+ *  A simulation of a "Basic" O(n*log(n)) unidirectional distributed algorithm for
+ *  extrema finding in a circle.
  *
- * The idea of the algorithm is to find all local maximas (among active IDs) and keep them active
- * also for the next iteration (= phase), while the rest is dismisshed. This way the number of
- * active processes lowers after each phase by a half at least. But while doing so, each maximum
- * moves to the next active process on the right side, as it is the only reasonable method as to
- * compare 3 adjacent IDs in unidirectional circle. And so after each phase the active process
- * becomes either passive or it starts represent the maximum previously owned by its nearest active
- * process to the left. But when compiled with -DBUG, local maximas don't make the move and
- * therefore get dismisshed.
+ * Long description
+ * ====================
+ *  Given `n` processes in a ring, communicating only with message passing to its right
+ *  neighbour, the unidirectional circular extrema-finding problem (more likely known as a leader
+ *  election problem) is to select a maximum (or minimum) process.
+ *  Each process has a unique value, called ID, in a set with a total order. These values
+ *  may be transmitted and compared. All processes are identical (except for their IDs) and `n`,
+ *  the number of processes, is not initially known.
  *
- * Source:
- *    [1] @article{ dolev:an,
- *                  author = "Danny Dolev and Maria M. Klawe and Michael Rodeh",
- *                  title = "An O(n log n) Unidirectional Distributed Algorithm for Extrema
- *                           Finding in a Circle",
- *                  journal = "J. Algorithms",
- *                  pages = {245-260},
- *                  year = {1982},
- *                }
- *    [2] @article{ Peterson:1982:ONL:69622.357194,
- *                  author = "Peterson, Gary L.",
- *                  title = "An O(nlog n) Unidirectional Algorithm for the Circular Extrema Problem",
- *                  journal = "ACM Trans. Program. Lang. Syst.",
- *                  year = {1982},
- *                  issn = {0164-0925},
- *                  pages = {758--762},
- *                  publisher = "ACM",
- *                  address = "New York, NY, USA",
+ *  The algorithm presented here is due to Danny Dolev and Maria M. Klawe and Michael Rodeh [1]
+ *  as well as Gary L. Peterson [2] who had submitted their papers at around the same time.
+ *  Even thought the algorithm is quite simple, it has some good properties, especially the
+ *  upper bound on message passes, which is only: 2*n*log(n) + O(n).
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_basic.cpp
- *  $ divine verify -p assert leader-unicircle_basic.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_basic.exe leader-unicircle_basic.cpp
- *  $ ./leader-unicircle_basic.exe
+ *  The idea of the algorithm is to find all local maximas (among active IDs) and keep them active
+ *  also for the next iteration (= phase), while the rest is dismisshed. This way the number of
+ *  active processes lowers after each phase by a half at least. But while doing so, each maximum
+ *  moves to the next active process on the right side, as it is the only reasonable method as to
+ *  compare 3 adjacent IDs in unidirectional circle. And so after each phase the active process
+ *  becomes either passive or it starts to represent the maximum previously owned by its nearest active
+ *  process to the left. But when compiled with `-DBUG`, local maximas don't make the move and
+ *  therefore get dismisshed.
+ *
+ * References:
+ * --------------------
+ *
+ *  1. An O(n log n) Unidirectional Distributed Algorithm for Extrema Finding in a Circle
+ *
+ *           @article{ dolev:an,
+ *                    author = "Danny Dolev and Maria M. Klawe and Michael Rodeh",
+ *                    title = "An O(n log n) Unidirectional Distributed Algorithm for Extrema
+ *                             Finding in a Circle",
+ *                    journal = "J. Algorithms",
+ *                    pages = {245-260},
+ *                    year = {1982},
+ *                  }
+ *
+ *  2. An O(nlog n) Unidirectional Algorithm for the Circular Extrema Problem.
+ *
+ *           @article{ Peterson:1982:ONL:69622.357194,
+ *                    author = "Peterson, Gary L.",
+ *                    title = "An O(nlog n) Unidirectional Algorithm for the Circular Extrema Problem",
+ *                    journal = "ACM Trans. Program. Lang. Syst.",
+ *                    year = {1982},
+ *                    issn = {0164-0925},
+ *                    pages = {758--762},
+ *                    publisher = "ACM",
+ *                    address = "New York, NY, USA",
+ *                  }
+ *
+ * Verification
+ * ====================
+ *      $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_basic.cpp
+ *      $ divine verify -p assert leader-unicircle_basic.bc [-d]
+ *
+ * Execution
+ * ====================
+ *      $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_basic.exe leader-unicircle_basic.cpp
+ *      $ ./leader-unicircle_basic.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 #define NUM_OF_PROCESSES  5

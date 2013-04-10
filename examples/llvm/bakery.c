@@ -1,26 +1,45 @@
 /*
- * This program implements the Lamport's bakery mutual exclusion algorithm.
+ * Name
+ * ====================
+ *  Bakery
  *
- * When compiled with macro BUG defined, usage of variable _choosing_ is omitted.
- * The necessity of variable _choosing_ might not be obvious at the first glance.
- * However, suppose the variable was removed and two processes computed the same
- * _number_. If the higher-priority process (the process with lower id) was
- * preempted before setting his _number_, the lower-priority process will see that
- * the other process has a number of zero, and enter the critical section.
- * Later, the high-priority process will ignore equal _number_ for lower-priority
- * processes, and also enter the critical section. As a result, two processes can
- * enter the critical section at the same time.
- * The bakery algorithm then uses the _choosing_ variable to ensure that the
- * assignment to variable _number_ acts like an atomic operation: process _i_ will
- * never see a number equal to zero for a process _j_ that is going to pick the same
- * number as _i_.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] bakery.c
- *  $ divine verify -p assert bakery.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o bakery.exe bakery.c
- *  $ ./bakery.exe
+ * Short description
+ * ====================
+ *  This program implements the Lamport's bakery mutual exclusion algorithm.
+ *
+ * Long description
+ * ====================
+ *  When compiled with macro `BUG` defined, usage of variable `choosing` is omitted.
+ *  The necessity of variable `choosing` might not be obvious at the first glance.
+ *  However, suppose the variable was removed and two processes computed the same
+ *  `number`. If the higher-priority process (the process with lower id) was
+ *  preempted before setting his `number`, the lower-priority process will see that
+ *  the other process has a number of value zero, and enter the critical section.
+ *  Later, the high-priority process will ignore equal `number` for lower-priority
+ *  processes, and also enter the critical section. As a result, two processes can
+ *  enter the critical section at the same time.
+ *  The bakery algorithm then uses the `choosing` variable to ensure that the
+ *  assignment to variable `number` acts like an atomic operation: process `i` will
+ *  never see a number equal to zero for a process `j` that is going to pick the same
+ *  number as `i`.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] bakery.c
+ *     $ divine verify -p assert bakery.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o bakery.exe bakery.c
+ *     $ ./bakery.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #define NUM_OF_THREADS  2

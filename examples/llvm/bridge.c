@@ -1,34 +1,58 @@
 /*
- * This program is more or less just a demonstration of one possible usage of
- * __divine_choice builtin.
- * You can use this builtin for writing non-deterministic algorithms and then
- * let DiVinE to do a complete search in order to find out if there is any
- * computational path leading to a correct solution.
+ * Name
+ * ====================
+ *  Bridge
  *
- * Task: Solve puzzle of soldiers going over bridge.
- *   Input: N soldiers and their individual times + overall time limit.
- *   Output: "Yes" if it is possible for soldiers to get to the other
- *           side within the time limit, "No" otherwise.
+ * Category
+ * ====================
+ *  Puzzle
  *
- * Rules: Four men (soldiers) have to cross a bridge at night. The bridge is old
- * and dilapidated and can hold at most two people at a time. There are no railings,
- * and the men have only one flashlight. Any party who crosses, either
- * one or two men, must carry the flashlight with them. The flashlight must be
- * walked back and forth; it cannot be thrown, etc. Each man walks at a
- * different speed. One takes 5 minute to cross, another 10 minutes, another 20,
- * and the last 25 minutes. If two men cross together, they must walk at the
- * slower man's pace. Can they get to the other side in 60 minutes?
- * (The program is generalized to larger number of men.)
+ * Short description
+ * ====================
+ *  Puzzle about men crossing a bridge.
  *
- * Solve with:
- *  $ divine compile --llvm [--cflags=" < flags > "] bridge.c
- *  $ divine verify -p assert bridge.bc [-d]
+ * Long description
+ * ====================
+ *  This program is more or less just a demonstration of one possible usage of
+ *  `__divine_choice` builtin.
+ *  You can use this builtin for writing non-deterministic algorithms and then
+ *  let DiVinE to do a complete search in order to find out if there is any
+ *  computational path leading to a correct solution.
  *
- * Output is rather unintuitive. We actually verify if it holds that
- * there is no solution:
- *    Property HOLDS        = there is no solution
- *    Property DOESN'T HOLD = there is a solution
- *    Counterexample        = solution
+ *  * __Task__: Solve puzzle of soldiers going over bridge.
+ *
+ *      * _Input_: N soldiers and their individual times + overall time limit.
+ *
+ *      * _Output_: "Yes" if it is possible for soldiers to get to the other
+ *                  side within the time limit, "No" otherwise.
+ *
+ *  * __Rules__: Four men (soldiers) have to cross a bridge at night.
+ *               The bridge is old and dilapidated and can hold at most two
+ *               people at a time. There are no railings, and the men have only
+ *               one flashlight. Any party who crosses, either one or two men,
+ *               must carry the flashlight with them. The flashlight must be
+ *               walked back and forth; it cannot be thrown, etc. Each man walks
+ *               at a different speed. One takes 5 minute to cross, another 10
+ *               minutes, another 20, and the last 25 minutes. If two men cross
+ *               together, they must walk at the slower man's pace. Can they
+ *               get to the other side in 60 minutes? (The program is generalized
+ *               for larger number of men.)
+ *
+ * Solution
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] bridge.c
+ *     $ divine verify -p assert bridge.bc [-d]
+ *
+ *  Output is rather unintuitive. We actually verify if it holds that
+ *  there is no solution:
+ *
+ *   * Property HOLDS        = there is no solution
+ *   * Property DOESN'T HOLD = there is a solution
+ *   * Counterexample        = solution
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 // Number of soldiers.

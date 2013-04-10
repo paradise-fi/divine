@@ -1,27 +1,46 @@
 /*
- * Discrete time simulation of the Fischer's real time mutual exclusion protocol.
+ * Name
+ * ====================
+ *  Fischer
  *
- * Fischer’s algorithm is based on the known-delay model. The algorithm is quite simple.
- * A process _p_ waits until the “lock” is available, which is indicated by owner = 0.
- * If _p_ reads owner = 0, then it writes its process identifier to the variable owner,
- * and delays for 2*delta time units. If the value of variable owner is still _p_ after
- * the delay, then p enters its critical section.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * Two delta time units long delay ensures, that every other thread that have passed
- * the test for ownership availability, meanwhile also updated the variable owner to contain
- * his id. But one delta time unit is not enought to satisfy the safety property in this
- * simulation. Timer can release the delayed thread "at the same time" as the thread that is
- * about to update the variable owner. The previously delayed thread can than be scheduled
- * to continue to the critical section, followed be the other thread. Prove it to yourself
- * by compiling the program with macro BUG defined and running it throught DiVinE model
- * checker.
+ * Short description
+ * ====================
+ *  Discrete time simulation of the Fischer's real time mutual exclusion protocol.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] fischer.c
- *  $ divine verify -p assert fischer.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o fischer.exe fischer.c
- *  $ ./fischer.exe
+ * Long description
+ * ====================
+ *  Fischer's algorithm is based on the known-delay model. The algorithm is quite simple.
+ *  A process `p` waits until the "lock" is available, which is indicated by `owner = 0`.
+ *  If `p` reads `owner = 0`, then it writes its process identifier to the variable `owner`,
+ *  and delays for `2*delta` time units. If the value of the variable `owner` is still
+ *  `p` after the delay, then `p` enters its critical section.
+ *
+ *  Two delta time units long delay ensures, that every other thread that have passed
+ *  the test for ownership availability, meanwhile also updated the variable `owner` to contain
+ *  his id. But one `delta` time unit is not enought to satisfy the safety property in this
+ *  simulation. Timer can release the delayed thread "at the same time" as the thread that is
+ *  about to update the variable `owner`. The previously delayed thread can than be scheduled
+ *  to continue to the critical section, followed be the other thread. Prove it to yourself
+ *  by compiling the program with macro `BUG` defined and running it throught *DiVinE* model
+ *  checker.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] fischer.c
+ *     $ divine verify -p assert fischer.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o fischer.exe fischer.c
+ *     $ ./fischer.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #define NUM_OF_THREADS  2

@@ -1,25 +1,46 @@
+/*
+ * Name
+ * ====================
+ *  Fifo
+ *
+ * Category
+ * ====================
+ *  Data structures
+ *
+ * Short description
+ * ====================
+ *  Intra-thread fifo, used for shared-memory communication between threads
+ *  in DiVinE.
+ *
+ * Long description
+ * ====================
+ *  This program is a simple test case for the divine intra-thread fifo, the
+ *  tool's main shared-memory communication primitive. We fire off two threads,
+ *  a writer and a reader. The writer pushes 3 values, while the reader checks
+ *  that the values written match the values read, that the fifo is
+ *  empty/non-empty at the right places &c.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] fifo.cpp
+ *     $ divine verify -p assert fifo.bc [-d]
+ * 
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o fifo.exe fifo.cpp
+ *     $ ./fifo.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
+ */
+
 // -*- C++ -*- (c) 2008-2011 Petr Rockai <me@mornfall.net>
 
 /*
- * This program is a simple test case for the divine intra-thread fifo, the
- * tool's main shared-memory communication primitive. We fire off two threads,
- * a writer and a reader. The writer pushes 3 values, while the reader checks
- * that the values written match the values read, that the fifo is
- * empty/non-empty at the right places &c.
- *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] fifo.cpp
- *  $ divine verify -p assert fifo.bc [-d]
- * 
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o fifo.exe fifo.cpp
- *  $ ./fifo.exe
- */
-
-/*
- * Future versions of DiVinE should also provide new/delete based on the builtin
- * malloc/free. When that is done, it should be possible to #include unmodified
- * fifo.h here. We substitute malloc/free manually for now.
+ * Note: Future versions of DiVinE should also provide new/delete based on
+ * the builtin malloc/free. When that is done, it should be possible to #include
+ * unmodified fifo.h here. We substitute malloc/free manually for now.
  */
 
 #include <pthread.h>

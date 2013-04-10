@@ -1,29 +1,52 @@
 /*
- * This is a C++ port of a benchmark _Airlines_ written by Zdenek Letko from
- * the research group VeriFIT at FIT VUT Brno
- * (http://www.fit.vutbr.cz/research/groups/verifit/.cs).
+ * Name
+ * ====================
+ *  Airlines
  *
- * This is a simple simulation of a selling system, supporting multiple
- * transactions running in parallel.
- * From the theory standpoint it is nothing else than just another instance
- * of the Producers - Consumers pattern. The class CustomerGenerator produces
- * requests (one per customer) and sends each of them to a randomly selected
- * InternetSeller. Seller searches flight databases of all available airlines
- * and tries to find a flight with a free seat matching the requested criteria.
+ * Category
+ * ====================
+ *  Information systems (IS)
  *
- * If the program is compiled with flag -DBUG, than the algorithm is incorrect.
- * Normally, when InternetSeller finds a possibly free seat matching the criteria,
- * it tests whether the seat wasn't by a change sold by another seller in
- * the meantime, if not than the ticket is bought. For this to be correct,
- * the test for availability and the purchase itself have to be performed
- * together atomically. But this is not the case with macro BUG defined.
+ * Short description
+ * ====================
+ *  Simple simulation of a system for selling airplane tickets,
+ *  supporting multiple transactions running in parallel.
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" airlines.cpp
- *  $ divine verify -p assert airlines.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o airlines.exe airlines.cpp
- *  $ ./airlines.exe
+ * Long description
+ * ====================
+ *  This is a C++ port of a benchmark *Airlines* written by *Zdenek Letko*
+ *  from the research group [VeriFIT][1] at *FIT VUT Brno*.
+ *
+ *  This program is a simulation of a simple information system used for selling
+ *  airplane tickets, supporting multiple transactions running in parallel.
+ *  From an information theory point of view it is nothing else than just another
+ *  instance of the *producers-consumers* pattern. The class *CustomerGenerator*
+ *  produces requests (one per customer) and sends each of them to a randomly selected
+ *  _InternetSeller_. Seller searches flight databases of all available airlines
+ *  and tries to find a flight with a free seat matching the requested criteria.
+ *
+ *  If the program is compiled with flag `-DBUG`, than the algorithm is incorrect.
+ *  Normally, when *InternetSeller* finds a possibly free seat matching the criteria,
+ *  it tests whether the seat wasn't by a change sold by another seller in
+ *  the meantime, if not than the ticket is bought. For this to be correct,
+ *  the test for availability and the purchase itself have to be performed
+ *  together atomically. But this is not the case with macro `BUG` defined.
+ *
+ *  [1]: http://www.fit.vutbr.cz/research/groups/verifit/.cs
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" airlines.cpp
+ *     $ divine verify -p assert airlines.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o airlines.exe airlines.cpp
+ *     $ ./airlines.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 // XXX: we do not provide operators _new_ and _delete_ yet

@@ -1,18 +1,37 @@
 /*
- * This program is a simple test case for the implementation of the recursive
- * mutex in Pthread library provided by DiVinE.
+ * Name
+ * ====================
+ *  Pthread mutex
  *
- * When recursive mutex is used, program usually becomes less vulnerable for
- * deadlocks, but still number of unlocks have to match number of locks applied,
- * for the mutex to become available for other threads to acquire and also
- * for final destruction. But when compiled with -DBUG, this rule is violated.
+ * Category
+ * ====================
+ *  Test
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] pthread_mutex.c
- *  $ divine verify -p assert pthread_mutex.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o pthread_mutex.exe pthread_mutex.cpp
- *  $ ./pthread_mutex.exe
+ * Short description
+ * ====================
+ *  This program is a simple test case for the implementation of the recursive
+ *  mutex in Pthread library provided by DiVinE.
+ *
+ * Long description
+ * ====================
+ *  When recursive mutex is used, program usually becomes less vulnerable for
+ *  deadlocks, but still number of unlocks have to match number of locks applied
+ *  for the mutex to become available for other threads to acquire and also
+ *  for final destruction. But when compiled with `-DBUG`, this rule is violated.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] pthread_mutex.c
+ *     $ divine verify -p assert pthread_mutex.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o pthread_mutex.exe pthread_mutex.cpp
+ *     $ ./pthread_mutex.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #include <pthread.h>

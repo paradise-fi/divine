@@ -1,13 +1,34 @@
 /*
- * This program is an example of a lock-free inter-thread ring buffer.
- * Verification should proceed without detecting any safety violation.
+ * Name
+ * ====================
+ *  Ring
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] ring.cpp
- *  $ divine verify -p assert ring.bc [-d]
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o ring.exe ring.cpp
- *  $ ./ring.exe
+ * Category
+ * ====================
+ *  Data structures
+ *
+ * Short description
+ * ====================
+ *  Lock-free inter-thread ring buffer.
+ *
+ * Long description
+ * ====================
+ *  This program is an example of a lock-free inter-thread ring buffer.
+ *  Verification should proceed without detecting any safety violation.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] ring.cpp
+ *     $ divine verify -p assert ring.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o ring.exe ring.cpp
+ *     $ ./ring.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
  */
 
 #include <pthread.h>
@@ -55,14 +76,14 @@ void * reader( void * in ) {
 
     assert( r->empty() );
     return 0;
-};
+}
 
 void * writer( void * in) {
     R * volatile r = (R *) in;
     for ( int i = 0; i < 10; ++i )
         r->enqueue( i );
     return 0;
-};
+}
 
 int main() {
     R r;

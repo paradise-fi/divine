@@ -1,32 +1,55 @@
 /*
- * This program is more or less just a demonstration of one possible usage of
- * __divine_choice builtin.
- * You can use this builtin for writing non-deterministic algorithms and then
- * let DiVinE to do a complete search in order to find out if there is any
- * computational path leading to a correct solution.
+ * Name
+ * ====================
+ *  Elevator planning
  *
- * Task: Planning of elevator strategy under several constraints.
- *       (example from AIPS 2000 contest: http://www.cs.toronto.edu/aips2000/)
- *   Input: a number of floors, passangers and their initial locations;
- *          several restricting constraints (capacity of the elevator, conflicts
-            between pasangers, etc.)
- *   Output: "Yes" if it is possible to transport all passangers from their initial
- *           locations to the zeroth floor, "No" otherwise.
+ * Category
+ * ====================
+ *  Puzzle
  *
+ * Short description
+ * ====================
+ *  Planning of elevator strategy under several constraints.
  *
- * Solve with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator_planning.cpp
- *  $ divine verify -p assert elevator_planning.bc [-d]
+ * Long description
+ * ====================
+ *  This program is more or less just a demonstration of one possible usage of
+ *  `__divine_choice` builtin.
+ *  You can use this builtin for writing non-deterministic algorithms and then
+ *  let DiVinE to do a complete search in order to find out if there is any
+ *  computational path leading to a correct solution.
  *
- * Output is rather unintuitive. We actually verify if it holds that
- * there is no solution:
- *    Property HOLDS        = there is no solution
- *    Property DOESN'T HOLD = there is a solution
- *    Counterexample        = solution
+ *  * __Task__: Planning of elevator strategy under several constraints.
+ *              This is an example from [AIPS 2000 contest][1].
+ *      * _Input_: a number of floors, passangers and their initial locations;
+ *                 several restricting constraints (capacity of the elevator, conflicts
+ *                 between pasangers, etc.)
+ *      * _Output_: "Yes" if it is possible to transport all passangers from their initial
+ *                  locations to the zeroth floor, "No" otherwise.
  *
- * Run and watch some computational path with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
- *  $ ./elevator_planning.exe
+ *  [1]: http://www.cs.toronto.edu/aips2000/
+ *
+ * Solution
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator_planning.cpp
+ *     $ divine verify -p assert elevator_planning.bc [-d]
+ *
+ *  Output is rather unintuitive. We actually verify if it holds that
+ *  there is no solution:
+ *   * Property HOLDS        = there is no solution
+ *   * Property DOESN'T HOLD = there is a solution
+ *   * Counterexample        = solution
+ *
+ * Execution
+ * ====================
+ *  Run and watch some computational path with:
+ *
+ *      $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
+ *      $ ./elevator_planning.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 // Which version to consider. There are four versions available: 1, 2, 3, 4.

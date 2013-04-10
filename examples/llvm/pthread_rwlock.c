@@ -1,20 +1,40 @@
 /*
- * This program is a simple test case for the implementation of
- * the Readers-Writer lock in Pthread library provided by DiVinE.
- * Reading and writing is interleaved in all (visible) possibilities
- * (currently also those unfair) and at some points safety is verified.
+ * Name
+ * ====================
+ *  Pthread rwlock
  *
- * Read lock ensures for reader, that reading consisting of possibly
- * more than one load will not be interleaved with writing. But when compiled
- * with macro BUG defined, read lock is disabled and hence safety is violated
- * (even thought writer still uses write lock).
+ * Category
+ * ====================
+ *  Test
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] pthread_rwlock.c
- *  $ divine verify -p assert pthread_rwlock.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o pthread_rwlock.exe pthread_rwlock.cpp
- *  $ ./pthread_rwlock.exe
+ * Short description
+ * ====================
+ *  This program is a simple test case for the implementation
+ *  of the Readers-Writer lock in Pthread library provided by DiVinE.
+ *
+ * Long description
+ * ====================
+ *  Reading and writing is interleaved in all (visible) possibilities
+ *  (currently also those unfair) and at some points safety is verified.
+ *
+ *  Read lock ensures for reader that reading consisting of possibly
+ *  more than one load will not be interleaved with writing. But when compiled
+ *  with macro `BUG` defined, read lock is disabled and hence safety is violated
+ *  (even thought writer still uses write lock).
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] pthread_rwlock.c
+ *     $ divine verify -p assert pthread_rwlock.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o pthread_rwlock.exe pthread_rwlock.cpp
+ *     $ ./pthread_rwlock.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #include <pthread.h>

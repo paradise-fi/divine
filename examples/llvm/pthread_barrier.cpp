@@ -1,14 +1,36 @@
 /*
- * This program is a simple test case of the implementation of the barrier in
- * Pthread library provided by DiVinE. This test is not complete, but it gives
- * quite a strong evidence of its correctness.
+ * Name
+ * ====================
+ *  Pthread barrier
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] pthread_barrier.c
- *  $ divine verify -p assert pthread_barrier.bc [-d]
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o pthread_barrier.exe pthread_barrier.cpp
- *  $ ./pthread_barrier.exe
+ * Category
+ * ====================
+ *  Test
+ *
+ * Short description
+ * ====================
+ *  Test case of the implementation of the barrier in Pthread library provided
+ *  by DiVinE.
+ *
+ * Long description
+ * ====================
+ *  This program is a simple test case of the implementation of the barrier in
+ *  Pthread library provided by DiVinE. This test is not complete, but it gives
+ *  quite a strong evidence of its correctness.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] pthread_barrier.c
+ *     $ divine verify -p assert pthread_barrier.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o pthread_barrier.exe pthread_barrier.cpp
+ *     $ ./pthread_barrier.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
  */
 
 

@@ -1,36 +1,54 @@
 /*
- * This program implements the Lamport's Three-Bit mutual exclusion algorithm and
- * alongside with that simulates a computational environment in which execution
- * of an operation on a shared variable has its duration and may be concurrent.
- * For the Three-bit algorithm it is sufficient to consider single-writer nonatomic
- * shared variables only. If a write of a communication variable is concurrent with
- * another operation on that same variable, then the other operation must be a read.
- * A read of a shared variable that is concurrent with a write of the same variable
- * is allowed to return any value from the domain of the variable. A read that does
- * not overlap such a write simply returns the variable’s current value.
+ * Name
+ * ====================
+ *  Lamport non-atomic 2
  *
- * Non-determinism caused by non-atomicity Lamport reduced simply by using only
- * one-bit long shared variables as well as skipping redundant writes (the new value
- * is the same as the old one) wherever possible. But when compiled with -DBUG,
- * redundant writes are present and may cause deadlock (althought in reality it is
- * very unprobable).
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * The Three-Bit algorithm ensures exclusion using the Wait-Die scheme. Higher-priority
- * thread (thread with lower id) waits for lower-priority thread, but in order to
- * break a symmetry and hence prevent from deadlock, thread with lower priority
- * dies if some higher-priority thread is also attempting to enter the critical
- * section.
+ * Short description
+ * ====================
+ *  Improved Lamport mutual exclusion protocol with nonatomic operations.
  *
- * The Three-Bit algorithm is an improvement over the One-Bit algorithm (see
- * lamport_nonatomic1.cpp) as it ensures starvation-free property. Lamport introduced
- * a “renumbering” function, whereby processes contending in their entry sections
- * are dynamically ordered so that any such process eventually has highest priority.
- * To implement this, we used terminology from a well-known token passing technique.
+ * Long description
+ * ====================
+ *  This program implements the Lamport's Three-Bit mutual exclusion algorithm and
+ *  alongside with that simulates a computational environment in which execution
+ *  of an operation on a shared variable has its duration and may be concurrent.
+ *  For the Three-bit algorithm it is sufficient to consider single-writer nonatomic
+ *  shared variables only. If a write of a communication variable is concurrent with
+ *  another operation on that same variable, then the other operation must be a read.
+ *  A read of a shared variable that is concurrent with a write of the same variable
+ *  is allowed to return any value from the domain of the variable. A read that does
+ *  not overlap such a write simply returns the variable's current value.
  *
- * Source:
- *    @article{ Lamport:1986:MEP:5383.5385,
+ *  Non-determinism caused by non-atomicity Lamport reduced simply by using only
+ *  one-bit long shared variables as well as skipping redundant writes (the new value
+ *  is the same as the old one) wherever possible. But when compiled with `-DBUG`,
+ *  redundant writes are present and may cause deadlock (althought in reality it is
+ *  very unprobable).
+ *
+ *  The Three-Bit algorithm ensures exclusion using the *Wait-Die scheme*. Higher-priority
+ *  thread (thread with lower id) waits for lower-priority thread, but in order to
+ *  break a symmetry and hence prevent from deadlock, thread with lower priority
+ *  dies if some higher-priority thread is also attempting to enter the critical
+ *  section.
+ *
+ *  The Three-Bit algorithm is an improvement over the One-Bit algorithm (see
+ *  lamport_nonatomic1.cpp) as it ensures starvation-free property. Lamport introduced
+ *  a "renumbering" function, whereby processes contending in their entry sections
+ *  are dynamically ordered so that any such process eventually has highest priority.
+ *  To implement this, we used terminology from a well-known token passing technique.
+ *
+ * References:
+ * --------------------
+ *
+ *  1. The mutual exclusion problem: partII -- statement and solutions.
+ *
+ *           @article{ Lamport:1986:MEP:5383.5385,
  *              author = {Lamport, Leslie},
- *              title = {The mutual exclusion problem: partII\—statement and solutions},
+ *              title = {The mutual exclusion problem: partII -- statement and solutions},
  *              journal = {J. ACM},
  *              issue_date = {April 1986},
  *              volume = {33},
@@ -44,12 +62,19 @@
  *              address = {New York, NY, USA},
  *            }
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] lamport_nonatomic2.cpp
- *  $ divine verify -p assert lamport_nonatomic2.bc [-d]
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
- *  $ ./lamport_nonatomic2.exe
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] lamport_nonatomic2.cpp
+ *     $ divine verify -p assert lamport_nonatomic2.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
+ *     $ ./lamport_nonatomic2.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
  */
 
 #define NUM_OF_THREADS  2

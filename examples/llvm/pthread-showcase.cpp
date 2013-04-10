@@ -1,14 +1,35 @@
 /*
- * This program is just a showcase (suitable for testing) of some pthread features
- * already interpreted by DiVinE. Verification should proceed without detecting
- * any safety violation.
+ * Name
+ * ====================
+ *  Pthread showcase
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] pthread-showcase.cpp
- *  $ divine pthread-showcase.bc -p assert [-d]
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o pthread-showcase.exe pthread-showcase.cpp
- *  $ ./pthread-showcase.exe
+ * Category
+ * ====================
+ *  Test
+ *
+ * Short description
+ * ====================
+ * Showcase of some Pthread features already interpreted by DiVinE.
+ *
+ * Long description
+ * ====================
+ *  This program is just a showcase (suitable for testing) of some Pthread features
+ *  already interpreted by DiVinE. Verification should proceed without detecting
+ *  any safety violation.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] pthread-showcase.cpp
+ *     $ divine verify -p assert pthread-showcase.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o pthread-showcase.exe pthread-showcase.cpp
+ *     $ ./pthread-showcase.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
  */
 
 #include <pthread.h>

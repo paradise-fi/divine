@@ -1,22 +1,48 @@
 /*
- * This program describes a (distributed) scheduler for N concurrent processes.
- * The processes are scheduled in cyclic fashion so that the first process is
- * reactivated after the Nth process has been activated.
+ * Name
+ * ====================
+ *  Cyclic scheduler
  *
- * The original idea is from R. Milner, A Calculus of Communicating Systems, 1980;
- * this specific model is inspired by http://laser.cs.umass.edu/counterexamplesearch/
+ * Category
+ * ====================
+ *  Scheduler
  *
- * There is no buffer between scheduler and consumer, therefore scheduler shouldn't
- * assign a new job to the consumer he manages, if the consumer hasn't fully finished his
- * previous job yet. In such a case, scheduler waits even if he is the current owner of
- * the token. But when compiled with macro BUG defined, this wait is not implemented.
+ * Short description
+ * ====================
+ *  Milner's cyclic scheduler.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] cyclic_scheduler.c
- *  $ divine verify -p assert cyclic_scheduler.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o cyclic_scheduler.exe cyclic_scheduler.c
- *  $ ./cyclic_scheduler.exe
+ * Long description
+ * ====================
+ *  This program describes a (distributed) scheduler for `N` concurrent processes.
+ *  The processes are scheduled in cyclic fashion so that the first process is
+ *  reactivated after the Nth process has been activated.
+ *
+ *  The original idea is from R. Milner, A Calculus of Communicating Systems, 1980;
+ *  this specific model is inspired by [1].
+ *
+ *  There is no buffer between scheduler and consumer, therefore scheduler shouldn't
+ *  assign a new job to the consumer he manages, if the consumer hasn't fully finished his
+ *  previous job yet. In such a case, scheduler waits even if he is the current owner of
+ *  the token. But when compiled with macro `BUG` defined, this wait is not implemented.
+ *
+ * References:
+ * --------------------
+ *
+ *  1. http://laser.cs.umass.edu/counterexamplesearch/
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] cyclic_scheduler.c
+ *     $ divine verify -p assert cyclic_scheduler.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o cyclic_scheduler.exe cyclic_scheduler.c
+ *     $ ./cyclic_scheduler.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #define NUM_OF_CONSUMERS   2

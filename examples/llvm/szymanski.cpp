@@ -1,21 +1,40 @@
 /*
- * This program implements the Szymanski's mutual exclusion algorithm.
+ * Name
+ * ====================
+ *  Szymanski
  *
- * When compiled with -DBUG, the algorithm is incorrect, because the
- * flag waiting_for_others and its usage is omitted. This leads to the scenario
- * in which threads enter the "room", but don't wait for each other to update
- * their flags.
- * Thread with lower id (higher priority) can be interrupted by
- * scheduler after entering the room, but just before updating his flag,
- * while the other thread continues into the critical section, even thought he
- * shouldn't as there is this thread with higher prority.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] szymanski.cpp
- *  $ divine verify -p assert szymanski.bc [-d]
- * Execute with:
- *  $ clang++ [ < flags > ] -lpthread -o szymanski.exe szymanski.cpp
- *  $ ./szymanski.exe
+ * Short description
+ * ====================
+ *  This program implements the Szymanski's mutual exclusion algorithm.
+ *
+ * Long description
+ * ====================
+ *  When compiled with `-DBUG`, the algorithm is incorrect, because the
+ *  flag `waiting_for_others` and its usage is omitted. This leads to the scenario
+ *  in which threads enter the "room", but don't wait for each other to update
+ *  their flags.
+ *  Thread with lower id (higher priority) can be interrupted by
+ *  scheduler after entering the room, but just before updating his flag,
+ *  while the other thread continues into the critical section, even thought he
+ *  shouldn't as there is this thread with higher prority.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] szymanski.cpp
+ *     $ divine verify -p assert szymanski.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ [ < flags > ] -lpthread -o szymanski.exe szymanski.cpp
+ *     $ ./szymanski.exe
+ *
+ * Standard
+ * ====================
+ *  C++98
  */
 
 #define NUM_OF_THREADS  2

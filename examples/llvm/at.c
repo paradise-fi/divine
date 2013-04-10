@@ -1,38 +1,57 @@
 /*
- * Dicrete time model of Alur-Taubenfeld fast timing-based mutual exclusion
- * algorithm.
+ * Name
+ * ====================
+ *  At
  *
- * One significant drawback of Fischer's real time mutual exclusion protocol
- * (see fischer.c) is that a process must delay itself even in the absence of
- * contention. This problem was addressed by Lamport, who constructed a fast
- * timing-based algorithm (i.e., one in which a process performs O(1)
- * shared-memory accesses and executes no delay statements in the absence of
- * contention). This algorithm was later improved by Alur and Tabenfeld, who
- * eliminated the assumption of apriori-known upper bound on the critical-section
- * execution time.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * When compiled with -DBUG1, delayed thread doesn't wait long enough for other
- * threads that have passed the test _y=0_, to update the variable _y_.
- * Timer can release the delayed thread "at the same time" as the thread that is
- * about to update the variable _y_. The previously delayed thread can than be
- * scheduled to continue to the critical section (skipping _goto Start_),
- * followed be the other thread.
+ * Short description
+ * ====================
+ *  Discrete time model of Alur-Taubenfeld fast timing-based mutual exclusion
+ *  algorithm.
  *
- * When compiled with -DBUG2, thread that is leaving the CS will set _y_ to 0,
- * even if its value isn't of his identificator. Now imagine that there are two
- * other threads: A,B, where A is only in the beginning of the algorithm,
- * while B have already skipped the line: _goto Start_ (before _y_ was set to 0).
- * B can continue because _z_ equals 0 (there is no thread in the CS at this moment)
- * and enter the CS. But thread A has nothing in his way as well, since _y_
- * equals 0.
- * This error can really occur only if NUM_OF_THREADS is at least 3.
+ * Long description
+ * ====================
+ *  One significant drawback of Fischer's real time mutual exclusion protocol
+ *  (see *fischer.c*) is that a process must delay itself even in the absence of
+ *  contention. This problem was addressed by Lamport, who constructed a fast
+ *  timing-based algorithm (i.e., one in which a process performs *O(1)*
+ *  shared-memory accesses and executes no delay statements in the absence of
+ *  contention). This algorithm was later improved by Alur and Tabenfeld, who
+ *  eliminated the assumption of apriori-known upper bound on the critical-section
+ *  execution time.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] at.c
- *  $ divine verify -p assert at.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o at.exe at.c
- *  $ ./at.exe
+ *  When compiled with `-DBUG1`, delayed thread doesn't wait long enough for other
+ *  threads that have passed the test `y=0`, to update the variable `y`.
+ *  Timer can release the delayed thread "at the same time" as the thread that is
+ *  about to update the variable `y`. The previously delayed thread can than be
+ *  scheduled to continue to the critical section (skipping `goto Start`),
+ *  followed be the other thread.
+ *
+ *  When compiled with `-DBUG2`, thread that is leaving the CS will set `y` to 0,
+ *  even if its value isn't of his identificator. Now imagine that there are two
+ *  other threads: `A`,`B`, where `A` is only in the beginning of the algorithm,
+ *  while `B` have already skipped the line: `goto Start` (before `y` was set to 0).
+ *  `B` can continue because `z` equals 0 (there is no thread in the CS at this
+ *  moment) and enter the CS. But thread `A` has nothing in his way as well,
+ *  since `y` equals 0.
+ *  This error can really occur only if `NUM_OF_THREADS` is at least 3.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] at.c
+ *     $ divine verify -p assert at.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o at.exe at.c
+ *     $ ./at.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #ifdef BUG2

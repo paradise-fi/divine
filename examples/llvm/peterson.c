@@ -1,14 +1,35 @@
 /*
- * This program implements the Peterson's mutual exclusion algorithm. When
- * compiled with -DBUG, the algorithm is incorrect but runs without tripping
- * assertions more often than not.
+ * Name
+ * ====================
+ *  Peterson
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] peterson.c
- *  $ divine verify -p assert peterson.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o peterson.exe peterson.c
- *  $ ./peterson.exe
+ * Category
+ * ====================
+ *  Mutual exclusion
+ *
+ * Short description
+ * ====================
+ *  Peterson's mutual exclusion algorithm.
+ *
+ * Long description
+ * ====================
+ *  This program implements the Peterson's mutual exclusion algorithm. When
+ *  compiled with `-DBUG`, the algorithm is incorrect but runs without tripping
+ *  assertions more often than not.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] peterson.c
+ *     $ divine verify -p assert peterson.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o peterson.exe peterson.c
+ *     $ ./peterson.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #include <pthread.h>

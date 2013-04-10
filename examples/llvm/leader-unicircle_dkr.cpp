@@ -1,44 +1,71 @@
 /*
- * A simulation of a O(n*log(n)) unidirectional distributed algorithm for extrema
- * finding in a circle, proposed by Dolev, Klawe and Rodeh [1] (this algorithm is
- * referred to as "Algorithm B" in the paper).
+ * Name
+ * ====================
+ *  Leader in uni-circle (Dolev, Klawe, Rodeh)
  *
- * Given n processes in a ring, communicating only with message passing to its right
- * neighbour, the unidirectional circular extrema-finding problem (more likely known as a leader
- * election problem) is to select a maximum (or minimum) process.
- * Each process has a unique value, called ID, in a set with a total order. These values
- * may be transmitted and compared. All processes are identical (except for their IDs) and n,
- * the number of processes, is not initially known.
+ * Category
+ * ====================
+ *  Leader election
  *
- * This algorithm is based on the Basic algorithm (also presented in [1]), but by incorporating
- * several improvements into it, the authors were able to bound the number of messages by
- * 1.5*n*log(n) + O(n).
- * All of this improvements focus on reduction of the M2 message passes. It can than happen,
- * that a process receives two M1 messages in a row, instead of the alternation between
- * M1 and M2 messages as it is in the Basic algorithm. This reductions are based on the facts
- * that in some cases local or even global maximality can be disproved with fewer (M2) messages
- * sent than in usual cases. And so when a process receives two M1 messages consecutively,
- * it should respond with changing it's state to Passive. But be aware that second M1 message
- * should be treated as if the process was already in the Passive mode before reception, thus
- * the message should be forwarded -- however this is omitted when the program is compiled with
- * macro BUG defined (this can lead to deadlock state).
+ * Short description
+ * ====================
+ *  A simulation of a O(n*log(n)) unidirectional distributed algorithm for extrema finding
+ *  in a circle.
  *
- * Source:
- *    [1] @article{ dolev:an,
- *                  author = "Danny Dolev and Maria M. Klawe and Michael Rodeh",
- *                  title = "An O(n log n) Unidirectional Distributed Algorithm for Extrema
- *                           Finding in a Circle",
- *                  journal = "J. Algorithms",
- *                  pages = {245-260},
- *                  year = {1982},
- *                }
+ * Long description:
+ * ====================
+ *  This program is a simulation of a O(n*log(n)) unidirectional distributed algorithm
+ *  for extrema finding in a circle, proposed by Dolev, Klawe and Rodeh [1]
+ *  (this algorithm is referred to as "Algorithm B" in the paper).
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_dkr.cpp
- *  $ divine verify -p assert leader-unicircle_dkr.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
- *  $ ./leader-unicircle_dkr.exe
+ *  Given `n` processes in a ring, communicating only with message passing to its right
+ *  neighbour, the unidirectional circular extrema-finding problem (more likely known as a leader
+ *  election problem) is to select a maximum (or minimum) process.
+ *  Each process has a unique value, called ID, in a set with a total order. These values
+ *  may be transmitted and compared. All processes are identical (except for their IDs) and `n`,
+ *  the number of processes, is not initially known.
+ *
+ *  This algorithm is based on the Basic algorithm (also presented in [1]), but by incorporating
+ *  several improvements into it, the authors were able to bound the number of messages by
+ *  1.5*n*log(n) + O(n).
+ *  All of this improvements focus on reduction of the `M2` message passes. It can than happen,
+ *  that a process receives two `M1` messages in a row, instead of the alternation between
+ *  `M1` and `M2` messages as it is in the Basic algorithm. This reductions are based on the facts
+ *  that in some cases local or even global maximality can be disproved with fewer (`M2`) messages
+ *  sent than in usual cases. And so when a process receives two `M1` messages consecutively,
+ *  it should respond with changing it's state to *Passive*. But be aware that second `M1` message
+ *  should be treated as if the process was already in the *Passive* mode before reception, thus
+ *  the message should be forwarded -- however this is omitted when the program is compiled with
+ *  macro `BUG` defined (this can lead to deadlock state).
+ *
+ * References:
+ * --------------------
+ *
+ *  1. An O(n log n) Unidirectional Distributed Algorithm for Extrema Finding in a Circle.
+ *
+ *           @article{ dolev:an,
+ *                     author = "Danny Dolev and Maria M. Klawe and Michael Rodeh",
+ *                     title = "An O(n log n) Unidirectional Distributed Algorithm for Extrema
+ *                              Finding in a Circle",
+ *                     journal = "J. Algorithms",
+ *                     pages = {245-260},
+ *                     year = {1982},
+ *                   }
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_dkr.cpp
+ *     $ divine verify -p assert leader-unicircle_dkr.bc [-d]
+ *     $ divine verify -p deadlock leader-unicircle_dkr.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
+ *     $ ./leader-unicircle_dkr.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 #define NUM_OF_PROCESSES  3

@@ -1,34 +1,57 @@
 /*
- * This program implements the Lamport's Fast mutual exclusion algorithm.
+ * Name
+ * ====================
+ *  Lamport
  *
- * This algorithm is optimized for a number of read/write operations.
- * In the absence of contention it takes only constant time (five writes
- * and two reads). If contention is present, time complexity is linear.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * When compiled with macro BUG defined, instructions for leaving the
- * critical section are swapped, which can lead to a violation of the
- * exclusion property. For this to happen, at least 3 threads have to
- * be present. Compile with -DBUG and verify it for the assertion property
- * using DiVinE model checker to see the scenario (as it is quite
- * hard-to-see bug).
+ * Short description
+ * ====================
+ *  This program implements the Lamport's Fast mutual exclusion algorithm.
  *
- * Source:
- *     @article{ lamport87fast,
- *               author = "Leslie Lamport",
- *               title = "A Fast Mutual Exclusion Algorithm",
- *               journal = "ACM Transactions on Computer Systems",
- *               volume = "5",
- *               number = "1",
- *               pages = "1--11",
- *               year = "1987",
- *               url = "citeseer.ist.psu.edu/lamport86fast.html" }
+ * Long description
+ * ====================
+ *  This algorithm is optimized for a number of read/write operations.
+ *  In the absence of contention it takes only constant time (five writes
+ *  and two reads). If contention is present, time complexity is linear.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] lamport.c
- *  $ divine verify -p assert lamport.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o lamport.exe lamport.c
- *  $ ./lamport.exe
+ *  When compiled with macro `BUG` defined, instructions for leaving the
+ *  critical section are swapped, which can lead to a violation of the
+ *  exclusion property. For this to happen, at least 3 threads have to
+ *  be present. Compile with `-DBUG` and verify it for the assertion property
+ *  using *DiVinE* model checker to see the scenario (as it is quite
+ *  hard-to-see bug).
+ *
+ * References:
+ * --------------------
+ *
+ *  1. A Fast Mutual Exclusion Algorithm.
+ *
+ *           @article{ lamport87fast,
+ *                     author = "Leslie Lamport",
+ *                     title = "A Fast Mutual Exclusion Algorithm",
+ *                     journal = "ACM Transactions on Computer Systems",
+ *                     volume = "5",
+ *                     number = "1",
+ *                     pages = "1--11",
+ *                     year = "1987",
+ *                     url = "citeseer.ist.psu.edu/lamport86fast.html" }
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] lamport.c
+ *     $ divine verify -p assert lamport.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o lamport.exe lamport.c
+ *     $ ./lamport.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #define NUM_OF_THREADS  3

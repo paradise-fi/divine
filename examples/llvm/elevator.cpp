@@ -1,26 +1,45 @@
 /*
- * Variation on the popular (one-person) elevator theme, suggested by Radek Pelanek.
+ * Name
+ * ====================
+ *  Elevator
  *
- * When a person calls the elevator, his request is enqueued into the queue assigned
- * for the floor he is at. The person has to wait until the floor he is at is being
- * served by the elevator. When the elevator comes, the person enters and selects
- * a destination, then the person waits again, until the destination is reached.
- * Requests from different floors are processed by the elevator in a circular fashion:
- * at some point the floor no. 1 is served, which means that the oldest request is
- * dequeued and processed, then the elevator switches his attention for the oldest
- * request of the second floor and so on. When the last floor was served this way,
- * the elevator goes back to serve for the first floor.
- * When a person leaves the elevator, there are two options available of how
- * the elevator can continue. It can then serve for the floor that was a destination
- * for the last passanger (STRATEGY=1), i.e. the floor the elevator is currently in,
- * or the floor one above can be the next to serve (STRATEGY=2).
+ * Category
+ * ====================
+ *  Controller
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator.cpp
- *  $ divine verify -p assert elevator.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator.exe elevator.cpp
- *  $ ./elevator.exe
+ * Short description
+ * ====================
+ *  Variation on the popular (one-person) elevator theme, suggested by *Radek Pelánek*.
+ *
+ * Long description
+ * ====================
+ *  When a person calls the elevator, his request is enqueued into the queue assigned
+ *  for the floor he is at. The person has to wait until the floor he is at is being
+ *  served by the elevator. When the elevator comes, the person enters and selects
+ *  a destination, then the person waits again, until the destination is reached.
+ *  Requests from different floors are processed by the elevator in a circular fashion:
+ *  at some point the floor no. 1 is served, controller dequeues and processes
+ *  the oldest request from this floor, then the elevator switches his attention
+ *  for the oldest request of the second floor and so on. When the last
+ *  floor was served this way, the elevator goes back to serve for the first floor again.
+ *  When a person leaves the elevator, there are two options available of how
+ *  the elevator can continue. It can then serve for the floor that was a destination
+ *  for the last passanger (`STRATEGY=1`), i.e. the floor the elevator is currently at,
+ *  or the floor one above can be the next to serve (`STRATEGY=2`).
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator.cpp
+ *     $ divine verify -p assert elevator.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator.exe elevator.cpp
+ *     $ ./elevator.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 // A number of persons and served floors, both should be >= 2.

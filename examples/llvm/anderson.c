@@ -1,38 +1,61 @@
 /*
- * This program implements the Anderson's queue lock mutual exclusion algorithm.
+ * Name
+ * ====================
+ *  Anderson
  *
- * A ring-queue like mechanism is used to order the processes requesting to enter
- * the critical section. The association of slots to processes is not fixed but
- * the ordering of the slots comprising the queue of waiting processes is.
- * A process enqueues itself by selecting the current queue's tail index to be
- * his position (variable my_place), and moving the tail to the next position.
- * This has to be done atomically in order to prevent from concurrency, therefore
- * the algorithm uses fetch_and_add instruction.
- * But when compiled with macro BUG defined, fetch_and_add is not used,
- * instead a set of simple instructions implements operation enqueue as a non-atomic
- * operation, hence the algorithm violates the safety property.
+ * Category
+ * ====================
+ *  Mutual exclusion
  *
- * Source: Anderson (The performance of spin lock alternatives for
- * shared-memory synchronization), model according to
- *    @article{ 966040,
- *              author = {James H. Anderson and Yong-Jik Kim and Ted Herman},
- *              title = {Shared-memory mutual exclusion: major research trends since 1986},
- *              journal = {Distributed Computing},
- *              volume = {16},
- *              number = {2-3},
- *              year = {2003},
- *              issn = {0178-2770},
- *              pages = {75--110},
- *              doi = {http://dx.doi.org/10.1007/s00446-003-0088-6},
- *              publisher = {Springer-Verlag},
- *            }
+ * Short description
+ * ====================
+ *  Anderson's queue lock mutual exclusion algorithm.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] anderson.c
- *  $ divine verify -p assert anderson.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o anderson.exe anderson.c
- *  $ ./anderson.exe
+ * Long description
+ * ====================
+ *  A *ring-queue* like mechanism is used to order the processes requesting to enter
+ *  the *critical section*. The association of slots to processes is not fixed but
+ *  the ordering of the slots comprising the queue of waiting processes is.
+ *  A process enqueues itself by selecting the current queue's tail index to be
+ *  his position (variable `my_place`), and moving the tail to the next position.
+ *  This has to be done atomically in order to prevent from concurrency, therefore
+ *  the algorithm uses *fetch_and_add* instruction.
+ *  But when compiled with macro `BUG` defined, *fetch_and_add* is not used,
+ *  instead a set of simple instructions implements operation enqueue as
+ *  a *non-atomic* operation, hence the algorithm violates the safety property.
+ *
+ * References:
+ * --------------------
+ *
+ *  1. Anderson (The performance of spin lock alternatives for shared-memory
+ *  synchronization), model according to:
+ *
+ *           @article{ shared-memory-since-1986,
+ *                     author = {James H. Anderson and Yong-Jik Kim and Ted Herman},
+ *                     title = {Shared-memory mutual exclusion: major research trends since 1986},
+ *                     journal = {Distributed Computing},
+ *                     volume = {16},
+ *                     number = {2-3},
+ *                     year = {2003},
+ *                     issn = {0178-2770},
+ *                     pages = {75--110},
+ *                     doi = {http://dx.doi.org/10.1007/s00446-003-0088-6},
+ *                     publisher = {Springer-Verlag},
+ *                   }
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] anderson.c
+ *     $ divine verify -p assert anderson.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o anderson.exe anderson.c
+ *     $ ./anderson.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #define NUM_OF_THREADS  2

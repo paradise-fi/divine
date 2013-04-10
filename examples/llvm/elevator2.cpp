@@ -1,31 +1,52 @@
 /*
- * Motivated by model elevator2.dve (from the BEEM database), written by
- * Jiri Barnat.
- * Original idea comes from the elevator promela model from the SPIN
- * distribution, but actually implements LEGO elevator model built in the
- * Paradise laboratory.
+ * Name
+ * ====================
+ *  Elevator2
  *
- * The elevator is quite simple. There are no buttons inside the cabin,
- * instead the elevator is completely controlled from outside
- * (including destination selection). At each floor there is a button for
- * calling the elevator. When the button is pressed, a new request carrying
- * the floor number is created. Hopefully the elevator controller
- * will eventually serve this request by sending the elevator to the floor
- * from which the request originates.
- * When the elevator arrives, doors opens for a short time and then
- * the controller selects request from another floor to process next.
- * Naive controller chooses the next floor to be served randomly, clever
- * controller chooses the next floor with a pending request in the direction
- * of the last cab movement to be served, if there is no
- * such floor then in direction oposite to the direction of the last cab
- * movement.
+ * Category
+ * ====================
+ *  Controller
  *
- * Verify with:
- *  $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator2.cpp
- *  $ divine verify -p assert elevator2.bc [-d]
- * Execute with:
- *  $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
- *  $ ./elevator2.exe
+ * Short description
+ * ====================
+ *  Another elevator controller.
+ *
+ * Long description
+ * ====================
+ *  Motivated by model elevator2.dve (from the *BEEM database*), written by
+ *  _Jiri Barnat_.
+ *  Original idea comes from the elevator promela model from the *SPIN*
+ *  distribution, but actually implements *LEGO* elevator model built in the
+ *  Paradise laboratory.
+ *
+ *  The elevator is quite simple. There are no buttons inside the cabin,
+ *  instead the elevator is completely controlled from outside
+ *  (including destination selection). At each floor there is a button for
+ *  calling the elevator. When the button is pressed, a new request carrying
+ *  the floor number is created. Hopefully the elevator controller
+ *  will eventually serve this request by sending the elevator to the floor
+ *  from which the request originates.
+ *  When the elevator arrives, doors opens for a short time and then
+ *  the controller selects request from another floor to process next.
+ *  Naive controller chooses the next floor to be served randomly, clever
+ *  controller chooses the next floor with a pending request in the direction
+ *  of the last cab movement to be served, if there is no
+ *  such floor then in direction oposite to the direction of the last cab
+ *  movement.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator2.cpp
+ *     $ divine verify -p assert elevator2.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
+ *     $ ./elevator2.exe
+ *
+ * Standard
+ * ====================
+ *  C++11
  */
 
 // A number of served floors, should be >= 1.

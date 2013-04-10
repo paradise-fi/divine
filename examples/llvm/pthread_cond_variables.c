@@ -1,36 +1,59 @@
 /*
- * This program simulates producer-consument(s) pattern, implemented using
- * conditional variables. Instead of spinning, consumers are sleeping
- * until some item is enqueued into the shared queue.
- * If compiled with -DBUG, condition is not re-checked after the
- * pthread_cond_wait returns. But this is obviously incorrect because
- * when a thread receives a signal it is not necessarily the first one that
- * gets scheduled when the signalling thread unlocks the mutex.
- * For example we could have the following series of operations:
- *  1. Cons_0 locks queue_mutex, sees that enqueued == 0, and waits (releases mutex).
- *  2. Prod locks queue_mutex, produces new item and signals about new item being added.
- *  3. Cons_1 tries to lock queue_mutex, but fails and has to wait.
- *  4. Prod unclocks queue_mutex and the scheduler decides to schedule Cons_1
-       instead of Cons_0.
- *  5. Cons_1 locks queue_mutex, sees that enqueued != 0, and removes the item
- *     (but note that Prod already signalled Cons_0 that it should get this item).
- *  6. Cons_1 unlocks queue_mutex and the scheduler resumes Cons_0.
- *  7. Cons_0 now tries to remove from an empty queue.
+ * Name
+ * ====================
+ *  Pthread conditional variables
  *
- * Thus at least two consumers and two items to process are needed to have
- * assertion violated in some run of the program.
+ * Category
+ * ====================
+ *  Test
  *
- * Current implementation of conditional variables in Pthread library
- * provided within DiVinE also takes into consideration that pthread_cond_signal
- * can send signal to more than one thread (as it is defined in the POSIX specifications).
- * However spurious wakeup is not yet implemented.
+ * Short description
+ * ====================
+ *  Simulation of the producer-consument(s) pattern, implemented using conditional
+ *  variables.
  *
- * Verify with:
- *  $ divine compile --llvm [--cflags=" < flags > "] pthread_cond_variables.c
- *  $ divine verify -p assert pthread_cond_variables.bc [-d]
- * Execute with:
- *  $ clang [ < flags > ] -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
- *  $ ./pthread_cond_variables.exe
+ * Long description
+ * ====================
+ *  This program simulates the *producer-consument(s) pattern*, implemented using
+ *  conditional variables. Instead of spinning, consumers are sleeping
+ *  until some item is enqueued into the shared queue.
+ *  If compiled with `-DBUG`, condition is not re-checked after the
+ *  `pthread_cond_wait` returns. But this is obviously incorrect because
+ *  when a thread receives a signal it is not necessarily the first one that
+ *  gets scheduled when the signalling thread unlocks the mutex.
+ *  For example we could have the following series of operations:
+ *
+ *    1. *Cons_0* locks queue_mutex, sees that `enqueued == 0`, and waits (releases mutex).
+ *    2. *Prod* locks queue_mutex, produces new item and signals about new item being added.
+ *    3. *Cons_1* tries to lock `queue_mutex`, but fails and has to wait.
+ *    4. *Prod* unclocks `queue_mutex` and the scheduler decides to schedule *Cons_1*
+         instead of *Cons_0*.
+ *    5. *Cons_1* locks `queue_mutex`, sees that `enqueued != 0`, and removes the item
+ *       (but note that *Prod* already signalled *Cons_0* that it should get this item).
+ *    6. *Cons_1* unlocks queue_mutex and the scheduler resumes *Cons_0*.
+ *    7. *Cons_0* now tries to remove from an empty queue.
+ *
+ *  Thus at least two consumers and two items to process are needed to have
+ *  assertion violated in some run of the program.
+ *
+ *  Current implementation of conditional variables in Pthread library
+ *  provided within DiVinE also takes into consideration that `pthread_cond_signal`
+ *  can send signal to more than one thread (as it is defined in the *POSIX* specifications).
+ *  However spurious wakeup is not yet implemented.
+ *
+ * Verification
+ * ====================
+ *     $ divine compile --llvm [--cflags=" < flags > "] pthread_cond_variables.c
+ *     $ divine verify -p assert pthread_cond_variables.bc [-d]
+ *
+ * Execution
+ * ====================
+ *     $ clang [ < flags > ] -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
+ *     $ ./pthread_cond_variables.exe
+ *
+ * Standard
+ * ====================
+ *  C99
  */
 
 #include <pthread.h>
