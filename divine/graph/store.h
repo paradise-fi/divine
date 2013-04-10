@@ -344,8 +344,17 @@ struct CompressedStore : public TableUtils< CompressedStore< Table, BaseTable, G
 
 template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
           typename Statistics = NoStatistics >
-using TreeCompressedStore = CompressedStore< TreeCompressedHashSetBase, HashSet,
-          Graph, Hasher, Statistics >;
+struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
+        HashSet, Graph, Hasher, Statistics >
+{
+    typedef CompressedStore< TreeCompressedHashSet, HashSet, Graph, Hasher,
+              Statistics > Base;
+
+    template< typename... Args >
+    TreeCompressedStore( Graph& g, int slack, Args&&... args ) :
+        Base( g, slack, 32, std::forward< Args >( args )... )
+    { }
+};
 
 }
 

@@ -13,25 +13,21 @@
 
 namespace divine {
 
-#define ChunkSize 32
-
-    // TreeCompressedHashSetBase :: ( * -> * -> * ) -> * -> * -> int -> *
-    // Creates tree compression topology with given chunk size (in bytes)
+    // TreeCompressedHashSet :: ( * -> * -> * ) -> * -> * -> *
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class _HashSet,
         typename _Item, typename _Hasher = default_hasher< _Item > >
-    struct TreeCompressedHashSetBase
+    struct TreeCompressedHashSet
     {
-        static_assert( ChunkSize > 0, "ChunkSize must be positive" );
-
         typedef _Item Item;
         typedef _Hasher Hasher;
         typedef _HashSet< Item, Hasher > BaseHashSet;
 
         template< typename... Args >
-        TreeCompressedHashSetBase( Hasher hasher, Args&&... args ) :
+        TreeCompressedHashSet( Hasher hasher, int chunkSize, Args&&... args ) :
             m_base( Hasher( hasher, hasher.slack + int( sizeof( Leaf ) ) ),
                     std::forward< Args >( args )... ),
+            m_chunkSize( chunkSize ),
             m_slack( hasher.slack ),
             m_size( 0 ),
             hasher( m_base.hasher )
@@ -45,10 +41,12 @@ namespace divine {
                     "Algorithm assumes this" );
             static_assert( sizeof( Leaf ) <= offsetof( Fork, right ),
                     "Algorithm assumes this" );
+            assert( chunkSize > 0 );
         }
 
         BaseHashSet m_base;
         const int m_slack;
+        const int m_chunkSize;
         size_t m_size;
 
         Hasher& hasher;
@@ -305,7 +303,7 @@ namespace divine {
 
             int size = pool().size( item ) - slack();
             assert( size > 0 );
-            if ( size <= ChunkSize ) {
+            if ( size <= m_chunkSize ) {
                 Item it = newLeaf( item );
                 Item it2 = m_base.insert( it );
                 if ( !it.alias( it2 ) ) {
@@ -358,7 +356,7 @@ namespace divine {
             assert( valid( item ) );
             int size = pool().size( item ) - slack();
             assert( size > 0 );
-            if ( size <= ChunkSize ) {
+            if ( size <= m_chunkSize ) {
                 Item l = newLeaf( item );
                 Item l2 = m_base.get( l );
                 pool().free( l );
@@ -374,7 +372,7 @@ namespace divine {
                 if ( !this->valid( l2 ) ) {
                     return Item(); // not found
                 } else {
-                    assert( this->header( l2 ).size <= ChunkSize );
+                    assert( this->header( l2 ).size <= m_chunkSize );
                     return l2;
                 }
             };
@@ -406,9 +404,9 @@ namespace divine {
             assert( sourceSize <= pool().size( source ) - slack() );
             std::queue< Item > items;
 
-            for ( int position = 0; position < sourceSize; position += ChunkSize ) {
+            for ( int position = 0; position < sourceSize; position += m_chunkSize ) {
                 Item i = initAct( source, position,
-                        std::min( ChunkSize, sourceSize - position ) );
+                        std::min( m_chunkSize, sourceSize - position ) );
                 if ( !valid( i ) )
                     return i;
                 else
@@ -466,15 +464,9 @@ namespace divine {
         }
     };
 
-    // The deault tree compressed hash sed using standard hash set as base
-    // it is drop-in replacement of standard hashset
-    template< typename Item, typename Hasher = default_hasher< Item > >
-    using TreeCompressedHashSet = TreeCompressedHashSetBase< HashSet, Item, Hasher >;
-
-
     template< template< typename, typename > class _HashSet,
         typename Item, typename Hasher >
-    const typename TreeCompressedHashSetBase< _HashSet, Item, Hasher >::Node
-        TreeCompressedHashSetBase< _HashSet, Item, Hasher >::Node::invalid;
+    const typename TreeCompressedHashSet< _HashSet, Item, Hasher >::Node
+        TreeCompressedHashSet< _HashSet, Item, Hasher >::Node::invalid;
 }
 #endif
