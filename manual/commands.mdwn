@@ -148,12 +148,13 @@ them in this section.
 `--max-time=N`
 :    Put a limit of N seconds on the maximal running time.
 
-`--disk-fifo=N`
+`--disk-fifo`
 :    Most of the memory used by the verifier is split between hash tables and
      queues. This option tells `divine` to use disk storage for long queues,
      since the impact of high latency is much smaller for queues than it is for
      hash tables. This allows more of RAM to be used for hash tables, improving
-     overall performance for large models. **Currently not implemented.**
+     overall performance for large models. Location of temporary files can be
+     changed by setting TMPDIR, TEMP or TMP environment variables.
 
 `--statistics [--curses]`
 :    Print realtime statistics during verification, optionally using curses for
@@ -214,6 +215,8 @@ input file.
      currently available for DVE models and is mainly useful when checking LTL
      properties. This avoids counterexamples which rely on one of the processes of
      the system never making any progress even though it is not blocked.
+     For timed models, this option excludes Zeno runs when verifying LTL
+     properties.
 
 `--reduce=X, --no-reduce`
 :    This option directs the model checker to use heuristics which
