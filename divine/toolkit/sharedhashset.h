@@ -133,8 +133,13 @@ struct SharedHashSet {
             if ( chl == 0 ) {
                 return false;
             }
-            if ( (chl | 1) == (h | 1) && ( hasher.equal( cell.value, x ) ) )
-                return true;
+            if ( (chl | 1) == (h | 1) ) {
+                if ( chl & 1 )
+                    while ( cell.hashLock & 1 );
+
+                if ( hasher.equal( cell.value, x ) )
+                    return true;
+            }
         }
 
         std::cerr << "too many collisions" << std::endl;
@@ -158,9 +163,14 @@ struct SharedHashSet {
                 return Item();
             }
 
-            if ( (chl | 1) == (h | 1) && hasher.equal( cell.value, x ) ) {
-                if (has) *has = true;
-                return cell.value;
+            if ( (chl | 1) == (h | 1) ) {
+                if ( chl & 1 )
+                    while ( cell.hashLock & 1 );
+
+                if ( hasher.equal( cell.value, x ) ) {
+                    if (has) *has = true;
+                        return cell.value;
+                }
             }
         }
         std::cerr << "too many collisions" << std::endl;
