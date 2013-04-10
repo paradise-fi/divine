@@ -349,9 +349,56 @@ protected:
     { }
 };
 
-struct BlobComparerLT : public BlobComparerBase {
+struct BlobComparerEQ : public BlobComparerBase {
 
-    BlobComparerLT( Pool& pool ) : BlobComparerBase( pool )
+    BlobComparerEQ( Pool& pool ) : BlobComparerBase( pool )
+    { }
+
+    bool operator()( const Blob& a, const Blob& b ) const {
+        return m_pool->equal( a, b );
+    }
+
+    template< typename T >
+    bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
+        return m_pool->equal( a.first, b.first ) && a.second == b.second;
+    }
+
+    bool operator()( const std::tuple<>&, const std::tuple<>& ) const {
+        return true;
+    }
+
+    template< typename... TS >
+    bool operator()( const std::tuple< TS... >& a, const std::tuple< TS... >& b ) const {
+        return compareTuple< sizeof...( TS ), 0, TS... >( a, b );
+    }
+
+    template< size_t size, size_t i, typename... TS >
+    typename std::enable_if< ( size > i ), bool >::type compareTuple(
+            const std::tuple< TS... >& a, const std::tuple< TS... >& b ) const
+    {
+        bool x = (*this)( std::get< i >( a ), std::get< i >( b ) );
+        return x
+            ? compareTuple< size, i + 1, TS... >( a, b )
+            : false;
+    }
+
+    template< size_t size, size_t i, typename... TS >
+    typename std::enable_if< ( size <= i ), bool >::type compareTuple(
+            const std::tuple< TS... >&, const std::tuple< TS... >& ) const
+    {
+        return true;
+    }
+
+    template< typename T >
+    bool operator()( const T& a, const T& b ) const {
+        return a == b;
+    }
+};
+
+struct BlobComparerLT : public BlobComparerBase {
+    const BlobComparerEQ eq;
+
+    BlobComparerLT( Pool& pool ) : BlobComparerBase( pool ), eq( pool )
     { }
 
     bool operator()( const Blob& a, const Blob& b ) const {
@@ -365,20 +412,36 @@ struct BlobComparerLT : public BlobComparerBase {
         int cmp = m_pool->compare( a.first, b.first );
         return cmp == 0 ? a.second < b.second : cmp < 0;
     }
-};
 
-struct BlobComparerEQ : public BlobComparerBase {
+    bool operator()( const std::tuple<>&, const std::tuple<>& ) const {
+        return false;
+    }
 
-    BlobComparerEQ( Pool& pool ) : BlobComparerBase( pool )
-    { }
+    template< typename... TS >
+    bool operator()( const std::tuple< TS... >& a, const std::tuple< TS... >& b ) const {
+        return compareTuple< sizeof...( TS ), 0, TS... >( a, b );
+    }
 
-    bool operator()( const Blob& a, const Blob& b ) const {
-        return m_pool->equal( a, b );
+    template< size_t size, size_t i, typename... TS >
+    typename std::enable_if< ( size > i ), bool >::type compareTuple(
+            const std::tuple< TS... >& a, const std::tuple< TS... >& b ) const
+    {
+        bool x = eq( std::get< i >( a ), std::get< i >( b ) );
+        return x
+            ? compareTuple< size, i + 1, TS... >( a, b )
+            : (*this)( std::get< i >( a ), std::get< i >( b ) );
+    }
+
+    template< size_t size, size_t i, typename... TS >
+    typename std::enable_if< ( size <= i ), bool >::type compareTuple(
+            const std::tuple< TS... >&, const std::tuple< TS... >& ) const
+    {
+        return false;
     }
 
     template< typename T >
-    bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
-        return m_pool->equal( a.first, b.first ) && a.second == b.second;
+    bool operator()( const T& a, const T& b ) const {
+        return a < b;
     }
 };
 
