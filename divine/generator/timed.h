@@ -46,7 +46,7 @@ struct Timed : public Common< Blob > {
                 if ( doBuchiTrans( mem( n ), *btr ) ) {
                     yield( n, Label() );
                 } else {
-                    n.free( pool() );
+                    pool().free( n );
                 }
             }
             nSuccs++;
@@ -112,7 +112,7 @@ struct Timed : public Common< Blob > {
         yield( Node(), n, Label() );
     }
 
-    void release( Node s ) { s.free( pool() ); }
+    void release( Node s ) { pool().free( s ); }
 
     void read( std::string file, Timed * = nullptr ) {
         gen.read( file );
@@ -193,8 +193,12 @@ struct Timed : public Common< Blob > {
 	}
 
 private:
-    char* mem( Node s ) const {
-        return &s.get< char >( alloc._slack );
+    Pool& pool() {
+        return this->alloc.pool();
+    }
+
+    char* mem( Node s ) {
+        return &pool().get< char >( s, alloc._slack );
     }
 
     Node newNode( const char* src ) {

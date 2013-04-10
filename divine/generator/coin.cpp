@@ -121,7 +121,7 @@ Coin::Node Coin::_initial() {
     Blob b = newNode();
     packPrimitiveStates(primitive_states, state_vector);
     State s(primitive_states);
-    s.pack(b, getTotalSlack());
+    s.pack(pool(), b, getTotalSlack());
 
     return b;
 }
@@ -237,13 +237,13 @@ bool Coin::isAccepting(Node compressed_state) {
         return false;
     }
     // ID of the current state of the property automaton = the last element of the vector
-    unsigned int sid = State::getPrimitiveState(compressed_state, getTotalSlack(), packed_state_size-1);
+    unsigned int sid = State::getPrimitiveState(pool(), compressed_state, getTotalSlack(), packed_state_size-1);
     return (property->accepting_states.find(sid) != property->accepting_states.end());
 }
 
 std::string Coin::showNode(Node compressed_state) {
     std::stringstream stream;
-    State state(compressed_state, getTotalSlack());
+    State state(pool(), compressed_state, getTotalSlack());
     vector<int> v = state.getValues(); //primitive
     stream << '[';
     int n = 0;
@@ -505,7 +505,7 @@ vector<transition_t *> * Coin::combineWithProp(vector<transition_t *> * system_t
 }
 
 vector<transition_t *> * Coin::getEnabledTrans(Node compressed_state) {
-    State state(compressed_state, getTotalSlack());
+    State state(pool(), compressed_state, getTotalSlack());
     primitive_states = state.getValues();
     unpackPrimitiveStates(primitive_states, state_vector);
 
@@ -562,7 +562,7 @@ Coin::Successors Coin::apply(const Node &st, vector<transition_t *> * succ_trans
         Blob b = newNode();
         packPrimitiveStates(primitive_states, next_state_vector);
         State s(primitive_states);
-        s.pack(b, getTotalSlack());
+        s.pack(pool(), b, getTotalSlack());
         succs_list.push_back(b);
 
         delete t;
@@ -714,7 +714,7 @@ inline Coin::Node Coin::newNode() {
 }
 
 inline Coin::Extension & Coin::extension( Node & n ) {
-    return n.get< Extension >( original_slack );
+    return pool().get< Extension >( n, original_slack );
 }
 
 inline int Coin::getAmpleSet(Node & n) {

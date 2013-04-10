@@ -37,10 +37,14 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     };
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return pool().template get< Extension >( n );
     }
 
     int id() { return 0; } // expected by AlgorithmUtils
+
+    inline Pool& pool() {
+        return this->graph().base().alloc.pool();
+    }
 
     void runInner( Graph &graph, Node n ) {
         seed = n;
@@ -151,7 +155,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             }
 
             if ( dfs.valid && !dfs.ce_stack.empty() ) {
-                assert_eq( n.pointer(), dfs.ce_stack.front().pointer() );
+                assert_eq( dfs.pool().pointer( n ), dfs.pool().pointer( dfs.ce_stack.front() ) );
                 dfs.ce_stack.pop_front();
             }
         }
@@ -171,7 +175,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         {
             // The search always starts with a transition from "nowhere" into the
             // initial state. Ignore this transition here.
-            if ( from.valid() && to.pointer() == dfs.seed.pointer() ) {
+            if ( from.valid() && dfs.pool().pointer( to ) == dfs.pool().pointer( dfs.seed ) ) {
                 dfs.valid = false;
                 return visitor::TerminateOnTransition;
             }
@@ -186,7 +190,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         static void finished( This &dfs, Node n ) {
             if ( !dfs.ce_lasso.empty() ) {
-                assert_eq( n.pointer(), dfs.ce_lasso.front().pointer() );
+                assert_eq( dfs.pool().pointer( n ), dfs.pool().pointer( dfs.ce_lasso.front() ) );
                 dfs.ce_lasso.pop_front();
             }
         }

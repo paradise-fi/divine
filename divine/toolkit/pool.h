@@ -10,7 +10,109 @@
 
 namespace divine {
 
-struct FakePool {
+struct BlobDereference {
+
+    BlobHeader& header( Blob& blob ) const
+    {
+        return blob.header();
+    }
+
+    const BlobHeader& header( const Blob& blob ) const
+    {
+        return blob.header();
+    }
+
+    template< typename T >
+    T& get( Blob& blob, int off = 0 ) const
+    {
+        return blob.get<T>(off);
+    }
+
+    template< typename T >
+    int get( Blob& blob, int off, T& t ) const
+    {
+        return blob.get(off, t);
+    }
+
+    template< typename T >
+    int put( Blob& blob, int off, T t ) const
+    {
+        return blob.put(off, t);
+    }
+
+    void copyTo( const Blob& source, Blob& where ) const
+    {
+        source.copyTo( where );
+    }
+
+    template< typename O >
+    O write32( const Blob& blob, O o ) const
+    {
+        return blob.write32( o );
+    }
+
+    void setSize( Blob& blob, size_t size ) const
+    {
+        blob.setSize( size );
+    }
+
+    void clear( Blob& blob, int from = 0, int to = 0, char pattern = 0 ) const
+    {
+        blob.clear( from, to, pattern );
+    }
+
+    int size( const Blob& blob ) const
+    {
+        return blob.size();
+    }
+
+    char* data( const Blob& blob ) const
+    {
+        return blob.data();
+    }
+
+    char* pointer( const Blob blob ) const
+    {
+        return blob.pointer();
+    }
+
+    int32_t* pointer32( const Blob& blob ) const
+    {
+        return blob.pointer32();
+    }
+
+    int compare( const Blob& x, const Blob& y, int b, int e ) const
+    {
+        return x.compare( y, b, e );
+    }
+
+    int compare( const Blob& a, const Blob& b ) const
+    {
+        return compare( a, b, 0, std::max( size( a ), size( b ) ) );
+    }
+
+    int equal( const Blob& x, const Blob& y ) const
+    {
+        int cmp = compare( x, y, 0, std::max( size( x ), size( y ) ) );
+        return cmp == 0;
+    }
+
+#ifndef DIVINE_EMBED
+    hash_t hash( const Blob& blob ) const
+    {
+        return blob.hash();
+    }
+
+    hash_t hash( const Blob& blob, int from, int to, uint32_t salt = 0 ) const
+    {
+        return blob.hash( from, to, salt );
+    }
+
+#endif
+
+};
+
+struct FakePool : public BlobDereference {
 
     FakePool() {}
     FakePool( const FakePool & ) {}
@@ -36,6 +138,12 @@ struct FakePool {
     void steal( T *_ptr, size_t size = 0 ) {
         delete[] static_cast< char * >( _ptr );
     }
+
+    void free( Blob& blob )
+    {
+        blob.free( *this );
+    }
+
 };
 
 #ifndef O_POOLS
@@ -44,7 +152,7 @@ typedef FakePool Pool;
 
 #else
 
-struct Pool {
+struct Pool : public BlobDereference {
     struct Block
     {
         size_t size;
@@ -222,107 +330,58 @@ struct Pool {
         return steal( _ptr, size );
     }
 
-    // Blob manipulation function
     void free( Blob& blob )
     {
         blob.free( *this );
     }
 
-    bool valid( const Blob& blob ) const
-    {
-        return blob.valid();
-    }
-
-    BlobHeader& header( Blob& blob ) const
-    {
-        return blob.header();
-    }
-
-    const BlobHeader& header( const Blob& blob ) const
-    {
-        return blob.header();
-    }
-
-    template< typename T >
-    T& get( Blob& blob, int off = 0 ) const
-    {
-        return blob.get<T>(off);
-    }
-
-    template< typename T >
-    int get( Blob& blob, int off, T& t ) const
-    {
-        blob.get(off, t);
-    }
-
-    template< typename T >
-    int put( Blob& blob, int off, T t )
-    {
-        blob.put(off, t);
-    }
-
-    void copyTo( const Blob& source, Blob& where ) const
-    {
-        source.copyTo( where );
-    }
-
-    template< typename O >
-    O write32( const Blob& blob, O o ) const
-    {
-        return blob.write32( o );
-    }
-
-    void setSize( Blob& blob, size_t size ) const
-    {
-        blob.setSize( size );
-    }
-
-    void clear( Blob& blob, int from = 0, int to = 0, char pattern = 0 ) const
-    {
-        blob.clear( from, to, pattern );
-    }
-
-    int size( const Blob& blob ) const
-    {
-        blob.size();
-    }
-
-    char* data( const Blob& blob ) const
-    {
-        blob.data();
-    }
-
-    char* pointer( const Blob blob ) const
-    {
-        blob.pointer();
-    }
-
-    int32_t* pointer32( const Blob& blob ) const
-    {
-        blob.pointer32();
-    }
-
-    int compare( const Blob& x, const Blob& y, int b, int e ) const
-    {
-        return x.compare( y, b, e );
-    }
-
-#ifndef DIVINE_EMBED
-    hash_t hash( const Blob& blob ) const
-    {
-        return blob.hash();
-    }
-
-    hash_t hash( const Blob& blob, int from, int to, uint32_t salt = 0 ) const
-    {
-        return blob.hash( from, to, salt );
-    }
-
-#endif
-
 };
 
 #endif
+
+
+// Since < and == operator of blob is to be removed, we want comparer which will work with STL
+struct BlobComparerBase {
+protected:
+    const Pool* m_pool;
+
+    BlobComparerBase( Pool& pool ) : m_pool( &pool )
+    { }
+};
+
+struct BlobComparerLT : public BlobComparerBase {
+
+    BlobComparerLT( Pool& pool ) : BlobComparerBase( pool )
+    { }
+
+    bool operator()( const Blob& a, const Blob& b ) const {
+        int cmp = m_pool->compare( a, b );
+        return cmp < 0;
+    }
+
+    // lexicongraphic tuple ordering
+    template< typename T >
+    bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
+        int cmp = m_pool->compare( a.first, b.first );
+        return cmp == 0 ? a.second < b.second : cmp < 0;
+    }
+};
+
+struct BlobComparerEQ : public BlobComparerBase {
+
+    BlobComparerEQ( Pool& pool ) : BlobComparerBase( pool )
+    { }
+
+    bool operator()( const Blob& a, const Blob& b ) const {
+        return m_pool->equal( a, b );
+    }
+
+    template< typename T >
+    bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
+        return m_pool->equal( a.first, b.first ) && a.second == b.second;
+    }
+};
+
 
 std::ostream &operator<<( std::ostream &o, const Pool &p );
 

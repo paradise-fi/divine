@@ -26,13 +26,15 @@ template<> inline bool alias< Blob >( Blob a, Blob b ) {
     return a.ptr == b.ptr;
 }
 
-template< typename T > inline bool permanent( T ) { return false; }
-template< typename T > inline void setPermanent( T, bool = true ) {}
+template< typename T > inline bool permanent( Pool& pool, T ) { return false; }
+template< typename T > inline void setPermanent( Pool& pool, T, bool = true ) {}
 
-template<> inline bool permanent( Blob b ) { return b.valid() ? b.header().permanent : false; }
-template<> inline void setPermanent( Blob b, bool x ) {
+template<> inline bool permanent( Pool& pool, Blob b ) {
+    return b.valid() ? pool.header( b ).permanent : false;
+}
+template<> inline void setPermanent( Pool& pool, Blob b, bool x ) {
     if ( b.valid() )
-        b.header().permanent = x;
+        pool.header( b ).permanent = x;
 }
 
 template < typename Self, typename Table, typename _Hasher, typename _Statistics >
@@ -73,11 +75,10 @@ struct TableUtils
 
     // Store node in hash table
     bool store( T s, hash_t h ) {
-        Statistics::global().hashadded( id->id(), memSize( s ) );
+        Statistics::global().hashadded( id->id(), memSize( s, hasher().pool ) );
         Statistics::global().hashsize( id->id(), table().size() );
         table().insertHinted( s, h );
         setPermanent( s );
-        return true;// thus we call this only if we could not find $s in table
     }
 
     bool has( T s ) { return table().has( s ); }
@@ -109,9 +110,7 @@ struct TableUtils
 
     T operator[]( unsigned index ) { return table()[index]; }
 
-    TableUtils() :
-        id( nullptr )
-    {}
+    TableUtils() : id( nullptr ) {}
 };
 
 template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
@@ -124,11 +123,11 @@ struct PartitionedStore : TableUtils< PartitionedStore< Graph, Hasher, Statistic
 
     Table _table;
 
-    PartitionedStore() :
-        _table( Hasher() )
+    PartitionedStore( Graph &g ) :
+        _table( Hasher( g.base().alloc.pool() ) )
     {}
-    PartitionedStore( Graph &, This * = nullptr ) :
-        _table( Hasher() )
+    PartitionedStore( Graph &g, This * = nullptr ) :
+        _table( Hasher( g.base().alloc.pool() ) )
     {}
 
     Table& table() {
@@ -159,11 +158,11 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 
     TablePtr _table;
 
-    SharedStore( Graph &, This *master = nullptr ) {
+    SharedStore( Graph &g, This *master = nullptr ) {
         if ( master )
             _table = master->_table;
         else
-            _table = std::make_shared< Table >();
+            _table = std::make_shared< Table >( Hasher( g.base().alloc.pool() ) );
     }
     SharedStore() :
         _table( std::make_shared< Table >() )
@@ -195,6 +194,9 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 template< typename Hasher >
 struct HcHasher : Hasher
 {
+    HcHasher( Pool& pool ) : Hasher( pool )
+    { }
+
     bool equal(Blob a, Blob b) {
         return true;
     }
@@ -216,11 +218,15 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
     Table _table;
 
     HcStore( Graph &g, This * ) :
-        m_graph( g ), _table( HcHasher< Hasher >() )
+        m_graph( g ),
+        _table( HcHasher< Hasher >( g.base().alloc.pool() ) )
     {}
 
     Table& table() {
         return _table;
+    }
+    Pool& pool() {
+        return m_graph.base().alloc.pool();
     }
 
     std::tuple< Blob, bool > fetch( Blob s, hash_t h ) {
@@ -230,7 +236,9 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
 
         if ( !alias( s, found ) ) {
             // copy saved state information
-            std::copy( found.data(), found.data() + found.size(), s.data() );
+            std::copy( pool().data( found ),
+                       pool().data( found ) + pool().size( found ),
+                       pool().data( s ) );
             return std::make_tuple( s, false );
         }
         return std::make_tuple( found, true );
@@ -241,7 +249,9 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
         Blob stub = m_graph.base().alloc.new_blob( 0 );
 //        Statistics::global().hashadded( this->id , memSize( stub ) );
 //        Statistics::global().hashsize( this->id, this->table.size() );
-        std::copy( s.data(), s.data() + stub.size(), stub.data() );
+        std::copy( pool().data( s ),
+                   pool().data( s ) + pool().size( stub ),
+                   pool().data( stub ) );
         table().insertHinted( stub, h );
         assert( this->equal( s, stub ) );
         return true;// same as in TableUtils::fetch
@@ -253,7 +263,9 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
         bool had;
         std::tie( stub, had ) = table().getHinted( s, h );
         assert( this->valid( stub ) && had );
-        std::copy( s.data(), s.data() + stub.size(), stub.data() );
+        std::copy( pool().data( s ),
+                   pool().data( s ) + pool().size( stub ),
+                   pool().data( stub ) );
     }
 
     template< typename W >

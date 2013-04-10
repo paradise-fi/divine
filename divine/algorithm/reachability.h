@@ -52,8 +52,12 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
     LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
 
+    Pool& pool() {
+        return this->graph().base().alloc.pool();
+    }
+
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return pool().template get< Extension >( n );
     }
 
     struct Main : Visit< This, Setup >

@@ -18,7 +18,7 @@ struct Dummy : Common< Blob > {
     };
 
     Content &content( Blob b ) {
-        return b.get< Content >( alloc._slack );
+        return pool().get< Content >( b, alloc._slack );
     }
 
     template< typename Yield >
@@ -51,11 +51,11 @@ struct Dummy : Common< Blob > {
     }
 
     void release( Node s ) {
-        s.free( pool() );
+        pool().free( s );
     }
 
     bool isGoal( Node s ) {
-        Content f = s.get< Content >( alloc._slack );
+        Content f = pool().get< Content >( s, alloc._slack );
         return f.first == 512;
     }
 
@@ -63,7 +63,7 @@ struct Dummy : Common< Blob > {
     std::string showNode( Node s ) {
         if ( !s.valid() )
             return "[]";
-        Content f = s.get< Content >( alloc._slack );
+        Content f = pool().get< Content >( s, alloc._slack );
         std::stringstream stream;
         stream << "[" << f.first << ", " << f.second << "]";
         return stream.str();

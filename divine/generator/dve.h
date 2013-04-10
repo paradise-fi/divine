@@ -234,7 +234,7 @@ struct Dve : public Common< Blob > {
     }
 
     char *mem( Node s ) {
-        return &s.get< char >( alloc._slack );
+        return &pool().get< char >( s, alloc._slack );
     }
 
     void updateMem( Node s ) {
@@ -261,7 +261,7 @@ struct Dve : public Common< Blob > {
                 this->system->apply( this->ctx, p );
 
                 updateMem( from );
-                if ( b.compare( to, this->alloc._slack, b.size() ) == 0 ) {
+                if ( pool().compare( b, to, this->alloc._slack, pool().size( b ) ) == 0 ) {
                     std::stringstream str;
                     this->system->printTrans( str, this->ctx, p );
                     transLabel = str.str();
@@ -274,7 +274,7 @@ struct Dve : public Common< Blob > {
         return transLabel;
     }
 
-    void release( Node s ) { s.free( pool() ); }
+    void release( Node s ) { pool().free( s ); }
     Dve() : system( 0 ) {}
 };
 

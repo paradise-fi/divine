@@ -7,6 +7,7 @@
 #include <wibble/sys/mutex.h>
 #include <wibble/regexp.h>
 #include <divine/toolkit/mpi.h>
+#include <divine/toolkit/pool.h>
 
 #include <divine/utility/meta.h>
 #include <divine/utility/sysinfo.h>
@@ -141,13 +142,13 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 };
 
 template <typename Ty>
-int memSize(Ty x) {
+int memSize(Ty x, Pool& pool) {
     return sizeof(x);
 }
 
 template <>
-inline int memSize<Blob>(Blob x) {
-    return sizeof(Blob) + (x.valid() ? Blob::allocationSize(x.size()) : 0);
+inline int memSize<Blob>(Blob x, Pool& pool) {
+    return sizeof(Blob) + (x.valid() ? Blob::allocationSize(pool.size( x )) : 0);
 }
 
 }

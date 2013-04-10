@@ -6,9 +6,9 @@ using namespace divine::llvm;
 
 void MachineState::rewind( Blob to, int thread )
 {
-    _blob.free( _alloc.pool() );
-    _blob = Blob( _alloc.pool(), to.size() );
-    to.copyTo( _blob );
+    _alloc.pool().free( _blob );
+    _blob = Blob( _alloc.pool(),  _alloc.pool().size( to ) );
+    _alloc.pool().copyTo( to, _blob );
 
     _thread = -1; // special
 
@@ -216,7 +216,7 @@ divine::Blob MachineState::snapshot()
         size( canonic.stack, canonic.allocated, canonic.segcount,
               flags().problem ? problemcount : 0 ) );
 
-    StateAddress address( &_info, b, _alloc._slack );
+    StateAddress address( &_alloc.pool(), &_info, b, _alloc._slack );
     Flags &fl = address.as< Flags >();
     fl = flags();
     fl.problemcount = 0;
@@ -269,7 +269,7 @@ divine::Blob MachineState::snapshot()
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
     assert_eq( address.offset, b.size() );
-    assert_eq( (b.size() - _alloc._slack) % 4, 0 );
+    assert_eq( (_alloc.pool().size( b ) - _alloc._slack) % 4, 0 );
 
     return b;
 }

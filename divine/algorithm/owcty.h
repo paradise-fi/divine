@@ -76,12 +76,20 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     // -- generally useful utilities
     // --
 
-    static Extension &extension( Node n ) {
-        return n.template get< Extension >();
+    Pool& pool() {
+        return this->graph().base().alloc.pool();
     }
 
-    static void updatePredCount( Node n, int p ) {
-        extension( n ).predCount = p;
+    static Extension &extension( Pool pool, Node n ) {
+        return pool.template get< Extension >( n );
+    }
+
+    Extension &extension( Node n ) {
+        return extension( pool(), n );
+    }
+
+    static void updatePredCount( Pool& pool, Node n, int p ) {
+        extension( pool, n ).predCount = p;
     }
 
     bool cycleFound() {
@@ -209,7 +217,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 if ( o.getMap( to ) < fromMap )
                     o.setMap( to, fromMap  );
                 if ( o.graph().isAccepting( from ) ) {
-                    if ( from.pointer() == to.pointer() ) {
+                    if ( o.pool().pointer( from ) == o.pool().pointer( to ) ) {
                         o.shared.cycle_node = to;
                         o.shared.cycle_found = true;
                         return visitor::TerminateOnTransition;
@@ -322,7 +330,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         {
             if ( !o.extension( to ).inS )
                 return visitor::ForgetTransition;
-            if ( from.valid() && to == o.shared.cycle_node ) {
+            if ( from.valid() && o.pool().equal( to, o.shared.cycle_node ) ) {
                 o.shared.cycle_found = true;
                 return visitor::TerminateOnTransition;
             }

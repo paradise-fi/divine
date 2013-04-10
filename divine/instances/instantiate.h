@@ -47,6 +47,7 @@ namespace instantiate {
 
         AlgorithmSelector< algo, generator, transform, store, visitor,
             topology, statistics > selector;
+    }
 
 template< template< typename > class A, typename G, template< typename > class T, typename S >
 algorithm::Algorithm *makeAlgorithm( Meta &meta ) {

@@ -45,7 +45,7 @@ void Interpreter::parseProperties( Module *M )
 divine::Blob Interpreter::initial( Function *f )
 {
     Blob pre_initial = alloc.new_blob( state.size( 0, 0, 0, 0 ) );
-    pre_initial.clear();
+    alloc.pool().clear( pre_initial );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 
     for ( auto var = bc->module->global_begin(); var != bc->module->global_end(); ++ var ) {
@@ -64,7 +64,7 @@ divine::Blob Interpreter::initial( Function *f )
     state.enter( info().functionmap[ f ] );
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
-    pre_initial.free( alloc.pool() );
+    alloc.pool().free( pre_initial );
     return result;
 }
 

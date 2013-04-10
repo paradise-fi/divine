@@ -118,10 +118,10 @@ public:
      * \param b the Blob
      * \param slack the slack space
      */
-    State(Blob &b, int slack) {
+    State(Pool& pool, Blob &b, int slack) {
         product_state.clear();
         product_state.reserve(metrics.dimension);
-        data_t * data = &b.get<data_t> (slack);
+        data_t * data = &pool.get<data_t> (b, slack);
         for (size_t i = 0; i < metrics.dimension; i++) {
             product_state.push_back(getPrimitiveState(data, i));
         }
@@ -139,16 +139,16 @@ public:
      * Get the value of the n-th component of the state packed in the Blob
      * using the provided slack space.
      */
-    static value_t getPrimitiveState(Blob &b, int slack, size_t n) {
-        data_t * data = &b.get<data_t> (slack);
+    static value_t getPrimitiveState(Pool& pool, Blob &b, int slack, size_t n) {
+        data_t * data = &pool.get<data_t> (b, slack);
         return getPrimitiveState(data, n);
     }
 
     /**
      * Pack the current state into a provided Blob with the given slack space.
      */
-    void pack(Blob &b, int slack) {
-        data_t * data = &b.get<data_t> (slack);
+    void pack(Pool& pool, Blob &b, int slack) {
+        data_t * data = &pool.get<data_t> (b, slack);
         for (size_t i = 0; i < metrics.dimension; i++) {
             setPrimitiveState(data, i, product_state[i]);
         }

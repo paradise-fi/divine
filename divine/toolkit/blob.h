@@ -87,9 +87,26 @@ struct Blob
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
+    friend class BlobDereference;
     friend class Pool;
+    friend class FakePool;
 
-// private:
+    bool valid() const
+    {
+        return ptr;
+    }
+
+    // direct comparison is not supported any more, use Pool::compare, Pool::equal
+    // or BlobComparerLT and BlobComparerEQ from pool.h
+    bool operator<( const Blob& ) const = delete;
+    bool operator==( const Blob& ) const = delete;
+
+    static size_t allocationSize( size_t size )
+    {
+        return align( size + sizeof( BlobHeader ), 4 );
+    }
+
+private:
     template< typename A >
     void free( A &a ) {
         if ( !valid() )
@@ -108,11 +125,6 @@ struct Blob
         assert( header().heap );
         if ( !header().permanent )
             delete[] ptr;
-    }
-
-    bool valid() const
-    {
-        return ptr;
     }
 
     BlobHeader &header() {
@@ -190,11 +202,6 @@ struct Blob
         return header().size;
     }
 
-    static size_t allocationSize( size_t size )
-    {
-        return align( size + sizeof( BlobHeader ), 4 );
-    }
-
     char *data() const
     {
         return pointer() ? pointer() + sizeof( BlobHeader ) : 0;
@@ -208,15 +215,6 @@ struct Blob
     int32_t *pointer32() const
     {
         return reinterpret_cast< int32_t * >( ptr );
-    }
-
-    bool operator<( const Blob &b ) const {
-        int cmp = compare( b, 0, size() );
-        return cmp < 0;
-    }
-
-    bool operator==( const Blob &b ) const {
-        return compare( b, 0, size() ) == 0;
     }
 
     int compare( const Blob &cb, int b, int e ) const

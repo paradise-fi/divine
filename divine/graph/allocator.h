@@ -19,7 +19,7 @@ struct Allocator {
 
     Blob new_blob( std::size_t size ) {
         Blob b = Blob( pool(), size + _slack );
-        b.clear();
+        pool().clear( b );
         return b;
     }
 };

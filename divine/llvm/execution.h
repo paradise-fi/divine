@@ -642,8 +642,9 @@ struct Evaluator
 
         MachineState::Frame &original = ccontext.frame();
         int framesize = original.framesize( info );
-        Blob tmp( sizeof( MachineState::Frame ) + framesize );
-        MachineState::Frame &copy = tmp.get< MachineState::Frame >();
+        std::vector<char> tmp;
+        tmp.resize( sizeof( MachineState::Frame ) + framesize );
+        MachineState::Frame &copy = *reinterpret_cast< MachineState::Frame* >( &tmp[0] );
         copy = ccontext.frame();
 
         std::copy( original.memory(), original.memory() + framesize, copy.memory() );

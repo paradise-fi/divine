@@ -31,13 +31,13 @@ struct MachineState
             : LinearAddress( base, index, offset ), _info( base._info )
         {}
 
-        StateAddress( ProgramInfo *i, Blob b, int offset )
-            : LinearAddress( b, offset ), _info( i )
+        StateAddress( Pool* pool, ProgramInfo *i, Blob b, int offset )
+            : LinearAddress( pool, b, offset ), _info( i )
         {}
 
         StateAddress copy( StateAddress to, int size ) {
             std::copy( dereference(), dereference() + size, to.dereference() );
-            return StateAddress( _info, to.b, to.offset + size );
+            return StateAddress( pool, _info, to.b, to.offset + size );
         }
     };
 
@@ -357,7 +357,7 @@ struct MachineState
     bool isPrivate( Pointer p, Pointer, Canonic & );
 
     Lens< State > state() {
-        return Lens< State >( StateAddress( &_info, _blob, _alloc._slack ) );
+        return Lens< State >( StateAddress( &_alloc.pool(), &_info, _blob, _alloc._slack ) );
     }
 
     bool isPointer( Pointer p, int offset = 0 ) {
@@ -479,10 +479,10 @@ struct MachineState
         if ( !_stack[thread].second.valid() )
             _stack[thread].second = Blob( 4096 );
 
-        _stack[thread].second.get< int >() = 0; /* clear any pre-existing state */
+        _alloc.pool().get< int >( _stack[thread].second ) = 0; /* clear any pre-existing state */
 
         if ( thread < threads().get().length() ) {
-            StateAddress newstack( &_info, _stack[thread].second, 0 );
+            StateAddress newstack( &_alloc.pool(), &_info, _stack[thread].second, 0 );
             _blob_stack( thread ).copy( newstack );
             assert_eq( _blob_stack( thread ).get().length(),
                        stack( thread ).get().length() );
@@ -495,7 +495,7 @@ struct MachineState
             thread = _thread;
 
         if ( thread < int( _stack.size() ) && _stack[thread].first )
-            return Lens< Stack >( StateAddress( &_info, _stack[thread].second, 0 ) );
+            return Lens< Stack >( StateAddress( &_alloc.pool(), &_info, _stack[thread].second, 0 ) );
         else
             return _blob_stack( thread );
     }

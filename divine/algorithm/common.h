@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
 #include <divine/toolkit/blob.h>
+#include <divine/toolkit/pool.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/bitset.h>
 #include <divine/toolkit/parallel.h>
@@ -22,20 +23,21 @@ struct Hasher {
     int slack;
     uint32_t seed;
     bool allEqual;
+    Pool& pool;
 
-    Hasher( int s = 0 ) : slack( s ), seed( 0 ), allEqual( false ) {}
+    Hasher( Pool& pool, int s = 0 ) : pool( pool ), slack( s ), seed( 0 ), allEqual( false ) {}
     void setSlack( int s ) { slack = s; }
     void setSeed( uint32_t s ) { seed = s; }
 
     inline hash_t hash( Blob b ) const {
         assert( b.valid() );
-        return b.hash( slack, b.size(), seed );
+        return pool.hash( b, slack, pool.size( b ), seed );
     }
 
     inline bool equal( Blob a, Blob b ) const {
         assert( a.valid() );
         assert( b.valid() );
-        return allEqual || ( a.compare( b, slack, std::max( a.size(), b.size() ) ) == 0 );
+        return allEqual || ( pool.compare( a, b, slack, std::max( pool.size( a ), pool.size( b ) ) ) == 0 );
     }
 
     bool valid( Blob a ) const { return a.valid(); }
@@ -176,6 +178,10 @@ struct AlgorithmUtils {
     Graph &graph() {
         assert( m_graph );
         return *m_graph;
+    }
+
+    Pool& pool() {
+        return graph().base().alloc.pool();
     }
 
     Store &store() {

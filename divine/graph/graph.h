@@ -53,16 +53,16 @@ struct Base {
 
     /// Makes a nonpermanent copy of a state
     Node copyState( Node n ) {
-        Node copy( pool(), n.size() );
-        n.copyTo( copy );
-        copy.header().permanent = false;
+        Node copy( pool(), pool().size( n ) );
+        pool().copyTo( n, copy );
+        pool().header( copy ).permanent = false;
         return copy;
     }
 
     /// Makes a duplicate that can be released (permanent states are not duplicated)
     Node clone( Node n ) {
         assert( n.valid() );
-        return n.header().permanent ? n : copyState( n );
+        return alloc.pool().header( n ).permanent ? n : copyState( n );
     }
 
     /// Returns an owner id of the state n

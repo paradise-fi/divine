@@ -44,8 +44,10 @@ struct PORGraph : graph::Transform< G > {
         bool remove:1;
     };
 
-    typedef void (*PredCount)( Node, int );
+    typedef void (*PredCount)( Pool&, Node, int );
     PredCount _predCount;
+
+    BlobComparerLT bcomp;
 
     ASet< Node > to_expand;
     bool finished;
@@ -53,11 +55,15 @@ struct PORGraph : graph::Transform< G > {
     void updatePredCount( Node t, int v ) {
         extension( t ).predCount = v;
         if ( _predCount )
-            _predCount( t, v );
+            _predCount( pool(), t, v );
     }
 
-    PORGraph() : _predCount( 0 ) {
+    PORGraph() : _predCount( 0 ), bcomp( pool() ) {
         this->base().initPOR();
+    }
+
+    Pool& pool() {
+        return this->base().alloc.pool();
     }
 
     int setSlack( int s ) {
@@ -66,7 +72,7 @@ struct PORGraph : graph::Transform< G > {
     }
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >( m_algslack );
+        return pool().template get< Extension >( n, m_algslack );
     }
 
     int predCount( Node n ) {
@@ -209,19 +215,19 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void fullexpand( Yield yield, Node n ) {
         extension( n ).full = true;
-        ASet< std::pair< Node, Label > > all, ample, out;
+        std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ), ample( bcomp ), out( bcomp );
         std::vector< std::pair< Node, Label > > extra;
 
         this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
         this->base().ample( n, [&]( Node x, Label l ) { ample.insert( std::make_pair( x, l ) ); } );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
-                             std::inserter( out, out.begin() ) );
+                             std::inserter( out, out.begin() ), bcomp );
 
         // accumulate all the extra states we have generated
         std::copy( ample.begin(), ample.end(), std::back_inserter( extra ) );
         std::set_intersection( all.begin(), all.end(), ample.begin(), ample.end(),
-                               std::back_inserter( extra ) );
+                               std::back_inserter( extra ), bcomp );
 
         // release the states that we aren't going to use
         for ( auto i : extra )

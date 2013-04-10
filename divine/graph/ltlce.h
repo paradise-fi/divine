@@ -63,7 +63,7 @@ struct LtlCE {
     }
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return g().base().alloc.pool().template get< Extension >( n );
     }
 
     bool updateIteration( Node t ) {

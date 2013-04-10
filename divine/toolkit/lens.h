@@ -45,19 +45,23 @@ struct LinearSize {
 struct LinearAddress {
     Blob b;
     int offset;
+    Pool* pool;
 
     LinearAddress( LinearAddress base, int index, int offset )
-        : b( base.b ), offset( base.offset + offset )
+        : b( base.b ), offset( base.offset + offset ), pool( base.pool )
     {}
 
-    LinearAddress( Blob b, int offset )
-        : b( b ), offset( offset )
+    LinearAddress( Pool* pool, Blob b, int offset )
+        : b( b ), offset( offset ), pool( pool )
     {}
 
-    LinearAddress() : offset( 0 ) {}
+    LinearAddress() : offset( 0 ), pool( nullptr )
+    { }
 
     char *dereference() {
-        return b.data() + offset;
+        assert( pool != nullptr );
+        assert( b.valid() );
+        return pool->data( b ) + offset;
     }
 
     template< typename T >
@@ -72,7 +76,7 @@ struct LinearAddress {
     // TODO: Generalize to non-linear targets...
     LinearAddress copy( LinearAddress to, int size ) {
         std::copy( dereference(), dereference() + size, to.dereference() );
-        return LinearAddress( to.b, to.offset + size );
+        return LinearAddress( pool, to.b, to.offset + size );
     }
 
     void advance( int i ) {

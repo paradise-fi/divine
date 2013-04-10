@@ -84,7 +84,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     VertexId makeId( Node n ) {
         VertexId ret;
-        ret.ptr = reinterpret_cast< intptr_t >( n.data() );
+        ret.ptr = reinterpret_cast< intptr_t >( this->pool().data( n ) );
         ret.owner = this->id();
         return ret;
     }
@@ -102,7 +102,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return this->pool().template get< Extension >( n );
     }
 
     visitor::TransitionAction updateIteration( Node t ) {
@@ -167,7 +167,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                 m.extension( t ).parent = f;
 
             /* self loop */
-            if ( m.graph().isAccepting( f ) && f.pointer() == t.pointer() ) {
+            if ( m.graph().isAccepting( f ) && m.pool().pointer( f ) == m.pool().pointer( t ) ) {
                 m.shared.ce.initial = t;
                 return visitor::TerminateOnTransition;
             }

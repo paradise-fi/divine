@@ -243,7 +243,7 @@ struct Interpreter
                     advance();
                     run( tid, yield, seen );
                 }
-                fork.free( alloc.pool() );
+                alloc.pool().free( fork );
                 return;
             }
 

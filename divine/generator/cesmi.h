@@ -71,7 +71,7 @@ struct CESMI : public Common< Blob > {
     cesmi::cesmi_node data( Blob b ) {
         cesmi::cesmi_node n;
         n.handle = b.ptr,
-        n.memory = b.data() + alloc._slack;
+        n.memory = alloc.pool().data( b ) + alloc._slack;
         return n;
     }
 
@@ -158,9 +158,9 @@ struct CESMI : public Common< Blob > {
         int slack = _this->alloc._slack;
         Blob b( _this->alloc.pool(), size + slack );
         if ( slack )
-            b.clear( 0, slack );
+            _this->alloc.pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
-        n.memory = b.data() + slack;
+        n.memory = _this->alloc.pool().data( b ) + slack;
         n.handle = b.ptr;
         return n;
     }
@@ -168,13 +168,13 @@ struct CESMI : public Common< Blob > {
     static cesmi::cesmi_node clone_node( const cesmi::cesmi_setup *setup, cesmi::cesmi_node orig ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         Blob origb( orig.handle );
-        Blob b( _this->alloc.pool(), origb.size() );
+        Blob b( _this->alloc.pool(), _this->alloc.pool().size( origb ) );
 
         int slack = _this->alloc._slack;
-        origb.copyTo( b );
-        b.clear( 0, slack );
+        _this->pool().copyTo( origb, b );
+        _this->pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
-        n.memory = b.data() + slack;
+        n.memory = _this->alloc.pool().data( b ) + slack;
         n.handle = b.ptr;
         return n;
     }
@@ -307,7 +307,7 @@ struct CESMI : public Common< Blob > {
 
         if ( dl.show_transition && from.valid() ) {
             _successors( from, [&]( Node n, int handle ) {
-                    if ( to.compare( n, alloc._slack, n.size() ) == 0 )
+                    if ( pool().compare( to, n, alloc._slack, pool().size( n ) ) == 0 )
                         fmt = dl.show_transition( &setup, data( from ), handle );
                 }, dl.get_successor );
         }
@@ -321,7 +321,7 @@ struct CESMI : public Common< Blob > {
     }
 
     Node initial() { assert_die(); }
-    void release( Node s ) { s.free( pool() ); }
+    void release( Node s ) { pool().free( s ); }
 };
 
 }

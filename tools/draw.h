@@ -46,7 +46,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     int id() { return 0; }
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >();
+        return pool().template get< Extension >( n );
+    }
+
+    Pool& pool() {
+        return this->graph().base().alloc.pool();
     }
 
     static visitor::ExpansionAction expansion( This &t, Node st )

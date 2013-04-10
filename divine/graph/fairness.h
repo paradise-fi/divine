@@ -29,7 +29,7 @@ struct FairGraph : NonPORGraph< G > {
     }
 
     Extension &extension( Node n ) {
-        return n.template get< Extension >( m_algslack );
+        return this->base().alloc.pool().template get< Extension >( n, m_algslack );
     }
 
     template< typename Yield >

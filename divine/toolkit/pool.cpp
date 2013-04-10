@@ -47,6 +47,6 @@ extern "C" void *pool_allocate( void *pool, int sz ) {
 extern "C" void *pool_allocate_blob( void *pool, int sz ) {
     divine::Pool *p = (divine::Pool *) pool;
     divine::Blob b( *p, sz );
-    return b.pointer();
+    return p->pointer( b );
 }
 #endif

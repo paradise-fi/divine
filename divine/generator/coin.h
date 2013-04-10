@@ -177,7 +177,7 @@ public:
      * \param node  node to be deallocated
      */
     void release(Node s) {
-        s.free( pool() );
+        pool().free( s );
     }
 
     bool isGoal(Node s) {

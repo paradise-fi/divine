@@ -201,10 +201,11 @@ base< B > &operator>>( base< B > &bs, Blob &blob )
     else
         blob = Blob( size );
 
-    assert_leq( blob.size(), bs.size() * 4 );
+    assert( bs.pool ); /// TODO: are we ever working without pool if so we shouldnt ???
+    assert_leq( bs.pool->template size( blob ), bs.size() * 4 );
 
-    while ( off < blob.size() ) {
-        bs >> blob.get< uint32_t >( off );
+    while ( off < bs.pool->template size( blob )) {
+        bs >> bs.pool->template get< uint32_t >( blob, off );
         off += 4;
     }
 
@@ -217,10 +218,10 @@ base< B > &operator<<( base< B > &bs, Blob blob )
     if ( !blob.valid() )
         return bs << 0;
 
-    bs << blob.size();
+    bs << bs.pool->size( blob );
     int off = 0;
-    while ( off < blob.size() ) {
-        bs << blob.get< uint32_t >( off );
+    while ( off < bs.pool->size( blob ) ) {
+        bs << bs.pool->template get< uint32_t >( blob, off );
         off += 4;
     }
     return bs;

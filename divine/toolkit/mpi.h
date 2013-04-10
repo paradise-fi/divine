@@ -384,11 +384,14 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         assert_pred( isLocal, to );
 
         while ( i != in_buffer.end() ) {
+            assert_unimplemented();
+            /*
             i = std::get< 0 >( b ).read32( &pool, i );
             i = std::get< 1 >( b ).read32( &pool, i );
             // TODO: load the label here... probably just use bitstream
             // TODO: *wakeup*
             comms().submit( from, to, b );
+            */
         }
         ++ recv;
     }
@@ -439,11 +442,14 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                 while ( comms().pending( from, to ) && !requests[ from ][ to ].first &&
                         buffers[ from ][ to ].size() < 100 * 1024 )
                 {
+                    assert_unimplemented();
+                    /*
                     typename Comms::T b = comms().take( from, to );
                     std::get< 0 >( b ).write32( std::back_inserter( buffers[ from ][ to ] ) );
                     std::get< 0 >( b ).free( pool );
                     std::get< 1 >( b ).write32( std::back_inserter( buffers[ from ][ to ] ) );
                     std::get< 1 >( b ).free( pool );
+                    */
                 }
             }
         }

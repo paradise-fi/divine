@@ -87,11 +87,11 @@ struct LLVM : Common< Blob > {
     }
 
     void release( Node s ) {
-        s.free( pool() );
+        pool().free( s );
     }
 
     divine::llvm::MachineState::Flags &flags( Blob b ) {
-        return b.get< divine::llvm::MachineState::Flags >( alloc._slack );
+        return pool().get< divine::llvm::MachineState::Flags >( b, alloc._slack );
     }
 
     bool isGoal( Node n ) {
