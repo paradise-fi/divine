@@ -25,7 +25,8 @@ struct Hasher {
     bool allEqual;
     Pool& pool;
 
-    Hasher( Pool& pool, int s = 0 ) : pool( pool ), slack( s ), seed( 0 ), allEqual( false ) {}
+    Hasher( Pool& pool, int s = 0 ) : slack( s ), seed( 0 ), allEqual( false ),
+        pool( pool ) {}
     void setSlack( int s ) { slack = s; }
     void setSeed( uint32_t s ) { seed = s; }
 
