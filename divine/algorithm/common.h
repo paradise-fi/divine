@@ -20,14 +20,16 @@ namespace divine {
 namespace algorithm {
 
 struct Hasher {
-    int slack;
+    const int slack;
     uint32_t seed;
     bool allEqual;
     Pool& pool;
 
     Hasher( Pool& pool, int s = 0 ) : slack( s ), seed( 0 ), allEqual( false ),
         pool( pool ) {}
-    void setSlack( int s ) { slack = s; }
+    Hasher( Hasher& other, int slack ) : slack( slack ), seed( other.seed ),
+            allEqual( other.allEqual ), pool( other.pool )
+    { }
     void setSeed( uint32_t s ) { seed = s; }
 
     inline hash_t hash( Blob b ) const {
@@ -67,7 +69,7 @@ struct Algorithm
     typedef divine::Meta Meta;
 
     Meta m_meta;
-    int m_slack;
+    const int m_slack;
 
     meta::Result &result() { return meta().result; }
 
@@ -109,10 +111,12 @@ struct Algorithm
 
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
+        self.graph().setSlack( m_slack );
+        int slack = self.graph().alloc.slack();
         typename Self::Store *s =
-            new typename Self::Store( self.graph(), master ? &master->store() : nullptr );
+            new typename Self::Store( self.graph(), slack,
+                    master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
-        s->hasher().setSlack( self.graph().setSlack( m_slack ) );
         s->id = &self;
         s->setSize( meta().execution.initialTable );
         return s;

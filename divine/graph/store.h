@@ -124,11 +124,8 @@ struct PartitionedStore : TableUtils< PartitionedStore< Graph, Hasher, Statistic
 
     Table _table;
 
-    PartitionedStore( Graph &g ) :
-        _table( Hasher( g.base().alloc.pool() ) )
-    {}
-    PartitionedStore( Graph &g, This * = nullptr ) :
-        _table( Hasher( g.base().alloc.pool() ) )
+    PartitionedStore( Graph &g, int slack, This * = nullptr ) :
+        _table( Hasher( g.base().alloc.pool(), slack ) )
     {}
 
     Table& table() {
@@ -159,11 +156,12 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 
     TablePtr _table;
 
-    SharedStore( Graph &g, This *master = nullptr ) {
+    SharedStore( Graph &g, int slack, This *master = nullptr ) {
         if ( master )
             _table = master->_table;
         else
-            _table = std::make_shared< Table >( Hasher( g.base().alloc.pool() ) );
+            _table = std::make_shared< Table >(
+                    Hasher( g.base().alloc.pool(), slack ) );
     }
     SharedStore() :
         _table( std::make_shared< Table >() )
@@ -195,7 +193,7 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 template< typename Hasher >
 struct HcHasher : Hasher
 {
-    HcHasher( Pool& pool ) : Hasher( pool )
+    HcHasher( Pool& pool, int slack ) : Hasher( pool, slack )
     { }
 
     bool equal(Blob a, Blob b) {
@@ -218,9 +216,9 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
     Graph &m_graph;
     Table _table;
 
-    HcStore( Graph &g, This * ) :
+    HcStore( Graph &g, int slack, This * ) :
         m_graph( g ),
-        _table( HcHasher< Hasher >( g.base().alloc.pool() ) )
+        _table( HcHasher< Hasher >( g.base().alloc.pool(), slack ) )
     {}
 
     Table& table() {
@@ -290,9 +288,14 @@ struct CompressedStore : public TableUtils< CompressedStore< Table, BaseTable, G
     typedef TableUtils< CompressedStore< Table, BaseTable, Graph, Hasher, Statistics >,
             Table< BaseTable, typename Graph::Node, Hasher >, Hasher, Statistics > Utils;
     typedef typename Graph::Node Node;
+    typedef CompressedStore< Table, BaseTable, Graph, Hasher, Statistics > This;
+
+    CompressedStore( Graph& g, int slack )
+        : This( g, slack, nullptr )
+    { }
 
     template< typename... Args >
-    CompressedStore( Graph& g, int slack, Args&&... args ) :
+    CompressedStore( Graph& g, int slack, This *, Args&&... args ) :
         Utils( g.base().alloc.pool(), slack, std::forward< Args >( args )... )
     { }
 
@@ -349,9 +352,14 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
 {
     typedef CompressedStore< TreeCompressedHashSet, HashSet, Graph, Hasher,
               Statistics > Base;
+    typedef TreeCompressedStore< Graph, Hasher, Statistics > This;
+
+    TreeCompressedStore( Graph& g, int slack )
+        : This( g, slack, nullptr )
+    { }
 
     template< typename... Args >
-    TreeCompressedStore( Graph& g, int slack, Args&&... args ) :
+    TreeCompressedStore( Graph& g, int slack, This *, Args&&... args ) :
         Base( g, slack, 16, std::forward< Args >( args )... )
     { }
 };
