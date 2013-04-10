@@ -160,7 +160,7 @@ struct CESMI : public Common< Blob > {
         if ( slack )
             _this->alloc.pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
-        n.memory = _this->alloc.pool().data( b ) + slack;
+        n.memory = _this->pool().data( b ) + slack;
         n.handle = b.ptr;
         return n;
     }
@@ -168,13 +168,13 @@ struct CESMI : public Common< Blob > {
     static cesmi::cesmi_node clone_node( const cesmi::cesmi_setup *setup, cesmi::cesmi_node orig ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         Blob origb( orig.handle );
-        Blob b( _this->alloc.pool(), _this->alloc.pool().size( origb ) );
+        Blob b( _this->pool(), _this->pool().size( origb ) );
 
         int slack = _this->alloc._slack;
         _this->pool().copyTo( origb, b );
         _this->pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
-        n.memory = _this->alloc.pool().data( b ) + slack;
+        n.memory = _this->pool().data( b ) + slack;
         n.handle = b.ptr;
         return n;
     }
