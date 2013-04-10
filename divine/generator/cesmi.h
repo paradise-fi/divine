@@ -158,7 +158,7 @@ struct CESMI : public Common< Blob > {
         int slack = _this->alloc._slack;
         Blob b( _this->alloc.pool(), size + slack );
         if ( slack )
-            _this->alloc.pool().clear( b, 0, slack );
+            _this->pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
         n.memory = _this->pool().data( b ) + slack;
         n.handle = b.ptr;
