@@ -192,7 +192,7 @@ public:
     }
 
     void notifySlaves( wibble::sys::MutexLock &_lock,
-                       int tag, bitblock bs = bitblock() )
+                       int tag, bitblock bs )
     {
         if ( !master() )
             return;
@@ -200,7 +200,7 @@ public:
     }
 
     void notify( wibble::sys::MutexLock &_lock,
-                 int tag, bitblock bs = bitblock() )
+                 int tag, bitblock bs )
     {
         for ( int i = 0; i < size(); ++i ) {
             if ( i != rank() )
@@ -275,9 +275,9 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     int recv, sent;
 
     Pool pool;
-    Matrix< std::vector< int32_t > > buffers;
+    Matrix< bitblock > buffers;
     Matrix< std::pair< bool, MpiRequest > >  requests;
-    std::vector< int32_t > in_buffer;
+    bitblock in_buffer;
 
     Comms *m_comms;
     Barrier< Terminable > *m_barrier;
@@ -302,6 +302,12 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         : m_comms( comms ), m_barrier( barrier )
     {
         buffers.resize( total, total );
+        for ( size_t i = 0; i < total; ++i ) {
+            for ( size_t j = 0; j < total; ++j ) {
+                buffers[ i ][ j ].pool = &pool;
+            }
+        }
+        in_buffer.pool = &pool;
         requests.resize( total, total );
         sent = recv = 0;
         m_peers = total;
@@ -328,7 +334,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     std::pair< int, int > accumCounts( wibble::sys::MutexLock &_lock, int id ) {
-        bitblock bs;
+        bitblock bs( pool );
         bs << id;
 
         mpi.notifySlaves( _lock, TAG_GET_COUNTS, bs );
@@ -339,7 +345,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
             if ( i == mpi.rank() )
                 continue;
 
-            bitblock in;
+            bitblock in( pool );
             mpi.getStream( _lock, mpi.anySource, TAG_GIVE_COUNTS, in );
 
             int addr, adds;
@@ -361,7 +367,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         two = accumCounts( _lock, 1 );
 
         if ( one.first == two.first && two.first == two.second ) {
-            mpi.notifySlaves( _lock, TAG_TERMINATED );
+            mpi.notifySlaves( _lock, TAG_TERMINATED, bitblock( pool ) );
 
             if ( m_barrier->idle( this ) )
                 return true;
@@ -370,28 +376,19 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return false;
     }
 
-    void receiveDataMessage( MpiStatus &status )
+    void receiveDataMessage( wibble::sys::MutexLock& _lock, MpiStatus &status )
     {
         typename Comms::T b;
 
-        in_buffer.resize( mpi.size( status ) / 4 );
-        mpi.recv( &in_buffer.front(), in_buffer.size() * 4,
-                  status.Get_source(), status.Get_tag(), status );
-        std::vector< int32_t >::const_iterator i = in_buffer.begin();
+        mpi.recvStream( _lock, status, in_buffer );
 
-        int from = *i++;
-        int to = *i++;
+        int from, to;
+        in_buffer >> from >> to;
         assert_pred( isLocal, to );
 
-        while ( i != in_buffer.end() ) {
-            assert_unimplemented();
-            /*
-            i = std::get< 0 >( b ).read32( &pool, i );
-            i = std::get< 1 >( b ).read32( &pool, i );
-            // TODO: load the label here... probably just use bitstream
-            // TODO: *wakeup*
+        while ( !in_buffer.empty() ) {
+            in_buffer >> b;
             comms().submit( from, to, b );
-            */
         }
         ++ recv;
     }
@@ -399,11 +396,11 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     Loop process( wibble::sys::MutexLock &_lock, MpiStatus &status ) {
 
         if ( status.Get_tag() == TAG_ID ) {
-            receiveDataMessage( status );
+            receiveDataMessage( _lock, status );
             return Continue;
         }
 
-        bitblock in, out;
+        bitblock in( pool ), out( pool );
         mpi.recvStream( _lock, status, in );
 
         switch ( status.Get_tag() ) {
@@ -432,24 +429,18 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                     continue;
 
                 /* initialise the buffer with from/to information */
-                if ( buffers[ from ][ to ].empty() ) {
-                    buffers[ from ][ to ].push_back( from );
-                    buffers[ from ][ to ].push_back( to );
-                }
+                if ( buffers[ from ][ to ].empty() )
+                    buffers[ from ][ to ] << from << to;
 
                 // Build up linear buffers for MPI send. We only do that on
                 // buffers that are not currently in-flight (request not busy).
                 while ( comms().pending( from, to ) && !requests[ from ][ to ].first &&
                         buffers[ from ][ to ].size() < 100 * 1024 )
                 {
-                    assert_unimplemented();
-                    /*
                     typename Comms::T b = comms().take( from, to );
-                    std::get< 0 >( b ).write32( std::back_inserter( buffers[ from ][ to ] ) );
-                    std::get< 0 >( b ).free( pool );
-                    std::get< 1 >( b ).write32( std::back_inserter( buffers[ from ][ to ] ) );
-                    std::get< 1 >( b ).free( pool );
-                    */
+                    buffers[ from ][ to ] << b;
+                    pool.free( std::get< 0 >( b ) );
+                    pool.free( std::get< 1 >( b ) );
                 }
             }
         }

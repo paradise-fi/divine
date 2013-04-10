@@ -32,7 +32,7 @@ Mpi::~Mpi() {
     -- global().instances;
     if (!s_data->instances) {
         wibble::sys::MutexLock _lock( global().mutex );
-        notifySlaves( _lock, TAG_ALL_DONE );
+        notifySlaves( _lock, TAG_ALL_DONE, bitblock() );
 #ifdef O_MPI
         if ( master() )
             MPI::Finalize();

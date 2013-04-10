@@ -396,7 +396,8 @@ struct Mpi : MpiMonitor
                           pernode * mpi.size(), /* total */
                           mpi.rank() * pernode, /* min */
                           (mpi.rank() + 1) * pernode - 1 /* max */
-                        )
+                        ),
+          async_retval( m_mpiForwarder.pool )
     {
         mpi.registerMonitor( TAG_RING, *this );
         mpi.registerMonitor( TAG_PARALLEL, *this );
@@ -408,7 +409,7 @@ struct Mpi : MpiMonitor
     template< typename Bit >
     void distribute( Bit bit, void (Instance::*set)( Bit ) )
     {
-        bitblock bs;
+        bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( set, bit, bs );
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
@@ -420,13 +421,13 @@ struct Mpi : MpiMonitor
     {
         m_local.collect( bits, get );
 
-        bitblock bs;
+        bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( get, bs );
         if ( mpi.master() ) {
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
-                bitblock response;
+                bitblock response( m_mpiForwarder.pool );
                 mpi.getStream( _lock, mpi.anySource, TAG_COLLECT, response );
                 response >> bits;
             }
@@ -435,7 +436,7 @@ struct Mpi : MpiMonitor
 
     void parallel( void (Instance::*fun)() )
     {
-        bitblock bs;
+        bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( fun, bs );
 
         {
@@ -451,7 +452,7 @@ struct Mpi : MpiMonitor
     template< typename X >
     X ring( X x, X (Instance::*fun)( X ) ) {
         X retval;
-        bitblock bs;
+        bitblock bs( m_mpiForwarder.pool );
 
         retval = x = m_local.ring( x, fun );
         rpc::marshall( fun, x, bs );
@@ -497,7 +498,7 @@ struct Mpi : MpiMonitor
         void operator()( MPIT &mpit, X (Instance::*fun)() )
         {
             std::vector< X > bits;
-            bitblock bs;
+            bitblock bs( mpit.m_mpiForwarder.pool );
             mpit.collect( bits, fun );
             bs << bits;
 
@@ -514,7 +515,7 @@ struct Mpi : MpiMonitor
     /* The slave monitor */
     Loop process( wibble::sys::MutexLock &_lock, divine::Mpi::Status &status ) {
 
-        bitblock in, out;
+        bitblock in( m_mpiForwarder.pool ), out( m_mpiForwarder.pool );
 
         mpi.recvStream( _lock, status, in );
         request_source = status.Get_source();
@@ -542,7 +543,7 @@ struct Mpi : MpiMonitor
 
     void interrupt() {
         wibble::sys::MutexLock _lock( mpi.global().mutex );
-        mpi.notify( _lock, TAG_INTERRUPT );
+        mpi.notify( _lock, TAG_INTERRUPT, bitblock( m_mpiForwarder.pool ) );
     }
 
 };
