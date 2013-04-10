@@ -17,7 +17,7 @@ namespace divine {
         typename Item, typename Hasher = default_hasher< Item >, int ChunkSize = 32>
     struct TreeCompressedHashSetBase
     {
-        static_assert( ChunkSize > 0, "ChunkSize mus be positive" );
+        static_assert( ChunkSize > 0, "ChunkSize must be positive" );
 
         typedef _HashSet< Item, Hasher > BaseHashSet;
 
@@ -30,9 +30,12 @@ namespace divine {
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
         {
-            static_assert( sizeof( Leaf ) == sizeof( Node ), "" );
-            static_assert( sizeof( Leaf ) <= offsetof( Fork, left ), "" );
-            static_assert( sizeof( Leaf ) <= offsetof( Fork, right ), "" );
+            static_assert( sizeof( Leaf ) == sizeof( Node ),
+                    "Algorithm assumes this" );
+            static_assert( sizeof( Leaf ) <= offsetof( Fork, left ),
+                    "Algorithm assumes this" );
+            static_assert( sizeof( Leaf ) <= offsetof( Fork, right ),
+                    "Algorithm assumes this" );
             m_base.hasher.setSlack( m_slack + int( sizeof( Leaf ) ) );
         }
 
