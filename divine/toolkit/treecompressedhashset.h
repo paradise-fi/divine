@@ -10,19 +10,19 @@
 
 namespace divine {
 
-    // TreeCompressedHashSet :: ( * -> * -> * ) -> * -> * -> int -> *
+    // TreeCompressedHashSetBase :: ( * -> * -> * ) -> * -> * -> int -> *
     // Creates tree compression topology with given chunk size (in bytes)
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class _HashSet,
-        typename Item, typename Hasher = default_hasher< Item >, int ChunkSize = 16>
-    struct TreeCompressedHashSet
+        typename Item, typename Hasher = default_hasher< Item >, int ChunkSize = 32>
+    struct TreeCompressedHashSetBase
     {
         static_assert( ChunkSize > 0, "ChunkSize mus be positive" );
 
         typedef _HashSet< Item, Hasher > BaseHashSet;
 
         template< typename... Args >
-        TreeCompressedHashSet( Args&&... args ) :
+        TreeCompressedHashSetBase( Args&&... args ) :
             m_base( std::forward<Args>( args )... ),
             m_slack( m_base.hasher.slack ),
             m_size( 0 )
@@ -438,16 +438,14 @@ namespace divine {
         }
     };
 
-#if 0
     // The deault tree compressed hash sed using standard hash set as base
     // it is drop-in replacement of standard hashset
     template< typename Item, typename Hasher = default_hasher< Item > >
-    using TreeCompressedHashSet = TreeCompressedHashSet< HashSet, Item, Hasher >;
-#endif
+    using TreeCompressedHashSet = TreeCompressedHashSetBase< HashSet, Item, Hasher >;
 
 
     template< template< typename, typename > class _HashSet,
         typename Item, typename Hasher, int ChunkSize>
-    const typename TreeCompressedHashSet< _HashSet, Item, Hasher, ChunkSize >::Node
-        TreeCompressedHashSet< _HashSet, Item, Hasher, ChunkSize >::Node::invalid;
+    const typename TreeCompressedHashSetBase< _HashSet, Item, Hasher, ChunkSize >::Node
+        TreeCompressedHashSetBase< _HashSet, Item, Hasher, ChunkSize >::Node::invalid;
 }
