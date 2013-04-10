@@ -87,12 +87,12 @@ struct Blob
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
-    friend class BlobDereference;
+    friend struct BlobDereference;
+    friend struct FakePool;
 #if O_POOLS
-    friend class Pool;
-#else
-    friend class FakePool;
+    friend struct Pool;
 #endif
+
     template< typename N >
     friend inline N unblob( Blob b ) {
         return b.get< N >();
