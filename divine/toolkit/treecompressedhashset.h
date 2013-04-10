@@ -30,10 +30,10 @@ namespace divine {
             m_roots( Hasher( hasher, hasher.slack + int( sizeof( Root ) ) ), args... ),
             m_forks( Hasher( hasher, 0 ), args... ),
             m_leafs( Hasher( hasher, 0 ), args... ),
-            m_chunkSize( chunkSize ),
             m_slack( hasher.slack ),
+            m_chunkSize( chunkSize ),
             m_size( 0 ),
-            hasher( m_roots.hasher )
+            hasher( hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
@@ -68,7 +68,7 @@ namespace divine {
         const int m_chunkSize;
         size_t m_size;
 
-        Hasher& hasher;
+        Hasher hasher;
 
 #ifndef O_PERFORMANCE
         size_t inserts;
@@ -93,6 +93,12 @@ namespace divine {
             return m_roots.hasher.valid( i );
         }
 
+        inline Item makePermanent( Item i ) {
+            assert( valid( i ) );
+            pool().header( i ).permanent = true;
+            return i;
+        }
+
         struct Fork {
             const Item left;
             const Item right;
@@ -103,11 +109,12 @@ namespace divine {
             const int size:24;
             const bool fork:1;
             const bool valid:1;
-            const uint64_t __pad:38;
+            const int __pad:6;
+            const hash_t hash;
             const Item left;
             const Item right;
-            RootFork( int size, Item left, Item right ) : size( size ),
-                fork( true ), valid( true ), __pad( 0 ),
+            RootFork( int size, Item left, Item right, hash_t hash ) : size( size ),
+                fork( true ), valid( true ), __pad( 0 ), hash( hash ),
                 left( left ), right( right )
             { }
         };
@@ -172,12 +179,12 @@ namespace divine {
             return pool().data( item );
         }
 
-        inline Item newRoot( Item slackSource, Item left, Item right ) {
+        inline Item newRoot( Item slackSource, Item left, Item right, hash_t hash ) {
             assert( valid( slackSource ) );
             assert( valid( left ) );
             Item r( pool(), slack() + int( sizeof( RootFork ) ) );
             new ( rootFork( r, true ) ) RootFork(
-                    pool().size( slackSource ) - slack(), left, right );
+                    pool().size( slackSource ) - slack(), left, right, hash );
             copySlack( slackSource, r );
             return r;
         }
@@ -187,7 +194,7 @@ namespace divine {
             assert_leq( pool().size( source ), slack() + m_chunkSize );
             int size = pool().size( source ) + int( sizeof( RootLeaf ) );
             Item r( pool(), size );
-            size -= slack();
+            size -= slack() + int( sizeof( RootLeaf ) );
             new ( rootLeaf( r, true ) ) RootLeaf( size );
             copySlack( source, r );
             pool().copyTo( source, r, slack(),
@@ -235,7 +242,8 @@ namespace divine {
             return size;
         }
 
-        Item reassemble( Item item ) {
+        Item getReassembled( Item handle ) {
+            Item item = handle.get;
             assert( valid( item ) );
 //            assert( m_roots.has( item ) );
             const Root& node = header( item );
@@ -270,7 +278,7 @@ namespace divine {
         }
 
         size_t size() {
-            return m_size;
+            return m_roots.size();
         }
 
         bool empty() {
@@ -301,18 +309,18 @@ namespace divine {
 #endif
         }
 
-        Item insertHinted( Item item, hash_t ) {
-            return insert( item );
+        Item insert( Item item ) {
+            return insertHinted( item, hasher.hash( item ) );
         }
 
-        Item insert( Item item ) {
+        Item insertHinted( Item item, hash_t hash ) {
             incInserts();
 
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
                 Item it = newRoot( item );
-                Item it2 = m_roots.insert( it );
+                Item it2 = makePermanent( m_roots.insertHinted( it, hash ) );
                 if ( !it.alias( it2 ) ) {
                     pool().free( it );
                     incLeafReuse();
@@ -324,7 +332,7 @@ namespace divine {
             auto initAct = [ this ]( Item source, int position, int size ) -> Item
             {
                 Item ci = this->newLeaf( source, position, size );
-                Item ci2 = this->m_leafs.insert( ci );
+                Item ci2 = this->makePermanent( this->m_leafs.insert( ci ) );
                 if ( !ci.alias( ci2 ) ) {
                     this->pool().free( ci );
                     this->incLeafReuse();
@@ -334,7 +342,7 @@ namespace divine {
             };
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
                 Item fork = this->newFork( l, r );
-                Item fork2 = this->m_forks.insert( fork );
+                Item fork2 = this->makePermanent( this->m_forks.insert( fork ) );
                 if ( !fork.alias( fork2 ) ) {
                     this->pool().free( fork );
                     this->incForkReuse();
@@ -342,9 +350,9 @@ namespace divine {
                 assert( this->valid( fork2 ) );
                 return fork2;
             };
-            auto rootAct = [ this ]( Item source, Item l, Item r ) -> Item {
-                Item root = this->newRoot( source, l, r );
-                Item tableRoot = this->m_roots.insert( root );
+            auto rootAct = [ this, hash ]( Item source, Item l, Item r ) -> Item {
+                Item root = this->newRoot( source, l, r, hash );
+                Item tableRoot = this->makePermanent( this->m_roots.insert( root ) );
                 if ( !root.alias( tableRoot ) ) {
                     this->incRootReuse();
                     this->pool().free( root );
@@ -355,14 +363,25 @@ namespace divine {
             return bottomUpBuild( initAct, forkAct, rootAct, item, size );
         }
 
-
         Item get( Item item ) {
+            return getHinted( item, hasher.hash( item ) );
+        }
+
+        Item getHinted( Item i, hash_t h, bool* has )
+        {
+            Item ii = getHinted( i, h );
+            if ( has != nullptr )
+                *has = valid( ii );
+            return ii;
+        }
+
+        Item getHinted( Item item, hash_t hash ) {
             assert( valid( item ) );
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
                 Item l = newRoot( item );
-                Item l2 = m_roots.get( l );
+                Item l2 = m_roots.getHinted( l, hash );
                 pool().free( l );
                 assert( !this->valid( l2 ) ||  this->header( l2 ).size == size );
                 return l2;
@@ -378,13 +397,11 @@ namespace divine {
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
                 Item f = this->newFork( l, r );
                 Item f2 = this->m_forks.get( f );
-                assert( !this->valid( f2 ) ||
-                        this->header( f ).size == this->header( f2 ).size );
                 this->pool().free( f );
                 return f2;
             };
-            auto rootAct = [ this, size ]( Item source, Item l, Item r ) -> Item {
-                Item root = this->newRoot( source, l, r );
+            auto rootAct = [ this, size, hash ]( Item source, Item l, Item r ) -> Item {
+                Item root = this->newRoot( source, l, r, hash );
                 Item tableRoot = this->m_roots.get( root );
                 assert( !this->valid( tableRoot ) ||
                         this->header( root ).size == this->header( tableRoot ).size );
@@ -436,17 +453,8 @@ namespace divine {
             }
         }
 
-        Item getFull( Item i ) {
-            return reassemble( get( i ) );
-        }
-
-        Item getHinted( Item i, hash_t h, bool* has = nullptr )
-        {
-            Item ii = get( i );
-            if ( has != nullptr )
-                *has = valid( ii );
-            return ii;
-            assert_unimplemented();
+        bool has( Item i ) {
+            return valid( get( i ) );
         }
 
         void setSize( size_t s ) {
@@ -454,10 +462,12 @@ namespace divine {
 
         void clear() {
             m_roots.clear();
+            m_forks.clear();
+            m_leafs.clear();
         }
 
         Item operator[]( int off ) {
-            return reassemble( m_roots[ off ] );
+            return m_roots[ off ];
         }
     };
 
