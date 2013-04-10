@@ -237,7 +237,7 @@ namespace divine {
 
         Item reassemble( Item item ) {
             assert( valid( item ) );
-            assert( m_roots.has( item ) );
+//            assert( m_roots.has( item ) );
             const Root& node = header( item );
             Item out( pool(), node.size + slack() );
             copySlack( item, out );
