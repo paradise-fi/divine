@@ -242,8 +242,7 @@ namespace divine {
             return size;
         }
 
-        Item getReassembled( Item handle ) {
-            Item item = handle.get;
+        Item getReassembled( Item item ) {
             assert( valid( item ) );
 //            assert( m_roots.has( item ) );
             const Root& node = header( item );
