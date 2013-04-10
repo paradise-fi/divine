@@ -123,11 +123,12 @@ struct Main {
     Meta meta;
 
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info, *cmd_simulate;
-    OptionGroup *common, *drawing, *input, *reduce, *ce;
+    OptionGroup *common, *drawing, *input, *reduce, *compression, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
+    StringOption *o_compression;
     BoolOption *o_noreduce;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
@@ -289,6 +290,7 @@ struct Main {
         drawing = opts.createGroup( "Drawing Options" );
         input = opts.createGroup( "Input Options" );
         reduce = opts.createGroup( "Reduction Options" );
+        compression = opts.createGroup( "Compression Options" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -325,6 +327,10 @@ struct Main {
         o_fair = reduce->add< BoolOption >(
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
+
+        o_compression = compression->add< StringOption >(
+                "compression", '\0', "compression", "",
+                "configure state compression [default = none]" );
 
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
@@ -403,11 +409,13 @@ struct Main {
 
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
+        cmd_metrics->add( compression );
 	cmd_metrics->add( input );
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
         cmd_verify->add( reduce );
+        cmd_verify->add( compression );
 	cmd_verify->add( input );
 
         cmd_simulate->add( common );
@@ -459,6 +467,13 @@ struct Main {
                                 "tau, tau+, por, taustores, heap and LU are allowed" );
                         } );
         return r;
+    }
+
+    meta::Algorithm::CompressionType parseCompression( std::string s )
+    {
+        if ( s == "none" ) return meta::Algorithm::C_None;
+        if ( s == "tree" ) return meta::Algorithm::C_Tree;
+        throw wibble::exception::OutOfRange( "compression", "'" + s + "' is not a known compression type" ); // TODO: allowed
     }
 
     void parseCommandline()
@@ -516,6 +531,10 @@ struct Main {
             else
                 meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por,LU" );
         }
+        if ( o_compression->boolValue() )
+            meta.algorithm.compression = parseCompression( o_compression->stringValue() );
+        else
+            meta.algorithm.compression = meta::Algorithm::C_None;
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
         meta.output.statistics = o_statistics->boolValue();

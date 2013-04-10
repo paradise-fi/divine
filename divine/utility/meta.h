@@ -38,6 +38,7 @@ struct Execution {
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, Compact, Probabilistic, Simulate };
+    enum CompressionType { C_None, C_Tree };
 
     Type algorithm;
     std::string name;
@@ -47,6 +48,7 @@ struct Algorithm {
 
     bool labels, traceLabels, bfsLayout; /* for drawing */
     bool hashCompaction;
+    CompressionType compression;
     bool sharedVisitor;
     bool fairness;
     graph::ReductionSet reduce;
@@ -56,6 +58,7 @@ struct Algorithm {
                   maxDistance( 32 ),
                   labels( false ), traceLabels( false ), bfsLayout( false ),
                   hashCompaction( false ),
+                  compression( C_None ),
                   sharedVisitor( false ),
                   fairness( false ) {}
 };
