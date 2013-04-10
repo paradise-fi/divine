@@ -103,6 +103,10 @@ struct Blob
         return ptr;
     }
 
+    bool alias( Blob& other ) {
+        return ptr == other.ptr;
+    }
+
     // direct comparison is not supported any more, use Pool::compare, Pool::equal
     // or BlobComparerLT and BlobComparerEQ from pool.h
     bool operator<( const Blob& ) const = delete;
