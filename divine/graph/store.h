@@ -5,6 +5,7 @@
 
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/sharedhashset.h>
+#include <divine/toolkit/treecompressedhashset.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -277,6 +278,76 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
     }
 };
 
+template < template < template < typename, typename > class, typename, typename > class Table,
+    template < typename, typename > class BaseTable, typename Graph, typename Hasher,
+    typename Statistics >
+struct CompressedStore : public TableUtils< CompressedStore< Table, BaseTable, Graph,
+    Hasher, Statistics >, Table< BaseTable, typename Graph::Node, Hasher >,
+    Hasher, Statistics >
+{
+    static_assert( wibble::TSame< typename Graph::Node, Blob >::value,
+            "CompressedStore can only work with Blob nodes" );
+    typedef TableUtils< CompressedStore< Table, BaseTable, Graph, Hasher, Statistics >,
+            Table< BaseTable, typename Graph::Node, Hasher >, Hasher, Statistics > Utils;
+    typedef typename Graph::Node Node;
+
+    template< typename... Args >
+    CompressedStore( Graph& g, int slack, Args&&... args ) :
+        Utils( g.base().alloc.pool(), slack, std::forward< Args >( args )... )
+    { }
+
+    int slack() {
+        return this->table.slack();
+    }
+
+    Pool& pool() {
+        return this->hasher().pool;
+    }
+
+    Node fetch( Node node, hash_t h, bool* had = nullptr ) {
+        Node found = Utils::fetch( node, h, had );
+
+        if ( !alias( node, found ) ) {
+            pool().copyTo( found, node, slack() );
+            return node;
+        }
+        return found;
+    }
+
+    void update( Node node, hash_t h ) {
+        // update state information in hashtable
+        Node found = this->table.getHinted( node, h, NULL );
+        assert( this->valid( found ) );
+        if ( !alias( node, found ) )
+            pool().copyTo( node, found, slack() );
+    }
+
+    void store( Node node, hash_t h, bool* = nullptr ) {
+        Statistics::global().hashadded( this->id->id(),
+                memSize( node, pool() ) );
+        Statistics::global().hashsize( this->id->id(), this->table.size() );
+        Node n = this->table.insertHinted( node, h );
+        if ( alias( n, node ) )
+            setPermanent ( pool(), node );
+    }
+
+    void setSize( int sz ) { } // TODO
+
+    template< typename W >
+    int owner( W &w, Node s, hash_t hint = 0 ) {
+        if ( hint )
+            return hint % w.peers();
+        else
+            return this->hash( s ) % w.peers();
+    }
+};
+
+template < typename Graph, typename Hasher = default_hasher< typename Graph::Node >,
+          typename Statistics = NoStatistics >
+using TreeCompressedStore = CompressedStore< TreeCompressedHashSetBase, HashSet,
+          Graph, Hasher, Statistics >;
+
 }
+
 }
 #endif
