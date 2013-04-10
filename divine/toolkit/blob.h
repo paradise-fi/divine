@@ -91,6 +91,11 @@ struct Blob
     friend class Pool;
     friend class FakePool;
 
+    template< typename N >
+    friend inline N unblob( Blob b ) {
+        return b.get< N >();
+    }
+
     bool valid() const
     {
         return ptr;
@@ -294,11 +299,6 @@ private:
 template< typename N >
 inline N unblob( const N &n ) {
     return n;
-}
-
-template< typename N >
-inline N unblob( Blob b ) {
-    return b.get< N >();
 }
 
 template<>
