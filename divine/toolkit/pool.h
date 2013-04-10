@@ -45,6 +45,17 @@ struct BlobDereference {
         source.copyTo( where );
     }
 
+    inline void copyTo( const Blob& source, Blob& where, int length )
+    {
+        copyTo( source, where, 0, 0, length );
+    }
+
+    void copyTo( const Blob& source, Blob& where, int sourceStart,
+            int whereStart, int length )
+    {
+        source.copyTo( where, sourceStart, whereStart, length );
+    }
+
     template< typename O >
     O write32( const Blob& blob, O o ) const
     {
