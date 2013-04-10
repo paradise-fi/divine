@@ -88,9 +88,11 @@ struct Blob
     }
 
     friend class BlobDereference;
+#if O_POOLS
     friend class Pool;
+#else
     friend class FakePool;
-
+#endif
     template< typename N >
     friend inline N unblob( Blob b ) {
         return b.get< N >();
