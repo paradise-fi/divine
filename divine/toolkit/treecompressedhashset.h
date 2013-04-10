@@ -50,7 +50,6 @@ namespace divine {
         BaseHashSet m_base;
         const int m_slack;
         size_t m_size;
-        size_t m_maxsize; // XXX
 
         Hasher& hasher;
 
