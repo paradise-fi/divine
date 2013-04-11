@@ -6,16 +6,7 @@ using namespace wibble::str;
 using namespace std;
 
 namespace divine {
-const char *compile_defines_str = "\
-#define assert_eq(a,b) assert(a == b)\n\
-#define assert_neq(a,b) assert(a != b);\n\
-#define assert_leq(a,b) assert(a <= b);\n\
-#define assert_die() assert(false);\n\
-#define DIVINE_EMBED\n\
-#define O_POOLS\n"; // required
-
 namespace dve {
-
 namespace compiler {
 
 void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr,
@@ -152,8 +143,6 @@ void DveCompiler::gen_header()
     line( "typedef int8_t sbyte_t;" );
     line( "typedef size_t size_int_t;" );
     line();
-
-    line( compile_defines_str );
 
     line( divine::cesmi_usr_cesmi_h_str );
     line();

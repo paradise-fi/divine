@@ -94,9 +94,8 @@ void Compile::compileMurphi( std::string in ) {
     sys::fs::deleteIfExists( outfile );
 
     sys::fs::writeFile( outfile, "\
-" + mu + compile_defines_str + toolkit_pool_h_str + toolkit_blob_h_str + cesmi_usr_cesmi_h_str + cesmi_usr_cesmi_cpp_str + "\
+" + mu + cesmi_usr_cesmi_h_str + cesmi_usr_cesmi_cpp_str + "\
 \n\
-using namespace divine;\n\
 extern \"C\" void setup( cesmi_setup *s ) {\n\
     s->add_property( s, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );\n\
     if ( !MuGlobal::init_once( 0, NULL ) ) return;\n\
