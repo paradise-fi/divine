@@ -43,6 +43,7 @@ endif( DVE )
 
 if ( TIMED )
     file( GLOB SRC_TIMED timed/*.cpp )
+    include_directories( ${Boost_INCLUDE_DIR} )
 endif( TIMED )
 
 file( GLOB SRC_BA ltl2ba/*.cpp )
