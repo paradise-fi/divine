@@ -128,7 +128,7 @@ namespace instantiate {
     STORE_SPEC( HashCompacted, HcStore );
 #endif
 #ifdef O_COMPRESSION
-//    STORE_SPEC( Compressed, TreeCompressionStore );
+    STORE_SPEC( Compressed, TreeCompressedStore );
 #endif
     STORE_SPEC( Shared, SharedStore );
 
@@ -157,22 +157,23 @@ namespace instantiate {
 
 #define TRANS_SPEC( ENUM, TRANS ) template<> \
     struct SelectTransform< Transform :: ENUM > { \
-        template < typename Graph, typename StatIgnored > \
-        using T = ::divine::graph :: TRANS < Graph >; \
+        template < typename Graph, typename Store, typename StatIgnored > \
+        using T = ::divine::graph :: TRANS < Graph, Store >; \
         static const bool available = true; \
     }
 
     TRANS_SPEC( None, NonPORGraph );
+/*
 #ifndef O_SMALL
     TRANS_SPEC( Fairness, FairGraph );
     template<>
     struct SelectTransform< Transform::POR > {
-        template < typename Graph, typename Stat >
-        using T = ::divine::algorithm::PORGraph< Graph, Stat >;
+        template < typename Graph, typename Store, typename Stat >
+        using T = ::divine::algorithm::PORGraph< Graph, Store, Stat >;
         static const bool available = true;
     };
 #endif
-
+*/
 #undef TRANS_SPEC
 
     template < Generator generator >
@@ -236,20 +237,23 @@ namespace instantiate {
         using T = ::divine::Statistics;
     };
 
-    template< typename G >
-    using Transition = std::tuple< typename G::Node, typename G::Node, typename G::Label >;
+    template< typename G, typename St >
+    using Transition = std::tuple< typename St::QueueVertex, typename G::Node, typename G::Label >;
 
-    template < typename Generator, template < typename, typename > class Transform,
+    template < typename Generator, template < typename, typename, typename > class Transform,
              template< typename, typename, typename > class _Store, typename Hasher,
              typename _Visitor, template< typename > class _Topology,
              typename _Statistics >
     struct Setup {
-        using Graph = Transform< Generator, _Statistics >;
-        using Store = _Store< Graph, Hasher, _Statistics >;
+        using Store = _Store< typename Generator::Node, Hasher, _Statistics >;
+        using Graph = Transform< Generator, Store, _Statistics >;
         using Visitor = _Visitor;
         template < typename I >
-        using Topology = typename _Topology< Transition< Graph > >::template TT< I >;
+        using Topology = typename _Topology< Transition< Graph, Store > >
+                            ::template TT< I >;
         using Statistics = _Statistics;
+        using Vertex = typename Store::Vertex;
+        using VertexId = typename Store::VertexId;
     };
 
     template < bool, bool, bool, bool, bool, bool, Algorithm algo,
