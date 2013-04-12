@@ -754,10 +754,14 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
     }
 
     VertexId fetchVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return vi;
         return VertexId( this->m_base.fetch( vi.compressed, _hash( vi ) ) );
     }
 
     Vertex fetchByVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return Vertex();
         vi = fetchVertexId( vi );
         return Vertex( this->m_base.table.getReassembled( vi.compressed ), vi.compressed );
     }
