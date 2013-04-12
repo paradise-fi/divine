@@ -249,9 +249,8 @@ struct Partitioned {
         typedef typename S::Statistics Statistics;
         typedef Implementation< S, Worker > This;
 
-    int owner( Node n, hash_t hint = 0 ) const {
-        return graph.owner( _store.hasher(), worker, n, hint );
-    }
+        Store &_store;
+        Store &store() { return _store; }
 
         int owner( Node n, hash_t hint = 0 ) const {
             return _store.owner( worker, n, hint );
@@ -345,11 +344,11 @@ struct Partitioned {
             }
         };
 
-    template< typename T >
-    void setIds( T &bfv ) {
-        bfv.store.id = &worker;
-        bfv._queue.id = worker.id();
-    }
+        template< typename T >
+        void setIds( T &bfv ) {
+            bfv._store.setId( worker );
+            bfv._queue.id = worker.id();
+        }
 
         void exploreFrom( Node initial ) {
             BFV< Ours > bfv( *this, graph, _store );
@@ -461,7 +460,7 @@ struct Shared {
         }
 
         inline void setIds() {
-            bfv.store.id = &worker;
+            bfv.store().setId( worker );
             bfv.open().id = worker.id();
         }
 
