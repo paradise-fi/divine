@@ -94,7 +94,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, Vertex st )
         {
-            t.shared.addNode( t.graph(), st );
+            t.shared.addNode( t.graph(), st.getNode() );
             return visitor::ExpandState;
         }
 
