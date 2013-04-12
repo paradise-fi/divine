@@ -95,7 +95,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         if ( draw.extension( t ).distance == 0 )
            draw.extension( t ).distance = INT_MAX;
 
-        draw.graph().porTransition( f, t, 0 );
         draw.extension( t ).distance =
             std::min( draw.extension( t ).distance, draw.extension( f ).distance + 1 );
         return visitor::FollowTransition;
@@ -270,7 +269,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                     visitor.queue( fV, t, l );
                 } );
             visitor.processQueue();
-        } while ( this->graph().porEliminateLocally( *this ) );
+        } while ( this->graph().porEliminateLocally( *this, nullptr ) );
 
         if ( bfs )
             dot_nodes = "{" + dot_nodes + "}";

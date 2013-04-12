@@ -35,6 +35,12 @@ struct PORGraph : graph::Transform< G > {
     typedef typename Store::Vertex Vertex;
     typedef typename Store::VertexId VertexId;
 
+    struct IdCompare {
+        bool operator()( VertexId a, VertexId b) {
+            return a.weakId() < b.weakId();
+        }
+    };
+
     template< typename T > using ASet = std::set< T, AddressCompare< T > >;
 
     int m_algslack;
@@ -46,15 +52,23 @@ struct PORGraph : graph::Transform< G > {
         bool remove:1;
     };
 
-    typedef void (*PredCount)( Pool&, Node, int );
+    typedef void (*PredCount)( Pool&, VertexId, int );
     PredCount _predCount;
-
-    BlobComparerLT bcomp;
 
     ASet< Node > to_expand;
     bool finished;
 
-    void updatePredCount( Node t, int v ) {
+    void updatePredCount( Node t, int v, int* pc ) {
+        extension( t ).predCount = v;
+        if ( pc )
+            *pc = v;
+    }
+
+    void updatePredCount( Vertex t, int v ) {
+        updatePredCount( t.getVertexId(), v );
+    }
+
+    void updatePredCount( VertexId t, int v ) {
         extension( t ).predCount = v;
         if ( _predCount )
             _predCount( pool(), t, v );
@@ -79,11 +93,21 @@ struct PORGraph : graph::Transform< G > {
         return pool().template get< Extension >( n, m_algslack );
     }
 
-    int predCount( Node n ) {
+    Extension &extension( VertexId n ) {
+        return n.template extension< Extension >( pool(), m_algslack );
+    }
+
+    Extension &extension( Vertex n ) {
+        return extension( n.getVertexId() );
+    }
+
+    template < typename T >
+    int predCount( T n ) {
         return extension( n ).predCount;
     }
 
-    bool full( Node n ) {
+    template < typename T >
+    bool full( T n ) {
         return extension( n ).full;
     }
 
@@ -95,17 +119,16 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
-    void porTransition( Vertex fV, Vertex tV, PredCount _pc ) {
+    void porTransition( Vertex fV, Vertex tV, int* pc ) {
         Node f = fV.getNode();
         Node t = tV.getNode();
-        _predCount = _pc;
 
         if ( extension( t ).done )
             return; // ignore
 
         // increase predecessor count
         if ( f.valid() )
-            updatePredCount( t, predCount( t ) + 1 );
+            updatePredCount( t, predCount( t ) + 1, pc );
     }
 
     template< typename Setup >
@@ -118,8 +141,7 @@ struct PORGraph : graph::Transform< G > {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Vertex, Vertex toV, Label ) {
-            Node to = toV.getNode();
+        static visitor::TransitionAction transition( This &t, Vertex, Vertex to, Label ) {
             if ( t.extension( to ).done )
                 return visitor::ForgetTransition;
 
@@ -149,9 +171,9 @@ struct PORGraph : graph::Transform< G > {
                     if ( t.predCount( n ) ) {
                         t.to_expand.insert( n );
                     }
+                    Node node = v.store().fetchByVertexId( n ).getNode();
                     t.updatePredCount( n, 1 ); // ...
-                    q.queue( Vertex(), n, Label() ); // coming from "nowhere"
-                    t.to_check.erase( i );
+                    v.queue( Vertex(), node, Label() ); // coming from "nowhere"
                 }
             }
         }
@@ -168,7 +190,8 @@ struct PORGraph : graph::Transform< G > {
     };
 
     template< typename Algorithm >
-    void _porEliminate( Algorithm &a ) {
+    void _porEliminate( Algorithm &a, PredCount pc ) {
+        _predCount = pc;
         typedef POREliminate< typename Algorithm::Setup > Elim;
         typename Elim::Visitor::template Implementation< Elim, Algorithm >
             visitor( *this, a, *this, a.store(), a.data );
@@ -177,7 +200,6 @@ struct PORGraph : graph::Transform< G > {
         visitor.processQueue();
     }
 
-    template< typename Store >
     void breakStalemate( Store &store ) { // this is NOT deterministic :/
         for ( auto n : store ) {
             if ( !extension( n ).done ) {
@@ -207,7 +229,8 @@ struct PORGraph : graph::Transform< G > {
     }
 
     template< typename Algorithm >
-    bool porEliminateLocally( Algorithm &a ) {
+    bool porEliminateLocally( Algorithm &a, PredCount pc ) {
+        _predCount = pc;
         typedef POREliminate< typename Algorithm::Setup > Elim;
         visitor::BFV< Elim > visitor( *this, *this, a.store() );
 
@@ -227,10 +250,12 @@ struct PORGraph : graph::Transform< G > {
     }
 
     template< typename Yield >
-    void porExpand( Yield yield )
+    void porExpand( Store& store, Yield yield )
     {
-        for ( auto n : to_expand )
-            fullexpand( yield, n );
+        for ( auto n : to_expand ) {
+            Vertex v = store.fetchByVertexId( n );
+            fullexpand( yield, v.getNode() );
+        }
     }
 
     template< typename Yield >

@@ -83,12 +83,12 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         return this->graph().base().alloc.pool();
     }
 
-    static Extension &extension( Pool pool, Node n ) {
-        return pool.template get< Extension >( n );
+    static Extension &extension( Pool pool, VertexId n ) {
+        return n.template extension< Extension >( pool );
     }
 
     Extension &extension( Node n ) {
-        return extension( pool(), n );
+        return pool().template get< Extension >( n );
     }
 
     Extension &extension( Vertex n ) {
@@ -96,10 +96,10 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     Extension &extension( VertexId id ) {
-        return id.template extension< Extension >( this->pool() );
+        return id.template extension< Extension >( pool() );
     }
 
-    static void updatePredCount( Pool& pool, Node n, int p ) {
+    static void updatePredCount( Pool& pool, VertexId n, int p ) {
         extension( pool, n ).predCount = p;
     }
 
@@ -244,7 +244,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 }
             }
             o.shared.stats.addEdge( o.graph(), from.getNode(), to.getNode() );
-            o.graph().porTransition( from, to, &updatePredCount );
+            int predCount = o.extension( to ).predCount;
+            o.graph().porTransition( from, to, &predCount );
+            o.extension( to ).predCount = predCount;
             return visitor::FollowTransition;
         }
 
@@ -283,7 +285,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     void _por_worker() {
-        this->graph()._porEliminate( *this );
+        this->graph()._porEliminate( *this, &updatePredCount );
     }
 
     Shared _por( Shared sh ) {

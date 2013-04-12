@@ -110,7 +110,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     }
 
     void _por_worker() {
-        this->graph()._porEliminate( *this );
+        this->graph()._porEliminate( *this, nullptr );
     }
 
     Shared _por( Shared sh ) {

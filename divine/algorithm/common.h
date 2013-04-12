@@ -68,7 +68,13 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
 
     template< typename A, typename V >
     void queuePOR( A &a, V &v ) {
-        a.graph().porExpand( [&v] ( Node f, Node n, Label l ) { v.queueAny( f, n, l ); } );
+        a.graph().porExpand( a.store(), [ &a, &v ] ( Node f, Node n, Label l ) {
+                Vertex fV = f.valid()
+                    ? a.store().fetch( f, a.store().hash( f ) )
+                    : Vertex();
+                assert( !f.valid() || a.store().valid( fV ) );
+                v.queueAny( fV, n, l );
+            } );
     }
 };
 
