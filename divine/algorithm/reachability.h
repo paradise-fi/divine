@@ -41,10 +41,8 @@ template< typename Setup >
 struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                       Parallel< Setup::template Topology, Reachability< Setup > >
 {
-    typedef typename Setup::VertexId VertexId;
-    typedef typename Setup::Vertex Vertex;
     typedef Reachability< Setup > This;
-    ALGORITHM_CLASS( Setup, ReachabilityShared< VertexId> );
+    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::VertexId> );
 
     VertexId goal;
     bool deadlocked;

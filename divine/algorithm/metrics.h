@@ -84,8 +84,6 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
                  Parallel< Setup::template Topology, Metrics< Setup > >
 {
     typedef Metrics< Setup > This;
-    typedef typename Setup::Vertex Vertex;
-    typedef typename Setup::VertexId VertexId;
     struct Shared : algorithm::Statistics {
         bool need_expand;
         Shared() : need_expand( false ) {}

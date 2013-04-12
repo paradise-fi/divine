@@ -218,7 +218,10 @@ struct AlgorithmUtils {
     typedef typename _setup::Statistics Statistics;             \
     typedef typename Graph::Node Node;                          \
     typedef typename Graph::Label Label;                        \
-    typedef typename _setup::Store Store
+    typedef typename _setup::Store Store;                       \
+    typedef typename Store::Hasher Hasher;                      \
+    typedef typename Setup::VertexId VertexId;                  \
+    typedef typename Setup::Vertex Vertex
 
 #define ALGORITHM_RPC_ID(_type, _id, _fun) \
     template< typename Setup > RPC_ID( _type< Setup >, _fun, 2 + _id )

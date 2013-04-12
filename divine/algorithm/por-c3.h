@@ -109,7 +109,7 @@ struct PORGraph : graph::Transform< G > {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
+        static visitor::TransitionAction transition( This &t, Vertex from, Node to, Label ) {
             if ( t.extension( to ).done )
                 return visitor::ForgetTransition;
 
