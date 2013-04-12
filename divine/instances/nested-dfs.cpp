@@ -1,4 +1,5 @@
 #include <divine/algorithm/nested-dfs.h>
+#include <divine/instances/definitions.h>
 #include <divine/instances/instantiate.h>
 
 namespace divine {
@@ -12,5 +13,4 @@ algorithm::Algorithm *selectNDFS( Meta &meta ) {
            Topology::NotSelected, Statistics::Enabled >( meta );
 }
 }
-
 }
