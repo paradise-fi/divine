@@ -229,15 +229,17 @@ struct DFV : Common< Stack, S > {
 };
 
 struct Partitioned {
-    typedef typename S::Node Node;
-    typedef typename S::Label Label;
-    typedef typename S::Graph Graph;
+    template< typename S >
+    struct Data {
+    };
 
     template< typename S, typename Worker >
     struct Implementation {
         typedef typename S::Node Node;
         typedef typename S::Label Label;
         typedef typename S::Graph Graph;
+        typedef typename S::Vertex Vertex;
+        typedef typename S::VertexId VertexId;
 
         Worker &worker;
         typename S::Listener &notify;
@@ -251,36 +253,36 @@ struct Partitioned {
         return graph.owner( _store.hasher(), worker, n, hint );
     }
 
-    inline void queue( Node from, Node to, Label label, hash_t hint = 0 ) {
-        if ( owner( to, hint ) != worker.id() )
-            return;
-        queueAny( from, to, label, hint );
-    }
+        int owner( Node n, hash_t hint = 0 ) const {
+            return _store.owner( worker, n, hint );
+        }
 
-    inline void queueAny( Node from, Node to, Label label, hash_t hint = 0 ) {
-        int _to = owner( to, hint ), _from = worker.id();
-        Statistics::global().sent( _from, _to, sizeof(from) + memSize(to) );
-        worker.submit( _from, _to, std::make_tuple( unblob< Node >( from ),
-                                                    unblob< Node >( to ), label ) );
-    }
+        int ownerV( Vertex n ) const {
+            return _store.owner( worker, n );
+        }
 
-    visitor::TransitionAction transition( Node f, Node t ) {
-        visitor::TransitionAction tact = S::transition( notify, f, t );
-        if ( tact == TerminateOnTransition )
-            worker.interrupt();
-        return tact;
-    }
+        inline void queue( Vertex from, Node to, Label label, hash_t hint = 0 ) {
+            if ( owner( to, hint ) != worker.id() )
+                return;
+            queueAny( from, to, label, hint );
+        }
 
-    visitor::ExpansionAction expansion( Node n ) {
-        assert_eq( owner( n ), worker.id() );
-        ExpansionAction eact = S::expansion( notify, n );
-        if ( eact == TerminateOnState )
-            worker.interrupt();
-        return eact;
-    }
+        inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
+            int _to = owner( to, hint ), _from = worker.id();
+            Statistics::global().sent( _from, _to, sizeof(from) + memSize(to, graph.base().alloc.pool() ) );
+            worker.submit( _from, _to, std::make_tuple( _store.toQueue( from ),
+                                                        to, label ) );
+        }
 
-        visitor::ExpansionAction expansion( Node n ) {
-            assert_eq( owner( n ), worker.id() );
+        visitor::TransitionAction transition( Vertex f, Node t ) {
+            visitor::TransitionAction tact = S::transition( notify, f, t );
+            if ( tact == TerminateOnTransition )
+                worker.interrupt();
+            return tact;
+        }
+
+        visitor::ExpansionAction expansion( Vertex n ) {
+            assert_eq( ownerV( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
             if ( eact == TerminateOnState )
                 worker.interrupt();
@@ -295,24 +297,24 @@ struct Partitioned {
 
                     int to = worker.id();
 
-                for ( int from = 0; from < worker.peers(); ++from ) {
-                    while ( worker.comms().pending( from, to ) ) {
-                        auto p = worker.comms().take( from, to );
-                        Statistics::global().received(
-                            from, to, sizeof( Node ) + memSize( std::get< 1 >( p ) ) );
-                        bfv.edge( unblob< Node >( std::get< 0 >( p ) ),
-                                  unblob< Node >( std::get< 1 >( p ) ),
-                                  std::get< 2 >( p ) );
+                    if ( worker.interrupted() ) {
+                        while ( !worker.idle() )
+                            while ( worker.comms().pending( to ) )
+                                worker.comms().take( to );
+                        return;
                     }
 
                     for ( int from = 0; from < worker.peers(); ++from ) {
                         while ( worker.comms().pending( from, to ) ) {
                             auto p = worker.comms().take( from, to );
                             Statistics::global().received(
-                                from, to, sizeof( Node ) + memSize( std::get< 1 >( p ) ) );
-                            bfv.edge( unblob< Node >( std::get< 0 >( p ) ),
-                                    unblob< Node >( std::get< 1 >( p ) ),
+                                from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
+                                    graph.base().alloc.pool() ) );
+                            auto fromData = _store.fromQueue( std::get< 0 >( p ) );
+                            bfv.edge( fromData,
+                                    std::get< 1 >( p ),
                                     std::get< 2 >( p ) );
+                            fromData.free( graph.base().alloc.pool() );
                         }
                     }
 
@@ -325,19 +327,21 @@ struct Partitioned {
             }
         }
 
-    typedef Partitioned< S, Worker > P;
-    struct Ours : SetupOverride< S, This >
-    {
-        typedef typename SetupOverride< S, This >::Listener Listener;
-        static inline TransitionAction transitionHint(
-            Listener l, Node f, Node t, Label label, hash_t hint )
+        typedef Implementation< S, Worker > P;
+        struct Ours : SetupOverride< S, This >
         {
-            This &n = *l.second;
-            if ( n.owner( t, hint ) != n.worker.id() ) {
-                if (n._store.valid( f ) )
-                    assert_eq( n.owner( f ), n.worker.id() );
-                n.queueAny( f, t, label, hint );
-                return visitor::IgnoreTransition;
+            typedef typename SetupOverride< S, This >::Listener Listener;
+            static inline TransitionAction transitionHint(
+                 Listener l, Vertex f, Node t, Label label, hash_t hint )
+            {
+                This &n = *l.second;
+                if ( n.owner( t, hint ) != n.worker.id() ) {
+                    if (n._store.valid( f ) )
+                        assert_eq( n.owner( f.getNode() ), n.worker.id() );
+                    n.queueAny( f, t, label, hint );
+                    return visitor::IgnoreTransition;
+                }
+               return visitor::FollowTransition;
             }
         };
 
@@ -374,8 +378,7 @@ struct Partitioned {
  * you are ready for some serious debugging (throw in some gcc errors for fun
  * and profit).
  */
-
-template< typename S, typename Worker >
+#ifndef DISABLE_SHARED
 struct Shared {
     template< typename S >
     struct Data {
@@ -458,7 +461,7 @@ struct Shared {
         }
 
         inline void setIds() {
-            bfv.store().id = &worker;
+            bfv.store.id = &worker;
             bfv.open().id = worker.id();
         }
 
