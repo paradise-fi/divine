@@ -20,6 +20,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
+    typedef typename Store::Vertex Vertex;
+    typedef typename Store::VertexId VertexId;
 
     Node seed;
     bool valid;
@@ -77,7 +79,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        LtlCE< Graph, wibble::Unit, wibble::Unit, wibble::Unit > ce;
+        LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > ce;
         ce.generateLinear( *this, this->graph(), ce_stack );
         ce.generateLasso( *this, this->graph(), ce_lasso );
         progress() << "done" << std::endl;
@@ -93,7 +95,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
 
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
-        this->graph().initials( [&]( Node f, Node t, Label l ) { visitor.queue( f, t, l ); } );
+        this->graph().initials( [&]( Node f, Node t, Label l ) {
+                assert( !f.valid() );
+                visitor.queue( Vertex(), t, l );
+        } );
         visitor.processQueue();
 
         while ( valid && !toexpand.empty() ) {
@@ -129,7 +134,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     struct Outer : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &dfs, Node st ) {
+        static visitor::ExpansionAction expansion( This &dfs, Vertex stV ) {
+            Node st = stV.getNode();
             if ( !dfs.valid )
                 return visitor::TerminateOnState;
             dfs.stats.addNode( dfs.graph(), st );
@@ -138,7 +144,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Node from, Node to, Label ) {
+        static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label ) {
+            Node from = fromV.getNode();
+            Node to = toV.getNode();
+
             dfs.stats.addEdge( dfs.graph(), from, to );
             if ( from.valid() && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
@@ -146,7 +155,9 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::FollowTransition;
         }
 
-        static void finished( This &dfs, Node n ) {
+        static void finished( This &dfs, Vertex nV ) {
+            Node n = nV.getNode();
+
             if ( dfs.graph().isAccepting( n ) ) { // run the nested search
                 if ( dfs.parallel )
                     dfs.inner.process.push( n );
@@ -163,7 +174,9 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     struct Inner : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &dfs, Node st ) {
+        static visitor::ExpansionAction expansion( This &dfs, Vertex stV ) {
+            Node st = stV.getNode();
+
             if ( !dfs.valid )
                 return visitor::TerminateOnState;
             dfs.stats.addExpansion();
@@ -171,8 +184,11 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Node from, Node to, Label )
+        static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label )
         {
+            Node from = fromV.getNode();
+            Node to = toV.getNode();
+
             // The search always starts with a transition from "nowhere" into the
             // initial state. Ignore this transition here.
             if ( from.valid() && dfs.pool().pointer( to ) == dfs.pool().pointer( dfs.seed ) ) {
@@ -188,7 +204,9 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::FollowTransition;
         }
 
-        static void finished( This &dfs, Node n ) {
+        static void finished( This &dfs, Vertex nV ) {
+            Node n = nV.getNode();
+
             if ( !dfs.ce_lasso.empty() ) {
                 assert_eq( dfs.pool().pointer( n ), dfs.pool().pointer( dfs.ce_lasso.front() ) );
                 dfs.ce_lasso.pop_front();
@@ -207,8 +225,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
             progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
-            this->store().maxSize( m.execution.initialTable );
-            inner.graph = std::shared_ptr< Graph >( this->initGraph( *this ) );
+            this->store().table.m_maxsize = m.execution.initialTable; // XXX
         }
         finished = false;
         inner.outer = this;

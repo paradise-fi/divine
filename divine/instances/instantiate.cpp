@@ -24,9 +24,9 @@ algorithm::Algorithm *select( Meta &m )
         case meta::Algorithm::Map:
             m.algorithm.name = "MAP";
             return selectMAP( m );
-/*        case meta::Algorithm::Ndfs:
+        case meta::Algorithm::Ndfs:
             m.algorithm.name = "Nested DFS";
-            return selectNDFS( m );*/
+            return selectNDFS( m );
 
         default:
             return 0;

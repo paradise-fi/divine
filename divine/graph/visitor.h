@@ -115,7 +115,7 @@ struct Common {
     }
 
     void exploreFrom( Node _initial ) {
-        queue( Node(), _initial, Label() );
+        queue( Vertex(), _initial, Label() );
         processQueue();
     }
 

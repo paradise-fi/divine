@@ -93,61 +93,96 @@ struct Stack {
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
     typedef typename Setup::Vertex Vertex;
+
     enum Flag { Fresh, Expanded };
 
-    std::deque< std::pair< Flag, std::pair< Node, Label > > > _stack;
-    Node _from;
+    struct StackItem {
+        Flag flag;
+        Label label;
+
+        Node node() {
+            assert( flag == Fresh );
+            return data.node;
+        }
+        Vertex vertex() {
+            assert( flag == Expanded );
+            return data.vertex;
+        }
+
+        StackItem() = delete;
+
+        StackItem( Vertex vertex, Label label )
+            : flag( Expanded ), label( label ), data( vertex )
+        { }
+
+        StackItem( Node node, Label label )
+            : flag( Fresh ), label( label ), data( node )
+        { }
+
+      private:
+        union DataU {
+            DataU( Node node ) : node( node )
+            { }
+            DataU( Vertex vertex ) : vertex( vertex )
+            { }
+            Node node;
+            Vertex vertex;
+        } data;
+    };
+
+    std::deque< StackItem > _stack;
+    Vertex _from;
     bool deadlocked;
 
     int _pushes, _pops;
 
     void push( Vertex tV ) {
         Node t = tV.getNode();
-        _from = t;
-        _stack.push_back( std::make_pair( Expanded , std::make_pair( t, Label() ) ) );
+        _from = tV;
+        _stack.push_back( StackItem( tV, Label() ) );
         deadlocked = true;
         g.successors( t, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 deadlocked = false;
-                _stack.push_back( std::make_pair( Fresh, std::make_pair( n, l ) ) );
+                _stack.push_back( StackItem( n, l ) );
             } );
     }
 
     template< typename Next >
     void processOpen( Next next ) {
         if ( !deadlocked ) {
-            assert_eq( _stack.back().first, Fresh );
-            Node n = _stack.back().second.first;
-            Label l = _stack.back().second.second;
+            assert_eq( _stack.back().flag, Fresh );
+            Node n = _stack.back().node();
+            Label l = _stack.back().label;
             _stack.pop_back();
             ++ _pops;
-            next( Vertex( _from ), n, l );
+            next( _from, n, l );
         }
     }
 
     template< typename Dead >
     void processDead( Dead dead ) {
         if ( deadlocked && ! empty() ) {
-            assert_eq( _stack.back().first, Expanded );
-            dead( Vertex( _stack.back().second.first ) );
+            assert_eq( _stack.back().flag, Expanded );
+            dead(_stack.back().vertex() );
             deadlocked = false;
         }
     }
 
     template< typename Close >
     void processClosed( Close close ) {
-        if ( empty() || _stack.back().first != Expanded )
+        if ( empty() || _stack.back().flag != Expanded )
             return;
 
-        while ( !empty() && _stack.back().first == Expanded ) {
-            close( Vertex( _stack.back().second.first ) );
-            g.release( _stack.back().second.first );
+        while ( !empty() && _stack.back().flag == Expanded ) {
+            close( _stack.back().vertex() );
+            g.release( _stack.back().vertex().getNode() );
             _stack.pop_back();
         }
 
         for ( auto i = _stack.rbegin(); i != _stack.rend(); ++i )
-            if ( i->first == Expanded ) {
-                _from = i->second.first;
+            if ( i->flag == Expanded ) {
+                _from = i->vertex();
                 break;
             }
     }
