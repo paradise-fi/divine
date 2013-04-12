@@ -342,6 +342,7 @@ endif()
 if( GUI )
   find_package( Qt4 4.5.0 )
   if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
+    add_definitions( -DQT_EDITION=QT_EDITION_OPENSOURCE )
     # nothing to do
   else()
     disabling( "GUI" "" "Could not find Qt4 >= 4.5." )
