@@ -115,7 +115,8 @@ struct LtlCE {
     void _ceIsInitial( Worker& w, Store& s ) {
         if ( shared().ce.current_updated )
             return;
-        assert( s.valid( shared().ce.current ) );
+        if ( !s.valid( shared().ce.current ) )
+            return;
         if ( s.owner( w, shared().ce.current ) == w.id() ) {
             shared().ce.successor_id = whichInitial( shared().ce.current, s );
             shared().ce.current_updated = shared().ce.successor_id > 0;
@@ -291,12 +292,12 @@ struct LtlCE {
     }
 
     inline Node traceBack( Traces& tr ) {
-        return tr.first.back();
+        return tr.first.empty() ? Node() : tr.first.back();
     }
 
     template < typename T >
     inline Node traceBack( T& tr ) {
-        return tr.back();
+        return tr.empty() ? Node() : tr.back();
     }
 
     template< typename Alg, typename T >
@@ -341,6 +342,7 @@ struct LtlCE {
         shared().ce.parent = Node();
         shared().ce.successor = VertexId(); // !valid()
         shared().ce.successor_id = 0;
+        bool first = false;
         while ( a.store().valid( shared().ce.current ) ) {
             shared().ce.current_updated = shared().ce.is_ce_initial = false;
             d.ring( &Alg::_parentTrace );
@@ -354,8 +356,12 @@ struct LtlCE {
                 if ( shared().ce.current_updated )
                     break;
             } else if ( traceType == TraceType::Lasso ) {
-                if ( shared().ce.is_ce_initial )
-                    break;
+                if ( shared().ce.is_ce_initial ) {
+                    if ( first )
+                        break;
+                    else
+                        first = true;
+                }
             }
             else
                 assert_die();
@@ -368,7 +374,8 @@ struct LtlCE {
 
         switch ( traceType ) {
             case TraceType::Linear: {
-                assert( shared().ce.successor_id );
+                if ( shared().ce.successor_id == 0 ) // empty CE
+                    return std::make_pair( trace, numTrace );
                 Node initial = getInitialById( shared().ce.successor_id );
                 initial = a.store().fetch( initial, a.store().hash( initial ) ).getNode();
                 visitor::setPermanent( a.pool(), initial );
@@ -378,6 +385,7 @@ struct LtlCE {
                 numTrace.push_back( shared().ce.successor_id );
                 break; }
             case TraceType::Lasso: {
+                hTrace.pop_front();
                 shared().ce.parent = parent;
                 break; }
             default:
