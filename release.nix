@@ -23,6 +23,8 @@ let
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
+  windows_qt = pkgs.callPackage nix/windows_qt.nix {};
+
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev" ];
   extra_rpms = [ "cmake" ];
@@ -52,7 +54,7 @@ let
 
   mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
     inherit windows_mingw;
-    tools = [ windows_cmake windows_nsis ];
+    tools = [ windows_cmake windows_nsis windows_qt ];
     img = image;
     src = jobs.tarball;
     name = "divine";
