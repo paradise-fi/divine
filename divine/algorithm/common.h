@@ -57,9 +57,11 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
 
     template< typename A, typename V >
     void queueInitials( A &a, V &v ) {
-        a.graph().initials( [&v] ( Node f, Node n, Label l ) {
-                assert( !f.valid() ); // hm
-                v.queue( Vertex(), n, l );
+        a.graph().initials( [ &a, &v ] ( Node f, Node n, Label l ) {
+                Vertex fV = f.valid()
+                              ? a.store().fetch( f, a.store().hash( f ) )
+                              : Vertex();
+                v.queue( fV, n, l );
             } );
     }
 
