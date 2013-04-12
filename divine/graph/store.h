@@ -305,8 +305,10 @@ struct SharedStore : TableUtils< SharedHashSet< typename Graph::Node, Hasher >, 
 
     TablePtr _table;
 
-    SharedStore( Graph & ) : Super( 65536 ) {}
-    SharedStore( unsigned size ) : Super( size ) {}
+    enum { defaultSharedStoreSize = 65536 };
+
+    SharedStore( Graph & ) : Super( defaultSharedStoreSize ) {}
+    SharedStore( unsigned size = defaultSharedStoreSize ) : Super( size ) {}
 
     void update( T s, hash_t h ) {}
 
