@@ -155,8 +155,9 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                 m.extension( st ).seen = true;
                 if ( m.graph().isAccepting ( st.getNode() ) )
                     ++ m.shared.accepting;
-                m.graph().porExpansion( st );
-                m.shared.stats.addNode( m.graph(), st );
+                else
+                    m.extension( st ).elim = 3; // not accepting
+                m.shared.stats.addNode( m.graph(), st.getNode() );
             } else
                 m.shared.stats.addExpansion();
 

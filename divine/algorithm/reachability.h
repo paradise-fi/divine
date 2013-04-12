@@ -65,8 +65,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     {
         static visitor::ExpansionAction expansion( This &r, Vertex st )
         {
-            r.shared.stats.addNode( r.graph(), st );
-            r.graph().porExpansion( st );
+            r.shared.stats.addNode( r.graph(), st.getNode() );
             return visitor::ExpandState;
         }
 

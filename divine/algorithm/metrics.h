@@ -95,7 +95,6 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         static visitor::ExpansionAction expansion( This &t, Vertex st )
         {
             t.shared.addNode( t.graph(), st );
-            t.graph().porExpansion( st );
             return visitor::ExpandState;
         }
 

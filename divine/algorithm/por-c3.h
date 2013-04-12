@@ -95,13 +95,9 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
-    std::set< Node > to_check, to_expand;
-
-    void porExpansion( Node n ) {
-        to_check.insert( n );
-    }
-
-    void porTransition( Node f, Node t, PredCount _pc ) {
+    void porTransition( Vertex fV, Vertex tV, PredCount _pc ) {
+        Node f = fV.getNode();
+        Node t = tV.getNode();
         _predCount = _pc;
 
         if ( extension( t ).done )
@@ -144,27 +140,29 @@ struct PORGraph : graph::Transform< G > {
 
             for ( auto n : v.store() )
             {
-                j = i; ++j;
-                if ( !t.predCount( *i ) || t.extension( *i ).remove ) {
-                    if ( t.predCount( *i ) ) {
-                        t.to_expand.insert( *i );
+                if ( t.extension( n ).done )
+                    continue;
+
+                t.finished = false;
+
+                if ( !t.predCount( n ) || t.extension( n ).remove ) {
+                    if ( t.predCount( n ) ) {
+                        t.to_expand.insert( n );
                     }
-                    t.updatePredCount( *i, 1 ); // ...
-                    q.queue( Blob(), *i, Label() ); // coming from "nowhere"
+                    t.updatePredCount( n, 1 ); // ...
+                    q.queue( Vertex(), n, Label() ); // coming from "nowhere"
                     t.to_check.erase( i );
                 }
             }
         }
 
-                t.finished = false;
-
-                if ( !t.predCount( n ) || t.extension( n ).remove )
-                {
-                    if ( t.predCount( n ) )
-                        t.to_expand.insert( n );
-                    t.updatePredCount( n, 1 ); // ...
-                    v.queue( Blob(), n, Label() ); // coming from "nowhere"
-                }
+        static void cleanup( This &t )
+        {
+            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
+                  i != t.to_check.end(); i = j ) {
+                j = i; ++j;
+                if ( t.extension ( *i ).done )
+                    t.to_check.erase( i );
             }
         }
     };
@@ -256,10 +254,8 @@ struct PORGraph : graph::Transform< G > {
         for ( auto i : extra )
             this->base().release( i.first );
 
-        for ( auto i = out.begin(); i != out.end(); ++i ) {
-            const_cast< Blob* >( &i->first )->header().permanent = 1;
-            yield( n, i->first, i->second );
-        }
+        for ( auto i : out )
+            yield( n, i.first, i.second );
     }
 };
 

@@ -252,8 +252,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         {
             o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st.getNode() );
             o.shared.size += o.extension( st ).inS;
-            o.shared.stats.addNode( o.graph(), st );
-            o.graph().porExpansion( st );
+            o.shared.stats.addNode( o.graph(), st.getNode() );
             return visitor::ExpandState;
         }
     };
