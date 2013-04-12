@@ -18,6 +18,11 @@
   #include <llvm/DataLayout.h>
   #define TargetData DataLayout
 #endif
+#undef PACKAGE_VERSION
+#undef PACKAGE_TARNAME
+#undef PACKAGE_STRING
+#undef PACKAGE_NAME
+#undef PACKAGE_BUGREPORT
 
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/LLVMContext.h>
