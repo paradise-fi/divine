@@ -130,7 +130,7 @@ struct LtlCE {
         if ( s.owner( w, shared().ce.current ) == w.id() ) {
             int id = 0;
             Node parent = shared().ce.parent;
-            g().base().successors( parent,
+            g().allSuccessors( parent,
                     [ this, &s, &id ]( Node n, Label ) {
                         if ( this->shared().ce.current_updated )
                             return;
