@@ -197,12 +197,14 @@ struct Stack {
  * An adaptor over a LockedQueue to lump access into big chunks. Implements a
  * graph-traversal-friendly inteface, same as the above two.
  */
-template < typename G, typename Statistics >
-struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
+template < typename Setup >
+struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 {
-    typedef G Graph;
+    typedef typename Setup::Graph Graph;
+    typedef typename Setup::Statistics Statistics;
     typedef typename Graph::Node Node;
-    typedef std::deque< Node > Chunk;
+    typedef typename Graph::Vertex Vertex;
+    typedef std::deque< Vertex > Chunk;
     typedef divine::LockedQueue< Chunk > ChunkQ;
     typedef ApproximateCounter Termination;
     typedef Termination::Shared Terminator;
@@ -244,7 +246,7 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
         }
     }
 
-    void push( const Node &b ) {
+    void push( const Vertex &b ) {
         /* TODO statistics */
         ++termination;
         outgoing.push_back( b );
@@ -252,7 +254,7 @@ struct SharedQueue : QueueFrontend< G, SharedQueue< G, Statistics > >
             flush();
     }
 
-    Node front() {
+    Vertex front() {
         return incoming.front();
     }
     void pop_front() {
