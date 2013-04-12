@@ -34,6 +34,17 @@ inline bool equalId( Store& st, typename Store::VertexId a, typename Store::Vert
     return st.compareId( a, b ) == 0;
 }
 
+template < typename Store >
+inline bool identity( Store& st, typename Store::Vertex a, typename Store::Vertex b ) {
+    return st.owner( a.getVertexId() ) == st.owner( b.getVertexId() )
+        && a.getVertexId().weakId() == b.getVertexId().weakId();
+}
+
+template < typename Store >
+inline bool equalVertex( Store& st, typename Store::Vertex a, typename Store::Vertex b ) {
+    return st.pool().equal( a.getNode(), b.getNode() );
+}
+
 
 
 template < typename Utils >
@@ -127,6 +138,10 @@ struct PartitionedStore
         template < typename Extension >
         Extension& extension( Pool& p, int n = 0 ) {
             return p.template get< Extension >( node, n );
+        }
+
+        bool valid() {
+            return node.valid();
         }
 
         template < typename BS >
@@ -325,6 +340,81 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hash
     static_assert( wibble::TSame< typename Graph::Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
     typedef typename Graph::Node Node;
+    typedef TableUtils< HashSet< Node, HcHasher< Hasher > >,
+              HcHasher< Hasher >, Statistics > Utils;
+    typedef HcStore< Graph, Hasher, Statistics > This;
+
+    static const bool CanFetchByHandle = false;
+
+    struct VertexId {
+        Node hash;
+        explicit VertexId( Node hash ) : hash( hash ) { }
+        VertexId() : hash() { }
+
+        uintptr_t weakId() {
+            return hash.valid()
+                ? reinterpret_cast< uintptr_t >( hash.ptr )
+                : 0;
+        }
+
+        template < typename Extension >
+        Extension& extension( Pool& p, int n = 0 ) {
+            return p.template get< Extension >( hash, n );
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, VertexId vi )
+        {
+            return bs << vi.hash;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, VertexId& vi )
+        {
+            return bs >> vi.hash;
+        }
+    };
+
+    struct Vertex {
+        Node node;
+        Node hash;
+
+        Vertex( Node node, Node hash ) : node( node ), hash( hash ) { }
+//        Vertex( Node node ) : node( node ), hash() { }
+        Vertex() : node(), hash( 0 ) { }
+
+        Node getNode() {
+            return node;
+        }
+
+        VertexId getVertexId() {
+            return VertexId( hash );
+        }
+
+        Vertex clone( Graph& g ) {
+            return Vertex( g.clone( node ), hash );
+        }
+
+        void free( Pool& p ) {
+            p.free( node );
+            p.free( hash );
+            node = hash = Node();
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, Vertex v )
+        {
+            return bs << v.node << v.hash;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, Vertex& v )
+        {
+            return bs >> v.node >> v.hash;
+        }
+    };
 
     Graph &m_graph;
     Table _table;
@@ -449,6 +539,84 @@ struct CompressedStore : public TableUtils< Table< BaseTable, typename Graph::No
     typedef TableUtils< Table< BaseTable, typename Graph::Node, Hasher >,
             Hasher, Statistics > Utils;
     typedef typename Graph::Node Node;
+    static_assert( wibble::TSame< Node, Blob >::value,
+            "CompressedStore can only work with Blob nodes" );
+    typedef TableUtils< Table< BaseTable, Node, Hasher >, Hasher, Statistics > Utils;
+    typedef CompressedStore< Table, BaseTable, Graph, Hasher, Statistics > This;
+
+    static const bool CanFetchByHandle = true;
+
+    struct VertexId {
+        Node compressed;
+
+        explicit VertexId( Node compressed ) : compressed( compressed ) { }
+        VertexId() : compressed() { }
+
+        uintptr_t weakId() {
+            return compressed.valid()
+                ? reinterpret_cast< uintptr_t >( compressed.ptr )
+                : 0;
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, VertexId vi )
+        {
+            return bs << vi.compressed;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, VertexId& vi )
+        {
+            return bs >> vi.compressed;
+        }
+
+        template < typename Extension >
+        Extension& extension( Pool& p, int n = 0 ) {
+            return p.template get< Extension >( compressed, n );
+        }
+    };
+
+    struct Vertex {
+        Node node;
+        Node compressed;
+
+        Vertex( Node node, Node compressed ) : node( node ),
+            compressed( compressed )
+        { }
+        Vertex() : node(), compressed() { }
+
+        Node getNode() {
+            return node;
+        }
+
+        VertexId getVertexId() {
+            return VertexId( compressed );
+        }
+
+        Vertex clone( Graph& g ) {
+            return Vertex( g.clone( node ), compressed );
+        }
+
+        void free( Pool& p ) {
+            p.free( node );
+            p.free( compressed );
+            node = compressed = Node();
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, Vertex v )
+        {
+            return bs << v.node << v.compressed;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, Vertex& v )
+        {
+            return bs >> v.node >> v.compressed;
+        }
+    };
 
     template< typename... Args >
     CompressedStore( Graph& g, int slack, This *, Args&&... args ) :
@@ -564,6 +732,11 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
 
     VertexId fetchVertexId( VertexId vi ) {
         return VertexId( this->m_base.fetch( vi.compressed, _hash( vi ) ) );
+    }
+
+    Vertex fetchByVertexId( VertexId vi ) {
+        vi = fetchVertexId( vi );
+        return Vertex( this->m_base.table.getReassembled( vi.compressed ), vi.compressed );
     }
 
     using Base::owner;

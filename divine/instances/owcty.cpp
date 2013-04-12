@@ -1,4 +1,3 @@
-/*
 #include <divine/algorithm/owcty.h>
 #include <divine/instances/definitions.h>
 #include <divine/instances/instantiate.h>
@@ -12,4 +11,3 @@ algorithm::Algorithm *selectOWCTY( Meta &meta ) {
 }
 }
 }
-*/

@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
 #include <divine/algorithm/common.h>
-#include <divine/algorithm/map.h> // for VertexId
+#include <divine/algorithm/map.h> // for MapVertexId
 #include <divine/graph/ltlce.h>
 
 #ifndef DIVINE_ALGORITHM_OWCTY_H
@@ -10,27 +10,28 @@
 namespace divine {
 namespace algorithm {
 
+template < typename VertexId >
 struct OwctyShared {
     size_t size, oldsize;
-    Blob cycle_node;
+    VertexId cycle_node;
     bool cycle_found;
     int iteration;
-    CeShared< Blob > ce;
+    CeShared< Blob, VertexId > ce;
     algorithm::Statistics stats;
     bool need_expand;
 
     OwctyShared() : cycle_found( false ) {}
 };
 
-template< typename BS >
-typename BS::bitstream &operator<<( BS &bs, const OwctyShared &sh )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator<<( BS &bs, const OwctyShared< VertexId > &sh )
 {
     return bs << sh.size << sh.oldsize << sh.cycle_node << sh.cycle_found
               << sh.iteration << sh.ce << sh.stats << sh.need_expand;
 }
 
-template< typename BS >
-typename BS::bitstream &operator>>( BS &bs, OwctyShared &sh )
+template< typename BS, typename VertexId >
+typename BS::bitstream &operator>>( BS &bs, OwctyShared< VertexId > &sh )
 {
     return bs >> sh.size >> sh.oldsize >> sh.cycle_node >> sh.cycle_found
               >> sh.iteration >> sh.ce >> sh.stats >> sh.need_expand;
@@ -52,14 +53,14 @@ template< typename Setup >
 struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Owcty< Setup > >
 {
     typedef Owcty< Setup > This;
-    ALGORITHM_CLASS( Setup, OwctyShared );
+    ALGORITHM_CLASS( Setup, OwctyShared< typename Setup::VertexId > );
 
     // -------------------------------
     // -- Some useful types
     // --
 
     struct Extension {
-        Blob parent;
+        VertexId parent;
         uintptr_t map:(8 * sizeof(uintptr_t) - 2);
         bool inS:1;
         bool inF:1;
@@ -70,12 +71,14 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         unsigned map_owner:9; // handle up to 512 MPI nodes
     };
 
-    LtlCE< Graph, Shared, Extension, typename Store::Hasher > ce;
+    typedef LtlCE< Setup, Shared, Extension, Hasher > CE;
+    CE ce;
 
     // ------------------------------------------------------
     // -- generally useful utilities
     // --
 
+    using AlgorithmUtils< Setup >::store;
     Pool& pool() {
         return this->graph().base().alloc.pool();
     }
@@ -86,6 +89,14 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     Extension &extension( Node n ) {
         return extension( pool(), n );
+    }
+
+    Extension &extension( Vertex n ) {
+        return this->pool().template get< Extension >( n.getNode() );
+    }
+
+    Extension &extension( VertexId id ) {
+        return id.template extension< Extension >( this->pool() );
     }
 
     static void updatePredCount( Pool& pool, Node n, int p ) {
@@ -102,7 +113,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         return false;
     }
 
-    Node cycleNode() {
+    VertexId cycleNode() {
         if ( shared.cycle_found ) {
             assert( shared.cycle_node.valid() );
             return shared.cycle_node;
@@ -110,7 +121,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         for ( int i = 0; i < int( shareds.size() ); ++i ) {
             if ( shareds[ i ].cycle_found ) {
-                assert( shareds[ i ].cycle_node.valid() );
+                assert( store().valid( shareds[ i ].cycle_node ) );
                 return shareds[ i ].cycle_node;
             }
         }
@@ -127,39 +138,40 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     template< typename V >
     void queueAll( V &v, bool reset = false ) {
-        for ( size_t i = 0; i < this->store().size(); ++i ) {
-            Node st = this->store()[ i ];
+        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
+            Node st = this->store().table[ i ];
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
-                    assert_eq( v.owner( st ), v.worker.id() );
-                    v.queueAny( Blob(), st, Label() ); // slightly faster maybe
+                    assert_eq( store().owner( visitor.worker, st ), visitor.worker.id() );
+                    Vertex v = store().fetchByVertexId( st );
+                    visitor.queueAny( Vertex(), v.getNode(), Label() ); // slightly faster maybe
                 }
             }
         }
     }
 
-    VertexId makeId( Node t ) {
-        VertexId r;
-        r.ptr = reinterpret_cast< uintptr_t >( t.ptr ) >> 2;
+    MapVertexId makeId( Vertex t ) {
+        MapVertexId r;
+        r.ptr = t.getVertexId().weakId() >> 2;
         r.owner = this->id();
         return r;
     }
 
-    VertexId getMap( Node t ) {
-        VertexId r;
+    MapVertexId getMap( Vertex t ) {
+        MapVertexId r;
         r.ptr = extension( t ).map;
         r.owner = extension( t ).map_owner;
         return r;
     }
 
-    void setMap( Node t, VertexId id ) {
+    void setMap( Vertex t, MapVertexId id ) {
         extension( t ).map = id.ptr;
         extension( t ).map_owner = id.owner;
     }
 
-    bool updateIteration( Node t ) {
+    bool updateIteration( Vertex t ) {
         int old = extension( t ).iteration;
         extension( t ).iteration = shared.iteration;
         return old != shared.iteration;
@@ -167,7 +179,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     struct Reachability : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &o, Node st )
+        static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
             assert( o.extension( st ).predCount > 0 );
             assert( o.extension( st ).inS );
@@ -176,11 +188,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &o, Node f, Node t, Label )
+        static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
         {
             ++ o.extension( t ).predCount;
             o.extension( t ).inS = true;
-            if ( o.extension( t ).inF && f.valid() )
+            if ( o.extension( t ).inF && o.store().valid( f ) )
                 return visitor::ForgetTransition;
             else {
                 return o.updateIteration( t ) ?
@@ -207,18 +219,18 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     struct Initialise : Visit< This, Setup >
     {
-        static visitor::TransitionAction transition( This &o, Node from, Node to, Label )
+        static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
             if ( !o.extension( to ).parent.valid() )
-                o.extension( to ).parent = from;
-            if ( from.valid() ) {
-                VertexId fromMap = o.getMap( from );
-                VertexId fromId = o.makeId( from );
+                o.extension( to ).parent = from.getVertexId();
+            if ( o.store().valid( from ) ) {
+                MapVertexId fromMap = o.getMap( from );
+                MapVertexId fromId = o.makeId( from );
                 if ( o.getMap( to ) < fromMap )
                     o.setMap( to, fromMap  );
-                if ( o.graph().isAccepting( from ) ) {
-                    if ( o.pool().pointer( from ) == o.pool().pointer( to ) ) {
-                        o.shared.cycle_node = to;
+                if ( o.graph().isAccepting( from.getNode() ) ) {
+                    if ( from.getVertexId().weakId() == to.getVertexId().weakId() ) { // hmm
+                        o.shared.cycle_node = to.getVertexId();
                         o.shared.cycle_found = true;
                         return visitor::TerminateOnTransition;
                     }
@@ -226,21 +238,22 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                         o.setMap( to, fromId );
                 }
                 if ( o.makeId( to ) == fromMap ) {
-                    o.shared.cycle_node = to;
+                    o.shared.cycle_node = to.getVertexId();
                     o.shared.cycle_found = true;
                     return visitor::TerminateOnTransition;
                 }
             }
-            o.shared.stats.addEdge( o.graph(), from, to );
-            o.graph().porTransition( from, to, &updatePredCount );
+            o.shared.stats.addEdge( o.graph(), from.getNode(), to.getNode() );
+// XXX            o.graph().porTransition( from, to, &updatePredCount );
             return visitor::FollowTransition;
         }
 
-        static visitor::ExpansionAction expansion( This &o, Node st )
+        static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
-            o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st );
+            o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st.getNode() );
             o.shared.size += o.extension( st ).inS;
             o.shared.stats.addNode( o.graph(), st );
+            o.graph().porExpansion( st );
             return visitor::ExpandState;
         }
     };
@@ -283,7 +296,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     struct Elimination : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &o, Node st )
+        static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
             assert( o.extension( st ).predCount == 0 );
             o.extension( st ).inS = false;
@@ -293,9 +306,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &o, Node f, Node t, Label )
+        static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
         {
-            assert( t.valid() );
+            assert( o.store().valid( t ) );
             assert( o.extension( t ).inS );
             assert( o.extension( t ).predCount >= 1 );
             -- o.extension( t ).predCount;
@@ -326,11 +339,12 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     struct FindCE : Visit< This, Setup > {
-        static visitor::TransitionAction transition( This &o, Node from, Node to, Label )
+        static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
             if ( !o.extension( to ).inS )
                 return visitor::ForgetTransition;
-            if ( from.valid() && o.pool().equal( to, o.shared.cycle_node ) ) {
+            if ( o.store().valid( from ) &&
+                    visitor::equalId( o.store(), to.getVertexId(), o.shared.cycle_node ) ) {
                 o.shared.cycle_found = true;
                 return visitor::TerminateOnTransition;
             }
@@ -339,13 +353,14 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 visitor::ExpandTransition :
                 visitor::ForgetTransition;
         }
-
+/* Not called from anywhere
         static visitor::ExpansionAction ccExpansion( Node ) {
             return visitor::ExpandState;
         }
-
+*/
         template< typename V > void queueInitials( This &o, V &v ) {
-            v.queue( Node(), o.shared.cycle_node, Label() );
+            Vertex c = o.store().fetchByVertexId( o.shared.cycle_node );
+            v.queue( Vertex(), c.getNode(), Label() );
         }
     };
 
@@ -356,13 +371,13 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     Shared _counterexample( Shared sh ) {
         shared = sh;
-        for ( int i = 0; i < int( this->store().size() ); ++i ) {
+        for ( int i = 0; i < int( this->store().table.size() ); ++i ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
                 return shared;
             }
-            Node st = shared.cycle_node = this->store()[ i ];
+            Node st = shared.cycle_node = this->store().table[ i ];
             if ( !st.valid() )
                 continue;
             if ( extension( st ).iteration == shared.iteration )
@@ -374,11 +389,23 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         return shared;
     }
 
-    Shared _parentTrace( Shared sh ) {
+    Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
         shared = sh;
         ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._parentTrace( *this, this->store() );
+        (ce.*ceCall)( *this, this->store() );
         return shared;
+    }
+
+    Shared _parentTrace( Shared sh ) {
+        return runCe( sh, &CE::_parentTrace );
+    }
+
+    Shared _successorTrace( Shared sh ) {
+        return runCe( sh, &CE::_successorTrace );
+    }
+
+    Shared _ceIsInitial( Shared sh ) {
+        return runCe( sh, &CE::_ceIsInitial );
     }
 
     void _traceCycle() {
@@ -493,6 +520,8 @@ ALGORITHM_RPC_ID( Owcty, 6, _parentTrace );
 ALGORITHM_RPC_ID( Owcty, 7, _traceCycle );
 ALGORITHM_RPC_ID( Owcty, 8, _por );
 ALGORITHM_RPC_ID( Owcty, 9, _por_worker );
+ALGORITHM_RPC_ID( Owcty, 10, _successorTrace );
+ALGORITHM_RPC_ID( Owcty, 11, _ceIsInitial );
 
 }
 }

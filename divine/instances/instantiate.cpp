@@ -18,9 +18,9 @@ algorithm::Algorithm *select( Meta &m )
             m.algorithm.name = "Simulate";
             return selectSimulate( m );
 
-/*        case meta::Algorithm::Owcty:
+        case meta::Algorithm::Owcty:
             m.algorithm.name = "OWCTY";
-            return selectOWCTY( m );*/
+            return selectOWCTY( m );
         case meta::Algorithm::Map:
             m.algorithm.name = "MAP";
             return selectMAP( m );

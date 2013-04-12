@@ -119,7 +119,7 @@ struct Common {
         processQueue();
     }
 
-    void queue( Node from, Node to, Label l ) {
+    void queue( Vertex from, Node to, Label l ) {
         edge( from, to, l );
     }
 
