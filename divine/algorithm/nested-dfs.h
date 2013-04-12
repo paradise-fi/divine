@@ -27,8 +27,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     bool valid;
     bool parallel, finished;
 
-    std::deque< Node > ce_stack;
-    std::deque< Node > ce_lasso;
+    std::deque< VertexId > ce_stack;
+    std::deque< VertexId > ce_lasso;
     std::deque< Node > toexpand;
 
     algorithm::Statistics stats;
@@ -79,9 +79,14 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > ce;
-        ce.generateLinear( *this, this->graph(), ce_stack );
-        ce.generateLasso( *this, this->graph(), ce_lasso );
+        typedef LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > CE;
+        CE ce;
+        auto ceStack = ce.succTraceLocal( *this, typename CE::Linear(), Node(),
+                ce_stack.rbegin(), ce_stack.rend() );
+        ce.generateLinear( *this, this->graph(), ceStack );
+        auto ceLasso = ce.succTraceLocal( *this, typename CE::Lasso(),
+                ce.traceBack( ceStack ), ce_lasso.rbegin(), ce_lasso.rend() );
+        ce.generateLasso( *this, this->graph(), ceLasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
     }
@@ -139,7 +144,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             if ( !dfs.valid )
                 return visitor::TerminateOnState;
             dfs.stats.addNode( dfs.graph(), st );
-            dfs.ce_stack.push_front( st );
+            dfs.ce_stack.push_front( stV.getVertexId() );
             dfs.extension( st ).on_stack = true;
             return visitor::ExpandState;
         }
@@ -151,7 +156,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             dfs.stats.addEdge( dfs.graph(), from, to );
             if ( from.valid() && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
-                dfs.toexpand.push_back( from );
+                dfs.toexpand.push_back( dfs.graph().clone( from ) );
             return visitor::FollowTransition;
         }
 
@@ -166,7 +171,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             }
 
             if ( dfs.valid && !dfs.ce_stack.empty() ) {
-                assert_eq( dfs.pool().pointer( n ), dfs.pool().pointer( dfs.ce_stack.front() ) );
+                assert_eq( nV.getVertexId().weakId(), dfs.ce_stack.front().weakId() );
                 dfs.ce_stack.pop_front();
             }
         }
@@ -174,13 +179,12 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     struct Inner : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &dfs, Vertex stV ) {
-            Node st = stV.getNode();
+        static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
 
             if ( !dfs.valid )
                 return visitor::TerminateOnState;
             dfs.stats.addExpansion();
-            dfs.ce_lasso.push_front( st );
+            dfs.ce_lasso.push_front( st.getVertexId() );
             return visitor::ExpandState;
         }
 
@@ -204,11 +208,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             return visitor::FollowTransition;
         }
 
-        static void finished( This &dfs, Vertex nV ) {
-            Node n = nV.getNode();
+        static void finished( This &dfs, Vertex n ) {
 
             if ( !dfs.ce_lasso.empty() ) {
-                assert_eq( dfs.pool().pointer( n ), dfs.pool().pointer( dfs.ce_lasso.front() ) );
+                assert_eq( n.getVertexId().weakId(), dfs.ce_lasso.front().weakId() );
                 dfs.ce_lasso.pop_front();
             }
         }
