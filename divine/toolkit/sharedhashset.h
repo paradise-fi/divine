@@ -47,8 +47,10 @@ struct SharedHashSet {
 
     unsigned size() const { return _size; }
 
+    SharedHashSet() : SharedHashSet( Hasher() ) { }
+
     /* TODO: need to revision of store change */
-    explicit SharedHashSet( Hasher h = Hasher() )
+    explicit SharedHashSet( Hasher h )
         : mask( 0 ), hasher( h ), _size( 0 )
     { }
 
