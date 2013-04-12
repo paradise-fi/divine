@@ -175,10 +175,14 @@ struct TableUtils
     T fetch( T s, hash_t h, bool *had = 0 ) {
         T found = table().getHinted( s, h, had );
 
-        if ( !had ) {
-            assert( !hasher().valid( found ) );
+        if ( alias( s, found ) )
+            assert( hasher().valid( found ) );
+
+        if ( !hasher().valid( found ) ) {
             assert( !alias( s, found ) );
-            return std::make_tuple( s, false );
+            if ( had )
+                assert( !*had );
+            return s;
         }
 
         return found;
@@ -416,11 +420,13 @@ struct HcStore : public TableUtils< HashSet< typename Graph::Node, HcHasher<Hash
         }
     };
 
+    typedef Vertex QueueVertex;
+
     Graph &m_graph;
     Table _table;
 
-    Pool& pool() {
-        return m_graph.base().alloc.pool();
+    hash_t& stubHash( Blob stub ) {
+        return this->pool().template get< hash_t >( stub, this->slack() );
     }
 
     Blob fetch( Blob s, hash_t h, bool* had = 0 ) {
@@ -558,6 +564,10 @@ struct CompressedStore : public TableUtils< Table< BaseTable, typename Graph::No
                 : 0;
         }
 
+        bool valid() {
+            return compressed.valid();
+        }
+
         template < typename BS >
         friend bitstream_impl::base< BS >& operator<<(
                 bitstream_impl::base< BS >& bs, VertexId vi )
@@ -618,10 +628,16 @@ struct CompressedStore : public TableUtils< Table< BaseTable, typename Graph::No
         }
     };
 
+    typedef VertexId QueueVertex;
+
     template< typename... Args >
     CompressedStore( Graph& g, int slack, This *, Args&&... args ) :
         StoreCommon< Utils >( g.base().alloc.pool(), slack, std::forward< Args >( args )... )
     { }
+
+    QueueVertex toQueue( Vertex v ) {
+        return v.getVertexId();
+    }
 
     Vertex fetch( Node node, hash_t h, bool* had = nullptr ) {
         Node found = this->m_base.fetch( node, h, had );
@@ -724,11 +740,18 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
 {
     typedef CompressedStore< TreeCompressedHashSet, HashSet, Graph, Hasher,
               Statistics > Base;
+    typedef typename Graph::Node Node;
+    typedef typename Base::Vertex Vertex;
+    typedef typename Base::VertexId VertexId;
 
     template< typename... Args >
     TreeCompressedStore( Graph& g, int slack, This *, Args&&... args ) :
         Base( g, slack, 16, std::forward< Args >( args )... )
     { }
+
+    Vertex fromQueue( QueueVertex v ) {
+        return fetchByVertexId( v );
+    }
 
     VertexId fetchVertexId( VertexId vi ) {
         return VertexId( this->m_base.fetch( vi.compressed, _hash( vi ) ) );
