@@ -14,10 +14,8 @@ struct Allocator {
 
     Allocator() : _slack( 0 ) {}
 
-    void setSlack( int s ) {
-        std::cout << "Allocator::setSlack( " << s << " );" << std::endl;
-        _slack = s;
-    }
+    void setSlack( int s ) { _slack = s; }
+    int slack() { return _slack; }
     Pool &pool() { return _pool; }
 
     Blob new_blob( std::size_t size ) {
