@@ -61,7 +61,8 @@ struct PORGraph : graph::Transform< G > {
     }
 
     PORGraph() : _predCount( 0 ), bcomp( pool() ),
-        to_expand( bcomp ), to_check( bcomp ) {
+        to_check( bcomp ), to_expand( bcomp )
+    {
         this->base().initPOR();
     }
 
@@ -237,7 +238,7 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void fullexpand( Yield yield, Node n ) {
         extension( n ).full = true;
-        std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ), ample( bcomp ), out( bcomp );
+        std::set< std::pair< Node, Label > > all, ample, out;
         std::vector< std::pair< Node, Label > > extra;
 
         this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
@@ -255,8 +256,10 @@ struct PORGraph : graph::Transform< G > {
         for ( auto i : extra )
             this->base().release( i.first );
 
-        for ( auto i : out )
-            yield( n, i.first, i.second );
+        for ( auto i = out.begin(); i != out.end(); ++i ) {
+            const_cast< Blob* >( &i->first )->header().permanent = 1;
+            yield( n, i->first, i->second );
+        }
     }
 };
 
