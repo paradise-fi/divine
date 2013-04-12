@@ -10,11 +10,11 @@
 namespace divine {
 namespace algorithm {
 
-struct VertexId {
+struct MapVertexId {
     uintptr_t ptr;
     short owner;
 
-    bool operator<( const VertexId other ) const {
+    bool operator<( const MapVertexId other ) const {
         if ( owner < other.owner )
             return true;
         if ( owner > other.owner )
@@ -22,11 +22,11 @@ struct VertexId {
         return ptr < other.ptr;
     }
 
-    bool operator!=( const VertexId other ) const {
+    bool operator!=( const MapVertexId other ) const {
         return ptr != other.ptr || owner != other.owner;
     }
 
-    bool operator==( const VertexId other ) const {
+    bool operator==( const MapVertexId other ) const {
             return ptr == other.ptr && owner == other.owner;
     }
 
@@ -34,7 +34,7 @@ struct VertexId {
         return ptr != 0;
     }
 
-    friend std::ostream &operator<<( std::ostream &o, VertexId i ) {
+    friend std::ostream &operator<<( std::ostream &o, MapVertexId i ) {
         return o << "(" << i.owner << ", " << i.ptr << "[" << i.ptr % 1024 << "])";
     }
 } __attribute__((packed));
@@ -74,31 +74,30 @@ template< typename Setup >
 struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
 {
     typedef Map< Setup > This;
-    typedef typename Setup::Vertex Vertex;
     ALGORITHM_CLASS( Setup, MapShared< typename Setup::VertexId > );
 
     int d_eliminated,
         acceptingCount,
         eliminated,
         expanded;
-    typename Setup::VertexId cycle_node;
+    VertexId cycle_node;
 
-    VertexId makeId( Vertex n ) {
-        VertexId ret;
+    MapVertexId makeId( Vertex n ) {
+        MapVertexId ret;
         ret.ptr = n.getVertexId().weakId();
         ret.owner = this->id();
         return ret;
     }
 
     struct Extension {
-        typename Setup::VertexId parent;
+        VertexId parent;
         bool seen:1;
         short iteration:14;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
         // 3 = not accepting
         unsigned short elim:2;
-        VertexId map;
-        VertexId oldmap;
+        MapVertexId map;
+        MapVertexId oldmap;
     };
 
     LtlCE< Setup, Shared, Extension, typename Store::Hasher > ce;
@@ -107,7 +106,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         return this->pool().template get< Extension >( n.getNode() );
     }
 
-    Extension &extension( typename Setup::VertexId id ) {
+    Extension &extension( VertexId id ) {
         return id.template extension< Extension >( this->pool() );
     }
 
@@ -193,7 +192,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                 if ( m.extension( f ).oldmap != m.extension( t ).oldmap )
                     return m.updateIteration( t );
 
-            VertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
+            MapVertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
             if ( m.isAccepting( t ) )
                 map = std::max( map, m.makeId( t ) );
 
@@ -218,11 +217,10 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void _cleanup() {
-        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
-            Node st = this->store().table[ i ];
-            if ( st.valid() ) {
+        for ( typename Setup::VertexId st : this->store() ) {
+            if ( this->store().valid( st ) ) {
                 extension( st ).oldmap = extension( st ).map;
-                extension( st ).map = VertexId();
+                extension( st ).map = MapVertexId();
 //                 if ( isAccepting( st ) ) {
                 if ( extension( st ).elim != 3 ) {
                     /* elim == 1 means NOT to be eliminated (!) */
