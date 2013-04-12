@@ -51,7 +51,8 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         VertexId parent;
     };
 
-    LtlCE< Setup, Shared, Extension, typename Store::Hasher > ce;
+    typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
+    CE ce;
 
     Pool& pool() {
         return this->graph().base().alloc.pool();
@@ -131,27 +132,24 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         this->init( this, master );
     }
 
-    Shared _parentTrace( Shared sh ) {
+    Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
         shared = sh;
         ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._parentTrace( *this, this->store() );
+        (ce.*ceCall)( *this, this->store() );
         return shared;
+    }
+
+    Shared _parentTrace( Shared sh ) {
+        return runCe( sh, &CE::_parentTrace );
     }
 
     Shared _successorTrace( Shared sh ) {
-        shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._successorTrace( *this, this->store() );
-        return shared;
+        return runCe( sh, &CE::_successorTrace );
     }
 
     Shared _ceIsInitial( Shared sh ) {
-        shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._ceIsInitial( *this, this->store() );
-        return shared;
+        return runCe( sh, &CE::_ceIsInitial );
     }
-
 
     void counterexample( VertexId n ) {
         shared.ce.initial = n;

@@ -100,7 +100,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         MapVertexId oldmap;
     };
 
-    LtlCE< Setup, Shared, Extension, typename Store::Hasher > ce;
+    typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
+    CE ce;
 
     Extension &extension( Vertex n ) {
         return this->pool().template get< Extension >( n.getNode() );
@@ -267,25 +268,23 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         collect();
     }
 
-    Shared _parentTrace( Shared sh ) {
+    Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
         shared = sh;
         ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._parentTrace( *this, this->store() );
+        (ce.*ceCall)( *this, this->store() );
         return shared;
+    }
+
+    Shared _parentTrace( Shared sh ) {
+        return runCe( sh, &CE::_parentTrace );
     }
 
     Shared _successorTrace( Shared sh ) {
-        shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._successorTrace( *this, this->store() );
-        return shared;
+        return runCe( sh, &CE::_successorTrace );
     }
 
     Shared _ceIsInitial( Shared sh ) {
-        shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
-        ce._ceIsInitial( *this, this->store() );
-        return shared;
+        return runCe( sh, &CE::_ceIsInitial );
     }
 
     void _traceCycle() {
