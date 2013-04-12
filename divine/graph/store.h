@@ -55,29 +55,40 @@ inline bool equalVertex( Store& st, typename Store::Vertex a, typename Store::Ve
 
 
 
-template < typename _Table, typename Statistics >
+template < typename Self, typename _Table, typename Statistics >
 struct StoreCommon {
     using Table = _Table;
     using Hasher = typename Table::Hasher;
     using Node = typename Table::Item;
 
   protected: // we don't want algoritms to mess with table directly
-    Table _table;
     WithID* _id;
+    Self& self() {
+        return *static_cast< Self* >( this );
+    }
+
+    Table& table() {
+        return self().table();
+    }
+
+    const Self& self() const {
+        return *static_cast< const Self* >( this );
+    }
+
+    const Table& table() const {
+        return self().table();
+    }
 
   public:
-    template < typename... Args >
-    StoreCommon( Hasher hasher, Args&&... args ) :
-        _table( hasher, std::forward< Args >( args )... ),
-        _id( nullptr )
+    StoreCommon() : _id( nullptr )
     { }
 
     const Hasher& hasher() const {
-        return _table.hasher;
+        return table().hasher;
     }
 
     Hasher& hasher() {
-        return _table.hasher;
+        return table().hasher;
     }
 
     hash_t hash( Node node ) const {
@@ -113,13 +124,13 @@ struct StoreCommon {
     }
 
     bool has( Node n ) {
-        return _table.has( n );
+        return table().has( n );
     }
 
   protected:
     // Retrieve node from hash table
     Node _fetch( Node s, hash_t h, bool *had = 0 ) {
-        Node found = _table.getHinted( s, h, had );
+        Node found = table().getHinted( s, h, had );
 
         if ( alias( s, found ) )
             assert( hasher().valid( found ) );
@@ -137,26 +148,25 @@ struct StoreCommon {
     // Store node in hash table
     Node _store( Node s, hash_t h, bool * = nullptr ) {
         Statistics::global().hashadded( _id->id(), memSize( s, hasher().pool ) );
-        Statistics::global().hashsize( _id->id(), _table.size() );
-        Node s2 = _table.insertHinted( s, h );
+        Statistics::global().hashsize( _id->id(), table().size() );
+        Node s2 = table().insertHinted( s, h );
         setPermanent( hasher().pool, s2 );
         return s2;
     }
 
     template < typename Select, typename VertexId >
     int _compareId( Select select, VertexId a, VertexId b ) {
-        if ( !permanent( this->pool(), select( a ) ) )
-            return 0 - permanent( this->pool(), select( b ) );
+        if ( !permanent( pool(), select( a ) ) )
+            return 0 - permanent( pool(), select( b ) );
 
-        if ( !permanent( this->pool(), select( b ) ) )
+        if ( !permanent( pool(), select( b ) ) )
             return 1;
 
-        return this->pool().compare( select( a ), select( b ) );
+        return pool().compare( select( a ), select( b ) );
     }
 };
 
-#define STORE_CLASS using Table = typename Base::Table; \
-    using Node = typename Base::Node; \
+#define STORE_CLASS using Node = typename Base::Node; \
     using Hasher = typename Base::Hasher; \
     using Base::hasher; \
     using Base::hash; \
@@ -167,11 +177,10 @@ struct StoreCommon {
     using Base::valid; \
     using Base::equal; \
     using Base::has; \
-    using Base::_table; \
     using Base::_id
 #define STORE_ITERATOR using Iterator = StoreIterator< This >; \
     Iterator begin() { return Iterator( *this, 0 ); } \
-    Iterator end() { return Iterator( *this, _table.size() ); } \
+    Iterator end() { return Iterator( *this, table().size() ); } \
     friend class StoreIterator< This >
 
 template < typename This >
@@ -185,7 +194,7 @@ class StoreIterator
     StoreIterator( This& store, size_t i ) : i( i ), store( store ) { }
 
     VertexId operator*() {
-        return VertexId( store._table[ i ] );
+        return VertexId( store.table()[ i ] );
     }
 
     StoreIterator& operator++() {
@@ -204,10 +213,12 @@ class StoreIterator
 
 template < typename _Node, typename _Hasher, typename Statistics >
 struct PartitionedStore
-    : public StoreCommon< HashSet< _Node, _Hasher >, Statistics >
+    : public StoreCommon< PartitionedStore< _Node, _Hasher, Statistics >,
+                          HashSet< _Node, _Hasher >, Statistics >
 {
+    using Table = HashSet< _Node, _Hasher >;
     using This = PartitionedStore< _Node, _Hasher, Statistics >;
-    using Base = StoreCommon< HashSet< _Node, _Hasher >, Statistics >;
+    using Base = StoreCommon< This, Table, Statistics >;
     STORE_CLASS;
 
     struct VertexId {
@@ -244,11 +255,8 @@ struct PartitionedStore
         }
     };
 
-template < typename Table, typename _Hasher, typename Statistics >
-struct TableUtils
-{
-    typedef _Hasher Hasher;
-    typedef typename Table::Item T;
+    struct Vertex {
+        Node node;
 
         explicit Vertex( Node n ) : node( n ) { }
         Vertex() : node() { }
@@ -261,6 +269,7 @@ struct TableUtils
             return VertexId( node );
         }
 
+        template < typename Graph >
         Vertex clone( Graph& g ) {
             return Vertex( g.clone( node ) );
         }
@@ -311,29 +320,9 @@ struct TableUtils
         setPermanent( s );
     }
 
-    bool has( T s ) { return table.has( s ); }
-    bool valid( T a ) { return hasher().valid( a ); }
-    hash_t hash( T s ) { return hasher().hash( s ); }
-    bool equal( T a, T b ) { return hasher().equal( a, b ); }
-    bool alias( T a, T b ) { return visitor::alias( a, b ); }
-    void setSize( int sz ) { table.setSize( sz ); }
-
-    TableUtils( Pool& pool, int slack ) : table( Hasher( pool, slack ) ), id( nullptr ) {}
-
-    /* TODO: need to revision of this change */
-    template< typename... Args >
-    TableUtils( Pool& pool, int slack, Args&&... args ) :
-        table( Hasher( pool, slack), std::forward< Args >( args )... ),
-        id( nullptr )
-    {}
-};
-
     void update( Node s, hash_t h ) {}
 
-    PartitionedStore( Graph& g, int slack ) :
-            Base( g.base().alloc.pool(), slack )
-    { }
-    void update( T s, hash_t h ) {}
+    void setSize( int ) { } // TODO
 
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
@@ -544,13 +533,14 @@ struct HcHasher : Hasher
 
 template< typename _Node, typename _Hasher, typename Statistics >
 struct HcStore
-    : public StoreCommon< TableUtils< HashSet< typename Graph::Node, HcHasher< Hasher > >,
-        HcHasher< Hasher >, Statistics > >
+        : public StoreCommon< HcStore< _Node, _Hasher, Statistics >,
+                              HashSet< _Node, HcHasher< _Hasher > >, Statistics >
 {
     static_assert( wibble::TSame< _Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
-    using Base = StoreCommon< HashSet< _Node, HcHasher< _Hasher > >, Statistics >;
     using This = HcStore< _Node, _Hasher, Statistics >;
+    using Table = HashSet< _Node, HcHasher< _Hasher > >;
+    using Base = StoreCommon< This, Table, Statistics >;
     STORE_CLASS;
 
     struct VertexId {
@@ -567,6 +557,10 @@ struct HcStore
         template < typename Extension >
         Extension& extension( Pool& p, int n = 0 ) {
             return p.template get< Extension >( hash, n );
+        }
+
+        bool valid() {
+            return hash.valid();
         }
 
         template < typename BS >
@@ -626,15 +620,34 @@ struct HcStore
     typedef Vertex QueueVertex;
 
     template < typename Graph >
-    HcStore( Graph &g, int slack ) :
-            Base( g.base().alloc.pool(), slack ),
-            _alloc( g.base().alloc )
+    HcStore( Graph& g, Hasher h, This * = nullptr ) : _table( h ), _alloc( g.base().alloc )
     {
         static_assert( wibble::TSame< typename Graph::Node, Node >::value,
                 "using incompatible graph" );
     }
 
+    template < typename Graph >
+    HcStore( Graph& g, int slack, This *m = nullptr ) :
+             This( g, Hasher( g.base().alloc.pool(), slack ), m )
+    { }
+
+    Table _table;
     Allocator& _alloc;
+
+    Table& table() {
+        return _table;
+    }
+    const Table& table() const {
+        return _table;
+    }
+
+    Vertex fromQueue( QueueVertex v ) {
+        return v;
+    }
+
+    QueueVertex toQueue( Vertex v ) {
+        return v;
+    }
 
     hash_t& stubHash( Blob stub ) {
         return pool().template get< hash_t >( stub, slack() );
@@ -655,13 +668,13 @@ struct HcStore
 
     void store( Blob s, hash_t h, bool * = nullptr ) {
         // store just a stub containing state information
-        Blob stub = m_graph.base().alloc.new_blob( int( sizeof( hash_t ) ) );
-//        Statistics::global().hashadded( this->id , memSize( stub ) );
-//        Statistics::global().hashsize( this->id, this->table.size() );
-        this->pool().copyTo( s, stub, this->slack() );
+        Blob stub = _alloc.new_blob( int( sizeof( hash_t ) ) );
+//        Statistics::global().hashadded( this->_id , memSize( stub ) );
+//        Statistics::global().hashsize( this->_id, this->_table.size() );
+        this->pool().copyTo( s, stub, slack() );
         stubHash( stub ) = h;
-        Node n = this->m_base.table.insertHinted( stub, h );
-        setPermanent( this->pool(), n );
+        Node n = _table.insertHinted( stub, h );
+        setPermanent( pool(), n );
         if ( !alias( n, stub ) )
             this->pool().free( stub );
         assert( this->equal( s, stub ) );
@@ -718,10 +731,14 @@ template < template < template < typename, typename > class, typename, typename 
     template < typename, typename > class _BaseTable, typename _Node, typename _Hasher,
     typename Statistics >
 struct CompressedStore
-    : public StoreCommon< TableUtils< Table< BaseTable, typename Graph::Node, Hasher >,
-        Hasher, Statistics > >
+    : public StoreCommon< CompressedStore< _Table, _BaseTable, _Node, _Hasher, Statistics >,
+                          _Table< _BaseTable, _Node, _Hasher >, Statistics >
 {
-    typedef typename Graph::Node Node;
+    using Table = _Table< _BaseTable, _Node, _Hasher >;
+    using This = CompressedStore< _Table, _BaseTable, _Node, _Hasher, Statistics >;
+    using Base = StoreCommon< This, Table, Statistics >;
+    STORE_CLASS;
+
     static_assert( wibble::TSame< Node, Blob >::value,
             "CompressedStore can only work with Blob nodes" );
 
@@ -739,6 +756,11 @@ struct CompressedStore
 
         bool valid() {
             return compressed.valid();
+        }
+
+        void free( Pool& p ) {
+            p.free( compressed );
+            compressed = Node();
         }
 
         template < typename BS >
@@ -804,19 +826,21 @@ struct CompressedStore
 
     typedef VertexId QueueVertex;
 
+    Table _table;
+    Table& table() {
+        return _table;
+    }
+    const Table& table() const {
+        return _table;
+    }
+
     template< typename Graph, typename... Args >
-    CompressedStore( Graph& g, int slack, Args&&... args ) :
-        Base( g.base().alloc.pool(), slack, std::forward< Args >( args )... )
+    CompressedStore( Graph&, Hasher h, This *, Args&&... args ) :
+        _table( h, std::forward< Args >( args )... )
     {
         static_assert( wibble::TSame< typename Graph::Node, Node >::value,
                 "using incompatible graph" );
     }
-
-    template < typename Graph, typename... Args >
-    CompressedStore( Graph& g, int slack, Args&&... args ) :
-        This( g, Hasher( g.base().alloc.pool(), slack ),
-                     std::forward< Args >( args )... )
-    { }
 
     QueueVertex toQueue( Vertex v ) {
         return v.getVertexId();
@@ -884,22 +908,29 @@ template < typename _Node, typename _Hasher, typename Statistics >
 struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
         HashSet, _Node, _Hasher, Statistics >
 {
-    typedef CompressedStore< TreeCompressedHashSet, HashSet, Graph, Hasher,
-              Statistics > Base;
-    typedef typename Graph::Node Node;
-    typedef typename Base::Vertex Vertex;
-    typedef typename Base::VertexId VertexId;
-    typedef typename Base::QueueVertex QueueVertex;
-    typedef TreeCompressedHashSet< HashSet, Node, Hasher > Table;
+    using Base = CompressedStore< TreeCompressedHashSet, HashSet, _Node,
+          _Hasher, Statistics >;
+    using This = TreeCompressedStore< _Node, _Hasher, Statistics >;
+    using Table = typename This::Table;
+    using VertexId = typename Base::VertexId;
+    using Vertex = typename Base::Vertex;
+    using QueueVertex = typename Base::QueueVertex;
+    STORE_CLASS;
+    using Base::_table;
+    using Base::table;
 
-    template< typename Graph, typename... Args >
-    TreeCompressedStore( Graph& g, int slack, This *, Args&&... args ) :
-        Base( g, slack, 16, std::forward< Args >( args )... )
+    template< typename Graph >
+    TreeCompressedStore( Graph& g, Hasher h ) : This( g, h, nullptr )
     { }
 
     template< typename Graph, typename... Args >
-    TreeCompressedStore( Graph& g, Hasher h, Args&&... args ) :
-        Base( g, h, 16, std::forward< Args >( args )... )
+    TreeCompressedStore( Graph& g, int slack, This *m, Args&&... args ) :
+        This( g, _Hasher( g.base().alloc.pool(), slack ), m, std::forward< Args >( args )... )
+    { }
+
+    template< typename Graph, typename... Args >
+    TreeCompressedStore( Graph& g, Hasher h, This *m, Args&&... args ) :
+        Base( g, h, m, 16, std::forward< Args >( args )... )
     { }
 
     Vertex fromQueue( QueueVertex v ) {
