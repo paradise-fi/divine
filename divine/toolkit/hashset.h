@@ -208,7 +208,7 @@ struct HashSet
 
 
     HashSet() : HashSet( Hasher() ) { }
-    HashSet( Hasher h ) : HashSet( h, 32 ) { }
+    explicit HashSet( Hasher h ) : HashSet( h, 32 ) { }
 
     HashSet( Hasher h, int initial )
         : m_used( 0 ), m_maxsize( -1 ), growing( false ), hasher( h )
