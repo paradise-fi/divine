@@ -364,35 +364,162 @@ struct TableUtils
 
 template < typename _Node, typename _Hasher, typename Statistics >
 struct SharedStore
-    : public StoreCommon< TableUtils< SharedHashSet< typename Graph::Node, Hasher >,
-        Hasher, Statistics > >
+    : public StoreCommon< SharedStore< _Node, _Hasher, Statistics >,
+                          SharedHashSet< _Node, _Hasher >, Statistics >
 {
-    typedef typename Graph::Node T;
-    typedef TableUtils< SharedHashSet< typename Graph::Node, Hasher >, Hasher, Statistics > Super;
-    typedef SharedStore< Graph, Hasher, Statistics > This;
+    typedef SharedStore< _Node, _Hasher, Statistics > This;
+    typedef SharedHashSet< _Node, _Hasher > Table;
+    typedef StoreCommon< This, Table, Statistics > Base;
+    typedef std::shared_ptr< Table > TablePtr;
+    STORE_CLASS;
 
-    enum { defaultSharedStoreSize = 65536 };
+    struct VertexId {
+        Node node;
+        explicit VertexId( Node n ) : node( n ) { }
+        VertexId() : node() { }
 
-    template < typename Graph >
-    SharedStore( Graph & ) : Super( defaultSharedStoreSize ) {}
-    SharedStore( unsigned size = defaultSharedStoreSize ) : Super( size ) {}
+        uintptr_t weakId() {
+            return node.valid() ?
+                reinterpret_cast< uintptr_t >( node.ptr )
+                : 0;
+        }
 
-    void update( T s, hash_t h ) {}
+        template < typename Extension >
+        Extension& extension( Pool& p, int n = 0 ) {
+            return p.template get< Extension >( node, n );
+        }
+
+        bool valid() {
+            return node.valid();
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, VertexId vi )
+        {
+            return bs << vi.node;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, VertexId& vi )
+        {
+            return bs >> vi.node;
+        }
+    };
+
+    struct Vertex {
+        Node node;
+
+        explicit Vertex( Node n ) : node( n ) { }
+        Vertex() : node() { }
+
+        Node getNode() {
+            return node;
+        }
+
+        VertexId getVertexId() {
+            return VertexId( node );
+        }
+
+        template < typename Graph >
+        Vertex clone( Graph& g ) {
+            return Vertex( g.clone( node ) );
+        }
+
+        void free( Pool& p ) {
+            p.free( node );
+            node = Node();
+        }
+
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator<<(
+                bitstream_impl::base< BS >& bs, Vertex v )
+        {
+            return bs << v.node;
+        }
+        template < typename BS >
+        friend bitstream_impl::base< BS >& operator>>(
+                bitstream_impl::base< BS >& bs, Vertex& v )
+        {
+            return bs >> v.node;
+        }
+    };
+
+    typedef Vertex QueueVertex;
+
+    TablePtr _table;
+
+    template< typename Graph >
+    SharedStore( Graph& g, int slack, This *master = nullptr ) :
+        This( g, Hasher( g.base().alloc.pool(), slack ), master )
+    {}
+
+    template< typename Graph >
+    SharedStore( Graph &, Hasher h, This *master = nullptr ) :
+        _table( master ? master->_table : std::make_shared< Table >( h ) )
+    { }
+
+    Table& table() {
+        return *_table;
+    }
+    const Table& table() const {
+        return *_table;
+    }
+
+    Vertex fromQueue( QueueVertex v ) {
+        return v;
+    }
+
+    QueueVertex toQueue( Vertex v ) {
+        return v;
+    }
+
+    /*
+    Vertex fetch( Node node, hash_t h, bool* had = nullptr ) {
+        return Vertex( Base::_fetch( node, h, had ) );
+    }
+    */
+
+    Vertex fetchByVertexId( VertexId vi ) {
+        return fetch( vi.node, hash( vi.node ) );
+    }
+
+    VertexId fetchVertexId( VertexId vi ) {
+        return fetchByVertexId( vi ).getVertexId();
+    }
+
+    /*
+    Vertex store( Node node, hash_t h, bool* had = nullptr ) {
+        Node n = Base::_store( node, h, had );
+        return Vertex( n );
+    }
+    */
+
+    void update( Node s, hash_t h ) {}
 
     void maxSize( size_t ) {}
+    void setSize( int ) { } // TODO
 
-    bool store( T s, hash_t h ) {
+    void store( T s, hash_t h, bool* had = nullptr ) {
         Statistics::global().hashadded( Super::id->id(), memSize( s ) );
         Statistics::global().hashsize( Super::id->id(), table().size() );
         bool inserted;
         std::tie( std::ignore, inserted ) = table().insertHinted( s, h );
+        if ( had )
+            *had = !inserted;
         setPermanent( s );
-        return inserted;
     }
 
-    template< typename W >
-    int owner( W &w, T s, hash_t hint = 0 ) {
+    template< typename W, typename V >
+    int owner( W &w, V, hash_t hint = 0 ) const {
         return w.id();
+    }
+
+    T fetch( T s, hash_t h, bool* had = nullptr ) {
+        bool _had = table().has( s, h );
+        if ( had )
+            *had = _had;
+        return s;
     }
 };
 
