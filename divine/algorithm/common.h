@@ -61,6 +61,7 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
                 Vertex fV = f.valid()
                               ? a.store().fetch( f, a.store().hash( f ) )
                               : Vertex();
+                assert( !f.valid() || a.store().valid( fV ) );
                 v.queue( fV, n, l );
             } );
     }
