@@ -350,6 +350,7 @@ struct Evaluator
     void implement_bitcast() {
         auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
         assert_eq( r, Problem::NoProblem );
+        static_cast< void >( r );
     }
 
     template< typename _T >
@@ -547,6 +548,7 @@ struct Evaluator
                                                      instruction.values.size() - 1 ) ),
                           instruction.result(), instruction.result().width );
         assert_eq( r, Problem::NoProblem );
+        static_cast< void >( r );
     }
 
     void implement_insertvalue() { /* NB. Implemented against spec, UNTESTED! */

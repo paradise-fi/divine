@@ -60,6 +60,7 @@ divine::Blob Interpreter::initial( Function *f )
 
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...
+    static_cast< void >( tid );
     state.enter( info().functionmap[ f ] );
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
