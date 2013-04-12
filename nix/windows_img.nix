@@ -25,7 +25,7 @@ let origname = name;
     ensureDir $out
     set -x
 
-    ${qemu_kvm}/bin/qemu-img create -f qcow2 $out/hda.img 10G
+    ${qemu_kvm}/bin/qemu-img create -f qcow2 $out/hda.img 16G
     ${qemu_kvm}/bin/qemu-kvm \
         -cdrom ${winpe_iso}/boot.iso \
         -drive file=$iso,index=3,media=cdrom \

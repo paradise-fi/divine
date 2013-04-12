@@ -27,8 +27,10 @@ let origtools = tools; origname = name;
 
   stage2 = writeText "stage2.cmd" ''
     rem run commands to install build dependencies
+    fsutil volume diskfree C:
     ${tools_install}
     setx PATH %PATH%
+    fsutil volume diskfree C:
 
 :retry
     net use e: \\10.0.2.4\xchg
