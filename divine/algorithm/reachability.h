@@ -146,6 +146,14 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return shared;
     }
 
+    Shared _ceIsInitial( Shared sh ) {
+        shared = sh;
+        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce._ceIsInitial( *this, this->store() );
+        return shared;
+    }
+
+
     void counterexample( VertexId n ) {
         shared.ce.initial = n;
         ce.setup( this->graph(), shared, this->store().hasher() );
@@ -213,6 +221,7 @@ ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
 ALGORITHM_RPC_ID( Reachability, 3, _por );
 ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
 ALGORITHM_RPC_ID( Reachability, 5, _successorTrace );
+ALGORITHM_RPC_ID( Reachability, 6, _ceIsInitial );
 
 }
 }

@@ -280,6 +280,13 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         return shared;
     }
 
+    Shared _ceIsInitial( Shared sh ) {
+        shared = sh;
+        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce._ceIsInitial( *this, this->store() );
+        return shared;
+    }
+
     void _traceCycle() {
         ce._traceCycle( *this );
     }
@@ -346,6 +353,7 @@ ALGORITHM_RPC_ID( Map, 4, _traceCycle );
 ALGORITHM_RPC_ID( Map, 5, _por );
 ALGORITHM_RPC_ID( Map, 6, _por_worker );
 ALGORITHM_RPC_ID( Map, 7, _successorTrace );
+ALGORITHM_RPC_ID( Map, 8, _ceIsInitial );
 
 }
 }

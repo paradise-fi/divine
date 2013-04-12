@@ -96,11 +96,8 @@ struct LtlCE {
 
     template< typename Worker, typename Store >
     void _parentTrace( Worker &w, Store &s ) {
-        if ( shared().ce.current_updated ) {
-            if ( shared().ce.successor_id == 0 )
-                shared().ce.successor_id = whichInitial( shared().ce.current, s );
+        if ( shared().ce.current_updated )
             return;
-        }
         assert( s.valid( shared().ce.current ) );
         if ( s.owner( w, shared().ce.current ) == w.id() ) {
             Node n = s.fetch( shared().ce.current, s.hash( shared().ce.current ) );
@@ -109,11 +106,20 @@ struct LtlCE {
             shared().ce.successor = n;
             shared().ce.current = extension( n ).parent;
             shared().ce.current_updated = true;
-            shared().ce.successor_id = whichInitial( h, s );
             VertexId init = shared().ce.initial;
             shared().ce.is_ce_initial = visitor::equalId( s, init, h );
-        } else if ( shared().ce.successor_id == 0 )
-            shared().ce.successor_id = whichInitial( shared().ce.successor, s );
+        }
+    }
+
+    template < typename Worker, typename Store >
+    void _ceIsInitial( Worker& w, Store& s ) {
+        if ( shared().ce.current_updated )
+            return;
+        assert( s.valid( shared().ce.current ) );
+        if ( s.owner( w, shared().ce.current ) == w.id() ) {
+            shared().ce.successor_id = whichInitial( shared().ce.current, s );
+            shared().ce.current_updated = shared().ce.successor_id > 0;
+        }
     }
 
     template < typename Worker, typename Store >
@@ -129,7 +135,9 @@ struct LtlCE {
                         if ( this->shared().ce.current_updated )
                             return;
                         ++id;
-                        VertexId h = s.fetch( n, s.hash( n ) ).getVertexId();
+                        Vertex sSt = s.fetch( n, s.hash( n ) );
+                        VertexId h = sSt.getVertexId();
+                        n = sSt.getNode();
                         if ( visitor::equalId( s, h, this->shared().ce.current ) ) {
                             this->shared().ce.parent = n;
                             this->shared().ce.successor_id = id;
@@ -267,8 +275,8 @@ struct LtlCE {
             trace.pop_back();
         }
 
-        for ( int i = ntrace.size() - 1; i >= 0; --i ) {
-            o_tr_str << ntrace[ i ] << ",";
+        for ( unsigned next : ntrace ) {
+            o_tr_str << next << ",";
         }
 
         // drop trailing comma
@@ -315,30 +323,67 @@ struct LtlCE {
     // -- Lasso counterexample generation
     // --
 
-    template< typename Domain, typename Alg, typename StopTraceBack, typename InitSuccTrace >
-    Traces parentTrace( Domain &d, Alg &a, StopTraceBack stop, InitSuccTrace init ) {
+    enum class TraceType {
+        Linear,
+        Lasso
+    };
+
+    template< typename Domain, typename Alg, TraceType traceType >
+    Traces parentTrace( Domain &d, Alg &a ) {
+        Node parent = shared().ce.parent;
         std::deque< VertexId > hTrace;
+
         // trace backward to initial using handles
         shared().ce.current = shared().ce.initial;
+        hTrace.push_front( shared().ce.initial );
         shared().ce.parent = Node();
         shared().ce.successor = VertexId(); // !valid()
         shared().ce.successor_id = 0;
         while ( a.store().valid( shared().ce.current ) ) {
             shared().ce.current_updated = shared().ce.is_ce_initial = false;
-            shared().ce.successor_id = 0;
             d.ring( &Alg::_parentTrace );
             assert( shared().ce.current_updated );
             hTrace.push_front( shared().ce.current );
-            if ( stop( shared().ce ) )
-                break;
+
+            if ( traceType == TraceType::Linear ) {
+                shared().ce.successor_id = 0;
+                shared().ce.current_updated = false;
+                d.ring( &Alg::_ceIsInitial );
+                if ( shared().ce.current_updated )
+                    break;
+            } else if ( traceType == TraceType::Lasso ) {
+                if ( shared().ce.is_ce_initial )
+                    break;
+            }
+            else
+                assert_die();
         }
         hTrace.pop_front(); // initial
 
         // track forward by handles, generating full traces
         Trace trace;
         NumericTrace numTrace;
-        init( shared().ce, trace, numTrace );
 
+        switch ( traceType ) {
+            case TraceType::Linear: {
+                assert( shared().ce.successor_id );
+                Node initial = getInitialById( shared().ce.successor_id );
+                initial = a.store().fetch( initial, a.store().hash( initial ) ).getNode();
+                visitor::setPermanent( a.pool(), initial );
+                assert( initial.valid() );
+                shared().ce.parent = initial;
+                trace.push_back( initial );
+                numTrace.push_back( shared().ce.successor_id );
+                break; }
+            case TraceType::Lasso: {
+                shared().ce.parent = parent;
+                break; }
+            default:
+                assert_die();
+        }
+
+
+        assert( a.store().valid( shared().ce.parent ) );
         shared().ce.successor = VertexId();
         while ( !hTrace.empty() ) {
             shared().ce.current_updated = false;
@@ -347,6 +392,7 @@ struct LtlCE {
             hTrace.pop_front();
             d.ring( &Alg::_successorTrace );
             assert( shared().ce.current_updated );
+            visitor::setPermanent( a.pool(), shared().ce.parent );
             trace.push_back( shared().ce.parent );
             numTrace.push_back( shared().ce.successor_id );
         }
@@ -360,30 +406,20 @@ struct LtlCE {
     template< typename Domain, typename Alg >
     Node linear( Domain &d, Alg &a )
     {
-        return generateLinear( a, g(), parentTrace(
-                d, a, []( ThisCeShared& ce ) { return ce.successor_id; },
-                [ this ]( ThisCeShared& ce, Trace& trace, NumericTrace& numTrace )
-                {
-                    assert( ce.successor_id );
-                    Node initial = this->getInitialById( ce.successor_id );
-                    assert( initial.valid() );
-                    ce.parent = initial;
-                    trace.push_back( initial );
-                    numTrace.push_back( ce.successor_id );
-                } ) );
+        return generateLinear( a, g(),
+                parentTrace< Domain, Alg, TraceType::Linear >( d, a ) );
     }
 
     template< typename Domain, typename Alg >
     void lasso( Domain &d, Alg &a )
     {
-        linear( d, a );
+        Node cycleNode = linear( d, a );
+        assert( a.store().valid( cycleNode ) );
+        shared().ce.parent = cycleNode;
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
-        generateLasso( a, g(), parentTrace(
-                d, a, []( ThisCeShared& ce ) { return ce.is_ce_initial; },
-                []( ThisCeShared& ce, Trace& trace, NumericTrace& numTrace ) {
-                    ce.parent = trace.back();
-                } ) );
+        generateLasso( a, g(),
+                parentTrace< Domain, Alg, TraceType::Lasso >( d, a ) );
     }
 };
 

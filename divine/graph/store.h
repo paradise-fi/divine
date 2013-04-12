@@ -170,7 +170,7 @@ struct TableUtils
     }
 
     // Store node in hash table
-    bool store( T s, hash_t h ) {
+    void store( T s, hash_t h, bool * = nullptr ) {
         Statistics::global().hashadded( id->id(), memSize( s, hasher().pool ) );
         Statistics::global().hashsize( id->id(), table.size() );
         table.insertHinted( s, h );
@@ -562,14 +562,24 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
         Base( g, slack, 16, std::forward< Args >( args )... )
     { }
 
+    VertexId fetchVertexId( VertexId vi ) {
+        return VertexId( this->m_base.fetch( vi.compressed, _hash( vi ) ) );
+    }
+
     using Base::owner;
 
     template< typename W >
     int owner( W &w, VertexId h ) {
-        return ( this->m_base.table.header( h.compressed ).fork
-                ? this->m_base.table.rootFork( h.compressed )->hash
-                : this->m_base.table.m_roots.hasher.hash( h.compressed ) ) % w.peers();
+        return _hash( h ) % w.peers();
     }
+
+  private:
+    hash_t _hash( VertexId vi ) {
+        return this->m_base.table.header( vi.compressed ).fork
+                ? this->m_base.table.rootFork( vi.compressed )->hash
+                : this->m_base.table.m_roots.hasher.hash( vi.compressed );
+    }
+
 };
 
 }
