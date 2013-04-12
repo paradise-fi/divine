@@ -12,8 +12,6 @@
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H
 
-#define DISABLE_SHARED // XXX
-
 namespace divine {
 namespace visitor {
 
@@ -202,7 +200,7 @@ struct BFV : Common< Queue, S > {
          typename S::Store &s )
         : Super( n, g, s, typename Super::Queue( g ) ) {}
 };
-#ifndef DISABLE_SHARED
+
 template< typename S >
 struct BFVShared : Common< SharedQueue, S > {
     typedef Common< SharedQueue, S > Super;
@@ -217,7 +215,7 @@ struct BFVShared : Common< SharedQueue, S > {
     inline typename Super::Queue& open() { return Super::_queue; }
     virtual void terminate() { Super::terminate(); open().termination.reset(); }
 };
-#endif
+
 template< typename S >
 struct DFV : Common< Stack, S > {
     typedef Common< Stack, S > Super;
@@ -377,11 +375,10 @@ struct Partitioned {
  * you are ready for some serious debugging (throw in some gcc errors for fun
  * and profit).
  */
-#ifndef DISABLE_SHARED
 struct Shared {
     template< typename S >
     struct Data {
-        typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
+        typedef divine::SharedQueue< S > Chunker;
         typedef SharedHashSet< typename S::Graph::Node > Table;
 
         std::shared_ptr< typename Chunker::ChunkQ > chunkq;
@@ -402,8 +399,9 @@ struct Shared {
         typedef typename S::Label Label;
         typedef typename S::Store Store;
         typedef typename S::Statistics Statistics;
+        typedef typename S::Vertex Vertex;
 
-        typedef divine::SharedQueue< typename S::Graph, typename S::Statistics > Chunker;
+        typedef divine::SharedQueue< S > Chunker;
 
         Store closed;
         BFVShared< S > bfv;
@@ -419,23 +417,23 @@ struct Shared {
             return worker.id();
         }
 
-        inline void queue( Node from, Node to, Label label ) {
+        inline void queue( Vertex from, Node to, Label label ) {
             setIds();
             bfv.queue( from, to, label );
         }
 
-        inline void queueAny( Node from, Node to, Label label ) {
+        inline void queueAny( Vertex from, Node to, Label label ) {
             queue( from, to, label );
         }
 
-        visitor::TransitionAction transition( Node f, Node t ) {
+        visitor::TransitionAction transition( Vertex f, Node t ) {
             visitor::TransitionAction tact = S::transition( notify, f, t );
             if ( tact == TerminateOnTransition )
                 worker.interrupt();
             return tact;
         }
 
-        visitor::ExpansionAction expansion( Node n ) {
+        visitor::ExpansionAction expansion( Vertex n ) {
             assert_eq( owner( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
             if ( eact == TerminateOnState )
@@ -484,7 +482,6 @@ struct Shared {
     };
 };
 
-#endif
 }
 }
 #endif
