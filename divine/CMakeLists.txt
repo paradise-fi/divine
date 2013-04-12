@@ -143,6 +143,8 @@ target_link_libraries( divine-test libdivine wibble )
 if( NOT WIN32 )
   target_link_libraries( libdivine dl )
   wibble_check_target( divine-test )
+else()
+    target_link_libraries( libdivine psapi )
 endif( NOT WIN32 )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
