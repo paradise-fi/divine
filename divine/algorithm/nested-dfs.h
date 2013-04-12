@@ -228,7 +228,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
             progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
-            this->store().table.m_maxsize = m.execution.initialTable; // XXX
+            this->store().setSize( m.execution.initialTable ); // XXX
+            inner.graph = std::shared_ptr< Graph >( this->initGraph( *this ) );
         }
         finished = false;
         inner.outer = this;
