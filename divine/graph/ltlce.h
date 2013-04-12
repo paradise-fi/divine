@@ -330,9 +330,11 @@ struct LtlCE {
         Linear,
         Lasso
     };
+    struct Linear { static constexpr TraceType type = TraceType::Linear; };
+    struct Lasso { static constexpr TraceType type = TraceType::Lasso; };
 
-    template< typename Domain, typename Alg, TraceType traceType >
-    Traces parentTrace( Domain &d, Alg &a ) {
+    template< typename Domain, typename Alg, typename TT >
+    Traces parentTrace( Domain &d, Alg &a, TT traceType ) {
         Node parent = shared().ce.parent;
         std::deque< VertexId > hTrace;
 
@@ -349,13 +351,13 @@ struct LtlCE {
             assert( shared().ce.current_updated );
             hTrace.push_front( shared().ce.current );
 
-            if ( traceType == TraceType::Linear ) {
+            if ( traceType.type == TraceType::Linear ) {
                 shared().ce.successor_id = 0;
                 shared().ce.current_updated = false;
                 d.ring( &Alg::_ceIsInitial );
                 if ( shared().ce.current_updated )
                     break;
-            } else if ( traceType == TraceType::Lasso ) {
+            } else if ( traceType.type == TraceType::Lasso ) {
                 if ( shared().ce.is_ce_initial ) {
                     if ( first )
                         break;
@@ -368,11 +370,19 @@ struct LtlCE {
         }
         hTrace.pop_front(); // initial
 
+        return succTrace( d, a, traceType, parent, hTrace.begin(), hTrace.end() );
+    }
+
+
+    template< typename Domain, typename Alg, typename Iter, typename TT >
+    Traces succTrace( Domain &d, Alg &a, TT traceType, Node parent,
+            Iter hTraceBegin, Iter hTraceEnd )
+    {
         // track forward by handles, generating full traces
         Trace trace;
         NumericTrace numTrace;
 
-        switch ( traceType ) {
+        switch ( traceType.type ) {
             case TraceType::Linear: {
                 if ( shared().ce.successor_id == 0 ) // empty CE
                     return std::make_pair( trace, numTrace );
@@ -385,7 +395,7 @@ struct LtlCE {
                 numTrace.push_back( shared().ce.successor_id );
                 break; }
             case TraceType::Lasso: {
-                hTrace.pop_front();
+                ++hTraceBegin;
                 shared().ce.parent = parent;
                 break; }
             default:
@@ -395,11 +405,11 @@ struct LtlCE {
 
         assert( a.store().valid( shared().ce.parent ) );
         shared().ce.successor = VertexId();
-        while ( !hTrace.empty() ) {
+        while ( hTraceBegin != hTraceEnd ) {
             shared().ce.current_updated = false;
             shared().ce.successor_id = 0;
-            shared().ce.current = hTrace.front();
-            hTrace.pop_front();
+            shared().ce.current = *hTraceBegin;
+            ++hTraceBegin;
             d.ring( &Alg::_successorTrace );
             assert( shared().ce.current_updated );
             visitor::setPermanent( a.pool(), shared().ce.parent );
@@ -413,11 +423,71 @@ struct LtlCE {
         return std::make_pair( trace, numTrace );
     }
 
+    template< typename Alg, typename Iter, typename TT >
+    Traces succTraceLocal( Alg &a, TT traceType, Node parent,
+            Iter hTraceBegin, Iter hTraceEnd )
+    {
+        // track forward by handles, generating full traces
+        Trace trace;
+        NumericTrace numTrace;
+
+        switch ( traceType.type ) {
+            case TraceType::Linear: {
+                if ( hTraceBegin == hTraceEnd ) // empty CE
+                    return std::make_pair( trace, numTrace );
+                int i = 0;
+                bool done = false;
+                a.graph().initials( [&]( Node, Node o, Label ) {
+                        if ( !done ) {
+                            ++i;
+                            auto vi = a.store().fetch( o, a.store().hash( o ) ).getVertexId();
+                            if ( visitor::equalId( a.store(), vi, *hTraceBegin ) ) {
+                                parent = o;
+                                done = true;
+                            }
+                        }
+                    } );
+                assert( parent.valid() );
+                visitor::setPermanent( a.pool(), parent );
+                trace.push_back( parent );
+                numTrace.push_back( i );
+                break; }
+            case TraceType::Lasso:
+                break;
+            default:
+                assert_die();
+        }
+
+
+        assert( a.store().valid( parent ) );
+        Node successor;
+        for ( ++hTraceBegin; hTraceBegin != hTraceEnd; ++hTraceBegin ) {
+            int i = 0;
+            bool done = false;
+            a.graph().allSuccessors( parent, [&]( Node t, Label ) {
+                    if ( !done ) {
+                        ++i;
+                        auto vi = a.store().fetch( t, a.store().hash( t ) ).getVertexId();
+                        if ( visitor::equalId( a.store(), vi, *hTraceBegin ) ) {
+                            parent = t;
+                            done = true;
+                        }
+                    }
+                } );
+            assert( done );
+            visitor::setPermanent( a.pool(), parent );
+            trace.push_back( parent );
+            numTrace.push_back( i );
+        }
+
+        return std::make_pair( trace, numTrace );
+    }
+
     template< typename Domain, typename Alg >
     Node linear( Domain &d, Alg &a )
     {
         return generateLinear( a, g(),
-                parentTrace< Domain, Alg, TraceType::Linear >( d, a ) );
+                parentTrace( d, a, Linear() ) );
     }
 
     template< typename Domain, typename Alg >
@@ -429,7 +499,7 @@ struct LtlCE {
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
         generateLasso( a, g(),
-                parentTrace< Domain, Alg, TraceType::Lasso >( d, a ) );
+                parentTrace( d, a, Lasso() ) );
     }
 };
 
