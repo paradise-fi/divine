@@ -137,9 +137,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     template< typename V >
-    void queueAll( V &v, bool reset = false ) {
-        for ( size_t i = 0; i < this->store().table.size(); ++i ) {
-            Node st = this->store().table[ i ];
+    void queueAll( V &visitor, bool reset = false ) {
+        for ( VertexId st : this->store() ) {
             if ( st.valid() ) {
                 if ( reset )
                     extension( st ).predCount = 0;
@@ -372,13 +371,13 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     Shared _counterexample( Shared sh ) {
         shared = sh;
-        for ( int i = 0; i < int( this->store().table.size() ); ++i ) {
+        for ( VertexId st : this->store() ) {
             if ( cycleFound() ) {
                 shared.cycle_node = cycleNode();
                 shared.cycle_found = true;
                 return shared;
             }
-            Node st = shared.cycle_node = this->store().table[ i ];
+            shared.cycle_node = st;
             if ( !st.valid() )
                 continue;
             if ( extension( st ).iteration == shared.iteration )

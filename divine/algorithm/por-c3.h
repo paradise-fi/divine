@@ -55,7 +55,8 @@ struct PORGraph : graph::Transform< G > {
     typedef void (*PredCount)( Pool&, VertexId, int );
     PredCount _predCount;
 
-    ASet< Node > to_expand;
+    BlobComparerLT bcomp;
+    std::set< VertexId, IdCompare > to_expand;
     bool finished;
 
     void updatePredCount( Node t, int v, int* pc ) {
@@ -74,9 +75,7 @@ struct PORGraph : graph::Transform< G > {
             _predCount( pool(), t, v );
     }
 
-    PORGraph() : _predCount( 0 ), bcomp( pool() ),
-        to_check( bcomp ), to_expand( bcomp )
-    {
+    PORGraph() : _predCount( 0 ), bcomp( pool() ) {
         this->base().initPOR();
     }
 
@@ -177,16 +176,6 @@ struct PORGraph : graph::Transform< G > {
                 }
             }
         }
-
-        static void cleanup( This &t )
-        {
-            for ( typename std::set< Node >::iterator j, i = t.to_check.begin();
-                  i != t.to_check.end(); i = j ) {
-                j = i; ++j;
-                if ( t.extension ( *i ).done )
-                    t.to_check.erase( i );
-            }
-        }
     };
 
     template< typename Algorithm >
@@ -261,7 +250,7 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void fullexpand( Yield yield, Node n ) {
         extension( n ).full = true;
-        std::set< std::pair< Node, Label > > all, ample, out;
+        ASet< std::pair< Node, Label > > all, ample, out;
         std::vector< std::pair< Node, Label > > extra;
 
         this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );

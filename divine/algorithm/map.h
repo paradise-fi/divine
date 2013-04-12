@@ -218,7 +218,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void _cleanup() {
-        for ( typename Setup::VertexId st : this->store() ) {
+        for ( VertexId st : this->store() ) {
             if ( this->store().valid( st ) ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = MapVertexId();

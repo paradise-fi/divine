@@ -126,14 +126,13 @@ struct Algorithm
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
         self.graph().setSlack( m_slack );
-        int slack = self.graph().alloc.slack();
+        int slack = self.graph().base().alloc.slack();
         typename Self::Store *s =
             new typename Self::Store( self.graph(), slack,
                     master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
-        s->hasher().setSlack( self.graph().setSlack( m_slack ) );
         s->setSize( meta().execution.initialTable );
-        s->id = &self;
+        s->setId( self );
         return s;
     }
 

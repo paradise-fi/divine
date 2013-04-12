@@ -81,6 +81,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         progress() << "generating counterexample... " << std::flush;
         typedef LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > CE;
         CE ce;
+        assert_unimplemented( /* will be fixed by LTL-CE patch */ );
+        /*
         auto ceStack = ce.succTraceLocal( *this, typename CE::Linear(), Node(),
                 ce_stack.rbegin(), ce_stack.rend() );
         ce.generateLinear( *this, this->graph(), ceStack );
@@ -89,6 +91,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         ce.generateLasso( *this, this->graph(), ceLasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
+        */
     }
 
     void run() {
