@@ -59,8 +59,8 @@ struct StoreCommon {
 
   public:
     template < typename... Args >
-    StoreCommon( Pool& pool, int slack, Args&&... args ) :
-        _table( Hasher( pool, slack ), std::forward< Args >( args )... ),
+    StoreCommon( Hasher hasher, Args&&... args ) :
+        _table( hasher, std::forward< Args >( args )... ),
         _id( nullptr )
     { }
 
@@ -490,7 +490,16 @@ struct HcStore
 
     typedef Vertex QueueVertex;
 
-    Graph &m_graph;
+    template < typename Graph >
+    HcStore( Graph &g, int slack ) :
+            Base( g.base().alloc.pool(), slack ),
+            _alloc( g.base().alloc )
+    {
+        static_assert( wibble::TSame< typename Graph::Node, Node >::value,
+                "using incompatible graph" );
+    }
+
+    Allocator& _alloc;
 
     hash_t& stubHash( Blob stub ) {
         return pool().template get< hash_t >( stub, slack() );
@@ -661,12 +670,18 @@ struct CompressedStore
     typedef VertexId QueueVertex;
 
     template< typename Graph, typename... Args >
-    CompressedStore( Graph& g, int slack, This *, Args&&... args ) :
+    CompressedStore( Graph& g, int slack, Args&&... args ) :
         Base( g.base().alloc.pool(), slack, std::forward< Args >( args )... )
     {
         static_assert( wibble::TSame< typename Graph::Node, Node >::value,
                 "using incompatible graph" );
     }
+
+    template < typename Graph, typename... Args >
+    CompressedStore( Graph& g, int slack, Args&&... args ) :
+        This( g, Hasher( g.base().alloc.pool(), slack ),
+                     std::forward< Args >( args )... )
+    { }
 
     QueueVertex toQueue( Vertex v ) {
         return v.getVertexId();
@@ -745,10 +760,12 @@ struct TreeCompressedStore : public CompressedStore< TreeCompressedHashSet,
     template< typename Graph, typename... Args >
     TreeCompressedStore( Graph& g, int slack, This *, Args&&... args ) :
         Base( g, slack, 16, std::forward< Args >( args )... )
-    {
-        static_assert( wibble::TSame< typename Graph::Node, Node >::value,
-                "using incompatible graph" );
-    }
+    { }
+
+    template< typename Graph, typename... Args >
+    TreeCompressedStore( Graph& g, Hasher h, Args&&... args ) :
+        Base( g, h, 16, std::forward< Args >( args )... )
+    { }
 
     Vertex fromQueue( QueueVertex v ) {
         return fetchByVertexId( v );
