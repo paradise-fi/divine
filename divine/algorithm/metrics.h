@@ -104,7 +104,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label )
         {
             t.shared.addEdge( t.graph(), from.getNode(), to.getNode() );
-            t.graph().template porTransition< Vertex >( from, to, 0 );
+            t.graph().porTransition( from, to, 0 );
             return visitor::FollowTransition;
         }
 

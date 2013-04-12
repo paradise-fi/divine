@@ -9,8 +9,8 @@
 namespace divine {
 namespace graph {
 
-template< typename G >
-struct FairGraph : NonPORGraph< G > {
+template< typename G, typename St >
+struct FairGraph : NonPORGraph< G, St > {
 
     typedef typename G::Node Node;
     typedef typename G::Label Label;
@@ -24,7 +24,7 @@ struct FairGraph : NonPORGraph< G > {
     int setSlack( int s ) {
         m_algslack = s;
         // copy id has to be treated as a part of the state information
-        NonPORGraph< G >::setSlack( s + sizeof( Extension ) );
+        NonPORGraph< G, St >::setSlack( s + sizeof( Extension ) );
         return s;
     }
 
@@ -86,7 +86,7 @@ struct FairGraph : NonPORGraph< G > {
         // therefore, if 'next' is not in copy 0, it is not found among the successors
         int orig = extension( next ).copy;
         extension( next ).copy = 0;
-        int ret = NonPORGraph< G >::successorNum( a, current, next, fromIndex );
+        int ret = NonPORGraph< G, St >::successorNum( a, current, next, fromIndex );
         extension( next ).copy = orig;
         return ret;
     }

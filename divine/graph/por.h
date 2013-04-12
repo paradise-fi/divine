@@ -8,14 +8,13 @@
 namespace divine {
 namespace graph {
 
-template< typename G >
+template< typename G, typename St >
 struct NonPORGraph : graph::Transform< G > {
 
     typedef typename G::Node Node;
+    typedef typename St::Vertex Vertex;
 
-    template < typename Vertex >
     void porExpansion( Vertex ) {}
-    template < typename Vertex >
     void porTransition( Vertex, Vertex, void (*)( Pool&, Vertex, int ) ) {}
     bool full( Node ) { return true; }
 
