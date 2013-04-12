@@ -200,9 +200,9 @@ struct LtlCE {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
-            if ( from.valid() && to == t.shared().ce.initial ) {
-                t.extension( to ).parent = from;
+        static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
+            if ( from.getNode().valid() && t.whichInitial( to.getNode() ) ) {
+                t.extension( to.getNode() ).parent = from.getVertexId();
                 return visitor::TerminateOnTransition;
             }
             if ( t.updateIteration( to ) ) {
