@@ -96,14 +96,14 @@ struct SelectAlgorithm< Algorithm::Info > {
     using T = divine::Info< Setup >;
     static const bool available = true;
 };
-/* XXX
+
 template<>
 struct SelectAlgorithm< Algorithm::Draw > {
     template < typename Setup >
     using T = divine::Draw< Setup >;
     static const bool available = true;
 };
-*/
+
 algorithm::Algorithm* selectInfo( Meta& m ) {
     return selectGenerator< Algorithm::Info, Generator::NotSelected,
            Transform::NotSelected, Store::NotSelected, Visitor::NotSelected,

@@ -30,7 +30,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef NoStatistics Statistics;
 
     struct Extension {
-        int initial;
+        int initial:31;
+        bool intrace:1;
         int distance;
         int serial;
     };
@@ -42,10 +43,14 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     bool traceLabels;
     bool bfs;
 
-    std::shared_ptr< HashSet< Node, algorithm::Hasher > > intrace;
+    HashSet< Node, algorithm::Hasher > *intrace;
     std::set< std::pair< int, int > > intrace_trans;
 
     int id() { return 0; }
+
+    Extension &extension( Vertex n ) {
+        return extension( n.getNode() );
+    }
 
     Extension &extension( Node n ) {
         return pool().template get< Extension >( n );
@@ -55,7 +60,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         return this->graph().base().alloc.pool();
     }
 
-    static visitor::ExpansionAction expansion( This &t, Node st )
+    static visitor::ExpansionAction expansion( This &t, Vertex st )
     {
         bool limit = t.extension( st ).distance > t.maxdist;
 
@@ -67,14 +72,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return visitor::ExpandState;
     }
 
-    static visitor::TransitionAction transition( This &draw, Node f, Node t, Label l )
+    static visitor::TransitionAction transition( This &draw, Vertex f, Vertex t, Label l )
     {
-        if ( draw.extension( t ).serial == 0 ) {
-            if ( !draw.intrace->has( t ) )
+        if ( draw.extension( t ).serial == 0 && !draw.extension( t ).intrace )
                 draw.extension( t ).serial = ++draw.serial;
             else
-                draw.extension( t ) = draw.extension(
-                        std::get< 0 >( draw.intrace->get( t ) ) );
+                draw.extension( t ) = draw.extension( draw.intrace->get( t ) );
         }
 
         if ( draw.extension( t ).initial == 1 ) {
@@ -114,28 +117,28 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         return std::string( buf, 0, j );
     }
 
-    std::string label( Node n ) {
-        if ( intrace->has( n ) && traceLabels )
-            return this->graph().showNode( n );
+    std::string label( Vertex n ) {
+        if ( extension( n ).intrace && traceLabels )
+            return this->graph().showNode( n.getNode() );
         if ( labels )
-            return this->graph().showNode( n );
+            return this->graph().showNode( n.getNode() );
         return "";
     }
 
-    std::string color( Node n ) {
+    std::string color( Vertex n ) {
         if ( extension( n ).initial )
             return "magenta";
-        if ( intrace->has( n ) ) {
-            if ( this->graph().isGoal( n ) )
+        if ( extension( n ).intrace ) {
+            if ( this->graph().isGoal( n.getNode() ) )
                 return "orange";
             return "red";
         }
-        if ( this->graph().isGoal( n ) )
+        if ( this->graph().isGoal( n.getNode() ) )
             return "yellow";
         return "";
     }
 
-    void dotNode( Node n, bool dashed = false ) {
+    void dotNode( Vertex n, bool dashed = false ) {
         std::stringstream str;
 
         if ( bfs && extension( n ).distance > currentdist ) {
@@ -146,7 +149,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
-        if ( this->graph().isAccepting( n ) )
+        if ( this->graph().isAccepting( n.getNode() ) )
             str << "peripheries=2 ";
 
         if ( label( n ).empty() )
@@ -164,13 +167,14 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         dot_nodes += str.str();
     }
 
-    void dotEdge( Node f, Node t, Label a, std::string color = "") {
+    void dotEdge( Vertex f, Vertex t, Label a, std::string color = "") {
         std::stringstream str;
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
 
         if ( labels )
-            label = escape( this->graph().showTransition( f, t, a ) );
+            label = escape( this->graph().showTransition(
+                        f.getNode(), t.getNode(), a ) );
 
         if ( !color.empty() || !label.empty()) {
             str << " [";
@@ -188,7 +192,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void loadTrace() {
-        intrace = std::make_shared< HashSet< Node, algorithm::Hasher > >( this->store().hasher() );
+        intrace = new HashSet< Node, algorithm::Hasher >( this->store().hasher() );
 
         if ( trace.empty() )
             return;
@@ -199,7 +203,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
              std::getline( split, each, ',' );
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
-        Node from, to;
+        Vertex from, to;
         this->graph().initials( [&]( Node, Node n, Label ) {
                 if ( trans.front() == 1 )
                     from = std::get< 0 >( this->store().fetch( n, this->store().hash( n ) ) );
@@ -209,8 +213,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         assert( from.getNode().valid() );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
-            if ( std::get< 0 >( intrace->get( from ) ).valid() )
-                from = std::get< 0 >( intrace->get( from ) );
+            if ( intrace->get( from ).valid() )
+                from = intrace->get( from );
             else
                 intrace->insert( from );
 
@@ -218,28 +222,28 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 break;
 
             int drop = trans[ i ] - 1;
-            this->graph().successors( from, [&]( Node n, Label ) {
+            this->graph().successors( from.getNode(), [&]( Node n, Label ) {
                     if ( drop > 0 ) {
                         -- drop;
                         return;
                     }
-                    if ( !to.valid() )
-                        to = n;
+                    if ( !this->store().valid( to ) )
+                        to = this->store().fetch( n, this->store().hash( n ) );
                 } );
 
-            if ( !to.valid() )
+            if ( !this->store().valid( to ) )
                 throw wibble::exception::Consistency(
                     "The trace " + trace + " is invalid, not enough successors "
                     "at step " + wibble::str::fmt( i ) + " (" + wibble::str::fmt( trans[ i ] ) + " requested)" );
             if ( intrace->has( to ) )
-                to = std::get< 0 >( intrace->get( to ) );
+                to = intrace->get( to );
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;
             intrace_trans.insert( std::make_pair( extension( from ).serial,
                                                   extension( to ).serial ) );
             from = to;
-            to = Blob();
+            to = Vertex();
         }
     }
 
@@ -249,6 +253,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 this->extension( t ).serial = ++this->serial;
                 this->extension( t ).distance = 1;
                 this->extension( t ).initial = 1;
+                this->extension( t ).intrace = false;
                 this->store().store( t, this->store().hash( t ) );
             } );
 
@@ -258,8 +263,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             visitor( *this, this->graph(), this->store() );
 
         do {
-            this->graph().initials( [&visitor]( Node f, Node t, Label l ) {
-                    visitor.queue( f, t, l );
+            this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
+                    Vertex fV = f.valid()
+                        ? this->store().fetch( f, this->store().hash( f ) )
+                        : Vertex();
+                    visitor.queue( fV, t, l );
                 } );
             visitor.processQueue();
         } while ( this->graph().porEliminateLocally( *this ) );
