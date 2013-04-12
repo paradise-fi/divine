@@ -163,7 +163,7 @@ namespace instantiate {
     }
 
     TRANS_SPEC( None, NonPORGraph );
-/*
+
 #ifndef O_SMALL
     TRANS_SPEC( Fairness, FairGraph );
     template<>
@@ -173,7 +173,7 @@ namespace instantiate {
         static const bool available = true;
     };
 #endif
-*/
+
 #undef TRANS_SPEC
 
     template < Generator generator >

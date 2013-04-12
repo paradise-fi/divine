@@ -15,7 +15,7 @@ struct NonPORGraph : graph::Transform< G > {
     typedef typename St::Vertex Vertex;
 
     void porExpansion( Vertex ) {}
-    void porTransition( Vertex, Vertex, void (*)( Pool&, Vertex, int ) ) {}
+    void porTransition( Vertex, Vertex, void (*)( Pool&, Node, int ) ) {}
     bool full( Node ) { return true; }
 
     template< typename Yield >

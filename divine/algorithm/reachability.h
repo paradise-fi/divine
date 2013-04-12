@@ -88,7 +88,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 return visitor::TerminateOnTransition;
             }
 
-// XXX            r.graph().porTransition( f, t, 0 );
+            r.graph().porTransition( f, t, 0 );
             return visitor::FollowTransition;
         }
 

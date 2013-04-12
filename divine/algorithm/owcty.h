@@ -244,7 +244,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 }
             }
             o.shared.stats.addEdge( o.graph(), from.getNode(), to.getNode() );
-// XXX            o.graph().porTransition( from, to, &updatePredCount );
+            o.graph().porTransition( from, to, &updatePredCount );
             return visitor::FollowTransition;
         }
 

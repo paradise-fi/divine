@@ -165,8 +165,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
         static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
         {
-// XXX            if ( m.shared.iteration == 1 )
-// XXX                m.graph().porTransition( f, t, 0 ); // ??
+            if ( m.shared.iteration == 1 )
+                m.graph().porTransition( f, t, 0 );
 
             if ( !m.store().valid( f ) )
                 return m.updateIteration( t );

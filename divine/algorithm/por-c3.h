@@ -27,11 +27,13 @@ template< typename T > struct AddressCompare< std::pair< Blob, T > > {
 };
 
 // Implements a (parallel) check of the POR cycle proviso.
-template< typename G, typename Statistics >
+template< typename G, typename Store, typename Statistics >
 struct PORGraph : graph::Transform< G > {
-    typedef PORGraph< G, Statistics > This;
+    typedef PORGraph< G, Store, Statistics > This;
     typedef typename G::Node Node;
     typedef typename G::Label Label;
+    typedef typename Store::Vertex Vertex;
+    typedef typename Store::VertexId VertexId;
 
     template< typename T > using ASet = std::set< T, AddressCompare< T > >;
 
@@ -58,7 +60,8 @@ struct PORGraph : graph::Transform< G > {
             _predCount( pool(), t, v );
     }
 
-    PORGraph() : _predCount( 0 ), bcomp( pool() ) {
+    PORGraph() : _predCount( 0 ), bcomp( pool() ),
+        to_expand( bcomp ), to_check( bcomp ) {
         this->base().initPOR();
     }
 
@@ -91,6 +94,12 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
+    std::set< Node > to_check, to_expand;
+
+    void porExpansion( Node n ) {
+        to_check.insert( n );
+    }
+
     void porTransition( Node f, Node t, PredCount _pc ) {
         _predCount = _pc;
 
@@ -105,11 +114,15 @@ struct PORGraph : graph::Transform< G > {
     template< typename Setup >
     struct POREliminate : algorithm::Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &, Node n ) {
+        static_assert( wibble::TSame< typename Setup::Vertex, Vertex >::value,
+                "Invalid setup provided for POREliminate: Vertex type of PORGraph does not match Vertex type of Setup" );
+
+        static visitor::ExpansionAction expansion( This &, Vertex n ) {
             return visitor::ExpandState;
         }
 
-        static visitor::TransitionAction transition( This &t, Node from, Node to, Label ) {
+        static visitor::TransitionAction transition( This &t, Vertex, Vertex toV, Label ) {
+            Node to = toV.getNode();
             if ( t.extension( to ).done )
                 return visitor::ForgetTransition;
 
@@ -130,8 +143,17 @@ struct PORGraph : graph::Transform< G > {
 
             for ( auto n : v.store() )
             {
-                if ( t.extension( n ).done )
-                    continue;
+                j = i; ++j;
+                if ( !t.predCount( *i ) || t.extension( *i ).remove ) {
+                    if ( t.predCount( *i ) ) {
+                        t.to_expand.insert( *i );
+                    }
+                    t.updatePredCount( *i, 1 ); // ...
+                    q.queue( Blob(), *i, Label() ); // coming from "nowhere"
+                    t.to_check.erase( i );
+                }
+            }
+        }
 
                 t.finished = false;
 
