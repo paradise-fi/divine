@@ -201,6 +201,8 @@ struct LtlCE {
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
+            if ( !from.getNode().valid() )
+                return visitor::ExpandTransition;
             if ( from.getNode().valid() && t.whichInitial( to.getNode() ) ) {
                 t.extension( to.getNode() ).parent = from.getVertexId();
                 return visitor::TerminateOnTransition;
