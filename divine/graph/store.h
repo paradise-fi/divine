@@ -20,6 +20,14 @@ namespace visitor {
 /* Global utility functions independent of store type
  */
 
+template < typename Pool, typename T >
+typename std::enable_if< !std::is_fundamental< T >::value >::type poolFree( Pool p, T x ) {
+    return p.free( x );
+}
+
+template < typename Pool, typename T >
+typename std::enable_if< std::is_fundamental< T >::value >::type poolFree( Pool, T ) {}
+
 template < typename Store >
 inline typename Store::VertexId max( Store& st, typename Store::VertexId a,
         typename Store::VertexId b )
@@ -258,7 +266,7 @@ struct TableUtils
         }
 
         void free( Pool& p ) {
-            p.free( node );
+            poolFree( p, node );
             node = Node();
         }
 
@@ -596,7 +604,7 @@ struct HcStore
         }
 
         void free( Pool& p ) {
-            p.free( node );
+            poolFree( p, node );
             p.free( hash );
             node = hash = Node();
         }
@@ -775,7 +783,7 @@ struct CompressedStore
         }
 
         void free( Pool& p ) {
-            p.free( node );
+            poolFree( p, node );
             p.free( compressed );
             node = compressed = Node();
         }
