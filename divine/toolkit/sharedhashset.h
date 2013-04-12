@@ -23,9 +23,10 @@ namespace divine {
  *
  * TODO: Merge SharedHashSet and HashSet, if feasible.
  */
-template < typename T, typename Hasher = default_hasher< T > >
+template < typename T, typename _Hasher = default_hasher< T > >
 struct SharedHashSet {
 
+    typedef _Hasher Hasher;
     typedef T Item;
 
     enum { maxCollisions = 65536 };
