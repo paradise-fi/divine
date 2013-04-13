@@ -50,7 +50,12 @@ for t_ in $tests; do
 	# fancy formatting...
 	printf -- "--- Output: $t -"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
-	cat $outf;
+        if test -z "$VERBOSE" && grep -q "^#### PASSED" $outf; then
+            echo "`grep -c '^#### PASSED' $outf` sub-test(s) passed; use VERBOSE=1 to unhide them"
+	    grep -A 10000 "^#### PASSED" $outf | tail -n +2;
+        else
+            cat $outf
+        fi
 	printf -- "--- End: $t ----"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
 	failed="$failed $t"

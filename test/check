@@ -95,6 +95,7 @@ statespace() {
 
 clear() {
     rm -f progress report
+    echo "#### PASSED"
     echo
 }
 
