@@ -1,6 +1,7 @@
 // -*- C++ -*-
 #include <utility>
 #include <memory>
+#include <tuple>
 
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/sharedhashset.h>
@@ -180,9 +181,10 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
     void store( T s, hash_t h, bool* had = nullptr ) {
         Statistics::global().hashadded( Super::id->id(), memSize( s ) );
         Statistics::global().hashsize( Super::id->id(), table().size() );
-        bool _had = !table().insertHinted( s, h );
+        bool inserted;
+        std::tie( std::ignore, inserted ) = table().insertHinted( s, h );
         if ( had )
-            *had = _had;
+            *had = !inserted;
         setPermanent( s );
     }
 
