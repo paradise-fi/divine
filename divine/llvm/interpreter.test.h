@@ -220,6 +220,6 @@ struct TestLLVM {
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();
-        assert( b1 == b2 );
+        assert( alloc.pool().equal( b1, b2 ) );
     }
 };
