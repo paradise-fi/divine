@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <stdint.h>
+#include <tuple>
 #include <wibble/sys/mutex.h>
 
 #ifndef DIVINE_HASHSET_H
@@ -78,11 +79,11 @@ struct HashSet
         }
     };
 
-    inline Item insert( Item i ) {
+    inline std::tuple< Item, bool > insert( Item i ) {
         return insertHinted( i, hasher.hash( i ) );
     }
 
-    inline Item insertHinted( Item i, hash_t h ) {
+    inline std::tuple< Item, bool > insertHinted( Item i, hash_t h ) {
         Cell c;
         c.item = i;
         c.hash = h;
@@ -122,7 +123,7 @@ struct HashSet
         return a.hash == b.hash && hasher.equal( a.item, b.item );
     }
 
-    inline Item insertCell( Cell c, Table &table, int &used )
+    inline std::tuple< Item, bool > insertCell( Cell c, Table &table, int &used )
     {
         assert( hasher.valid( c.item ) ); // ensure key validity
 
@@ -136,11 +137,11 @@ struct HashSet
             if ( !hasher.valid( table[ idx ].item ) ) {
                 ++ used;
                 table[ idx ] = c;
-                return c.item; // done
+                return std::make_tuple( c.item, true ); // done
             }
 
             if ( cellEq( c, table[ idx ] ) )
-                return table[ idx ].item;
+                return std::make_tuple( table[ idx ].item, false );
 
         }
 
