@@ -349,7 +349,7 @@ release( std::tuple< Tp... >& t, Pool* p ) {
 
 template< typename T >
 inline void release( T, Pool* ) {
-};
+}
 
 template<>
 inline void release( Blob b, Pool* p ) {
