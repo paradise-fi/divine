@@ -3,6 +3,7 @@
 #include <numeric>
 #include <atomic>
 #include <stdint.h>
+#include <tuple>
 #include <wibble/sys/mutex.h>
 #include <divine/toolkit/hashset.h>
 
@@ -77,10 +78,10 @@ struct SharedHashSet {
      * Insert an element into the set. Returns true if the element was added,
      * false if it was already in the set.
      */
-    bool insert( const Item &x ) {
+    std::tuple< Item, bool > insert( const Item &x ) {
         return insertHinted( x, hasher.hash( x ) );
     }
-    bool insertHinted( const Item &x, hash_t h) {
+    std::tuple< Item, bool > insertHinted( const Item &x, hash_t h) {
         h <<= 1;
 
         for ( unsigned i = 0; i < maxCollisions; ++i ) {
@@ -92,7 +93,7 @@ struct SharedHashSet {
                 if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
                     cell.value = x;
                     cell.hashLock.exchange( h & ~1 ); /* We need a barrier here. */
-                    return true;
+                    return std::make_tuple( x, true );
                 }
             }
 
@@ -108,7 +109,7 @@ struct SharedHashSet {
                  * TODO: Remove the wait. */
 
                 if ( hasher.equal( cell.value, x ) )
-                    return false;
+                    return std::make_tuple( cell.value, false );
             }
 
             /* not empty and not equal → reprobe */
@@ -116,7 +117,7 @@ struct SharedHashSet {
 
         std::cerr << "too many collisions" << std::endl;
         abort();
-        return false;
+        __builtin_unreachable();
     }
 
     bool has( const Item &x ) {
