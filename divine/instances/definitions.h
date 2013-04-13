@@ -110,29 +110,11 @@ namespace instantiate {
         static const bool available = true; \
     }
 
-    template < Store store >
+    template < Store store, Visitor visitor >
     struct SelectStore {
         static const bool available = false;
     };
 // !! No undef here -> it has to be in algorithms
-
-#define STORE_SPEC( ENUM, STORE ) template<> \
-    struct SelectStore< Store :: ENUM > { \
-        template < typename Graph, typename Hasher, typename Stat > \
-        using T = ::divine::visitor :: STORE < Graph, Hasher, Stat >; \
-        static const bool available = true; \
-    }
-
-    STORE_SPEC( Partitioned, PartitionedStore );
-#ifdef O_HASH_COMPACTION
-    STORE_SPEC( HashCompacted, HcStore );
-#endif
-#ifdef O_COMPRESSION
-    STORE_SPEC( Compressed, TreeCompressedStore );
-#endif
-    STORE_SPEC( Shared, SharedStore );
-
-#undef STORE_SPEC
 
     template < Visitor visitor >
     struct SelectVisitor {
@@ -142,6 +124,10 @@ namespace instantiate {
 #define VISIT_SPEC( VISIT ) template<> \
     struct SelectVisitor< Visitor :: VISIT > { \
         using T = ::divine::visitor :: VISIT; \
+        template < typename Node, typename Hasher, \
+            template < template < typename, typename > class, typename, typename > \
+          class TableWrapper > \
+        using TableUtils = ::divine::visitor :: VISIT ## Table< Node, Hasher, TableWrapper >; \
         static const bool available = true; \
     }
 
@@ -149,6 +135,26 @@ namespace instantiate {
     VISIT_SPEC( Shared );
 
 #undef VISIT_SPEC
+
+#define STORE_SPEC( ENUM, STORE, VISIT ) template<> \
+    struct SelectStore< Store :: ENUM, Visitor :: VISIT > { \
+        template < typename Node, typename Hasher, typename Stat > \
+        using T = ::divine::visitor :: STORE < SelectVisitor< Visitor :: VISIT > \
+            ::template TableUtils, Node, Hasher, Stat >; \
+        static const bool available = SelectVisitor< Visitor :: VISIT >::available; \
+    }
+
+    STORE_SPEC( Partitioned, Store, Partitioned );
+    STORE_SPEC( Partitioned, Store, Shared );
+#ifdef O_HASH_COMPACTION
+    STORE_SPEC( HashCompacted, HcStore, Partitioned );
+    STORE_SPEC( HashCompacted, HcStore, Shared );
+#endif
+#ifdef O_COMPRESSION
+    STORE_SPEC( Compressed, TreeCompressedStore, Partitioned );
+#endif
+
+#undef STORE_SPEC
 
     template < Transform transform >
     struct SelectTransform {
@@ -287,7 +293,7 @@ namespace instantiate {
             return new typename SelectAlgorithm< algo >::template T< Setup<
                     typename SelectGenerator< generator >::T,
                     SelectTransform< transform >::template T,
-                    SelectStore< store >::template T,
+                    SelectStore< store, visitor >::template T,
                     algorithm::Hasher,
                     typename SelectVisitor< visitor >::T,
                     SelectTopology< topology >::template T,
@@ -305,7 +311,7 @@ namespace instantiate {
                     SelectAlgorithm< algo >::available,
                     SelectGenerator< generator >::available,
                     SelectTransform< transform >::available,
-                    SelectStore< store >::available,
+                    SelectStore< store, visitor >::available,
                     SelectVisitor< visitor >::available,
                     SelectTopology< topology >::available,
                     algo,

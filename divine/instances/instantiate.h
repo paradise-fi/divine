@@ -27,7 +27,7 @@ namespace instantiate {
             return makeAlgorithm< algo, generator, Transform::None,
                    store, visitor, topology, statistics >( meta );
         }
-        if ( !SelectStore< store >::available ) {
+        if ( !SelectStore< store, visitor >::available ) {
             std::cerr << "Missing store: "
                 << ShowT< Store, store >::value
                 << ", using Partitioned instead." << std::endl;
