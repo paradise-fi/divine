@@ -194,10 +194,7 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
     }
 
     T fetch( T s, hash_t h, bool* had = nullptr ) {
-        bool _had = table().has( s, h );
-        if ( had )
-            *had = _had;
-        return s;
+        return table().getHinted( s, h, had );
     }
 };
 
