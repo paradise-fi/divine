@@ -27,7 +27,7 @@ static const char * const cesmi_ext =
 
 namespace cesmi {
 #include <divine/cesmi/usr-cesmi.h>
-};
+}
 
 /**
  * A binary model loader. The model is expected to be a shared object (i.e. .so
