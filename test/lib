@@ -161,7 +161,7 @@ timed_small() {
     check clear
     run $wrapper data/bridge.xml --property=0 "$@"
     check ltl_valid
-    if test "$LTL3BA" = "ON"; then
+    if test "$O_LTL3BA" = "ON"; then
        check statespace 2412 4848 0 0; else
        check statespace 1624 2779 0 0; fi
     
@@ -169,7 +169,7 @@ timed_small() {
 
     run $wrapper data/bridge.xml --property=1 "$@"
     check ltl_invalid
-    if test "$LTL3BA" = "ON"; then
+    if test "$O_LTL3BA" = "ON"; then
         check statespace 2867 5795 303 0; else
         check statespace 1927 3283 303 0; fi
 
