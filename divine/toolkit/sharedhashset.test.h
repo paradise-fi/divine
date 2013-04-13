@@ -11,7 +11,7 @@ struct TestSharedHashset
         SharedHashSet< int > set;
         set.setSize( 8 );
         assert( !set.has( 1 ) );
-        assert( set.insert( 1 ) );
+        assert( std::get< 1 >( set.insert( 1 ) ) );
         assert( set.has( 1 ) );
     }
 
