@@ -139,7 +139,8 @@ struct Common {
         if ( S::transitionHint( notify, from, _to, label, hint ) == IgnoreTransition )
             return;
 
-        Node to = store().fetch( _to, hint, &had );
+        Node to;
+        std::tie( to, had ) = store().fetch( _to, hint );
 
         /**
          * There is an important part of correct behaviour of shared visitor.
@@ -151,7 +152,7 @@ struct Common {
          */
         tact = S::transition( notify, from, to, label );
         if ( tact != IgnoreTransition && !had ) {
-            store().store( to, hint, &had );
+            had = !store().store( to, hint );
         }
         /**
          * If this thread attempted to store the node and the node has been already stored before,
