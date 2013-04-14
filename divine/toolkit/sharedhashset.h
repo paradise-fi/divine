@@ -120,62 +120,40 @@ struct SharedHashSet {
         __builtin_unreachable();
     }
 
-    bool has( const Item &x ) {
+    inline bool has( const Item &x ) {
         return has( x, hasher.hash( x ) );
     }
 
-    bool has( const Item &x, hash_t h ) {
+    inline bool has( const Item &x, hash_t h ) {
+        return std::get< 1 >( getHinted( x, h ) );
+    }
+
+    std::tuple< Item, bool > get( const Item &x ) {
+        return getHinted( x, hasher.hash( x ) );
+    }
+
+    std::tuple< Item, bool > getHinted( const Item &x, hash_t h ) {
+
         h <<= 1;
 
         for ( unsigned i = 0; i < maxCollisions; ++i ) {
             Cell &cell = table[ index( h, i ) ];
             hash_t chl = cell.hashLock;
 
-            if ( chl == 0 ) {
-                return false;
-            }
+            if (chl == 0)
+                return std::make_tuple( Item(), false );
+
             if ( (chl | 1) == (h | 1) ) {
                 if ( chl & 1 )
                     while ( cell.hashLock & 1 );
 
                 if ( hasher.equal( cell.value, x ) )
-                    return true;
-            }
-        }
-
-        std::cerr << "too many collisions" << std::endl;
-        abort(); return false;
-    }
-
-    Item get( const Item &x ) {
-        return getHinted( x, hasher.hash( x ) );
-    }
-
-    Item getHinted( const Item &x, hash_t h, bool* has = nullptr ) {
-
-        h <<= 1;
-
-        for ( unsigned i = 0; i < maxCollisions; ++i ) {
-            Cell &cell = table[ index( h, i ) ];
-            hash_t chl = cell.hashLock;
-
-            if (chl == 0) {
-                if (has) *has = false;
-                return Item();
-            }
-
-            if ( (chl | 1) == (h | 1) ) {
-                if ( chl & 1 )
-                    while ( cell.hashLock & 1 );
-
-                if ( hasher.equal( cell.value, x ) ) {
-                    if (has) *has = true;
-                        return cell.value;
-                }
+                    return std::make_tuple( cell.value, true );
             }
         }
         std::cerr << "too many collisions" << std::endl;
-        abort(); return x;
+        abort();
+        __builtin_unreachable();
     }
 
     Item operator[]( unsigned index ) {
