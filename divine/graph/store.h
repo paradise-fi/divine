@@ -236,7 +236,7 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
         return std::make_tuple( found, true );
     }
 
-    void store( Blob s, hash_t h, bool * = nullptr ) {
+    bool store( Blob s, hash_t h ) {
         // store just a stub containing state information
         Blob stub = m_graph.base().alloc.new_blob( 0 );
 //        Statistics::global().hashadded( this->id , memSize( stub ) );
@@ -244,6 +244,7 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
         table().insertHinted( stub, h );
         assert( this->equal( s, stub ) );
+        return true;// same as in TableUtils::fetch
     }
 
     void update( Blob s, hash_t h ) {
