@@ -119,33 +119,30 @@ struct StoreCommon : public TableUtils {
 
   protected:
     // Retrieve node from hash table
-    Node _fetch( Node s, hash_t h, bool *had = 0 ) {
-        Node found = table().getHinted( s, h, had );
+    std::tuple< Node, bool > _fetch( Node s, hash_t h ) {
+        Node found;
+        bool had;
+        std::tie( found, had ) = table().getHinted( s, h );
 
-        if ( alias( s, found ) )
-            assert( hasher().valid( found ) );
-
-        if ( !hasher().valid( found ) ) {
+        if ( !had ) {
+            assert( !hasher().valid( found ) );
             assert( !alias( s, found ) );
-            if ( had )
-                assert( !*had );
-            return s;
+            return std::make_tuple( s, false );
         }
 
-        return found;
+        assert( hasher().valid( found ) );
+        return std::make_tuple( found, true );
     }
 
     // Store node in hash table
-    Node _store( Node s, hash_t h, bool *had = nullptr ) {
+    std::tuple< Node, bool > _store( Node s, hash_t h ) {
         Statistics::global().hashadded( _id->id(), memSize( s, hasher().pool ) );
         Statistics::global().hashsize( _id->id(), table().size() );
         Node s2;
         bool inserted;
         std::tie( s2, inserted ) = table().insertHinted( s, h );
-        if ( had )
-            *had = !inserted;
         setPermanent( hasher().pool, s2 );
-        return s2;
+        return std::make_tuple( s2, inserted );
     }
 
     template < typename Select, typename VertexId >
@@ -293,31 +290,59 @@ struct StdVertexId {
         return node.valid();
     }
 
-    WithID *id;
+    template < typename BS >
+    friend bitstream_impl::base< BS >& operator<<(
+            bitstream_impl::base< BS >& bs, VertexId vi )
+    {
+        return bs << vi.node;
+    }
+    template < typename BS >
+    friend bitstream_impl::base< BS >& operator>>(
+            bitstream_impl::base< BS >& bs, VertexId& vi )
+    {
+        return bs >> vi.node;
+    }
+};
 
-    // Retrieve node from hash table
-    T fetch( T s, hash_t h, bool *had = 0 ) {
-        T found = table().getHinted( s, h, had );
+template < typename Node >
+struct StdVertex {
+    using Vertex = StdVertex< Node >;
+    using VertexId = StdVertexId< Node >;
 
-        if ( alias( s, found ) )
-            assert( hasher().valid( found ) );
+    Node node;
 
-        if ( !hasher().valid( found ) ) {
-            assert( !alias( s, found ) );
-            if ( had )
-                assert( !*had );
-            return s;
-        }
+    explicit StdVertex( Node n ) : node( n ) { }
+    StdVertex() : node() { }
 
-        return found;
+    Node getNode() {
+        return node;
     }
 
-    // Store node in hash table
-    void store( T s, hash_t h, bool * = nullptr ) {
-        Statistics::global().hashadded( id->id(), memSize( s, hasher().pool ) );
-        Statistics::global().hashsize( id->id(), table.size() );
-        table.insertHinted( s, h );
-        setPermanent( s );
+    VertexId getVertexId() {
+        return VertexId( node );
+    }
+
+    template < typename Graph >
+    Vertex clone( Graph& g ) {
+        return Vertex( g.clone( node ) );
+    }
+
+    void free( Pool& p ) {
+        poolFree( p, node );
+        node = Node();
+    }
+
+    template < typename BS >
+    friend bitstream_impl::base< BS >& operator<<(
+            bitstream_impl::base< BS >& bs, Vertex v )
+    {
+        return bs << v.node;
+    }
+    template < typename BS >
+    friend bitstream_impl::base< BS >& operator>>(
+            bitstream_impl::base< BS >& bs, Vertex& v )
+    {
+        return bs >> v.node;
     }
 };
 
@@ -407,35 +432,39 @@ struct Store
         return v;
     }
 
-    Vertex fetch( Node node, hash_t h, bool* had = nullptr ) {
-        return Vertex( Base::_fetch( node, h, had ) );
+    std::tuple< Vertex, bool > wrapTuple( std::tuple< Node, bool > tuple ) {
+        Node n;
+        bool i;
+        std::tie( n, i ) = tuple;
+        return std::make_tuple( Vertex( n ), i );
+    }
+
+    std::tuple< Vertex, bool > fetch( Node node, hash_t h ) {
+        return wrapTuple( Base::_fetch( node, h ) );
     }
 
     Vertex fetchByVertexId( VertexId vi ) {
-        return fetch( vi.node, hash( vi.node ) );
+        return std::get< 0 >( fetch( vi.node, hash( vi.node ) ) );
     }
 
     VertexId fetchVertexId( VertexId vi ) {
-        return fetch( vi.node, hash( vi.node ) ).getVertexId();
+        return fetchByVertexId( vi ).getVertexId();
     }
 
-    Vertex store( Node node, hash_t h, bool* had = nullptr ) {
-        Node n = Base::_store( node, h, had );
-        return Vertex( n );
+    std::tuple< Vertex, bool > store( Node node, hash_t h ) {
+        return wrapTuple( Base::_store( node, h ) );
     }
 
     void update( Node s, hash_t h ) {}
 
     void setSize( int ) { } // TODO
 
-    void store( T s, hash_t h, bool* had = nullptr ) {
-        Statistics::global().hashadded( Super::id->id(), memSize( s ) );
-        Statistics::global().hashsize( Super::id->id(), table().size() );
-        bool inserted;
-        std::tie( std::ignore, inserted ) = table().insertHinted( s, h );
-        if ( had )
-            *had = !inserted;
-        setPermanent( s );
+    template< typename W >
+    int owner( W &w, Node n, hash_t hint = 0 ) const {
+        if ( hint )
+            return hint % w.peers();
+        else
+            return hash( n ) % w.peers();
     }
 
     template< typename W >
@@ -443,12 +472,25 @@ struct Store
         return owner( w, s.node, hint );
     }
 
-    T fetch( T s, hash_t h, bool* had = nullptr ) {
-        bool _had = table().has( s, h );
-        if ( had )
-            *had = _had;
-        return s;
+    template < typename W >
+    int owner( W &w, VertexId h ) const {
+        int own = hash( h.node ) % w.peers();
+        return own;
     }
+
+    bool valid( Vertex v ) {
+        return valid( v.node );
+    }
+
+    bool valid( VertexId vi ) {
+        return valid( vi.node );
+    }
+
+    int compareId( VertexId a, VertexId b ) {
+        return Base::_compareId( []( VertexId x ) { return x.node; }, a, b );
+    }
+
+    STORE_ITERATOR;
 };
 
 template< typename Hasher >
@@ -510,43 +552,57 @@ struct HcStore
         return pool().template get< hash_t >( stub, slack() );
     }
 
-    Blob fetch( Blob s, hash_t h, bool* had = 0 ) {
-        Blob found = Utils::fetch( s, h, had );
-
-        if ( !alias( s, found ) ) {
-            // copy saved state information
-            std::copy( pool().data( found ),
-                       pool().data( found ) + pool().size( found ),
-                       pool().data( s ) );
-            return s;
-        }
-        return found;
+    hash_t stubHash( const Blob stub ) const {
+        return this->pool().template get< hash_t >( stub, this->slack() );
     }
 
-    void store( Blob s, hash_t h, bool * = nullptr ) {
+    std::tuple< Vertex, bool > fetch( Blob s, hash_t h ) {
+        Blob found;
+        bool had;
+        std::tie( found, had ) = Base::_fetch( s, h );
+
+        if ( had ) {
+            // copy saved state information
+            pool().copyTo( found, s, slack() );
+            return std::make_tuple( Vertex( s, found ), had );
+        }
+        return std::make_tuple( Vertex( found, Node() ), had );
+    }
+
+    Vertex fetchByVertexId( VertexId ) {
+        assert_unimplemented();
+    }
+
+    VertexId fetchVertexId( VertexId vi ) {
+        return VertexId( std::get< 0 >( Base::_fetch( vi.node, stubHash( vi.node ) ) ) );
+    }
+
+    std::tuple< Vertex, bool > store( Blob s, hash_t h ) {
         // store just a stub containing state information
         Blob stub = _alloc.new_blob( int( sizeof( hash_t ) ) );
-//        Statistics::global().hashadded( this->_id , memSize( stub ) );
-//        Statistics::global().hashsize( this->_id, this->_table.size() );
         this->pool().copyTo( s, stub, slack() );
         stubHash( stub ) = h;
         Node n;
-        std::tie( n, std::ignore )= table().insertHinted( stub, h );
-        setPermanent( pool(), n );
-        if ( !alias( n, stub ) )
-            this->pool().free( stub );
-        assert( this->equal( s, stub ) );
+        bool inserted;
+        std::tie( n, inserted ) = Base::_store( stub, h );
+        if ( !inserted )
+            pool().free( stub );
+        assert( equal( s, stub ) );
+        return std::make_tuple( Vertex( s, n ), inserted );
     }
 
     void update( Blob s, hash_t h ) {
         // update state information in hashtable
-        Blob stub = table().getHinted( s, h, NULL );
-        assert( this->valid( stub ) );
-        this->pool().copyTo( s, stub, this->slack() );
+        Blob stub;
+        bool had;
+        std::tie( stub, had ) = table().getHinted( s, h );
+        assert( valid( stub ) );
+        assert( had );
+        pool().copyTo( s, stub, slack() );
     }
 
     bool has( Node node ) {
-        return this->m_base.has( node );
+        return table().has( node );
     }
 
     void setSize( int ) { } // TODO
@@ -621,34 +677,33 @@ struct CompressedStore
         return v.getVertexId();
     }
 
-    Vertex fetch( Node node, hash_t h, bool* had = nullptr ) {
-        Node found = Base::_fetch( node, h, had );
-        if ( !valid( found ) )
-            return Vertex();
-
-        if ( !alias( node, found ) ) {
+    std::tuple< Vertex, bool > fetch( Node node, hash_t h ) {
+        Node found;
+        bool had;
+        std::tie( found, had ) = Base::_fetch( node, h );
+        if ( had ) {
             pool().copyTo( found, node, slack() );
-            return Vertex( node, found );
+            return std::make_tuple( Vertex( node, found ), had );
         }
-        return Vertex( found, Node() );
+        return std::make_tuple( Vertex( found, Node() ), had );
     }
 
     void update( Node node, hash_t h ) {
         // update state information in hashtable
-        Node found = table().getHinted( node, h, NULL );
+        Node found;
+        bool had;
+        std::tie( found, had ) = table().getHinted( node, h );
         assert( valid( found ) );
+        assert( had );
         assert( !alias( node, found ) );
         pool().copyTo( node, found, slack() );
     }
 
-    Vertex store( Node node, hash_t h, bool* = nullptr ) {
-        Statistics::global().hashadded( _id->id(),
-                memSize( node, pool() ) );
-        Statistics::global().hashsize( _id->id(), table().size() );
+    std::tuple< Vertex, bool > store( Node node, hash_t h, bool* = nullptr ) {
         Node n;
-        std::tie( n, std::ignore ) = table().insertHinted( node, h );
-        setPermanent( pool(), n );
-        return Vertex( node, n );
+        bool inserted;
+        std::tie( n, inserted ) = Base::_store( node, h );
+        return std::make_tuple( Vertex( node, n ), inserted );
     }
 
     void setSize( int ) { } // TODO
@@ -718,7 +773,7 @@ struct TreeCompressedStore : public CompressedStore< Utils,
     VertexId fetchVertexId( VertexId vi ) {
         if ( !vi.valid() )
             return vi;
-        return VertexId( Base::_fetch( vi.node, _hash( vi ) ) );
+        return VertexId( std::get< 0 >( Base::_fetch( vi.node, _hash( vi ) ) ) );
     }
 
     Vertex fetchByVertexId( VertexId vi ) {
