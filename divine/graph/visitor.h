@@ -143,7 +143,9 @@ struct Common {
         if ( S::transitionHint( notify, from, _to, label, hint ) == IgnoreTransition )
             return;
 
-        Node to = store().fetch( _to, hint, &had );
+        Vertex toV;
+        std::tie( toV, had ) = store().fetch( _to, hint );
+        Node to = toV.getNode();
 
         /**
          * There is an important part of correct behaviour of shared visitor.
@@ -153,9 +155,11 @@ struct Common {
          *
          * Note: Only shared store changes `had` value.
          */
-        tact = S::transition( notify, from, to, label );
-        if ( tact != IgnoreTransition && !had ) {
-            store().store( to, hint, &had );
+        if ( /* tact != IgnoreTransition && */ !had ) {
+            bool ins;
+            std::tie( toV, ins ) = store().store( to, hint ); // we have to update Vertex so it
+            had = !ins;
+                // contains permanent information about stored node
         }
         tact = S::transition( notify, from, toV, label );
         assert( tact != IgnoreTransition );
