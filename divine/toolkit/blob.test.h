@@ -2,6 +2,7 @@
 
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/pool.h>
+#include <wibble/sys/thread.h>
 
 using namespace divine;
 
@@ -63,5 +64,43 @@ struct TestBlob {
         assert( b1 == b2 );
 
         assert_eq( buf + 2, end );
+    }
+
+    struct Worker : wibble::sys::Thread {
+
+        Blob &data;
+        unsigned sequence;
+
+        Worker( Blob &d, unsigned s )
+            : data( d ), sequence( s )
+        {}
+
+        void *main() {
+            for ( unsigned s = 0; s < sequence; ++s ) {
+                data.acquire();
+
+                data.get< int >() = 1;
+                assert( data.get< int >() );
+                data.get< int >() = 0;
+
+                data.release();
+            }
+            return nullptr;
+        }
+    };
+
+    Test concurrent() {
+        Blob data( sizeof( int ) );
+        data.get< int >() = 0;
+
+        Worker a( data, 1000 );
+        Worker b( data, 1000 );
+
+        a.start();
+        b.start();
+        a.join();
+        b.join();
+
+        data.free();
     }
 };
