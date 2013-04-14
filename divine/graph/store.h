@@ -249,8 +249,10 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
 
     void update( Blob s, hash_t h ) {
         // update state information in hashtable
-        Blob stub = table().getHinted( s, h, NULL );
-        assert( this->valid( stub ) );
+        Blob stub;
+        bool had;
+        std::tie( stub, had ) = table().getHinted( s, h );
+        assert( this->valid( stub ) && had );
         std::copy( s.data(), s.data() + stub.size(), stub.data() );
     }
 
