@@ -121,6 +121,7 @@ endif( NOT WIN32 )
 
 if( LLVM )
   target_link_libraries( libdivine ${LLVM_LIBRARIES} )
+  target_link_libraries( libdivine ${LLVM_SYSLIBS} )
 endif()
 
 if( CURSES )
