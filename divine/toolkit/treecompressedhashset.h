@@ -374,46 +374,44 @@ namespace divine {
                     rootInserted );
         }
 
-        Item get( Item item ) {
+        std::tuple< Item, bool > get( Item item ) {
             return getHinted( item, hasher.hash( item ) );
         }
 
-        Item getHinted( Item i, hash_t h, bool* has )
-        {
-            Item ii = getHinted( i, h );
-            if ( has != nullptr )
-                *has = valid( ii );
-            return ii;
-        }
-
-        Item getHinted( Item item, hash_t hash ) {
+        std::tuple< Item, bool > getHinted( Item item, hash_t hash ) {
             assert( valid( item ) );
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
-                Item l = newRoot( item );
-                Item l2 = m_roots.getHinted( l, hash );
+                Item l = newRoot( item ), l2;
+                bool had;
+                std::tie( l2, had ) = m_roots.getHinted( l, hash );
                 pool().free( l );
+                assert_eq( this->valid( l2 ), had );
                 assert( !this->valid( l2 ) ||  this->header( l2 ).size == size );
-                return l2;
+                return std::make_tuple( l2, had );
             }
 
             auto initAct = [ this ]( Item source, int position, int size ) -> Item
             {
                 Item l = this->newLeaf( source, position, size );
-                Item l2 = this->m_leafs.get( l );
+                Item l2 = std::get< 0 >( this->m_leafs.get( l ) );
                 this->pool().free( l );
                 return l2;
             };
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
                 Item f = this->newFork( l, r );
-                Item f2 = this->m_forks.get( f );
+                Item f2 = std::get< 0 >( this->m_forks.get( f ) );
                 this->pool().free( f );
                 return f2;
             };
-            auto rootAct = [ this, size, hash ]( Item source, Item l, Item r ) -> Item {
-                Item root = this->newRoot( source, l, r, hash );
-                Item tableRoot = this->m_roots.get( root );
+            bool hadRoot = false;
+            auto rootAct = [ this, size, hash, &hadRoot ]
+                ( Item source, Item l, Item r ) -> Item
+            {
+                Item root = this->newRoot( source, l, r, hash ), tableRoot;
+                std::tie( tableRoot, hadRoot ) = this->m_roots.get( root );
+                assert_eq( this->valid( tableRoot ), hadRoot );
                 assert( !this->valid( tableRoot ) ||
                         this->header( root ).size == this->header( tableRoot ).size );
                 assert( !this->valid( tableRoot ) ||
@@ -422,7 +420,9 @@ namespace divine {
                 this->pool().free( root );
                 return tableRoot;
             };
-            return bottomUpBuild( initAct, forkAct, rootAct, item, size );
+            return std::make_tuple(
+                    bottomUpBuild( initAct, forkAct, rootAct, item, size ),
+                    hadRoot );
         }
 
         template < typename InitAction, typename ForkAction, typename RootAction >
