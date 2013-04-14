@@ -127,6 +127,13 @@ struct BlobDereference {
 
 #endif
 
+    void acquireLock( Blob& blob ) {
+        blob.acquire();
+    }
+
+    void releaseLock( Blob& blob ) {
+        blob.release();
+    }
 };
 
 struct FakePool : public BlobDereference {
