@@ -23,7 +23,11 @@ let
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
-  windows_qt = pkgs.callPackage nix/windows_qt.nix {};
+  windows_qt = pkgs.callPackage nix/windows_qt.nix {
+      windows_img = windows7_img; inherit pkgs windows_mingw; };
+  windows_python = pkgs.callPackage nix/windows_python.nix {};
+  windows_llvm = pkgs.callPackage nix/windows_llvm.nix {
+      windows_img = windows7_img; inherit pkgs windows_mingw windows_cmake windows_python; };
 
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev" ];
@@ -54,7 +58,7 @@ let
 
   mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
     inherit windows_mingw;
-    tools = [ windows_cmake windows_nsis windows_qt ];
+    tools = [ windows_cmake windows_nsis windows_llvm windows_qt ];
     img = image;
     src = jobs.tarball;
     name = "divine";
@@ -65,14 +69,26 @@ let
       # Windows/mingw breaks on big files :-(
       bt=${buildType}
       test "$bt" = "RelWithDebInfo" && echo ${flags} | grep -v SMALL && bt=Release
-      cmake -G "MSYS Makefiles" -DRX_PATH=D:\\mingw\\include -BUILD_DCMAKE_TYPE=$bt ${flags} ../source
-      make
+      cmake -LA -G "MSYS Makefiles" \
+        -DQT_UIC_EXECUTABLE=$QTDIR/bin/uic.exe \
+        -DQT_RCC_EXECUTABLE=$QTDIR/bin/rcc.exe \
+        -DQT_MOC_EXECUTABLE=$QTDIR/bin/moc.exe \
+        -DQT_QCOLLECTIONGENERATOR_EXECUTABLE=$QTDIR/bin/qcollectiongenerator.exe \
+        -DQT_INCLUDE_DIR=$QTDIR/include \
+        -DQT_QTCORE_INCLUDE_DIR=$QTDIR/include/QtCore \
+        -DQT_QTGUI_INCLUDE_DIR=$QTDIR/include/QtGui \
+        -DQT_QTXML_INCLUDE_DIR=$QTDIR/include/QtXml \
+        -DLLVM_INCLUDE_DIRS=D:\\llvm\\include \
+        -DLLVM_LIBRARY_DIRS=D:\\llvm\\lib \
+        -DRX_PATH=D:\\mingw\\include \
+        -BUILD_DCMAKE_TYPE=$bt ${flags} ../source
+      make VERBOSE=1
       mkdir E:\\nix-support
       make unit || touch E:\\nix-support\\failed
       make functional || touch E:\\nix-support\\failed
-      make package
+      make package || touch E:\\nix-support\\failed
       cp tools/divine.exe E:/
-      cp divine-*.exe E:/
+      cp divine-*.exe E:/ || true
     '';
   };
 
