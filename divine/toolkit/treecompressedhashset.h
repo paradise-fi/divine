@@ -308,58 +308,70 @@ namespace divine {
 #endif
         }
 
-        Item insert( Item item ) {
+        std::tuple< Item, bool > insert( Item item ) {
             return insertHinted( item, hasher.hash( item ) );
         }
 
-        Item insertHinted( Item item, hash_t hash ) {
+        std::tuple< Item, bool > insertHinted( Item item, hash_t hash ) {
             incInserts();
 
             int size = pool().size( item ) - slack();
             assert( size > 0 );
             if ( size <= m_chunkSize ) {
-                Item it = newRoot( item );
-                Item it2 = makePermanent( m_roots.insertHinted( it, hash ) );
-                if ( !it.alias( it2 ) ) {
+                Item it = newRoot( item ), it2;
+                bool inserted;
+                std::tie( it2, inserted ) = m_roots.insertHinted( it, hash );
+                if ( !inserted ) {
                     pool().free( it );
                     incLeafReuse();
                     incRootReuse();
-                }
-                return it2;
+                } else
+                    makePermanent( it2 );
+                return std::make_tuple( it2, inserted );
             }
 
             auto initAct = [ this ]( Item source, int position, int size ) -> Item
             {
-                Item ci = this->newLeaf( source, position, size );
-                Item ci2 = this->makePermanent( this->m_leafs.insert( ci ) );
-                if ( !ci.alias( ci2 ) ) {
+                Item ci = this->newLeaf( source, position, size ), ci2;
+                bool inserted;
+                std::tie( ci2, inserted ) = this->m_leafs.insert( ci );
+                if ( !inserted ) {
                     this->pool().free( ci );
                     this->incLeafReuse();
-                }
+                } else
+                    this->makePermanent( ci2 );
                 assert( this->valid ( ci2 ) );
                 return ci2;
             };
             auto forkAct = [ this ]( Item l, Item r ) -> Item {
-                Item fork = this->newFork( l, r );
-                Item fork2 = this->makePermanent( this->m_forks.insert( fork ) );
-                if ( !fork.alias( fork2 ) ) {
+                Item fork = this->newFork( l, r ), fork2;
+                bool inserted;
+                std::tie( fork2, inserted ) = this->m_forks.insert( fork );
+                if ( !inserted ) {
                     this->pool().free( fork );
                     this->incForkReuse();
-                }
+                } else
+                    this->makePermanent( fork2 );
                 assert( this->valid( fork2 ) );
                 return fork2;
             };
-            auto rootAct = [ this, hash ]( Item source, Item l, Item r ) -> Item {
-                Item root = this->newRoot( source, l, r, hash );
-                Item tableRoot = this->makePermanent( this->m_roots.insert( root ) );
+            bool rootInserted = false;
+            auto rootAct = [ this, hash, &rootInserted ]
+                ( Item source, Item l, Item r ) -> Item
+            {
+                Item root = this->newRoot( source, l, r, hash ), tableRoot;
+                std::tie( tableRoot, rootInserted ) = this->m_roots.insert( root );
                 if ( !root.alias( tableRoot ) ) {
                     this->incRootReuse();
                     this->pool().free( root );
-                }
+                } else
+                    this->makePermanent( tableRoot );
                 assert( this->valid( tableRoot ) );
                 return tableRoot;
             };
-            return bottomUpBuild( initAct, forkAct, rootAct, item, size );
+            return std::make_tuple(
+                    bottomUpBuild( initAct, forkAct, rootAct, item, size ),
+                    rootInserted );
         }
 
         Item get( Item item ) {
