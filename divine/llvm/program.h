@@ -183,6 +183,7 @@ struct ProgramInfo {
     std::vector< char > constdata;
     int globalsize, constdatasize;
     int framealign;
+    bool codepointers;
 
     std::map< const ::llvm::Value *, Value > valuemap;
     std::map< const ::llvm::Instruction *, PC > pcmap;

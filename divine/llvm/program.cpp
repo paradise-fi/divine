@@ -34,11 +34,11 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
     if ( val->getType()->isVoidTy() ) {
         result.width = 0;
         result.type = Value::Void;
-    } else if ( val->getType()->isPointerTy() ) {
-        result.type = Value::Pointer;
-        result.width = 4;
     } else if ( isCodePointer( val ) ) {
         result.type = Value::CodePointer;
+        result.width = 4;
+    } else if ( val->getType()->isPointerTy() ) {
+        result.type = Value::Pointer;
         result.width = 4;
     } else {
         result.width = TD.getTypeAllocSize( val->getType() );
@@ -71,6 +71,10 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 
     if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) )
         makeConstant( result, blockmap[ B ] );
+    else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) )
+        makeConstant( result, blockmap[ B->getBasicBlock() ] );
+    else if ( auto F = dyn_cast< ::llvm::Function >( val ) )
+        makeConstant( result, functionmap[ F ] );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
@@ -239,6 +243,10 @@ void ProgramInfo::build()
     for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
         insert( 0, &*var );
 
+    codepointers = true;
+    pass();
+    codepointers = false;
+
     framealign = 4;
     pass();
 
@@ -266,21 +274,26 @@ void ProgramInfo::pass()
         functionmap[ function ] = pc.function;
         pc.block = 0;
 
-        framealign = 1; /* force all args to go in in the first pass */
+        if ( !codepointers ) {
+            framealign = 1; /* force all args to go in in the first pass */
 
-        /* TODO: va_args; implement as a Pointer */
-        for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
-            insert( pc.function, &*arg );
+            /* TODO: va_args; implement as a Pointer */
+            for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
+                insert( pc.function, &*arg );
+            }
+
+            framealign = _framealign;
+
+            this->function( pc ).datasize =
+                align( this->function( pc ).datasize, framealign );
         }
-
-        framealign = _framealign;
-
-        this->function( pc ).datasize =
-            align( this->function( pc ).datasize, framealign );
 
         int blockid = 0;
         for ( auto block = function->begin(); block != function->end(); ++block, ++blockid )
             blockmap[ &*block ] = PC( pc.function, blockid, 0 );
+
+        if ( codepointers )
+            continue;
 
         for ( auto block = function->begin(); block != function->end();
               ++ block, ++ pc.block )
