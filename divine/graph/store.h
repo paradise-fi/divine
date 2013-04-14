@@ -190,10 +190,6 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
     int owner( W &w, T s, hash_t hint = 0 ) {
         return w.id();
     }
-
-    T fetch( T s, hash_t h, bool* had = nullptr ) {
-        return table().getHinted( s, h, had );
-    }
 };
 
 template< typename Hasher >
