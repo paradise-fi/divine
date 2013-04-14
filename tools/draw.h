@@ -67,7 +67,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             if ( !draw.intrace->has( t ) )
                 draw.extension( t ).serial = ++draw.serial;
             else
-                draw.extension( t ) = draw.extension( draw.intrace->get( t ) );
+                draw.extension( t ) = draw.extension(
+                        std::get< 0 >( draw.intrace->get( t ) ) );
         }
 
         if ( draw.extension( t ).initial == 1 ) {
@@ -195,15 +196,15 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         Node from, to;
         this->graph().initials( [&]( Node, Node n, Label ) {
                 if ( trans.front() == 1 )
-                    from = this->store().fetch( n, this->store().hash( n ) );
+                    from = std::get< 0 >( this->store().fetch( n, this->store().hash( n ) ) );
                 trans.front() --;
             } );
 
         assert( from.valid() );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
-            if ( intrace->get( from ).valid() )
-                from = intrace->get( from );
+            if ( std::get< 0 >( intrace->get( from ) ).valid() )
+                from = std::get< 0 >( intrace->get( from ) );
             else
                 intrace->insert( from );
 
@@ -225,7 +226,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                     "The trace " + trace + " is invalid, not enough successors "
                     "at step " + wibble::str::fmt( i ) + " (" + wibble::str::fmt( trans[ i ] ) + " requested)" );
             if ( intrace->has( to ) )
-                to = intrace->get( to );
+                to = std::get< 0 >( intrace->get( to ) );
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;
