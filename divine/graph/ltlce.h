@@ -81,7 +81,7 @@ struct LtlCE {
         if ( shared().ce.current_updated )
             return;
         if ( s.owner( w, shared().ce.current ) == w.id() ) {
-            Node n = s.fetch( shared().ce.current, s.hash( shared().ce.current ) );
+            Node n = std::get< 0 >( s.fetch( shared().ce.current, s.hash( shared().ce.current ) ) );
             assert( n.valid() );
 
             shared().ce.successor = n;
@@ -139,8 +139,9 @@ struct LtlCE {
 
         assert( shared().ce.initial.valid() );
         if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {
-            shared().ce.initial = a.store().fetch( shared().ce.initial,
-                                                   a.store().hash( shared().ce.initial ) );
+            shared().ce.initial = std::get< 0 >(
+                a.store().fetch( shared().ce.initial,
+                    a.store().hash( shared().ce.initial ) ) );
             visitor.queue( Blob(), shared().ce.initial, Label() );
         }
         visitor.processQueue();
