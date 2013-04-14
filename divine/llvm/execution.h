@@ -24,6 +24,11 @@
 #include <algorithm>
 #include <cmath>
 
+#ifdef _WIN32
+#include <float.h>
+#define isnan _isnan
+#endif
+
 #ifndef DIVINE_LLVM_EXECUTION_H
 #define DIVINE_LLVM_EXECUTION_H
 
