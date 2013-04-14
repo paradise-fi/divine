@@ -85,9 +85,16 @@ static std::string fmtInteger( char *where, int bits ) {
     }
 }
 
+void updateWidth( ::llvm::TargetData TD, ValueRef &w, Type *t ) {
+    w.v.width = TD.getTypeAllocSize( t );
+}
+
+void updateWidth( ::llvm::TargetData, Pointer, Type * ) {}
+
 template< typename Ptr >
 std::string Interpreter::describeValue( Type *t, Ptr where, DescribeSeen &seen )
 {
+    updateWidth( TD, where, t );
     if ( t->isAggregateType() )
         return describeAggregate( t, where, seen );
     if ( t->isPointerTy() ) {
