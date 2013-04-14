@@ -7,7 +7,7 @@ let origtools = tools; origname = name;
 
   inherit img unzip cdrkit;
   kvm = qemu_kvm;
-  tools = origtools ++ [ windows_mingw ];
+  tools = [ windows_mingw ] ++ origtools;
   build = writeText "stage3.sh" buildScript;
 
   requiredSystemFeatures = [ "kvm" ];
