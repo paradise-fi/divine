@@ -19,7 +19,7 @@ stdenv.mkDerivation rec {
     buildScript = ''
       set -ex
       cd source
-      echo y | ./configure.exe -opensource -fast -release
+      echo y | ./configure.exe -opensource -fast -release -qt-sql-sqlite
       for i in `seq 1 20`; do # make seems to die often due to a bug in MSYS
           make && break
       done
