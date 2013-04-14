@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <deque> // for fmt
+#include <atomic>
 #include <cstring> // size_t ... d'oh
 
 #ifndef DIVINE_EMBED
@@ -26,8 +27,12 @@ struct BlobHeader {
     uint32_t size:24;
     uint32_t permanent:1;
     uint32_t heap:1;
-    uint32_t align:6;
+    uint32_t lock:1;
+    uint32_t align:5;
 };
+
+static_assert( sizeof( BlobHeader ) == sizeof( std::atomic< BlobHeader > ),
+    "Invalid size of std::atomic< BlobHeader >." );
 
 /**
  * A pointer to an adorned memory area. Basically an array of bytes which knows
@@ -57,6 +62,7 @@ struct Blob
         header().size = size;
         header().permanent = 0;
         header().heap = 0;
+        header().lock = 0;
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
@@ -66,6 +72,7 @@ struct Blob
         header().size = size;
         header().permanent = 0;
         header().heap = 1;
+        header().lock = 0;
         assert_eq( reinterpret_cast< intptr_t >( ptr ) % 4, 0 );
     }
 
@@ -255,7 +262,25 @@ struct Blob
         return jenkins3( ptr, len, salt );
     }
 #endif
+    void acquire() {
+        std::atomic< BlobHeader > &h =
+            *reinterpret_cast< std::atomic< BlobHeader >* >( pointer() );
+        BlobHeader expected( h );
+        BlobHeader desired( h );
+        desired.lock = 1;
+        do {
+            expected.lock = 0;
+        } while ( !h.compare_exchange_weak( expected, desired ) );// try to acquire lock bit
+    }
 
+    void release() {
+        std::atomic< BlobHeader > &h =
+            *reinterpret_cast< std::atomic< BlobHeader >* >( pointer() );
+
+        BlobHeader working( h );
+        working.lock = 0;
+        h = working;
+    }
 };
 
 template< typename N >
