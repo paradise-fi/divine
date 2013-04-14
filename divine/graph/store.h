@@ -72,11 +72,12 @@ struct TableUtils
     }
 
     // Store node in hash table
-    void store( T s, hash_t h, bool * = nullptr ) {
+    bool store( T s, hash_t h ) {
         Statistics::global().hashadded( id->id(), memSize( s ) );
         Statistics::global().hashsize( id->id(), table().size() );
         table().insertHinted( s, h );
         setPermanent( s );
+        return true;// thus we call this only if we could not find $s in table
     }
 
     bool has( T s ) { return table().has( s ); }
@@ -176,14 +177,13 @@ struct SharedStore : TableUtils< SharedStore< Graph, Hasher, Statistics >, Share
 
     void maxSize( size_t ) {}
 
-    void store( T s, hash_t h, bool* had = nullptr ) {
+    bool store( T s, hash_t h ) {
         Statistics::global().hashadded( Super::id->id(), memSize( s ) );
         Statistics::global().hashsize( Super::id->id(), table().size() );
         bool inserted;
         std::tie( std::ignore, inserted ) = table().insertHinted( s, h );
-        if ( had )
-            *had = !inserted;
         setPermanent( s );
+        return inserted;
     }
 
     template< typename W >
