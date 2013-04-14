@@ -100,11 +100,9 @@ struct LtlCE {
             return;
         assert( s.valid( shared().ce.current ) );
         if ( s.owner( w, shared().ce.current ) == w.id() ) {
-            Node n = s.fetch( shared().ce.current, s.hash( shared().ce.current ) );
-            assert( n.valid() );
-
-            shared().ce.successor = n;
-            shared().ce.current = extension( n ).parent;
+            VertexId h = s.fetchVertexId( shared().ce.current );
+            shared().ce.successor = h;
+            shared().ce.current = extension( h ).parent;
             shared().ce.current_updated = true;
             VertexId init = shared().ce.initial;
             shared().ce.is_ce_initial = visitor::equalId( s, init, h );
@@ -136,7 +134,7 @@ struct LtlCE {
                         if ( this->shared().ce.current_updated )
                             return;
                         ++id;
-                        Vertex sSt = s.fetch( n, s.hash( n ) );
+                        Vertex sSt = std::get< 0 >( s.fetch( n, s.hash( n ) ) );
                         VertexId h = sSt.getVertexId();
                         n = sSt.getNode();
                         if ( visitor::equalId( s, h, this->shared().ce.current ) ) {
@@ -168,7 +166,7 @@ struct LtlCE {
         VertexId h = handle;
         g().initials( [ this, &h, &s, &res, &i ]( Node, Node o, Label ) {
                 ++i;
-                VertexId ho = s.fetch( o, s.hash( o ) ).getVertexId();
+                VertexId ho = std::get< 0 >( s.fetch( o, s.hash( o ) ) ).getVertexId();
                 res = visitor::equalId( s, h, ho ) ? i : res;
                 this->g().release( o );
             } );
@@ -222,11 +220,15 @@ struct LtlCE {
         typename Find::Visitor::template Implementation< Find, Algorithm >
             visitor( *this, a, a.graph(), a.store(), a.data );
 
-        assert( shared().ce.initial.valid() );
-        if ( a.store().owner( a, shared().ce.initial ) == a.id() ) {
-            shared().ce.initial = a.store().fetch( shared().ce.initial,
-                                                   a.store().hash( shared().ce.initial ) );
-            visitor.queue( Blob(), shared().ce.initial, Label() );
+        assert( shared().ce.parent.valid() );
+        if ( a.store().owner( a, shared().ce.parent ) == a.id() ) {
+            assert( a.store().owner( a, shared().ce.initial ) == a.id() );
+            Vertex par = std::get< 0 >( a.store().fetch( shared().ce.parent,
+                              a.store().hash( shared().ce.parent ) ) );
+            shared().ce.parent = par.getNode();
+            assert( visitor::equalId( a.store(), par.getVertexId(),
+                    shared().ce.initial ) ); // since initial must be parent's handle
+            visitor.queue( Vertex(), par.getNode(), Label() );
         }
         visitor.processQueue();
     }
@@ -387,7 +389,8 @@ struct LtlCE {
                 if ( shared().ce.successor_id == 0 ) // empty CE
                     return std::make_pair( trace, numTrace );
                 Node initial = getInitialById( shared().ce.successor_id );
-                initial = a.store().fetch( initial, a.store().hash( initial ) ).getNode();
+                initial = std::get< 0 >( a.store().fetch( initial,
+                            a.store().hash( initial ) ) ).getNode();
                 visitor::setPermanent( a.pool(), initial );
                 assert( initial.valid() );
                 shared().ce.parent = initial;
@@ -440,7 +443,9 @@ struct LtlCE {
                 a.graph().initials( [&]( Node, Node o, Label ) {
                         if ( !done ) {
                             ++i;
-                            auto vi = a.store().fetch( o, a.store().hash( o ) ).getVertexId();
+                            auto vi = std::get< 0 >( a.store()
+                                .fetch( o, a.store().hash( o ) ) )
+                                .getVertexId();
                             if ( visitor::equalId( a.store(), vi, *hTraceBegin ) ) {
                                 parent = o;
                                 done = true;
@@ -467,7 +472,8 @@ struct LtlCE {
             a.graph().allSuccessors( parent, [&]( Node t, Label ) {
                     if ( !done ) {
                         ++i;
-                        auto vi = a.store().fetch( t, a.store().hash( t ) ).getVertexId();
+                        auto vi = std::get< 0 >( a.store()
+                            .fetch( t, a.store().hash( t ) ) ).getVertexId();
                         if ( visitor::equalId( a.store(), vi, *hTraceBegin ) ) {
                             parent = t;
                             done = true;
