@@ -43,7 +43,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     bool traceLabels;
     bool bfs;
 
-    HashSet< Node, algorithm::Hasher > *intrace;
     std::set< std::pair< int, int > > intrace_trans;
 
     int id() { return 0; }
@@ -76,9 +75,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     {
         if ( draw.extension( t ).serial == 0 && !draw.extension( t ).intrace )
                 draw.extension( t ).serial = ++draw.serial;
-            else
-                draw.extension( t ) = draw.extension( draw.intrace->get( t ) );
-        }
 
         if ( draw.extension( t ).initial == 1 ) {
             draw.extension( t ).initial ++;
@@ -191,8 +187,6 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     void loadTrace() {
-        intrace = new HashSet< Node, algorithm::Hasher >( this->store().hasher() );
-
         if ( trace.empty() )
             return;
 
@@ -212,10 +206,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         assert( from.getNode().valid() );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
-            if ( intrace->get( from ).valid() )
-                from = intrace->get( from );
-            else
-                intrace->insert( from );
+            extension( from ).intrace = true;
 
             if ( i == int( trans.size() ) ) /* done */
                 break;
@@ -227,15 +218,13 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                         return;
                     }
                     if ( !this->store().valid( to ) )
-                        to = this->store().fetch( n, this->store().hash( n ) );
+                        to = std::get< 0 >( this->store().fetch( n, this->store().hash( n ) ) );
                 } );
 
             if ( !this->store().valid( to ) )
                 throw wibble::exception::Consistency(
                     "The trace " + trace + " is invalid, not enough successors "
                     "at step " + wibble::str::fmt( i ) + " (" + wibble::str::fmt( trans[ i ] ) + " requested)" );
-            if ( intrace->has( to ) )
-                to = intrace->get( to );
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;
@@ -264,7 +253,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         do {
             this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
                     Vertex fV = f.valid()
-                        ? this->store().fetch( f, this->store().hash( f ) )
+                        ? std::get< 0 >( this->store().fetch( f, this->store().hash( f ) ) )
                         : Vertex();
                     visitor.queue( fV, t, l );
                 } );
