@@ -31,7 +31,7 @@ Please consult [release notes] [2] for a summary of changes between releases.
 [1]: download/divine-2.5.2.tar.gz
 [2]: whatsnew.html
 [3]: download/divine-2.5-win32.exe
-[4]: download/divine-2.93.tar.gz
+[4]: download/divine-2.95.tar.gz
 [5]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
 
 Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
