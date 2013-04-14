@@ -40,7 +40,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     bool traceLabels;
     bool bfs;
 
-    HashSet< Node, algorithm::Hasher > *intrace;
+    std::shared_ptr< HashSet< Node, algorithm::Hasher > > intrace;
     std::set< std::pair< int, int > > intrace_trans;
 
     int id() { return 0; }
@@ -180,9 +180,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         dot_edges += str.str();
     }
 
-    // TODO: We leak some memory here, roughly linear to the trace size, i.e. not too bad
     void loadTrace() {
-        intrace = new HashSet< Node, algorithm::Hasher >( this->store().hasher() );
+        intrace = std::make_shared< HashSet< Node, algorithm::Hasher > >( this->store().hasher() );
 
         if ( trace.empty() )
             return;
