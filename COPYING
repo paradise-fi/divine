@@ -40,6 +40,8 @@ external/murphi is (c) 1992-1999 the Board of Trustees of Leland Stanford
   Junior University, a 4-clause BSD-style license (see external/murphi/mu.h)
 external/dlfcn-win32 is (c) 2007 Ramiro Polla
 
+--
+
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991
 
