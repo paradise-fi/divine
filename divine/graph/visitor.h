@@ -369,12 +369,10 @@ struct Shared {
 
         std::shared_ptr< typename Chunker::ChunkQ > chunkq;
         std::shared_ptr< typename Chunker::Terminator > terminator;
-        std::shared_ptr< Table > table;
 
         Data() :
             chunkq( std::make_shared< typename Chunker::ChunkQ >() ),
-            terminator( std::make_shared< typename Chunker::Terminator >() ),
-            table( std::make_shared< Table >() )
+            terminator( std::make_shared< typename Chunker::Terminator >() )
             {}
         Data( const Data& ) = default;
     };
