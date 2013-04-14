@@ -90,15 +90,17 @@ struct HashSet
         return insertCell( c, m_table, m_used );
     }
 
-    bool has( Item i ) { return hasher.valid( get( i ) ); }
-    Item get( Item i ) { return getHinted( i, hasher.hash( i ) ); }
-    Item getHinted( Item i, hash_t h, bool* has = NULL ) {
+    bool has( Item i ) {
+        return hasher.valid( std::get< 0 >( get( i ) ) );
+    }
+
+    std::tuple< Item, bool > get( Item i ) { return getHinted( i, hasher.hash( i ) ); }
+    std::tuple< Item, bool > getHinted( Item i, hash_t h ) {
         Cell c;
         c.item = i;
         c.hash = h;
         const Item& item = getCell( c );
-        if ( has != NULL ) *has = hasher.valid( item );
-        return item;
+        return std::make_tuple( item, hasher.valid( item ) );
     }
 
     Item getCell( Cell c ) // const (bleh)
