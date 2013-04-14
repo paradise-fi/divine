@@ -223,15 +223,17 @@ struct HcStore : public TableUtils< HcStore< Graph, Hasher, Statistics >,
         return _table;
     }
 
-    Blob fetch( Blob s, hash_t h, bool* had = 0 ) {
-        Blob found = Utils::fetch( s, h, had );
+    std::tuple< Blob, bool > fetch( Blob s, hash_t h ) {
+        Blob found;
+        bool had;
+        std::tie( found, had ) = Utils::fetch( s, h );
 
         if ( !alias( s, found ) ) {
             // copy saved state information
             std::copy( found.data(), found.data() + found.size(), s.data() );
-            return s;
+            return std::make_tuple( s, false );
         }
-        return found;
+        return std::make_tuple( found, true );
     }
 
     void store( Blob s, hash_t h, bool * = nullptr ) {
