@@ -74,13 +74,13 @@ let origtools = tools; origname = name;
     cd ..
 
     ensureDir $out
-    $cdrkit/bin/genisoimage -D -J -o $out/tools.iso data
+    $cdrkit/bin/genisoimage -D -J -joliet-long -o tools.iso data
 
     TMPDIR=`pwd`
     ${vmTools.startSamba}
 
     $kvm/bin/qemu-img create -f qcow2 -b $img/hda.img hda.img
-    $kvm/bin/qemu-kvm -cdrom $out/tools.iso -hda hda.img -m ${mem} -nographic \
+    $kvm/bin/qemu-kvm -cdrom tools.iso -hda hda.img -m ${mem} -nographic \
      -chardev socket,id=samba,path=./samba \
      -net nic \
      -net user,guestfwd=tcp:10.0.2.4:445-chardev:samba,restrict=on
