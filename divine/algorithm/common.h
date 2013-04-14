@@ -58,9 +58,11 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     template< typename A, typename V >
     void queueInitials( A &a, V &v ) {
         a.graph().initials( [ &a, &v ] ( Node f, Node n, Label l ) {
-                Vertex fV = f.valid()
-                              ? a.store().fetch( f, a.store().hash( f ) )
-                              : Vertex();
+                bool had = true;
+                Vertex fV;
+                if ( f.valid() )
+                   std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
+                assert( had );
                 assert( !f.valid() || a.store().valid( fV ) );
                 v.queue( fV, n, l );
             } );
@@ -69,9 +71,11 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     template< typename A, typename V >
     void queuePOR( A &a, V &v ) {
         a.graph().porExpand( a.store(), [ &a, &v ] ( Node f, Node n, Label l ) {
-                Vertex fV = f.valid()
-                    ? a.store().fetch( f, a.store().hash( f ) )
-                    : Vertex();
+                bool had = true;
+                Vertex fV;
+                if ( f.valid() )
+                   std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
+                assert( had );
                 assert( !f.valid() || a.store().valid( fV ) );
                 v.queueAny( fV, n, l );
             } );
