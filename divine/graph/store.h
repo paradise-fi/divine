@@ -57,20 +57,18 @@ struct TableUtils
     WithID *id;
 
     // Retrieve node from hash table
-    T fetch( T s, hash_t h, bool *had = 0 ) {
-        T found = table().getHinted( s, h, had );
+    std::tuple< T, bool > fetch( T s, hash_t h ) {
+        T found;
+        bool had;
+        std::tie( found, had ) = table().getHinted( s, h );
 
-        if ( alias( s, found ) )
-            assert( hasher().valid( found ) );
-
-        if ( !hasher().valid( found ) ) {
+        if ( !had ) {
+            assert( !hasher().valid( found ) );
             assert( !alias( s, found ) );
-            if ( had )
-                assert( !*had );
-            return s;
+            return std::make_tuple( s, false );
         }
-
-        return found;
+        assert( hasher().valid( found ) );
+        return std::make_tuple( found, true );
     }
 
     // Store node in hash table
