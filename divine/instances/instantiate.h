@@ -56,7 +56,7 @@ namespace instantiate {
              Store store, Visitor visitor, Topology topology, Statistics statistics >
     algorithm::Algorithm* selectVisitor( Meta& meta ) {
         if ( meta.algorithm.sharedVisitor )
-            return makeAlgorithm< algo, generator, transform, Store::Shared,
+            return makeAlgorithm< algo, generator, transform, store,
                    Visitor::Shared, topology, statistics >( meta );
         else
             return makeAlgorithm< algo, generator, transform, store,
