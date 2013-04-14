@@ -54,7 +54,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     void addSucc( Node n ) {
         bool had;
         hash_t hint = this->store().hash( n );
-        Node node = this->store().fetch( n, hint, &had );
+        Node node;
+        std::tie( node, had ) = this->store().fetch( n, hint );
 
         if ( !this->store().alias( n, node ) ) {
             this->graph().release( n );

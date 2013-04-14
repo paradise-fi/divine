@@ -28,7 +28,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
         if ( owner != this->id() ) { // send to remote
             this->comms().submit( this->id(), owner, std::make_pair( from, to ) );
         } else { // we own this node, so let's process it
-            Node in_table = this->store().fetch( to, hint );
+            Node in_table = std::get< 0 >( this->store().fetch( to, hint ) );
 
             shared.addEdge( this->graph(), from, to );
             if ( !this->store().valid( in_table ) ) {
