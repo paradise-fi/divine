@@ -13,6 +13,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
+    typedef typename Setup::Vertex Vertex;
 
     struct SuccInfo {
         Node node;
@@ -54,7 +55,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     void addSucc( Node n ) {
         bool had;
         hash_t hint = this->store().hash( n );
-        Node node = this->store().fetch( n, hint, &had );
+        Vertex v;
+        std::tie( v, had ) = this->store().fetch( n, hint );
+        Node node = v.getNode();
 
         if ( !this->store().alias( n, node ) ) {
             this->graph().release( n );
