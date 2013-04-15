@@ -1,4 +1,8 @@
 . lib
 
-run reachability --reduce=por data/por.dve
-check reachability_deadlock
+test "$O_DVE" = "OFF" && skip
+for COMP in $COMPRESSIONS
+do
+    run reachability --reduce=por data/por.dve --compression=$COMP
+    check reachability_deadlock
+done
