@@ -117,6 +117,10 @@ struct StoreCommon : public TableUtils {
         return table().has( n );
     }
 
+    void setSize( int size ) {
+        table().setSize( size );
+    }
+
   protected:
     // Retrieve node from hash table
     std::tuple< Node, bool > _fetch( Node s, hash_t h ) {
@@ -457,8 +461,6 @@ struct Store
 
     void update( Node s, hash_t h ) {}
 
-    void setSize( int ) { } // TODO
-
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
         if ( hint )
@@ -605,8 +607,6 @@ struct HcStore
         return table().has( node );
     }
 
-    void setSize( int ) { } // TODO
-
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
         if ( hint )
@@ -706,8 +706,6 @@ struct CompressedStore
         return std::make_tuple( Vertex( node, n ), inserted );
     }
 
-    void setSize( int ) { } // TODO
-
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
         if ( hint )
@@ -789,6 +787,8 @@ struct TreeCompressedStore : public CompressedStore< Utils,
     int owner( W &w, VertexId h ) {
         return _hash( h ) % w.peers();
     }
+
+    void setSize( int ) { } // TODO
 
     STORE_ITERATOR;
 
