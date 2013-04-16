@@ -18,7 +18,7 @@ namespace divine {
     // TreeCompressedHashSet :: ( * -> * -> * ) -> * -> * -> *
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class _HashSet,
-        typename _Item, typename _Hasher = default_hasher< _Item > >
+        typename _Item, typename _Hasher, typename >
     struct TreeCompressedHashSet
     {
         typedef _Item Item;
@@ -483,8 +483,8 @@ namespace divine {
     };
 
     template< template< typename, typename > class _HashSet,
-        typename Item, typename Hasher >
-    const typename TreeCompressedHashSet< _HashSet, Item, Hasher >::Root
-        TreeCompressedHashSet< _HashSet, Item, Hasher >::Root::invalid;
+        typename Item, typename Hasher, typename X >
+    const typename TreeCompressedHashSet< _HashSet, Item, Hasher, X >::Root
+        TreeCompressedHashSet< _HashSet, Item, Hasher, X >::Root::invalid;
 }
 #endif

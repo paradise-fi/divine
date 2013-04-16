@@ -125,7 +125,7 @@ namespace instantiate {
     struct SelectVisitor< Visitor :: VISIT > { \
         using T = ::divine::visitor :: VISIT; \
         template < typename Node, typename Hasher, \
-            template < template < typename, typename > class, typename, typename > \
+            template < template < typename, typename > class, typename, typename, typename > \
           class TableWrapper > \
         using TableUtils = ::divine::visitor :: VISIT ## Table< Node, Hasher, TableWrapper >; \
         static const bool available = true; \
@@ -251,7 +251,7 @@ namespace instantiate {
              typename _Visitor, template< typename > class _Topology,
              typename _Statistics >
     struct Setup {
-        using Store = _Store< typename Generator::Node, Hasher, _Statistics >;
+        using Store = _Store< Generator, Hasher, _Statistics >;
         using Graph = Transform< Generator, Store, _Statistics >;
         using Visitor = _Visitor;
         template < typename I >
