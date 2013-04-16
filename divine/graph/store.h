@@ -64,6 +64,8 @@ struct StoreCommon : public TableUtils {
     using TableUtils::_owner;
     using Hasher = typename Table::Hasher;
     using Node = typename Table::Item;
+    static_assert( wibble::TSame< Node, typename TableUtils::Node >::value,
+            "Table's Node is incompatible with generator" );
 
   protected: // we don't want algoritms to mess with table directly
     WithID* _id;
@@ -163,15 +165,16 @@ struct StoreCommon : public TableUtils {
 };
 
 template < template< typename, typename > class Table,
-         typename Node, typename Hasher >
+         typename Node, typename Hasher, typename >
 using TableIdentity = Table< Node, Hasher >;
 
-template < typename Node, typename Hasher,
-         template < template < typename, typename > class, typename, typename >
-            class TableWrapper
+template < typename Generator, typename Hasher,
+         template < template < typename, typename > class,
+              typename, typename, typename > class TableWrapper
          >
 struct PartitionedTable {
-    using Table = TableWrapper< HashSet, Node, Hasher >;
+    using Node = typename Generator::Node;
+    using Table = TableWrapper< HashSet, Node, Hasher, Generator >;
     Table _table;
 
     Table &table() {
@@ -194,12 +197,13 @@ struct PartitionedTable {
     }
 };
 
-template < typename Node, typename Hasher,
-         template < template < typename, typename > class, typename, typename >
-            class TableWrapper
+template < typename Generator, typename Hasher,
+         template < template < typename, typename > class,
+              typename, typename, typename > class TableWrapper
          >
 struct SharedTable {
-    using Table = TableWrapper< SharedHashSet, Node, Hasher >;
+    using Node = typename Generator::Node;
+    using Table = TableWrapper< SharedHashSet, Node, Hasher, Generator >;
     using TablePtr = std::shared_ptr< Table >;
 
     TablePtr _table;
@@ -412,21 +416,21 @@ struct CompressedVertex {
 // ( * -> * -> ( ( * -> * ) -> * -> * ) ) -> * -> * -> * -> *
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename > class
+              typename, typename, typename > class
             > class Utils,
-         typename _Node, typename _Hasher, typename Statistics >
+         typename _Generator, typename _Hasher, typename Statistics >
 struct Store
-    : public StoreCommon< Store< Utils, _Node, _Hasher, Statistics >,
-                          Utils< _Node, _Hasher, TableIdentity >,
+    : public StoreCommon< Store< Utils, _Generator, _Hasher, Statistics >,
+                          Utils< _Generator, _Hasher, TableIdentity >,
                           Statistics >
 {
-    using TableUtils = Utils< _Node, _Hasher, TableIdentity >;
-    using This = Store< Utils, _Node, _Hasher, Statistics >;
+    using TableUtils = Utils< _Generator, _Hasher, TableIdentity >;
+    using This = Store< Utils, _Generator, _Hasher, Statistics >;
     using Base = StoreCommon< This, TableUtils, Statistics >;
     STORE_CLASS;
 
-    using VertexId = StdVertexId< _Node >;
-    using Vertex = StdVertex< _Node >;
+    using VertexId = StdVertexId< Node >;
+    using Vertex = StdVertex< Node >;
 
     typedef Vertex QueueVertex;
 
@@ -518,20 +522,20 @@ struct HcHasher : Hasher
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename > class
+              typename, typename, typename > class
             > class Utils,
-         typename _Node, typename _Hasher, typename Statistics >
+         typename _Generator, typename _Hasher, typename Statistics >
 struct HcStore
-    : public StoreCommon< HcStore< Utils, _Node, _Hasher, Statistics >,
-                          Utils< _Node, HcHasher< _Hasher >, TableIdentity >,
+    : public StoreCommon< HcStore< Utils, _Generator, _Hasher, Statistics >,
+                          Utils< _Generator, HcHasher< _Hasher >, TableIdentity >,
                           Statistics >
 {
-    static_assert( wibble::TSame< _Node, Blob >::value,
-                   "HcStore can only work with Blob nodes" );
-    using TableUtils = Utils< _Node, HcHasher< _Hasher >, TableIdentity >;
-    using This = HcStore< Utils,_Node, _Hasher, Statistics >;
+    using TableUtils = Utils< _Generator, HcHasher< _Hasher >, TableIdentity >;
+    using This = HcStore< Utils,_Generator, _Hasher, Statistics >;
     using Base = StoreCommon< This, TableUtils, Statistics >;
     STORE_CLASS;
+    static_assert( wibble::TSame< Node, Blob >::value,
+                   "HcStore can only work with Blob nodes" );
 
     using VertexId = StdVertexId< Node >;
     using Vertex = CompressedVertex< Node, Node >;
@@ -650,18 +654,18 @@ struct HcStore
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename > class
+              typename, typename, typename > class
             > class Utils,
-          template < template < typename, typename > class, typename, typename
-            > class _Table,
-          typename _Node, typename _Hasher, typename Statistics >
+          template < template < typename, typename > class,
+              typename, typename, typename > class _Table,
+          typename _Generator, typename _Hasher, typename Statistics >
 struct CompressedStore
-    : public StoreCommon< CompressedStore< Utils, _Table, _Node, _Hasher, Statistics >,
-                          Utils< _Node, _Hasher, _Table >,
+    : public StoreCommon< CompressedStore< Utils, _Table, _Generator, _Hasher, Statistics >,
+                          Utils< _Generator, _Hasher, _Table >,
                           Statistics >
 {
-    using This = CompressedStore< Utils, _Table, _Node, _Hasher, Statistics >;
-    using TableUtils = Utils< _Node, _Hasher, _Table >;
+    using This = CompressedStore< Utils, _Table, _Generator, _Hasher, Statistics >;
+    using TableUtils = Utils< _Generator, _Hasher, _Table >;
     using Base = StoreCommon< This, TableUtils, Statistics >;
     STORE_CLASS;
 
@@ -736,19 +740,18 @@ struct CompressedStore
     }
 };
 
-
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename > class
+              typename, typename, typename > class
             > class Utils,
-            typename _Node, typename _Hasher, typename Statistics >
+            typename _Generator, typename _Hasher, typename Statistics >
 struct TreeCompressedStore : public CompressedStore< Utils,
-        TreeCompressedHashSet, _Node, _Hasher, Statistics >
+        TreeCompressedHashSet, _Generator, _Hasher, Statistics >
 {
-    using Base = CompressedStore< Utils, TreeCompressedHashSet, _Node,
+    using Base = CompressedStore< Utils, TreeCompressedHashSet, _Generator,
           _Hasher, Statistics >;
     using TableUtils = typename Base::TableUtils;
-    using This = TreeCompressedStore< Utils, _Node, _Hasher, Statistics >;
+    using This = TreeCompressedStore< Utils, _Generator, _Hasher, Statistics >;
     using VertexId = typename Base::VertexId;
     using Vertex = typename Base::Vertex;
     using QueueVertex = typename Base::QueueVertex;
