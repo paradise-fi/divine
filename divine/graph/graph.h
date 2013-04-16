@@ -1,11 +1,15 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 
 #include <divine/graph/allocator.h>
+#include <vector>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
 
 namespace divine {
+
+    enum class Recurse : uint8_t { Yes, No };
+
 namespace graph {
 
 /// Types of acceptance condition
@@ -73,6 +77,17 @@ struct Base {
             return hasher.hash( n ) % worker.peers();
         else
             return hint % worker.peers();
+    }
+
+    // yield( Recurse, length, remaining count )
+    template< typename Yield >
+    void splitHint( Node n, int form, int length, Yield yield ) {
+        return yield( Recurse::No, length, 0 );
+    }
+
+    template< typename Yield >
+    void splitHint( Node n, Yield yield ) {
+        return splitHint( n, alloc.slack(), alloc.pool().size( n ) - alloc.slack(), yield );
     }
 };
 
