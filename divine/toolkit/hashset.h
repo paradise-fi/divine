@@ -101,30 +101,24 @@ struct HashSet
     }
 
     std::tuple< Item, bool > get( Item i ) { return getHinted( i, hasher.hash( i ) ); }
-    std::tuple< Item, bool > getHinted( Item i, hash_t h ) {
-        Cell c;
-        c.item = i;
-        c.hash = h;
-        const Item& item = getCell( c );
-        return std::make_tuple( item, hasher.valid( item ) );
-    }
 
-    Item getCell( Cell c ) // const (bleh)
-    {
+    template< typename T >
+    std::tuple< Item, bool > getHinted( T item, hash_t hash ) {
         size_t idx;
         for ( int i = 0; i < maxcollision(); ++i ) {
-            idx = index( c.hash, i );
+            idx = index( hash, i );
 
             if ( !hasher.valid( m_table[ idx ].item ) )
-                return Item(); // invalid
+                return std::make_tuple( Item(), false ); // invalid
 
-            if ( cellEq( c, m_table[ idx ] ) )
-                return m_table[ idx ].item;
+            if ( m_table[ idx ].hash == hash
+                    && hasher.equal( item, m_table[ idx ].item ) )
+                return std::make_tuple( m_table[ idx ].item, true );
         }
         // we can be sure that the element is not in the table *because*: we
         // never create chains longer than "mc", and if we haven't found the
         // key in this many steps, it can't be in the table
-        return Item();
+        return std::make_tuple( Item(), false );
     }
 
     inline bool cellEq( Cell a, Cell b) {
