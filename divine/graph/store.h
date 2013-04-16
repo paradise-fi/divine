@@ -61,6 +61,7 @@ template < typename Self, typename TableUtils, typename Statistics >
 struct StoreCommon : public TableUtils {
     using Table = typename TableUtils::Table;
     using TableUtils::table;
+    using TableUtils::_owner;
     using Hasher = typename Table::Hasher;
     using Node = typename Table::Item;
 
@@ -185,6 +186,12 @@ struct PartitionedTable {
     PartitionedTable( PartitionedTable *, Args&&... args )
         : _table( std::forward< Args >( args )... )
     { }
+
+  protected:
+    template< typename W >
+    int _owner( W &w, hash_t hash ) const {
+        return hash % w.peers();
+    }
 };
 
 template < typename Node, typename Hasher,
@@ -211,6 +218,12 @@ struct SharedTable {
                 ? master->_table
                 : std::make_shared< Table >( std::forward< Args >( args )... ) )
     { }
+
+  protected:
+    template< typename W >
+    int _owner( W &w, hash_t hash ) const {
+        return w.id();
+    }
 };
 
 #define STORE_CLASS using Node = typename Base::Node; \
@@ -226,7 +239,8 @@ struct SharedTable {
     using Base::valid; \
     using Base::equal; \
     using Base::has; \
-    using Base::_id
+    using Base::_id; \
+    using Base::_owner
 
 #define STORE_ITERATOR using Iterator = StoreIterator< This >; \
     Iterator begin() { return Iterator( *this, 0 ); } \
@@ -463,10 +477,7 @@ struct Store
 
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
-        if ( hint )
-            return hint % w.peers();
-        else
-            return hash( n ) % w.peers();
+        return _owner( w, hint ? hint : hash( n ) );
     }
 
     template< typename W >
@@ -476,8 +487,7 @@ struct Store
 
     template < typename W >
     int owner( W &w, VertexId h ) const {
-        int own = hash( h.node ) % w.peers();
-        return own;
+        return _owner( w, hash( h.node ) );
     }
 
     bool valid( Vertex v ) {
@@ -609,20 +619,17 @@ struct HcStore
 
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
-        if ( hint )
-            return hint % w.peers();
-        else
-            return hash( n ) % w.peers();
+        return _owner( w, hint ? hint : hash( n ) );
     }
 
     template< typename W >
     int owner( W &w, Vertex s, hash_t hint = 0 ) const {
-        return stubHash( s.compressed ) % w.peers();
+        return _owner( w, stubHash( s.compressed ) );
     }
 
     template< typename W >
     int owner( W &w, VertexId h ) const {
-        return stubHash( h.node ) % w.peers();
+        return _owner( w, stubHash( h.node ) );
     }
 
     bool valid( Vertex v ) {
@@ -708,10 +715,7 @@ struct CompressedStore
 
     template< typename W >
     int owner( W &w, Node n, hash_t hint = 0 ) const {
-        if ( hint )
-            return hint % w.peers();
-        else
-            return hash( n ) % w.peers();
+        return _owner( w, hint ? hint : hash( n ) );
     }
 
     template< typename W >
@@ -785,7 +789,7 @@ struct TreeCompressedStore : public CompressedStore< Utils,
 
     template< typename W >
     int owner( W &w, VertexId h ) {
-        return _hash( h ) % w.peers();
+        return _owner( w, _hash( h ) );
     }
 
     void setSize( int ) { } // TODO
