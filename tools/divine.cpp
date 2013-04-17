@@ -126,7 +126,7 @@ struct Main {
     OptionGroup *common, *drawing, *input, *reduce, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
-    BoolOption *o_fair, *o_hashCompaction, *o_sharedVisitor;
+    BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
     BoolOption *o_noreduce;
     BoolOption *o_curses;
@@ -339,9 +339,9 @@ struct Main {
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
 
-        o_sharedVisitor = common->add< BoolOption >(
-            "shared-visitor", '\0', "shared", "",
-            "enable shared visitore instead of partitioned one");
+        o_shared = common->add< BoolOption >(
+            "shared-memory", '\0', "shared", "",
+            "enable shared-memory hashtables & queues (EXPERIMENTAL)");
 
         o_seed = common->add< IntOption >(
             "seed", '\0', "seed", "",
@@ -509,7 +509,7 @@ struct Main {
         meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
         meta.output.wantCe = !o_noCe->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
-        meta.algorithm.sharedVisitor = o_sharedVisitor->boolValue();
+        meta.algorithm.sharedVisitor = o_shared->boolValue();
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
                 meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
@@ -615,7 +615,16 @@ struct Main {
             die( "FATAL: Internal error in commandline parser." );
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
-        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs && !meta.algorithm.sharedVisitor ) // ndfs needs a shared table, also Shared visitor have to have size without dividing
+
+        if ( meta.algorithm.sharedVisitor ) {
+            if ( meta.algorithm.algorithm != meta::Algorithm::Metrics &&
+                 meta.algorithm.algorithm != meta::Algorithm::Reachability )
+                die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
+        }
+
+        // ndfs needs a shared table, also Shared visitor have to have size without dividing
+        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs
+             && !meta.algorithm.sharedVisitor )
             meta.execution.initialTable /= meta.execution.threads;
     }
 
