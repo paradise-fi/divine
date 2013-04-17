@@ -82,7 +82,19 @@ struct Base {
     // yield( Recurse, length, remaining count )
     template< typename Yield >
     void splitHint( Node n, int form, int length, Yield yield ) {
-        return yield( Recurse::No, length, 0 );
+        // just a simple binary splitting, should be replaced by something
+        // more appropriate in generators
+
+        if ( length <= 32 ) {
+            yield( Recurse::No, length, 0 );
+            return;
+        }
+
+        int half = length / 2;
+        half = half & 0x1 ? half + 1: half; // ensure even number
+
+        yield( Recurse::Yes, half, 1 );
+        yield( Recurse::Yes, length - half, 0 );
     }
 
     template< typename Yield >
