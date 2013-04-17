@@ -59,7 +59,7 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     void queueInitials( A &a, V &v ) {
         a.graph().initials( [ &a, &v ] ( Node f, Node n, Label l ) {
                 bool had = true;
-                Vertex fV;
+                Vertex fV = Vertex();
                 if ( f.valid() )
                    std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
                 assert( had );
@@ -72,7 +72,7 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     void queuePOR( A &a, V &v ) {
         a.graph().porExpand( a.store(), [ &a, &v ] ( Node f, Node n, Label l ) {
                 bool had = true;
-                Vertex fV;
+                Vertex fV = Vertex();
                 if ( f.valid() )
                    std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
                 assert( had );
