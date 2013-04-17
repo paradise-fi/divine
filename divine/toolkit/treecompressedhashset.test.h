@@ -7,10 +7,12 @@
 #include <cstdint>
 #include <algorithm>
 
+#if 0
+
 using namespace divine;
 using divine::algorithm::Hasher;
 
-struct TestTreeCompressedHashSet {
+struct NotestTreeCompressedHashSet {
 
     static std::mt19937 random;
 
@@ -158,4 +160,6 @@ int main() {
     tt.basic();
     return 0;
 }
+#endif
+
 #endif
