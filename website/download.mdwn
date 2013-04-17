@@ -17,22 +17,24 @@ Download
 
 The source code of the latest version of DiVinE is available for download.
 Binaries are only available for 32-bit Windows.  Please note that DiVinE
-Cluster and DiVinE Multi-Core have been discontinued and that ProbDiVinE is
-distributed as a part of the main DiVinE package.
+Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
 
-Download: **[divine-2.5.2.tar.gz] [1]**.  An installer for 32 bit windows:
-**[divine-2.5-win32.exe] [3]**.
+* Source code: **[divine-2.96.tar.gz](download/divine-2.96.tar.gz)** (a release candidate for 3.0).
 
-The current *development* version is **[divine-2.95.tar.gz] [4]** (3.0 beta
-2). Binaries of development snapshots can be [obtained from hydra] [5].
+* An installer for 32 bit windows:
+  **[divine-2.96-installer.exe](download/divine-2.96-installer.exe)**.
 
-Please consult [release notes] [2] for a summary of changes between releases.
+    NB. The windows version does not currently include support for LLVM bitcode
+    verification (this is work in progress) nor does it offer distributed
+    execution through MPI (currently not planned). The GUI is included in the
+    installer, however.
 
-[1]: download/divine-2.5.2.tar.gz
-[2]: whatsnew.html
-[3]: download/divine-2.5-win32.exe
-[4]: download/divine-2.95.tar.gz
-[5]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
+Please consult [release notes] [1] for a summary of changes between
+releases. Binaries and source tarballs of development snapshots can be obtained
+from [hydra] [2].
+
+[1]: whatsnew.html
+[2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
 
 Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
 it directly from our version control system. If you have the [darcs] [1] system
@@ -43,6 +45,8 @@ installed then the latest source code tarball can be obtained as follows:
 Archive of old releases
 -----------------------
 
+* [divine-2.5.2.tar.gz](download/divine-2.5.2.tar.gz)  
+  [divine-2.5-win32.exe](download/divine-2.5-win32.exe)
 * [divine-2.4.tar.gz](download/divine-2.4.tar.gz)  
   [divine-2.4-win32.exe](download/divine-2.4-win32.exe) (Windows installer)
 * [divine-2.3.tar.gz](download/divine-2.3.tar.gz)
