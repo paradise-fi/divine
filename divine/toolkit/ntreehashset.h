@@ -32,12 +32,12 @@ namespace divine {
         NTreeHashSet() : NTreeHashSet( Hasher() ) { }
 
         template< typename... Args >
-        NTreeHashSet( Hasher hasher, Generator generator, Args&&... args ) :
-            _hasher( hasher ),
+        NTreeHashSet( Hasher hasher, Generator& generator, Args&&... args ) :
             _roots( RootHasher( hasher ), args... ),
             _forks( ForkHasher(), args... ),
             _leafs( LeafHasher(), args... ),
-            _generator( generator )
+            _generator( generator ),
+            hasher( hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
@@ -45,11 +45,14 @@ namespace divine {
 
 #ifndef O_PERFORMANCE
         ~NTreeHashSet() {
-            std::cout << "~TreeCompressedHashSet: "
+            std::cout << "~NTreeHashSet: "
                       << "inserts: " << inserts << ", "
                       << "leafReuse: " << leafReuse << ", "
                       << "forkReuse: " << forkReuse << ", "
-                      << "rootReuse: " << rootReuse << std::endl;
+                      << "rootReuse: " << rootReuse << ", "
+                      << "roots: " << _roots.size() << ", "
+                      << "forks: " << _forks.size() << ", "
+                      << "leafs: " << _leafs.size() << std::endl;
         }
 #endif
 
@@ -156,7 +159,8 @@ namespace divine {
             hash_t hash;
             uint32_t selfSize:24;
             bool leaf:1;
-            uint32_t __pad:7;
+            bool permanent:1;
+            uint32_t __pad:6;
 
             LeafOrFork* childs() {
                 assert( !leaf );
@@ -253,7 +257,8 @@ namespace divine {
             }
 
             void free( Pool& p ) {
-                p.free( reinterpret_cast< char* >( this ), selfSize );
+                if ( !permanent )
+                    p.free( reinterpret_cast< char* >( this ), selfSize );
             }
 
             static Root* createFlat( Item it, Pool& pool ) {
@@ -278,9 +283,25 @@ namespace divine {
                 return root;
             }
 
+            template < typename BS >
+            friend bitstream_impl::base< BS >& operator<<(
+                    bitstream_impl::base< BS >& bs, Root* r )
+            {
+                return bs << reinterpret_cast< uintptr_t >( r );
+            }
+            template < typename BS >
+            friend bitstream_impl::base< BS >& operator>>(
+                     bitstream_impl::base< BS >& bs, Root*& r )
+            {
+                uintptr_t ri;
+                bs >> ri;
+                r = reinterpret_cast< Root* >( ri );
+                return bs;
+            }
+
           private:
             Root( uint32_t selfSize, bool leaf ) :
-                selfSize( selfSize ), leaf( leaf )
+                hash( 0 ), selfSize( selfSize ), leaf( leaf ), __pad( 0 )
             { }
         };
 
@@ -331,7 +352,13 @@ namespace divine {
             hash_t hash( Root* r ) const {
                 return r->hash;
             }
+            hash_t hash( Item it ) const {
+                return nodeHasher.hash( it );
+            }
+
             bool valid( Root* r ) const { return r != nullptr; }
+            bool valid( Item it ) const { return nodeHasher.valid( it ); }
+
             bool equal( Root* r1, Root* r2 ) const {
                 if ( r1 == r2 )
                     return true;
@@ -371,6 +398,7 @@ namespace divine {
                                  root->data() + nodeHasher.slack, itSize ) == 0;
                 }
 
+                itSize += nodeHasher.slack;
                 int pos = nodeHasher.slack;
                 bool equal = true;
 
@@ -390,14 +418,19 @@ namespace divine {
                 assert_leq( 0, pos );
                 return equal;
             }
+
+            bool equal( Item i1, Item i2 ) const {
+                return nodeHasher.equal( i1, i2 );
+            }
         };
 
-        Hasher _hasher;
+        typedef Root* TableItem;
         HashSet< Root*, RootHasher > _roots; // stores slack and roots of tree
                              // (also in case when root leaf)
         HashSet< Fork*, ForkHasher > _forks; // stores intermediate nodes
         HashSet< Leaf*, LeafHasher > _leafs; // stores leafs if they are not root
         Generator _generator;
+        Hasher hasher;
 
 #ifndef O_PERFORMANCE
         size_t inserts;
@@ -407,19 +440,19 @@ namespace divine {
 #endif
 
         inline Pool& pool() {
-            return _hasher.pool;
+            return hasher.pool;
         }
 
         inline const Pool& pool() const {
-            return _hasher.pool;
+            return hasher.pool;
         }
 
         inline int slack() const {
-            return _hasher.slack;
+            return hasher.slack;
         }
 
         inline bool valid( Item i ) {
-            return _hasher.valid( i );
+            return hasher.valid( i );
         }
 
         inline char* slackPtr( Item item ) {
@@ -466,10 +499,11 @@ namespace divine {
         }
 
         std::tuple< Root*, bool > insert( Item item ) {
-            return insertHinted( item, _hasher.hash( item ) );
+            return insertHinted( item, hasher.hash( item ) );
         }
 
         std::tuple< Root*, bool > insertHinted( Item item, hash_t hash ) {
+            assert( hasher.valid( item ) );
             incInserts();
 
             Root* root = nullptr;
@@ -511,7 +545,8 @@ namespace divine {
             if ( !inserted ) {
                 incRootReuse();
                 root->free( pool() );
-            }
+            } else
+                tr->permanent = true;
 
             return std::make_tuple( tr, inserted );
         }
@@ -566,7 +601,7 @@ namespace divine {
         }
 
         std::tuple< Root*, bool > get( Item item ) {
-            return getHinted( item, _hasher.hash( item ) );
+            return getHinted( item, hasher.hash( item ) );
         }
 
         template< typename T >
@@ -579,6 +614,9 @@ namespace divine {
         }
 
         void setSize( size_t s ) {
+            _roots.setSize( s );
+            _forks.setSize( s );
+            _leafs.setSize( s );
         }
 
         void clear() {
@@ -587,7 +625,7 @@ namespace divine {
             _leafs.clear();
         }
 
-        Item operator[]( int off ) {
+        Root* operator[]( int off ) {
             return _roots[ off ];
         }
     };
