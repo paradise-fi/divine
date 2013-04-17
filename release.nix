@@ -58,7 +58,7 @@ let
 
   mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
     inherit windows_mingw;
-    tools = [ windows_cmake windows_nsis windows_llvm windows_qt ];
+    tools = [ windows_cmake windows_nsis /* windows_llvm */ windows_qt ];
     img = image;
     src = jobs.tarball;
     name = "divine";
