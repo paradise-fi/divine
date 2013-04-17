@@ -7,6 +7,7 @@
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/sharedhashset.h>
 #include <divine/toolkit/treecompressedhashset.h>
+#include <divine/toolkit/ntreehashset.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -22,9 +23,15 @@ namespace visitor {
 /* Global utility functions independent of store type
  */
 
+template< typename Pool, typename T >
+void poolFree( Pool p, T* x ) {
+    if ( x != nullptr )
+        x->free( p );
+}
+
 template < typename Pool, typename T >
 typename std::enable_if< !std::is_fundamental< T >::value >::type poolFree( Pool p, T x ) {
-    return p.free( x );
+    p.free( x );
 }
 
 template < typename Pool, typename T >
@@ -64,6 +71,7 @@ struct StoreCommon : public TableUtils {
     using TableUtils::_owner;
     using Hasher = typename Table::Hasher;
     using Node = typename Table::Item;
+    using TableItem = typename Table::TableItem;
     static_assert( wibble::TSame< Node, typename TableUtils::Node >::value,
             "Table's Node is incompatible with generator" );
 
@@ -108,6 +116,9 @@ struct StoreCommon : public TableUtils {
         return visitor::alias( n1, n2 );
     }
 
+    template< typename T >
+    bool alias( T* a, T* b ) { return a == b; }
+
     bool valid( Node n ) {
         return hasher().valid( n );
     }
@@ -126,8 +137,8 @@ struct StoreCommon : public TableUtils {
 
   protected:
     // Retrieve node from hash table
-    std::tuple< Node, bool > _fetch( Node s, hash_t h ) {
-        Node found;
+    std::tuple< TableItem, bool > _fetch( TableItem s, hash_t h ) {
+        TableItem found;
         bool had;
         std::tie( found, had ) = table().getHinted( s, h );
 
@@ -142,10 +153,10 @@ struct StoreCommon : public TableUtils {
     }
 
     // Store node in hash table
-    std::tuple< Node, bool > _store( Node s, hash_t h ) {
+    std::tuple< TableItem, bool > _store( Node s, hash_t h ) {
         Statistics::global().hashadded( _id->id(), memSize( s, hasher().pool ) );
         Statistics::global().hashsize( _id->id(), table().size() );
-        Node s2;
+        TableItem s2;
         bool inserted;
         std::tie( s2, inserted ) = table().insertHinted( s, h );
         setPermanent( hasher().pool, s2 );
@@ -232,6 +243,7 @@ struct SharedTable {
 
 #define STORE_CLASS using Node = typename Base::Node; \
     using Table = typename Base::Table; \
+    using TableItem = typename Base::TableItem; \
     using Hasher = typename Base::Hasher; \
     using Base::table; \
     using Base::hasher; \
@@ -289,6 +301,36 @@ class StoreIterator
     }
 };
 
+template < typename T >
+bool _valid( T t ) {
+    return t.valid();
+}
+
+template < typename T >
+bool _valid( T* t ) {
+    return t != nullptr;
+}
+
+template < typename T, typename Extension >
+inline Extension& _extension( T t, Pool& p, int n, Extension* ) {
+    return p.template get< Extension >( t, n );
+}
+
+template < typename Root, typename Extension >
+inline Extension& _extension( Root* root, Pool&, int n, Extension* ) {
+    return *reinterpret_cast< Extension* >( root->slack() + n );
+}
+
+template < typename T >
+inline uintptr_t _weakId( T t ) {
+    return t.valid() ? reinterpret_cast< uintptr_t >( t.ptr ) : 0;
+}
+
+template < typename T >
+inline uintptr_t _weakId( T* t ) {
+    return reinterpret_cast< uintptr_t >( t );
+}
+
 template < typename Node >
 struct StdVertexId {
     using VertexId = StdVertexId< Node >;
@@ -298,18 +340,17 @@ struct StdVertexId {
     StdVertexId() : node() { }
 
     uintptr_t weakId() {
-        return node.valid() ?
-            reinterpret_cast< uintptr_t >( node.ptr )
-            : 0;
+        return _weakId( node );
     }
 
     template < typename Extension >
     Extension& extension( Pool& p, int n = 0 ) {
-        return p.template get< Extension >( node, n );
+        return _extension( node, p, n,
+                reinterpret_cast< Extension* >( 0 ) );
     }
 
     bool valid() {
-        return node.valid();
+        return _valid( node );
     }
 
     template < typename BS >
@@ -323,6 +364,11 @@ struct StdVertexId {
             bitstream_impl::base< BS >& bs, VertexId& vi )
     {
         return bs >> vi.node;
+    }
+
+    void free( Pool& p ) {
+        poolFree( p, node );
+        node = Node();
     }
 };
 
@@ -378,7 +424,7 @@ struct CompressedVertex {
     Compressed compressed;
 
     CompressedVertex( Node n, Compressed c ) : base( n ), compressed( c ) { }
-    CompressedVertex() { }
+    CompressedVertex() : base(), compressed() { }
 
     Node getNode() {
         return base.getNode();
@@ -672,8 +718,8 @@ struct CompressedStore
     static_assert( wibble::TSame< Node, Blob >::value,
             "CompressedStore can only work with Blob nodes" );
 
-    using VertexId = StdVertexId< Node >;
-    using Vertex = CompressedVertex< Node, Node >;
+    using VertexId = StdVertexId< TableItem >;
+    using Vertex = CompressedVertex< Node, TableItem >;
     using QueueVertex = VertexId;
 
     template< typename Graph, typename... Args >
@@ -689,7 +735,7 @@ struct CompressedStore
     }
 
     std::tuple< Vertex, bool > fetch( Node node, hash_t h ) {
-        Node found;
+        TableItem found;
         bool had;
         std::tie( found, had ) = Base::_fetch( node, h );
         if ( had ) {
@@ -710,8 +756,8 @@ struct CompressedStore
         pool().copyTo( node, found, slack() );
     }
 
-    std::tuple< Vertex, bool > store( Node node, hash_t h, bool* = nullptr ) {
-        Node n;
+    std::tuple< Vertex, bool > store( Node node, hash_t h ) {
+        TableItem n;
         bool inserted;
         std::tie( n, inserted ) = Base::_store( node, h );
         return std::make_tuple( Vertex( node, n ), inserted );
@@ -795,8 +841,6 @@ struct TreeCompressedStore : public CompressedStore< Utils,
         return _owner( w, _hash( h ) );
     }
 
-    void setSize( int ) { } // TODO
-
     STORE_ITERATOR;
 
   private:
@@ -806,6 +850,110 @@ struct TreeCompressedStore : public CompressedStore< Utils,
                 : table().m_roots.hasher.hash( vi.node );
     }
 
+};
+
+template < typename Hasher >
+struct NTHasher : public Hasher {
+    template < typename... Args >
+    NTHasher( Args&&... args ) : Hasher( std::forward< Args >( args )... ) { }
+
+    using Hasher::valid;
+    template < typename T >
+    bool valid( T* t ) {
+        return t != nullptr;
+    }
+};
+
+template < template < typename, typename, template <
+              template < typename, typename > class,
+              typename, typename, typename > class
+            > class Utils,
+            typename _Generator, typename _Hasher, typename Statistics >
+struct NTreeStore : public CompressedStore< Utils,
+        NTreeHashSet, _Generator, NTHasher< _Hasher >, Statistics >
+{
+    using Base = CompressedStore< Utils, NTreeHashSet, _Generator,
+          NTHasher< _Hasher >, Statistics >;
+    using TableUtils = typename Base::TableUtils;
+    using This = NTreeStore< Utils, _Generator, _Hasher, Statistics >;
+    using VertexId = typename Base::VertexId;
+    using Vertex = typename Base::Vertex;
+    using QueueVertex = typename Base::QueueVertex;
+    STORE_CLASS;
+    using Root = typename Table::Root;
+
+    template< typename Graph >
+    NTreeStore( Graph& g, Hasher h ) : This( g, h, nullptr )
+    { }
+
+    template< typename Graph, typename... Args >
+    NTreeStore( Graph& g, int slack, This *m, Args&&... args ) :
+        This( g, _Hasher( g.base().alloc.pool(), slack ), m, std::forward< Args >( args )... )
+    { }
+
+    template< typename Graph, typename... Args >
+    NTreeStore( Graph& g, Hasher h, This *m, Args&&... args ) :
+        Base( g, h, m, g.base(), std::forward< Args >( args )... )
+    { }
+
+    Vertex fromQueue( QueueVertex v ) {
+        return fetchByVertexId( v );
+    }
+
+    void update( Node node, hash_t h ) {
+        // update state information in hashtable
+        Root* found;
+        bool had;
+        std::tie( found, had ) = table().getHinted( node, h );
+        assert( found != nullptr );
+        assert( had );
+        std::memcpy( found->slack(), pool().data( node ), slack() );
+    }
+
+    std::tuple< Vertex, bool > fetch( Node node, hash_t h ) {
+        Root* found;
+        bool had;
+        std::tie( found, had ) = table().getHinted( node, h );
+
+        if ( !had ) {
+            assert( !hasher().valid( found ) );
+            return std::make_tuple( Vertex( node, nullptr ), false );
+        }
+
+        std::memcpy( pool().data( node ), found->slack(), slack() );
+        assert( hasher().valid( found ) );
+        return std::make_tuple( Vertex( node, found ), true );
+    }
+
+    VertexId fetchVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return vi;
+        return VertexId( std::get< 0 >( Base::_fetch( vi.node, vi.node->hash ) ) );
+    }
+
+    Vertex fetchByVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return Vertex();
+        vi = fetchVertexId( vi );
+        return Vertex( vi.node->reassemble( pool() ), vi.node );
+    }
+
+    using Base::owner;
+
+    template< typename W >
+    int owner( W &w, VertexId h ) {
+        return _owner( w, h.node->hash );
+    }
+
+    bool valid( VertexId vi ) {
+        return hasher().valid( vi.node );
+    }
+
+    int compareId( VertexId a, VertexId b ) {
+        return table()._roots.hasher.equal( a.node, b.node );
+    }
+
+    STORE_ITERATOR;
 };
 
 }
