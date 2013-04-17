@@ -22,6 +22,7 @@ namespace divine {
     struct TreeCompressedHashSet
     {
         typedef _Item Item;
+        typedef Item TableItem;
         typedef _Hasher Hasher;
         typedef _HashSet< Item, Hasher > BaseHashSet;
 

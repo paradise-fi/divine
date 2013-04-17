@@ -48,6 +48,7 @@ template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
 struct HashSet
 {
     typedef _Item Item;
+    typedef Item TableItem;
     typedef _Hasher Hasher;
 
     int maxcollision() { return 65536; }

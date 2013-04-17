@@ -28,6 +28,7 @@ struct SharedHashSet {
 
     typedef _Hasher Hasher;
     typedef T Item;
+    typedef T TableItem;
 
     enum { maxCollisions = 65536 };
 
