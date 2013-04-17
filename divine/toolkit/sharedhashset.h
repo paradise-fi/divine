@@ -136,7 +136,8 @@ struct SharedHashSet {
         return getHinted( x, hasher.hash( x ) );
     }
 
-    std::tuple< Item, bool > getHinted( const Item &x, hash_t h ) {
+    template< typename TT >
+    std::tuple< Item, bool > getHinted( const TT &x, hash_t h ) {
 
         h <<= 1;
 
