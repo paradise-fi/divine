@@ -473,6 +473,7 @@ struct Main {
     {
         if ( s == "none" ) return meta::Algorithm::C_None;
         if ( s == "tree" ) return meta::Algorithm::C_Tree;
+        if ( s == "ntree" ) return meta::Algorithm::C_NTree;
         throw wibble::exception::OutOfRange( "compression", "'" + s + "' is not a known compression type" ); // TODO: allowed
     }
 

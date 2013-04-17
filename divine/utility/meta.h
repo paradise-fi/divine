@@ -38,7 +38,7 @@ struct Execution {
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, Compact, Probabilistic, Simulate };
-    enum CompressionType { C_None, C_Tree };
+    enum CompressionType { C_None, C_Tree, C_NTree };
 
     Type algorithm;
     std::string name;
