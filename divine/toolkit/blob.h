@@ -13,6 +13,8 @@
 #ifndef DIVINE_BLOB_H
 #define DIVINE_BLOB_H
 
+struct TestBlob;
+
 namespace divine {
 
 static int align( int v, int a ) {
@@ -92,6 +94,7 @@ struct Blob
 #if O_POOLS
     friend struct Pool;
 #endif
+    friend TestBlob;
 
     template< typename N >
     friend inline N unblob( Blob b ) {
