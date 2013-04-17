@@ -3,7 +3,7 @@
 COMPRESSIONS="none"
 if [ x$O_COMPRESSION = xON ]
 then
-    COMPRESSIONS="$COMPRESSIONS tree"
+    COMPRESSIONS="$COMPRESSIONS ntree"
 fi
 
 not() { "$@" && exit 1 || return 0; }
