@@ -1,4 +1,4 @@
-DiVinE 2.96 (3.0 rc 1 ; 17.4.2013)
+DiVinE 2.96 (3.0 RC 1 ; 17.4.2013)
 ==================================
 
 - A bug in the parallel C3 proviso has been found and fixed.
@@ -7,7 +7,7 @@ DiVinE 2.96 (3.0 rc 1 ; 17.4.2013)
 - Improvements in DVE parsing and error reporting.
 - Broken/unused algorithms have been removed (compact, probabilistic).
 - Multiple-unit support for `divine compile --llvm`.
-- Substantial improvements in `--shared` support (still unsupported though).
+- Substantial improvements in `--shared` support (still experimental though).
 - Many bugfixes and minor improvements.
 
 DiVinE 2.95 (3.0 beta 2 ; 16.3.2013)
