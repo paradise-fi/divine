@@ -98,7 +98,7 @@ struct TestTreeCompressedHashSet {
         inline void operator ()() {
             Pool p;
             Hasher h( p, slack );
-            TreeCompressedHashSet< HashSet, Blob, Hasher > set( h, 32 );
+            TreeCompressedHashSet< HashSet, Blob, Hasher, wibble::Unit > set( h, 32 );
 
             std::deque< Blob > blobs;
             for ( int i = 0; i < 1000; ++i ) {
@@ -113,7 +113,7 @@ struct TestTreeCompressedHashSet {
                         TestTreeCompressedHashSet::random );
             for ( Blob b : blobs ) {
                 ++i;
-                Blob b0 = set.get( b );
+                Blob b0 = std::get< 0 >( set.get( b ) );
                 assert( h.valid( b0 ) );
                 assert( p.compare( b, b0, 0, slack ) == 0 );
                 Blob b1 = set.getReassembled( b );
@@ -130,7 +130,7 @@ struct TestTreeCompressedHashSet {
                 ++i;
                 Blob b = blobs.front();
                 blobs.pop_front();
-                assert( p.compare( b, set.get( b ), 0, slack ) == 0 );
+                assert( p.compare( b, std::get< 0 >( set.get( b ) ), 0, slack ) == 0 );
                 Blob b1 = set.getReassembled( b );
                 assert( h.equal( b, b1 ) );
                 assert( p.compare( b, b1, 0, slack ) == 0 );
