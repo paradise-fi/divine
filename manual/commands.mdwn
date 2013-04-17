@@ -32,7 +32,7 @@ Synopsis
     divine metrics [...] <model file>
     divine verify [...] <model file>
 
-Printing model metadata
+Printing Model Metadata
 -----------------------
 
     divine info {model}
@@ -52,7 +52,7 @@ In this case, the model has three properties, `deadlock`, `assert` and `LTL`
 (the last being a neverclaim property generated from an LTL formula, see
 section on `divine combine` below).
 
-Using LTL properties
+Using LTL Properties
 --------------------
 
     divine combine [-f formula.ltl] [-p N] [-o] [-q] model.dve
@@ -114,7 +114,7 @@ Syntax of LTL formulas as accepted by DiVinE is as follows:
     term :== 'true' | 'false'
         :== {_a-z}[_0-9a-z]*  (name of an atomic proposition)
 
-Configuring the parallel model checking engine
+Configuring the Parallel Model Checking Engine
 ----------------------------------------------
 
 Many of the algorithms divine can use are parallel and optionally
@@ -161,7 +161,7 @@ them in this section.
      neater output. Useful as entertainment, for diagnosing performance issues
      and to impress laymen.
 
-State space metrics & visualisation
+State Space Metrics & Visualisation
 -----------------------------------
 
     divine metrics [--reduce=R] [--no-reduce] [--fair] [--report]
@@ -176,7 +176,7 @@ of a system, reporting summary statistics. This is the most efficient
                 [--bfs-layout]
                 [--reduce=R] [--no-reduce] [-f|--fair]
 
-Model checking
+Model Checking
 --------------
 
     divine verify [--reachability|--owcty|--map|--nested-dfs]
