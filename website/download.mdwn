@@ -90,27 +90,27 @@ Prerequisites
 
 Instructions
 ------------
-                  
+
 * Unzip the distribution tarball and enter the newly created directory
 
-      tar xvzf divine-2.5.tar.gz
-      cd divine-2.5
-                     
+        tar xvzf divine-2.5.tar.gz
+        cd divine-2.5
+
 * Now configure and compile the package:
-                        
-      ./configure
-      make
+
+        ./configure
+        make
 
 * And test that the compilation succeeded.
-                        
-      cd _build/tools
-      ./divine help
-      ./divine verify ../../examples/shuffle.dve
-      ./divine verify ../../examples/peterson-liveness.dve
-      ./divine verify ../../examples/peterson-naive.dve
-                     
+
+        cd _build/tools
+        ./divine help
+        ./divine verify ../../examples/shuffle.dve
+        ./divine verify ../../examples/peterson-liveness.dve
+        ./divine verify ../../examples/peterson-naive.dve
+
 * There is no need to install the binary, it is self-contained. However,
   if you like, you can install divine for more convenient access:
-                        
-       make install
+
+        make install
 
