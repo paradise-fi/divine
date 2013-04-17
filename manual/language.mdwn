@@ -523,31 +523,10 @@ Okay, we have completed the model. Let me repeat the whole thing for you:
 
         system async;
 
-This model satisfies the before mentioned property indeed. That means a state
-where two processes are both in a critical section is not reachable.  Now,
-proceed to the [Tool guide][toolguide] to see how to combine the model with
-the property and how to run the model checker on the result.
+This model satisfies the aforementioned property indeed. That means a state
+where two processes are both in a critical section is not reachable. See
+section [Using LTL Properties] [ltl] to see how to combine the model with the
+property.
 
-[toolguide]: page.php?page=tool
+[ltl]: #using-ltl-properties
 
-# PROBDVE extension
-
-PROBDVE extends the DVE language with probabilistic transitions, making it
-possible to model Markov Decision Processes. Let us describe the syntax of
-such transitions on an example process:
-
-        process P {
-            byte x;
-            state q0, p1, p2, q3, q4;
-            init q0;
-
-            trans
-                q0 => { p1:1, p2:2 },               /* (0) */
-                q0 -> q3 { guard x == 0; },         /* (1) */
-                q0 -> q4 { effect x = x + 1; };     /* (2) */
-        }
-
-Suppose this process is in state `q0`. First, we nondeterministically choose
-which of the three -- (0), (1) or (2) -- transitions we use. If it is (1) or
-(2), the behaviour is the same as in DVE. If it is (0), the process gets to
-state `p1` with probability 1/3 and to state `p2` with probability 2/3.
