@@ -72,6 +72,9 @@ namespace instantiate {
         if ( meta.algorithm.compression == meta::Algorithm::C_Tree )
             return selectVisitor< algo, generator, transform, Store::Compressed,
                    visitor, topology, statistics >( meta );
+        if ( meta.algorithm.compression == meta::Algorithm::C_NTree )
+            return selectVisitor< algo, generator, transform, Store::NTree,
+                   visitor, topology, statistics >( meta );
         return selectVisitor< algo, generator, transform, Store::Partitioned,
                visitor, topology, statistics >( meta );
     }
