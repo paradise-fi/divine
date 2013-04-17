@@ -43,7 +43,7 @@ template< typename N > N makeNode( int, Pool& );
 
 template<> int node< Blob >( Blob b, Pool& p ) {
     if ( b.valid() )
-        return p.template get< int >( b );
+        return p.get< int >( b );
     else return 0;
 }
 template<> int node< int >( int n, Pool& ) { return n; }
@@ -51,7 +51,7 @@ template<> int node< int >( int n, Pool& ) { return n; }
 template<> int makeNode< int >( int n, Pool& ) { return n; }
 template<> Blob makeNode< Blob >( int n, Pool& p ) {
     Blob b( p, sizeof( int ) );
-    p.template get< int >( b ) = n;
+    p.get< int >( b ) = n;
     return b;
 }
 

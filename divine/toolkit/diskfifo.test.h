@@ -30,7 +30,7 @@ struct TestDiskFifo {
 			fifo.push( b );
 		}
 		for ( int i = 0; i < MAX; i++ ) {
-			assert_eq( pool.template get< int >( fifo.front() ), i );
+			assert_eq( pool.get< int >( fifo.front() ), i );
 			pool.free( fifo.front() );
 			fifo.pop();
 		}
