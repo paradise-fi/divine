@@ -161,6 +161,24 @@ them in this section.
      neater output. Useful as entertainment, for diagnosing performance issues
      and to impress laymen.
 
+Distributed Execution
+---------------------
+
+DiVinE can be built with support for MPI-based distributed verification. To
+execute divine across multiple machines, you should use `mpiexec` or `mpirun`
+from your MPI distribution (consult your MPI manual for details and exact
+invocation parameters you need). An usual invocation will look like this:
+
+    $ mpiexec -H hostname1,hostname2 divine -w 4 model.dve
+
+This command will execute divine on 2 machines specified with -H, using 4
+worker threads on each (for a total of 8 threads). You should make sure that
+your divine binary is available on $PATH for non-interactive ssh commands (try
+running `ssh hostname1 divine`). Alternatively, you can specify an absolute
+path to your divine binary, assuming it lives in the same place across all
+machines. Finally, input file(s) to divine need to be available on each machine
+as well, using the same path used in your invocation.
+
 State Space Metrics & Visualisation
 -----------------------------------
 
