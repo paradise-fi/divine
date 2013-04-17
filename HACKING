@@ -205,7 +205,7 @@ graph-traversal interface on top of the interpreter -- found under
 The currently available generators are:
 
 * **divine/cesmi**: Not a language interpreter, but a binary interface for
-  shared objects. See the [user manual] [1] for the specification of its
+  shared objects. See the [user manual] [8] for the specification of its
   API/ABI.
 * **divine/dve**: The DVE language. The most traditional of DiVinE input
   languages.
@@ -213,7 +213,7 @@ The currently available generators are:
 * **divine/llvm**: LLVM bitcode interpreter, suitable for verifying C(++) code.
 * **divine/coin**: CoIn, aka Component-Interaction Automata.
 
-[1]: manual.html#the-cesmi-specification
+[8]: manual.html#the-cesmi-specification
 
 Instances
 ---------

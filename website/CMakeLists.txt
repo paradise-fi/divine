@@ -7,7 +7,7 @@ macro( page to srcdir )
     OUTPUT ${to}
     DEPENDS ${sources} template.html
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND pandoc --to=html -s
+    COMMAND pandoc --to=html -s --smart
             -o ${CMAKE_CURRENT_BINARY_DIR}/${to}
             --template template.html
             --toc
@@ -36,7 +36,7 @@ endmacro()
 
 page( development.html .. HACKING )
 page( whatsnew.html .. NEWS )
-page( manual.html ../manual title.mdwn overview.mdwn commands.mdwn
+page( manual.html ../manual title.mdwn overview.mdwn building.mdwn commands.mdwn
                             using.mdwn language.mdwn cesmi.mdwn )
 pages( . contact.mdwn download.mdwn index.mdwn )
 resources( style.css button.png button-over.png divine-logo.png trac-logo.png )

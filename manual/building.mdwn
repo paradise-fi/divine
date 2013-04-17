@@ -1,0 +1,59 @@
+Installation
+============
+
+If you are using the Windows installer, just execute the downloaded file and
+follow the installation wizard. Consult your distribution's manual for
+instructions on installing binary packages. The rest of this section is only
+relevant when you are installing from source.
+
+We will assume that you have obtained a source tarball from
+http://divine.fi.muni.cz, eg. `divine-3.0.tar.gz`.
+
+Prerequisites
+-------------
+
+* A POSIX-compatible operating system (tested on Linux), or NT-based 32 bit Windows.
+* Recent GNU C++ (4.7 or later) or clang (3.2 or later). MinGW on Windows.
+* Cmake \[[www.cmake.org](http://www.cmake.org)\]  
+  Note: If your computer is connected to the Internet during installation, the
+  configure script is able to download and compile cmake package for you.
+* About 2GB of disk space. 4GB of RAM is recommended.
+* Various optional components of DiVinE have further dependencies. Please
+  consult the output from `cmake` to determine what other libraries or tools
+  you may need:
+
+    - LLVM headers and libraries are required for LLVM bitcode verification.
+    - Qt 4.5 or later is required for the GUI.
+    - Boost libraries and libxml2 are required for verification of UPPAAL timed
+      automata.
+    - Pandoc is required for building HTML and PDF (also needs pdflatex) manual.
+    - MPI header files and libraries (preferably OpenMPI) for distributed
+      verification.
+    - flex and byacc for verification of Murphi models.
+
+Instructions
+------------
+
+* Unzip the distribution tarball and enter the newly created directory
+
+        $ tar xvzf divine-3.0.tar.gz
+        $ cd divine-3.0
+
+* Now configure and compile the package:
+
+        $ ./configure
+        $ make
+
+* And test that the compilation succeeded.
+
+        $ cd _build/tools
+        $ ./divine help
+        $ ./divine verify ../../examples/dve/shuffle.dve
+        $ ./divine verify -p LTL ../../examples/dve/peterson-liveness.dve
+        $ ./divine verify -p LTL ../../examples/dve/peterson-naive.dve
+
+* There is no need to install the binary, it is self-contained. However,
+  if you like, you can install divine for more convenient access:
+
+        # make install
+

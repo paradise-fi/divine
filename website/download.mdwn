@@ -36,14 +36,21 @@ from [hydra] [2].
 [1]: whatsnew.html
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
 
-Alternatively, you can obtain the latest source code for DiVinE 2.x by fetching
-it directly from our version control system. If you have the [darcs] [1] system
-installed then the latest source code tarball can be obtained as follows:
+Alternatively, you can obtain the latest source code for DiVinE by fetching it
+directly from our version control system, using [darcs] [6]:
 
     darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
+Installation
+============
+
+Please refer to the [manual] [7] for installation instructions.
+
+[6]: http://darcs.net
+[7]: manual.html#installation
+
 Archive of old releases
------------------------
+=======================
 
 * [divine-2.5.2.tar.gz](download/divine-2.5.2.tar.gz)  
   [divine-2.5-win32.exe](download/divine-2.5-win32.exe)
@@ -74,47 +81,4 @@ DiVinE Cluster:
 * [divine-0.7.2.tar.gz](download/divine-0.7.2.tar.gz)
 * [divine-0.7.1.tar.gz](download/divine-0.7.1.tar.gz)
 * [divine-0.7.0.tar.gz](download/divine-0.7.0.tar.gz)
-
-Installation
-============
-
-If you are using the Windows installer, just execute the downloaded file and
-follow the installation wizard. The rest of this section is only relevant for
-installation from source.
-
-Prerequisites
--------------
-
-* A POSIX-compatible operating system (tested on Linux).
-* Recent GNU C++ compiler with support of POSIX Threads.
-* Cmake \[[www.cmake.org](http://www.cmake.org)\]  
-  Note: If your computer is connected to the Internet during installation, the
-  configure script is able to download and compile cmake package for you.
-* One of the distribution tarballs as provided above.
-
-Instructions
-------------
-
-* Unzip the distribution tarball and enter the newly created directory
-
-        tar xvzf divine-2.5.tar.gz
-        cd divine-2.5
-
-* Now configure and compile the package:
-
-        ./configure
-        make
-
-* And test that the compilation succeeded.
-
-        cd _build/tools
-        ./divine help
-        ./divine verify ../../examples/shuffle.dve
-        ./divine verify ../../examples/peterson-liveness.dve
-        ./divine verify ../../examples/peterson-naive.dve
-
-* There is no need to install the binary, it is self-contained. However,
-  if you like, you can install divine for more convenient access:
-
-        make install
 

@@ -1,103 +1,16 @@
-DiVinE 2.0
+DiVinE 3.0
 ==========
 
-Introduction
-------------
+Please refer to `manual/building.mdwn` for build instructions.
 
-DiVinE 2.0 exploits full power of modern x86 hardware and reduces unnecessary
-delays in workflow. Employing state-of-the-art parallel liveness checking
-algorithm, DiVinE 2.0 offers unmatched scalability on both shared memory and
-distributed memory platforms in the range of 2- to 16-core machines and
-clusters thereof. Moreover, the tool supports 64-bit platforms out of the box,
-allowing it to leverage all the memory available in contemporary systems (and
-systems of the upcoming years).
+Reference of commandline options is available with `divine help`, or in the
+manual [1]. For an introduction on how to use the tool, please refer to
+`manual/using.mdwn`. You can find various example models to try in the
+`examples` directory.
 
-In the current DiVinE release, input is provided in DVE format -- an
-industry-strength specification language, as used in original DiVinE Cluster
-0.7 and DiVinE Multi-Core 1.x, with plenty of diverse example models, ranging
-from simple toys to complex real-world models. There is an extensive model
-resource available, [The Beem Database] [1], with large amount of downloadable
-models and properties.
-
-[1]: http://anna.fi.muni.cz/models.
-
-Build Instructions
-------------------
-
-This package requires pthreads and a recent g++ (4.1 or later, tested under
-4.3.4). Alternatively, you can use the development versions of Clang, part of
-the LLVM project. You will also need cmake (www.cmake.org, tested with 2.6 --
-however, the configure script could download and compile it for you, just run
-configure and answer the question(s)).
-
-After unpacking the tarball, compile the source (the build system
-should give you fairly clear indication what's wrong in case of
-failure).
-
-    $ ./configure
-    $ make
-
-Assuming, that build finishes successfully, you can try to run the binary:
-
-    $ ./_build/tools/divine help
-    $ ./_build/tools/divine reachability examples/shuffle.dve
-    $ ./_build/tools/divine owcty examples/peterson-liveness.dve
-    $ ./_build/tools/divine owcty examples/peterson-naive.dve
-
-There is no need to install the binaries, as they are mostly
-self-contained. However, to make the tool more readily available, you can
-install using:
-
-    # make install
-
-Further usage instructions
---------------------------
-
-Reference of commandline options is available with `divine help`, as detailed
-above. The most useful invocations are these:
-
- * run reachability on 8 cores:
-   `./_build/tools/divine reachability -w 8 input.dve`
- * run LTL model checking on 4 cores:
-   `./_build/tools/divine owcty -w 4 input-with-property.dve`
-
-There are several example inputs, mostly coming from [The BEEM Database] [1],
-distributed with the tool under the `examples/` directory. These are the files
-prefixed `beem-`. Many more models are available for download in the BEEM
-repository.
-
-[1]: http://anna.fi.muni.cz/models
-
-To run DiVinE in a cluster, you can use the usual MPI tools, `mpirun` or
-`mpiexec`. For detailed info about these, please consult the documentation of
-your MPI implementation. You may also need to use a batch queue system like PBS
-to run DiVinE on your cluster -- please consult your cluster administrator
-about that.
-
-When running DiVinE on a cluster manually (without any queue management
-system), using machines node1 through node3, each of the nodes using 4 CPU
-cores, you could use the following command:
-
-    mpiexec -H node1,node2,node3 ./_build/tools/divine owcty -w 4 model.dve
-
-Please note that this assumes that both the divine binary and the model are
-available on all the mentioned cluster nodes, with the same paths (relative to
-your working directory). Your MPI implementation may support binary and input
-preloading, which would let you run DiVinE without a shared (NFS) filesystem as
-well.
-
-Graphical User Interface
-------------------------
-
-If Qt4 development files are available on your machine, a graphical user
-interface for the DiVinE Tool will be compiled as part of the build process.
-You can run the interface with:
-
-    $ PATH=./_build/tools:$PATH ./_build/gui/divine.ide
-
-Please see online help for further information about using the interface. If
-you have chosen to install the tool, you should put it on your PATH, and then
-issue `divine.ide`.
+A graphical user interface is available as part of this distribution, and will
+be built by default if your system has Qt (4.5 or later) headers and libraries
+installed.
 
 Reporting Problems
 ------------------
@@ -116,22 +29,12 @@ know about the problem). Thanks in advance.
 Obtaining New Versions
 ----------------------
 
-The latest release is always available through the [project pages] [1], section
-Download. You could also obtain the latest development snapshot through darcs
-(you need darcs version 2.0 or later), which is used for version control:
+The latest release is always available through our homepage [3]. Instructions
+on how to obtain development snapshots can be found in the file `HACKING` or
+online [4].
 
-    $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
-
-When you already have a darcs repository of the project, you can get
-the latest changes by issuing:
-
-    $ darcs pull
-
-in the repository directory. For further details on using darcs, please consult
-the file "HACKING" in the source tree and [darcs homepage] [2].
-
-[1]: http://divine.fi.muni.cz/
-[2]: http://www.darcs.net/
+[3]: http://divine.fi.muni.cz/
+[4]: http://divine.fi.muni.cz/development.html
 
 Licence
 -------
