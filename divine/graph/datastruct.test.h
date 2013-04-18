@@ -14,8 +14,8 @@ struct TestDatastruct {
     struct SeqSetup {
         typedef generator::Dummy Graph;
         typedef NoStatistics Statistics;
-        typedef divine::visitor::PartitionedStore< typename Graph::Node,
-                divine::algorithm::Hasher, Statistics > Store;
+        typedef divine::visitor::Store< divine::visitor::PartitionedTable,
+                Graph, divine::algorithm::Hasher, Statistics > Store;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
     };
@@ -100,10 +100,19 @@ struct TestDatastruct {
         _queue( d, q );
     }
 
+    template < typename G >
+    struct SharedSetup {
+        typedef G Graph;
+        typedef visitor::Store< visitor::SharedTable, G,
+                algorithm::Hasher, NoStatistics > Store;
+        typedef typename Store::Vertex Vertex;
+        typedef typename Store::VertexId VertexId;
+        typedef NoStatistics Statistics;
+    };
+
     Test sharedQueue() {
-#if 0
         generator::Dummy d;
-        typedef SharedQueue< generator::Dummy, NoStatistics > Queue;
+        typedef SharedQueue< SharedSetup< generator::Dummy > > Queue;
         Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
         Queue::ChunkQPtr ch = std::make_shared< Queue::ChunkQ >();
 
@@ -111,12 +120,12 @@ struct TestDatastruct {
         q.maxChunkSize = 1;
         q.chunkSize = 1;
         _queue( d, q );
-#endif
     }
 
     template< typename Queue >
     struct Worker : wibble::sys::Thread
     {
+        typedef typename Queue::Vertex Vertex;
 
         std::shared_ptr< Queue > queue;
         int add;
@@ -126,7 +135,7 @@ struct TestDatastruct {
         void* main() {
             bool stopPushing = false;
             for ( int i = 0; i < add; ++i ) {
-                queue->push( i );
+                queue->push( Vertex( i ) );
             }
             queue->termination.sync();
             while ( !queue->termination.isZero() ) {
@@ -138,7 +147,7 @@ struct TestDatastruct {
                 }
 
                 if ( i < interleaveAdd ) {
-                    queue->push( i );
+                    queue->push( Vertex( i ) );
                     ++i;
                 }
 
@@ -168,11 +177,10 @@ struct TestDatastruct {
     };
 
     Test sharedQueueMultiStress() {
-#if 0
         const int threads = 4;
         const int amount = 32 * 1024;
 
-        typedef SharedQueue< DummyGraph< int >, NoStatistics > Queue;
+        typedef SharedQueue< SharedSetup< DummyGraph< int > > > Queue;
         Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
         Queue::ChunkQPtr ch = std::make_shared< Queue::ChunkQ >();
         DummyGraph< int > g;
@@ -197,7 +205,6 @@ struct TestDatastruct {
 
         assert_eq( sum, shouldBe );
         delete[] workers;
-#endif
     }
 
     Test stack() {
