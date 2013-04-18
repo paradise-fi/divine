@@ -37,8 +37,8 @@ struct SharedHashSet {
         T value;
 
         /* TODO: parallel table initialization */
-        Cell() : hashLock( 0 ) {}
-        Cell( const Cell & ) : hashLock( 0 ) {}
+        Cell() : hashLock( 0 ), value() {}
+        Cell( const Cell & ) : hashLock( 0 ), value() {}
     };
 
     unsigned mask;
