@@ -203,7 +203,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     typedef typename Setup::Graph Graph;
     typedef typename Setup::Statistics Statistics;
     typedef typename Graph::Node Node;
-    typedef typename Graph::Vertex Vertex;
+    typedef typename Setup::Store::Vertex Vertex;
     typedef std::deque< Vertex > Chunk;
     typedef divine::LockedQueue< Chunk > ChunkQ;
     typedef ApproximateCounter Termination;
