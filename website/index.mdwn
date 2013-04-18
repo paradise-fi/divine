@@ -1,19 +1,23 @@
+Overview
+========
+
 DIVINE is a tool for LTL model checking and reachability analysis of discrete
-distributed systems. The tool is able to efficiently exploit the aggregate
-computing power of multiple network-interconnected multi-cored workstations in
-order to deal with extremely large verification tasks. As such it allows to
-analyse systems whose size is far beyond the size of systems that can be
-handled with regular sequential tools.
+distributed systems. The tool can efficiently exploit aggregate computing power
+of multiple network-interconnected multi-cored workstations in order to deal
+with extremely large verification tasks. As such it allows to analyse systems
+whose size would be prohibitive for sequential, single-machine tools.
 
-New developments in DIVINE include:
-
- * Execution on cluster of multi-core workstations
- * On-the-fly verification
- * Execution of models compiled to binary code
- * Parallel partial order reduction
- * Support for MS windows
- * Graphical user interface
- * Support for Murphi models
+ * Verifies models in multiple input formats:
+    - LLVM bitcode (suitble for model checking C and C++ code)
+    - UPPAAL timed automata
+    - DVE -- the original DiVinE modelling languageg
+    - user-implemented, compiled models via [CESMI] [3]
+    - Murphi, including symmetry reduction
+    - CoIn -- for modelling with component interaction automata
+ * Executes on a cluster of multi-core machines
+ * Partial order reduction for DVE, CoIn
+ * Partial support for MS Windows (binary installers available)
+ * A GUI, with a simulator and counter-example analyser for DVE
 
 Use in Publications
 ===================
@@ -33,23 +37,20 @@ DiVinE):
        publisher = "IEEE"
    }
 
-DiVinE 3.0 has entered BETA
-===========================
+DiVinE 3.0 RC 1 has been released
+=================================
 
-(2013-03-18) A second beta version has been released, including numerous
-improvements and bugfixes. Get the [source code] [1] or [pre-built binaries]
-[2]! The changelog is here: [what's new](whatsnew.html).
-
-(2013-02-13) A major new version of DIVINE has entered feature freeze, and we
-invite the general public to participate in the beta testing phase of our
-release cycle. Please download the [source code] [1] or [pre-built binaries]
-[2]. The highlights of this release include:
+(2013-04-16) A release candidate has been released today (unless serious bugs
+are found in this release, it will become 3.0 final). Get the [source code] [1]
+or [pre-built binaries] [2]! The changelog is here: [what's
+new](whatsnew.html). The major highlights are:
 
  * Support for model checking of C and C++ code via LLVM bitcode (safety and LTL).
  * Model checking of timed automata (safety, time deadlocks and untimed LTL).
  * A stable binary interface for compiled models: [CESMI] [3].
  * Weak fairness for DVE.
  * Hash compaction.
+ * Experimental support for shared-memory hashtables and queues.
 
 Version 2.5 Now Available
 =========================
