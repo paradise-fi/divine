@@ -332,11 +332,17 @@ struct LtlCE {
         Linear,
         Lasso
     };
-    struct Linear { static constexpr TraceType type = TraceType::Linear; };
-    struct Lasso { static constexpr TraceType type = TraceType::Lasso; };
+    using Linear = std::integral_constant< TraceType, TraceType::Linear >;
+    using Lasso = std::integral_constant< TraceType, TraceType::Lasso >;
 
     template< typename Domain, typename Alg, typename TT >
     Traces parentTrace( Domain &d, Alg &a, TT traceType ) {
+        return parentTrace< Domain, Alg, TT >( d, a );
+    }
+
+
+    template< typename Domain, typename Alg, typename TT >
+    Traces parentTrace( Domain &d, Alg &a ) {
         Node parent = shared().ce.parent;
         std::deque< VertexId > hTrace;
 
@@ -353,13 +359,13 @@ struct LtlCE {
             assert( shared().ce.current_updated );
             hTrace.push_front( shared().ce.current );
 
-            if ( traceType.type == TraceType::Linear ) {
+            if ( TT::value == TraceType::Linear ) {
                 shared().ce.successor_id = 0;
                 shared().ce.current_updated = false;
                 d.ring( &Alg::_ceIsInitial );
                 if ( shared().ce.current_updated )
                     break;
-            } else if ( traceType.type == TraceType::Lasso ) {
+            } else if ( TT::value == TraceType::Lasso ) {
                 if ( shared().ce.is_ce_initial ) {
                     if ( first )
                         break;
@@ -372,7 +378,8 @@ struct LtlCE {
         }
         hTrace.pop_front(); // initial
 
-        return succTrace( d, a, traceType, parent, hTrace.begin(), hTrace.end() );
+        return succTrace< Domain, Alg, decltype( hTrace.begin() ), TT >(
+                d, a, parent, hTrace.begin(), hTrace.end() );
     }
 
 
@@ -380,11 +387,19 @@ struct LtlCE {
     Traces succTrace( Domain &d, Alg &a, TT traceType, Node parent,
             Iter hTraceBegin, Iter hTraceEnd )
     {
+        return succTrace< Domain, Alg, Iter, TT >( d, a, parent, hTraceBegin,
+                hTraceEnd );
+    }
+
+    template< typename Domain, typename Alg, typename Iter, typename TT >
+    Traces succTrace( Domain &d, Alg &a, Node parent, Iter hTraceBegin,
+            Iter hTraceEnd )
+    {
         // track forward by handles, generating full traces
         Trace trace;
         NumericTrace numTrace;
 
-        switch ( traceType.type ) {
+        switch ( TT::value ) {
             case TraceType::Linear: {
                 if ( shared().ce.successor_id == 0 ) // empty CE
                     return std::make_pair( trace, numTrace );
@@ -434,7 +449,7 @@ struct LtlCE {
         Trace trace;
         NumericTrace numTrace;
 
-        switch ( traceType.type ) {
+        switch ( TT::value ) {
             case TraceType::Linear: {
                 if ( hTraceBegin == hTraceEnd ) // empty CE
                     return std::make_pair( trace, numTrace );
