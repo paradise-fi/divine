@@ -327,30 +327,41 @@ struct TestVisitor {
         }
     };
 
-#if 0
     template< typename G >
-    struct SharedCheck : Parallel< Topology< Transition< G > >::template Local,
-                                     SharedCheck< G > >,
-                           Check< G >
+    struct SharedCheck : Parallel< Topology<
+               Transition< G, StdVertex< typename G::Node > > >::template Local,
+               SharedCheck< G > >,
+           Check< G >
     {
         typedef SharedCheck< G > This;
         typedef This Listener;
         typedef This AlgorithmSetup;
         typedef typename G::Node Node;
         typedef typename G::Label Label;
-        typedef SharedStore< G > Store;
-        typedef G Graph;
+        typedef NoStatistics Statistics;
+        typedef Store< SharedTable, G, TestHasher< Node >, Statistics > Store;
+        struct Graph : public G {
+            Graph( G& g ) : G( g ) { }
+            G& base() { return *this; }
+            typedef typename G::Node Node;
+            typedef typename G::Label Label;
+            typedef typename Store::Vertex Vertex;
+            typedef typename Store::VertexId VertexId;
+        };
+        typedef typename Store::Vertex Vertex;
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
         enum { defaultSharedHashSetSize = 65536 };
 
-        G m_graph;
+        Graph m_graph;
         typename Shared::Data< This > data;
-        SharedStore< G > store;
+        Store store;
 
-        static TransitionAction transition( This &c, Node f, Node t, Label label ) {
-            if ( node( f. c.pool ) ) {
+        static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label label ) {
+            Node f = fV.getNode();
+            Node t = tV.getNode();
+            if ( node( f, c.pool ) ) {
                 c.edges() ++;
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
@@ -362,7 +373,7 @@ struct TestVisitor {
             assert_eq( expected % this->peers(), 0 );
             Shared::Implementation< This, This > shared( *this, *this, m_graph, store, data );
             if ( !this->m_id )
-                shared.queue( Node(), m_graph.initial(), Label() );
+                shared.queue( Vertex(), m_graph.initial(), Label() );
             shared.processQueue();
         }
 
@@ -380,7 +391,8 @@ struct TestVisitor {
 
         SharedCheck( std::pair< G, int > init, bool master = false ) :
             expected( init.second ),
-            m_graph( init.first )
+            m_graph( init.first ),
+            store( m_graph, TestHasher< Node >( m_graph.base().p ) )
         {
             if ( master ) {
                 int i = 32;
@@ -392,7 +404,6 @@ struct TestVisitor {
 
         SharedCheck( const SharedCheck& s ) = default;
     };
-#endif
 
     template< typename G >
     struct TerminableCheck : Parallel< Topology<
@@ -564,8 +575,6 @@ struct TestVisitor {
         examples( _parallel< PartitionCheck, Blob > );
     }
 
-// TODO: ENABLE
-#if 0
     void shared_int() {
         examples( _parallel< SharedCheck, int > );
     }
@@ -574,6 +583,7 @@ struct TestVisitor {
         examples( _parallel< SharedCheck, Blob > );
     }
 
+#if 0
     template< typename G >
     struct SimpleParReach : DomainWorker< SimpleParReach< G > >
     {
