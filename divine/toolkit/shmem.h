@@ -16,22 +16,16 @@ namespace divine {
  * One has to wonder why this is missing from the C++0x STL.
  */
 struct SpinLock {
-    std::atomic< bool > b;
+    std::atomic_flag b;
 
-    SpinLock() : b( false ) {}
+    SpinLock() : b( ATOMIC_FLAG_INIT ) {}
 
     void lock() {
-        while ( true ) {
-            while ( b );
-            if ( !b.exchange( true ) )
-                break;
-        }
+        while( b.test_and_set() );
     }
 
     void unlock() {
-        /* Exchange instead of assignment forces memory barrier and prevents
-        * gcc from reordering. */
-        b.exchange( false );
+        b.clear();
     }
 
     SpinLock( const SpinLock & ) = delete;
