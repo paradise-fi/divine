@@ -212,7 +212,7 @@ struct TestDatastruct {
         generator::Dummy d;
         Stack< SeqSetup > q( d );
         bool die = true;
-        auto getShort = [&d]( Node f, int p ) { return d.alloc.pool().template get< short >( f, p ); };
+        auto getShort = [&d]( Node f, int p ) { return d.alloc.pool().get< short >( f, p ); };
 
         init( d );
 

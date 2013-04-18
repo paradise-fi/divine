@@ -121,7 +121,7 @@ struct TestVisitor {
         typedef Check< G > This;
         typedef This Listener;
         typedef NoStatistics Statistics;
-        typedef Store< PartitionedTable, G, TestHasher< Node >, Statistics > Store;
+        typedef visitor::Store< PartitionedTable, G, TestHasher< Node >, Statistics > Store;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef typename Store::QueueVertex QueueVertex;
@@ -339,7 +339,7 @@ struct TestVisitor {
         typedef typename G::Node Node;
         typedef typename G::Label Label;
         typedef NoStatistics Statistics;
-        typedef Store< SharedTable, G, TestHasher< Node >, Statistics > Store;
+        typedef visitor::Store< SharedTable, G, TestHasher< Node >, Statistics > Store;
         struct Graph : public G {
             Graph( G& g ) : G( g ) { }
             G& base() { return *this; }
