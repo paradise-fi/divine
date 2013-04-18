@@ -121,7 +121,7 @@ struct TestVisitor {
         typedef Check< G > This;
         typedef This Listener;
         typedef NoStatistics Statistics;
-        typedef PartitionedStore< typename G::Node, TestHasher< Node >, Statistics > Store;
+        typedef Store< PartitionedTable, G, TestHasher< Node >, Statistics > Store;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef typename Store::QueueVertex QueueVertex;
