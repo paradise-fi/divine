@@ -21,22 +21,20 @@ namespace divine {
     // NTreeHashSet :: ( * -> * -> * ) -> * -> * -> *
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class HashSet,
-        typename _Item, typename _Hasher, typename _Generator >
+        typename _Item, typename _Hasher >
     struct NTreeHashSet
     {
         typedef _Item Item;
         typedef _Hasher Hasher;
-        typedef _Generator Generator;
-        typedef NTreeHashSet< HashSet, _Item, _Hasher, _Generator > This;
+        typedef NTreeHashSet< HashSet, _Item, _Hasher > This;
 
         NTreeHashSet() : NTreeHashSet( Hasher() ) { }
 
         template< typename... Args >
-        NTreeHashSet( Hasher hasher, Generator& generator, Args&&... args ) :
+        NTreeHashSet( Hasher hasher, Args&&... args ) :
             _roots( RootHasher( hasher ), args... ),
             _forks( ForkHasher(), args... ),
             _leafs( LeafHasher(), args... ),
-            _generator( generator ),
             hasher( hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
@@ -429,7 +427,6 @@ namespace divine {
                              // (also in case when root leaf)
         HashSet< Fork*, ForkHasher > _forks; // stores intermediate nodes
         HashSet< Leaf*, LeafHasher > _leafs; // stores leafs if they are not root
-        Generator _generator;
         Hasher hasher;
 
 #ifndef O_PERFORMANCE
@@ -497,34 +494,40 @@ namespace divine {
             ++rootReuse;
 #endif
         }
-
+#if 0
         std::tuple< Root*, bool > insert( Item item ) {
             return insertHinted( item, hasher.hash( item ) );
         }
-
-        std::tuple< Root*, bool > insertHinted( Item item, hash_t hash ) {
+#endif
+        template < typename Generator >
+        std::tuple< Root*, bool > insertHinted( Item item, hash_t hash,
+                Generator& generator )
+        {
             assert( hasher.valid( item ) );
             incInserts();
 
+            Pool& pool = generator.alloc.pool();
+
             Root* root = nullptr;
             LeafOrFork* ptr = nullptr;
-            char* from = pool().data( item ) + slack();
-            _generator.splitHint( item, [ &from, &root, &ptr, this, item ]
+            char* from = pool.data( item ) + slack();
+            generator.splitHint( item,
+                [ &from, &root, &ptr, &pool, &generator, this, item ]
                 ( Recurse rec, intptr_t length, intptr_t remaining )
                 {
                     if ( rec == Recurse::No ) {
-                        root = Root::createFlat( item, this->pool() );
+                        root = Root::createFlat( item, pool );
                         assert_eq( remaining, 0 );
                     } else {
                         if ( root == nullptr ) {
                             root = Root::create( item, remaining + 1,
-                                this->slack(), this->pool() );
+                                this->slack(), pool );
                             ptr = root->childs();
                             assert_leq( 1, remaining );
                         }
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length );
+                        *ptr = createChild( item, from, length, pool, generator );
                         ++ptr;
                     }
 
@@ -535,7 +538,7 @@ namespace divine {
             if ( ptr != nullptr )
                 (ptr - 1)->setEnd( true );
             assert( root != nullptr );
-            assert_eq( from, pool().data( item ) + pool().size( item ) );
+            assert_eq( from, pool.data( item ) + pool.size( item ) );
 
             root->hash = hash;
 
@@ -544,36 +547,40 @@ namespace divine {
             std::tie( tr, inserted ) = _roots.insertHinted( root, hash );
             if ( !inserted ) {
                 incRootReuse();
-                root->free( pool() );
+                root->free( pool );
             } else
                 tr->permanent = true;
 
             return std::make_tuple( tr, inserted );
         }
 
-        LeafOrFork createChild( Item item, char* from, intptr_t length ) {
-            assert_leq( pool().data( item ) + slack(), from );
-            assert_leq( from, pool().data( item ) + pool().size( item ) );
+        template < typename Generator >
+        LeafOrFork createChild( Item item, char* from, intptr_t length,
+                Pool& pool, Generator& generator )
+        {
+            assert_leq( pool.data( item ) + slack(), from );
+            assert_leq( from, pool.data( item ) + pool.size( item ) );
 
             LeafOrFork child;
             LeafOrFork* ptr = nullptr;
-            _generator.splitHint( item, from - pool().data( item ), length,
-                [ &from, &child, &ptr, this, item  ]( Recurse rec, intptr_t length, intptr_t remaining )
+            generator.splitHint( item, from - pool.data( item ), length,
+                [ &from, &child, &ptr, &pool, &generator, this, item  ]
+                ( Recurse rec, intptr_t length, intptr_t remaining )
                 {
                     if ( rec == Recurse::No ) {
                         assert( child.isNull() );
                         assert( ptr == nullptr );
                         assert_eq( remaining, 0 );
-                        child = Leaf::create( length, from, this->pool() );
+                        child = Leaf::create( length, from, pool );
                     } else {
                         if ( child.isNull() ) {
-                            child = Fork::create( remaining + 1, this->pool() );
+                            child = Fork::create( remaining + 1, pool );
                             ptr = child.fork()->childs;
                         }
                         assert( !child.isNull() );
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length );
+                        *ptr = createChild( item, from, length, pool, generator );
                         ++ptr;
                     }
                     from += length;
@@ -586,13 +593,13 @@ namespace divine {
             if ( child.isLeaf() ) {
                 std::tie( tlf, inserted ) = _leafs.insert( child.leaf() );
                 if ( !inserted ) {
-                    child.leaf()->free( pool() );
+                    child.leaf()->free( pool );
                     incLeafReuse();
                 }
             } else {
                 std::tie( tlf, inserted ) = _forks.insert( child.fork() );
                 if ( !inserted ) {
-                    child.fork()->free( pool() );
+                    child.fork()->free( pool );
                     incForkReuse();
                 }
             }
