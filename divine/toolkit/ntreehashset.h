@@ -527,7 +527,7 @@ namespace divine {
                         }
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length, pool, generator );
+                        *ptr = this->createChild( item, from, length, pool, generator );
                         ++ptr;
                     }
 
@@ -580,7 +580,7 @@ namespace divine {
                         assert( !child.isNull() );
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length, pool, generator );
+                        *ptr = this->createChild( item, from, length, pool, generator );
                         ++ptr;
                     }
                     from += length;
