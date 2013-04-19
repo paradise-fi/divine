@@ -126,7 +126,7 @@ Coin::Node Coin::_initial() {
     return b;
 }
 
-void Coin::read(std::string path, Coin *) {
+void Coin::read(std::string path, std::vector< std::string >, Coin *) {
 #ifdef VERBOSE
     std::cout << id << ": Read '" << path << "'" << std::endl;
 #endif

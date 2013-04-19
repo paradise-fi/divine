@@ -206,7 +206,7 @@ public:
      *
      * \param path  input file
      */
-    void read(std::string path, Coin * = nullptr );
+    void read(std::string path, std::vector< std::string > definitions, Coin * = nullptr );
 
     /**
      * Assignment operator

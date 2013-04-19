@@ -116,7 +116,7 @@ struct Algorithm
     template< typename Self >
     typename Self::Graph *initGraph( Self &self, Self *master = nullptr ) {
         typename Self::Graph *g = new typename Self::Graph;
-        g->read( meta().input.model, master ? &master->graph() : nullptr );
+        g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
         g->useProperty( meta().input.propertyName );
         meta().algorithm.reduce =
             g->useReductions( meta().algorithm.reduce );

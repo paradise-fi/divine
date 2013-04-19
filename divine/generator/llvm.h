@@ -135,7 +135,7 @@ struct LLVM : Common< Blob > {
         exit( 1 );
     }
 
-    void read( std::string file, LLVM *blueprint = nullptr ) {
+    void read( std::string file, std::vector< std::string > definitions, LLVM *blueprint = nullptr ) {
         if ( blueprint )
             bitcode = blueprint->bitcode;
         else

@@ -85,7 +85,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     Info( Meta m ) : Algorithm( m ) {
-        g.read( m.input.model );
+        g.read( m.input.model, m.input.definitions );
     }
 };
 

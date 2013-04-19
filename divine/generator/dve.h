@@ -169,7 +169,7 @@ struct Dve : public Common< Blob > {
         yield( Node(), b, Label() );
     }
 
-    void read( std::string path, Dve *blueprint = nullptr ) {
+    void read( std::string path, std::vector< std::string > definitions, Dve *blueprint = nullptr ) {
         if ( blueprint ) {
             system = blueprint->system;
             return;
