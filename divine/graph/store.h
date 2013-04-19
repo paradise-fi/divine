@@ -176,16 +176,16 @@ struct StoreCommon : public TableUtils {
 };
 
 template < template< typename, typename > class Table,
-         typename Node, typename Hasher, typename >
+         typename Node, typename Hasher >
 using TableIdentity = Table< Node, Hasher >;
 
 template < typename Generator, typename Hasher,
          template < template < typename, typename > class,
-              typename, typename, typename > class TableWrapper
+              typename, typename > class TableWrapper
          >
 struct PartitionedTable {
     using Node = typename Generator::Node;
-    using Table = TableWrapper< HashSet, Node, Hasher, Generator >;
+    using Table = TableWrapper< HashSet, Node, Hasher >;
     Table _table;
 
     Table &table() {
@@ -210,11 +210,11 @@ struct PartitionedTable {
 
 template < typename Generator, typename Hasher,
          template < template < typename, typename > class,
-              typename, typename, typename > class TableWrapper
+              typename, typename > class TableWrapper
          >
 struct SharedTable {
     using Node = typename Generator::Node;
-    using Table = TableWrapper< SharedHashSet, Node, Hasher, Generator >;
+    using Table = TableWrapper< SharedHashSet, Node, Hasher >;
     using TablePtr = std::shared_ptr< Table >;
 
     TablePtr _table;
@@ -462,7 +462,7 @@ struct CompressedVertex {
 // ( * -> * -> ( ( * -> * ) -> * -> * ) ) -> * -> * -> * -> *
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename, typename > class
+              typename, typename > class
             > class Utils,
          typename _Generator, typename _Hasher, typename Statistics >
 struct Store
@@ -568,7 +568,7 @@ struct HcHasher : Hasher
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename, typename > class
+              typename, typename > class
             > class Utils,
          typename _Generator, typename _Hasher, typename Statistics >
 struct HcStore
@@ -700,10 +700,10 @@ struct HcStore
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename, typename > class
+              typename, typename > class
             > class Utils,
           template < template < typename, typename > class,
-              typename, typename, typename > class _Table,
+              typename, typename > class _Table,
           typename _Generator, typename _Hasher, typename Statistics >
 struct CompressedStore
     : public StoreCommon< CompressedStore< Utils, _Table, _Generator, _Hasher, Statistics >,
@@ -788,7 +788,7 @@ struct CompressedStore
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename, typename > class
+              typename, typename > class
             > class Utils,
             typename _Generator, typename _Hasher, typename Statistics >
 struct TreeCompressedStore : public CompressedStore< Utils,
@@ -866,7 +866,7 @@ struct NTHasher : public Hasher {
 
 template < template < typename, typename, template <
               template < typename, typename > class,
-              typename, typename, typename > class
+              typename, typename > class
             > class Utils,
             typename _Generator, typename _Hasher, typename Statistics >
 struct NTreeStore : public CompressedStore< Utils,
