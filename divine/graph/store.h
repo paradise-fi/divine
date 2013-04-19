@@ -962,6 +962,8 @@ struct NTreeStore : public CompressedStore< Utils,
     }
 
     int compareId( VertexId a, VertexId b ) {
+        if ( a.node == nullptr || b.node == nullptr )
+            return a.node == b.node;
         return table()._roots.hasher.equal( a.node, b.node );
     }
 
