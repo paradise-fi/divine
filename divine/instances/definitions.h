@@ -126,7 +126,7 @@ namespace instantiate {
     struct SelectVisitor< Visitor :: VISIT > { \
         using T = ::divine::visitor :: VISIT; \
         template < typename Node, typename Hasher, \
-            template < template < typename, typename > class, typename, typename, typename > \
+            template < template < typename, typename > class, typename, typename > \
           class TableWrapper > \
         using TableUtils = ::divine::visitor :: VISIT ## Table< Node, Hasher, TableWrapper >; \
         static const bool available = true; \
