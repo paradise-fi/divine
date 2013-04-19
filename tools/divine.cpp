@@ -123,12 +123,13 @@ struct Main {
     Meta meta;
 
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info, *cmd_simulate;
-    OptionGroup *common, *drawing, *input, *reduce, *compression, *ce;
+    OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
     StringOption *o_compression;
+    VectorOption< String > *o_definitions;
     BoolOption *o_noreduce;
     BoolOption *o_curses;
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
@@ -292,6 +293,7 @@ struct Main {
         input = opts.createGroup( "Input Options" );
         reduce = opts.createGroup( "Reduction Options" );
         compression = opts.createGroup( "Compression Options" );
+        definitions = opts.createGroup( "Definitions" );
         ce = opts.createGroup( "Counterexample Options" );
 
         o_curses = opts.add< BoolOption >(
@@ -358,6 +360,11 @@ struct Main {
             "property", 'p', "property", "",
             "select a property [default=deadlock]" );
 
+        // definitions
+        o_definitions = definitions->add< VectorOption< String > >(
+            "definition", 'D', "definition", "",
+            "add definition for generator (can be specified multiple times)" );
+
         // counterexample options
         o_noCe = ce->add< BoolOption >(
             "no-counterexample", 'n', "no-counterexample", "",
@@ -412,22 +419,24 @@ struct Main {
         cmd_metrics->add( reduce );
         cmd_metrics->add( compression );
 	cmd_metrics->add( input );
+        cmd_metrics->add( definitions );
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
         cmd_verify->add( reduce );
         cmd_verify->add( compression );
 	cmd_verify->add( input );
+        cmd_verify->add( definitions );
 
         cmd_simulate->add( common );
         cmd_simulate->add( reduce );
-        cmd_simulate->add( compression );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
         cmd_draw->add( o_property );
         cmd_draw->add( compression );
 	cmd_draw->add( input );
+        cmd_draw->add( definitions );
     }
 
     void setupLimits() {
@@ -526,6 +535,7 @@ struct Main {
 
         meta.input.model = input;
         meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
+        meta.input.definitions = o_definitions->values();
         meta.output.wantCe = !o_noCe->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
         meta.algorithm.sharedVisitor = o_shared->boolValue();

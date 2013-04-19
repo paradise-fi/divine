@@ -21,6 +21,8 @@ struct Input {
     graph::PropertyType propertyType;
     bool dummygen;
 
+    std::vector< std::string > definitions;
+
     Input() : propertyType( graph::PT_Goal ), dummygen( false ) {}
 };
 
