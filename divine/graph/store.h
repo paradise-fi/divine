@@ -909,6 +909,8 @@ struct NTreeStore : public CompressedStore< Utils,
         bool inserted;
         std::tie( root, inserted ) =
             table().insertHinted( node, h, generator );
+        if ( !inserted )
+            std::memcpy( pool().data( node ), root->slack(), slack() );
         return std::make_tuple( Vertex( node, root ), inserted );
     }
 
