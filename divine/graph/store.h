@@ -882,6 +882,8 @@ struct NTreeStore : public CompressedStore< Utils,
     STORE_CLASS;
     using Root = typename Table::Root;
 
+    _Generator& generator;
+
     template< typename Graph >
     NTreeStore( Graph& g, Hasher h ) : This( g, h, nullptr )
     { }
@@ -893,11 +895,21 @@ struct NTreeStore : public CompressedStore< Utils,
 
     template< typename Graph, typename... Args >
     NTreeStore( Graph& g, Hasher h, This *m, Args&&... args ) :
-        Base( g, h, m, g.base(), std::forward< Args >( args )... )
+        Base( g, h, m, std::forward< Args >( args )... ), generator( g.base() )
     { }
 
     Vertex fromQueue( QueueVertex v ) {
         return fetchByVertexId( v );
+    }
+
+    std::tuple< Vertex, bool > store( Node node, hash_t h ) {
+        Statistics::global().hashadded( _id->id(), memSize( node, pool() ) );
+        Statistics::global().hashsize( _id->id(), table().size() );
+        Root* root;
+        bool inserted;
+        std::tie( root, inserted ) =
+            table().insertHinted( node, h, generator );
+        return std::make_tuple( Vertex( node, root ), inserted );
     }
 
     void update( Node node, hash_t h ) {
