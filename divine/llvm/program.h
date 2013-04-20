@@ -249,6 +249,8 @@ struct ProgramInfo {
     void makeLLVMConstant( Value &result, ::llvm::Constant *c )
     {
         allocateConstant( result );
+        /* break loops in initializer dependencies */
+        valuemap.insert( std::make_pair( c, result ) );
         storeConstant( result, c );
     }
 
