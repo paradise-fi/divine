@@ -136,6 +136,7 @@ struct Interpreter
 
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 
+    std::string describeConstdata();
     std::string describePointer( Type *t, Pointer p, DescribeSeen& );
 
     template< typename Ptr > std::string describeAggregate( Type *t, Ptr where, DescribeSeen& );

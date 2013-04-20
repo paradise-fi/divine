@@ -318,6 +318,16 @@ std::string Interpreter::describe( bool detailed ) {
     return s.str();
 }
 
+std::string Interpreter::describeConstdata() {
+    DescribeSeen seen;
+    std::vector< std::string > vals;
+
+    for ( auto i = info().constinfo.begin(); i != info().constinfo.end(); ++i )
+        describeValue( i->second, ValueRef(), i->first, seen, nullptr, &vals );
+
+    return wibble::str::fmt( vals );
+}
+
 void MachineState::dump( std::ostream &r ) {
 
     /* TODO problem/flag stuff */
