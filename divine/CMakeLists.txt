@@ -6,6 +6,7 @@ appendFlag( "CXX;C" "-Wno-missing-field-initializers" )
 appendFlag( "CXX" "-Wno-overloaded-virtual" )
 
 include( ../wibble/test.cmake )
+include( ../cmake/stringify.cmake )
 
 file( GLOB SRC *.cpp )
 file( GLOB H *.h )
@@ -58,7 +59,6 @@ endif( WIN32 )
 
 set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
 set( UPDATE_SHA1 ${divine_SOURCE_DIR}/divine/update-sha1.sh )
-set( STRINGIFY ${divine_SOURCE_DIR}/divine/stringify.sh )
 
 add_custom_command(
   COMMAND sh ${UPDATE_SHA1} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${SHA1}"
@@ -72,19 +72,6 @@ add_custom_command(
   VERBATIM
   COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">divinecompileflags.cpp"
 )
-
-macro( stringify file )
-  string( REPLACE "." "_" fileu "${file}" )
-  string( REPLACE "/" "_" fileu "${fileu}" )
-  string( REPLACE "-" "_" fileu "${fileu}" )
-  add_custom_command(
-    OUTPUT ${fileu}_str.cpp
-    DEPENDS ${file} ${STRINGIFY}
-    COMMAND sh ${STRINGIFY} "${fileu}" "${CMAKE_CURRENT_SOURCE_DIR}/${file}"
-    VERBATIM
-    )
-  list( APPEND STRINGIFIED "${fileu}_str.cpp" )
-endmacro( stringify )
 
 stringify( toolkit/pool.h )
 stringify( toolkit/blob.h )
