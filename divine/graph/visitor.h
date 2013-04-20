@@ -373,11 +373,6 @@ struct Partitioned {
     };
 };
 
-/*
- * NB! This is work in progress. It is very unlikely it works. Try it only if
- * you are ready for some serious debugging (throw in some gcc errors for fun
- * and profit).
- */
 struct Shared {
     template< typename S >
     struct Data {
