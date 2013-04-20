@@ -22,27 +22,21 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
     else if ( auto I = dyn_cast< ::llvm::ConstantInt >( C ) ) {
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
         std::copy( mem, mem + v.width, econtext.dereference( v ) );
-    } else if ( C->getType()->isPointerTy() ) {
-        if ( auto F = dyn_cast< ::llvm::Function >( C ) )
-            constant< PC >( v ) = PC( functionmap[ F ], 0, 0 );
-        else if ( auto B = dyn_cast< ::llvm::BlockAddress >( C ) )
-            constant< PC >( v ) = blockmap[ B->getBasicBlock() ];
-        else if ( auto B = dyn_cast< ::llvm::BasicBlock >( C ) )
-            constant< PC >( v ) = blockmap[ B ];
-        else if ( isa< ::llvm::ConstantPointerNull >( C ) )
-            ; /* Do nothing. Globals are zeroed out by default. */
-        else {
-            C->dump();
-            assert_unreachable( "unknown constant pointer type" );
-        }
-    } else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
+    } else if ( isa< ::llvm::ConstantPointerNull >( C ) )
         ; /* nothing to do, everything is zeroed by default */
-    else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
-        Value sub = v; /* inherit offset & global/constant status */
+    else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
+        ; /* nothing to do, everything is zeroed by default */
+    else if ( C->getType()->isPointerTy() ) {
+        C->dump();
+        assert_unreachable( "unexpected non-zero constant pointer" );
+    } else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
+        char *array = econtext.dereference( v );
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
-            initValue( C->getOperand( i ), sub );
-            storeConstant( sub, cast< ::llvm::Constant >( C->getOperand( i ) ), global );
-            sub.offset += sub.width;
+            auto sub = insert( 0, C->getOperand( i ) );
+            char *mem = econtext.dereference( sub );
+            std::copy( mem, mem + sub.width, array );
+            array += sub.width;
+            assert_leq( array, econtext.dereference( v ) + v.width );
         }
     } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
         assert_eq( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
