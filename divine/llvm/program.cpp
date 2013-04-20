@@ -74,7 +74,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) )
         makeConstant( result, blockmap[ B->getBasicBlock() ] );
     else if ( auto F = dyn_cast< ::llvm::Function >( val ) )
-        makeConstant( result, functionmap[ F ] );
+        makeConstant( result, PC( functionmap[ F ], 0, 0 ) );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
