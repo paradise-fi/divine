@@ -575,11 +575,11 @@ struct TestVisitor {
         examples( _parallel< PartitionCheck, Blob > );
     }
 
-    void shared_int() {
+    Test shared_int() {
         examples( _parallel< SharedCheck, int > );
     }
 
-    void shared_blob() {
+    Test shared_blob() {
         examples( _parallel< SharedCheck, Blob > );
     }
 
