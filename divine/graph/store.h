@@ -164,14 +164,9 @@ struct StoreCommon : public TableUtils {
     }
 
     template < typename Select, typename VertexId >
-    int _compareId( Select select, VertexId a, VertexId b ) {
-        if ( !permanent( pool(), select( a ) ) )
-            return 0 - permanent( pool(), select( b ) );
-
-        if ( !permanent( pool(), select( b ) ) )
-            return 1;
-
-        return pool().compare( select( a ), select( b ) );
+    ptrdiff_t _compareId( Select select, VertexId a, VertexId b ) {
+        // ID are permanets and therefore one state can have only one ID
+        return select( a ).ptr - select( b ).ptr;
     }
 };
 
@@ -548,7 +543,7 @@ struct Store
         return valid( vi.node );
     }
 
-    int compareId( VertexId a, VertexId b ) {
+    ptrdiff_t compareId( VertexId a, VertexId b ) {
         return Base::_compareId( []( VertexId x ) { return x.node; }, a, b );
     }
 
@@ -690,7 +685,7 @@ struct HcStore
         return valid( vi.node );
     }
 
-    int compareId( VertexId a, VertexId b ) {
+    ptrdiff_t compareId( VertexId a, VertexId b ) {
         return Base::_compareId( []( VertexId x ) { return x.node; }, a, b );
     }
 
@@ -781,7 +776,7 @@ struct CompressedStore
         return valid( vi.node );
     }
 
-    int compareId( VertexId a, VertexId b ) {
+    ptrdiff_t compareId( VertexId a, VertexId b ) {
         return Base::_compareId( []( VertexId x ) { return x.node; }, a, b );
     }
 };
