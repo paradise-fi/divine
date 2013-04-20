@@ -31,17 +31,18 @@ struct MachineState;
 
 struct PC : wibble::mixin::Comparable< PC >
 {
-    uint32_t function:11;
+    uint32_t code:1;
+    uint32_t function:10;
     uint32_t block:10;
     uint32_t instruction:10;
     bool masked:1;
 
     PC( int f, int b, int i )
-        : function( f ), block( b ), instruction( i ), masked( false )
+        : code( 1 ), function( f ), block( b ), instruction( i ), masked( false )
     {}
 
     PC()
-        : function( 0 ), block( 0 ), instruction( 0 ), masked( false )
+        : code( 1 ), function( 0 ), block( 0 ), instruction( 0 ), masked( false )
     {}
 
     bool operator<= ( PC o ) const {
@@ -57,16 +58,17 @@ struct PC : wibble::mixin::Comparable< PC >
  * segment boundaries through pointer arithmetic or any other manipulation.
  */
 struct Pointer : wibble::mixin::Comparable< Pointer > {
+    uint32_t code:1;
     uint32_t offset:15; /* each at most 32kB */
-    uint32_t segment:16; /* at most 64k objects */
+    uint32_t segment:15; /* at most 64k objects */
     bool heap:1; /* make a (0, 0) pointer different from NULL */
     Pointer operator+( int relative ) {
         return Pointer( heap, segment, offset + relative );
     }
     Pointer( bool heap, int segment, int offset )
-        : offset( offset ), segment( segment ), heap( heap )
+        : code( 0 ), offset( offset ), segment( segment ), heap( heap )
     {}
-    Pointer() : offset( 0 ), segment( 0 ), heap( false ) {}
+    Pointer() : code( 0 ), offset( 0 ), segment( 0 ), heap( false ) {}
     bool null() { return !heap && !segment; }
 
     operator uint32_t() const {
@@ -83,10 +85,12 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     }
 
     operator PC() const {
+        assert( code );
         return *reinterpret_cast< const PC * >( this );
     }
 
     Pointer &operator=( PC x ) {
+        assert( x.code );
         *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
         return *this;
     }
