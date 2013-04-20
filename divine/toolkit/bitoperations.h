@@ -44,7 +44,7 @@ static inline unsigned MSB( T x ) {
         x >>= 1;
         ++position;
     }
-    return position;
+    return position - 1;
 }
 
 template<>
