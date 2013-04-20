@@ -420,10 +420,12 @@ struct Main {
 
         cmd_simulate->add( common );
         cmd_simulate->add( reduce );
+        cmd_simulate->add( compression );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
         cmd_draw->add( o_property );
+        cmd_draw->add( compression );
 	cmd_draw->add( input );
     }
 
