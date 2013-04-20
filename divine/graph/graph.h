@@ -101,6 +101,8 @@ struct Base {
     void splitHint( Node n, Yield yield ) {
         return splitHint( n, alloc.slack(), alloc.pool().size( n ) - alloc.slack(), yield );
     }
+
+    std::string showConstdata() { return ""; }
 };
 
 template< typename G >
@@ -123,6 +125,7 @@ struct Transform {
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
     bool isGoal( Node s ) { return base().isGoal( s ); }
     bool isAccepting( Node s ) { return base().isAccepting( s ); }
+    std::string showConstdata() { return base().showConstdata(); }
     std::string showNode( Node s ) { return base().showNode( s ); }
     std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
     void read( std::string path, Transform< G > *blueprint = nullptr ) {

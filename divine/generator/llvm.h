@@ -105,6 +105,10 @@ struct LLVM : Common< Blob > {
         return prop_accept[ flags( n ).buchi ];
     }
 
+    std::string showConstdata() {
+        return interpreter().describeConstdata();
+    }
+
     std::string showNode( Node n ) {
         interpreter(); /* ensure _interpreter_2 is initialised */
         _interpreter_2->rewind( n );
