@@ -958,10 +958,10 @@ struct NTreeStore : public CompressedStore< Utils,
         return hasher().valid( vi.node );
     }
 
-    int compareId( VertexId a, VertexId b ) {
-        if ( a.node == nullptr || b.node == nullptr )
-            return a.node == b.node;
-        return table()._roots.hasher.equal( a.node, b.node );
+    ptrdiff_t compareId( VertexId a, VertexId b ) {
+        // either way ids in algoritms are already permanent, so we don't
+        // need to look inside
+        return a.node - b.node;
     }
 
     STORE_ITERATOR;
