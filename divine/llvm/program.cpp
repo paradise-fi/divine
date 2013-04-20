@@ -69,13 +69,19 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( result.width % framealign )
         return Value(); /* ignore for now, later pass will assign this one */
 
-    if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) )
+    if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) ) {
+        assert( blockmap.count( B ) );
         makeConstant( result, blockmap[ B ] );
-    else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) )
+    } else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) ) {
+        assert( blockmap.count( B->getBasicBlock() ) );
         makeConstant( result, blockmap[ B->getBasicBlock() ] );
-    else if ( auto F = dyn_cast< ::llvm::Function >( val ) )
+    } else if ( auto F = dyn_cast< ::llvm::Function >( val ) ) {
+        if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
+            throw wibble::exception::Consistency(
+                "ProgramInfo::insert",
+                std::string( "Unresolved symbol (function): " ) + F->getName().str() );
         makeConstant( result, PC( functionmap[ F ], 0, 0 ) );
-    else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
+    } else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
@@ -127,37 +133,44 @@ ProgramInfo::Position ProgramInfo::lower( Position p )
     return Position( p.pc, insert );
 }
 
+Builtin ProgramInfo::builtin( ::llvm::Function *f )
+{
+    std::string name = f->getName().str();
+    if ( name == "__divine_interrupt_mask" )
+        return BuiltinMask;
+    if ( name == "__divine_interrupt_unmask" )
+        return BuiltinUnmask;
+    if ( name == "__divine_interrupt" )
+        return BuiltinInterrupt;
+    if ( name == "__divine_get_tid" )
+        return BuiltinGetTID;
+    if ( name == "__divine_new_thread" )
+        return BuiltinNewThread;
+    if ( name == "__divine_choice" )
+        return BuiltinChoice;
+    if ( name == "__divine_assert" )
+        return BuiltinAssert;
+    if ( name == "__divine_ap" )
+        return BuiltinAp;
+    if ( name == "__divine_malloc" )
+        return BuiltinMalloc;
+    if ( name == "__divine_free" )
+        return BuiltinFree;
+    if ( name == "memcpy" )
+        return BuiltinMemcpy;
+    return NotBuiltin;
+}
+
 void ProgramInfo::builtin( Position p )
 {
     ProgramInfo::Instruction &insn = instruction( p.pc );
     ::llvm::CallSite CS( p.I );
     ::llvm::Function *F = CS.getCalledFunction();
-    std::string name = F->getName().str();
-    if ( name == "__divine_interrupt_mask" )
-        insn.builtin = BuiltinMask;
-    else if ( name == "__divine_interrupt_unmask" )
-        insn.builtin = BuiltinUnmask;
-    else if ( name == "__divine_interrupt" )
-        insn.builtin = BuiltinInterrupt;
-    else if ( name == "__divine_get_tid" )
-        insn.builtin = BuiltinGetTID;
-    else if ( name == "__divine_new_thread" )
-        insn.builtin = BuiltinNewThread;
-    else if ( name == "__divine_choice" )
-        insn.builtin = BuiltinChoice;
-    else if ( name == "__divine_assert" )
-        insn.builtin = BuiltinAssert;
-    else if ( name == "__divine_ap" )
-        insn.builtin = BuiltinAp;
-    else if ( name == "__divine_malloc" )
-        insn.builtin = BuiltinMalloc;
-    else if ( name == "__divine_free" )
-        insn.builtin = BuiltinFree;
-    else if ( name == "memcpy" )
-        insn.builtin = BuiltinMemcpy;
-    else throw wibble::exception::Consistency(
-        "ProgramInfo::builtin",
-        "Can't call an undefined function <" + name + ">" );
+    insn.builtin = builtin( F );
+    if ( insn.builtin == NotBuiltin )
+        throw wibble::exception::Consistency(
+            "ProgramInfo::builtin",
+            "Can't call an undefined function: " + F->getName().str() );
 }
 
 template< typename Insn >

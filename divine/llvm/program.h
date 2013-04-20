@@ -269,6 +269,7 @@ struct ProgramInfo {
     template< typename Insn > void insertIndices( Position p );
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
+    Builtin builtin( ::llvm::Function *f );
     void builtin( Position );
     void initValue( ::llvm::Value *val, Value &result );
     Value insert( int function, ::llvm::Value *val );
