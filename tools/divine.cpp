@@ -242,7 +242,6 @@ struct Main {
             report.final( std::cout, a->meta() );
 
         delete a;
-        delete &Statistics::global(); // uh-oh
     }
 
     static void die( std::string bla ) __attribute__((noreturn))

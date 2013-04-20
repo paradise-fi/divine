@@ -3,6 +3,8 @@
 #ifndef DIVINE_STATISTICS_H
 #define DIVINE_STATISTICS_H
 
+#include <memory>
+
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
 #include <wibble/regexp.h>
@@ -28,7 +30,7 @@ struct NoStatistics {
     bool gnuplot;
 
     static NoStatistics &global() {
-        static NoStatistics *g = new NoStatistics;
+        static std::unique_ptr< NoStatistics > g( new NoStatistics );
         return *g;
     }
 
@@ -135,8 +137,8 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         memBaseline = i.peakVmSize();
     }
 
-    static Statistics &global() {
-        static Statistics *g = new Statistics;
+    static TrackStatistics &global() {
+        static std::unique_ptr< TrackStatistics > g( new TrackStatistics );
         return *g;
     }
 };
