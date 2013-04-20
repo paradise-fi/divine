@@ -430,6 +430,8 @@ struct Main {
 
         cmd_simulate->add( common );
         cmd_simulate->add( reduce );
+        cmd_simulate->add( compression );
+        cmd_simulate->add( definitions );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
