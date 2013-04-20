@@ -30,14 +30,16 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         C->dump();
         assert_unreachable( "unexpected non-zero constant pointer" );
     } else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
-        char *array = econtext.dereference( v );
+        int offset = 0;
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
             auto sub = insert( 0, C->getOperand( i ) );
-            char *mem = econtext.dereference( sub );
-            std::copy( mem, mem + sub.width, array );
-            array += sub.width;
-            assert_leq( array, econtext.dereference( v ) + v.width );
+            char *from = econtext.dereference( sub );
+            char *to = econtext.dereference( v ) + offset;
+            std::copy( from, from + sub.width, to );
+            offset += sub.width;
+            assert_leq( offset, v.width );
         }
+        /* and padding at the end ... */
     } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
         assert_eq( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
         const char *raw = CDS->getRawDataValues().data();
