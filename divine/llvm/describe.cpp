@@ -81,8 +81,8 @@ std::string Interpreter::describePointer( Type *t, Pointer p, DescribeSeen &seen
     std::string ptr = wibble::str::fmt( p );
     std::string res;
     Type *pointeeTy = cast< PointerType >( t )->getElementType();
-    if ( isa< FunctionType >( pointeeTy ) ) {
-        res = "@<some function>"; // TODO functionIndex.right( idx )->getName().str();
+    if ( p.code ) {
+        res = wibble::str::fmt( static_cast< PC >( p ) );
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
@@ -122,10 +122,8 @@ std::string Interpreter::describeValue( Type *t, Ptr where, DescribeSeen &seen )
     if ( t->isAggregateType() )
         return describeAggregate( t, where, seen );
     if ( t->isPointerTy() ) {
-        if ( state.isPointer( where ) )
-            return describePointer( t, state.followPointer( where ), seen );
-        else
-            return describePointer( t, Pointer(), seen );
+        char *mem = dereference( where );
+        return describePointer( t, mem ? *reinterpret_cast< Pointer * >( mem ) : Pointer(), seen );
     }
     if ( t->isIntegerTy() )
         return fmtInteger( state.dereference( where ), TD.getTypeAllocSize( t ) * 8 );
