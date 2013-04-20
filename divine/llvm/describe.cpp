@@ -14,11 +14,35 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-namespace divine { namespace llvm {
+namespace divine {
+namespace llvm {
+
+std::ostream &operator<<( std::ostream &o, PC p ) {
+    return o << p.function << ":" << p.block << ":" << p.instruction;
+}
+
 std::ostream &operator<<( std::ostream &o, Pointer p ) {
+    if ( p.code )
+        return o << static_cast< PC >( p );
     return o << p.segment << ":" << p.offset;
 }
-} }
+
+std::ostream &operator<<( std::ostream &o, ProgramInfo::Value p ) {
+    if ( p.constant )
+        o << "c";
+    else if ( p.global )
+        o << "g";
+    else
+        o << "l";
+    return o << p.type << "[" << p.width << "]@" << p.offset;
+}
+
+std::ostream &operator<<( std::ostream &o, ValueRef p ) {
+    return o << p.v << "+" << p.offset << " [" << p.tid << ", " << p.frame << "]";
+}
+
+}
+}
 
 template< typename Ptr >
 std::string Interpreter::describeAggregate( Type *t, Ptr where, DescribeSeen &seen )
@@ -351,9 +375,8 @@ void MachineState::dump( std::ostream &r ) {
         int count = 0;
         r << "thread " << i << ", stack depth = " << stack( i ).get().length() << std::endl;
         eachframe( stack( i ), [&]( Frame &f ) {
-                r << "frame[" << count << "]: pc = ("
-                  << f.pc.function << ":" << f.pc.block << ":"
-                  << f.pc.instruction << "), data = ";
+                r << "frame[" << count << "]: pc = (" << f.pc
+                  << "), data = ";
                 ++ count;
                 if ( f.pc.function >= int( _info.functions.size() ) ) {
                     r << "<invalid PC>" << std::endl;

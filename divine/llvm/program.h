@@ -101,8 +101,6 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
     }
 };
 
-std::ostream &operator<<( std::ostream &o, Pointer p );
-
 enum Builtin {
     NotBuiltin = 0,
     BuiltinChoice,
@@ -333,6 +331,11 @@ struct GlobalContext {
         : info( i ), TD( TD ), global( global )
     {}
 };
+
+std::ostream &operator<<( std::ostream &o, PC p );
+std::ostream &operator<<( std::ostream &o, Pointer p );
+std::ostream &operator<<( std::ostream &o, ProgramInfo::Value p );
+std::ostream &operator<<( std::ostream &o, ValueRef p );
 
 }
 }
