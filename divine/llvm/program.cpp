@@ -227,12 +227,8 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     }
 
     insn.values.resize( 1 + p.I->getNumOperands() );
-    for ( int i = 0; i < int( p.I->getNumOperands() ); ++i ) {
-        ::llvm::Value *v = p.I->getOperand( i );
-        insert( p.pc.function, v ); /* use-before-def can actually happen */
-        if ( valuemap.count( v ) )
-            insn.values[ i + 1 ] = valuemap[ v ];
-    }
+    for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
+        insn.values[ i + 1 ] = insert( p.pc.function, p.I->getOperand( i ) );
 
     if ( isa< ::llvm::ExtractValueInst >( p.I ) )
         insertIndices< ::llvm::ExtractValueInst >( p );
