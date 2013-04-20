@@ -178,6 +178,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     // called whenever the current state is changed
     void printUpdate() {
+        std::cerr << "-- you are here (and there are " << succs.size() << " successors):" << std::endl;
         printCurrent( std::cout );
     }
 
@@ -195,27 +196,21 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                 printSuccessors( std::cerr );
             } else if ( *part == "u" ) {
                 if ( !trace.empty() ) {
-                    goUp();
-                    printUpdate();
+                    goBack();
                 } else {
                     std::cerr << "Cannot go up" << std::endl;
                 }
-            } else if ( *part == "c" ) {
-                printCurrent( std::cerr );
             } else if ( *part == "t" ) {
                 for ( Node n : trace ) {
                     std::cerr << this->graph().showNode( n ) << "\n";
                 }
             } else if ( *part == "n" ) {
-                if ( stepDFS() )
-                    printUpdate();
-                else
+                if ( !stepDFS() )
                     std::cerr << "Cannot go up" << std::endl;
             } else if ( !part->empty() && isdigit( (*part)[0] ) ) {
                 int i = std::atoi( part->c_str() );
                 if ( i > 0 && i <= int( succs.size() ) ) {
                     goDown( i - 1 );
-                    printUpdate();
                 } else if ( succs.empty() ) {
                     std::cerr << "Current state has no successor" << std::endl;
                 } else {
@@ -227,7 +222,6 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     "  1,2,3 use numbers to select a sucessor\n"
                     "  s     list successors\n"
                     "  u     go back to the prevoius state state (up)\n"
-                    "  c     print current state\n"
                     "  t     show current trace\n"
                     "  n     go to the next unvisited successor or go up if there is none (DFS)\n"
                     "  q     exit\n"
@@ -235,6 +229,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     << std::endl;
             }
         }
+        printUpdate();
         return true;
     }
 
