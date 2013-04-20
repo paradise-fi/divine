@@ -9,7 +9,7 @@
 
 namespace divine {
 
-void Statistics::matrix( std::ostream &o, int (*what)(int, int) ) {
+void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
         int sum = 0;
         for ( int j = 0; size_t( j ) < threads.size(); ++j )
@@ -20,13 +20,13 @@ void Statistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     }
 }
 
-void Statistics::printv( std::ostream &o, int width, int v, int *sum ) {
+void TrackStatistics::printv( std::ostream &o, int width, int v, int *sum ) {
     o << " " << std::setw( width ) << v;
     if ( sum )
         *sum += v;
 }
 
-void Statistics::label( std::ostream &o, std::string text, bool d ) {
+void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
     if ( gnuplot )
         return;
 
@@ -43,7 +43,7 @@ void Statistics::label( std::ostream &o, std::string text, bool d ) {
     o << std::endl;
 }
 
-void Statistics::format( std::ostream &o ) {
+void TrackStatistics::format( std::ostream &o ) {
     label( o, "QUEUES" );
     matrix( o, diff );
 
@@ -97,7 +97,7 @@ void Statistics::format( std::ostream &o ) {
     }
 }
 
-void Statistics::send() {
+void TrackStatistics::send() {
     bitblock data;
     data << localmin;
 
@@ -111,7 +111,7 @@ void Statistics::send() {
     mpi.sendStream( _lock, data, 0, TAG_STATISTICS );
 }
 
-Loop Statistics::process( wibble::sys::MutexLock &_lock, MpiStatus &status )
+Loop TrackStatistics::process( wibble::sys::MutexLock &_lock, MpiStatus &status )
 {
     bitblock data;
     mpi.recvStream( _lock, status, data );
@@ -128,7 +128,7 @@ Loop Statistics::process( wibble::sys::MutexLock &_lock, MpiStatus &status )
     return Continue;
 }
 
-void Statistics::snapshot() {
+void TrackStatistics::snapshot() {
     std::stringstream str;
     format( str );
     if ( gnuplot )
@@ -139,7 +139,7 @@ void Statistics::snapshot() {
         Output::output().statistics() << str.str() << std::flush;
 }
 
-void *Statistics::main() {
+void *TrackStatistics::main() {
     while ( true ) {
         if ( mpi.master() ) {
             wibble::sys::sleep( 1 );
@@ -153,7 +153,7 @@ void *Statistics::main() {
 }
 
 
-void Statistics::resize( int s ) {
+void TrackStatistics::resize( int s ) {
     s = std::max( size_t( s ), threads.size() );
     threads.resize( s, 0 );
     for ( int i = 0; i < s; ++i ) {
@@ -168,7 +168,7 @@ void Statistics::resize( int s ) {
     }
 }
 
-void Statistics::setup( const Meta &m ) {
+void TrackStatistics::setup( const Meta &m ) {
     int total = m.execution.nodes * m.execution.threads;
     resize( total );
     mpi.registerMonitor( TAG_STATISTICS, *this );

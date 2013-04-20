@@ -179,8 +179,10 @@ struct Main {
         }
 
         if ( o_gnuplot->boolValue() ) {
-            Statistics::global().gnuplot = true;
-            Statistics::global().output = new std::ofstream( o_gnuplot->stringValue().c_str() );
+            TrackStatistics::global().gnuplot = NoStatistics::global().gnuplot
+                = true;
+            TrackStatistics::global().output = NoStatistics::global().output
+                = new std::ofstream( o_gnuplot->stringValue().c_str() );
         }
 
         run();
@@ -212,9 +214,9 @@ struct Main {
                 _report = &report;
         }
 
-        Statistics::global().setup( a->meta() );
+        TrackStatistics::global().setup( a->meta() );
         if ( meta.output.statistics )
-            Statistics::global().start();
+            TrackStatistics::global().start();
 
 
         mpi.start();
@@ -234,7 +236,7 @@ struct Main {
         report.finished();
 
         if ( meta.output.statistics )
-            Statistics::global().snapshot();
+            TrackStatistics::global().snapshot();
         Output::output().cleanup();
         if ( mpi.master() && o_report->boolValue() )
             report.final( std::cout, a->meta() );

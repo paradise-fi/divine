@@ -37,7 +37,7 @@ struct NoStatistics {
     void start() {}
 };
 
-struct Statistics : wibble::sys::Thread, MpiMonitor {
+struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     struct PerThread {
         std::vector< int64_t > sent;
         std::vector< int64_t > received;
@@ -126,7 +126,7 @@ struct Statistics : wibble::sys::Thread, MpiMonitor {
 
     void setup( const Meta &m );
 
-    Statistics() : pernode( 1 ), localmin( 0 )
+    TrackStatistics() : pernode( 1 ), localmin( 0 )
     {
         output = 0;
         gnuplot = false;

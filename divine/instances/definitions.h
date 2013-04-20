@@ -243,7 +243,7 @@ namespace instantiate {
 
     template<>
     struct SelectStatistics< Statistics::Enabled > {
-        using T = ::divine::Statistics;
+        using T = ::divine::TrackStatistics;
     };
 
     template< typename G, typename St >
