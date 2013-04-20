@@ -163,15 +163,20 @@ struct TestVisitor {
         { }
     };
 
-    template< typename T, typename N, typename Label >
-    static TransitionAction parallel_transition( T *self, N fV, N tV, Label label ) {
-        auto f = fV.getNode();
-        auto t = tV.getNode();
+    template< typename T, typename Vertex, typename Node, typename Label >
+    static TransitionFilter parallel_filter( T *self, Vertex fV, Node t, Label label ) {
         if ( node( t, self->pool ) % self->peers() != self->id() ) {
             self->submit( self->id(), node( t, self->pool ) % self->peers(),
                           std::make_tuple( fV, t, label ) );
                 return TransitionFilter::Ignore;
             }
+        return TransitionFilter::Take;
+    }
+
+    template< typename T, typename N, typename Label >
+    static TransitionAction parallel_transition( T *self, N fV, N tV, Label label ) {
+        auto f = fV.getNode();
+        auto t = tV.getNode();
 
         if ( node( f, self->pool ) % self->peers() == self->id() )
             assert( self->seen.count( f ) );
@@ -208,6 +213,10 @@ struct TestVisitor {
 
         static TransitionAction transition( This &c, Vertex f, Vertex t, Label label ) {
             return parallel_transition( &c, f, t, label );
+        }
+
+        static TransitionFilter transitionFilter( This &c, Vertex f, Node t, Label label, hash_t ) {
+            return parallel_filter( &c, f, t, label );
         }
 
         void _visit() { // parallel
