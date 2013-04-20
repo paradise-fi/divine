@@ -18,12 +18,12 @@ using namespace visitor;
 template < typename T >
 struct TestHasher : default_hasher< T > {
     Pool& pool;
-    TestHasher( Pool& p ) : pool( p ) { }
+    TestHasher( Pool& p, int ) : pool( p ) { }
 };
 
 template<>
 struct TestHasher< Blob > : default_hasher< Blob > {
-    TestHasher( Pool& p ) : default_hasher< Blob >( p ) { }
+    TestHasher( Pool& p, int ) : default_hasher< Blob >( p ) { }
 };
 
 template< typename N >
@@ -63,7 +63,7 @@ struct TestVisitor {
         typedef _Node Node;
         typedef wibble::Unit Label;
         int n, m;
-        Pool& p;
+        Pool p;
 
         Node clone( Node n ) { return n; }
         void release( Blob n ) { p.free( n ); }
@@ -88,7 +88,7 @@ struct TestVisitor {
             }
         }
 
-        NMTree( Pool& p, int _n, int _m ) : n( _n ), m( _m ), p( p ) {}
+        NMTree( int _n, int _m ) : n( _n ), m( _m ), p() {}
 
         template< typename Hasher, typename Worker >
         int owner( Hasher &hasher, Worker &worker, Node n, hash_t = 0 ) {
@@ -125,7 +125,7 @@ struct TestVisitor {
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef typename Store::QueueVertex QueueVertex;
-        Pool pool;
+        Pool _pool;
         BlobComparerLT bcomp;
         std::set< Node, BlobComparerLT > seen;
         std::set< std::tuple< Node, Node >, BlobComparerLT > t_seen;
@@ -141,7 +141,7 @@ struct TestVisitor {
         static TransitionAction transition( Self &c, Vertex fV, Vertex tV, Label ) {
             Node f = fV.getNode();
             Node t = tV.getNode();
-            if ( node( f, c.pool ) ) {
+            if ( node( f, c._pool ) ) {
                 assert( c.seen.count( f ) );
                 c.edges() ++;
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
@@ -158,15 +158,15 @@ struct TestVisitor {
             return ExpansionAction::Expand;
         }
 
-        Check() : pool(), bcomp( pool ), seen( bcomp ), t_seen( bcomp ),
+        Check() : _pool(), bcomp( _pool ), seen( bcomp ), t_seen( bcomp ),
             counts( std::make_pair( 0, 0 ) )
         { }
     };
 
     template< typename T, typename Vertex, typename Node, typename Label >
     static TransitionFilter parallel_filter( T *self, Vertex fV, Node t, Label label ) {
-        if ( node( t, self->pool ) % self->peers() != self->id() ) {
-            self->submit( self->id(), node( t, self->pool ) % self->peers(),
+        if ( node( t, self->m_graph.p ) % self->peers() != self->id() ) {
+            self->submit( self->id(), node( t, self->m_graph.p ) % self->peers(),
                           std::make_tuple( fV, t, label ) );
                 return TransitionFilter::Ignore;
             }
@@ -178,10 +178,10 @@ struct TestVisitor {
         auto f = fV.getNode();
         auto t = tV.getNode();
 
-        if ( node( f, self->pool ) % self->peers() == self->id() )
+        if ( node( f, self->m_graph.p ) % self->peers() == self->id() )
             assert( self->seen.count( f ) );
 
-        if ( node( f, self->pool ) ) {
+        if ( node( f, self->m_graph.p ) ) {
             self->edges() ++;
             assert( !self->t_seen.count( std::make_pair( f, t ) ) );
             self->t_seen.insert( std::make_pair( f, t ) );
@@ -205,7 +205,7 @@ struct TestVisitor {
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef G Graph;
-        using Check< G >::pool;
+
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
@@ -221,11 +221,11 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Store store( m_graph, TestHasher< Node >( pool ) );
+            Store store( m_graph, 0 );
             store.setId( *this );
             BFV< ParallelCheck< G > > bfv( *this, m_graph, store );
             Node initial = m_graph.initial();
-            if ( node( initial, pool ) % this->peers() == this->id() )
+            if ( node( initial, m_graph.p ) % this->peers() == this->id() )
                 bfv.exploreFrom( initial );
 
             while ( this->nodes() != expected / this->peers() ) {
@@ -233,7 +233,7 @@ struct TestVisitor {
                     continue;
 
                 auto next = this->comms().take( this->id() );
-                assert_eq( node( std::get< 1 >( next ), pool ) % this->peers(), this->id() );
+                assert_eq( node( std::get< 1 >( next ), m_graph.p ) % this->peers(), this->id() );
                 bfv.queue( std::get< 0 >( next ), std::get< 1 >( next ), std::get< 2 >( next ) );
                 bfv.processQueue();
             }
@@ -286,7 +286,7 @@ struct TestVisitor {
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef G Graph;
-        using Check< G >::pool;
+
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
@@ -295,7 +295,7 @@ struct TestVisitor {
         static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label label ) {
             Node f = fV.getNode();
             Node t = tV.getNode();
-            if ( node( f, c.pool ) ) {
+            if ( node( f, c.m_graph.p ) ) {
                 c.edges() ++;
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
@@ -305,7 +305,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Store store( m_graph, TestHasher< Node >( pool ) );
+            Store store( m_graph, 0 );
             store.setId( *this );
             Partitioned::Data< This > data;
             Partitioned::Implementation<This, This> partitioned( *this, *this, m_graph, store, data );
@@ -349,14 +349,7 @@ struct TestVisitor {
         typedef typename G::Label Label;
         typedef NoStatistics Statistics;
         typedef visitor::Store< SharedTable, G, TestHasher< Node >, Statistics > Store;
-        struct Graph : public G {
-            Graph( G& g ) : G( g ) { }
-            G& base() { return *this; }
-            typedef typename G::Node Node;
-            typedef typename G::Label Label;
-            typedef typename Store::Vertex Vertex;
-            typedef typename Store::VertexId VertexId;
-        };
+        typedef G Graph;
         typedef typename Store::Vertex Vertex;
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
@@ -370,7 +363,7 @@ struct TestVisitor {
         static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label label ) {
             Node f = fV.getNode();
             Node t = tV.getNode();
-            if ( node( f, c.pool ) ) {
+            if ( node( f, c.m_graph.p ) ) {
                 c.edges() ++;
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
@@ -401,7 +394,7 @@ struct TestVisitor {
         SharedCheck( std::pair< G, int > init, bool master = false ) :
             expected( init.second ),
             m_graph( init.first ),
-            store( m_graph, TestHasher< Node >( m_graph.base().p ) )
+            store( m_graph, 0 )
         {
             if ( master ) {
                 int i = 32;
@@ -428,7 +421,7 @@ struct TestVisitor {
         typedef typename Check< G >::Store Store;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
-        using Check< G >::pool;
+
         G m_graph;
 
         static TransitionAction transition( This &c, Vertex f, Vertex t, Label label ) {
@@ -436,11 +429,11 @@ struct TestVisitor {
         }
 
         int owner( Node n ) {
-            return node( n, pool ) % this->peers();
+            return node( n, m_graph.p ) % this->peers();
         }
 
         void _visit() { // parallel
-            Store store( m_graph, TestHasher< Node >( pool ) );
+            Store store( m_graph, 0 );
             store.setId ( *this );
             BFV< This > bfv( *this, m_graph, store );
 
@@ -516,7 +509,7 @@ struct TestVisitor {
     static void _sequential( int n, int m ) {
         typedef Check< NMTree< N > > C;
         C c;
-        NMTree< N > g( c.pool, n, m );
+        NMTree< N > g( n, m );
 
         // sanity check
         assert_eq( c.edges(), 0 );
@@ -525,21 +518,19 @@ struct TestVisitor {
         struct CheckSetup : Check< NMTree< N > >, Sequential {};
 
         typedef typename CheckSetup::Node Node;
-        TestHasher< Node > h( c.pool );
-        typename CheckSetup::Store s( g, std::move( h ) );
+        typename CheckSetup::Store s( g, 0 );
         WithID wid;
         wid.m_id = 0;
         s.setId( wid );
 
         Visitor< CheckSetup > bfv( c, g, s );
-        bfv.exploreFrom( makeNode< N >( 1 , c.pool ) );
+        bfv.exploreFrom( makeNode< N >( 1 , g.p ) );
         checkNMTreeMetric( n, m, c.nodes(), c.edges() );
     }
 
     template< template< typename > class T, typename N >
     static void _parallel( int n, int m ) {
-        Pool p;
-        T< NMTree< N > > pv( std::make_pair( NMTree< N >( p, n, m ), n ), true );
+        T< NMTree< N > > pv( std::make_pair( NMTree< N >( n, m ), n ), true );
         pv.visit();
         checkNMTreeMetric( n, m, pv.nodes(), pv.edges() );
     }
