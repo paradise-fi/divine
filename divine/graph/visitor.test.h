@@ -69,7 +69,7 @@ struct TestVisitor {
         void release( Blob n ) { p.free( n ); }
         void release( int ) {}
         Node initial() {
-            static Node n = makeNode< Node >( 1, p );
+            Node n = makeNode< Node >( 1, p );
             setPermanent( p, n );
             return n;
         }
