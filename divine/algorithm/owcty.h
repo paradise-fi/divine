@@ -184,7 +184,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             assert( o.extension( st ).inS );
             ++ o.shared.size;
             o.shared.stats.addExpansion();
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
@@ -192,11 +192,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             ++ o.extension( t ).predCount;
             o.extension( t ).inS = true;
             if ( o.extension( t ).inF && o.store().valid( f ) )
-                return visitor::ForgetTransition;
+                return visitor::TransitionAction::Forget;
             else {
                 return o.updateIteration( t ) ?
-                    visitor::ExpandTransition :
-                    visitor::ForgetTransition;
+                    visitor::TransitionAction::Expand :
+                    visitor::TransitionAction::Forget;
             }
         }
 
@@ -231,7 +231,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                     if ( from.getVertexId().weakId() == to.getVertexId().weakId() ) { // hmm
                         o.shared.cycle_node = to.getVertexId();
                         o.shared.cycle_found = true;
-                        return visitor::TerminateOnTransition;
+                        return visitor::TransitionAction::Terminate;
                     }
                     if ( o.getMap( to ) < fromId )
                         o.setMap( to, fromId );
@@ -239,14 +239,14 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 if ( o.makeId( to ) == fromMap ) {
                     o.shared.cycle_node = to.getVertexId();
                     o.shared.cycle_found = true;
-                    return visitor::TerminateOnTransition;
+                    return visitor::TransitionAction::Terminate;
                 }
             }
             o.shared.stats.addEdge( o.graph(), from.getNode(), to.getNode() );
             int predCount = o.extension( to ).predCount;
             o.graph().porTransition( from, to, &predCount );
             o.extension( to ).predCount = predCount;
-            return visitor::FollowTransition;
+            return visitor::TransitionAction::Follow;
         }
 
         static visitor::ExpansionAction expansion( This &o, Vertex st )
@@ -254,7 +254,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st.getNode() );
             o.shared.size += o.extension( st ).inS;
             o.shared.stats.addNode( o.graph(), st.getNode() );
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
     };
 
@@ -303,7 +303,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             if ( o.extension( st ).inF )
                 o.shared.size ++;
             o.shared.stats.addExpansion();
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
@@ -316,10 +316,10 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             // be eliminated
             if ( o.extension( t ).predCount == 0 ) {
                 return o.updateIteration( t ) ?
-                    visitor::ExpandTransition :
-                    visitor::ForgetTransition;
+                    visitor::TransitionAction::Expand :
+                    visitor::TransitionAction::Forget;
             } else
-                return visitor::ForgetTransition;
+                return visitor::TransitionAction::Forget;
         }
 
         template< typename Visitor >
@@ -342,16 +342,16 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
             if ( !o.extension( to ).inS )
-                return visitor::ForgetTransition;
+                return visitor::TransitionAction::Forget;
             if ( o.store().valid( from ) &&
                     visitor::equalId( o.store(), to.getVertexId(), o.shared.cycle_node ) ) {
                 o.shared.cycle_found = true;
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
 
             return o.updateIteration( to ) ?
-                visitor::ExpandTransition :
-                visitor::ForgetTransition;
+                visitor::TransitionAction::Expand :
+                visitor::TransitionAction::Forget;
         }
 /* Not called from anywhere
         static visitor::ExpansionAction ccExpansion( Node ) {

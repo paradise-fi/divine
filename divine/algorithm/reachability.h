@@ -67,7 +67,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         static visitor::ExpansionAction expansion( This &r, Vertex st )
         {
             r.shared.stats.addNode( r.graph(), st.getNode() );
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
@@ -85,11 +85,11 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 r.shared.goal = t.getVertexId();
                 assert( r.store().valid( r.shared.goal ) );
                 r.shared.deadlocked = false;
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
 
             r.graph().porTransition( f, t, 0 );
-            return visitor::FollowTransition;
+            return visitor::TransitionAction::Follow;
         }
 
         static visitor::DeadlockAction deadlocked( This &r, Vertex n )
@@ -97,12 +97,12 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             r.shared.stats.addDeadlock();
 
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
-                return visitor::IgnoreDeadlock;
+                return visitor::DeadlockAction::Ignore;
 
             r.shared.goal = n.getVertexId();
             assert( r.store().valid( r.shared.goal ) );
             r.shared.deadlocked = true;
-            return visitor::TerminateOnDeadlock;
+            return visitor::DeadlockAction::Terminate;
         }
     };
 

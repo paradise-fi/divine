@@ -147,7 +147,7 @@ struct TestVisitor {
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
-            return FollowTransition;
+            return TransitionAction::Follow;
         }
 
         static ExpansionAction expansion( This &c, Vertex tV ) {
@@ -155,7 +155,7 @@ struct TestVisitor {
             assert( !c.seen.count( t ) );
             c.seen.insert( t );
             c.nodes() ++;
-            return ExpandState;
+            return ExpansionAction::Expand;
         }
 
         Check() : pool(), bcomp( pool ), seen( bcomp ), t_seen( bcomp ),
@@ -170,7 +170,7 @@ struct TestVisitor {
         if ( node( t, self->pool ) % self->peers() != self->id() ) {
             self->submit( self->id(), node( t, self->pool ) % self->peers(),
                           std::make_tuple( fV, t, label ) );
-                return IgnoreTransition;
+                return TransitionFilter::Ignore;
             }
 
         if ( node( f, self->pool ) % self->peers() == self->id() )
@@ -182,7 +182,7 @@ struct TestVisitor {
             self->t_seen.insert( std::make_pair( f, t ) );
         }
 
-        return FollowTransition;
+        return TransitionAction::Follow;
     }
 
     template< typename G >
@@ -291,7 +291,7 @@ struct TestVisitor {
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
-            return FollowTransition;
+            return TransitionAction::Follow;
         }
 
         void _visit() { // parallel
@@ -366,7 +366,7 @@ struct TestVisitor {
                 assert( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
-            return FollowTransition;
+            return TransitionAction::Follow;
         }
 
         void _visit() { // parallel
@@ -599,13 +599,13 @@ struct TestVisitor {
 
         TransitionAction transition( Node f, Node t, Label ) {
             shared.trans ++;
-            return FollowTransition;
+            return TransitionAction::Follow;
         }
 
         ExpansionAction expansion( Node n ) {
             seenset.insert( unblob< int >( n ) );
             ++ shared.seen;
-            return ExpandState;
+            return ExpansionAction::Expand;
         }
 
         void _visit() { // parallel

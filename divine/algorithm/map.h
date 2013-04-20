@@ -115,8 +115,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         int old = extension( t ).iteration;
         extension( t ).iteration = shared.iteration;
         return (old != shared.iteration) ?
-            visitor::ExpandTransition :
-            visitor::ForgetTransition;
+            visitor::TransitionAction::Expand :
+            visitor::TransitionAction::Forget;
     }
 
     void collect() {
@@ -162,7 +162,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             } else
                 m.shared.stats.addExpansion();
 
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
@@ -181,13 +181,13 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                     visitor::equalId( m.store(), f.getVertexId(), t.getVertexId() ) )
             {
                 m.shared.ce.initial = t.getVertexId();
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
 
             /* MAP arrived to its origin */
             if ( m.isAccepting( t ) && m.extension( f ).map == m.makeId( t ) ) {
                 m.shared.ce.initial = t.getVertexId();
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
 
             if ( m.extension( f ).oldmap.valid() && m.extension( t ).oldmap.valid() )
@@ -205,7 +205,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                 if ( m.isAccepting( t ) && m.extension( t ).elim == 0 && m.makeId( t ) < map )
                     m.extension( t ).elim = 1;
                 m.extension( t ).map = map;
-                return visitor::ExpandTransition;
+                return visitor::TransitionAction::Expand;
             }
 
             return m.updateIteration( t );

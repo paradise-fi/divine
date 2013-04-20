@@ -95,19 +95,19 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         static visitor::ExpansionAction expansion( This &t, Vertex st )
         {
             t.shared.addNode( t.graph(), st.getNode() );
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label )
         {
             t.shared.addEdge( t.graph(), from.getNode(), to.getNode() );
             t.graph().porTransition( from, to, 0 );
-            return visitor::FollowTransition;
+            return visitor::TransitionAction::Follow;
         }
 
         static visitor::DeadlockAction deadlocked( This &t, Vertex ) {
             t.shared.addDeadlock();
-            return visitor::IgnoreDeadlock;
+            return visitor::DeadlockAction::Ignore;
         }
     };
 

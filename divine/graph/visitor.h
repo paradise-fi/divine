@@ -15,30 +15,28 @@
 namespace divine {
 namespace visitor {
 
-enum TransitionAction { TerminateOnTransition,
-                        ExpandTransition, // force expansion on the target state
-                        FollowTransition, // expand the target state if it's
-                                          // not been expanded yet
-                        ForgetTransition, // do not act upon this transition;
-                                          // target state is freed by visitor
-                        IgnoreTransition, // pretend the transition does not
-                                          // exist; this also means that the
-                                          // target state of the transition is
-                                          // NOT FREED
+enum class TransitionAction { Terminate,
+                        Expand, // force expansion on the target state
+                        Follow, // expand the target state if it's
+                                // not been expanded yet
+                        Forget  // do not act upon this transition;
+                                // target state is freed by visitor
 };
 
-enum ExpansionAction { TerminateOnState, ExpandState, IgnoreState };
-enum DeadlockAction { TerminateOnDeadlock, IgnoreDeadlock };
+enum class TransitionFilter { Take, Ignore };
+
+enum class ExpansionAction { Terminate, Expand, Ignore };
+enum class DeadlockAction { Terminate, Ignore };
 
 struct SetupBase {
     template< typename Listener, typename Vertex, typename Label >
     static TransitionAction transition( Listener &, Vertex, Vertex, Label ) {
-        return FollowTransition;
+        return TransitionAction::Follow;
     }
 
     template< typename Listener, typename Vertex >
     static ExpansionAction expansion( Listener &, Vertex ) {
-        return ExpandState;
+        return ExpansionAction::Expand;
     }
 
     template< typename Listener, typename Node >
@@ -46,12 +44,12 @@ struct SetupBase {
 
     template< typename Listener, typename Node >
     static DeadlockAction deadlocked( Listener &, Node ) {
-        return IgnoreDeadlock;
+        return DeadlockAction::Ignore;
     }
 
     template< typename Listener, typename Vertex, typename Node, typename Label >
-    static TransitionAction transitionHint( Listener &, Vertex, Node, Label, hash_t ) {
-        return FollowTransition;
+    static TransitionFilter transitionFilter( Listener &, Vertex, Node, Label, hash_t ) {
+        return TransitionFilter::Take;
     }
 };
 
@@ -80,8 +78,8 @@ struct SetupOverride : A {
     }
 
     template< typename Listener, typename Vertex, typename Node >
-    static TransitionAction transitionHint( Listener &l, Vertex a, Node b, Label label, hash_t h ) {
-        return A::transitionHint( *l.first, a, b, label, h );
+    static TransitionFilter transitionFilter( Listener &l, Vertex a, Node b, Label label, hash_t h ) {
+        return A::transitionFilter( *l.first, a, b, label, h );
     }
 };
 
@@ -125,7 +123,7 @@ struct Common {
         while ( ! _queue.empty() ) {
             _queue.processOpen( [&]( Vertex f, Node t, Label l ) { this->edge( f, t, l ); } );
             _queue.processDead( [&]( Vertex n ) {
-                    if ( S::deadlocked( notify, n ) == TerminateOnDeadlock )
+                    if ( S::deadlocked( notify, n ) == DeadlockAction::Terminate )
                         this->terminate();
                 } );
             _queue.processClosed( [&]( Vertex n ) { S::finished( notify, n ); } );
@@ -135,12 +133,12 @@ struct Common {
     // process an edge and free both nodes
     void edge( Vertex from, Node _to, Label label ) {
         TransitionAction tact;
-        ExpansionAction eact = ExpandState;
+        ExpansionAction eact = ExpansionAction::Expand;
 
         bool had = true;
         hash_t hint = store().hash( _to );
 
-        if ( S::transitionHint( notify, from, _to, label, hint ) == IgnoreTransition )
+        if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
             return;
 
         Vertex toV;
@@ -162,28 +160,27 @@ struct Common {
                 // contains permanent information about stored node
         }
         tact = S::transition( notify, from, toV, label );
-        assert( tact != IgnoreTransition );
+
         /**
          * If this thread attempted to store the node and the node has been already stored before,
          * this node CANNOT be pushed into the working queue to be processed.
          */
-        if ( tact == ExpandTransition ||
-             (tact == FollowTransition && !had) ) {
+        if ( tact == TransitionAction::Expand ||
+             (tact == TransitionAction::Follow && !had) ) {
             eact = S::expansion( notify, toV );
-            if ( eact == ExpandState )
+            if ( eact == ExpansionAction::Expand )
                 _queue.push( toV.clone( graph ) );
         }
 
-        if ( tact != IgnoreTransition )
-            store().update( to, hint );
+        store().update( to, hint );
 
         if ( !store().alias( to, _to ) )
             graph.release( _to );
 
-        if ( tact != IgnoreTransition )
-            graph.release( to );
+        graph.release( to );
 
-        if ( tact == TerminateOnTransition || eact == TerminateOnState )
+        if ( tact == TransitionAction::Terminate ||
+                eact == ExpansionAction::Terminate )
             this->terminate();
     }
 
@@ -277,7 +274,7 @@ struct Partitioned {
 
         visitor::TransitionAction transition( Vertex f, Node t ) {
             visitor::TransitionAction tact = S::transition( notify, f, t );
-            if ( tact == TerminateOnTransition )
+            if ( tact == TransitionAction::Terminate )
                 worker.interrupt();
             return tact;
         }
@@ -285,7 +282,7 @@ struct Partitioned {
         visitor::ExpansionAction expansion( Vertex n ) {
             assert_eq( ownerV( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
-            if ( eact == TerminateOnState )
+            if ( eact == ExpansionAction::Terminate )
                 worker.interrupt();
             return eact;
         }
@@ -332,7 +329,7 @@ struct Partitioned {
         struct Ours : SetupOverride< S, This >
         {
             typedef typename SetupOverride< S, This >::Listener Listener;
-            static inline TransitionAction transitionHint(
+            static inline TransitionFilter transitionFilter(
                  Listener l, Vertex f, Node t, Label label, hash_t hint )
             {
                 This &n = *l.second;
@@ -340,9 +337,9 @@ struct Partitioned {
                     if (n._store.valid( f ) )
                         assert_eq( n.owner( f.getNode() ), n.worker.id() );
                     n.queueAny( f, t, label, hint );
-                    return visitor::IgnoreTransition;
+                    return TransitionFilter::Ignore;
                 }
-               return visitor::FollowTransition;
+               return TransitionFilter::Take;
             }
         };
 
@@ -430,17 +427,17 @@ struct Shared {
             queue( from, to, label );
         }
 
-        visitor::TransitionAction transition( Vertex f, Node t ) {
+        TransitionAction transition( Vertex f, Node t ) {
             visitor::TransitionAction tact = S::transition( notify, f, t );
-            if ( tact == TerminateOnTransition )
+            if ( tact == TransitionAction::Terminate )
                 worker.interrupt();
             return tact;
         }
 
-        visitor::ExpansionAction expansion( Vertex n ) {
+        ExpansionAction expansion( Vertex n ) {
             assert_eq( owner( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
-            if ( eact == TerminateOnState )
+            if ( eact == ExpansionAction::Terminate )
                 worker.interrupt();
             return eact;
         }

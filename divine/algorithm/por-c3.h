@@ -137,21 +137,21 @@ struct PORGraph : graph::Transform< G > {
                 "Invalid setup provided for POREliminate: Vertex type of PORGraph does not match Vertex type of Setup" );
 
         static visitor::ExpansionAction expansion( This &, Vertex n ) {
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex, Vertex to, Label ) {
             if ( t.extension( to ).done )
-                return visitor::ForgetTransition;
+                return visitor::TransitionAction::Forget;
 
             assert( t.predCount( to ) );
             t.updatePredCount( to, t.predCount( to ) - 1 );
             t.extension( to ).remove = true;
             if ( t.predCount( to ) == 0 ) {
                 t.extension( to ).done = true;
-                return visitor::ExpandTransition;
+                return visitor::TransitionAction::Expand;
             }
-            return visitor::ForgetTransition;
+            return visitor::TransitionAction::Forget;
         }
 
         template< typename V >

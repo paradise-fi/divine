@@ -142,11 +142,11 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         static visitor::ExpansionAction expansion( This &dfs, Vertex stV ) {
             Node st = stV.getNode();
             if ( !dfs.valid )
-                return visitor::TerminateOnState;
+                return visitor::ExpansionAction::Terminate;
             dfs.stats.addNode( dfs.graph(), st );
             dfs.ce_stack.push_front( stV.getVertexId() );
             dfs.extension( st ).on_stack = true;
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label ) {
@@ -157,7 +157,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             if ( from.valid() && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
                 dfs.toexpand.push_back( dfs.graph().clone( from ) );
-            return visitor::FollowTransition;
+            return visitor::TransitionAction::Follow;
         }
 
         static void finished( This &dfs, Vertex nV ) {
@@ -182,10 +182,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
 
             if ( !dfs.valid )
-                return visitor::TerminateOnState;
+                return visitor::ExpansionAction::Terminate;
             dfs.stats.addExpansion();
             dfs.ce_lasso.push_front( st.getVertexId() );
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label )
@@ -197,15 +197,15 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             // initial state. Ignore this transition here.
             if ( from.valid() && dfs.pool().pointer( to ) == dfs.pool().pointer( dfs.seed ) ) {
                 dfs.valid = false;
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
 
             if ( !dfs.extension( to ).nested ) {
                 dfs.extension( to ).nested = true;
-                return visitor::ExpandTransition;
+                return visitor::TransitionAction::Expand;
             }
 
-            return visitor::FollowTransition;
+            return visitor::TransitionAction::Follow;
         }
 
         static void finished( This &dfs, Vertex n ) {

@@ -66,9 +66,9 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         t.dotNode( st, limit );
 
         if ( limit )
-            return visitor::IgnoreState;
+            return visitor::ExpansionAction::Ignore;
         else
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
     }
 
     static visitor::TransitionAction transition( This &draw, Vertex f, Vertex t, Label l )
@@ -78,7 +78,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         if ( draw.extension( t ).initial == 1 ) {
             draw.extension( t ).initial ++;
-            return visitor::ExpandTransition;
+            return visitor::TransitionAction::Expand;
         }
 
         std::string color;
@@ -93,7 +93,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         draw.extension( t ).distance =
             std::min( draw.extension( t ).distance, draw.extension( f ).distance + 1 );
-        return visitor::FollowTransition;
+        return visitor::TransitionAction::Follow;
     }
 
     std::string escape( std::string s ) {

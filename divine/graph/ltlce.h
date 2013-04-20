@@ -196,21 +196,21 @@ struct LtlCE {
     {
 
         static visitor::ExpansionAction expansion( This &, Vertex n ) {
-            return visitor::ExpandState;
+            return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
             if ( !from.getNode().valid() )
-                return visitor::ExpandTransition;
+                return visitor::TransitionAction::Expand;
             if ( from.getNode().valid() && t.whichInitial( to.getNode() ) ) {
                 t.extension( to.getNode() ).parent = from.getVertexId();
-                return visitor::TerminateOnTransition;
+                return visitor::TransitionAction::Terminate;
             }
             if ( t.updateIteration( to ) ) {
                 t.extension( to.getNode() ).parent = from.getVertexId();
-                return visitor::ExpandTransition;
+                return visitor::TransitionAction::Expand;
             }
-            return visitor::ForgetTransition;
+            return visitor::TransitionAction::Forget;
         }
     };
 
