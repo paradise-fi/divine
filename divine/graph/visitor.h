@@ -190,6 +190,8 @@ struct Common {
         graph( g ), notify( n ), _store( s ), _queue( q )
     {
     }
+
+    virtual ~Common() {}
 };
 
 template< typename S >
