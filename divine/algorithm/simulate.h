@@ -35,6 +35,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     bool autoSuccs;
     // command to run, the interactive prompt is shown if blank
     std::string inputTrace;
+    std::string last;
 
 
     int id() { return 0; } // expected by AlgorithmUtils
@@ -182,7 +183,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     bool runCommand( const std::string& cmd ) {
         if ( cmd.empty() )
-            return true;
+            return last.empty() ? true : runCommand( last );
+
+        last = cmd;
 
         wibble::Splitter splitter( "[ \t]*,[ \t]*", REG_EXTENDED );
         for ( auto part = splitter.begin( cmd ); part != splitter.end(); ++part ) {
