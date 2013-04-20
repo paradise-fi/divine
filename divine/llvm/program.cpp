@@ -35,11 +35,11 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.width = 0;
         result.type = Value::Void;
     } else if ( isCodePointer( val ) ) {
+        result.width = TD.getTypeAllocSize( val->getType() );
         result.type = Value::CodePointer;
-        result.width = 4;
     } else if ( val->getType()->isPointerTy() ) {
+        result.width = TD.getTypeAllocSize( val->getType() );
         result.type = Value::Pointer;
-        result.width = 4;
     } else {
         result.width = TD.getTypeAllocSize( val->getType() );
         if ( val->getType()->isIntegerTy() )

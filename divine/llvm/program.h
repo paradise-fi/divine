@@ -239,7 +239,7 @@ struct ProgramInfo {
 
     template< typename T >
     void makeConstant( Value &result, T value ) {
-        assert_eq( result.width, sizeof( T ) );
+        assert_leq( sizeof( T ), result.width );
         allocateConstant( result );
         constant< T >( result ) = value;
     }
