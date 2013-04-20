@@ -81,7 +81,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                 "ProgramInfo::insert",
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
         makeConstant( result, PC( functionmap[ F ], 0, 0 ) );
-    } else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
+    } else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
+        result = insert( function, const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ) );
+    else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
