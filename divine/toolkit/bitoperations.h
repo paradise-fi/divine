@@ -4,6 +4,20 @@
 
 namespace divine {
 namespace bitops {
+
+namespace compiletime{
+
+template< typename T >
+constexpr unsigned MSB( T x ) {
+    return x > 1 ? 1 + MSB( x >> 1 ) : 0;
+}
+
+template< typename T >
+constexpr T fill( T x ) {
+    return x ? x | fill( x >> 1 ) : x;
+}
+
+}
 /*
  *  Fills `x` by bits up to the most si significant bit.
  *  Comlexity is O(log n), n is sizeof(x)*8
