@@ -253,12 +253,12 @@ void ProgramInfo::build()
 
     framealign = 1;
 
-    for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
-        insert( 0, &*var );
-
     codepointers = true;
     pass();
     codepointers = false;
+
+    for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
+        insert( 0, &*var );
 
     framealign = 4;
     pass();
