@@ -79,13 +79,15 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
-            if ( G->hasInitializer() ) {
-                initValue( G->getInitializer(), pointee );
-                if ( (pointee.constant = G->isConstant()) )
-                    makeLLVMConstant( pointee, G->getInitializer() );
-                else
-                    allocateValue( 0, pointee );
-            } else
+            if ( !G->hasInitializer() )
+                throw wibble::exception::Consistency(
+                    "ProgramInfo::insert",
+                    std::string( "Unresolved symbol (global variable): " ) + G->getValueName()->getKey().str() );
+            assert( G->hasInitializer() );
+            initValue( G->getInitializer(), pointee );
+            if ( (pointee.constant = G->isConstant()) )
+                makeLLVMConstant( pointee, G->getInitializer() );
+            else
                 allocateValue( 0, pointee );
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
@@ -94,7 +96,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                     = std::make_pair( G->getInitializer()->getType(),
                                       G->getValueName()->getKey() );
             }
-            makeConstant( result, Pointer( false, globals.size() - 1, 0 ) );
+            makeConstant( result, p );
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
 
