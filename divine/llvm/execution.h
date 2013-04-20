@@ -836,6 +836,7 @@ struct Evaluator
 
     template< typename Fun, typename I, typename Cons >
     typename Fun::T implement( wibble::NotPreferred, I i, I e, Cons list, Fun = Fun() ) {
+        instruction.op->dump();
         assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
     }
 
