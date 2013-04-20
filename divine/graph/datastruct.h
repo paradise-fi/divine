@@ -60,6 +60,7 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::Statistics Statistics;
     Graph &g;
     std::deque< Vertex > _queue;
 
