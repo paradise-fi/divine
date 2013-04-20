@@ -81,7 +81,9 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
 
     /* For conversion of function pointers to plain pointers. */
     Pointer( PC x ) {
-        *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
+        std::copy( reinterpret_cast< char * >( &x ),
+                reinterpret_cast< char * >( &x ) + sizeof( x ),
+                reinterpret_cast< char* >( this ) );
     }
 
     operator PC() const {
@@ -91,7 +93,9 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
 
     Pointer &operator=( PC x ) {
         assert( x.code );
-        *reinterpret_cast< uint32_t * >( this ) = *reinterpret_cast< uint32_t * >( &x );
+        std::copy( reinterpret_cast< char * >( &x ),
+                reinterpret_cast< char * >( &x ) + sizeof( x ),
+                reinterpret_cast< char* >( this ) );
         return *this;
     }
 
@@ -129,8 +133,8 @@ struct ProgramInfo {
         uint32_t width:9;
 
         bool operator<( Value v ) const {
-            return *reinterpret_cast< const uint32_t * >( this )
-                 < *reinterpret_cast< const uint32_t * >( &v );
+            return static_cast< uint32_t >( *this )
+                 < static_cast< uint32_t >( v );
         }
 
         bool pointer() { return type == Pointer; }
@@ -138,6 +142,10 @@ struct ProgramInfo {
         bool isfloat() { return type == Float; }
         bool aggregate() { return type == Aggregate; }
         bool codePointer() { return type == CodePointer; }
+
+        operator uint32_t() const {
+            return *reinterpret_cast< const uint32_t * >( this );
+        }
 
         Value()
             : global( false ), constant( false ), type( Integer ),

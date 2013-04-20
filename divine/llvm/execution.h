@@ -567,6 +567,7 @@ struct Evaluator
                                                 instruction.values.size() - 1 ) ),
                      instruction.operand( 1 ).width );
         assert_eq( r, Problem::NoProblem );
+        static_cast< void >( r );
     }
 
     /******** Control flow ********/
