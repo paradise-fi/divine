@@ -535,7 +535,7 @@ struct Evaluator
 
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
-        Type *ty = I->getType()->getElementType();  // Type to be allocated
+        Type *ty = I->getAllocatedType();
 
         int count = withValues( GetInt(), instruction.operand( 0 ) );
         int size = econtext.TD.getTypeAllocSize(ty); /* possibly aggregate */
