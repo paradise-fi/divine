@@ -24,6 +24,9 @@ using namespace sys;
 
 namespace divine {
 
+struct stringtable { const char *n, *c; };
+extern stringtable libsupcpp_list[];
+
 std::string ltl_to_c( int id, std::string ltl );
 
 using namespace wibble;
@@ -235,11 +238,38 @@ struct Compile {
         run( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
         run( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
 
+        {
+            std::string files;
+            fs::mkdirIfMissing( "libsupc++", 0755 );
+            chdir( "libsupc++" );
+            auto src = libsupcpp_list;
+            while ( src->n ) {
+                fs::writeFile( src->n, src->c );
+                ++src;
+            }
+
+            src = libsupcpp_list;
+            while ( src->n ) {
+                if ( str::endsWith( src->n, ".cc" ) ) {
+                    run( "clang " + flags + " " + src->n + " -o " + src->n + ext, trap, trap_arg );
+                    files = files + src->n + ext + " ";
+                }
+                ++src;
+            }
+
+            // link
+            if ( !o_assm->boolValue() )
+                stage = "";
+
+            run( "llvm-link " + stage + files + " -o ../libsupc++" + ext, trap, trap_arg );
+        }
+
         // leave tmp directory
         chdir( tmp_dir.abspath.c_str() );
 
         // compile input file(s)
-        std::string basename, unlinked, file = first_file, all_unlinked;
+        std::string basename, unlinked, file = first_file,
+                                all_unlinked = tmp_dir.basename + "/libsupc++" + ext;
         do {
             if ( file.empty() ) {
                 file = opts.next();
@@ -262,11 +292,7 @@ struct Compile {
             file.clear();
         } while ( opts.hasNext() );
 
-        // link
-        if ( !o_assm->boolValue() )
-            stage = "";
-
-        run( "llvm-link" + stage + all_unlinked + " " +
+        run( "llvm-link " + stage + " " + all_unlinked + " " +
              str::joinpath( tmp_dir.basename, cstdlib_comp ) + " " +
              str::joinpath( tmp_dir.basename, pthread_comp ) +
              " -o " + out + ext, trap, trap_arg );

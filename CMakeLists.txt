@@ -409,6 +409,10 @@ if( LTL2DSTAR )
   add_subdirectory( external/ltl2dstar )
 endif()
 
+if( LLVM )
+  add_subdirectory( external/libsupc++ )
+endif()
+
 if( TIMED )
   add_subdirectory( external/libutap )
   add_subdirectory( external/dbm )

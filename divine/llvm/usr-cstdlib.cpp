@@ -32,17 +32,6 @@ void _ZSt9terminatev( void ) {
     // TODO?
 }
 
-
-/* Operators new & delete */
-void _Znwm( void ) {
-    // TODO?
-}
-
-void _Znam( void ) {
-    // TODO?
-}
-
-
 /* IOStream */
 
 void _ZNSt8ios_base4InitC1Ev( void ) { // std::ios_base::Init
@@ -69,3 +58,20 @@ int atexit( void ( *func )( void ) ) {
     return 0;
 }
 
+void *stderr = 0;
+
+extern "C" int strcmp() { __divine_assert( 0 ); return 0; }
+extern "C" int memset() { __divine_assert( 0 ); return 0; }
+extern "C" void *memcpy( void *, const void *, unsigned long ) { __divine_assert( 0 ); return 0; }
+extern "C" void __cxa_call_unexpected() { __divine_assert( 0 ); }
+extern "C" void __cxa_allocate_exception() { __divine_assert( 0 ); }
+extern "C" void __cxa_throw() { __divine_assert( 0 ); }
+extern "C" void __cxa_rethrow() { __divine_assert( 0 ); }
+extern "C" void __cxa_begin_catch() { __divine_assert( 0 ); }
+extern "C" void __cxa_end_catch() { __divine_assert( 0 ); }
+extern "C" void __cxa_current_exception_type() { __divine_assert( 0 ); }
+extern "C" void __cxa_demangle() { __divine_assert( 0 ); }
+extern "C" void __cxa_pure_virtual() { __divine_assert( 0 ); }
+extern "C" void __gxx_personality_v0() { __divine_assert( 0 ); }
+extern "C" void fputs() { __divine_assert( 0 ); }
+extern "C" void abort() { __divine_assert( 0 ); }
