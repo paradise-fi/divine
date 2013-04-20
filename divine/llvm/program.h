@@ -222,7 +222,7 @@ struct ProgramInfo {
         result.constant = true;
         result.offset = constdatasize;
         constdatasize += result.width;
-        constdata.resize( constdata.size() + result.width );
+        constdata.resize( constdata.size() + result.width, 0 );
         return &constdata[ result.offset ];
     }
 
