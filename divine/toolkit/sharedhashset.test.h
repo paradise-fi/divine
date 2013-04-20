@@ -7,17 +7,23 @@ using namespace divine;
 
 struct TestSharedHashset
 {
+
     Test basic() {
         SharedHashSet< int > set;
         set.setSize( 8 );
+
         assert( !set.has( 1 ) );
         assert( std::get< 1 >( set.insert( 1 ) ) );
         assert( set.has( 1 ) );
+        unsigned count = 0;
+        for ( unsigned i = 0; i != set.size(); ++i )
+            if ( set[ i ] )
+                ++count;
+        assert_eq( count, unsigned(1) );
     }
 
-    template< typename T >
     struct Insert : wibble::sys::Thread {
-        SharedHashSet< T > *set;
+        SharedHashSet< int > *set;
         int from, to;
         bool overlap;
 
@@ -34,8 +40,8 @@ struct TestSharedHashset
 
     Test stress() {
         SharedHashSet< int > set;
-        set.setSize( 1L << 16 );
-        Insert< int > a;
+        set.setSize( 4 * 1024 );
+        Insert a;
         a.set = &set;
         a.from = 1;
         a.to = 32 * 1024;
@@ -48,7 +54,7 @@ struct TestSharedHashset
 
     void par( SharedHashSet< int > *set, int f1, int t1, int f2, int t2 )
     {
-        Insert< int > a, b;
+        Insert a, b;
 
         a.from = f1;
         a.to = t1;
@@ -63,8 +69,8 @@ struct TestSharedHashset
         b.join();
     }
 
-    void multi( SharedHashSet< int >* set, std::size_t count, int from, int to ) {
-        Insert< int > *field = new Insert< int >[ count ];
+    void multi( SharedHashSet< int > *set, std::size_t count, int from, int to ) {
+        Insert *field = new Insert[ count ];
 
         for ( std::size_t i = 0; i < count; ++i ) {
             field[ i ].from = from;
@@ -78,20 +84,20 @@ struct TestSharedHashset
 
         for ( std::size_t i = 0; i < count; ++i )
             field[ i ].join();
-
+        delete[] field;
     }
 
     Test multistress() {
         SharedHashSet< int > set;
-        set.setSize( 20 * 32 * 1024 );
+        set.setSize( 4 * 1024 );
         multi( &set, 10, 1, 32 * 1024 );
 
         for  ( int i = 1; i < 32 * 1024; ++i ) {
             assert( set.has( i ) );
         }
         int count = 0;
-        for ( auto& i : set.table ) {
-            if ( i.value )
+        for ( size_t i = 0; i != set.size(); ++i ) {
+            if ( set[ i ] )
                 ++count;
         }
         assert_eq( count, 32 * 1024 - 1 );
@@ -99,7 +105,7 @@ struct TestSharedHashset
 
     Test parstress() {
         SharedHashSet< int > set;
-        set.setSize( 1L << 16 );
+        set.setSize( 4 * 1024 );
         par( &set, 1, 16*1024, 8*1024, 32*1024 );
 
         for ( int i = 1; i < 32*1024; ++i ) {
@@ -109,8 +115,7 @@ struct TestSharedHashset
 
     Test set() {
         SharedHashSet< int > set;
-        set.setSize( 1L << 16 );
-
+        set.setSize( 4 * 1024 );
         for ( int i = 1; i < 32*1024; ++i ) {
             assert( !set.has( i ) );
         }
