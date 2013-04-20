@@ -100,7 +100,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     }
 
     // backtrace by one
-    void goUp() {
+    void goBack() {
         assert( !trace.empty() );
         trace.pop_back();
 
@@ -123,7 +123,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         if ( trace.empty() )
             return false;
 
-        goUp();
+        goBack();
         return true;
     }
 
@@ -194,11 +194,11 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                 return false;
             } else if ( *part == "s" ) {
                 printSuccessors( std::cerr );
-            } else if ( *part == "u" ) {
+            } else if ( *part == "b" ) {
                 if ( !trace.empty() ) {
                     goBack();
                 } else {
-                    std::cerr << "Cannot go up" << std::endl;
+                    std::cerr << "Cannot go back" << std::endl;
                 }
             } else if ( *part == "t" ) {
                 for ( Node n : trace ) {
@@ -206,7 +206,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                 }
             } else if ( *part == "n" ) {
                 if ( !stepDFS() )
-                    std::cerr << "Cannot go up" << std::endl;
+                    std::cerr << "Cannot go back" << std::endl;
             } else if ( !part->empty() && isdigit( (*part)[0] ) ) {
                 int i = std::atoi( part->c_str() );
                 if ( i > 0 && i <= int( succs.size() ) ) {
@@ -221,7 +221,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     "HELP:\n"
                     "  1,2,3 use numbers to select a sucessor\n"
                     "  s     list successors\n"
-                    "  u     go back to the prevoius state state (up)\n"
+                    "  b     back to the prevoius state state\n"
                     "  t     show current trace\n"
                     "  n     go to the next unvisited successor or go up if there is none (DFS)\n"
                     "  q     exit\n"
