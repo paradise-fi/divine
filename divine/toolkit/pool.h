@@ -62,12 +62,6 @@ struct BlobDereference {
         source.copyTo( where, sourceStart, whereStart, length );
     }
 
-    template< typename O >
-    O write32( const Blob& blob, O o ) const
-    {
-        return blob.write32( o );
-    }
-
     void setSize( Blob& blob, size_t size ) const
     {
         blob.setSize( size );
@@ -91,11 +85,6 @@ struct BlobDereference {
     char* pointer( const Blob blob ) const
     {
         return blob.pointer();
-    }
-
-    int32_t* pointer32( const Blob& blob ) const
-    {
-        return blob.pointer32();
     }
 
     int compare( const Blob& x, const Blob& y, int b, int e ) const

@@ -55,23 +55,6 @@ struct TestBlob {
             assert( i <= Blob::allocationSize( i ) );
     }
 
-    Test writeAndRead() {
-    /* TODO: use streams
-        Pool p;
-        Blob b1( p, sizeof( int ) ), b2;
-        int32_t buf[ 2 ];
-
-        p.get< int >( b1 ) = 42;
-        b1.write32( buf );
-        int32_t *end = b2.read32( &p, buf );
-        assert_eq( b1.get< int >(), 42 );
-        assert_eq( b1.get< int >(), b2.get< int >() );
-        assert( b1 == b2 );
-
-        assert_eq( buf + 2, end );
-    */
-    }
-
     struct Worker : wibble::sys::Thread {
 
         Blob &data;

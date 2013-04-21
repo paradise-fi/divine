@@ -184,26 +184,6 @@ private:
         std::copy( data() + start, data() + start + length, where.data() + whereStart );
     }
 
-    template< typename O >
-    O write32( O o ) const
-    {
-        return std::copy( pointer32(),
-                          pointer32() + allocationSize( size() ) / 4, o );
-    }
-
-    template< typename Alloc, typename In >
-    In read32( Alloc *a, In i )
-    {
-        const int hdr_cnt = allocationSize( 0 ) / 4;
-        BlobHeader hdr;
-        std::copy( i, i + hdr_cnt, reinterpret_cast< int32_t *>( &hdr ) );
-
-        ptr = a->allocate( allocationSize( hdr.size ) );
-        In end = i + allocationSize( hdr.size ) / 4;
-        std::copy( i, end, pointer32() );
-        return end;
-    }
-
     void setSize( size_t size )
     {
         assert( size <= 0x3FFF );
