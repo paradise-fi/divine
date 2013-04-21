@@ -190,6 +190,7 @@ struct Compile {
     }
 
     void compileLLVM( std::string first_file, std::string cflags, std::string out ) {
+#if O_LLVM
         // create temporary directory to compile in
         char tmp_dir_template[] = "_divine-compile.XXXXXX";
         FilePath tmp_dir;
@@ -299,6 +300,9 @@ struct Compile {
 
         // cleanup
         if ( trap ) trap( trap_arg );
+#else
+        die( "LLVM is disabled" );
+#endif
     }
 
     void main() {
