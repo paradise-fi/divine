@@ -119,14 +119,16 @@ struct Common {
         edge( from, to, l );
     }
 
-    void processQueue() {
-        while ( ! _queue.empty() ) {
+    void processQueue( int max = 0 ) {
+        int i = 0;
+        while ( ! _queue.empty() && (!max || i < max) ) {
             _queue.processOpen( [&]( Vertex f, Node t, Label l ) { this->edge( f, t, l ); } );
             _queue.processDead( [&]( Vertex n ) {
                     if ( S::deadlocked( notify, n ) == DeadlockAction::Terminate )
                         this->terminate();
                 } );
             _queue.processClosed( [&]( Vertex n ) { S::finished( notify, n ); } );
+            ++ i;
         }
     }
 
@@ -318,12 +320,10 @@ struct Partitioned {
                         }
                     }
 
-                    bfv.processQueue();
-
-                } else {
-                    if ( worker.idle() )
-                        return;
-                }
+                } else if ( !bfv._queue.empty() )
+                    bfv.processQueue( 64 );
+                else if ( worker.idle() )
+                    return;
             }
         }
 
