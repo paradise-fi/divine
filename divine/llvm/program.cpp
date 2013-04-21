@@ -35,7 +35,7 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.width = 0;
         result.type = Value::Void;
     } else if ( isCodePointer( val ) ) {
-        result.width = TD.getTypeAllocSize( val->getType() );
+        result.width = val->getType()->isPointerTy() ? TD.getTypeAllocSize( val->getType() ) : sizeof( PC );
         result.type = Value::CodePointer;
     } else if ( val->getType()->isPointerTy() ) {
         result.width = TD.getTypeAllocSize( val->getType() );
