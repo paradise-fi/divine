@@ -441,6 +441,7 @@ struct Declarations : Parser {
     bool is_const = false;
     bool is_chan = false;
     bool is_compound = false;
+    bool is_input = false;
     int width = 2; // default for untyped channels
 
     template< typename T >
@@ -461,6 +462,8 @@ struct Declarations : Parser {
     Declarations( Context &c ) : Parser( c ) {
         if ( next( Token::Const ) )
             is_const = true;
+        else if ( next( Token::Input ) )
+            is_input = true;
 
         if ( next( Token::Int ) )
             width = 2;
