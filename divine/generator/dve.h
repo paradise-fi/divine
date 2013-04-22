@@ -8,6 +8,7 @@
 
 #include <deque>
 #include <vector>
+#include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
 
 namespace divine {
@@ -182,6 +183,8 @@ struct Dve : public Common< Blob > {
         dve::Parser::Context ctx( lexer );
         try {
             dve::parse::System ast( ctx );
+            dve::preprocessor::System preproc;
+            preproc.process( ast );
             system = std::make_shared< dve::System >( ast );
         } catch (...) {
             ctx.errors( std::cerr );
