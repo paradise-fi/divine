@@ -189,7 +189,7 @@ struct Dve : public Common< Blob > {
         file.open( path.c_str() );
         dve::IOStream stream( file );
         dve::Lexer< dve::IOStream > lexer( stream );
-        dve::Parser::Context ctx( lexer );
+        dve::Parser::Context ctx( lexer, path );
         try {
             dve::parse::System ast( ctx );
             dve::preprocessor::System preproc( defs );

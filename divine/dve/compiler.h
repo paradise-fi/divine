@@ -61,7 +61,7 @@ struct DveCompiler
         file.open( path.c_str() );
         dve::IOStream stream( file );
         dve::Lexer< dve::IOStream > lexer( stream );
-        dve::Parser::Context ctx( lexer );
+        dve::Parser::Context ctx( lexer, path );
         try {
             ast = new parse::System( ctx );
             //system = new System( ast );
