@@ -175,6 +175,15 @@ struct Dve : public Common< Blob > {
             system = blueprint->system;
             return;
         }
+        std::vector< dve::preprocessor::Definition > defs;
+        try {
+            for ( std::string & d : definitions )
+                defs.push_back( dve::preprocessor::Definition( d ) );
+        }
+        catch ( std::string error ) {
+            std::cerr << error << std::endl;
+            throw;
+        }
 
         std::ifstream file;
         file.open( path.c_str() );
@@ -183,7 +192,7 @@ struct Dve : public Common< Blob > {
         dve::Parser::Context ctx( lexer );
         try {
             dve::parse::System ast( ctx );
-            dve::preprocessor::System preproc;
+            dve::preprocessor::System preproc( defs );
             preproc.process( ast );
             system = std::make_shared< dve::System >( ast );
         } catch (...) {
