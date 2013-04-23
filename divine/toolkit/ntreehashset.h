@@ -368,20 +368,19 @@ namespace divine {
                             r2->data() + nodeHasher.slack,
                             r1->dataSize( nodeHasher.slack ) ) == 0;
                 } else if ( !r1->leaf && !r2->leaf ) {
-                uint32_t s1 = r1->forksSize();
-                uint32_t s2 = r2->forksSize();
-                if ( s1 == s2 && std::memcmp( r1->childs(), r2->childs(), s1 ) == 0 )
-                    return true;
+                    uint32_t s1 = r1->forksSize();
+                    uint32_t s2 = r2->forksSize();
+                    return s1 == s2 && std::memcmp( r1->childs(), r2->childs(), s1 ) == 0;
                 }
-                // if this does not hold it can still
-                      // be case that data are equal but saved using different
-                      // geometry (probably due to mpi transfer)
-                auto rr1 = r1->reassemble( nodeHasher.pool );
-                auto rr2 = r2->reassemble( nodeHasher.pool );
-                bool ret = nodeHasher.equal( rr1, rr2 );
-                nodeHasher.pool.free( rr1 );
-                nodeHasher.pool.free( rr2 );
-                return ret;
+                /* Note on root equality:
+                 * Leafs and forks are cononical, that is only one
+                 * instance of leaf/fork representing same subnode exists
+                 * per HashSet, and instances from diffent HashSets can't
+                 * represent same nodes (as they differ in hash).
+                 * Therefore roots can be compared trivially (on pointers
+                 * to leafs/forks.
+                 */
+                return false;
             }
 
             bool equal( Root* root, Item item ) const {
