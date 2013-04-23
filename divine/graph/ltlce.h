@@ -76,17 +76,17 @@ struct LtlCE {
         return g().base().alloc.pool();
     }
 
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n );
-    }
-
     Extension& extension( VertexId vi ) {
         return vi.template extension< Extension >( pool() );
     }
 
+    Extension& extension( Vertex v ) {
+        return extension( v.getVertexId() );
+    }
+
     bool updateIteration( Vertex t ) {
-        int old = extension( t.getNode() ).iteration;
-        extension( t.getNode() ).iteration = shared().iteration;
+        int old = extension( t ).iteration;
+        extension( t ).iteration = shared().iteration;
         return old != shared().iteration;
     }
 
@@ -203,11 +203,11 @@ struct LtlCE {
             if ( !from.getNode().valid() )
                 return visitor::TransitionAction::Expand;
             if ( from.getNode().valid() && t.whichInitial( to.getNode() ) ) {
-                t.extension( to.getNode() ).parent = from.getVertexId();
+                t.extension( to ).parent = from.getVertexId();
                 return visitor::TransitionAction::Terminate;
             }
             if ( t.updateIteration( to ) ) {
-                t.extension( to.getNode() ).parent = from.getVertexId();
+                t.extension( to ).parent = from.getVertexId();
                 return visitor::TransitionAction::Expand;
             }
             return visitor::TransitionAction::Forget;
