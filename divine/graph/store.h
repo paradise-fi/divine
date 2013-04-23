@@ -24,18 +24,18 @@ namespace visitor {
  */
 
 template< typename Pool, typename T >
-void poolFree( Pool p, T* x ) {
+void poolFree( Pool& p, T* x ) {
     if ( x != nullptr )
         x->free( p );
 }
 
 template < typename Pool, typename T >
-typename std::enable_if< !std::is_fundamental< T >::value >::type poolFree( Pool p, T x ) {
+typename std::enable_if< !std::is_fundamental< T >::value >::type poolFree( Pool& p, T x ) {
     p.free( x );
 }
 
 template < typename Pool, typename T >
-typename std::enable_if< std::is_fundamental< T >::value >::type poolFree( Pool, T ) {}
+typename std::enable_if< std::is_fundamental< T >::value >::type poolFree( Pool&, T ) {}
 
 template < typename Store >
 inline typename Store::VertexId max( Store& st, typename Store::VertexId a,
