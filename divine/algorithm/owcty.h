@@ -87,12 +87,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         return n.template extension< Extension >( pool );
     }
 
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n );
-    }
-
     Extension &extension( Vertex n ) {
-        return this->pool().template get< Extension >( n.getNode() );
+        return extension( n.getVertexId() );
     }
 
     Extension &extension( VertexId id ) {
