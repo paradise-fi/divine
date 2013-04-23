@@ -59,7 +59,7 @@ struct PORGraph : graph::Transform< G > {
     std::set< VertexId, IdCompare > to_expand;
     bool finished;
 
-    void updatePredCount( Node t, int v, int* pc ) {
+    void updatePredCount( Vertex t, int v, int* pc ) {
         extension( t ).predCount = v;
         if ( pc )
             *pc = v;
@@ -88,10 +88,6 @@ struct PORGraph : graph::Transform< G > {
         return graph::Transform< G >::setSlack( s + sizeof( Extension ) );
     }
 
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n, m_algslack );
-    }
-
     Extension &extension( VertexId n ) {
         return n.template extension< Extension >( pool(), m_algslack );
     }
@@ -118,15 +114,13 @@ struct PORGraph : graph::Transform< G > {
             this->base().ample( st, yield );
     }
 
-    void porTransition( Vertex fV, Vertex tV, int* pc ) {
-        Node f = fV.getNode();
-        Node t = tV.getNode();
+    void porTransition( Vertex f, Vertex t, int* pc ) {
 
         if ( extension( t ).done )
             return; // ignore
 
         // increase predecessor count
-        if ( f.valid() )
+        if ( f.getNode().valid() )
             updatePredCount( t, predCount( t ) + 1, pc );
     }
 
