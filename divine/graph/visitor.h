@@ -137,15 +137,10 @@ struct Common {
         TransitionAction tact;
         ExpansionAction eact = ExpansionAction::Expand;
 
-        bool had = true;
         hash_t hint = store().hash( _to );
 
         if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
             return;
-
-        Vertex toV;
-        std::tie( toV, had ) = store().fetch( _to, hint );
-        Node to = toV.getNode();
 
         /**
          * There is an important part of correct behaviour of shared visitor.
@@ -155,29 +150,27 @@ struct Common {
          *
          * Note: Only shared store changes `had` value.
          */
-        if ( /* tact != IgnoreTransition && */ !had ) {
-            bool ins;
-            std::tie( toV, ins ) = store().store( to, hint ); // we have to update Vertex so it
-            had = !ins;
-                // contains permanent information about stored node
-        }
-        tact = S::transition( notify, from, toV, label );
+        Vertex to;
+        bool isnew;
+        std::tie( to, isnew ) = store().store( _to, hint ); // we have to update Vertex so it
+            // contains permanent information about stored node
+        tact = S::transition( notify, from, to, label );
 
         /**
          * If this thread attempted to store the node and the node has been already stored before,
          * this node CANNOT be pushed into the working queue to be processed.
          */
         if ( tact == TransitionAction::Expand ||
-             (tact == TransitionAction::Follow && !had) ) {
-            eact = S::expansion( notify, toV );
+             (tact == TransitionAction::Follow && isnew) ) {
+            eact = S::expansion( notify, to );
             if ( eact == ExpansionAction::Expand )
-                _queue.push( toV.clone( graph ) );
+                _queue.push( to.clone( graph ) );
         }
 
-        store().update( to, hint );
-
-        if ( !store().alias( to, _to ) )
+        if ( !store().alias( to.getNode(), _to ) )
             graph.release( _to );
+
+        graph.release( to );
 
         if ( tact == TransitionAction::Terminate ||
                 eact == ExpansionAction::Terminate )
