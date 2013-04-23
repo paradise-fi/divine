@@ -59,7 +59,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     }
 
     Extension &extension( Vertex n ) {
-        return pool().template get< Extension >( n.getNode() );
+        return n.getVertexId().template extension< Extension >( pool() );
     }
 
     struct Main : Visit< This, Setup >
