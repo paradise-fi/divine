@@ -86,7 +86,9 @@ struct ApproximateCounter {
 
     bool isZero() {
         /* user is responsible for calling sync(), this method is called way
-        * too often */
+         * too often; the counter might drop below zero when reset() is called
+         * due to early termination, and a sync() intervenes, substracting a
+         * non-zero local approximation */
         return shared.counter <= 0;
     }
 
