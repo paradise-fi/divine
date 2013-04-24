@@ -15,18 +15,12 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Graph::Label Label;
     typedef typename Setup::Vertex Vertex;
 
-    struct SuccInfo {
-        Node node;
-        bool seen;
-
-        SuccInfo( Node _node, bool _seen ) : node( _node ), seen( _seen ) {}
-    };
-
     struct Extension {
+        bool seen;
     };
 
-    std::vector< Node > trace;
-    std::vector< SuccInfo > succs;
+    std::vector< Vertex > trace;
+    std::vector< Vertex > succs;
 
 
     // when true, edge labels are printed for each successor
@@ -40,35 +34,35 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     int id() { return 0; } // expected by AlgorithmUtils
 
-    Extension &extension( Node n ) {
-        return n.template get< Extension >();
+    Extension &extension( Vertex n ) {
+        return n.getVertexId().template extension< Extension >(
+                this->graph().base().alloc.pool() );
     }
 
     // clear the successor list
     void clearSuccs() {
         for ( auto& s : succs ) {
-            this->graph().release( s.node );
+            s.free( this->graph().base().alloc.pool() );
         }
         succs.clear();
     }
 
     // add successor to the list
     void addSucc( Node n ) {
-        bool had;
+        bool ins;
         hash_t hint = this->store().hash( n );
         Vertex v;
-        std::tie( v, had ) = this->store().fetch( n, hint );
-        Node node = v.getNode();
+        std::tie( v, ins ) = this->store().store( n, hint );
 
-        if ( !this->store().alias( n, node ) ) {
+        if ( !ins ) {
             this->graph().release( n );
         }
 
-        succs.emplace_back( node, had );
+        succs.push_back( v );
     }
 
     // fill the successor array
-    void generateSuccessors( Node from ) {
+    void generateSuccessors( Vertex from ) {
         clearSuccs();
         this->graph().successors( from, [ this ] ( Node n, Label ) {
             this->addSucc( n );
@@ -89,12 +83,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         assert( i < succs.size() );
 
         // store selected successor
-        trace.push_back( succs[ i ].node );
-        bool stored = succs[ i ].seen;
-        if ( !stored ) {
-            hash_t hint = this->store().hash( trace.back() );
-            this->store().store( trace.back(), hint );
-        }
+        trace.push_back( succs[ i ] );
+        extension( succs[ i ] ).seen = true;
 
         generateSuccessors( trace.back() );
     }
@@ -114,7 +104,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     // one step of DFS, go down to the first unvisited state, otherwise go up
     bool stepDFS() {
         for ( unsigned int i = 0; i < succs.size(); i++ ) {
-            if ( !succs[ i ].seen ) {
+            if ( !extension( succs[ i ] ).seen ) {
                 goDown( i );
                 return true;
             }
@@ -132,6 +122,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         const int LINE = 40;
         unsigned int id = 0;
         for ( auto& s : succs ) {
+            Node n = s.getNode();
             ++id;
 
             std::stringstream ss;
@@ -140,11 +131,11 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
             o << ss.str();
 
             ss.str( "" );
-            if ( s.seen )
+            if ( extension( s ).seen )
                 ss << " visited";
-            if ( this->graph().isAccepting( s.node ) )
+            if ( this->graph().isAccepting( n ) )
                 ss << " accept";
-            if ( this->graph().isGoal( s.node ) )
+            if ( this->graph().isGoal( n ) )
                 ss << " goal";
 
             if ( !ss.str().empty() ) {
@@ -156,13 +147,13 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
             // print transition
             if ( printEdges && !trace.empty() ) {
-                std::string edge = this->graph().showTransition( trace.back(), s.node, Label() );
+                std::string edge = this->graph().showTransition( trace.back().getNode(), n, Label() );
                 if ( !edge.empty() )
                     o << "=> " << edge << '\n';
             }
 
             // print successor
-            o << this->graph().showNode( s.node ) << '\n';
+            o << this->graph().showNode( n ) << '\n';
         }
 
         if ( id )
@@ -172,7 +163,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     void printCurrent( std::ostream& o ) {
         if ( !trace.empty() ) {
-            o << this->graph().showNode( trace.back() ) << '\n';
+            o << this->graph().showNode( trace.back().getNode() ) << '\n';
         }
     }
 
@@ -201,8 +192,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     std::cerr << "Cannot go back" << std::endl;
                 }
             } else if ( *part == "t" ) {
-                for ( Node n : trace ) {
-                    std::cerr << this->graph().showNode( n ) << "\n";
+                for ( Vertex n : trace ) {
+                    std::cerr << this->graph().showNode( n.getNode() ) << "\n";
                 }
             } else if ( *part == "n" ) {
                 if ( !stepDFS() )
