@@ -305,6 +305,14 @@ namespace instantiate {
         }
     };
 
+    constexpr Store fixStore( Algorithm algo, Store store ) {
+        return algo == Algorithm::Simulate ? Store::Partitioned : store;
+    }
+
+    constexpr Visitor fixVisitor( Algorithm algo, Visitor visitor ) {
+        return algo == Algorithm::Simulate ? Visitor::Partitioned : visitor;
+    }
+
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology,
              Statistics statistics >
@@ -314,14 +322,14 @@ namespace instantiate {
                     SelectAlgorithm< algo >::available,
                     SelectGenerator< generator >::available,
                     SelectTransform< transform >::available,
-                    SelectStore< store, visitor >::available,
-                    SelectVisitor< visitor >::available,
+                    SelectStore< fixStore( algo, store ), fixVisitor( algo, visitor ) >::available,
+                    SelectVisitor< fixVisitor( algo, visitor ) >::available,
                     SelectTopology< topology >::available,
                     algo,
                     generator,
                     transform,
-                    store,
-                    visitor,
+                    fixStore( algo, store ),
+                    fixVisitor( algo, visitor ),
                     topology,
                     statistics
                 > select;
