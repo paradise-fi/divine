@@ -72,7 +72,6 @@ namespace instantiate {
 
     SHOW( Store, Partitioned );
     SHOW( Store, HashCompacted );
-    SHOW( Store, Compressed );
     SHOW( Store, NTree );
     SHOW( Store, Shared );
     SHOW( Store, NotSelected );
@@ -152,7 +151,6 @@ namespace instantiate {
     STORE_SPEC( HashCompacted, HcStore, Shared );
 #endif
 #ifdef O_COMPRESSION
-    STORE_SPEC( Compressed, TreeCompressedStore, Partitioned );
     STORE_SPEC( NTree, NTreeStore, Partitioned );
     STORE_SPEC( NTree, NTreeStore, Shared );
 #endif
