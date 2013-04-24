@@ -79,17 +79,6 @@ struct FairGraph : NonPORGraph< G, St > {
     bool isInAccepting( Node s, int acc_group ) {
         return extension( s ).copy == 0 && this->base().isInAccepting( s, acc_group );
     }
-
-    template< typename Alg >
-    int successorNum( Alg &a, Node current, Node next, unsigned fromIndex = 0 ) {
-        // successorNum works on the original graph, so all successors are in copy 0
-        // therefore, if 'next' is not in copy 0, it is not found among the successors
-        int orig = extension( next ).copy;
-        extension( next ).copy = 0;
-        int ret = NonPORGraph< G, St >::successorNum( a, current, next, fromIndex );
-        extension( next ).copy = orig;
-        return ret;
-    }
 };
 
 }
