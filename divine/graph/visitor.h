@@ -102,6 +102,10 @@ struct Common {
     Store &_store;
     Queue _queue;
 
+    Pool &pool() {
+        return graph.base().alloc.pool();
+    }
+
     Store &store() { return _store; }
 
     void expand( Node n ) {
@@ -122,12 +126,16 @@ struct Common {
     void processQueue( int max = 0 ) {
         int i = 0;
         while ( ! _queue.empty() && (!max || i < max) ) {
-            _queue.processOpen( [&]( Vertex f, Node t, Label l ) { this->edge( f, t, l ); } );
+            _queue.processOpen( [&]( Vertex f, Node t, Label l ) {
+                    this->edge( f, t, l );
+                } );
             _queue.processDead( [&]( Vertex n ) {
                     if ( S::deadlocked( notify, n ) == DeadlockAction::Terminate )
                         this->terminate();
                 } );
-            _queue.processClosed( [&]( Vertex n ) { S::finished( notify, n ); } );
+            _queue.processClosed( [&]( Vertex n ) {
+                    S::finished( notify, n );
+                } );
             ++ i;
         }
     }
@@ -164,7 +172,7 @@ struct Common {
              (tact == TransitionAction::Follow && isnew) ) {
             eact = S::expansion( notify, to );
             if ( eact == ExpansionAction::Expand )
-                _queue.push( to.clone( graph ) );
+                _queue.push( to.toQueue( pool() ) );
         }
 
         if ( !store().alias( to.getNode(), _to ) )
@@ -246,6 +254,10 @@ struct Partitioned {
         Store &_store;
         Store &store() { return _store; }
 
+        Pool &pool() {
+            return graph.base().alloc.pool();
+        }
+
         int owner( Node n, hash_t hint = 0 ) const {
             return _store.owner( worker, n, hint );
         }
@@ -262,8 +274,8 @@ struct Partitioned {
 
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
             int _to = owner( to, hint ), _from = worker.id();
-            Statistics::global().sent( _from, _to, sizeof(from) + memSize(to, graph.base().alloc.pool() ) );
-            worker.submit( _from, _to, std::make_tuple( _store.toQueue( from ),
+            Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
+            worker.submit( _from, _to, std::make_tuple( from.toQueue( pool() ),
                                                         to, label ) );
         }
 
@@ -303,7 +315,7 @@ struct Partitioned {
                             Statistics::global().received(
                                 from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
                                     graph.base().alloc.pool() ) );
-                            auto fromData = _store.fromQueue( std::get< 0 >( p ) );
+                            auto fromData = std::get< 0 >( p ).fromQueue( pool() );
                             bfv.edge( fromData,
                                     std::get< 1 >( p ),
                                     std::get< 2 >( p ) );

@@ -261,6 +261,7 @@ namespace instantiate {
         using Statistics = _Statistics;
         using Vertex = typename Store::Vertex;
         using VertexId = typename Store::VertexId;
+        using QueueVertex = typename Store::QueueVertex;
     };
 
     template < bool, bool, bool, bool, bool, bool, Algorithm algo,

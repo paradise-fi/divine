@@ -26,6 +26,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef typename Setup::Store Store;
     typedef typename Setup::Vertex Vertex;
     typedef typename Setup::VertexId VertexId;
+    typedef typename Setup::QueueVertex QueueVertex;
     typedef This Listener;
     typedef NoStatistics Statistics;
 
@@ -212,7 +213,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 break;
 
             int drop = trans[ i ] - 1;
-            this->graph().successors( from.getNode(), [&]( Node n, Label ) {
+            this->graph().successors( from, [&]( Node n, Label ) {
                     if ( drop > 0 ) {
                         -- drop;
                         return;

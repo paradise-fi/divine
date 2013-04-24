@@ -380,6 +380,10 @@ struct StdVertex {
         return node;
     }
 
+    Node getNode( Pool& ) {
+        return node;
+    }
+
     VertexId getVertexId() {
         return VertexId( node );
     }
@@ -406,6 +410,14 @@ struct StdVertex {
     {
         return bs >> v.node;
     }
+
+    Vertex toQueue( Pool& ) {
+        return *this;
+    }
+
+    Vertex fromQueue( Pool& ) {
+        return *this;
+    }
 };
 
 template < typename Node, typename Compressed >
@@ -422,6 +434,10 @@ struct CompressedVertex {
 
     Node getNode() {
         return base.getNode();
+    }
+
+    Node getNode( Pool& p ) {
+        return base.getNode( p );
     }
 
     VertexId getVertexId() {
@@ -450,6 +466,14 @@ struct CompressedVertex {
             bitstream_impl::base< BS >& bs, Vertex& v )
     {
         return bs >> v.base >> v.compressed;
+    }
+
+    Vertex toQueue( Pool& ) {
+        return *this;
+    }
+
+    Vertex fromQueue( Pool& ) {
+        return *this;
     }
 };
 
@@ -485,14 +509,6 @@ struct Store
     Store( Graph& g, int slack, This *m = nullptr ) :
              This( g, Hasher( g.base().alloc.pool(), slack ), m )
     { }
-
-    Vertex fromQueue( QueueVertex v ) {
-        return v;
-    }
-
-    QueueVertex toQueue( Vertex v ) {
-        return v;
-    }
 
     std::tuple< Vertex, bool > wrapTuple( std::tuple< Node, bool > tuple ) {
         Node n;
@@ -595,14 +611,6 @@ struct HcStore
     { }
 
     Allocator& _alloc;
-
-    Vertex fromQueue( QueueVertex v ) {
-        return v;
-    }
-
-    QueueVertex toQueue( Vertex v ) {
-        return v;
-    }
 
     hash_t& stubHash( Blob stub ) {
         return pool().template get< hash_t >( stub, slack() );
@@ -714,7 +722,6 @@ struct CompressedStore
 
     using VertexId = StdVertexId< TableItem >;
     using Vertex = CompressedVertex< Node, TableItem >;
-    using QueueVertex = VertexId;
 
     template< typename Graph, typename... Args >
     CompressedStore( Graph&, Hasher h, This *master, Args&&... args ) :
@@ -722,10 +729,6 @@ struct CompressedStore
     {
         static_assert( wibble::TSame< typename Graph::Node, Node >::value,
                 "using incompatible graph" );
-    }
-
-    QueueVertex toQueue( Vertex v ) {
-        return v.getVertexId();
     }
 
     std::tuple< Vertex, bool > fetch( Node node, hash_t h ) {
@@ -805,9 +808,38 @@ struct NTreeStore : public CompressedStore< Utils,
           NTHasher< _Hasher >, Statistics >;
     using TableUtils = typename Base::TableUtils;
     using This = NTreeStore< Utils, _Generator, _Hasher, Statistics >;
-    using VertexId = typename Base::VertexId;
-    using Vertex = typename Base::Vertex;
-    using QueueVertex = typename Base::QueueVertex;
+    struct Vertex : public Base::Vertex {
+        Vertex( const Vertex& ) = default;
+        template< typename... Args >
+        explicit Vertex( Args&&... args ) :
+            Base::Vertex( std::forward< Args >( args )... )
+        { }
+
+        typename Base::VertexId toQueue( Pool& ) {
+            return this->getVertexId();
+        }
+    };
+    struct VertexId : public Base::VertexId {
+        VertexId( const VertexId& ) = default;
+        template< typename... Args >
+        explicit VertexId( Args&&... args ) :
+            Base::VertexId( std::forward< Args >( args )... )
+        { }
+        VertexId( const typename Base::VertexId& base ) :
+            Base::VertexId( base )
+        { }
+
+        typename Base::Node getNode( Pool& pool ) {
+            return this->node->reassemble( pool );
+        }
+
+        Vertex fromQueue( Pool& p ) {
+            if ( this->node == nullptr )
+                return Vertex();
+            return Vertex( this->node->reassemble( p ), this->node );
+        }
+    };
+    using QueueVertex = VertexId;
     STORE_CLASS;
     using Root = typename Table::Root;
 
@@ -826,10 +858,6 @@ struct NTreeStore : public CompressedStore< Utils,
     NTreeStore( Graph& g, Hasher h, This *m, Args&&... args ) :
         Base( g, h, m, std::forward< Args >( args )... ), generator( g.base() )
     { }
-
-    Vertex fromQueue( QueueVertex v ) {
-        return fetchByVertexId( v );
-    }
 
     std::tuple< Vertex, bool > store( Node node, hash_t h ) {
         Statistics::global().hashadded( _id->id(), memSize( node, pool() ) );

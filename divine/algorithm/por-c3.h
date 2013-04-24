@@ -34,6 +34,7 @@ struct PORGraph : graph::Transform< G > {
     typedef typename G::Label Label;
     typedef typename Store::Vertex Vertex;
     typedef typename Store::VertexId VertexId;
+    typedef typename Store::QueueVertex QueueVertex;
 
     struct IdCompare {
         bool operator()( VertexId a, VertexId b) {
@@ -107,11 +108,11 @@ struct PORGraph : graph::Transform< G > {
     }
 
     template< typename Yield >
-    void successors( Node st, Yield yield ) {
+    void successors( Vertex st, Yield yield ) {
         if ( extension( st ).full )
-            this->base().successors( st, yield );
+            this->base().successors( st.getNode( pool() ), yield );
         else
-            this->base().ample( st, yield );
+            this->base().ample( st.getNode( pool() ), yield );
     }
 
     void porTransition( Vertex f, Vertex t, int* pc ) {
@@ -237,13 +238,14 @@ struct PORGraph : graph::Transform< G > {
     {
         for ( auto n : to_expand ) {
             Vertex v = store.fetchByVertexId( n );
-            fullexpand( yield, v.getNode() );
+            fullexpand( yield, v );
         }
     }
 
     template< typename Yield >
-    void fullexpand( Yield yield, Node n ) {
-        extension( n ).full = true;
+    void fullexpand( Yield yield, Vertex v ) {
+        extension( v ).full = true;
+        Node n = v.getNode();
         ASet< std::pair< Node, Label > > all, ample, out;
         std::vector< std::pair< Node, Label > > extra;
 

@@ -14,6 +14,8 @@ struct FairGraph : NonPORGraph< G, St > {
 
     typedef typename G::Node Node;
     typedef typename G::Label Label;
+    typedef typename St::Vertex Vertex;
+    typedef typename St::QueueVertex QueueVertex;
 
     int m_algslack;
 
@@ -28,9 +30,19 @@ struct FairGraph : NonPORGraph< G, St > {
         return s;
     }
 
-    Extension &extension( Node n ) {
-        return this->base().alloc.pool().template get< Extension >( n, m_algslack );
+    Pool& pool() {
+        return this->base().alloc.pool();
     }
+
+    Extension &extension( Vertex n ) {
+        return n.getVertexId().template extension< Extension >(
+                pool(), m_algslack );
+    }
+
+    Extension &extension( Node n ) {
+        return pool().template get< Extension >( n, m_algslack );
+    }
+
 
     template< typename Yield >
     void withCopy( Node n, Label l, int copy, Yield yield ) {
@@ -39,10 +51,11 @@ struct FairGraph : NonPORGraph< G, St > {
     }
 
     template< typename Yield >
-    void successors( Node st, Yield yield ) {
+    void successors( Vertex stV, Yield yield ) {
+        Node st = stV.getNode( pool() );
         int procs = this->base().processCount();
 
-        int copy = extension( st ).copy;
+        int copy = extension( stV ).copy;
         bool accepting = this->base().isAccepting( st );
         assert_leq( 0, copy );
         assert_leq( copy, procs );

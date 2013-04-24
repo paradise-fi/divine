@@ -14,6 +14,7 @@ struct NonPORGraph : graph::Transform< G > {
     typedef typename G::Node Node;
     typedef typename St::Vertex Vertex;
     typedef typename St::VertexId VertexId;
+    typedef typename St::QueueVertex QueueVertex;
     typedef void (*UpdatePredCount)( Pool&, VertexId, int );
 
     void porExpansion( Vertex ) {}
@@ -38,6 +39,12 @@ struct NonPORGraph : graph::Transform< G > {
 
     template< typename Yield >
     void porExpand( St&, Yield yield ) {}
+
+
+    template< typename Yield >
+    void successors( Vertex st, Yield yield ) {
+        this->base().successors( st.getNode( this->base().alloc.pool() ), yield );
+    }
 };
 
 }
