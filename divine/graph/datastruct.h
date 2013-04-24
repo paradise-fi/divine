@@ -249,7 +249,6 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 
     void push( const Vertex &b ) {
         Statistics::global().enqueue( id, sizeof( Vertex ) );
-        /* TODO statistics */
         ++termination;
         outgoing.push_back( b );
         if ( outgoing.size() >= chunkSize )
