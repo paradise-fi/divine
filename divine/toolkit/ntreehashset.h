@@ -299,7 +299,8 @@ namespace divine {
 
           private:
             Root( uint32_t selfSize, bool leaf ) :
-                hash( 0 ), selfSize( selfSize ), leaf( leaf ), __pad( 0 )
+                hash( 0 ), selfSize( selfSize ), leaf( leaf ),
+                permanent( false ), __pad( 0 )
             { }
         };
 
