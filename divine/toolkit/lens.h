@@ -60,8 +60,8 @@ struct LinearAddress {
 
     char *dereference() {
         assert( pool != nullptr );
-        assert( b.valid() );
-        return pool->data( b ) + offset;
+        assert( pool->valid( b ) );
+        return pool->dereference( b ) + offset;
     }
 
     template< typename T >

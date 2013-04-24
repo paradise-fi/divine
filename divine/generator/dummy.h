@@ -32,7 +32,7 @@ struct Dummy : Common< Blob > {
     void successors( Node st, Yield yield ) {
         Node r;
 
-        if ( !st.valid() )
+        if ( !pool().valid( st ) )
             return;
 
         if ( content( st ).first < 512 ) {
@@ -61,7 +61,7 @@ struct Dummy : Common< Blob > {
 
     bool isAccepting( Node s ) { return false; }
     std::string showNode( Node s ) {
-        if ( !s.valid() )
+        if ( !pool().valid( s ) )
             return "[]";
         Content f = pool().get< Content >( s, alloc._slack );
         std::stringstream stream;

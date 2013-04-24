@@ -57,7 +57,7 @@ struct Base {
 
     /// Makes a nonpermanent copy of a state
     Node copyState( Node n ) {
-        Node copy( pool(), pool().size( n ) );
+        Node copy = pool().allocate( pool().size( n ) );
         pool().copyTo( n, copy );
         pool().header( copy ).permanent = false;
         return copy;

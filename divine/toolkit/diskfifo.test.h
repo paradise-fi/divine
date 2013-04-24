@@ -25,7 +25,7 @@ struct TestDiskFifo {
 		fifo.enableSaving( true );
 		const int MAX = 10 * 1024;
 		for ( int i = 0; i < MAX; i++ ) {
-            Blob b( pool, sizeof( int ) );
+            Blob b = pool.allocate( sizeof( int ) );
             pool.get< int >( b ) = i;
 			fifo.push( b );
 		}

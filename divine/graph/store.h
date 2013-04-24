@@ -113,7 +113,7 @@ struct StoreCommon : public TableUtils {
     }
 
     bool alias( Node n1, Node n2 ) {
-        return visitor::alias( n1, n2 );
+        return hasher().alias( n1, n2 );
     }
 
     template< typename T >

@@ -476,8 +476,8 @@ struct MachineState
 
         _stack[thread].first = true;
 
-        if ( !_stack[thread].second.valid() )
-            _stack[thread].second = Blob( 4096 );
+        if ( !_alloc.pool().valid( _stack[thread].second ) )
+            _stack[thread].second = _alloc.pool().allocate( 4096 );
 
         _alloc.pool().get< int >( _stack[thread].second ) = 0; /* clear any pre-existing state */
 

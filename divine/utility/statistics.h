@@ -150,7 +150,7 @@ int memSize(Ty x, Pool& pool) {
 
 template <>
 inline int memSize<Blob>(Blob x, Pool& pool) {
-    return sizeof(Blob) + (x.valid() ? Blob::allocationSize(pool.size( x )) : 0);
+    return sizeof( Blob ) + ( pool.valid( x ) ? align( pool.size( x ), sizeof( void * ) ) : 0 );
 }
 
 }

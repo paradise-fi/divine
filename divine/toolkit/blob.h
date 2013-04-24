@@ -310,9 +310,9 @@ namespace wibble {
 namespace str {
 
 template<>
-inline std::string fmt( const divine::Blob &b ) {
-    divine::bitstream bs;
-    bs << b;
+inline std::string fmt( const divine::UnBlob &b ) {
+    divine::bitstream bs( b.p );
+    bs << b.b;
     bs.bits.pop_front(); /* remove size */
     return fmt( bs.bits );
 }
@@ -320,5 +320,11 @@ inline std::string fmt( const divine::Blob &b ) {
 }
 }
 #endif
+
+namespace divine {
+inline std::string fmtblob( Pool &p, Blob b ) {
+    return wibble::str::fmt( UnBlob( p, b ) );
+}
+}
 
 #endif

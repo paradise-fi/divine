@@ -42,7 +42,7 @@ template< typename N > int node( N, Pool& );
 template< typename N > N makeNode( int, Pool& );
 
 template<> int node< Blob >( Blob b, Pool& p ) {
-    if ( b.valid() )
+    if ( p.valid( b ) )
         return p.get< int >( b );
     else return 0;
 }
@@ -50,7 +50,7 @@ template<> int node< int >( int n, Pool& ) { return n; }
 
 template<> int makeNode< int >( int n, Pool& ) { return n; }
 template<> Blob makeNode< Blob >( int n, Pool& p ) {
-    Blob b( p, sizeof( int ) );
+    Blob b = p.allocate( sizeof( int ) );
     p.get< int >( b ) = n;
     return b;
 }

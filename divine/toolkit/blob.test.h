@@ -8,20 +8,22 @@ using namespace divine;
 
 struct TestBlob {
     Test basic() {
-        BlobDereference bd;
-        Blob b( 32 );
-        bd.get< int >( b ) = 42;
-        assert_eq( bd.get< int >( b ), 42 );
+        Pool p;
+        Blob b = p.allocate( 32 );
+        p.get< int >( b ) = 42;
+        assert_eq( p.get< int >( b ), 42 );
 
-        Blob c( sizeof( int ) );
-        bd.get< int >( c ) = 42;
-        assert_eq( bd.get< int >( c ), 42 );
+        Blob c = p.allocate( sizeof( int ) );
+        p.get< int >( c ) = 42;
+        assert_eq( p.get< int >( c ), 42 );
     }
 
     template< typename T >
     void comparison() {
         Pool p;
-        Blob b1( p, sizeof( T ) ), b2( p, sizeof( T ) ), b3( p, sizeof( T ) );
+        Blob b1 = p.allocate( sizeof( T ) ),
+             b2 = p.allocate( sizeof( T ) ),
+             b3 = p.allocate( sizeof( T ) );
         BlobComparerEQ ecomp( p );
         BlobComparerLT lecomp( p );
         p.get< T >( b1 ) = 32;

@@ -33,7 +33,7 @@ struct Hasher {
     void setSeed( uint32_t s ) { seed = s; }
 
     inline hash_t hash( Blob b ) const {
-        assert( b.valid() );
+        assert( pool.valid( b ) );
         return pool.hash( b, slack, pool.size( b ), seed );
     }
 
@@ -43,7 +43,7 @@ struct Hasher {
         return allEqual || ( pool.compare( a, b, slack, std::max( pool.size( a ), pool.size( b ) ) ) == 0 );
     }
 
-    bool valid( Blob a ) const { return a.valid(); }
+    bool valid( Blob a ) const { return pool.valid( a ); }
 };
 
 template< typename _Listener, typename _AlgorithmSetup >

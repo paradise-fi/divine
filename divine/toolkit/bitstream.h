@@ -196,10 +196,8 @@ base< B > &operator>>( base< B > &bs, Blob &blob )
         return bs;
     }
 
-    if ( bs.pool )
-        blob = Blob( *bs.pool, size );
-    else
-        blob = Blob( size );
+    assert( bs.pool );
+    blob = bs.pool->allocate( size );
 
     assert( bs.pool ); /// TODO: are we ever working without pool if so we shouldnt ???
     assert_leq( bs.pool->template size( blob ), bs.size() * 4 );
@@ -215,7 +213,8 @@ base< B > &operator>>( base< B > &bs, Blob &blob )
 template< typename B >
 base< B > &operator<<( base< B > &bs, Blob blob )
 {
-    if ( !blob.valid() )
+    assert( bs.pool );
+    if ( !bs.pool->valid( blob ) )
         return bs << 0;
 
     bs << bs.pool->size( blob );

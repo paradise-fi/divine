@@ -11,7 +11,7 @@ struct TestLens {
     divine::Pool pool;
 
     Test tuple() {
-        divine::Blob blob( 3 * sizeof( int ) + sizeof( float ) );
+        divine::Blob blob = pool.allocate( 3 * sizeof( int ) + sizeof( float ) );
         pool.clear( blob );
 
         struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
@@ -27,11 +27,11 @@ struct TestLens {
         lens.get( IntB() ) = 2;
         lens.get( IntC() ) = 3;
 
-        assert_eq( wibble::str::fmt( blob ), "[ 1, 2, 3, 0 ]" );
+        assert_eq( divine::fmtblob( pool, blob ), "[ 1, 2, 3, 0 ]" );
     }
 
     Test fixedArray() {
-        divine::Blob blob( sizeof( int ) * 10 );
+        divine::Blob blob = pool.allocate( sizeof( int ) * 10 );
         pool.clear( blob );
 
         typedef FixedArray< int > Array;
@@ -43,11 +43,11 @@ struct TestLens {
         for ( int i = 0; i < 8; ++i )
             lens.get( i ) = i + 1;
 
-        assert_eq( wibble::str::fmt( blob ), "[ 8, 1, 2, 3, 4, 5, 6, 7, 8, 0 ]" );
+        assert_eq( divine::fmtblob( pool, blob ), "[ 8, 1, 2, 3, 4, 5, 6, 7, 8, 0 ]" );
     }
 
     Test basic() {
-        divine::Blob blob( 200 );
+        divine::Blob blob = pool.allocate( 200 );
         pool.clear( blob );
 
         struct IntArray1 : FixedArray< int > {};
@@ -76,7 +76,7 @@ struct TestLens {
 
         lens.get( int() ) = int( 365 );
 
-        assert_eq( wibble::str::fmt( blob ),
+        assert_eq( divine::fmtblob( pool, blob ),
                    "[ 5, 0, 0, 0, 0, 0, 365, 3, 0, 0, 0, 4, 0, 0, 0, 0,"
                    " 3212836864, 4, 4, 100, 101, 102, 103, 4, 100, 102,"
                    " 104, 106, 4, 100, 103, 106, 109, 4, 100, 104, 108,"
@@ -99,7 +99,7 @@ struct TestLens {
         assert_eq( lens2.get( IntArray1(), 1 ), 21 );
         assert_eq( lens.get( Witch(), IntArray2(), 0 ), 30 );
 
-        assert_eq( wibble::str::fmt( blob ),
+        assert_eq( divine::fmtblob( pool, blob ),
                    "[ 5, 10, 11, 12, 13, 14, 365, 3, 20, 21, 22, 4, 30, 31, 32, 33, 3212836864,"
                    " 4, 4, 100, 101, 102, 103, 4, 100, 102, 104, 106, 4, 100, 103, 106, 109, 4,"
                    " 100, 104, 108, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]" );
@@ -107,7 +107,7 @@ struct TestLens {
 
     Test copy() {
         int size = 2 * sizeof( int );
-        divine::Blob blob( size ), copy( size );
+        divine::Blob blob = pool.allocate( size ), copy = pool.allocate( size );
         pool.clear( blob );
         pool.clear( copy );
 
@@ -125,11 +125,11 @@ struct TestLens {
         lens.get( IntB() ) = 2;
 
         lens.sub( IntA() ).copy( b );
-        assert_eq( wibble::str::fmt( copy ), "[ 1, 0 ]" );
+        assert_eq( divine::fmtblob( pool, copy ), "[ 1, 0 ]" );
         pool.clear( copy );
 
         lens.copy( b );
-        assert_eq( wibble::str::fmt( copy ), "[ 1, 2 ]" );
+        assert_eq( divine::fmtblob( pool, copy ), "[ 1, 2 ]" );
     }
 
 };

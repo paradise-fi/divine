@@ -6,11 +6,12 @@
 using namespace divine;
 
 struct TestFifo {
-    BlobDereference bd;
+    Pool p;
 
     template< typename T >
     struct Checker : wibble::sys::Thread
     {
+        Pool pool;
         divine::Fifo< T > fifo;
         int terminate;
         int n;
@@ -24,7 +25,7 @@ struct TestFifo {
 
             while (true) {
                 while ( !fifo.empty() ) {
-                    int i = unblob< int >( fifo.front() );
+                    int i = pool.get< int >( fifo.front() );
                     assert_eq( x[i % n], i / n );
                     ++ x[ i % n ];
                     fifo.pop();
@@ -43,11 +44,11 @@ struct TestFifo {
             return 0;
         }
 
-        Checker( int _n = 1 ) : terminate( 0 ), n( _n ) {}
+        Checker( Pool pool, int _n = 1 ) : pool( pool ), terminate( 0 ), n( _n ) {}
     };
 
     Test stress() {
-        Checker< int > c;
+        Checker< int > c( p );
         for ( int j = 0; j < 5; ++j ) {
             c.start();
             for( int i = 0; i < 128 * 1024; ++i )
@@ -58,12 +59,12 @@ struct TestFifo {
     }
 
     Test blobStress() {
-        Checker< Blob > c;
+        Checker< Blob > c( p );
         for ( int j = 0; j < 5; ++j ) {
             c.start();
             for( int i = 0; i < 128 * 1024; ++i ) {
-                Blob b( sizeof( int ) );
-                bd.get< int >( b ) = i;
+                Blob b = p.allocate( sizeof( int ) );
+                p.get< int >( b ) = i;
                 c.fifo.push( b );
             }
             c.terminate = true;

@@ -356,18 +356,6 @@ inline void release( Blob b, Pool* p ) {
     p->free( b );
 }
 
-template< typename N >
-inline void push( DiskFifo< Blob > &fifo, const N &n ) {
-    Blob b( sizeof( N ) );
-    b.template get< N >() = n;
-    fifo.push( b );
-}
-
-template<>
-inline void push< Blob >( DiskFifo< Blob > &fifo, const Blob &b ) {
-    fifo.push( b );
-}
-
 }
 
 #endif

@@ -13,12 +13,12 @@ namespace visitor {
 
 
 template< typename T >
-inline bool alias( T a, T b ) {
+inline bool alias( Pool &, T a, T b ) {
     return false;
 }
 
-template<> inline bool alias< Blob >( Blob a, Blob b ) {
-    return a.ptr == b.ptr;
+template<> inline bool alias< Blob >( Pool &p, Blob a, Blob b ) {
+    return p.alias( a, b );
 }
 
 template< typename T > inline bool permanent( Pool& pool, T ) { return false; }
@@ -65,11 +65,11 @@ struct TableUtils
     T fetch( T s, hash_t h, bool *had = 0 ) {
         T found = table.getHinted( s, h, had );
 
-        if ( alias( s, found ) )
+        if ( alias( pool(), s, found ) )
             assert( hasher().valid( found ) );
 
         if ( !hasher().valid( found ) ) {
-            assert( !alias( s, found ) );
+            assert( !alias( pool(), s, found ) );
             if ( had )
                 assert( !*had );
             return s;
@@ -91,7 +91,7 @@ struct TableUtils
     bool valid( T a ) { return hasher().valid( a ); }
     hash_t hash( T s ) { return hasher().hash( s ); }
     bool equal( T a, T b ) { return hasher().equal( a, b ); }
-    bool alias( T a, T b ) { return visitor::alias( a, b ); }
+    bool alias( T a, T b ) { return visitor::alias( pool(), a, b ); }
     void setSize( int sz ) { table.setSize( sz ); }
 
     TableUtils( Pool& pool, int slack ) : table( Hasher( pool, slack ) ), id( nullptr ) {}

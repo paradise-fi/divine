@@ -24,6 +24,12 @@ struct default_hasher {
 };
 
 template<>
+inline bool default_hasher< Blob >::valid( Blob b ) const { return pool.valid( b ); }
+
+template<>
+inline bool default_hasher< Blob >::alias( Blob a, Blob b ) const { return pool.alias( a, b ); }
+
+template<>
 struct default_hasher< int > {
     template< typename X >
     default_hasher( X& ) { }
@@ -31,6 +37,7 @@ struct default_hasher< int > {
     hash_t hash( int t ) const { return t; }
     bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
+    bool alias( int, int ) const { return false; }
 };
 
 /**

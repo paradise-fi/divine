@@ -50,13 +50,13 @@ struct TestHashset {
         Pool p;
         HashSet< Blob > set( ( typename HashSet< Blob >::Hasher( p ) ) );
         for ( int i = 1; i < 32*1024; ++i ) {
-            Blob b( sizeof( int ) );
+            Blob b = p.allocate( sizeof( int ) );
             p.get< int >( b ) = i;
             set.insert( b );
             assert( set.has( b ) );
         }
         for ( int i = 1; i < 32*1024; ++i ) {
-            Blob b( sizeof( int ) );
+            Blob b = p.allocate( sizeof( int ) );
             p.get< int >( b ) = i;
             assert( set.has( b ) );
         }
