@@ -1,3 +1,4 @@
+#if 0
 #include <divine/algorithm/nested-dfs.h>
 #include <divine/instances/definitions.h>
 #include <divine/instances/instantiate.h>
@@ -14,3 +15,4 @@ algorithm::Algorithm *selectNDFS( Meta &meta ) {
 }
 }
 }
+#endif
