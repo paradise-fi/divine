@@ -49,7 +49,7 @@ struct ApproximateCounter {
     enum { step = 100000 };
 
     struct Shared {
-        std::atomic< unsigned > counter;
+        std::atomic< intptr_t > counter;
         Shared() : counter( 0 ) {}
 
         Shared( const Shared& ) = delete;
@@ -87,7 +87,7 @@ struct ApproximateCounter {
     bool isZero() {
         /* user is responsible for calling sync(), this method is called way
         * too often */
-        return shared.counter == 0;
+        return shared.counter <= 0;
     }
 
     void reset() { shared.counter = 0; }
