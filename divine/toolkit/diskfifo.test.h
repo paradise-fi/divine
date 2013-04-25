@@ -19,19 +19,18 @@ struct TestDiskFifo {
 	}
 
 	Test testBlob() {
-		Pool pool;
 		// choose small node size to force saving
 		DiskFifo< Blob, 100 > fifo;
 		fifo.enableSaving( true );
 		const int MAX = 10 * 1024;
 		for ( int i = 0; i < MAX; i++ ) {
-            Blob b = pool.allocate( sizeof( int ) );
-            pool.get< int >( b ) = i;
+                    Blob b = fifo.pool.allocate( sizeof( int ) );
+                    fifo.pool.get< int >( b ) = i;
 			fifo.push( b );
 		}
 		for ( int i = 0; i < MAX; i++ ) {
-			assert_eq( pool.get< int >( fifo.front() ), i );
-			pool.free( fifo.front() );
+			assert_eq( fifo.pool.get< int >( fifo.front() ), i );
+			fifo.pool.free( fifo.front() );
 			fifo.pop();
 		}
 		assert( fifo.empty() );
