@@ -207,7 +207,7 @@ struct Expression {
         if ( ex.op.id == TI::Period ) {
             assert( ex.lhs );
             assert( ex.rhs );
-            parse::RValue *left = ex.lhs->rval, *right = ex.rhs->rval;
+            auto left = ex.lhs->rval, right = ex.rhs->rval;
             assert( left );
             assert( right );
             Symbol process = sym.lookup( SymTab::Process, left->ident.name() );
@@ -230,7 +230,7 @@ struct Expression {
         if ( ex.op.id == TI::Arrow ) {
             assert( ex.lhs );
             assert( ex.rhs );
-            parse::RValue *left = ex.lhs->rval;
+            auto left = ex.lhs->rval;
             Symbol process = sym.lookup( SymTab::Process, left->ident );
             if ( !process.valid() )
                 left->fail( ( "Couldn't find process: " + left->ident.name() ).c_str(),

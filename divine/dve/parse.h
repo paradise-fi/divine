@@ -4,7 +4,8 @@
 
 #include <cassert>
 #include <cstdlib> // atoi
-#include <cstring> // atoi
+#include <cstring>
+#include <memory>
 
 #ifndef DIVINE_DVE_PARSE_H
 #define DIVINE_DVE_PARSE_H
@@ -99,8 +100,8 @@ struct RValue : Parser {
 
 struct Expression : Parser {
     Token op;
-    Expression *lhs, *rhs;
-    RValue *rval;
+    std::shared_ptr< Expression > lhs, rhs;
+    std::shared_ptr< RValue > rval;
 
     void parens() {
         eat( Token::ParenOpen );
@@ -110,12 +111,12 @@ struct Expression : Parser {
     void negation() {
         op = eat( Token::Bool_Not );
         Expression _lhs( context(), 0 );
-        lhs = new Expression( _lhs );
+        lhs.reset( new Expression( _lhs ) );
     }
 
     void rvalue() {
         RValue _rval( context() );
-        rval = new RValue( _rval );
+        rval.reset( new RValue( _rval ) );
     }
 
     std::ostream& dump( std::ostream &o ) {
@@ -145,18 +146,18 @@ struct Expression : Parser {
 
         if ( prec ) { // XXX: associativity
             Expression _lhs( context(), prec - 1 );
-            lhs = new Expression( _lhs );
+            lhs.reset( new Expression( _lhs ) );
             op = eat();
             if ( op.precedence( prec ) ) {
                 Expression _rhs( context(), prec );
-                rhs = new Expression( _rhs );
+                rhs.reset( new Expression( _rhs ) );
             } else
                 context().rewind( 1 );
         } else {
             if ( next( Token::ParenOpen ) ) {
                 Expression _lhs( context() );
                 eat( Token::ParenClose );
-                lhs = new Expression( _lhs );
+                lhs.reset( new Expression( _lhs ) );
             } else {
                 either( &Expression::negation,
                         &Expression::rvalue );
@@ -169,7 +170,7 @@ struct Expression : Parser {
         /* simplify expressions */
         if ( lhs && !rhs && !op.precedence( prec ) && !op.unary() ) {
             Expression ex = *lhs;
-            delete lhs;
+            lhs.reset();
             *this = ex;
         }
     }
