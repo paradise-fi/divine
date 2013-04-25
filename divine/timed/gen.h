@@ -303,4 +303,14 @@ public:
     void resetAuxClock();
 
     std::pair< PropGuard, PropGuard > addAuxToGuard( const PropGuard& guard );
+
+    std::vector< unsigned int > getSplitPoints() const {
+        static std::vector< unsigned int > splits;
+        if ( splits.empty() ) {
+            auto sp = eval.splitPoints();
+            splits = std::vector< unsigned int >({ offVar, sp.first + offVar, sp.second });
+        }
+        return splits;
+    }
+
 };

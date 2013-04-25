@@ -195,7 +195,7 @@ public:
     }
 
     // return number of bytes required to store variable values and clock zone
-    unsigned int getReqSize() {
+    unsigned int getReqSize() const {
         return initValues.size() * sizeof(int32_t) + clocks.getReqSize();
     }
 
@@ -233,6 +233,13 @@ public:
 
     bool usesLU() const {
         return extrapLU;
+    }
+
+    // returns DBM offset and size of each row
+    std::pair< unsigned int, unsigned int > splitPoints() const {
+        unsigned int row = ClockTable.size() + 1;
+        assert( clocks.getReqSize() == row * row * 4 );
+        return std::make_pair( getReqSize() - clocks.getReqSize(), row * 4 );
     }
 };
 

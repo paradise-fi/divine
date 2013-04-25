@@ -192,6 +192,35 @@ struct Timed : public Common< Blob > {
 		assert( nonZeno == enabled );
 	}
 
+    // yield( Recurse, length, remaining count )
+    template< typename Yield >
+    void splitHint( Node n, int from, int length, Yield yield ) {
+        if ( length < 32 ) {
+            yield( Recurse::No, length, 0 );
+            return;
+        }
+        auto splits = gen.getSplitPoints();
+        if ( from == 0 && length == splits[ 1 ] ) {
+            yield( Recurse::Yes, splits[ 0 ], 1 );
+            yield( Recurse::Yes, length - splits[ 0 ], 1 );
+        } else if ( from == splits[ 1 ] && length > splits[ 2 ] ) {
+            int count = (gen.stateSize() - splits[ 1 ]) / splits[ 2 ];
+            while ( count-- ) {
+                yield( Recurse::Yes, splits[ 2 ], count );
+            }
+        } else {
+            yield( Recurse::No, length, 0 );
+        }
+    }
+
+    // top-level split
+    template< typename Yield >
+    void splitHint( Node n, Yield yield ) {
+        auto splits = gen.getSplitPoints();
+        yield( Recurse::Yes, splits[ 1 ], 1 );
+        yield( Recurse::Yes, gen.stateSize() - splits[ 1 ], 0 );
+    }
+
 private:
     Pool& pool() {
         return this->alloc.pool();
