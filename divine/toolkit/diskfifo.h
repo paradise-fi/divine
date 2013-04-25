@@ -51,11 +51,12 @@ protected:
     std::streampos rpos = 0, wpos = 0;  // positions of next read and write operations
     int rfid = 0, wfid = 0; // ids of read and write files
     std::fstream rfile, wfile; //read and write files
-    Pool pool;
     wibble::sys::Mutex faccess;
     bool saving = false;
 
 public:
+    Pool pool;
+
     DiskFifo() {
         head = tail = new Node( 0 );
         mid = NULL;
@@ -262,7 +263,7 @@ private:
             wpos = 0;
         }
 
-        bitblock bb;
+        bitblock bb( pool );
         bb.bits.reserve( NodeSize * 2 ); // avoids some reallocation
         bb.push( 0 );
 
@@ -322,8 +323,7 @@ private:
             }
         } while ( length == 0 );
 
-        bitblock bb;
-        bb.pool = &pool;
+        bitblock bb( pool );
         bb.bits.resize( length );
         rfile.read( reinterpret_cast< char* >( &bb.front() ), length * 4 );
         rpos += (length + 1) * 4;
