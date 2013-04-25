@@ -154,11 +154,13 @@ struct StoreCommon : public TableUtils {
 
     // Store node in hash table
     std::tuple< TableItem, bool > _store( Node s, hash_t h ) {
-        Statistics::global().hashadded( _id->id(), memSize( s, hasher().pool ) );
-        Statistics::global().hashsize( _id->id(), table().size() );
         TableItem s2;
         bool inserted;
         std::tie( s2, inserted ) = table().insertHinted( s, h );
+        if ( inserted ) {
+            Statistics::global().hashadded( _id->id(), memSize( s, hasher().pool ) );
+            Statistics::global().hashsize( _id->id(), table().size() );
+        }
         return std::make_tuple( s2, inserted );
     }
 
@@ -866,7 +868,10 @@ struct NTreeStore : public CompressedStore< Utils,
         bool inserted;
         std::tie( root, inserted ) =
             table().insertHinted( node, h, generator );
-        if ( !inserted )
+        if ( inserted ) {
+            Statistics::global().hashadded( _id->id(), memSize( node, pool() ) );
+            Statistics::global().hashsize( _id->id(), table().size() );
+        } else
             std::memcpy( pool().data( node ), root->slack(), slack() );
         return std::make_tuple( Vertex( node, root ), inserted );
     }
