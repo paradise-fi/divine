@@ -159,7 +159,6 @@ struct StoreCommon : public TableUtils {
         TableItem s2;
         bool inserted;
         std::tie( s2, inserted ) = table().insertHinted( s, h );
-        setPermanent( hasher().pool, s2 );
         return std::make_tuple( s2, inserted );
     }
 

@@ -8,7 +8,7 @@ void MachineState::rewind( Blob to, int thread )
 {
     _alloc.pool().free( _blob );
     _blob = _alloc.pool().allocate( _alloc.pool().size( to ) );
-    _alloc.pool().copyTo( to, _blob );
+    _alloc.pool().copy( to, _blob );
 
     _thread = -1; // special
 

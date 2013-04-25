@@ -179,8 +179,6 @@ struct Common {
         if ( !store().alias( to, _to ) )
             graph.release( _to );
 
-        graph.release( to );
-
         if ( tact == TransitionAction::Terminate ||
                 eact == ExpansionAction::Terminate )
             this->terminate();
@@ -355,7 +353,7 @@ struct Partitioned {
             BFV< Ours > bfv( *this, graph, _store );
             setIds( bfv );
             if ( owner( initial ) == worker.id() ) {
-                bfv.exploreFrom( unblob< Node >( initial ) );
+                bfv.exploreFrom( initial );
             }
             run( bfv );
         }
@@ -463,7 +461,7 @@ struct Shared {
         void exploreFrom( Node initial ) {
             setIds();
             if ( worker.id() == 0 ) {
-                bfv.exploreFrom( unblob< Node >( initial ) );
+                bfv.exploreFrom( initial );
             }
             run();
         }

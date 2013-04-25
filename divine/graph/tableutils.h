@@ -21,17 +21,6 @@ template<> inline bool alias< Blob >( Pool &p, Blob a, Blob b ) {
     return p.alias( a, b );
 }
 
-template< typename T > inline bool permanent( Pool& pool, T ) { return false; }
-template< typename T > inline void setPermanent( Pool& pool, T, bool = true ) {}
-
-template<> inline bool permanent( Pool& pool, Blob b ) {
-    return b.valid() ? pool.header( b ).permanent : false;
-}
-template<> inline void setPermanent( Pool& pool, Blob b, bool x ) {
-    if ( b.valid() )
-        pool.header( b ).permanent = x;
-}
-
 template < typename Table, typename _Hasher, typename Statistics >
 struct TableUtils
 {

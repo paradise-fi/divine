@@ -24,9 +24,7 @@ struct TestDatastruct {
     void init( generator::Dummy &g ) {
         int count = 0;
         g.initials( [&]( Node, Node n, Label ) { first = n; } );
-        visitor::setPermanent( g.alloc.pool(), first );
         g.successors( first, [&]( Node n, Label ) {
-                visitor::setPermanent( g.alloc.pool(), n );
                 if ( count == 0 )
                     second = n;
                 if (count == 1 )

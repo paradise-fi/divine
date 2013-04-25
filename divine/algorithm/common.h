@@ -38,9 +38,9 @@ struct Hasher {
     }
 
     inline bool equal( Blob a, Blob b ) const {
-        assert( a.valid() );
-        assert( b.valid() );
-        return allEqual || ( pool.compare( a, b, slack, std::max( pool.size( a ), pool.size( b ) ) ) == 0 );
+        assert( pool.valid( a ) );
+        assert( pool.valid( b ) );
+        return allEqual || pool.equal( a, b, slack );
     }
 
     bool valid( Blob a ) const { return pool.valid( a ); }

@@ -26,18 +26,6 @@ struct TestHasher< Blob > : default_hasher< Blob > {
     TestHasher( Pool& p, int ) : default_hasher< Blob >( p ) { }
 };
 
-template< typename N >
-inline Blob blob( const N &n, Pool& p ) {
-    Blob b( p, sizeof( N ) );
-    p.template get< N >( b ) = n;
-    return b;
-}
-
-template<>
-inline Blob blob( const Blob &b, Pool& ) {
-    return b;
-}
-
 template< typename N > int node( N, Pool& );
 template< typename N > N makeNode( int, Pool& );
 
@@ -70,7 +58,6 @@ struct TestVisitor {
         void release( int ) {}
         Node initial() {
             Node n = makeNode< Node >( 1, p );
-            setPermanent( p, n );
             return n;
         }
 
