@@ -261,7 +261,7 @@ struct Dve : public Common< Blob > {
                 this->system->apply( this->ctx, p );
 
                 updateMem( from );
-                if ( pool().compare( b, to, this->slack(), pool().size( b ) ) == 0 ) {
+                if ( pool().equal( b, to, this->slack() ) ) {
                     std::stringstream str;
                     this->system->printTrans( str, this->ctx, p );
                     transLabel = str.str();
