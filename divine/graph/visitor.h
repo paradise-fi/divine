@@ -274,8 +274,8 @@ struct Partitioned {
 
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
             int _to = owner( to, hint ), _from = worker.id();
-            Statistics::global().sent( _from, _to, sizeof(from) + memSize(to, graph.base().alloc.pool() ) );
-            worker.submit( _from, _to, std::make_tuple( _store.toQueue( from ),
+            Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
+            worker.submit( _from, _to, std::make_tuple( from.toQueue( pool() ),
                                                         to, label ) );
         }
 
