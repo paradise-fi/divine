@@ -8,8 +8,11 @@ if(COMMAND cmake_policy)
   cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-SET( CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" )
-SET( CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" )
+SET( CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG -DNVALGRIND" )
+SET( CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG -DNVALGRIND" )
+
+SET( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" )
+SET( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" )
 
 SET( CMAKE_CXX_FLAGS_RELWITHDEBUG "-O3 -g" )
 SET( CMAKE_C_FLAGS_RELWITHDEBUG "-O3 -g" )
@@ -193,6 +196,15 @@ endif( NOT SHA1SUM )
 #########################################
 ## OPTIONAL FEATURES
 ##
+
+find_package( PkgConfig )
+pkg_check_modules( VALGRIND valgrind )
+if ( VALGRIND_FOUND )
+    include_directories( ${VALGRIND_INCLUDEDIR} )
+else()
+    message( "-- WARNING: Valgrind (headers) not found! Pool debugging will not work." )
+    add_definitions( -DNVALGRIND )
+endif()
 
 if( CURSES AND NOT USE32 AND NOT USE64 )
   # the curses package we'd find probably wouldn't work anyway
