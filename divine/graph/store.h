@@ -598,14 +598,6 @@ struct HcStore
              This( g, Hasher( g.pool(), slack ), m )
     { }
 
-    Vertex fromQueue( QueueVertex v ) {
-        return v;
-    }
-
-    QueueVertex toQueue( Vertex v ) {
-        return v;
-    }
-
     hash_t& stubHash( Blob stub ) {
         return pool().template get< hash_t >( stub, slack() );
     }
