@@ -12,7 +12,7 @@ enum cesmi_property_type { cesmi_pt_goal, cesmi_pt_deadlock, cesmi_pt_buchi };
 enum cesmi_flags { cesmi_goal = 1, cesmi_accepting = 2 };
 
 typedef struct {
-    void *handle;
+    uint64_t handle;
     char *memory;
 } cesmi_node;
 

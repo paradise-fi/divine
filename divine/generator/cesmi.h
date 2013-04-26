@@ -71,7 +71,7 @@ struct CESMI : public Common< Blob > {
     cesmi::cesmi_node data( Blob b ) {
         cesmi::cesmi_node n;
         n.handle = b.raw(),
-        n.memory = pool().data( b ) + slack();
+        n.memory = pool().valid( b ) ? ( pool().dereference( b ) + slack() ) : nullptr;
         return n;
     }
 
@@ -84,7 +84,7 @@ struct CESMI : public Common< Blob > {
             cesmi::cesmi_node state;
             handle = get( &setup, handle, data( s ), &state );
             if ( handle )
-                yield( Blob( state.handle ), old );
+                yield( Blob::fromRaw( state.handle ), old );
             old = handle;
         }
     }
@@ -157,22 +157,22 @@ struct CESMI : public Common< Blob > {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         Blob b = _this->makeBlob( size );
         cesmi::cesmi_node n;
-        n.memory = _this->pool().data( b ) + slack;
-        n.handle = b.ptr;
+        n.memory = _this->pool().dereference( b ) + _this->slack();
+        n.handle = b.raw();
         return n;
     }
 
     static cesmi::cesmi_node clone_node( const cesmi::cesmi_setup *setup, cesmi::cesmi_node orig ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
-        Blob origb( orig.handle );
-        Blob b( _this->pool(), _this->pool().size( origb ) );
+        Blob origb = Blob::fromRaw( orig.handle );
+        Blob b = _this->pool().allocate( _this->pool().size( origb ) );
 
         int slack = _this->alloc._slack;
         _this->pool().copyTo( origb, b );
         _this->pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
-        n.memory = _this->pool().data( b ) + slack;
-        n.handle = b.ptr;
+        n.memory = _this->pool().dereference( b ) + slack;
+        n.handle = b.raw();
         return n;
     }
 
