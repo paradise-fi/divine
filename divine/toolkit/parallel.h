@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <wibble/sys/thread.h>
-#include <divine/toolkit/diskfifo.h>
+#include <divine/toolkit/fifo.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/barrier.h>
 #include <divine/toolkit/mpi.h>
@@ -117,7 +117,7 @@ template< typename _T >
 struct FifoMatrix
 {
     typedef _T T;
-    typedef divine::DiskFifo< T > Fifo;
+    typedef divine::Fifo< T > Fifo;
     std::vector< std::vector< Fifo > > m_matrix;
 
     void validate( int from, int to ) {
@@ -162,13 +162,13 @@ struct FifoMatrix
             m_matrix[ i ].resize( size );
     }
 
-    void enableSaving( bool enable = true ) {
+    /* void enableSaving( bool enable = true ) {
         for ( auto& v : m_matrix ) {
             for ( auto& fifo : v ) {
                 fifo.enableSaving( enable );
             }
         }
-    }
+        } */
 };
 
 struct WithID {
