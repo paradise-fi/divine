@@ -178,8 +178,6 @@ struct Common {
         if ( !store().alias( to.getNode(), _to ) )
             graph.release( _to );
 
-        graph.release( to );
-
         if ( tact == TransitionAction::Terminate ||
                 eact == ExpansionAction::Terminate )
             this->terminate();
@@ -319,7 +317,6 @@ struct Partitioned {
                             bfv.edge( fromData,
                                     std::get< 1 >( p ),
                                     std::get< 2 >( p ) );
-                            fromData.free( graph.pool() );
                         }
                     }
 

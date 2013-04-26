@@ -84,10 +84,7 @@ struct Base {
     /// Makes a duplicate that can be released (permanent states are not duplicated)
     Node clone( Node n ) {
         assert( pool().valid( n ) );
-        if ( pool().mature( n ) )
-            return n;
-        else
-            return copyState( n );
+        return copyState( n );
     }
 
     /// Returns an owner id of the state n

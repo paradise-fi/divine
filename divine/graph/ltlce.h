@@ -406,7 +406,6 @@ struct LtlCE {
                 Node initial = getInitialById( shared().ce.successor_id );
                 initial = std::get< 0 >( a.store().fetch( initial,
                             a.store().hash( initial ) ) ).getNode();
-                visitor::setPermanent( a.pool(), initial );
                 assert( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
                 trace.push_back( initial );
@@ -430,7 +429,6 @@ struct LtlCE {
             ++hTraceBegin;
             d.ring( &Alg::_successorTrace );
             assert( shared().ce.current_updated );
-            visitor::setPermanent( a.pool(), shared().ce.parent );
             trace.push_back( shared().ce.parent );
             numTrace.push_back( shared().ce.successor_id );
         }
@@ -468,7 +466,6 @@ struct LtlCE {
                         }
                     } );
                 assert( a.pool().valid( parent ) );
-                visitor::setPermanent( a.pool(), parent );
                 trace.push_back( parent );
                 numTrace.push_back( i );
                 break; }
@@ -496,7 +493,6 @@ struct LtlCE {
                     }
                 } );
             assert( done );
-            visitor::setPermanent( a.pool(), parent );
             trace.push_back( parent );
             numTrace.push_back( i );
         }

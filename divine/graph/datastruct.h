@@ -33,7 +33,6 @@ struct QueueFrontend {
                 deadlocked = false;
                 next( from, n, label );
             } );
-        from.free( self().pool() );
     }
 
     template< typename Dead >
@@ -41,7 +40,6 @@ struct QueueFrontend {
         if ( deadlocked && !self().empty() ) {
             auto v = self().front().fromQueue( self().pool() );
             dead( v );
-            v.free( self().pool() );
         }
     }
 
@@ -50,7 +48,6 @@ struct QueueFrontend {
         if ( !self().empty() ) {
             auto qv = self().front().fromQueue( self().pool() );
             close( qv );
-            qv.free( self().pool() );
             self().pop_front();
         }
     }
@@ -188,7 +185,6 @@ struct Stack {
 
         while ( !empty() && _stack.back().flag == Expanded ) {
             close( _stack.back().vertex() );
-            g.release( _stack.back().vertex().getNode() );
             _stack.pop_back();
         }
 
