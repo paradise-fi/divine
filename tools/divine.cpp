@@ -646,10 +646,11 @@ struct Main {
                 meta.algorithm.algorithm = meta::Algorithm::Map;
             }
 
-            delete ib;
         }
         else
             die( "FATAL: Internal error in commandline parser." );
+
+        delete ib;
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
 
