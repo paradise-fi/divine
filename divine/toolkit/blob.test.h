@@ -7,6 +7,7 @@
 using namespace divine;
 
 struct TestBlob {
+
     Test basic() {
         Pool p;
         Blob b = p.allocate( 32 );
@@ -32,12 +33,12 @@ struct TestBlob {
         assert_eq( p.get< T >( b1 ), 32 );
         assert_eq( p.get< T >( b2 ), 32 );
         assert_eq( p.get< T >( b3 ), 42 );
-        assert( lecomp( b1, b3 ) );
-        assert( !lecomp(b1, b2) );
-        assert( !lecomp(b2, b1) );
         assert( ecomp( b1, b2 ) );
         assert( !ecomp(b1, b3) );
         assert( !ecomp(b2, b3) );
+        assert( !lecomp(b1, b2) );
+        assert( !lecomp(b2, b1) );
+        assert( lecomp( b1, b3 ) );
     }
 
     Test comparisonShort() {
@@ -52,46 +53,9 @@ struct TestBlob {
         comparison< char >();
     }
 
-    Test allocSize() {
+    Test align() {
         for ( unsigned i = 0; i < 100; ++i )
-            assert( i <= Blob::allocationSize( i ) );
+            assert_leq( i, divine::align( i, sizeof( void * ) ) );
     }
 
-    struct Worker : wibble::sys::Thread {
-
-        Blob &data;
-        unsigned sequence;
-
-        Worker( Blob &d, unsigned s )
-            : data( d ), sequence( s )
-        {}
-
-        void *main() {
-            for ( unsigned s = 0; s < sequence; ++s ) {
-                data.acquire();
-
-                data.get< int >() = 1;
-                assert( data.get< int >() );
-                data.get< int >() = 0;
-
-                data.release();
-            }
-            return nullptr;
-        }
-    };
-
-    Test concurrent() {
-        Blob data( sizeof( int ) );
-        data.get< int >() = 0;
-
-        Worker a( data, 1000 );
-        Worker b( data, 1000 );
-
-        a.start();
-        b.start();
-        a.join();
-        b.join();
-
-        data.free();
-    }
 };

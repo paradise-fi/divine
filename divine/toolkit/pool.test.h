@@ -6,18 +6,12 @@
 using namespace divine;
 
 struct TestPool {
-    Test steal() {
-        Pool p;
-        char *c = p.allocate( 32 );
-        p.steal( c, 32 );
-        assert_eq( p.allocate( 32 ), c );
-    }
 
     struct Checker : wibble::sys::Thread
     {
         char padding[128];
         divine::Pool m_pool;
-        std::deque< char * > ptrs;
+        std::deque< Blob > ptrs;
         int limit;
         unsigned seedp;
         int terminate;
@@ -45,12 +39,12 @@ struct TestPool {
                     ptrs.push_back( pool().allocate( 32 ) );
                 } else {
                     -- state;
-                    pool().free( ptrs.front(), 32 );
+                    pool().free( ptrs.front() );
                     ptrs.pop_front();
                 }
             }
             while ( !ptrs.empty() ) {
-                pool().free( ptrs.front(), 32 );
+                pool().free( ptrs.front() );
                 ptrs.pop_front();
             }
             return 0;

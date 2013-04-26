@@ -2,363 +2,529 @@
 #include <wibble/test.h> // for assert
 #include <vector>
 #include <iostream>
+#include <memory>
+#include <map>
 
-#include <divine/toolkit/blob.h>
+#ifndef NVALGRIND
+#include <memcheck.h>
+#endif
+
+#include <divine/toolkit/shmem.h>
+#include <divine/toolkit/hash.h>
 
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
 
 namespace divine {
 
-struct BlobDereference {
+inline int align( int v, int a ) {
+    if ( v % a )
+        return v + a - (v % a);
+    return v;
+}
 
-    BlobHeader& header( Blob& blob ) const
-    {
-        return blob.header();
-    }
+typedef uint32_t hash_t;
 
-    const BlobHeader& header( const Blob& blob ) const
-    {
-        return blob.header();
-    }
+/*
+ * A lake keeps track of memory in a compact, fast, thread-optimised
+ * fashion. It uses out-of-line, per-thread freelists to make allocations less
+ * susceptible to cacheline pong. Excess free memory is linked into a global
+ * freelist which is used when the locals run out.
+ */
+struct Lake {
 
-    template< typename T >
-    T& get( Blob blob, int off = 0 )
-    {
-        return blob.get<T>(off);
-    }
-
-    template< typename T >
-    const T& get( const Blob blob, int off = 0 ) const
-    {
-        return blob.get< T >( off );
-    }
-
-    template< typename T >
-    int get( Blob blob, int off, T& t ) const
-    {
-        return blob.get(off, t);
-    }
-
-    template< typename T >
-    int put( Blob& blob, int off, T t ) const
-    {
-        return blob.put(off, t);
-    }
-
-    void copyTo( const Blob& source, Blob& where ) const
-    {
-        source.copyTo( where );
-    }
-
-    inline void copyTo( const Blob& source, Blob& where, int length )
-    {
-        copyTo( source, where, 0, 0, length );
-    }
-
-    void copyTo( const Blob& source, Blob& where, int sourceStart,
-            int whereStart, int length )
-    {
-        source.copyTo( where, sourceStart, whereStart, length );
-    }
-
-    void setSize( Blob& blob, size_t size ) const
-    {
-        blob.setSize( size );
-    }
-
-    void clear( Blob& blob, int from = 0, int to = 0, char pattern = 0 ) const
-    {
-        blob.clear( from, to, pattern );
-    }
-
-    int size( const Blob& blob ) const
-    {
-        return blob.size();
-    }
-
-    char* data( const Blob& blob ) const
-    {
-        return blob.data();
-    }
-
-    char* pointer( const Blob blob ) const
-    {
-        return blob.pointer();
-    }
-
-    int compare( const Blob& x, const Blob& y, int b, int e ) const
-    {
-        return x.compare( y, b, e );
-    }
-
-    int compare( const Blob& a, const Blob& b ) const
-    {
-        return compare( a, b, 0, std::max( size( a ), size( b ) ) );
-    }
-
-    int equal( const Blob& x, const Blob& y ) const
-    {
-        int cmp = compare( x, y, 0, std::max( size( x ), size( y ) ) );
-        return cmp == 0;
-    }
-
-#ifndef DIVINE_EMBED
-    hash_t hash( const Blob& blob ) const
-    {
-        return blob.hash();
-    }
-
-    hash_t hash( const Blob& blob, int from, int to, uint32_t salt = 0 ) const
-    {
-        return blob.hash( from, to, salt );
-    }
-
-#endif
-
-    void acquireLock( Blob& blob ) {
-        blob.acquire();
-    }
-
-    void releaseLock( Blob& blob ) {
-        blob.release();
-    }
-};
-
-struct FakePool : public BlobDereference {
-
-    FakePool() {}
-    FakePool( const FakePool & ) {}
-    ~FakePool() {}
-
-    char *allocate( size_t s ) {
-        return new char[ s ];
-    }
-
-    template< typename T >
-    void deallocate( T *_ptr, size_t size = 0 )
-    {
-        return steal( _ptr, size );
-    }
-
-    template< typename T >
-    void free( T *_ptr, size_t size = 0 )
-    {
-        delete[] static_cast< char * >( _ptr );
-    }
-
-    template< typename T >
-    void steal( T *_ptr, size_t size = 0 ) {
-        delete[] static_cast< char * >( _ptr );
-    }
-
-    void free( Blob& blob )
-    {
-        blob.free( *this );
-    }
-
-};
-
-#ifndef O_POOLS
-
-typedef FakePool Pool;
-
-#else
-
-struct Pool : public BlobDereference {
-    struct Block
-    {
-        size_t size;
-        char *start;
-        Block() : size( 0 ), start( 0 ) {}
+    struct Pointer {
+        uint64_t block:40;
+        uint64_t offset:24;
+        Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
+        uint64_t raw() { return *reinterpret_cast< uint64_t * >( this ); }
+        static Pointer fromRaw( uint64_t r ) {
+            Pointer p;
+            *reinterpret_cast< uint64_t * >( &p ) = r;
+            return p;
+        }
     };
 
-    struct Group
-    {
-        int item;
-        int used, total; /* XXX: Deprecated, but part of CESMI ABI. */
-        char **free; // reuse allocation
-        char *current; // tail allocation
-        char *last; // bumper
-        std::vector< Block > blocks;
-        Group()
-            : item( 0 ), used( 0 ), total( 0 ),
-              free( 0 ), current( 0 ), last( 0 )
-        {}
+    struct BlockHeader {
+        uint64_t total:20;
+        uint64_t allocated:20;
+        uint64_t itemsize:24;
     };
 
-    // for FFI
-    int m_groupCount;
-    int m_groupStructSize;
-    Group *m_groupArray;
+    struct FreeList {
+        Pointer head;
+        FreeList *next;
+        int32_t count;
+        FreeList() : next( nullptr ), count( 0 ) {}
+    };
 
-    typedef std::vector< Group > Groups;
-    Groups m_groups;
-
-    Pool();
-    Pool( const Pool & );
-    ~Pool();
-
-    // ignore assignments
-    Pool &operator=( const Pool & ) { return *this; }
-
-    void newBlock( Group *g )
-    {
-        Block b;
-        int s = std::min( 4 * int( g->blocks.back().size ),
-                          4 * 1024 * 1024 );
-        b.size = s;
-        b.start = new char[ s ];
-        g->current = b.start;
-        g->last = b.start + s;
-        g->blocks.push_back( b );
+    static void nukeList( FreeList *f ) {
+        while ( f ) {
+            auto d = f;
+            f = f->next;
+            delete d;
+        }
     }
 
-    int adjustSize( int bytes )
-    {
-        // round up to a value divisible by 4
-        bytes += 3;
-        bytes = ~bytes;
-        bytes |= 3;
-        bytes = ~bytes;
-        return bytes;
+    static const int blockcount = 1024 * 1024;
+
+    char *block[ blockcount ]; /* 8M, each block is 2M -> up to 16T of memory */
+    std::atomic< int > usedblocks;
+
+    std::atomic< FreeList * > _freelist[ 4096 ];
+    std::atomic< std::atomic< FreeList * > * >_freelist_big[ 4096 ];
+
+#ifndef NVALGRIND
+    struct VHandle {
+        int handle;
+        bool allocated;
+        VHandle() : handle( -1 ), allocated( false ) {}
+    };
+
+    std::atomic< VHandle * > _vhandles[ blockcount ]; /* one for each block */
+
+    void valgrindInit() {
+        for ( int i = 0; i < blockcount; ++i )
+            _vhandles[ i ] = nullptr;
     }
 
-    Group *group( int bytes )
-    {
-        if ( bytes / 4 >= int( m_groups.size() ) )
-            return 0;
-        assert_eq( bytes % 4, 0 );
-        if ( m_groups[ bytes / 4 ].total )
-            return &(m_groups[ bytes / 4 ]);
-        else
-            return 0;
+    void valgrindAllocated( Pointer p ) {
+        VALGRIND_MEMPOOL_ALLOC( block[ p.block ], dereference( p ), size( p ) );
+        VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), size( p ) );
+
+        VHandle *h = _vhandles[ p.block ], *alloc;
+        if ( !h ) {
+            if ( _vhandles[ p.block ].compare_exchange_strong(
+                     h, alloc = new VHandle[ header( p ).total ]) )
+                h = alloc;
+            else
+                delete alloc;
+        }
+
+        assert( h );
+        assert( !h[ p.offset ].allocated );
+        VALGRIND_DISCARD( h[ p.offset ].handle );
+        h[ p.offset ].handle =
+            VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
+                                   wibble::str::fmtf( "blob %llu:%llu @ %p",
+                                                      p.block, p.offset,
+                                                      dereference( p ) ).c_str() );
+        h[ p.offset ].allocated = true;
     }
 
-    void ffi_update() {
-        m_groupCount = m_groups.size();
-        m_groupArray = &m_groups.front();
+    void valgrindDeallocated( Pointer p ) {
+        VALGRIND_MEMPOOL_FREE( block[ p.block ], dereference( p ) );
+        VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), size( p ) );
+
+        assert( _vhandles[ p.block ].load() );
+        assert( _vhandles[ p.block ][ p.offset ].allocated );
+
+        VALGRIND_DISCARD( _vhandles[ p.block ][ p.offset ].handle );
+        _vhandles[ p.block ][ p.offset ].handle =
+            VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
+                                   wibble::str::fmtf( "blob %llu:%llu @ %p [DELETED]",
+                                                      p.block, p.offset,
+                                                      dereference( p ) ).c_str() );
+        _vhandles[ p.block ][ p.offset ].allocated = false;
     }
 
-    Group *createGroup( int bytes )
-    {
-        assert( bytes % 4 == 0 );
-        Group g;
-        g.item = bytes;
-        Block b;
-        b.size = std::min( std::max( 1024 * 1024, bytes ), 4096 * bytes );
-        b.start = new char[ b.size ];
-        g.blocks.push_back( b );
-        g.current = b.start;
-        g.last = b.start + b.size;
-        g.total = 1;
-        m_groups.resize( std::max( bytes / 4 + 1, int( m_groups.size() ) ), Group() );
-
-        ffi_update();
-
-        assert_eq( m_groups[ bytes / 4 ].total, 0 );
-        m_groups[ bytes / 4 ] = g;
-        assert_neq( g.total, 0 );
-        assert( group( bytes ) );
-        return group( bytes );
+    void valgrindNewBlock( int b, int bytes ) {
+        VALGRIND_MAKE_MEM_NOACCESS( block[ b ] + sizeof( BlockHeader ), bytes );
+        VALGRIND_CREATE_MEMPOOL( block[ b ], 0, 0 );
     }
 
-    char *allocate( size_t bytes )
-    {
-        assert( bytes );
-        bytes = adjustSize( bytes );
-        char *ret = 0;
+    void valgrindFini() {
+        int count = 0;
+        int64_t bytes = 0;
 
-        Group *g = group( bytes );
-        if (!g)
-            g = createGroup( bytes );
-
-        if ( g->free ) {
-            ret = reinterpret_cast< char * >( g->free );
-            g->free = *reinterpret_cast< char *** >( ret );
-        } else {
-            if ( g->current + bytes > g->last ) {
-                newBlock( g );
+        for ( int i = 0; i < blockcount; ++i )
+            if ( _vhandles[ i ] ) {
+                for ( int j = 0; j < header( i ).total; ++j )
+                    count += _vhandles[ i ][ j ].allocated;
+                delete _vhandles[ i ].load();
             }
-            ret = g->current;
-            g->current += bytes;
+
+        for ( int i = 0; i < blockcount && block[ i ]; ++i )
+            if ( block[ i ] )
+                bytes += header( i ).total * align( header( i ).itemsize, sizeof( void * ) );
+
+        std::cerr << "~Lake(): " << count << " objects not freed" << std::endl;
+        std::cerr << "         " << (bytes / 1024) << " kbytes held" << std::endl;
+    }
+#else
+#define VALGRIND_MAKE_MEM_DEFINED(x, y)
+#define VALGRIND_MAKE_MEM_NOACCESS(x, y)
+#define VALGRIND_MAKE_MEM_UNDEFINED(x, y)
+    void valgrindAllocated( Pointer p ) {}
+    void valgrindDeallocated( Pointer p ) {}
+    void valgrindNewBlock( int, int ) {}
+    void valgrindFini() {}
+    void valgrindInit() {}
+#endif
+
+    Lake() {
+        for ( int i = 0; i < 4096; ++i )
+            _freelist_big[ i ] = nullptr;
+    }
+    Lake( const Lake & ) = delete;
+
+    ~Lake() {
+        valgrindFini();
+        for ( int i = 0; i < 4096; ++i ) {
+            nukeList( _freelist[ i ] );
+            if ( _freelist_big[ i ] ) {
+                for ( int j = 0; j < 4096; ++j )
+                    nukeList( _freelist_big[ i ][ j ] );
+                delete[] _freelist_big[ i ].load();
+            }
+        }
+        for ( int i = 0; i < blockcount && block[ i ]; ++i )
+            delete[] block[ i ];
+    }
+
+    std::atomic< FreeList * > &freelist( int size )
+    {
+        if ( size < 4096 )
+            return _freelist[ size ];
+
+        std::atomic< FreeList * > *chunk, *newchunk;
+        if ( !( chunk = _freelist_big[ size / 4096 ] ) ) {
+            if ( _freelist_big[ size / 4096 ].compare_exchange_strong(
+                     chunk, newchunk = new std::atomic< FreeList * >[ 4096 ] ) )
+                chunk = newchunk;
+            else
+                delete newchunk;
+        }
+        assert( chunk );
+        return chunk[ size % 4096 ];
+    }
+
+    /*
+     * A wharf is a thread's interface to the Lake above. Use it to create, destroy
+     * and dereference objects.
+     */
+    struct Wharf {
+        std::shared_ptr< Lake > lake;
+
+        struct SizeInfo {
+            int active;
+            FreeList touse;
+            FreeList tofree;
+            SizeInfo() : active( -1 ) {}
+            ~SizeInfo() {}
+        };
+
+        std::vector< int > _emptyblocks;
+        SizeInfo _size[ 4096 ];
+        SizeInfo *_size_big[ 4096 ];
+
+        char *dereference( Pointer p ) { return lake->dereference( p ); }
+        const char *dereference( Pointer p ) const { return lake->dereference( p ); }
+        bool valid( Pointer p ) { return p.block != 0xFFFFFFFFFF; }
+        int size( Pointer p ) { return lake->size( p ); }
+
+        bool alias( Pointer a, Pointer b ) {
+            return a.block == b.block && a.offset == b.offset;
         }
 
-        return ret;
-    }
+        Wharf() : lake( std::make_shared< Lake >() ) { initsize(); }
+        Wharf( std::shared_ptr< Lake > l ) : lake( l ) { initsize(); }
+        Wharf( const Wharf &w ) : lake( w.lake ) { initsize(); }
 
-    size_t pointerSize( char * )
-    {
-        assert_die();
-        return 0; // replace with magic
-    }
-
-    void release( Group *g, char *ptr, int size )
-    {
-        assert( g );
-        assert_eq( g->item, size );
-        char ***ptr3 = reinterpret_cast< char *** >( ptr );
-        char **ptr2 = reinterpret_cast< char ** >( ptr );
-        *ptr3 = g->free;
-        g->free = ptr2;
-    }
-
-    template< typename T >
-    void free( T *_ptr, size_t size = 0 )
-    {   // O(1) free
-        if ( !_ptr ) return; // noop
-        char *ptr = reinterpret_cast< char * >( _ptr );
-        if ( !size )
-            size = pointerSize( ptr );
-        else {
-            assert( size );
-            size = adjustSize( size );
+        ~Wharf() {
+            for ( int i = 0; i < 4096; ++i )
+                delete[] _size_big[ i ];
         }
-        assert( size );
-        Group *g = group( size );
-        release( g, ptr, size );
-    }
 
-    template< typename T >
-    void steal( T *_ptr, size_t size = 0 )
-    {
-        char *ptr = reinterpret_cast< char * >( _ptr );
-        if ( !size )
-            size = pointerSize( ptr );
-        else {
-            assert( size );
-            size = adjustSize( size );
+        void initsize() {
+            for ( int i = 0; i < 4096; ++i )
+                _size_big[ i ] = nullptr;
         }
-        assert( size );
-        Group *g = group( size );
-        if ( !g )
-            g = createGroup( size );
-        assert( g );
-        release( g, ptr, size );
+
+        Pointer &freechunk( Pointer p ) {
+            return *reinterpret_cast< Pointer * >( dereference( p ) );
+        }
+
+        Pointer fromFreelist( SizeInfo &si ) {
+            assert( si.touse.count );
+            -- si.touse.count;
+            Pointer p = si.touse.head;
+            VALGRIND_MAKE_MEM_DEFINED( dereference( p ), sizeof( Pointer ) );
+            si.touse.head = freechunk( p );
+            VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), sizeof( Pointer ) );
+            return p;
+        }
+
+        Pointer allocate( int size )
+        {
+            Pointer p;
+
+            auto &si = sizeinfo( size );
+            /* try our private freelist first */
+
+            if ( !si.touse.count && si.tofree.count ) {
+                si.touse = si.tofree;
+                si.tofree = FreeList();
+            }
+
+            if ( si.touse.count )
+                p = fromFreelist( si );
+            else { /* nope. try a partially filled block */
+                if ( si.active >= 0 && usable( si.active ) ) {
+                    p.block = si.active;
+                    p.offset = lake->header( p ).allocated ++;
+                } else { /* still nothing. try nicking something from the shared freelist */
+                    std::atomic< FreeList * > &fhead = lake->freelist( size );
+                    FreeList *fb = fhead;
+                    while ( fb && !fhead.compare_exchange_weak( fb, fb->next ) );
+                    if ( fb ) {
+                        si.touse = *fb;
+                        si.touse.next = nullptr;
+                        delete fb;
+                        p = fromFreelist( si );
+                    } else { /* give up and allocate a fresh block */
+                        p.block = newblock( size );
+                        p.offset = lake->header( p ).allocated ++;
+                    }
+                }
+
+            }
+
+            lake->valgrindAllocated( p );
+            return p;
+        }
+
+        void free( Pointer p )
+        {
+            if ( !valid( p ) )
+                return;
+
+            auto &si = sizeinfo( size( p ) );
+            FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
+
+            VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), sizeof( Pointer ) );
+            freechunk( p ) = fl->head;
+            fl->head = p;
+            ++ fl->count;
+
+            lake->valgrindDeallocated( p );
+
+            /* If there's a lot on our freelists, donate part of them to the Lake */
+            if ( fl == &si.tofree && fl->count >= 4096 ) {
+                std::atomic< FreeList * > &fhead = lake->freelist( size( p ) );
+                fl = new FreeList( *fl );
+                fl->next = fhead;
+                while ( !fhead.compare_exchange_weak( fl->next, fl ) );
+                si.tofree = FreeList();
+            }
+        }
+
+        bool usable( int b )
+        {
+            return lake->block[ b ] &&
+                lake->header( b ).allocated < lake->header( b ).total;
+        }
+
+        SizeInfo &sizeinfo( int index )
+        {
+            if ( index < 4096 )
+                return _size[ index ];
+            if ( !_size_big[ index / 4096 ] )
+                _size_big[ index / 4096 ] = new SizeInfo[ 4096 ];
+            return _size_big[ index / 4096 ][ index % 4096 ];
+        }
+
+        int newblock( int size )
+        {
+            int b = 0;
+
+            if ( _emptyblocks.empty() ) {
+                b = lake->usedblocks.fetch_add( 16 );
+                for ( int i = b + 1; i < b + 16; ++i )
+                    _emptyblocks.push_back( i );
+            } else {
+                b = _emptyblocks.back();
+                _emptyblocks.pop_back();
+            }
+
+            const int overhead = sizeof( BlockHeader );
+            int total = std::max( (2048 * 1024) / size, 64 ); // at least 64 items, otherwise 2M
+            total -= std::max( overhead / size, 1 ); // make space for header
+
+            /* TODO reorder so that pointer assignment is last? */
+            lake->block[ b ] = new char[ align( size, sizeof( void * ) ) * total + overhead ];
+            lake->header( b ).itemsize = size;
+            lake->header( b ).total = total;
+            lake->header( b ).allocated = 0;
+            lake->valgrindNewBlock( b, total );
+            return sizeinfo( size ).active = b;
+        }
+
+    };
+
+    BlockHeader &header( Pointer p ) { return header( p.block ); }
+    BlockHeader &header( int b ) {
+        return *reinterpret_cast< BlockHeader * >( block[ b ] );
     }
 
-    template< typename T >
-    void deallocate( T *_ptr, size_t size = 0 )
-    {
-        return steal( _ptr, size );
+    char *dereference( Pointer p ) {
+        return block[ p.block ] + sizeof( BlockHeader ) +
+            p.offset * align( header( p ).itemsize, sizeof( void * ) );
     }
 
-    void free( Blob& blob )
-    {
-        blob.free( *this );
+    int size( Pointer p ) {
+        return header( p ).itemsize;
     }
 
 };
 
+/*
+ * A Lake-like thing, but forward everything to the system allocator. Comes
+ * with substantially more overhead.
+ */
+struct Pond {
+
+    struct Pointer {
+        char *p;
+        Pointer() : p( nullptr ) {}
+        uint64_t raw() { return uintptr_t( p ); }
+        static Pointer fromRaw( uint64_t r ) {
+            Pointer p;
+            p.p = reinterpret_cast< char * >( r );
+            return p;
+        }
+    };
+
+    Pond() {}
+    Pond( const Pond & ) = delete;
+
+    struct Wharf {
+
+        Wharf( std::shared_ptr< Pond > ) {}
+        Wharf() {}
+
+        char *dereference( Pointer p ) { return p.p + 8; }
+        const char *dereference( Pointer p ) const { return p.p + 8; }
+        bool valid( Pointer p ) { return p.p != nullptr; }
+        uint64_t &_size( Pointer p ) { return *reinterpret_cast< uint64_t *> ( p.p ); }
+        int size( Pointer p ) { return int( _size( p ) ); }
+        bool alias( Pointer a, Pointer  b ) { return a.p == b.p; }
+        void free( Pointer p ) { delete[] p.p; }
+
+        Pointer allocate( size_t s ) {
+            Pointer p;
+            p.p = new char[ s + sizeof( uint64_t ) ];
+            _size( p ) = s;
+            return p;
+        }
+
+    };
+};
+
+template< typename MM >
+struct Dereference {
+    using Blob = typename MM::Pointer;
+    using Wharf = typename MM::Wharf;
+    using Shared = MM;
+
+    Wharf wharf;
+
+    Dereference() {}
+    Dereference( std::shared_ptr< Shared > s ) : wharf( s ) {}
+
+    Blob allocate( int size ) { return wharf.allocate( size ); }
+    char *dereference( Blob b ) { return wharf.dereference( b ); }
+    const char *dereference( Blob b ) const { return wharf.dereference( b ); }
+    void free( Blob b ) { wharf.free( b ); }
+    int size( Blob b ) { return wharf.size( b ); }
+    bool valid( Blob b ) { return wharf.valid( b ); }
+    bool alias( Blob a, Blob b ) { return wharf.alias( a, b ); }
+
+    template< typename T > T &get( T &x, int offset = 0 ) {
+        assert( !offset );
+        return x;
+    }
+
+    template< typename T > T &get( Blob b, int offset = 0 ) {
+        return *reinterpret_cast< T * >( wharf.dereference( b ) + offset );
+    }
+
+    template< typename T > T get( Blob b, int offset = 0 ) const {
+        return *reinterpret_cast< const T * >( wharf.dereference( b ) + offset );
+    }
+
+    void copy( Blob from, Blob to ) {
+        assert_leq( size( to ), size( from ) );
+        std::copy( dereference( from ), dereference( from ) + size( from ),
+                   dereference( to ) );
+    }
+
+    void copy( Blob from, Blob to, int length ) {
+        assert_leq( length, size( from ) );
+        assert_leq( length, size( to ) );
+        std::copy( dereference( from ), dereference( from ) + length,
+                   dereference( to ) );
+    }
+
+    void clear( Blob b, int from = 0, int to = 0, char pattern = 0 ) {
+        if ( to == 0 )
+            to = size( b );
+        std::fill( dereference( b ) + from, dereference( b ) + to, pattern );
+    }
+
+    bool lessthan( Blob a, Blob b ) {
+        return std::lexicographical_compare(
+            dereference( a ), dereference( a ) + size( a ),
+            dereference( b ), dereference( b ) + size( b ) );
+    }
+
+    bool equal( Blob a, Blob b, int from = 0, int to = 0 ) {
+        if ( to == 0 ) {
+            if ( size( a ) != size( b ) )
+                return false;
+            to = size( a );
+        }
+        assert_leq( from, to );
+        assert_leq( to, size( a ) );
+        assert_leq( to, size( b ) );
+        return std::equal( dereference( a ) + from, dereference( a ) + to,
+                           dereference( b ) + from );
+    }
+
+    hash_t hash( Blob b ) { return hash( b, 0, size( b ) ); }
+    hash_t hash( Blob b, int from, int to, uint32_t salt = 0 ) {
+        if ( !valid( b ) )
+            return 0;
+        assert_leq( from, to );
+        assert_leq( to, size( b ) );
+        return jenkins3( dereference( b ) + from, to - from, salt );
+    }
+
+    void acquireLock( Blob b ) { assert_unimplemented(); }
+    void releaseLock( Blob b ) { assert_unimplemented(); }
+};
+
+#ifdef O_POOLS
+typedef Dereference< Lake > Pool;
+#else
+typedef Dereference< Pond > Pool;
 #endif
+
+typedef Pool::Blob Blob;
+
+struct UnBlob {
+    Blob b;
+    Pool &p;
+    UnBlob( Pool &p, Blob b ) : b( b ), p( p ) {}
+};
 
 
 // Since < and == operator of blob is to be removed, we want comparer which will work with STL
 struct BlobComparerBase {
 protected:
-    const Pool* m_pool;
+    Pool *_pool;
 
-    BlobComparerBase( Pool& pool ) : m_pool( &pool )
+    BlobComparerBase( Pool& pool ) : _pool( &pool )
     { }
 };
 
@@ -367,13 +533,13 @@ struct BlobComparerEQ : public BlobComparerBase {
     BlobComparerEQ( Pool& pool ) : BlobComparerBase( pool )
     { }
 
-    bool operator()( const Blob& a, const Blob& b ) const {
-        return m_pool->equal( a, b );
+    bool operator()( Blob a, Blob b ) const {
+        return _pool->equal( a, b );
     }
 
     template< typename T >
     bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
-        return m_pool->equal( a.first, b.first ) && a.second == b.second;
+        return _pool->equal( a.first, b.first ) && a.second == b.second;
     }
 
     bool operator()( const std::tuple<>&, const std::tuple<>& ) const {
@@ -415,15 +581,16 @@ struct BlobComparerLT : public BlobComparerBase {
     { }
 
     bool operator()( const Blob& a, const Blob& b ) const {
-        int cmp = m_pool->compare( a, b );
-        return cmp < 0;
+        return _pool->lessthan( a, b );
     }
 
     // lexicongraphic tuple ordering
     template< typename T >
     bool operator()( const std::pair<Blob, T>& a, const std::pair<Blob, T>& b) const {
-        int cmp = m_pool->compare( a.first, b.first );
-        return cmp == 0 ? a.second < b.second : cmp < 0;
+        if ( _pool->lessthan( a.first, b.first ) )
+            return true;
+        else
+            return eq( a.first, b.first ) ? a.second < b.second : false;
     }
 
     bool operator()( const std::tuple<>&, const std::tuple<>& ) const {
@@ -460,18 +627,6 @@ struct BlobComparerLT : public BlobComparerBase {
 
 
 std::ostream &operator<<( std::ostream &o, const Pool &p );
-
-}
-
-namespace std {
-
-template<>
-inline void swap< divine::Pool >( divine::Pool &a, divine::Pool &b )
-{
-#ifdef O_POOLS
-    swap( a.m_groups, b.m_groups );
-#endif
-}
 
 }
 
