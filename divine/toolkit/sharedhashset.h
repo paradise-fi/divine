@@ -78,9 +78,6 @@ struct SharedHashSet {
         }
     }
 
-    unsigned getBorder( unsigned row ) {
-        return thresh * ( initialSize + ( row > 1 ? row - 1 : 0 ) );
-    }
     /**
      * Insert an element into the set. Returns true if the element was added,
      * false if it was already in the set.
@@ -98,8 +95,7 @@ struct SharedHashSet {
             if ( row > 1 )
                 mask = (mask << 1) | 1;
 
-            unsigned border = getBorder( row );
-            for ( unsigned i = 0; i < border; ++i ) {
+            for ( unsigned i = 0; i < thresh * (row + 1); ++i ) {
                 unsigned id = index( h, i, mask );
                 Cell &cell = table[ row ][ id ];
                 hash_t chl = cell.hashLock;
@@ -163,8 +159,7 @@ struct SharedHashSet {
 
             assert( table[ row ].size() - 1 == mask );
 
-            unsigned border = getBorder( row );
-            for ( unsigned i = 0; i < border; ++i ) {
+            for ( unsigned i = 0; i < thresh * (row + 1); ++i ) {
                 unsigned id = index( h, i, mask );
 
                 assert( id < table[ row ].size() );
@@ -173,7 +168,7 @@ struct SharedHashSet {
                 hash_t chl = cell.hashLock;
 
                 if (chl == 0)
-                    continue;
+                    break;
 
                 if ( (chl | 1) == (h | 1) ) {
                     if ( chl & 1 )
