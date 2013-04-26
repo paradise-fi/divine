@@ -28,6 +28,12 @@ struct Dummy : Common< Blob > {
         yield( Node(), b, Label() );
     }
 
+    template< typename N, typename Yield >
+    void successors( N st, Yield yield )
+    {
+        return successors( st.getNode( this->pool() ), yield );
+    }
+
     template< typename Yield >
     void successors( Node st, Yield yield ) {
         Node r;

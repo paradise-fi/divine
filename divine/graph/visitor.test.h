@@ -26,12 +26,14 @@ struct TestHasher< Blob > : default_hasher< Blob > {
     TestHasher( Pool& p, int ) : default_hasher< Blob >( p ) { }
 };
 
-template< typename N > int node( N, Pool& );
+template< typename N > int node( N n, Pool &p ) {
+    return node( n.getNode(), p );
+}
 template< typename N > N makeNode( int, Pool& );
 
-template<> int node< Blob >( Blob b, Pool& p ) {
-    if ( p.valid( b ) )
-        return p.get< int >( b );
+template<> int node( Blob n, Pool &p ) {
+    if ( p.valid( n ) )
+        return p.get< int >( n );
     else return 0;
 }
 template<> int node< int >( int n, Pool& ) { return n; }
@@ -62,8 +64,8 @@ struct TestVisitor {
             return n;
         }
 
-        template< typename Yield >
-        void successors( Node from, Yield yield ) {
+        template< typename V, typename Yield >
+        void successors( V from, Yield yield ) {
             if ( n < 0 )
                 return;
 
