@@ -179,5 +179,10 @@ void TrackStatistics::setup( const Meta &m ) {
     Output::output().setStatsSize( total * 10 + 11, total + 11 );
 }
 
+TrackStatistics::~TrackStatistics() {
+    for ( auto p : threads )
+        delete p;
+}
+
 }
 

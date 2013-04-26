@@ -137,6 +137,8 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         memBaseline = i.peakVmSize();
     }
 
+    ~TrackStatistics();
+
     static TrackStatistics &global() {
         static std::unique_ptr< TrackStatistics > g( new TrackStatistics );
         return *g;
