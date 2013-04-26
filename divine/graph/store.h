@@ -635,7 +635,7 @@ struct HcStore
 
         if ( had ) {
             // copy saved state information
-            pool().copyTo( found, s, slack() );
+            pool().copy( found, s, slack() );
             return std::make_tuple( Vertex( s, found ), had );
         }
         return std::make_tuple( Vertex( found, Node() ), had );
@@ -652,7 +652,7 @@ struct HcStore
     std::tuple< Vertex, bool > store( Blob s, hash_t h ) {
         // store just a stub containing state information
         Blob stub = this->pool().allocate( slack() + int( sizeof( hash_t ) ) );
-        this->pool().copyTo( s, stub, slack() );
+        this->pool().copy( s, stub, slack() );
         stubHash( stub ) = h;
         Node n;
         bool inserted;
@@ -670,7 +670,7 @@ struct HcStore
         std::tie( stub, had ) = table().getHinted( s, h );
         assert( valid( stub ) );
         assert( had );
-        pool().copyTo( s, stub, slack() );
+        pool().copy( s, stub, slack() );
     }
 
     bool has( Node node ) {
@@ -744,7 +744,7 @@ struct CompressedStore
         bool had;
         std::tie( found, had ) = Base::_fetch( node, h );
         if ( had ) {
-            pool().copyTo( found, node, slack() );
+            pool().copy( found, node, slack() );
             return std::make_tuple( Vertex( node, found ), had );
         }
         return std::make_tuple( Vertex( found, Node() ), had );
@@ -758,7 +758,7 @@ struct CompressedStore
         assert( valid( found ) );
         assert( had );
         assert( !alias( node, found ) );
-        pool().copyTo( node, found, slack() );
+        pool().copy( node, found, slack() );
     }
 
     std::tuple< Vertex, bool > store( Node node, hash_t h ) {

@@ -167,8 +167,8 @@ struct CESMI : public Common< Blob > {
         Blob origb = Blob::fromRaw( orig.handle );
         Blob b = _this->pool().allocate( _this->pool().size( origb ) );
 
-        int slack = _this->alloc._slack;
-        _this->pool().copyTo( origb, b );
+        int slack = _this->slack();
+        _this->pool().copy( origb, b );
         _this->pool().clear( b, 0, slack );
         cesmi::cesmi_node n;
         n.memory = _this->pool().dereference( b ) + slack;
