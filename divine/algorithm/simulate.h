@@ -157,8 +157,12 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     // called whenever the current state is changed
     void printUpdate() {
-        std::cerr << "-- you are here (and there are " << succs.size() << " successors):" << std::endl;
-        printCurrent( std::cout );
+        if ( !trace.empty() ) {
+            std::cerr << "-- you are here (and there are " << succs.size() << " successors):" << std::endl;
+            printCurrent( std::cout );
+        } else {
+            std::cerr << "-- choose an initial state (" << succs.size() << " available)" << std::endl;
+        }
     }
 
     bool runCommand( const std::string& cmd ) {
@@ -207,13 +211,14 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     "multiple commands can be separated by a comma\n"
                     << std::endl;
             }
+            printUpdate();
         }
-        printUpdate();
         return true;
     }
 
     void runInteractive() {
         generateInitials();
+        printUpdate();
 
         std::string line;
         do {
