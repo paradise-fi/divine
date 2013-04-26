@@ -18,6 +18,7 @@ struct TestDatastruct {
                 Graph, divine::algorithm::Hasher, Statistics > Store;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
+        typedef typename Store::QueueVertex QueueVertex;
     };
 
     Node first, second, third;
@@ -107,6 +108,7 @@ struct TestDatastruct {
         typedef typename Store::Vertex Vertex;
         typedef typename Store::VertexId VertexId;
         typedef NoStatistics Statistics;
+        typedef typename Store::QueueVertex QueueVertex;
     };
 
     Test sharedQueue() {
@@ -125,7 +127,7 @@ struct TestDatastruct {
     template< typename Queue >
     struct Worker : wibble::sys::Thread
     {
-        typedef typename Queue::Vertex Vertex;
+        typedef typename Queue::QueueVertex QueueVertex;
 
         std::shared_ptr< Queue > queue;
         int add;
@@ -135,7 +137,7 @@ struct TestDatastruct {
         void* main() {
             bool stopPushing = false;
             for ( int i = 0; i < add; ++i ) {
-                queue->push( Vertex( i ) );
+                queue->push( QueueVertex( i ) );
             }
             queue->termination.sync();
             while ( !queue->termination.isZero() ) {
@@ -147,7 +149,7 @@ struct TestDatastruct {
                 }
 
                 if ( i < interleaveAdd ) {
-                    queue->push( Vertex( i ) );
+                    queue->push( QueueVertex( i ) );
                     ++i;
                 }
 
