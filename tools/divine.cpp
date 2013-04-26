@@ -156,8 +156,6 @@ struct Main {
           combine( opts, argc, argv ),
           compile( opts )
     {
-        Output::_output = makeStdIO( std::cerr );
-
         {
             std::ostringstream execCommStr;
             for( int i = 0; i < argc; ++i )
@@ -210,7 +208,7 @@ struct Main {
         a->meta().execution.thisNode = mpi.rank();
 
         if ( mpi.master() ) {
-            setupCurses();
+            setupOutput();
             if ( o_report->boolValue() )
                 _report = &report;
         }
@@ -243,6 +241,8 @@ struct Main {
             report.final( std::cout, a->meta() );
 
         delete a;
+        delete Output::_output;
+        Output::_output = nullptr;
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -262,9 +262,11 @@ struct Main {
         }
     }
 
-    void setupCurses() {
+    void setupOutput() {
         if ( o_curses->boolValue() )
             Output::_output = makeCurses();
+        else
+            Output::_output = makeStdIO( std::cerr );
     }
 
     void setupCommandline()
