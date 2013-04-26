@@ -103,7 +103,7 @@ struct Common {
     Queue _queue;
 
     Pool &pool() {
-        return graph.base().alloc.pool();
+        return graph.pool();
     }
 
     Store &store() { return _store; }
@@ -255,7 +255,7 @@ struct Partitioned {
         Store &store() { return _store; }
 
         Pool &pool() {
-            return graph.base().alloc.pool();
+            return graph.pool();
         }
 
         int owner( Node n, hash_t hint = 0 ) const {
@@ -274,8 +274,8 @@ struct Partitioned {
 
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
             int _to = owner( to, hint ), _from = worker.id();
-            Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
-            worker.submit( _from, _to, std::make_tuple( from.toQueue( pool() ),
+            Statistics::global().sent( _from, _to, sizeof(from) + memSize(to, graph.base().alloc.pool() ) );
+            worker.submit( _from, _to, std::make_tuple( _store.toQueue( from ),
                                                         to, label ) );
         }
 
@@ -314,12 +314,12 @@ struct Partitioned {
                             auto p = worker.comms().take( from, to );
                             Statistics::global().received(
                                 from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
-                                    graph.base().alloc.pool() ) );
+                                    graph.pool() ) );
                             auto fromData = std::get< 0 >( p ).fromQueue( pool() );
                             bfv.edge( fromData,
                                     std::get< 1 >( p ),
                                     std::get< 2 >( p ) );
-                            fromData.free( graph.base().alloc.pool() );
+                            fromData.free( graph.pool() );
                         }
                     }
 

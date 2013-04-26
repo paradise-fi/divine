@@ -70,8 +70,8 @@ struct CESMI : public Common< Blob > {
 
     cesmi::cesmi_node data( Blob b ) {
         cesmi::cesmi_node n;
-        n.handle = b.ptr,
-        n.memory = alloc.pool().data( b ) + alloc._slack;
+        n.handle = b.raw(),
+        n.memory = pool().data( b ) + slack();
         return n;
     }
 
@@ -155,10 +155,7 @@ struct CESMI : public Common< Blob > {
 
     static cesmi::cesmi_node make_node( const cesmi::cesmi_setup *setup, int size ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
-        int slack = _this->alloc._slack;
-        Blob b( _this->alloc.pool(), size + slack );
-        if ( slack )
-            _this->pool().clear( b, 0, slack );
+        Blob b = _this->makeBlob( size );
         cesmi::cesmi_node n;
         n.memory = _this->pool().data( b ) + slack;
         n.handle = b.ptr;
@@ -307,7 +304,7 @@ struct CESMI : public Common< Blob > {
 
         if ( dl.show_transition && from.valid() ) {
             _successors( from, [&]( Node n, int handle ) {
-                    if ( pool().compare( to, n, alloc._slack, pool().size( n ) ) == 0 )
+                    if ( pool().compare( to, n, slack(), pool().size( n ) ) == 0 )
                         fmt = dl.show_transition( &setup, data( from ), handle );
                 }, dl.get_successor );
         }

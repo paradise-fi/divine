@@ -55,7 +55,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     CE ce;
 
     Pool& pool() {
-        return this->graph().base().alloc.pool();
+        return this->graph().pool();
     }
 
     Extension &extension( Vertex n ) {

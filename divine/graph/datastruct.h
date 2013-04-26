@@ -71,7 +71,7 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     int id;
 
     Pool &pool() {
-        return g.base().alloc.pool();
+        return g.pool();
     }
 
     QueueVertex front() { return _queue.front(); }
@@ -237,7 +237,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     Chunk incoming;
 
     Pool &pool() {
-        return g.base().alloc.pool();
+        return g.pool();
     }
 
     ChunkQ &chunkq() { return *_chunkq; }

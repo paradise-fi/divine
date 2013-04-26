@@ -45,7 +45,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     int id() { return 0; } // expected by AlgorithmUtils
 
     inline Pool& pool() {
-        return this->graph().base().alloc.pool();
+        return this->graph().pool();
     }
 
     void runInner( Graph &graph, Node n ) {

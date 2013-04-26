@@ -57,7 +57,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     }
 
     Pool& pool() {
-        return this->graph().base().alloc.pool();
+        return this->graph().pool();
     }
 
     static visitor::ExpansionAction expansion( This &t, Vertex st )

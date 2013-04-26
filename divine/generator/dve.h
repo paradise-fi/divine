@@ -55,7 +55,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Yield >
     void yieldSuccessor( Node from, dve::System::Continuation p, Yield yield) {
-        Blob b = alloc.new_blob( stateSize() );
+        Blob b = makeBlob( stateSize() );
         memcpy( mem( b ), mem( from ), stateSize() );
         updateMem( b );
         system->apply( ctx, p );
@@ -163,7 +163,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Yield >
     void initials( Yield yield ) {
-        Blob b = alloc.new_blob( stateSize() );
+        Blob b = makeBlob( stateSize() );
         updateMem( b );
         system->initial( ctx );
         yield( Node(), b, Label() );
@@ -234,7 +234,7 @@ struct Dve : public Common< Blob > {
     }
 
     char *mem( Node s ) {
-        return &pool().get< char >( s, alloc._slack );
+        return &pool().get< char >( s, slack() );
     }
 
     void updateMem( Node s ) {
@@ -254,14 +254,14 @@ struct Dve : public Common< Blob > {
         std::string transLabel = "";
 
         enabledConts( from, [&]( dve::System::Continuation p ) {
-                Blob b = this->alloc.new_blob( stateSize() );
+                Blob b = this->makeBlob( stateSize() );
                 memcpy( mem( b ), mem( from ), stateSize() );
                 updateMem( b );
 
                 this->system->apply( this->ctx, p );
 
                 updateMem( from );
-                if ( pool().compare( b, to, this->alloc._slack, pool().size( b ) ) == 0 ) {
+                if ( pool().compare( b, to, this->slack(), pool().size( b ) ) == 0 ) {
                     std::stringstream str;
                     this->system->printTrans( str, this->ctx, p );
                     transLabel = str.str();

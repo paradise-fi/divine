@@ -509,7 +509,7 @@ struct Store
 
     template < typename Graph >
     Store( Graph& g, int slack, This *m = nullptr ) :
-             This( g, Hasher( g.base().alloc.pool(), slack ), m )
+             This( g, Hasher( g.pool(), slack ), m )
     { }
 
     std::tuple< Vertex, bool > wrapTuple( std::tuple< Node, bool > tuple ) {
@@ -601,7 +601,7 @@ struct HcStore
 
     template < typename Graph >
     HcStore( Graph& g, Hasher h, This *master = nullptr ) :
-        Base( master, h ), _alloc( g.base().alloc )
+        Base( master, h )
     {
         static_assert( wibble::TSame< typename Graph::Node, Node >::value,
                 "using incompatible graph" );
@@ -609,10 +609,16 @@ struct HcStore
 
     template < typename Graph >
     HcStore( Graph& g, int slack, This *m = nullptr ) :
-             This( g, Hasher( g.base().alloc.pool(), slack ), m )
+             This( g, Hasher( g.pool(), slack ), m )
     { }
 
-    Allocator& _alloc;
+    Vertex fromQueue( QueueVertex v ) {
+        return v;
+    }
+
+    QueueVertex toQueue( Vertex v ) {
+        return v;
+    }
 
     hash_t& stubHash( Blob stub ) {
         return pool().template get< hash_t >( stub, slack() );
@@ -645,7 +651,7 @@ struct HcStore
 
     std::tuple< Vertex, bool > store( Blob s, hash_t h ) {
         // store just a stub containing state information
-        Blob stub = _alloc.new_blob( int( sizeof( hash_t ) ) );
+        Blob stub = this->pool().allocate( slack() + int( sizeof( hash_t ) ) );
         this->pool().copyTo( s, stub, slack() );
         stubHash( stub ) = h;
         Node n;
@@ -785,6 +791,71 @@ struct CompressedStore
     }
 };
 
+template < template < typename, typename, template <
+              template < typename, typename > class,
+              typename, typename > class
+            > class Utils,
+            typename _Generator, typename _Hasher, typename Statistics >
+struct TreeCompressedStore : public CompressedStore< Utils,
+        TreeCompressedHashSet, _Generator, _Hasher, Statistics >
+{
+    using Base = CompressedStore< Utils, TreeCompressedHashSet, _Generator,
+          _Hasher, Statistics >;
+    using TableUtils = typename Base::TableUtils;
+    using This = TreeCompressedStore< Utils, _Generator, _Hasher, Statistics >;
+    using VertexId = typename Base::VertexId;
+    using Vertex = typename Base::Vertex;
+    using QueueVertex = typename Base::QueueVertex;
+    STORE_CLASS;
+
+    template< typename Graph >
+    TreeCompressedStore( Graph& g, Hasher h ) : This( g, h, nullptr )
+    { }
+
+    template< typename Graph, typename... Args >
+    TreeCompressedStore( Graph& g, int slack, This *m, Args&&... args ) :
+        This( g, _Hasher( g.base().alloc.pool(), slack ), m, std::forward< Args >( args )... )
+    { }
+
+    template< typename Graph, typename... Args >
+    TreeCompressedStore( Graph& g, Hasher h, This *m, Args&&... args ) :
+        Base( g, h, m, 16, std::forward< Args >( args )... )
+    { }
+
+    Vertex fromQueue( QueueVertex v ) {
+        return fetchByVertexId( v );
+    }
+
+    VertexId fetchVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return vi;
+        return VertexId( std::get< 0 >( Base::_fetch( vi.node, _hash( vi ) ) ) );
+    }
+
+    Vertex fetchByVertexId( VertexId vi ) {
+        if ( !vi.valid() )
+            return Vertex();
+        vi = fetchVertexId( vi );
+        return Vertex( table().getReassembled( vi.node ), vi.node );
+    }
+
+    using Base::owner;
+
+    template< typename W >
+    int owner( W &w, VertexId h ) {
+        return _owner( w, _hash( h ) );
+    }
+
+    STORE_ITERATOR;
+
+  private:
+    hash_t _hash( VertexId vi ) {
+        return table().header( vi.node ).fork
+                ? table().rootFork( vi.node )->hash
+                : table().m_roots.hasher.hash( vi.node );
+    }
+
+};
 
 template < typename Hasher >
 struct NTHasher : public Hasher {
@@ -853,7 +924,7 @@ struct NTreeStore : public CompressedStore< Utils,
 
     template< typename Graph, typename... Args >
     NTreeStore( Graph& g, int slack, This *m, Args&&... args ) :
-        This( g, _Hasher( g.base().alloc.pool(), slack ), m, std::forward< Args >( args )... )
+        This( g, _Hasher( g.pool(), slack ), m, std::forward< Args >( args )... )
     { }
 
     template< typename Graph, typename... Args >

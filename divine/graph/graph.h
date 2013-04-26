@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
 
-#include <divine/graph/allocator.h>
 #include <vector>
+#include <divine/toolkit/pool.h>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -22,10 +22,29 @@ struct Base {
     typedef _Node Node;
     typedef wibble::Unit Label;
 
-    Allocator alloc;
-    int setSlack( int s ) { alloc.setSlack( s ); return s; }
-    Pool &pool() { return alloc.pool(); }
+    Pool _pool;
+    int _slack;
+
+    int setSlack( int s ) { return _slack = s; }
+    Pool &pool() { return _pool; }
+    void setPool( Pool p ) { _pool = p; }
+    int slack() { assert_leq( 0, _slack ); return _slack; }
     void initPOR() {}
+
+    Blob makeBlob( int s ) {
+        Blob b = pool().allocate( s + slack() );
+        if ( slack() )
+            pool().clear( b, 0, slack() );
+        return b;
+    }
+
+    Blob makeBlobCleared( int s ) {
+        Blob b = pool().allocate( s + slack() );
+        pool().clear( b );
+        return b;
+    }
+
+    Base() : _slack( 0 ) {}
 
     // for single-set acceptance conditions (Buchi)
     bool isAccepting( Node s ) { return false; }
@@ -101,7 +120,7 @@ struct Base {
 
     template< typename Yield >
     void splitHint( Node n, Yield yield ) {
-        return splitHint( n, alloc.slack(), alloc.pool().size( n ) - alloc.slack(), yield );
+        return splitHint( n, slack(), pool().size( n ) - slack(), yield );
     }
 
     std::string showConstdata() { return ""; }
@@ -118,6 +137,7 @@ struct Transform {
 
     G &base() { return _base; }
     Pool &pool() { return base().pool(); }
+    int slack() { return base().slack(); }
 
     template< typename Yield >
     void successors( Node st, Yield yield ) { base().successors( st, yield ); }

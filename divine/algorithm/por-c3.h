@@ -73,15 +73,11 @@ struct PORGraph : graph::Transform< G > {
     void updatePredCount( VertexId t, int v ) {
         extension( t ).predCount = v;
         if ( _predCount )
-            _predCount( pool(), t, v );
+            _predCount( this->pool(), t, v );
     }
 
-    PORGraph() : _predCount( 0 ), bcomp( pool() ) {
+    PORGraph() : _predCount( 0 ), bcomp( this->pool() ) {
         this->base().initPOR();
-    }
-
-    Pool& pool() {
-        return this->base().alloc.pool();
     }
 
     int setSlack( int s ) {
@@ -90,7 +86,7 @@ struct PORGraph : graph::Transform< G > {
     }
 
     Extension &extension( VertexId n ) {
-        return n.template extension< Extension >( pool(), m_algslack );
+        return n.template extension< Extension >( this->pool(), m_algslack );
     }
 
     Extension &extension( Vertex n ) {
@@ -110,9 +106,9 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void successors( Vertex st, Yield yield ) {
         if ( extension( st ).full )
-            this->base().successors( st.getNode( pool() ), yield );
+            this->base().successors( st.getNode( this->pool() ), yield );
         else
-            this->base().ample( st.getNode( pool() ), yield );
+            this->base().ample( st.getNode( this->pool() ), yield );
     }
 
     void porTransition( Vertex f, Vertex t, int* pc ) {
@@ -121,7 +117,7 @@ struct PORGraph : graph::Transform< G > {
             return; // ignore
 
         // increase predecessor count
-        if ( f.getNode().valid() )
+        if ( this->pool().valid( f.getNode() ) )
             updatePredCount( t, predCount( t ) + 1, pc );
     }
 

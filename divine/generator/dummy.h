@@ -18,12 +18,12 @@ struct Dummy : Common< Blob > {
     };
 
     Content &content( Blob b ) {
-        return pool().get< Content >( b, alloc._slack );
+        return pool().get< Content >( b, slack() );
     }
 
     template< typename Yield >
     void initials( Yield yield ) {
-        Blob b = alloc.new_blob( sizeof( Content ) );
+        Blob b = this->makeBlob( sizeof( Content ) );
         content( b ) = std::make_pair( 0, 0 );
         yield( Node(), b, Label() );
     }
@@ -36,14 +36,14 @@ struct Dummy : Common< Blob > {
             return;
 
         if ( content( st ).first < 512 ) {
-            r = alloc.new_blob( sizeof( Content ) );
+            r = this->makeBlob( sizeof( Content ) );
             content( r ) = content( st );
             content( r ).first ++;
             yield( r, Label( 7 ) );
         }
 
         if ( content( st ).second < 512 ) {
-            r = alloc.new_blob( sizeof( Content ) );
+            r = this->makeBlob( sizeof( Content ) );
             content( r ) = content( st );
             content( r ).second ++;
             yield( r, Label( 3 ) );
@@ -55,7 +55,7 @@ struct Dummy : Common< Blob > {
     }
 
     bool isGoal( Node s ) {
-        Content f = pool().get< Content >( s, alloc._slack );
+        Content f = pool().get< Content >( s, this->slack() );
         return f.first == 512;
     }
 
@@ -63,7 +63,7 @@ struct Dummy : Common< Blob > {
     std::string showNode( Node s ) {
         if ( !pool().valid( s ) )
             return "[]";
-        Content f = pool().get< Content >( s, alloc._slack );
+        Content f = pool().get< Content >( s, this->slack() );
         std::stringstream stream;
         stream << "[" << f.first << ", " << f.second << "]";
         return stream.str();

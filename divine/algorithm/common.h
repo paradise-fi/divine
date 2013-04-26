@@ -130,7 +130,7 @@ struct Algorithm
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
         self.graph().setSlack( m_slack );
-        int slack = self.graph().base().alloc.slack();
+        int slack = self.graph().base().slack();
         typename Self::Store *s =
             new typename Self::Store( self.graph(), slack,
                     master ? &master->store() : nullptr );
@@ -204,7 +204,7 @@ struct AlgorithmUtils {
     }
 
     Pool& pool() {
-        return graph().base().alloc.pool();
+        return graph().pool();
     }
 
     Store &store() {

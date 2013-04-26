@@ -37,7 +37,7 @@ struct TestDatastruct {
     template< typename Q >
     void _queue(generator::Dummy& d, Q& q) {
         typedef typename SeqSetup::Vertex Vertex;
-        auto getShort = [&d]( Node n, int p ) { return d.alloc.pool().template get< short >( n, p ); };
+        auto getShort = [&d]( Node n, int p ) { return d.pool().template get< short >( n, p ); };
         int count = 0;
 
         init( d );
@@ -61,12 +61,12 @@ struct TestDatastruct {
                 if ( count == 0 ) {
                     assert_eq( getShort( n, 0 ), 1 );
                     assert_eq( getShort( n, 2 ), 0 );
-                    assert( d.alloc.pool().equal( n, second ) );
+                    assert( d.pool().equal( n, second ) );
                 }
                 if ( count == 1 ) {
                     assert_eq( getShort( n, 0 ), 0 );
                     assert_eq( getShort( n, 2 ), 1 );
-                    assert( d.alloc.pool().equal( n, third ) );
+                    assert( d.pool().equal( n, third ) );
                 }
                 ++ count;
             } );
@@ -210,7 +210,7 @@ struct TestDatastruct {
         generator::Dummy d;
         Stack< SeqSetup > q( d );
         bool die = true;
-        auto getShort = [&d]( Node f, int p ) { return d.alloc.pool().get< short >( f, p ); };
+        auto getShort = [&d]( Node f, int p ) { return d.pool().get< short >( f, p ); };
 
         init( d );
 

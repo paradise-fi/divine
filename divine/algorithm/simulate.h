@@ -36,13 +36,13 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     Extension &extension( Vertex n ) {
         return n.getVertexId().template extension< Extension >(
-                this->graph().base().alloc.pool() );
+                this->graph().pool() );
     }
 
     // clear the successor list
     void clearSuccs() {
         for ( auto& s : succs ) {
-            s.free( this->graph().base().alloc.pool() );
+            s.free( this->graph().pool() );
         }
         succs.clear();
     }

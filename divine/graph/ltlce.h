@@ -73,7 +73,7 @@ struct LtlCE {
     }
 
     Pool& pool() {
-        return g().base().alloc.pool();
+        return g().pool();
     }
 
     Extension& extension( VertexId vi ) {

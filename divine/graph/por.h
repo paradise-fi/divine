@@ -43,7 +43,7 @@ struct NonPORGraph : graph::Transform< G > {
 
     template< typename Yield >
     void successors( Vertex st, Yield yield ) {
-        this->base().successors( st.getNode( this->base().alloc.pool() ), yield );
+        this->base().successors( st.getNode( this->base().pool() ), yield );
     }
 };
 

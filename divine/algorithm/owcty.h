@@ -80,7 +80,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     using AlgorithmUtils< Setup >::store;
     Pool& pool() {
-        return this->graph().base().alloc.pool();
+        return this->graph().pool();
     }
 
     static Extension &extension( Pool pool, VertexId n ) {
