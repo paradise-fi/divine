@@ -845,8 +845,6 @@ struct NTreeStore : public CompressedStore< Utils,
     { }
 
     std::tuple< Vertex, bool > store( Node node, hash_t h ) {
-        Statistics::global().hashadded( _id->id(), memSize( node, pool() ) );
-        Statistics::global().hashsize( _id->id(), table().size() );
         Root* root;
         bool inserted;
         std::tie( root, inserted ) =
