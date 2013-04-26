@@ -237,7 +237,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     }
 
     ChunkQ &chunkq() { return *_chunkq; }
-    SharedQueue( ChunkQPtr ch, Graph& g, TerminatorPtr t ) : g( g ), id( 0 ), maxChunkSize( 1024 ), chunkSize( 8 ), _chunkq( ch ), termination( *t )
+    SharedQueue( ChunkQPtr ch, Graph& g, TerminatorPtr t ) : g( g ), id( 0 ), maxChunkSize( 64 ), chunkSize( 2 ), _chunkq( ch ), termination( *t )
     {}
 
     ~SharedQueue() { flush(); }
