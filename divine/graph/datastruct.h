@@ -262,8 +262,8 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
         }
     }
 
-    void push( const Vertex &b ) {
-        /* TODO statistics */
+    void push( const QueueVertex &b ) {
+        Statistics::global().enqueue( id, sizeof( QueueVertex ) );
         ++termination;
         outgoing.push_back( b );
         if ( outgoing.size() >= chunkSize )
@@ -274,7 +274,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
         return incoming.front();
     }
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( Vertex ) );
+        Statistics::global().dequeue( id, sizeof( QueueVertex ) );
         --termination;
         incoming.pop_front();
     }
