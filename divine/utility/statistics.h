@@ -29,9 +29,9 @@ struct NoStatistics {
     std::ostream *output;
     bool gnuplot;
 
+    static NoStatistics _global;
     static NoStatistics &global() {
-        static std::unique_ptr< NoStatistics > g( new NoStatistics );
-        return *g;
+        return _global;
     }
 
     template< typename D >

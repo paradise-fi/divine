@@ -9,6 +9,8 @@
 
 namespace divine {
 
+NoStatistics NoStatistics::_global;
+
 void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
         int sum = 0;
