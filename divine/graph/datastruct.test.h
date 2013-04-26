@@ -95,6 +95,7 @@ struct TestDatastruct {
     Test queue() {
         generator::Dummy d;
         Queue< SeqSetup > q( d );
+        d.setPool( Pool() );
         _queue( d, q );
     }
 
@@ -114,6 +115,7 @@ struct TestDatastruct {
         Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
         Queue::ChunkQPtr ch = std::make_shared< Queue::ChunkQ >();
 
+        d.setPool( Pool() );
         Queue q( ch, d, t );
         q.maxChunkSize = 1;
         q.chunkSize = 1;
@@ -212,6 +214,7 @@ struct TestDatastruct {
         bool die = true;
         auto getShort = [&d]( Node f, int p ) { return d.pool().get< short >( f, p ); };
 
+        d.setPool( Pool() );
         init( d );
 
         assert( q.empty() );

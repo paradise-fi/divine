@@ -44,7 +44,7 @@ struct Base {
         return b;
     }
 
-    Base() : _slack( 0 ) {}
+    Base() : _pool( nullptr ), _slack( 0 ) {}
 
     // for single-set acceptance conditions (Buchi)
     bool isAccepting( Node s ) { return false; }
@@ -173,6 +173,7 @@ struct Transform {
         base().initials( yield );
     }
 
+    void setPool( Pool p ) { base().setPool( p ); }
     int setSlack( int s ) { return base().setSlack( s ); }
     Node clone( Node n ) { return base().clone( n ); }
 

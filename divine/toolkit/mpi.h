@@ -299,7 +299,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
     }
 
     MpiForwarder( Barrier< Terminable > *barrier, Comms *comms, int total, int min, int max )
-        : m_comms( comms ), m_barrier( barrier )
+        : pool( nullptr ), m_comms( comms ), m_barrier( barrier )
     {
         buffers.resize( total, total );
         for ( size_t i = 0; i < total; ++i ) {
