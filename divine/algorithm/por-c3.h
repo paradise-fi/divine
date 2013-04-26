@@ -9,23 +9,6 @@
 namespace divine {
 namespace algorithm {
 
-template< typename T >
-struct AddressCompare {
-    bool operator()( Blob a, Blob b ) {
-        return a.ptr < b.ptr;
-    }
-};
-
-template< typename T > struct AddressCompare< std::pair< Blob, T > > {
-    bool operator()( std::pair< Blob, T > a, std::pair< Blob, T > b ) {
-        if ( a.first.ptr < b.first.ptr )
-            return true;
-        if ( a.first.ptr == b.first.ptr )
-            return a.second < b.second;
-        return false;
-    }
-};
-
 // Implements a (parallel) check of the POR cycle proviso.
 template< typename G, typename Store, typename Statistics >
 struct PORGraph : graph::Transform< G > {
@@ -41,8 +24,6 @@ struct PORGraph : graph::Transform< G > {
             return a.weakId() < b.weakId();
         }
     };
-
-    template< typename T > using ASet = std::set< T, AddressCompare< T > >;
 
     int m_algslack;
 
@@ -242,7 +223,8 @@ struct PORGraph : graph::Transform< G > {
     void fullexpand( Yield yield, Vertex v ) {
         extension( v ).full = true;
         Node n = v.getNode();
-        ASet< std::pair< Node, Label > > all, ample, out;
+        BlobComparerLT bcomp( this->pool() );
+        std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ) , ample( bcomp ), out( bcomp );
         std::vector< std::pair< Node, Label > > extra;
 
         this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
