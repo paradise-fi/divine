@@ -204,7 +204,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 trans.front() --;
             } );
 
-        assert( from.getNode().valid() );
+        assert( this->store().valid( from.getNode() ) );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
             extension( from ).intrace = true;
@@ -253,7 +253,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         do {
             this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
-                    Vertex fV = f.valid()
+                    Vertex fV = this->store().valid( f )
                         ? std::get< 0 >( this->store().fetch( f, this->store().hash( f ) ) )
                         : Vertex();
                     visitor.queue( fV, t, l );

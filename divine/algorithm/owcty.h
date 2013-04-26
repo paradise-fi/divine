@@ -111,7 +111,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     VertexId cycleNode() {
         if ( shared.cycle_found ) {
-            assert( shared.cycle_node.valid() );
+            assert( this->store().valid( shared.cycle_node ) );
             return shared.cycle_node;
         }
 
@@ -135,7 +135,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     template< typename V >
     void queueAll( V &visitor, bool reset = false ) {
         for ( VertexId st : this->store() ) {
-            if ( st.valid() ) {
+            if ( this->store().valid( st ) ) {
                 if ( reset )
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
@@ -216,7 +216,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
-            if ( !o.extension( to ).parent.valid() )
+            if ( !o.store().valid( o.extension( to ).parent ) )
                 o.extension( to ).parent = from.getVertexId();
             if ( o.store().valid( from ) ) {
                 MapVertexId fromMap = o.getMap( from );
@@ -361,7 +361,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     };
 
     void _checkCycle() {
-        assert( shared.cycle_node.valid() );
+        assert( this->store().valid( shared.cycle_node ) );
         this->visit( this, FindCE() );
     }
 
@@ -374,7 +374,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 return shared;
             }
             shared.cycle_node = st;
-            if ( !st.valid() )
+            if ( !this->store().valid( st ) )
                 continue;
             if ( extension( st ).iteration == shared.iteration )
                 continue; // already seen

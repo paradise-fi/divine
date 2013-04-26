@@ -200,9 +200,9 @@ struct LtlCE {
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
-            if ( !from.getNode().valid() )
+            if ( !t.pool().valid( from.getNode() ) )
                 return visitor::TransitionAction::Expand;
-            if ( from.getNode().valid() && t.whichInitial( to.getNode() ) ) {
+            if ( t.pool().valid( from.getNode() ) && t.whichInitial( to.getNode() ) ) {
                 t.extension( to ).parent = from.getVertexId();
                 return visitor::TransitionAction::Terminate;
             }
@@ -220,7 +220,7 @@ struct LtlCE {
         typename Find::Visitor::template Implementation< Find, Algorithm >
             visitor( *this, a, a.graph(), a.store(), a.data );
 
-        assert( shared().ce.parent.valid() );
+        assert( a.store().valid( shared().ce.parent ) );
         if ( a.store().owner( a, shared().ce.parent ) == a.id() ) {
             assert( a.store().owner( a, shared().ce.initial ) == a.id() );
             Vertex par = std::get< 0 >( a.store().fetch( shared().ce.parent,
@@ -271,7 +271,7 @@ struct LtlCE {
         NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
-            if ( trace.back().valid() ) {
+            if ( pool().valid( trace.back() ) ) {
                 o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
                 _g.release( trace.back() );
             } else {
@@ -407,7 +407,7 @@ struct LtlCE {
                 initial = std::get< 0 >( a.store().fetch( initial,
                             a.store().hash( initial ) ) ).getNode();
                 visitor::setPermanent( a.pool(), initial );
-                assert( initial.valid() );
+                assert( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
                 trace.push_back( initial );
                 numTrace.push_back( shared().ce.successor_id );
@@ -467,7 +467,7 @@ struct LtlCE {
                             }
                         }
                     } );
-                assert( parent.valid() );
+                assert( a.pool().valid( parent ) );
                 visitor::setPermanent( a.pool(), parent );
                 trace.push_back( parent );
                 numTrace.push_back( i );

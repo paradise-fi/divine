@@ -44,6 +44,7 @@ struct Hasher {
     }
 
     bool valid( Blob a ) const { return pool.valid( a ); }
+    bool alias( Blob a, Blob b ) { return pool.alias( a, b ); }
 };
 
 template< typename _Listener, typename _AlgorithmSetup >
@@ -60,10 +61,10 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
         a.graph().initials( [ &a, &v ] ( Node f, Node n, Label l ) {
                 bool had = true;
                 Vertex fV = Vertex();
-                if ( f.valid() )
+                if ( a.store().valid( f ) )
                    std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
                 assert( had );
-                assert( !f.valid() || a.store().valid( fV ) );
+                assert( !a.store().valid( f ) || a.store().valid( fV ) );
                 v.queue( fV, n, l );
             } );
     }
@@ -73,10 +74,10 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
         a.graph().porExpand( a.store(), [ &a, &v ] ( Node f, Node n, Label l ) {
                 bool had = true;
                 Vertex fV = Vertex();
-                if ( f.valid() )
+                if ( a.store().valid( f ) )
                    std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
                 assert( had );
-                assert( !f.valid() || a.store().valid( fV ) );
+                assert( !a.store().valid( f ) || a.store().valid( fV ) );
                 v.queueAny( fV, n, l );
             } );
     }

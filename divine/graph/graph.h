@@ -200,7 +200,7 @@ struct Transform {
     template< typename Alg >
     int successorNum( Alg &a, Node current, Node next, int fromIndex = 0 )
     {
-        if ( !current.valid() || !next.valid() )
+        if ( !pool().valid( current ) || !pool().valid( next ) )
             return 0;
 
         int edge = 0;

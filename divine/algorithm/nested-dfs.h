@@ -101,7 +101,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
         this->graph().initials( [&]( Node f, Node t, Label l ) {
-                assert( !f.valid() );
+                assert( !this->store().valid( f ) );
                 visitor.queue( Vertex(), t, l );
         } );
         visitor.processQueue();
@@ -154,7 +154,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             Node to = toV.getNode();
 
             dfs.stats.addEdge( dfs.graph(), from, to );
-            if ( from.valid() && !dfs.graph().full( from ) &&
+            if ( dfs.store().valid( from ) && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
                 dfs.toexpand.push_back( dfs.graph().clone( from ) );
             return visitor::TransitionAction::Follow;
@@ -195,7 +195,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
             // The search always starts with a transition from "nowhere" into the
             // initial state. Ignore this transition here.
-            if ( from.valid() && dfs.pool().pointer( to ) == dfs.pool().pointer( dfs.seed ) ) {
+            if ( dfs.pool().valid( from ) &&
+                 dfs.pool().dereference( to ) == dfs.pool().dereference( dfs.seed ) ) {
                 dfs.valid = false;
                 return visitor::TransitionAction::Terminate;
             }

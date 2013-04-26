@@ -23,7 +23,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Yield >
     void enabledConts( Node from, Yield yield ) {
-        if ( !from.valid() )
+        if ( !pool().valid( from ) )
             return;
 
         updateMem( from );
@@ -248,7 +248,7 @@ struct Dve : public Common< Blob > {
     }
 
     std::string showTransition( Node from, Node to, Label ) {
-        if ( !from.valid() || !to.valid() )
+        if ( !pool().valid( from ) || !pool().valid( to ) )
             return "";
 
         std::string transLabel = "";

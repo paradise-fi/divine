@@ -167,7 +167,7 @@ struct StoreCommon : public TableUtils {
     template < typename Select, typename VertexId >
     ptrdiff_t _compareId( Select select, VertexId a, VertexId b ) {
         // ID are permanets and therefore one state can have only one ID
-        return select( a ).ptr - select( b ).ptr;
+        return select( a ).raw() - select( b ).raw();
     }
 };
 
@@ -297,16 +297,6 @@ class StoreIterator
     }
 };
 
-template < typename T >
-bool _valid( T t ) {
-    return t.valid();
-}
-
-template < typename T >
-bool _valid( T* t ) {
-    return t != nullptr;
-}
-
 template < typename T, typename Extension >
 inline Extension& _extension( T t, Pool& p, int n, Extension* ) {
     return p.template get< Extension >( t, n );
@@ -319,7 +309,7 @@ inline Extension& _extension( Root* root, Pool&, int n, Extension* ) {
 
 template < typename T >
 inline uintptr_t _weakId( T t ) {
-    return t.valid() ? reinterpret_cast< uintptr_t >( t.ptr ) : 0;
+    return t.raw();
 }
 
 template < typename T >
@@ -343,10 +333,6 @@ struct StdVertexId {
     Extension& extension( Pool& p, int n = 0 ) {
         return _extension( node, p, n,
                 reinterpret_cast< Extension* >( 0 ) );
-    }
-
-    bool valid() {
-        return _valid( node );
     }
 
     template < typename BS >

@@ -36,7 +36,7 @@ struct Statistics {
 
     template< typename G >
     void addEdge( G &g, typename G::Node n, typename G::Node ) {
-        if ( n.valid() )
+        if ( g.pool().valid( n ) )
             ++ transitions;
     }
 
