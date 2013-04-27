@@ -26,10 +26,19 @@ inline int align( int v, int a ) {
 typedef uint32_t hash_t;
 
 /*
- * A lake keeps track of memory in a compact, fast, thread-optimised
- * fashion. It uses out-of-line, per-thread freelists to make allocations less
- * susceptible to cacheline pong. Excess free memory is linked into a global
- * freelist which is used when the locals run out.
+ * A lake keeps track of memory in a compact, fast, thread-optimised fashion.
+ * It is organised into blocks of objects of a single size. The Pointer type
+ * can be cheaply converted into an actual pointer or to the size of the object
+ * it points to. Both pointers and their dereferences are stable (no object
+ * moving happens). Freelists are inline and used in LIFO order, to minimise
+ * cache turnaround. Excess free memory is linked into a global freelist which
+ * is used when the thread-local lists and partial blocks run out.
+ *
+ * A single item is limited to 2^24 bytes (16M). Total memory use is capped at
+ * roughly 16T (more if you use big objects), but can be easily extended. If
+ * compiled in debug mode, (without -DNVALGRIND), destroying a Lake will give
+ * you some usage statistics. During runtime, valgrind will be kept up to date
+ * about memory use and accessibility.
  */
 struct Lake {
 
@@ -432,9 +441,18 @@ struct Dereference {
     Dereference() {}
     Dereference( std::shared_ptr< Shared > s ) : wharf( s ) {}
 
+
+    template< typename T = char >
+    T *dereference( Blob b ) {
+        return reinterpret_cast< T * >( wharf.dereference( b ) );
+    }
+
+    template< typename T = char >
+    const T *dereference( Blob b ) const {
+        return reinterpret_cast< T * >( wharf.dereference( b ) );
+    }
+
     Blob allocate( int size ) { return wharf.allocate( size ); }
-    char *dereference( Blob b ) { return wharf.dereference( b ); }
-    const char *dereference( Blob b ) const { return wharf.dereference( b ); }
     void free( Blob b ) { wharf.free( b ); }
     int size( Blob b ) { return wharf.size( b ); }
     bool valid( Blob b ) { return wharf.valid( b ); }
