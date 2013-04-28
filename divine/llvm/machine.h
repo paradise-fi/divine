@@ -2,7 +2,7 @@
 
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
-#include <divine/graph/allocator.h>
+#include <divine/graph/graph.h>
 
 #ifndef DIVINE_LLVM_MACHINE_H
 #define DIVINE_LLVM_MACHINE_H
@@ -291,7 +291,7 @@ struct MachineState
     std::vector< Problem > problems;
 
     ProgramInfo &_info;
-    Allocator &_alloc;
+    graph::Allocator &_alloc; /* XXX */
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
@@ -583,7 +583,7 @@ struct MachineState
                stack + size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }
 
-    MachineState( ProgramInfo &i, Allocator &alloc )
+    MachineState( ProgramInfo &i, graph::Allocator &alloc )
         : _info( i ), _alloc( alloc )
     {
         _thread_count = 0;

@@ -212,7 +212,7 @@ divine::Blob MachineState::snapshot()
     }
 
     int problemcount = flags().problemcount + problems.size();
-    Blob b = _alloc.new_blob(
+    Blob b = _alloc.makeBlobCleared(
         size( canonic.stack, canonic.allocated, canonic.segcount,
               flags().problem ? problemcount : 0 ) );
 

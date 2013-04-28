@@ -14,7 +14,7 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Interpreter( Allocator &alloc, std::shared_ptr< BitCode > bc )
+Interpreter::Interpreter( graph::Allocator &alloc, std::shared_ptr< BitCode > bc )
     : alloc( alloc ), bc( bc ), TD( bc->module.get() ), state( info(), alloc )
 {
     tauplus = false;
@@ -44,8 +44,7 @@ void Interpreter::parseProperties( Module *M )
 
 divine::Blob Interpreter::initial( Function *f )
 {
-    Blob pre_initial = alloc.new_blob( state.size( 0, 0, 0, 0 ) );
-    alloc.pool().clear( pre_initial );
+    Blob pre_initial = alloc.makeBlobCleared( state.size( 0, 0, 0, 0 ) );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
 
     for ( auto var = bc->module->global_begin(); var != bc->module->global_end(); ++ var ) {

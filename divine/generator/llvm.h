@@ -74,8 +74,8 @@ struct LLVM : Common< Blob > {
                 }
 
                 while ( buchi_succs.size() > 1 ) {
-                    Blob b( this->pool(), this->pool().size( n ) );
-                    pool().copyTo( n, b );
+                    Blob b = pool().allocate( pool().size( n ) );
+                    pool().copy( n, b );
                     flags( b ).buchi = buchi_succs.back();
                     buchi_succs.pop_back();
                     yield( b, Label() );
@@ -91,7 +91,7 @@ struct LLVM : Common< Blob > {
     }
 
     divine::llvm::MachineState::Flags &flags( Blob b ) {
-        return pool().get< divine::llvm::MachineState::Flags >( b, alloc._slack );
+        return pool().get< divine::llvm::MachineState::Flags >( b, this->slack() );
     }
 
     bool isGoal( Node n ) {
@@ -245,9 +245,9 @@ struct LLVM : Common< Blob > {
         if (_interpreter)
             return *_interpreter;
 
-        _interpreter = new divine::llvm::Interpreter( alloc, bitcode );
+        _interpreter = new divine::llvm::Interpreter( *this, bitcode );
         if ( !_interpreter_2 )
-            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( alloc, bitcode );
+            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( *this, bitcode );
         applyReductions();
 
         return *_interpreter;

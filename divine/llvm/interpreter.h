@@ -6,7 +6,7 @@
 
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
-#include <divine/graph/allocator.h> // hmm.
+#include <divine/graph/graph.h> // for allocator. get rid of it...
 
 #include <llvm/Function.h>
 #include <llvm/Module.h>
@@ -74,7 +74,7 @@ struct BitCode {
 
 struct Interpreter
 {
-    Allocator &alloc;
+    graph::Allocator &alloc;
     std::shared_ptr< BitCode > bc;
     TargetData TD;
     MachineState state; /* the state we are dealing with */
@@ -132,7 +132,7 @@ struct Interpreter
         return NULL;
     }
 
-    explicit Interpreter(Allocator &a, std::shared_ptr< BitCode > bc);
+    explicit Interpreter( graph::Allocator &a, std::shared_ptr< BitCode > bc );
 
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
 
