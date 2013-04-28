@@ -417,10 +417,12 @@ struct Mpi : MpiMonitor
     template< typename Bit >
     void distribute( Bit bit, void (Instance::*set)( Bit ) )
     {
-        bitblock bs( m_mpiForwarder.pool );
-        rpc::marshall( set, bit, bs );
-        wibble::sys::MutexLock _lock( mpi.global().mutex );
-        mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
+        if ( mpi.size() > 1 ) {
+            bitblock bs( m_mpiForwarder.pool );
+            rpc::marshall( set, bit, bs );
+            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
+        }
         m_local.distribute( bit, set );
     }
 
@@ -428,6 +430,9 @@ struct Mpi : MpiMonitor
     void collect( Bits &bits, Bit (Instance::*get)() )
     {
         m_local.collect( bits, get );
+
+        if ( mpi.size() == 1 )
+            return;
 
         bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( get, bs );
@@ -463,19 +468,20 @@ struct Mpi : MpiMonitor
         bitblock bs( m_mpiForwarder.pool );
 
         retval = x = m_local.ring( x, fun );
-        rpc::marshall( fun, x, bs );
-
-        wibble::sys::MutexLock _lock( mpi.global().mutex );
-        mpi.global().is_master = false;
-        mpi.sendStream( _lock, bs, (mpi.rank() + 1) % mpi.size(), TAG_RING );
-        _lock.drop();
 
         if ( mpi.size() > 1 ) {
+            rpc::marshall( fun, x, bs );
+
+            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            mpi.global().is_master = false;
+            mpi.sendStream( _lock, bs, (mpi.rank() + 1) % mpi.size(), TAG_RING );
+            _lock.drop();
+
             while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
             async_retval >> retval;
+            mpi.global().is_master = true;
         }
 
-        mpi.global().is_master = true;
         return retval;
     }
 
