@@ -285,9 +285,15 @@ struct NTreeHashSet
             if ( r1.hash( pool() ) != r2.hash( pool() ) )
                 return false;
             if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
-                return pool().equal( r1.b, r2.b, sizeof( typename Root::Header ) + nodeHasher.slack );
-            else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) )
-                return pool().equal( r1.b, r2.b, sizeof( typename Root::Header ) );
+                return pool().equal( r1.b, r2.b, sizeof( typename Root::Header )
+                        + nodeHasher.slack );
+            else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) ) {
+                int s1 = pool().size( r1.b );
+                int s2 = pool().size( r2.b );
+                return s1 == s2
+                    && pool().equal( r1.b, r2.b, sizeof( typename Root::Header ),
+                            sizeof( typename Root::Header ) + r1.slackoffset( pool() ) );
+            }
 
             /*
              * Note on root equality: Leaves and forks are cononical, that is
