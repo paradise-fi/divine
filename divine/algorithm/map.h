@@ -11,7 +11,7 @@ namespace divine {
 namespace algorithm {
 
 struct MapVertexId {
-    uintptr_t ptr;
+    uint64_t ptr;
     short owner;
 
     bool operator<( const MapVertexId other ) const {
@@ -39,24 +39,24 @@ struct MapVertexId {
     }
 } __attribute__((packed));
 
-template < typename VertexId >
+template < typename Handle >
 struct MapShared {
     int expanded, eliminated, accepting;
     int iteration;
-    CeShared< Blob, VertexId > ce;
+    CeShared< Blob, Handle > ce;
     algorithm::Statistics stats;
     bool need_expand;
 };
 
-template< typename BS, typename VertexId >
-typename BS::bitstream &operator<<( BS &bs, const MapShared< VertexId > &sh )
+template< typename BS, typename Handle >
+typename BS::bitstream &operator<<( BS &bs, const MapShared< Handle > &sh )
 {
     return bs << sh.stats << sh.ce << sh.iteration << sh.need_expand
               << sh.accepting << sh.expanded << sh.eliminated;
 }
 
-template< typename BS, typename VertexId >
-typename BS::bitstream &operator>>( BS &bs, MapShared< VertexId > &sh )
+template< typename BS, typename Handle >
+typename BS::bitstream &operator>>( BS &bs, MapShared< Handle > &sh )
 {
     return bs >> sh.stats >> sh.ce >> sh.iteration >> sh.need_expand
               >> sh.accepting >> sh.expanded >> sh.eliminated;
@@ -74,23 +74,23 @@ template< typename Setup >
 struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
 {
     typedef Map< Setup > This;
-    ALGORITHM_CLASS( Setup, MapShared< typename Setup::VertexId > );
+    ALGORITHM_CLASS( Setup, MapShared< typename Setup::Store::Handle > );
 
     int d_eliminated,
         acceptingCount,
         eliminated,
         expanded;
-    VertexId cycle_node;
+    Handle cycle_node;
 
     MapVertexId makeId( Vertex n ) {
         MapVertexId ret;
-        ret.ptr = n.getVertexId().weakId();
+        ret.ptr = n.handle().asNumber();
         ret.owner = this->id();
         return ret;
     }
 
     struct Extension {
-        VertexId parent;
+        Handle parent;
         bool seen:1;
         short iteration:14;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
@@ -103,12 +103,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
 
-    Extension &extension( Vertex n ) {
-        return extension( n.getVertexId() );
-    }
-
-    Extension &extension( VertexId id ) {
-        return id.template extension< Extension >( this->pool() );
+    Extension &extension( Vertex v ) {
+        return v.template extension< Extension >();
     }
 
     visitor::TransitionAction updateIteration( Vertex t ) {
@@ -140,7 +136,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     bool isAccepting( Vertex st ) {
         if ( extension( st ).elim >= 2 )
             return false;
-        if ( !this->graph().isAccepting ( st.getNode() ) ) {
+        if ( !this->graph().isAccepting ( st.node() ) ) {
             extension( st ).elim = 3;
             return false;
         }
@@ -154,11 +150,11 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             ++ m.shared.expanded;
             if ( !m.extension( st ).seen ) {
                 m.extension( st ).seen = true;
-                if ( m.graph().isAccepting ( st.getNode() ) )
+                if ( m.graph().isAccepting ( st.node() ) )
                     ++ m.shared.accepting;
                 else
                     m.extension( st ).elim = 3; // not accepting
-                m.shared.stats.addNode( m.graph(), st.getNode() );
+                m.shared.stats.addNode( m.graph(), st.node() );
             } else
                 m.shared.stats.addExpansion();
 
@@ -168,25 +164,25 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
         {
             if ( m.shared.iteration == 1 )
-                m.graph().porTransition( f, t, 0 );
+                m.graph().porTransition( m.store(), f, t );
 
             if ( !m.store().valid( f ) )
                 return m.updateIteration( t );
 
             if ( !m.store().valid( m.extension( t ).parent ) )
-                m.extension( t ).parent = f.getVertexId();
+                m.extension( t ).parent = f.handle();
 
             /* self loop */
-            if ( m.graph().isAccepting( f.getNode() ) &&
-                    visitor::equalId( m.store(), f.getVertexId(), t.getVertexId() ) )
+            if ( m.graph().isAccepting( f.node() ) &&
+                 m.store().equal( f.handle(), t.handle() ) )
             {
-                m.shared.ce.initial = t.getVertexId();
+                m.shared.ce.initial = t.handle();
                 return visitor::TransitionAction::Terminate;
             }
 
             /* MAP arrived to its origin */
             if ( m.isAccepting( t ) && m.extension( f ).map == m.makeId( t ) ) {
-                m.shared.ce.initial = t.getVertexId();
+                m.shared.ce.initial = t.handle();
                 return visitor::TransitionAction::Terminate;
             }
 
@@ -219,7 +215,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void _cleanup() {
-        for ( VertexId st : this->store() ) {
+        for ( auto st : this->store() ) {
             if ( this->store().valid( st ) ) {
                 extension( st ).oldmap = extension( st ).map;
                 extension( st ).map = MapVertexId();
@@ -239,7 +235,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void _por_worker() {
-        this->graph()._porEliminate( *this, nullptr );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
@@ -270,7 +266,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
         shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce.setup( *this, shared );
         (ce.*ceCall)( *this, this->store() );
         return shared;
     }
@@ -325,7 +321,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             progress() << " generating counterexample...     " << std::flush;
             assert( this->store().valid( cycle_node ) );
             shared.ce.initial = cycle_node;
-            ce.setup( this->graph(), shared, this->store().hasher() );
+            ce.setup( *this, shared );
             ce.lasso( *this, *this );
             progress() << "done" << std::endl;
             result().ceType = meta::Result::Cycle;
