@@ -19,16 +19,9 @@ struct default_hasher {
     Pool& pool;
     default_hasher( Pool& p ) : pool( p ) { }
     hash_t hash( T t ) const { return pool.hash( t ); }
-    bool valid( T t ) const { return t.valid(); }
+    bool valid( T t ) const { return pool.valid( t ); }
     bool equal( T a, T b ) const { return pool.equal( a, b ); }
-    bool alias( T, T ) const { return false; }
 };
-
-template<>
-inline bool default_hasher< Blob >::valid( Blob b ) const { return pool.valid( b ); }
-
-template<>
-inline bool default_hasher< Blob >::alias( Blob a, Blob b ) const { return pool.alias( a, b ); }
 
 template<>
 struct default_hasher< int > {
@@ -38,7 +31,6 @@ struct default_hasher< int > {
     hash_t hash( int t ) const { return t; }
     bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
-    bool alias( int, int ) const { return false; }
 };
 
 /**
