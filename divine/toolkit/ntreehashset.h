@@ -18,6 +18,15 @@
 
 namespace divine {
 
+template< typename T >
+struct NewtypeHasher {
+    Pool &p;
+    NewtypeHasher( Pool &p ) : p( p ) {}
+    hash_t hash( T t ) const { return p.hash( t.b ); }
+    bool valid( T t ) const { return p.valid( t.b ); }
+    bool equal( T a, T b ) const { return p.equal( a.b, b.b ); }
+};
+
     // NTreeHashSet :: ( * -> * -> * ) -> * -> * -> *
     // Item can be any type with same interface as Blob
     template< template< typename, typename > class HashSet,
@@ -30,11 +39,10 @@ namespace divine {
 
         NTreeHashSet() : NTreeHashSet( Hasher() ) { }
 
-        template< typename... Args >
-        NTreeHashSet( Hasher hasher, Args&&... args ) :
-            _roots( RootHasher( hasher ), args... ),
-            _forks( ForkHasher(), args... ),
-            _leafs( LeafHasher(), args... ),
+        NTreeHashSet( Hasher hasher ) :
+            _roots( RootHasher( hasher ) ),
+            _forks( ForkHasher( hasher.pool ) ),
+            _leafs( LeafHasher( hasher.pool ) ),
             hasher( hasher )
 #ifndef O_PERFORMANCE
             , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
@@ -55,289 +63,202 @@ namespace divine {
 #endif
 
         struct Leaf {
-            uint16_t size;
-            char data[ 2 ];
+            Blob b;
 
-            static Leaf* create( uint32_t size, char* source, Pool& pool ) {
+            Leaf() = default;
+            Leaf( Blob b ) : b( b ) {}
+            Leaf( uint32_t size, char* source, Pool& pool )
+            {
                 assert_leq( 2, size );
-                Leaf* leaf = reinterpret_cast< Leaf* >(
-                        pool.allocate( size + sizeof( uint16_t ) ) );
-                new ( leaf ) Leaf( size );
-                memcpy( leaf->data, source, size );
-                return leaf;
+                b = pool.allocate( size );
+                std::copy( source, source + size, pool.dereference( b ) );
             }
-
-            void free( Pool& p ) {
-                p.free( reinterpret_cast< char* >( this ),
-                        sizeof( uint16_t ) + size * sizeof( char ) );
-            }
-
-          private:
-              Leaf( uint32_t size ) : size( size ) { }
+            char *data( Pool &p ) { return p.dereference( b ); }
+            int size( Pool &p ) { return p.size( b ); }
         };
 
         template < typename Fork >
         class LeafOr {
-            uintptr_t ptr;
+            uint64_t ptr;
+            static const uint64_t unionbit = 1ULL << 63;
           public:
             LeafOr() : ptr( 0 ) { }
 
-            LeafOr( Fork* f ) :
-                ptr( reinterpret_cast< uintptr_t >( f ) | 0x1 )
+            LeafOr( Fork f ) : ptr( f.b.raw() | unionbit )
             {
-                assert_eq( reinterpret_cast< uintptr_t >( f ) & 0x3, 0 );
+                assert_eq( f.b.raw() & unionbit, 0 );
             }
 
-            LeafOr( Leaf* l ) :
-                ptr( reinterpret_cast< uintptr_t >( l ))
+            LeafOr( Leaf l ) : ptr( l.b.raw() )
             {
-                assert_eq( reinterpret_cast< uintptr_t >( l ) & 0x3, 0 );
+                assert_eq( l.b.raw() & unionbit, 0 );
             }
 
-            bool end() const {
-                return ptr & 0x2;
-            }
+            Blob blob() const { return Blob::fromRaw( ptr & ~unionbit ); }
+            bool isLeaf() const { return !isFork(); }
+            bool isFork() const { return ptr & unionbit; }
+            int size( Pool &p ) const { return p.size( blob() ); }
+            bool isNull( Pool &p ) const { return !p.valid( blob() ); }
 
-            void setEnd( bool end ) {
-                ptr &= ~0x2;
-                ptr |= end ? 0x2 : 0;
-            }
-
-            bool isLeaf() const {
-                return !isFork();
-            }
-
-            bool isFork() const {
-                return ptr & 0x1;
-            }
-
-            Fork* fork() {
+            Fork fork() {
                 assert( isFork() );
-                return reinterpret_cast< Fork* >( ptr & ~0x3 );
+                return Fork( blob() );
             }
 
-            Leaf* leaf() {
+            Leaf leaf() {
                 assert( isLeaf() );
-                return reinterpret_cast< Leaf* >( ptr & ~0x3 );
-            }
-
-            bool isNull() {
-                return ptr == 0;
+                return Leaf( blob() );
             }
         };
 
-        struct Fork {
-            LeafOr< Fork > childs[ 2 ];
+        template< typename Self, typename Fork >
+        struct WithChildren
+        {
+            Self &self() { return *static_cast< Self * >( this ); }
 
-            uint32_t size() const {
-                uint32_t i = 0;
-                for ( ; !this->childs[ i ].end(); ++i ) { }
-                return (i + 1) * sizeof( LeafOr< Fork > );
-            }
-
-            static Fork* create( uint32_t childs, Pool& pool ) {
-                assert_leq( 2, childs );
-                uint32_t size = childs * sizeof( LeafOr< Fork > );
-                Fork* fork = reinterpret_cast< Fork* >( pool.allocate( size ) );
-                std::memset( fork, 0, size );
-                return fork;
-            }
-
-            void free( Pool& p ) {
-                p.free( reinterpret_cast< char* >( this ), size() );
-            }
-
-          private:
-            Fork() = default;
-        };
-
-        typedef LeafOr< Fork > LeafOrFork;
-
-        struct Root {
-            hash_t hash;
-            uint32_t selfSize:24;
-            bool leaf:1;
-            bool permanent:1;
-            uint32_t __pad:6;
-
-            LeafOrFork* childs() {
-                assert( !leaf );
-                return reinterpret_cast< LeafOrFork* >( this + 1 );
-            }
-
-            char* data() {
-                assert( leaf );
-                return reinterpret_cast< char* >( this + 1 );
-            }
-
-            uint32_t dataSize( uint32_t slack ) {
-                return reinterpret_cast< uintptr_t >( this ) + selfSize
-                    - slack - reinterpret_cast< uintptr_t >( data() );
-            }
-
-            uint32_t forksSize() {
-                uint32_t i = 0;
-                for ( ; !this->childs()[ i ].end(); ++i ) { }
-                return (i + 1) * sizeof( LeafOrFork );
-            }
-
-            char* slack() {
-                return leaf ? data()
-                    : reinterpret_cast< char* >( childs() ) + forksSize();
-            }
-
-            Item reassemble( Pool& pool ) {
-
-                assert( this != nullptr );
-                if ( leaf ) {
-                    int size = selfSize - sizeof( Root );
-                    assert_leq( 0, size );
-                    Item out( pool, size );
-                    std::memcpy( pool.data( out ), data(), size );
-                    return out;
-                }
-
-                std::vector< Leaf* > leafs;
-
-                forAllLeafs( pool, [ &leafs ]( Leaf* leaf ) -> bool {
-                        leafs.push_back( leaf );
-                        return true; // demand all
-                    } );
-
-                char* slackptr = slack();
-                int slacksize = selfSize
-                        - int( reinterpret_cast< uintptr_t >( slackptr )
-                            - reinterpret_cast< uintptr_t >( this ) );
-                int size = std::accumulate( leafs.begin(), leafs.end(), slacksize,
-                        []( int s, Leaf* l ) { return s + l->size; } );
-                Item out( pool, size );
-                char* outptr = pool.data( out );
-                std::memcpy( outptr, slackptr, slacksize );
-                outptr += slacksize;
-                for ( Leaf* l : leafs ) {
-                    assert_leq( outptr - pool.data( out ), pool.size( out ) );
-                    std::memcpy( outptr, l->data, l->size );
-                    outptr += l->size;
-                }
-                assert_eq( outptr - pool.data( out ), pool.size( out ) );
-                return out;
+            template< typename Yield >
+            void forChildren( Pool &p, Yield yield ) {
+                assert( self().forkcount( p ) );
+                for ( int i = 0; i < self().forkcount( p ); ++i )
+                    yield( self().forkdata( p )[ i ] );
             }
 
             // emit all leafs until false is returned from yield
             template< typename Yield >
-            void forAllLeafs( Pool& pool, Yield yield ) {
+            bool forAllLeaves( Pool& p, Yield yield ) {
+                bool result = false;
+                self().forChildren( p, [&]( LeafOrFork lof ) {
+                        if ( lof.isLeaf() ) {
+                            if ( !yield( lof.leaf() ) )
+                                return false;
+                        } else {
+                            if ( !lof.fork().forAllLeaves( p, yield ) )
+                                return false;
+                        }
+                        return result = true;
+                    } );
+                return result;
+            }
 
-                std::vector< LeafOrFork > stack;
+            std::vector< LeafOr< Fork > > childvector( Pool &p ) {
+                std::vector< LeafOrFork > lof;
+                forChildren( p, [&lof]( LeafOr< Fork > x ) { lof.push_back( x ); } );
+                return lof;
+            }
+        };
 
-                LeafOrFork* childptr;
-                for ( childptr = childs(); !childptr->end(); ++childptr ) { }
-                for ( ; childptr >= childs(); --childptr )
-                    stack.push_back( *childptr );
-                assert_eq( childptr, childs() - 1 );
+        struct Fork : WithChildren< Fork, Fork > {
+            Blob b;
 
-                while ( !stack.empty() ) {
-                    LeafOrFork lf = stack.back();
-                    stack.pop_back();
-                    if ( lf.isLeaf() ) {
-                        if ( !yield( lf.leaf() ) )
-                            return;
-                    }
-                    else {
-                        Fork* f = lf.fork();
+            Fork() = default;
+            Fork( Blob b ) : b( b ) {}
+            Fork( uint32_t children, Pool& pool ) {
+                assert_leq( 2, children );
+                uint32_t size = children * sizeof( LeafOr< Fork > );
+                b = pool.allocate( size );
+                pool.clear( b );
+            }
 
-                        LeafOrFork* ptr;
-                        for ( ptr = f->childs; !ptr->end(); ++ptr ) { }
-                        for ( ; ptr >= f->childs; --ptr )
-                            stack.push_back( *ptr );
-                        assert_eq( ptr + 1, f->childs );
-                    }
+            int forkcount( Pool &p ) {
+                return p.size( b ) / sizeof( LeafOr< Fork > );
+            }
+            LeafOr< Fork > *forkdata( Pool &p ) {
+                return p.dereference< LeafOrFork >( b );
+            }
+        };
+
+        typedef LeafOr< Fork > LeafOrFork;
+
+        struct Root : WithChildren< Root, Fork > {
+            Blob b;
+
+            struct Header { hash_t hash; int forks; };
+
+            Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
+            hash_t &hash( Pool &p ) { return header( p ).hash; }
+            bool leaf( Pool &p ) { return header( p ).forks == 0; }
+            int forkcount( Pool &p ) { return header( p ).forks; }
+            char *rawdata( Pool &p ) { return p.dereference( b ) + sizeof( Header ); }
+
+            char *data( Pool &p ) {
+                assert( leaf( p ) );
+                return rawdata( p );
+            }
+
+            LeafOrFork *forkdata( Pool &p ) {
+                assert( !leaf( p ) );
+                return reinterpret_cast< LeafOrFork *> ( rawdata( p ) );
+            }
+
+            uint32_t dataSize( Pool &p, uint32_t slack ) {
+                return p.size( b ) - sizeof( Header ) - slack;
+            }
+
+            int slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
+            char *slack( Pool &p ) { return rawdata( p ) + slackoffset( p ); }
+
+            Blob reassemble( Pool& p )
+            {
+                assert( p.valid( b ) );
+                if ( leaf( p ) ) {
+                    int size = p.size( b ) - sizeof( Header );
+                    assert_leq( 0, size );
+                    Blob out = p.allocate( size );
+                    std::copy( data( p ), data( p ) + size, p.dereference( out ) );
+                    return out;
                 }
+
+                std::vector< Leaf > leaves;
+                int size = 0;
+
+                this->forAllLeaves( p, [ &p, &leaves, &size ]( Leaf leaf ) -> bool {
+                        leaves.push_back( leaf );
+                        size += leaf.size( p );
+                        return true; // demand all
+                    } );
+
+                char* slackptr = slack( p );
+                int slacksize = p.size( b ) - sizeof( Header ) - slackoffset( p );
+                size += slacksize;
+                Blob out = p.allocate( size );
+                char* outptr = p.dereference( out );
+                outptr = std::copy( slackptr, slackptr + slacksize, outptr );
+                for ( auto l : leaves ) {
+                    assert_leq( outptr - p.dereference( out ), p.size( out ) );
+                    outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.b ), outptr );
+                }
+                assert_eq( outptr - p.dereference( out ), p.size( out ) );
+                return out;
             }
 
-            void free( Pool& p ) {
-                if ( !permanent )
-                    p.free( reinterpret_cast< char* >( this ), selfSize );
+            static Root createFlat( Item it, Pool& pool ) {
+                assert( pool.valid( it ) );
+                Root r;
+                r.b = pool.allocate( sizeof( Header ) + pool.size( it ) );
+                r.header( pool ).forks = 0;
+                std::copy( pool.dereference( it ), pool.dereference( it ) + pool.size( it ),
+                           pool.dereference( r.b ) + sizeof( Header ) );
+                return r;
             }
 
-            static Root* createFlat( Item it, Pool& pool ) {
-                assert( it.valid() );
-                uintptr_t size = sizeof( Root ) + pool.size( it );
-                Root* root = reinterpret_cast< Root* >( pool.allocate( size ) );
-                new ( root ) Root( size, true );
-                std::memcpy( root->data(), pool.data( it ), size - sizeof( Root ) );
-                return root;
-            }
-
-            static Root* create( Item it, uint32_t childs, int slack, Pool& pool ) {
-                assert_leq( 2, childs );
+            static Root create( Item it, uint32_t children, int slack, Pool& pool ) {
+                assert_leq( 2, children );
                 assert_leq( 0, slack );
-                uintptr_t size = sizeof( Root ) + slack +
-                    sizeof( LeafOrFork ) * childs;
-                Root* root = reinterpret_cast< Root* >( pool.allocate( size ) );
-                new ( root ) Root( size, false );
-                std::memset( root->childs(), 0, sizeof( LeafOrFork ) * childs );
-                std::memcpy( reinterpret_cast< char* >( root ) + size - slack,
-                        pool.data( it ), slack );
+                uintptr_t size = sizeof( Header ) + slack + sizeof( LeafOrFork ) * children;
+                Root root;
+                root.b = pool.allocate( size );
+                root.header( pool ).forks = children;
+                std::memset( root.rawdata( pool ), 0, sizeof( LeafOrFork ) * children );
+                std::memcpy( pool.dereference( root.b ) + size - slack,
+                             pool.dereference( it ), slack );
                 return root;
             }
-
-            template < typename BS >
-            friend bitstream_impl::base< BS >& operator<<(
-                    bitstream_impl::base< BS >& bs, Root* r )
-            {
-                return bs << reinterpret_cast< uintptr_t >( r );
-            }
-            template < typename BS >
-            friend bitstream_impl::base< BS >& operator>>(
-                     bitstream_impl::base< BS >& bs, Root*& r )
-            {
-                uintptr_t ri;
-                bs >> ri;
-                r = reinterpret_cast< Root* >( ri );
-                return bs;
-            }
-
-          private:
-            Root( uint32_t selfSize, bool leaf ) :
-                hash( 0 ), selfSize( selfSize ), leaf( leaf ),
-                permanent( false ), __pad( 0 )
-            { }
         };
 
-        struct LeafHasher {
-            uint32_t salt;
+        struct Uncompressed { Item i; Uncompressed( Item i ) : i( i ) {} };
 
-            LeafHasher() : LeafHasher( 0 ) { }
-            LeafHasher( uint32_t salt ) : salt( salt ) { }
-
-            hash_t hash( Leaf* l ) const {
-                return jenkins3( l->data, l->size, salt );
-            }
-            bool valid( Leaf* l ) const { return l != nullptr; }
-            bool equal( Leaf* l1, Leaf* l2 ) const {
-                return l1 == l2 || ( l1->size == l2->size
-                        && std::memcmp( l1->data, l2->data, l1->size ) == 0 );
-            }
-        };
-
-        struct ForkHasher {
-            uint32_t salt;
-
-            ForkHasher() : ForkHasher( 0 ) { }
-            ForkHasher( uint32_t salt ) : salt( salt ) { }
-
-            hash_t hash( const Fork* f ) const {
-                return jenkins3( f->childs, f->size(), salt );
-            }
-            bool valid( const Fork* f ) const { return f != nullptr; }
-            bool equal( const Fork* f1, const Fork* f2 ) const {
-                if ( f1 == f2 )
-                    return true;
-                uint32_t s1 = f1->size();
-                uint32_t s2 = f2->size();
-                return s1 == s2 && std::memcmp( f1->childs, f2->childs, s1 ) == 0;
-            }
-        };
+        using ForkHasher = NewtypeHasher< Fork >;
+        using LeafHasher = NewtypeHasher< Leaf >;
 
         struct RootHasher {
             Hasher nodeHasher;
@@ -348,33 +269,26 @@ namespace divine {
                 : nodeHasher( nodeHasher ), salt( salt )
             { }
 
-            hash_t hash( Root* r ) const {
-                return r->hash;
-            }
-            hash_t hash( Item it ) const {
-                return nodeHasher.hash( it );
-            }
+            Pool &pool() { return nodeHasher.pool; }
+            int slack() { return nodeHasher.slack; }
 
-            bool valid( Root* r ) const { return r != nullptr; }
-            bool valid( Item it ) const { return nodeHasher.valid( it ); }
+            hash_t hash( Root r ) const { return r.hash( pool() ); }
 
-            bool equal( Root* r1, Root* r2 ) const {
-                if ( r1 == r2 )
+            bool valid( Root r ) { return pool().valid( r.b ); }
+            bool valid( Uncompressed r ) const { return pool().valid( r.i ); }
+
+            bool equal( Root r1, Root r2 ) {
+                if ( r1.b.raw() == r2.b.raw() )
                     return true;
-                if ( r1->hash != r2->hash )
+                if ( r1.hash( pool() ) != r2.hash( pool() ) )
                     return false;
-                if ( r1->leaf && r2->leaf ) {
-                    return r1->selfSize == r2->selfSize
-                        && std::memcmp( r1->data() + nodeHasher.slack,
-                            r2->data() + nodeHasher.slack,
-                            r1->dataSize( nodeHasher.slack ) ) == 0;
-                } else if ( !r1->leaf && !r2->leaf ) {
-                    uint32_t s1 = r1->forksSize();
-                    uint32_t s2 = r2->forksSize();
-                    return s1 == s2 && std::memcmp( r1->childs(), r2->childs(), s1 ) == 0;
-                }
+                if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
+                    return pool().equal( r1.b, r2.b, sizeof( typename Root::Header ) + nodeHasher.slack );
+                else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) )
+                    return pool().equal( r1.b, r2.b, sizeof( typename Root::Header ) );
+
                 /* Note on root equality:
-                 * Leafs and forks are cononical, that is only one
+                 * Leaves and forks are cononical, that is only one
                  * instance of leaf/fork representing same subnode exists
                  * per HashSet, and instances from diffent HashSets can't
                  * represent same nodes (as they differ in hash).
@@ -384,133 +298,97 @@ namespace divine {
                 return false;
             }
 
-            bool equal( Root* root, Item item ) const {
+            bool equal( Root root, Uncompressed item ) {
                 return equal( item, root );
             }
-            bool equal( Item item, Root* root ) const {
-                int itSize = nodeHasher.pool.size( item ) - nodeHasher.slack;
-                char* itemPtr = nodeHasher.pool.data( item ) + nodeHasher.slack;
-                if ( root->leaf ) {
-                     return itSize == root->dataSize( nodeHasher.slack )
-                         && std::memcmp( itemPtr,
-                                 root->data() + nodeHasher.slack, itSize ) == 0;
+
+            bool equal( Uncompressed item, Root root ) {
+                int itSize = pool().size( item.i ) - slack();
+                char* itemPtr = pool().dereference( item.i ) + slack();
+                if ( root.leaf( pool() ) ) {
+                    return itSize == root.dataSize( pool(), slack() )
+                        && std::memcmp( itemPtr,
+                                        root.data( pool() ) + slack(), itSize ) == 0;
                 }
 
-                itSize += nodeHasher.slack;
-                int pos = nodeHasher.slack;
+                itSize += slack();
+                int pos = slack();
                 bool equal = true;
 
-                root->forAllLeafs( nodeHasher.pool,
-                    [ &itemPtr, &pos, &equal, itSize ] ( Leaf* leaf ) {
+                root.forAllLeaves( pool(),
+                    [ this, &itemPtr, &pos, &equal, itSize ] ( Leaf leaf ) {
                         assert( equal );
-                        assert( leaf != nullptr );
+                        assert( this->pool().valid( leaf.b ) );
                         assert( itemPtr != nullptr );
                         assert_leq( 0, pos );
 
-                        assert_leq( pos + leaf->size, itSize );
-                        equal = std::memcmp( itemPtr, leaf->data, leaf->size ) == 0;
-                        itemPtr += leaf->size;
-                        pos += leaf->size;
+                        Pool &p = this->pool();
+                        assert_leq( pos + leaf.size( p ), itSize );
+                        equal = std::memcmp( itemPtr, leaf.data( p ),
+                                             leaf.size( p ) ) == 0;
+                        itemPtr += leaf.size( p );
+                        pos += leaf.size( p );
                         return equal;
                     } );
                 assert_leq( 0, pos );
                 return equal;
             }
 
-            bool equal( Item i1, Item i2 ) const {
-                return nodeHasher.equal( i1, i2 );
+            bool equal( Uncompressed i1, Uncompressed i2 ) const {
+                return nodeHasher.equal( i1.i, i2.i );
             }
         };
 
-        typedef Root* TableItem;
-        HashSet< Root*, RootHasher > _roots; // stores slack and roots of tree
-                             // (also in case when root leaf)
-        HashSet< Fork*, ForkHasher > _forks; // stores intermediate nodes
-        HashSet< Leaf*, LeafHasher > _leafs; // stores leafs if they are not root
+        typedef Blob TableItem;
+        HashSet< Root, RootHasher > _roots; // stores slack and roots of tree
+                                            // (also in case when root leaf)
+        HashSet< Fork, ForkHasher > _forks; // stores intermediate nodes
+        HashSet< Leaf, LeafHasher > _leafs; // stores leafs if they are not root
         Hasher hasher;
 
+        Pool& pool() { return hasher.pool; }
+        const Pool& pool() const { return hasher.pool; }
+        int slack() const { return hasher.slack; }
+        bool valid( Item i ) { return hasher.valid( i ); }
+        char* slackPtr( Item item ) { return pool().dereference( item ); }
+
+        void copySlack( Item slackSource, Item root ) {
+            pool().copy( slackSource, root, slack() );
+        }
+
+        Item getReassembled( Item item ) {}
+
+        size_t size() { return _roots.size(); }
+        bool empty() { return _roots.empty(); }
+
 #ifndef O_PERFORMANCE
-        size_t inserts;
-        size_t leafReuse;
-        size_t forkReuse;
-        size_t rootReuse;
+        size_t inserts, leafReuse, forkReuse, rootReuse;
+
+        void incInserts() { ++inserts; }
+        void incLeafReuse() { ++leafReuse; }
+        void incForkReuse() { ++forkReuse; }
+        void incRootReuse() { ++rootReuse; }
+#else
+        void incInserts() {}
+        void incLeafReuse() {}
+        void incForkReuse() {}
+        void incRootReuse() {}
 #endif
 
-        inline Pool& pool() {
-            return hasher.pool;
-        }
-
-        inline const Pool& pool() const {
-            return hasher.pool;
-        }
-
-        inline int slack() const {
-            return hasher.slack;
-        }
-
-        inline bool valid( Item i ) {
-            return hasher.valid( i );
-        }
-
-        inline char* slackPtr( Item item ) {
-            return pool().data( item );
-        }
-
-        inline void copySlack( Item slackSource, Item root ) {
-            pool().copyTo( slackSource, root, slack() );
-        }
-
-        Item getReassembled( Item item ) {
-        }
-
-        size_t size() {
-            return _roots.size();
-        }
-
-        bool empty() {
-            return _roots.empty();
-        }
-
-        inline void incInserts() {
-#ifndef O_PERFORMANCE
-            ++inserts;
-#endif
-        }
-
-        inline void incLeafReuse() {
-#ifndef O_PERFORMANCE
-            ++leafReuse;
-#endif
-        }
-
-        inline void incForkReuse() {
-#ifndef O_PERFORMANCE
-            ++forkReuse;
-#endif
-        }
-
-        inline void incRootReuse() {
-#ifndef O_PERFORMANCE
-            ++rootReuse;
-#endif
-        }
-#if 0
-        std::tuple< Root*, bool > insert( Item item ) {
-            return insertHinted( item, hasher.hash( item ) );
-        }
-#endif
         template < typename Generator >
-        std::tuple< Root*, bool > insertHinted( Item item, hash_t hash,
-                Generator& generator )
+        std::tuple< Root, bool > insertHinted( Item item, hash_t hash,
+                                               Generator& generator )
         {
             assert( hasher.valid( item ) );
             incInserts();
 
-            Pool& pool = generator.alloc.pool();
+            Pool& pool = generator.pool();
 
-            Root* root = nullptr;
+            // Root* root = nullptr;
+            Root root;
+
             LeafOrFork* ptr = nullptr;
-            char* from = pool.data( item ) + slack();
+            char* from = pool.dereference( item ) + slack();
             generator.splitHint( item,
                 [ &from, &root, &ptr, &pool, &generator, this, item ]
                 ( Recurse rec, intptr_t length, intptr_t remaining )
@@ -519,10 +397,10 @@ namespace divine {
                         root = Root::createFlat( item, pool );
                         assert_eq( remaining, 0 );
                     } else {
-                        if ( root == nullptr ) {
+                        if ( !pool.valid( root.b ) ) {
                             root = Root::create( item, remaining + 1,
-                                this->slack(), pool );
-                            ptr = root->childs();
+                                                 this->slack(), pool );
+                            ptr = root.forkdata( pool );
                             assert_leq( 1, remaining );
                         }
                         assert( ptr != nullptr );
@@ -531,53 +409,50 @@ namespace divine {
                         ++ptr;
                     }
 
-                    assert( root != nullptr );
-
+                    assert( pool.valid( root.b ) );
                     from += length;
                 } );
-            if ( ptr != nullptr )
-                (ptr - 1)->setEnd( true );
-            assert( root != nullptr );
-            assert_eq( from, pool.data( item ) + pool.size( item ) );
 
-            root->hash = hash;
+            assert( pool.valid( root.b ) );
+            assert_eq( from, pool.dereference( item ) + pool.size( item ) );
 
-            Root* tr;
+            root.hash( pool ) = hash;
+
+            Root tr;
             bool inserted;
             std::tie( tr, inserted ) = _roots.insertHinted( root, hash );
             if ( !inserted ) {
                 incRootReuse();
-                root->free( pool );
-            } else
-                tr->permanent = true;
+                pool.free( root.b );
+            }
 
             return std::make_tuple( tr, inserted );
         }
 
         template < typename Generator >
         LeafOrFork createChild( Item item, char* from, intptr_t length,
-                Pool& pool, Generator& generator )
+                                Pool& pool, Generator& generator )
         {
-            assert_leq( pool.data( item ) + slack(), from );
-            assert_leq( from, pool.data( item ) + pool.size( item ) );
+            assert_leq( pool.dereference( item ) + slack(), from );
+            assert_leq( from, pool.dereference( item ) + pool.size( item ) );
 
             LeafOrFork child;
             LeafOrFork* ptr = nullptr;
-            generator.splitHint( item, from - pool.data( item ), length,
+            generator.splitHint( item, from - pool.dereference( item ), length,
                 [ &from, &child, &ptr, &pool, &generator, this, item  ]
                 ( Recurse rec, intptr_t length, intptr_t remaining )
                 {
                     if ( rec == Recurse::No ) {
-                        assert( child.isNull() );
+                        assert( child.isNull( pool ) );
                         assert( ptr == nullptr );
                         assert_eq( remaining, 0 );
-                        child = Leaf::create( length, from, pool );
+                        child = Leaf( length, from, pool );
                     } else {
-                        if ( child.isNull() ) {
-                            child = Fork::create( remaining + 1, pool );
-                            ptr = child.fork()->childs;
+                        if ( child.isNull( pool ) ) {
+                            child = Fork( remaining + 1, pool );
+                            ptr = child.fork().forkdata( pool );
                         }
-                        assert( !child.isNull() );
+                        assert( !child.isNull( pool ) );
                         assert( ptr != nullptr );
 
                         *ptr = this->createChild( item, from, length, pool, generator );
@@ -585,21 +460,19 @@ namespace divine {
                     }
                     from += length;
                 } );
-            if ( ptr != nullptr )
-                (ptr - 1)->setEnd( true );
 
             bool inserted;
             LeafOrFork tlf;
             if ( child.isLeaf() ) {
                 std::tie( tlf, inserted ) = _leafs.insert( child.leaf() );
                 if ( !inserted ) {
-                    child.leaf()->free( pool );
+                    pool.free( child.blob() );
                     incLeafReuse();
                 }
             } else {
                 std::tie( tlf, inserted ) = _forks.insert( child.fork() );
                 if ( !inserted ) {
-                    child.fork()->free( pool );
+                    pool.free( child.blob() );
                     incForkReuse();
                 }
             }
@@ -607,13 +480,13 @@ namespace divine {
             return tlf;
         }
 
-        std::tuple< Root*, bool > get( Item item ) {
+        std::tuple< Root, bool > get( Item item ) {
             return getHinted( item, hasher.hash( item ) );
         }
 
         template< typename T >
-        std::tuple< Root*, bool > getHinted( T i, hash_t h ) {
-            return _roots.getHinted( i, h );
+        std::tuple< Root, bool > getHinted( T i, hash_t h ) {
+            return _roots.getHinted( Uncompressed( i ), h );
         }
 
         bool has( Item i ) {
@@ -633,7 +506,7 @@ namespace divine {
         }
 
         Root* operator[]( int off ) {
-            return _roots[ off ];
+            return pool().template dereference< Root >( _roots[ off ] );
         }
     };
 }
