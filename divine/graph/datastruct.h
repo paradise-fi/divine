@@ -22,13 +22,12 @@ struct QueueFrontend {
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
-    typedef typename Setup::QueueVertex QueueVertex;
 
     template< typename Next >
     void processOpen( Next next ) {
         deadlocked = true;
 
-        auto from = self().front().fromQueue( self().pool() );
+        auto from = self().store().vertex( self().front() );
         self().g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
                 next( from, n, label );
@@ -38,7 +37,7 @@ struct QueueFrontend {
     template< typename Dead >
     void processDead( Dead dead ) {
         if ( deadlocked && !self().empty() ) {
-            auto v = self().front().fromQueue( self().pool() );
+            auto v = self().store().vertex( self().front() );
             dead( v );
         }
     }
@@ -46,7 +45,7 @@ struct QueueFrontend {
     template< typename Close >
     void processClosed( Close close ) {
         if ( !self().empty() ) {
-            auto qv = self().front().fromQueue( self().pool() );
+            auto qv = self().store().vertex( self().front() );
             close( qv );
             self().pop_front();
         }
@@ -59,28 +58,29 @@ template< typename Setup >
 struct Queue : QueueFrontend< Setup, Queue< Setup > >
 {
     typedef typename Setup::Graph Graph;
+    typedef typename Setup::Store Store;
     typedef typename Graph::Node Node;
-    typedef typename Setup::QueueVertex QueueVertex;
     typedef typename Setup::Statistics Statistics;
+    typedef typename Store::Handle Handle;
+
     Graph &g;
-    std::deque< QueueVertex > _queue;
+    Store &s;
+    std::deque< Handle > _queue;
 
     int id;
 
-    Pool &pool() {
-        return g.pool();
-    }
+    Store &store() { return s; }
 
-    QueueVertex front() { return _queue.front(); }
+    Handle front() { return _queue.front(); }
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( QueueVertex ) );
+        Statistics::global().dequeue( id, sizeof( Handle ) );
         _queue.pop_front();
     }
 
     void reserve( int n ) { _queue.reserve( n ); }
     int size() { return _queue.size(); } // XXX misleading?
 
-    void push( const QueueVertex &t )
+    void push( Handle t )
     {
         Statistics::global().enqueue( id, sizeof( t ) );
         _queue.push_back( t );
@@ -89,7 +89,7 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     bool empty() { return _queue.empty(); }
     void clear() { _queue.clear(); }
 
-    Queue( Graph &_g ) : g( _g ), id( 0 ) {}
+    Queue( Graph &g, Store &s ) : g( g ), s( s ), id( 0 ) {}
 };
 
 template< typename Setup >
@@ -98,7 +98,7 @@ struct Stack {
     Graph &g;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
-    typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::Handle Handle;
 
     enum Flag { Fresh, Expanded };
 
@@ -110,15 +110,16 @@ struct Stack {
             assert( flag == Fresh );
             return data.node;
         }
-        Vertex vertex() {
+
+        Handle handle() {
             assert( flag == Expanded );
             return data.vertex;
         }
 
         StackItem() = delete;
 
-        StackItem( Vertex vertex, Label label )
-            : flag( Expanded ), label( label ), data( vertex )
+        StackItem( Handle handle, Label label )
+            : flag( Expanded ), label( label ), data( handle )
         { }
 
         StackItem( Node node, Label label )
@@ -127,30 +128,24 @@ struct Stack {
 
       private:
         union DataU {
-            DataU( Node node ) : node( node )
-            { }
-            DataU( Vertex vertex ) : vertex( vertex )
-            { }
+            DataU( Node node ) : node( node ) {}
+            DataU( Handle handle ) : handle( handle ) {}
             Node node;
-            Vertex vertex;
+            Handle handle;
         } data;
     };
 
     std::deque< StackItem > _stack;
-    Vertex _from;
+    Handle _from;
     bool deadlocked;
 
     int _pushes, _pops;
 
-    Pool &pool() {
-        return g.base().alloc.pool();
-    }
-
-    void push( Vertex tV ) {
-        _from = tV;
-        _stack.push_back( StackItem( tV, Label() ) );
+    void push( Handle h ) {
+        _from = h;
+        _stack.push_back( StackItem( h, Label() ) );
         deadlocked = true;
-        g.successors( tV, [&]( Node n, Label l ) {
+        g.successors( h, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 deadlocked = false;
                 _stack.push_back( StackItem( n, l ) );
@@ -210,17 +205,19 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 {
     typedef typename Setup::Graph Graph;
     typedef typename Setup::Statistics Statistics;
-    typedef typename Graph::Node Node;
-    typedef typename Setup::Store::QueueVertex QueueVertex;
-    typedef std::deque< QueueVertex > Chunk;
+
+    using Store = typename Setup::Store;
+    using Handle = typename Store::Handle;
+
+    typedef std::deque< Handle > Chunk;
     typedef divine::LockedQueue< Chunk > ChunkQ;
     typedef ApproximateCounter Termination;
     typedef Termination::Shared Terminator;
     typedef std::shared_ptr< Terminator > TerminatorPtr;
-
     typedef std::shared_ptr< ChunkQ > ChunkQPtr;
 
     Graph &g;
+    Store &s;
 
     int id;
 
@@ -232,15 +229,15 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     Chunk outgoing;
     Chunk incoming;
 
-    Pool &pool() {
-        return g.pool();
-    }
-
     ChunkQ &chunkq() { return *_chunkq; }
-    SharedQueue( ChunkQPtr ch, Graph& g, TerminatorPtr t ) : g( g ), id( 0 ), maxChunkSize( 64 ), chunkSize( 2 ), _chunkq( ch ), termination( *t )
+    SharedQueue( Graph &g, Store &s, ChunkQPtr ch, TerminatorPtr t )
+        : g( g ), s( s ), id( 0 ), maxChunkSize( 64 ),
+          chunkSize( 2 ), _chunkq( ch ), termination( *t )
     {}
 
     ~SharedQueue() { flush(); }
+
+    Store &store() { return s; }
 
     /**
      * Push current chunk even though it's not full. To be called by threads
@@ -258,19 +255,20 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
         }
     }
 
-    void push( const QueueVertex &b ) {
-        Statistics::global().enqueue( id, sizeof( QueueVertex ) );
+    void push( Handle h ) {
+        Statistics::global().enqueue( id, sizeof( Handle ) );
         ++termination;
-        outgoing.push_back( b );
+        outgoing.push_back( h );
         if ( outgoing.size() >= chunkSize )
             flush();
     }
 
-    QueueVertex front() {
+    Handle front() {
         return incoming.front();
     }
+
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( QueueVertex ) );
+        Statistics::global().dequeue( id, sizeof( Handle ) );
         --termination;
         incoming.pop_front();
     }
@@ -280,16 +278,15 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
             incoming = chunkq().pop();
         return incoming.empty();
     }
+
     void clear() {
         incoming.clear();
         while ( !chunkq().empty )
             chunkq().pop();
     }
-    // removed
+
     SharedQueue( void ) = delete;
     SharedQueue( const SharedQueue& s) = default;
-
-    /* No r-value push because it's not necessary for Blob. */
 };
 
 template< typename T >

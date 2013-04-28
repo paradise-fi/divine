@@ -57,9 +57,8 @@ template< typename A, typename BListener >
 struct SetupOverride : A {
     typedef typename A::Node Node;
     typedef typename A::Label Label;
+    typedef typename A::Store::Vertex Vertex;
     typedef std::pair< typename A::Listener *, BListener * > Listener;
-    typedef typename A::Vertex Vertex;
-    typedef typename A::VertexId VertexId;
 
     static TransitionAction transition( Listener &l, Vertex a, Vertex b, Label label ) {
         return A::transition( *l.first, a, b, label );
@@ -88,13 +87,15 @@ template<
     template< typename > class _Queue, typename S >
 struct Common {
     typedef typename S::Graph Graph;
-    typedef typename S::Node Node;
+    typedef typename Graph::Node Node;
     typedef typename S::Label Label;
     typedef typename S::Listener Listener;
-    typedef typename S::Store Store;
     typedef typename S::Statistics Statistics;
-    typedef typename S::Vertex Vertex;
-    typedef typename S::VertexId VertexId;
+    typedef typename S::Store Store;
+
+    typedef typename Store::Vertex Vertex;
+    typedef typename Store::Handle Handle;
+
     typedef _Queue< S > Queue;
 
     Graph &graph;
@@ -150,18 +151,8 @@ struct Common {
         if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
             return;
 
-        /**
-         * There is an important part of correct behaviour of shared visitor.
-         * If you fetch node from store and the node still does not exists
-         * you have to know whether any other thread saved this node into the shared hash table
-         * before this thread.
-         *
-         * Note: Only shared store changes `had` value.
-         */
-        Vertex to;
-        bool isnew;
-        std::tie( to, isnew ) = store().store( _to, hint ); // we have to update Vertex so it
-            // contains permanent information about stored node
+        auto to = store().store( _to, hint );
+
         tact = S::transition( notify, from, to, label );
 
         /**
@@ -169,14 +160,11 @@ struct Common {
          * this node CANNOT be pushed into the working queue to be processed.
          */
         if ( tact == TransitionAction::Expand ||
-             (tact == TransitionAction::Follow && isnew) ) {
+             ( tact == TransitionAction::Follow && to.isnew() ) ) {
             eact = S::expansion( notify, to );
             if ( eact == ExpansionAction::Expand )
-                _queue.push( to.toQueue( pool() ) );
+                _queue.push( to.handle() );
         }
-
-        if ( !store().alias( to.getNode(), _to ) )
-            graph.release( _to );
 
         if ( tact == TransitionAction::Terminate ||
                 eact == ExpansionAction::Terminate )
@@ -200,7 +188,7 @@ struct BFV : Common< Queue, S > {
     BFV( typename S::Listener &n,
          typename S::Graph &g,
          typename S::Store &s )
-        : Super( n, g, s, typename Super::Queue( g ) ) {}
+        : Super( n, g, s, typename Super::Queue( g, s ) ) {}
 };
 
 template< typename S >
@@ -212,7 +200,7 @@ struct BFVShared : Common< SharedQueue, S > {
                typename S::Store &s,
                typename Super::Queue::ChunkQPtr ch,
                typename Super::Queue::TerminatorPtr t )
-              : Super( l, g, s, typename Super::Queue( ch, g, t ) ) {}
+        : Super( l, g, s, typename Super::Queue( g, s, ch, t ) ) {}
 
     inline typename Super::Queue& open() { return Super::_queue; }
     virtual void terminate() { Super::terminate(); open().termination.reset(); }
@@ -238,14 +226,14 @@ struct Partitioned {
         typedef typename S::Node Node;
         typedef typename S::Label Label;
         typedef typename S::Graph Graph;
-        typedef typename S::Vertex Vertex;
-        typedef typename S::VertexId VertexId;
 
         Worker &worker;
         typename S::Listener &notify;
         typename S::Graph &graph;
         typedef typename S::Store Store;
         typedef typename Store::Hasher Hasher;
+        typedef typename Store::Vertex Vertex;
+        typedef typename Store::Handle Handle;
         typedef typename S::Statistics Statistics;
         typedef Implementation< S, Worker > This;
 
@@ -256,25 +244,16 @@ struct Partitioned {
             return graph.pool();
         }
 
-        int owner( Node n, hash_t hint = 0 ) const {
-            return _store.owner( worker, n, hint );
-        }
-
-        int ownerV( Vertex n ) const {
-            return _store.owner( worker, n );
-        }
-
         inline void queue( Vertex from, Node to, Label label, hash_t hint = 0 ) {
-            if ( owner( to, hint ) != worker.id() )
+            if ( store().owner( to, hint ) != worker.id() )
                 return;
             queueAny( from, to, label, hint );
         }
 
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
-            int _to = owner( to, hint ), _from = worker.id();
+            int _to = store().owner( to, hint ), _from = worker.id();
             Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
-            worker.submit( _from, _to, std::make_tuple( from.toQueue( pool() ),
-                                                        to, label ) );
+            worker.submit( _from, _to, std::make_tuple( from.handle(), to, label ) );
         }
 
         visitor::TransitionAction transition( Vertex f, Node t ) {
@@ -285,7 +264,7 @@ struct Partitioned {
         }
 
         visitor::ExpansionAction expansion( Vertex n ) {
-            assert_eq( ownerV( n ), worker.id() );
+            assert_eq( store().owner( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
             if ( eact == ExpansionAction::Terminate )
                 worker.interrupt();
@@ -313,10 +292,9 @@ struct Partitioned {
                             Statistics::global().received(
                                 from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
                                     graph.pool() ) );
-                            auto fromData = std::get< 0 >( p ).fromQueue( pool() );
-                            bfv.edge( fromData,
-                                    std::get< 1 >( p ),
-                                    std::get< 2 >( p ) );
+                            bfv.edge( store().vertex( std::get< 0 >( p ) ),
+                                      std::get< 1 >( p ),
+                                      std::get< 2 >( p ) );
                         }
                     }
 
@@ -335,9 +313,9 @@ struct Partitioned {
                  Listener l, Vertex f, Node t, Label label, hash_t hint )
             {
                 This &n = *l.second;
-                if ( n.owner( t, hint ) != n.worker.id() ) {
+                if ( n._store.owner( t, hint ) != n.worker.id() ) {
                     if (n._store.valid( f ) )
-                        assert_eq( n.owner( f.getNode() ), n.worker.id() );
+                        assert_eq( n.store().owner( f ), n.worker.id() );
                     n.queueAny( f, t, label, hint );
                     return TransitionFilter::Ignore;
                 }
@@ -347,14 +325,14 @@ struct Partitioned {
 
         template< typename T >
         void setIds( T &bfv ) {
-            bfv._store.setId( worker );
+            // bfv._store.setId( worker );
             bfv._queue.id = worker.id();
         }
 
         void exploreFrom( Node initial ) {
             BFV< Ours > bfv( *this, graph, _store );
             setIds( bfv );
-            if ( owner( initial ) == worker.id() ) {
+            if ( store().owner( initial ) == worker.id() ) {
                 bfv.exploreFrom( initial );
             }
             run( bfv );
@@ -411,10 +389,6 @@ struct Shared {
         Worker &worker;
         typename S::Listener &notify;
 
-        int owner( Node n, hash_t hint = 0 ) const {
-            return worker.id();
-        }
-
         inline void queue( Vertex from, Node to, Label label ) {
             setIds();
             bfv.queue( from, to, label );
@@ -432,7 +406,7 @@ struct Shared {
         }
 
         ExpansionAction expansion( Vertex n ) {
-            assert_eq( owner( n ), worker.id() );
+            assert_eq( store().owner( n ), worker.id() );
             ExpansionAction eact = S::expansion( notify, n );
             if ( eact == ExpansionAction::Terminate )
                 worker.interrupt();
@@ -456,7 +430,7 @@ struct Shared {
         }
 
         inline void setIds() {
-            bfv.store().setId( worker );
+            // bfv.store().setId( worker );
             bfv.open().id = worker.id();
         }
 
