@@ -7,7 +7,7 @@
 #include <list>
 #include <sstream>
 #ifdef LCA
-#include <tr1/unordered_set>
+#include <unordered_set>
 #endif
 
 #include <divine/coin/parse/coin_common.hh>
