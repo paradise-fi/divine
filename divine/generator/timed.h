@@ -36,7 +36,7 @@ struct Timed : public Common< Blob > {
 
     template< typename Yield >
     void successors( Node from, Yield yield ) {
-        assert( from.valid() );
+        assert( this->pool().valid( from ) );
         unsigned int nSuccs = 0;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
 
@@ -75,7 +75,7 @@ struct Timed : public Common< Blob > {
     }
 
     std::string showTransition( Node from, Node to, Label ) {
-        assert( from.valid() );
+        assert( this->pool().valid( from ) );
 
         std::string str;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
@@ -105,7 +105,7 @@ struct Timed : public Common< Blob > {
 
     template< typename Yield >
     void initials( Yield yield ) {
-        Node n = alloc.new_blob( gen.stateSize() );
+        Node n = makeBlobCleared( gen.stateSize() );
         gen.initial( mem( n ) );
         if ( !gen.isErrState( mem( n ) ) )
             gen.setPropLoc( mem( n ), buchi.getInitial() );
@@ -222,16 +222,12 @@ struct Timed : public Common< Blob > {
     }
 
 private:
-    Pool& pool() {
-        return this->alloc.pool();
-    }
-
     char* mem( Node s ) {
-        return &pool().get< char >( s, alloc._slack );
+        return &pool().get< char >( s, this->slack() );
     }
 
     Node newNode( const char* src ) {
-        Node n = alloc.new_blob( gen.stateSize() );
+        Node n = makeBlob( gen.stateSize() );
         memcpy( mem( n ), src, gen.stateSize() );
         return n;
     }
