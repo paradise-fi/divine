@@ -439,7 +439,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
                 {
                     typename Comms::T b = comms().take( from, to );
                     buffers[ from ][ to ] << b;
-                    std::get< 0 >( b ).free( pool );
                     pool.free( std::get< 1 >( b ) );
                 }
             }
