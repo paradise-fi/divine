@@ -15,15 +15,9 @@ struct PORGraph : graph::Transform< G > {
     typedef PORGraph< G, Store, Statistics > This;
     typedef typename G::Node Node;
     typedef typename G::Label Label;
-    typedef typename Store::Vertex Vertex;
-    typedef typename Store::VertexId VertexId;
-    typedef typename Store::QueueVertex QueueVertex;
 
-    struct IdCompare {
-        bool operator()( VertexId a, VertexId b) {
-            return a.weakId() < b.weakId();
-        }
-    };
+    using Vertex = typename Store::Vertex;
+    using Handle = typename Store::Handle;
 
     int m_algslack;
 
@@ -34,30 +28,14 @@ struct PORGraph : graph::Transform< G > {
         bool remove:1;
     };
 
-    typedef void (*PredCount)( Pool&, VertexId, int );
-    PredCount _predCount;
-
-    BlobComparerLT bcomp;
-    std::set< VertexId, IdCompare > to_expand;
+    std::vector< Handle > to_expand;
     bool finished;
 
-    void updatePredCount( Vertex t, int v, int* pc ) {
-        extension( t ).predCount = v;
-        if ( pc )
-            *pc = v;
-    }
-
     void updatePredCount( Vertex t, int v ) {
-        updatePredCount( t.getVertexId(), v );
-    }
-
-    void updatePredCount( VertexId t, int v ) {
         extension( t ).predCount = v;
-        if ( _predCount )
-            _predCount( this->pool(), t, v );
     }
 
-    PORGraph() : _predCount( 0 ), bcomp( this->pool() ) {
+    PORGraph() {
         this->base().initPOR();
     }
 
@@ -66,12 +44,8 @@ struct PORGraph : graph::Transform< G > {
         return graph::Transform< G >::setSlack( s + sizeof( Extension ) );
     }
 
-    Extension &extension( VertexId n ) {
-        return n.template extension< Extension >( this->pool(), m_algslack );
-    }
-
     Extension &extension( Vertex n ) {
-        return extension( n.getVertexId() );
+        return n.template extension< Extension >( m_algslack );
     }
 
     template < typename T >
@@ -87,27 +61,24 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void successors( Vertex st, Yield yield ) {
         if ( extension( st ).full )
-            this->base().successors( st.getNode( this->pool() ), yield );
+            this->base().successors( st.node(), yield );
         else
-            this->base().ample( st.getNode( this->pool() ), yield );
+            this->base().ample( st.node(), yield );
     }
 
-    void porTransition( Vertex f, Vertex t, int* pc ) {
+    void porTransition( Store &s, Vertex f, Vertex t ) {
 
         if ( extension( t ).done )
             return; // ignore
 
         // increase predecessor count
-        if ( this->pool().valid( f.getNode() ) )
-            updatePredCount( t, predCount( t ) + 1, pc );
+        if ( s.valid( f ) )
+            updatePredCount( t, predCount( t ) + 1 );
     }
 
     template< typename Setup >
     struct POREliminate : algorithm::Visit< This, Setup >
     {
-        static_assert( wibble::TSame< typename Setup::Vertex, Vertex >::value,
-                "Invalid setup provided for POREliminate: Vertex type of PORGraph does not match Vertex type of Setup" );
-
         static visitor::ExpansionAction expansion( This &, Vertex n ) {
             return visitor::ExpansionAction::Expand;
         }
@@ -140,19 +111,18 @@ struct PORGraph : graph::Transform< G > {
 
                 if ( !t.predCount( n ) || t.extension( n ).remove ) {
                     if ( t.predCount( n ) ) {
-                        t.to_expand.insert( n );
+                        t.to_expand.push_back( n.handle() );
                     }
-                    Node node = v.store().fetchByVertexId( n ).getNode();
                     t.updatePredCount( n, 1 ); // ...
-                    v.queue( Vertex(), node, Label() ); // coming from "nowhere"
+                    v.queue( Vertex(), n.node(), Label() ); // coming from "nowhere"
+                    n.disown();
                 }
             }
         }
     };
 
     template< typename Algorithm >
-    void _porEliminate( Algorithm &a, PredCount pc ) {
-        _predCount = pc;
+    void _porEliminate( Algorithm &a ) {
         typedef POREliminate< typename Algorithm::Setup > Elim;
         typename Elim::Visitor::template Implementation< Elim, Algorithm >
             visitor( *this, a, *this, a.store(), a.data );
@@ -165,7 +135,7 @@ struct PORGraph : graph::Transform< G > {
         for ( auto n : store ) {
             if ( !extension( n ).done ) {
                 updatePredCount( n, 0 );
-                to_expand.insert( n );
+                to_expand.push_back( n.handle() );
                 break;
             }
         }
@@ -190,8 +160,7 @@ struct PORGraph : graph::Transform< G > {
     }
 
     template< typename Algorithm >
-    bool porEliminateLocally( Algorithm &a, PredCount pc ) {
-        _predCount = pc;
+    bool porEliminateLocally( Algorithm &a ) {
         typedef POREliminate< typename Algorithm::Setup > Elim;
         visitor::BFV< Elim > visitor( *this, *this, a.store() );
 
@@ -213,22 +182,19 @@ struct PORGraph : graph::Transform< G > {
     template< typename Yield >
     void porExpand( Store& store, Yield yield )
     {
-        for ( auto n : to_expand ) {
-            Vertex v = store.fetchByVertexId( n );
-            fullexpand( yield, v );
-        }
+        for ( auto h : to_expand )
+            fullexpand( yield, store.vertex( h ) );
     }
 
     template< typename Yield >
     void fullexpand( Yield yield, Vertex v ) {
         extension( v ).full = true;
-        Node n = v.getNode();
         BlobComparerLT bcomp( this->pool() );
         std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ) , ample( bcomp ), out( bcomp );
         std::vector< std::pair< Node, Label > > extra;
 
-        this->base().successors( n, [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
-        this->base().ample( n, [&]( Node x, Label l ) { ample.insert( std::make_pair( x, l ) ); } );
+        this->base().successors( v.node(), [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
+        this->base().ample( v.node(), [&]( Node x, Label l ) { ample.insert( std::make_pair( x, l ) ); } );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ), bcomp );
@@ -243,7 +209,7 @@ struct PORGraph : graph::Transform< G > {
             this->base().release( i.first );
 
         for ( auto i : out )
-            yield( n, i.first, i.second );
+            yield( v, i.first, i.second );
     }
 };
 

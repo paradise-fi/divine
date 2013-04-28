@@ -13,19 +13,17 @@ struct NonPORGraph : graph::Transform< G > {
 
     typedef typename G::Node Node;
     typedef typename St::Vertex Vertex;
-    typedef typename St::VertexId VertexId;
-    typedef typename St::QueueVertex QueueVertex;
-    typedef void (*UpdatePredCount)( Pool&, VertexId, int );
+    typedef typename St::Handle Handle;
 
     void porExpansion( Vertex ) {}
-    void porTransition( Vertex, Vertex, int* ) {}
+    void porTransition( St &, Vertex, Vertex ) {}
     bool full( Node ) { return true; }
 
     template< typename Yield >
     void fullexpand( Yield, Node ) {}
 
     template< typename Algorithm >
-    void _porEliminate( Algorithm &, UpdatePredCount ) {}
+    void _porEliminate( Algorithm & ) {}
 
     template< typename Domain, typename Alg >
     bool porEliminate( Domain &, Alg & ) {
@@ -33,7 +31,7 @@ struct NonPORGraph : graph::Transform< G > {
     }
 
     template< typename Table >
-    bool porEliminateLocally( Table &, UpdatePredCount ) {
+    bool porEliminateLocally( Table & ) {
         return false;
     }
 
@@ -43,7 +41,7 @@ struct NonPORGraph : graph::Transform< G > {
 
     template< typename Yield >
     void successors( Vertex st, Yield yield ) {
-        this->base().successors( st.getNode( this->base().pool() ), yield );
+        this->base().successors( st.node(), yield );
     }
 };
 
