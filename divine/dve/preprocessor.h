@@ -25,6 +25,22 @@ struct Definition {
     }
 };
 
+struct Initialiser : Parser {
+    std::vector< parse::Expression > initial;
+
+    void initList() {
+        list< parse::Expression >( std::back_inserter( initial ),
+                                   Token::BlockOpen, Token::Comma,
+                                   Token::BlockClose );
+    }
+
+    Initialiser( Context &c ) : Parser( c ) {
+        if ( maybe( &Initialiser::initList ) )
+            return;
+        initial.push_back( parse::Expression( context() ) );
+    }
+};
+
 struct System {
     std::unordered_map< std::string, std::string > defs;
 
