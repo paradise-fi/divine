@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <limits.h>
 #include <cstdlib>
