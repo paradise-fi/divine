@@ -357,6 +357,7 @@ struct Declaration : Parser {
     std::vector< int > components;
     std::vector< Expression > initial;
     std::string name;
+    bool is_input;
 
     void subscript() {
         eat( Token::IndexOpen );
@@ -408,6 +409,7 @@ struct ChannelDeclaration : Parser {
     std::string name;
     bool is_compound;
     std::vector< int > components;
+    bool is_input;
 
     void subscript() {
         eat( Token::IndexOpen );
@@ -456,6 +458,7 @@ struct Declarations : Parser {
                 width += types[i].size;
             }
             decllist[i].width = width;
+            decllist[i].is_input = is_input;
         }
     }
 
