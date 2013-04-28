@@ -17,11 +17,7 @@ enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_R
 enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap, R_LU };
 typedef std::set< ReductionType > ReductionSet;
 
-template< typename _Node >
-struct Base {
-    typedef _Node Node;
-    typedef wibble::Unit Label;
-
+struct Allocator {
     Pool _pool;
     int _slack;
 
@@ -29,7 +25,8 @@ struct Base {
     Pool &pool() { return _pool; }
     void setPool( Pool p ) { _pool = p; }
     int slack() { assert_leq( 0, _slack ); return _slack; }
-    void initPOR() {}
+
+    Allocator() : _pool( nullptr ), _slack( 0 ) {}
 
     Blob makeBlob( int s ) {
         Blob b = pool().allocate( s + slack() );
@@ -43,8 +40,14 @@ struct Base {
         pool().clear( b );
         return b;
     }
+};
 
-    Base() : _pool( nullptr ), _slack( 0 ) {}
+template< typename _Node >
+struct Base : Allocator {
+    typedef _Node Node;
+    typedef wibble::Unit Label;
+
+    void initPOR() {}
 
     // for single-set acceptance conditions (Buchi)
     bool isAccepting( Node s ) { return false; }
