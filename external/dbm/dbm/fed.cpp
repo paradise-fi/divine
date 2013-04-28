@@ -32,6 +32,7 @@
 ///////////////////////////////////////////////////////////////////
 
 #include <math.h>
+#include <algorithm>
 #include <boost/bind.hpp>
 
 #include "base/slist.h"
