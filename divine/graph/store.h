@@ -55,15 +55,18 @@ struct StoreCommon : TableProvider
 
   public:
     template< typename... Args >
-    StoreCommon( Args&&... args )
-        : TableProvider( std::forward< Args >( args )... ) {}
+    StoreCommon( Pool &p, Args&&... args )
+        : TableProvider( std::forward< Args >( args )... ), _pool( p ) {}
+
+    Pool &_pool;
 
     Hasher& hasher() { return this->table().hasher; }
     const Hasher& hasher() const { return this->table().hasher; }
 
-    const Pool& pool() const { return hasher().pool; }
+    const Pool& pool() const { return _pool; }
+    Pool& pool() { return _pool; }
+
     hash_t hash( Node node ) const { return hasher().hash( node ); }
-    Pool& pool() { return hasher().pool; }
     int slack() const { return hasher().slack; }
     bool valid( Node n ) { return hasher().valid( n ); }
     bool equal( Node m, Node n ) { return hasher().equal( m, n ); }
@@ -334,7 +337,7 @@ struct DefaultStore
 
     template < typename Graph >
     DefaultStore( Graph &g, int slack, This *m = nullptr )
-        : Base( Hasher( g.pool(), slack ), m )
+        : Base( g.pool(), Hasher( g.pool(), slack ), m )
     { }
 
     STORE_ITERATOR;
