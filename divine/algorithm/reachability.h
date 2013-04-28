@@ -11,24 +11,24 @@
 namespace divine {
 namespace algorithm {
 
-template < typename VertexId >
+template < typename Handle >
 struct ReachabilityShared {
-    VertexId goal;
+    Handle goal;
     bool deadlocked;
     algorithm::Statistics stats;
-    CeShared< Blob, VertexId > ce;
+    CeShared< Blob, Handle > ce;
     bool need_expand;
     ReachabilityShared() : need_expand( false ) {}
 };
 
-template< typename BS, typename VertexId >
-typename BS::bitstream &operator<<( BS &bs, ReachabilityShared< VertexId > st )
+template< typename BS, typename Handle >
+typename BS::bitstream &operator<<( BS &bs, ReachabilityShared< Handle > st )
 {
     return bs << st.goal << st.deadlocked << st.stats << st.ce << st.need_expand;
 }
 
-template< typename BS, typename VertexId >
-typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< VertexId > &st )
+template< typename BS, typename Handle >
+typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Handle > &st )
 {
     return bs >> st.goal >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
 }
@@ -42,13 +42,13 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                       Parallel< Setup::template Topology, Reachability< Setup > >
 {
     typedef Reachability< Setup > This;
-    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::VertexId> );
+    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::Store::Handle > );
 
-    VertexId goal;
+    Handle goal;
     bool deadlocked;
 
     struct Extension {
-        VertexId parent;
+        Handle parent;
     };
 
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
@@ -59,36 +59,36 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     }
 
     Extension &extension( Vertex n ) {
-        return n.getVertexId().template extension< Extension >( pool() );
+        return n.template extension< Extension >();
     }
 
     struct Main : Visit< This, Setup >
     {
         static visitor::ExpansionAction expansion( This &r, Vertex st )
         {
-            r.shared.stats.addNode( r.graph(), st.getNode() );
+            r.shared.stats.addNode( r.graph(), st.node() );
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
         {
             if ( !r.store().valid( r.extension( t ).parent ) ) {
-                r.extension( t ).parent = f.getVertexId();
+                r.extension( t ).parent = f.handle();
                 assert( !r.store().valid( f )
                         || r.store().valid( r.extension( t ).parent ) );
             }
-            r.shared.stats.addEdge( r.graph(), f.getNode(), t.getNode() );
+            r.shared.stats.addEdge( r.graph(), f.node(), t.node() );
 
             if ( r.meta().input.propertyType == graph::PT_Goal
-                    && r.graph().isGoal( t.getNode() ) )
+                 && r.graph().isGoal( t.node() ) )
             {
-                r.shared.goal = t.getVertexId();
+                r.shared.goal = t.handle();
                 assert( r.store().valid( r.shared.goal ) );
                 r.shared.deadlocked = false;
                 return visitor::TransitionAction::Terminate;
             }
 
-            r.graph().porTransition( f, t, 0 );
+            r.graph().porTransition( r.store(), f, t );
             return visitor::TransitionAction::Follow;
         }
 
@@ -99,7 +99,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::DeadlockAction::Ignore;
 
-            r.shared.goal = n.getVertexId();
+            r.shared.goal = n.handle();
             assert( r.store().valid( r.shared.goal ) );
             r.shared.deadlocked = true;
             return visitor::DeadlockAction::Terminate;
@@ -111,7 +111,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     }
 
     void _por_worker() {
-        this->graph()._porEliminate( *this, nullptr );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
@@ -134,7 +134,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
     Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
         shared = sh;
-        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce.setup( *this, shared );
         (ce.*ceCall)( *this, this->store() );
         return shared;
     }
@@ -151,9 +151,9 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return runCe( sh, &CE::_ceIsInitial );
     }
 
-    void counterexample( VertexId n ) {
+    void counterexample( Handle n ) {
         shared.ce.initial = n;
-        ce.setup( this->graph(), shared, this->store().hasher() );
+        ce.setup( *this, shared );
         Node goal = ce.linear( *this, *this );
         ce.goal( *this, goal );
     }
