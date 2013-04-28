@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <wibble/test.h> // assert
 #include <wibble/sfinae.h>
 #include <divine/utility/statistics.h>
