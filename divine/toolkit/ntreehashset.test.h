@@ -1,3 +1,6 @@
+// -*- C++ -*- (c) 2013 Vladimir Still <xstill@fi.muni.cz>
+//             (c) 2013 Petr Ročkai <me@mornfall.net>
+
 #ifndef TESTS_NTREE_HASH_SET
 #define TESTS_NTREE_HASH_SET
 
