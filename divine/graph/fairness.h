@@ -15,7 +15,6 @@ struct FairGraph : NonPORGraph< G, St > {
     typedef typename G::Node Node;
     typedef typename G::Label Label;
     typedef typename St::Vertex Vertex;
-    typedef typename St::QueueVertex QueueVertex;
 
     int m_algslack;
 
@@ -31,8 +30,7 @@ struct FairGraph : NonPORGraph< G, St > {
     }
 
     Extension &extension( Vertex n ) {
-        return n.getVertexId().template extension< Extension >(
-                this->pool(), m_algslack );
+        return n.template extension< Extension >( m_algslack );
     }
 
     Extension &extension( Node n ) {
@@ -48,7 +46,7 @@ struct FairGraph : NonPORGraph< G, St > {
 
     template< typename Yield >
     void successors( Vertex stV, Yield yield ) {
-        Node st = stV.getNode( this->pool() );
+        Node st = stV.node();
         int procs = this->base().processCount();
 
         int copy = extension( stV ).copy;
