@@ -11,6 +11,7 @@ struct Output {
     virtual std::ostream &debug() = 0;
     virtual void setStatsSize( int x, int y ) {}
     virtual void cleanup() {}
+    virtual ~Output() {}
 
     static Output *_output;
     static Output &output() {
