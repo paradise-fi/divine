@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/utility/statistics.h>
 #include <divine/algorithm/common.h>
