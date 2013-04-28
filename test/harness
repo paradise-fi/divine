@@ -52,10 +52,9 @@ for t_ in $tests; do
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
         if test -z "$VERBOSE" && grep -q "^#### PASSED" $outf; then
             echo "`grep -c '^#### PASSED' $outf` sub-test(s) passed; use VERBOSE=1 to unhide them"
-	    grep -A 10000 "^#### PASSED" $outf | tail -n +2;
-        else
-            cat $outf
+            while grep -q "^#### PASSED" $outf; do sed -e "1,/^#### PASSED/d" -i $outf; done
         fi
+        cat $outf
 	printf -- "--- End: $t ----"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
 	failed="$failed $t"
