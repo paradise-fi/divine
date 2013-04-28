@@ -70,7 +70,7 @@ struct ThreadVector {
     ThreadVector( std::vector< T > &instances, void (T::*fun)() )
     {
         for ( int i = 0; i < int( instances.size() ); ++ i )
-            m_threads.push_back( R( instances[ i ], fun ) );
+            m_threads.emplace_back( instances[ i ], fun );
     }
 
     ThreadVector() {}
@@ -304,8 +304,9 @@ struct Local
 
     template< typename X = Instance >
     Local( int n, X init = X() ) {
+        m_slaves.reserve( n ); /* avoid reallocation at all costs! */
         for ( int i = 0; i < n; ++ i )
-            m_slaves.push_back( Instance( init ) );
+            m_slaves.emplace_back( init );
         m_comms.resize( n );
     }
 
