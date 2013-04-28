@@ -92,16 +92,16 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     ALGORITHM_CLASS( Setup, Shared );
 
     struct Main : Visit< This, Setup > {
-        static visitor::ExpansionAction expansion( This &t, Vertex st )
+        static visitor::ExpansionAction expansion( This &t, const Vertex &st )
         {
-            t.shared.addNode( t.graph(), st.getNode() );
+            t.shared.addNode( t.graph(), st.node() );
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label )
         {
-            t.shared.addEdge( t.graph(), from.getNode(), to.getNode() );
-            t.graph().porTransition( from, to, 0 );
+            t.shared.addEdge( t.graph(), from.node(), to.node() );
+            t.graph().porTransition( t.store(), from, to );
             return visitor::TransitionAction::Follow;
         }
 
@@ -116,7 +116,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     }
 
     void _por_worker() {
-        this->graph()._porEliminate( *this, nullptr );
+        this->graph()._porEliminate( *this );
     }
 
     Shared _por( Shared sh ) {
