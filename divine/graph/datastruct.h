@@ -95,10 +95,14 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
 template< typename Setup >
 struct Stack {
     typedef typename Setup::Graph Graph;
-    Graph &g;
+    typedef typename Setup::Store Store;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
-    typedef typename Setup::Handle Handle;
+    typedef typename Store::Handle Handle;
+    typedef typename Store::Vertex Vertex;
+
+    Graph &g;
+    Store &s;
 
     enum Flag { Fresh, Expanded };
 
@@ -113,7 +117,7 @@ struct Stack {
 
         Handle handle() {
             assert( flag == Expanded );
-            return data.vertex;
+            return data.handle;
         }
 
         StackItem() = delete;
@@ -136,16 +140,16 @@ struct Stack {
     };
 
     std::deque< StackItem > _stack;
-    Handle _from;
+    Vertex _from;
     bool deadlocked;
 
     int _pushes, _pops;
 
     void push( Handle h ) {
-        _from = h;
+        _from = s.vertex( h );
         _stack.push_back( StackItem( h, Label() ) );
         deadlocked = true;
-        g.successors( h, [&]( Node n, Label l ) {
+        g.successors( _from, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 deadlocked = false;
                 _stack.push_back( StackItem( n, l ) );
@@ -168,7 +172,7 @@ struct Stack {
     void processDead( Dead dead ) {
         if ( deadlocked && ! empty() ) {
             assert_eq( _stack.back().flag, Expanded );
-            dead(_stack.back().vertex() );
+            dead( s.vertex( _stack.back().handle() ) );
             deadlocked = false;
         }
     }
@@ -179,13 +183,13 @@ struct Stack {
             return;
 
         while ( !empty() && _stack.back().flag == Expanded ) {
-            close( _stack.back().vertex() );
+            close( s.vertex( _stack.back().handle() ) );
             _stack.pop_back();
         }
 
         for ( auto i = _stack.rbegin(); i != _stack.rend(); ++i )
             if ( i->flag == Expanded ) {
-                _from = i->vertex();
+                _from = s.vertex( i->handle() );
                 break;
             }
     }
@@ -193,7 +197,7 @@ struct Stack {
     bool empty() { return _stack.empty(); }
     void clear() { _stack.clear(); }
 
-    Stack( Graph &_g ) : g( _g ) { _pushes = _pops = 0; }
+    Stack( Graph &g, Store &s ) : g( g ), s( s ) { _pushes = _pops = 0; }
 };
 
 /**

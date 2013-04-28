@@ -213,7 +213,7 @@ struct DFV : Common< Stack, S > {
     DFV( typename S::Listener &n,
          typename S::Graph &g,
          typename S::Store &s )
-        : Super( n, g, s, typename Super::Queue( g ) ) {}
+        : Super( n, g, s, typename Super::Queue( g, s ) ) {}
 };
 
 struct Partitioned {
