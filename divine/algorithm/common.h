@@ -53,32 +53,19 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     typedef _AlgorithmSetup AlgorithmSetup;
     typedef typename AlgorithmSetup::Graph::Node Node;
     typedef typename AlgorithmSetup::Graph::Label Label;
-    typedef typename AlgorithmSetup::Vertex Vertex;
-    typedef typename AlgorithmSetup::VertexId VertexId;
+    using Vertex = typename AlgorithmSetup::Store::Vertex;
 
     template< typename A, typename V >
     void queueInitials( A &a, V &v ) {
-        a.graph().initials( [ &a, &v ] ( Node f, Node n, Label l ) {
-                bool had = true;
-                Vertex fV = Vertex();
-                if ( a.store().valid( f ) )
-                   std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
-                assert( had );
-                assert( !a.store().valid( f ) || a.store().valid( fV ) );
-                v.queue( fV, n, l );
+        a.graph().initials( [ &a, &v ] ( Node, Node n, Label l ) {
+                v.queue( Vertex(), n, l );
             } );
     }
 
     template< typename A, typename V >
     void queuePOR( A &a, V &v ) {
-        a.graph().porExpand( a.store(), [ &a, &v ] ( Node f, Node n, Label l ) {
-                bool had = true;
-                Vertex fV = Vertex();
-                if ( a.store().valid( f ) )
-                   std::tie( fV, had ) = a.store().fetch( f, a.store().hash( f ) );
-                assert( had );
-                assert( !a.store().valid( f ) || a.store().valid( fV ) );
-                v.queueAny( fV, n, l );
+        a.graph().porExpand( a.store(), [ &a, &v ] ( Vertex f, Node n, Label l ) {
+                v.queueAny( f, n, l );
             } );
     }
 };
@@ -234,8 +221,8 @@ struct AlgorithmUtils {
     typedef typename Graph::Label Label;                        \
     typedef typename _setup::Store Store;                       \
     typedef typename Store::Hasher Hasher;                      \
-    typedef typename Setup::VertexId VertexId;                  \
-    typedef typename Setup::Vertex Vertex
+    typedef typename Setup::Store::Handle Handle;               \
+    typedef typename Setup::Store::Vertex Vertex
 
 #define ALGORITHM_RPC_ID(_type, _id, _fun) \
     template< typename Setup > RPC_ID( _type< Setup >, _fun, 2 + _id )
