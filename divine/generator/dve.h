@@ -163,7 +163,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Yield >
     void initials( Yield yield ) {
-        Blob b = makeBlob( stateSize() );
+        Blob b = makeBlobCleared( stateSize() );
         updateMem( b );
         system->initial( ctx );
         yield( Node(), b, Label() );
