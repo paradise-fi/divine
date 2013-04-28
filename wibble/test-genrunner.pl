@@ -32,7 +32,7 @@ sub process() {
                     $filename{$set} = $file;
                     $prefix{$set} = $1;
                     $depth = $nest;
-                } elsif (/Test[ \t\n]+([a-zA-Z_1-9]+)[ \t\n]*\(/) {
+                } elsif (/^[ \t]*Test[ \t\n]+([a-zA-Z_1-9]+)[ \t\n]*\(/sm) {
                     if ($set eq "not defined") {
                         print STDERR "W: test found out of scope of a Test structure, ignoring\n";
                     } else {
