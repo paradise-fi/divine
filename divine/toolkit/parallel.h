@@ -172,13 +172,19 @@ struct FifoMatrix
 };
 
 struct WithID {
-    int m_id;
-    int id() { assert_leq( 0, m_id ); return m_id; }
-    WithID() : m_id( -1 ) {}
+    int _id;
+    int _peers;
+    int id() { assert_leq( 0, _id ); return _id; }
+    int peers() { assert_leq( 0, _id ); return _peers; }
+    void setId( int id, int peers ) {
+        _id = id;
+        _peers = peers;
+    }
+    WithID() : _id( -1 ) {}
 };
 
 struct Sequential : WithID {
-    Sequential() { m_id = 0; }
+    Sequential() { setId( 0, 1 ); }
 };
 
 /**
@@ -216,11 +222,12 @@ struct Parallel : Terminable, WithID {
         is_master = true;
         assert( !m_topology );
         m_topology = new Topology< Instance >( n, m ); // TODO int is kind of limited
+        setId( -1, -1 ); /* try to catch anyone thinking to use our ID */
     }
 
     void becomeSlave( Topology< Instance > &topology, int id ) {
         m_topology = &topology;
-        m_id = id;
+        setId( id, topology.peers() );
     }
 
     Topology< Instance > &topology() {
