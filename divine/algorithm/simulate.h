@@ -13,7 +13,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
-    typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::Store::Vertex Vertex;
 
     struct Extension {
         bool seen;
@@ -35,29 +35,17 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     int id() { return 0; } // expected by AlgorithmUtils
 
     Extension &extension( Vertex n ) {
-        return n.getVertexId().template extension< Extension >(
-                this->graph().pool() );
+        return n.template extension< Extension >();
     }
 
     // clear the successor list
     void clearSuccs() {
-        for ( auto& s : succs ) {
-            s.free( this->graph().pool() );
-        }
         succs.clear();
     }
 
     // add successor to the list
     void addSucc( Node n ) {
-        bool ins;
-        hash_t hint = this->store().hash( n );
-        Vertex v;
-        std::tie( v, ins ) = this->store().store( n, hint );
-
-        if ( !ins ) {
-            this->graph().release( n );
-        }
-
+        auto v = this->store().store( n );
         succs.push_back( v );
     }
 
@@ -122,7 +110,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         const int LINE = 40;
         unsigned int id = 0;
         for ( auto& s : succs ) {
-            Node n = s.getNode();
+            Node n = s.node();
             ++id;
 
             std::stringstream ss;
@@ -147,7 +135,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
             // print transition
             if ( printEdges && !trace.empty() ) {
-                std::string edge = this->graph().showTransition( trace.back().getNode(), n, Label() );
+                std::string edge = this->graph().showTransition( trace.back().node(), n, Label() );
                 if ( !edge.empty() )
                     o << "=> " << edge << '\n';
             }
@@ -163,7 +151,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     void printCurrent( std::ostream& o ) {
         if ( !trace.empty() ) {
-            o << this->graph().showNode( trace.back().getNode() ) << '\n';
+            o << this->graph().showNode( trace.back().node() ) << '\n';
         }
     }
 
@@ -193,7 +181,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                 }
             } else if ( *part == "t" ) {
                 for ( Vertex n : trace ) {
-                    std::cerr << this->graph().showNode( n.getNode() ) << "\n";
+                    std::cerr << this->graph().showNode( n.node() ) << "\n";
                 }
             } else if ( *part == "n" ) {
                 if ( !stepDFS() )
