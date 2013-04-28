@@ -235,7 +235,7 @@ struct TestNTreeHashSet {
 #ifdef NTREE_STANDALONE_TEST
 
 int main( void ) {
-    NTreeHashSetTest test;
+    TestNTreeHashSet test;
     test.basicFlat();
     test.binary2();
     test.binary4();
