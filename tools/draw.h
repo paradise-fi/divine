@@ -24,9 +24,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
-    typedef typename Setup::Vertex Vertex;
-    typedef typename Setup::VertexId VertexId;
-    typedef typename Setup::QueueVertex QueueVertex;
+    typedef typename Store::Vertex Vertex;
+    typedef typename Store::Handle Handle;
     typedef This Listener;
     typedef NoStatistics Statistics;
 
@@ -49,11 +48,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     int id() { return 0; }
 
     Extension &extension( Vertex n ) {
-        return extension( n.getNode() );
-    }
-
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n );
+        return n.template extension< Extension >();
     }
 
     Pool& pool() {
@@ -115,26 +110,26 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
     std::string label( Vertex n ) {
         if ( extension( n ).intrace && traceLabels )
-            return this->graph().showNode( n.getNode() );
+            return this->graph().showNode( n.node() );
         if ( labels )
-            return this->graph().showNode( n.getNode() );
+            return this->graph().showNode( n.node() );
         return "";
     }
 
-    std::string color( Vertex n ) {
+    std::string color( const Vertex &n ) {
         if ( extension( n ).initial )
             return "magenta";
         if ( extension( n ).intrace ) {
-            if ( this->graph().isGoal( n.getNode() ) )
+            if ( this->graph().isGoal( n.node() ) )
                 return "orange";
             return "red";
         }
-        if ( this->graph().isGoal( n.getNode() ) )
+        if ( this->graph().isGoal( n.node() ) )
             return "yellow";
         return "";
     }
 
-    void dotNode( Vertex n, bool dashed = false ) {
+    void dotNode( const Vertex &n, bool dashed = false ) {
         std::stringstream str;
 
         if ( bfs && extension( n ).distance > currentdist ) {
@@ -145,7 +140,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
-        if ( this->graph().isAccepting( n.getNode() ) )
+        if ( this->graph().isAccepting( n.node() ) )
             str << "peripheries=2 ";
 
         if ( label( n ).empty() )
@@ -170,7 +165,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         if ( labels )
             label = escape( this->graph().showTransition(
-                        f.getNode(), t.getNode(), a ) );
+                                f.node(), t.node(), a ) );
 
         if ( !color.empty() || !label.empty()) {
             str << " [";
@@ -200,11 +195,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         Vertex from, to;
         this->graph().initials( [&]( Node, Node n, Label ) {
                 if ( trans.front() == 1 )
-                    from = std::get< 0 >( this->store().fetch( n, this->store().hash( n ) ) );
+                    from = this->store().store( n );
                 trans.front() --;
             } );
 
-        assert( this->store().valid( from.getNode() ) );
+        assert( this->store().valid( from ) );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
             extension( from ).intrace = true;
@@ -219,7 +214,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                         return;
                     }
                     if ( !this->store().valid( to ) )
-                        to = std::get< 0 >( this->store().fetch( n, this->store().hash( n ) ) );
+                        to = this->store().store( n );
                 } );
 
             if ( !this->store().valid( to ) )
@@ -238,28 +233,29 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
     void draw() {
 
-        this->graph().initials( [this]( Node f, Node t, Label l ) {
-                this->extension( t ).serial = ++this->serial;
-                this->extension( t ).distance = 1;
-                this->extension( t ).initial = 1;
-                this->extension( t ).intrace = false;
-                this->store().store( t, this->store().hash( t ) );
+        visitor::BFV< This >
+            visitor( *this, this->graph(), this->store() );
+
+        this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
+                auto v = this->store().store( t );
+                this->extension( v ).serial = ++this->serial;
+                this->extension( v ).distance = 1;
+                this->extension( v ).initial = 1;
+                this->extension( v ).intrace = false;
+                visitor.queue( Vertex(), v.node(), l );
             } );
 
         loadTrace();
 
-        visitor::BFV< This >
-            visitor( *this, this->graph(), this->store() );
+        visitor.processQueue();
 
-        do {
-            this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
-                    Vertex fV = this->store().valid( f )
-                        ? std::get< 0 >( this->store().fetch( f, this->store().hash( f ) ) )
-                        : Vertex();
-                    visitor.queue( fV, t, l );
+        while ( this->graph().porEliminateLocally( *this ) ) {
+            this->graph().porExpand(
+                this->store(), [ this, &visitor ]( Vertex f, Node t, Label l ) {
+                    visitor.queue( f, t, l );
                 } );
             visitor.processQueue();
-        } while ( this->graph().porEliminateLocally( *this, nullptr ) );
+        }
 
         if ( bfs )
             dot_nodes = "{" + dot_nodes + "}";
