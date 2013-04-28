@@ -45,7 +45,8 @@ struct Lake {
     struct Pointer {
         uint64_t block:40;
         uint64_t offset:24;
-        Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
+        Pointer() : block( 0 ), offset( 0 ) {}
+        // XXX: Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
         uint64_t raw() { return *reinterpret_cast< uint64_t * >( this ); }
         static Pointer fromRaw( uint64_t r ) {
             Pointer p;
@@ -171,7 +172,13 @@ struct Lake {
     void valgrindInit() {}
 #endif
 
-    Lake() {
+    /*
+     * NB. We set usedblocks to 8, so that we both keep reasonable alignment
+     * and make (0, 0) Pointer invalid; this may change in the future, when
+     * Extensions, which tend to contain Pointers, are no longer zeroed, but
+     * constructed instead (as they should)
+     */
+    Lake() : usedblocks( 8 ) {
         for ( int i = 0; i < 4096; ++i )
             _freelist_big[ i ] = nullptr;
     }
@@ -229,7 +236,7 @@ struct Lake {
 
         char *dereference( Pointer p ) { return lake->dereference( p ); }
         const char *dereference( Pointer p ) const { return lake->dereference( p ); }
-        bool valid( Pointer p ) { return p.block != 0xFFFFFFFFFF; }
+        bool valid( Pointer p ) { return p.block; /* != 0xFFFFFFFFFF*/; }
         int size( Pointer p ) { return lake->size( p ); }
 
         bool alias( Pointer a, Pointer b ) {
