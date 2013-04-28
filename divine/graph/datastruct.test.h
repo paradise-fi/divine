@@ -8,6 +8,7 @@
 using namespace divine;
 
 struct TestDatastruct {
+#if 0
     typedef Blob Node;
     typedef generator::Dummy::Label Label;
 
@@ -93,7 +94,7 @@ struct TestDatastruct {
         assert( q.empty() );
     }
 
-    Test queue() {
+    NoTest queue() {
         generator::Dummy d;
         Queue< SeqSetup > q( d );
         d.setPool( Pool() );
@@ -111,7 +112,7 @@ struct TestDatastruct {
         typedef typename Store::QueueVertex QueueVertex;
     };
 
-    Test sharedQueue() {
+    NoTest sharedQueue() {
         generator::Dummy d;
         typedef SharedQueue< SharedSetup< generator::Dummy > > Queue;
         Queue::TerminatorPtr t = std::make_shared< Queue::Terminator >();
@@ -178,7 +179,7 @@ struct TestDatastruct {
         };
     };
 
-    Test sharedQueueMultiStress() {
+    NoTest sharedQueueMultiStress() {
         const int threads = 4;
         const int amount = 32 * 1024;
 
@@ -209,7 +210,7 @@ struct TestDatastruct {
         delete[] workers;
     }
 
-    Test stack() {
+    NoTest stack() {
         typedef typename SeqSetup::Vertex Vertex;
         generator::Dummy d;
         Stack< SeqSetup > q( d );
@@ -287,5 +288,5 @@ struct TestDatastruct {
 
         assert( q.empty() );
     }
-
+#endif
 };
