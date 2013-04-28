@@ -1,4 +1,5 @@
 // -*- C++ -*-
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <utility>
 #include <memory>
 #include <iterator>
