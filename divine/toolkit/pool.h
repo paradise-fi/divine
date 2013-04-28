@@ -108,7 +108,7 @@ struct Lake {
                      h, alloc = new VHandle[ header( p ).total ]) )
                 h = alloc;
             else
-                delete alloc;
+                delete[] alloc;
         }
 
         assert( h );
@@ -151,7 +151,7 @@ struct Lake {
             if ( _vhandles[ i ] ) {
                 for ( int j = 0; j < header( i ).total; ++j )
                     count += _vhandles[ i ][ j ].allocated;
-                delete _vhandles[ i ].load();
+                delete[] _vhandles[ i ].load();
             }
 
         for ( int i = 0; i < blockcount && block[ i ]; ++i )
