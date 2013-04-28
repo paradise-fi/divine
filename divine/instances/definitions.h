@@ -124,10 +124,7 @@ namespace instantiate {
 #define VISIT_SPEC( VISIT ) template<> \
     struct SelectVisitor< Visitor :: VISIT > { \
         using T = ::divine::visitor :: VISIT; \
-        template < typename Node, typename Hasher, \
-            template < template < typename, typename > class, typename, typename > \
-          class TableWrapper > \
-        using TableUtils = ::divine::visitor :: VISIT ## Table< Node, Hasher, TableWrapper >; \
+        using TableProvider = ::divine::visitor :: VISIT ## Provider; \
         static const bool available = true; \
     }
 
@@ -138,14 +135,14 @@ namespace instantiate {
 
 #define STORE_SPEC( ENUM, STORE, VISIT ) template<> \
     struct SelectStore< Store :: ENUM, Visitor :: VISIT > { \
-        template < typename Node, typename Hasher, typename Stat > \
-        using T = ::divine::visitor :: STORE < SelectVisitor< Visitor :: VISIT > \
-            ::template TableUtils, Node, Hasher, Stat >; \
+        template < typename Generator, typename Hasher, typename Stat > \
+        using T = ::divine::visitor :: STORE < typename SelectVisitor< Visitor :: VISIT > \
+            ::TableProvider, Generator, Hasher, Stat >; \
         static const bool available = SelectVisitor< Visitor :: VISIT >::available; \
     }
 
-    STORE_SPEC( Partitioned, Store, Partitioned );
-    STORE_SPEC( Partitioned, Store, Shared );
+    STORE_SPEC( Partitioned, DefaultStore, Partitioned );
+    STORE_SPEC( Partitioned, DefaultStore, Shared );
 #ifdef O_HASH_COMPACTION
     STORE_SPEC( HashCompacted, HcStore, Partitioned );
     STORE_SPEC( HashCompacted, HcStore, Shared );
@@ -245,7 +242,7 @@ namespace instantiate {
     };
 
     template< typename G, typename St >
-    using Transition = std::tuple< typename St::QueueVertex, typename G::Node, typename G::Label >;
+    using Transition = std::tuple< typename St::Handle, typename G::Node, typename G::Label >;
 
     template < typename Generator, template < typename, typename, typename > class Transform,
              template< typename, typename, typename > class _Store, typename Hasher,
@@ -259,9 +256,6 @@ namespace instantiate {
         using Topology = typename _Topology< Transition< Graph, Store > >
                             ::template TT< I >;
         using Statistics = _Statistics;
-        using Vertex = typename Store::Vertex;
-        using VertexId = typename Store::VertexId;
-        using QueueVertex = typename Store::QueueVertex;
     };
 
     template < bool, bool, bool, bool, bool, bool, Algorithm algo,
