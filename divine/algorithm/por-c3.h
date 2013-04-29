@@ -53,8 +53,7 @@ struct PORGraph : graph::Transform< G > {
         return extension( n ).predCount;
     }
 
-    template < typename T >
-    bool full( T n ) {
+    bool full( Vertex n ) {
         return extension( n ).full;
     }
 

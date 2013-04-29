@@ -17,10 +17,10 @@ struct NonPORGraph : graph::Transform< G > {
 
     void porExpansion( Vertex ) {}
     void porTransition( St &, Vertex, Vertex ) {}
-    bool full( Node ) { return true; }
+    bool full( Vertex ) { return true; }
 
     template< typename Yield >
-    void fullexpand( Yield, Node ) {}
+    void fullexpand( Yield, Vertex ) {}
 
     template< typename Algorithm >
     void _porEliminate( Algorithm & ) {}
