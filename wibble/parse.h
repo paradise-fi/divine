@@ -301,6 +301,11 @@ struct ParseContext {
         position -= n;
     }
 
+    This & createChild( Stream &s, std::string name ) {
+        children.push_back( This( s, name ) );
+        return children.back();
+    }
+
     ParseContext( Stream &s, std::string name ) : stream( s ), window_pos( 0 ), position( 0 ), name( name ) {}
 };
 
