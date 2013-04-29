@@ -1,0 +1,13 @@
+input int i = 5;
+
+process p
+{
+    int x = i;
+    state a;
+    init a;
+
+    trans
+      a->a {guard x < 10; effect x = x + 1;}
+}
+
+system async;

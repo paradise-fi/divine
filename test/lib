@@ -126,6 +126,14 @@ for_dve_small() {
     check clear
     run $wrapper data/B.prop1.dve --property=LTL "$@"
     check statespace 14 18 14 4
+
+    check clear
+    run $wrapper data/input.dve --property=deadlock "$@"
+    check statespace 6 5 0 1
+
+    check clear
+    run $wrapper data/input.dve --property=deadlock -D i=7 "$@"
+    check statespace 4 3 0 1
 }
 
 dve_small() {
