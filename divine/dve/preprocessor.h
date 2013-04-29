@@ -5,6 +5,7 @@
 
 #include <divine/dve/parse.h>
 #include <string>
+#include <memory>
 #include <unordered_map>
 
 namespace divine {
@@ -14,6 +15,9 @@ namespace preprocessor {
 
 struct Definition {
     std::string var, value;
+    std::shared_ptr< dve::Lexer< dve::IOStream > > lexer;
+    std::shared_ptr< dve::IOStream > stream;
+    std::shared_ptr< std::stringstream > realstream;
 
     Definition( std::string def ) {
         int pos = def.find( "=" );
@@ -22,6 +26,11 @@ struct Definition {
         }
         var = def.substr( 0, pos );
         value = def.substr( pos + 1, std::string::npos );
+
+        realstream.reset( new std::stringstream() );
+        (*realstream) << value;
+        stream.reset( new dve::IOStream( *realstream ) );
+        lexer.reset( new dve::Lexer< dve::IOStream >( *stream ) );
     }
 
     Definition() {}
