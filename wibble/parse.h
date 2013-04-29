@@ -358,6 +358,20 @@ struct Parser {
             context().rewind( position() - fallback );
         }
     }
+#if __cplusplus >= 201103L
+    template< typename F >
+    bool arbitrary( F f ) {
+        return maybe( f );
+    }
+
+    template< typename F, typename... Args >
+    bool arbitrary( F f, Args... args ) {
+        bool retval = arbitrary( args... );
+        retval |= maybe( f );
+        retval |= arbitrary( args... );
+        return retval;
+    }
+#endif
 
     template< typename T, typename I >
     void list( I i, TokenId sep ) {
