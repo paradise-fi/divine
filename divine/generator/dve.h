@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
+//             (c) 2012, 2013 Jan Kriho
 
 #ifdef O_DVE
 #include <divine/generator/common.h>

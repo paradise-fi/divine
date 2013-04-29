@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
+//             (2) 2012, 2013 Jan Kriho
 #include <wibble/test.h>
 
 #include <divine/dve/parse.h>
