@@ -645,6 +645,25 @@ struct Automaton : Parser {
 typedef Automaton Process;
 typedef Automaton Property;
 
+template< typename T >
+struct Macro : Parser {
+    T content;
+    Identifier name;
+    std::vector< Identifier > params;
+
+    Macro( Context &c ) : Parser( c )
+    {
+        name = Identifier( c );
+        eat( Token::ParenOpen );
+        list< Identifier >( std::back_inserter( params ), Token::Comma );
+        eat( Token::ParenClose );
+
+        eat( Token::BlockOpen );
+        content = T( c );
+        eat( Token::BlockClose );
+    }
+};
+
 struct System : Parser {
     std::vector< Declaration > decls;
     std::vector< ChannelDeclaration > chandecls;
