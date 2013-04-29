@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
+//             (c) 2013 Jan Kriho
 // Support code for writing backtracking recursive-descent parsers
 #include <string>
 #include <cassert>
