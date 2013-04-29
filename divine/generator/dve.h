@@ -175,10 +175,12 @@ struct Dve : public Common< Blob > {
             system = blueprint->system;
             return;
         }
-        std::vector< dve::preprocessor::Definition > defs;
+        std::unordered_map< std::string, dve::preprocessor::Definition > defs;
         try {
-            for ( std::string & d : definitions )
-                defs.push_back( dve::preprocessor::Definition( d ) );
+            for ( std::string & d : definitions ) {
+                 dve::preprocessor::Definition def( d );
+                 defs[ def.var ] = def;
+            }
         }
         catch ( std::string error ) {
             std::cerr << error << std::endl;

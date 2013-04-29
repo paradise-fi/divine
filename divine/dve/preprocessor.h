@@ -23,6 +23,8 @@ struct Definition {
         var = def.substr( 0, pos );
         value = def.substr( pos + 1, std::string::npos );
     }
+
+    Definition() {}
 };
 
 struct Initialiser : Parser {
@@ -42,14 +44,11 @@ struct Initialiser : Parser {
 };
 
 struct System {
-    std::unordered_map< std::string, std::string > defs;
+    std::unordered_map< std::string, Definition > & defs;
 
     void process( parse::System & ast ) {}
 
-    System( std::vector< Definition > definitions ) {
-        for ( Definition &d : definitions )
-            defs[ d.var ] = d.value;
-    }
+    System( std::unordered_map< std::string, Definition > &defs ) : defs( defs ) {}
 };
 
 }
