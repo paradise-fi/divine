@@ -21,15 +21,15 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Graph::Label Label;
     typedef typename Setup::Store Store;
     typedef typename Store::Vertex Vertex;
-    typedef typename Store::VertexId VertexId;
+    typedef typename Store::Handle Handle;
 
-    Node seed;
+    Vertex seed;
     bool valid;
     bool parallel, finished;
 
-    std::deque< VertexId > ce_stack;
-    std::deque< VertexId > ce_lasso;
-    std::deque< Node > toexpand;
+    std::deque< Handle > ce_stack;
+    std::deque< Handle > ce_lasso;
+    std::deque< Handle > toexpand;
 
     algorithm::Statistics stats;
 
@@ -38,8 +38,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         bool on_stack:1;
     };
 
-    Extension &extension( Node n ) {
-        return pool().template get< Extension >( n );
+    Extension &extension( Vertex v ) {
+        return v.template extension< Extension >();
     }
 
     int id() { return 0; } // expected by AlgorithmUtils
@@ -48,23 +48,25 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         return this->graph().pool();
     }
 
-    void runInner( Graph &graph, Node n ) {
+    void runInner( Graph &graph, Vertex n ) {
         seed = n;
         visitor::DFV< Inner > visitor( *this, graph, this->store() );
-        visitor.exploreFrom( n );
+        visitor.exploreFrom( n.node() );
     }
 
     struct : wibble::sys::Thread {
-        Fifo< Node > process;
+        Fifo< Handle > process;
         This *outer;
-        std::shared_ptr< Graph > graph;
+        std::unique_ptr< Graph > graph;
+        std::unique_ptr< Store > store;
 
         void *main() {
             while ( outer->valid ) {
                 if ( !process.empty() ) {
-                    Node n = process.front();
+                    auto n = process.front();
                     process.pop();
-                    outer->runInner( *graph, n ); // run the inner loop
+                    // run the inner loop
+                    outer->runInner( *graph, outer->store().vertex( n ) );
                 } else {
                     if ( outer->finished )
                         return 0;
@@ -80,12 +82,13 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
         typedef LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > CE;
-        CE ce;
+        CE ce( this );
         auto ceStack = ce.succTraceLocal( *this, typename CE::Linear(), Node(),
-                ce_stack.rbegin(), ce_stack.rend() );
+                                          ce_stack.rbegin(), ce_stack.rend() );
         ce.generateLinear( *this, this->graph(), ceStack );
         auto ceLasso = ce.succTraceLocal( *this, typename CE::Lasso(),
-                ce.traceBack( ceStack ), ce_lasso.rbegin(), ce_lasso.rend() );
+                                          ce.traceBack( ceStack ),
+                                          ce_lasso.rbegin(), ce_lasso.rend() );
         ce.generateLasso( *this, this->graph(), ceLasso );
         progress() << "done" << std::endl;
         result().ceType = meta::Result::Cycle;
@@ -107,11 +110,12 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         visitor.processQueue();
 
         while ( valid && !toexpand.empty() ) {
-            if ( !this->graph().full( toexpand.front() ) )
-                this->graph().fullexpand( [&]( Node, Node t, Label ) {
+            auto from = this->store().vertex( toexpand.front() );
+            if ( !this->graph().full( from ) )
+                this->graph().fullexpand( [&]( Vertex, Node t, Label ) {
                         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
                         visitor.exploreFrom( t );
-                    }, toexpand.front() );
+                    }, from );
             toexpand.pop_front();
         }
 
@@ -139,39 +143,34 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
     struct Outer : Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &dfs, Vertex stV ) {
-            Node st = stV.getNode();
+        static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
             if ( !dfs.valid )
                 return visitor::ExpansionAction::Terminate;
-            dfs.stats.addNode( dfs.graph(), st );
-            dfs.ce_stack.push_front( stV.getVertexId() );
+            dfs.stats.addNode( dfs.graph(), st.node() );
+            dfs.ce_stack.push_front( st.handle() );
             dfs.extension( st ).on_stack = true;
             return visitor::ExpansionAction::Expand;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label ) {
-            Node from = fromV.getNode();
-            Node to = toV.getNode();
-
-            dfs.stats.addEdge( dfs.graph(), from, to );
+        static visitor::TransitionAction transition( This &dfs, Vertex from, Vertex to, Label ) {
+            dfs.stats.addEdge( dfs.graph(), from.node(), to.node() );
             if ( dfs.store().valid( from ) && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
-                dfs.toexpand.push_back( dfs.graph().clone( from ) );
+                dfs.toexpand.push_back( from.handle() );
             return visitor::TransitionAction::Follow;
         }
 
-        static void finished( This &dfs, Vertex nV ) {
-            Node n = nV.getNode();
+        static void finished( This &dfs, Vertex n ) {
 
-            if ( dfs.graph().isAccepting( n ) ) { // run the nested search
+            if ( dfs.graph().isAccepting( n.node() ) ) { // run the nested search
                 if ( dfs.parallel )
-                    dfs.inner.process.push( n );
+                    dfs.inner.process.push( n.handle() );
                 else
                     dfs.runInner( dfs.graph(), n );
             }
 
             if ( dfs.valid && !dfs.ce_stack.empty() ) {
-                assert_eq( nV.getVertexId().weakId(), dfs.ce_stack.front().weakId() );
+                assert_eq( n.handle().asNumber(), dfs.ce_stack.front().asNumber() );
                 dfs.ce_stack.pop_front();
             }
         }
@@ -184,19 +183,17 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             if ( !dfs.valid )
                 return visitor::ExpansionAction::Terminate;
             dfs.stats.addExpansion();
-            dfs.ce_lasso.push_front( st.getVertexId() );
+            dfs.ce_lasso.push_front( st.handle() );
             return visitor::ExpansionAction::Expand;
         }
 
-        static visitor::TransitionAction transition( This &dfs, Vertex fromV, Vertex toV, Label )
+        static visitor::TransitionAction transition( This &dfs, Vertex from, Vertex to, Label )
         {
-            Node from = fromV.getNode();
-            Node to = toV.getNode();
-
             // The search always starts with a transition from "nowhere" into the
             // initial state. Ignore this transition here.
-            if ( dfs.pool().valid( from ) &&
-                 dfs.pool().dereference( to ) == dfs.pool().dereference( dfs.seed ) ) {
+            if ( dfs.pool().valid( from.node() ) &&
+                 to.handle().asNumber() == dfs.seed.handle().asNumber() )
+            {
                 dfs.valid = false;
                 return visitor::TransitionAction::Terminate;
             }
@@ -212,7 +209,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         static void finished( This &dfs, Vertex n ) {
 
             if ( !dfs.ce_lasso.empty() ) {
-                assert_eq( n.getVertexId().weakId(), dfs.ce_lasso.front().weakId() );
+                assert_eq( n.handle().asNumber(), dfs.ce_lasso.front().asNumber() );
                 dfs.ce_lasso.pop_front();
             }
         }
@@ -230,7 +227,9 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             progress() << "Using table size " << m.execution.initialTable
                        << ", please use -i to override." << std::endl;
             this->store().setSize( m.execution.initialTable ); // XXX
-            inner.graph = std::shared_ptr< Graph >( this->initGraph( *this ) );
+            inner.graph = std::unique_ptr< Graph >( this->initGraph( *this ) );
+            inner.graph->setPool( this->pool() ); // copy the pool
+            // TODO create a standalone store as well!
         }
         finished = false;
         inner.outer = this;
