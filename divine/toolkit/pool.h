@@ -148,6 +148,9 @@ struct Lake {
         int count = 0;
         int64_t bytes = 0;
 
+        if ( !RUNNING_ON_VALGRIND )
+            return ;
+
         for ( int i = 0; i < blockcount; ++i )
             if ( _vhandles[ i ] ) {
                 for ( int j = 0; j < header( i ).total; ++j )
