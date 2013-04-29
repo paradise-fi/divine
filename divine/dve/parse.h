@@ -596,7 +596,26 @@ struct Automaton : Parser {
         list< Identifier >( std::back_inserter( commits ), Token::Comma );
         semicolon();
     }
-    
+
+    void state() {
+        eat( Token::State );
+        list< Identifier >( std::back_inserter( states ), Token::Comma );
+        semicolon();
+    }
+
+    void init() {
+        eat( Token::Init );
+        list< Identifier >( std::back_inserter( inits ), Token::Comma );
+        semicolon();
+    }
+
+    void assertion() {
+        if ( next( Token::Assert ) ) {
+            list< Assertion >( std::back_inserter( asserts ), Token::Comma );
+            semicolon();
+        }
+    }
+
     void optionalComma() {
         maybe( Token::Comma );
     }
@@ -608,26 +627,13 @@ struct Automaton : Parser {
 
         declarations( *this, decls, chandecls );
 
-        eat( Token::State );
-        list< Identifier >( std::back_inserter( states ), Token::Comma );
-        semicolon();
+        arbitrary( &Automaton::accept, &Automaton::commit, &Automaton::state, &Automaton::init, &Automaton::assertion );
 
-        maybe( &Automaton::commit );
-        maybe( &Automaton::accept );
-        maybe( &Automaton::commit );
+        if ( !states.size() )
+            fail( "states" );
 
-        eat( Token::Init );
-        list< Identifier >( std::back_inserter( inits ), Token::Comma );
-        semicolon();
-
-        if ( next( Token::Assert ) ) {
-            list< Assertion >( std::back_inserter( asserts ), Token::Comma );
-            semicolon();
-        }
-
-        maybe( &Automaton::commit );
-        maybe( &Automaton::accept );
-        maybe( &Automaton::commit );
+        if ( !inits.size() )
+            fail( "initial" );
 
         if ( next( Token::Trans ) ) {
             list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
