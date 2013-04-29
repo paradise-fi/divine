@@ -1,4 +1,5 @@
 #include <divine/llvm/interpreter.h>
+#include <divine/graph/graph.h> // allocator :-(
 #include <llvm/LLVMContext.h>
 
 #include <llvm/Config/config.h>
@@ -14,10 +15,12 @@ namespace dlvm = divine::llvm;
 struct TestLLVM {
     LLVMContext &ctx;
     IRBuilder<> builder;
-    divine::Allocator alloc;
+    divine::graph::Allocator alloc;
     std::shared_ptr< Module > module;
 
-    TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {}
+    TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {
+        alloc.setPool( divine::Pool() );
+    }
 
     std::shared_ptr< dlvm::BitCode > bitcode() {
         return std::make_shared< dlvm::BitCode >( module );
@@ -107,11 +110,11 @@ struct TestLLVM {
         for ( int i = 0; i < step; ++i ) {
             fin = divine::Blob();
             interpreter.run( ini, [&]( divine::Blob b ) {
-                    assert( !fin.valid() ); // only one allowed
+                    assert( !alloc.pool().valid( fin ) ); // only one allowed
                     fin = b;
                 });
             ini = fin;
-            assert( fin.valid() );
+            assert( alloc.pool().valid( fin ) );
         }
 
         return fin;
@@ -132,21 +135,21 @@ struct TestLLVM {
 
     Test successor1()
     {
-        assert_eq( wibble::str::fmt( _ith( code_ret(), 1 ) ),
+        assert_eq( fmtblob( alloc.pool(), _ith( code_ret(), 1 ) ),
                    "[ 0, 0, 0, 0, 0 ]" );
     }
 
     Test successor2()
     {
-        assert_eq( wibble::str::fmt( _ith( code_loop(), 1 ) ),
+        assert_eq( fmtblob( alloc.pool(), _ith( code_loop(), 1 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 5 ]" );
     }
 
     Test successor3()
     {
-        assert_eq( wibble::str::fmt( _ith( code_add(), 2 ) ),
+        assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 2 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 5, 3, 0, 0 ]" );
-        assert_eq( wibble::str::fmt( _ith( code_add(), 4 ) ),
+        assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 4 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 5, 3, 0, 0 ]" );
     }
 
