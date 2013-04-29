@@ -55,7 +55,22 @@ struct Initialiser : Parser {
 struct System {
     std::unordered_map< std::string, Definition > & defs;
 
-    void process( parse::System & ast ) {}
+    void process( parse::System & ast ) {
+        for ( parse::Declaration & decl : ast.decls ) {
+            if ( decl.is_input ) {
+                if ( defs.count( decl.name ) ) {
+                    Initialiser init( ast.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
+                    decl.initial = init.initial;
+                    decl.is_const = true;
+                    decl.is_input = false;
+                }
+                else if ( decl.initial.size() ) {
+                    decl.is_const = true;
+                    decl.is_input = false;
+                }
+            }
+        }
+    }
 
     System( std::unordered_map< std::string, Definition > &defs ) : defs( defs ) {}
 };
