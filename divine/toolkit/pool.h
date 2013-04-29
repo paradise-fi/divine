@@ -81,8 +81,9 @@ struct Lake {
     char *block[ blockcount ]; /* 8M, each block is 2M -> up to 16T of memory */
     std::atomic< int > usedblocks;
 
-    std::atomic< FreeList * > _freelist[ 4096 ];
-    std::atomic< std::atomic< FreeList * > * >_freelist_big[ 4096 ];
+    typedef std::atomic< FreeList * > FreeListPtr;
+    FreeListPtr _freelist[ 4096 ];
+    std::atomic< FreeListPtr * >_freelist_big[ 4096 ];
 
 #ifndef NVALGRIND
     struct VHandle {
@@ -206,9 +207,10 @@ struct Lake {
         std::atomic< FreeList * > *chunk, *newchunk;
         if ( !( chunk = _freelist_big[ size / 4096 ] ) ) {
             if ( _freelist_big[ size / 4096 ].compare_exchange_strong(
-                     chunk, newchunk = new std::atomic< FreeList * >[ 4096 ] ) )
+                     chunk, newchunk = new FreeListPtr[ 4096 ] ) ) {
                 chunk = newchunk;
-            else
+                std::for_each( chunk, chunk + 4096, []( FreeListPtr &fp ) { fp.store( 0 ); } );
+            } else
                 delete newchunk;
         }
         assert( chunk );
@@ -263,6 +265,7 @@ struct Lake {
 
         Pointer fromFreelist( SizeInfo &si ) {
             assert( si.touse.count );
+            assert( valid( si.touse.head ) );
             -- si.touse.count;
             Pointer p = si.touse.head;
             VALGRIND_MAKE_MEM_DEFINED( dereference( p ), sizeof( Pointer ) );
