@@ -26,8 +26,7 @@ algorithm::Algorithm *select( Meta &m )
             return selectMAP( m );
         case meta::Algorithm::Ndfs:
             m.algorithm.name = "Nested DFS";
-            assert_unimplemented();
-            return nullptr; // selectNDFS( m );
+            return selectNDFS( m );
 
         default:
             return 0;
