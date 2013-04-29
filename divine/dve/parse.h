@@ -565,7 +565,8 @@ struct Transition : Parser {
     }
 };
 
-static inline void declarations( Parser &p, std::vector< Declaration > &decls, std::vector< ChannelDeclaration > &chandecls )
+inline void declarations( Parser &p, std::vector< Declaration > &decls,
+                          std::vector< ChannelDeclaration > &chandecls )
 {
     std::vector< Declarations > declss;
     p.many< Declarations >( std::back_inserter( declss ) );
@@ -627,7 +628,11 @@ struct Automaton : Parser {
 
         declarations( *this, decls, chandecls );
 
-        arbitrary( &Automaton::accept, &Automaton::commit, &Automaton::state, &Automaton::init, &Automaton::assertion );
+        arbitrary( &Automaton::accept,
+                   &Automaton::commit,
+                   &Automaton::state,
+                   &Automaton::init,
+                   &Automaton::assertion );
 
         if ( !states.size() )
             fail( "states" );
