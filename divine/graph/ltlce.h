@@ -55,13 +55,22 @@ struct LtlCE {
     G &g() { assert( _g ); return *_g; }
     Shared &shared() { assert( _shared ); return *_shared; }
 
+    template< typename Algorithm >
+    LtlCE( Algorithm *a ) : LtlCE() { setup( *a ); }
+
     LtlCE() : _g( 0 ), _shared( 0 ), _store( nullptr ) {}
     ~LtlCE() {}
 
     template< typename Algorithm >
     void setup( Algorithm &a, Shared &s )
     {
+        setup( a );
         _shared = &s;
+    }
+
+    template< typename Algorithm >
+    void setup( Algorithm &a )
+    {
         _g = &a.graph();
         _store = &a.store();
     }
