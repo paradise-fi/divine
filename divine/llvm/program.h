@@ -127,11 +127,11 @@ struct ProgramInfo {
     ::llvm::TargetData TD;
 
     struct Value {
-        bool global:1;
-        bool constant:1;
         enum { Void, Pointer, Integer, Float, Aggregate, CodePointer } type:3;
-        uint32_t offset:18;
-        uint32_t width:9;
+        uint32_t width:29;
+        bool constant:1;
+        bool global:1;
+        uint32_t offset:30;
 
         bool operator<( Value v ) const {
             return static_cast< uint32_t >( *this )
