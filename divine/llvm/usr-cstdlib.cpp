@@ -77,7 +77,6 @@ extern "C" int strncmp( const char *, const char *, size_t ) { __divine_assert( 
 extern "C" int strlen( const char * ) { __divine_assert( 0 ); return 0; }
 extern "C" char *strncpy( char *, const char *, size_t ) { __divine_assert( 0 ); return 0; }
 extern "C" int memset() { __divine_assert( 0 ); return 0; }
-extern "C" void *memcpy( void *, const void *, unsigned long ) { __divine_assert( 0 ); return 0; }
 
 extern "C" int isalnum(int c) { __divine_assert( 0 ); return 0; }
 extern "C" int isalpha(int c) { __divine_assert( 0 ); return 0; }
