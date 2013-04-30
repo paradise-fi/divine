@@ -26,6 +26,7 @@ namespace divine {
 
 struct stringtable { const char *n, *c; };
 extern stringtable libsupcpp_list[];
+extern stringtable pdclib_list[];
 
 std::string ltl_to_c( int id, std::string ltl );
 
@@ -37,6 +38,15 @@ struct Compile {
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
     StringOption *o_cflags, *o_out;
+
+    struct FilePath {
+        // filepath = joinpath(abspath, basename)
+        std::string basename;
+        std::string abspath;
+    };
+
+    std::string stage, ext;
+    FilePath *cleanup_tmpdir;
 
     void die_help( std::string bla )
     {
@@ -50,22 +60,29 @@ struct Compile {
         exit( 1 );
     }
 
-    static void run( std::string command, void (*trap)(void*) = NULL, void *trap_arg = NULL ) {
+    void cleanup() // XXX RAII
+    {
+        if ( cleanup_tmpdir ) {
+            chdir( cleanup_tmpdir->abspath.c_str() );
+            wibble::sys::fs::rmtree( cleanup_tmpdir->basename );
+        }
+    }
+
+    void run( std::string command ) {
         std::cerr << "+ " << command << std::endl;
         int status = system( command.c_str() );
 #ifdef POSIX
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
         if ( status != -1 && WEXITSTATUS( status ) != 0 ) {
-            if ( trap )
-                trap( trap_arg );
-            die( "Error running external command: " + command );
+            cleanup();
+            die( "Error running an external command." );
         }
 #pragma GCC diagnostic pop
 #endif
     }
 
-    static void runCompiler( std::string comp, std::string in, std::string out, std::string flags = "" ) {
+    void runCompiler( std::string comp, std::string in, std::string out, std::string flags = "" ) {
         std::stringstream cmd;
         std::string multiarch =
 #if defined(O_USE_GCC_M32)
@@ -80,7 +97,7 @@ struct Compile {
         run( cmd.str() );
     }
 
-    static void gplusplus( std::string in, std::string out, std::string flags = "" ) {
+    void gplusplus( std::string in, std::string out, std::string flags = "" ) {
 	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
@@ -103,18 +120,6 @@ struct Compile {
 
     void compileMurphi( std::string in );
 
-    struct FilePath {
-        // filepath = joinpath(abspath, basename)
-        std::string basename;
-        std::string abspath;
-    };
-
-    static void _cleanup_tmpdir( void* _tmp_dir ) {
-        FilePath* tmp_dir = reinterpret_cast< FilePath* >( _tmp_dir );
-        chdir( tmp_dir->abspath.c_str() );
-        wibble::sys::fs::rmtree( tmp_dir->basename );
-    }
-
     void propswitch( std::ostream &o, int c, std::string fun, std::string args ) {
         o << "    switch ( property ) {" << std::endl;
         for ( int i = 0; i < c; ++i )
@@ -129,8 +134,8 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
         std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
 
-        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
-        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
+        if ( !o_keep->boolValue() )
+            cleanup_tmpdir = &tmp_dir;
 
         chdir( tmp_dir.basename.c_str() );
         fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
@@ -185,9 +190,42 @@ struct Compile {
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
         run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
-             generator::cesmi_ext + " " + in + extras,
-             trap, trap_arg );
-        if ( trap ) trap( trap_arg );
+             generator::cesmi_ext + " " + in + extras );
+        cleanup();
+    }
+
+    template< typename Src >
+    void compileLibrary( std::string name, Src src, std::string flags )
+    {
+        std::string files;
+        fs::mkdirIfMissing( name, 0755 );
+        chdir( name.c_str() );
+
+        auto src_ = src;
+        while ( src->n ) {
+            fs::mkFilePath( src->n );
+            fs::writeFile( src->n, src->c );
+            ++src;
+        }
+
+        src = src_;
+        while ( src->n ) {
+            if ( str::endsWith( src->n, ".cc" ) ||
+                 str::endsWith( src->n, ".c" ) ||
+                 str::endsWith( src->n, ".cpp" ) ||
+                 str::endsWith( src->n, ".cxx" ) ) {
+                run( "clang " + flags + " -I. " + src->n + " -o " + src->n + ext );
+                files = files + src->n + ext + " ";
+            }
+            ++src;
+        }
+
+        // link
+        if ( !o_assm->boolValue() )
+            stage = "";
+
+        run( "llvm-link " + stage + files + " -o ../" + name + ext );
+        chdir( ".." );
     }
 
     void compileLLVM( std::string first_file, std::string cflags, std::string out ) {
@@ -199,12 +237,11 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
 
         // prepare cleanup
-        void (*trap)(void*) = o_keep->boolValue() ? nullptr : _cleanup_tmpdir;
-        void *trap_arg = reinterpret_cast< void* >( &tmp_dir );
+        if ( !o_keep->boolValue() )
+            cleanup_tmpdir = &tmp_dir;
 
         // assembly or bitcode?
         // If both are requested, the former is produced and the latter is ignored.
-        std::string stage, ext;
         if ( o_assm->boolValue() ) {
             stage = " -S ";
             ext = ".llvm";
@@ -213,73 +250,37 @@ struct Compile {
             ext = ".bc";
         }
 
-        // names of library files
-          // user-space
-        std::string usr_h = "usr.h";
-          // pthread
-        std::string pthread_h = "pthread.h";
-        std::string pthread_cpp = "pthread.cpp";
-        std::string pthread_comp = "pthread" + ext;
-          // cstdlib
-        std::string cstdlib_h = "cstdlib"; // note: no extension
-        std::string cstdlib_cpp = "cstdlib.cpp";
-        std::string cstdlib_comp = "cstdlib" + ext;
-
         // enter tmp directory
         chdir( tmp_dir.basename.c_str() );
 
         // copy content of library files from memory to the directory
-        fs::writeFile( usr_h, llvm_usr_h_str );
-        fs::writeFile( pthread_h, llvm_usr_pthread_h_str );
-        fs::writeFile( pthread_cpp, llvm_usr_pthread_cpp_str );
-        fs::writeFile( cstdlib_h, llvm_usr_cstdlib_h_str );
-        fs::writeFile( cstdlib_cpp, llvm_usr_cstdlib_cpp_str );
+        fs::writeFile( "usr.h", llvm_usr_h_str );
+        fs::writeFile( "pthread.h", llvm_usr_pthread_h_str );
+        fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
+        fs::writeFile( "cstdlib", llvm_usr_cstdlib_h_str );
+        fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
 
         // compile libraries
-        std::string flags = stage + "-emit-llvm -g " + cflags;
+        std::string flags = stage + "-emit-llvm -ffreestanding -nobuiltininc -g " + cflags;
+        compileLibrary( "pdclib", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
+        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../pdclib -I.." );
 
-        {
-            std::string files;
-            fs::mkdirIfMissing( "libsupc++", 0755 );
-            chdir( "libsupc++" );
-            auto src = libsupcpp_list;
-            while ( src->n ) {
-                fs::writeFile( src->n, src->c );
-                ++src;
-            }
+        flags += " -Ilibsupc++ -Ipdclib ";
 
-            src = libsupcpp_list;
-            while ( src->n ) {
-                if ( str::endsWith( src->n, ".cc" ) ||
-                     str::endsWith( src->n, ".cpp" ) ||
-                     str::endsWith( src->n, ".cxx" ) ) {
-                    run( "clang " + flags + " -I. " + src->n + " -o " + src->n + ext, trap, trap_arg );
-                    files = files + src->n + ext + " ";
-                }
-                ++src;
-            }
-
-            // link
-            if ( !o_assm->boolValue() )
-                stage = "";
-
-            run( "llvm-link " + stage + files + " -o ../libsupc++" + ext, trap, trap_arg );
-            chdir( ".." );
-        }
-
-        run( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
-        run( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
-
-        // leave tmp directory
-        chdir( tmp_dir.abspath.c_str() );
+        run( "clang " + flags + " -I. cstdlib.cpp -o cstdlib" + ext );
+        run( "clang " + flags + " -I. pthread.cpp -o pthread" + ext );
 
         // compile input file(s)
-        std::string basename, unlinked, file = first_file,
-                                all_unlinked = tmp_dir.basename + "/libsupc++" + ext;
+        std::string basename;
+        std::string file = first_file,
+            all_unlinked = tmp_dir.basename + "/libsupc++" + ext + " " +
+                           tmp_dir.basename + "/pdclib" + ext + " " +
+                           tmp_dir.basename + "/cstdlib" + ext + " " +
+                           tmp_dir.basename + "/pthread" + ext + " ";
+
         do {
-            if ( file.empty() ) {
+            if ( file.empty() )
                 file = opts.next();
-            }
 
             basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
 
@@ -289,22 +290,19 @@ struct Compile {
                 out = basename;
             }
 
-            unlinked = str::joinpath( tmp_dir.basename, "_" + basename + ext );
-            all_unlinked += " " + unlinked;
+            all_unlinked += str::joinpath( tmp_dir.basename, basename + ext );
 
-            run( "clang " + flags + " -I'" + tmp_dir.basename + "' " + file + " -o " + unlinked,
-                 trap, trap_arg );
+            run( "clang " + flags + " -I. ../" + file + " -o " + basename + ext );
 
             file.clear();
         } while ( opts.hasNext() );
 
-        run( "llvm-link " + stage + " " + all_unlinked + " " +
-             str::joinpath( tmp_dir.basename, cstdlib_comp ) + " " +
-             str::joinpath( tmp_dir.basename, pthread_comp ) +
-             " -o " + out + ext, trap, trap_arg );
+        chdir( tmp_dir.abspath.c_str() );
 
-        // cleanup
-        if ( trap ) trap( trap_arg );
+        run( "llvm-link " + stage + " " + all_unlinked +
+             " -o " + out + ext );
+
+        cleanup();
 #else
         die( "LLVM is disabled" );
 #endif
