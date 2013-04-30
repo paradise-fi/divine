@@ -220,9 +220,13 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     {
         ::llvm::CallSite CS( p.I );
         ::llvm::Function *F = CS.getCalledFunction();
-        if ( F && F->isDeclaration() )
+        if ( F ) { // you can actually invoke a label
             switch ( F->getIntrinsicID() ) {
-                case ::llvm::Intrinsic::not_intrinsic: builtin( p ); break;
+                case ::llvm::Intrinsic::not_intrinsic:
+                    if ( builtin( F ) ) {
+                        builtin( p );
+                        break;
+                    }
                 case ::llvm::Intrinsic::trap:
                 case ::llvm::Intrinsic::vastart:
                 case ::llvm::Intrinsic::vacopy:
@@ -231,6 +235,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 case ::llvm::Intrinsic::dbg_value: p.I++; return p;
                 default: return lower( p );
             }
+        }
     }
 
     insn.values.resize( 1 + p.I->getNumOperands() );
