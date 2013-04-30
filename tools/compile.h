@@ -51,6 +51,7 @@ struct Compile {
     }
 
     static void run( std::string command, void (*trap)(void*) = NULL, void *trap_arg = NULL ) {
+        std::cerr << "+ " << command << std::endl;
         int status = system( command.c_str() );
 #ifdef POSIX
 #pragma GCC diagnostic push
