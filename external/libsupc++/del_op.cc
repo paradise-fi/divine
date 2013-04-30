@@ -1,49 +1,33 @@
-// Boilerplate support routines for -*- C++ -*- dynamic memory management.
+/*
+ * Copyright (c) 2009 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
 
-// Copyright (C) 1997, 1998, 1999, 2000, 2004, 2007, 2009, 2010, 2011
-// Free Software Foundation
-//
-// This file is part of GCC.
-//
-// GCC is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
-//
-// GCC is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// Under Section 7 of GPL version 3, you are granted additional
-// permissions described in the GCC Runtime Library Exception, version
-// 3.1, as published by the Free Software Foundation.
+#include <new>
+#include <stdlib.h>
 
-// You should have received a copy of the GNU General Public License and
-// a copy of the GCC Runtime Library Exception along with this program;
-// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
-// <http://www.gnu.org/licenses/>.
-
-#include <bits/c++config.h>
-
-#if !_GLIBCXX_HOSTED
-// A freestanding C runtime may not provide "free" -- but there is no
-// other reasonable way to implement "operator delete".
-namespace std
+__attribute__((__weak__, __visibility__("default")))
+void
+operator delete (void* ptr) throw ()
 {
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
-  extern "C" void free(void*);
-_GLIBCXX_END_NAMESPACE_VERSION
-} // namespace
-#else
-# include <cstdlib>
-#endif
-
-#include "new"
-
-_GLIBCXX_WEAK_DEFINITION void
-operator delete(void* ptr) _GLIBCXX_USE_NOEXCEPT
-{
-  if (ptr)
-    std::free(ptr);
+    if (ptr)
+        ::free(ptr);
 }

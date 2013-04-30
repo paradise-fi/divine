@@ -1,67 +1,43 @@
-// Support routines for the -*- C++ -*- dynamic memory management.
+/*
+ * Copyright (c) 2009 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
+ * @APPLE_LICENSE_HEADER_END@
+ */
 
-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2004, 2009, 2011
-// Free Software Foundation
-//
-// This file is part of GCC.
-//
-// GCC is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
-//
-// GCC is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// Under Section 7 of GPL version 3, you are granted additional
-// permissions described in the GCC Runtime Library Exception, version
-// 3.1, as published by the Free Software Foundation.
+#include <stdlib.h>
+#include <new>
+#include "cxxabi.h"
 
-// You should have received a copy of the GNU General Public License and
-// a copy of the GCC Runtime Library Exception along with this program;
-// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
-// <http://www.gnu.org/licenses/>.
-
-#include <bits/c++config.h>
-#include <cstdlib>
-#include <bits/exception_defines.h>
-#include "new"
-
-using std::new_handler;
-using std::bad_alloc;
-#if _GLIBCXX_HOSTED
-using std::malloc;
-#else
-// A freestanding C runtime may not provide "malloc" -- but there is no
-// other reasonable way to implement "operator new".
-extern "C" void *malloc (std::size_t);
-#endif
-
-extern new_handler __new_handler;
-
-_GLIBCXX_WEAK_DEFINITION void *
-operator new (std::size_t sz) _GLIBCXX_THROW (std::bad_alloc)
+__attribute__((__weak__, __visibility__("default")))
+void *
+operator new(size_t size) throw (std::bad_alloc)
 {
-  void *p;
-
-  /* malloc (0) is unpredictable; avoid it.  */
-  if (sz == 0)
-    sz = 1;
-  p = (void *) malloc (sz);
-  while (p == 0)
+    if (size == 0)
+        size = 1;
+    void* p;
+    while ((p = ::malloc(size)) == 0)
     {
-      new_handler handler = __new_handler;
-      if (! handler)
-#ifdef __EXCEPTIONS
-	throw bad_alloc();
-#else
-        std::abort();
-#endif
-      handler ();
-      p = (void *) malloc (sz);
+        if (__cxxabiapple::__cxa_new_handler)
+            __cxxabiapple::__cxa_new_handler();
+        else
+            throw std::bad_alloc();
     }
-
-  return p;
+    return p;
 }

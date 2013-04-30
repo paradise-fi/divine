@@ -24,7 +24,9 @@
 // <http://www.gnu.org/licenses/>.
 
 #include "typeinfo"
-#include <cstddef>
+#include "rtti.h"
+// #include <cstddef>
+#include <stddef.h>
 
 // Class declarations shared between the typeinfo implementation files.
 

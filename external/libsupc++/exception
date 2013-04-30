@@ -1,6 +1,5 @@
-// Implementation file for the -*- C++ -*- dynamic memory management header.
 /*
- * Copyright (c) 2009 Apple Computer, Inc. All rights reserved.
+ * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,33 +20,43 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-#include "cxxabi.h"
-#include <new>
+
+#ifndef __EXCEPTION__
+#define __EXCEPTION__
 
 
-/* The current installed new handler.  */
-void (*__cxxabiapple::__cxa_new_handler)() = NULL;
-
-
-namespace std
+namespace std  
 {
 
-const nothrow_t nothrow = {};
-
-new_handler
-set_new_handler(new_handler handler) throw()
+class exception
 {
-    new_handler r = __cxxabiapple::__cxa_new_handler;
-    __cxxabiapple::__cxa_new_handler = handler;
-    return r;
-}
+public:
+     __attribute__ ((__visibility__("hidden"), __always_inline__)) 
+			exception() throw() {}
+    virtual ~exception() throw();
+    virtual const char* what() const throw();
+};
 
-bad_alloc::~bad_alloc() throw() { }
-
-const char* 
-bad_alloc::what() const throw()
+class bad_exception : public exception
 {
-  return "std::bad_alloc";
-}
+public:
+     __attribute__ ((__visibility__("hidden"), __always_inline__)) 
+	         bad_exception() throw() {}
+    virtual ~bad_exception() throw();
+    virtual const char* what() const throw();
+};
+
+typedef void (*unexpected_handler)();
+unexpected_handler set_unexpected(unexpected_handler) throw();
+void unexpected()  __attribute__ ((__noreturn__));
+
+typedef void (*terminate_handler)();
+terminate_handler set_terminate(terminate_handler) throw();
+void terminate() __attribute__((__noreturn__));
+
+bool uncaught_exception() throw();
 
 }  // std
+
+#endif  // __EXCEPTION__
+

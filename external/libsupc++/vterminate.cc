@@ -1,11 +1,11 @@
 // Verbose terminate_handler -*- C++ -*-
 
-// Copyright (C) 2001, 2002, 2004, 2005, 2009, 2011 Free Software Foundation
+// Copyright (C) 2001, 2002, 2004, 2005 Free Software Foundation
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
 // terms of the GNU General Public License as published by the
-// Free Software Foundation; either version 3, or (at your option)
+// Free Software Foundation; either version 2, or (at your option)
 // any later version.
 
 // This library is distributed in the hope that it will be useful,
@@ -13,30 +13,35 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// Under Section 7 of GPL version 3, you are granted additional
-// permissions described in the GCC Runtime Library Exception, version
-// 3.1, as published by the Free Software Foundation.
+// You should have received a copy of the GNU General Public License along
+// with this library; see the file COPYING.  If not, write to the Free
+// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
+// USA.
 
-// You should have received a copy of the GNU General Public License and
-// a copy of the GCC Runtime Library Exception along with this program;
-// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
-// <http://www.gnu.org/licenses/>.
+// As a special exception, you may use this file as part of a free software
+// library without restriction.  Specifically, if other files instantiate
+// templates or use macros or inline functions from this file, or you compile
+// this file and link it with other files to produce an executable, this
+// file does not by itself cause the resulting executable to be covered by
+// the GNU General Public License.  This exception does not however
+// invalidate any other reasons why the executable file might be covered by
+// the GNU General Public License.
 
-#include <bits/c++config.h>
 
-#if _GLIBCXX_HOSTED
-#include <cstdlib>
-#include <exception>
-#include <bits/exception_defines.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include <cxxabi.h>
-# include <cstdio>
+
+#include <exception>
+#include <typeinfo>
+
+// extern "C" std::type_info* __cxa_current_exception_type();
 
 using namespace std;
 using namespace abi;
 
-namespace __gnu_cxx
-{
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
+namespace __gnu_cxx {
 
   // A replacement for the standard terminate_handler which prints
   // more information about the terminating exception (if any) on
@@ -46,8 +51,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     static bool terminating;
     if (terminating)
       {
-	fputs("terminate called recursively\n", stderr);
-	abort ();
+	::fputs("terminate called recursively\n", stderr);
+	::abort ();
       }
     terminating = true;
 
@@ -64,38 +69,37 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  
 	  dem = __cxa_demangle(name, 0, 0, &status);
 
-	  fputs("terminate called after throwing an instance of '", stderr);
+	  ::fputs("terminate called after throwing an instance of '", stderr);
 	  if (status == 0)
-	    fputs(dem, stderr);
+	    ::fputs(dem, stderr);
 	  else
-	    fputs(name, stderr);
-	  fputs("'\n", stderr);
+	    ::fputs(name, stderr);
+	  ::fputs("'\n", stderr);
 
 	  if (status == 0)
-	    free(dem);
+	    ::free(dem);
 	}
 
 	// If the exception is derived from std::exception, we can
 	// give more information.
-	__try { __throw_exception_again; }
+	try { throw; }
 #ifdef __EXCEPTIONS
-	__catch(const exception& exc)
+	catch (exception &exc)
 	  {
 	    char const *w = exc.what();
-	    fputs("  what():  ", stderr);
-	    fputs(w, stderr);
-	    fputs("\n", stderr);
+	    ::fputs("  what():  ", stderr);
+	    ::fputs(w, stderr);
+	    ::fputs("\n", stderr);
           }
 #endif
-	__catch(...) { }
+	catch (...) { }
       }
     else
-      fputs("terminate called without an active exception\n", stderr);
+      ::fputs("terminate called without an active exception\n", stderr);
     
-    abort();
+    ::abort();
   }
 
-_GLIBCXX_END_NAMESPACE_VERSION
-} // namespace
+} // __gnu_cxx 
 
-#endif
+

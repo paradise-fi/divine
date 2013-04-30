@@ -26,10 +26,10 @@
 
 namespace std {
 
-bad_cast::~bad_cast() _GLIBCXX_USE_NOEXCEPT { }
+bad_cast::~bad_cast() throw() { }
 
 const char* 
-bad_cast::what() const _GLIBCXX_USE_NOEXCEPT
+bad_cast::what() const throw()
 {
   return "std::bad_cast";
 }
