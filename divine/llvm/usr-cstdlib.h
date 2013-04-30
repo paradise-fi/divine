@@ -51,10 +51,6 @@ void * calloc( size_t n, size_t size ) NOINLINE;
 void * realloc( void *ptr, size_t size ) NOINLINE;
 void free( void * ) NOINLINE;
 
-/* Operators new & delete */
-void _Znwm( void );
-void _Znam( void );
-
 /* IOStream */
 void _ZNSt8ios_base4InitC1Ev( void );
 
