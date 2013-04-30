@@ -5,6 +5,7 @@
 
 #include "usr.h"
 #include "cstdlib"
+#include "time.h"
 
 /* Macros */
 

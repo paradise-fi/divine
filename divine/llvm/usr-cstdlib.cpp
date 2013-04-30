@@ -1,8 +1,10 @@
 /* Includes */
 #include "cstdlib"
+#include <stdlib.h>
+#include <stdio.h>
 
 /* Memory allocation */
-void * malloc( size_t size ) {
+void * malloc( size_t size ) throw() {
     __divine_interrupt_mask();
 #ifdef TRACE
     trace( "malloc( %d ) called..", size );
@@ -20,10 +22,10 @@ void * malloc( size_t size ) {
 }
 
 /* TODO malloc currently gives zeroed memory */
-void *calloc( size_t n, size_t size ) { return malloc( n * size ); }
-void *realloc( void *ptr, size_t size ) { __divine_assert( 0 ); return 0; }
+void *calloc( size_t n, size_t size ) throw() { return malloc( n * size ); }
+void *realloc( void *ptr, size_t size ) throw() { __divine_assert( 0 ); return 0; }
 
-void free( void * p) {
+void free( void * p) throw() {
     __divine_interrupt_mask();
 #ifdef TRACE
     trace( "free( %p ) called..", p );
@@ -37,12 +39,6 @@ void _ZNSt8ios_base4InitC1Ev( void ) { // std::ios_base::Init
     // TODO?
 }
 
-/* Exit */
-void exit( int exit_code ) {
-    // TODO
-    ( void ) exit_code;
-}
-
 int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
     // TODO
     ( void ) func;
@@ -51,46 +47,31 @@ int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
     return 0;
 }
 
-int atexit( void ( *func )( void ) ) {
-    // TODO
-    ( void ) func;
-    return 0;
+extern "C" void abort_message( const char * ) { __divine_assert( 0 ); }
+extern "C" void *dlsym( void *, void * ) { __divine_assert( 0 ); return 0; } // oh golly...
+
+extern "C" void *__errno_location() { __divine_assert( 0 ); return 0; }
+
+extern "C" { /* POSIX kernel APIs */
+
+    void raise( int ) { __divine_assert( 0 ); }
+    int unlink( const char * ) { __divine_assert( 0 ); return 0; }
+    size_t read(int, void *, size_t) { __divine_assert( 0 ); return 0; }
+    size_t write(int, const void *, size_t) { __divine_assert( 0 ); return 0; }
+    int lseek(int, int, int) { __divine_assert( 0 ); return 0; }
+    int close(int) { __divine_assert( 0 ); return 0; }
+
 }
 
-void *stderr = 0;
+/* currently missing from our pdclib */
+extern "C" FILE *tmpfile() throw() { __divine_assert( 0 ); return 0; }
 
-extern "C" void fputs() { __divine_assert( 0 ); }
-extern "C" void abort() { __divine_assert( 0 ); }
-extern "C" void abort_message( const char * ) { __divine_assert( 0 ); }
 
-extern "C" void *dlsym(void *, void *) { __divine_assert( 0 ); return 0; } // oh golly...
-
-/******** stdio.h stubs */
-
-extern "C" int sprintf(char *, const char *, ...) { __divine_assert( 0 ); return 0; }
-extern "C" int snprintf(char *, size_t, const char *, ...) { __divine_assert( 0 ); return 0; }
-
-/******** string.h stubs */
-
-extern "C" int strcmp( const char *, const char * ) { __divine_assert( 0 ); return 0; }
-extern "C" int strncmp( const char *, const char *, size_t ) { __divine_assert( 0 ); return 0; }
-extern "C" int strlen( const char * ) { __divine_assert( 0 ); return 0; }
-extern "C" char *strncpy( char *, const char *, size_t ) { __divine_assert( 0 ); return 0; }
-extern "C" int memset() { __divine_assert( 0 ); return 0; }
-
-extern "C" int isalnum(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isalpha(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isascii(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isblank(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int iscntrl(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isdigit(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isgraph(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int islower(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isprint(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int ispunct(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isspace(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isupper(int c) { __divine_assert( 0 ); return 0; }
-extern "C" int isxdigit(int c) { __divine_assert( 0 ); return 0; }
+extern "C" { /* pdclib glue functions */
+    int _PDCLIB_rename( const char *, const char * ) { __divine_assert( 0 ); return 0; }
+    int _PDCLIB_open( const char *, int ) { __divine_assert( 0 ); return 0; }
+    void _PDCLIB_Exit( int ) { __divine_assert( 0 ); }
+}
 
 /******** unwind library stubs */
 

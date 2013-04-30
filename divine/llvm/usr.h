@@ -74,7 +74,6 @@ void __divine_assert( int ); // + some informative string ?
 void __divine_ap( int );
 void * __divine_malloc( unsigned long );
 void __divine_free( void * );
-void *memcpy( void *, const void *, unsigned long ); /* builtin! */
 
 #ifdef TRACE
 void __divine_trace( const char *, ... );
