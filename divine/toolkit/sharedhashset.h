@@ -18,8 +18,11 @@ template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
 struct SharedHashSet {
 
     typedef _Item Item;
-    typedef Item TableItem;
     typedef _Hasher Hasher;
+
+    typedef Item InsertItem;
+    typedef Item StoredItem;
+    typedef Hasher InputHasher;
 
     struct Cell {
         std::atomic< hash_t > hashLock;
@@ -85,7 +88,9 @@ struct SharedHashSet {
     std::tuple< Item, bool > insert( Item x ) {
         return insertHinted( x, hasher.hash( x ) );
     }
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h) {
+
+    template< typename X = wibble::Unit >
+    std::tuple< Item, bool > insertHinted( Item x, hash_t h, X = X() ) {
         h <<= 1;
         unsigned mask = initialMask;
 

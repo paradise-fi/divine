@@ -36,16 +36,18 @@ template< template< typename, typename > class HashSet,
 struct NTreeHashSet
 {
     typedef _Item Item;
-    typedef _Hasher Hasher;
+    typedef _Hasher UncompressedHasher;
     typedef NTreeHashSet< HashSet, _Item, _Hasher > This;
+
+    using InputHasher = UncompressedHasher;
 
     NTreeHashSet() : NTreeHashSet( Hasher() ) { }
 
-    NTreeHashSet( Hasher hasher ) :
-    _roots( RootHasher( hasher ) ),
-    _forks( ForkHasher( hasher.pool ) ),
-    _leafs( LeafHasher( hasher.pool ) ),
-    hasher( hasher )
+    NTreeHashSet( UncompressedHasher _hasher ) :
+    hasher( _hasher ),
+    _roots( hasher ),
+    _forks( ForkHasher( hasher.pool() ) ),
+    _leafs( LeafHasher( hasher.pool() ) )
 #ifndef O_PERFORMANCE
     , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
 #endif
@@ -176,6 +178,8 @@ struct NTreeHashSet
 
         struct Header { hash_t hash; int forks; };
 
+        Root() = default;
+        explicit Root( Blob b ) : b( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
         hash_t &hash( Pool &p ) { return header( p ).hash; }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
@@ -263,21 +267,23 @@ struct NTreeHashSet
     using LeafHasher = NewtypeHasher< Leaf >;
 
     struct RootHasher {
-        Hasher nodeHasher;
+        UncompressedHasher uhasher;
         uint32_t salt;
 
-        RootHasher( Hasher nodeHasher ) : RootHasher( nodeHasher, 0 ) { }
-        RootHasher( Hasher nodeHasher, uint32_t salt )
-            : nodeHasher( nodeHasher ), salt( salt )
+        RootHasher( UncompressedHasher uhasher ) : RootHasher( uhasher, 0 ) { }
+        RootHasher( UncompressedHasher uhasher, uint32_t salt )
+            : uhasher( uhasher), salt( salt )
         { }
 
-        Pool &pool() { return nodeHasher.pool; }
-        int slack() { return nodeHasher.slack; }
+        Pool &pool() { return uhasher.pool(); }
+        int slack() { return uhasher.slack; }
 
-        hash_t hash( Root r ) const { return r.hash( pool() ); }
+        hash_t hash( Root r ) { return r.hash( pool() ); }
+        hash_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
 
         bool valid( Root r ) { return pool().valid( r.b ); }
-        bool valid( Uncompressed r ) const { return pool().valid( r.i ); }
+        bool valid( Uncompressed r ) { return pool().valid( r.i ); }
+        void setSeed( hash_t s ) { uhasher.setSeed( s ); }
 
         bool equal( Root r1, Root r2 ) {
             if ( r1.b.raw() == r2.b.raw() )
@@ -286,7 +292,7 @@ struct NTreeHashSet
                 return false;
             if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
                 return pool().equal( r1.b, r2.b, sizeof( typename Root::Header )
-                        + nodeHasher.slack );
+                        + uhasher.slack );
             else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) ) {
                 int s1 = pool().size( r1.b );
                 int s2 = pool().size( r2.b );
@@ -341,20 +347,25 @@ struct NTreeHashSet
         }
 
         bool equal( Uncompressed i1, Uncompressed i2 ) const {
-            return nodeHasher.equal( i1.i, i2.i );
+            return uhasher.equal( i1.i, i2.i );
         }
     };
 
-    typedef Blob TableItem;
+    typedef Blob InsertItem;
+    typedef Root StoredItem;
+
+    using Hasher = RootHasher;
+
+    RootHasher hasher;
+
     HashSet< Root, RootHasher > _roots; // stores slack and roots of tree
                                         // (also in case when root leaf)
     HashSet< Fork, ForkHasher > _forks; // stores intermediate nodes
     HashSet< Leaf, LeafHasher > _leafs; // stores leafs if they are not root
-    Hasher hasher;
 
-    Pool& pool() { return hasher.pool; }
-    const Pool& pool() const { return hasher.pool; }
-    int slack() const { return hasher.slack; }
+    Pool& pool() { return hasher.pool(); }
+    // const Pool& pool() const { return hasher.pool(); }
+    int slack() { return hasher.slack(); }
     bool valid( Item i ) { return hasher.valid( i ); }
     char* slackPtr( Item item ) { return pool().dereference( item ); }
 
@@ -505,8 +516,8 @@ struct NTreeHashSet
         _leafs.clear();
     }
 
-    Root* operator[]( int off ) {
-        return pool().template dereference< Root >( _roots[ off ] );
+    Blob operator[]( int off ) {
+        return _roots[ off ].b; /* ?? */
     }
 };
 

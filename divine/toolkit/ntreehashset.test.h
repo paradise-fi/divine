@@ -68,7 +68,7 @@ struct TestNTreeHashSet {
         FakeGeneratorBinary fg;
         BlobSet set( Hasher( fg.pool() ) );
 
-        assert_eq( set.hasher.slack, 0 );
+        assert_eq( set.hasher.slack(), 0 );
 
         Blob b = fg.pool().allocate( 33 );
         for ( unsigned i = 0; i < 33; ++i )

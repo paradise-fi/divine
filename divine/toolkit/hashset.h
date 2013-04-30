@@ -48,8 +48,11 @@ template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
 struct HashSet
 {
     typedef _Item Item;
-    typedef Item TableItem;
     typedef _Hasher Hasher;
+
+    typedef Item InsertItem;
+    typedef Item StoredItem;
+    typedef Hasher InputHasher;
 
     int maxcollision() { return 65536; }
     int growthreshold() { return 75; } // percent
@@ -90,7 +93,8 @@ struct HashSet
         return insertHinted( i, hasher.hash( i ) );
     }
 
-    inline std::tuple< Item, bool > insertHinted( Item i, hash_t h ) {
+    template< typename X = wibble::Unit >
+    inline std::tuple< Item, bool > insertHinted( Item i, hash_t h, X = X() ) {
         Cell c;
         c.item = i;
         c.hash = h;
