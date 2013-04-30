@@ -19,8 +19,8 @@ void * malloc( size_t size ) {
 #endif
 }
 
-/* TODO malloc currently gives zeroed memory too */
-void *calloc( size_t size ) { return malloc( size ); }
+/* TODO malloc currently gives zeroed memory */
+void *calloc( size_t n, size_t size ) { return malloc( n * size ); }
 void *realloc( void *ptr, size_t size ) { __divine_assert( 0 ); return 0; }
 
 void free( void * p) {
