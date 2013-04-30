@@ -117,7 +117,8 @@ enum Builtin {
     BuiltinMalloc,
     BuiltinFree,
     BuiltinAp,
-    BuiltinMemcpy
+    BuiltinMemcpy,
+    BuiltinTrap
 };
 
 struct ProgramInfo {

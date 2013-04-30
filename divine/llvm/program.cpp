@@ -171,6 +171,8 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinFree;
     if ( name == "memcpy" )
         return BuiltinMemcpy;
+    if ( name == "llvm.trap" )
+        return BuiltinTrap;
     return NotBuiltin;
 }
 
