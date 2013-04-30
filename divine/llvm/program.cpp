@@ -171,8 +171,10 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinFree;
     if ( name == "memcpy" )
         return BuiltinMemcpy;
-    if ( name == "llvm.trap" )
-        return BuiltinTrap;
+
+    if ( f->getIntrinsicID() != ::llvm::Intrinsic::not_intrinsic )
+        return BuiltinIntrinsic; /* not our builtin */
+
     return NotBuiltin;
 }
 

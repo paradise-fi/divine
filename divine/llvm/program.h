@@ -107,6 +107,7 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
 
 enum Builtin {
     NotBuiltin = 0,
+    BuiltinIntrinsic = 1,
     BuiltinChoice,
     BuiltinMask,
     BuiltinUnmask,
@@ -117,8 +118,7 @@ enum Builtin {
     BuiltinMalloc,
     BuiltinFree,
     BuiltinAp,
-    BuiltinMemcpy,
-    BuiltinTrap
+    BuiltinMemcpy
 };
 
 struct ProgramInfo {
