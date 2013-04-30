@@ -236,8 +236,6 @@ struct Compile {
 
         // compile libraries
         std::string flags = stage + "-emit-llvm -g " + cflags;
-        run( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
-        run( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
 
         {
             std::string files;
@@ -251,8 +249,10 @@ struct Compile {
 
             src = libsupcpp_list;
             while ( src->n ) {
-                if ( str::endsWith( src->n, ".cc" ) ) {
-                    run( "clang " + flags + " " + src->n + " -o " + src->n + ext, trap, trap_arg );
+                if ( str::endsWith( src->n, ".cc" ) ||
+                     str::endsWith( src->n, ".cpp" ) ||
+                     str::endsWith( src->n, ".cxx" ) ) {
+                    run( "clang " + flags + " -I. " + src->n + " -o " + src->n + ext, trap, trap_arg );
                     files = files + src->n + ext + " ";
                 }
                 ++src;
@@ -263,7 +263,11 @@ struct Compile {
                 stage = "";
 
             run( "llvm-link " + stage + files + " -o ../libsupc++" + ext, trap, trap_arg );
+            chdir( ".." );
         }
+
+        run( "clang " + flags + " -I. " + cstdlib_cpp + " -o " + cstdlib_comp, trap, trap_arg );
+        run( "clang " + flags + " -I. " + pthread_cpp + " -o " + pthread_comp, trap, trap_arg );
 
         // leave tmp directory
         chdir( tmp_dir.abspath.c_str() );
