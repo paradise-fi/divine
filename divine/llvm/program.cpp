@@ -207,16 +207,8 @@ void ProgramInfo::insertIndices( Position p )
 
 ProgramInfo::Position ProgramInfo::insert( Position p )
 {
-    makeFit( functions, p.pc.function );
-    makeFit( function( p.pc ).blocks, p.pc.block );
     makeFit( function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
     ProgramInfo::Instruction &insn = instruction( p.pc );
-
-    if ( !block( p.pc ).bb )
-        block( p.pc ).bb = p.I->getParent();
-
-    if ( p.I == block( p.pc ).bb->end() )
-        return p; /* nowhere further to go */
 
     insn.opcode = p.I->getOpcode();
     insn.op = &*p.I;
@@ -330,10 +322,17 @@ void ProgramInfo::pass()
                     "Can't deal with an empty BasicBlock" );
 
             pc.instruction = 0;
+
+            makeFit( this->function( pc ).blocks, pc.block );
+            if ( !this->block( pc ).bb )
+                this->block( pc ).bb = &*block;
+            else
+                assert( this->block( pc ).bb == &*block );
+
             ProgramInfo::Position p( pc, block->begin() );
             while ( p.I != block->end() )
                 p = insert( p );
-            p = insert( p ); // end of block
+            makeFit( this->function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
         }
     }
 
