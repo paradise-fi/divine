@@ -26,6 +26,9 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, cha
         ; /* nothing to do, everything is zeroed by default */
     else if ( isa< ::llvm::ConstantAggregateZero >( C ) )
         ; /* nothing to do, everything is zeroed by default */
+    else if ( isCodePointer( C ) )
+        *reinterpret_cast< PC * >( econtext.dereference( v ) ) =
+            getCodePointer( C );
     else if ( C->getType()->isPointerTy() ) {
         C->dump();
         assert_unreachable( "unexpected non-zero constant pointer" );

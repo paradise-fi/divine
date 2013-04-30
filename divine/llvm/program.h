@@ -262,6 +262,9 @@ struct ProgramInfo {
         storeConstant( result, c );
     }
 
+    bool isCodePointer( ::llvm::Value *val );
+    PC getCodePointer( ::llvm::Value *val );
+
     void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
 
     int globalPointerOffset( Pointer p ) {

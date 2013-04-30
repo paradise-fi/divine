@@ -19,14 +19,35 @@ using ::llvm::isa;
 using ::llvm::dyn_cast;
 using ::llvm::cast;
 
-static bool isCodePointer( ::llvm::Value *val )
+bool ProgramInfo::isCodePointer( ::llvm::Value *val )
 {
+    if ( isa< ::llvm::Function >( val ) ||
+         isa< ::llvm::BlockAddress >( val ) ||
+         isa< ::llvm::BasicBlock >( val ) )
+        return true;
+
     if ( auto ty = dyn_cast< ::llvm::PointerType >( val->getType() ) )
         return ty->getElementType()->isFunctionTy();
 
-    return isa< ::llvm::Function >( val ) ||
-           isa< ::llvm::BlockAddress >( val ) ||
-           isa< ::llvm::BasicBlock >( val );
+    return false;
+}
+
+PC ProgramInfo::getCodePointer( ::llvm::Value *val )
+{
+    if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) ) {
+        assert( blockmap.count( B ) );
+        return blockmap[ B ];
+    } else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) ) {
+        assert( blockmap.count( B->getBasicBlock() ) );
+        return blockmap[ B->getBasicBlock() ];
+    } else if ( auto F = dyn_cast< ::llvm::Function >( val ) ) {
+        if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
+            throw wibble::exception::Consistency(
+                "ProgramInfo::insert",
+                std::string( "Unresolved symbol (function): " ) + F->getName().str() );
+        return PC( functionmap[ F ], 0, 0 );
+    }
+    return PC();
 }
 
 void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
@@ -69,19 +90,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( result.width % framealign )
         return Value(); /* ignore for now, later pass will assign this one */
 
-    if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) ) {
-        assert( blockmap.count( B ) );
-        makeConstant( result, blockmap[ B ] );
-    } else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) ) {
-        assert( blockmap.count( B->getBasicBlock() ) );
-        makeConstant( result, blockmap[ B->getBasicBlock() ] );
-    } else if ( auto F = dyn_cast< ::llvm::Function >( val ) ) {
-        if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
-            throw wibble::exception::Consistency(
-                "ProgramInfo::insert",
-                std::string( "Unresolved symbol (function): " ) + F->getName().str() );
-        makeConstant( result, PC( functionmap[ F ], 0, 0 ) );
-    } else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
+    if ( isCodePointer( val ) )
+        makeConstant( result, getCodePointer( val ) );
+    else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
         result = insert( function, const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ) );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
