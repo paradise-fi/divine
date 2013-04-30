@@ -110,6 +110,7 @@ if( LLVM )
   target_link_libraries( libdivine ${LLVM_LIBRARIES} )
   target_link_libraries( libdivine ${LLVM_SYSLIBS} )
   target_link_libraries( libdivine supc++_str )
+  target_link_libraries( libdivine pdclib_str )
 endif()
 
 if( CURSES )
