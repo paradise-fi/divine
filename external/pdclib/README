@@ -1,0 +1,4 @@
+This is a copy of PDCLIB, http://pdclib.e43.eu. We have taken functions/ and
+parts of opt/ is as they were, with line endings changed to UNIX. All relevant
+header files are in the toplevel. The _PDCLIB_config.h is tweaked from posix
+version. The big character data arrays have been constified.
