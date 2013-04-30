@@ -23,28 +23,29 @@ struct Hasher {
     const int slack;
     uint32_t seed;
     bool allEqual;
-    Pool& pool;
+    Pool& _pool;
 
     Hasher( Pool& pool, int s = 0 ) : slack( s ), seed( 0 ), allEqual( false ),
-        pool( pool ) {}
+                                      _pool( pool ) {}
     Hasher( Hasher& other, int slack ) : slack( slack ), seed( other.seed ),
-            allEqual( other.allEqual ), pool( other.pool )
+                                         allEqual( other.allEqual ), _pool( other._pool )
     { }
     void setSeed( uint32_t s ) { seed = s; }
 
+    Pool &pool() { return _pool; }
     inline hash_t hash( Blob b ) const {
-        assert( pool.valid( b ) );
-        return pool.hash( b, slack, pool.size( b ), seed );
+        assert( _pool.valid( b ) );
+        return _pool.hash( b, slack, _pool.size( b ), seed );
     }
 
     inline bool equal( Blob a, Blob b ) const {
-        assert( pool.valid( a ) );
-        assert( pool.valid( b ) );
-        return allEqual || pool.equal( a, b, slack );
+        assert( _pool.valid( a ) );
+        assert( _pool.valid( b ) );
+        return allEqual || _pool.equal( a, b, slack );
     }
 
-    bool valid( Blob a ) const { return pool.valid( a ); }
-    bool alias( Blob a, Blob b ) { return pool.alias( a, b ); }
+    bool valid( Blob a ) const { return _pool.valid( a ); }
+    bool alias( Blob a, Blob b ) { return _pool.alias( a, b ); }
 };
 
 template< typename _Listener, typename _AlgorithmSetup >
