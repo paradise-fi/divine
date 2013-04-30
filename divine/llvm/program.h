@@ -32,9 +32,9 @@ struct MachineState;
 struct PC : wibble::mixin::Comparable< PC >
 {
     uint32_t code:1;
-    uint32_t function:10;
+    uint32_t function:12;
     uint32_t block:10;
-    uint32_t instruction:10;
+    uint32_t instruction:8;
     bool masked:1;
 
     PC( int f, int b, int i )
