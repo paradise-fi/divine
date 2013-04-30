@@ -413,6 +413,7 @@ endif()
 
 if( LLVM )
   add_subdirectory( external/libsupc++ )
+  add_subdirectory( external/pdclib )
 endif()
 
 if( TIMED )
