@@ -3,7 +3,7 @@
 set -e
 
 flatten() {
-    sed -e "s|\\.|_|" -e "s|/|_|" -e "s|-|_|"
+    sed -e "s|\\.|_|g" -e "s|/|_|g" -e "s|-|_|g" -e "s|+|_|g"
 }
 
 if test "$1" = "-l"; then
