@@ -1,5 +1,201 @@
 An Introduction to Using DiVinE
 ===============================
 
-(TBD: A tutorial-style introduction, constructing an example model, specifying
-properties, verification and counter-example analysis.)
+In this section, we will give a short example on how to invoke divine and its
+various functions. First of all, we need a "model" or "system" to work on. This
+is the main input file to divine, and can come in a few different formats. It
+could be a LLVM bitcode file, a CESMI shared object, or a DVE model or an
+UPPAAL model. The workflow is very similar for all input languages, although
+the details vary. We will use a C program as an example "system" in this
+section, along with a few simple properties. You may have noticed that "C
+program" was not listed as an input option above -- this is because divine does
+not directly understand C programs. They first need to be translated into LLVM
+bitcode, and divine can work with that.
+
+We will start with a simple C program with 2 threads and a single shared
+variable:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C .numberLines}
+#include <pthread.h>
+
+int i = 33;
+
+void* thread( void *x ) {
+    i ++;
+    return NULL;
+}
+
+int main() {
+    pthread_t tid;
+    pthread_create( &tid, NULL, thread, NULL );
+
+    i ++;
+
+    pthread_join( tid, NULL );
+    assert( i == 35 );
+    return i;
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(Yes, this program clearly has a bug in it, a race condition on the update of
+`i`. We will deal with that later.)
+
+The program as it is can be compiled using your system's C compiler just fine
+(assuming access to `pthread.h`) and you can try running it. To use DiVinE, we
+will need to compile it a little differently:
+
+    $ divine compile --llvm program.c
+
+This command will take a while, as it builds an entire runtime environment for
+our small program. Nevertheless, after a while, it will produce a file,
+`program.bc`. This file contains LLVM bitcode of our program, and of the
+runtime environment. We can learn a little more about the program using `divine
+info`:
+
+    $ divine info program.bc
+    Available properties:
+     * deadlock: deadlock freedom
+     * assert: assertion safety
+
+We can analyse the bitcode file a little more, actually exploring its entire
+state space, measuring it (we won't be asking about any properties of the
+program yet):
+
+    $ divine metrics program.bc
+     input: program.bc
+     property deadlock: deadlock freedom
+     ------------------ Metrics ------------------
+      exploring... 			 done
+     =============================================
+              25 states
+              42 transitions
+               0 accepting
+               2 deadlocks
+     =============================================
+
+One thing you might notice off-hand is that DiVinE said that there are
+deadlocks in the program. This sounds strange at first, but the notion of a
+"deadlock" in DiVinE is not the same as you would expect in a C program. In
+many other formalisms out of the spectrum supported by DiVinE, any system state
+for which there are no legal successor states is considered a deadlock. For our
+C program, this is what happens when the program exits. Hence, terminating C
+programs will always have some "deadlocks" in them -- this is no reason for
+concern. Moreover, a real deadlock in a C program will appear as a loop in the
+state space, and we will need a different approach for detection of such
+deadlocks.
+
+Anyhow, we have learned that our program has 25 unique states and there are 42
+transitions between these states. By default, DiVinE tries to use the most
+efficient reduction available which is still exact (i.e. it will not use
+hash-compaction or other approximation techniques unless explicitly enabled).
+We can try turning off those reductions to see what happens:
+
+    $ divine metrics program.bc --no-reduce
+     input: program.bc
+     property deadlock: deadlock freedom
+     ------------------ Metrics ------------------
+      exploring... 			 done
+     ============================================= 
+             531 states
+            1019 transitions
+               0 accepting
+               2 deadlocks 
+     ============================================= 
+
+With the LLVM backend, this basically means that a new state is generated after
+each instruction in any of the threads. The difference may be far less dramatic
+with different input languages though. One thing to keep in mind is that
+state-space reductions can be expensive to compute, even if they save
+memory. Especially for DVE models, if verification seems slow, you can try
+disabling reductions.
+
+Now let's turn to some more interesting properties. With the above program, the
+first thing that comes to mind is asking DiVinE whether the assertion in the
+program can ever be violated:
+
+    $ divine verify program.bc -p assert
+     input: program.bc
+     property assert: assertion safety
+     ---------------- Reachability ----------------
+      searching... 	20 states, 32 edges, GOAL
+     ============================================= 
+               The property DOES NOT hold      
+     ============================================= 
+
+Here, as we have anticipated, DiVinE tells us that in fact, the assertion *can*
+be violated. However, in itself, this is not extremely helpful: we would also
+like to know why this is so. Let's try to get a counterexample:
+
+    $ divine verify program.bc -p assert -d
+     input: program.bc
+     property assert: assertion safety
+     ---------------- Reachability ----------------
+      searching...  20 states, 32 edges, GOAL
+     =============================================
+               The property DOES NOT hold
+     =============================================
+
+    ===== Trace from initial =====
+
+    global: [ i = 33 ]
+    0: <main> << %tid = alloca i32, align 4 >> [ tid = 0 ]
+
+    global: [ i = 33 ]
+    0: <pthread_create> [ pthread.cpp:328 ] (internal)
+
+    global: [ i = 33 ]
+    0: <pthread_create> [ pthread.cpp:354 ] (internal)
+    1: <_Z14_pthread_entryPv> << %1 = alloca i8*, align 8 >> (internal)
+
+    global: [ i = 33 ]
+    0: <pthread_create> [ pthread.cpp:354 ] (internal)
+    1: <thread> [ ../program.c:6 ] [ x = 0 ]
+
+    global: [ i = 33 ]
+    0: <main> [ ../program.c:14 ] [ tid = @(3:0| 65537) ]
+    1: <thread> [ ../program.c:6 ] [ x = 0 ]
+
+    global: [ i = 34 ]
+    0: <pthread_join> [ pthread.cpp:392 ] (internal)
+    1: <thread> [ ../program.c:6 ] [ x = 0 ]
+
+    global: [ i = 34 ]
+    0: <pthread_join> [ pthread.cpp:392 ] (internal)
+    1: <_Z14_pthread_entryPv> [ pthread.cpp:289 ] (internal)
+
+    global: [ i = 34 ]
+    0: <pthread_join> [ pthread.cpp:392 ] (internal)
+    1: <_Z14_pthread_entryPv> [ pthread.cpp:319 ] (internal)
+
+    ===== The goal =====
+
+    global: [ i = 34 ]
+    0: <null> []
+    1: <_Z14_pthread_entryPv> [ pthread.cpp:319 ] (internal)
+    ASSERTION FAILED (thread 0): <main> [ ../program.c:17 ]
+
+First, we notice that the "goal" state (i.e. the one that violates the
+property, in this case assertion safety) near the end of the output. It shows
+that thread 0 has terminated, thread 1 is in an internal pthread routine and
+that it passed through a failing assertion at line 17 of our program.c.
+
+Indeed, line 17 is our `assert( i == 35 )`. Now let's walk through the trace
+from the beginning to understand what is going on. Each block (delimited by
+blank lines) in the counterexample represents a single state of the system. We
+see a single global variable, `i` and its value (which is 33 in the first
+state). Each further line in a block describes a single thread. At the
+beginning there is only one thread, executing our `main` function (shown in
+angle brackets), and the value of our local variable `tid` is 0 (shown in
+square brackets).
+
+The program proceeds to call `pthread_create`, and in the following state, we
+notice that a new thread has appeared (for now, executing an internal
+routine). It immediately jumps into `thread`, the function we provided to
+pthread_create as an entry point. We quickly reach a point where both threads
+are executing their respective `i ++` statements at once (`program.c:6` and
+`program.c:14` respectively). This is where the problem happens, and we see
+that both threads eventually pass the statement, but value of `i` remains at
+34.
+
+Please note that the exact format of a state description depends on the input
+language. However, the gist is always the same.
