@@ -8,6 +8,7 @@
 #include <divine/generator/common.h>
 #include <divine/utility/buchi.h>
 #include <divine/timed/gen.h>
+#include <divine/toolkit/bitoperations.h>
 
 /*
 Interpreter of UPPAAL timed automata models.
@@ -206,10 +207,20 @@ struct Timed : public Common< Blob > {
         if ( from == 0 && length == splits[ 1 ] ) {
             yield( Recurse::Yes, splits[ 0 ], 1 );
             yield( Recurse::Yes, length - splits[ 0 ], 1 );
-        } else if ( from == splits[ 1 ] && length > splits[ 2 ] ) {
-            int count = (gen.stateSize() - splits[ 1 ]) / splits[ 2 ];
-            while ( count-- ) {
-                yield( Recurse::Yes, splits[ 2 ], count );
+        } else if ( from >= splits[ 1 ] && length > splits[ 2 ] ) {
+            assert_eq( length % splits[ 2 ], 0 );
+            unsigned count = length / splits[ 2 ];
+            if ( count == 1 ) {
+                yield( Recurse::No, length, 0 );
+            } else {
+                unsigned msb = bitops::onlyMSB( count );
+                unsigned nomsb = count & ~msb;
+                if ( !nomsb ) {
+                    msb /= 2;
+                    nomsb = msb;
+                }
+                yield( Recurse::Yes, splits[ 2 ] * msb, 1 );
+                yield( Recurse::Yes, splits[ 2 ] * nomsb, 0 );
             }
         } else {
             yield( Recurse::No, length, 0 );
