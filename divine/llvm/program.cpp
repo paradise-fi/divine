@@ -19,17 +19,19 @@ using ::llvm::isa;
 using ::llvm::dyn_cast;
 using ::llvm::cast;
 
+bool ProgramInfo::isCodePointerConst( ::llvm::Value *val )
+{
+    return ( isa< ::llvm::Function >( val ) ||
+             isa< ::llvm::BlockAddress >( val ) ||
+             isa< ::llvm::BasicBlock >( val ) );
+}
+
 bool ProgramInfo::isCodePointer( ::llvm::Value *val )
 {
-    if ( isa< ::llvm::Function >( val ) ||
-         isa< ::llvm::BlockAddress >( val ) ||
-         isa< ::llvm::BasicBlock >( val ) )
-        return true;
-
     if ( auto ty = dyn_cast< ::llvm::PointerType >( val->getType() ) )
         return ty->getElementType()->isFunctionTy();
 
-    return false;
+    return isCodePointerConst( val );
 }
 
 PC ProgramInfo::getCodePointer( ::llvm::Value *val )
@@ -90,7 +92,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( result.width % framealign )
         return Value(); /* ignore for now, later pass will assign this one */
 
-    if ( isCodePointer( val ) )
+    if ( isCodePointerConst( val ) )
         makeConstant( result, getCodePointer( val ) );
     else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
         result = insert( function, const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ) );

@@ -264,6 +264,7 @@ struct ProgramInfo {
     }
 
     bool isCodePointer( ::llvm::Value *val );
+    bool isCodePointerConst( ::llvm::Value *val );
     PC getCodePointer( ::llvm::Value *val );
 
     void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
