@@ -307,7 +307,7 @@ struct DefaultStore
     Blob unpack( Handle h ) { return h.b; }
 
     IsNew< Vertex > store( Node n, hash_t h = 0 ) {
-        int fake;
+        int fake = 0;
         return this->_store( n, h, fake ).map(
             [this, &n]( Node x ) {
                 if ( x.raw() != n.raw() )
