@@ -100,13 +100,15 @@ struct Base : Allocator {
             return hint % worker.peers();
     }
 
+    static const int SPLIT_LIMIT = 32; // should be multiple of 8
+
     // yield( Recurse, length, remaining count )
     template< typename Yield >
     void splitHint( Node n, int form, int length, Yield yield ) {
         // just a simple binary splitting, should be replaced by something
         // more appropriate in generators
 
-        if ( length <= 32 ) {
+        if ( length <= SPLIT_LIMIT ) {
             yield( Recurse::No, length, 0 );
             return;
         }
