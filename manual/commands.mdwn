@@ -56,7 +56,7 @@ Using LTL Properties
 --------------------
 
     divine combine [-f formula.ltl] [-p N] [-o] [-q] model.dve
-    divine combine [-f formula.ltl] [-p N] [-o] [-q] model.mdve [P1=VAL] [P2=VAL] ...
+    divine combine [-f ...] [...] model.mdve [P1=VAL] [P2=VAL] ...
 
 Some of the input languages have intrinsic support for specifying LTL
 properties. In these cases, all suitable LTL properties are automatically made

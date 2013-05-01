@@ -45,12 +45,15 @@ follows:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
 
     void setup             ( cesmi_setup * );
-     int get_initial       ( const cesmi_setup *, int, cesmi_node * );
-     int get_successor     ( const cesmi_setup *, int, cesmi_node, cesmi_node * );
+     int get_initial       ( const cesmi_setup *, int,
+                             cesmi_node * );
+     int get_successor     ( const cesmi_setup *, int,
+                             cesmi_node, cesmi_node * );
 uint64_t get_flags         ( const cesmi_setup *, cesmi_node );
      int get_property_type ( const cesmi_setup *, int );
    char *show_node         ( const cesmi_setup *, cesmi_node );
-   char *show_transition   ( const cesmi_setup *, cesmi_node, int );
+   char *show_transition   ( const cesmi_setup *, cesmi_node,
+                             int );
    char *show_property     ( const cesmi_setup *, int );
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,12 +109,14 @@ this:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
 
-int get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
+int get_successor( const cesmi_setup *setup, int handle,
+                   cesmi_node from, cesmi_node *to )
 {
     struct state *in = (struct state *) from.memory;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
-        *to = setup->make_node( setup->allocation_handle, sizeof( struct state ) );
+        *to = setup->make_node( setup->allocation_handle,
+                                sizeof( struct state ) );
         struct state *out = (struct state *) to->memory;
         *out = *in;
         switch (handle) {
@@ -204,13 +209,20 @@ generated code, you should use the following APIs:
 
 uint64_t buchi_flags( cesmi_setup *setup, cesmi_node n );
 
-int buchi_get_initial( const cesmi_setup *setup, int handle, cesmi_node *to, get_initial_t next );
-int buchi_get_successor( const cesmi_setup *setup, int handle, cesmi_node from,
+int buchi_get_initial( const cesmi_setup *setup,
+                       int handle, cesmi_node *to,
+                       get_initial_t next );
+int buchi_get_successor( const cesmi_setup *setup, int handle,
+                         cesmi_node from,
                          cesmi_node *to, get_successor_t next );
-char *buchi_show_node( const cesmi_setup *setup, cesmi_node from, show_node_t next );
-char *buchi_show_transition( const cesmi_setup *setup, cesmi_node from, int handle, show_transition_t next );
+char *buchi_show_node( const cesmi_setup *setup, cesmi_node from,
+                       show_node_t next );
+char *buchi_show_transition( const cesmi_setup *setup,
+                             cesmi_node from,
+                             int handle, show_transition_t next );
 
-char *buchi_show_property( const cesmi_setup *setup, int property );
+char *buchi_show_property( const cesmi_setup *setup,
+                           int property );
 void buchi_setup( cesmi_setup *setup );
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,5 +243,6 @@ int get_initial( const cesmi_setup *s, int h, cesmi_node *n ) {
 For a full example, please refer to `examples/cesmi/withltl.c` shipped in
 DiVinE source tarballs. Compile and test it like this:
 
-    $ divine compile --cesmi examples/cesmi/withltl.c examples/cesmi/withltl.ltl
+    $ divine compile --cesmi examples/cesmi/withltl.c \
+                             examples/cesmi/withltl.ltl
     $ divine metrics withltl.so --property=p_3
