@@ -1,6 +1,7 @@
 # TODO
 
-set( SOURCES title.mdwn overview.mdwn building.mdwn commands.mdwn using.mdwn language.mdwn cesmi.mdwn )
+set( SOURCES title.mdwn overview.mdwn building.mdwn commands.mdwn
+             using.mdwn dve.mdwn cesmi.mdwn )
 
 if( PDFLATEX AND BIBTEX )
   add_custom_command(

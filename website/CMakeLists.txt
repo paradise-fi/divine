@@ -37,7 +37,7 @@ endmacro()
 page( development.html .. HACKING )
 page( whatsnew.html .. NEWS )
 page( manual.html ../manual title.mdwn overview.mdwn building.mdwn commands.mdwn
-                            using.mdwn language.mdwn cesmi.mdwn )
+                            using.mdwn dve.mdwn cesmi.mdwn )
 pages( . contact.mdwn download.mdwn index.mdwn )
 resources( style.css button.png button-over.png divine-logo.png trac-logo.png )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} )

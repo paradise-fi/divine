@@ -227,34 +227,36 @@ the following concepts:
 
 First, let us show you the algorithm itself as a C code snippet:
 
-        volatile int q[n] = { 0 };
-        volatile int turn[n] = { 0 };
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C .numberLines}
+volatile int q[n] = { 0 };
+volatile int turn[n] = { 0 };
 
-        void enter_critical_section(int i) {
-            int j, k;
+void enter_critical_section(int i) {
+    int j, k;
 
-            for (j = 1; j < n; j++) {
-                q[i] = j;
-                turn[j] = i;
+    for (j = 1; j < n; j++) {
+        q[i] = j;
+        turn[j] = i;
 
-                for (k = 0; k < n; k++)
-                    while (k != i && (q[k] >= j && turn[j] == i));
-            }
+        for (k = 0; k < n; k++)
+            while (k != i && (q[k] >= j && turn[j] == i));
+    }
 
-            q[i] = n;
-        }
+    q[i] = n;
+}
 
-        void leave_critical_section(int i) {
-            q[i] = 0;
-        }
+void leave_critical_section(int i) {
+    q[i] = 0;
+}
 
-        void process(int process_id) {
-            for (;;) {
-                enter_critical_section(process_id);
-                /* do work */
-                leave_critical_section(process_id);
-            }
-        }
+void process(int process_id) {
+    for (;;) {
+        enter_critical_section(process_id);
+        /* do work */
+        leave_critical_section(process_id);
+    }
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We will create a model of the `process` procedure and, using *m4* macro
 language, make the model parametric.
