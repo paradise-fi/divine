@@ -298,7 +298,6 @@ struct DefaultStore
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
-    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); } // XXX dangerous?
 
     /* Remember the extension for this Handle, but we won't need to get
      * successors from it. A Vertex obtained from a discarded Handle may fail
@@ -334,6 +333,8 @@ struct DefaultStore
     { }
 
     STORE_ITERATOR;
+private:
+    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); }
 };
 
 #if 0
@@ -530,7 +531,6 @@ struct NTreeStore
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
-    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); } // XXX dangerous!
 
     template< typename T = char >
     T *extension( Handle h ) {
@@ -538,6 +538,8 @@ struct NTreeStore
     }
 
     STORE_ITERATOR;
+private:
+    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); }
 };
 
 }
