@@ -50,9 +50,11 @@ struct Lake {
         // XXX: Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
         uint64_t raw() { return *reinterpret_cast< uint64_t * >( this ); }
         static Pointer fromRaw( uint64_t r ) {
-            Pointer p;
-            *reinterpret_cast< uint64_t * >( &p ) = r;
-            return p;
+            union {
+                uint64_t r;
+                Pointer p;
+            } c = { r };
+            return c.p;
         }
     };
 
