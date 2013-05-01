@@ -28,6 +28,10 @@ chmod +x $TOOLS/ssh
 test -z "$MPIEXEC" && MPIEXEC=false
 
 tests="$@"
+good=0
+goodsub=0
+skipcount=0
+ran=0
 
 for t_ in $tests; do
     # cut+rev is nicer but the latter's in util-linux
@@ -35,13 +39,23 @@ for t_ in $tests; do
     test -n "$T" && {
         echo $t | grep -q $T || continue
     }
+    ran=$(($ran + 1))
     printf "Running %-40s" "$t ..."
     outf=`mktemp output.XXXXXX`
     if test -n "$INTERACTIVE"; then bash $t_ ; else  bash $t_ > $outf 2>&1; fi
     ret=$?
+    sub=$(grep -c "^#### PASSED" $outf)
+    goodsub=$(($goodsub + $sub))
     if test $ret = 0; then
-	echo " passed."
+        good=$(($good + 1))
+        if test "$sub" -ne 0; then
+	    echo " passed $sub subtests."
+        else
+            echo " passed."
+        fi
     elif test $ret = 200; then
+        ran=$(($ran - 1))
+        skipcount=$(($skipcount + 1))
         skipped="$skipped $t"
 	echo " skipped."
     else
@@ -50,8 +64,8 @@ for t_ in $tests; do
 	# fancy formatting...
 	printf -- "--- Output: $t -"
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
-        if test -z "$VERBOSE" && grep -q "^#### PASSED" $outf; then
-            echo "`grep -c '^#### PASSED' $outf` sub-test(s) passed; use VERBOSE=1 to unhide them"
+        if test -z "$VERBOSE" && test $sub -ne 0; then
+            echo "$sub sub-test(s) passed; use VERBOSE=1 to unhide them"
             while grep -q "^#### PASSED" $outf; do sed -e "1,/^#### PASSED/d" -i $outf; done
         fi
         cat $outf
@@ -74,7 +88,12 @@ if test -n "$failed"; then
     for t in $failed; do
 	printf "\t%s\n" $t
     done
+    echo
+    echo "== $good out of $ran passed (total of $goodsub subtests passed). $skipcount tests skipped."
+    echo
     exit 1
 else
-    echo "All tests passed."
+    echo
+    echo "== All $good tests ($goodsub subtests) passed. $skipcount tests skipped."
+    echo
 fi
