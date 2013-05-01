@@ -38,8 +38,9 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
-    StringOption *o_cflags, *o_out;
+    BoolOption *o_cesmi, *o_llvm, *o_keep;
+    StringOption *o_cflags, *o_out, *o_clang_cmd, *o_gold_cmd, *o_llvmgold_path, *o_ar_cmd;
+    VectorOption< String > *o_definitions;
 
     struct FilePath {
         // filepath = joinpath(abspath, basename)
@@ -102,7 +103,35 @@ struct Compile {
 	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
-    void compileDve( std::string in ) {
+    std::string clang() {
+        if ( o_clang_cmd->boolValue() )
+            return o_clang_cmd->stringValue();
+        return ::_clang_cmd;
+    }
+
+    std::string gold_plugin() {
+        if ( o_llvmgold_path->boolValue() )
+            return " -plugin " + o_llvmgold_path->stringValue();
+        else if ( strlen( ::_llvmgold_path ) )
+            return std::string( " --plugin " ) + ::_llvmgold_path;
+        return "";
+    }
+
+    std::string gold_ar() {
+        if ( o_ar_cmd->boolValue() )
+            return o_ar_cmd->stringValue() + " r " + gold_plugin();
+        else
+            return std::string( ::_ar_cmd ) + " r " + gold_plugin();;
+    }
+
+    std::string gold() {
+        if ( o_gold_cmd->boolValue() )
+            return o_gold_cmd->stringValue() + gold_plugin();
+        else
+            return ::_gold_cmd + gold_plugin();;
+    }
+
+    void compileDve( std::string in, std::vector< std::string > definitions ) {
 #if defined O_DVE
         dve::compiler::DveCompiler compiler;
         compiler.read( in.c_str(), definitions );
@@ -352,7 +381,17 @@ struct Compile {
             "ar-cmd", 0, "ar-cmd", "",
             std::string( "how to run ar [default: " ) + _ar_cmd + "]" );
 
+        o_gold_cmd = cmd_compile->add< StringOption >(
+            "gold-cmd", 0, "gold-cmd", "",
+            std::string( "how to run GNU gold [default: " ) + _gold_cmd + "]" );
 
+        o_llvmgold_path = cmd_compile->add< StringOption >(
+            "llvmgold-path", 0, "llvmgold-path", "",
+            std::string( "path to LLVMgold.so (keep empty if ld/ar use it by default) [default: " ) + _llvmgold_path );
+
+        o_definitions = cmd_compile->add< VectorOption< String > >(
+            "definition", 'D', "definition", "",
+            "add definition for generator (can be specified multiple times)" );
     }
 
 };
