@@ -185,7 +185,7 @@ struct Lake {
         bump( sizebytes, sizecount.size() - 1 );
 
         std::cerr << "~Lake(): " << count << " objects not freed:" << std::endl;
-        for ( int i = 0; i < sizecount.size(); ++ i )
+        for ( size_t i = 0; i < sizecount.size(); ++ i )
             if ( sizecount[i] || sizebytes[ i ] ) {
                 int64_t c = sizecount[i];
                 int64_t b = c * i;
