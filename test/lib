@@ -132,7 +132,7 @@ for_dve_small() {
     check statespace 6 5 0 1
 
     check clear
-    run $wrapper data/input.dve --property=deadlock -D i=7 "$@"
+    run $wrapper data/input.dve --property=deadlock "$@" -D i=7
     check statespace 4 3 0 1
 }
 
