@@ -15,7 +15,7 @@ void DveCompiler::write_C( parse::LValue & expr, std::ostream & ostr,
 {
     if ( immcontext == "" )
         immcontext = context;
-    ostr << state_name << "." << getVariable( expr.ident.name(), immcontext );
+    ostr << getVariable( expr.ident.name(), immcontext, state_name );
     if ( expr.idx.valid() ) {
         ostr << "[ ";
         write_C( expr.idx, ostr, state_name, context );
@@ -30,7 +30,7 @@ void DveCompiler::write_C( parse::RValue & expr, std::ostream & ostr,
     if ( immcontext == "" )
         immcontext = context;
     if ( expr.ident.valid() ) {
-        ostr << state_name << "." << getVariable( expr.ident.name(), immcontext );
+        ostr << getVariable( expr.ident.name(), immcontext, state_name );
         if ( expr.idx && expr.idx->valid() ) {
             ostr << "[ ";
             write_C( *expr.idx, ostr, state_name, context );
@@ -165,7 +165,7 @@ void DveCompiler::gen_constants()
     for ( parse::Declaration &decl : ast->decls ) {
         if ( !decl.is_const )
             continue;
-        append( "const" );
+        append( "const " );
         append( typeOf( decl.width ) );
         append( " " );
         append( decl.name );
@@ -296,6 +296,9 @@ void DveCompiler::gen_state_struct()
 void DveCompiler::initVars( vector< parse::Declaration > & decls, string process )
 {
     for ( parse::Declaration &decl : decls ) {
+        if ( decl.is_const )
+            continue;
+
         std::string var = process + "." + decl.name;
         if ( decl.is_array ) {
             for ( size_t i = 0; i < decl.initial.size(); i++ ) {

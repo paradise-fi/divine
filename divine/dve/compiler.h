@@ -270,13 +270,18 @@ struct DveCompiler
         throw;
     }
 
-    std::string getVariable( std::string name, std::string context ) {
+    std::string getVariable( std::string name, std::string context, std::string state ) {
         parse::Process &p = getProcess( context );
         for ( parse::Declaration &decl : p.decls ) {
             if ( decl.name == name )
-                return context + "." + name;
+                return ( decl.is_const ? "" : state + "." ) + context + "." + name;
         }
-        return name;
+        for ( parse::Declaration &decl : ast->decls ) {
+            if ( decl.name == name )
+                return ( decl.is_const ? "" : state + "." ) + name;
+        }
+        std::cerr << "ERROR: Couldn't find variable " << name << std::endl;
+        throw;
     }
 
     int channel_capacity( std::string proc, parse::SyncExpr & chan ) {
