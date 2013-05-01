@@ -2,6 +2,7 @@
 #include <wibble/test.h> // for assert
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <memory>
 #include <map>
 
@@ -144,26 +145,54 @@ struct Lake {
         VALGRIND_CREATE_MEMPOOL( block[ b ], 0, 0 );
     }
 
-    void valgrindFini() {
-        int count = 0;
-        int64_t bytes = 0;
+    void bump( std::vector< int64_t > &v, size_t cnt ) {
+        v.resize( std::max( v.size(), cnt + 1 ), 0 );
+    }
 
-        if ( !RUNNING_ON_VALGRIND )
+    void valgrindFini() {
+        int64_t count = 0;
+        int64_t bytes = 0;
+        int64_t wasted = 0;
+        std::vector< int64_t > sizecount;
+        std::vector< int64_t > sizebytes;
+
+        if ( !RUNNING_ON_VALGRIND && !getenv( "DIVINE_LAKE_STATS" ) )
             return ;
 
         for ( int i = 0; i < blockcount; ++i )
             if ( _vhandles[ i ] ) {
-                for ( int j = 0; j < header( i ).total; ++j )
-                    count += _vhandles[ i ][ j ].allocated;
+                for ( int j = 0; j < header( i ).total; ++j ) {
+                    bool allocd = _vhandles[ i ][ j ].allocated;
+                    count += allocd;
+                    bump( sizecount, header( i ).itemsize );
+                    sizecount[ header( i ).itemsize ] += allocd;
+                }
                 delete[] _vhandles[ i ].load();
             }
 
-        for ( int i = 0; i < blockcount && block[ i ]; ++i )
-            if ( block[ i ] )
-                bytes += header( i ).total * align( header( i ).itemsize, sizeof( void * ) );
+        for ( int i = 0; i < blockcount; ++i )
+            if ( block[ i ] ) {
+                int64_t is = header( i ).itemsize;
+                int64_t b = header( i ).total * align( is, sizeof( void * ) );
+                bytes += b;
+                bump( sizebytes, is + 1 );
+                sizebytes[ is ] += b;
+            }
 
-        std::cerr << "~Lake(): " << count << " objects not freed" << std::endl;
-        std::cerr << "         " << (bytes / 1024) << " kbytes held" << std::endl;
+        bump( sizecount, sizebytes.size() - 1 );
+        bump( sizebytes, sizecount.size() - 1 );
+
+        std::cerr << "~Lake(): " << count << " objects not freed:" << std::endl;
+        for ( int i = 0; i < sizecount.size(); ++ i )
+            if ( sizecount[i] || sizebytes[ i ] ) {
+                int64_t c = sizecount[i];
+                int64_t b = c * i;
+                int64_t t = sizebytes[i];
+                wasted += (t - b);
+                std::cerr << "   " << std::setw(8) << c << " object(s) of size " << i
+                          << " for " << b / 1024 << "/" << t / 1024 << "kB" << std::endl;
+            }
+        std::cerr << " " << (bytes / 1024) << " kbytes held; " << wasted / 1024 << "kB wasted" << std::endl;
     }
 #else
 #define VALGRIND_MAKE_MEM_DEFINED(x, y)
