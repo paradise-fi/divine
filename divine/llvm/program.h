@@ -149,8 +149,7 @@ struct ProgramInfo {
         }
 
         Value()
-            : global( false ), constant( false ), type( Integer ),
-              offset( 0 ), width( 0 )
+            : type( Integer ), width( 0 ), constant( false ), global( false ), offset( 0 )
         {}
     };
 
