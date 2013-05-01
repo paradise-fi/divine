@@ -113,12 +113,16 @@ struct Thread { // (user-space) information maintained for every (running) threa
     CleanupHandler *cleanup_handlers;
 };
 
+namespace {
+
 /* Internal globals*/
 bool initialized = false;
 unsigned alloc_pslots = 0; // num. of pointers (not actuall slots) allocated
 unsigned thread_counter = 1;
 Thread ** threads = NULL;
 pthread_key_t keys = NULL;
+
+}
 
 /* Helper functions */
 template< typename T >
