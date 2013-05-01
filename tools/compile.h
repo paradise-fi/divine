@@ -12,6 +12,7 @@
 #include <wibble/sys/process.h>
 
 #include "combine.h"
+#include "llvmpaths.h"
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
 #include <divine/utility/strings.h>
@@ -39,7 +40,6 @@ struct Compile {
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
     StringOption *o_cflags, *o_out;
-    VectorOption< String > *o_definitions;
 
     struct FilePath {
         // filepath = joinpath(abspath, basename)
@@ -47,7 +47,6 @@ struct Compile {
         std::string abspath;
     };
 
-    std::string stage, ext;
     FilePath *cleanup_tmpdir;
 
     void die_help( std::string bla )
@@ -103,7 +102,7 @@ struct Compile {
 	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
-    void compileDve( std::string in, std::vector< std::string > definitions ) {
+    void compileDve( std::string in ) {
 #if defined O_DVE
         dve::compiler::DveCompiler compiler;
         compiler.read( in.c_str(), definitions );
@@ -216,17 +215,13 @@ struct Compile {
                  str::endsWith( src->n, ".c" ) ||
                  str::endsWith( src->n, ".cpp" ) ||
                  str::endsWith( src->n, ".cxx" ) ) {
-                run( "clang " + flags + " -I. " + src->n + " -o " + src->n + ext );
-                files = files + src->n + ext + " ";
+                run( "clang -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
+                files = files + src->n + ".bc ";
             }
             ++src;
         }
 
-        // link
-        if ( !o_assm->boolValue() )
-            stage = "";
-
-        run( "llvm-link " + stage + files + " -o ../" + name + ext );
+        run( gold_ar() + " ../" + name + ".a " + files );
         chdir( ".." );
     }
 
@@ -242,16 +237,6 @@ struct Compile {
         if ( !o_keep->boolValue() )
             cleanup_tmpdir = &tmp_dir;
 
-        // assembly or bitcode?
-        // If both are requested, the former is produced and the latter is ignored.
-        if ( o_assm->boolValue() ) {
-            stage = " -S ";
-            ext = ".llvm";
-        } else {
-            stage = " -c ";
-            ext = ".bc";
-        }
-
         // enter tmp directory
         chdir( tmp_dir.basename.c_str() );
 
@@ -263,22 +248,19 @@ struct Compile {
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
 
         // compile libraries
-        std::string flags = stage + "-emit-llvm -ffreestanding -nobuiltininc -g " + cflags;
-        compileLibrary( "pdclib", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
-        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../pdclib -I.." );
+        std::string flags = "-emit-llvm -ffreestanding -nobuiltininc -g " + cflags;
+        compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
+        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I.." );
 
-        flags += " -Ilibsupc++ -Ipdclib ";
+        flags += " -Ilibsupc++ -Ilibpdc";
 
-        run( "clang " + flags + " -I. cstdlib.cpp -o cstdlib" + ext );
-        run( "clang " + flags + " -I. pthread.cpp -o pthread" + ext );
+        run( "clang -c " + flags + " -I. cstdlib.cpp -o cstdlib.bc" );
+        run( "clang -c " + flags + " -I. pthread.cpp -o pthread.bc" );
+        run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
 
         // compile input file(s)
         std::string basename;
-        std::string file = first_file,
-            all_unlinked = tmp_dir.basename + "/libsupc++" + ext + " " +
-                           tmp_dir.basename + "/pdclib" + ext + " " +
-                           tmp_dir.basename + "/cstdlib" + ext + " " +
-                           tmp_dir.basename + "/pthread" + ext + " ";
+        std::string file = first_file, all_unlinked;
 
         do {
             if ( file.empty() )
@@ -286,23 +268,23 @@ struct Compile {
 
             basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
 
-            if ( out.empty() ) {
-                // If the output file name is not specified, than the file name of the first
-                // file in the list is used.
-                out = basename;
-            }
+            if ( out.empty() )
+                out = basename + ".bc";
 
-            all_unlinked += str::joinpath( tmp_dir.basename, basename + ext );
-
-            run( "clang " + flags + " -I. ../" + file + " -o " + basename + ext );
+            all_unlinked += str::joinpath( tmp_dir.basename, basename + ".bc" );
+            run( "clang -c " + flags + " -I. ../" + file + " -o " + basename + ".bc" );
 
             file.clear();
         } while ( opts.hasNext() );
 
         chdir( tmp_dir.abspath.c_str() );
 
-        run( "llvm-link " + stage + " " + all_unlinked +
-             " -o " + out + ext );
+        run( gold() +
+             " -plugin-opt emit-llvm " +
+             " -o " + out +
+             all_unlinked +
+             " -L./" + tmp_dir.basename +
+             " -lsupc++ -lpdc -ldivine" );
 
         cleanup();
 #else
@@ -322,7 +304,7 @@ struct Compile {
                     str::endsWith( input, ".cc" ) || str::endsWith( input, ".C" )) )
             if ( o_cesmi->boolValue() )
                 compileCESMI( input, o_cflags->stringValue() );
-            else if ( o_llvm->boolValue() || o_assm->boolValue() )
+            else if ( o_llvm->boolValue() )
                 compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
             else {
                 std::cerr << "Do not know whether to process input file as of CESMI type ";
@@ -349,12 +331,6 @@ struct Compile {
             "llvm", 'l', "llvm", "",
             "compile input C/C++ program into LLVM bitecode");
 
-        o_assm = cmd_compile->add< BoolOption >(
-            "llvm-assembly", '\0', "llvm-assembly", "",
-            "compile input C/C++ program into LLVM assembly "
-            "(the human-readable textual representation primarily used to help debugging, "
-             "but not supported by DiVinE)");
-
         o_keep = cmd_compile->add< BoolOption >(
             "keep-build-directory", '\0', "keep-build-directory", "",
             "do not erase intermediate files after a compile" );
@@ -366,12 +342,17 @@ struct Compile {
         o_out = cmd_compile->add< StringOption >(
             "output-file", 'o', "output-file", "",
             "specify the output file name "
-            "(do not include extension, it is chosen and appended automatically), "
-            "this flag is currently only applied in conjunction with --llvm/-l or --llvm-assembly");
+            "(only works with --llvm/-l)");
 
-        o_definitions = cmd_compile->add< VectorOption< String > >(
-            "definition", 'D', "definition", "",
-            "add definition for generator (can be specified multiple times)" );
+        o_clang_cmd = cmd_compile->add< StringOption >(
+            "clang-cmd", 0, "clang-cmd", "",
+            std::string( "how to run clang [default: " ) + _clang_cmd + "]" );
+
+        o_ar_cmd = cmd_compile->add< StringOption >(
+            "ar-cmd", 0, "ar-cmd", "",
+            std::string( "how to run ar [default: " ) + _ar_cmd + "]" );
+
+
     }
 
 };

@@ -76,6 +76,11 @@ option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
 
+set( CLANG_CMD "clang" CACHE STRING "how to run the CLang compiler (may include an absolute path)" )
+set( GOLD_CMD "ld" CACHE STRING "how to run the GNU gold linker (may include an absolute path)" )
+set( AR_CMD "ar" CACHE STRING "how to run GNU ar w/ gold plugin support (may include an absolute path)" )
+set( LLVMGOLD_PATH "" CACHE STRING "path to the LLVMgold plugin (keep empty if gold will find it automatically)" )
+
 ###############################################
 ## MISC OPTION IMPLEMENTATION
 ##

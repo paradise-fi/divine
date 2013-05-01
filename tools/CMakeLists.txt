@@ -1,7 +1,7 @@
 add_definitions( -Wall -Wno-unused-variable -Wno-unused-function -Wno-overloaded-virtual )
 add_definitions( -Wextra -Wno-unused-parameter -Wno-sign-compare )
 
-include_directories( ${DIVINE_INCLUDES} )
+include_directories( ${DIVINE_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
 link_libraries( libdivine libdivine-instances wibble )
@@ -20,6 +20,14 @@ endif( HOARD )
 if( TBBMALLOC )
   link_libraries( tbbmalloc )
 endif()
+
+set( llvmpaths "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
+file( WRITE ${llvmpaths} "static const char *_clang_cmd = \"${CLANG_CMD}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_gold_cmd = \"${GOLD_CMD}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_ar_cmd= \"${AR_CMD}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_llvmgold_path= \"${LLVMGOLD_PATH}\";\n" )
+
+set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths} )
 
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 
