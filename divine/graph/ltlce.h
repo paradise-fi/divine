@@ -234,7 +234,7 @@ struct LtlCE {
     // Obtaining CE output
 
     typedef std::vector< unsigned > NumericTrace;
-    typedef std::vector< Node > Trace;
+    typedef std::deque< Node > Trace;
     typedef std::pair< Trace, NumericTrace > Traces;
 
     template< typename Alg, typename T >
@@ -269,13 +269,13 @@ struct LtlCE {
         NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
-            if ( pool().valid( trace.back() ) ) {
-                o_ce( a ) << _g.showNode( trace.back() ) << std::endl;
+            if ( pool().valid( trace.front() ) ) {
+                o_ce( a ) << _g.showNode( trace.front () ) << std::endl;
                 // _g.release( trace.back() );
             } else {
                 o_ce( a ) << "?" << std::endl;
             }
-            trace.pop_back();
+            trace.pop_front();
         }
 
         for ( unsigned next : ntrace ) {
@@ -317,7 +317,7 @@ struct LtlCE {
     void goal( Alg &a, T goal ) {
         o_ce( a ) << std::endl << "===== The goal =====" << std::endl << std::endl;
 
-        std::vector< T > trace;
+        std::deque< T > trace;
         trace.push_back( goal );
         a.result().cycleTrail = generateTrace( a, g(), trace );
     }
