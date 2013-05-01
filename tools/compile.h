@@ -111,7 +111,7 @@ struct Compile {
 
     std::string gold_plugin() {
         if ( o_llvmgold_path->boolValue() )
-            return " -plugin " + o_llvmgold_path->stringValue();
+            return " --plugin " + o_llvmgold_path->stringValue();
         else if ( strlen( ::_llvmgold_path ) )
             return std::string( " --plugin " ) + ::_llvmgold_path;
         return "";
@@ -310,7 +310,7 @@ struct Compile {
 
         run( gold() +
              " -plugin-opt emit-llvm " +
-             " -o " + out +
+             " -o " + out + " " +
              all_unlinked +
              " -L./" + tmp_dir.basename +
              " -lsupc++ -lpdc -ldivine" );
