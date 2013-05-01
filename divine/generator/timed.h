@@ -195,7 +195,10 @@ struct Timed : public Common< Blob > {
     // yield( Recurse, length, remaining count )
     template< typename Yield >
     void splitHint( Node n, int from, int length, Yield yield ) {
-        if ( length < 32 ) {
+        assert_leq( slack(), from );
+        from -= slack();
+
+        if ( length <= Common::SPLIT_LIMIT ) {
             yield( Recurse::No, length, 0 );
             return;
         }
