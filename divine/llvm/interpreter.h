@@ -134,22 +134,8 @@ struct Interpreter
 
     explicit Interpreter( graph::Allocator &a, std::shared_ptr< BitCode > bc );
 
-    typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
-
-    std::string describeConstdata();
-    std::string describePointer( Type *t, Pointer p, DescribeSeen& );
-
-    template< typename Ptr > std::string describeAggregate( Type *t, Ptr where, DescribeSeen& );
-    template< typename Ptr > std::string describeValue( Type *t, Ptr where, DescribeSeen& );
-    template< typename Ptr >
-    std::string describeValue( const ::llvm::Value *, ValueRef vref, Ptr p,
-                               DescribeSeen &, int *anonymous = nullptr,
-                               std::vector< std::string > *container = nullptr );
-    template< typename Ptr >
-    std::string describeValue( std::pair< ::llvm::Type *, std::string >, ValueRef vref, Ptr p,
-                               DescribeSeen &, int *anonymous = nullptr,
-                               std::vector< std::string > *container = nullptr );
     std::string describe( bool detailed = false );
+    std::string describeConstdata();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */
     void rewind( Blob b ) { state.rewind( b, -1 ); }
