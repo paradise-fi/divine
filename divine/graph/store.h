@@ -75,6 +75,7 @@ struct StoreCommon : TableProvider
         return owner( hint ? hint : hash( n ) );
     }
 
+    bool knows( hash_t h ) { return TableProvider::knows( h ); }
     bool knows( InsertItem n, hash_t hint = 0 ) {
         return TableProvider::knows( hint ? hint : hash( n ) );
     }
@@ -525,7 +526,7 @@ struct NTreeStore
     int owner( Handle h, hash_t hint = 0 ) { return Base::owner( hash( h ) ); }
     int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
 
-    int knows( Handle h, hash_t hint = 0 ) { return knows( h.b, hint ); }
+    int knows( Handle h, hash_t hint = 0 ) { return Base::knows( hash( h ) ); }
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
