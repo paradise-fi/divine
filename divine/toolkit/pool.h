@@ -198,7 +198,7 @@ struct Lake {
                 delete[] _freelist_big[ i ].load();
             }
         }
-        for ( int i = 0; i < blockcount && block[ i ]; ++i )
+        for ( int i = 0; i < blockcount; ++i )
             delete[] block[ i ];
     }
 
