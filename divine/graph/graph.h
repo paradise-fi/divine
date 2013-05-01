@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <divine/toolkit/pool.h>
+#include <divine/toolkit/bitoperations.h>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -113,11 +114,23 @@ struct Base : Allocator {
             return;
         }
 
-        int half = length / 2;
-        half = half & 0x1 ? half + 1: half; // ensure even number
+        unsigned count = align( length, SPLIT_LIMIT ) / SPLIT_LIMIT;
+        assert_leq( (count - 1) * SPLIT_LIMIT, length );
+        assert_leq( length, count * SPLIT_LIMIT );
 
-        yield( Recurse::Yes, half, 1 );
-        yield( Recurse::Yes, length - half, 0 );
+        unsigned msb = bitops::onlyMSB( count );
+        unsigned nomsb = count & ~msb;
+        unsigned rem = count * SPLIT_LIMIT - length;
+        assert_leq( 0, rem );
+        assert_leq( rem, SPLIT_LIMIT );
+        if ( !nomsb ) {
+            msb /= 2;
+            nomsb = msb;
+        }
+        assert_eq( msb + nomsb, count );
+
+        yield( Recurse::Yes, msb * SPLIT_LIMIT, 1 );
+        yield( Recurse::Yes, nomsb * SPLIT_LIMIT - rem, 0 );
     }
 
     template< typename Yield >
