@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 #include <wibble/string.h>
-#include <divine/dve/parse.h>
+#include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
 
 #ifndef TOOLS_DVECOMPILE_H
@@ -56,7 +56,19 @@ struct DveCompiler
     int m_indent;
     bool in_process, process_empty;
 
-    void read( std::string path ) {
+    void read( std::string path, std::vector< std::string > &definitions ) {
+        std::unordered_map< std::string, dve::preprocessor::Definition > defs;
+        try {
+            for ( std::string & d : definitions ) {
+                 dve::preprocessor::Definition def( d );
+                 defs[ def.var ] = def;
+            }
+        }
+        catch ( std::string error ) {
+            std::cerr << error << std::endl;
+            throw;
+        }
+
         std::ifstream file;
         file.open( path.c_str() );
         dve::IOStream stream( file );
@@ -64,6 +76,8 @@ struct DveCompiler
         dve::Parser::Context ctx( lexer, path );
         try {
             ast = new parse::System( ctx );
+            dve::preprocessor::System preproc( defs );
+            preproc.process( *ast );
             //system = new System( ast );
         } catch (...) {
             ctx.errors( std::cerr );

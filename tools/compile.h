@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
 #include <unistd.h>
+#include <vector>
 
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
@@ -38,6 +39,7 @@ struct Compile {
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_assm;
     StringOption *o_cflags, *o_out;
+    VectorOption< String > *o_definitions;
 
     struct FilePath {
         // filepath = joinpath(abspath, basename)
@@ -101,10 +103,10 @@ struct Compile {
 	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
-    void compileDve( std::string in ) {
+    void compileDve( std::string in, std::vector< std::string > definitions ) {
 #if defined O_DVE
         dve::compiler::DveCompiler compiler;
-        compiler.read( in.c_str() );
+        compiler.read( in.c_str(), definitions );
         compiler.analyse();
 
         std::string outfile = str::basename( in ) + ".cpp";
@@ -313,7 +315,7 @@ struct Compile {
         if ( access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
         if ( str::endsWith( input, ".dve" ) )
-            compileDve( input );
+            compileDve( input, o_definitions->values() );
         else if ( str::endsWith( input, ".m" ) )
             compileMurphi( input );
         else if ( ( str::endsWith( input, ".c" ) || str::endsWith( input, ".cpp" ) ||
@@ -367,7 +369,9 @@ struct Compile {
             "(do not include extension, it is chosen and appended automatically), "
             "this flag is currently only applied in conjunction with --llvm/-l or --llvm-assembly");
 
-
+        o_definitions = cmd_compile->add< VectorOption< String > >(
+            "definition", 'D', "definition", "",
+            "add definition for generator (can be specified multiple times)" );
     }
 
 };
