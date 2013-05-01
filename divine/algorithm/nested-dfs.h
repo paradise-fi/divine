@@ -146,14 +146,14 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
             if ( !dfs.valid )
                 return visitor::ExpansionAction::Terminate;
-            dfs.stats.addNode( dfs.graph(), st.node() );
+            dfs.stats.addNode( dfs.graph(), st );
             dfs.ce_stack.push_front( st.handle() );
             dfs.extension( st ).on_stack = true;
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &dfs, Vertex from, Vertex to, Label ) {
-            dfs.stats.addEdge( dfs.graph(), from.node(), to.node() );
+            dfs.stats.addEdge( dfs.store(), from, to );
             if ( dfs.store().valid( from ) && !dfs.graph().full( from ) &&
                  !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
                 dfs.toexpand.push_back( from.handle() );

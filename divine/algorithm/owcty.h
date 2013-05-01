@@ -226,7 +226,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                     return visitor::TransitionAction::Terminate;
                 }
             }
-            o.shared.stats.addEdge( o.graph(), from.node(), to.node() );
+            o.shared.stats.addEdge( o.store(), from, to );
             o.graph().porTransition( o.store(), from, to );
             return visitor::TransitionAction::Follow;
         }
@@ -235,7 +235,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         {
             o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st.node() );
             o.shared.size += o.extension( st ).inS;
-            o.shared.stats.addNode( o.graph(), st.node() );
+            o.shared.stats.addNode( o.graph(), st );
             return visitor::ExpansionAction::Expand;
         }
     };

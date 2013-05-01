@@ -22,10 +22,10 @@ struct Statistics {
 
     Statistics() : states( 0 ), transitions( 0 ), accepting( 0 ), deadlocks( 0 ), expansions( 0 ) {}
 
-    template< typename G >
-    void addNode( G &g, typename G::Node n ) {
+    template< typename Graph, typename Vertex >
+    void addNode( Graph &g, const Vertex& n ) {
         ++states;
-        if ( g.isAccepting( n ) )
+        if ( g.isAccepting( n.node() ) )
             ++ accepting;
         addExpansion();
     }
@@ -34,9 +34,9 @@ struct Statistics {
         ++expansions;
     }
 
-    template< typename G >
-    void addEdge( G &g, typename G::Node n, typename G::Node ) {
-        if ( g.pool().valid( n ) )
+    template< typename Store >
+    void addEdge( Store &s, const typename Store::Vertex& n, const typename Store::Vertex& ) {
+        if ( s.valid( n ) )
             ++ transitions;
     }
 
@@ -94,13 +94,13 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, const Vertex &st )
         {
-            t.shared.addNode( t.graph(), st.node() );
+            t.shared.addNode( t.graph(), st );
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label )
         {
-            t.shared.addEdge( t.graph(), from.node(), to.node() );
+            t.shared.addEdge( t.store(), from, to );
             t.graph().porTransition( t.store(), from, to );
             return visitor::TransitionAction::Follow;
         }

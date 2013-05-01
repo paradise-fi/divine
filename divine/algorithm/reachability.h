@@ -66,7 +66,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     {
         static visitor::ExpansionAction expansion( This &r, Vertex st )
         {
-            r.shared.stats.addNode( r.graph(), st.node() );
+            r.shared.stats.addNode( r.graph(), st );
             return visitor::ExpansionAction::Expand;
         }
 
@@ -77,7 +77,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                 assert( !r.store().valid( f )
                         || r.store().valid( r.extension( t ).parent ) );
             }
-            r.shared.stats.addEdge( r.graph(), f.node(), t.node() );
+            r.shared.stats.addEdge( r.store(), f, t );
 
             if ( r.meta().input.propertyType == graph::PT_Goal
                  && r.graph().isGoal( t.node() ) )
