@@ -10,7 +10,7 @@ whose size would be prohibitive for sequential, single-machine tools.
  * Verifies models in multiple input formats:
     - LLVM bitcode (suitble for model checking C and C++ code)
     - UPPAAL timed automata
-    - DVE -- the original DiVinE modelling languageg
+    - DVE -- the original DIVINE modelling languageg
     - user-implemented, compiled models via [CESMI] [3]
     - Murphi, including symmetry reduction
     - CoIn -- for modelling with component interaction automata
@@ -22,9 +22,9 @@ whose size would be prohibitive for sequential, single-machine tools.
 Use in Publications
 ===================
 
-When you refer to DiVinE in an academic paper, we would appreciate if you could
+When you refer to DIVINE in an academic paper, we would appreciate if you could
 use the following reference (the currently most up-to-date tool paper on
-DiVinE):
+DIVINE):
 
     @InProceedings{BBCR10,
        author = "J. Barnat and L. Brim and M. \v{C}e\v{s}ka and P. Ro\v{c}kai",
@@ -35,9 +35,9 @@ DiVinE):
        pages = "4--7",
        year = "2010",
        publisher = "IEEE"
-   }
+    }
 
-DiVinE 3.0 RC 1 has been released
+DIVINE 3.0 RC 2 has been released
 =================================
 
 (2013-04-16) A release candidate has been released today (unless serious bugs

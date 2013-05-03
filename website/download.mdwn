@@ -1,9 +1,9 @@
-% Obtaining DiVinE
+% Obtaining DIVINE
 
 Licence
 =======
 
-DiVinE is free software, distributed under GNU GPL and BSD licences. Detailed
+DIVINE is free software, distributed under GNU GPL and BSD licences. Detailed
 licence texts may be found in the COPYING file in the distribution tarball. The
 tool is a product of the ParaDiSe Laboratory, Faculty of Informatics of Masaryk
 University.
@@ -15,7 +15,7 @@ licensing details.
 Download
 ========
 
-The source code of the latest version of DiVinE is available for download.
+The source code of the latest version of DIVINE is available for download.
 Binaries are only available for 32-bit Windows.  Please note that DiVinE
 Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
 
@@ -36,7 +36,7 @@ from [hydra] [2].
 [1]: whatsnew.html
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
 
-Alternatively, you can obtain the latest source code for DiVinE by fetching it
+Alternatively, you can obtain the latest source code for DIVINE by fetching it
 directly from our version control system, using [darcs] [6]:
 
     darcs get http://divine.fi.muni.cz/darcs/mainline divine
