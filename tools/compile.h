@@ -277,11 +277,11 @@ struct Compile {
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
 
         // compile libraries
-        std::string flags = "-emit-llvm -ffreestanding -nobuiltininc -g " + cflags;
+        std::string flags = "-emit-llvm -ffreestanding -nobuiltininc -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I.." );
 
-        flags += " -Ilibsupc++ -Ilibpdc";
+        flags += " -Ilibsupc++ -Ilibpdc ";
 
         run( "clang -c " + flags + " -I. cstdlib.cpp -o cstdlib.bc" );
         run( "clang -c " + flags + " -I. pthread.cpp -o pthread.bc" );
@@ -297,6 +297,8 @@ struct Compile {
         // compile input file(s)
         std::string basename;
         std::string file = first_file, all_unlinked;
+
+        flags += cflags;
 
         do {
             if ( file.empty() )
