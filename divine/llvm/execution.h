@@ -459,16 +459,18 @@ struct Evaluator
              !toc.inBounds( t, bytes - 1 ) )
             return Problem::OutOfBounds;
 
-        memcpy( to, from, bytes );
+        memmove( to, from, bytes );
 
         int unalignment = t.offset % 4;
+
+        std::vector< std::pair< To, bool > > setptr;
 
         /* check whether we are writing over part of something that might have
          * been a pointer */
 
         if ( unalignment ) {
             t.offset -= unalignment;
-            toc.setPointer( t, false );
+            setptr.emplace_back( t, false );
             f.offset += 4 - unalignment;
             t.offset += 4;
         }
@@ -477,13 +479,16 @@ struct Evaluator
          * means we are copying from an unaligned address to an aligned one,
          * and the result is not a pointer. */
         while ( f.offset + 4 <= f_end ) {
-            toc.setPointer( t, fromc.isPointer( f ) );
+            setptr.emplace_back( t, fromc.isPointer( f ) );
             f.offset += 4;
             t.offset += 4;
         }
 
         if ( f.offset + 4 < f_end ) /* partial overwrite at the end */
-            toc.setPointer( t, false );
+            setptr.emplace_back( t, false );
+
+        for ( auto s : setptr )
+            toc.setPointer( s.first, s.second );
 
         return Problem::NoProblem;
     }
