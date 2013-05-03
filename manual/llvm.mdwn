@@ -1,0 +1,46 @@
+Model Checking C and C++ Code using LLVM
+========================================
+
+The traditional "explicit-state" model checking practice is not widely adopted
+in the programming community, and vice-versa, use of mainstream programming
+languages is not a common practice in the model checking community. Hence,
+model checking of systems expressed as C programs comes with some novelties for
+both kinds of users.
+
+First of all, the current main application of DIVINE is verification of safety
+(and some liveness) properties of asynchronous, shared-memory programs. The
+typical manifestation of such asynchronous parallelism is programming with
+threads and shared memory. Often for performance and/or familiarity reasons,
+programming with threads, shared memory and locking is the only viable
+alternative, even though the approach is fraught with difficulties, and
+presents many pitfalls that can catch even expert programmers unaware -- not to
+say novices. Sadly, resource locking is inherently non-compositional, hence
+there is virtually no way to provide a reliable yet powerful abstraction, all
+that while retaining any semblance of speed and scalability.
+
+Despite all its shortcomings, lock-based (or alternatively atomics-based, which
+is yet more difficult) programming is on a rise. Model checking provides a
+powerful tool to ascertain correctness of programs written with locks around
+concurrent access to shared memroy. Most programmers will agree that bugs that
+show up rarely and are nearly impossible to reproduce are the worst kind to
+deal with. Sadly, most concurrency bugs are of this nature, since they arise
+from subtle interactions of nondeterministically scheduled threads of
+execution. A test-case may work 99 times out of 100, yet the 100th time die in
+a flames with an unfathomable invalid memory access. Even sofisticated modern
+debugging tools like valgrind are often powerless in this situation.
+
+This is where DIVINE can help, since it systematically and efficiently explores
+all relevant execution orderings, discovering even the subtlest race
+conditions, restoring a crucially important property of bugs: reproducibility.
+If you have ever changed a program and watched the test-case run in a loop for
+hundreds of iterations, wondering if the bug is really fixed, or it just
+stubbornly refuses to crash the program... well, DIVINE is the tool you have
+been waiting for.
+
+Of course there are some catches. Model checking is computationally intensive
+and memory-hungry. While this may not...
+
+With the universal LLVM backend, DIVINE can support a wide range of compiled
+programming languages. The major focus of the 3.x release series is building
+solid support for both modelling in C and C++ and for model-checking existing
+code
