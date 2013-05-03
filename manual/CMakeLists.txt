@@ -8,7 +8,7 @@ if( PDFLATEX AND BIBTEX )
     OUTPUT manual.pdf
     DEPENDS ${SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND pandoc --smart --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
+    COMMAND pandoc --smart -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
   )
   set( PDFMAN "manual.pdf" )
 endif()
@@ -17,7 +17,7 @@ add_custom_command(
   OUTPUT manual.html
   DEPENDS ${SOURCES}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND pandoc --smart -s --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
+  COMMAND pandoc --smart -s -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.html ${SOURCES}
 )
 
 add_custom_command(
