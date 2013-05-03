@@ -39,7 +39,7 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi, *o_llvm, *o_keep;
-    StringOption *o_cflags, *o_out, *o_clang_cmd, *o_gold_cmd, *o_llvmgold_path, *o_ar_cmd;
+    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold, *o_cmd_ar;
     VectorOption< String > *o_definitions;
 
     struct FilePath {
@@ -104,31 +104,31 @@ struct Compile {
     }
 
     std::string clang() {
-        if ( o_clang_cmd->boolValue() )
-            return o_clang_cmd->stringValue();
-        return ::_clang_cmd;
+        if ( o_cmd_clang->boolValue() )
+            return o_cmd_clang->stringValue();
+        return ::_cmd_clang;
     }
 
     std::string gold_plugin() {
-        if ( o_llvmgold_path->boolValue() )
-            return " --plugin " + o_llvmgold_path->stringValue();
-        else if ( strlen( ::_llvmgold_path ) )
-            return std::string( " --plugin " ) + ::_llvmgold_path;
+        if ( o_cmd_llvmgold->boolValue() )
+            return " --plugin " + o_cmd_llvmgold->stringValue();
+        else if ( strlen( ::_cmd_llvmgold ) )
+            return std::string( " --plugin " ) + ::_cmd_llvmgold;
         return "";
     }
 
     std::string gold_ar() {
-        if ( o_ar_cmd->boolValue() )
-            return o_ar_cmd->stringValue() + " r " + gold_plugin();
+        if ( o_cmd_ar->boolValue() )
+            return o_cmd_ar->stringValue() + " r " + gold_plugin();
         else
-            return std::string( ::_ar_cmd ) + " r " + gold_plugin();;
+            return std::string( ::_cmd_ar ) + " r " + gold_plugin();;
     }
 
     std::string gold() {
-        if ( o_gold_cmd->boolValue() )
-            return o_gold_cmd->stringValue() + gold_plugin();
+        if ( o_cmd_gold->boolValue() )
+            return o_cmd_gold->stringValue() + gold_plugin();
         else
-            return ::_gold_cmd + gold_plugin();;
+            return ::_cmd_gold + gold_plugin();;
     }
 
     void compileDve( std::string in, std::vector< std::string > definitions ) {
@@ -373,21 +373,21 @@ struct Compile {
             "specify the output file name "
             "(only works with --llvm/-l)");
 
-        o_clang_cmd = cmd_compile->add< StringOption >(
-            "clang-cmd", 0, "clang-cmd", "",
-            std::string( "how to run clang [default: " ) + _clang_cmd + "]" );
+        o_cmd_clang = cmd_compile->add< StringOption >(
+            "cmd-clang", 0, "cmd-clang", "",
+            std::string( "how to run clang [default: " ) + _cmd_clang + "]" );
 
-        o_ar_cmd = cmd_compile->add< StringOption >(
-            "ar-cmd", 0, "ar-cmd", "",
-            std::string( "how to run ar [default: " ) + _ar_cmd + "]" );
+        o_cmd_ar = cmd_compile->add< StringOption >(
+            "cmd-ar", 0, "cmd-ar", "",
+            std::string( "how to run ar [default: " ) + _cmd_ar + "]" );
 
-        o_gold_cmd = cmd_compile->add< StringOption >(
-            "gold-cmd", 0, "gold-cmd", "",
-            std::string( "how to run GNU gold [default: " ) + _gold_cmd + "]" );
+        o_cmd_gold = cmd_compile->add< StringOption >(
+            "cmd-gold", 0, "cmd-gold", "",
+            std::string( "how to run GNU gold [default: " ) + _cmd_gold + "]" );
 
-        o_llvmgold_path = cmd_compile->add< StringOption >(
-            "llvmgold-path", 0, "llvmgold-path", "",
-            std::string( "path to LLVMgold.so (keep empty if ld/ar use it by default) [default: " ) + _llvmgold_path );
+        o_cmd_llvmgold = cmd_compile->add< StringOption >(
+            "cmd-llvmgold", 0, "cmd-llvmgold", "",
+            std::string( "path to LLVMgold.so [default: " ) + _cmd_llvmgold );
 
         o_definitions = cmd_compile->add< VectorOption< String > >(
             "definition", 'D', "definition", "",

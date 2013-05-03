@@ -22,10 +22,10 @@ if( TBBMALLOC )
 endif()
 
 set( llvmpaths "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
-file( WRITE ${llvmpaths} "static const char *_clang_cmd = \"${CLANG_CMD}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_gold_cmd = \"${GOLD_CMD}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_ar_cmd= \"${AR_CMD}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_llvmgold_path= \"${LLVMGOLD_PATH}\";\n" )
+file( WRITE ${llvmpaths} "static const char *_cmd_clang= \"${CMD_CLANG}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_cmd_gold= \"${CMD_GOLD}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_cmd_ar= \"${CMD_AR}\";\n" )
+file( APPEND ${llvmpaths} "static const char *_cmd_llvmgold= \"${CMD_LLVMGOLD}\";\n" )
 
 set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths} )
 
