@@ -277,7 +277,7 @@ struct Compile {
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
 
         // compile libraries
-        std::string flags = "-emit-llvm -ffreestanding -nobuiltininc -g ";
+        std::string flags = "-emit-llvm -nobuiltininc -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I.." );
 
@@ -292,7 +292,7 @@ struct Compile {
                        "void __divine_requires() {\n"
                        "    (void)memset;\n"
                        "}" );
-        run( "clang -c " + flags + " requires.c -o requires.bc" );
+        run( "clang -c " + flags + " -ffreestanding requires.c -o requires.bc" );
 
         // compile input file(s)
         std::string basename;
