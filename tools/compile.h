@@ -287,6 +287,13 @@ struct Compile {
         run( "clang -c " + flags + " -I. pthread.cpp -o pthread.bc" );
         run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
 
+        fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
+                       "extern void *memset;\n"
+                       "void __divine_requires() {\n"
+                       "    (void)memset;\n"
+                       "}" );
+        run( "clang -c " + flags + " requires.c -o requires.bc" );
+
         // compile input file(s)
         std::string basename;
         std::string file = first_file, all_unlinked;
@@ -312,8 +319,9 @@ struct Compile {
              " -plugin-opt emit-llvm " +
              " -o " + out + " " +
              all_unlinked +
-             " -L./" + tmp_dir.basename +
-             " -lsupc++ -lpdc -ldivine" );
+             " -L./" + tmp_dir.basename + " " +
+             tmp_dir.basename + "/requires.bc " +
+             "-lsupc++ -lpdc -ldivine" );
 
         cleanup();
 #else
