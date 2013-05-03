@@ -268,9 +268,14 @@ struct ProgramInfo {
 
     void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
 
+    bool globalPointerInBounds( Pointer p ) {
+        assert_leq( int( p.segment ), int( globals.size() ) - 1 );
+        return p.offset < globals[ p.segment ].width;
+    }
+
     int globalPointerOffset( Pointer p ) {
         assert_leq( int( p.segment ), int( globals.size() ) - 1 );
-        assert_leq( p.offset, globals[ p.segment ].width );
+        assert( globalPointerInBounds( p ) );
         return globals[ p.segment ].offset + p.offset;
     }
 

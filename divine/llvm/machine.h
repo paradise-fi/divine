@@ -138,6 +138,8 @@ struct MachineState
         template< typename T = char >
         T *dereference( ProgramInfo &i, Pointer p ) {
             assert( owns( i, p ) );
+            if ( !i.globalPointerInBounds( p ) )
+                return nullptr;
             return reinterpret_cast< T * >(
                 memory() + i.globalPointerOffset( p ) );
         }
