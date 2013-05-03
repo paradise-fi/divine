@@ -12,6 +12,9 @@ program" was not listed as an input option above -- this is because divine does
 not directly understand C programs. They first need to be translated into LLVM
 bitcode, and divine can work with that.
 
+System Modelling Basics
+-----------------------
+
 We will start with a simple C program with 2 threads and a single shared
 variable:
 
@@ -108,6 +111,9 @@ with different input languages though. One thing to keep in mind is that
 state-space reductions can be expensive to compute, even if they save
 memory. Especially for DVE models, if verification seems slow, you can try
 disabling reductions.
+
+Property Verification & Counter-Example Analysis
+------------------------------------------------
 
 Now let's turn to some more interesting properties. With the above program, the
 first thing that comes to mind is asking DiVinE whether the assertion in the
