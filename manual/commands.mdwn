@@ -18,7 +18,7 @@ your `divine` binary has been compiled with, simply issue
     Build-Date: 2013-01-18, 09:22 UTC
     Pointer-Width: 64
     Debug: enabled
-    Compile-Flags: POSIX O_DVE O_HASH_COMPACTION O_COIN O_LLVM O_LTL3BA
+    Compile-Flags: POSIX DVE HASH_COMPACTION COIN LLVM
     MPI-Version: n/a
     Architecture: Intel(R) Core(TM) i7-3520M CPU @ 2.90GHz
 
@@ -39,7 +39,7 @@ Printing Model Metadata
 
 To obtain basic data about a model, use `divine info`. The key part of the
 information provided is the list of properties available in the model, and the
-name of a property needs should be passed to the `--property` option of `draw`,
+name of a property that needs to be passed to the `--property` option of `draw`,
 `metrics` or `verify` subcommands:
 
     $ divine info examples/dve/peterson-liveness.dve
@@ -64,7 +64,7 @@ available for model checking via the `--property` switch to `divine verify`
 (see below). However, since the DVE language currently lacks support for
 specifying LTL directly, the formulas need to be provided in a separate file
 with an `.ltl` suffix. The `combine` subcommand can be used to translate the
-LTL formula into an Buchi automaton which is then included in the DVE file. One
+LTL formula into an Büchi automaton which is then included in the DVE file. One
 DVE file is generated for each LTL formula found in the `.ltl` file. The `.ltl`
 file would look, for example, like this:
 
