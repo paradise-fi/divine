@@ -301,6 +301,9 @@ void ProgramInfo::pass()
         functionmap[ function ] = pc.function;
         pc.block = 0;
 
+        if ( codepointers && function->getName() == "memset" )
+            function->setLinkage( ::llvm::GlobalValue::ExternalLinkage );
+
         if ( !codepointers ) {
             framealign = 1; /* force all args to go in in the first pass */
 
