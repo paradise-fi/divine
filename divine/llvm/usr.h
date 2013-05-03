@@ -60,27 +60,32 @@
                                       " hence doesn't affect overall process of verification." )
 
 #ifdef __cplusplus
+#define NOTHROW throw()
 extern "C" {
+#else
+#define NOTHROW
 #endif
 
 /* Prototypes for DiVinE-provided builtins. */
-int __divine_new_thread( void (*)(void *), void* );
-void __divine_interrupt_mask( void );
-void __divine_interrupt_unmask( void );
-void __divine_interrupt( void );
-int __divine_get_tid( void );
-int __divine_choice( int );
-void __divine_assert( int ); // + some informative string ?
-void __divine_ap( int );
-void * __divine_malloc( unsigned long );
-void __divine_free( void * );
+int __divine_new_thread( void (*)(void *), void* ) NOTHROW;
+void __divine_interrupt_mask( void ) NOTHROW;
+void __divine_interrupt_unmask( void ) NOTHROW;
+void __divine_interrupt( void ) NOTHROW;
+int __divine_get_tid( void ) NOTHROW;
+int __divine_choice( int ) NOTHROW;
+void __divine_assert( int ) NOTHROW; // + some informative string ?
+void __divine_ap( int ) NOTHROW;
+void * __divine_malloc( unsigned long ) NOTHROW;
+void __divine_free( void * ) NOTHROW;
 
 #ifdef TRACE
-void __divine_trace( const char *, ... );
+void __divine_trace( const char *, ... ) NOTHROW;
 #endif
 
 #ifdef __cplusplus
 }
 #endif
+
+#undef NOTHROW
 
 #endif
