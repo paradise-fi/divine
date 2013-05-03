@@ -34,26 +34,62 @@ Prerequisites
 Instructions
 ------------
 
-* Unzip the distribution tarball and enter the newly created directory
+First, unzip the distribution tarball and enter the newly created directory
 
-        $ tar xvzf divine-3.0.tar.gz
-        $ cd divine-3.0
+    $ tar xvzf divine-3.0.tar.gz
+    $ cd divine-3.0
 
-* Now configure and compile the package:
+### Configuration
 
-        $ ./configure
-        $ make
+    $ ./configure
 
-* And test that the compilation succeeded.
+The configure script will tell you what options you have available and what
+external packages you may be missing. To inspect configuration variables in
+more detail, you can use `ccmake`:
 
-        $ cd _build/tools
-        $ ./divine help
-        $ ./divine verify ../../examples/dve/shuffle.dve
-        $ ./divine verify -p LTL ../../examples/dve/peterson-liveness.dve
-        $ ./divine verify -p LTL ../../examples/dve/peterson-naive.dve
+    $ (cd _build ; ccmake .)
 
-* There is no need to install the binary, it is self-contained. However,
-  if you like, you can install divine for more convenient access:
+Edit the variable content to your liking and use `c` and `g` keys to re-run
+configuration and re-generate makefiles, respectively.
 
-        # make install
+### External Programs
+
+Some parts of divine, especially the `compile` and `combine` sub-commands will
+need to run external tools. By default, divine will expect to find these
+commands in your `PATH` under their common names. If you are building a
+distribution package for a system which installs these commands under uncommon
+names, you should use cmake variables (check all variables start with
+`CMD_`). While you can override the commands to use on divine's command-line
+later (using `--cmd-xxx=yyy` switches), this may be somewhat inconvenient.
+
+**NB.** Please take extra care that the "GNU gold" linker you are providing to
+divine has plugin support, and that you provide correct path to the
+`LLVMgold.so` plugin. A working installation of both is mandatory for `divine
+compile --llvm`.
+
+### Build and Installation
+
+When you are satisfied with the configuration options, start the build with:
+
+    $ make
+
+and relax, this is going to take a while. When the build is done, you should
+check that your installation is working as expected:
+
+    $ cd _build/tools
+    $ ./divine help
+    $ ./divine verify ../../examples/dve/shuffle.dve
+    $ ./divine verify -p LTL ../../examples/dve/peterson-liveness.dve
+    $ ./divine verify -p LTL ../../examples/dve/peterson-naive.dve
+
+You can also run the test-suites, to ensure that divine is working properly on
+your system and with your versions of libraries and tools:
+
+    $ make check
+
+While there is no need to install the binary (it is self-contained and you can
+move or copy it to a location of your choice), you can easily install divine
+system-wide for convenient access:
+
+    # make install
 
