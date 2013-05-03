@@ -171,7 +171,7 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinMalloc;
     if ( name == "__divine_free" )
         return BuiltinFree;
-    if ( name == "memcpy" )
+    if ( name == "memcpy" || name == "memmove" )
         return BuiltinMemcpy;
 
     if ( f->getIntrinsicID() != ::llvm::Intrinsic::not_intrinsic )
