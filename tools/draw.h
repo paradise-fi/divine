@@ -78,11 +78,15 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
             return visitor::TransitionAction::Expand;
         }
 
+        auto res = visitor::TransitionAction::Follow;
+
         std::string color;
         if ( draw.intrace_trans.count(
                  std::make_pair( draw.extension( f ).serial,
-                                 draw.extension( t ).serial ) ) )
+                                 draw.extension( t ).serial ) ) ) {
             color = "red";
+            res = visitor::TransitionAction::Expand;
+        }
         draw.dotEdge( f, t, l, color);
 
         if ( draw.extension( t ).distance == 0 )
@@ -90,7 +94,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
 
         draw.extension( t ).distance =
             std::min( draw.extension( t ).distance, draw.extension( f ).distance + 1 );
-        return visitor::TransitionAction::Follow;
+        return res;
     }
 
     std::string escape( std::string s ) {
