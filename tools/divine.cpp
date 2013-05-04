@@ -387,7 +387,7 @@ struct Main {
             "set maximum BFS distance from initial state [default = 32]" );
         o_distance ->setValue( 32 );
         o_drawTrace = drawing->add< StringOption >(
-            "draw-trace", '\0', "draw-trace", "",
+            "trace", '\0', "trace", "",
             "draw and highlight a particular trace in the output" );
         o_output = drawing->add< StringOption >(
             "output", 'o', "output", "",
