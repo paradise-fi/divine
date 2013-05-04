@@ -1,11 +1,6 @@
 #!/bin/sh
 
-ann() {
-    echo "% $@" 1>&2
-    eval "$@"
-}
-
-capture() { tee report | sed -e "s,^,  | ,"; }
+. lib
 
 map() { ann "divine verify --map --report" "$@" "2> progress | capture"; }
 ndfs() { ann "divine verify --nested-dfs --report" "$@" "2> progress | capture"; }

@@ -6,6 +6,13 @@ then
     COMPRESSIONS="$COMPRESSIONS ntree"
 fi
 
+ann() {
+    echo "% $@" 1>&2
+    eval "$@"
+}
+
+capture() { tee report | sed -e "s,^,  | ,"; }
+
 not() { "$@" && exit 1 || return 0; }
 skip() { exit 200; }
 
@@ -216,6 +223,23 @@ all_small() {
     coin_small "$@"
     timed_small "$@"
     murphi_small "$@"
+}
+
+llvm_prepare() {
+    cat > testcase.c
+    ann divine compile --llvm testcase.c >& progress
+}
+
+llvm_verify() {
+    llvm_prepare
+    ann divine verify testcase.bc -p assert -d -r 2>> progress | capture
+    test "$1" == valid && check reachability_valid
+    test "$1" == invalid && {
+        check reachability_goal
+        test -n "$2" && test -n "$3" && \
+            grep -A 50 '== The goal ==' progress | grep -i "^$2" | grep "$3"
+    }
+    check clear
 }
 
 chmod +x check run

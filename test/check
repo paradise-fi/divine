@@ -94,7 +94,7 @@ statespace() {
 }
 
 clear() {
-    rm -f progress report
+    rm -f progress report testcase.c
     echo "#### PASSED"
     echo
 }
@@ -117,10 +117,10 @@ debris() {
     echo
     echo "#### TEST END"
     echo
-    test -f progress && cat progress || true
-    echo
+    test -f progress && (cat progress; echo) || true
+    test -f testcase.c && (cat testcase.c; echo) || true
     test -f complaint && cat complaint || true
-    rm -f complaint progress
+    rm -f testcase.c complaint progress
     echo
     echo "."
 }
