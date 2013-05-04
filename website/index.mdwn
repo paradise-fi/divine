@@ -1,6 +1,6 @@
 > <span class="divine">DIVINE</span> is a modern explicit-state model
-> checker. Building on high-performance algorithms and data structures, it
-> offers unparalleled versatility, scaling from a typical developer's laptop,
+> checker. Building on high­-per­for­mance algorithms and data structures, it
+> offers unparalleled versatility, sca­ling from a typical developer's laptop,
 > up to a high-end compute cluster. What more, it can verify a wide range of
 > languages, including **C** and **C++**. Learn more in the
 > [manual](manual.html).
@@ -17,7 +17,7 @@ Feature Highlights
     - **CoIn** -- for modelling with component interaction automata
  * Executes on a cluster of multi-core machines
  * Partial order reduction for DVE, CoIn
- * Runs on **Linux** and **MS Windows** (a Windows installer available)
+ * Runs on **Linux** and **MS Windows** (a Windows installer is available)
  * A **GUI**, with a simulator and a counter-example analyser for DVE
 
 DIVINE 3.0 RC 2 has been released
