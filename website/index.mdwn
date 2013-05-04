@@ -20,6 +20,25 @@ Feature Highlights
  * Runs on **Linux** and **MS Windows** (a Windows installer available)
  * A **GUI**, with a simulator and a counter-example analyser for DVE
 
+DIVINE 3.0 RC 2 has been released
+=================================
+
+(2013-04-16) A release candidate has been released today (unless serious bugs
+are found in this release, it will become 3.0 final). Get the [source code] [1]
+or [pre-built binaries] [2]! The changelog is here: [what's
+new](whatsnew.html). The major highlights are:
+
+ * Support for model checking of C and C++ code via LLVM bitcode (safety and LTL).
+ * Model checking of timed automata (safety, time deadlocks and untimed LTL).
+ * A stable binary interface for compiled models: [CESMI] [3].
+ * Weak fairness for DVE.
+ * Hash compaction.
+ * Experimental support for shared-memory hashtables and queues.
+
+[1]: download.html
+[2]: http://divine.fi.muni.cz/hydra/jobset/divine/release
+[3]: manual.html#common-explicit-state-model-interface
+
 Use in Publications
 ===================
 
@@ -38,59 +57,3 @@ DIVINE):
        publisher = "IEEE"
     }
 
-DIVINE 3.0 RC 2 has been released
-=================================
-
-(2013-04-16) A release candidate has been released today (unless serious bugs
-are found in this release, it will become 3.0 final). Get the [source code] [1]
-or [pre-built binaries] [2]! The changelog is here: [what's
-new](whatsnew.html). The major highlights are:
-
- * Support for model checking of C and C++ code via LLVM bitcode (safety and LTL).
- * Model checking of timed automata (safety, time deadlocks and untimed LTL).
- * A stable binary interface for compiled models: [CESMI] [3].
- * Weak fairness for DVE.
- * Hash compaction.
- * Experimental support for shared-memory hashtables and queues.
-
-Version 2.5 Now Available
-=========================
-
-**(2011-04-05) UPDATE**: A minor revision to 2.5 has been released, with
-version number 2.5.1, and fixing a few important bugs in the DVE compiler. All
-users of the DVE compiler are strongly advised to update to this version.
-
-(2011-03-01) The DIVINE team has released a new version of its parallel LTL
-model checking tool. This version brings further improvements in verification
-performance, as well as a few new major features:
-
- * A new command, "divine draw" has been added to the suite of support tools,
-   enabling graphviz-based visualisation of model state spaces and
-   counterexample traces. The graphviz package needs to be installed to make
-   this functionality available. Please see divine draw --help for usage
-   instructions.
-
- * A new input language, CoIN is now available for use with DiVinE.
-
-   Component-interaction automata language (CI Automata, or CoIn Automata for
-   short) was designed for modelling of component interactions in hierarchical
-   component-based software systems. The language supports modelling of
-   important interaction attributes of such systems, and hence provides a rich
-   base for further application of formal methods. Component-based systems,
-   that are to be modelled, are usually connected to a particular component
-   model. For this reason, Component-interaction automata are very general and
-   support modelling of component interactions in component-based systems built
-   on various component models.
-
- * Support for the Windows platform has been further improved, with "divine
-   combine" now being available, completing the toolchain for model development
-   and model checking.
-
-Moreover, a number of bugfixes and minor improvements have been made in this
-release. You can [**download the new version here**] [1].
-
-[1]: download.html
-[2]: http://divine.fi.muni.cz/hydra/jobset/divine/release
-[3]: manual.html#common-explicit-state-model-interface
-[4]: http://divine.fi.muni.cz/trac/ticket/152
-[5]: http://divine.fi.muni.cz/trac/ticket/118
