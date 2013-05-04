@@ -143,12 +143,8 @@ div#footer { padding: .5ex;
              border: 0 none;
              color: #202020; }
 
-a:link { text-decoration: none; color: darkred; }
-a:visited { text-decoration: none; color: darkred; }
-a:active { text-decoration: none; color: darkred; }
-a:link:hover { text-decoration: underline; color: darkred;  }
-a:visited:hover { text-decoration: underline; color: darkred; }
-a:active:hover { text-decoration: underline; color: darkred; }
+a:link, a:visited, a:active { text-decoration: none; color: darkred; }
+a:link:hover, a:visited:hover, a:active:hover { text-decoration: none; color: darkblue; }
 
 #content > h1 { font-weight: bold;
                 font-size: 130%;
