@@ -45,6 +45,21 @@ div#_metanav {
 
 #sidebar h2 { display: inline; }
 
+blockquote {
+    font-size: 125%;
+    /* font-family: 'DejaVu Sans Light', 'Bitstream Vera Light', sans-serif; */
+    font-weight: lighter;
+    background: #E0E0E0;
+    padding: 2ex 3em;
+    margin: 2em;
+    text-align: justify;
+}
+
+blockquote strong { color: purple; }
+blockquote ul { margin-bottom: 0; }
+
+.divine { color: purple; font-size: 130%; font-weight: normal; }
+
 #sidebar a, #mainnav a {
     text-decoration: none;
     margin: 4px;

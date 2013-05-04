@@ -1,23 +1,24 @@
-Overview
-========
+> <span class="divine">DIVINE</span> is a modern explicit-state model
+> checker. Building on high-performance algorithms and data structures, it
+> offers unparalleled versatility, scaling from a typical developer's laptop,
+> up to a high-end compute cluster. What more, it can verify a wide range of
+> languages, including **C** and **C++**. Learn more in the
+> [manual](manual.html).
 
-DIVINE is a tool for LTL model checking and reachability analysis of discrete
-distributed systems. The tool can efficiently exploit aggregate computing power
-of multiple network-interconnected multi-cored workstations in order to deal
-with extremely large verification tasks. As such it allows to analyse systems
-whose size would be prohibitive for sequential, single-machine tools.
+Feature Highlights
+==================
 
- * Verifies models in multiple input formats:
-    - LLVM bitcode (suitble for model checking C and C++ code)
-    - UPPAAL timed automata
-    - DVE -- the original DIVINE modelling languageg
+ * Verifies models in multiple **input formats**:
+    - **LLVM** bitcode (suitble for model checking C and C++ code)
+    - **UPPAAL** timed automata
+    - **DVE** -- the original DIVINE modelling languageg
     - user-implemented, compiled models via [CESMI] [3]
-    - Murphi, including symmetry reduction
-    - CoIn -- for modelling with component interaction automata
+    - **MurPHI**, including symmetry reduction
+    - **CoIn** -- for modelling with component interaction automata
  * Executes on a cluster of multi-core machines
  * Partial order reduction for DVE, CoIn
- * Partial support for MS Windows (binary installers available)
- * A GUI, with a simulator and counter-example analyser for DVE
+ * Runs on **Linux** and **MS Windows** (a Windows installer available)
+ * A **GUI**, with a simulator and a counter-example analyser for DVE
 
 Use in Publications
 ===================

@@ -1,14 +1,12 @@
-% Obtaining DIVINE
-
 Licence
 =======
 
-DIVINE is free software, distributed under GNU GPL and BSD licences. Detailed
-licence texts may be found in the COPYING file in the distribution tarball. The
-tool is a product of the ParaDiSe Laboratory, Faculty of Informatics of Masaryk
-University.
+DIVINE is **free software**, distributed under a 3-clause **BSD
+licence**. Detailed licence texts may be found in the COPYING file in the
+distribution tarball. The tool is a product of the ParaDiSe Laboratory, Faculty
+of Informatics of Masaryk University.
 
-This distribution includes freely redistributable third-party code. Please
+This distribution includes freely redistributable **third-party code**. Please
 refer to AUTHORS and COPYING included in the distribution for copyright and
 licensing details.
 
@@ -19,19 +17,20 @@ The source code of the latest version of DIVINE is available for download.
 Binaries are only available for 32-bit Windows.  Please note that DiVinE
 Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
 
-* Source code: **[divine-2.96.tar.gz](download/divine-2.96.tar.gz)** (a release candidate for 3.0).
+> * Source code: **[divine-2.96.tar.gz](download/divine-2.96.tar.gz)** (a release candidate for 3.0).
+>
+> * An installer for 32 bit windows:
+>   **[divine-2.96-installer.exe](download/divine-2.96-installer.exe)**.
+>
+> Please consult [release notes] [1] for a summary of changes between
+> releases. Binaries and source tarballs of development snapshots can be
+> obtained from [hydra] [2]. Check the [installation instructions] [7] in the
+> manual.
 
-* An installer for 32 bit windows:
-  **[divine-2.96-installer.exe](download/divine-2.96-installer.exe)**.
-
-    NB. The windows version does not currently include support for LLVM bitcode
-    verification (this is work in progress) nor does it offer distributed
-    execution through MPI (currently not planned). The GUI is included in the
-    installer, however.
-
-Please consult [release notes] [1] for a summary of changes between
-releases. Binaries and source tarballs of development snapshots can be obtained
-from [hydra] [2].
+NB. The **windows** version does not currently include support for LLVM bitcode
+verification (this is work in progress) nor does it offer distributed execution
+through MPI (currently not planned). The GUI is included in the installer,
+however.
 
 [1]: whatsnew.html
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
@@ -41,16 +40,11 @@ directly from our version control system, using [darcs] [6]:
 
     darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
-Installation
-============
-
-Please refer to the [manual] [7] for installation instructions.
-
 [6]: http://darcs.net
 [7]: manual.html#installation
 
-Archive of old releases
-=======================
+Old Releases
+============
 
 * [divine-2.5.2.tar.gz](download/divine-2.5.2.tar.gz)  
   [divine-2.5-win32.exe](download/divine-2.5-win32.exe)
