@@ -1,5 +1,12 @@
 set( root ${CMAKE_SOURCE_DIR}/test )
-file( GLOB tests ${root}/algorithm/*.sh ${root}/mpi/*.sh ${root}/shared/*.sh ${root}/reduction/*.sh ${root}/tools/*.sh )
+
+file( GLOB tests ${root}/algorithm/*.sh
+                 ${root}/mpi/*.sh
+                 ${root}/shared/*.sh
+                 ${root}/reduction/*.sh
+                 ${root}/tools/*.sh
+                 ${root}/llvm/*.sh )
+
 add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
