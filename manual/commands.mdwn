@@ -31,6 +31,7 @@ Synopsis
     divine draw [...] <model file>
     divine metrics [...] <model file>
     divine verify [...] <model file>
+    divine simulate [...] <model file>
 
 Printing Model Metadata
 -----------------------
@@ -179,20 +180,47 @@ path to your divine binary, assuming it lives in the same place across all
 machines. Finally, input file(s) to divine need to be available on each machine
 as well, using the same path used in your invocation.
 
-State Space Metrics & Visualisation
------------------------------------
+State Space Metrics, Visualisation & Exploration
+------------------------------------------------
 
     divine metrics [--reduce=R] [--no-reduce] [--fair] [--report]
+                   [--property=N] [--fair]
                    [engine options]
                    <model file>
 
 The `metrics` sub-command runs a simple reachability on the entire state space
-of a system, reporting summary statistics. This is the most efficient 
+of a system, reporting summary statistics. This is the most efficient algorithm
+in divine that explores the state space, both in terms of memory and CPU,
+although only by a slight margin. See [next section] [#model-checking] on
+details of the model-related switches.
 
-    divine draw [--distance=N] [--draw-trace=N,N,N...]
+    divine draw [--distance=N] [--trace=N,N,N...]
                 [-l|--labels|--trace-labels]
                 [--bfs-layout]
                 [--reduce=R] [--no-reduce] [-f|--fair]
+                [--render=<cmd>|-r <cmd>]
+
+To visualise (a part of) the state space, you can use `divine draw`, which
+creates a graphviz-compatible representation. By default, it will run "dot
+-Tx11" to display the resulting graph. You can override the drawing command to
+run by using the `-r`/`--render` switch. The command will get the dot-formatted
+graph description on its standard input.
+
+Additionally to displaying the graph itself, `draw` can be instructed to
+visualise a (presumably counter-example) trace in the graph. Use the `--trace`
+switch to supply a trace, in the same format as the `verify` command uses for
+counter-examples in the report, using its `--report` option (you can cut&paste
+the `CE-Init` line from the report, to which you can optionally append the
+`CE-Cycle` list, separated by a comma, to obtain the full lasso-shape
+counterexample when working with LTL/neverclaim properties).
+
+    divine simulate [--distance=N] [--trace=N,N,N...]
+                    [--reduce=R] [--no-reduce] [-f|--fair]
+
+The `simulate` sub-command is used to interactively explore a state space in a
+terminal. Use `?` in the interactive prompt to obtain help on available
+commands. You can also use `simulate` non-interactively, supplying a succession
+of numbers (using the `--trace` switch analogous to that of `draw`, see above).
 
 Model Checking
 --------------
