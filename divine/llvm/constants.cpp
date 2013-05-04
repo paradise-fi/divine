@@ -3,7 +3,7 @@
 
 using namespace divine::llvm;
 
-void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, char *global )
+void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, bool global )
 {
     GlobalContext econtext( *this, TD, global );
     if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {

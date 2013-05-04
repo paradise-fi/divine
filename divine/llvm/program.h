@@ -191,6 +191,7 @@ struct ProgramInfo {
     std::vector< Value > globals;
     std::map< Pointer, std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
     std::vector< char > constdata;
+    std::vector< char > globaldata; /* initial values! */
     int globalsize, constdatasize;
     int framealign;
     bool codepointers;
@@ -244,6 +245,7 @@ struct ProgramInfo {
             result.global = true;
             result.offset = globalsize;
             globalsize += result.width;
+            globaldata.resize( globalsize );
         }
     }
 
@@ -266,7 +268,7 @@ struct ProgramInfo {
     bool isCodePointerConst( ::llvm::Value *val );
     PC getCodePointer( ::llvm::Value *val );
 
-    void storeConstant( Value &result, ::llvm::Constant *, char *global = nullptr );
+    void storeConstant( Value &result, ::llvm::Constant *, bool global = false );
 
     bool globalPointerInBounds( Pointer p ) {
         assert_leq( int( p.segment ), int( globals.size() ) - 1 );
@@ -318,7 +320,7 @@ struct ValueRef {
 struct GlobalContext {
     ProgramInfo &info;
     ::llvm::TargetData &TD;
-    char *global;
+    bool allow_global;
 
     Pointer malloc( int ) { assert_die(); }
     void free( Pointer ) { assert_die(); }
@@ -333,22 +335,22 @@ struct GlobalContext {
     bool inBounds( Pointer, int ) { return true; }
 
     char *dereference( Pointer p ) {
-        if ( !p.heap )
-            return global + info.globalPointerOffset( p );
+        if ( !p.heap && allow_global )
+            return &info.globaldata[ info.globalPointerOffset( p ) ];
         assert_die();
     }
 
     char *dereference( ValueRef v ) {
         if( v.v.constant )
             return &info.constdata[ v.v.offset + v.offset ];
-        else if ( v.v.global )
-            return global + v.v.offset + v.offset;
+        else if ( v.v.global && allow_global )
+            return &info.globaldata[ v.v.offset + v.offset ];
         else
-            assert_die();
+            assert_unreachable( "dereferencing invalid value in GlobalContext" );
     }
 
-    GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, char *global )
-        : info( i ), TD( TD ), global( global )
+    GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )
+        : info( i ), TD( TD ), allow_global( global )
     {}
 };
 

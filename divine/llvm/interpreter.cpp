@@ -46,19 +46,7 @@ divine::Blob Interpreter::initial( Function *f )
 {
     Blob pre_initial = alloc.makeBlobCleared( state.size( 0, 0, 0, 0 ) );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
-
-    for ( auto var = bc->module->global_begin(); var != bc->module->global_end(); ++ var ) {
-        auto val = info().valuemap[ &*var ];
-        if ( !var->isConstant() && var->hasInitializer() ) {
-            assert( val.constant ); /* the pointer */
-            Pointer p = *reinterpret_cast< Pointer * >( dereference( val ) );
-            auto pointee = info().globals[ p.segment ];
-            assert( !pointee.constant );
-            info().storeConstant( pointee, var->getInitializer(),
-                                  reinterpret_cast< char * >( state.global().memory() ) );
-        }
-    }
-
+    std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...
     static_cast< void >( tid );

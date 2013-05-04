@@ -108,8 +108,10 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
             initValue( G->getInitializer(), pointee );
             if ( (pointee.constant = G->isConstant()) )
                 makeLLVMConstant( pointee, G->getInitializer() );
-            else
+            else {
                 allocateValue( 0, pointee );
+                storeConstant( pointee, G->getInitializer(), true );
+            }
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
             if ( G->hasInitializer() ) {
