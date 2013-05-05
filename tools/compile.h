@@ -38,8 +38,8 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep;
-    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold, *o_cmd_ar;
+    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only;
+    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold, *o_cmd_ar, *o_precompiled;
     VectorOption< String > *o_definitions;
 
     struct FilePath {
@@ -238,6 +238,11 @@ struct Compile {
             ++src;
         }
 
+        if ( o_precompiled->boolValue() ) {
+            chdir( ".." );
+            return; /* we only need the headers from above */
+        }
+
         src = src_;
         while ( src->n ) {
             if ( str::endsWith( src->n, ".cc" ) ||
@@ -284,9 +289,20 @@ struct Compile {
 
         flags += " -Ilibsupc++ -Ilibpdc ";
 
-        run( "clang -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
-        run( "clang -c -I. " + flags + " pthread.cpp -o pthread.bc" );
-        run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
+        if ( !o_precompiled->boolValue() ) {
+            run( "clang -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
+            run( "clang -c -I. " + flags + " pthread.cpp -o pthread.bc" );
+            run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
+        }
+
+        if ( o_libs_only->boolValue() ) {
+            fs::renameIfExists( "libdivine.a", tmp_dir.abspath + "/libdivine.a" );
+            fs::renameIfExists( "libpdc.a", tmp_dir.abspath + "/libpdc.a" );
+            fs::renameIfExists( "libsupc++.a", tmp_dir.abspath + "/libsupc++.a" );
+            chdir( tmp_dir.abspath.c_str() );
+            cleanup();
+            return;
+        }
 
         fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
                        "extern void *memset;\n"
@@ -322,7 +338,9 @@ struct Compile {
              " -plugin-opt emit-llvm " +
              " -o " + out + " " +
              all_unlinked +
-             " -L./" + tmp_dir.basename + " " +
+             ( o_precompiled->boolValue() ?
+               ( " -L" + o_precompiled->stringValue() ) :
+               ( " -L./" + tmp_dir.basename ) ) + " " +
              tmp_dir.basename + "/requires.bc " +
              "-lsupc++ -lpdc -ldivine" );
 
@@ -334,25 +352,19 @@ struct Compile {
 
     void main() {
         std::string input = opts.next();
-        if ( access( input.c_str(), R_OK ) )
+        if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
         if ( str::endsWith( input, ".dve" ) )
             compileDve( input, o_definitions->values() );
         else if ( str::endsWith( input, ".m" ) )
             compileMurphi( input );
-        else if ( ( str::endsWith( input, ".c" ) || str::endsWith( input, ".cpp" ) ||
-                    str::endsWith( input, ".cc" ) || str::endsWith( input, ".C" )) )
-            if ( o_cesmi->boolValue() )
-                compileCESMI( input, o_cflags->stringValue() );
-            else if ( o_llvm->boolValue() )
-                compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
-            else {
-                std::cerr << "Do not know whether to process input file as of CESMI type ";
-                std::cerr << "(use --cesmi or -c) or generate output file in LLVM bitcode/assembly file format ";
-                std::cerr << "(use --llvm/-l or --llvm-assembly)." << std::endl;
-            }
+        else if ( o_cesmi->boolValue() )
+            compileCESMI( input, o_cflags->stringValue() );
+        else if ( o_llvm->boolValue() )
+            compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
         else {
-            std::cerr << "Do not know how to compile this file type." << std::endl;
+            std::cerr << "Do not know how to compile this file type." << std::endl
+                      << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
         }
     }
 
@@ -378,6 +390,14 @@ struct Compile {
         o_cflags = cmd_compile->add< StringOption >(
             "cflags", 'f', "cflags", "",
             "set flags for C/C++ compiler" );
+
+        o_precompiled = cmd_compile->add< StringOption >(
+            "precompiled", '\0', "precompiled", "",
+            "path to pre-built bitcode libraries" );
+
+        o_libs_only = cmd_compile->add< BoolOption >(
+            "libraries-only", '\0', "libraries-only", "",
+            "only built runtime libraries (for use with --precompiled)");
 
         o_out = cmd_compile->add< StringOption >(
             "output-file", 'o', "output-file", "",
