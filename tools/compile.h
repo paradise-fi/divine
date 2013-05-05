@@ -249,7 +249,7 @@ struct Compile {
                  str::endsWith( src->n, ".c" ) ||
                  str::endsWith( src->n, ".cpp" ) ||
                  str::endsWith( src->n, ".cxx" ) ) {
-                run( "clang -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
+                run( clang() + " -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
                 files = files + src->n + ".bc ";
             }
             ++src;
@@ -290,8 +290,8 @@ struct Compile {
         flags += " -Ilibsupc++ -Ilibpdc ";
 
         if ( !o_precompiled->boolValue() ) {
-            run( "clang -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
-            run( "clang -c -I. " + flags + " pthread.cpp -o pthread.bc" );
+            run( clang() + " -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
+            run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
             run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
         }
 
@@ -309,7 +309,7 @@ struct Compile {
                        "void __divine_requires() {\n"
                        "    (void)memset;\n"
                        "}" );
-        run( "clang -c " + flags + " -ffreestanding requires.c -o requires.bc" );
+        run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
 
         // compile input file(s)
         std::string basename;
@@ -327,7 +327,7 @@ struct Compile {
                 out = basename + ".bc";
 
             all_unlinked += str::joinpath( tmp_dir.basename, basename + ".bc" );
-            run( "clang -c -I. " + flags + " ../" + file + " -o " + basename + ".bc" );
+            run( clang() + " -c -I. " + flags + " ../" + file + " -o " + basename + ".bc" );
 
             file.clear();
         } while ( opts.hasNext() );
