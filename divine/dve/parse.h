@@ -565,17 +565,22 @@ struct Transition : Parser {
     }
 };
 
-inline void declarations( Parser &p, std::vector< Declaration > &decls,
+inline size_t declarations( Parser &p, std::vector< Declaration > &decls,
                           std::vector< ChannelDeclaration > &chandecls )
 {
     std::vector< Declarations > declss;
+    size_t count = 0;
     p.many< Declarations >( std::back_inserter( declss ) );
     for ( unsigned i = 0; i < declss.size(); ++i ) {
         std::copy( declss[i].decls.begin(), declss[i].decls.end(),
                    std::back_inserter( decls ) );
+        count += declss[i].decls.size();
+
         std::copy( declss[i].chandecls.begin(), declss[i].chandecls.end(),
                    std::back_inserter( chandecls ) );
+        count += declss[i].chandecls.size();
     }
+    return count;
 }
 
 struct Automaton : Parser {
