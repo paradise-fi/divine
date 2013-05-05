@@ -20,7 +20,7 @@ struct Definition {
     std::shared_ptr< std::stringstream > realstream;
 
     Definition( std::string def ) {
-        int pos = def.find( "=" );
+        size_t pos = def.find( "=" );
         if ( pos == std::string::npos ) {
             throw std::string( "Invalid definition: " + def );
         }
