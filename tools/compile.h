@@ -270,11 +270,12 @@ struct Compile {
         chdir( tmp_dir.basename.c_str() );
 
         // copy content of library files from memory to the directory
-        fs::writeFile( "usr.h", llvm_usr_h_str );
+        fs::writeFile( "divine.h", llvm_usr_h_str );
         fs::writeFile( "pthread.h", llvm_usr_pthread_h_str );
         fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
         fs::writeFile( "cstdlib", llvm_usr_cstdlib_h_str );
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
+        fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
 
         // compile libraries
         std::string flags = "-emit-llvm -nobuiltininc -g ";
@@ -283,8 +284,8 @@ struct Compile {
 
         flags += " -Ilibsupc++ -Ilibpdc ";
 
-        run( "clang -c " + flags + " -I. cstdlib.cpp -o cstdlib.bc" );
-        run( "clang -c " + flags + " -I. pthread.cpp -o pthread.bc" );
+        run( "clang -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
+        run( "clang -c -I. " + flags + " pthread.cpp -o pthread.bc" );
         run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
 
         fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
@@ -310,7 +311,7 @@ struct Compile {
                 out = basename + ".bc";
 
             all_unlinked += str::joinpath( tmp_dir.basename, basename + ".bc" );
-            run( "clang -c " + flags + " -I. ../" + file + " -o " + basename + ".bc" );
+            run( "clang -c -I. " + flags + " ../" + file + " -o " + basename + ".bc" );
 
             file.clear();
         } while ( opts.hasNext() );

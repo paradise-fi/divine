@@ -3,7 +3,7 @@
 
 /* Includes */
 
-#include "usr.h"
+#include "divine.h"
 #include "cstdlib"
 #include "time.h"
 

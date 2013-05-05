@@ -1,5 +1,5 @@
-#ifndef USR_H
-#define USR_H
+#ifndef __DIVINE_USR_H
+#define __DIVINE_USR_H
 
 #ifndef DIVINE
 #define DIVINE
@@ -12,8 +12,9 @@
 #define NEW_INTERP_BUGS
 /* ------------------- */
 
-#define assert __divine_assert
-#define ap __divine_ap
+#undef assert
+#define assert( x ) __divine_assert( x )
+#define ap( x ) __divine_ap( x )
 #define LTL( name, x ) const char * const __divine_LTL_ ## name = #x
 
 #ifdef TRACE
