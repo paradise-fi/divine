@@ -227,7 +227,8 @@ all_small() {
 
 llvm_prepare() {
     cat > testcase.c
-    ann divine compile --llvm testcase.c >& progress
+    test libdivine.a -nt `which divine` || ann divine compile --llvm --libraries-only
+    ann divine compile --llvm testcase.c --precompiled=. >& progress
 }
 
 llvm_verify() {
