@@ -100,6 +100,29 @@ struct ApproximateCounter {
     ApproximateCounter operator=( const ApproximateCounter & ) = delete;
 };
 
+struct StartDetector {
+
+    struct Shared {
+        std::atomic< unsigned short > counter;
+
+        Shared() : counter( 0 ) {}
+        Shared( Shared & ) = delete;
+    };
+
+    Shared &shared;
+
+    StartDetector( Shared &s ) : shared( s ) {}
+    StartDetector( const StartDetector &s ) : shared( s.shared ) {}
+
+    void visitorStart() {
+        ++shared.counter;
+    }
+
+    unsigned short started() {
+        return shared.counter;
+    }
+};
+
 }
 
 #endif
