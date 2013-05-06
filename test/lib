@@ -232,6 +232,7 @@ llvm_prepare() {
 }
 
 llvm_verify() {
+    test "$O_LLVM" = "ON" || skip
     llvm_prepare
     ann divine verify testcase.bc -p assert -d -r 2>> progress | capture
     test "$1" == valid && check reachability_valid
