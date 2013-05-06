@@ -359,12 +359,14 @@ struct Shared {
 
         std::shared_ptr< typename Chunker::ChunkQ > chunkq;
         std::shared_ptr< typename Chunker::Terminator > terminator;
+        std::shared_ptr< StartDetector::Shared > detector;
 
         Data() :
             chunkq( std::make_shared< typename Chunker::ChunkQ >() ),
-            terminator( std::make_shared< typename Chunker::Terminator >() )
+            terminator( std::make_shared< typename Chunker::Terminator >() ),
+            detector( std::make_shared< StartDetector::Shared >() )
             {}
-        Data( const Data& ) = default;
+        Data( const Data & ) = default;
     };
 
     template< typename S, typename Worker >
@@ -381,6 +383,7 @@ struct Shared {
 
         Store closed;
         BFVShared< S > bfv;
+        StartDetector detector;
 
         Store& store() {
             return closed;
@@ -415,18 +418,21 @@ struct Shared {
 
         void run() {
             worker.restart();
-            while ( !bfv.open().termination.isZero() ) {
-                /* Take a whole chunk of work. */
-                if ( bfv.open().empty() ) {
-                    /* Whenever queue is empty, we push the current chunk to queue
-                    * and synchronize the termination balance, then try again. */
-                    bfv.open().flush();
-                    bfv.open().termination.sync();
-                    continue;
-                }
+            detector.visitorStart();
+            do {
+                while ( !bfv.open().termination.isZero() ) {
+                    /* Take a whole chunk of work. */
+                    if ( bfv.open().empty() ) {
+                        /* Whenever queue is empty, we push the current chunk to queue
+                        * and synchronize the termination balance, then try again. */
+                        bfv.open().flush();
+                        bfv.open().termination.sync();
+                        continue;
+                    }
 
-                bfv.processQueue();
-            }
+                    bfv.processQueue();
+                }
+            } while ( worker.peers() > detector.started() );
         }
 
         inline void setIds() {
@@ -449,7 +455,8 @@ struct Shared {
 
         Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s,
                         Data< typename S::AlgorithmSetup >& d )
-            : closed( s ), bfv( l, g, s, d.chunkq, d.terminator ), worker( w ), notify( l )
+            : closed( s ), bfv( l, g, s, d.chunkq, d.terminator ),
+              detector( *d.detector ), worker( w ), notify( l )
         {}
     };
 };
