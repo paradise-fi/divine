@@ -15,7 +15,7 @@ struct TI {
         // the following 2 IDs are internal to the expression evaluator, which
         // reuses TokenId for representing operations
         UnaryMinus, Subscript, Reference,
-        Comment, Punctuation, Identifier, Constant,
+        Comment, Punctuation, Identifier, Constant, String,
         IndexOpen, IndexClose, BlockOpen, BlockClose, ParenOpen, ParenClose,
         Input, Expression,
         Const, Int, Byte, Channel,
@@ -34,7 +34,7 @@ struct TI {
 
 const std::string tokenName[] = {
     "INVALID", "MINUS", "SUBSCRIPT", "REFERENCE",
-    "comment", "punctuation", "identifier", "constant",
+    "comment", "punctuation", "identifier", "constant", "string",
     "[", "]", "{", "}", "(", ")",
     "input", "expression",
     "const", "int", "byte", "channel",
@@ -80,14 +80,14 @@ struct Token : wibble::Token< TI::TokenId >, TI {
 };
 
 const std::string __fragments[] = {
-    "/*", "*/", "//", "\n", ";", ":", "and", "or", "true", "false"
+    "/*", "*/", "//", "\n", ";", ":", "and", "or", "true", "false", "'","\""
 };
 
 #undef TRUE
 #undef FALSE
 
 struct Fragment {
-    enum Frag { LC, EC, SC, EOL, SEMICOL, COL, AND, OR, TRUE, FALSE };
+    enum Frag { LC, EC, SC, EOL, SEMICOL, COL, AND, OR, TRUE, FALSE, SQ, DQ };
 };
 
 template< typename Stream >
@@ -108,6 +108,9 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
 
         this->match( frag( LC ), frag( EC ), Token::Comment );
         this->match( frag( SC ), frag( EOL ), Token::Comment );
+
+        this->match( frag( SQ ), frag( SQ ), Token::String );
+        this->match( frag( DQ ), frag( DQ ), Token::String );
 
         this->match( frag( TRUE ), TI::Constant );
         this->match( frag( FALSE ), TI::Constant );
