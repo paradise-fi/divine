@@ -21,125 +21,125 @@ for_dve_small() {
     test "$O_DVE" = "ON" || return 0
 
     check clear
-    run $wrapper data/empty.dve --property=deadlock "$@"
+    run $wrapper data/empty.dve "$@" --property=deadlock
     check reachability_deadlock
     $extracheck data/empty.dve
 
     check clear
-    run $wrapper data/test1.dve --property=LTL "$@"
+    run $wrapper data/test1.dve "$@" --property=LTL
     check ltl_invalid
     check statespace 7 14 3 0
     $extracheck data/test1.dve
 
     check clear
-    run $wrapper data/test2.dve --property=LTL "$@"
+    run $wrapper data/test2.dve "$@" --property=LTL
     check ltl_valid
     check owcty_sizes 2 2 0
     check statespace 3 2 2 2
     $extracheck data/test2.dve
 
     check clear
-    run $wrapper data/test3.dve --property=LTL "$@"
+    run $wrapper data/test3.dve "$@" --property=LTL
     check ltl_valid
     check owcty_sizes 2 5 0
     check statespace 6 12 2 0
     $extracheck data/test3.dve
 
     check clear
-    run $wrapper data/test4.dve --property=LTL "$@"
+    run $wrapper data/test4.dve "$@" --property=LTL
     check ltl_invalid
     check owcty_sizes 1 4 1
     check statespace 5 5 1 0
     $extracheck data/test4.dve
 
     check clear
-    run $wrapper data/test5.dve --property=LTL "$@"
+    run $wrapper data/test5.dve "$@" --property=LTL
     check ltl_invalid
     check owcty_sizes 1 4 1
     check statespace 5 5 1 0
     $extracheck data/test5.dve
 
     check clear
-    run $wrapper data/test6.dve --property=LTL "$@"
+    run $wrapper data/test6.dve "$@" --property=LTL
     check ltl_invalid
     check owcty_sizes 2 6 1 5 1
     check statespace 6 6 2 0
     $extracheck data/test6.dve
 
     check clear
-    run $wrapper data/commit1.dve --property=deadlock "$@"
+    run $wrapper data/commit1.dve "$@" --property=deadlock
     check statespace 10 14 0 0
     $extracheck data/commit1.dve
 
     check clear
-    run $wrapper data/commit2.dve --property=deadlock "$@"
+    run $wrapper data/commit2.dve "$@" --property=deadlock
     check statespace 8 8 0 2
     $extracheck data/commit2.dve
 
     check clear
-    run $wrapper data/haoEEDM.dve --property=deadlock "$@"
+    run $wrapper data/haoEEDM.dve "$@" --property=deadlock
     check statespace 502 922 0 0
     $extracheck data/haoEEDM.dve
 
     check clear
-    run $wrapper data/bufchan.dve --property=deadlock "$@"
+    run $wrapper data/bufchan.dve "$@" --property=deadlock
     check statespace 3 5 0 0
     $extracheck data/bufchan.dve
 
     check clear
-    run $wrapper data/bufchan2.dve --property=deadlock "$@"
+    run $wrapper data/bufchan2.dve "$@" --property=deadlock
     check statespace 8 12 0 0
     $extracheck data/bufchan2.dve
 
     check clear
-    run $wrapper data/unbufchan.dve --property=deadlock "$@"
+    run $wrapper data/unbufchan.dve "$@" --property=deadlock
     check statespace 2 3 0 0
     $extracheck data/unbufchan.dve
 
     check clear
-    run $wrapper data/bufchan-local.dve --property=deadlock "$@"
+    run $wrapper data/bufchan-local.dve "$@" --property=deadlock
     check statespace 3 5 0 0
 
     check clear
-    run $wrapper data/bufchan-local2.dve --property=deadlock "$@"
+    run $wrapper data/bufchan-local2.dve "$@" --property=deadlock
     check statespace 3 5 0 0
 
     check clear
-    run $wrapper data/bufchan2-local.dve --property=deadlock "$@"
+    run $wrapper data/bufchan2-local.dve "$@" --property=deadlock
     check statespace 8 12 0 0
 
     check clear
-    run $wrapper data/unbufchan-local.dve --property=deadlock "$@"
+    run $wrapper data/unbufchan-local.dve "$@" --property=deadlock
     check statespace 2 3 0 0
 
     check clear
-    run $wrapper data/unbufchan-local2.dve --property=deadlock "$@"
+    run $wrapper data/unbufchan-local2.dve "$@" --property=deadlock
     check statespace 2 3 0 0
 
     check clear
-    run $wrapper data/assert.dve --property=assert "$@"
+    run $wrapper data/assert.dve "$@" --property=assert
     check reachability_goal
     check statespace 6 6 0 0
 
     check clear
-    run $wrapper data/assert2.dve --property=assert "$@"
+    run $wrapper data/assert2.dve "$@" --property=assert
     check reachability_valid
     check statespace 6 6 0 0
 
     check clear
-    run $wrapper data/B.prop1.dve --property=deadlock "$@"
+    run $wrapper data/B.prop1.dve "$@" --property=deadlock
     check statespace 24 32 0 8
 
     check clear
-    run $wrapper data/B.prop1.dve --property=LTL "$@"
+    run $wrapper data/B.prop1.dve "$@" --property=LTL
     check statespace 14 18 14 4
 
     check clear
-    run $wrapper data/input.dve --property=deadlock "$@"
+    run $wrapper data/input.dve "$@" --property=deadlock
     check statespace 6 5 0 1
 
     check clear
-    run $wrapper data/input.dve --property=deadlock "$@" -D i=7
+    run $wrapper data/input.dve "$@" --property=deadlock -D i=7
     check statespace 4 3 0 1
 }
 
@@ -155,12 +155,12 @@ llvm_small() {
     test "$O_LLVM" = "ON" || return 0
 
     check clear
-    run llvm_assemble data/global-ok.ll --property=assert "$@" --reduce=tau+,taustores,heap
+    run llvm_assemble data/global-ok.ll "$@" --property=assert --reduce=tau+,taustores,heap
     check reachability_valid
     check statespace 46 87 0 0
 
     check clear
-    run llvm_assemble data/global-bug.ll --property=assert "$@" --reduce=tau+,taustores,heap
+    run llvm_assemble data/global-bug.ll "$@" --property=assert --reduce=tau+,taustores,heap
     check reachability_goal
     check statespace 26 48 0 0
 }
@@ -170,17 +170,17 @@ timed_small() {
     test "$O_TIMED" = "ON" || return 0
 
     check clear
-    run $wrapper data/timed_arithm.xml --property=deadlock "$@"
+    run $wrapper data/timed_arithm.xml "$@" --property=deadlock
     check reachability_valid
     check statespace 46 52 0 0
 
     check clear
-    run $wrapper data/timed_clock.xml --property=deadlock "$@"
+    run $wrapper data/timed_clock.xml "$@" --property=deadlock
     check reachability_valid
     check statespace 220 221 0 0
 
     check clear
-    run $wrapper data/bridge.xml --property=0 "$@"
+    run $wrapper data/bridge.xml "$@" --property=0
     check ltl_valid
     if test "$O_LTL3BA" = "ON"; then
        check statespace 2412 4848 0 0; else
@@ -188,17 +188,17 @@ timed_small() {
     
     check clear
 
-    run $wrapper data/bridge.xml --property=1 "$@"
+    run $wrapper data/bridge.xml "$@" --property=1
     check ltl_invalid
     if test "$O_LTL3BA" = "ON"; then
         check statespace 2867 5795 303 0; else
         check statespace 1927 3283 303 0; fi
 
-    run $wrapper data/zeno.xml --property=0 "$@"
+    run $wrapper data/zeno.xml "$@" --property=0
     check ltl_invalid
     check statespace 2 2 2 0
 
-    run $wrapper data/zeno.xml --property=0 --fair "$@"
+    run $wrapper data/zeno.xml "$@" --property=0 --fair
     check ltl_valid
     check statespace 7 8 3 3
 }
@@ -207,7 +207,7 @@ murphi_small() {
     test "$O_MURPHI" = "ON" || return 0
 
     check clear
-    run dve_compile data/abp.m --property=deadlock "$@"
+    run dve_compile data/abp.m "$@" --property=deadlock
     check reachability_valid
     check statespace 80 144 0 0
 }

@@ -30,28 +30,37 @@ fixreduce() {
 
 identity() {
     file=$1
-    property=$2
-    shift 2
-    "$@" "$property" "$file"
+    shift
+    "$@" "$file"
 }
 
 dve_compile() {
     file=$1
-    property=$2
-    shift 2
+    shift
+    args=
+    defs=
 
-    ann divine compile $file
-    "$@" "$property" `basename $file$cesmiext`
+    while test -n "$1"; do
+        if test "$1" = "-D"; then
+            defs="$defs -D $2"
+            shift
+        else
+            args="$args $1";
+        fi
+        shift
+    done
+
+    ann divine compile $defs "$file"
+    $args `basename $file$cesmiext`
 }
 
 llvm_assemble() {
     file=$1
-    property=$2
-    shift 2
+    shift
 
     out=`basename $file .ll`.bc
     ann llvm-as -o=$out $file
-    "$@" "$property" $out
+    "$@" $out
 }
 
 set -e
