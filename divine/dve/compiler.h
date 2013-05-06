@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2009, 2010 Milan Ceska & Petr Rockai
-//*
+//             (c) 2013 Jan Kriho
+
 #include <string>
 #include <fstream>
 #include <math.h>
