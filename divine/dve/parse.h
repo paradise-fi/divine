@@ -75,12 +75,36 @@ struct Identifier : Parser {
 
 struct Expression;
 
+struct MacroNode : Parser {
+    Identifier name;
+    std::vector< Expression* > params;
+
+    void param();
+
+    MacroNode( Context &c ) : Parser( c ) {
+        name = Identifier( context() );
+
+        eat( Token::ParenOpen );
+        do {
+            maybe( &MacroNode::param );
+        } while ( maybe( Token::Comma ) );
+        eat( Token::ParenClose );
+    }
+
+    MacroNode() {}
+};
+
 struct RValue : Parser {
     Identifier ident;
     Constant value;
     Expression *idx;
+    MacroNode mNode;
 
     void subscript();
+    void macro() {
+        mNode = MacroNode( context() );
+    }
+
     void reference() {
         ident = Identifier( context() );
         maybe( &RValue::subscript );
@@ -93,7 +117,7 @@ struct RValue : Parser {
     std::ostream& dump( std::ostream &o );
 
     RValue( Context &c ) : Parser( c ), idx( 0 ) {
-        either( &RValue::reference, &RValue::constant );
+        either( &RValue::macro, &RValue::reference, &RValue::constant );
     }
 
     RValue() : idx( 0 ) {}
@@ -223,6 +247,11 @@ inline std::ostream& RValue::dump( std::ostream &o ) {
         o << value.value;
     }
     return o;
+}
+
+inline void MacroNode::param() {
+    Expression* expr = new Expression( context() );
+    params.push_back( expr );
 }
 
 struct LValue : Parser {
