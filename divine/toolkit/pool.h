@@ -179,6 +179,7 @@ struct Lake {
                 bytes += b;
                 bump( sizebytes, is + 1 );
                 sizebytes[ is ] += b;
+                VALGRIND_DESTROY_MEMPOOL( block[ i ] );
             }
 
         bump( sizecount, sizebytes.size() - 1 );
@@ -229,11 +230,8 @@ struct Lake {
                 delete[] _freelist_big[ i ].load();
             }
         }
-        for ( int i = 0; i < blockcount; ++i ) {
-            if ( block[ i ] )
-                VALGRIND_DESTROY_MEMPOOL( block[ i ] );
+        for ( int i = 0; i < blockcount; ++i )
             delete[] block[ i ];
-        }
     }
 
     std::atomic< FreeList * > &freelist( int size )
