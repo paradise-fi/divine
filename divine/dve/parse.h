@@ -685,6 +685,7 @@ struct System : Parser {
     std::vector< ChannelDeclaration > chandecls;
     std::vector< Process > processes;
     std::vector< Property > properties;
+    std::vector< Macro< Expression > > exprs;
     Identifier property;
     bool synchronous;
 
@@ -710,12 +711,25 @@ struct System : Parser {
         fail( "not yet supported" );
     }
 
+    void declaration() {
+        if ( !declarations( *this, decls, chandecls ) )
+            fail( "no declarations" );
+    }
+
+    void exprMacro() {
+        eat( Token::Expression );
+        exprs.push_back( Macro< Expression >( context() ) );
+    }
+
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
-        declarations( *this, decls, chandecls );
 
-        while ( maybe( &System::process, &System::propDef ) );
+        while ( arbitrary( &System::declaration,
+                           &System::process,
+                           &System::propDef,
+                           &System::exprMacro
+                         ) );
 
         eat( Token::System );
 
