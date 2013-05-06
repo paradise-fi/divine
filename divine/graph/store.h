@@ -237,6 +237,14 @@ struct _Vertex
         if ( _s )
             _s->free_unpacked( _n );
     }
+    _Vertex &operator=( const _Vertex &x ) {
+        if ( _s )
+            _s->free_unpacked( _n );
+        _s = x._s;
+        _h = x._h;
+        _n = typename Store::Node();
+        return *this;
+    }
 
 private:
     Store *_s;
