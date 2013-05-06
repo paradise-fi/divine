@@ -27,7 +27,7 @@ struct TI {
         Init, State, Trans, Accept,
         Guard, Effect,
         Assert, Commit,
-        System, Async, Sync, Process, Property,
+        System, Async, Sync, Process, Property, LTL,
         Streett, Muller, Rabin, Buchi, GenBuchi
     };
 };
@@ -46,7 +46,7 @@ const std::string tokenName[] = {
     "init", "state", "trans", "accept",
     "guard", "effect",
     "assert", "commit",
-    "system", "async", "sync", "process", "property",
+    "system", "async", "sync", "process", "property", "ltl",
     "streett", "muller", "rabin", "buchi", "genbuchi"
 };
 

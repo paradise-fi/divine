@@ -680,11 +680,23 @@ struct Macro : Parser {
     }
 };
 
+struct LTL : Parser {
+    Identifier name;
+    Token property;
+
+    LTL( Context &c ) : Parser( c )
+    {
+        name = Identifier( c );
+        property = eat( Token::String );
+    }
+};
+
 struct System : Parser {
     std::vector< Declaration > decls;
     std::vector< ChannelDeclaration > chandecls;
     std::vector< Process > processes;
     std::vector< Property > properties;
+    std::vector< LTL > ltlprops;
     std::vector< Macro< Expression > > exprs;
     Identifier property;
     bool synchronous;
@@ -708,7 +720,8 @@ struct System : Parser {
     }
 
     void LTLProperty() {
-        fail( "not yet supported" );
+        eat( Token::LTL );
+        ltlprops.push_back( LTL( context() ) );
     }
 
     void declaration() {
