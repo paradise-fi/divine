@@ -229,8 +229,11 @@ struct Lake {
                 delete[] _freelist_big[ i ].load();
             }
         }
-        for ( int i = 0; i < blockcount; ++i )
+        for ( int i = 0; i < blockcount; ++i ) {
+            if ( block[ i ] )
+                VALGRIND_DESTROY_MEMPOOL( block[ i ] );
             delete[] block[ i ];
+        }
     }
 
     std::atomic< FreeList * > &freelist( int size )
