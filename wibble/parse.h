@@ -324,12 +324,26 @@ struct Parser {
         return maybe( g );
     }
 
+#if __cplusplus >= 201103L
+    template< typename F >
+    void either( void (F::*f)() ) {
+        (static_cast< F* >( this )->*f)();
+    }
+
+    template< typename F, typename... Args >
+    void either( F f, Args... args ) {
+        if ( maybe( f ) )
+            return;
+        either( args... );
+    }
+#else
     template< typename F, typename G >
     void either( F f, void (G::*g)() ) {
         if ( maybe( f ) )
             return;
         (static_cast< G* >( this )->*g)();
     }
+#endif
 
     template< typename F, typename G, typename H >
     bool maybe( F f, G g, H h ) {
