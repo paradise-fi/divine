@@ -430,7 +430,7 @@ struct Shared {
         }
 
         inline void setIds() {
-            // bfv.store().setId( worker );
+            bfv.store().setId( worker );
             bfv.open().id = worker.id();
         }
 
