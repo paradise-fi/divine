@@ -52,6 +52,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         seed = n;
         visitor::DFV< Inner > visitor( *this, graph, this->store() );
         visitor.exploreFrom( n.node() );
+        n.disown();
     }
 
     struct : wibble::sys::Thread {
