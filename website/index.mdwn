@@ -9,9 +9,9 @@ Feature Highlights
 ==================
 
  * Verifies models in multiple **input formats**:
-    - **LLVM** bitcode (suitble for model checking C and C++ code)
+    - **LLVM** bitcode (suitable for model checking C and C++ code)
     - **UPPAAL** timed automata
-    - **DVE** -- the original DIVINE modelling languageg
+    - **DVE** -- the original DIVINE modelling language
     - user-implemented, compiled models via [CESMI] [3]
     - **MurPHI**, including symmetry reduction
     - **CoIn** -- for modelling with component interaction automata
