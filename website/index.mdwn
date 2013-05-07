@@ -3,7 +3,7 @@
 > offers unparalleled versatility, sca­ling from a typical developer's laptop,
 > up to a high-end compute cluster. What more, it can verify a wide range of
 > languages, including **C** and **C++**. Learn more in the
-> [manual](manual.html).
+> [manual](manual.html), or [try it out](try.cgi).
 
 Feature Highlights
 ==================
