@@ -54,15 +54,3 @@ DIVINE):
       pages = "6",
       publisher = "LNCS"
     }
-
-    @InProceedings{BBCR10,
-       author = "J. Barnat and L. Brim and M. \v{C}e\v{s}ka and P. Ro\v{c}kai",
-       title = "{DiVinE: Parallel Distributed Model Checker (Tool paper)}",
-       booktitle = "Parallel and Distributed Methods in Verification and High
-                    Performance Computational Systems Biology
-                    (HiBi/PDMC 2010)",
-       pages = "4--7",
-       year = "2010",
-       publisher = "IEEE"
-    }
-
