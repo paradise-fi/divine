@@ -46,6 +46,15 @@ When you refer to DIVINE in an academic paper, we would appreciate if you could
 use the following reference (the currently most up-to-date tool paper on
 DIVINE):
 
+    @InProceedings{BBH+13,
+      author = "Jiří Barnat and Luboą Brim and Vojtěch Havel and Jan Havlíček and Jan Kriho and Milan Lenčo and Petr Ročkai and Vladimír ©till and Jiří Weiser",
+      title =  "{DiVinE 3.0 -- An Explicit-State Model Checker for Multithreaded C \& C++ Programs}",
+      booktitle =  "{To appear in Computer Aided Verification (CAV 2013)}",
+      year =  "2013",
+      pages = "6",
+      publisher = "LNCS"
+    }
+
     @InProceedings{BBCR10,
        author = "J. Barnat and L. Brim and M. \v{C}e\v{s}ka and P. Ro\v{c}kai",
        title = "{DiVinE: Parallel Distributed Model Checker (Tool paper)}",
