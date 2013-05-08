@@ -656,7 +656,8 @@ struct Main {
 
         if ( meta.algorithm.sharedVisitor ) {
             if ( meta.algorithm.algorithm != meta::Algorithm::Metrics &&
-                 meta.algorithm.algorithm != meta::Algorithm::Reachability )
+                 meta.algorithm.algorithm != meta::Algorithm::Reachability &&
+                 meta.algorithm.algorithm != meta::Algorithm::Ndfs )
                 die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
         }
 
@@ -664,6 +665,13 @@ struct Main {
         if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs
              && !meta.algorithm.sharedVisitor )
             meta.execution.initialTable /= meta.execution.threads;
+
+        if ( meta.algorithm.algorithm == meta::Algorithm::Ndfs &&
+                meta.execution.threads > 1 && !meta.algorithm.sharedVisitor )
+        {
+            std::cerr << "WARNING: Parallel Nested DFS will use shared hash-table." << std::endl;
+            meta.algorithm.sharedVisitor = true;
+        }
     }
 
 };
