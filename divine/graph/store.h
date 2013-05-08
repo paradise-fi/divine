@@ -84,7 +84,7 @@ struct StoreCommon : TableProvider
         bool had;
         std::tie( found, had ) = this->table().getHinted( s, h ? h : hash( s ) );
         assert( hasher().valid( found ) == had );
-        return isNew( found, had );
+        return isNew( found, !had );
     }
 
     template< typename X >
