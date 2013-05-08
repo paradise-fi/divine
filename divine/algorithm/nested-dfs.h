@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
@@ -48,9 +49,9 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         return this->graph().pool();
     }
 
-    void runInner( Graph &graph, Vertex n ) {
+    void runInner( Graph &graph, Vertex n, Store *store = nullptr ) {
         seed = n;
-        visitor::DFV< Inner > visitor( *this, graph, this->store() );
+        visitor::DFVReadOnly< Inner > visitor( *this, graph, store ? *store : this->store() );
         visitor.exploreFrom( n.node() );
         n.disown();
     }
@@ -67,7 +68,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                     auto n = process.front();
                     process.pop();
                     // run the inner loop
-                    outer->runInner( *graph, outer->store().vertex( n ) );
+                    outer->runInner( *graph, store->vertex( n ), store.get() );
                 } else {
                     if ( outer->finished )
                         return 0;
@@ -224,13 +225,11 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         if (m.execution.threads > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;
         if ( parallel ) {
-            progress() << "WARNING: Parallel Nested DFS uses a fixed-size hash table." << std::endl;
-            progress() << "Using table size " << m.execution.initialTable
-                       << ", please use -i to override." << std::endl;
             this->store().setSize( m.execution.initialTable ); // XXX
             inner.graph = std::unique_ptr< Graph >( this->initGraph( *this ) );
-            inner.graph->setPool( this->pool() ); // copy the pool
-            // TODO create a standalone store as well!
+            inner.graph->setPool( this->pool() ); // copy the pool (rerefence to lake)
+            inner.store = std::unique_ptr< Store >(
+                    new Store( *inner.graph, inner.graph->base().slack(), &this->store() ) );
         }
         finished = false;
         inner.outer = this;
