@@ -194,10 +194,12 @@ timed_small() {
         check statespace 2867 5795 303 0; else
         check statespace 1927 3283 303 0; fi
 
+    check clear
     run $wrapper data/zeno.xml "$@" --property=0
     check ltl_invalid
     check statespace 2 2 2 0
 
+    check clear
     run $wrapper data/zeno.xml "$@" --property=0 --fair
     check ltl_valid
     check statespace 7 8 3 3
