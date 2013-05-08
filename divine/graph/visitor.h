@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
-
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -27,6 +27,8 @@ enum class TransitionFilter { Take, Ignore };
 
 enum class ExpansionAction { Terminate, Expand, Ignore };
 enum class DeadlockAction { Terminate, Ignore };
+
+enum class ReadOnly { No, Yes };
 
 struct SetupBase {
     template< typename Listener, typename Vertex, typename Label >
@@ -84,7 +86,7 @@ struct SetupOverride : A {
 
 
 template<
-    template< typename > class _Queue, typename S >
+    template< typename > class _Queue, typename S, ReadOnly readOnly = ReadOnly::No >
 struct Common {
     typedef typename S::Graph Graph;
     typedef typename Graph::Node Node;
@@ -151,7 +153,11 @@ struct Common {
         if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
             return;
 
-        auto to = store().store( _to, hint );
+        auto to = readOnly == ReadOnly::Yes
+                    ? store().fetch( _to, hint )
+                    : store().store( _to, hint );
+        assert( readOnly == ReadOnly::No || !to.isnew() );
+        assert( store().valid( to ) );
 
         tact = S::transition( notify, from, to, label );
 
@@ -211,6 +217,16 @@ struct DFV : Common< Stack, S > {
     typedef Common< Stack, S > Super;
     typedef typename S::Store Store;
     DFV( typename S::Listener &n,
+         typename S::Graph &g,
+         typename S::Store &s )
+        : Super( n, g, s, typename Super::Queue( g, s ) ) {}
+};
+
+template< typename S >
+struct DFVReadOnly : Common< Stack, S, ReadOnly::Yes > {
+    typedef Common< Stack, S, ReadOnly::Yes > Super;
+    typedef typename S::Store Store;
+    DFVReadOnly( typename S::Listener &n,
          typename S::Graph &g,
          typename S::Store &s )
         : Super( n, g, s, typename Super::Queue( g, s ) ) {}
