@@ -233,6 +233,8 @@ inline static uint32_t jenkins3( const void *key, size_t length, uint32_t initva
     }
 
     final(a,b,c);
+    if ( c << 1 == 0 )
+        return 1;
     return c;
 }
 #undef hashsize
