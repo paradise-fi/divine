@@ -7,7 +7,6 @@
 
 #include <divine/utility/statistics.h>
 #include <divine/toolkit/sharedhashset.h>
-#include <divine/toolkit/treecompressedhashset.h>
 #include <divine/toolkit/ntreehashset.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
