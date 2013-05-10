@@ -9,7 +9,7 @@ reachability() { ann "divine verify --reachability --report" "$@" "2> progress |
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
-info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce,,g"); }
+info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*,,g"); }
 
 mpi_verify() { mpi verify "$@"; }
 mpi_metrics() { mpi metrics "$@"; }
