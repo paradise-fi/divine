@@ -1,27 +1,23 @@
-% A Hacker's Guide to DiVinE
+A Hacker's Guide
+================
 
-Introduction
-============
-
-This document is intended for divine developers, writing algorithms, backends
-or working on the framework itself. Before starting with divine, it is
-advisable that you first compile the tool (see README) and find out how the
-divine binary and other components of the tool set work.
+This chapter is intended for DIVINE developers, writing algorithms, backends or
+working on various framework components. Before starting with DIVINE, it is
+advisable that you first try to compile the tool (see README) and find out how
+the `divine` binary and other components work.
 
 The development work is co-ordinated through the `divine` at `fi.muni.cz`
 mailing list, and through a [trac instance] [1] which has (most importantly)
-our [issue tracker] [2] and also a [source code browser] [3]. Our automated
-[build and test server] [4] (running buildbot) is another useful developer
-resource (see the [waterfall page] [5] for quick overview of current status).
+our [issue tracker] [2] and also a [source code browser] [3]. We also run a
+[continuous integration server] [4], based on Hydra.
 
 [1]: http://divine.fi.muni.cz/trac
 [2]: http://divine.fi.muni.cz/trac/report/6
 [3]: http://divine.fi.muni.cz/trac/browser
-[4]: http://divine.fi.muni.cz/buildbot
-[5]: http://divine.fi.muni.cz/buildbot/waterfall
+[4]: http://divine.fi.muni.cz/hydra
 
 Using Darcs
-===========
+-----------
 
 The source tree of divine is kept in the darcs revision control system.
 
@@ -37,14 +33,15 @@ source code. You can modify a few files in there, and issue
     $ darcs whatsnew
     $ darcs record
 
-You will notice, that unlike CVS, darcs will ask you which changes to record
-(or commit, in the CVS vocabulary). Also, darcs will ask you for a short patch
-name. You are encouraged to only record small changes at once, so that you can
-describe the change in a single line. Of course, for bigger changes (or those
-that need more explanation), you can still include a longer description after
-the short one (darcs will ask). The description should be an English sentence,
-starting with a capital letter and ending with a period. It should preferably
-be no longer than 80 characters.
+You will notice that, unlike CVS, `darcs` will ask you which changes to record
+(or commit, in the CVS vocabulary). Also, `darcs` will ask you for a short
+patch name. You are encouraged to only record small changes at once, so that
+you can describe the change in a single line. Of course, for bigger changes (or
+those that need more explanation), you can still include a longer description
+after the short one (darcs will ask). The description should be an English
+sentence, starting with a capital letter and ending with a period. It should
+preferably be no longer than 80 characters. We commonly prefix the short
+description with a single word describing the component it affects.
 
 Now, after you provide this data, darcs will run the testsuite, to ensure you
 didn't break anything. However, this is most often something you do not want to
@@ -99,7 +96,7 @@ tarballs, although you may need to `chmod +x ./configure` first. Please see
 README for further details.
 
 Source Code Overview
-====================
+--------------------
 
 The source code is currently laid out like this:
 
@@ -129,15 +126,13 @@ The source code is currently laid out like this:
 The following sections talk about various parts of the source code in more
 detail.
 
-Wibble
-------
+### Wibble
 
 Divine uses libwibble, a general-purpose utility library for C++ for several
 things. Most importantly, the threading abstraction is provided by this library
 and comes with a pthread-based and a win32-based implementation.
 
-The Toolkit
------------
+### The Toolkit
 
 In **divine/toolkit**, you will find the parts of divine that are most
 generic. High-performance hash tables, a very simple RPC protocol over MPI,
@@ -163,8 +158,7 @@ exploration, but is geared toward high-performance computing.
   implementation available in parallel.h. Semi-transparent for client code, see
   also rpc.h.
 
-Graph Traversal
----------------
+### Graph Traversal
 
 Another set of modules of the divine library implements a graph interface and
 parallel graph traversal utilities. These live in **divine/graph**.
@@ -176,8 +170,7 @@ parallel graph traversal utilities. These live in **divine/graph**.
   blocks, and a single static-partitioning parallel one (breadth-first based,
   but without layer synchronisation).
 
-Algorithms
-----------
+### Algorithms
 
 The actual model-checking algorithms can be found under
 **divine/algorithm**. The common infrastructure is found in **common.h**, and
@@ -192,8 +185,7 @@ builds heavily on the parallel primitives from **toolkit**.
 * **metrics.h**: A very efficient parallel state space generator. Suitable for
   obtaining state space statistics and for benchmarking.
 
-Generators
-----------
+### Generators
 
 The state space generators, or system interpreters, are a major part of
 DiVinE. Each is usually split into two parts, the bulk of the implementation of
@@ -215,8 +207,7 @@ The currently available generators are:
 
 [8]: manual.html#the-cesmi-specification
 
-Instances
----------
+### Instances
 
 The basic components of divine are implemented as C++ templates, for various
 reasons (performance, static type safety). As such, a "configuration" of
@@ -228,8 +219,7 @@ compiler to emit code for the sensible combinations of modules, as well as
 provide the code to translate runtime configuration into the correct entry
 point of the combined system.
 
-LTL to Büchi translation
-------------------------
+### LTL to Büchi translation
 
 In order to perform LTL model checking, DiVinE needs to translate LTL formulas
 into Büchi automata. There are currently two components which implement this
@@ -239,8 +229,7 @@ unrelated external tool called, confusingly, "LTL2BA". The implementation
 shipped with DiVinE is however called LTL3BA and is found in
 **external/ltl3ba**. There is a compile time option to enable/disable LTL3BA.
 
-Tools
------
+### Tools
 
 This directory hosts parts of the divine source that comprise the command line
 interface. These files are not part of the divine library, although certain
@@ -262,15 +251,14 @@ modules may move to the library over time.
 * **simple.cpp**: A stand-alone implementation of a very simple parallel,
   shared-memory reachability. Mainly useful for pedagogical purposes.
 
-GUI
----
+### GUI
 
 Finally, the **gui** directory contains the sources of a graphical user
 interface for the DiVinE tool, based on Qt 4.x. Comes with a DVE simulator and
 counterexample browser.
 
 Debugging
-=========
+---------
 
 When debugging DiVinE with **`gdb`**, no special precautions are usually
 needed. You however probably want a build with debugging enabled and
