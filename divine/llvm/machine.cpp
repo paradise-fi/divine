@@ -128,7 +128,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
 
     /* clear invalid pointers, in case they would accidentally become valid later */
     if ( !validate( original ) ) {
-        edit = Pointer();
+        edit = Pointer( false, 0, 1 ); /* not NULL, so we can detect an invalid free */
         return;
     }
 

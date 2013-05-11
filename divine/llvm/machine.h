@@ -346,12 +346,13 @@ struct MachineState
     }
 
     Pointer malloc( int size ) { return nursery.malloc( size ); }
-    void free( Pointer p ) {
+    bool free( Pointer p ) {
         if ( p.null() )
-            return; /* nothing to do */
-        assert( p.heap );
-        assert( validate( p ) );
+            return true; /* nothing to do */
+        if( !validate( p ) || !p.heap )
+            return false;
         freed.insert( p.segment );
+        return true;
     }
 
     bool isPrivate( int tid, Pointer p );

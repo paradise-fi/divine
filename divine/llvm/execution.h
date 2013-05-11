@@ -718,7 +718,9 @@ struct Evaluator
                 }
                 case BuiltinFree: {
                     Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-                    econtext.free( v ); return;
+                    if ( !econtext.free( v ) )
+                        ccontext.problem( Problem::InvalidArgument );
+                    return;
                 }
                 case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
             }

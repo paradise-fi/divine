@@ -245,7 +245,7 @@ struct Interpreter
     char *dereference( ValueRef v ) { return state.dereference( v ); }
     char *dereference( Pointer p ) { return state.dereference( p ); }
     Pointer malloc( int size ) { return state.malloc( size ); }
-    void free( Pointer p ) { return state.free( p ); }
+    bool free( Pointer p ) { return state.free( p ); }
 
     template< typename X > bool isPointer( X p ) { return state.isPointer( p ); }
     template< typename X > void setPointer( X p, bool is ) { state.setPointer( p, is ); }

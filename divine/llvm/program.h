@@ -69,7 +69,7 @@ struct Pointer : wibble::mixin::Comparable< Pointer > {
         : code( 0 ), offset( offset ), segment( segment ), heap( heap )
     {}
     Pointer() : code( 0 ), offset( 0 ), segment( 0 ), heap( false ) {}
-    bool null() { return !heap && !segment; }
+    bool null() { return !heap && !segment && !offset; }
 
     operator uint32_t() const {
         return *reinterpret_cast< const uint32_t * >( this );
@@ -323,7 +323,7 @@ struct GlobalContext {
     bool allow_global;
 
     Pointer malloc( int ) { assert_die(); }
-    void free( Pointer ) { assert_die(); }
+    bool free( Pointer ) { assert_die(); }
 
     bool isPointer( ValueRef ) { return false; }
     bool isPointer( Pointer ) { return false; }
