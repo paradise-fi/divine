@@ -171,10 +171,10 @@ void DivineRunner::run()
 
   Q_ASSERT(alg);
 
-  Statistics::global().setup(meta_);
+  TrackStatistics::global().setup(meta_);
 
   if(meta_.output.statistics)
-    Statistics::global().start();
+    TrackStatistics::global().start();
 
   alg->run();
   meta_ = alg->meta();
