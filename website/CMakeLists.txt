@@ -34,11 +34,10 @@ macro( resources )
   endforeach()
 endmacro()
 
-page( development.html .. "--toc;-N" HACKING )
 page( whatsnew.html .. "--toc" NEWS )
 page( manual.html ../manual "--toc;-N"
         title.mdwn overview.mdwn building.mdwn commands.mdwn
-        using.mdwn llvm.mdwn dve.mdwn cesmi.mdwn )
+        using.mdwn llvm.mdwn dve.mdwn cesmi.mdwn ../HACKING )
 pages( . contact.mdwn download.mdwn index.mdwn )
 resources( style.css button.png button-over.png divine-logo.png trac-logo.png )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} )
