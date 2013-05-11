@@ -47,7 +47,7 @@ use the following reference (the currently most up-to-date tool paper on
 DIVINE):
 
     @InProceedings{BBH+13,
-      author = "Jiří Barnat and Luboą Brim and Vojtěch Havel and Jan Havlíček and Jan Kriho and Milan Lenčo and Petr Ročkai and Vladimír ©till and Jiří Weiser",
+      author = "Jiří Barnat and Luboš Brim and Vojtěch Havel and Jan Havlíček and Jan Kriho and Milan Lenčo and Petr Ročkai and Vladimír Štill and Jiří Weiser",
       title =  "{DiVinE 3.0 -- An Explicit-State Model Checker for Multithreaded C \& C++ Programs}",
       booktitle =  "{To appear in Computer Aided Verification (CAV 2013)}",
       year =  "2013",
