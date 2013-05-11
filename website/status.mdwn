@@ -6,12 +6,19 @@ Latest Changes
 Latest Builds
 =============
 
-<div id="hydra">(loading, please wait)</div>
+Click on the build number to inspect logs and/or download outputs.
+
+<div id="hydra"><div class="1">(loading, please wait)</div><div class="2"></div></div>
 
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script type="text/javascript">
   $('#changes').load('http://divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
-  $('#hydra').load('http://divine.fi.muni.cz/hydra/project/divine/all table', function() {
+  $('#hydra .1').load('http://divine.fi.muni.cz/hydra/project/divine/all table', function() {
+      $('#hydra table td:nth-child(3)').addClass("wide");
+      $('#hydra table td:nth-child(4)').addClass("invisible");
+  });
+  $('#hydra .2').load('http://divine.fi.muni.cz/hydra/project/divine/all?page=2 table', function() {
+      $('#hydra table td:nth-child(3)').addClass("wide");
       $('#hydra table td:nth-child(4)').addClass("invisible");
   });
 </script>

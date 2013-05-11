@@ -115,6 +115,8 @@ h1 #trac { color: darkred; }
 }
 
 #hydra table td { padding-left: 1em; }
+#hydra table .wide { width: 23em; }
+
 #changes h2 { font-size: 110%; margin-top: .8ex; margin-bottom: .4ex; font-weight: normal; }
 #changes dl { margin-top: .3ex; margin-bottom: .3ex; margin-left: 1em; }
 
