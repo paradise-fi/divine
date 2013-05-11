@@ -228,10 +228,18 @@ struct Evaluator
                 case LLVMInst::Mul: r = a * b; return Unit();
                 case LLVMInst::FDiv:
                 case LLVMInst::SDiv:
-                case LLVMInst::UDiv: r = a / b; return Unit();
+                case LLVMInst::UDiv:
+                    if ( !b )
+                        this->ccontext().problem( Problem::DivisionByZero );
+                    r = b ? (a / b) : 0;
+                    return Unit();
                 case LLVMInst::FRem: r = std::fmod( a, b ); return Unit();
                 case LLVMInst::URem:
-                case LLVMInst::SRem: r = a % b; return Unit();
+                case LLVMInst::SRem:
+                    if ( !b )
+                        this->ccontext().problem( Problem::DivisionByZero );
+                    r = b ? (a % b) : 0;
+                    return Unit();
                 case LLVMInst::And:  r = a & b; return Unit();
                 case LLVMInst::Or:   r = a | b; return Unit();
                 case LLVMInst::Xor:  r = a ^ b; return Unit();

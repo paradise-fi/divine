@@ -13,7 +13,7 @@ namespace llvm {
 struct Canonic;
 
 struct Problem {
-    enum What { NoProblem = 0, Assert, InvalidDereference, InvalidArgument, OutOfBounds };
+    enum What { NoProblem = 0, Assert, InvalidDereference, InvalidArgument, OutOfBounds, DivisionByZero };
     PC where;
     uint8_t what;
     uint8_t tid;

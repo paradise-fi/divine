@@ -276,6 +276,8 @@ std::string describeProblem( ProgramInfo &info, Problem bad )
             s << "BAD ARGUMENT"; break;
         case Problem::OutOfBounds:
             s << "BOUND CHECK FAILED"; break;
+        case Problem::DivisionByZero:
+            s << "DIVISION BY ZERO"; break;
     }
     s << " (thread " << int( bad.tid ) << "): ";
     s << locinfo( info, bad.where, bad.what != Problem::Assert );
