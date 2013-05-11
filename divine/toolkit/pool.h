@@ -175,7 +175,7 @@ struct Lake {
         for ( int i = 0; i < blockcount; ++i )
             if ( block[ i ] ) {
                 int64_t is = header( i ).itemsize;
-                int64_t b = header( i ).total * align( is, sizeof( void * ) );
+                int64_t b = header( i ).total * align( is, sizeof( Pointer ) );
                 bytes += b;
                 bump( sizebytes, is + 1 );
                 sizebytes[ is ] += b;
@@ -406,7 +406,7 @@ struct Lake {
             total -= std::max( overhead / size, 1 ); // make space for header
 
             /* TODO reorder so that pointer assignment is last? */
-            lake->block[ b ] = new char[ align( size, sizeof( void * ) ) * total + overhead ];
+            lake->block[ b ] = new char[ align( size, sizeof( Pointer ) ) * total + overhead ];
             lake->header( b ).itemsize = size;
             lake->header( b ).total = total;
             lake->header( b ).allocated = 0;
@@ -423,7 +423,7 @@ struct Lake {
 
     char *dereference( Pointer p ) {
         return block[ p.block ] + sizeof( BlockHeader ) +
-            p.offset * align( header( p ).itemsize, sizeof( void * ) );
+            p.offset * align( header( p ).itemsize, sizeof( Pointer ) );
     }
 
     int size( Pointer p ) {
