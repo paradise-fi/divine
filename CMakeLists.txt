@@ -104,8 +104,10 @@ endif( SMALL )
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
-include_directories( ${RX_PATH} )
-link_directories( ${RX_PATH} )
+if ( RX_PATH )
+  include_directories( ${RX_PATH} )
+  link_directories( ${RX_PATH} )
+endif()
 
 if( PERFORMANCE )
   if ( NOT SMALL )
