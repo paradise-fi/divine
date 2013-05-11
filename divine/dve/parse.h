@@ -148,8 +148,8 @@ struct Expression : Parser {
         if ( prec ) { // XXX: associativity
             Expression _lhs( context(), prec - 1 );
             lhs.reset( new Expression( _lhs ) );
-            op = eat();
-            if ( op.precedence( prec ) ) {
+            op = eat( false );
+            if ( op.valid() && op.precedence( prec ) ) {
                 Expression _rhs( context(), prec );
                 rhs.reset( new Expression( _rhs ) );
             } else
