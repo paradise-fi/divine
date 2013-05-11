@@ -16,6 +16,7 @@
 #define DVE_SIMULATOR_H_
 
 #include <divine/toolkit/blob.h>
+#include <divine/dve/interpreter.h>
 
 #include <QHash>
 #include <QRect>
@@ -110,7 +111,10 @@ class DveSimulator : public AbstractSimulator {
     QString path_;
     
   private:
+    Pool pool;
+
     Blob newBlob();
+    dve::EvalContext context(Blob b);
     int stateSize();
     
     int findAcceptingCycle(int to);

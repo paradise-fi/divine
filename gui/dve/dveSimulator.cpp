@@ -31,14 +31,6 @@ namespace divine {
 namespace gui {
 
 namespace {
-  // creates EvalContext to be used with this Blob
-  inline dve::EvalContext context(Blob b)
-  {
-    dve::EvalContext ctx;
-    ctx.mem = b.data();
-    return ctx;
-  }
-
   inline void validateIndex(int & index, const QList<Blob> & stack)
   {
     Q_ASSERT(index >= 0 && index < stack.count());
@@ -160,6 +152,14 @@ void DveSimulator::closeSystem()
   system_ = NULL;
 }
 
+// creates EvalContext to be used with this Blob
+dve::EvalContext DveSimulator::context(Blob b)
+{
+  dve::EvalContext ctx;
+  ctx.mem = pool.dereference(b);
+  return ctx;
+}
+
 int DveSimulator::stateCount() const
 {
   return stack_.count();
@@ -178,7 +178,7 @@ bool DveSimulator::isValid(int state)
   validateIndex(state, stack_);
 
   dve::ErrorState err;
-  system_->symtab.lookup(dve::NS::Flag, "Error").deref(stack_[state].data(), 0, err);
+  system_->symtab.lookup(dve::NS::Flag, "Error").deref(pool.dereference(stack_[state]), 0, err);
 
   return err.error == 0;
 }
@@ -252,13 +252,13 @@ int DveSimulator::usedTransition(int state)
   for(int i=0; system_->valid(srcCtx, cont); cont = system_->enabled(srcCtx, cont), ++i) {
     // create new state
     Blob dstBlob = newBlob();
-    srcBlob.copyTo(dstBlob);
+    pool.copy(srcBlob,dstBlob);
     dve::EvalContext dstCtx = context(dstBlob);
 
     system_->apply(dstCtx, cont);
 
     // check equality
-    if(dstBlob == stack_[state + 1])
+    if(pool.equal(dstBlob, stack_[state + 1]))
       return i;
   }
   return -1;
@@ -359,7 +359,7 @@ void DveSimulator::trimStack(int topIndex)
     topIndex = -1;  // -1 should clear the whole stack
 
   while(stack_.count() > topIndex + 1) {
-    stack_.last().free();
+    pool.free( stack_.last() );
     stack_.removeLast();
   }
 }
@@ -382,7 +382,7 @@ void DveSimulator::step(int id)
 
   // create new state
   b = newBlob();
-  stack_.last().copyTo(b);
+  pool.copy(stack_.last(), b);
   ctx = context(b);
 
   // yay!
@@ -394,8 +394,8 @@ void DveSimulator::step(int id)
 
 Blob DveSimulator::newBlob()
 {
-  Blob b = Blob(stateSize());
-  b.clear();
+  Blob b = pool.allocate(stateSize());
+  pool.clear(b);
   return b;
 }
 
@@ -414,7 +414,7 @@ int DveSimulator::findAcceptingCycle(int to)
     if(isAccepting(from))
       accepting = true;
 
-    if(accepting && stack_[from] == stack_[to])
+    if(accepting && pool.equal(stack_[from], stack_[to]))
       return from;
   }
   return -1;
