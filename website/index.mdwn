@@ -39,6 +39,13 @@ new](whatsnew.html). The major highlights are:
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/release
 [3]: manual.html#common-explicit-state-model-interface
 
+Contacting Us
+=============
+
+If you have comments or questions about DIVINE, please email divine at
+fi.muni.cz. To file a bug report or an enhancement request, please [use our
+trac](http://divine.fi.muni.cz/trac/newticket).
+
 Use in Publications
 ===================
 
