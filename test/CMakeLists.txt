@@ -10,6 +10,7 @@ file( GLOB tests ${root}/algorithm/*.sh
 add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/util .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
   COMMAND ${WIBBLE_WRAP_TESTS} sh ${CMAKE_SOURCE_DIR}/test/harness

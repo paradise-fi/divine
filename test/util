@@ -1,0 +1,10 @@
+ann() {
+    echo "% $@" 1>&2
+    eval "$@"
+}
+
+capture() { tee report | sed -e "s,^,  | ,"; }
+
+not() { "$@" && exit 1 || return 0; }
+skip() { exit 200; }
+

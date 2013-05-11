@@ -1,20 +1,12 @@
 # -*- sh -*-
 
+. util
+
 COMPRESSIONS="none"
 if [ x$O_COMPRESSION = xON ]
 then
     COMPRESSIONS="$COMPRESSIONS ntree"
 fi
-
-ann() {
-    echo "% $@" 1>&2
-    eval "$@"
-}
-
-capture() { tee report | sed -e "s,^,  | ,"; }
-
-not() { "$@" && exit 1 || return 0; }
-skip() { exit 200; }
 
 for_dve_small() {
     wrapper=$1; shift
@@ -187,7 +179,6 @@ timed_small() {
        check statespace 1624 2779 0 0; fi
     
     check clear
-
     run $wrapper data/bridge.xml "$@" --property=1
     check ltl_invalid
     if test "$O_LTL3BA" = "ON"; then
