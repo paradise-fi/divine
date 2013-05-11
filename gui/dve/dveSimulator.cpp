@@ -131,7 +131,7 @@ bool DveSimulator::loadSystem(const QString & path)
 
   dve::IOStream stream(file);
   dve::Lexer<dve::IOStream> lexer(stream);
-  dve::Parser::Context ctx(lexer);
+  dve::Parser::Context ctx(lexer, path.toAscii().data());
   try {
     dve::parse::System ast(ctx);
     system_ = new dve::System(ast);

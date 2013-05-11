@@ -371,7 +371,7 @@ void DveModule::onSyntaxTriggered()
   // load the dve as it is in the editor
   dve::IOStream stream(ss);
   dve::Lexer<dve::IOStream> lexer(stream);
-  dve::Parser::Context ctx(lexer);
+  dve::Parser::Context ctx(lexer, viewName.toAscii().data());
 
   try {
     dve::parse::System ast(ctx);
