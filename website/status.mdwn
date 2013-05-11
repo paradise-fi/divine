@@ -1,0 +1,18 @@
+Latest Changes
+==============
+
+<div id="changes">(loading, please wait)</div>
+
+Latest Builds
+=============
+
+<div id="hydra">(loading, please wait)</div>
+
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script type="text/javascript">
+  $('#changes').load('http://divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
+  $('#hydra').load('http://divine.fi.muni.cz/hydra/project/divine/all table', function() {
+      $('#hydra table td:nth-child(4)').addClass("invisible");
+  });
+</script>
+
