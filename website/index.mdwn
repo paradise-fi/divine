@@ -20,7 +20,7 @@ Feature Highlights
  * Runs on **Linux** and **MS Windows** (a Windows installer is available)
  * A **GUI**, with a simulator and a counter-example analyser for DVE
 
-DIVINE 3.0 RC 2 has been released
+DIVINE 3.0 RC   has been released
 =================================
 
 (2013-04-16) A release candidate has been released today (unless serious bugs
