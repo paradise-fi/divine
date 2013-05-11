@@ -81,15 +81,17 @@ struct Lexer {
     }
 
     std::string window( unsigned n ) {
-        ensure_window( n );
+        bool valid = ensure_window( n );
+        assert( valid );
         std::deque< char >::iterator b = _window.begin(), e = b;
         e += n;
         return std::string( b, e );
     }
 
-    void ensure_window( unsigned n ) {
+    bool ensure_window( unsigned n ) {
         while ( _window.size() < n && !stream.eof() )
             shift();
+        return _window.size() >= n;
     }
 
     void consume( int n ) {
@@ -123,7 +125,8 @@ struct Lexer {
 
     template< typename I >
     bool match( I begin, I end ) {
-        ensure_window( end - begin);
+        if ( !ensure_window( end - begin ) )
+            return false;
         return std::equal( begin, end, _window.begin() );
     }
 
@@ -146,14 +149,15 @@ struct Lexer {
     {
         unsigned n = 1;
 
-        ensure_window( 1 );
+        if ( !ensure_window( 1 ) )
+            return;
+
         if ( !first( _window[0] ) )
             return;
 
         while ( true ) {
             ++ n;
-            ensure_window( n );
-            if ( rest( _window[ n - 1 ] ) )
+            if ( ensure_window( n ) && rest( _window[ n - 1 ] ) )
                 continue;
             return keep( id, window( n - 1 ) );
         }
@@ -167,7 +171,9 @@ struct Lexer {
         int n = from.length();
         where += n;
         while ( true ) {
-            ensure_window( n + to.length() );
+            if ( !ensure_window( n + to.length() ) )
+                return;
+
             if ( std::equal( to.begin(), to.end(), where ) )
                 return keep( id, window( n + to.length() ) );
             ++ where;
