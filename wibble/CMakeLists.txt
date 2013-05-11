@@ -39,7 +39,9 @@ set( WSRC ${WSRC_TOP} ${WSRC_CMDL} ${WSRC_SYS} ${WSRC_LOG} ${WSRC_TEXT} ${WSRC_G
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
-include_directories( ${RX_PATH} )
+if( RX_PATH )
+  include_directories( ${RX_PATH} )
+endif()
 
 # libwibble.a
 if( NOT WIN32 )
