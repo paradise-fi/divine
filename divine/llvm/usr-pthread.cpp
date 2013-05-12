@@ -1,7 +1,10 @@
 /* Includes */
 #include "pthread.h"
-#include <setjmp.h>
 #include <errno.h>
+
+#ifndef NO_JMP
+#include <setjmp.h>
+#endif
 
 /* Macros */
 #define _WAIT( cond, cancel_point )                                            \
@@ -94,8 +97,10 @@ struct Thread { // (user-space) information maintained for every (running) threa
     bool detached;
     void *result;
 
+#ifndef NO_JMP
     // exit -> back to the entry wrapper
     jmp_buf entry_buf;
+#endif
 
     // conditional variables
     bool sleeping;
