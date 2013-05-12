@@ -1,8 +1,17 @@
 #!/bin/sh
-set -ex
-rm -f result
-chmod a+rX -R .
-TMP=/tmp/export-`dd if=/dev/urandom bs=1 count=32 | base64 | sed -e 's,[/=+],x,g' | cut -c1-32`
-ln -s `pwd` "$TMP"
-trap "rm -f \"$TMP\"" EXIT
-nix-build release.nix --arg divineSrc "\"$TMP/\"" -A "$@"
+set -e
+rm -f divine-snapshot.tar.gz
+
+echo preparing divine-snapshot
+rm -rf divine-snapshot
+mkdir divine-snapshot
+# show files includes files that were darcs add-ed but not recorded
+darcs show files | while read f; do
+    test -f "$f" || continue
+    mkdir -p divine-snapshot/`dirname "$f"`
+    ln "$f" "divine-snapshot/$f"
+done
+set -x
+tar czf divine-snapshot.tar.gz divine-snapshot
+rm -rf divine-snapshot
+nix-build -I nixpkgs=/home/mornfall/dev/nix/nixpkgs.clean release.nix --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"
