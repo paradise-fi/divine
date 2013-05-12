@@ -163,9 +163,11 @@ let
     full = mkbuild { name = "full"; inputs = { pkgs }:
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ]; };
 
+    debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
     fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms; };
 
+    debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs; };
     ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs; mem = 3072; };
     fedora17_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora17x86_64; extras = extra_rpms; };
 
