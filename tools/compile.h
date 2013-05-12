@@ -283,7 +283,7 @@ struct Compile {
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
 
         // compile libraries
-        std::string flags = "-emit-llvm -nobuiltininc -g ";
+        std::string flags = "-emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I.." );
 
