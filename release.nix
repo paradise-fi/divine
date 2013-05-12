@@ -44,12 +44,19 @@ let
    };
 
   mkbuild = { name, inputs }: { system ? builtins.currentSystem }:
-    let pkgs = import nixpkgs { inherit system; }; in
-    pkgs.releaseTools.nixBuild {
+    let pkgs = import nixpkgs { inherit system; };
+        cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
+                   (if lib.eqStrings name "llvm" || lib.eqStrings name "full"
+                      then [ "-DCMD_CLANG=${pkgs.clang}/bin/clang"
+                             "-DCMD_AR=${pkgs.binutils_gold}/bin/ar"
+                             "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
+                             "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
+                      else []);
+    in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
-       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ];
+       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
