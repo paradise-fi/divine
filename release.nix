@@ -47,7 +47,7 @@ let
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
                    (if lib.eqStrings name "llvm" || lib.eqStrings name "full"
-                      then [ "-DCMD_CLANG=${pkgs.clang}/bin/clang"
+                      then [ "-DCMD_CLANG=${pkgs.clangUnwrapped}/bin/clang"
                              "-DCMD_AR=${pkgs.binutils_gold}/bin/ar"
                              "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
                              "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
