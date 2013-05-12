@@ -28,7 +28,7 @@
 // the GNU General Public License.
 
 #include <stdlib.h>
-#include <dlfcn.h>
+// #include <dlfcn.h>
 #include <cxxabi.h>
 #include "unwind-cxx.h"
 
@@ -762,6 +762,7 @@ __cxa_call_unexpected (void *exc_obj_in)
       // But std::bad_exception is in the layer about us.  To support the spec,
       // we dynamically find the type info for it and if it matches,
       // call a helper function to throw a std::bad_exception.
+#if 0 /* dlsym not supported on bitcode */
       const std::type_info* bad_excpt = (const std::type_info*)dlsym(RTLD_DEFAULT, "_ZTISt13bad_exception");
       if ( bad_excpt != NULL ) {
 	if (check_exception_spec(&info, bad_excpt, 0, xh_switch_value)) { 
@@ -772,6 +773,7 @@ __cxa_call_unexpected (void *exc_obj_in)
 	  }
 	}
       }
+#endif
 
       // Otherwise, die.
       __terminate (xh_terminate_handler);

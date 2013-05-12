@@ -30,7 +30,7 @@
 
 // Written by Nathan Sidwell, Codesourcery LLC, <nathan@codesourcery.com>
 #include <stdlib.h>
-#include <dlfcn.h>
+// #include <dlfcn.h>
 
 #include <cxxabi.h>
 #include <new>
@@ -74,7 +74,7 @@ namespace __cxxabiv1
 		typedef void* (*proc)(size_t);
 		static proc p = NULL;
 		if ( p == NULL ) {
-			p = (proc)dlsym(RTLD_DEFAULT, "_Znam");
+			// p = (proc)dlsym(RTLD_DEFAULT, "_Znam");
 			if ( p == NULL )
 				p = &::malloc;
 		}
@@ -86,7 +86,7 @@ namespace __cxxabiv1
 		typedef void (*proc)(void* x);
 		static proc p = NULL;
 		if ( p == NULL ) {
-			p = (proc)dlsym(RTLD_DEFAULT, "_ZdaPv");
+			// p = (proc)dlsym(RTLD_DEFAULT, "_ZdaPv");
 			if ( p == NULL )
 				p = &::free;
 		}
