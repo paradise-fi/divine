@@ -70,6 +70,13 @@ void TrackStatistics::format( std::ostream &o ) {
         printv( o, 10, sum, 0 );
         o << std::endl;
 
+        label( o, "IDLE" );
+        sum = 0;
+        for ( int i = 0; i < nthreads; ++ i )
+            printv( o, 9, thread( i ).idle, &sum );
+        printv( o, 10, sum, 0 );
+
+        o << std::endl;
         label( o, "HASHTABLES" );
         sum = 0;
         for ( int i = 0; i < nthreads; ++ i )
@@ -165,6 +172,7 @@ void TrackStatistics::resize( int s ) {
         th.enq = th.deq = 0;
         th.hashsize = th.hashused = 0;
         th.memHashes = th.memQueue = 0;
+        th.idle = 0;
         th.memSent.resize( s, 0 );
         th.memReceived.resize( s, 0 );
     }

@@ -316,8 +316,11 @@ struct Partitioned {
 
                 } else if ( !bfv._queue.empty() )
                     bfv.processQueue( 64 );
-                else if ( worker.idle() )
-                    return;
+                else {
+                    Statistics::global().idle( worker.id() );
+                    if ( worker.idle() )
+                        return;
+                }
             }
         }
 
