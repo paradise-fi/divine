@@ -32,11 +32,12 @@ void TrackStatistics::busy( int id ) {}
 void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
         int sum = 0;
+        o << std::endl;
         for ( int j = 0; size_t( j ) < threads.size(); ++j )
             printv( o, 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
         if ( !gnuplot )
             printv( o, 10, sum, 0 );
-        o << std::endl;
+        o << " items";
     }
 }
 
@@ -50,6 +51,7 @@ void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
     if ( gnuplot )
         return;
 
+    o << std::endl;
     for ( size_t i = 0; i < threads.size() - 1; ++ i )
         o << (d ? "=====" : "-----");
     for ( size_t i = 0; i < (10 - text.length()) / 2; ++i )
@@ -60,7 +62,16 @@ void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
     for ( size_t i = 0; i < threads.size() - 1; ++ i )
         o << (d ? "=====" : "-----");
     o << (d ? " == SUM ==" : " ---------");
+}
+
+template< typename F >
+void TrackStatistics::line( std::ostream &o, std::string lbl, F f ) {
     o << std::endl;
+    int sum = 0;
+    for ( int i = 0; i < threads.size(); ++ i )
+        printv( o, 9, f( i ), &sum );
+    printv( o, 10, sum, 0 );
+    o << " " << lbl;
 }
 
 void TrackStatistics::format( std::ostream &o ) {
@@ -70,52 +81,27 @@ void TrackStatistics::format( std::ostream &o ) {
     if ( !gnuplot ) {
         int nthreads = threads.size();
         label( o, "local", false );
-        int sum = 0;
-        for ( int i = 0; i < nthreads; ++ i )
-            printv( o, 9, thread( i ).enq - thread( i ).deq, &sum );
-        printv( o, 10, sum, 0 );
-        o << std::endl;
+        line( o, "items", [&]( int i ) { return thread( i ).enq - thread( i ).deq; } );
 
         label( o, "totals", false );
-        sum = 0;
-        for ( int j = 0; j < nthreads; ++ j ) {
-            int t = thread( j ).enq - thread( j ).deq;
-            for ( int i = 0; i < nthreads; ++ i ) {
-                t += thread( i ).sent[ j ] - thread( j ).received[ i ];
-            }
-            printv( o, 9, t, &sum );
-        }
-        printv( o, 10, sum, 0 );
-        o << std::endl;
+        line( o, "items", [&]( int i ) {
+                int x = thread( i ).enq - thread( i ).deq;
+                for ( int j = 0; j < nthreads; ++j )
+                    x += thread( j ).sent[ i ] - thread( i ).received[ j ];
+                return x;
+            } );
 
         label( o, "CPU USAGE" );
-        sum = 0;
-        for ( int i = 0; i < nthreads; ++ i )
-            printv( o, 9, thread( i ).idle, &sum );
-        printv( o, 10, sum, 0 );
+        line( o, "idle cnt", [&]( int i ) { return thread( i ).idle; } );
+        line( o, "cpu sec", [&]( int i ) { return thread( i ).cputime; } );
 
-        o << std::endl;
-        sum = 0;
-        for ( int i = 0; i < nthreads; ++ i )
-            printv( o, 9, thread( i ).cputime, &sum );
-        printv( o, 10, sum, 0 );
-
-        o << std::endl;
         label( o, "HASHTABLES" );
-        sum = 0;
-        for ( int i = 0; i < nthreads; ++ i )
-            printv( o, 9, thread( i ).hashused, &sum );
-        printv( o, 10, sum, 0 );
-
-        o << std::endl;
-        sum = 0;
-        for ( int i = 0; i < nthreads; ++ i )
-            printv( o, 9, thread( i ).hashsize, &sum );
-        printv( o, 10, sum, 0 );
-        o << std::endl;
+        line( o, "used", [&]( int i ) { return thread( i ).hashused; } );
+        line( o, "alloc'd", [&]( int i ) { return thread( i ).hashsize; } );
 
         label( o, "MEMORY EST" );
         long memSum = 0;
+        o << std::endl;
         for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
             long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(HashSet< Blob >::Cell);
@@ -125,8 +111,8 @@ void TrackStatistics::format( std::ostream &o ) {
             printv(o, 9, threadMem / 1024, 0 );
         }
         printv( o, 10, memSum / 1024, 0 );
-        o << std::endl << std::setw(10 * nthreads)
-          << "> Used: " << std::setw(11) << memUsed() << std::endl;
+        o << " kB" << std::endl << std::setw(10 * nthreads)
+          << "> Used: " << std::setw(11) << memUsed() << " kB" << std::endl;
     }
 }
 

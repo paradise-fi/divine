@@ -126,6 +126,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     }
 
     void resize( int s );
+    template< typename F > void line( std::ostream &o, std::string lbl, F f );
     void matrix( std::ostream &o, int (*what)(int, int) );
     void printv( std::ostream &o, int width, int v, int *sum );
     void label( std::ostream &o, std::string text, bool d = true );
