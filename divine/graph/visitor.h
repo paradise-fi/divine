@@ -291,6 +291,7 @@ struct Partitioned {
         void run( BFV &bfv ) {
             worker.restart();
             while ( true ) {
+                Statistics::global().busy( worker.id() );
                 if ( worker.workWaiting() ) {
 
                     int to = worker.id();

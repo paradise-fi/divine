@@ -26,6 +26,7 @@ struct NoStatistics {
     void sent( int, int, int ) {}
     void received( int, int, int ) {}
     void idle( int ) {}
+    void busy( int ) {}
 
     std::ostream *output;
     bool gnuplot;
@@ -50,6 +51,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         int64_t memQueue;
         int64_t memHashes;
         int64_t idle;
+        int64_t cputime;
         std::vector< int64_t > memSent;
         std::vector< int64_t > memReceived;
     };
@@ -84,6 +86,8 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     void idle( int id  ) {
         ++ thread( id ).idle;
     }
+
+    void busy( int id );
 
     PerThread &thread( int id ) {
         assert_leq( size_t( id ), threads.size() );

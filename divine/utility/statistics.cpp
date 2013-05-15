@@ -7,9 +7,27 @@
 #include <divine/utility/statistics.h>
 #include <divine/utility/output.h>
 
+#ifdef POSIX
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
 namespace divine {
 
 NoStatistics NoStatistics::_global;
+
+#ifdef POSIX
+void TrackStatistics::busy( int id ) {
+    struct rusage usage;
+    if ( !getrusage( RUSAGE_THREAD, &usage ) ) {
+        thread( id ).cputime = usage.ru_utime.tv_sec +
+                               usage.ru_utime.tv_usec / 1000000;
+    }
+}
+#else
+void TrackStatistics::busy( int id ) {}
+#endif
 
 void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
@@ -70,10 +88,16 @@ void TrackStatistics::format( std::ostream &o ) {
         printv( o, 10, sum, 0 );
         o << std::endl;
 
-        label( o, "IDLE" );
+        label( o, "CPU USAGE" );
         sum = 0;
         for ( int i = 0; i < nthreads; ++ i )
             printv( o, 9, thread( i ).idle, &sum );
+        printv( o, 10, sum, 0 );
+
+        o << std::endl;
+        sum = 0;
+        for ( int i = 0; i < nthreads; ++ i )
+            printv( o, 9, thread( i ).cputime, &sum );
         printv( o, 10, sum, 0 );
 
         o << std::endl;
@@ -173,6 +197,7 @@ void TrackStatistics::resize( int s ) {
         th.hashsize = th.hashused = 0;
         th.memHashes = th.memQueue = 0;
         th.idle = 0;
+        th.cputime = 0;
         th.memSent.resize( s, 0 );
         th.memReceived.resize( s, 0 );
     }
