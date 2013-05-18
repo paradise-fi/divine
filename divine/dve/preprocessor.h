@@ -5,8 +5,11 @@
 
 #include <divine/dve/parse.h>
 #include <string>
+#include <wibble/string.h>
 #include <memory>
 #include <unordered_map>
+
+#include <divine/utility/buchi.h>
 
 namespace divine {
 namespace dve {
@@ -54,6 +57,46 @@ struct Initialiser : Parser {
 
 struct System {
     std::unordered_map< std::string, Definition > & defs;
+    typedef std::vector< std::pair< int, int > > BATrans;
+
+    parse::Property LTL2Process( parse::LTL &prop ) {
+        parse::Property propBA;
+
+        std::string ltl = prop.property.data.substr( 1, prop.property.data.length() - 2 );
+
+        Buchi ba;
+        std::vector< Buchi::DNFClause > clauses;
+        ba.build( ltl,
+                  [&]( Buchi::DNFClause &cls )
+                  { clauses.push_back( cls ); return clauses.size() - 1; } );
+
+        propBA.name = prop.name;
+        propBA.ctx = prop.ctx;
+        for ( int i = 0; i < ba.size(); i++ ) {
+            propBA.states.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+
+            if ( ba.isAccepting( i ) )
+                propBA.accepts.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+
+            const BATrans &batrans = ba.transitions( i );
+            for ( std::pair< int, int > bt : batrans ) {
+                parse::Transition t;
+                t.ctx = prop.ctx;
+                t.proc = prop.name;
+                t.from = parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() );
+                t.to = parse::Identifier( "q" + wibble::str::fmt( bt.first ), prop.context() );
+                for ( std::pair< bool, std::string > &item : clauses[ bt.second ] ) {
+                    t.guards.push_back(
+                        parse::Expression(
+                            ( item.first ? "" : "not ") + item.second + "()",
+                            prop.context() ) );
+                }
+            }
+        }
+        propBA.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
+
+        return propBA;
+    }
 
     void process( parse::System & ast ) {
         for ( parse::Declaration & decl : ast.decls ) {
@@ -69,6 +112,9 @@ struct System {
                     decl.is_input = false;
                 }
             }
+        }
+        for ( parse::LTL & ltl : ast.ltlprops ) {
+            ast.properties.push_back( LTL2Process( ltl ) );
         }
     }
 

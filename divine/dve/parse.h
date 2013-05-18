@@ -70,6 +70,15 @@ struct Identifier : Parser {
     Identifier( Context &c ) : Parser( c ) {
         token = eat( Token::Identifier );
     }
+
+    Identifier( std::string name, Context &parent ) {
+        std::stringstream realstream;
+        realstream << name;
+        dve::IOStream stream( realstream );
+        dve::Lexer< dve::IOStream > lexer( stream );
+        Identifier( parent.createChild( lexer, name ) );
+    }
+
     Identifier() {}
 };
 
@@ -198,6 +207,14 @@ struct Expression : Parser {
             lhs.reset();
             *this = ex;
         }
+    }
+
+    Expression( std::string name, Context &parent ) {
+        std::stringstream realstream;
+        realstream << name;
+        dve::IOStream stream( realstream );
+        dve::Lexer< dve::IOStream > lexer( stream );
+        Expression( parent.createChild( lexer, name ) );
     }
 
     Expression() : lhs( 0 ), rhs( 0 ), rval( 0 ) {}
@@ -592,6 +609,7 @@ struct Transition : Parser {
 
         end = eat( Token::BlockClose );
     }
+    Transition() {};
 };
 
 inline size_t declarations( Parser &p, std::vector< Declaration > &decls,
@@ -685,6 +703,8 @@ struct Automaton : Parser {
             t.proc = name;
         }
     }
+
+    Automaton() : Parser() {}
 };
 
 typedef Automaton Process;
