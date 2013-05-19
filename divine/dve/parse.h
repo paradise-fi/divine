@@ -673,6 +673,39 @@ struct Automaton : Parser {
         maybe( Token::Comma );
     }
 
+    std::ostream& dump( std::ostream &o ) {
+        o << "process " << name.name() << " {" << std::endl;
+
+        o << "state ";
+        for ( Identifier &s : states )
+            o << s.name() << ", ";
+        o << std::endl;
+
+        o << "accept ";
+        for ( Identifier &s : accepts )
+            o << s.name() << ", ";
+        o << std::endl;
+
+        o << "init ";
+        for ( Identifier &s : inits )
+            o << s.name() << ", ";
+        o << std::endl;
+
+        o << "commit ";
+        for ( Identifier &s : commits )
+            o << s.name() << ", ";
+        o << std::endl;
+
+        o << "trans" << std::endl;
+        for ( Transition &t : trans ) {
+            t.dump( o );
+            o << std::endl;
+        }
+
+        o << "}" << std::endl;
+        return o;
+    }
+
     Automaton( Context &c ) : Parser( c ) {
         eat( Token::Process );
         name = Identifier( c );
