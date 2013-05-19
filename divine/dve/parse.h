@@ -76,7 +76,8 @@ struct Identifier : Parser {
         realstream << name;
         dve::IOStream stream( realstream );
         dve::Lexer< dve::IOStream > lexer( stream );
-        Identifier( parent.createChild( lexer, name ) );
+        assert( &parent );
+        *this = Identifier( parent.createChild( lexer, name ) );
     }
 
     Identifier() {}
@@ -99,6 +100,8 @@ struct MacroNode : Parser {
         } while ( maybe( Token::Comma ) );
         eat( Token::ParenClose );
     }
+
+    MacroNode( const MacroNode &mnode, bool independent );
 
     MacroNode() {}
 };
@@ -128,6 +131,8 @@ struct RValue : Parser {
     RValue( Context &c ) : Parser( c ), idx( 0 ) {
         either( &RValue::macro, &RValue::reference, &RValue::constant );
     }
+
+    RValue( const RValue &rval, bool independent );
 
     RValue() : idx( 0 ) {}
 };
@@ -214,7 +219,21 @@ struct Expression : Parser {
         realstream << name;
         dve::IOStream stream( realstream );
         dve::Lexer< dve::IOStream > lexer( stream );
-        Expression( parent.createChild( lexer, name ) );
+        *this = Expression( parent.createChild( lexer, name ) );
+    }
+
+    Expression( const Expression &exp, bool independent ) : Expression( exp ) {
+        if ( !independent )
+            return;
+
+        if ( exp.lhs )
+            lhs.reset( new Expression( *exp.lhs, independent ) );
+
+        if ( exp.rhs )
+            rhs.reset( new Expression( *exp.rhs, independent ) );
+
+        if ( exp.rval )
+            rval.reset( new RValue( *exp.rval, independent ) );
     }
 
     Expression() : lhs( 0 ), rhs( 0 ), rval( 0 ) {}
@@ -266,9 +285,32 @@ inline std::ostream& RValue::dump( std::ostream &o ) {
     return o;
 }
 
+inline RValue::RValue( const RValue &rval, bool independent )
+    : ident( rval.ident ), value( rval.value ),
+      idx( rval.idx ), mNode( rval.mNode, independent )
+{
+    if ( !independent )
+        return;
+
+    if ( rval.idx ) {
+        idx = new Expression( *rval.idx, independent );
+    }
+}
+
 inline void MacroNode::param() {
     Expression* expr = new Expression( context() );
     params.push_back( expr );
+}
+
+inline MacroNode::MacroNode( const MacroNode &mnode, bool independent )
+    : MacroNode( mnode )
+{
+    if ( !independent )
+        return;
+
+    params.clear();
+    for ( Expression * ex : mnode.params )
+        params.push_back( new Expression( *ex, independent ) );
 }
 
 struct LValue : Parser {
