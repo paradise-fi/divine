@@ -317,12 +317,6 @@ struct Parser {
         fail( Token::tokenName[id].c_str() );
     }
 
-    template< typename F, typename G >
-    bool maybe( F f, G g ) {
-        if ( maybe( f ) )
-            return true;
-        return maybe( g );
-    }
 
 #if __cplusplus >= 201103L
     template< typename F >
@@ -345,6 +339,24 @@ struct Parser {
     }
 #endif
 
+
+#if __cplusplus >= 201103L
+    template< typename F, typename... Args >
+    bool maybe( F f, Args... args ) {
+        if ( maybe( f ) )
+            return true;
+        return maybe( args... );
+    }
+
+#else
+    template< typename F, typename G >
+    bool maybe( F f, G g ) {
+        if ( maybe( f ) )
+            return true;
+        return maybe( g );
+    }
+
+
     template< typename F, typename G, typename H >
     bool maybe( F f, G g, H h ) {
         if ( maybe( f ) )
@@ -353,6 +365,8 @@ struct Parser {
             return true;
         return maybe( h );
     }
+
+#endif
 
     template< typename F >
     bool maybe( void (F::*f)() ) {
