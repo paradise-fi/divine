@@ -265,6 +265,14 @@ void DveCompiler::gen_state_struct()
         declare( "uint16_t", p.name.name() + ":" + fmt( bits ) );
     }
 
+    for ( parse::Process &p : ast->properties ) {
+        int max = p.states.size();
+        int bits = 1;
+        while ( max /= 2 ) ++ bits;
+        total_bits += bits;
+        declare( "uint16_t", p.name.name() + ":" + fmt( bits ) );
+    }
+
     block_end();
     line( "__attribute__((__packed__)) _control;" );
 

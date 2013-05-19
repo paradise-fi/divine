@@ -362,6 +362,9 @@ struct DveCompiler
         for ( parse::Process &p : ast->processes )
             if ( p.name.name() == proc )
                 return p;
+        for ( parse::Process &p : ast->properties )
+            if ( p.name.name() == proc )
+                return p;
         std::cerr << "ERROR: Couldn't find process " << proc << std::endl;
         throw;
     }
