@@ -99,19 +99,23 @@ struct System {
         return propBA;
     }
 
+    void processInput( parse::Declaration & decl ) {
+        if ( defs.count( decl.name ) ) {
+            Initialiser init( decl.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
+            decl.initial = init.initial;
+            decl.is_const = true;
+            decl.is_input = false;
+        }
+        else if ( decl.initial.size() ) {
+            decl.is_const = true;
+            decl.is_input = false;
+        }
+    }
+
     void process( parse::System & ast ) {
         for ( parse::Declaration & decl : ast.decls ) {
             if ( decl.is_input ) {
-                if ( defs.count( decl.name ) ) {
-                    Initialiser init( ast.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
-                    decl.initial = init.initial;
-                    decl.is_const = true;
-                    decl.is_input = false;
-                }
-                else if ( decl.initial.size() ) {
-                    decl.is_const = true;
-                    decl.is_input = false;
-                }
+                processInput( decl );
             }
         }
         for ( parse::LTL & ltl : ast.ltlprops ) {
