@@ -24,6 +24,11 @@ for_dve_small() {
     $extracheck data/test1.dve
 
     check clear
+    run $wrapper data/test1-prop.dve "$@" --property=LTL
+    check ltl_invalid
+    check statespace 7 14 3 0
+
+    check clear
     run $wrapper data/test2.dve "$@" --property=LTL
     check ltl_valid
     check owcty_sizes 2 2 0
