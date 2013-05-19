@@ -716,11 +716,15 @@ struct Macro : Parser {
     Identifier name;
     std::vector< Identifier > params;
 
+    void paramlist() {
+        list< Identifier >( std::back_inserter( params ), Token::Comma );
+    }
+
     Macro( Context &c ) : Parser( c )
     {
         name = Identifier( c );
         eat( Token::ParenOpen );
-        list< Identifier >( std::back_inserter( params ), Token::Comma );
+        maybe( &Macro::paramlist );
         eat( Token::ParenClose );
 
         eat( Token::BlockOpen );
