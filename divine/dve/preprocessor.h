@@ -39,6 +39,20 @@ struct Definition {
     Definition() {}
 };
 
+typedef std::unordered_map< std::string, Definition > Definitions;
+
+struct Macros {
+    std::vector< parse::Macro< parse::Expression > > exprs;
+
+    parse::Macro< parse::Expression > & getExpr( std::string name ) {
+        for ( parse::Macro< parse::Expression > &macro : exprs ) {
+            if ( macro.name.name() == name )
+                return macro;
+        }
+        throw;
+    }
+};
+
 struct Initialiser : Parser {
     std::vector< parse::Expression > initial;
 
@@ -55,8 +69,62 @@ struct Initialiser : Parser {
     }
 };
 
+struct Expression {
+    Definitions &defs;
+    Macros &macros;
+    parse::Expression &expr;
+
+    Expression( Definitions &ds, Macros &ms, parse::Expression &e )
+        : defs( ds ), macros( ms ), expr( e )
+    {
+        if ( expr.rval && expr.rval->valid() && expr.rval->mNode.valid() ) {
+            parse::Macro< parse::Expression > &m = macros.getExpr( expr.rval->mNode.name.name() );
+            expr.op = m.content.op;
+            if ( m.content.lhs )
+                expr.lhs.reset( new parse::Expression( *m.content.lhs, true) );
+            if ( m.content.rhs )
+                expr.rhs.reset( new parse::Expression( *m.content.rhs, true) );
+            if ( m.content.rval )
+                expr.rval.reset( new parse::RValue( *m.content.rval, true) );
+        }
+        if ( expr.lhs )
+            Expression( defs, macros, *expr.lhs );
+        if ( expr.rhs )
+            Expression( defs, macros, *expr.rhs );
+        if ( expr.rval && expr.rval->idx )
+            Expression( defs, macros, *expr.rval->idx );
+    }
+};
+
+struct Transition {
+    Definitions &defs;
+    Macros &macros;
+    parse::Transition &trans;
+
+    Transition( Definitions &ds, Macros &ms, parse::Transition &t )
+        : defs( ds ), macros( ms ), trans( t )
+    {
+        for ( parse::Expression &e : trans.guards )
+            Expression( defs, macros, e );
+    }
+};
+
+struct Automaton {
+    Definitions &defs;
+    Macros &macros;
+    parse::Automaton &proc;
+
+    Automaton( Definitions &ds, Macros &ms, parse::Automaton &p )
+        : defs( ds ), macros( ms ), proc( p )
+    {
+        for ( parse::Transition &t : proc.trans )
+            Transition( defs, macros, t );
+    }
+};
+
 struct System {
-    std::unordered_map< std::string, Definition > & defs;
+    Definitions &defs;
+    Macros macros;
     typedef std::vector< std::pair< int, int > > BATrans;
 
     parse::Property LTL2Process( parse::LTL &prop ) {
@@ -113,6 +181,7 @@ struct System {
     }
 
     void process( parse::System & ast ) {
+        macros.exprs = ast.exprs;
         for ( parse::Declaration & decl : ast.decls ) {
             if ( decl.is_input ) {
                 processInput( decl );
@@ -121,9 +190,16 @@ struct System {
         for ( parse::LTL & ltl : ast.ltlprops ) {
             ast.properties.push_back( LTL2Process( ltl ) );
         }
+        for ( parse::Automaton & proc : ast.processes ) {
+            Automaton( defs, macros, proc );
+        }
+
+        for ( parse::Automaton & proc : ast.properties  ) {
+            Automaton( defs, macros, proc );
+        }
     }
 
-    System( std::unordered_map< std::string, Definition > &defs ) : defs( defs ) {}
+    System( Definitions &defs ) : defs( defs ) {}
 };
 
 }
