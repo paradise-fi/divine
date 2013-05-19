@@ -1,0 +1,14 @@
+process P1
+{
+  state a,b;
+  init a;
+  trans	a->b {guard true;},
+	b->b {guard true;};
+}
+
+expression p1a() {P1.a}
+expression p1b() {P1.b}
+
+property ltl Pltl "G(p1a)"
+
+system async;
