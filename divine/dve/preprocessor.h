@@ -91,6 +91,7 @@ struct System {
                             ( item.first ? "" : "not ") + item.second + "()",
                             prop.context() ) );
                 }
+                propBA.trans.push_back( t );
             }
         }
         propBA.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
