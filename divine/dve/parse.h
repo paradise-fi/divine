@@ -866,7 +866,7 @@ struct System : Parser {
     {
         synchronous = false;
 
-        while ( arbitrary( &System::declaration,
+        while ( maybe( &System::declaration,
                            &System::process,
                            &System::propDef,
                            &System::exprMacro
