@@ -128,7 +128,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                     extension( st ).predCount = 0;
                 if ( extension( st ).inS && extension( st ).inF ) {
                     assert_eq( store().owner( st ), visitor.worker.id() );
-                    visitor.queueAny( Vertex(), st.node(), Label() ); // slightly faster maybe
+                    visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
                     st.disown();
                 }
             }
