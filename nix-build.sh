@@ -14,4 +14,4 @@ done
 set -x
 tar czf divine-snapshot.tar.gz divine-snapshot
 rm -rf divine-snapshot
-nix-build -I nixpkgs=/home/mornfall/dev/nix/nixpkgs.clean release.nix --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"
+nix-build release.nix --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"
