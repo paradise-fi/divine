@@ -43,7 +43,8 @@ let
      memSize = mem;
    };
 
-  mkbuild = { name, inputs }: { system ? builtins.currentSystem }:
+  mkbuild = { name, inputs, flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" ] }:
+            { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
                    (if lib.eqStrings name "llvm" || lib.eqStrings name "full"
@@ -56,7 +57,7 @@ let
        name = "divine-" + name;
        src = jobs.tarball;
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
-       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags;
+       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags ++ flags;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
@@ -160,8 +161,13 @@ let
     gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
     llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
     timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
+    compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
+                            flags = [ "-DHASH_COMPACTION=OFF" ]; };
+    compaction = mkbuild { name = "compaction"; inputs = { pkgs }: [];
+                            flags = [ "-DCOMPRESSION=OFF" ]; };
     full = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ]; };
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                     flags = []; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
