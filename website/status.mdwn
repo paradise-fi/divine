@@ -8,18 +8,58 @@ Latest Builds
 
 Click on the build number to inspect logs and/or download outputs.
 
-<div id="hydra"><div class="1">(loading, please wait)</div><div class="2"></div></div>
+<div id="hydra">
+
+Mainline
+--------
+
+**Debug** builds (with debug symbols, assertions enabled and no compiler
+optimisations):
+
+<div id="mainline-debug">(loading, please wait)</div>
+
+**Release** builds (with debug symbols, but with no assertions and with compiler
+optimisations enabled):
+
+<div id="mainline-release">(loading, please wait)</div>
+
+Release Branch
+--------------
+
+Builds from the currently active release branch.
+
+**Debug** builds (with debug symbols, assertions enabled and no compiler
+optimisations):
+
+<div id="branch-3_0-debug">(loading, please wait)</div>
+
+**Release** builds (with debug symbols, but with no assertions and with compiler
+optimisations enabled):
+
+<div id="branch-3_0-release">(loading, please wait)</div>
+
+Latest Release
+--------------
+
+Builds of the latest release tarball. Only release-mode builds are available
+here (no assertions, *no debug symbols*, compiler optimisation enabled):
+
+<div id="release">(loading, please wait)</div>
+</div>
 
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script type="text/javascript">
+  function hydra(what) {
+      $('#hydra #'+ what).load('http://divine.fi.muni.cz/hydra/jobset/divine/' + what + '/jobstatus table', function() {
+          $('#hydra table td:nth-child(4)').addClass("invisible");
+      });
+  }
+
   $('#changes').load('http://divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
-  $('#hydra .1').load('http://divine.fi.muni.cz/hydra/project/divine/all table', function() {
-      $('#hydra table td:nth-child(3)').addClass("wide");
-      $('#hydra table td:nth-child(4)').addClass("invisible");
-  });
-  $('#hydra .2').load('http://divine.fi.muni.cz/hydra/project/divine/all?page=2 table', function() {
-      $('#hydra table td:nth-child(3)').addClass("wide");
-      $('#hydra table td:nth-child(4)').addClass("invisible");
-  });
+  hydra("mainline-debug");
+  hydra("mainline-release");
+  hydra("branch-3_0-debug");
+  hydra("branch-3_0-release");
+  hydra("release");
 </script>
 
