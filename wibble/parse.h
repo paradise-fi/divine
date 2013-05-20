@@ -83,6 +83,7 @@ struct Lexer {
     std::string window( unsigned n ) {
         bool valid = ensure_window( n );
         assert( valid );
+        static_cast< void >( valid );
         std::deque< char >::iterator b = _window.begin(), e = b;
         e += n;
         return std::string( b, e );
