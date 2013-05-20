@@ -263,7 +263,7 @@ struct Partitioned {
         inline void queue( Vertex from, Node to, Label label, hash_t hint = 0 ) {
             if ( store().owner( to, hint ) != worker.id() )
                 return;
-            queueAny( from, to, label, hint );
+            bfv.edge( from, to, label ); //, hint );
         }
 
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
@@ -343,30 +343,23 @@ struct Partitioned {
             }
         };
 
+        std::pair< typename S::Listener*, This* > bfvListener;
+        BFV< Ours > bfv;
+
         template< typename T >
         void setIds( T &bfv ) {
             // bfv._store.setId( worker );
             bfv._queue.id = worker.id();
         }
 
-        void exploreFrom( Node initial ) {
-            BFV< Ours > bfv( *this, graph, _store );
-            setIds( bfv );
-            if ( store().owner( initial ) == worker.id() ) {
-                bfv.exploreFrom( initial );
-            }
-            run( bfv );
-        }
-
         void processQueue() {
-            auto l = std::make_pair( &notify, this );
-            BFV< Ours > bfv( l, graph, _store );
             setIds( bfv );
             run( bfv );
         }
 
         Implementation( typename S::Listener &n, Worker &w, Graph &g, Store &s, Data< typename S::AlgorithmSetup > )
-            : worker( w ), notify( n ), graph( g ), _store( s )
+            : worker( w ), notify( n ), graph( g ), _store( s ),
+              bfvListener( &notify, this ), bfv( bfvListener, graph, _store )
         {}
     };
 };
