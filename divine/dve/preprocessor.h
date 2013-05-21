@@ -4,6 +4,7 @@
 #define DIVINE_DVE_PREPROCESSOR_H
 
 #include <divine/dve/parse.h>
+#include <divine/dve/interpreter.h>
 #include <string>
 #include <wibble/string.h>
 #include <memory>
@@ -109,14 +110,81 @@ struct Transition {
     }
 };
 
+
+struct Declaration {
+    Definitions &defs;
+    Macros &macros;
+    parse::Declaration &decl;
+
+    Declaration( Definitions &ds, Macros &ms, parse::Declaration &d, SymTab &st )
+        : defs( ds ), macros( ms ), decl( d )
+    {
+        if ( decl.sizeExpr.valid() ) {
+            Expression( defs, macros, decl.sizeExpr );
+            dve::Expression e( st, decl.sizeExpr );
+            EvalContext ctx;
+            decl.setSize( e.evaluate( ctx ) );
+        }
+
+        if ( decl.is_input ) {
+            if ( defs.count( decl.name ) ) {
+                Initialiser init( decl.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
+                decl.initial = init.initial;
+            }
+            decl.is_const = true;
+            decl.is_input = false;
+        }
+
+        for ( parse::Expression &expr : decl.initial )
+            Expression( defs, macros, expr );
+
+        if ( decl.is_const ) {
+            std::vector< int > init;
+            EvalContext ctx;
+            for ( parse::Expression &expr : decl.initial ) {
+                dve::Expression ex( st, expr );
+                init.push_back( ex.evaluate( ctx ) );
+            }
+            while ( init.size() < static_cast< unsigned >( decl.size ) )
+                init.push_back( 0 );
+            st.constant( NS::Variable, decl.name, init );
+        }
+    }
+};
+
+struct ChannelDeclaration {
+    Definitions &defs;
+    Macros &macros;
+    parse::ChannelDeclaration &decl;
+
+    ChannelDeclaration( Definitions &ds, Macros &ms, parse::ChannelDeclaration &d, SymTab &st )
+        : defs( ds ), macros( ms ), decl( d )
+    {
+        if ( decl.sizeExpr.valid() ) {
+            Expression( defs, macros, decl.sizeExpr );
+            divine::dve::Expression e( st, decl.sizeExpr );
+            EvalContext ctx;
+            decl.setSize( e.evaluate( ctx ) );
+        }
+    }
+};
+
+
 struct Automaton {
     Definitions &defs;
     Macros &macros;
     parse::Automaton &proc;
+    SymTab symtab;
 
-    Automaton( Definitions &ds, Macros &ms, parse::Automaton &p )
-        : defs( ds ), macros( ms ), proc( p )
+    Automaton( Definitions &ds, Macros &ms, parse::Automaton &p, SymTab &st )
+        : defs( ds ), macros( ms ), proc( p ), symtab( &st )
     {
+        for ( parse::Declaration & decl : proc.decls ) {
+                Declaration( defs, macros, decl, symtab );
+        }
+        for ( parse::ChannelDeclaration & decl : proc.chandecls ) {
+                ChannelDeclaration( defs, macros, decl, symtab );
+        }
         for ( parse::Transition &t : proc.trans )
             Transition( defs, macros, t );
     }
@@ -126,6 +194,7 @@ struct System {
     Definitions &defs;
     Macros macros;
     typedef std::vector< std::pair< int, int > > BATrans;
+    SymTab symtab;
 
     parse::Property LTL2Process( parse::LTL &prop ) {
         parse::Property propBA;
@@ -183,19 +252,20 @@ struct System {
     void process( parse::System & ast ) {
         macros.exprs = ast.exprs;
         for ( parse::Declaration & decl : ast.decls ) {
-            if ( decl.is_input ) {
-                processInput( decl );
-            }
+                Declaration( defs, macros, decl, symtab );
+        }
+        for ( parse::ChannelDeclaration & decl : ast.chandecls ) {
+                ChannelDeclaration( defs, macros, decl, symtab );
         }
         for ( parse::LTL & ltl : ast.ltlprops ) {
             ast.properties.push_back( LTL2Process( ltl ) );
         }
         for ( parse::Automaton & proc : ast.processes ) {
-            Automaton( defs, macros, proc );
+            Automaton( defs, macros, proc, symtab );
         }
 
         for ( parse::Automaton & proc : ast.properties  ) {
-            Automaton( defs, macros, proc );
+            Automaton( defs, macros, proc, symtab );
         }
     }
 

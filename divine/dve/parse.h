@@ -442,17 +442,23 @@ struct Declaration : Parser {
     bool is_const, is_compound, is_buffered;
     int width; // bytes
     bool is_array;
+    Expression sizeExpr;
     int size;
     std::vector< int > components;
     std::vector< Expression > initial;
     std::string name;
     bool is_input;
 
+    void setSize( int s ) {
+        size = s;
+        if ( size < 1 )
+            fail( ( "Invalid array size: " + wibble::str::fmt( size ) ).c_str(), FailType::Semantic );
+    }
+
     void subscript() {
         eat( Token::IndexOpen );
-        Token t = eat( Token::Constant );
+        sizeExpr = Expression( context() );
         eat( Token::IndexClose );
-        size = atoi( t.data.c_str() );
         is_array = true;
     }
 
@@ -494,18 +500,24 @@ struct Type : Parser {
 
 struct ChannelDeclaration : Parser {
     bool is_buffered, is_const;
+    Expression sizeExpr;
     int size, width;
     std::string name;
     bool is_compound;
     std::vector< int > components;
     bool is_input;
 
+    void setSize( int s ) {
+        size = s;
+        if ( size < 0 )
+            fail( ( "Invalid array size: " + wibble::str::fmt( size ) ).c_str(), FailType::Semantic );
+        is_buffered = ( size > 0 );
+    }
+
     void subscript() {
         eat( Token::IndexOpen );
-        Token t = eat( Token::Constant );
+        sizeExpr = Expression( context() );
         eat( Token::IndexClose );
-        size = atoi( t.data.c_str() );
-        is_buffered = (size > 0);
     }
 
     ChannelDeclaration( Context &c ) : Parser( c ), size( 1 )
