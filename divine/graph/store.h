@@ -50,9 +50,8 @@ struct StoreCommon : TableProvider
     using InsertItem = typename Table::InsertItem;
     using StoredItem = typename Table::StoredItem;
 
-  protected: // we don't want algoritms to mess with table directly
+    typename TableProvider::ThreadData td;
 
-  public:
     template< typename... Args >
     StoreCommon( Pool &p, Args&&... args )
         : TableProvider( std::forward< Args >( args )... ), _pool( p ) {}
@@ -82,16 +81,15 @@ struct StoreCommon : TableProvider
     IsNew< StoredItem > _fetch( InsertItem s, hash_t h ) {
         StoredItem found;
         bool had;
-        std::tie( found, had ) = this->table().getHinted( s, h ? h : hash( s ) );
+        std::tie( found, had ) = this->table().getHinted( s, h ? h : hash( s ), td );
         assert( hasher().valid( found ) == had );
         return isNew( found, !had );
     }
 
-    template< typename X >
-    IsNew< StoredItem > _store( InsertItem s, hash_t h, X &x ) {
+    IsNew< StoredItem > _store( InsertItem s, hash_t h ) {
         StoredItem s2;
         bool inserted;
-        std::tie( s2, inserted ) = this->table().insertHinted( s, h ? h : hash( s ), x );
+        std::tie( s2, inserted ) = this->table().insertHinted( s, h ? h : hash( s ), td );
         if ( inserted ) {
             Statistics::global().hashadded( this->id(), memSize( s, hasher().pool() ) );
             Statistics::global().hashsize( this->id(), this->table().size() );
@@ -104,12 +102,18 @@ template< typename Generator, typename Hasher >
 struct IdentityWrap {
     template< template< typename, typename > class T >
     using Make = T< typename Generator::Node, Hasher >;
+
+    struct SpecificData {};
 };
 
 template< typename Generator, typename Hasher >
 struct NTreeWrap {
     template< template < typename, typename > class T >
     using Make = NTreeHashSet< T, typename Generator::Node, Hasher >;
+
+    struct SpecificData {
+        Generator *generator;
+    };
 };
 
 struct ProviderCommon {
@@ -132,6 +136,12 @@ struct PartitionedProvider {
     template < typename WrapTable >
     struct Make : ProviderCommon {
         using Table = typename WrapTable::template Make< HashSet >;
+
+        struct ThreadData :
+            Table::ThreadData,
+            WrapTable::SpecificData
+        {};
+
         Table _table;
 
         Table &table() { return _table; }
@@ -146,6 +156,11 @@ struct SharedProvider {
     struct Make : ProviderCommon {
         using Table = typename WrapTable::template Make< SharedHashSet >;
         using TablePtr = std::shared_ptr< Table >;
+
+        struct ThreadData :
+            Table::ThreadData,
+            WrapTable::SpecificData
+        {};
 
         TablePtr _table;
 
@@ -314,8 +329,7 @@ struct DefaultStore
     Blob unpack( Handle h ) { return h.b; }
 
     IsNew< Vertex > store( Node n, hash_t h = 0 ) {
-        int fake = 0;
-        return this->_store( n, h, fake ).map(
+        return this->_store( n, h ).map(
             [this, &n]( Node x ) {
                 if ( x.raw() != n.raw() )
                     this->free( n );
@@ -495,15 +509,15 @@ struct NTreeStore
 
     using Root = typename Table::Root;
 
-    _Generator& generator;
-
     template< typename Graph >
     NTreeStore( Graph& g, int slack, This *m = nullptr ) :
-        Base( g.pool(), Hasher( g.pool(), slack ), m ), generator( g.base() )
-    { }
+        Base( g.pool(), Hasher( g.pool(), slack ), m )
+    {
+        this->td.generator = &g.base();
+    }
 
     IsNew< Vertex > store( Node n, hash_t h = 0 ) {
-        return this->_store( n, h, generator ).map(
+        return this->_store( n, h ).map(
             [this, &n]( Root x ) {
                 this->free( n );
                 return Vertex( *this, Handle( x.b ) );
