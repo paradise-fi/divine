@@ -148,6 +148,10 @@ for_dve_small() {
     run $wrapper data/ltltest2.dve "$@" --property=LTL
     check ltl_invalid
     check statespace 3 4 1 0
+
+    check clear
+    run $wrapper data/vararray.dve "$@" --property=deadlock
+    check statespace 11 10 0 1
 }
 
 dve_small() {
