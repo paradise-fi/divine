@@ -58,6 +58,8 @@ struct HashSet
     int maxcollision() { return 65536; }
     int growthreshold() { return 75; } // percent
 
+    struct ThreadData{};
+
     struct Cell {
         Item item;
         hash_t hash;
@@ -90,26 +92,31 @@ struct HashSet
         }
     };
 
-    inline std::tuple< Item, bool > insert( Item i ) {
+    template< typename TD = ThreadData >
+    inline std::tuple< Item, bool > insert( Item i, TD = TD() ) {
         return insertHinted( i, hasher.hash( i ) );
     }
 
-    template< typename X = wibble::Unit >
-    inline std::tuple< Item, bool > insertHinted( Item i, hash_t h, X = X() ) {
+    template< typename TD = ThreadData >
+    inline std::tuple< Item, bool > insertHinted(
+            Item i, hash_t h, TD = TD() ) {
         Cell c;
         c.item = i;
         c.hash = h;
         return insertCell( c, m_table, m_used );
     }
 
-    bool has( Item i ) {
+    template< typename TD = ThreadData >
+    bool has( Item i, TD = TD() ) {
         return hasher.valid( std::get< 0 >( get( i ) ) );
     }
 
-    std::tuple< Item, bool > get( Item i ) { return getHinted( i, hasher.hash( i ) ); }
+    template< typename TD = ThreadData >
+    std::tuple< Item, bool > get( Item i, TD = TD() ) { return getHinted( i, hasher.hash( i ) ); }
 
-    template< typename T >
-    std::tuple< Item, bool > getHinted( T item, hash_t hash ) {
+    template< typename T, typename TD = ThreadData >
+    std::tuple< Item, bool > getHinted(
+            T item, hash_t hash, TD = TD() ) {
         size_t idx;
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( hash, i );
