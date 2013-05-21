@@ -4,6 +4,7 @@
 #include <atomic>
 #include <stdint.h>
 #include <tuple>
+#include <algorithm>
 #include <wibble/sys/mutex.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/shmem.h>
@@ -17,12 +18,22 @@ namespace divine {
 template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
 struct SharedHashSet {
 
-    typedef _Item Item;
-    typedef _Hasher Hasher;
+    using Item = _Item;
+    using Hasher = _Hasher;
+    using TableItem = Item;
+    using InsertItem = Item;
+    using StoredItem = Item;
+    using InputHasher = Hasher;
 
-    typedef Item InsertItem;
-    typedef Item StoredItem;
-    typedef Hasher InputHasher;
+    enum class InsertResolution {
+        Success,  // everything is OK
+        Failed,   // cannot insert value - someone was faster
+        Found,    // item is in table
+        NotSpace, // I want grow
+        Growing   // table is growing or was already resized,
+                  // release and acquire row and repeat it
+    };
+    enum class FindResolution { Found, Growing, NotFound };
 
     struct Cell {
         std::atomic< hash_t > hashLock;
@@ -33,41 +44,59 @@ struct SharedHashSet {
         Cell( const Cell & ) : hashLock( 0 ), value() {}
     };
 
-    typedef std::vector< Cell > Row;
+    struct ThreadData {
+        unsigned currentRow;
 
-    static const unsigned rows = 32;
+        ThreadData() : currentRow( 0 ) {}
+    };
+
+    using Row = std::vector< Cell >;
+
     static const unsigned cacheLine = 64;// Bytes
     static const unsigned thresh = cacheLine / sizeof( Cell );
     static const unsigned threshMSB = bitops::compiletime::MSB( thresh );
+    static const unsigned maxCollisions = thresh * 16;
+    static const unsigned segmentSize = 1 << 16;// 2^16
 
-    std::vector< Row > table;
-    unsigned initialSize;// power of 2
-    unsigned initialMask;// filled up to most significant bit
-    std::atomic< unsigned > _size;// size = 2^{_size}
-    SpinLock growing;
+    std::vector< Row * > table;
+    std::vector< std::atomic< unsigned short > > tableWorkers;
+    std::atomic< unsigned > currentRow;
+    std::atomic< int > availableSegments;
+    std::atomic< unsigned > doneSegments;
+    std::atomic< bool > growing;
     Hasher hasher;
 
+    /** Thread-safe */
     size_t size() const {
-        return size_t(1) << _size;
+        return table[ currentRow ]->size();
     }
 
-    explicit SharedHashSet( Hasher h = Hasher() )
-        : table( rows ), initialSize( 0 ), initialMask( 0 ),
-          _size( 0 ), hasher( h )
+    explicit SharedHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
+        : table( maxGrows, nullptr ), tableWorkers( maxGrows ), currentRow( 1 ),
+          availableSegments( 0 ), growing( false ), hasher( h )
     {}
 
-    void setSize( unsigned s ) {
-        assert( s );
-        initialMask = bitops::fill( s - 1 );
-        _size = initialSize = bitops::MSB( initialMask + 1 );
-        table[ 0 ].resize( size_t(1) << initialSize );
+    ~SharedHashSet() {
+        for ( unsigned i = 0; i != table.size(); ++i ) {
+            if ( table[ i ] )
+                delete table[ i ];
+        }
     }
 
+	/** NOT thread-safe */
+    void setSize( unsigned s ) {
+        s = bitops::fill( s - 1 ) + 1;
+        if ( !table[ 1 ] )
+            table[ 1 ] = new Row( s );
+    }
+
+   /** NOT thread-safe */
     void setHasher( Hasher h ) {
         hasher = h;
     }
 
     /** TODO: move away so HashSet can use this method */
+	/** Thread-safe */
     unsigned index( hash_t h, unsigned i, unsigned mask ) const {
         h &= ~hash_t( thresh - 1 );
         const unsigned Q = 1, R = 1;
@@ -81,114 +110,60 @@ struct SharedHashSet {
         }
     }
 
-    /**
-     * Insert an element into the set. Returns true if the element was added,
-     * false if it was already in the set.
-     */
-    std::tuple< Item, bool > insert( Item x ) {
-        return insertHinted( x, hasher.hash( x ) );
+	/** Thread-safe */
+    template< typename TD >
+    std::tuple< Item, bool > insert( Item x, TD &tld ) {
+        return insertHinted( x, hasher.hash( x ), tld );
     }
 
-    template< typename X = wibble::Unit >
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h, X = X() ) {
-        h <<= 1;
-        unsigned mask = initialMask;
-
-        for ( unsigned row = 0; row < rows; ++row ) {
-            if ( !table[ row ].size() )
-                grow( row );
-            if ( row > 1 )
-                mask = (mask << 1) | 1;
-
-            for ( unsigned i = 0; i < thresh * (row + 1); ++i ) {
-                unsigned id = index( h, i, mask );
-                Cell &cell = table[ row ][ id ];
-                hash_t chl = cell.hashLock;
-
-                if ( chl == 0 ) { /* empty → insert */
-                    /* Strong CAS since it won't be called twice. */
-                    if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
-                        cell.value = x;
-                        cell.hashLock.exchange( h & ~1 ); /* We need a barrier here. */
-                        return std::make_tuple( x, true );
+	/** Thread-safe */
+    template< typename TD >
+    std::tuple< Item, bool > insertHinted( Item x, hash_t h, TD &tld ) {
+        while ( true ) {
+            switch( insertCell( x, h << 1, tld.currentRow ) ) {
+                case InsertResolution::Success:
+                    return std::make_tuple( x, true );
+                case InsertResolution::Found:
+                    return std::make_tuple( x, false );
+                case InsertResolution::NotSpace:
+                    if ( grow( tld.currentRow + 1 ) ) {
+                        releaseRow( tld.currentRow );
+                        ++tld.currentRow;
+                        break;
                     }
-                }
-
-                if ( (chl | 1) == (h | 1) ) { /* hashes match → compare */
-                    /* Wait until value write finishes. */
-                    if ( chl & 1 )
-                        while ( cell.hashLock & 1 );
-
-                    /* The wait here is not really necessary because x86 supports
-                     * 8-byte CAS and x86_64 supports 16-byte CAS. We don't use it
-                     * (yet) as the code would be less readable and, more
-                     * importantly, gcc doesn't provide an API for 16-byte CAS.
-                     * TODO: Remove the wait. */
-
-                    if ( hasher.equal( cell.value, x ) )
-                        return std::make_tuple( cell.value, false );
-                }
-
-                /* not empty and not equal → reprobe */
+                case InsertResolution::Growing:
+                    updateIndex( tld.currentRow );
+                    break;
+                default:
+                    __builtin_unreachable();
             }
         }
-
-        std::cerr << "too many collisions" << std::endl;
-        abort();
         __builtin_unreachable();
     }
 
-    inline bool has( Item x ) {
-        return has( x, hasher.hash( x ) );
-    }
-
-    inline bool has( Item x, hash_t h ) {
-        return std::get< 1 >( getHinted( x, h ) );
-    }
-
-    std::tuple< Item, bool > get( Item x ) {
-        return getHinted( x, hasher.hash( x ) );
-    }
-
-    template< typename T >
-    std::tuple< Item, bool > getHinted( T x, hash_t h ) {
-        h <<= 1;
-
-        unsigned s = _size;// use only one atomic load
-        unsigned mask = ( unsigned(1) << s ) - 1;
-        unsigned row = s - initialSize + 1;
-
-        do {
-            --row;
-            mask = ( mask >> 1 ) | initialMask;
-
-            assert( table[ row ].size() - 1 == mask );
-
-            for ( unsigned i = 0; i < thresh * (row + 1); ++i ) {
-                unsigned id = index( h, i, mask );
-
-                assert( id < table[ row ].size() );
-
-                Cell &cell = table[ row ][ id ];
-                hash_t chl = cell.hashLock;
-
-                if (chl == 0)
+	/** Thread-safe */
+    template< typename T, typename TD >
+    std::tuple< Item, bool > getHinted( T x, hash_t h, TD &tld ) {
+        auto pair = std::make_pair( Item(), x );
+        while ( true ) {
+            switch( getCell( pair, h << 1, tld.currentRow ) ) {
+                case FindResolution::Found:
+                    return std::make_tuple( pair.first, true );
+                case FindResolution::NotFound:
+                    return std::make_tuple( pair.first, false );
+                case FindResolution::Growing:
+                    updateIndex( tld.currentRow );
                     break;
-
-                if ( (chl | 1) == (h | 1) ) {
-                    if ( chl & 1 )
-                        while ( cell.hashLock & 1 );
-
-                    if ( hasher.equal( cell.value, x ) )
-                        return std::make_tuple( cell.value, true );
-                }
+                 default:
+                    __builtin_unreachable();
             }
-        } while ( row );
-        return std::make_tuple( Item(), false );
+        }
+        __builtin_unreachable();
     }
 
+    /** NOT thread-safe */
     Item operator[]( size_t index ) {
-        return table[ rowIndex( index ) ][ subIndex( index ) ].value;
+        return (*table[ currentRow ])[ index ].value;
     }
 
     SharedHashSet( const SharedHashSet & ) = delete;
@@ -196,29 +171,236 @@ struct SharedHashSet {
 
 protected:
 
-    inline size_t rowIndex( size_t index ) {
-        if ( index < ( size_t( 1 ) << initialSize ) )
-            return 0;
-        return bitops::MSB( index ) - initialSize + 1;
+	/** Thread-safe */
+    template< typename T >
+    FindResolution getCell( std::pair< Item, T > &pair, hash_t h, unsigned rowIndex ) {
+
+        while( growing ) {
+            // help with moving table
+            while( processSegment() );
+        }
+        if ( changed( rowIndex ) )
+            return FindResolution::Growing;
+
+        Row &row = *table[ rowIndex ];
+        const unsigned mask = row.size() - 1;
+
+        for ( unsigned i = 0; i < maxCollisions; ++i ) {
+            if ( changed( rowIndex ) )
+                return FindResolution::Growing;
+
+            Cell &cell = row[ index( h, i, mask ) ];
+            hash_t chl = cell.hashLock;
+
+            if ( chl == 0 )
+                return FindResolution::NotFound;
+            if ( (chl | 1) == (h | 1) ) {
+                if ( chl & 1 )
+                    while ( ( chl = cell.hashLock ) & 1 ) {
+                        if ( chl == 1 )
+                            return FindResolution::Growing;
+                    }
+
+                if ( hasher.equal( cell.value, pair.second ) ) {
+                    pair.first = cell.value;
+                    return FindResolution::Found;
+                }
+            }
+        }
+        return FindResolution::NotFound;
     }
 
-    inline size_t subIndex( size_t index ) {
-        if ( index < ( size_t( 1 ) << initialSize ) )
-            return index;
-        return bitops::withoutMSB( index );
+	/** Thread-safe */
+    InsertResolution tryInsert( Cell &cell, Item x, hash_t h, hash_t &chl, int rowIndex, bool force ) {
+        if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
+
+            if ( !force && ( growing || changed( rowIndex ) ) ) {
+                cell.hashLock.exchange( 1 );
+                return InsertResolution::Growing;
+            }
+            cell.value = x;
+            cell.hashLock.exchange( h & ~hash_t(1) );
+            return InsertResolution::Success;
+        }
+        return InsertResolution::Failed;
     }
 
-    void grow( unsigned rowIndex ) {
+	/** Thread-safe */
+    InsertResolution insertCell( Item &x, hash_t h, int rowIndex, bool force = false ) {
+        if ( !force ) {
+            while( growing ) {
+                // help with moving table
+                while ( processSegment() );
+            }
+
+            if ( changed( rowIndex ) )
+                return InsertResolution::Growing;
+        }
+
+        Row &row = *table[ rowIndex ];
+        assert( !row.empty() );
+        const unsigned mask = row.size() - 1;
+
+		const unsigned acceptableCollisions = force ?
+					65536 :
+					maxCollisions;
+        for ( unsigned i = 0; i < acceptableCollisions; ++i ) {
+
+            Cell &cell = row[ index( h, i, mask ) ];
+            hash_t chl = cell.hashLock;
+
+            if ( chl == 0 ) {
+                switch( tryInsert( cell, x, h, chl, rowIndex, force ) ) {
+                    case InsertResolution::Failed:
+                        break;
+                    case InsertResolution::Success:
+                        return InsertResolution::Success;
+                    case InsertResolution::Growing:
+                        return InsertResolution::Growing;
+                    default:
+                        __builtin_unreachable();
+                }
+            }
+            if ( (chl | 1) == (h | 1) ) { /* hashes match → compare */
+                /* Wait until value write finishes. */
+                if ( chl & 1 )
+                    while ( ( chl = cell.hashLock ) & 1 ) {
+                        // check whether cell was move by "processSegment" call
+                        if ( chl == 1 )
+                            return InsertResolution::Growing;
+                    }
+
+                /* The wait here is not really necessary because x86 supports
+                 * 8-byte CAS and x86_64 supports 16-byte CAS. We don't use it
+                 * (yet) as the code would be less readable and, more
+                 * importantly, gcc doesn't provide an API for 16-byte CAS.
+                 * TODO: Remove the wait. */
+
+                if ( hasher.equal( cell.value, x ) ) {
+                    x = cell.value;
+                    return InsertResolution::Found;
+                }
+            }
+        }
+        return InsertResolution::NotSpace;
+    }
+
+	/** Thread-safe */
+    inline bool changed( unsigned rowIndex ) {
+        return rowIndex < currentRow;
+    }
+
+	/** Thread-safe */
+    bool grow( unsigned rowIndex ) {
         assert( rowIndex );
-        std::lock_guard< SpinLock > lock( growing );
 
-        Row &r = table[ rowIndex ];
-        if ( !r.size() ) {
-            r.resize( size_t(1) << ( _size ) );
-            ++_size;
+        if ( rowIndex >= table.size() ) {
+            std::cerr << "no enough memory" << std::endl;
+            abort();
+            __builtin_unreachable();
+        }
+
+        if ( currentRow >= rowIndex ) {
+            return false;
+        }
+
+        while ( growing.exchange( true ) ); // acquire growing lock
+
+        if ( currentRow >= rowIndex ) {
+            growing.exchange( false );// release lock
+            return false;
+        }
+
+        Row &row = *table[ rowIndex - 1 ];
+        table[ rowIndex ] = new Row( row.size() * 2 );
+        currentRow.exchange( rowIndex );
+        tableWorkers[ rowIndex ] = 1;
+        doneSegments.exchange( 0 );
+        const unsigned segments = std::max( row.size() / segmentSize, size_t( 1 ) );// if size < segmentSize
+        availableSegments.exchange( segments );
+
+        while ( processSegment() );
+
+        // release memory after processing all segments
+        while( doneSegments != segments );
+
+        return true;
+    }
+
+    // thread processing last segment releases growing mutex
+    // method can be executed ONLY during growing
+	/** Thread-safe (partial) */
+    bool processSegment() {
+        int segment;
+        if ( availableSegments <= 0 )
+            return false;
+        if ( ( segment = --availableSegments ) < 0 )
+            return false;
+
+        Row &row = *table[ currentRow - 1 ];
+        size_t segments = std::max( row.size() / segmentSize, size_t( 1 ) );
+        auto it = row.begin() + segmentSize * segment;
+        auto end = it + segmentSize;
+        if ( end > row.end() )
+            end = row.end();
+        assert( it < end );
+
+        for ( ; it != end; ++it ) {
+            hash_t chl = it->hashLock;
+            do {
+                chl &= ~hash_t(1);
+            } while ( it->hashLock.compare_exchange_strong( chl, chl | 1 )
+                && chl != 1 );
+
+            if ( chl == 1 )
+                continue;
+
+            if ( insertCell( it->value, chl & ~hash_t(1), currentRow, true )
+                == InsertResolution::NotSpace ) {
+                std::cerr << "no enough space during growing" << std::endl;
+                abort();
+            }
+            it->hashLock.exchange( 1 );
+        }
+
+        if ( ++doneSegments == segments )
+            growing.exchange( false );
+        return segment > 0;
+    }
+
+	/** Thread-safe */
+    void updateIndex( unsigned &index ) {
+        unsigned row = currentRow;
+        if ( row != index ) {
+            releaseRow( index );
+            acquireRow( row );
+            index = row;
         }
     }
 
+	/** Thread-safe */
+    void releaseRow( unsigned index ) {
+        // special case - zero index
+        if ( !tableWorkers[ index ] )
+            return;
+        // only last thread releases memory
+        if ( !--tableWorkers[ index ] ) {
+            delete table[ index ];
+            table[ index ] = nullptr;
+        }
+    }
+
+	/** Thread-safe */
+    void acquireRow( unsigned index ) {
+        do {
+            if ( 1 < ++tableWorkers[ index ] )
+                break;
+            if ( table[ index ] && index == 1 )
+                break;
+            --tableWorkers[ index ];
+            index = currentRow;
+        } while ( true );
+    }
 };
 
 }
