@@ -338,8 +338,6 @@ struct TestVisitor {
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
-        enum { defaultSharedHashSetSize = 65536 };
-
         typename Shared::Data< This > data;
         Store store;
 
