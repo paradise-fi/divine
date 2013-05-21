@@ -338,6 +338,12 @@ struct NTreeHashSet
 
     using Hasher = RootHasher;
 
+    struct ThreadData{
+        typename HashSet< Root, RootHasher >::ThreadData roots;
+        typename HashSet< Fork, ForkHasher >::ThreadData forks;
+        typename HashSet< Leaf, LeafHasher >::ThreadData leafs;
+    };
+
     RootHasher hasher;
 
     HashSet< Root, RootHasher > _roots; // stores slack and roots of tree
@@ -360,19 +366,33 @@ struct NTreeHashSet
     size_t size() { return _roots.size(); }
     bool empty() { return _roots.empty(); }
 
+#ifndef O_PERFORMANCE
+    size_t inserts, leafReuse, forkReuse, rootReuse;
+
+    void incInserts() { ++inserts; }
+    void incLeafReuse() { ++leafReuse; }
+    void incForkReuse() { ++forkReuse; }
+    void incRootReuse() { ++rootReuse; }
+#else
+    void incInserts() {}
+    void incLeafReuse() {}
+    void incForkReuse() {}
+    void incRootReuse() {}
+#endif
+
     template < typename Generator >
     std::tuple< Root, bool > insertHinted( Item item, hash_t hash,
-                                           Generator& generator )
+                                           TD &td )
     {
         assert( hasher.valid( item ) );
 
-        Pool& pool = generator.pool();
+        Pool& pool = td.generator->pool();
 
         Root root;
 
         LeafOrFork* ptr = nullptr;
         char* from = pool.dereference( item ) + slack();
-        generator.splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
+        td.generator->splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
                 if ( rec == Recurse::No ) {
                     root = Root::createFlat( item, pool );
                     assert_eq( remaining, 0 );
@@ -385,7 +405,7 @@ struct NTreeHashSet
                     }
                     assert( ptr != nullptr );
 
-                    *ptr = this->createChild( item, from, length, pool, generator );
+                    *ptr = this->createChild( item, from, length, pool, td );
                     ++ptr;
                 }
 
@@ -400,23 +420,23 @@ struct NTreeHashSet
 
         Root tr;
         bool inserted;
-        std::tie( tr, inserted ) = _roots.insertHinted( root, hash );
+        std::tie( tr, inserted ) = _roots.insertHinted( root, hash, td.roots );
         if ( !inserted )
             pool.free( root.b );
 
         return std::make_tuple( tr, inserted );
     }
 
-    template < typename Generator >
+    template < typename TD >
     LeafOrFork createChild( Item item, char* from, intptr_t length,
-                            Pool& pool, Generator& generator )
+                            Pool &pool, TD &td )
     {
         assert_leq( pool.dereference( item ) + slack(), from );
         assert_leq( from, pool.dereference( item ) + pool.size( item ) );
 
         LeafOrFork child;
         LeafOrFork* ptr = nullptr;
-        generator.splitHint( item, from - pool.dereference( item ), length,
+        td.generator->splitHint( item, from - pool.dereference( item ), length,
                              [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
                 if ( rec == Recurse::No ) {
                     assert( child.isNull( pool ) );
@@ -431,7 +451,7 @@ struct NTreeHashSet
                     assert( !child.isNull( pool ) );
                     assert( ptr != nullptr );
 
-                    *ptr = this->createChild( item, from, length, pool, generator );
+                    *ptr = this->createChild( item, from, length, pool, td );
                     ++ptr;
                 }
                 from += length;
@@ -440,12 +460,12 @@ struct NTreeHashSet
         bool inserted;
         LeafOrFork tlf;
         if ( child.isLeaf() ) {
-            std::tie( tlf, inserted ) = _leafs.insert( child.leaf() );
+            std::tie( tlf, inserted ) = _leafs.insert( child.leaf(), td.leafs );
             if ( !inserted ) {
                 pool.free( child.blob() );
             }
         } else {
-            std::tie( tlf, inserted ) = _forks.insert( child.fork() );
+            std::tie( tlf, inserted ) = _forks.insert( child.fork(), td.forks );
             if ( !inserted )
                 pool.free( child.blob() );
         }
@@ -453,16 +473,18 @@ struct NTreeHashSet
         return tlf;
     }
 
-    std::tuple< Root, bool > get( Item item ) {
-        return getHinted( item, hasher.hash( item ) );
+    template< typename TD >
+    std::tuple< Root, bool > get( Item item, TD &td ) {
+        return getHinted( item, hasher.hash( item ), td );
     }
 
-    template< typename T >
-    std::tuple< Root, bool > getHinted( T i, hash_t h ) {
-        return _roots.getHinted( Uncompressed( i ), h );
+    template< typename T, typename TD >
+    std::tuple< Root, bool > getHinted( T i, hash_t h, TD &td ) {
+        return _roots.getHinted( Uncompressed( i ), h, td.roots );
     }
 
-    bool has( Item i ) {
+    template< typename TD >
+    bool has( Item i, TD &td ) {
         return std::get< 1 >( get( i ) );
     }
 
