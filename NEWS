@@ -1,3 +1,14 @@
+DiVinE 2.97 (3.0 RC 2 ; 21.5.2013)
+==================================
+
+- Fix layout issues with LLVM bitcode files using a 64b pointer layout.
+- Fix a problem where unresolved symbols in LLVM bitcode would be silently
+  ignored, and treated as nulls.
+- The above also prompted a number of changes and improvements in `divine
+  compile --llvm`, which now provides a nearly complete ISO C library
+  implementation, as well as a C++ ABI support library.
+- Let the LLVM interpreter detect & report double frees and divisions by zero.
+
 DiVinE 2.96 (3.0 RC 1 ; 17.4.2013)
 ==================================
 
