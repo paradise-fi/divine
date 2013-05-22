@@ -15,6 +15,7 @@ void Declaration::fold( dve::SymTab* symtab )
         setSize( e.evaluate( ctx ) );
     }
 
+    initial.clear();
     for ( Expression &expr : initialExpr ) {
         dve::Expression e( *symtab, expr );
         EvalContext ctx;
