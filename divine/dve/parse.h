@@ -849,6 +849,7 @@ struct System : Parser {
     std::vector< LTL > ltlprops;
     std::vector< Macro< Expression > > exprs;
     std::vector< Macro< Automaton > > templates;
+    std::vector< MacroNode > procInstances;
     Identifier property;
     bool synchronous;
 
@@ -897,6 +898,12 @@ struct System : Parser {
         templates.back().content.setName( templates.back().name );
     }
 
+    void processInstance() {
+        eat( Token::Process );
+        procInstances.push_back( MacroNode( context() ) );
+        semicolon();
+    }
+
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
@@ -905,7 +912,8 @@ struct System : Parser {
                            &System::process,
                            &System::propDef,
                            &System::exprMacro,
-                           &System::templateMacro
+                           &System::templateMacro,
+                           &System::processInstance
                          ) );
 
         eat( Token::System );
