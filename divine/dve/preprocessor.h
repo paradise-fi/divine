@@ -238,6 +238,14 @@ struct System {
         for ( parse::LTL & ltl : ast.ltlprops ) {
             ast.properties.push_back( LTL2Process( ltl ) );
         }
+        for ( parse::MacroNode & mn : ast.procInstances ) {
+            parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
+            ast.processes.push_back( parse::Automaton( ma.content, true ) );
+            ast.processes.back().setName( parse::Identifier(
+                "__" + wibble::str::fmt( ma.used ++) + "_" + ma.name.name(),
+                ast.context()
+            ) );
+        }
         for ( parse::Automaton & proc : ast.processes ) {
             Automaton( defs, macros, proc, symtab );
         }

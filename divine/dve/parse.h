@@ -889,12 +889,13 @@ struct Macro : Parser {
     T content;
     Identifier name;
     std::vector< Identifier > params;
+    unsigned used;
 
     void paramlist() {
         list< Identifier >( std::back_inserter( params ), Token::Comma );
     }
 
-    Macro( Context &c ) : Parser( c )
+    Macro( Context &c ) : Parser( c ), used( 0 )
     {
         name = Identifier( c );
         eat( Token::ParenOpen );
