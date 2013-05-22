@@ -268,7 +268,13 @@ struct ExpressionList : Parser {
     }
     
     ExpressionList() {};
-    
+
+    ExpressionList( const ExpressionList &elist, bool independent )
+        : Parser( elist ), compound( elist.compound )
+    {
+        for ( const Expression &e : elist.explist )
+            explist.push_back( Expression( e, independent ) );
+    }
 };
 
 inline void RValue::subscript() {
@@ -288,7 +294,7 @@ inline std::ostream& RValue::dump( std::ostream &o ) {
 }
 
 inline RValue::RValue( const RValue &rval, bool independent )
-    : ident( rval.ident ), value( rval.value ),
+    : Parser( rval ), ident( rval.ident ), value( rval.value ),
       idx( rval.idx ), mNode( rval.mNode, independent )
 {
     if ( !independent )
@@ -335,6 +341,9 @@ struct LValue : Parser {
         maybe( &LValue::subscript );
     }
     LValue() {}
+
+    LValue( const LValue &lval, bool independent )
+        : Parser( lval ), ident( lval.ident ), idx( lval.idx, independent ) {}
 };
 
 struct LValueList: Parser {
@@ -364,6 +373,13 @@ struct LValueList: Parser {
     }
     
     LValueList() {}
+
+    LValueList( const LValueList & lvallist, bool independent )
+        : Parser( lvallist ), compound( lvallist.compound )
+    {
+        for ( const LValue &lval : lvallist.lvlist )
+            lvlist.push_back( LValue( lval, independent ) );
+    }
 };
 
 struct Assignment : Parser {
@@ -382,6 +398,9 @@ struct Assignment : Parser {
         eat( Token::Assignment );
         rhs = Expression( c );
     }
+
+    Assignment( const Assignment &a, bool independent )
+        : Parser( a ), lhs( a.lhs, independent ), rhs( a.rhs, independent ) {}
 };
 
 struct SyncExpr : Parser {
@@ -434,6 +453,11 @@ struct SyncExpr : Parser {
     }
 
     SyncExpr() {}
+
+    SyncExpr( const SyncExpr &se, bool independent )
+        : Parser( se ), write ( se.write ), compound( se.compound ),
+          proc( se.proc ), chan( se.chan ), exprlist( se.exprlist, independent ),
+          lvallist( se.lvallist, independent ) {}
 };
 
 
@@ -475,13 +499,24 @@ struct Declaration : Parser {
             initialExpr.push_back( Expression( context() ) );
     }
 
-  Declaration( Context &c ) : Parser( c ), is_buffered( 0 ), size( 1 )
+    Declaration( Context &c ) : Parser( c ), is_buffered( 0 ), size( 1 )
     {
         Token t = eat( Token::Identifier );
         name = t.data;
         is_array = false;
         maybe( &Declaration::subscript );
         maybe( &Declaration::initialiser );
+    }
+
+    Declaration( const Declaration &d, bool independent ) : Declaration( d )
+    {
+       if ( !independent )
+           return;
+
+       sizeExpr = Expression( d.sizeExpr, true );
+       initialExpr.clear();
+       for ( const Expression &e : d.initialExpr )
+           initialExpr.push_back( Expression( e, true ) );
     }
 
     void fold( SymTab* symtab );
@@ -531,6 +566,15 @@ struct ChannelDeclaration : Parser {
         name = t.data;
         is_buffered = false;
         maybe( &ChannelDeclaration::subscript );
+    }
+
+    ChannelDeclaration( const ChannelDeclaration &cd, bool independent )
+        : ChannelDeclaration( cd )
+    {
+        if ( !independent )
+            return;
+
+        sizeExpr = Expression( cd.sizeExpr, true );
     }
 
     void fold( SymTab* symtab );
@@ -611,6 +655,9 @@ struct Assertion : Parser {
         colon();
         expr = Expression( c );
     }
+
+    Assertion( const Assertion &a, bool independent )
+        : Parser( a ), state( a.state ), expr( a.expr, independent ) {}
 };
 
 struct Transition : Parser {
@@ -671,6 +718,19 @@ struct Transition : Parser {
         end = eat( Token::BlockClose );
     }
     Transition() {};
+
+    Transition( const Transition &t, bool independent )
+        : Parser( t ), from( t.from ), to( t.to ),
+          syncexpr( t.syncexpr, independent ), end( t.end )
+    {
+        guards.clear();
+        for ( const Expression &e : t.guards )
+            guards.push_back( Expression( e, independent ) );
+
+        effects.clear();
+        for ( const Assignment &a : t.effects )
+            effects.push_back( Assignment( a, independent ) );
+    }
 };
 
 inline size_t declarations( Parser &p, std::vector< Declaration > &decls,
@@ -800,6 +860,27 @@ struct Automaton : Parser {
     }
 
     Automaton() : Parser() {}
+
+    Automaton( const Automaton &a, bool independent )
+        : Parser( a ), name( a.name ), states( a.states ), accepts( a.accepts ),
+          commits( a.commits ), inits( a.inits )
+    {
+        decls.clear();
+        for ( const Declaration &d : a.decls )
+            decls.push_back( Declaration( d, independent ) );
+
+        chandecls.clear();
+        for ( const ChannelDeclaration &d : a.chandecls )
+            chandecls.push_back( ChannelDeclaration( d, independent ) );
+
+        asserts.clear();
+        for ( const Assertion &as : a.asserts )
+            asserts.push_back( Assertion( as, independent ) );
+
+        trans.clear();
+        for ( const Transition &t : a.trans )
+            trans.push_back( Transition( t, independent ) );
+    }
 
     void fold( SymTab *parent );
 };
