@@ -17,10 +17,10 @@ The source code of the latest version of DIVINE is available for download.
 Binaries are only available for 32-bit Windows.  Please note that DiVinE
 Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
 
-> * Source code: **[divine-2.96.tar.gz](download/divine-2.96.tar.gz)** (a release candidate for 3.0).
+> * Source code: **[divine-2.97.tar.gz](download/divine-2.97.tar.gz)** (a second release candidate for 3.0).
 >
 > * An installer for 32 bit windows:
->   **[divine-2.96-installer.exe](download/divine-2.96-installer.exe)**.
+>   **[divine-2.97-installer.exe](download/divine-2.97-installer.exe)**.
 >
 > Please consult [release notes] [1] for a summary of changes between
 > releases. Binaries and source tarballs of development snapshots can be
