@@ -13,8 +13,6 @@
 #include <divine/toolkit/pool.h>
 #include <divine/graph/graph.h>
 
-#include <iostream>
-
 #ifndef N_TREE_HASH_SET_H
 #define N_TREE_HASH_SET_H
 
@@ -48,23 +46,7 @@ struct NTreeHashSet
     _roots( hasher ),
     _forks( ForkHasher( hasher.pool() ) ),
     _leafs( LeafHasher( hasher.pool() ) )
-#ifndef O_PERFORMANCE
-    , inserts( 0 ), leafReuse( 0 ), forkReuse( 0 ), rootReuse( 0 )
-#endif
     { }
-
-#ifndef O_PERFORMANCE
-    ~NTreeHashSet() {
-        std::cout << "~NTreeHashSet: "
-                  << "inserts: " << inserts << ", "
-                  << "leafReuse: " << leafReuse << ", "
-                  << "forkReuse: " << forkReuse << ", "
-                  << "rootReuse: " << rootReuse << ", "
-                  << "roots: " << _roots.size() << ", "
-                  << "forks: " << _forks.size() << ", "
-                  << "leafs: " << _leafs.size() << std::endl;
-    }
-#endif
 
     struct Leaf {
         Blob b;
@@ -378,26 +360,11 @@ struct NTreeHashSet
     size_t size() { return _roots.size(); }
     bool empty() { return _roots.empty(); }
 
-#ifndef O_PERFORMANCE
-    size_t inserts, leafReuse, forkReuse, rootReuse;
-
-    void incInserts() { ++inserts; }
-    void incLeafReuse() { ++leafReuse; }
-    void incForkReuse() { ++forkReuse; }
-    void incRootReuse() { ++rootReuse; }
-#else
-    void incInserts() {}
-    void incLeafReuse() {}
-    void incForkReuse() {}
-    void incRootReuse() {}
-#endif
-
     template < typename Generator >
     std::tuple< Root, bool > insertHinted( Item item, hash_t hash,
                                            Generator& generator )
     {
         assert( hasher.valid( item ) );
-        incInserts();
 
         Pool& pool = generator.pool();
 
@@ -434,10 +401,8 @@ struct NTreeHashSet
         Root tr;
         bool inserted;
         std::tie( tr, inserted ) = _roots.insertHinted( root, hash );
-        if ( !inserted ) {
-            incRootReuse();
+        if ( !inserted )
             pool.free( root.b );
-        }
 
         return std::make_tuple( tr, inserted );
     }
@@ -478,14 +443,11 @@ struct NTreeHashSet
             std::tie( tlf, inserted ) = _leafs.insert( child.leaf() );
             if ( !inserted ) {
                 pool.free( child.blob() );
-                incLeafReuse();
             }
         } else {
             std::tie( tlf, inserted ) = _forks.insert( child.fork() );
-            if ( !inserted ) {
+            if ( !inserted )
                 pool.free( child.blob() );
-                incForkReuse();
-            }
         }
 
         return tlf;
