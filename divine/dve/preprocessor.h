@@ -91,11 +91,11 @@ struct Expression {
             parse::Macro< parse::Expression > &m = macros.getExpr( expr.rval->mNode.name.name() );
             expr.op = m.content.op;
             if ( m.content.lhs )
-                expr.lhs.reset( new parse::Expression( *m.content.lhs, true) );
+                expr.lhs.reset( new parse::Expression( *m.content.lhs, parse::ASTClone() ) );
             if ( m.content.rhs )
-                expr.rhs.reset( new parse::Expression( *m.content.rhs, true) );
+                expr.rhs.reset( new parse::Expression( *m.content.rhs, parse::ASTClone() ) );
             if ( m.content.rval )
-                expr.rval.reset( new parse::RValue( *m.content.rval, true) );
+                expr.rval.reset( new parse::RValue( *m.content.rval, parse::ASTClone() ) );
         }
         if ( expr.lhs )
             Expression( defs, macros, *expr.lhs );
@@ -240,7 +240,7 @@ struct System {
         }
         for ( parse::MacroNode & mn : ast.procInstances ) {
             parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
-            ast.processes.push_back( parse::Automaton( ma.content, true ) );
+            ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
             ast.processes.back().setName( parse::Identifier(
                 "__" + wibble::str::fmt( ma.used ++) + "_" + ma.name.name(),
                 ast.context()

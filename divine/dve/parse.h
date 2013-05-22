@@ -42,6 +42,8 @@ typedef wibble::Parser< Token, Lexer< IOStream > > Parser;
 
 namespace parse {
 
+struct ASTClone {};
+
 struct Constant : Parser {
     Token token;
     int value;
@@ -103,7 +105,7 @@ struct MacroNode : Parser {
         eat( Token::ParenClose );
     }
 
-    MacroNode( const MacroNode &mnode, bool independent );
+    MacroNode( const MacroNode &mnode, ASTClone );
 
     MacroNode() {}
 };
@@ -134,7 +136,7 @@ struct RValue : Parser {
         either( &RValue::macro, &RValue::reference, &RValue::constant );
     }
 
-    RValue( const RValue &rval, bool independent );
+    RValue( const RValue &rval, ASTClone );
 
     RValue() : idx( 0 ) {}
 };
@@ -224,18 +226,15 @@ struct Expression : Parser {
         *this = Expression( parent.createChild( lexer, name ) );
     }
 
-    Expression( const Expression &exp, bool independent ) : Expression( exp ) {
-        if ( !independent )
-            return;
-
+    Expression( const Expression &exp, ASTClone ) : Expression( exp ) {
         if ( exp.lhs )
-            lhs.reset( new Expression( *exp.lhs, independent ) );
+            lhs.reset( new Expression( *exp.lhs, ASTClone() ) );
 
         if ( exp.rhs )
-            rhs.reset( new Expression( *exp.rhs, independent ) );
+            rhs.reset( new Expression( *exp.rhs, ASTClone() ) );
 
         if ( exp.rval )
-            rval.reset( new RValue( *exp.rval, independent ) );
+            rval.reset( new RValue( *exp.rval, ASTClone() ) );
     }
 
     Expression() : lhs( 0 ), rhs( 0 ), rval( 0 ) {}
@@ -269,11 +268,11 @@ struct ExpressionList : Parser {
     
     ExpressionList() {};
 
-    ExpressionList( const ExpressionList &elist, bool independent )
+    ExpressionList( const ExpressionList &elist, ASTClone )
         : Parser( elist ), compound( elist.compound )
     {
         for ( const Expression &e : elist.explist )
-            explist.push_back( Expression( e, independent ) );
+            explist.push_back( Expression( e, ASTClone() ) );
     }
 };
 
@@ -293,15 +292,12 @@ inline std::ostream& RValue::dump( std::ostream &o ) {
     return o;
 }
 
-inline RValue::RValue( const RValue &rval, bool independent )
+inline RValue::RValue( const RValue &rval, ASTClone )
     : Parser( rval ), ident( rval.ident ), value( rval.value ),
-      idx( rval.idx ), mNode( rval.mNode, independent )
+      idx( rval.idx ), mNode( rval.mNode, ASTClone() )
 {
-    if ( !independent )
-        return;
-
     if ( rval.idx ) {
-        idx = new Expression( *rval.idx, independent );
+        idx = new Expression( *rval.idx, ASTClone() );
     }
 }
 
@@ -310,15 +306,12 @@ inline void MacroNode::param() {
     params.push_back( expr );
 }
 
-inline MacroNode::MacroNode( const MacroNode &mnode, bool independent )
+inline MacroNode::MacroNode( const MacroNode &mnode, ASTClone )
     : MacroNode( mnode )
 {
-    if ( !independent )
-        return;
-
     params.clear();
     for ( Expression * ex : mnode.params )
-        params.push_back( new Expression( *ex, independent ) );
+        params.push_back( new Expression( *ex, ASTClone() ) );
 }
 
 struct LValue : Parser {
@@ -342,8 +335,8 @@ struct LValue : Parser {
     }
     LValue() {}
 
-    LValue( const LValue &lval, bool independent )
-        : Parser( lval ), ident( lval.ident ), idx( lval.idx, independent ) {}
+    LValue( const LValue &lval, ASTClone )
+        : Parser( lval ), ident( lval.ident ), idx( lval.idx, ASTClone() ) {}
 };
 
 struct LValueList: Parser {
@@ -374,11 +367,11 @@ struct LValueList: Parser {
     
     LValueList() {}
 
-    LValueList( const LValueList & lvallist, bool independent )
+    LValueList( const LValueList & lvallist, ASTClone )
         : Parser( lvallist ), compound( lvallist.compound )
     {
         for ( const LValue &lval : lvallist.lvlist )
-            lvlist.push_back( LValue( lval, independent ) );
+            lvlist.push_back( LValue( lval, ASTClone() ) );
     }
 };
 
@@ -399,8 +392,8 @@ struct Assignment : Parser {
         rhs = Expression( c );
     }
 
-    Assignment( const Assignment &a, bool independent )
-        : Parser( a ), lhs( a.lhs, independent ), rhs( a.rhs, independent ) {}
+    Assignment( const Assignment &a, ASTClone )
+        : Parser( a ), lhs( a.lhs, ASTClone() ), rhs( a.rhs, ASTClone() ) {}
 };
 
 struct SyncExpr : Parser {
@@ -454,10 +447,10 @@ struct SyncExpr : Parser {
 
     SyncExpr() {}
 
-    SyncExpr( const SyncExpr &se, bool independent )
+    SyncExpr( const SyncExpr &se, ASTClone )
         : Parser( se ), write ( se.write ), compound( se.compound ),
-          proc( se.proc ), chan( se.chan ), exprlist( se.exprlist, independent ),
-          lvallist( se.lvallist, independent ) {}
+          proc( se.proc ), chan( se.chan ), exprlist( se.exprlist, ASTClone() ),
+          lvallist( se.lvallist, ASTClone() ) {}
 };
 
 
@@ -508,15 +501,12 @@ struct Declaration : Parser {
         maybe( &Declaration::initialiser );
     }
 
-    Declaration( const Declaration &d, bool independent ) : Declaration( d )
+    Declaration( const Declaration &d, ASTClone ) : Declaration( d )
     {
-       if ( !independent )
-           return;
-
-       sizeExpr = Expression( d.sizeExpr, true );
+       sizeExpr = Expression( d.sizeExpr, ASTClone() );
        initialExpr.clear();
        for ( const Expression &e : d.initialExpr )
-           initialExpr.push_back( Expression( e, true ) );
+           initialExpr.push_back( Expression( e, ASTClone() ) );
     }
 
     void fold( SymTab* symtab );
@@ -568,13 +558,10 @@ struct ChannelDeclaration : Parser {
         maybe( &ChannelDeclaration::subscript );
     }
 
-    ChannelDeclaration( const ChannelDeclaration &cd, bool independent )
+    ChannelDeclaration( const ChannelDeclaration &cd, ASTClone )
         : ChannelDeclaration( cd )
     {
-        if ( !independent )
-            return;
-
-        sizeExpr = Expression( cd.sizeExpr, true );
+        sizeExpr = Expression( cd.sizeExpr, ASTClone() );
     }
 
     void fold( SymTab* symtab );
@@ -656,8 +643,8 @@ struct Assertion : Parser {
         expr = Expression( c );
     }
 
-    Assertion( const Assertion &a, bool independent )
-        : Parser( a ), state( a.state ), expr( a.expr, independent ) {}
+    Assertion( const Assertion &a, ASTClone )
+        : Parser( a ), state( a.state ), expr( a.expr, ASTClone() ) {}
 };
 
 struct Transition : Parser {
@@ -719,17 +706,17 @@ struct Transition : Parser {
     }
     Transition() {};
 
-    Transition( const Transition &t, bool independent )
+    Transition( const Transition &t, ASTClone )
         : Parser( t ), from( t.from ), to( t.to ),
-          syncexpr( t.syncexpr, independent ), end( t.end )
+          syncexpr( t.syncexpr, ASTClone() ), end( t.end )
     {
         guards.clear();
         for ( const Expression &e : t.guards )
-            guards.push_back( Expression( e, independent ) );
+            guards.push_back( Expression( e, ASTClone() ) );
 
         effects.clear();
         for ( const Assignment &a : t.effects )
-            effects.push_back( Assignment( a, independent ) );
+            effects.push_back( Assignment( a, ASTClone() ) );
     }
 };
 
@@ -857,25 +844,25 @@ struct Automaton : Parser {
 
     Automaton() : Parser() {}
 
-    Automaton( const Automaton &a, bool independent )
+    Automaton( const Automaton &a, ASTClone )
         : Parser( a ), name( a.name ), states( a.states ), accepts( a.accepts ),
           commits( a.commits ), inits( a.inits )
     {
         decls.clear();
         for ( const Declaration &d : a.decls )
-            decls.push_back( Declaration( d, independent ) );
+            decls.push_back( Declaration( d, ASTClone() ) );
 
         chandecls.clear();
         for ( const ChannelDeclaration &d : a.chandecls )
-            chandecls.push_back( ChannelDeclaration( d, independent ) );
+            chandecls.push_back( ChannelDeclaration( d, ASTClone() ) );
 
         asserts.clear();
         for ( const Assertion &as : a.asserts )
-            asserts.push_back( Assertion( as, independent ) );
+            asserts.push_back( Assertion( as, ASTClone() ) );
 
         trans.clear();
         for ( const Transition &t : a.trans )
-            trans.push_back( Transition( t, independent ) );
+            trans.push_back( Transition( t, ASTClone() ) );
     }
 
     void fold( SymTab *parent );
