@@ -760,9 +760,14 @@ struct Automaton : Parser {
         return o;
     }
 
+    void setName( Identifier newname ) {
+        name = newname;
+        for( Transition &t : trans ) {
+            t.proc = name;
+        }
+    }
+
     Automaton( Context &c ) : Parser( c ) {
-        eat( Token::Process );
-        name = Identifier( c );
         eat( Token::BlockOpen );
 
         declarations( *this, decls, chandecls );
@@ -785,10 +790,6 @@ struct Automaton : Parser {
         }
 
         eat( Token::BlockClose );
-
-        for( Transition &t : trans ) {
-            t.proc = name;
-        }
     }
 
     Automaton() : Parser() {}
@@ -838,6 +839,7 @@ struct System : Parser {
     std::vector< Property > properties;
     std::vector< LTL > ltlprops;
     std::vector< Macro< Expression > > exprs;
+    std::vector< Macro< Automaton > > templates;
     Identifier property;
     bool synchronous;
 
@@ -847,7 +849,10 @@ struct System : Parser {
     }
 
     void process() {
+        eat( Token::Process );
+        Identifier procname( context() );
         processes.push_back( Process( context() ) );
+        processes.back().setName( procname );
     }
 
     void propDef() {
@@ -856,7 +861,10 @@ struct System : Parser {
     }
 
     void procProperty() {
+        eat( Token::Process );
+        Identifier procname( context() );
         properties.push_back( Property( context() ) );
+        properties.back().setName( procname );
     }
 
     void LTLProperty() {
@@ -874,6 +882,12 @@ struct System : Parser {
         exprs.push_back( Macro< Expression >( context() ) );
     }
 
+    void templateMacro() {
+        eat( Token::Process );
+        templates.push_back( Macro< Automaton >( context() ) );
+        templates.back().content.setName( templates.back().name );
+    }
+
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
@@ -881,7 +895,8 @@ struct System : Parser {
         while ( maybe( &System::declaration,
                            &System::process,
                            &System::propDef,
-                           &System::exprMacro
+                           &System::exprMacro,
+                           &System::templateMacro
                          ) );
 
         eat( Token::System );
