@@ -366,21 +366,7 @@ struct NTreeHashSet
     size_t size() { return _roots.size(); }
     bool empty() { return _roots.empty(); }
 
-#ifndef O_PERFORMANCE
-    size_t inserts, leafReuse, forkReuse, rootReuse;
-
-    void incInserts() { ++inserts; }
-    void incLeafReuse() { ++leafReuse; }
-    void incForkReuse() { ++forkReuse; }
-    void incRootReuse() { ++rootReuse; }
-#else
-    void incInserts() {}
-    void incLeafReuse() {}
-    void incForkReuse() {}
-    void incRootReuse() {}
-#endif
-
-    template < typename Generator >
+    template < typename TD >
     std::tuple< Root, bool > insertHinted( Item item, hash_t hash,
                                            TD &td )
     {
