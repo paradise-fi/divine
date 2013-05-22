@@ -79,6 +79,7 @@ struct DveCompiler
             ast = new parse::System( ctx );
             dve::preprocessor::System preproc( defs );
             preproc.process( *ast );
+            ast->fold();
             //system = new System( ast );
         } catch (...) {
             ctx.errors( std::cerr );

@@ -477,10 +477,9 @@ static inline void declare( SymTab &symtab, const parse::Decls &decls )
             symtab.allocate( NS::Variable, *i );
         std::vector< int > init;
         EvalContext ctx;
-        for ( size_t j = 0; j < i->initial.size(); ++j ) {
-            Expression ex( symtab, i->initial[ j ] );
-            init.push_back( ex.evaluate( ctx ) );
-        }
+        for ( size_t j = 0; j < i->initial.size(); ++j )
+            init.push_back( i->initial[ j ]);
+
         // TODO: add proper runtime check for array size validity
         assert_leq( 0, i->size );
         while ( init.size() < static_cast<unsigned>(i->size) )

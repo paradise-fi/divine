@@ -180,7 +180,7 @@ void DveCompiler::gen_constants()
                     else
                         first = false;
                     std::stringstream strstr;
-                    it->dump( strstr );
+                    strstr << *it;
                     append( strstr.str() );
                 }
                 append( "}" );
@@ -188,7 +188,7 @@ void DveCompiler::gen_constants()
         }
         else if ( decl.initial.size() > 0 ) {
             std::stringstream strstr;
-            decl.initial.begin()->dump( strstr );
+            strstr << *decl.initial.begin();
             append( string( " = " ) + strstr.str() );
         }
         line( ";" );
@@ -311,14 +311,14 @@ void DveCompiler::initVars( vector< parse::Declaration > & decls, string process
         if ( decl.is_array ) {
             for ( size_t i = 0; i < decl.initial.size(); i++ ) {
                 std::stringstream strstr;
-                decl.initial[ i ].dump( strstr );
+                strstr << decl.initial[ i ];
                 assign( var + "[" + fmt( i ) + "]", strstr.str() );
             }
         }
         else {
             if ( decl.initial.size() > 0 ) {
                 std::stringstream strstr;
-                decl.initial[ 0 ].dump( strstr );
+                strstr << decl.initial[ 0 ];
                 assign( var, strstr.str() );
             }
         }

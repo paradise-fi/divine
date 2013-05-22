@@ -197,6 +197,7 @@ struct Dve : public Common< Blob > {
             dve::parse::System ast( ctx );
             dve::preprocessor::System preproc( defs );
             preproc.process( ast );
+            ast.fold();
             system = std::make_shared< dve::System >( ast );
         } catch (...) {
             ctx.errors( std::cerr );

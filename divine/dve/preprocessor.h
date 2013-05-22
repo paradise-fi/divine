@@ -119,36 +119,20 @@ struct Declaration {
     Declaration( Definitions &ds, Macros &ms, parse::Declaration &d, SymTab &st )
         : defs( ds ), macros( ms ), decl( d )
     {
-        if ( decl.sizeExpr.valid() ) {
+        if ( decl.sizeExpr.valid() )
             Expression( defs, macros, decl.sizeExpr );
-            dve::Expression e( st, decl.sizeExpr );
-            EvalContext ctx;
-            decl.setSize( e.evaluate( ctx ) );
-        }
 
         if ( decl.is_input ) {
             if ( defs.count( decl.name ) ) {
                 Initialiser init( decl.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
-                decl.initial = init.initial;
+                decl.initialExpr = init.initial;
             }
             decl.is_const = true;
             decl.is_input = false;
         }
 
-        for ( parse::Expression &expr : decl.initial )
+        for ( parse::Expression &expr : decl.initialExpr )
             Expression( defs, macros, expr );
-
-        if ( decl.is_const ) {
-            std::vector< int > init;
-            EvalContext ctx;
-            for ( parse::Expression &expr : decl.initial ) {
-                dve::Expression ex( st, expr );
-                init.push_back( ex.evaluate( ctx ) );
-            }
-            while ( init.size() < static_cast< unsigned >( decl.size ) )
-                init.push_back( 0 );
-            st.constant( NS::Variable, decl.name, init );
-        }
     }
 };
 
@@ -160,12 +144,8 @@ struct ChannelDeclaration {
     ChannelDeclaration( Definitions &ds, Macros &ms, parse::ChannelDeclaration &d, SymTab &st )
         : defs( ds ), macros( ms ), decl( d )
     {
-        if ( decl.sizeExpr.valid() ) {
+        if ( decl.sizeExpr.valid() )
             Expression( defs, macros, decl.sizeExpr );
-            divine::dve::Expression e( st, decl.sizeExpr );
-            EvalContext ctx;
-            decl.setSize( e.evaluate( ctx ) );
-        }
     }
 };
 
@@ -234,19 +214,6 @@ struct System {
         propBA.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
 
         return propBA;
-    }
-
-    void processInput( parse::Declaration & decl ) {
-        if ( defs.count( decl.name ) ) {
-            Initialiser init( decl.context().createChild( *defs[ decl.name ].lexer, defs[ decl.name ].var ) );
-            decl.initial = init.initial;
-            decl.is_const = true;
-            decl.is_input = false;
-        }
-        else if ( decl.initial.size() ) {
-            decl.is_const = true;
-            decl.is_input = false;
-        }
     }
 
     void process( parse::System & ast ) {

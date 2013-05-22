@@ -14,6 +14,8 @@
 namespace divine {
 namespace dve {
 
+struct SymTab;
+
 /*
  * Avoid dependent scope in the parsers, which would make them quite *
  * unreadable. XXX use a virtualised StreamBase or such instead...
@@ -445,7 +447,8 @@ struct Declaration : Parser {
     Expression sizeExpr;
     int size;
     std::vector< int > components;
-    std::vector< Expression > initial;
+    std::vector< Expression > initialExpr;
+    std::vector< int > initial;
     std::string name;
     bool is_input;
 
@@ -466,10 +469,10 @@ struct Declaration : Parser {
         Token t = eat( Token::Assignment );
 
         if ( is_array )
-            list< Expression >( std::back_inserter( initial ),
+            list< Expression >( std::back_inserter( initialExpr ),
                                 Token::BlockOpen, Token::Comma, Token::BlockClose );
         else
-            initial.push_back( Expression( context() ) );
+            initialExpr.push_back( Expression( context() ) );
     }
 
   Declaration( Context &c ) : Parser( c ), is_buffered( 0 ), size( 1 )
@@ -480,6 +483,8 @@ struct Declaration : Parser {
         maybe( &Declaration::subscript );
         maybe( &Declaration::initialiser );
     }
+
+    void fold( SymTab* symtab );
 };
 
 struct Type : Parser {
@@ -527,6 +532,8 @@ struct ChannelDeclaration : Parser {
         is_buffered = false;
         maybe( &ChannelDeclaration::subscript );
     }
+
+    void fold( SymTab* symtab );
 };
 
 /*
@@ -793,6 +800,8 @@ struct Automaton : Parser {
     }
 
     Automaton() : Parser() {}
+
+    void fold( SymTab *parent );
 };
 
 typedef Automaton Process;
@@ -911,6 +920,8 @@ struct System : Parser {
         semicolon();
         context().clearErrors();
     }
+
+    void fold();
 };
 
 }
