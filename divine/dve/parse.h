@@ -835,8 +835,6 @@ struct Automaton : Parser {
     }
 
     Automaton( Context &c ) : Parser( c ) {
-        eat( Token::BlockOpen );
-
         declarations( *this, decls, chandecls );
 
         arbitrary( &Automaton::accept,
@@ -855,8 +853,6 @@ struct Automaton : Parser {
             list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
             maybe( &Automaton::semicolon );
         }
-
-        eat( Token::BlockClose );
     }
 
     Automaton() : Parser() {}
@@ -942,7 +938,9 @@ struct System : Parser {
     void process() {
         eat( Token::Process );
         Identifier procname( context() );
+        eat( Token::BlockOpen );
         processes.push_back( Process( context() ) );
+        eat( Token::BlockClose );
         processes.back().setName( procname );
     }
 
@@ -954,7 +952,9 @@ struct System : Parser {
     void procProperty() {
         eat( Token::Process );
         Identifier procname( context() );
+        eat( Token::BlockOpen );
         properties.push_back( Property( context() ) );
+        eat( Token::BlockClose );
         properties.back().setName( procname );
     }
 
