@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <wibble/string.h>
 #include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
@@ -195,7 +196,7 @@ struct DveCompiler
     }
 
     std::string process_state( parse::Process &p, std::string state ) {
-        return state + "._control." + p.name.name();
+        return state + "._control." + getProcName( p );
     }
 
     std::string channel_items( std::string p, parse::SyncExpr & chan, std::string state ) {
@@ -207,7 +208,7 @@ struct DveCompiler
         if ( !chanProc.valid() )
             return state + "." + chan.chan.name() + ".number_of_items";
         else
-            return state + "." + chanProc.name() + "." + chan.chan.name() + ".number_of_items";
+            return state + "." + getProcName( chanProc.name() ) + "." + chan.chan.name() + ".number_of_items";
     }
 
     std::string channel_item_at( std::string p, parse::SyncExpr & chan, std::string pos, int x, std::string state ) {
@@ -219,7 +220,7 @@ struct DveCompiler
         if ( !chanProc.valid() )
             return state + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
         else
-            return state + "." + chanProc.name() + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+            return state + "." + getProcName( chanProc.name() ) + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
     }
 
     parse::ChannelDeclaration & getChannel( std::string proc, parse::SyncExpr & chan ) {
@@ -276,7 +277,7 @@ struct DveCompiler
         parse::Process &p = getProcess( context );
         for ( parse::Declaration &decl : p.decls ) {
             if ( decl.name == name )
-                return ( decl.is_const ? "" : state + "." ) + context + "." + name;
+                return ( decl.is_const ? "" : state + "." ) + getProcName( context ) + "." + name;
         }
         for ( parse::Declaration &decl : ast->decls ) {
             if ( decl.name == name )
@@ -358,6 +359,21 @@ struct DveCompiler
             ++ i;
         }
         return -1;
+    }
+
+    std::string getProcName( parse::Process &p ) {
+        return getProcName( p.name.name() );
+    }
+
+    std::string getProcName( std::string proc ) {
+        std::string retval = proc;
+        std::transform( retval.begin(), retval.end(), retval.begin(),
+                        []( int c ){
+                            if ( ( c == '[' ) || ( c == ']' ) )
+                                return int('_') ;
+                            return c;
+                        } );
+        return retval;
     }
 
     parse::Process & getProcess( std::string proc ) {

@@ -242,7 +242,7 @@ struct System {
             parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
             ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
             ast.processes.back().setName( parse::Identifier(
-                "__" + wibble::str::fmt( ma.used ++) + "_" + ma.name.name(),
+                ma.name.name() + "[" + wibble::str::fmt( ma.used ++) + "]",
                 ast.context()
             ) );
         }

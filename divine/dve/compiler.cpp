@@ -262,7 +262,7 @@ void DveCompiler::gen_state_struct()
         int bits = 1;
         while ( max /= 2 ) ++ bits;
         total_bits += bits;
-        declare( "uint16_t", p.name.name() + ":" + fmt( bits ) );
+        declare( "uint16_t", getProcName( p ) + ":" + fmt( bits ) );
     }
 
     for ( parse::Process &p : ast->properties ) {
@@ -270,7 +270,7 @@ void DveCompiler::gen_state_struct()
         int bits = 1;
         while ( max /= 2 ) ++ bits;
         total_bits += bits;
-        declare( "uint16_t", p.name.name() + ":" + fmt( bits ) );
+        declare( "uint16_t", getProcName( p ) + ":" + fmt( bits ) );
     }
 
     block_end();
@@ -283,7 +283,7 @@ void DveCompiler::gen_state_struct()
 
         declare( p.decls, p.chandecls );
 
-        end_process( p.name.name() );
+        end_process( getProcName( p ) );
     }
 
     for ( parse::Property &p : ast->properties ) {
@@ -291,7 +291,7 @@ void DveCompiler::gen_state_struct()
 
         declare( p.decls, p.chandecls );
 
-        end_process( p.name.name() );
+        end_process( getProcName( p ) );
     }
 
     block_end();
@@ -341,7 +341,7 @@ void DveCompiler::gen_initial_state()
     initVars( ast->decls, "_out" );
 
     for ( parse::Process &p : ast->processes ) {
-        initVars( p.decls, std::string( "_out." ) + p.name.name() );
+        initVars( p.decls, std::string( "_out." ) + getProcName( p ) );
 
         int i = 0;
         for ( auto s : p.states ) {
@@ -352,7 +352,7 @@ void DveCompiler::gen_initial_state()
     }
 
     for ( parse::Property &p : ast->properties ) {
-        initVars( p.decls, std::string( "_out." ) + p.name.name() );
+        initVars( p.decls, std::string( "_out." ) + getProcName( p ) );
 
         int i = 0;
         for ( auto s : p.states ) {
