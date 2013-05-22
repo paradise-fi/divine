@@ -44,9 +44,18 @@ typedef std::unordered_map< std::string, Definition > Definitions;
 
 struct Macros {
     std::vector< parse::Macro< parse::Expression > > exprs;
+    std::vector< parse::Macro< parse::Automaton > > processes;
 
     parse::Macro< parse::Expression > & getExpr( std::string name ) {
         for ( parse::Macro< parse::Expression > &macro : exprs ) {
+            if ( macro.name.name() == name )
+                return macro;
+        }
+        throw;
+    }
+
+    parse::Macro< parse::Automaton > & getProcess( std::string name ) {
+        for ( parse::Macro< parse::Automaton > &macro : processes ) {
             if ( macro.name.name() == name )
                 return macro;
         }
@@ -218,6 +227,8 @@ struct System {
 
     void process( parse::System & ast ) {
         macros.exprs = ast.exprs;
+        macros.processes = ast.templates;
+
         for ( parse::Declaration & decl : ast.decls ) {
                 Declaration( defs, macros, decl, symtab );
         }
