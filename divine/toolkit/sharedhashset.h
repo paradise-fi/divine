@@ -26,12 +26,12 @@ struct SharedHashSet {
     using InputHasher = Hasher;
 
     enum class InsertResolution {
-        Success,  // everything is OK
-        Failed,   // cannot insert value - someone was faster
-        Found,    // item is in table
-        NotSpace, // I want grow
-        Growing   // table is growing or was already resized,
-                  // release and acquire row and repeat it
+        Success, // the item has been inserted successfully
+        Failed,  // cannot insert value, table growth has been triggered while
+                 // we were looking for a free cell
+        Found,   // item was already in the table
+        NoSpace, // there's is not enough space in the table
+        Growing  // table is growing or was already resized, retry
     };
     enum class FindResolution { Found, Growing, NotFound };
 
@@ -66,7 +66,8 @@ struct SharedHashSet {
     std::atomic< bool > growing;
     Hasher hasher;
 
-    /** Thread-safe */
+    /* can be called while other threads insert, but may give outdated info
+     * (less than the current size) */
     size_t size() const {
         return table[ currentRow ]->size();
     }
@@ -83,20 +84,18 @@ struct SharedHashSet {
         }
     }
 
-	/** NOT thread-safe */
+    /* only usable before the first insert */
     void setSize( unsigned s ) {
         s = bitops::fill( s - 1 ) + 1;
         if ( !table[ 1 ] )
             table[ 1 ] = new Row( s );
     }
 
-   /** NOT thread-safe */
     void setHasher( Hasher h ) {
         hasher = h;
     }
 
-    /** TODO: move away so HashSet can use this method */
-	/** Thread-safe */
+    /* TODO factor this out into a place where HashSet can use it, too */
     unsigned index( hash_t h, unsigned i, unsigned mask ) const {
         h &= ~hash_t( thresh - 1 );
         const unsigned Q = 1, R = 1;
@@ -110,13 +109,11 @@ struct SharedHashSet {
         }
     }
 
-	/** Thread-safe */
     template< typename TD >
     std::tuple< Item, bool > insert( Item x, TD &tld ) {
         return insertHinted( x, hasher.hash( x ), tld );
     }
 
-	/** Thread-safe */
     template< typename TD >
     std::tuple< Item, bool > insertHinted( Item x, hash_t h, TD &tld ) {
         while ( true ) {
@@ -125,7 +122,7 @@ struct SharedHashSet {
                     return std::make_tuple( x, true );
                 case InsertResolution::Found:
                     return std::make_tuple( x, false );
-                case InsertResolution::NotSpace:
+                case InsertResolution::NoSpace:
                     if ( grow( tld.currentRow + 1 ) ) {
                         releaseRow( tld.currentRow );
                         ++tld.currentRow;
@@ -141,7 +138,6 @@ struct SharedHashSet {
         __builtin_unreachable();
     }
 
-	/** Thread-safe */
     template< typename T, typename TD >
     std::tuple< Item, bool > getHinted( T x, hash_t h, TD &tld ) {
         auto pair = std::make_pair( Item(), x );
@@ -161,7 +157,7 @@ struct SharedHashSet {
         __builtin_unreachable();
     }
 
-    /** NOT thread-safe */
+    /* multiple threads may use operator[], but not concurrently with insertions! */
     Item operator[]( size_t index ) {
         return (*table[ currentRow ])[ index ].value;
     }
@@ -171,13 +167,12 @@ struct SharedHashSet {
 
 protected:
 
-	/** Thread-safe */
     template< typename T >
     FindResolution getCell( std::pair< Item, T > &pair, hash_t h, unsigned rowIndex ) {
 
         while( growing ) {
             // help with moving table
-            while( processSegment() );
+            while( rehashSegment() );
         }
         if ( changed( rowIndex ) )
             return FindResolution::Growing;
@@ -210,7 +205,7 @@ protected:
         return FindResolution::NotFound;
     }
 
-	/** Thread-safe */
+    /* force must not be set unless we are growing (rehashing) */
     InsertResolution tryInsert( Cell &cell, Item x, hash_t h, hash_t &chl, int rowIndex, bool force ) {
         if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
 
@@ -225,13 +220,10 @@ protected:
         return InsertResolution::Failed;
     }
 
-	/** Thread-safe */
     InsertResolution insertCell( Item &x, hash_t h, int rowIndex, bool force = false ) {
         if ( !force ) {
-            while( growing ) {
-                // help with moving table
-                while ( processSegment() );
-            }
+            while( growing ) // help with rehashing
+                while ( rehashSegment() );
 
             if ( changed( rowIndex ) )
                 return InsertResolution::Growing;
@@ -241,9 +233,7 @@ protected:
         assert( !row.empty() );
         const unsigned mask = row.size() - 1;
 
-		const unsigned acceptableCollisions = force ?
-					65536 :
-					maxCollisions;
+        const unsigned acceptableCollisions = force ? 65536 : maxCollisions;
         for ( unsigned i = 0; i < acceptableCollisions; ++i ) {
 
             Cell &cell = row[ index( h, i, mask ) ];
@@ -265,7 +255,7 @@ protected:
                 /* Wait until value write finishes. */
                 if ( chl & 1 )
                     while ( ( chl = cell.hashLock ) & 1 ) {
-                        // check whether cell was move by "processSegment" call
+                        // check whether cell was moved by a "rehashSegment" call
                         if ( chl == 1 )
                             return InsertResolution::Growing;
                     }
@@ -282,15 +272,13 @@ protected:
                 }
             }
         }
-        return InsertResolution::NotSpace;
+        return InsertResolution::NoSpace;
     }
 
-	/** Thread-safe */
     inline bool changed( unsigned rowIndex ) {
         return rowIndex < currentRow;
     }
 
-	/** Thread-safe */
     bool grow( unsigned rowIndex ) {
         assert( rowIndex );
 
@@ -307,7 +295,7 @@ protected:
         while ( growing.exchange( true ) ); // acquire growing lock
 
         if ( currentRow >= rowIndex ) {
-            growing.exchange( false );// release lock
+            growing.exchange( false ); // release the lock
             return false;
         }
 
@@ -319,7 +307,7 @@ protected:
         const unsigned segments = std::max( row.size() / segmentSize, size_t( 1 ) );// if size < segmentSize
         availableSegments.exchange( segments );
 
-        while ( processSegment() );
+        while ( rehashSegment() );
 
         // release memory after processing all segments
         while( doneSegments != segments );
@@ -328,9 +316,7 @@ protected:
     }
 
     // thread processing last segment releases growing mutex
-    // method can be executed ONLY during growing
-	/** Thread-safe (partial) */
-    bool processSegment() {
+    bool rehashSegment() {
         int segment;
         if ( availableSegments <= 0 )
             return false;
@@ -356,7 +342,7 @@ protected:
                 continue;
 
             if ( insertCell( it->value, chl & ~hash_t(1), currentRow, true )
-                == InsertResolution::NotSpace ) {
+                == InsertResolution::NoSpace ) {
                 std::cerr << "no enough space during growing" << std::endl;
                 abort();
             }
@@ -368,7 +354,6 @@ protected:
         return segment > 0;
     }
 
-	/** Thread-safe */
     void updateIndex( unsigned &index ) {
         unsigned row = currentRow;
         if ( row != index ) {
@@ -378,7 +363,6 @@ protected:
         }
     }
 
-	/** Thread-safe */
     void releaseRow( unsigned index ) {
         // special case - zero index
         if ( !tableWorkers[ index ] )
@@ -390,7 +374,6 @@ protected:
         }
     }
 
-	/** Thread-safe */
     void acquireRow( unsigned index ) {
         do {
             if ( 1 < ++tableWorkers[ index ] )
