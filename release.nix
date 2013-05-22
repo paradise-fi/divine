@@ -162,9 +162,9 @@ let
     llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
     timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
     compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
-                            flags = [ "-DHASH_COMPACTION=OFF" ]; };
+                            flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" ]; };
     compaction = mkbuild { name = "compaction"; inputs = { pkgs }: [];
-                            flags = [ "-DCOMPRESSION=OFF" ]; };
+                            flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" ]; };
     full = mkbuild { name = "full"; inputs = { pkgs }:
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                      flags = []; };
