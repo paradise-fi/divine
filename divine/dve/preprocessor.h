@@ -84,7 +84,7 @@ struct Expression {
     Macros &macros;
     parse::Expression &expr;
 
-    Expression( Definitions &ds, Macros &ms, parse::Expression &e )
+    Expression( Definitions &ds, Macros &ms, parse::Expression &e, SymTab &symtab )
         : defs( ds ), macros( ms ), expr( e )
     {
         if ( expr.rval && expr.rval->valid() && expr.rval->mNode.valid() ) {
@@ -98,11 +98,26 @@ struct Expression {
                 expr.rval.reset( new parse::RValue( *m.content.rval, parse::ASTClone() ) );
         }
         if ( expr.lhs )
-            Expression( defs, macros, *expr.lhs );
+            Expression( defs, macros, *expr.lhs, symtab );
         if ( expr.rhs )
-            Expression( defs, macros, *expr.rhs );
+            Expression( defs, macros, *expr.rhs, symtab );
         if ( expr.rval && expr.rval->idx )
-            Expression( defs, macros, *expr.rval->idx );
+            Expression( defs, macros, *expr.rval->idx, symtab );
+
+        // Transform instantiated processes names
+        if ( ( expr.op.id == dve::TI::Period )
+             || ( expr.op.id == dve::TI::Arrow ) )
+        {
+            if ( expr.lhs->rval->idx ) {
+                EvalContext ctx;
+                dve::Expression ex( symtab, *expr.lhs->rval->idx );
+                int n = ex.evaluate( ctx );
+                expr.lhs->rval->ident = parse::Identifier(
+                    expr.lhs->rval->ident.name() + "[" + wibble::str::fmt( n ) + "]",
+                    expr.context()
+                );
+            }
+        }
     }
 };
 
@@ -111,11 +126,14 @@ struct Transition {
     Macros &macros;
     parse::Transition &trans;
 
-    Transition( Definitions &ds, Macros &ms, parse::Transition &t )
+    Transition( Definitions &ds, Macros &ms, parse::Transition &t, SymTab &symtab )
         : defs( ds ), macros( ms ), trans( t )
     {
         for ( parse::Expression &e : trans.guards )
-            Expression( defs, macros, e );
+            Expression( defs, macros, e, symtab );
+        for ( parse::Assignment &a : trans.effects ) {
+            Expression( defs, macros, a.rhs, symtab );
+        }
     }
 };
 
@@ -129,7 +147,7 @@ struct Declaration {
         : defs( ds ), macros( ms ), decl( d )
     {
         if ( decl.sizeExpr.valid() )
-            Expression( defs, macros, decl.sizeExpr );
+            Expression( defs, macros, decl.sizeExpr, st );
 
         if ( decl.is_input ) {
             if ( defs.count( decl.name ) ) {
@@ -141,7 +159,7 @@ struct Declaration {
         }
 
         for ( parse::Expression &expr : decl.initialExpr )
-            Expression( defs, macros, expr );
+            Expression( defs, macros, expr, st );
     }
 };
 
@@ -154,7 +172,7 @@ struct ChannelDeclaration {
         : defs( ds ), macros( ms ), decl( d )
     {
         if ( decl.sizeExpr.valid() )
-            Expression( defs, macros, decl.sizeExpr );
+            Expression( defs, macros, decl.sizeExpr, st );
     }
 };
 
@@ -175,7 +193,7 @@ struct Automaton {
                 ChannelDeclaration( defs, macros, decl, symtab );
         }
         for ( parse::Transition &t : proc.trans )
-            Transition( defs, macros, t );
+            Transition( defs, macros, t, symtab );
     }
 };
 
