@@ -55,7 +55,7 @@ struct NTreeHashSet
         Leaf( Blob b ) : b( b ) {}
         Leaf( uint32_t size, char* source, Pool& pool )
         {
-            assert_leq( 2, size );
+            assert_leq( 1, size );
             b = pool.allocate( size );
             std::copy( source, source + size, pool.dereference( b ) );
         }
