@@ -229,7 +229,7 @@ struct DveCompiler
 
     parse::ChannelDeclaration & getChannel( parse::Process & proc, parse::SyncExpr & chan ) {
         if ( chan.proc.valid() ) {
-            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.name() ).chandecls ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).chandecls ) {
                 if ( c.name == chan.chan.name() )
                     return c;
             }
@@ -254,9 +254,9 @@ struct DveCompiler
 
     parse::Identifier getChannelProc( parse::Process & proc, parse::SyncExpr & chan ) {
         if ( chan.proc.valid() ) {
-            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.name() ).chandecls ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).chandecls ) {
                 if ( c.name == chan.chan.name() )
-                    return chan.proc;
+                    return chan.proc.ident;
             }
         }
         else {

@@ -121,6 +121,27 @@ struct Expression {
     }
 };
 
+struct SyncExpr {
+    Definitions &defs;
+    Macros &macros;
+    parse::SyncExpr &syncexpr;
+
+    SyncExpr( Definitions &ds, Macros &ms, parse::SyncExpr &sy, SymTab &symtab )
+        : defs( ds ), macros( ms ), syncexpr( sy )
+    {
+        if ( syncexpr.proc.valid() && syncexpr.proc.idx ) {
+            Expression( defs, macros, *syncexpr.proc.idx, symtab );
+            EvalContext ctx;
+            dve::Expression e( symtab, *syncexpr.proc.idx );
+            int n = e.evaluate( ctx );
+            syncexpr.proc.ident = parse::Identifier(
+                syncexpr.proc.ident.name() + "[" + wibble::str::fmt( n ) + "]",
+                    syncexpr.context()
+            );
+        }
+    }
+};
+
 struct Transition {
     Definitions &defs;
     Macros &macros;
@@ -129,6 +150,8 @@ struct Transition {
     Transition( Definitions &ds, Macros &ms, parse::Transition &t, SymTab &symtab )
         : defs( ds ), macros( ms ), trans( t )
     {
+        if ( trans.syncexpr.valid() )
+            SyncExpr( defs, macros, trans.syncexpr, symtab );
         for ( parse::Expression &e : trans.guards )
             Expression( defs, macros, e, symtab );
         for ( parse::Assignment &a : trans.effects ) {

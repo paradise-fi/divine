@@ -286,7 +286,7 @@ struct Transition {
 
         if ( parse.syncexpr.valid() ) {
             if ( parse.syncexpr.proc.valid() ) {
-                Symbol chanProc = sym.lookup( NS::Process, parse.syncexpr.proc );
+                Symbol chanProc = sym.lookup( NS::Process, parse.syncexpr.proc.ident );
                 sync_channel = sym.toplevel()->child( chanProc )->lookupChannel( parse.syncexpr.chan );
             }
             else

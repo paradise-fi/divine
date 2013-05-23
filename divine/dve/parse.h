@@ -400,7 +400,8 @@ struct Assignment : Parser {
 struct SyncExpr : Parser {
     bool write;
     bool compound;
-    Identifier proc, chan;
+    RValue proc;
+    Identifier chan;
     ExpressionList exprlist;
     LValueList lvallist;
 
@@ -428,10 +429,13 @@ struct SyncExpr : Parser {
     }
 
     SyncExpr( Context &c ) : Parser( c ) {
-        chan = Identifier( c );
+        proc = RValue( c );
         if ( next( Token::Arrow ) ) {
-            proc = chan;
             chan = Identifier( c );
+        }
+        else {
+            chan = proc.ident;
+            proc.ctx = 0;
         }
         if ( next( Token::SyncWrite ) )
             write = true;
