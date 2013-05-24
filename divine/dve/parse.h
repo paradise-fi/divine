@@ -876,15 +876,25 @@ struct Automaton : Parser {
 typedef Automaton Process;
 typedef Automaton Property;
 
+struct MacroParam : Parser {
+    Identifier param;
+    bool key;
+
+    MacroParam( Context &c ) : Parser( c ), param ( c )
+    {
+        key = maybe( Token::Key );
+    }
+};
+
 template< typename T >
 struct Macro : Parser {
     T content;
     Identifier name;
-    std::vector< Identifier > params;
+    std::vector< MacroParam > params;
     unsigned used;
 
     void paramlist() {
-        list< Identifier >( std::back_inserter( params ), Token::Comma );
+        list< MacroParam >( std::back_inserter( params ), Token::Comma );
     }
 
     Macro( Context &c ) : Parser( c ), used( 0 )
