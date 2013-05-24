@@ -104,7 +104,11 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
                         int procId ) {
     if ( exp.getType().isArray() || exp.getType().isRecord() ) {
         if ( exp.getKind() == LIST ) {
-            int arraySize = eval( procId, exp.getType().getArraySize().getRange().second ) + 1;
+            int arraySize;
+            if ( exp.getType().isArray() )
+                arraySize = eval( procId, exp.getType().getArraySize().getRange().second ) + 1;
+            else
+                arraySize = exp.getType().getRecordSize();
             for ( int i = 0; i < arraySize; i++ )
                 parseArrayValue( exp[i], output, procId );
         } else {
@@ -569,15 +573,16 @@ void Evaluator::assign( const expression_t& lexp, const expression_t& rexp, int 
 
         int size;
         auto arr = getArray( pId, lexp );
-        int32_t *data;
-        if ( arr.first->prefix == PrefixType::LOCAL )
-            data = &metaValues[0];
-        else
-            data = Evaluator::data;
+        int32_t *dataSrc;
 
         int32_t *pDest = data + arr.first->offset + arr.second;
         arr = getArray( pId, rexp, &size );
-        int32_t *pSrc = data + arr.first->offset + arr.second;
+        if ( arr.first->prefix == PrefixType::LOCAL )
+            dataSrc = &metaValues[0];
+        else
+            dataSrc = Evaluator::data;
+
+        int32_t *pSrc = dataSrc + arr.first->offset + arr.second;
         int32_t *pEnd = pSrc + size;
         assert ( pEnd - pSrc <= arr.first->elementsCount );
         while ( pSrc != pEnd ) {
@@ -1009,7 +1014,10 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
             if ( expr.getKind() == DOT ) {
                 if ( expr[0].getType().isRecord() ) {
                     int index = expr.getIndex();
-                    return getValue( procId, expr[0].getSymbol() )[ index ];
+                    expression_t struct_expr = expr[0];
+                    if ( struct_expr.getKind() == FUNCALL )
+                        struct_expr = evalFunCall( procId, struct_expr );
+                    return getValue( procId, struct_expr.getSymbol() )[ index ];
                 } else {
                     int pId = resolveId( -1, expr[0] );
                     auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
