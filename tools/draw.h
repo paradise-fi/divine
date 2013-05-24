@@ -284,7 +284,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
     Draw( Meta m, bool = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( this );
+        this->init( *this );
         maxdist = m.algorithm.maxDistance;
         if ( maxdist <= 0 )
             throw wibble::exception::Consistency(
