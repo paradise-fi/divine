@@ -330,13 +330,12 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     Map( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( this );
-        this->becomeMaster( m.execution.threads, this );
+        this->init( *this );
     }
 
-    Map( Map *master ) : Algorithm( master->meta(), sizeof( Extension ) )
+    Map( Map &master, int id ) : Algorithm( master.meta(), sizeof( Extension ) )
     {
-        this->init( this, master );
+        this->init( *this, master, id );
     }
 
 };

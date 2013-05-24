@@ -128,13 +128,12 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
 
     Metrics( Meta m ) : Algorithm( m, 0 )
     {
-        this->init( this );
-        this->becomeMaster( m.execution.threads, this );
+        this->init( *this );
     }
 
-    Metrics( Metrics *master ) : Algorithm( master->meta(), 0 )
+    Metrics( Metrics &master, int id ) : Algorithm( master.meta(), 0 )
     {
-        this->init( this, master );
+        this->init( *this, master, id );
     }
 
 

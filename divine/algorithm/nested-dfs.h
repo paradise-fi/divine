@@ -220,7 +220,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     NestedDFS( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
         valid = true;
-        this->init( this );
+        this->init( *this );
         parallel = m.execution.threads > 1;
         if (m.execution.threads > 2)
             progress() << "WARNING: Nested DFS uses only 2 threads." << std::endl;

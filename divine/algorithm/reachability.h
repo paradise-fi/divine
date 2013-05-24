@@ -123,13 +123,12 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
     Reachability( Meta m ) : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( this );
-        this->becomeMaster( m.execution.threads, this );
+        this->init( *this );
     }
 
-    Reachability( Reachability *master ) : Algorithm( master->meta(), sizeof( Extension ) )
+    Reachability( Reachability &master, int id ) : Algorithm( master.meta(), sizeof( Extension ) )
     {
-        this->init( this, master );
+        this->init( *this, master, id );
     }
 
     Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {

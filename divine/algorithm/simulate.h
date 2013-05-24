@@ -10,6 +10,8 @@ namespace algorithm {
 template< typename Setup >
 struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 {
+    typedef Simulate< Setup > This;
+    using AlgorithmUtils< Setup >::init;
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
@@ -241,7 +243,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     }
 
     Simulate( Meta m ) : Algorithm( m, sizeof( Extension ) ) {
-        this->init( this );
+        this->init( *this );
         printEdges = true;
         autoSuccs = false;
         inputTrace = m.input.trace;
