@@ -184,7 +184,17 @@ struct WithID {
 };
 
 struct Sequential : WithID {
-    Sequential() { setId( 0, 1 ); }
+    Sequential() { setId( 0, 1, 0 ); }
+
+    Pool m_pool;
+    const Pool& masterPool() const {
+        return m_pool;
+    }
+
+    template< typename... Args >
+    void becomeMaster( const Args&... ) { }
+    template< typename... Args >
+    void runSlaves( const Args&... ) { }
 };
 
 /**
