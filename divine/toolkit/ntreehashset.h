@@ -486,8 +486,8 @@ struct NTreeHashSet
         _leafs.clear();
     }
 
-    Blob operator[]( int off ) {
-        return _roots[ off ].b; /* ?? */
+    Root operator[]( int off ) {
+        return _roots[ off ];
     }
 };
 
