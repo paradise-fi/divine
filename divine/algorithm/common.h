@@ -105,6 +105,8 @@ struct Algorithm
     template< typename Self >
     typename Self::Graph *initGraph( Self &self, Self *master = nullptr ) {
         typename Self::Graph *g = new typename Self::Graph;
+        g->setPool( self.masterPool() );
+        g->setSlack( m_slack );
         g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
         g->useProperty( meta().input.propertyName );
         meta().algorithm.reduce =
@@ -118,11 +120,6 @@ struct Algorithm
 
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
-        self.graph().setSlack( m_slack );
-        if ( master )
-            self.graph().setPool( master->pool() );
-        else
-            self.graph().setPool( Pool() );
         int slack = self.graph().base().slack();
         typename Self::Store *s =
             new typename Self::Store( self.graph(), slack,
@@ -184,11 +181,28 @@ struct AlgorithmUtils {
     typename Setup::Visitor::template Data< Setup > data;
 
     template< typename Self >
-    void init( Self *self, Self *master = nullptr ) {
-        m_graph = std::shared_ptr< Graph >( self->initGraph( *self, master ) );
+    void init( Self &self, Self &master, int id ) {
+        self.becomeSlave( master.topology(), id );
+        _init( self, &master );
+    }
+
+    template< typename Self >
+    void init( Self &self ) {
+        self.becomeMaster( self.meta().execution.threads, self );
+        _init( self );
+        self.runSlaves( self );
+    }
+
+    template< typename Self >
+    void _init( Self &self, Self* master = nullptr ) {
+        static_assert( std::is_base_of< AlgorithmUtils< _Setup >, Self >::value,
+               "Algorithm must be descendant of AlgorithmUtils" );
+        assert_eq( static_cast< Self* >( this ), &self );
+
+        m_graph = std::shared_ptr< Graph >( self.initGraph( self, master ) );
         if ( master )
             data = master->data;
-        m_store = std::shared_ptr< Store >( self->initStore( *self, master ) );
+        m_store = std::shared_ptr< Store >( self.initStore( self, master ) );
     }
 
     Graph &graph() {
