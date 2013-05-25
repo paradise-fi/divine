@@ -61,14 +61,12 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
     struct Extension {
         Handle parent;
-        uintptr_t map:(8 * sizeof(uintptr_t) - 2);
+        MapVertexId map;
+
         bool inS:1;
         bool inF:1;
-
-        // ... the last word is a bit crammed, so consider just extending this
-        size_t predCount:14; // up to 16k predecessors per node
-        size_t iteration:9; // handle up to 512 iterations
-        unsigned map_owner:9; // handle up to 512 MPI nodes
+        size_t predCount:20; // up to 1M predecessors per node
+        size_t iteration:10; // handle up to 1024 iterations
     };
 
     typedef LtlCE< Setup, Shared, Extension, Hasher > CE;
@@ -136,22 +134,15 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     MapVertexId makeId( Vertex t ) {
-        MapVertexId r;
-        r.ptr = t.handle().asNumber();
-        r.owner = this->id();
-        return r;
+        return MapVertexId( t.handle() );
     }
 
     MapVertexId getMap( Vertex t ) {
-        MapVertexId r;
-        r.ptr = extension( t ).map;
-        r.owner = extension( t ).map_owner;
-        return r;
+        return extension( t ).map;
     }
 
     void setMap( Vertex t, MapVertexId id ) {
-        extension( t ).map = id.ptr;
-        extension( t ).map_owner = id.owner;
+        extension( t ).map = id;
     }
 
     bool updateIteration( Vertex t ) {

@@ -11,33 +11,32 @@ namespace divine {
 namespace algorithm {
 
 struct MapVertexId {
-    uint64_t ptr;
-    short owner;
+    uint64_t raw;
 
     bool operator<( const MapVertexId other ) const {
-        if ( owner < other.owner )
-            return true;
-        if ( owner > other.owner )
-            return false;
-        return ptr < other.ptr;
+        return raw < other.raw;
     }
 
     bool operator!=( const MapVertexId other ) const {
-        return ptr != other.ptr || owner != other.owner;
+        return raw != other.raw;
     }
 
     bool operator==( const MapVertexId other ) const {
-            return ptr == other.ptr && owner == other.owner;
+        return raw == other.raw;
     }
 
     bool valid() const {
-        return ptr != 0;
+        return raw != Blob().raw();
     }
 
     friend std::ostream &operator<<( std::ostream &o, MapVertexId i ) {
-        return o << "(" << i.owner << ", " << i.ptr << "[" << i.ptr % 1024 << "])";
+        return o << i.raw;
     }
-} __attribute__((packed));
+
+    MapVertexId() = default;
+    template< typename Handle >
+    MapVertexId( Handle h ) : raw( h.asNumber() ) { }
+};
 
 template < typename Handle >
 struct MapShared {
@@ -83,10 +82,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     Handle cycle_node;
 
     MapVertexId makeId( Vertex n ) {
-        MapVertexId ret;
-        ret.ptr = n.handle().asNumber();
-        ret.owner = this->id();
-        return ret;
+        return MapVertexId( n.handle() );
     }
 
     struct Extension {
