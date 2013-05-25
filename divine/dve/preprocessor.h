@@ -15,6 +15,11 @@
 namespace divine {
 namespace dve {
 
+/*
+ * TODO: Split process() from constructors in the classes here. Pass input
+ * parameters to the ctor, output parameters to process.
+ */
+
 namespace preprocessor {
 
 struct Definition {
