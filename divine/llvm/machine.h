@@ -96,7 +96,6 @@ struct MachineState
         template< typename T = char >
         T *dereference( ProgramInfo &i, ValueRef v ) {
             assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
-            assert_leq( int( v.v.offset + v.offset + v.v.width ), datasize( i ) );
             return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
         }
     };
