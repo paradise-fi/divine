@@ -26,14 +26,14 @@ template< typename BS, typename Node, typename Handle >
 typename BS::bitstream &operator<<( BS &bs, const CeShared< Node, Handle > &sh )
 {
     return bs << sh.initial << sh.current << sh.successor << sh.current_updated
-              << sh.successor_id << sh.parent;
+              << sh.is_ce_initial << sh.successor_id << sh.parent;
 }
 
 template< typename BS, typename Node, typename Handle >
 typename BS::bitstream &operator>>( BS &bs, CeShared< Node, Handle > &sh )
 {
     return bs >> sh.initial >> sh.current >> sh.successor >> sh.current_updated
-              >> sh.successor_id >> sh.parent;
+              >> sh.is_ce_initial >> sh.successor_id >> sh.parent;
 }
 
 template< typename _Setup, typename Shared, typename Extension, typename Hasher >
