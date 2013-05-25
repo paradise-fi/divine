@@ -40,7 +40,9 @@ void _ZNSt8ios_base4InitC1Ev( void ) { // std::ios_base::Init
     // TODO?
 }
 
-int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
+void *__dso_handle; /* this is emitted by clang for calls to __cxa_exit for whatever reason */
+
+extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
     // TODO
     ( void ) func;
     ( void ) arg;
