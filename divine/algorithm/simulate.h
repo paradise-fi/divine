@@ -11,7 +11,6 @@ template< typename Setup >
 struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 {
     typedef Simulate< Setup > This;
-    using AlgorithmUtils< Setup >::init;
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
