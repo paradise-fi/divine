@@ -79,45 +79,59 @@ struct Initialiser : Parser {
     }
 };
 
+parse::Identifier getProcRef( parse::MacroNode& mnode, Definitions& defs, Macros& ms, SymTab& symtab );
+
 struct Expression {
+    enum Mode { Normal, ProcRef };
     Definitions &defs;
     Macros &macros;
     parse::Expression &expr;
 
-    Expression( Definitions &ds, Macros &ms, parse::Expression &e, SymTab &symtab )
-        : defs( ds ), macros( ms ), expr( e )
-    {
-        if ( expr.rval && expr.rval->valid() && expr.rval->mNode.valid() ) {
+    void rvalMacro( Mode mode, SymTab &symtab ) {
+        if ( mode == Normal ) {
             parse::Macro< parse::Expression > &m = macros.getExpr( expr.rval->mNode.name.name() );
             expr.op = m.content.op;
             if ( m.content.lhs )
                 expr.lhs.reset( new parse::Expression( *m.content.lhs, parse::ASTClone() ) );
+            else
+                expr.lhs.reset();
+
             if ( m.content.rhs )
                 expr.rhs.reset( new parse::Expression( *m.content.rhs, parse::ASTClone() ) );
+            else
+                expr.rhs.reset();
+
             if ( m.content.rval )
                 expr.rval.reset( new parse::RValue( *m.content.rval, parse::ASTClone() ) );
+            else
+                expr.rval.reset();
+
+            Expression( defs, macros, expr, symtab );
         }
-        if ( expr.lhs )
-            Expression( defs, macros, *expr.lhs, symtab );
+        else if ( mode == ProcRef ) {
+            expr.rval->ident = getProcRef( expr.rval->mNode, defs, macros, symtab );
+        }
+    }
+
+    Expression( Definitions &ds, Macros &ms, parse::Expression &e, SymTab &symtab )
+        : Expression( ds, ms, e, Mode::Normal, symtab ) {}
+
+    Expression( Definitions &ds, Macros &ms, parse::Expression &e, Mode mode, SymTab &symtab )
+        : defs( ds ), macros( ms ), expr( e )
+    {
+        if ( expr.rval && expr.rval->valid() && expr.rval->mNode.valid() ) {
+            rvalMacro( mode, symtab );
+        }
+        if ( expr.lhs ) {
+            if ( expr.op.id == dve::TI::Period || expr.op.id == dve::TI::Arrow )
+                Expression( defs, macros, *expr.lhs, Mode::ProcRef, symtab );
+            else
+                Expression( defs, macros, *expr.lhs, symtab );
+        }
         if ( expr.rhs )
             Expression( defs, macros, *expr.rhs, symtab );
         if ( expr.rval && expr.rval->idx )
             Expression( defs, macros, *expr.rval->idx, symtab );
-
-        // Transform instantiated processes names
-        if ( ( expr.op.id == dve::TI::Period )
-             || ( expr.op.id == dve::TI::Arrow ) )
-        {
-            if ( expr.lhs->rval->idx ) {
-                EvalContext ctx;
-                dve::Expression ex( symtab, *expr.lhs->rval->idx );
-                int n = ex.evaluate( ctx );
-                expr.lhs->rval->ident = parse::Identifier(
-                    expr.lhs->rval->ident.name() + "[" + wibble::str::fmt( n ) + "]",
-                    expr.context()
-                );
-            }
-        }
     }
 };
 
@@ -129,15 +143,8 @@ struct SyncExpr {
     SyncExpr( Definitions &ds, Macros &ms, parse::SyncExpr &sy, SymTab &symtab )
         : defs( ds ), macros( ms ), syncexpr( sy )
     {
-        if ( syncexpr.proc.valid() && syncexpr.proc.idx ) {
-            Expression( defs, macros, *syncexpr.proc.idx, symtab );
-            EvalContext ctx;
-            dve::Expression e( symtab, *syncexpr.proc.idx );
-            int n = e.evaluate( ctx );
-            syncexpr.proc.ident = parse::Identifier(
-                syncexpr.proc.ident.name() + "[" + wibble::str::fmt( n ) + "]",
-                    syncexpr.context()
-            );
+        if ( syncexpr.proc.valid() && syncexpr.proc.mNode.valid() ) {
+            syncexpr.proc.ident = getProcRef( syncexpr.proc.mNode, defs, macros, symtab );
         }
     }
 };
@@ -266,6 +273,34 @@ struct System {
         return propBA;
     }
 
+    void makeProcess( parse::MacroNode &mn, parse::System & ast ) {
+        std::vector< int > idents;
+        parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
+        if ( mn.params.size() != ma.params.size() )
+            mn.fail( "Parameter count mismatch", Parser::FailType::Semantic );
+        for ( int i = 0; i < mn.params.size(); i++ ) {
+            Expression( defs, macros, *mn.params[ i ], symtab );
+            dve::Expression ex( symtab, *mn.params[ i ] );
+            EvalContext ctx;
+            int v = ex.evaluate( ctx );
+            if ( ma.params[ i ].key )
+                idents.push_back( v );
+        }
+        std::stringstream str;
+        str << mn.name.name() << "(";
+        bool tail = false;
+        for ( int &v : idents ) {
+            if ( tail )
+                str << ",";
+            str << v;
+            tail = true;
+        }
+        str << ")";
+        ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
+        ast.processes.back().setName( parse::Identifier( str.str(), ast.context() ) );
+        Automaton( defs, macros, ast.processes.back(), symtab );
+    }
+
     void process( parse::System & ast ) {
         macros.exprs = ast.exprs;
         macros.processes = ast.templates;
@@ -276,16 +311,9 @@ struct System {
         for ( parse::ChannelDeclaration & decl : ast.chandecls ) {
                 ChannelDeclaration( defs, macros, decl, symtab );
         }
+
         for ( parse::LTL & ltl : ast.ltlprops ) {
             ast.properties.push_back( LTL2Process( ltl ) );
-        }
-        for ( parse::MacroNode & mn : ast.procInstances ) {
-            parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
-            ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
-            ast.processes.back().setName( parse::Identifier(
-                ma.name.name() + "[" + wibble::str::fmt( ma.used ++) + "]",
-                ast.context()
-            ) );
         }
         for ( parse::Automaton & proc : ast.processes ) {
             Automaton( defs, macros, proc, symtab );
@@ -293,6 +321,9 @@ struct System {
 
         for ( parse::Automaton & proc : ast.properties  ) {
             Automaton( defs, macros, proc, symtab );
+        }
+        for ( parse::MacroNode & mn : ast.procInstances ) {
+            makeProcess( mn, ast );
         }
     }
 

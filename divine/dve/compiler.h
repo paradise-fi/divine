@@ -369,7 +369,11 @@ struct DveCompiler
         std::string retval = proc;
         std::transform( retval.begin(), retval.end(), retval.begin(),
                         []( int c ){
-                            if ( ( c == '[' ) || ( c == ']' ) )
+                            if ( ( c == '[' )
+                                || ( c == ']' )
+                                || ( c == '(' )
+                                || ( c == ')' )
+                                || ( c == ',' ) )
                                 return int('_') ;
                             return c;
                         } );
