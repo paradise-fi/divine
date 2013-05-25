@@ -27,8 +27,10 @@ using namespace sys;
 namespace divine {
 
 struct stringtable { const char *n, *c; };
-extern stringtable libsupcpp_list[];
 extern stringtable pdclib_list[];
+extern stringtable libm_list[];
+extern stringtable libsupcpp_list[];
+extern stringtable libstdcpp_list[];
 
 std::string ltl_to_c( int id, std::string ltl );
 
@@ -285,9 +287,12 @@ struct Compile {
         // compile libraries
         std::string flags = "-emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
-        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I.." );
+        compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
+        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I../libm -I.." );
+        compileLibrary( "libstdc++", libstdcpp_list, flags + " -I../libpdc -I../libm "
+                        "-I../libsupc++ -I.. -I. -Ibackward -Istd -Ic_global -std=c++11" );
 
-        flags += " -Ilibsupc++ -Ilibpdc ";
+        flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ ";
 
         if ( !o_precompiled->boolValue() ) {
             run( clang() + " -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
@@ -299,6 +304,7 @@ struct Compile {
             fs::renameIfExists( "libdivine.a", tmp_dir.abspath + "/libdivine.a" );
             fs::renameIfExists( "libpdc.a", tmp_dir.abspath + "/libpdc.a" );
             fs::renameIfExists( "libsupc++.a", tmp_dir.abspath + "/libsupc++.a" );
+            fs::renameIfExists( "libstdc++.a", tmp_dir.abspath + "/libstdc++.a" );
             chdir( tmp_dir.abspath.c_str() );
             cleanup();
             return;
@@ -342,7 +348,7 @@ struct Compile {
                ( " -L" + o_precompiled->stringValue() ) :
                ( " -L./" + tmp_dir.basename ) ) + " " +
              tmp_dir.basename + "/requires.bc " +
-             "-lsupc++ -lpdc -ldivine" );
+             "-lstdc++ -lsupc++ -lpdc -ldivine" );
 
         cleanup();
 #else
