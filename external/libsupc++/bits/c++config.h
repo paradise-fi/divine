@@ -382,7 +382,7 @@ _GLIBCXX_END_NAMESPACE
 #define _GLIBCXX_HAVE_ISWBLANK 1
 
 /* Define if LC_MESSAGES is available in <locale.h>. */
-#define _GLIBCXX_HAVE_LC_MESSAGES 1
+#undef _GLIBCXX_HAVE_LC_MESSAGES
 
 /* Define to 1 if you have the `ldexpf' function. */
 #define _GLIBCXX_HAVE_LDEXPF 1
@@ -454,7 +454,7 @@ _GLIBCXX_END_NAMESPACE
 #define _GLIBCXX_HAVE_NL_LANGINFO 1
 
 /* Define if poll is available in <poll.h>. */
-#define _GLIBCXX_HAVE_POLL 1
+#undef _GLIBCXX_HAVE_POLL
 
 /* Define to 1 if you have the `powf' function. */
 #define _GLIBCXX_HAVE_POWF 1
@@ -529,10 +529,10 @@ _GLIBCXX_END_NAMESPACE
 /* #undef _GLIBCXX_HAVE_STRXFRM_L */
 
 /* Define to 1 if you have the <sys/filio.h> header file. */
-#define _GLIBCXX_HAVE_SYS_FILIO_H 1
+#undef _GLIBCXX_HAVE_SYS_FILIO_H
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
-#define _GLIBCXX_HAVE_SYS_IOCTL_H 1
+#undef _GLIBCXX_HAVE_SYS_IOCTL_H
 
 /* Define to 1 if you have the <sys/ipc.h> header file. */
 #define _GLIBCXX_HAVE_SYS_IPC_H 1
@@ -547,28 +547,28 @@ _GLIBCXX_END_NAMESPACE
 /* #undef _GLIBCXX_HAVE_SYS_PARAM_H */
 
 /* Define to 1 if you have the <sys/resource.h> header file. */
-#define _GLIBCXX_HAVE_SYS_RESOURCE_H 1
+#undef _GLIBCXX_HAVE_SYS_RESOURCE_H
 
 /* Define to 1 if you have the <sys/sem.h> header file. */
-#define _GLIBCXX_HAVE_SYS_SEM_H 1
+#undef _GLIBCXX_HAVE_SYS_SEM_H
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#define _GLIBCXX_HAVE_SYS_STAT_H 1
+#undef _GLIBCXX_HAVE_SYS_STAT_H
 
 /* Define to 1 if you have the <sys/time.h> header file. */
-#define _GLIBCXX_HAVE_SYS_TIME_H 1
+#undef _GLIBCXX_HAVE_SYS_TIME_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
-#define _GLIBCXX_HAVE_SYS_TYPES_H 1
+#undef _GLIBCXX_HAVE_SYS_TYPES_H
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
-#define _GLIBCXX_HAVE_SYS_UIO_H 1
+#undef _GLIBCXX_HAVE_SYS_UIO_H
 
 /* Define if S_IFREG is available in <sys/stat.h>. */
 /* #undef _GLIBCXX_HAVE_S_IFREG */
 
 /* Define if S_IFREG is available in <sys/stat.h>. */
-#define _GLIBCXX_HAVE_S_ISREG 1
+#undef _GLIBCXX_HAVE_S_ISREG
 
 /* Define to 1 if you have the `tanf' function. */
 #define _GLIBCXX_HAVE_TANF 1
@@ -607,7 +607,7 @@ _GLIBCXX_END_NAMESPACE
 #define _GLIBCXX_HAVE_WCTYPE_H 1
 
 /* Define if writev is available in <sys/uio.h>. */
-#define _GLIBCXX_HAVE_WRITEV 1
+#undef _GLIBCXX_HAVE_WRITEV
 
 /* Define to 1 if you have the `_acosf' function. */
 /* #undef _GLIBCXX_HAVE__ACOSF */
@@ -963,334 +963,73 @@ _GLIBCXX_END_NAMESPACE
 /* Define if code specialized for wchar_t should be used. */
 #define _GLIBCXX_USE_WCHAR_T 1
 
-#if defined (_GLIBCXX_HAVE__ACOSF) && ! defined (_GLIBCXX_HAVE_ACOSF)
-# define _GLIBCXX_HAVE_ACOSF 1
-# define acosf _acosf
-#endif
-
-#if defined (_GLIBCXX_HAVE__ACOSL) && ! defined (_GLIBCXX_HAVE_ACOSL)
-# define _GLIBCXX_HAVE_ACOSL 1
-# define acosl _acosl
-#endif
-
-#if defined (_GLIBCXX_HAVE__ASINF) && ! defined (_GLIBCXX_HAVE_ASINF)
-# define _GLIBCXX_HAVE_ASINF 1
-# define asinf _asinf
-#endif
-
-#if defined (_GLIBCXX_HAVE__ASINL) && ! defined (_GLIBCXX_HAVE_ASINL)
-# define _GLIBCXX_HAVE_ASINL 1
-# define asinl _asinl
-#endif
-
-#if defined (_GLIBCXX_HAVE__ATAN2F) && ! defined (_GLIBCXX_HAVE_ATAN2F)
-# define _GLIBCXX_HAVE_ATAN2F 1
-# define atan2f _atan2f
-#endif
-
-#if defined (_GLIBCXX_HAVE__ATAN2L) && ! defined (_GLIBCXX_HAVE_ATAN2L)
-# define _GLIBCXX_HAVE_ATAN2L 1
-# define atan2l _atan2l
-#endif
-
-#if defined (_GLIBCXX_HAVE__ATANF) && ! defined (_GLIBCXX_HAVE_ATANF)
-# define _GLIBCXX_HAVE_ATANF 1
-# define atanf _atanf
-#endif
-
-#if defined (_GLIBCXX_HAVE__ATANL) && ! defined (_GLIBCXX_HAVE_ATANL)
-# define _GLIBCXX_HAVE_ATANL 1
-# define atanl _atanl
-#endif
-
-#if defined (_GLIBCXX_HAVE__CEILF) && ! defined (_GLIBCXX_HAVE_CEILF)
-# define _GLIBCXX_HAVE_CEILF 1
-# define ceilf _ceilf
-#endif
-
-#if defined (_GLIBCXX_HAVE__CEILL) && ! defined (_GLIBCXX_HAVE_CEILL)
-# define _GLIBCXX_HAVE_CEILL 1
-# define ceill _ceill
-#endif
-
-#if defined (_GLIBCXX_HAVE__COPYSIGN) && ! defined (_GLIBCXX_HAVE_COPYSIGN)
-# define _GLIBCXX_HAVE_COPYSIGN 1
-# define copysign _copysign
-#endif
-
-#if defined (_GLIBCXX_HAVE__COPYSIGNL) && ! defined (_GLIBCXX_HAVE_COPYSIGNL)
-# define _GLIBCXX_HAVE_COPYSIGNL 1
-# define copysignl _copysignl
-#endif
-
-#if defined (_GLIBCXX_HAVE__COSF) && ! defined (_GLIBCXX_HAVE_COSF)
-# define _GLIBCXX_HAVE_COSF 1
-# define cosf _cosf
-#endif
-
-#if defined (_GLIBCXX_HAVE__COSHF) && ! defined (_GLIBCXX_HAVE_COSHF)
-# define _GLIBCXX_HAVE_COSHF 1
-# define coshf _coshf
-#endif
-
-#if defined (_GLIBCXX_HAVE__COSHL) && ! defined (_GLIBCXX_HAVE_COSHL)
-# define _GLIBCXX_HAVE_COSHL 1
-# define coshl _coshl
-#endif
-
-#if defined (_GLIBCXX_HAVE__COSL) && ! defined (_GLIBCXX_HAVE_COSL)
-# define _GLIBCXX_HAVE_COSL 1
-# define cosl _cosl
-#endif
-
-#if defined (_GLIBCXX_HAVE__EXPF) && ! defined (_GLIBCXX_HAVE_EXPF)
-# define _GLIBCXX_HAVE_EXPF 1
-# define expf _expf
-#endif
-
-#if defined (_GLIBCXX_HAVE__EXPL) && ! defined (_GLIBCXX_HAVE_EXPL)
-# define _GLIBCXX_HAVE_EXPL 1
-# define expl _expl
-#endif
-
-#if defined (_GLIBCXX_HAVE__FABSF) && ! defined (_GLIBCXX_HAVE_FABSF)
-# define _GLIBCXX_HAVE_FABSF 1
-# define fabsf _fabsf
-#endif
-
-#if defined (_GLIBCXX_HAVE__FABSL) && ! defined (_GLIBCXX_HAVE_FABSL)
-# define _GLIBCXX_HAVE_FABSL 1
-# define fabsl _fabsl
-#endif
-
-#if defined (_GLIBCXX_HAVE__FINITE) && ! defined (_GLIBCXX_HAVE_FINITE)
-# define _GLIBCXX_HAVE_FINITE 1
-# define finite _finite
-#endif
-
-#if defined (_GLIBCXX_HAVE__FINITEF) && ! defined (_GLIBCXX_HAVE_FINITEF)
-# define _GLIBCXX_HAVE_FINITEF 1
-# define finitef _finitef
-#endif
-
-#if defined (_GLIBCXX_HAVE__FINITEL) && ! defined (_GLIBCXX_HAVE_FINITEL)
-# define _GLIBCXX_HAVE_FINITEL 1
-# define finitel _finitel
-#endif
-
-#if defined (_GLIBCXX_HAVE__FLOORF) && ! defined (_GLIBCXX_HAVE_FLOORF)
-# define _GLIBCXX_HAVE_FLOORF 1
-# define floorf _floorf
-#endif
-
-#if defined (_GLIBCXX_HAVE__FLOORL) && ! defined (_GLIBCXX_HAVE_FLOORL)
-# define _GLIBCXX_HAVE_FLOORL 1
-# define floorl _floorl
-#endif
-
-#if defined (_GLIBCXX_HAVE__FMODF) && ! defined (_GLIBCXX_HAVE_FMODF)
-# define _GLIBCXX_HAVE_FMODF 1
-# define fmodf _fmodf
-#endif
-
-#if defined (_GLIBCXX_HAVE__FMODL) && ! defined (_GLIBCXX_HAVE_FMODL)
-# define _GLIBCXX_HAVE_FMODL 1
-# define fmodl _fmodl
-#endif
-
-#if defined (_GLIBCXX_HAVE__FPCLASS) && ! defined (_GLIBCXX_HAVE_FPCLASS)
-# define _GLIBCXX_HAVE_FPCLASS 1
-# define fpclass _fpclass
-#endif
-
-#if defined (_GLIBCXX_HAVE__FREXPF) && ! defined (_GLIBCXX_HAVE_FREXPF)
-# define _GLIBCXX_HAVE_FREXPF 1
-# define frexpf _frexpf
-#endif
-
-#if defined (_GLIBCXX_HAVE__FREXPL) && ! defined (_GLIBCXX_HAVE_FREXPL)
-# define _GLIBCXX_HAVE_FREXPL 1
-# define frexpl _frexpl
-#endif
-
-#if defined (_GLIBCXX_HAVE__HYPOT) && ! defined (_GLIBCXX_HAVE_HYPOT)
-# define _GLIBCXX_HAVE_HYPOT 1
-# define hypot _hypot
-#endif
-
-#if defined (_GLIBCXX_HAVE__HYPOTF) && ! defined (_GLIBCXX_HAVE_HYPOTF)
-# define _GLIBCXX_HAVE_HYPOTF 1
-# define hypotf _hypotf
-#endif
-
-#if defined (_GLIBCXX_HAVE__HYPOTL) && ! defined (_GLIBCXX_HAVE_HYPOTL)
-# define _GLIBCXX_HAVE_HYPOTL 1
-# define hypotl _hypotl
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISINF) && ! defined (_GLIBCXX_HAVE_ISINF)
-# define _GLIBCXX_HAVE_ISINF 1
-# define isinf _isinf
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISINFF) && ! defined (_GLIBCXX_HAVE_ISINFF)
-# define _GLIBCXX_HAVE_ISINFF 1
-# define isinff _isinff
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISINFL) && ! defined (_GLIBCXX_HAVE_ISINFL)
-# define _GLIBCXX_HAVE_ISINFL 1
-# define isinfl _isinfl
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISNAN) && ! defined (_GLIBCXX_HAVE_ISNAN)
-# define _GLIBCXX_HAVE_ISNAN 1
-# define isnan _isnan
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISNANF) && ! defined (_GLIBCXX_HAVE_ISNANF)
-# define _GLIBCXX_HAVE_ISNANF 1
-# define isnanf _isnanf
-#endif
-
-#if defined (_GLIBCXX_HAVE__ISNANL) && ! defined (_GLIBCXX_HAVE_ISNANL)
-# define _GLIBCXX_HAVE_ISNANL 1
-# define isnanl _isnanl
-#endif
-
-#if defined (_GLIBCXX_HAVE__LDEXPF) && ! defined (_GLIBCXX_HAVE_LDEXPF)
-# define _GLIBCXX_HAVE_LDEXPF 1
-# define ldexpf _ldexpf
-#endif
-
-#if defined (_GLIBCXX_HAVE__LDEXPL) && ! defined (_GLIBCXX_HAVE_LDEXPL)
-# define _GLIBCXX_HAVE_LDEXPL 1
-# define ldexpl _ldexpl
-#endif
-
-#if defined (_GLIBCXX_HAVE__LOG10F) && ! defined (_GLIBCXX_HAVE_LOG10F)
-# define _GLIBCXX_HAVE_LOG10F 1
-# define log10f _log10f
-#endif
-
-#if defined (_GLIBCXX_HAVE__LOG10L) && ! defined (_GLIBCXX_HAVE_LOG10L)
-# define _GLIBCXX_HAVE_LOG10L 1
-# define log10l _log10l
-#endif
-
-#if defined (_GLIBCXX_HAVE__LOGF) && ! defined (_GLIBCXX_HAVE_LOGF)
-# define _GLIBCXX_HAVE_LOGF 1
-# define logf _logf
-#endif
-
-#if defined (_GLIBCXX_HAVE__LOGL) && ! defined (_GLIBCXX_HAVE_LOGL)
-# define _GLIBCXX_HAVE_LOGL 1
-# define logl _logl
-#endif
-
-#if defined (_GLIBCXX_HAVE__MODF) && ! defined (_GLIBCXX_HAVE_MODF)
-# define _GLIBCXX_HAVE_MODF 1
-# define modf _modf
-#endif
-
-#if defined (_GLIBCXX_HAVE__MODFF) && ! defined (_GLIBCXX_HAVE_MODFF)
-# define _GLIBCXX_HAVE_MODFF 1
-# define modff _modff
-#endif
-
-#if defined (_GLIBCXX_HAVE__MODFL) && ! defined (_GLIBCXX_HAVE_MODFL)
-# define _GLIBCXX_HAVE_MODFL 1
-# define modfl _modfl
-#endif
-
-#if defined (_GLIBCXX_HAVE__POWF) && ! defined (_GLIBCXX_HAVE_POWF)
-# define _GLIBCXX_HAVE_POWF 1
-# define powf _powf
-#endif
-
-#if defined (_GLIBCXX_HAVE__POWL) && ! defined (_GLIBCXX_HAVE_POWL)
-# define _GLIBCXX_HAVE_POWL 1
-# define powl _powl
-#endif
-
-#if defined (_GLIBCXX_HAVE__QFPCLASS) && ! defined (_GLIBCXX_HAVE_QFPCLASS)
-# define _GLIBCXX_HAVE_QFPCLASS 1
-# define qfpclass _qfpclass
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINCOS) && ! defined (_GLIBCXX_HAVE_SINCOS)
-# define _GLIBCXX_HAVE_SINCOS 1
-# define sincos _sincos
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINCOSF) && ! defined (_GLIBCXX_HAVE_SINCOSF)
-# define _GLIBCXX_HAVE_SINCOSF 1
-# define sincosf _sincosf
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINCOSL) && ! defined (_GLIBCXX_HAVE_SINCOSL)
-# define _GLIBCXX_HAVE_SINCOSL 1
-# define sincosl _sincosl
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINF) && ! defined (_GLIBCXX_HAVE_SINF)
-# define _GLIBCXX_HAVE_SINF 1
-# define sinf _sinf
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINHF) && ! defined (_GLIBCXX_HAVE_SINHF)
-# define _GLIBCXX_HAVE_SINHF 1
-# define sinhf _sinhf
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINHL) && ! defined (_GLIBCXX_HAVE_SINHL)
-# define _GLIBCXX_HAVE_SINHL 1
-# define sinhl _sinhl
-#endif
-
-#if defined (_GLIBCXX_HAVE__SINL) && ! defined (_GLIBCXX_HAVE_SINL)
-# define _GLIBCXX_HAVE_SINL 1
-# define sinl _sinl
-#endif
-
-#if defined (_GLIBCXX_HAVE__SQRTF) && ! defined (_GLIBCXX_HAVE_SQRTF)
-# define _GLIBCXX_HAVE_SQRTF 1
-# define sqrtf _sqrtf
-#endif
-
-#if defined (_GLIBCXX_HAVE__SQRTL) && ! defined (_GLIBCXX_HAVE_SQRTL)
-# define _GLIBCXX_HAVE_SQRTL 1
-# define sqrtl _sqrtl
-#endif
-
-#if defined (_GLIBCXX_HAVE__STRTOF) && ! defined (_GLIBCXX_HAVE_STRTOF)
-# define _GLIBCXX_HAVE_STRTOF 1
-# define strtof _strtof
-#endif
-
-#if defined (_GLIBCXX_HAVE__STRTOLD) && ! defined (_GLIBCXX_HAVE_STRTOLD)
-# define _GLIBCXX_HAVE_STRTOLD 1
-# define strtold _strtold
-#endif
-
-#if defined (_GLIBCXX_HAVE__TANF) && ! defined (_GLIBCXX_HAVE_TANF)
-# define _GLIBCXX_HAVE_TANF 1
-# define tanf _tanf
-#endif
-
-#if defined (_GLIBCXX_HAVE__TANHF) && ! defined (_GLIBCXX_HAVE_TANHF)
-# define _GLIBCXX_HAVE_TANHF 1
-# define tanhf _tanhf
-#endif
-
-#if defined (_GLIBCXX_HAVE__TANHL) && ! defined (_GLIBCXX_HAVE_TANHL)
-# define _GLIBCXX_HAVE_TANHL 1
-# define tanhl _tanhl
-#endif
-
-#if defined (_GLIBCXX_HAVE__TANL) && ! defined (_GLIBCXX_HAVE_TANL)
-# define _GLIBCXX_HAVE_TANL 1
-# define tanl _tanl
+#define _GLIBCXX_BEGIN_NAMESPACE_VERSION
+#define _GLIBCXX_END_NAMESPACE_VERSION
+
+#if __cplusplus >= 201103L
+#  define _GLIBCXX_NOEXCEPT noexcept
+#  define _GLIBCXX_USE_NOEXCEPT noexcept
+#  define _GLIBCXX_THROW(_EXC)
+#  define _GLIBCXX_CONSTEXPR constexpr
+#  define _GLIBCXX_USE_CONSTEXPR constexpr
+#  define _GLIBCXX_DEPRECATED __attribute__ ((__deprecated__))
+#  define __GXX_EXPERIMENTAL_CXX0X__ 1
+#else
+#  define _GLIBCXX_NOEXCEPT
+#  define _GLIBCXX_USE_NOEXCEPT throw()
+#  define _GLIBCXX_THROW(_EXC) throw(_EXC)
+#  define _GLIBCXX_CONSTEXPR
+#  define _GLIBCXX_USE_CONSTEXPR const
+#  define _GLIBCXX_DEPRECATED
+#endif
+
+# define _GLIBCXX_BEGIN_NAMESPACE_ALGO
+# define _GLIBCXX_END_NAMESPACE_ALGO
+# define _GLIBCXX_NAMESPACE_LDBL
+# define _GLIBCXX_BEGIN_NAMESPACE_LDBL
+# define _GLIBCXX_END_NAMESPACE_LDBL
+# define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
+# define _GLIBCXX_END_NAMESPACE_CONTAINER
+
+namespace std { /* FIXME? */
+typedef unsigned long size_t;
+typedef signed long ptrdiff_t;
+#if __cplusplus >= 201103L
+typedef decltype(nullptr) nullptr_t;
+#endif
+};
+
+#ifndef __SIZE_MAX__ /* silly clang */
+#  define __SIZE_MAX__ (__LONG_MAX__ * 2)
+#endif
+
+#define _GLIBCXX_PURE __attribute__ ((__pure__))
+#define _GLIBCXX_CONST __attribute__ ((__const__))
+#define _GLIBCXX_NORETURN __attribute__ ((__noreturn__))
+
+#define _GLIBCXX_STD_A std
+#define _GLIBCXX_STD_C std
+
+#include <_PDCLIB_config.h>
+#define _GLIBCXX_STDIO_EOF -1
+#define _GLIBCXX_STDIO_SEEK_END _PDCLIB_SEEK_END
+#define _GLIBCXX_STDIO_SEEK_CUR _PDCLIB_SEEK_CUR
+
+#ifndef _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE
+# define  _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(A)
+#endif
+#ifndef _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER
+# define  _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(A)
+#endif
+
+#define __glibcxx_assert(_Condition)
+
+#ifdef __cplusplus
+# define _GLIBCXX_BEGIN_EXTERN_C extern "C" {
+# define _GLIBCXX_END_EXTERN_C }
+#else /* I didn't know you can build this with a C compiler? */
+# define _GLIBCXX_BEGIN_EXTERN_C
+# define _GLIBCXX_END_EXTERN_C
 #endif
 
 #endif // _CXXCONFIG_

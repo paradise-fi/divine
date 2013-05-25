@@ -1,6 +1,7 @@
 include( ../../cmake/stringify.cmake )
 
-file( GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cc *.cpp *.h *.cxx typeinfo exception new )
+file( GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cc *.cpp *.h *.cxx
+        typeinfo exception new bits/* initializer_list )
 foreach( f ${src} )
     stringify( ${f} )
 endforeach()
