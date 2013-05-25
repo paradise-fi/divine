@@ -94,11 +94,15 @@ std::string Describe::aggregate( Type *t, Ptr where )
 
     if ( isa< StructType >( t ) ) {
         delim[0] = '{'; delim[1] = '}';
-        const StructType *stru = cast< StructType >( t );
+        int startoffset = where.offset;
+        StructType *stru = cast< StructType >( t );
+        const StructLayout *SLO = TD().getStructLayout( stru );
+        int index = 0;
         for ( auto st = stru->element_begin(); st != stru->element_end(); ++ st )
         {
             vec.push_back( value( (*st), where ) );
-            where.offset += TD().getTypeAllocSize( *st );
+            where.offset = startoffset + SLO->getElementOffset( index );
+            ++ index;
         }
     }
 
