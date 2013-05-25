@@ -343,9 +343,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         }
 */
         template< typename V > void queueInitials( This &o, V &v ) {
-            Vertex c = o.store().vertex( o.shared.cycle_node );
-            v.queue( Vertex(), c.node(), Label() );
-            c.disown();
+            if ( o.store().knows( o.shared.cycle_node ) ) {
+                Vertex c = o.store().vertex( o.shared.cycle_node );
+                v.queue( Vertex(), c.node(), Label() );
+                c.disown();
+            }
         }
     };
 
