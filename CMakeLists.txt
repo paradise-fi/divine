@@ -425,8 +425,10 @@ if( LTL2DSTAR )
 endif()
 
 if( LLVM )
-  add_subdirectory( external/libsupc++ )
   add_subdirectory( external/pdclib )
+  add_subdirectory( external/libm )
+  add_subdirectory( external/libsupc++ )
+  add_subdirectory( external/libstdc++ )
 endif()
 
 if( TIMED )
