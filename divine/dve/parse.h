@@ -1053,13 +1053,12 @@ struct System : Parser {
         synchronous = false;
 
         while ( maybe( &System::declaration,
-                           &System::process,
-                           &System::propDef,
-                           &System::exprMacro,
-                           &System::templateMacro,
-                           &System::processInstance,
-                           &System::forLoop
-                         ) );
+                       &System::process,
+                       &System::propDef,
+                       &System::exprMacro,
+                       &System::templateMacro,
+                       &System::processInstance,
+                       &System::forLoop ) );
 
         eat( Token::System );
 
