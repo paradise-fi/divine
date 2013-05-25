@@ -117,13 +117,14 @@ struct NTreeWrap {
 };
 
 struct ProviderCommon {
-    WithID* _id;
-    void setId( WithID& id ) { _id = &id; }
+    WithID _id;
+    void setId( WithID& id ) { _id = id; }
 
-    int id() { assert( _id ); return _id->id(); }
-    int owner( hash_t hash ) const { return hash % _id->peers(); }
-    bool knows( hash_t hash ) const { return owner( hash ) == _id->id(); }
-    ProviderCommon() : _id( nullptr ) {}
+    int id() const { return _id.id(); }
+    int rank() const { return _id.rank(); }
+    int owner( hash_t hash ) const { return hash % _id.peers(); }
+    bool knows( hash_t hash ) const { return owner( hash ) == _id.id(); }
+    ProviderCommon() : _id( 0, 1, 0 ) { }
 };
 
 template< typename Provider, typename Generator, typename Hasher >
@@ -230,47 +231,93 @@ struct _Vertex
     template< typename T >
     T &extension( int offset = 0 ) const {
         assert( _s );
-        return *reinterpret_cast< T * >( _s->extension( _h ) + offset );
+        return *reinterpret_cast< T * >(
+                ( foreign() ? _s->pool().dereference( _n ) : _s->extension( _h ) )
+                + offset );
     }
 
     Node node() const {
-        if ( _s && !_s->valid( _n ) && _s->valid( _h ) )
-            _n = _s->unpack( _h );
+        if ( _s && !foreign() && !_s->valid( _n ) && _s->valid( _h ) )
+            _n = _s->unpack( _h, _p );
+        _n.tag = 0; // Nodes must not be tagged so they can be easily compared
         return _n;
     }
 
-    void disown() { _n = typename Store::Node(); }
+    void disown() { if ( !foreign() ) _n = Node(); }
     Handle handle() { return _h; }
+    // belongs to another machine -> cannot be dereferenced...
+    bool foreign() const { assert( _s ); return _h.rank() != _s->rank(); }
+    void initForeign( Store& s ) {
+        if ( _s == nullptr )
+            _s = &s;
+    }
+    void deleteForeign() {
+        if ( foreign() ) {
+            _s->free_unpacked( _n, _p, true );
+            _h = Handle();
+            _n = Node();
+            _s = nullptr;
+        }
+    }
+    void setPool( Pool& p ) {
+        _p = &p;
+    }
 
-    _Vertex() : _s( nullptr ) {}
-    _Vertex( const _Vertex &v ) : _s( v._s ), _h( v._h ) {}
+    _Vertex() : _s( nullptr ), _p( nullptr ) {}
+    _Vertex( const _Vertex &v ) : _s( v._s ), _h( v._h ), _p( v._p ) {
+        // if Vertex is not local that value should not be thrown away as we
+        // cannot recreate it
+        if ( !v._s || v.foreign() )
+            _n = v._n;
+    }
     _Vertex( Store &s, Handle h )
-        : _s( &s ), _h( h )
+        : _s( &s ), _h( h ), _p( &s.pool() )
     {}
     ~_Vertex() {
-        if ( _s )
-            _s->free_unpacked( _n );
+        if ( _s && !foreign() )
+            _s->free_unpacked( _n, _p, false );
     }
     _Vertex &operator=( const _Vertex &x ) {
-        if ( _s )
-            _s->free_unpacked( _n );
+        if ( _s && !foreign() )
+            _s->free_unpacked( _n, _p, false );
+        _p = x._p;
         _s = x._s;
         _h = x._h;
-        _n = typename Store::Node();
+        if ( x._s && !x.foreign() )
+            _n = Node();
+        else
+            _n = x._n;
         return *this;
     }
 
+    template< typename BS >
+    friend typename BS::bitstream &operator<<( BS &bs, _Vertex v ) {
+        return bs << v._h << v.node(); // decompress node if necessary
+    }
+
+    template< typename BS >
+    friend typename BS::bitstream &operator>>( BS &bs, _Vertex &v ) {
+        v._s = nullptr;
+        return bs >> v._h >> v._n;
+    }
+
 private:
-    Store *_s;
-    typename Store::Handle _h;
-    mutable typename Store::Node _n;
+    Store *_s; // origin store
+    Handle _h;
+    Pool *_p; // local pool
+    mutable Node _n;
 };
 
 struct TrivialHandle {
     Blob b;
     TrivialHandle() = default;
-    explicit TrivialHandle( Blob b ) : b( b ) {}
+    explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
+        b.tag = rank;
+    }
     uint64_t asNumber() { return b.raw(); }
+    uint64_t rank() const {
+        return b.tag;
+    }
 };
 
 template< typename BS >
@@ -303,7 +350,12 @@ struct DefaultStore
     using Vertex = _Vertex< This >;
     using Handle = TrivialHandle;
 
-    void free_unpacked( Node n ) {}
+    void free_unpacked( Node n, Pool *p, bool foreign ) {
+        if ( foreign ) {
+            assert( p );
+            p->free( n );
+        }
+    }
     void free( Node n ) { this->pool().free( n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }
@@ -312,11 +364,12 @@ struct DefaultStore
     bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
-    int owner( Vertex v, hash_t hint = 0 ) { return owner( v.handle(), hint ); }
-    int owner( Handle h, hash_t hint = 0 ) { return owner( h.b, hint ); }
+    int owner( Vertex v, hash_t hint = 0 ) { return owner( v.node(), hint ); }
     int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
 
-    int knows( Handle h, hash_t hint = 0 ) { return knows( h.b, hint ); }
+    int knows( Handle h, hash_t hint = 0 ) {
+        return h.rank() == this->rank() && knows( h.b, hint );
+    }
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
@@ -326,21 +379,23 @@ struct DefaultStore
      * to produce a valid Node. */
     void discard( Handle ) {}
 
-    Blob unpack( Handle h ) { return h.b; }
+    Blob unpack( Handle h, Pool * ) { return h.b; }
 
     IsNew< Vertex > store( Node n, hash_t h = 0 ) {
         return this->_store( n, h ).map(
             [this, &n]( Node x ) {
+                assert_eq( x.tag, 0 );
+                assert_eq( n.tag, 0 );
                 if ( x.raw() != n.raw() )
                     this->free( n );
-                return Vertex( *this, Handle( x ) );
+                return this->vertex( x );
             } );
     }
 
     IsNew< Vertex > fetch( Node n, hash_t h = 0 )
     {
         return this->_fetch( n, h ).map(
-            [this]( Node x ) { return Vertex( *this, Handle( x ) ); } );
+            [this]( Node x ) { return this->vertex( x ); } );
     }
 
     template< typename T = char >
@@ -355,7 +410,7 @@ struct DefaultStore
 
     STORE_ITERATOR;
 private:
-    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); }
+    Vertex vertex( Node n ) { return Vertex( *this, Handle( n, this->rank() ) ); }
 };
 
 #if 0
@@ -520,19 +575,22 @@ struct NTreeStore
         return this->_store( n, h ).map(
             [this, &n]( Root x ) {
                 this->free( n );
-                return Vertex( *this, Handle( x.b ) );
+                return this->vertex( x );
             } );
     }
 
     IsNew< Vertex > fetch( Node n, hash_t h = 0 )
     {
         return this->_fetch( n, h ).map(
-            [this]( Root x ) { return Vertex( *this, Handle( x.b ) ); } );
+            [this]( Root x ) { return this->vertex( x ); } );
     }
 
-    Blob unpack( Handle h ) { return Root( h.b ).reassemble( this->pool() ); }
+    Blob unpack( Handle h, Pool *p ) {
+        assert( p );
+        return Root( h.b ).reassemble( *p );
+    }
 
-    void free_unpacked( Node n ) { this->free( n ); }
+    void free_unpacked( Node n, Pool *p, bool ) { assert( p ); p->free( n ); }
     void free( Node n ) { this->pool().free( n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }
@@ -542,13 +600,19 @@ struct NTreeStore
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     hash_t hash( Node n ) { return this->hasher().hash( n ); }
-    hash_t hash( Handle h ) { return Root( h.b ).hash( this->pool() ); }
+    hash_t hash( Handle h ) {
+        assert_eq( h.rank(), this->rank() );
+        return Root( h.b ).hash( this->pool() );
+    }
 
-    int owner( Vertex v, hash_t hint = 0 ) { return owner( v.handle(), hint ); }
-    int owner( Handle h, hash_t hint = 0 ) { return Base::owner( hash( h ) ); }
+    int owner( Vertex v, hash_t hint = 0 ) {
+        return Base::owner( hint ? hint : (v.foreign() ? hash( v.node() ) : hash( v.handle() )) );
+    }
     int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
 
-    int knows( Handle h, hash_t hint = 0 ) { return Base::knows( hash( h ) ); }
+    int knows( Handle h, hash_t hint = 0 ) {
+        return h.rank() == this->rank() && Base::knows( hash( h ) );
+    }
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
@@ -560,7 +624,7 @@ struct NTreeStore
 
     STORE_ITERATOR;
 private:
-    Vertex vertex( Node n ) { return Vertex( *this, Handle( n ) ); }
+    Vertex vertex( Root n ) { return Vertex( *this, Handle( n.b, this->rank() ) ); }
 };
 
 }
