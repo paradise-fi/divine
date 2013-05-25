@@ -380,6 +380,17 @@ struct Parser {
             return false;
         }
     }
+    
+    bool maybe( TokenId id ) {
+        int fallback = position();
+        try {
+            eat( id );
+            return true;
+        } catch (Fail) {
+            context().rewind( position() - fallback );
+            return false;
+        }
+    }
 
     template< typename T, typename I >
     void many( I i ) {
@@ -413,6 +424,20 @@ struct Parser {
         do {
             *i++ = T( context() );
         } while ( next( sep ) );
+    }
+
+    template< typename T, typename I, typename F >
+    void list( I i, void (F::*sep)() ) {
+        int fallback = position();
+        try {
+            while ( true ) {                
+                *i++ = T( context() );
+                fallback = position();
+                (static_cast< F* >( this )->*sep)();
+            }
+        } catch(Fail) {
+            context().rewind( position() - fallback );
+        }
     }
 
     template< typename T, typename I >
