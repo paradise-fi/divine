@@ -203,6 +203,9 @@ struct ParseContext {
     std::deque< Token > window;
     int window_pos;
     int position;
+    std::string name;
+    typedef ParseContext< Token, Stream > This;
+    std::vector< This > children;
 
     struct Fail {
         enum Type { Syntax, Semantic };
@@ -251,10 +254,11 @@ struct ParseContext {
     }
 
     void errors( std::ostream &o ) {
-        if ( failures.empty() ) {
-            o << "oops, no failures recorded!" << std::endl;
+        for ( This & pc : children )
+            pc.errors( o );
+
+        if ( failures.empty() )
             return;
-        }
 
         std::string prefix;
         switch ( failures.top().type ) {
@@ -265,7 +269,7 @@ struct ParseContext {
                 o << "semantic";
                 break;
         }
-        o << " error: ";
+        o << " error in context " << name << ": ";
         if ( failures.size() > 1 ) {
             o << failures.size() << " rightmost alternatives:" << std::endl;
             prefix = "    ";
@@ -297,7 +301,7 @@ struct ParseContext {
         position -= n;
     }
 
-    ParseContext( Stream &s ) : stream( s ), window_pos( 0 ), position( 0 ) {}
+    ParseContext( Stream &s, std::string name ) : stream( s ), window_pos( 0 ), position( 0 ), name( name ) {}
 };
 
 template< typename Token, typename Stream >
