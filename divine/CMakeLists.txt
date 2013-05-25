@@ -82,7 +82,6 @@ stringify( cesmi/usr-ltl.cpp )
 stringify( llvm/usr.h )
 stringify( llvm/usr-pthread.h )
 stringify( llvm/usr-pthread.cpp )
-stringify( llvm/usr-cstdlib.h )
 stringify( llvm/usr-cstdlib.cpp )
 
 include_directories( ${DIVINE_INCLUDES} )

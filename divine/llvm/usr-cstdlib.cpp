@@ -1,5 +1,6 @@
 /* Includes */
-#include "cstdlib"
+#include <divine.h>
+#include <cstdlib>
 #include <stdlib.h>
 #include <stdio.h>
 
