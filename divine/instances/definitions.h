@@ -242,8 +242,8 @@ namespace instantiate {
         using T = ::divine::TrackStatistics;
     };
 
-    template< typename G, typename St >
-    using Transition = std::tuple< typename St::Handle, typename G::Node, typename G::Label >;
+    template< typename Graph, typename Store >
+    using Transition = std::tuple< typename Store::Vertex, typename Graph::Node, typename Graph::Label >;
 
     template < typename Generator, template < typename, typename, typename > class Transform,
              template< typename, typename, typename > class _Store, typename Hasher,

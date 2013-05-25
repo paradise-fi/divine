@@ -269,7 +269,7 @@ struct Partitioned {
         inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
             int _to = store().owner( to, hint ), _from = worker.id();
             Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
-            worker.submit( _from, _to, std::make_tuple( from.handle(), to, label ) );
+            worker.submit( _from, _to, std::make_tuple( from, to, label ) );
         }
 
         visitor::TransitionAction transition( Vertex f, Node t ) {
@@ -309,9 +309,13 @@ struct Partitioned {
                             Statistics::global().received(
                                 from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
                                     graph.pool() ) );
-                            bfv.edge( store().vertex( std::get< 0 >( p ) ),
+                            auto f = std::get< 0 >( p );
+                            f.initForeign( store() );
+                            f.setPool( graph.pool() );
+                            bfv.edge( f,
                                       std::get< 1 >( p ),
                                       std::get< 2 >( p ) );
+                            f.deleteForeign();
                         }
                     }
 
@@ -348,7 +352,7 @@ struct Partitioned {
 
         template< typename T >
         void setIds( T &bfv ) {
-            // bfv._store.setId( worker );
+            bfv._store.setId( worker );
             bfv._queue.id = worker.id();
         }
 
