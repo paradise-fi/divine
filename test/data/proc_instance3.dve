@@ -1,6 +1,6 @@
 input int values = 2;
 
-process a(i key,limit) {
+process a(key i,limit) {
     int x;
     int b;
     state a;

@@ -884,9 +884,10 @@ struct MacroParam : Parser {
     Identifier param;
     bool key;
 
-    MacroParam( Context &c ) : Parser( c ), param ( c )
+    MacroParam( Context &c ) : Parser( c )
     {
         key = maybe( Token::Key );
+        param = Identifier( c );
     }
 };
 
