@@ -164,6 +164,10 @@ for_dve_small() {
     check clear
     run $wrapper data/proc_instance3.dve "$@" --property=deadlock
     check statespace 48 144 0 0
+
+    check clear
+    run $wrapper data/proc_instance4.dve "$@" --property=deadlock
+    check statespace 48 144 0 0
 }
 
 dve_small() {
