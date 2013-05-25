@@ -45,8 +45,13 @@ struct TestParallel {
             this->topology().parallel( &ParallelCounter::inc );
         }
 
-        ParallelCounter( bool master = true ) {
-            if (master) this->becomeMaster( 10, false );
+        ParallelCounter() {
+            this->becomeMaster( 10, *this );
+            this->runSlaves( *this );
+        }
+
+        ParallelCounter( ParallelCounter& m, int i ) {
+            this->becomeSlave( m.topology(), i );
         }
     };
 
@@ -88,9 +93,14 @@ struct TestParallel {
             this->topology().parallel( &CommCounter::tellInc );
         }
 
-        CommCounter( bool master = true ) {
-            if (master) this->becomeMaster( 10, false );
+        CommCounter() {
+            this->becomeMaster( 10, *this );
+            this->runSlaves( *this );
             counter.i = 0;
+        }
+
+        CommCounter( CommCounter &m, int i ) {
+            this->becomeSlave( m.topology(), i );
         }
     };
 

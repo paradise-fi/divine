@@ -99,7 +99,7 @@ struct TestVisitor {
 
     template< typename G, typename Provider >
     using Transition = std::tuple<
-        typename StoreFor< G, Provider >::Handle,
+        typename StoreFor< G, Provider >::Vertex,
         typename G::Node, typename G::Label
     >;
 
@@ -161,7 +161,7 @@ struct TestVisitor {
     static TransitionFilter parallel_filter( T *self, Vertex fV, Node t, Label label ) {
         if ( node( t, self->_graph.pool() ) % self->peers() != self->id() ) {
             self->submit( self->id(), node( t, self->_graph.pool() ) % self->peers(),
-                          std::make_tuple( fV.handle(), t, label ) );
+                          std::make_tuple( fV, t, label ) );
                 return TransitionFilter::Ignore;
             }
         return TransitionFilter::Take;
@@ -196,6 +196,7 @@ struct TestVisitor {
         typedef typename Check< G >::Store Store;
         using Vertex = typename Store::Vertex;
         typedef G Graph;
+        Store store;
 
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
@@ -210,7 +211,8 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Store store( this->_graph, 0 );
+            assert_leq( 0, this->id() );
+            assert_leq( 0, this->rank() );
             store.setId( *this );
             BFV< ParallelCheck< G > > bfv( *this, this->_graph, store );
             Node initial = this->_graph.initial();
@@ -222,8 +224,9 @@ struct TestVisitor {
                     continue;
 
                 auto next = this->comms().take( this->id() );
+                std::get< 0 >( next ).setPool( this->_graph.pool() );
                 assert_eq( node( std::get< 1 >( next ), this->_graph.pool() ) % this->peers(), this->id() );
-                bfv.queue( store.vertex( std::get< 0 >( next ) ),
+                bfv.queue( std::get< 0 >( next ),
                            std::get< 1 >( next ), std::get< 2 >( next ) );
                 bfv.processQueue();
             }
@@ -249,14 +252,19 @@ struct TestVisitor {
             this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
         }
 
-        ParallelCheck( std::pair< G, int > init, bool master = false ) :
-            Check< G >( init.first ), expected( init.second )
+        ParallelCheck( std::pair< G, int > init ) :
+            Check< G >( init.first ), store( this->_graph, 0 ), expected( init.second )
         {
-            if ( master ) {
-                int i = 32;
-                while ( expected % i ) i--;
-                this->becomeMaster( i, init );
-            }
+            int i = 32;
+            while ( expected % i ) i--;
+            this->becomeMaster( i, *this );
+            this->runSlaves( *this );
+        }
+
+        ParallelCheck( ParallelCheck &m, int i ) :
+            Check< G >( m ), store( this->_graph, 0 ), expected( m.expected )
+        {
+            this->becomeSlave( m.topology(), i );
         }
     };
 
@@ -273,6 +281,7 @@ struct TestVisitor {
         typedef typename Check< G >::Store Store;
         typedef G Graph;
         using Vertex = typename Store::Vertex;
+        Store store;
 
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
@@ -290,7 +299,6 @@ struct TestVisitor {
 
         void _visit() { // parallel
             assert_eq( expected % this->peers(), 0 );
-            Store store( this->_graph, 0 );
             store.setId( *this );
             Partitioned::Data< This > data;
             Partitioned::Implementation<This, This> partitioned( *this, *this, this->_graph, store, data );
@@ -310,14 +318,19 @@ struct TestVisitor {
             this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
         }
 
-        PartitionCheck( std::pair< G, int > init, bool master = false ) :
-            Check< G >( init.first ), expected( init.second )
+        PartitionCheck( std::pair< G, int > init ) :
+            Check< G >( init.first ), store( this->_graph, 0 ), expected( init.second )
         {
-            if ( master ) {
-                int i = 32;
-                while ( expected % i ) i--;
-                this->becomeMaster( i, init );
-            }
+            int i = 32;
+            while ( expected % i ) i--;
+            this->becomeMaster( i, *this );
+            this->runSlaves( *this );
+        }
+
+        PartitionCheck( PartitionCheck &m, int i ) :
+            Check< G >( m ), store( this->_graph, 0 ), expected( m.expected )
+        {
+            this->becomeSlave( m.topology(), i );
         }
     };
 
@@ -373,17 +386,22 @@ struct TestVisitor {
             this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
         }
 
-        SharedCheck( std::pair< G, int > init, bool master = false ) :
+        SharedCheck( std::pair< G, int > init ) :
             Check< G >( init.first ),
             expected( init.second ),
             store( this->_graph, 0 )
         {
-            if ( master ) {
-                int i = 32;
-                while ( expected % i ) i--;
-                store.setSize( 1024 );
-                this->becomeMaster( i, *this );
-            }
+            int i = 32;
+            while ( expected % i ) i--;
+            store.setSize( 1024 );
+            this->becomeMaster( i, *this );
+            this->runSlaves( *this );
+        }
+
+        SharedCheck( SharedCheck &m, int i ) : SharedCheck( m )
+//            Check< G >( m ), expected( m.expected ), store( this->_graph, 0, &m.store )
+        {
+            this->becomeSlave( m.topology(), i );
         }
 
         SharedCheck( const SharedCheck& s ) = default;
@@ -400,6 +418,7 @@ struct TestVisitor {
         typedef typename G::Label Label;
         typedef typename Check< G >::Store Store;
         typedef typename Store::Vertex Vertex;
+        Store store;
 
         static TransitionAction transition( This &c, Vertex f, Vertex t, Label label ) {
             return parallel_transition( &c, f, t, label );
@@ -410,7 +429,6 @@ struct TestVisitor {
         }
 
         void _visit() { // parallel
-            Store store( this->_graph, 0 );
             store.setId ( *this );
             BFV< This > bfv( *this, this->_graph, store );
 
@@ -421,8 +439,9 @@ struct TestVisitor {
             while ( true ) {
                 if ( this->comms().pending( this->id() ) ) {
                     auto next = this->comms().take( this->id() );
+                    std::get< 0 >( next ).setPool( this->_graph.pool() );
                     assert_eq( owner( std::get< 1 >( next ) ), this->id() );
-                    bfv.queue( store.vertex( std::get< 0 >( next ) ),
+                    bfv.queue( std::get< 0 >( next ),
                                std::get< 1 >( next ), std::get< 2 >( next ) );
                     bfv.processQueue();
                 } else {
@@ -443,11 +462,17 @@ struct TestVisitor {
             this->nodes() = std::accumulate( nodevec.begin(), nodevec.end(), 0 );
         }
 
-        TerminableCheck( std::pair< G, int > init, bool master = false ) :
-            Check< G >( init.first )
+        TerminableCheck( std::pair< G, int > init ) :
+            Check< G >( init.first ), store( this->_graph, 0 )
         {
-            if ( master )
-                this->becomeMaster( 10, init );
+            this->becomeMaster( 10, *this );
+            this->runSlaves( *this );
+        }
+
+        TerminableCheck( TerminableCheck &m, int i ) :
+            Check< G >( m ), store( this->_graph, 0 )
+        {
+            this->becomeSlave( m.topology(), i );
         }
     };
 
@@ -498,7 +523,7 @@ struct TestVisitor {
         typedef typename CheckSetup::Node Node;
         typename CheckSetup::Store s( g, 0 );
         WithID wid;
-        wid.setId( 0, 1 );
+        wid.setId( 0, 1, 0 );
         s.setId( wid );
 
         Visitor< CheckSetup > bfv( c, g, s );
@@ -508,7 +533,7 @@ struct TestVisitor {
 
     template< template< typename > class T, typename N >
     static void _parallel( int n, int m ) {
-        T< NMTree< N > > pv( std::make_pair( NMTree< N >( n, m ), n ), true );
+        T< NMTree< N > > pv( std::make_pair( NMTree< N >( n, m ), n ) );
         pv.visit();
         checkNMTreeMetric( n, m, pv.nodes(), pv.edges() );
     }
