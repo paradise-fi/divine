@@ -66,15 +66,9 @@ struct Constant : Parser {
             value = value * atoi( token.data.c_str() );
     }
 
-    Constant( int value, Context &parent ) {
-        std::stringstream realstream;
-        realstream << value;
-        dve::IOStream stream( realstream );
-        dve::Lexer< dve::IOStream > lexer( stream );
-        assert( &parent );
-        *this = Constant( parent.createChild( lexer, "const" ) );
-    }
-
+    Constant( int v, Context &c )
+        : Parser( c ), token( Token::Constant, "" ), value( v )
+    {}
     Constant() {}
 };
 
