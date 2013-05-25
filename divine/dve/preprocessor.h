@@ -305,6 +305,74 @@ struct Automaton {
     }
 };
 
+struct ForLoop {
+    Definitions &defs;
+    Macros &macros;
+    parse::ForLoop &loop;
+    parse::System &ast;
+
+    void makeProcess( parse::MacroNode &mn, SymTab &symtab ,const Substitutions &substs ) {
+        std::vector< int > idents;
+        Substitutions newsubsts;
+        parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
+        if ( mn.params.size() != ma.params.size() )
+            mn.fail( "Parameter count mismatch", Parser::FailType::Semantic );
+        for ( int i = 0; i < mn.params.size(); i++ ) {
+            Expression( defs, macros, *mn.params[ i ], symtab, substs );
+            dve::Expression ex( symtab, *mn.params[ i ] );
+            EvalContext ctx;
+            int v = ex.evaluate( ctx );
+            if ( ma.params[ i ].key )
+                idents.push_back( v );
+            newsubsts[ ma.params[ i ].param.name() ] = v;
+        }
+        std::stringstream str;
+        str << mn.name.name() << "(";
+        bool tail = false;
+        for ( int &v : idents ) {
+            if ( tail )
+                str << ",";
+            str << v;
+            tail = true;
+        }
+        str << ")";
+        ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
+        ast.processes.back().setName( parse::Identifier( str.str(), ast.context() ) );
+        Automaton( defs, macros, ast.processes.back(), symtab, newsubsts );
+    }
+
+    ForLoop( Definitions &ds, Macros &ms, parse::ForLoop &fl, parse::System &sast, SymTab &symtab, const Substitutions &substs )
+        : defs( ds ), macros( ms ), loop( fl ), ast( sast )
+    {
+        Expression( defs, macros, loop.first, symtab, substs );
+        Expression( defs, macros, loop.last, symtab, substs );
+        EvalContext ctx;
+        dve::Expression ex1( symtab, loop.first );
+        int first = ex1.evaluate( ctx );
+
+        dve::Expression ex2( symtab, loop.last );
+        int last = ex2.evaluate( ctx );
+
+        if ( first > last )
+            fl.fail( "Bad first/last order", Parser::FailType::Semantic );
+
+        for( int i = first; i <= last; i++ ) {
+            Substitutions newsubsts( substs );
+            newsubsts[ fl.variable.name() ] = i;
+
+            for ( parse::MacroNode &mn : fl.procInstances ) {
+                parse::MacroNode mn2( mn, parse::ASTClone() );
+                makeProcess( mn2, symtab, newsubsts );
+            }
+
+            for ( parse::ForLoop &forl : fl.loops ) {
+                parse::ForLoop fl2( forl, parse::ASTClone() );
+                ForLoop( defs, macros, fl2, ast, symtab, newsubsts );
+            }
+        }
+    }
+};
+
 struct System {
     Definitions &defs;
     Macros macros;
@@ -404,6 +472,9 @@ struct System {
         }
         for ( parse::MacroNode & mn : ast.procInstances ) {
             makeProcess( mn, ast );
+        }
+        for ( parse::ForLoop & fl : ast.loops ) {
+            ForLoop( defs, macros, fl, ast, symtab, Substitutions() );
         }
     }
 

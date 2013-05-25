@@ -926,6 +926,56 @@ struct LTL : Parser {
     }
 };
 
+struct ForLoop : Parser {
+    Identifier variable;
+    Expression first, last;
+
+    std::vector< ForLoop > loops;
+    std::vector< MacroNode > procInstances;
+
+    void processInstance() {
+        eat( Token::Process );
+        procInstances.push_back( MacroNode( context() ) );
+        semicolon();
+    }
+
+    void forLoop() {
+        loops.push_back( ForLoop( context() ) );
+    }
+
+    ForLoop( Context &c ) : Parser( c )
+    {
+        eat( Token::For );
+        eat( Token::ParenOpen );
+        variable = Identifier( c );
+        colon();
+
+        first = Expression( c );
+        eat( Token::Ellipsis );
+        last = Expression( c );
+
+        eat( Token::ParenClose );
+        eat( Token::BlockOpen );
+
+        while ( maybe(
+            &ForLoop::processInstance,
+            &ForLoop::forLoop
+        ) );
+        eat( Token::BlockClose );
+    }
+
+    ForLoop( const ForLoop &fl, ASTClone ) : Parser( fl ), variable( fl.variable )
+    {
+        for ( const ForLoop &forloop : fl.loops ) {
+            loops.push_back( ForLoop( forloop, ASTClone() ) );
+        }
+
+        for ( const MacroNode &mn : fl.procInstances ) {
+            procInstances.push_back( MacroNode( mn, ASTClone() ) );
+        }
+    }
+};
+
 struct System : Parser {
     std::vector< Declaration > decls;
     std::vector< ChannelDeclaration > chandecls;
@@ -935,6 +985,7 @@ struct System : Parser {
     std::vector< Macro< Expression > > exprs;
     std::vector< Macro< Automaton > > templates;
     std::vector< MacroNode > procInstances;
+    std::vector< ForLoop > loops;
     Identifier property;
     bool synchronous;
 
@@ -993,6 +1044,10 @@ struct System : Parser {
         semicolon();
     }
 
+    void forLoop() {
+        loops.push_back( ForLoop( context() ) );
+    }
+
     System( Context &c ) : Parser( c )
     {
         synchronous = false;
@@ -1002,7 +1057,8 @@ struct System : Parser {
                            &System::propDef,
                            &System::exprMacro,
                            &System::templateMacro,
-                           &System::processInstance
+                           &System::processInstance,
+                           &System::forLoop
                          ) );
 
         eat( Token::System );
