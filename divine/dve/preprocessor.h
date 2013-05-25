@@ -305,14 +305,8 @@ struct Automaton {
     }
 };
 
-struct ForLoop {
-    Definitions &defs;
-    Macros &macros;
-    parse::ForLoop &loop;
-    parse::System &ast;
-
-    void makeProcess( parse::MacroNode &mn, SymTab &symtab ,const Substitutions &substs ) {
-        std::vector< int > idents;
+inline void makeProcess( parse::MacroNode &mn, parse::System &ast, Definitions &defs, Macros &macros, SymTab &symtab, const Substitutions &substs ) {
+    std::vector< int > idents;
         Substitutions newsubsts;
         parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
         if ( mn.params.size() != ma.params.size() )
@@ -339,7 +333,13 @@ struct ForLoop {
         ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
         ast.processes.back().setName( parse::Identifier( str.str(), ast.context() ) );
         Automaton( defs, macros, ast.processes.back(), symtab, newsubsts );
-    }
+}
+
+struct ForLoop {
+    Definitions &defs;
+    Macros &macros;
+    parse::ForLoop &loop;
+    parse::System &ast;
 
     ForLoop( Definitions &ds, Macros &ms, parse::ForLoop &fl, parse::System &sast, SymTab &symtab, const Substitutions &substs )
         : defs( ds ), macros( ms ), loop( fl ), ast( sast )
@@ -362,7 +362,7 @@ struct ForLoop {
 
             for ( parse::MacroNode &mn : fl.procInstances ) {
                 parse::MacroNode mn2( mn, parse::ASTClone() );
-                makeProcess( mn2, symtab, newsubsts );
+                makeProcess( mn2, ast, defs, macros, symtab, newsubsts );
             }
 
             for ( parse::ForLoop &forl : fl.loops ) {
@@ -419,36 +419,6 @@ struct System {
         return propBA;
     }
 
-    void makeProcess( parse::MacroNode &mn, parse::System & ast ) {
-        std::vector< int > idents;
-        Substitutions substs;
-        parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
-        if ( mn.params.size() != ma.params.size() )
-            mn.fail( "Parameter count mismatch", Parser::FailType::Semantic );
-        for ( int i = 0; i < mn.params.size(); i++ ) {
-            Expression( defs, macros, *mn.params[ i ], symtab, Substitutions() );
-            dve::Expression ex( symtab, *mn.params[ i ] );
-            EvalContext ctx;
-            int v = ex.evaluate( ctx );
-            if ( ma.params[ i ].key )
-                idents.push_back( v );
-            substs[ ma.params[ i ].param.name() ] = v;
-        }
-        std::stringstream str;
-        str << mn.name.name() << "(";
-        bool tail = false;
-        for ( int &v : idents ) {
-            if ( tail )
-                str << ",";
-            str << v;
-            tail = true;
-        }
-        str << ")";
-        ast.processes.push_back( parse::Automaton( ma.content, parse::ASTClone() ) );
-        ast.processes.back().setName( parse::Identifier( str.str(), ast.context() ) );
-        Automaton( defs, macros, ast.processes.back(), symtab, substs );
-    }
-
     void process( parse::System & ast ) {
         macros.exprs = ast.exprs;
         macros.processes = ast.templates;
@@ -471,7 +441,7 @@ struct System {
             Automaton( defs, macros, proc, symtab, Substitutions() );
         }
         for ( parse::MacroNode & mn : ast.procInstances ) {
-            makeProcess( mn, ast );
+            makeProcess( mn, ast, defs, macros, symtab, Substitutions() );
         }
         for ( parse::ForLoop & fl : ast.loops ) {
             ForLoop( defs, macros, fl, ast, symtab, Substitutions() );
