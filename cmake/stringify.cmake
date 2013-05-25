@@ -7,7 +7,7 @@ macro( stringify file )
   string( REPLACE "-" "_" fileu "${fileu}" )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
-    DEPENDS ${file} ${STRINGIFY}
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${file}" ${STRINGIFY}
     COMMAND sh ${STRINGIFY} "${CMAKE_CURRENT_SOURCE_DIR}" "${file}"
     VERBATIM
   )
