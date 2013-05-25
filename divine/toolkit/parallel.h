@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <wibble/sys/thread.h>
 #include <divine/toolkit/fifo.h>
@@ -234,21 +235,32 @@ struct Parallel : Terminable, WithID {
     {}
 
     template< typename M = Instance >
-    void becomeMaster( int n, M m = M() ) {
+    void becomeMaster( int n, M &m ) {
         is_master = true;
         assert( !m_topology );
         m_topology = new Topology< Instance >( n, m ); // TODO int is kind of limited
-        setId( -1, -1 ); /* try to catch anyone thinking to use our ID */
+        setId( -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
     }
 
     void becomeSlave( Topology< Instance > &topology, int id ) {
         m_topology = &topology;
-        setId( id, topology.peers() );
+        setId( id, m_topology->peers(), m_topology->rank() );
+    }
+
+    template< typename X = Instance >
+    void runSlaves( X &init ) {
+        topology().runSlaves( init );
     }
 
     Topology< Instance > &topology() {
         assert( m_topology );
         return *m_topology;
+    }
+
+    // the original pool on machine
+    const Pool &masterPool() const {
+        assert( m_topology );
+        return m_topology->masterPool();
     }
 
     int peers() {
@@ -318,19 +330,36 @@ struct Local
     typedef std::vector< Instance > Instances;
     typedef FifoMatrix< Message > Comms;
 
+    Pool m_pool;
     Instances m_slaves;
     Barrier< Terminable > m_barrier;
     Comms m_comms;
+    int m_slavesCount;
+    int m_offset;
 
     Comms &comms() { return m_comms; }
     Barrier< Terminable > &barrier() { return m_barrier; }
 
     template< typename X = Instance >
-    Local( int n, X init = X() ) {
+    Local( int n, X &init, int offset = 0 ) :
+        m_slavesCount( n ), m_offset( offset )
+    {
         m_slaves.reserve( n ); /* avoid reallocation at all costs! */
-        for ( int i = 0; i < n; ++ i )
-            m_slaves.emplace_back( init );
         m_comms.resize( n );
+    }
+
+    template< typename X = Instance >
+    void runSlaves( X &init ) {
+        for ( int i = 0; i < m_slavesCount; ++ i )
+            m_slaves.emplace_back( init, m_offset + i );
+    }
+
+    const Pool &masterPool() const {
+        return m_pool;
+    }
+
+    int rank() {
+        return 0;
     }
 
     template< typename Base, typename Bit >
@@ -349,7 +378,7 @@ struct Local
             bits.push_back( (m_slaves[ i ].*get)() );
     }
 
-    int peers() { return m_slaves.size(); }
+    int peers() { return m_slavesCount; }
     void wakeup( int id ) { barrier().wakeup( &m_slaves[ id ] ); }
 
     auto parallel( void (Instance::*fun)() )
@@ -366,10 +395,8 @@ struct Local
         Threads threads( m_slaves, fun );
         m_barrier.setExpect( m_slaves.size() + nextra );
 
-        for ( int i = 0; i < int( m_slaves.size() ); ++i ) {
+        for ( int i = 0; i < int( m_slaves.size() ); ++i )
             threads.thread( i ).setBarrier( m_barrier );
-            m_slaves[ i ].becomeSlave( *self, offset + i );
-        }
 
         threads.run( extra );
     }
@@ -413,9 +440,10 @@ struct Mpi : MpiMonitor
     Mpi( const Mpi& ) = delete;
 
     template< typename X = Instance >
-    Mpi( int pernode, X init = X() )
-        : m_local( pernode, init ),
-          m_mpiForwarder( &barrier(),
+    Mpi( int pernode, X &init )
+        : m_local( pernode, init, mpi.rank() * pernode ),
+          m_mpiForwarder( masterPool(),
+                          &barrier(),
                           &comms(),
                           pernode * mpi.size(), /* total */
                           mpi.rank() * pernode, /* min */
@@ -428,6 +456,19 @@ struct Mpi : MpiMonitor
         mpi.registerMonitor( TAG_INTERRUPT, *this );
         comms().resize( pernode * mpi.size() );
         _pernode = pernode;
+    }
+
+    template< typename X = Instance >
+    void runSlaves( X &init ) {
+        m_local.runSlaves( init );
+    }
+
+    const Pool &masterPool() const {
+        return m_local.masterPool();
+    }
+
+    int rank() {
+        return mpi.rank();
     }
 
     template< typename Bit >
@@ -474,8 +515,7 @@ struct Mpi : MpiMonitor
         }
 
         m_local.parallel( this, fun,
-                          mpi.size() > 1 ? &m_mpiForwarder : 0,
-                          mpi.rank() * m_local.peers() );
+                          mpi.size() > 1 ? &m_mpiForwarder : 0 );
     }
 
     template< typename X >

@@ -298,8 +298,8 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return id / (m_localMax - m_localMin + 1);
     }
 
-    MpiForwarder( Barrier< Terminable > *barrier, Comms *comms, int total, int min, int max )
-        : pool( nullptr ), m_comms( comms ), m_barrier( barrier )
+    MpiForwarder( const Pool &p, Barrier< Terminable > *barrier, Comms *comms, int total, int min, int max )
+        : pool( p ), m_comms( comms ), m_barrier( barrier )
     {
         buffers.resize( total, total );
         for ( size_t i = 0; i < total; ++i ) {
