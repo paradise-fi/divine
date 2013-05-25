@@ -1,6 +1,6 @@
 input int values = 2;
 
-process a() {
+process a(i key) {
     int x;
     int b,c,d,e,f,g,h;
     state a;
@@ -8,9 +8,9 @@ process a() {
     trans a->a {effect x = (x + 1)%values;};
 }
 
-process a();
-process a();
-process a();
-process a();
+process a(1);
+process a(2);
+process a(3);
+process a(4);
 
 system async;
