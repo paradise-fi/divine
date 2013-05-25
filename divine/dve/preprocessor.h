@@ -160,6 +160,45 @@ struct Expression {
     }
 };
 
+struct LValue {
+    Definitions &defs;
+    Macros &macros;
+    parse::LValue &lval;
+
+    LValue( Definitions &ds, Macros &ms, parse::LValue &lv, SymTab &symtab, const Substitutions &substs )
+        : defs( ds ), macros( ms ), lval( lv )
+    {
+        if ( lval.idx.valid() )
+            Expression( defs, ms, lval.idx, symtab, substs );
+    }
+};
+
+struct LValueList {
+    Definitions &defs;
+    Macros &macros;
+    parse::LValueList &lvallist;
+
+    LValueList( Definitions &ds, Macros &ms, parse::LValueList &lvl, SymTab &symtab, const Substitutions &substs )
+        : defs( ds ), macros( ms ), lvallist( lvl )
+    {
+        for ( parse::LValue &lv : lvallist.lvlist )
+            LValue( defs, ms, lv, symtab, substs );
+    }
+};
+
+struct ExpressionList {
+    Definitions &defs;
+    Macros &macros;
+    parse::ExpressionList &exprlist;
+
+    ExpressionList( Definitions &ds, Macros &ms, parse::ExpressionList &el, SymTab &symtab, const Substitutions &substs )
+        : defs( ds ), macros( ms ), exprlist( el )
+    {
+        for ( parse::Expression &e : exprlist.explist )
+            Expression( defs, ms, e, symtab, substs );
+    }
+};
+
 struct SyncExpr {
     Definitions &defs;
     Macros &macros;
@@ -171,6 +210,12 @@ struct SyncExpr {
         if ( syncexpr.proc.valid() && syncexpr.proc.mNode.valid() ) {
             syncexpr.proc.ident = getProcRef( syncexpr.proc.mNode, defs, macros, symtab, substs );
         }
+
+        if ( syncexpr.exprlist.valid() )
+            ExpressionList( defs, ms, syncexpr.exprlist, symtab, substs );
+
+        if ( syncexpr.lvallist.valid() )
+            LValueList( defs, ms, syncexpr.lvallist, symtab, substs );
     }
 };
 
