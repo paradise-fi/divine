@@ -239,16 +239,15 @@ ldiv_t ldiv( long int numer, long int denom ) _PDCLIB_nothrow;
 lldiv_t lldiv( long long int numer, long long int denom ) _PDCLIB_nothrow;
 
 /* TODO: Multibyte / wide character conversion functions */
+#include <wchar.h>
 
 /* TODO: Macro MB_CUR_MAX */
 
-/*
 int mblen( const char * s, size_t n );
 int mbtowc( wchar_t * _PDCLIB_restrict pwc, const char * _PDCLIB_restrict s, size_t n );
 int wctomb( char * s, wchar_t wc );
 size_t mbstowcs( wchar_t * _PDCLIB_restrict pwcs, const char * _PDCLIB_restrict s, size_t n );
 size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwcs, size_t n );
-*/
 
 _PDCLIB_END_EXTERN_C
 #endif
