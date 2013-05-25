@@ -174,13 +174,19 @@ struct FifoMatrix
 struct WithID {
     int _id;
     int _peers;
-    int id() { assert_leq( 0, _id ); return _id; }
-    int peers() { assert_leq( 0, _id ); return _peers; }
-    void setId( int id, int peers ) {
+    int _rank;
+    int id() const { assert_leq( 0, _id ); return _id; }
+    int peers() const { assert_leq( 0, _id ); return _peers; }
+    int rank() const { assert_leq( 0, _id ); return _rank; }
+    void setId( int id, int peers, int rank ) {
         _id = id;
         _peers = peers;
+        _rank = rank;
     }
     WithID() : _id( -1 ) {}
+    WithID( int id, int peers, int rank ) :
+        _id( id ), _peers( peers ), _rank( rank )
+    { }
 };
 
 struct Sequential : WithID {
