@@ -47,7 +47,7 @@ struct TestParallel {
 
         ParallelCounter() {
             this->becomeMaster( 10, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
         }
 
         ParallelCounter( ParallelCounter& m, int i ) {
@@ -95,7 +95,7 @@ struct TestParallel {
 
         CommCounter() {
             this->becomeMaster( 10, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
             counter.i = 0;
         }
 

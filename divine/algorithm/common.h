@@ -190,7 +190,7 @@ struct AlgorithmUtils {
     void init( Self &self ) {
         self.becomeMaster( self.meta().execution.threads, self );
         _init( self );
-        self.runSlaves( self );
+        self.initSlaves( self );
     }
 
     template< typename Self >

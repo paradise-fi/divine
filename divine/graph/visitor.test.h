@@ -258,7 +258,7 @@ struct TestVisitor {
             int i = 32;
             while ( expected % i ) i--;
             this->becomeMaster( i, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
         }
 
         ParallelCheck( ParallelCheck &m, int i ) :
@@ -324,7 +324,7 @@ struct TestVisitor {
             int i = 32;
             while ( expected % i ) i--;
             this->becomeMaster( i, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
         }
 
         PartitionCheck( PartitionCheck &m, int i ) :
@@ -395,7 +395,7 @@ struct TestVisitor {
             while ( expected % i ) i--;
             store.setSize( 1024 );
             this->becomeMaster( i, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
         }
 
         SharedCheck( SharedCheck &m, int i ) : SharedCheck( m )
@@ -466,7 +466,7 @@ struct TestVisitor {
             Check< G >( init.first ), store( this->_graph, 0 )
         {
             this->becomeMaster( 10, *this );
-            this->runSlaves( *this );
+            this->initSlaves( *this );
         }
 
         TerminableCheck( TerminableCheck &m, int i ) :

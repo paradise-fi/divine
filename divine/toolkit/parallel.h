@@ -201,7 +201,7 @@ struct Sequential : WithID {
     template< typename... Args >
     void becomeMaster( const Args&... ) { }
     template< typename... Args >
-    void runSlaves( const Args&... ) { }
+    void initSlaves( const Args&... ) { }
 };
 
 /**
@@ -248,8 +248,8 @@ struct Parallel : Terminable, WithID {
     }
 
     template< typename X = Instance >
-    void runSlaves( X &init ) {
-        topology().runSlaves( init );
+    void initSlaves( X &init ) {
+        topology().initSlaves( init );
     }
 
     Topology< Instance > &topology() {
@@ -349,7 +349,7 @@ struct Local
     }
 
     template< typename X = Instance >
-    void runSlaves( X &init ) {
+    void initSlaves( X &init ) {
         for ( int i = 0; i < m_slavesCount; ++ i )
             m_slaves.emplace_back( init, m_offset + i );
     }
@@ -459,8 +459,8 @@ struct Mpi : MpiMonitor
     }
 
     template< typename X = Instance >
-    void runSlaves( X &init ) {
-        m_local.runSlaves( init );
+    void initSlaves( X &init ) {
+        m_local.initSlaves( init );
     }
 
     const Pool &masterPool() const {
