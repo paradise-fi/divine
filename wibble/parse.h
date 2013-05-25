@@ -205,30 +205,49 @@ struct ParseContext {
     int position;
 
     struct Fail {
+        enum Type { Syntax, Semantic };
+
         int position;
         const char *expected;
+        Type type;
 
         bool operator<( const Fail &other ) const {
             return position > other.position;
         }
 
-        Fail( const char *err, int pos ) {
+        Fail( const char *err, int pos, Type t = Syntax) {
             expected = err;
             position = pos;
+            type = t;
         }
         ~Fail() throw () {}
     };
 
     std::priority_queue< Fail > failures;
 
+    void clearErrors() {
+        failures = std::priority_queue< Fail >();
+    }
+
     void error( std::ostream &o, std::string prefix, const Fail &fail ) {
         Token t = window[ fail.position ];
-        o << prefix
-          << "expected " << fail.expected
-          << " at line " << t.position.line
-          << ", column " << t.position.column
-          << ", but seen " << Token::tokenName[ t.id ] << " '" << t.data << "'"
-          << std::endl;
+        switch ( fail.type ) {
+            case Fail::Syntax:
+                o << prefix
+                << "expected " << fail.expected
+                << " at line " << t.position.line
+                << ", column " << t.position.column
+                << ", but seen " << Token::tokenName[ t.id ] << " '" << t.data << "'"
+                << std::endl;
+                return;
+            case Fail::Semantic:
+                o << prefix
+                << fail.expected
+                << " at line " << t.position.line
+                << ", column " << t.position.column
+                << std::endl;
+                return;
+        }
     }
 
     void errors( std::ostream &o ) {
@@ -238,8 +257,17 @@ struct ParseContext {
         }
 
         std::string prefix;
+        switch ( failures.top().type ) {
+            case Fail::Syntax:
+                o << "parse";
+                break;
+            case Fail::Semantic:
+                o << "semantic";
+                break;
+        }
+        o << " error: ";
         if ( failures.size() > 1 ) {
-            o << "parse error: " << failures.size() << " rightmost alternatives:" << std::endl;
+            o << failures.size() << " rightmost alternatives:" << std::endl;
             prefix = "    ";
         }
         while ( !failures.empty() ) {
@@ -278,6 +306,7 @@ struct Parser {
     typedef ParseContext< Token, Stream > Context;
     Context *ctx;
     typedef typename Context::Fail Fail;
+    typedef typename Fail::Type FailType;
     int _position;
 
     bool valid() const {
@@ -298,9 +327,9 @@ struct Parser {
         _position = context().position;
     }
 
-    void fail( const char *what ) __attribute__((noreturn))
+    void fail( const char *what, FailType type = FailType::Syntax ) __attribute__((noreturn))
     {
-        Fail f( what, _position );
+        Fail f( what, _position, type );
         context().failures.push( f );
         while ( context().failures.top().position < _position )
             context().failures.pop();
