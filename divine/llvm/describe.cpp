@@ -34,7 +34,7 @@ struct Describe {
     Interpreter *interpreter;
 
     std::string pointer( Type *t, Pointer p );
-    Describe( Interpreter *i, bool detailed ) : interpreter( i ), detailed( detailed ), anonymous( 1 ) {}
+    Describe( Interpreter *i, bool detailed ) :  detailed( detailed ), anonymous( 1 ), interpreter( i ) {}
 
     std::string all();
     std::string constdata();
