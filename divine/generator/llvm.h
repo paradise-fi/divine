@@ -4,9 +4,14 @@
 #include <stdint.h>
 #include <iostream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Constants.h>
 #include <llvm/Module.h>
+
+#pragma GCC diagnostic pop
 
 #include <divine/generator/common.h>
 #include <divine/llvm/interpreter.h>

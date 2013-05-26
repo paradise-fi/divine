@@ -8,6 +8,9 @@
 #include <divine/llvm/machine.h>
 #include <divine/graph/graph.h> // for allocator. get rid of it...
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/Function.h>
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
@@ -29,6 +32,8 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
+
+#pragma GCC diagnostic pop
 
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H

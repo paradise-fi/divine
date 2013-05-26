@@ -6,6 +6,9 @@
 
 #include <divine/llvm/program.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/Type.h>
 #include <llvm/GlobalVariable.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
@@ -13,6 +16,8 @@
 #include <llvm/Constants.h>
 #include <llvm/Module.h>
 #include <llvm/ADT/StringMap.h>
+
+#pragma GCC diagnostic pop
 
 using namespace divine::llvm;
 using ::llvm::isa;

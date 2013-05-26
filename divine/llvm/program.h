@@ -4,6 +4,9 @@
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/Function.h>
 
 #include <llvm/Config/config.h>
@@ -15,6 +18,8 @@
 #endif
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
+#pragma GCC diagnostic pop
+
 #include <map>
 
 #ifndef DIVINE_LLVM_PROGRAM_H

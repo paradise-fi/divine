@@ -9,6 +9,9 @@
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/Instructions.h>
 #include <llvm/Constants.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
@@ -20,6 +23,8 @@
   #include <llvm/DataLayout.h>
   #define TargetData DataLayout
 #endif
+
+#pragma GCC diagnostic pop
 
 #include <algorithm>
 #include <cmath>
