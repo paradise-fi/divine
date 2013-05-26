@@ -53,14 +53,14 @@ struct NTreeHashSet
 
         Leaf() = default;
         Leaf( Blob b ) : b( b ) {}
-        Leaf( uint32_t size, char* source, Pool& pool )
+        Leaf( int32_t size, char* source, Pool& pool )
         {
             assert_leq( 1, size );
             b = pool.allocate( size );
             std::copy( source, source + size, pool.dereference( b ) );
         }
         char *data( Pool &p ) { return p.dereference( b ); }
-        int size( Pool &p ) { return p.size( b ); }
+        int32_t size( Pool &p ) { return p.size( b ); }
     };
 
     template < typename Fork >
@@ -83,7 +83,7 @@ struct NTreeHashSet
         Blob blob() const { return Blob::fromRaw( ptr & ~unionbit ); }
         bool isLeaf() const { return !isFork(); }
         bool isFork() const { return ptr & unionbit; }
-        int size( Pool &p ) const { return p.size( blob() ); }
+        int32_t size( Pool &p ) const { return p.size( blob() ); }
         bool isNull( Pool &p ) const { return !p.valid( blob() ); }
 
         Fork fork() {
@@ -105,7 +105,7 @@ struct NTreeHashSet
         template< typename Yield >
         void forChildren( Pool &p, Yield yield ) {
             assert( self().forkcount( p ) );
-            for ( int i = 0; i < self().forkcount( p ); ++i )
+            for ( int32_t i = 0; i < self().forkcount( p ); ++i )
                 yield( self().forkdata( p )[ i ] );
         }
 
@@ -138,14 +138,14 @@ struct NTreeHashSet
 
         Fork() = default;
         Fork( Blob b ) : b( b ) {}
-        Fork( uint32_t children, Pool& pool ) {
+        Fork( int32_t children, Pool& pool ) {
             assert_leq( 2, children );
-            uint32_t size = children * sizeof( LeafOr< Fork > );
+            int32_t size = children * sizeof( LeafOr< Fork > );
             b = pool.allocate( size );
             pool.clear( b );
         }
 
-        int forkcount( Pool &p ) {
+        int32_t forkcount( Pool &p ) {
             return p.size( b ) / sizeof( LeafOr< Fork > );
         }
         LeafOr< Fork > *forkdata( Pool &p ) {
@@ -158,14 +158,14 @@ struct NTreeHashSet
     struct Root : WithChildren< Root, Fork > {
         Blob b;
 
-        struct Header { hash_t hash; int forks; };
+        struct Header { hash_t hash; int32_t forks; };
 
         Root() = default;
         explicit Root( Blob b ) : b( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
         hash_t &hash( Pool &p ) { return header( p ).hash; }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
-        int forkcount( Pool &p ) { return header( p ).forks; }
+        int32_t forkcount( Pool &p ) { return header( p ).forks; }
         char *rawdata( Pool &p ) { return p.dereference( b ) + sizeof( Header ); }
 
         char *data( Pool &p ) {
@@ -178,18 +178,18 @@ struct NTreeHashSet
             return reinterpret_cast< LeafOrFork *> ( rawdata( p ) );
         }
 
-        uint32_t dataSize( Pool &p, uint32_t slack ) {
+        int32_t dataSize( Pool &p, int32_t slack ) {
             return p.size( b ) - sizeof( Header ) - slack;
         }
 
-        int slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
+        int32_t slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
         char *slack( Pool &p ) { return rawdata( p ) + slackoffset( p ); }
 
         Blob reassemble( Pool& p )
         {
             assert( p.valid( b ) );
             if ( leaf( p ) ) {
-                int size = p.size( b ) - sizeof( Header );
+                int32_t size = p.size( b ) - sizeof( Header );
                 assert_leq( 0, size );
                 Blob out = p.allocate( size );
                 std::copy( data( p ), data( p ) + size, p.dereference( out ) );
@@ -197,7 +197,7 @@ struct NTreeHashSet
             }
 
             std::vector< Leaf > leaves;
-            int size = 0;
+            int32_t size = 0;
 
             this->forAllLeaves( p, [ &p, &leaves, &size ]( Leaf leaf ) -> bool {
                     leaves.push_back( leaf );
@@ -206,7 +206,7 @@ struct NTreeHashSet
                 } );
 
             char* slackptr = slack( p );
-            int slacksize = p.size( b ) - sizeof( Header ) - slackoffset( p );
+            int32_t slacksize = p.size( b ) - sizeof( Header ) - slackoffset( p );
             size += slacksize;
             Blob out = p.allocate( size );
             char* outptr = p.dereference( out );
@@ -229,7 +229,7 @@ struct NTreeHashSet
             return r;
         }
 
-        static Root create( Item it, uint32_t children, int slack, Pool& pool ) {
+        static Root create( Item it, int32_t children, int32_t slack, Pool& pool ) {
             assert_leq( 2, children );
             assert_leq( 0, slack );
             uintptr_t size = sizeof( Header ) + slack + sizeof( LeafOrFork ) * children;
@@ -258,7 +258,7 @@ struct NTreeHashSet
         { }
 
         Pool &pool() { return uhasher.pool(); }
-        int slack() { return uhasher.slack; }
+        int32_t slack() { return uhasher.slack; }
 
         hash_t hash( Root r ) { return r.hash( pool() ); }
         hash_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
@@ -276,8 +276,8 @@ struct NTreeHashSet
                 return pool().equal( r1.b, r2.b, sizeof( typename Root::Header )
                         + uhasher.slack );
             else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) ) {
-                int s1 = pool().size( r1.b );
-                int s2 = pool().size( r2.b );
+                int32_t s1 = pool().size( r1.b );
+                int32_t s2 = pool().size( r2.b );
                 return s1 == s2
                     && pool().equal( r1.b, r2.b, sizeof( typename Root::Header ),
                             sizeof( typename Root::Header ) + r1.slackoffset( pool() ) );
@@ -298,7 +298,7 @@ struct NTreeHashSet
         }
 
         bool equal( Uncompressed item, Root root ) {
-            int itSize = pool().size( item.i ) - slack();
+            int32_t itSize = pool().size( item.i ) - slack();
             char* itemPtr = pool().dereference( item.i ) + slack();
             if ( root.leaf( pool() ) ) {
                 return itSize == root.dataSize( pool(), slack() )
@@ -307,7 +307,7 @@ struct NTreeHashSet
             }
 
             itSize += slack();
-            int pos = slack();
+            int32_t pos = slack();
             bool equal = true;
 
             root.forAllLeaves( pool(), [&] ( Leaf leaf ) {
@@ -353,7 +353,7 @@ struct NTreeHashSet
 
     Pool& pool() { return hasher.pool(); }
     // const Pool& pool() const { return hasher.pool(); }
-    int slack() { return hasher.slack(); }
+    int32_t slack() { return hasher.slack(); }
     bool valid( Item i ) { return hasher.valid( i ); }
     char* slackPtr( Item item ) { return pool().dereference( item ); }
 
@@ -400,7 +400,7 @@ struct NTreeHashSet
             } );
 
         assert( pool.valid( root.b ) );
-        assert_eq( from, pool.dereference( item ) + pool.size( item ) );
+        assert_eq( size_t( from ), size_t( pool.dereference( item ) + pool.size( item ) ) );
 
         root.hash( pool ) = hash;
 
@@ -486,7 +486,9 @@ struct NTreeHashSet
         _leafs.clear();
     }
 
-    Root operator[]( int off ) {
+    Root operator[]( intptr_t off ) {
+        assert_leq( 0, off );
+        assert_leq( off, size() - 1 );
         return _roots[ off ];
     }
 };
