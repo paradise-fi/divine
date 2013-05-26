@@ -315,7 +315,7 @@ struct TrivialHandle {
         b.tag = rank;
     }
     uint64_t asNumber() { return b.raw(); }
-    uint64_t rank() const {
+    int rank() const {
         return b.tag;
     }
 };
@@ -384,8 +384,8 @@ struct DefaultStore
     IsNew< Vertex > store( Node n, hash_t h = 0 ) {
         return this->_store( n, h ).map(
             [this, &n]( Node x ) {
-                assert_eq( x.tag, 0 );
-                assert_eq( n.tag, 0 );
+                assert_eq( x.tag, 0u );
+                assert_eq( n.tag, 0u );
                 if ( x.raw() != n.raw() )
                     this->free( n );
                 return this->vertex( x );
