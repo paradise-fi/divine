@@ -29,9 +29,9 @@ void TrackStatistics::busy( int id ) {
 void TrackStatistics::busy( int id ) {}
 #endif
 
-void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
+void TrackStatistics::matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t) ) {
     for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
-        int sum = 0;
+        int64_t sum = 0;
         o << std::endl;
         for ( int j = 0; size_t( j ) < threads.size(); ++j )
             printv( o, 9, what( thread( i ).sent[ j ], thread( j ).received[ i ] ), &sum );
@@ -41,7 +41,7 @@ void TrackStatistics::matrix( std::ostream &o, int (*what)(int, int) ) {
     }
 }
 
-void TrackStatistics::printv( std::ostream &o, int width, int v, int *sum ) {
+void TrackStatistics::printv( std::ostream &o, int width, int64_t v, int64_t *sum ) {
     o << " " << std::setw( width ) << v;
     if ( sum )
         *sum += v;
@@ -67,7 +67,7 @@ void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
 template< typename F >
 void TrackStatistics::line( std::ostream &o, std::string lbl, F f ) {
     o << std::endl;
-    int sum = 0;
+    int64_t sum = 0;
     for ( int i = 0; i < int( threads.size() ); ++ i )
         printv( o, 9, f( i ), &sum );
     printv( o, 10, sum, 0 );
@@ -85,7 +85,7 @@ void TrackStatistics::format( std::ostream &o ) {
 
         label( o, "totals", false );
         line( o, "items", [&]( int i ) {
-                int x = thread( i ).enq - thread( i ).deq;
+                int64_t x = thread( i ).enq - thread( i ).deq;
                 for ( int j = 0; j < nthreads; ++j )
                     x += thread( j ).sent[ i ] - thread( i ).received[ j ];
                 return x;

@@ -62,7 +62,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
 
     bool gnuplot;
     std::ostream *output;
-    int memBaseline;
+    int64_t memBaseline;
 
     void enqueue( int id , int size ) {
         thread( id ).enq ++;
@@ -116,19 +116,19 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         t.memReceived[ from ] += nodeSize;
     }
 
-    static int first( int a, int ) { return a; }
-    static int second( int, int b ) { return b; }
-    static int diff( int a, int b ) { return a - b; }
+    static int64_t first( int64_t a, int64_t ) { return a; }
+    static int64_t second( int64_t, int64_t b ) { return b; }
+    static int64_t diff( int64_t a, int64_t b ) { return a - b; }
 
-    int memUsed() {
+    int64_t memUsed() {
         sysinfo::Info i;
         return i.peakVmSize() - memBaseline;
     }
 
     void resize( int s );
     template< typename F > void line( std::ostream &o, std::string lbl, F f );
-    void matrix( std::ostream &o, int (*what)(int, int) );
-    void printv( std::ostream &o, int width, int v, int *sum );
+    void matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t) );
+    void printv( std::ostream &o, int width, int64_t v, int64_t *sum );
     void label( std::ostream &o, std::string text, bool d = true );
     void format( std::ostream &o );
     void snapshot();
