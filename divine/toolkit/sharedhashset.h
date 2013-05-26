@@ -96,15 +96,15 @@ struct SharedHashSet {
     }
 
     /* TODO factor this out into a place where HashSet can use it, too */
-    unsigned index( hash_t h, unsigned i, unsigned mask ) const {
+    size_t index( hash_t h, size_t i, size_t mask ) const {
         h &= ~hash_t( thresh - 1 );
         const unsigned Q = 1, R = 1;
         if ( i < thresh )// for small i use trivial computation
             return (h + i) & mask;
         else {
-            unsigned j = i & unsigned( thresh - 1 );
+            size_t j = i & ( thresh - 1 );
             i = i >> threshMSB;
-            unsigned hop = ( (2 * Q + 1) * i + 2 * R * (i * i) ) << threshMSB;
+            size_t hop = ( (2 * Q + 1) * i + 2 * R * (i * i) ) << threshMSB;
             return (h + j + hop ) & mask;
         }
     }
@@ -178,9 +178,9 @@ protected:
             return FindResolution::Growing;
 
         Row &row = *table[ rowIndex ];
-        const unsigned mask = row.size() - 1;
+        const size_t mask = row.size() - 1;
 
-        for ( unsigned i = 0; i < maxCollisions; ++i ) {
+        for ( size_t i = 0; i < maxCollisions; ++i ) {
             if ( changed( rowIndex ) )
                 return FindResolution::Growing;
 
@@ -231,10 +231,10 @@ protected:
 
         Row &row = *table[ rowIndex ];
         assert( !row.empty() );
-        const unsigned mask = row.size() - 1;
+        const size_t mask = row.size() - 1;
 
-        const unsigned acceptableCollisions = force ? 65536 : maxCollisions;
-        for ( unsigned i = 0; i < acceptableCollisions; ++i ) {
+        const size_t acceptableCollisions = force ? 65536 : maxCollisions;
+        for ( size_t i = 0; i < acceptableCollisions; ++i ) {
 
             Cell &cell = row[ index( h, i, mask ) ];
             hash_t chl = cell.hashLock;
