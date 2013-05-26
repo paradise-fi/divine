@@ -6,7 +6,7 @@
 
 using namespace divine;
 
-struct TestHashset {
+struct TestHashSet {
     Test basic() {
         HashSet< int > set;
         set.insert( 1 );
