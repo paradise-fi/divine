@@ -68,7 +68,7 @@ template< typename F >
 void TrackStatistics::line( std::ostream &o, std::string lbl, F f ) {
     o << std::endl;
     int sum = 0;
-    for ( int i = 0; i < threads.size(); ++ i )
+    for ( int i = 0; i < int( threads.size() ); ++ i )
         printv( o, 9, f( i ), &sum );
     printv( o, 10, sum, 0 );
     o << " " << lbl;
