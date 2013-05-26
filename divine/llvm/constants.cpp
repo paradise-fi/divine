@@ -40,7 +40,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value &v, ::llvm::Constant *C, boo
             char *to = econtext.dereference( v ) + offset;
             std::copy( from, from + sub.width, to );
             offset += sub.width;
-            assert_leq( offset, v.width );
+            assert_leq( offset, int( v.width ) );
         }
         /* and padding at the end ... */
     } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
