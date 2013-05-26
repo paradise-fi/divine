@@ -19,12 +19,12 @@
 namespace divine {
 
 struct NoStatistics {
-    void enqueue( int , int ) {}
-    void dequeue( int , int ) {}
-    void hashsize( int , int ) {}
-    void hashadded( int , int ) {}
-    void sent( int, int, int ) {}
-    void received( int, int, int ) {}
+    void enqueue( int , int64_t ) {}
+    void dequeue( int , int64_t ) {}
+    void hashsize( int , int64_t ) {}
+    void hashadded( int , int64_t ) {}
+    void sent( int, int, int64_t ) {}
+    void received( int, int, int64_t ) {}
     void idle( int ) {}
     void busy( int ) {}
 
@@ -64,21 +64,21 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     std::ostream *output;
     int64_t memBaseline;
 
-    void enqueue( int id , int size ) {
+    void enqueue( int id , int64_t size ) {
         thread( id ).enq ++;
         thread( id ).memQueue += size;
     }
 
-    void dequeue( int id , int size ) {
+    void dequeue( int id , int64_t size ) {
         thread( id ).deq ++;
         thread( id ).memQueue -= size;
     }
 
-    void hashsize( int id , int s ) {
+    void hashsize( int id , int64_t s ) {
         thread( id ).hashsize = s;
     }
 
-    void hashadded( int id , int nodeSize ) {
+    void hashadded( int id , int64_t nodeSize ) {
         thread( id ).hashused ++;
         thread( id ).memHashes += nodeSize;
     }
@@ -96,7 +96,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         return *threads[ id ];
     }
 
-    void sent( int from, int to, int nodeSize ) {
+    void sent( int from, int to, int64_t nodeSize ) {
         assert_leq( 0, to );
 
         PerThread &f = thread( from );
@@ -106,7 +106,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
         f.memSent[ to ] += nodeSize;
     }
 
-    void received( int from, int to, int nodeSize ) {
+    void received( int from, int to, int64_t nodeSize ) {
         assert_leq( 0, from );
 
         PerThread &t = thread( to );
@@ -157,12 +157,12 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
 };
 
 template <typename Ty>
-int memSize(Ty x, Pool& pool) {
+int64_t memSize(Ty x, Pool& pool) {
     return sizeof(x);
 }
 
 template <>
-inline int memSize<Blob>(Blob x, Pool& pool) {
+inline int64_t memSize<Blob>(Blob x, Pool& pool) {
     return sizeof( Blob ) + ( pool.valid( x ) ? align( pool.size( x ), sizeof( void * ) ) : 0 );
 }
 
