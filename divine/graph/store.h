@@ -66,7 +66,7 @@ struct StoreCommon : TableProvider
     bool valid( InsertItem n ) { return hasher().valid( n ); }
     bool equal( InsertItem m, InsertItem n ) { return hasher().equal( m, n ); }
     bool has( InsertItem n ) { return this->table().has( n ); }
-    void setSize( int size ) { this->table().setSize( size ); }
+    void setSize( intptr_t size ) { this->table().setSize( size ); }
 
     int owner( hash_t h ) { return TableProvider::owner( h ); }
     int owner( InsertItem n, hash_t hint = 0 ) {
