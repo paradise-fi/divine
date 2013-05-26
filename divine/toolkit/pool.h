@@ -7,7 +7,10 @@
 #include <map>
 
 #ifndef NVALGRIND
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <memcheck.h>
+#pragma GCC diagnostic pop
 #endif
 
 #include <divine/toolkit/shmem.h>
@@ -90,6 +93,9 @@ struct Lake {
     std::atomic< FreeListPtr * >_freelist_big[ 4096 ];
 
 #ifndef NVALGRIND
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
     struct VHandle {
         int handle;
         bool allocated;
@@ -198,6 +204,7 @@ struct Lake {
             }
         std::cerr << " " << (bytes / 1024) << " kbytes held; " << wasted / 1024 << "kB wasted" << std::endl;
     }
+#pragma GCC diagnostic pop
 #else
 #define VALGRIND_MAKE_MEM_DEFINED(x, y)
 #define VALGRIND_MAKE_MEM_NOACCESS(x, y)
@@ -304,9 +311,12 @@ struct Lake {
             assert( valid( si.touse.head ) );
             -- si.touse.count;
             Pointer p = si.touse.head;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
             VALGRIND_MAKE_MEM_DEFINED( dereference( p ), sizeof( Pointer ) );
             si.touse.head = freechunk( p );
             VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), sizeof( Pointer ) );
+#pragma GCC diagnostic pop
             return p;
         }
 
@@ -356,8 +366,10 @@ struct Lake {
 
             auto &si = sizeinfo( size( p ) );
             FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
             VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), sizeof( Pointer ) );
+#pragma GCC diagnostic pop
             freechunk( p ) = fl->head;
             fl->head = p;
             ++ fl->count;
