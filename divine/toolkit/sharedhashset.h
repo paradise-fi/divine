@@ -85,7 +85,7 @@ struct SharedHashSet {
     }
 
     /* only usable before the first insert */
-    void setSize( unsigned s ) {
+    void setSize( size_t s ) {
         s = bitops::fill( s - 1 ) + 1;
         if ( !table[ 1 ] )
             table[ 1 ] = new Row( s );
