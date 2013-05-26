@@ -1,9 +1,5 @@
 appendFlag( "CXX;C" "-Wall" )
 appendFlag( "CXX;C" "-Wextra" )
-appendFlag( "CXX;C" "-Wno-unused-parameter" )
-appendFlag( "CXX;C" "-Wno-sign-compare" )
-appendFlag( "CXX;C" "-Wno-missing-field-initializers" )
-appendFlag( "CXX" "-Wno-overloaded-virtual" )
 
 include( ../wibble/test.cmake )
 include( ../cmake/stringify.cmake )
