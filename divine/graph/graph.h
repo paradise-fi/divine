@@ -115,14 +115,14 @@ struct Base : Allocator {
         }
 
         unsigned count = align( length, SPLIT_LIMIT ) / SPLIT_LIMIT;
-        assert_leq( (count - 1) * SPLIT_LIMIT, length );
-        assert_leq( length, count * SPLIT_LIMIT );
+        assert_leq( int( (count - 1) * SPLIT_LIMIT ), length );
+        assert_leq( length, int( count * SPLIT_LIMIT ) );
 
         unsigned msb = bitops::onlyMSB( count );
         unsigned nomsb = count & ~msb;
         unsigned rem = count * SPLIT_LIMIT - length;
-        assert_leq( 0, rem );
-        assert_leq( rem, SPLIT_LIMIT );
+        assert_leq( 0, int( rem ) );
+        assert_leq( int( rem ), SPLIT_LIMIT );
         if ( !nomsb ) {
             msb /= 2;
             nomsb = msb;
