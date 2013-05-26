@@ -231,7 +231,7 @@ struct Parallel : Terminable, WithID {
     {}
 
     Parallel( const Parallel & ) /* fake copy */
-        : m_topology( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
+        : WithID(), m_topology( 0 ), is_master( false ), m_interrupt( false ), m_busy( true )
     {}
 
     template< typename M = Instance >
