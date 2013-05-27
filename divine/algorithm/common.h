@@ -188,7 +188,7 @@ struct AlgorithmUtils {
 
     template< typename Self >
     void init( Self &self ) {
-        self.becomeMaster( self.meta().execution.threads, self );
+        self.becomeMaster( self.meta().execution.threads );
         _init( self );
         self.initSlaves( self );
     }
