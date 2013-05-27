@@ -257,7 +257,7 @@ struct TestVisitor {
         {
             int i = 32;
             while ( expected % i ) i--;
-            this->becomeMaster( i, *this );
+            this->becomeMaster( i );
             this->initSlaves( *this );
         }
 
@@ -323,7 +323,7 @@ struct TestVisitor {
         {
             int i = 32;
             while ( expected % i ) i--;
-            this->becomeMaster( i, *this );
+            this->becomeMaster( i );
             this->initSlaves( *this );
         }
 
@@ -394,7 +394,7 @@ struct TestVisitor {
             int i = 32;
             while ( expected % i ) i--;
             store.setSize( 1024 );
-            this->becomeMaster( i, *this );
+            this->becomeMaster( i );
             this->initSlaves( *this );
         }
 
@@ -465,7 +465,7 @@ struct TestVisitor {
         TerminableCheck( std::pair< G, int > init ) :
             Check< G >( init.first ), store( this->_graph, 0 )
         {
-            this->becomeMaster( 10, *this );
+            this->becomeMaster( 10 );
             this->initSlaves( *this );
         }
 
