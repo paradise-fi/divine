@@ -179,7 +179,7 @@ auto applyID( wibble::Preferred, X &&x, BSI &in, BSO &out ) ->
 }
 
 template< typename T, typename X, template< typename, typename > class With, int id, typename BSI, typename BSO >
-void applyID( wibble::NotPreferred, X &&x, BSI &in, BSO &out ) {
+void applyID( wibble::NotPreferred, X &&, BSI &, BSO & ) {
     assert_die();
 }
 

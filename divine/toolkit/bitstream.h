@@ -109,7 +109,7 @@ base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
 
 template< typename B, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
-writeTuple( base< B > &bs, std::tuple< Tp... >& t ) {}
+writeTuple( base< B > &, std::tuple< Tp... >& ) {}
 
 template< typename B, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I < sizeof...(Tp)), void >::type
@@ -120,7 +120,7 @@ writeTuple( base< B > &bs, std::tuple< Tp... >& t ) {
 
 template< typename B, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
-readTuple( base< B > &bs, std::tuple< Tp... >& t ) {}
+readTuple( base< B > &, std::tuple< Tp... >& ) {}
 
 template< typename B, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I < sizeof...(Tp)), void >::type

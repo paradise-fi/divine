@@ -54,7 +54,7 @@ struct TestBlob {
     }
 
     Test align() {
-        for ( unsigned i = 0; i < 100; ++i )
+        for ( int i = 0; i < 100; ++i )
             assert_leq( i, divine::align( i, sizeof( void * ) ) );
     }
 

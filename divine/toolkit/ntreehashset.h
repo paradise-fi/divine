@@ -72,12 +72,12 @@ struct NTreeHashSet
 
         LeafOr( Fork f ) : ptr( f.b.raw() | unionbit )
         {
-            assert_eq( f.b.raw() & unionbit, 0 );
+            assert_eq( f.b.raw() & unionbit, 0UL );
         }
 
         LeafOr( Leaf l ) : ptr( l.b.raw() )
         {
-            assert_eq( l.b.raw() & unionbit, 0 );
+            assert_eq( l.b.raw() & unionbit, 0UL );
         }
 
         Blob blob() const { return Blob::fromRaw( ptr & ~unionbit ); }

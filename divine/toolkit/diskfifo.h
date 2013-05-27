@@ -338,7 +338,7 @@ private:
 
 template< std::size_t I = 0, typename... Tp >
 inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
-release( std::tuple< Tp... >& t, Pool* p ) {}
+release( std::tuple< Tp... >&, Pool* ) {}
 
 template< std::size_t I = 0, typename... Tp >
 inline typename std::enable_if< (I < sizeof...(Tp)), void >::type

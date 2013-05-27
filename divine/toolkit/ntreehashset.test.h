@@ -23,7 +23,7 @@ struct FakeGeneratorFlat {
     }
 
     template< typename Yield >
-    void splitHint( Blob n, intptr_t from, intptr_t length, Yield yield ) {
+    void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
         yield( Recurse::No, length, 0 );
     }
 
@@ -41,7 +41,7 @@ struct FakeGeneratorBinary {
     }
 
     template< typename Yield >
-    void splitHint( Blob n, intptr_t from, intptr_t length, Yield yield ) {
+    void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
         if ( length < 32 )
             yield( Recurse::No, length, 0 );
         else {
@@ -86,7 +86,7 @@ struct TestNTreeHashSet {
         std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
         assert( inserted );
         assert( !root.leaf( fg.pool() ) );
-        assert_eq( fg.pool().size( root.b ),
+        assert_eq( size_t( fg.pool().size( root.b ) ),
                    sizeof( BlobSet::Root::Header ) + 2 * sizeof( BlobSet::LeafOrFork ) );
         assert_eq( root.forkcount( fg.pool() ), 2 );
 
@@ -95,7 +95,7 @@ struct TestNTreeHashSet {
         assert( children[ 0 ].isLeaf() );
         assert( children[ 1 ].isLeaf() );
 
-        assert_eq( children.size(), 2 );
+        assert_eq( children.size(), 2UL );
 
         assert_eq( children[ 0 ].leaf().size( fg.pool() ), 17 );
         assert_eq( children[ 1 ].leaf().size( fg.pool() ), 16 );
@@ -141,7 +141,7 @@ struct TestNTreeHashSet {
         assert( children[ 0 ].isFork() );
         assert( children[ 1 ].isFork() );
 
-        assert_eq( children.size(), 2 );
+        assert_eq( children.size(), 2UL );
 
         assert_eq( children[ 0 ].fork().forkcount( fg.pool() ), 2 );
         assert_eq( children[ 1 ].fork().forkcount( fg.pool() ), 2 );
@@ -154,8 +154,8 @@ struct TestNTreeHashSet {
         assert( right[ 0 ].isLeaf() );
         assert( right[ 1 ].isLeaf() );
 
-        assert_eq( left.size(), 2 );
-        assert_eq( right.size(), 2 );
+        assert_eq( left.size(), 2UL );
+        assert_eq( right.size(), 2UL );
 
         assert_eq( left[ 0 ].leaf().size( fg.pool() ), 17 );
         assert_eq( left[ 1 ].leaf().size( fg.pool() ), 17 );

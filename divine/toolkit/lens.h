@@ -47,7 +47,7 @@ struct LinearAddress {
     int offset;
     Pool* pool;
 
-    LinearAddress( LinearAddress base, int index, int offset )
+    LinearAddress( LinearAddress base, int /* index */, int offset )
         : b( base.b ), offset( base.offset + offset ), pool( base.pool )
     {}
 

@@ -2,6 +2,7 @@
 
 #include <wibble/test.h>
 #include <wibble/sys/thread.h>
+#include <wibble/param.h>
 
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
@@ -109,6 +110,8 @@ public:
     void send( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
 #ifdef O_MPI
             return MPI::COMM_WORLD.Send( buf, count, MPI::BYTE, dest, tag );
+#else
+            wibble::param::discard( buf, count, dest, tag );
 #endif
     }
 
@@ -117,12 +120,15 @@ public:
         return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
 #else
         return MpiRequest();
+        wibble::param::discard( buf, count, dest, tag );
 #endif
     }
 
     void recv( void *mem, size_t count, int source, int tag, Status &st ) {
 #ifdef O_MPI
         MPI::COMM_WORLD.Recv( mem, count, MPI::BYTE, source, tag, st );
+#else
+        wibble::param::discard( mem, count, source, tag, st );
 #endif
     }
 
@@ -134,6 +140,7 @@ public:
         } else
             return MPI::COMM_WORLD.Iprobe( source, tag, st );
 #endif
+        wibble::param::discard( source, tag, st, wait );
         return false;
     }
 
@@ -141,6 +148,7 @@ public:
 #ifdef O_MPI
         return st.Get_count( MPI::BYTE );
 #endif
+        wibble::param::discard( st );
         return 0;
     }
 
@@ -175,7 +183,7 @@ public:
         return recvStream( _lock, st, bs );
     }
 
-    bitblock &recvStream( wibble::sys::MutexLock &_lock, Status &st, bitblock &bs )
+    bitblock &recvStream( wibble::sys::MutexLock &, Status &st, bitblock &bs )
     {
         probe( st.Get_source(), st.Get_tag(), st );
         int first = bs.bits.size(), count = size( st ) / 4;

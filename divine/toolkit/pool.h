@@ -209,8 +209,8 @@ struct Lake {
 #define VALGRIND_MAKE_MEM_DEFINED(x, y)
 #define VALGRIND_MAKE_MEM_NOACCESS(x, y)
 #define VALGRIND_MAKE_MEM_UNDEFINED(x, y)
-    void valgrindAllocated( Pointer p ) {}
-    void valgrindDeallocated( Pointer p ) {}
+    void valgrindAllocated( Pointer ) {}
+    void valgrindDeallocated( Pointer ) {}
     void valgrindNewBlock( int, int ) {}
     void valgrindFini() {}
     void valgrindInit() {}
@@ -576,8 +576,8 @@ struct Dereference {
         return jenkins3( dereference( b ) + from, to - from, salt );
     }
 
-    void acquireLock( Blob b ) { assert_unimplemented(); }
-    void releaseLock( Blob b ) { assert_unimplemented(); }
+    void acquireLock( Blob ) { assert_unimplemented(); }
+    void releaseLock( Blob ) { assert_unimplemented(); }
 };
 
 #ifdef O_POOLS
