@@ -27,7 +27,7 @@ struct Input {
 };
 
 struct Execution {
-    int initialTable;
+    intptr_t initialTable;
     bool diskFifo;
 
     int threads;
