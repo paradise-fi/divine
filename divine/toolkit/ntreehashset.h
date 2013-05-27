@@ -361,8 +361,6 @@ struct NTreeHashSet
         pool().copy( slackSource, root, slack() );
     }
 
-    Item getReassembled( Item item ) {}
-
     size_t size() { return _roots.size(); }
     bool empty() { return _roots.empty(); }
 
@@ -471,7 +469,7 @@ struct NTreeHashSet
 
     template< typename TD >
     bool has( Item i, TD &td ) {
-        return std::get< 1 >( get( i ) );
+        return std::get< 1 >( get( i, td ) );
     }
 
     void setSize( size_t s ) {
