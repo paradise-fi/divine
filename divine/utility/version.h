@@ -13,7 +13,7 @@ namespace divine {
 const char *versionString();
 const char *buildDateString();
 struct BuildInfo {};
-std::ostream &operator<<( std::ostream &o, BuildInfo );
+std::ostream &operator<<( std::ostream &, BuildInfo );
 }
 
 #endif

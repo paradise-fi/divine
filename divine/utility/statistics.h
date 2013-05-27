@@ -37,7 +37,7 @@ struct NoStatistics {
     }
 
     template< typename D >
-    void useDomain( D &d ) {}
+    void useDomain( D & ) {}
     void start() {}
 };
 
@@ -157,7 +157,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
 };
 
 template <typename Ty>
-int64_t memSize(Ty x, Pool& pool) {
+int64_t memSize( Ty x, Pool& ) {
     return sizeof(x);
 }
 

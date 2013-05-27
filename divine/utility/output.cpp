@@ -62,7 +62,7 @@ struct StdIO : divine::Output, proxycall {
         flushed = false;
     }
 
-    void repeat( bool print ) {
+    void repeat( bool ) {
         if ( flushed ) {
             myout << _partial << " <...>" << std::endl;
         } else {

@@ -32,7 +32,7 @@ const char *versionString() {
     return version.c_str();
 }
 
-std::ostream &operator<<( std::ostream &o, BuildInfo a )
+std::ostream &operator<<( std::ostream &o, BuildInfo )
 {
         o << "Version: " << versionString() << std::endl;
         o << "Build-Date: " << buildDateString() << std::endl;
