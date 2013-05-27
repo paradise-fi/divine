@@ -65,7 +65,7 @@ struct Dummy : Common< Blob > {
         return f.first == 512;
     }
 
-    bool isAccepting( Node s ) { return false; }
+    bool isAccepting( Node ) { return false; }
     std::string showNode( Node s ) {
         if ( !pool().valid( s ) )
             return "[]";
@@ -76,7 +76,7 @@ struct Dummy : Common< Blob > {
     }
 
     /// currently only dummy method
-    std::string showTransition( Node from, Node to, Label act ) {
+    std::string showTransition( Node, Node, Label act ) {
         if (act.probability == 3)
 	  return "3";
 	else
