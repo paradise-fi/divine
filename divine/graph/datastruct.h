@@ -291,7 +291,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     }
 
     SharedQueue( void ) = delete;
-    SharedQueue( const SharedQueue& s) = default;
+    SharedQueue( const SharedQueue& ) = default;
 };
 
 template< typename T >

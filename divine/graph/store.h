@@ -611,7 +611,7 @@ struct NTreeStore
     int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
 
     int knows( Handle h, hash_t hint = 0 ) {
-        return h.rank() == this->rank() && Base::knows( hash( h ) );
+        return h.rank() == this->rank() && Base::knows( hint ? hint : hash( h ) );
     }
     int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
 

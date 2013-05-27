@@ -51,11 +51,11 @@ struct Base : Allocator {
     void initPOR() {}
 
     // for single-set acceptance conditions (Buchi)
-    bool isAccepting( Node s ) { return false; }
+    bool isAccepting( Node ) { return false; }
 
     // for multi-set acceptance conditions (Rabin, Streett, ...)
-    bool isInAccepting( Node s, int acc_group ) { return false; }
-    bool isInRejecting( Node s, int acc_group ) { return false; }
+    bool isInAccepting( Node, int /* acc_group */ ) { return false; }
+    bool isInRejecting( Node, int /* acc_group */ ) { return false; }
     unsigned acceptingGroupCount() { return 0; }
 
     // HACK: Inform the graph of the compute domain geometry, required by the
@@ -105,7 +105,7 @@ struct Base : Allocator {
 
     // yield( Recurse, length, remaining count )
     template< typename Yield >
-    void splitHint( Node n, int form, int length, Yield yield ) {
+    void splitHint( Node, int, int length, Yield yield ) {
         // just a simple binary splitting, should be replaced by something
         // more appropriate in generators
 

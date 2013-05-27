@@ -168,7 +168,7 @@ struct TestVisitor {
     }
 
     template< typename T, typename N, typename Label >
-    static TransitionAction parallel_transition( T *self, N fV, N tV, Label label ) {
+    static TransitionAction parallel_transition( T *self, N fV, N tV, Label ) {
         auto f = fV.node();
         auto t = tV.node();
 
@@ -286,7 +286,7 @@ struct TestVisitor {
         Node make( int n ) { return makeNode< Node >( n ); }
         int expected;
 
-        static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label label ) {
+        static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label ) {
             Node f = fV.node();
             Node t = tV.node();
             if ( node( f, c._graph.pool() ) ) {
@@ -354,7 +354,7 @@ struct TestVisitor {
         typename Shared::Data< This > data;
         Store store;
 
-        static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label label ) {
+        static TransitionAction transition( This &c, Vertex fV, Vertex tV, Label ) {
             Node f = fV.node();
             Node t = tV.node();
             if ( node( f, c._graph.pool() ) ) {
@@ -404,7 +404,7 @@ struct TestVisitor {
             this->becomeSlave( m.topology(), i );
         }
 
-        SharedCheck( const SharedCheck& s ) = default;
+        SharedCheck( const SharedCheck& ) = default;
     };
 
     template< typename G >
@@ -520,7 +520,6 @@ struct TestVisitor {
 
         struct CheckSetup : Check< NMTree< N > >, Sequential {};
 
-        typedef typename CheckSetup::Node Node;
         typename CheckSetup::Store s( g, 0 );
         WithID wid;
         wid.setId( 0, 1, 0 );
