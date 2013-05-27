@@ -235,10 +235,10 @@ struct Parallel : Terminable, WithID {
     {}
 
     template< typename M = Instance >
-    void becomeMaster( int n, M &m ) {
+    void becomeMaster( int n ) {
         is_master = true;
         assert( !m_topology );
-        m_topology = new Topology< Instance >( n, m ); // TODO int is kind of limited
+        m_topology = new Topology< Instance >( n ); // TODO int is kind of limited
         setId( -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
     }
 
@@ -340,8 +340,7 @@ struct Local
     Comms &comms() { return m_comms; }
     Barrier< Terminable > &barrier() { return m_barrier; }
 
-    template< typename X = Instance >
-    Local( int n, X &init, int offset = 0 ) :
+    Local( int n, int offset = 0 ) :
         m_slavesCount( n ), m_offset( offset )
     {
         m_slaves.reserve( n ); /* avoid reallocation at all costs! */
@@ -388,8 +387,8 @@ struct Local
     }
 
     template< typename Self >
-    void parallel( Self *self, void (Instance::*fun)(),
-                   wibble::sys::Thread * extra = 0, int offset = 0 )
+    void parallel( Self *, void (Instance::*fun)(),
+                   wibble::sys::Thread * extra = 0 )
     {
         int nextra = extra ? 1 : 0;
         Threads threads( m_slaves, fun );
@@ -440,8 +439,8 @@ struct Mpi : MpiMonitor
     Mpi( const Mpi& ) = delete;
 
     template< typename X = Instance >
-    Mpi( int pernode, X &init )
-        : m_local( pernode, init, mpi.rank() * pernode ),
+    Mpi( int pernode )
+        : m_local( pernode, mpi.rank() * pernode ),
           m_mpiForwarder( masterPool(),
                           &barrier(),
                           &comms(),
