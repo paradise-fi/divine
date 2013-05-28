@@ -300,10 +300,12 @@ endif()
 
 if( PROFILE )
   find_program( LCOV lcov )
+  find_program( GCOV gcov )
   find_program( LCOV_GENHTML genhtml )
 
   if( LCOV )
     set( LCOV_BIN "${LCOV}" )
+    set( GCOV_BIN "${GCOV}" )
     set( LCOV_IN "${divine_BINARY_DIR}" )
     set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
     configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
