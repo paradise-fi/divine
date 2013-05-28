@@ -53,14 +53,20 @@ let
                              "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
                              "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
                       else []);
+        profile = if lib.eqStrings buildType "Debug"
+                     then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc47.gcc}/bin/gcov" ] else [];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
-       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 ] ++ inputs { inherit pkgs; };
-       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags ++ flags;
+       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov ] ++ inputs { inherit pkgs; };
+       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags ++ profile ++ flags;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
+          make lcov-report && \
+            cp -R lcov-report $out/ && \
+            echo "report coverage $out/lcov-report" >> $out/nix-support/hydra-build-products || \
+            true
        '';
     };
 
