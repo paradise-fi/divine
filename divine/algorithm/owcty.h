@@ -69,9 +69,6 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         size_t iteration:10; // handle up to 1024 iterations
     } __attribute__((packed));
 
-    static_assert( sizeof( Extension ) == sizeof( Handle ) + sizeof( MapVertexId ) + 4,
-            "OWCTY extension is padded" );
-
     typedef LtlCE< Setup, Shared, Extension, Hasher > CE;
     CE ce;
 

@@ -95,9 +95,6 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         unsigned short elim:2;
     } __attribute__((packed));
 
-    static_assert( sizeof( Extension ) == sizeof( Handle )
-            + 2 * sizeof( MapVertexId ) + 2, "MAP extension is padded" );
-
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
 
