@@ -1,5 +1,4 @@
-add_definitions( -Wall -Wno-unused-variable -Wno-unused-function -Wno-overloaded-virtual )
-add_definitions( -Wextra -Wno-unused-parameter -Wno-sign-compare )
+with_warnings()
 
 include_directories( ${DIVINE_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )

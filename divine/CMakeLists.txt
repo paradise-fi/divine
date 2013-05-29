@@ -1,5 +1,4 @@
-appendFlag( "CXX;C" "-Wall" )
-appendFlag( "CXX;C" "-Wextra" )
+with_warnings()
 
 include( ../wibble/test.cmake )
 include( ../cmake/stringify.cmake )

@@ -34,6 +34,13 @@ macro( disabling name detail reason )
     set( DISABLED "${DISABLED} ${name}" )
 endmacro()
 
+macro( with_warnings )
+    appendFlag( "CXX;C" "-Wall" )
+    if( WARNINGS )
+        appendFlag( "CXX;C" "-Wextra" )
+    endif()
+endmacro()
+
 ############################################
 ## USER-LEVEL OPTIONS
 ##
@@ -57,6 +64,7 @@ option( TBBMALLOC "use Intel TBB memory allocator" ON )
 
 option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
 
+option( WARNINGS "enable extra compiler warnings" OFF )
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 include (VersionAppend)
