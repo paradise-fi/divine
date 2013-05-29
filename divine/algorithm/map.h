@@ -86,14 +86,17 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     struct Extension {
         Handle parent;
+        MapVertexId map;
+        MapVertexId oldmap;
         bool seen:1;
-        short iteration:14;
+        short iteration:13;
         // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
         // 3 = not accepting
         unsigned short elim:2;
-        MapVertexId map;
-        MapVertexId oldmap;
-    };
+    } __attribute__((packed));
+
+    static_assert( sizeof( Extension ) == sizeof( Handle )
+            + 2 * sizeof( MapVertexId ) + 2, "MAP extension is padded" );
 
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
