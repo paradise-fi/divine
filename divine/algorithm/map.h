@@ -40,7 +40,7 @@ struct MapVertexId {
 
 template < typename Handle >
 struct MapShared {
-    int expanded, eliminated, accepting;
+    int64_t expanded, eliminated, accepting;
     int iteration;
     CeShared< Blob, Handle > ce;
     algorithm::Statistics stats;
@@ -75,10 +75,9 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     typedef Map< Setup > This;
     ALGORITHM_CLASS( Setup, MapShared< typename Setup::Store::Handle > );
 
-    int d_eliminated,
-        acceptingCount,
-        eliminated,
-        expanded;
+    int64_t acceptingCount,
+            eliminated,
+            expanded;
     Handle cycle_node;
 
     MapVertexId makeId( Vertex n ) {
@@ -112,6 +111,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     void collect() {
+        eliminated = 0;
         for ( int i = 0; i < int( shareds.size() ); ++i )
             shared.stats.merge( shareds[ i ].stats );
         shared.stats.update( meta().statistics );
@@ -119,7 +119,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         for ( int i = 0; i < int( shareds.size() ); ++ i ) {
             if ( shared.iteration == 1 )
                 acceptingCount += shareds[ i ].accepting;
-            d_eliminated += shareds[ i ].eliminated;
+            eliminated += shareds[ i ].eliminated;
             expanded += shareds[ i ].expanded;
             assert_eq( shared.eliminated, 0 );
             assert_eq( shared.expanded, 0 );
@@ -285,17 +285,18 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
     void run()
     {
+        int64_t old_eliminated = 0;
         shared.iteration = 1;
-        acceptingCount = eliminated = d_eliminated = expanded = 0;
+        acceptingCount = eliminated = expanded = 0;
         result().fullyExplored = meta::Result::No;
         bool valid = true;
         do {
             progress() << " iteration " << std::setw( 3 ) << shared.iteration
                        << "...\t" << std::flush;
             shared.accepting = shared.eliminated = shared.expanded = 0;
-            expanded = d_eliminated = 0;
+            old_eliminated = eliminated;
+            expanded = 0;
             iteration();
-            eliminated += d_eliminated;
             assert_leq( eliminated, acceptingCount );
             progress() << eliminated << " eliminated, "
                        << expanded << " expanded" << std::endl;
@@ -305,7 +306,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
                 result().fullyExplored = meta::Result::Yes;
 
             ++ shared.iteration;
-        } while ( d_eliminated > 0 && eliminated < acceptingCount && valid );
+        } while ( ( eliminated - old_eliminated ) > 0
+                && eliminated < acceptingCount && valid );
 
         result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
         meta().statistics.deadlocks = -1; /* did not count */
