@@ -15,8 +15,64 @@
 
 namespace divine {
 
-template< typename _Item, typename _Hasher = divine::default_hasher< _Item > >
-struct SharedHashSet {
+template< typename Item >
+struct HashCell {
+    std::atomic< hash_t > hashLock;
+    Item value;
+
+    bool empty() { return hashLock == 0; }
+    bool invalid() { return hashLock == 1; }
+    void invalidate() { hashLock.exchange( 1 ); }
+
+    Item fetch() { return value; }
+
+    template< typename Hasher >
+    hash_t hash( Hasher & ) { return hashLock >> 1; }
+
+    // wait until another writing ends
+    // returns false if cell was invalidated
+    bool wait() {
+        while( hashLock & 1 )
+            if ( invalid() )
+                return false;
+        return true;
+    }
+
+    template< typename GrowingGuard >
+    bool tryStore( Item v, hash_t hash, GrowingGuard g ) {
+        hash_t chl = 0;
+        if ( hashLock.compare_exchange_strong( chl, (hash << 1) | 1 ) ) {
+            if ( g() ) {
+                invalidate();
+                return false;
+            }
+            value = v;
+            hashLock.exchange( hash << 1 );
+            return true;
+        }
+        return false;
+    }
+
+    // it has to call wait method
+    template< typename Value, typename Hasher >
+    bool is( Value v, hash_t hash, Hasher &h ) {
+        if ( ( (hash << 1) | 1) != (hashLock | 1) )
+            return false;
+        if ( !wait() )
+            return false;
+        return h.equal( value, v );
+    }
+
+    HashCell() : hashLock( 0 ), value() {}
+    HashCell( HashCell & ) : hashLock( 0 ), value() {}
+};
+
+template<
+    typename _Item,
+    typename _Hasher = divine::default_hasher< _Item >,
+    typename Cell = HashCell< _Item >
+    >
+struct SharedHashSetImplementation {
 
     using Item = _Item;
     using Hasher = _Hasher;
@@ -34,15 +90,6 @@ struct SharedHashSet {
         Growing  // table is growing or was already resized, retry
     };
     enum class FindResolution { Found, Growing, NotFound };
-
-    struct Cell {
-        std::atomic< hash_t > hashLock;
-        Item value;
-
-        /* TODO: parallel table initialization */
-        Cell() : hashLock( 0 ), value() {}
-        Cell( const Cell & ) : hashLock( 0 ), value() {}
-    };
 
     struct ThreadData {
         unsigned currentRow;
@@ -72,12 +119,12 @@ struct SharedHashSet {
         return table[ currentRow ]->size();
     }
 
-    explicit SharedHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
+    explicit SharedHashSetImplementation( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : table( maxGrows, nullptr ), tableWorkers( maxGrows ), currentRow( 1 ),
           availableSegments( 0 ), growing( false ), hasher( h )
     {}
 
-    ~SharedHashSet() {
+    ~SharedHashSetImplementation() {
         for ( unsigned i = 0; i != table.size(); ++i ) {
             if ( table[ i ] )
                 delete table[ i ];
@@ -150,7 +197,7 @@ struct SharedHashSet {
                 case FindResolution::Growing:
                     updateIndex( tld.currentRow );
                     break;
-                 default:
+                default:
                     __builtin_unreachable();
             }
         }
@@ -162,8 +209,8 @@ struct SharedHashSet {
         return (*table[ currentRow ])[ index ].value;
     }
 
-    SharedHashSet( const SharedHashSet & ) = delete;
-    SharedHashSet &operator=( const SharedHashSet & )= delete;
+    SharedHashSetImplementation( const SharedHashSetImplementation & ) = delete;
+    SharedHashSetImplementation &operator=( const SharedHashSetImplementation & )= delete;
 
 protected:
 
@@ -185,42 +232,19 @@ protected:
                 return FindResolution::Growing;
 
             Cell &cell = row[ index( h, i, mask ) ];
-            hash_t chl = cell.hashLock;
-
-            if ( chl == 0 )
+            if ( cell.empty() )
                 return FindResolution::NotFound;
-            if ( (chl | 1) == (h | 1) ) {
-                if ( chl & 1 )
-                    while ( ( chl = cell.hashLock ) & 1 ) {
-                        if ( chl == 1 )
-                            return FindResolution::Growing;
-                    }
-
-                if ( hasher.equal( cell.value, pair.second ) ) {
-                    pair.first = cell.value;
-                    return FindResolution::Found;
-                }
+            if ( cell.is( pair.second, h, hasher ) ) {
+                pair.first = cell.fetch();
+                return FindResolution::Found;
             }
+            if ( cell.invalid() )
+                return FindResolution::Growing;
         }
         return FindResolution::NotFound;
     }
 
-    /* force must not be set unless we are growing (rehashing) */
-    InsertResolution tryInsert( Cell &cell, Item x, hash_t h, hash_t &chl, int rowIndex, bool force ) {
-        if ( cell.hashLock.compare_exchange_strong( chl, h | 1 ) ) {
-
-            if ( !force && ( growing || changed( rowIndex ) ) ) {
-                cell.hashLock.exchange( 1 );
-                return InsertResolution::Growing;
-            }
-            cell.value = x;
-            cell.hashLock.exchange( h & ~hash_t(1) );
-            return InsertResolution::Success;
-        }
-        return InsertResolution::Failed;
-    }
-
-    InsertResolution insertCell( Item &x, hash_t h, int rowIndex, bool force = false ) {
+    InsertResolution insertCell( Item &x, hash_t h, unsigned rowIndex, bool force = false ) {
         if ( !force ) {
             while( growing ) // help with rehashing
                 while ( rehashSegment() );
@@ -237,40 +261,21 @@ protected:
         for ( size_t i = 0; i < acceptableCollisions; ++i ) {
 
             Cell &cell = row[ index( h, i, mask ) ];
-            hash_t chl = cell.hashLock;
 
-            if ( chl == 0 ) {
-                switch( tryInsert( cell, x, h, chl, rowIndex, force ) ) {
-                    case InsertResolution::Failed:
-                        break;
-                    case InsertResolution::Success:
-                        return InsertResolution::Success;
-                    case InsertResolution::Growing:
-                        return InsertResolution::Growing;
-                    default:
-                        __builtin_unreachable();
-                }
+            if ( cell.empty() ) {
+                if ( cell.tryStore( x, h, [&]() -> bool {
+                        return !force && (this->changed( rowIndex ) || this->growing );
+                    } ) )
+                    return InsertResolution::Success;
+                if ( !force && ( growing || changed( rowIndex ) ) )
+                    return InsertResolution::Growing;
             }
-            if ( (chl | 1) == (h | 1) ) { /* hashes match → compare */
-                /* Wait until value write finishes. */
-                if ( chl & 1 )
-                    while ( ( chl = cell.hashLock ) & 1 ) {
-                        // check whether cell was moved by a "rehashSegment" call
-                        if ( chl == 1 )
-                            return InsertResolution::Growing;
-                    }
-
-                /* The wait here is not really necessary because x86 supports
-                 * 8-byte CAS and x86_64 supports 16-byte CAS. We don't use it
-                 * (yet) as the code would be less readable and, more
-                 * importantly, gcc doesn't provide an API for 16-byte CAS.
-                 * TODO: Remove the wait. */
-
-                if ( hasher.equal( cell.value, x ) ) {
-                    x = cell.value;
-                    return InsertResolution::Found;
-                }
+            if ( cell.is( x, h, hasher ) ) {
+                x = cell.fetch();
+                return InsertResolution::Found;
             }
+            if ( !force && ( growing || changed( rowIndex ) ) )
+                return InsertResolution::Growing;
         }
         return InsertResolution::NoSpace;
     }
@@ -288,9 +293,8 @@ protected:
             __builtin_unreachable();
         }
 
-        if ( currentRow >= rowIndex ) {
+        if ( currentRow >= rowIndex )
             return false;
-        }
 
         while ( growing.exchange( true ) ); // acquire growing lock
 
@@ -331,22 +335,18 @@ protected:
             end = row.end();
         assert( it < end );
 
-        for ( ; it != end; ++it ) {
-            hash_t chl = it->hashLock;
-            do {
-                chl &= ~hash_t(1);
-            } while ( it->hashLock.compare_exchange_strong( chl, chl | 1 )
-                && chl != 1 );
-
-            if ( chl == 1 )
+        // every cell has to be invalitated
+        for ( ; it != end; it->invalidate(), ++it ) {
+            if ( it->empty() )
                 continue;
-
-            if ( insertCell( it->value, chl & ~hash_t(1), currentRow, true )
+            if ( !it->wait() )
+                continue;
+            Item value = it->fetch();
+            if ( insertCell( value, it->hash( hasher ), currentRow, true )
                 == InsertResolution::NoSpace ) {
                 std::cerr << "no enough space during growing" << std::endl;
                 abort();
             }
-            it->hashLock.exchange( 1 );
         }
 
         if ( ++doneSegments == segments )
@@ -385,6 +385,9 @@ protected:
         } while ( true );
     }
 };
+
+template< typename Item, typename Hasher = divine::default_hasher< Item > >
+using SharedHashSet = SharedHashSetImplementation< Item, Hasher >;
 
 }
 
