@@ -156,15 +156,13 @@ struct SharedHashSetImplementation {
         }
     }
 
-    template< typename TD >
-    std::tuple< Item, bool > insert( Item x, TD &tld ) {
+    std::tuple< Item, bool > insert( Item x, ThreadData &tld ) {
         return insertHinted( x, hasher.hash( x ), tld );
     }
 
-    template< typename TD >
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h, TD &tld ) {
+    std::tuple< Item, bool > insertHinted( Item x, hash_t h, ThreadData &tld ) {
         while ( true ) {
-            switch( insertCell( x, h << 1, tld.currentRow ) ) {
+            switch( insertCell< false >( x, h << 1, tld.currentRow ) ) {
                 case InsertResolution::Success:
                     return std::make_tuple( x, true );
                 case InsertResolution::Found:
@@ -185,8 +183,8 @@ struct SharedHashSetImplementation {
         __builtin_unreachable();
     }
 
-    template< typename T, typename TD >
-    std::tuple< Item, bool > getHinted( T x, hash_t h, TD &tld ) {
+    template< typename T >
+    std::tuple< Item, bool > getHinted( T x, hash_t h, ThreadData &tld ) {
         auto pair = std::make_pair( Item(), x );
         while ( true ) {
             switch( getCell( pair, h << 1, tld.currentRow ) ) {
@@ -244,7 +242,8 @@ protected:
         return FindResolution::NotFound;
     }
 
-    InsertResolution insertCell( Item &x, hash_t h, unsigned rowIndex, bool force = false ) {
+    template< bool force >
+    InsertResolution insertCell( Item &x, hash_t h, unsigned rowIndex ) {
         if ( !force ) {
             while( growing ) // help with rehashing
                 while ( rehashSegment() );
@@ -342,7 +341,7 @@ protected:
             if ( !it->wait() )
                 continue;
             Item value = it->fetch();
-            if ( insertCell( value, it->hash( hasher ), currentRow, true )
+            if ( insertCell< true >( value, it->hash( hasher ), currentRow )
                 == InsertResolution::NoSpace ) {
                 std::cerr << "no enough space during growing" << std::endl;
                 abort();
