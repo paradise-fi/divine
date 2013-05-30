@@ -67,6 +67,48 @@ struct HashCell {
     HashCell( HashCell & ) : hashLock( 0 ), value() {}
 };
 
+struct CompactCell {
+    std::atomic< Blob > value;
+
+    bool empty() { return !value.load().raw(); }
+    bool invalid() { return !value.load().tag; }
+
+    void invalidate() {
+        Blob b = value;
+        b.tag = 0;
+        value.exchange( b );
+    }
+
+    Blob fetch() {
+        Blob b = value;
+        b.tag = 0;
+        return b;
+    }
+
+    template< typename Hasher >
+    hash_t hash( Hasher &h ) { return h.hash( value.load() ); }
+
+    bool wait() { return !invalid(); }
+
+    template< typename GrowingGuard >
+    bool tryStore( Blob b, hash_t hash, GrowingGuard ) {
+        Blob zero;
+        b.tag = hash;
+        return value.compare_exchange_strong( zero, b );
+    }
+
+    template< typename Value, typename Hasher >
+    bool is( Value v, hash_t hash, Hasher &h ) {
+        static const unsigned mask = ( unsigned( 1 ) << Blob::tagBits ) - 1;
+        if ( value.load().tag != ( hash & mask ) )
+            return false;
+        return h.equal( value, v );
+    }
+
+    CompactCell() : value() {}
+    CompactCell( const CompactCell & ) : value() {}
+};
+
 template<
     typename _Item,
     typename _Hasher = divine::default_hasher< _Item >,
