@@ -92,9 +92,10 @@ struct SharedHashSetImplementation {
     enum class FindResolution { Found, Growing, NotFound };
 
     struct ThreadData {
+        unsigned inserts;
         unsigned currentRow;
 
-        ThreadData() : currentRow( 0 ) {}
+        ThreadData() : inserts( 0 ), currentRow( 0 ) {}
     };
 
     using Row = std::vector< Cell >;
@@ -102,14 +103,16 @@ struct SharedHashSetImplementation {
     static const unsigned cacheLine = 64;// Bytes
     static const unsigned thresh = cacheLine / sizeof( Cell );
     static const unsigned threshMSB = bitops::compiletime::MSB( thresh );
-    static const unsigned maxCollisions = thresh * 16;
-    static const unsigned segmentSize = 1 << 16;// 2^16
+    static const unsigned maxCollisions = 1 << 16;// 2^16 = 65536
+    static const unsigned segmentSize = 1 << 16;// 2^16 = 65536
+    static const unsigned syncPoint = 1 << 10;// 2^10 = 1024
 
     std::vector< Row * > table;
     std::vector< std::atomic< unsigned short > > tableWorkers;
     std::atomic< unsigned > currentRow;
     std::atomic< int > availableSegments;
     std::atomic< unsigned > doneSegments;
+    std::atomic< size_t > used;
     std::atomic< bool > growing;
     Hasher hasher;
 
@@ -119,9 +122,13 @@ struct SharedHashSetImplementation {
         return table[ currentRow ]->size();
     }
 
+    size_t usage() const {
+        return used;
+    }
+
     explicit SharedHashSetImplementation( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : table( maxGrows, nullptr ), tableWorkers( maxGrows ), currentRow( 1 ),
-          availableSegments( 0 ), growing( false ), hasher( h )
+          availableSegments( 0 ), used( 0 ), growing( false ), hasher( h )
     {}
 
     ~SharedHashSetImplementation() {
@@ -156,25 +163,26 @@ struct SharedHashSetImplementation {
         }
     }
 
-    std::tuple< Item, bool > insert( Item x, ThreadData &tld ) {
-        return insertHinted( x, hasher.hash( x ), tld );
+    std::tuple< Item, bool > insert( Item x, ThreadData &td ) {
+        return insertHinted( x, hasher.hash( x ), td );
     }
 
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h, ThreadData &tld ) {
+    std::tuple< Item, bool > insertHinted( Item x, hash_t h, ThreadData &td ) {
         while ( true ) {
-            switch( insertCell< false >( x, h << 1, tld.currentRow ) ) {
+            switch( insertCell< false >( x, h, td ) ) {
                 case InsertResolution::Success:
+                    increaseUsage( td );
                     return std::make_tuple( x, true );
                 case InsertResolution::Found:
                     return std::make_tuple( x, false );
                 case InsertResolution::NoSpace:
-                    if ( grow( tld.currentRow + 1 ) ) {
-                        releaseRow( tld.currentRow );
-                        ++tld.currentRow;
+                    if ( grow( td.currentRow + 1 ) ) {
+                        releaseRow( td.currentRow );
+                        ++td.currentRow;
                         break;
                     }
                 case InsertResolution::Growing:
-                    updateIndex( tld.currentRow );
+                    updateIndex( td.currentRow );
                     break;
                 default:
                     __builtin_unreachable();
@@ -184,16 +192,16 @@ struct SharedHashSetImplementation {
     }
 
     template< typename T >
-    std::tuple< Item, bool > getHinted( T x, hash_t h, ThreadData &tld ) {
+    std::tuple< Item, bool > getHinted( T x, hash_t h, ThreadData &td ) {
         auto pair = std::make_pair( Item(), x );
         while ( true ) {
-            switch( getCell( pair, h << 1, tld.currentRow ) ) {
+            switch( getCell( pair, h, td.currentRow ) ) {
                 case FindResolution::Found:
                     return std::make_tuple( pair.first, true );
                 case FindResolution::NotFound:
                     return std::make_tuple( pair.first, false );
                 case FindResolution::Growing:
-                    updateIndex( tld.currentRow );
+                    updateIndex( td.currentRow );
                     break;
                 default:
                     __builtin_unreachable();
@@ -243,37 +251,43 @@ protected:
     }
 
     template< bool force >
-    InsertResolution insertCell( Item &x, hash_t h, unsigned rowIndex ) {
+    InsertResolution insertCell( Item &x, hash_t h, ThreadData &td ) {
         if ( !force ) {
+            // read usage first to guarantee usage <= size
+            size_t u = usage();
+            size_t s = size();
+            // usage >= 75% of table size
+            // usage is never greater than size
+            if ( ( s >> 2 ) >= s - u )
+                return InsertResolution::NoSpace;
             while( growing ) // help with rehashing
                 while ( rehashSegment() );
 
-            if ( changed( rowIndex ) )
+            if ( changed( td.currentRow ) )
                 return InsertResolution::Growing;
         }
 
-        Row &row = *table[ rowIndex ];
+        Row &row = *table[ td.currentRow ];
         assert( !row.empty() );
         const size_t mask = row.size() - 1;
 
-        const size_t acceptableCollisions = force ? 65536 : maxCollisions;
-        for ( size_t i = 0; i < acceptableCollisions; ++i ) {
+        for ( size_t i = 0; i < maxCollisions; ++i ) {
 
             Cell &cell = row[ index( h, i, mask ) ];
 
             if ( cell.empty() ) {
                 if ( cell.tryStore( x, h, [&]() -> bool {
-                        return !force && (this->changed( rowIndex ) || this->growing );
+                        return !force && (this->changed( td.currentRow ) || this->growing );
                     } ) )
                     return InsertResolution::Success;
-                if ( !force && ( growing || changed( rowIndex ) ) )
+                if ( !force && ( growing || changed( td.currentRow ) ) )
                     return InsertResolution::Growing;
             }
             if ( cell.is( x, h, hasher ) ) {
                 x = cell.fetch();
                 return InsertResolution::Found;
             }
-            if ( !force && ( growing || changed( rowIndex ) ) )
+            if ( !force && ( growing || changed( td.currentRow ) ) )
                 return InsertResolution::Growing;
         }
         return InsertResolution::NoSpace;
@@ -334,6 +348,9 @@ protected:
             end = row.end();
         assert( it < end );
 
+        ThreadData td;
+        td.currentRow = currentRow;
+
         // every cell has to be invalitated
         for ( ; it != end; it->invalidate(), ++it ) {
             if ( it->empty() )
@@ -341,7 +358,7 @@ protected:
             if ( !it->wait() )
                 continue;
             Item value = it->fetch();
-            if ( insertCell< true >( value, it->hash( hasher ), currentRow )
+            if ( insertCell< true >( value, it->hash( hasher ), td )
                 == InsertResolution::NoSpace ) {
                 std::cerr << "no enough space during growing" << std::endl;
                 abort();
@@ -382,6 +399,13 @@ protected:
             --tableWorkers[ index ];
             index = currentRow;
         } while ( true );
+    }
+
+    void increaseUsage( ThreadData &td ) {
+        if ( ++td.inserts == syncPoint ) {
+            used += syncPoint;
+            td.inserts = 0;
+        }
     }
 };
 
