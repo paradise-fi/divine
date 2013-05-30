@@ -47,9 +47,12 @@ typedef uint32_t hash_t;
 struct Lake {
 
     struct Pointer {
-        uint64_t tag:16;
-        uint64_t block:24;
-        uint64_t offset:24;
+        static const unsigned blockBits = 24;
+        static const unsigned offsetBits = 24;
+        static const unsigned tagBits = 64 - blockBits - offsetBits;
+        uint64_t tag:tagBits;
+        uint64_t block:blockBits;
+        uint64_t offset:offsetBits;
         Pointer() noexcept : tag( 0 ), block( 0 ), offset( 0 ) {}
         // XXX: Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
         uint64_t raw() { return *reinterpret_cast< uint64_t * >( this ); }
