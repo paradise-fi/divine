@@ -2,6 +2,7 @@
 
 #include <asm/byteorder.h>
 #include <byteswap.h>
+#include <atomic>
 
 uint64_t bitshift( uint64_t t, int shift ) {
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -62,6 +63,22 @@ struct BitField
             bitcopy( *this, BitPointer( &t ), bitwidth );
             return t;
         }
+    };
+};
+
+struct BitLock
+{
+    static const int bitwidth = 1;
+    struct Virtual : BitPointer {
+        using Atomic = std::atomic< uint32_t >;
+        Atomic &atomic() { return *reinterpret_cast< Atomic * >( &word() ); }
+        uint32_t bit() { return 1u << (32 - bitoffset()); }
+        void lock() {
+            uint32_t l = word();
+            do { l &= ~bit(); } while ( !atomic().compare_exchange_weak( l, l | bit() ) );
+        }
+        void unlock() { atomic().exchange( word() & ~bit() ); }
+        bool locked() { return atomic().load() & bit(); }
     };
 };
 

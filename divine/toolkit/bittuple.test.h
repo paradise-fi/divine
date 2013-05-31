@@ -107,4 +107,23 @@ struct TestBitTuple {
         assert_eq( get< 1 >( b ), 533 );
         assert_eq( get< 2 >( x ), 7 );
     }
+
+    Test locked() {
+        typedef BitTuple< BitLock, T10_10 > X;
+        X x;
+
+        assert_eq( X::bitwidth, 21 );
+        assert_eq( X::offset< 0 >(), 0 );
+        assert_eq( X::offset< 1 >(), 1 );
+        assert( !get< 0 >( x ).locked() );
+        auto y = get< 1 >( x );
+        get< 0 >( x ).lock();
+        assert( get< 0 >( x ).locked() );
+        get< 0 >( y ).set( 5 );
+        assert( get< 0 >( x ).locked() );
+        assert_eq( get< 0 >( y ), 5 );
+        get< 0 >( x ).unlock();
+        assert( !get< 0 >( x ).locked() );
+        assert_eq( get< 0 >( y ), 5 );
+    }
 };
