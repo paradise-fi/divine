@@ -319,17 +319,17 @@ protected:
 
             if ( cell.empty() ) {
                 if ( cell.tryStore( x, h, [&]() -> bool {
-                        return !force && (this->changed( td.currentRow ) || this->growing );
+                        return !force && this->changed( td.currentRow );
                     } ) )
                     return InsertResolution::Success;
-                if ( !force && ( growing || changed( td.currentRow ) ) )
+                if ( !force && changed( td.currentRow ) )
                     return InsertResolution::Growing;
             }
             if ( cell.is( x, h, hasher ) ) {
                 x = cell.fetch();
                 return InsertResolution::Found;
             }
-            if ( !force && ( growing || changed( td.currentRow ) ) )
+            if ( !force && changed( td.currentRow ) )
                 return InsertResolution::Growing;
         }
         return InsertResolution::NoSpace;
