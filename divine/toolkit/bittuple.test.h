@@ -76,7 +76,7 @@ struct TestBitTuple {
 
     Test structure() {
         BitTuple< BitField< std::pair< uint64_t, uint64_t >, 120 >, BitField< uint64_t, 63 > > x;
-        auto v = std::make_pair( (1ul << 62) + 7, 33ul );
+        auto v = std::make_pair( (uint64_t( 1 ) << 62) + 7, uint64_t( 33 ) );
         assert_eq( x.bitwidth, 183 );
         assert_eq( x.offset< 0 >(), 0 );
         assert_eq( x.offset< 1 >(), 120 );
