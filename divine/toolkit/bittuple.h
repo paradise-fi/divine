@@ -72,7 +72,10 @@ struct BitLock
     struct Virtual : BitPointer {
         using Atomic = std::atomic< uint32_t >;
         Atomic &atomic() { return *reinterpret_cast< Atomic * >( &word() ); }
-        uint32_t bit() { return 1u << (32 - bitoffset()); }
+        uint32_t bit() {
+            assert_leq( bitoffset(), 31 );
+            return uint32_t( 1 ) << (32 - bitoffset() - 1);
+        }
         void lock() {
             uint32_t l = word();
             do { l &= ~bit(); } while ( !atomic().compare_exchange_weak( l, l | bit() ) );
