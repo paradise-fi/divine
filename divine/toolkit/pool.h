@@ -27,7 +27,7 @@ inline int align( int v, int a ) {
     return v;
 }
 
-typedef uint32_t hash_t;
+typedef uint64_t hash_t;
 
 /*
  * A lake keeps track of memory in a compact, fast, thread-optimised fashion.
@@ -570,13 +570,13 @@ struct Dereference {
                            dereference( b ) + from );
     }
 
-    hash_t hash( Blob b ) { return hash( b, 0, size( b ) ); }
-    hash_t hash( Blob b, int from, int to, uint32_t salt = 0 ) {
+    std::pair< hash_t, hash_t > hash( Blob b ) { return hash( b, 0, size( b ), 0 ); }
+    std::pair< hash_t, hash_t > hash( Blob b, int from, int to, uint64_t salt = 0 ) {
         if ( !valid( b ) )
-            return 0;
+            return std::make_pair( 0, 0 );
         assert_leq( from, to );
         assert_leq( to, size( b ) );
-        return jenkins3( dereference( b ) + from, to - from, salt );
+        return spookyHash( dereference( b ) + from, to - from, salt, salt );
     }
 
     void acquireLock( Blob ) { assert_unimplemented(); }

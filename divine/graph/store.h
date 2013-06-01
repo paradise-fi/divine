@@ -61,7 +61,7 @@ struct StoreCommon : TableProvider
     Hasher& hasher() { return this->table().hasher; }
     Pool& pool() { return _pool; }
 
-    hash_t hash( InsertItem node ) { return hasher().hash( node ); }
+    hash_t hash( InsertItem node ) { return hasher().hash( node ).first; }
     int slack() { return hasher().slack; }
     bool valid( InsertItem n ) { return hasher().valid( n ); }
     bool equal( InsertItem m, InsertItem n ) { return hasher().equal( m, n ); }
@@ -599,7 +599,7 @@ struct NTreeStore
     bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
-    hash_t hash( Node n ) { return this->hasher().hash( n ); }
+    hash_t hash( Node n ) { return this->hasher().hash( n ).first; }
     hash_t hash( Handle h ) {
         assert_eq( h.rank(), this->rank() );
         return Root( h.b ).hash( this->pool() );

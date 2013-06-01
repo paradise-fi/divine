@@ -41,11 +41,11 @@ struct SharedHashSetWrapper {
     }
 
     std::tuple< Item, bool > insert( Item x ) {
-        return insertHinted( x, hasher.hash( x ) );
+        return insertHinted( x, hasher.hash( x ).first );
     }
 
     bool has( Item x ) {
-        return std::get< 1 >( getHinted( x, hasher.hash( x ) ) );
+        return std::get< 1 >( getHinted( x, hasher.hash( x ).first ) );
     }
 };
 

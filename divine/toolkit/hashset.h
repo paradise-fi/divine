@@ -11,15 +11,13 @@
 
 namespace divine {
 
-typedef uint32_t hash_t;
-
 // default hash implementation
 template< typename T >
 struct default_hasher {
     Pool& _pool;
     Pool &pool() { return _pool; }
     default_hasher( Pool& p ) : _pool( p ) { }
-    hash_t hash( T t ) const { return _pool.hash( t ); }
+    std::pair< hash_t, hash_t > hash( T t ) const { return _pool.hash( t ); }
     bool valid( T t ) const { return _pool.valid( t ); }
     bool equal( T a, T b ) const { return _pool.equal( a, b ); }
 };
@@ -29,7 +27,7 @@ struct default_hasher< int > {
     template< typename X >
     default_hasher( X& ) { }
     default_hasher() = default;
-    hash_t hash( int t ) const { return t; }
+    std::pair< hash_t, hash_t > hash( int t ) const { return std::make_pair( t, t ); }
     bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
 };
@@ -94,7 +92,7 @@ struct HashSet
 
     template< typename TD = ThreadData >
     inline std::tuple< Item, bool > insert( Item i, TD = TD() ) {
-        return insertHinted( i, hasher.hash( i ) );
+        return insertHinted( i, hasher.hash( i ).first );
     }
 
     template< typename TD = ThreadData >
@@ -112,7 +110,7 @@ struct HashSet
     }
 
     template< typename TD = ThreadData >
-    std::tuple< Item, bool > get( Item i, TD = TD() ) { return getHinted( i, hasher.hash( i ) ); }
+    std::tuple< Item, bool > get( Item i, TD = TD() ) { return getHinted( i, hasher.hash( i ).first ); }
 
     template< typename T, typename TD = ThreadData >
     std::tuple< Item, bool > getHinted(

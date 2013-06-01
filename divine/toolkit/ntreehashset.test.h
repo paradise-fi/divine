@@ -83,7 +83,7 @@ struct TestNTreeHashSet {
 
         BlobSet::Root root;
         bool inserted;
-        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( inserted );
         assert( !root.leaf( fg.pool() ) );
         assert_eq( size_t( fg.pool().size( root.b ) ),
@@ -106,7 +106,7 @@ struct TestNTreeHashSet {
         Blob b2 = root.reassemble( fg.pool() );
         assert( fg.pool().equal( b, b2 ) );
 
-        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( !inserted );
 
         BlobSet::Root root2;
@@ -132,7 +132,7 @@ struct TestNTreeHashSet {
 
         BlobSet::Root root;
         bool inserted;
-        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( inserted );
         assert( !root.leaf( fg.pool() ) );
         assert_eq( root.forkcount( fg.pool() ), 2 );
@@ -170,7 +170,7 @@ struct TestNTreeHashSet {
         Blob b2 = root.reassemble( fg.pool() );
         assert( fg.pool().equal( b, b2 ) );
 
-        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( !inserted );
 
         BlobSet::Root root2;
@@ -205,7 +205,7 @@ struct TestNTreeHashSet {
 
         typename BlobSet::Root root;
         bool inserted;
-        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( root, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( inserted );
         for ( unsigned i = 0; i < 1000; ++i )
             assert_eq( c2u( fg.pool().dereference( b )[ i ] ), i & 0xff );
@@ -221,7 +221,7 @@ struct TestNTreeHashSet {
             assert_eq( c2u( fg.pool().dereference( b2 )[ i ] ), i & 0xff );
         assert( fg.pool().equal( b, b2 ) );
 
-        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ), td );
+        std::tie( std::ignore, inserted ) = set.insertHinted( b, set.hasher.hash( b ).first, td );
         assert( !inserted );
 
         typename BlobSet::Root root2;

@@ -33,7 +33,7 @@ struct Hasher {
     void setSeed( uint32_t s ) { seed = s; }
 
     Pool &pool() { return _pool; }
-    inline hash_t hash( Blob b ) const {
+    inline std::pair< hash_t, hash_t > hash( Blob b ) const {
         assert( _pool.valid( b ) );
         return _pool.hash( b, slack, _pool.size( b ), seed );
     }

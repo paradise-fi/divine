@@ -22,7 +22,7 @@ template< typename T >
 struct NewtypeHasher {
     Pool &p;
     NewtypeHasher( Pool &p ) : p( p ) {}
-    hash_t hash( T t ) const { return p.hash( t.b ); }
+    std::pair< hash_t, hash_t > hash( T t ) const { return p.hash( t.b ); }
     bool valid( T t ) const { return p.valid( t.b ); }
     bool equal( T a, T b ) const { return p.equal( a.b, b.b ); }
 };
@@ -260,8 +260,8 @@ struct NTreeHashSet
         Pool &pool() { return uhasher.pool(); }
         int32_t slack() { return uhasher.slack; }
 
-        hash_t hash( Root r ) { return r.hash( pool() ); }
-        hash_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
+        std::pair< hash_t, hash_t > hash( Root r ) { return r.hash( pool() ); }
+        std::pair< hash_t, hash_t > hash( Uncompressed u ) { return uhasher.hash( u.i ); }
 
         bool valid( Root r ) { return pool().valid( r.b ); }
         bool valid( Uncompressed r ) { return pool().valid( r.i ); }
@@ -459,7 +459,7 @@ struct NTreeHashSet
 
     template< typename TD >
     std::tuple< Root, bool > get( Item item, TD &td ) {
-        return getHinted( item, hasher.hash( item ), td );
+        return getHinted( item, hasher.hash( item ).first, td );
     }
 
     template< typename T, typename TD >

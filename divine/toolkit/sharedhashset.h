@@ -86,7 +86,7 @@ struct CompactCell {
     }
 
     template< typename Hasher >
-    hash_t hash( Hasher &h ) { return h.hash( value.load() ); }
+    hash_t hash( Hasher &h ) { return h.hash( value.load() ).first; }
 
     bool wait() { return !invalid(); }
 
@@ -206,7 +206,7 @@ struct SharedHashSetImplementation {
     }
 
     std::tuple< Item, bool > insert( Item x, ThreadData &td ) {
-        return insertHinted( x, hasher.hash( x ), td );
+        return insertHinted( x, hasher.hash( x ).first, td );
     }
 
     std::tuple< Item, bool > insertHinted( Item x, hash_t h, ThreadData &td ) {
