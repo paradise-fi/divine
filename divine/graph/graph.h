@@ -93,7 +93,7 @@ struct Base : Allocator {
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
-    int owner( Hash &hasher, Worker &worker, Node n, hash_t hint = 0 ) {
+    int owner( Hash &hasher, Worker &worker, Node n, hash64_t hint = 0 ) {
         // if n is not valid, this correctly returns owner for hint, because hash( n ) is 0
         if ( !hint )
             return hasher.hash( n ) % worker.peers();
@@ -207,7 +207,7 @@ struct Transform {
 
     /// Returns an owner id of the state n
     template< typename Hash, typename Worker >
-    int owner( Hash &hash, Worker &worker, Node n, hash_t hint = 0 ) {
+    int owner( Hash &hash, Worker &worker, Node n, hash64_t hint = 0 ) {
         return base().owner( hash, worker, n, hint );
     }
 

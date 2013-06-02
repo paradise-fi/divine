@@ -51,7 +51,7 @@ struct TableUtils
     WithID *id;
 
     // Retrieve node from hash table
-    T fetch( T s, hash_t h, bool *had = 0 ) {
+    T fetch( T s, hash64_t h, bool *had = 0 ) {
         T found = table.getHinted( s, h, had );
 
         if ( alias( pool(), s, found ) )
@@ -68,7 +68,7 @@ struct TableUtils
     }
 
     // Store node in hash table
-    T store( T s, hash_t h, bool * = nullptr ) {
+    T store( T s, hash64_t h, bool * = nullptr ) {
         Statistics::global().hashadded( id->id(), memSize( s, hasher().pool ) );
         Statistics::global().hashsize( id->id(), table.size() );
         T s2 = table.insertHinted( s, h );
@@ -78,7 +78,7 @@ struct TableUtils
 
     bool has( T s ) { return table.has( s ); }
     bool valid( T a ) { return hasher().valid( a ); }
-    hash_t hash( T s ) { return hasher().hash( s ); }
+    hash64_t hash( T s ) { return hasher().hash( s ); }
     bool equal( T a, T b ) { return hasher().equal( a, b ); }
     bool alias( T a, T b ) { return visitor::alias( pool(), a, b ); }
     void setSize( int sz ) { table.setSize( sz ); }

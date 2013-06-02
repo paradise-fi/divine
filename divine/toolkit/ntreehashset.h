@@ -22,7 +22,7 @@ template< typename T >
 struct NewtypeHasher {
     Pool &p;
     NewtypeHasher( Pool &p ) : p( p ) {}
-    std::pair< hash_t, hash_t > hash( T t ) const { return p.hash( t.b ); }
+    hash128_t hash( T t ) const { return p.hash( t.b ); }
     bool valid( T t ) const { return p.valid( t.b ); }
     bool equal( T a, T b ) const { return p.equal( a.b, b.b ); }
 };
@@ -158,12 +158,12 @@ struct NTreeHashSet
     struct Root : WithChildren< Root, Fork > {
         Blob b;
 
-        struct Header { hash_t hash; int32_t forks; };
+        struct Header { hash64_t hash; int32_t forks; };
 
         Root() = default;
         explicit Root( Blob b ) : b( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
-        hash_t &hash( Pool &p ) { return header( p ).hash; }
+        hash64_t &hash( Pool &p ) { return header( p ).hash; }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
         char *rawdata( Pool &p ) { return p.dereference( b ) + sizeof( Header ); }
@@ -260,12 +260,12 @@ struct NTreeHashSet
         Pool &pool() { return uhasher.pool(); }
         int32_t slack() { return uhasher.slack; }
 
-        std::pair< hash_t, hash_t > hash( Root r ) { return r.hash( pool() ); }
-        std::pair< hash_t, hash_t > hash( Uncompressed u ) { return uhasher.hash( u.i ); }
+        hash128_t hash( Root r ) { return r.hash( pool() ); }
+        hash128_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
 
         bool valid( Root r ) { return pool().valid( r.b ); }
         bool valid( Uncompressed r ) { return pool().valid( r.i ); }
-        void setSeed( hash_t s ) { uhasher.setSeed( s ); }
+        void setSeed( hash64_t s ) { uhasher.setSeed( s ); }
 
         bool equal( Root r1, Root r2 ) {
             if ( r1.b.raw() == r2.b.raw() )
@@ -365,7 +365,7 @@ struct NTreeHashSet
     bool empty() { return _roots.empty(); }
 
     template < typename TD >
-    std::tuple< Root, bool > insertHinted( Item item, hash_t hash,
+    std::tuple< Root, bool > insertHinted( Item item, hash64_t hash,
                                            TD &td )
     {
         assert( hasher.valid( item ) );
@@ -463,7 +463,7 @@ struct NTreeHashSet
     }
 
     template< typename T, typename TD >
-    std::tuple< Root, bool > getHinted( T i, hash_t h, TD &td ) {
+    std::tuple< Root, bool > getHinted( T i, hash64_t h, TD &td ) {
         return _roots.getHinted( Uncompressed( i ), h, td.roots );
     }
 

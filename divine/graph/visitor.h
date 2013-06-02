@@ -50,7 +50,7 @@ struct SetupBase {
     }
 
     template< typename Listener, typename Vertex, typename Node, typename Label >
-    static TransitionFilter transitionFilter( Listener &, Vertex, Node, Label, hash_t ) {
+    static TransitionFilter transitionFilter( Listener &, Vertex, Node, Label, hash64_t ) {
         return TransitionFilter::Take;
     }
 };
@@ -79,7 +79,7 @@ struct SetupOverride : A {
     }
 
     template< typename Listener, typename Vertex, typename Node >
-    static TransitionFilter transitionFilter( Listener &l, Vertex a, Node b, Label label, hash_t h ) {
+    static TransitionFilter transitionFilter( Listener &l, Vertex a, Node b, Label label, hash64_t h ) {
         return A::transitionFilter( *l.first, a, b, label, h );
     }
 };
@@ -148,7 +148,7 @@ struct Common {
         TransitionAction tact;
         ExpansionAction eact = ExpansionAction::Expand;
 
-        hash_t hint = store().hash( _to );
+        hash64_t hint = store().hash( _to );
 
         if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
             return;
@@ -260,13 +260,13 @@ struct Partitioned {
             return graph.pool();
         }
 
-        inline void queue( Vertex from, Node to, Label label, hash_t hint = 0 ) {
+        inline void queue( Vertex from, Node to, Label label, hash64_t hint = 0 ) {
             if ( store().owner( to, hint ) != worker.id() )
                 return;
             bfv.edge( from, to, label ); //, hint );
         }
 
-        inline void queueAny( Vertex from, Node to, Label label, hash_t hint = 0 ) {
+        inline void queueAny( Vertex from, Node to, Label label, hash64_t hint = 0 ) {
             int _to = store().owner( to, hint ), _from = worker.id();
             Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
             worker.submit( _from, _to, std::make_tuple( from, to, label ) );
@@ -334,7 +334,7 @@ struct Partitioned {
         {
             typedef typename SetupOverride< S, This >::Listener Listener;
             static inline TransitionFilter transitionFilter(
-                 Listener l, Vertex f, Node t, Label label, hash_t hint )
+                 Listener l, Vertex f, Node t, Label label, hash64_t hint )
             {
                 This &n = *l.second;
                 if ( n._store.owner( t, hint ) != n.worker.id() ) {

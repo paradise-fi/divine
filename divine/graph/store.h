@@ -61,24 +61,24 @@ struct StoreCommon : TableProvider
     Hasher& hasher() { return this->table().hasher; }
     Pool& pool() { return _pool; }
 
-    hash_t hash( InsertItem node ) { return hasher().hash( node ).first; }
+    hash64_t hash( InsertItem node ) { return hasher().hash( node ).first; }
     int slack() { return hasher().slack; }
     bool valid( InsertItem n ) { return hasher().valid( n ); }
     bool equal( InsertItem m, InsertItem n ) { return hasher().equal( m, n ); }
     bool has( InsertItem n ) { return this->table().has( n ); }
     void setSize( intptr_t size ) { this->table().setSize( size ); }
 
-    int owner( hash_t h ) { return TableProvider::owner( h ); }
-    int owner( InsertItem n, hash_t hint = 0 ) {
+    int owner( hash64_t h ) { return TableProvider::owner( h ); }
+    int owner( InsertItem n, hash64_t hint = 0 ) {
         return owner( hint ? hint : hash( n ) );
     }
 
-    bool knows( hash_t h ) { return TableProvider::knows( h ); }
-    bool knows( InsertItem n, hash_t hint = 0 ) {
+    bool knows( hash64_t h ) { return TableProvider::knows( h ); }
+    bool knows( InsertItem n, hash64_t hint = 0 ) {
         return TableProvider::knows( hint ? hint : hash( n ) );
     }
 
-    IsNew< StoredItem > _fetch( InsertItem s, hash_t h ) {
+    IsNew< StoredItem > _fetch( InsertItem s, hash64_t h ) {
         StoredItem found;
         bool had;
         std::tie( found, had ) = this->table().getHinted( s, h ? h : hash( s ), td );
@@ -86,7 +86,7 @@ struct StoreCommon : TableProvider
         return isNew( found, !had );
     }
 
-    IsNew< StoredItem > _store( InsertItem s, hash_t h ) {
+    IsNew< StoredItem > _store( InsertItem s, hash64_t h ) {
         StoredItem s2;
         bool inserted;
         std::tie( s2, inserted ) = this->table().insertHinted( s, h ? h : hash( s ), td );
@@ -122,8 +122,8 @@ struct ProviderCommon {
 
     int id() const { return _id.id(); }
     int rank() const { return _id.rank(); }
-    int owner( hash_t hash ) const { return hash % _id.peers(); }
-    bool knows( hash_t hash ) const { return owner( hash ) == _id.id(); }
+    int owner( hash64_t hash ) const { return hash % _id.peers(); }
+    bool knows( hash64_t hash ) const { return owner( hash ) == _id.id(); }
     ProviderCommon() : _id( 0, 1, 0 ) { }
 };
 
@@ -168,8 +168,8 @@ struct SharedProvider {
         Table &table() { return *_table; }
         const Table &table() const { return *_table; }
 
-        bool knows( hash_t ) const { return true; } // we know all
-        int owner( hash_t ) const {
+        bool knows( hash64_t ) const { return true; } // we know all
+        int owner( hash64_t ) const {
             assert_unreachable( "no owners in shared store" );
         }
 
@@ -364,13 +364,13 @@ struct DefaultStore
     bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
-    int owner( Vertex v, hash_t hint = 0 ) { return owner( v.node(), hint ); }
-    int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
+    int owner( Vertex v, hash64_t hint = 0 ) { return owner( v.node(), hint ); }
+    int owner( Node n, hash64_t hint = 0 ) { return Base::owner( n, hint ); }
 
-    int knows( Handle h, hash_t hint = 0 ) {
+    int knows( Handle h, hash64_t hint = 0 ) {
         return h.rank() == this->rank() && knows( h.b, hint );
     }
-    int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
+    int knows( Node n, hash64_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
 
@@ -381,7 +381,7 @@ struct DefaultStore
 
     Blob unpack( Handle h, Pool * ) { return h.b; }
 
-    IsNew< Vertex > store( Node n, hash_t h = 0 ) {
+    IsNew< Vertex > store( Node n, hash64_t h = 0 ) {
         return this->_store( n, h ).map(
             [this, &n]( Node x ) {
                 assert_eq( x.tag, 0u );
@@ -392,7 +392,7 @@ struct DefaultStore
             } );
     }
 
-    IsNew< Vertex > fetch( Node n, hash_t h = 0 )
+    IsNew< Vertex > fetch( Node n, hash64_t h = 0 )
     {
         return this->_fetch( n, h ).map(
             [this]( Node x ) { return this->vertex( x ); } );
@@ -571,7 +571,7 @@ struct NTreeStore
         this->td.generator = &g.base();
     }
 
-    IsNew< Vertex > store( Node n, hash_t h = 0 ) {
+    IsNew< Vertex > store( Node n, hash64_t h = 0 ) {
         return this->_store( n, h ).map(
             [this, &n]( Root x ) {
                 this->free( n );
@@ -579,7 +579,7 @@ struct NTreeStore
             } );
     }
 
-    IsNew< Vertex > fetch( Node n, hash_t h = 0 )
+    IsNew< Vertex > fetch( Node n, hash64_t h = 0 )
     {
         return this->_fetch( n, h ).map(
             [this]( Root x ) { return this->vertex( x ); } );
@@ -599,21 +599,21 @@ struct NTreeStore
     bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
-    hash_t hash( Node n ) { return this->hasher().hash( n ).first; }
-    hash_t hash( Handle h ) {
+    hash64_t hash( Node n ) { return this->hasher().hash( n ).first; }
+    hash64_t hash( Handle h ) {
         assert_eq( h.rank(), this->rank() );
         return Root( h.b ).hash( this->pool() );
     }
 
-    int owner( Vertex v, hash_t hint = 0 ) {
+    int owner( Vertex v, hash64_t hint = 0 ) {
         return Base::owner( hint ? hint : (v.foreign() ? hash( v.node() ) : hash( v.handle() )) );
     }
-    int owner( Node n, hash_t hint = 0 ) { return Base::owner( n, hint ); }
+    int owner( Node n, hash64_t hint = 0 ) { return Base::owner( n, hint ); }
 
-    int knows( Handle h, hash_t hint = 0 ) {
+    int knows( Handle h, hash64_t hint = 0 ) {
         return h.rank() == this->rank() && Base::knows( hint ? hint : hash( h ) );
     }
-    int knows( Node n, hash_t hint = 0 ) { return Base::knows( n, hint ); }
+    int knows( Node n, hash64_t hint = 0 ) { return Base::knows( n, hint ); }
 
     Vertex vertex( Handle h ) { return Vertex( *this, h ); }
 

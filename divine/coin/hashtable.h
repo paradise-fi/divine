@@ -41,7 +41,7 @@ struct hashtable_t {
   }
 
   state_t * get_if_stored(const state_t & s) {
-    hash_t hash = s.hash();
+    hash64_t hash = s.hash();
     hash_elem_t *he = hash_table[hash % HASH_SIZE];
     state_t *  ret = NULL;
 
@@ -56,7 +56,7 @@ struct hashtable_t {
   }
 
   state_t * get_if_stored_or_store(const state_t & s) {
-    hash_t hash = s.hash();
+    hash64_t hash = s.hash();
     hash_elem_t *he = hash_table[hash % HASH_SIZE], *last_he = NULL;
     state_t * ret = NULL;
 

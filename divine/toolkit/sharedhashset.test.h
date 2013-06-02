@@ -32,11 +32,11 @@ struct SharedHashSetWrapper {
         return table[ index ];
     }
 
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h ) {
+    std::tuple< Item, bool > insertHinted( Item x, hash64_t h ) {
         return table.insertHinted( x, h, tld );
     }
 
-    std::tuple< Item, bool > getHinted( Item x, hash_t h ) {
+    std::tuple< Item, bool > getHinted( Item x, hash64_t h ) {
         return table.getHinted( x, h, tld );
     }
 

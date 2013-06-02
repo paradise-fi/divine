@@ -89,7 +89,7 @@ struct TestVisitor {
         NMTree( int _n, int _m ) : n( _n ), m( _m ), p() {}
 
         template< typename Hasher, typename Worker >
-        int owner( Hasher &hasher, Worker &worker, Node n, hash_t = 0 ) {
+        int owner( Hasher &hasher, Worker &worker, Node n, hash64_t = 0 ) {
             return hasher.hash( n ) % worker.peers();
         }
     };
@@ -205,7 +205,7 @@ struct TestVisitor {
             return parallel_transition( &c, f, t, label );
         }
 
-        static TransitionFilter transitionFilter( This &c, Vertex f, Node t, Label label, hash_t ) {
+        static TransitionFilter transitionFilter( This &c, Vertex f, Node t, Label label, hash64_t ) {
             return parallel_filter( &c, f, t, label );
         }
 

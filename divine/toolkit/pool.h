@@ -27,7 +27,8 @@ inline int align( int v, int a ) {
     return v;
 }
 
-typedef uint64_t hash_t;
+typedef uint64_t hash64_t;
+typedef std::pair< hash64_t, hash64_t > hash128_t;
 
 /*
  * A lake keeps track of memory in a compact, fast, thread-optimised fashion.
@@ -570,8 +571,8 @@ struct Dereference {
                            dereference( b ) + from );
     }
 
-    std::pair< hash_t, hash_t > hash( Blob b ) { return hash( b, 0, size( b ), 0 ); }
-    std::pair< hash_t, hash_t > hash( Blob b, int from, int to, uint64_t salt = 0 ) {
+    hash128_t hash( Blob b ) { return hash( b, 0, size( b ), 0 ); }
+    hash128_t hash( Blob b, int from, int to, uint64_t salt = 0 ) {
         if ( !valid( b ) )
             return std::make_pair( 0, 0 );
         assert_leq( from, to );

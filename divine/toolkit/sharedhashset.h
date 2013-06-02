@@ -17,7 +17,7 @@ namespace divine {
 
 template< typename Item >
 struct HashCell {
-    std::atomic< hash_t > hashLock;
+    std::atomic< hash64_t > hashLock;
     Item value;
 
     bool empty() { return hashLock == 0; }
@@ -27,7 +27,7 @@ struct HashCell {
     Item fetch() { return value; }
 
     template< typename Hasher >
-    hash_t hash( Hasher & ) { return hashLock >> 1; }
+    hash64_t hash( Hasher & ) { return hashLock >> 1; }
 
     // wait until another writing ends
     // returns false if cell was invalidated
@@ -39,8 +39,8 @@ struct HashCell {
     }
 
     template< typename GrowingGuard >
-    bool tryStore( Item v, hash_t hash, GrowingGuard g ) {
-        hash_t chl = 0;
+    bool tryStore( Item v, hash64_t hash, GrowingGuard g ) {
+        hash64_t chl = 0;
         if ( hashLock.compare_exchange_strong( chl, (hash << 1) | 1 ) ) {
             if ( g() ) {
                 invalidate();
@@ -55,7 +55,7 @@ struct HashCell {
 
     // it has to call wait method
     template< typename Value, typename Hasher >
-    bool is( Value v, hash_t hash, Hasher &h ) {
+    bool is( Value v, hash64_t hash, Hasher &h ) {
         if ( ( (hash << 1) | 1) != (hashLock | 1) )
             return false;
         if ( !wait() )
@@ -86,19 +86,19 @@ struct CompactCell {
     }
 
     template< typename Hasher >
-    hash_t hash( Hasher &h ) { return h.hash( value.load() ).first; }
+    hash64_t hash( Hasher &h ) { return h.hash( value.load() ).first; }
 
     bool wait() { return !invalid(); }
 
     template< typename GrowingGuard >
-    bool tryStore( Blob b, hash_t hash, GrowingGuard ) {
+    bool tryStore( Blob b, hash64_t hash, GrowingGuard ) {
         Blob zero;
         b.tag = hash;
         return value.compare_exchange_strong( zero, b );
     }
 
     template< typename Value, typename Hasher >
-    bool is( Value v, hash_t hash, Hasher &h ) {
+    bool is( Value v, hash64_t hash, Hasher &h ) {
         static const unsigned mask = ( unsigned( 1 ) << Blob::tagBits ) - 1;
         if ( value.load().tag != ( hash & mask ) )
             return false;
@@ -192,8 +192,8 @@ struct SharedHashSetImplementation {
     }
 
     /* TODO factor this out into a place where HashSet can use it, too */
-    size_t index( hash_t h, size_t i, size_t mask ) const {
-        h &= ~hash_t( thresh - 1 );
+    size_t index( hash64_t h, size_t i, size_t mask ) const {
+        h &= ~hash64_t( thresh - 1 );
         const unsigned Q = 1, R = 1;
         if ( i < thresh )// for small i use trivial computation
             return (h + i) & mask;
@@ -209,7 +209,7 @@ struct SharedHashSetImplementation {
         return insertHinted( x, hasher.hash( x ).first, td );
     }
 
-    std::tuple< Item, bool > insertHinted( Item x, hash_t h, ThreadData &td ) {
+    std::tuple< Item, bool > insertHinted( Item x, hash64_t h, ThreadData &td ) {
         while ( true ) {
             switch( insertCell< false >( x, h, td ) ) {
                 case InsertResolution::Success:
@@ -234,7 +234,7 @@ struct SharedHashSetImplementation {
     }
 
     template< typename T >
-    std::tuple< Item, bool > getHinted( T x, hash_t h, ThreadData &td ) {
+    std::tuple< Item, bool > getHinted( T x, hash64_t h, ThreadData &td ) {
         auto pair = std::make_pair( Item(), x );
         while ( true ) {
             switch( getCell( pair, h, td.currentRow ) ) {
@@ -263,7 +263,7 @@ struct SharedHashSetImplementation {
 protected:
 
     template< typename T >
-    FindResolution getCell( std::pair< Item, T > &pair, hash_t h, unsigned rowIndex ) {
+    FindResolution getCell( std::pair< Item, T > &pair, hash64_t h, unsigned rowIndex ) {
 
         while( growing ) {
             // help with moving table
@@ -293,7 +293,7 @@ protected:
     }
 
     template< bool force >
-    InsertResolution insertCell( Item &x, hash_t h, ThreadData &td ) {
+    InsertResolution insertCell( Item &x, hash64_t h, ThreadData &td ) {
         if ( !force ) {
             // read usage first to guarantee usage <= size
             size_t u = usage();

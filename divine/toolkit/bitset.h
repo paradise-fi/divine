@@ -87,7 +87,7 @@ struct BitSet
     }
 
     /// Inserts state into the table, wrapper to insert
-    inline Item insertHinted( Item i, hash_t ) { return insert( i ); }
+    inline Item insertHinted( Item i, hash64_t ) { return insert( i ); }
 
     /// Reports if requested state has been seen
     bool has( Item i ) {
@@ -108,7 +108,7 @@ struct BitSet
     }
 
     /// Returns requested state, marks its state in has (if it was visited)
-    inline Item getHinted( Item i, hash_t, bool* has = NULL ) {
+    inline Item getHinted( Item i, hash64_t, bool* has = NULL ) {
         if ( has != NULL ) *has = this->has( i );
         return get( i );
     }

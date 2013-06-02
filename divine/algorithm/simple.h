@@ -22,7 +22,7 @@ struct Simple : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template To
     }
 
     void edge( Node from, Node to ) {
-        hash_t hint = this->store().hash( to );
+        hash64_t hint = this->store().hash( to );
         int owner = hint % this->peers();
 
         if ( owner != this->id() ) { // send to remote

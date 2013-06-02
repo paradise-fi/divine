@@ -17,7 +17,7 @@ struct default_hasher {
     Pool& _pool;
     Pool &pool() { return _pool; }
     default_hasher( Pool& p ) : _pool( p ) { }
-    std::pair< hash_t, hash_t > hash( T t ) const { return _pool.hash( t ); }
+    hash128_t hash( T t ) const { return _pool.hash( t ); }
     bool valid( T t ) const { return _pool.valid( t ); }
     bool equal( T a, T b ) const { return _pool.equal( a, b ); }
 };
@@ -27,7 +27,7 @@ struct default_hasher< int > {
     template< typename X >
     default_hasher( X& ) { }
     default_hasher() = default;
-    std::pair< hash_t, hash_t > hash( int t ) const { return std::make_pair( t, t ); }
+    hash128_t hash( int t ) const { return std::make_pair( t, t ); }
     bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
 };
@@ -60,7 +60,7 @@ struct HashSet
 
     struct Cell {
         Item item;
-        hash_t hash;
+        hash64_t hash;
     };
 
     typedef std::vector< Cell > Table;
@@ -97,7 +97,7 @@ struct HashSet
 
     template< typename TD = ThreadData >
     inline std::tuple< Item, bool > insertHinted(
-            Item i, hash_t h, TD = TD() ) {
+            Item i, hash64_t h, TD = TD() ) {
         Cell c;
         c.item = i;
         c.hash = h;
@@ -114,7 +114,7 @@ struct HashSet
 
     template< typename T, typename TD = ThreadData >
     std::tuple< Item, bool > getHinted(
-            T item, hash_t hash, TD = TD() ) {
+            T item, hash64_t hash, TD = TD() ) {
         size_t idx;
         for ( int i = 0; i < maxcollision(); ++i ) {
             idx = index( hash, i );
