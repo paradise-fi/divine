@@ -242,13 +242,13 @@ void DBA_graph_t::vypis(bool strict_output) const
 	vypis(cout, strict_output);
 }
 
- KS_BA_node_t* DBA_graph_t::add_node(int name)
+ KS_BA_node_t* DBA_graph_t::add_node( int )
  {
   KS_BA_node_t* node = NULL;
   return node;
  }
- void DBA_graph_t::transpose(KS_BA_graph_t& Gt) const{}
- void DBA_graph_t::SCC(list<list<int> >& SCC_list){}
+ void DBA_graph_t::transpose( KS_BA_graph_t & ) const {}
+ void DBA_graph_t::SCC( list< list< int > > & ) {}
 
 /* void DBA_graph_t::determinization(BA_opt_graph_t G)
 {
