@@ -486,7 +486,7 @@ struct NTreeHashSet
 
     Root operator[]( intptr_t off ) {
         assert_leq( 0, off );
-        assert_leq( off, size() - 1 );
+        assert_leq( off, intptr_t( size() ) - 1 );
         return _roots[ off ];
     }
 };
