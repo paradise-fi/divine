@@ -64,7 +64,7 @@ struct Lake {
             } c = { r };
             return c.p;
         }
-    };
+    } __attribute__((packed));
 
     struct BlockHeader {
         uint64_t total:20;

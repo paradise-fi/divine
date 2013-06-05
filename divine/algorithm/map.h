@@ -36,7 +36,7 @@ struct MapVertexId {
     MapVertexId() = default;
     template< typename Handle >
     MapVertexId( Handle h ) : raw( h.asNumber() ) { }
-};
+} __attribute__((packed));
 
 template < typename Handle >
 struct MapShared {

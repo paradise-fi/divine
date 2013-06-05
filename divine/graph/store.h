@@ -318,7 +318,7 @@ struct TrivialHandle {
     int rank() const {
         return b.tag;
     }
-};
+} __attribute__((packed));
 
 template< typename BS >
 typename BS::bitstream &operator<<( BS &bs, TrivialHandle h )
