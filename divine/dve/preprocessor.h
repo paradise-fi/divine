@@ -99,7 +99,7 @@ struct Expression {
         Substitutions newsubsts;
         if ( mn.params.size() != ma.params.size() )
             mn.fail( "Parameter count mismatch", Parser::FailType::Semantic );
-        for ( int i = 0; i < mn.params.size(); i++ ) {
+        for ( size_t i = 0; i < mn.params.size(); i++ ) {
             Expression( defs, macros, *mn.params[ i ], symtab, substs );
             dve::Expression ex( symtab, *mn.params[ i ] );
             EvalContext ctx;
@@ -311,7 +311,7 @@ inline void makeProcess( parse::MacroNode &mn, parse::System &ast, Definitions &
         parse::Macro< parse::Automaton > &ma = macros.getProcess( mn.name.name() );
         if ( mn.params.size() != ma.params.size() )
             mn.fail( "Parameter count mismatch", Parser::FailType::Semantic );
-        for ( int i = 0; i < mn.params.size(); i++ ) {
+        for ( size_t i = 0; i < mn.params.size(); i++ ) {
             Expression( defs, macros, *mn.params[ i ], symtab, substs );
             dve::Expression ex( symtab, *mn.params[ i ] );
             EvalContext ctx;
@@ -392,7 +392,7 @@ struct System {
 
         propBA.name = prop.name;
         propBA.ctx = prop.ctx;
-        for ( int i = 0; i < ba.size(); i++ ) {
+        for ( int i = 0; i < int( ba.size() ); i++ ) {
             propBA.states.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
 
             if ( ba.isAccepting( i ) )

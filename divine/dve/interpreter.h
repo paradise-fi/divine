@@ -133,7 +133,7 @@ struct Channel {
         count( data )++;
     }
 
-    std::vector< int > dequeue( EvalContext &ctx, ErrorState &err ) {
+    std::vector< int > dequeue( EvalContext &ctx, ErrorState & ) {
         assert( _valid );
         char * data = thischan.getref( ctx.mem, 0 );
         std::vector< int > retval;
