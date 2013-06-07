@@ -600,18 +600,15 @@ struct NTreeStore
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     hash64_t hash( Node n ) { return this->hasher().hash( n ).first; }
-    hash64_t hash( Handle h ) {
-        assert_eq( h.rank(), this->rank() );
-        return Root( h.b ).hash( this->pool() );
-    }
 
     int owner( Vertex v, hash64_t hint = 0 ) {
-        return Base::owner( hint ? hint : (v.foreign() ? hash( v.node() ) : hash( v.handle() )) );
+        return Base::owner( hint ? hint : hash( v.node() ) );
     }
     int owner( Node n, hash64_t hint = 0 ) { return Base::owner( n, hint ); }
 
     int knows( Handle h, hash64_t hint = 0 ) {
-        return h.rank() == this->rank() && Base::knows( hint ? hint : hash( h ) );
+        return h.rank() == this->rank() && Base::knows( hint
+                ? hint : hash( vertex( h ).node() ) );
     }
     int knows( Node n, hash64_t hint = 0 ) { return Base::knows( n, hint ); }
 

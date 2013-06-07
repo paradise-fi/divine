@@ -158,12 +158,11 @@ struct NTreeHashSet
     struct Root : WithChildren< Root, Fork > {
         Blob b;
 
-        struct Header { hash64_t hash; int32_t forks; };
+        struct Header { int32_t forks; };
 
         Root() = default;
         explicit Root( Blob b ) : b( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
-        hash64_t &hash( Pool &p ) { return header( p ).hash; }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
         char *rawdata( Pool &p ) { return p.dereference( b ) + sizeof( Header ); }
@@ -260,7 +259,6 @@ struct NTreeHashSet
         Pool &pool() { return uhasher.pool(); }
         int32_t slack() { return uhasher.slack; }
 
-        hash128_t hash( Root r ) { return r.hash( pool() ); }
         hash128_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
 
         bool valid( Root r ) { return pool().valid( r.b ); }
@@ -270,8 +268,6 @@ struct NTreeHashSet
         bool equal( Root r1, Root r2 ) {
             if ( r1.b.raw() == r2.b.raw() )
                 return true;
-            if ( r1.hash( pool() ) != r2.hash( pool() ) )
-                return false;
             if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
                 return pool().equal( r1.b, r2.b, sizeof( typename Root::Header )
                         + uhasher.slack );
@@ -352,7 +348,6 @@ struct NTreeHashSet
     HashSet< Leaf, LeafHasher > _leafs; // stores leafs if they are not root
 
     Pool& pool() { return hasher.pool(); }
-    // const Pool& pool() const { return hasher.pool(); }
     int32_t slack() { return hasher.slack(); }
     bool valid( Item i ) { return hasher.valid( i ); }
     char* slackPtr( Item item ) { return pool().dereference( item ); }
@@ -399,8 +394,6 @@ struct NTreeHashSet
 
         assert( pool.valid( root.b ) );
         assert_eq( size_t( from ), size_t( pool.dereference( item ) + pool.size( item ) ) );
-
-        root.hash( pool ) = hash;
 
         Root tr;
         bool inserted;
