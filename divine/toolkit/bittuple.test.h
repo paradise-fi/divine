@@ -3,6 +3,8 @@
 #include <wibble/test.h>
 #include <divine/toolkit/bittuple.h>
 
+using namespace divine;
+
 struct TestBitTuple {
     using U10 = BitField< unsigned, 10 >;
     using T10_10 = BitTuple< U10, U10 >;

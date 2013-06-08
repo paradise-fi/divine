@@ -21,10 +21,8 @@
 
 namespace divine {
 
-inline int align( int v, int a ) {
-    if ( v % a )
-        return v + a - (v % a);
-    return v;
+constexpr inline int align( int v, int a ) {
+    return (v % a) ? (v + a - (v % a)) : v;
 }
 
 typedef uint64_t hash64_t;

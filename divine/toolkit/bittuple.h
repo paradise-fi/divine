@@ -3,6 +3,9 @@
 #include <asm/byteorder.h>
 #include <byteswap.h>
 #include <atomic>
+#include <divine/toolkit/pool.h> // for align
+
+namespace divine {
 
 uint64_t bitshift( uint64_t t, int shift ) {
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -117,7 +120,7 @@ struct _BitTuple
 template< typename... Args > struct BitTuple : _BitTuple< Args... >
 {
     struct Virtual : BitPointer, _BitTuple< Args... > {};
-    char storage[ Virtual::bitwidth / 8 + (Virtual::bitwidth % 8 ? 1 : 0) ];
+    char storage[ align( Virtual::bitwidth / 8 + (Virtual::bitwidth % 8 ? 1 : 0), 4 ) ];
     BitTuple() { std::fill( storage, storage + sizeof( storage ), 0 ); }
     operator BitPointer() { return BitPointer( storage ); }
 };
@@ -129,4 +132,6 @@ typename BT::template AccessAt< I >::T::Head get( BT &bt )
     t.fromReference( bt );
     t.shift( BT::template offset< I >() );
     return t;
+}
+
 }
