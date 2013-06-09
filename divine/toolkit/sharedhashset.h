@@ -15,7 +15,7 @@
 
 namespace divine {
 
-template< typename Item >
+template< typename Item, typename = void >
 struct HashCell {
     std::atomic< hash64_t > hashLock;
     Item value;
@@ -67,11 +67,66 @@ struct HashCell {
     HashCell( HashCell & ) : hashLock( 0 ), value() {}
 };
 
-struct CompactCell {
+#if defined( O_POOLS ) && defined( O_COMPACT_CELL )
+template< typename BlobNewtype >
+inline BlobNewtype wrapBlobNewtype( Blob b ) {
+    return BlobNewtype( b );
+}
+
+template<>
+inline Blob wrapBlobNewtype< Blob >( Blob b ) {
+    return b;
+}
+
+template< typename BlobNewtype >
+inline Blob unwrapBlobNewtype( BlobNewtype bn ) {
+    return bn.b;
+}
+
+template<>
+inline Blob unwrapBlobNewtype( Blob b ) {
+    return b;
+}
+
+template< typename, typename = void >
+struct IsBlobNewtype {
+    constexpr operator bool() {
+        return false;
+    }
+};
+template< typename BlobNewtype >
+struct IsBlobNewtype< BlobNewtype, typename BlobNewtype::IsBlobNewtype > {
+    constexpr operator bool() {
+        return true;
+    }
+};
+
+template< typename >
+constexpr bool isBlob() { return false; }
+template<>
+constexpr bool isBlob< Blob >() { return true; }
+
+template< typename T >
+constexpr bool isBlobOrNewtype() { return isBlob< T >() || IsBlobNewtype< T >(); }
+
+static_assert( isBlobOrNewtype< Blob >(), "Blob" );
+
+template< typename BlobOrBlobNewtype >
+struct HashCell< BlobOrBlobNewtype,
+    typename  std::enable_if< isBlobOrNewtype< BlobOrBlobNewtype >() >::type >
+{
     std::atomic< Blob > value;
+
+    static_assert( sizeof( std::atomic< Blob > ) == sizeof( Blob ),
+            "std::atomic< Blob > is not lock-free, cannot use O_COMPACT_CELL." );
 
     bool empty() { return !value.load().raw(); }
     bool invalid() { return !value.load().tag; }
+
+    static hash64_t hashToTag( hash64_t hash ) {
+        // use different part of hash than used for storing
+        return hash >> ( sizeof( hash64_t ) * 8 - Blob::tagBits );
+    }
 
     void invalidate() {
         Blob b = value;
@@ -79,35 +134,39 @@ struct CompactCell {
         value.exchange( b );
     }
 
-    Blob fetch() {
+    BlobOrBlobNewtype fetch() {
         Blob b = value;
         b.tag = 0;
-        return b;
+        return wrapBlobNewtype< BlobOrBlobNewtype >( b );
     }
 
     template< typename Hasher >
-    hash64_t hash( Hasher &h ) { return h.hash( value.load() ).first; }
+    hash64_t hash( Hasher &h ) {
+        return h.hash( wrapBlobNewtype< BlobOrBlobNewtype >( value.load() ) ).first;
+    }
 
     bool wait() { return !invalid(); }
 
     template< typename GrowingGuard >
-    bool tryStore( Blob b, hash64_t hash, GrowingGuard ) {
+    bool tryStore( BlobOrBlobNewtype bn, hash64_t hash, GrowingGuard ) {
+        Blob b = unwrapBlobNewtype( bn );
         Blob zero;
-        b.tag = hash;
+        b.tag = hashToTag( hash );
         return value.compare_exchange_strong( zero, b );
     }
 
     template< typename Value, typename Hasher >
     bool is( Value v, hash64_t hash, Hasher &h ) {
-        static const unsigned mask = ( unsigned( 1 ) << Blob::tagBits ) - 1;
-        if ( value.load().tag != ( hash & mask ) )
-            return false;
-        return h.equal( value, v );
+        return value.load().tag == hashToTag( hash ) && h.equal(
+                wrapBlobNewtype< BlobOrBlobNewtype >( value ), v );
     }
 
-    CompactCell() : value() {}
-    CompactCell( const CompactCell & ) : value() {}
+    HashCell &operator=( const HashCell &cc ) = delete;
+
+    HashCell() : value() {}
+    HashCell( const HashCell & ) : value() {}
 };
+#endif
 
 template<
     typename _Item,
@@ -122,6 +181,7 @@ struct SharedHashSetImplementation {
     using InsertItem = Item;
     using StoredItem = Item;
     using InputHasher = Hasher;
+
 
     enum class InsertResolution {
         Success, // the item has been inserted successfully
@@ -262,7 +322,7 @@ struct SharedHashSetImplementation {
 
     /* multiple threads may use operator[], but not concurrently with insertions! */
     Item operator[]( size_t index ) {
-        return current()[ index ].value;
+        return (*table[ currentRow ])[ index ].value;
     }
 
     SharedHashSetImplementation( const SharedHashSetImplementation & ) = delete;
