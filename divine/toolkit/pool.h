@@ -25,9 +25,6 @@ constexpr inline int align( int v, int a ) {
     return (v % a) ? (v + a - (v % a)) : v;
 }
 
-typedef uint64_t hash64_t;
-typedef std::pair< hash64_t, hash64_t > hash128_t;
-
 /*
  * A lake keeps track of memory in a compact, fast, thread-optimised fashion.
  * It is organised into blocks of objects of a single size. The Pointer type
