@@ -131,7 +131,7 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
             } else {
                 symbol_t s = init_exp.getSymbol();
                 const int32_t *varContent = getValue( procId, s );
-                for ( int i = 0; i < init_exp.getType().getRecordSize(); i++ )
+                for ( size_t i = 0; i < init_exp.getType().getRecordSize(); i++ )
                     output.push_back( varContent[ i ] );
             }
         }
@@ -231,7 +231,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
             PrefixType prefix = basicType.is( CONSTANT ) ? PrefixType::CONSTANT : variablePrefix;
 
             if ( type.isRecord() ) {
-                for ( int i = 0; i  < type.getRecordSize(); i++ ) {
+                for ( size_t i = 0; i  < type.getRecordSize(); i++ ) {
                     if ( type.getSub( i ).isArray() || type.getSub( i ).isRecord() )
                         throw runtime_error( "Nested structures and structures "
                                                 "with arrays are not supported." );
@@ -523,8 +523,8 @@ std::pair< const Evaluator::VarData*, int > Evaluator::getArray( int procId, con
     int size = var.elementsCount;
     int index = 0;
     reverse( indices.begin(), indices.end() );
-    for ( int i = 0; i < indices.size(); i++ ) {
-        if ( indices[ i ] >= var.arraySizes[ i ] ) {
+    for ( unsigned i = 0; i < indices.size(); i++ ) {
+        if ( intptr_t( indices[ i ] ) >= var.arraySizes[ i ] ) {
             emitError( EvalError::ARRAY_INDEX );
         }
         size /= var.arraySizes[ i ];
@@ -641,7 +641,7 @@ void Evaluator::processDeclGlobals( UTAP::TimedAutomataSystem &sys ) {
 }
 
 void Evaluator::processDecl( const vector< instance_t > &procs ) {
-    for ( int pId = 0; pId < procs.size(); ++pId ) {
+    for ( size_t pId = 0; pId < procs.size(); ++pId ) {
         const instance_t &p = procs[pId];
         stringstream ss;
         ss << p.uid.getName();
@@ -651,7 +651,7 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
         if ( type.isProcessSet() ) { // partial instances are represended as arrays of processes
             vector< int > arrSizes;
             int size = 1;
-            for ( int i = 0; i < type.size(); ++i ) {
+            for ( size_t i = 0; i < type.size(); ++i ) {
                 auto r = evalRange( -1, type[ i ] );
                 arrSizes.push_back( r.second - r.first + 1 );
                 size *= arrSizes.back();
@@ -752,7 +752,7 @@ void Evaluator::computeLocClockLimits() {
             for ( edge_t &e : p.templ->edges ) {
                 vector< bool > reseted;
                 collectResets( i, *p.templ, e, reseted );
-                for ( int clk = 0; clk < ClockTable.size(); clk++ ) {
+                for ( size_t clk = 0; clk < ClockTable.size(); clk++ ) {
                     if ( reseted[ clk ] )
                         continue;
                     auto& srcLim = locClockLimits[ i ][ e.src->locNr ][ clk ];
@@ -778,8 +778,8 @@ void Evaluator::computeLocalBounds() {
     assert( fixedClockLimits.size() == ClockTable.size() );
 
 #ifndef LOCATION_BASED_EXTRAPOLATION_OFF
-    for ( int proc = 0; proc < ProcessTable.size(); ++proc ) {
-        for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+    for ( size_t proc = 0; proc < ProcessTable.size(); ++proc ) {
+        for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
             auto &b = locClockLimits[ proc ][ locations[ proc ] ][ clk ];
             bounds[ clk ].first = max( b.first, bounds[ clk ].first );
             bounds[ clk ].second = max( b.second, bounds[ clk ].second );
@@ -788,12 +788,12 @@ void Evaluator::computeLocalBounds() {
 #endif
 
     if ( extrapLU ) {
-        for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+        for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
             clocks.setUpperBound( clk, bounds[clk].first );
             clocks.setLowerBound( clk, bounds[clk].second );
         }
     } else {
-        for ( int clk = 0; clk < ClockTable.size(); ++clk ) {
+        for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
             int32_t maximum = max( bounds[ clk ].first, bounds[ clk ].second );
             clocks.setUpperBound( clk, maximum );
             clocks.setLowerBound( clk, maximum );
@@ -1132,7 +1132,7 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
                 int32_t limit = getRange( procId, expr[ limit_index ] ).second;
 
                 for ( int clockIndex = var.offset; clockIndex < var.offset + var.elementsCount; ++clockIndex ) {
-                    assert( clockIndex < ClockTable.size() );
+                    assert( clockIndex < intptr_t( ClockTable.size() ) );
                     assert( ClockTable.size() == out.size() );
                     if ( out[ clockIndex ].first < limit )
                         out[ clockIndex ].first = limit;

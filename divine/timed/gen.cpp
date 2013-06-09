@@ -70,7 +70,7 @@ void TAGen::processInstance( const UTAP::instance_t& inst, std::vector< UTAP::in
 bool TAGen::evalInv() {
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
-        assert( locs.get( nInst ) < proc->size() );
+        assert( locs.get( nInst ) < intptr_t( proc->size() ) );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         if ( !eval.evalBool( nInst, s.inv ) )
             return false;
@@ -90,7 +90,7 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
     // find possible transitions and synchronizations
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
-        assert( locs.get( nInst ) < proc->size() );
+        assert( locs.get( nInst ) < intptr_t( proc->size() ) );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         inUrgent = inUrgent || s.urgent;
         if ( s.commit )
@@ -258,7 +258,7 @@ void TAGen::read( const std::string& path ) {
         procs.push_back( pi );
         states.push_back( std::vector< StateInfo >( tmp->states.size() ) );
         for ( auto st = tmp->states.begin(); st != tmp->states.end(); ++st ) {
-            assert( st->locNr < states.back().size() );
+            assert( st->locNr < intptr_t( states.back().size() ) );
             StateInfo& stinf = states.back()[ st->locNr ];
             UTAP::type_t type = st->uid.getType();
             stinf.urgent = type.is( UTAP::Constants::URGENT );

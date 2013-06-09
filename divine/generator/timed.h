@@ -140,7 +140,7 @@ struct Timed : public Common< Blob > {
         }
 
         hasLTL = false;
-        if ( propId >= 0 && propId < ltlProps.size() )  {
+        if ( propId >= 0 && propId < intptr_t( ltlProps.size() ) )  {
             hasLTL = buchi.build( ltlProps[ propId ],
                 [this]( const Buchi::DNFClause& clause ) -> int {
                     if ( clause.empty() )
@@ -204,11 +204,11 @@ struct Timed : public Common< Blob > {
             return;
         }
         auto splits = gen.getSplitPoints();
-        if ( from == 0 && length == splits[ 1 ] ) {
+        if ( from == 0 && length == int( splits[ 1 ] ) ) {
             yield( Recurse::Yes, splits[ 0 ], 1 );
             yield( Recurse::Yes, length - splits[ 0 ], 1 );
-        } else if ( from >= splits[ 1 ] && length > splits[ 2 ] ) {
-            assert_eq( length % splits[ 2 ], 0 );
+        } else if ( from >= int( splits[ 1 ] ) && length > int( splits[ 2 ] ) ) {
+            assert_eq( length % splits[ 2 ], 0u );
             unsigned count = length / splits[ 2 ];
             if ( count == 1 ) {
                 yield( Recurse::No, length, 0 );
@@ -283,18 +283,18 @@ private:
     // to ensure that at least one time unit passes in every accepting cycle
     void nonZenoBuchi() {
         gen.addAuxClock();
-        const int oldSize = buchi.size();
-        for ( int i = 0; i < oldSize; i++ ) {
+        const size_t oldSize = buchi.size();
+        for ( size_t i = 0; i < oldSize; i++ ) {
             if ( buchi.isAccepting( i ) ) {
                 // create accepting copy
                 int copy = buchi.duplicateState( i );
                 buchi.setAccepting( i, false );
                 // remove each edge j --(g)--> i, add edges j --(g && aux<1)--> i and j --(g && aux>=1)--> copy
-                for ( int j = 0; j < buchi.size(); j++ ) {
+                for ( size_t j = 0; j < buchi.size(); j++ ) {
                     auto& tr = buchi.editableTrans( j );
-                    const unsigned int nTrans = tr.size();
-                    for ( unsigned int t = 0; t < nTrans; t++ ) {
-                        if ( tr[ t ].first == i ) {
+                    const size_t nTrans = tr.size();
+                    for ( size_t t = 0; t < nTrans; t++ ) {
+                        if ( tr[ t ].first == intptr_t( i ) ) {
                             auto auxGuard = gen.addAuxToGuard( propGuards[ tr[ t ].second ] );
                             // guard of the original edge is changed to "g && aux<1"
                             propGuards.push_back( auxGuard.first );
