@@ -47,7 +47,7 @@ void bitcopy( BitPointer from, BitPointer to, int bitcount )
         uint32_t fmask = mask( from.bitoffset(), w );
         uint64_t tmask = mask( to.bitoffset(), w );
         uint64_t bits = bitshift( from.word() & fmask, from.bitoffset() - to.bitoffset() );
-        assert_eq( bits & ~tmask, 0 );
+        assert_eq( bits & ~tmask, 0u );
         assert_eq( bits & tmask, bits );
         to.dword() = (to.dword() & ~tmask) | bits;
         from.shift( w ); to.shift( w ); bitcount -= w; // slide

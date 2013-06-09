@@ -11,11 +11,11 @@ struct TestBitTuple {
 
     Test mask() {
         /* only works on little endian machines ... */
-        assert_eq( 0xFF00, ::mask( 8, 8 ) );
-        assert_eq( 0xF000, ::mask( 12, 4 ) );
-        assert_eq( 0x0F00, ::mask( 8, 4 ) );
-        assert_eq( 0b111100, ::mask( 2, 4 ) );
-        assert_eq( 0b11100, ::mask( 2, 3 ) );
+        assert_eq( 0xFF00u, ::mask( 8, 8 ) );
+        assert_eq( 0xF000u, ::mask( 12, 4 ) );
+        assert_eq( 0x0F00u, ::mask( 8, 4 ) );
+        assert_eq( 60u, ::mask( 2, 4 ) );// 0b111100
+        assert_eq( 28u, ::mask( 2, 3 ) );// 0b11100
     }
 
     Test bitcopy() {
@@ -24,16 +24,16 @@ struct TestBitTuple {
         assert_eq( a, b );
         a = 0xFF00;
         ::bitcopy( BitPointer( &a ), BitPointer( &b, 8 ), 24 );
-        assert_eq( b, 0xFF0000 | 42 );
+        assert_eq( b, 0xFF0000u | 42u );
         a = 0;
         ::bitcopy( BitPointer( &b, 8 ), BitPointer( &a ), 24 );
-        assert_eq( a, 0xFF00 );
+        assert_eq( a, 0xFF00u );
         ::bitcopy( BitPointer( &a, 8 ), BitPointer( &b, 8 ), 8 );
 
         a = 0x3FF;
         b = 0;
         ::bitcopy( BitPointer( &a, 0 ), BitPointer( &b, 0 ), 10 );
-        assert_eq( b, 0x3FF );
+        assert_eq( b, 0x3FFu );
     }
 
     Test field() {
@@ -55,8 +55,8 @@ struct TestBitTuple {
         auto b = get< 1 >( x );
         a.set( 5 );
         b.set( 7 );
-        assert_eq( a, 5 );
-        assert_eq( b, 7 );
+        assert_eq( a, 5u );
+        assert_eq( b, 7u );
     }
 
     Test big() {
@@ -64,16 +64,16 @@ struct TestBitTuple {
         assert_eq( x.bitwidth, 126 );
         assert_eq( x.offset< 0 >(), 0 );
         assert_eq( x.offset< 1 >(), 63 );
-        get< 0 >( x ).set( (1ll << 62) + 7 );
-        assert_eq( get< 0 >( x ), (1ll << 62) + 7 );
-        assert_eq( get< 1 >( x ), 0 );
+        get< 0 >( x ).set( (1ull << 62) + 7 );
+        assert_eq( get< 0 >( x ), (1ull << 62) + 7 );
+        assert_eq( get< 1 >( x ), 0u );
         get< 0 >( x ).set( 0 );
-        get< 1 >( x ).set( (1ll << 62) + 7 );
-        assert_eq( get< 0 >( x ), 0 );
-        assert_eq( get< 1 >( x ), (1ll << 62) + 7 );
-        get< 0 >( x ).set( (1ll << 62) + 11 );
-        assert_eq( get< 0 >( x ), (1ll << 62) + 11 );
-        assert_eq( get< 1 >( x ), (1ll << 62) + 7 );
+        get< 1 >( x ).set( (1ull << 62) + 7 );
+        assert_eq( get< 0 >( x ), 0u );
+        assert_eq( get< 1 >( x ), (1ull << 62) + 7 );
+        get< 0 >( x ).set( (1ull << 62) + 11 );
+        assert_eq( get< 0 >( x ), (1ull << 62) + 11 );
+        assert_eq( get< 1 >( x ), (1ull << 62) + 7 );
     }
 
     Test structure() {
@@ -83,9 +83,9 @@ struct TestBitTuple {
         assert_eq( x.offset< 0 >(), 0 );
         assert_eq( x.offset< 1 >(), 120 );
         get< 1 >( x ).set( 333 );
-        assert_eq( get< 1 >( x ), 333 );
+        assert_eq( get< 1 >( x ), 333u );
         get< 0 >( x ).set( v );
-        assert_eq( get< 1 >( x ), 333 );
+        assert_eq( get< 1 >( x ), 333u );
         assert( get< 0 >( x ).get() == v );
     }
 
@@ -103,11 +103,11 @@ struct TestBitTuple {
         get< 0 >( b ).set( 13 );
         get< 1 >( b ).set( 533 );
         get< 2 >( x ).set( 15 ); /* we expect to lose the MSB */
-        assert_eq( get< 0 >( a ), 5 );
-        assert_eq( get< 1 >( a ), 7 );
-        assert_eq( get< 0 >( b ), 13 );
-        assert_eq( get< 1 >( b ), 533 );
-        assert_eq( get< 2 >( x ), 7 );
+        assert_eq( get< 0 >( a ), 5u );
+        assert_eq( get< 1 >( a ), 7u );
+        assert_eq( get< 0 >( b ), 13u );
+        assert_eq( get< 1 >( b ), 533u );
+        assert_eq( get< 2 >( x ), 7u );
     }
 
     Test locked() {
@@ -121,11 +121,11 @@ struct TestBitTuple {
         auto y = get< 1 >( x );
         get< 0 >( x ).lock();
         assert( get< 0 >( x ).locked() );
-        get< 0 >( y ).set( 5 );
+        get< 0 >( y ).set( 5u );
         assert( get< 0 >( x ).locked() );
-        assert_eq( get< 0 >( y ), 5 );
+        assert_eq( get< 0 >( y ), 5u );
         get< 0 >( x ).unlock();
         assert( !get< 0 >( x ).locked() );
-        assert_eq( get< 0 >( y ), 5 );
+        assert_eq( get< 0 >( y ), 5u );
     }
 };
