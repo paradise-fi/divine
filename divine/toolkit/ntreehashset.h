@@ -49,6 +49,7 @@ struct NTreeHashSet
     { }
 
     struct Leaf {
+        using IsBlobNewtype = void;
         Blob b;
 
         Leaf() = default;
@@ -134,6 +135,7 @@ struct NTreeHashSet
     };
 
     struct Fork : WithChildren< Fork, Fork > {
+        using IsBlobNewtype = void;
         Blob b;
 
         Fork() = default;
@@ -156,6 +158,7 @@ struct NTreeHashSet
     typedef LeafOr< Fork > LeafOrFork;
 
     struct Root : WithChildren< Root, Fork > {
+        using IsBlobNewtype = void;
         Blob b;
 
         struct Header { int32_t forks; };
