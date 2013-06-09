@@ -83,6 +83,7 @@ option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFO
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
+option( COMPACT_CELL "Use more compact cells in SharedHashSet (experimental)" OFF )
 
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
@@ -207,6 +208,10 @@ endif( USE32 )
 if( POOLS )
   add_definitions( "-DO_POOLS" )
 endif( POOLS )
+
+if( COMPACT_CELL )
+  add_definitions( "-DO_COMPACT_CELL" )
+endif( COMPACT_CELL )
 
 find_program( SHA1SUM sha1sum )
 
