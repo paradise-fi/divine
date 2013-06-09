@@ -1,9 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net
 
-#include <stdint.h>
-#include <deque> // for fmt
-#include <atomic>
-#include <cstring> // size_t ... d'oh
+#include <cstdint>
 
 #include <wibble/test.h> // for assert*
 #include <divine/toolkit/pool.h>
