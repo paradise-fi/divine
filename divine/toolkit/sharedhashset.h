@@ -160,12 +160,20 @@ struct SharedHashSetImplementation {
 
     /* can be called while other threads insert, but may give outdated info
      * (less than the current size) */
-    size_t size() const {
-        return table[ currentRow ]->size();
+    size_t size() {
+        return current().size();
     }
 
-    size_t usage() const {
+    size_t usage() {
         return used;
+    }
+
+    Row &current() {
+        return *table[ currentRow ];
+    }
+
+    Row &current( unsigned index ) {
+        return *table[ index ];
     }
 
     explicit SharedHashSetImplementation( Hasher h = Hasher(), unsigned maxGrows = 64 )
@@ -254,7 +262,7 @@ struct SharedHashSetImplementation {
 
     /* multiple threads may use operator[], but not concurrently with insertions! */
     Item operator[]( size_t index ) {
-        return (*table[ currentRow ])[ index ].value;
+        return current()[ index ].value;
     }
 
     SharedHashSetImplementation( const SharedHashSetImplementation & ) = delete;
@@ -272,7 +280,7 @@ protected:
         if ( changed( rowIndex ) )
             return FindResolution::Growing;
 
-        Row &row = *table[ rowIndex ];
+        Row &row = current( rowIndex );
         const size_t mask = row.size() - 1;
 
         for ( size_t i = 0; i < maxCollisions; ++i ) {
@@ -309,7 +317,7 @@ protected:
                 return InsertResolution::Growing;
         }
 
-        Row &row = *table[ td.currentRow ];
+        Row &row = current( td.currentRow );
         assert( !row.empty() );
         const size_t mask = row.size() - 1;
 
@@ -358,7 +366,7 @@ protected:
             return false;
         }
 
-        Row &row = *table[ rowIndex - 1 ];
+        Row &row = current( rowIndex - 1 );
         table[ rowIndex ] = new Row( row.size() * 2 );
         currentRow.exchange( rowIndex );
         tableWorkers[ rowIndex ] = 1;
@@ -382,7 +390,7 @@ protected:
         if ( ( segment = --availableSegments ) < 0 )
             return false;
 
-        Row &row = *table[ currentRow - 1 ];
+        Row &row = current( currentRow - 1 );
         size_t segments = std::max( row.size() / segmentSize, size_t( 1 ) );
         auto it = row.begin() + segmentSize * segment;
         auto end = it + segmentSize;
