@@ -120,7 +120,7 @@ struct _BitTuple
 template< typename... Args > struct BitTuple : _BitTuple< Args... >
 {
     struct Virtual : BitPointer, _BitTuple< Args... > {};
-    char storage[ align( Virtual::bitwidth / 8 + (Virtual::bitwidth % 8 ? 1 : 0), 4 ) ];
+    char storage[ align( Virtual::bitwidth, 32 ) / 8 ];
     BitTuple() { std::fill( storage, storage + sizeof( storage ), 0 ); }
     operator BitPointer() { return BitPointer( storage ); }
 };
