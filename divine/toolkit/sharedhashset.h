@@ -21,13 +21,13 @@ struct HashCell {
     Item value;
 
     bool empty() { return hashLock == 0; }
-    bool invalid() { return hashLock == 1; }
-    void invalidate() { hashLock.exchange( 1 ); }
+    bool invalid() { return hashLock == 3; }
+    void invalidate() { hashLock.exchange( 3 ); }
 
     Item fetch() { return value; }
 
     template< typename Hasher >
-    hash64_t hash( Hasher & ) { return hashLock >> 1; }
+    hash64_t hash( Hasher & ) { return hashLock >> 2; }
 
     // wait until another writing ends
     // returns false if cell was invalidated
@@ -41,13 +41,13 @@ struct HashCell {
     template< typename GrowingGuard >
     bool tryStore( Item v, hash64_t hash, GrowingGuard g ) {
         hash64_t chl = 0;
-        if ( hashLock.compare_exchange_strong( chl, (hash << 1) | 1 ) ) {
+        if ( hashLock.compare_exchange_strong( chl, (hash << 2) | 1 ) ) {
             if ( g() ) {
                 invalidate();
                 return false;
             }
             value = v;
-            hashLock.exchange( hash << 1 );
+            hashLock.exchange( hash << 2 );
             return true;
         }
         return false;
@@ -56,7 +56,7 @@ struct HashCell {
     // it has to call wait method
     template< typename Value, typename Hasher >
     bool is( Value v, hash64_t hash, Hasher &h ) {
-        if ( ( (hash << 1) | 1) != (hashLock | 1) )
+        if ( ( (hash << 2) | 1) != (hashLock | 1) )
             return false;
         if ( !wait() )
             return false;
