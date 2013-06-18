@@ -174,6 +174,9 @@ let
     full = mkbuild { name = "full"; inputs = { pkgs }:
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                      flags = []; };
+    fullCompactCell = mkbuild { name = "full"; inputs = { pkgs }:
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                     flags = [ "-DCOMPACT_CELL=ON" ]; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
