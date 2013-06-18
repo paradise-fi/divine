@@ -60,7 +60,9 @@ namespace jenkins {
 
 // Modified for use in divine:
 // - merged into one file
-// pair are used instead of output parameters
+// - pairs are used instead of output parameters
+// - some functions were marked explicitly for inlining with gcc attribete
+//   as they are considered too long otherwise
 
 class SpookyHash
 {
@@ -68,7 +70,7 @@ public:
     //
     // SpookyHash: hash a single message in one call, produce 128-bit output
     //
-    static std::pair< uint64, uint64 > Hash128(
+    static INLINE std::pair< uint64, uint64 > Hash128(
         const void *message,  // message to hash
         size_t length,        // length of message in bytes
         uint64 seed1,        // in/out: in seed 1, out hash value 1
@@ -130,7 +132,7 @@ public:
     //
     // Hash64: hash a single message in one call, return 64-bit output
     //
-    static uint64 Hash64(
+    static INLINE uint64 Hash64(
         const void *message,  // message to hash
         size_t length,        // length of message in bytes
         uint64 seed)          // seed
@@ -141,7 +143,7 @@ public:
     //
     // Hash32: hash a single message in one call, produce 32-bit output
     //
-    static uint32 Hash32(
+    static INLINE uint32 Hash32(
         const void *message,  // message to hash
         size_t length,        // length of message in bytes
         uint32 seed)          // seed
@@ -152,7 +154,7 @@ public:
     //
     // Init: initialize the context of a SpookyHash
     //
-    void Init(
+    INLINE void Init(
         uint64 seed1,       // any 64-bit value will do, including 0
         uint64 seed2)      // different seeds produce independent hashes
     {
@@ -165,7 +167,7 @@ public:
     //
     // Update: add a piece of a message to a SpookyHash state
     //
-    void Update(
+    INLINE void Update(
         const void *message,  // message fragment
         size_t length)       // length of message fragment in bytes
     {
@@ -278,7 +280,7 @@ public:
     // The result is the same as if SpookyHash() had been called with
     // all the pieces concatenated into one message.
     //
-    std::pair< uint64, uint64 > Final()
+    INLINE std::pair< uint64, uint64 > Final()
     {
         // init the variables
         if (m_length < sc_bufSize)
@@ -324,7 +326,7 @@ public:
     //
     // left rotate a 64-bit value by k bytes
     //
-    static INLINE uint64 Rot64(uint64 x, int k)
+    static INLINE constexpr uint64 Rot64(uint64 x, int k) __attribute__((always_inline))
     {
         return (x << k) | (x >> (64 - k));
     }
@@ -346,7 +348,7 @@ public:
         const uint64 *data,
         uint64 &s0, uint64 &s1, uint64 &s2, uint64 &s3,
         uint64 &s4, uint64 &s5, uint64 &s6, uint64 &s7,
-        uint64 &s8, uint64 &s9, uint64 &s10,uint64 &s11)
+        uint64 &s8, uint64 &s9, uint64 &s10,uint64 &s11) __attribute__((always_inline))
     {
       s0 += data[0];    s2 ^= s10;    s11 ^= s0;    s0 = Rot64(s0,11);    s11 += s1;
       s1 += data[1];    s3 ^= s11;    s0 ^= s1;    s1 = Rot64(s1,32);    s0 += s2;
@@ -381,7 +383,7 @@ public:
     static INLINE void EndPartial(
         uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3,
         uint64 &h4, uint64 &h5, uint64 &h6, uint64 &h7,
-        uint64 &h8, uint64 &h9, uint64 &h10,uint64 &h11)
+        uint64 &h8, uint64 &h9, uint64 &h10,uint64 &h11) __attribute__((always_inline))
     {
         h11+= h1;    h2 ^= h11;   h1 = Rot64(h1,44);
         h0 += h2;    h3 ^= h0;    h2 = Rot64(h2,15);
@@ -401,7 +403,7 @@ public:
         const uint64 *data,
         uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3,
         uint64 &h4, uint64 &h5, uint64 &h6, uint64 &h7,
-        uint64 &h8, uint64 &h9, uint64 &h10,uint64 &h11)
+        uint64 &h8, uint64 &h9, uint64 &h10,uint64 &h11) __attribute__((always_inline))
     {
         h0 += data[0];   h1 += data[1];   h2 += data[2];   h3 += data[3];
         h4 += data[4];   h5 += data[5];   h6 += data[6];   h7 += data[7];
@@ -426,7 +428,7 @@ public:
     // with diffs defined by either xor or subtraction
     // with a base of all zeros plus a counter, or plus another bit, or random
     //
-    static INLINE void ShortMix(uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3)
+    static INLINE void ShortMix(uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3) __attribute__((always_inline))
     {
         h2 = Rot64(h2,50);  h2 += h3;  h0 ^= h2;
         h3 = Rot64(h3,52);  h3 += h0;  h1 ^= h3;
@@ -454,7 +456,7 @@ public:
     // For every pair of input bits,
     // with probability 50 +- .75% (the worst case is approximately that)
     //
-    static INLINE void ShortEnd(uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3)
+    static INLINE void ShortEnd(uint64 &h0, uint64 &h1, uint64 &h2, uint64 &h3) __attribute__((always_inline))
     {
         h3 ^= h2;  h2 = Rot64(h2,15);  h3 += h2;
         h0 ^= h3;  h3 = Rot64(h3,52);  h0 += h3;
@@ -477,11 +479,12 @@ private:
     // keys, the cost crossover is at about 192 bytes.  The two modes were
     // held to the same quality bar.
     //
-    static std::pair< uint64, uint64 > Short(
+    static INLINE std::pair< uint64, uint64 > Short(
         const void *message,  // message (array of bytes, not necessarily aligned)
         size_t length,        // length of message (in bytes)
         uint64 seed1,        // in/out: in the seed, out the hash value
         uint64 seed2)       // in/out: in the seed, out the hash value
+        __attribute__((always_inline))
     {
         uint64 buf[2*sc_numVars];
         union
