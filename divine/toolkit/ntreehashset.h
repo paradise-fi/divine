@@ -263,6 +263,19 @@ struct NTreeHashSet
         int32_t slack() { return uhasher.slack; }
 
         hash128_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
+        hash128_t hash( Root r ) {
+            if ( r.leaf( pool() ) ) {
+                auto offset = sizeof( typename Root::Header ) + uhasher.slack;
+                return pool().hash( r.b, offset, offset + r.dataSize( pool(), uhasher.slack ) );
+            } else {
+                SpookyState state( salt, salt );
+                r.forAllLeaves( pool(), [ this, &state ]( Leaf l ) {
+                            state.update( l.data( this->pool() ), l.size( this->pool() ) );
+                            return true;
+                        } );
+                return state.finalize();
+            }
+        }
 
         bool valid( Root r ) { return pool().valid( r.b ); }
         bool valid( Uncompressed r ) { return pool().valid( r.i ); }
