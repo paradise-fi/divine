@@ -43,7 +43,7 @@ let
      memSize = mem;
    };
 
-  mkbuild = { name, inputs, flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" ] }:
+  mkbuild = { name, inputs, flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" ], clang ? false }:
             { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
@@ -53,13 +53,17 @@ let
                              "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
                              "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
                       else []);
-        profile = if lib.eqStrings buildType "Debug"
+        profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc47.gcc}/bin/gcov" ] else [];
+        compiler = if clang
+                      then [ "-DCMAKE_CXX_COMPILER=${pkgs.clang}/bin/clang++"
+                             "-DCMAKE_C_COMPILER=${pkgs.clang}/bin/clang" ]
+                      else [];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov ] ++ inputs { inherit pkgs; };
-       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ cmdflags ++ profile ++ flags;
+       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
@@ -177,6 +181,12 @@ let
     fullCompactCell = mkbuild { name = "full"; inputs = { pkgs }:
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                      flags = [ "-DCOMPACT_CELL=ON" ]; };
+    full-clang = mkbuild { name = "full"; inputs = { pkgs }:
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                     flags = []; clang = true; };
+    fullCompactCell-clang = mkbuild { name = "full"; inputs = { pkgs }:
+                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                     flags = [ "-DCOMPACT_CELL=ON" ]; clang = true; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
