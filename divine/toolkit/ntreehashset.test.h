@@ -12,6 +12,7 @@
 #include <random>
 #include <cstdint>
 #include <algorithm>
+#include <numeric>
 
 using namespace divine;
 using divine::algorithm::Hasher;
@@ -234,14 +235,78 @@ struct TestNTreeHashSet {
             fg.pool().free( x );
     }
 
-    template< typename Generator, bool leaf >
-    void reuse() {
-        Generator fg;
+    static std::mt19937 random;
+
+    Blob randomBlob( size_t size, Pool &p ) {
+        Blob b = p.allocate( size );
+        std::for_each( reinterpret_cast< uint32_t * >( p.dereference( b ) ),
+            reinterpret_cast< uint32_t * >( p.dereference( b ) + p.size( b ) ),
+            []( uint32_t &ptr ) { ptr = TestNTreeHashSet::random(); } );
+        return b;
+    }
+
+    Blob concatBlob( std::initializer_list< Blob > bs, Pool &p ) {
+        size_t size = std::accumulate( bs.begin(), bs.end(), 0,
+            [ &p ]( const size_t &acc, const Blob &b ) { return acc + p.size( b ); } );
+        return std::get< 0 >( std::accumulate( bs.begin(), bs.end(), std::make_tuple( p.allocate( size ), 0 ),
+            [ &p ]( const std::tuple< Blob, size_t > &target, const Blob &b ) {
+                std::copy( p.dereference( b ), p.dereference( b ) + p.size( b ),
+                    p.dereference( std::get< 0 >( target ) ) + std::get< 1 >( target ) );
+                return std::make_tuple( std::get< 0 >( target ), std::get< 1 >( target ) + p.size( b ) );
+            } ) );
+    }
+
+    template< typename Set >
+    size_t count( Set &set, Pool &p ) {
+        return std::accumulate( set.m_table.begin(), set.m_table.end(), 0,
+            [ &p ]( const size_t &c, const typename Set::Cell &b ) {
+                return c + ( p.valid( b.item.b ) ? 1 : 0 );
+            } );
+    }
+
+    Test reuse() {
+        FakeGeneratorBinary fg;
+        ThreadData< FakeGeneratorBinary, BlobSet > td;
+        td.generator = &fg;
         BlobSet set( Hasher( fg.pool() ) );
 
+        Blob b1 = randomBlob( 128, fg.pool() );
+        Blob b2 = randomBlob( 128, fg.pool() );
+        Blob c = concatBlob( { b1, b2 }, fg.pool() );
+        assert_neq( size_t( &set._leafs ), size_t( &set._forks ) );
+        assert_neq( size_t( &set._leafs ), size_t( &set._roots ) );
+        set.insertHinted( b1, fg.pool().hash( b1 ).first, td );
+        set.insertHinted( b2, fg.pool().hash( b2 ).first, td );
+        size_t leafs = count( set._leafs, fg.pool() );
+        size_t forks = count( set._forks, fg.pool() );
 
+        assert( std::get< 1 >( set.insertHinted( b1, fg.pool().hash( b1 ).first, td ) ) == false );
+        assert_eq( leafs, count( set._leafs, fg.pool() ) );
+        assert_eq( forks, count( set._forks, fg.pool() ) );
+        assert_eq( 2ul, count( set._roots, fg.pool() ) );
+
+        set.insertHinted( c, fg.pool().hash( c ).first, td );
+        assert_eq( leafs, count( set._leafs, fg.pool() ) );
+        assert_eq( forks + 2, count( set._forks, fg.pool() ) );
+        assert_eq( 3ul, count( set._roots, fg.pool() ) );
+    }
+
+    Test incrementalHash() {
+        FakeGeneratorBinary fg;
+        ThreadData< FakeGeneratorBinary, BlobSet > td;
+        td.generator = &fg;
+        BlobSet set( Hasher( fg.pool() ) );
+
+        Blob b = randomBlob( 128, fg.pool() );
+        hash128_t hash = fg.pool().hash( b );
+        auto root = std::get< 0 >( set.insertHinted( b, hash.first, td ) );
+        hash128_t rootHash = set.hasher.hash( root );
+        assert_eq( rootHash.first, hash.first );
+        assert_eq( rootHash.second, hash.second );
     }
 };
+
+std::mt19937 TestNTreeHashSet::random = std::mt19937( 0 );
 
 #endif
 
@@ -253,6 +318,7 @@ int main( void ) {
     test.binary2();
     test.binary4();
     test.basicBinary();
+    test.reuse();
 }
 
 #endif
