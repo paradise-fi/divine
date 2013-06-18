@@ -161,12 +161,12 @@ Test Alignment()
     {
         for (int j=0; j<8; ++j)
         {
-            buf[j] = (char)i+j;
+            buf[j] = char(i+j);
             for (int k=1; k<=i; ++k)
             {
                 buf[j+k] = k;
             }
-            buf[j+i+1] = (char)i+j;
+            buf[j+i+1] = char(i+j);
             hash[j] = SpookyHash::Hash64(reinterpret_cast< const void * >(buf+j+1), i, 0);
         }
         for (int j=1; j<8; ++j)
