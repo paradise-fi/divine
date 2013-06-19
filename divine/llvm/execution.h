@@ -9,9 +9,6 @@
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-
 #include <llvm/Instructions.h>
 #include <llvm/Constants.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
@@ -20,7 +17,7 @@
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <llvm/DataLayout.h>
+  #include <divine/llvm/wrap/DataLayout.h>
   #define TargetData DataLayout
 #endif
 

@@ -8,8 +8,8 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/Constants.h>
-#include <llvm/Module.h>
+#include <divine/llvm/wrap/Constants.h>
+#include <divine/llvm/wrap/Module.h>
 
 #pragma GCC diagnostic pop
 

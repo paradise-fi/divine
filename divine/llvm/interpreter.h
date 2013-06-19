@@ -8,9 +8,6 @@
 #include <divine/llvm/machine.h>
 #include <divine/graph/graph.h> // for allocator. get rid of it...
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-
 #include <llvm/Function.h>
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
@@ -18,7 +15,7 @@
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <llvm/DataLayout.h>
+  #include <divine/llvm/wrap/DataLayout.h>
   #define TargetData DataLayout
 #endif
 #undef PACKAGE_VERSION
@@ -28,7 +25,7 @@
 #undef PACKAGE_BUGREPORT
 
 #include <llvm/ADT/OwningPtr.h>
-#include <llvm/LLVMContext.h>
+#include <divine/llvm/wrap/LLVMContext.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>

@@ -4,16 +4,13 @@
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-
 #include <llvm/Function.h>
 
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <llvm/DataLayout.h>
+  #include <divine/llvm/wrap/DataLayout.h>
   #define TargetData DataLayout
 #endif
 

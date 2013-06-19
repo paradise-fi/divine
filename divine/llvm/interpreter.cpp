@@ -5,10 +5,10 @@
 #include <wibble/exception.h>
 #include <divine/llvm/interpreter.h>
 
-#include "llvm/DerivedTypes.h"
-#include "llvm/Constants.h"
-#include "llvm/Module.h"
-#include "llvm/LLVMContext.h"
+#include <divine/llvm/wrap/DerivedTypes.h>
+#include <divine/llvm/wrap/Constants.h>
+#include <divine/llvm/wrap/Module.h>
+#include <divine/llvm/wrap/LLVMContext.h>
 #include <cstring>
 
 using namespace llvm;
