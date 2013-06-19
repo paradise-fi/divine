@@ -92,7 +92,10 @@ set( CMD_AR "ar" CACHE STRING "how to run GNU ar w/ gold plugin support" )
 set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
 find_file( CMD_LLVMGOLD
+    "/usr/lib/llvm-3.1/LLVMgold.so"
     "/usr/lib/llvm-3.2/LLVMgold.so"
+    "/usr/lib/llvm-3.3/LLVMgold.so"
+    "/usr/lib/LLVMgold.so"
     "/usr/lib/bfd-plugins/LLVMgold.so"
     "/usr/lib/llvm/LLVMgold.so" )
 
@@ -265,8 +268,8 @@ if( LLVM )
     disabling( "LLVM" "" "Could not find LLVM." )
     set( LLVM OFF )
   else()
-    if ( NOT ( ${LLVM_STRING_VERSION} VERSION_EQUAL "3.1" OR ${LLVM_STRING_VERSION} VERSION_EQUAL "3.2" ) )
-      disabling( "LLVM" "" "Found version ${LLVM_STRING_VERSION} but 3.1 or 3.2 is required." )
+    if ( NOT ( ${LLVM_STRING_VERSION} VERSION_EQUAL "3.1" OR ${LLVM_STRING_VERSION} VERSION_EQUAL "3.2" OR ${LLVM_STRING_VERSION} VERSION_EQUAL "3.3" ) )
+      disabling( "LLVM" "" "Found version ${LLVM_STRING_VERSION} but 3.1, 3.2 or 3.3 is required." )
       set( LLVM OFF )
     else()
       add_definitions( -DO_LLVM )
