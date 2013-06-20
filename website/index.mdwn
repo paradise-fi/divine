@@ -57,10 +57,12 @@ DIVINE):
       author    = "Jiří Barnat and Luboš Brim and Vojtěch Havel
                    and Jan Havlíček and Jan Kriho and Milan Lenčo
                    and Petr Ročkai and Vladimír Štill and Jiří Weiser",
-      title     =  "{DiVinE 3.0 -- An Explicit-State Model Checker
+      title     = "{DiVinE 3.0 -- An Explicit-State Model Checker
                     for Multithreaded C \& C++ Programs}",
-      booktitle =  "{To appear in Computer Aided Verification (CAV 2013)}",
-      year      =  "2013",
-      pages     = "6",
-      publisher = "LNCS"
+      booktitle = "{Computer Aided Verification (CAV 2013)}",
+      pages     = "863--868",
+      volume    = "8044",
+      series    = "LNCS",
+      year      = "2013",
+      publisher = "Springer"
     }
