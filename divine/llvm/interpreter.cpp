@@ -27,15 +27,16 @@ void Interpreter::parseProperties( Module *M )
 {
     auto prefix = "__divine_LTL_";
 
-    for ( auto v : info().constinfo ) {
-        auto id = v.second.second;
+    for ( int i = 0; i < info().constinfo.size(); ++i ) {
+        auto v = info().constinfo[ i ];
+        auto id = v.second;
 
         if ( std::string( id, 0, strlen( prefix ) ) != prefix )
             continue;
 
         std::string name( id, strlen( prefix ), std::string::npos );
         GlobalContext ctx( info(), TD, nullptr );
-        auto val = info().globals[ v.first.segment ];
+        auto val = info().globals[ i ];
         auto valptr = *reinterpret_cast< Pointer * >( ctx.dereference( val ) );
         auto str = info().globals[ valptr.segment ];
         properties[ name ] = ctx.dereference( str );

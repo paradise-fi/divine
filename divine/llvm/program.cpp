@@ -94,6 +94,9 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     Value result; /* not seen yet, needs to be allocated */
     initValue( val, result );
 
+    auto infopair = std::make_pair(
+        val->getType(), val->getValueName() ? val->getValueName()->getKey() : "" );
+
     if ( result.width % framealign )
         return Value(); /* ignore for now, later pass will assign this one */
 
@@ -119,11 +122,6 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
             }
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
-            if ( G->hasInitializer() ) {
-                ( G->isConstant() ? constinfo[ p ] : globalinfo[ p ] )
-                    = std::make_pair( G->getInitializer()->getType(),
-                                      G->getValueName()->getKey() );
-            }
             makeConstant( result, p );
         } else makeLLVMConstant( result, C );
     } else allocateValue( function, result );
@@ -131,8 +129,11 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( function && !result.global && !result.constant ) {
         if ( result.width )
             this->functions[ function ].values.push_back( result );
-    } else
+    } else {
+        makeFit( result.constant ? constinfo : globalinfo, globals.size() );
+        (result.constant ? constinfo : globalinfo )[ globals.size() ] = infopair;
         globals.push_back( result );
+    }
 
     valuemap.insert( std::make_pair( val, result ) );
     return result;

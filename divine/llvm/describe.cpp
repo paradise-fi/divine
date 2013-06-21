@@ -298,8 +298,9 @@ std::string Describe::all()
 {
     std::stringstream s;
 
-    for ( auto i = info().globalinfo.begin(); i != info().globalinfo.end(); ++i )
-        this->value( i->second, ValueRef(), i->first );
+    for ( int i = 0; i < info().globalinfo.size(); ++ i )
+        if ( info().globalinfo[ i ].first )
+            this->value( info().globalinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
     if ( lines.size() )
         s << "global: " << wibble::str::fmt( lines ) << std::endl;
@@ -362,8 +363,9 @@ std::string Describe::all()
 }
 
 std::string Describe::constdata() {
-    for ( auto i = info().constinfo.begin(); i != info().constinfo.end(); ++i )
-        value( i->second, ValueRef(), i->first );
+    for ( int i = 0; i < info().constinfo.size(); ++ i )
+        if ( info().constinfo[ i ].first )
+            value( info().constinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
     return wibble::str::fmt( lines );
 }

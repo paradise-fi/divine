@@ -194,7 +194,7 @@ struct ProgramInfo {
 
     std::vector< Function > functions;
     std::vector< Value > globals;
-    std::map< Pointer, std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
+    std::vector< std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
     std::vector< char > constdata;
     std::vector< char > globaldata; /* initial values! */
     int globalsize, constdatasize;
