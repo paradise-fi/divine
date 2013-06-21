@@ -262,6 +262,16 @@ inline std::string joinpath(const std::string& path1, const std::string& path2)
 	if (path2.empty())
 		return path1;
 
+#ifdef POSIX
+    if ( path2.size() >= 1 && path2[ 0 ] == '/' )
+        return path2;
+#endif
+#ifdef WIN32
+    if ( ( path2.size() >= 3 && path2[ 1 ] == ':' && path2[ 2 ] == '\\' )
+            || ( path2.size() >= 2 && path2[ 0 ] == '\\' && path2[ 1 ] == '\\' ) )
+        return path2;
+#endif
+
 	if (path1[path1.size() - 1] == '/')
 		if (path2[0] == '/')
 			return path1 + path2.substr(1);
