@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
+#define NO_RTTI
 #include <divine/llvm/machine.h>
 
 using namespace divine::llvm;
