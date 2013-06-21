@@ -3,13 +3,12 @@
 #include <vector>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/bitoperations.h>
+#include <divine/toolkit/ntreehashset.h> // for Recurse
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
 
 namespace divine {
-
-    enum class Recurse : uint8_t { Yes, No };
 
 namespace graph {
 

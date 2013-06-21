@@ -11,12 +11,13 @@
 #include <numeric>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
-#include <divine/graph/graph.h>
 
 #ifndef N_TREE_HASH_SET_H
 #define N_TREE_HASH_SET_H
 
 namespace divine {
+
+enum class Recurse : uint8_t { Yes, No };
 
 template< typename T >
 struct NewtypeHasher {
