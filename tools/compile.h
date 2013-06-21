@@ -332,7 +332,8 @@ struct Compile {
                 out = basename + ".bc";
 
             all_unlinked += str::joinpath( tmp_dir.basename, basename + ".bc" );
-            run( clang() + " -c -I. " + flags + " ../" + file + " -o " + basename + ".bc" );
+            run( clang() + " -c -I. " + flags + wibble::str::joinpath( " ../", file )
+                    + " -o " + basename + ".bc" );
 
             file.clear();
         } while ( opts.hasNext() );
