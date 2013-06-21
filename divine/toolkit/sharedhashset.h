@@ -322,7 +322,7 @@ struct SharedHashSetImplementation {
 
     /* multiple threads may use operator[], but not concurrently with insertions! */
     Item operator[]( size_t index ) {
-        return (*table[ currentRow ])[ index ].value;
+        return current()[ index ].fetch();
     }
 
     SharedHashSetImplementation( const SharedHashSetImplementation & ) = delete;
