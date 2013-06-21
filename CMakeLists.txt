@@ -89,15 +89,15 @@ set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )
 set( CMD_AR "ar" CACHE STRING "how to run GNU ar w/ gold plugin support" )
-set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
-find_file( CMD_LLVMGOLD
-    "/usr/lib/llvm-3.1/LLVMgold.so"
-    "/usr/lib/llvm-3.2/LLVMgold.so"
-    "/usr/lib/llvm-3.3/LLVMgold.so"
-    "/usr/lib/LLVMgold.so"
-    "/usr/lib/bfd-plugins/LLVMgold.so"
-    "/usr/lib/llvm/LLVMgold.so" )
+find_file( CMD_LLVMGOLD "LLVMgold.so"
+    "/usr/lib/llvm-3.1/"
+    "/usr/lib/llvm-3.2/"
+    "/usr/lib/llvm-3.3/"
+    "/usr/lib/"
+    "/usr/lib/bfd-plugins/"
+    "/usr/lib/llvm/" )
+set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
 ###############################################
 ## MISC OPTION IMPLEMENTATION
