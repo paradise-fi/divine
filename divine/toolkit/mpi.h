@@ -310,8 +310,8 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         : pool( p ), m_comms( comms ), m_barrier( barrier )
     {
         buffers.resize( total, total );
-        for ( size_t i = 0; i < total; ++i ) {
-            for ( size_t j = 0; j < total; ++j ) {
+        for ( int i = 0; i < total; ++i ) {
+            for ( int j = 0; j < total; ++j ) {
                 buffers[ i ][ j ].pool = &pool;
             }
         }
