@@ -10,7 +10,7 @@ namespace divine {
 typedef uint64_t hash64_t;
 typedef std::pair< hash64_t, hash64_t > hash128_t;
 
-static hash128_t spookyHash( const void *message, size_t length, uint64_t seed1, uint64_t seed2 ) {
+static inline hash128_t spookyHash( const void *message, size_t length, uint64_t seed1, uint64_t seed2 ) {
     return jenkins::SpookyHash::Hash128( message, length, seed1, seed2 );
 }
 
