@@ -139,6 +139,18 @@ struct TestString {
         assert_eq(str::joinpath("a/", "/b"), "a/b");
     }
 
+    Test appendpath()
+    {
+        assert_eq(str::appendpath("a", "b"), "a/b");
+        assert_eq(str::appendpath("a/", "b"), "a/b");
+        assert_eq(str::appendpath("a", "/b"), "/b");
+        assert_eq(str::appendpath("a/", "/b"), "/b");
+        assert_eq(str::appendpath("/a", "b"), "/a/b");
+        assert_eq(str::appendpath("/a/", "b"), "/a/b");
+        assert_eq(str::appendpath("/a", "/b"), "/b");
+        assert_eq(str::appendpath("/a/", "/b"), "/b");
+    }
+
     Test urlencode()
     {
         assert_eq(str::urlencode(""), "");
