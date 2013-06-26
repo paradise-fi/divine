@@ -258,7 +258,7 @@ void DveCompiler::gen_state_struct()
     int total_bits = 0;
 
     for ( parse::Process &p : ast->processes ) {
-        int max = p.states.size();
+        int max = p.body.states.size();
         int bits = 1;
         while ( max /= 2 ) ++ bits;
         total_bits += bits;
@@ -266,7 +266,7 @@ void DveCompiler::gen_state_struct()
     }
 
     for ( parse::Process &p : ast->properties ) {
-        int max = p.states.size();
+        int max = p.body.states.size();
         int bits = 1;
         while ( max /= 2 ) ++ bits;
         total_bits += bits;
@@ -281,7 +281,7 @@ void DveCompiler::gen_state_struct()
     for ( parse::Process &p : ast->processes ) {
         start_process();
 
-        declare( p.decls, p.chandecls );
+        declare( p.body.decls, p.body.chandecls );
 
         end_process( getProcName( p ) );
     }
@@ -289,7 +289,7 @@ void DveCompiler::gen_state_struct()
     for ( parse::Property &p : ast->properties ) {
         start_process();
 
-        declare( p.decls, p.chandecls );
+        declare( p.body.decls, p.body.chandecls );
 
         end_process( getProcName( p ) );
     }
@@ -341,22 +341,22 @@ void DveCompiler::gen_initial_state()
     initVars( ast->decls, "_out" );
 
     for ( parse::Process &p : ast->processes ) {
-        initVars( p.decls, std::string( "_out." ) + getProcName( p ) );
+        initVars( p.body.decls, std::string( "_out." ) + getProcName( p ) );
 
         int i = 0;
-        for ( auto s : p.states ) {
-            if ( s.name() == p.inits[ 0 ].name() )
+        for ( auto s : p.body.states ) {
+            if ( s.name() == p.body.inits[ 0 ].name() )
                 assign( process_state( p, "_out" ), fmt( i ) );
             ++ i;
         }
     }
 
     for ( parse::Property &p : ast->properties ) {
-        initVars( p.decls, std::string( "_out." ) + getProcName( p ) );
+        initVars( p.body.decls, std::string( "_out." ) + getProcName( p ) );
 
         int i = 0;
-        for ( auto s : p.states ) {
-            if ( p.states[ i ].name() == p.inits[ 0 ].name() )
+        for ( auto s : p.body.states ) {
+            if ( p.body.states[ i ].name() == p.body.inits[ 0 ].name() )
                 assign( process_state( p, "_out" ), fmt( i ) );
             ++ i;
         }
@@ -471,7 +471,7 @@ void DveCompiler::analyse()
 
     // obtain transition with synchronization of the type SYNC_EXCLAIM and property transitions
     for ( parse::Process &p : ast->processes ) {
-        for ( parse::Transition &t : p.trans ) {
+        for ( parse::Transition &t : p.body.trans ) {
             if ( t.syncexpr.valid() && t.syncexpr.write && !chanIsBuffered( p, t.syncexpr ) ) {
                 insertTransition( p, t );
             }
@@ -484,14 +484,14 @@ void DveCompiler::analyse()
 
     int i = ( have_property ? 1 : 0 );
     for ( parse::Property &p : ast->properties ) {
-        for ( parse::Transition &t : p.trans ) {
+        for ( parse::Transition &t : p.body.trans ) {
             property_transitions[ i ].push_back( &t );
         }
         i++;
     }
 
     for ( parse::Process &p : ast->processes ) {
-        for ( parse::Transition &t : p.trans ) {
+        for ( parse::Transition &t : p.body.trans ) {
             if (
                     (!t.syncexpr.valid() || !t.syncexpr.write || chanIsBuffered( p, t.syncexpr ) ) 
                     && ( p.name.name() != ast->property.name() )
@@ -684,7 +684,7 @@ void DveCompiler::gen_successors( int prop )
     if_begin( true );
 
     for ( parse::Process &p : ast->processes ) {
-        for ( size_t i = 0; i < p.states.size(); i++ ) {
+        for ( size_t i = 0; i < p.body.states.size(); i++ ) {
             if ( isCommited( p, i ) )
                 if_clause( in_state( p, i, in ) );
         }
@@ -837,7 +837,7 @@ void DveCompiler::gen_is_accepting()
 
     line( "case 1:" );
     for ( auto &p : ast->processes )
-        for ( auto &a : p.asserts ) {
+        for ( auto &a : p.body.asserts ) {
             if_begin( false );
             if_clause( in_state( p, getStateId( p, a.state.name() ), "state" ) );
             if_cexpr_clause( &a.expr, "state", p.name.name() );
@@ -849,7 +849,7 @@ void DveCompiler::gen_is_accepting()
     for ( int j = 0; j < propCount(); j++ ) {
     line( "case " + fmt( j + 2 ) + ":");
         parse::Process &property = getProperty( j );
-        for ( int i = 0; i < int( property.states.size() ); i++ ) {
+        for ( int i = 0; i < int( property.body.states.size() ); i++ ) {
             if ( isAccepting( property, i ) ) {
                 if_begin( true );
                 if_clause( in_state( property, i, "state" ) );

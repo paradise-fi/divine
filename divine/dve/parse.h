@@ -147,9 +147,12 @@ struct RValue : Parser {
 };
 
 struct Expression : Parser {
+    typedef Expression Body;
     Token op;
     std::shared_ptr< Expression > lhs, rhs;
     std::shared_ptr< RValue > rval;
+
+    void setName( Identifier newname ) {}
 
     void parens() {
         eat( Token::ParenOpen );
@@ -749,132 +752,167 @@ inline size_t declarations( Parser &p, std::vector< Declaration > &decls,
 
 struct Automaton : Parser {
     Identifier name;
-    std::vector< Declaration > decls;
-    std::vector< ChannelDeclaration > chandecls;
-    std::vector< Identifier > states, accepts, commits, inits;
-    std::vector< Assertion > asserts;
-    std::vector< Transition > trans;
 
-    void accept() {
-        eat( Token::Accept );
-        list< Identifier >( std::back_inserter( accepts ), Token::Comma );
-        semicolon();
-    }
+    struct Body : Parser {
 
-    void commit() {
-        eat( Token::Commit );
-        list< Identifier >( std::back_inserter( commits ), Token::Comma );
-        semicolon();
-    }
+        std::vector< Declaration > decls;
+        std::vector< ChannelDeclaration > chandecls;
+        std::vector< Identifier > states, accepts, commits, inits;
+        std::vector< Assertion > asserts;
+        std::vector< Transition > trans;
 
-    void state() {
-        eat( Token::State );
-        list< Identifier >( std::back_inserter( states ), Token::Comma );
-        semicolon();
-    }
-
-    void init() {
-        eat( Token::Init );
-        list< Identifier >( std::back_inserter( inits ), Token::Comma );
-        semicolon();
-    }
-
-    void assertion() {
-        if ( next( Token::Assert ) ) {
-            list< Assertion >( std::back_inserter( asserts ), Token::Comma );
+        void accept() {
+            eat( Token::Accept );
+            list< Identifier >( std::back_inserter( accepts ), Token::Comma );
             semicolon();
         }
-    }
 
-    void optionalComma() {
-        maybe( Token::Comma );
-    }
+        void commit() {
+            eat( Token::Commit );
+            list< Identifier >( std::back_inserter( commits ), Token::Comma );
+            semicolon();
+        }
+
+        void state() {
+            eat( Token::State );
+            list< Identifier >( std::back_inserter( states ), Token::Comma );
+            semicolon();
+        }
+
+        void init() {
+            eat( Token::Init );
+            list< Identifier >( std::back_inserter( inits ), Token::Comma );
+            semicolon();
+        }
+
+        void assertion() {
+            if ( next( Token::Assert ) ) {
+                list< Assertion >( std::back_inserter( asserts ), Token::Comma );
+                semicolon();
+            }
+        }
+
+        void optionalComma() {
+            maybe( Token::Comma );
+        }
+
+        std::ostream& dump( std::ostream &o ) {
+
+            o << "state ";
+            for ( Identifier &s : states )
+                o << s.name() << ", ";
+            o << std::endl;
+
+            o << "accept ";
+            for ( Identifier &s : accepts )
+                o << s.name() << ", ";
+            o << std::endl;
+
+            o << "init ";
+            for ( Identifier &s : inits )
+                o << s.name() << ", ";
+            o << std::endl;
+
+            o << "commit ";
+            for ( Identifier &s : commits )
+                o << s.name() << ", ";
+            o << std::endl;
+
+            o << "trans" << std::endl;
+            for ( Transition &t : trans ) {
+                t.dump( o );
+                o << std::endl;
+            }
+
+            o << "}" << std::endl;
+            return o;
+        }
+
+        void setName( Identifier newname ) {
+            for( Transition &t : trans ) {
+                t.proc = newname;
+            }
+        }
+
+        Body( Context &c ) : Parser( c ) {
+            declarations( *this, decls, chandecls );
+
+            arbitrary( &Body::accept,
+                    &Body::commit,
+                    &Body::state,
+                    &Body::init,
+                    &Body::assertion );
+
+            if ( !states.size() )
+                fail( "states" );
+
+            if ( !inits.size() )
+                fail( "initial" );
+
+            if ( next( Token::Trans ) ) {
+                list< Transition >( std::back_inserter( trans ), &Body::optionalComma );
+                maybe( &Body::semicolon );
+            }
+        }
+
+        Body() {}
+
+        Body( const Body &a, ASTClone )
+            : Parser( a ), states( a.states ), accepts( a.accepts ),
+            commits( a.commits ), inits( a.inits )
+        {
+            decls.clear();
+            for ( const Declaration &d : a.decls )
+                decls.push_back( Declaration( d, ASTClone() ) );
+
+            chandecls.clear();
+            for ( const ChannelDeclaration &d : a.chandecls )
+                chandecls.push_back( ChannelDeclaration( d, ASTClone() ) );
+
+            asserts.clear();
+            for ( const Assertion &as : a.asserts )
+                asserts.push_back( Assertion( as, ASTClone() ) );
+
+            trans.clear();
+            for ( const Transition &t : a.trans )
+                trans.push_back( Transition( t, ASTClone() ) );
+        }
+
+        void fold( SymTab *parent );
+    };
+
+    Body body;
 
     std::ostream& dump( std::ostream &o ) {
         o << "process " << name.name() << " {" << std::endl;
-
-        o << "state ";
-        for ( Identifier &s : states )
-            o << s.name() << ", ";
-        o << std::endl;
-
-        o << "accept ";
-        for ( Identifier &s : accepts )
-            o << s.name() << ", ";
-        o << std::endl;
-
-        o << "init ";
-        for ( Identifier &s : inits )
-            o << s.name() << ", ";
-        o << std::endl;
-
-        o << "commit ";
-        for ( Identifier &s : commits )
-            o << s.name() << ", ";
-        o << std::endl;
-
-        o << "trans" << std::endl;
-        for ( Transition &t : trans ) {
-            t.dump( o );
-            o << std::endl;
-        }
-
-        o << "}" << std::endl;
+        body.dump( o );
         return o;
     }
 
     void setName( Identifier newname ) {
         name = newname;
-        for( Transition &t : trans ) {
-            t.proc = name;
-        }
+        body.setName( newname );
     }
 
     Automaton( Context &c ) : Parser( c ) {
-        declarations( *this, decls, chandecls );
-
-        arbitrary( &Automaton::accept,
-                   &Automaton::commit,
-                   &Automaton::state,
-                   &Automaton::init,
-                   &Automaton::assertion );
-
-        if ( !states.size() )
-            fail( "states" );
-
-        if ( !inits.size() )
-            fail( "initial" );
-
-        if ( next( Token::Trans ) ) {
-            list< Transition >( std::back_inserter( trans ), &Automaton::optionalComma );
-            maybe( &Automaton::semicolon );
-        }
+        eat( Token::Process );
+        name = Identifier( c );
+        eat( Token::BlockOpen );
+        body = Body( c );
+        body.setName( name );
+        eat( Token::BlockClose );
     }
 
     Automaton() : Parser() {}
-
     Automaton( const Automaton &a, ASTClone )
-        : Parser( a ), name( a.name ), states( a.states ), accepts( a.accepts ),
-          commits( a.commits ), inits( a.inits )
-    {
-        decls.clear();
-        for ( const Declaration &d : a.decls )
-            decls.push_back( Declaration( d, ASTClone() ) );
+        : Parser( a ), name( a.name ), body( a.body, ASTClone() ) {}
 
-        chandecls.clear();
-        for ( const ChannelDeclaration &d : a.chandecls )
-            chandecls.push_back( ChannelDeclaration( d, ASTClone() ) );
+    Automaton( const Automaton::Body &b, ASTClone )
+        : Parser( b ), body( b, ASTClone() ) {}
 
-        asserts.clear();
-        for ( const Assertion &as : a.asserts )
-            asserts.push_back( Assertion( as, ASTClone() ) );
-
-        trans.clear();
-        for ( const Transition &t : a.trans )
-            trans.push_back( Transition( t, ASTClone() ) );
+    void fold( SymTab *parent ) {
+        body.fold( parent );
     }
-
-    void fold( SymTab *parent );
 };
 
 typedef Automaton Process;
@@ -893,7 +931,7 @@ struct MacroParam : Parser {
 
 template< typename T >
 struct Macro : Parser {
-    T content;
+    typename T::Body content;
     Identifier name;
     std::vector< MacroParam > params;
     unsigned used;
@@ -910,7 +948,7 @@ struct Macro : Parser {
         eat( Token::ParenClose );
 
         eat( Token::BlockOpen );
-        content = T( c );
+        content = typename T::Body( c );
         eat( Token::BlockClose );
     }
 };
@@ -995,12 +1033,7 @@ struct System : Parser {
     }
 
     void process() {
-        eat( Token::Process );
-        Identifier procname( context() );
-        eat( Token::BlockOpen );
         processes.push_back( Process( context() ) );
-        eat( Token::BlockClose );
-        processes.back().setName( procname );
     }
 
     void propDef() {
@@ -1009,12 +1042,7 @@ struct System : Parser {
     }
 
     void procProperty() {
-        eat( Token::Process );
-        Identifier procname( context() );
-        eat( Token::BlockOpen );
         properties.push_back( Property( context() ) );
-        eat( Token::BlockClose );
-        properties.back().setName( procname );
     }
 
     void LTLProperty() {

@@ -38,7 +38,7 @@ void ChannelDeclaration::fold( dve::SymTab* symtab )
     }
 }
 
-void Automaton::fold( dve::SymTab* parent )
+void Automaton::Body::fold( dve::SymTab* parent )
 {
     dve::SymTab symtab( parent );
     for ( Declaration &decl : decls )

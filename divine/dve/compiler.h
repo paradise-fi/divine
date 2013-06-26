@@ -229,13 +229,13 @@ struct DveCompiler
 
     parse::ChannelDeclaration & getChannel( parse::Process & proc, parse::SyncExpr & chan ) {
         if ( chan.proc.valid() ) {
-            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).chandecls ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).body.chandecls ) {
                 if ( c.name == chan.chan.name() )
                     return c;
             }
         }
         else {
-            for ( parse::ChannelDeclaration &c : proc.chandecls ) {
+            for ( parse::ChannelDeclaration &c : proc.body.chandecls ) {
                 if ( c.name == chan.chan.name() )
                     return c;
             }
@@ -254,13 +254,13 @@ struct DveCompiler
 
     parse::Identifier getChannelProc( parse::Process & proc, parse::SyncExpr & chan ) {
         if ( chan.proc.valid() ) {
-            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).chandecls ) {
+            for ( parse::ChannelDeclaration &c : getProcess( chan.proc.ident.name() ).body.chandecls ) {
                 if ( c.name == chan.chan.name() )
                     return chan.proc.ident;
             }
         }
         else {
-            for ( parse::ChannelDeclaration &c : proc.chandecls ) {
+            for ( parse::ChannelDeclaration &c : proc.body.chandecls ) {
                 if ( c.name == chan.chan.name() )
                     return proc.name;
             }
@@ -275,7 +275,7 @@ struct DveCompiler
 
     std::string getVariable( std::string name, std::string context, std::string state ) {
         parse::Process &p = getProcess( context );
-        for ( parse::Declaration &decl : p.decls ) {
+        for ( parse::Declaration &decl : p.body.decls ) {
             if ( decl.name == name )
                 return ( decl.is_const ? "" : state + "." ) + getProcName( context ) + "." + name;
         }
@@ -328,23 +328,23 @@ struct DveCompiler
     }
 
     bool isAccepting( parse::Process &p, int stateID ) {
-        for ( parse::Identifier &accept : p.accepts ) {
-            if ( accept.name() == p.states[ stateID ].name() )
+        for ( parse::Identifier &accept : p.body.accepts ) {
+            if ( accept.name() == p.body.states[ stateID ].name() )
                 return true;
         }
         return false;
     }
 
     bool isCommited( parse::Process &p, int stateID ) {
-        for ( parse::Identifier &commit : p.commits ) {
-            if ( commit.name() == p.states[ stateID ].name() )
+        for ( parse::Identifier &commit : p.body.commits ) {
+            if ( commit.name() == p.body.states[ stateID ].name() )
                 return true;
         }
         return false;
     }
 
     bool isCommited( parse::Process &p, std::string state ) {
-        for ( parse::Identifier &commit : p.commits ) {
+        for ( parse::Identifier &commit : p.body.commits ) {
             if ( commit.name() == state )
                 return true;
         }
@@ -353,7 +353,7 @@ struct DveCompiler
 
     int getStateId( parse::Process &p, std::string state ) {
         int i = 0;
-        for ( auto s : p.states ) {
+        for ( auto s : p.body.states ) {
             if ( s.name() == state )
                 return i;
             ++ i;

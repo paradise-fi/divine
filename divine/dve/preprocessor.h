@@ -294,13 +294,13 @@ struct Automaton {
     Automaton( Definitions &ds, Macros &ms, parse::Automaton &p, SymTab &st, const Substitutions &substs )
         : defs( ds ), macros( ms ), proc( p ), symtab( &st )
     {
-        for ( parse::Declaration & decl : proc.decls ) {
+        for ( parse::Declaration & decl : proc.body.decls ) {
                 Declaration( defs, macros, decl, symtab, substs );
         }
-        for ( parse::ChannelDeclaration & decl : proc.chandecls ) {
+        for ( parse::ChannelDeclaration & decl : proc.body.chandecls ) {
                 ChannelDeclaration( defs, macros, decl, symtab, substs );
         }
-        for ( parse::Transition &t : proc.trans )
+        for ( parse::Transition &t : proc.body.trans )
             Transition( defs, macros, t, symtab, substs );
     }
 };
@@ -393,10 +393,10 @@ struct System {
         propBA.name = prop.name;
         propBA.ctx = prop.ctx;
         for ( int i = 0; i < int( ba.size() ); i++ ) {
-            propBA.states.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+            propBA.body.states.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
 
             if ( ba.isAccepting( i ) )
-                propBA.accepts.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+                propBA.body.accepts.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
 
             const BATrans &batrans = ba.transitions( i );
             for ( std::pair< int, int > bt : batrans ) {
@@ -411,10 +411,10 @@ struct System {
                             ( item.first ? "" : "not ") + item.second + "()",
                             prop.context() ) );
                 }
-                propBA.trans.push_back( t );
+                propBA.body.trans.push_back( t );
             }
         }
-        propBA.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
+        propBA.body.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
 
         return propBA;
     }

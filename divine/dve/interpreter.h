@@ -556,43 +556,43 @@ struct Process {
         int states = 0;
         assert( id.valid() );
 
-        declare( symtab, proc.decls );
-        for ( std::vector< parse::Identifier >::const_iterator i = proc.states.begin();
-              i != proc.states.end(); ++i ) {
-            if ( proc.inits.size() && i->name() == proc.inits.front().name() )
+        declare( symtab, proc.body.decls );
+        for ( std::vector< parse::Identifier >::const_iterator i = proc.body.states.begin();
+              i != proc.body.states.end(); ++i ) {
+            if ( proc.body.inits.size() && i->name() == proc.body.inits.front().name() )
                 parent->constant( NS::InitState, proc.name.name(), states );
             symtab.constant( NS::State, i->name(), states++ );
         }
 
         // declare channels
-        channels.resize( proc.chandecls.size() );
-        for( size_t i = 0; i < proc.chandecls.size(); i++ ) {
-            channels[i] = Channel( symtab, proc.chandecls[i] );
-            symtab.channels[ proc.chandecls[i].name ] =  &channels[i];
+        channels.resize( proc.body.chandecls.size() );
+        for( size_t i = 0; i < proc.body.chandecls.size(); i++ ) {
+            channels[i] = Channel( symtab, proc.body.chandecls[i] );
+            symtab.channels[ proc.body.chandecls[i].name ] =  &channels[i];
         }
 
-        assert_eq( states, int( proc.states.size() ) );
+        assert_eq( states, int( proc.body.states.size() ) );
 
-        is_accepting.resize( proc.states.size(), false );
-        is_commited.resize( proc.states.size(), false );
-        asserts.resize( proc.states.size() );
+        is_accepting.resize( proc.body.states.size(), false );
+        is_commited.resize( proc.body.states.size(), false );
+        asserts.resize( proc.body.states.size() );
         for ( size_t i = 0; i < is_accepting.size(); ++ i ) {
-            for ( size_t j = 0; j < proc.accepts.size(); ++ j )
-                if ( proc.states[ i ].name() == proc.accepts[ j ].name() )
+            for ( size_t j = 0; j < proc.body.accepts.size(); ++ j )
+                if ( proc.body.states[ i ].name() == proc.body.accepts[ j ].name() )
                     is_accepting[i] = true;
-            for ( size_t j = 0; j < proc.commits.size(); ++ j )
-                if ( proc.states[ i ].name() == proc.commits[ j ].name() )
+            for ( size_t j = 0; j < proc.body.commits.size(); ++ j )
+                if ( proc.body.states[ i ].name() == proc.body.commits[ j ].name() )
                     is_commited[i] = true;
-            for ( size_t j = 0; j < proc.asserts.size(); ++ j )
-                if ( proc.states[ i ].name() == proc.asserts[ j ].state.name() )
-                    asserts[ i ].push_back( Expression( symtab, proc.asserts[ j ].expr) );
+            for ( size_t j = 0; j < proc.body.asserts.size(); ++ j )
+                if ( proc.body.states[ i ].name() == proc.body.asserts[ j ].state.name() )
+                    asserts[ i ].push_back( Expression( symtab, proc.body.asserts[ j ].expr) );
         }
 
-        trans.resize( proc.states.size() );
-        state_readers.resize( proc.states.size() );
+        trans.resize( proc.body.states.size() );
+        state_readers.resize( proc.body.states.size() );
 
-        for ( std::vector< parse::Transition >::const_iterator i = proc.trans.begin();
-              i != proc.trans.end(); ++i ) {
+        for ( std::vector< parse::Transition >::const_iterator i = proc.body.trans.begin();
+              i != proc.body.trans.end(); ++i ) {
             Transition t( symtab, id, *i );
             t.from_commited = is_commited[ t.from.deref( 0 ) ];
             t.to_commited = is_commited[ t.to.deref( 0 ) ];
