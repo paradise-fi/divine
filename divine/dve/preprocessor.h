@@ -368,6 +368,34 @@ struct ForLoop {
     }
 };
 
+template< typename T >
+struct IfBlock {
+    Definitions &defs;
+    Macros &macros;
+    parse::IfBlock< T > &ifBlock;
+
+    template< typename U >
+    IfBlock( Definitions &ds, Macros &ms, parse::IfBlock< T > &ib, SymTab &symtab, const Substitutions &substs, U &preproc )
+        : defs( ds ), macros( ms ), ifBlock( ib )
+    {
+        auto itCond = ifBlock.conditions.begin();
+        auto itInst = ifBlock.instantiables.begin();
+        for( ; itCond != ifBlock.conditions.end() ; itCond++, itInst++ ) {
+            Expression( defs, macros, *itCond, symtab, substs );
+            EvalContext ctx;
+            dve::Expression ex( symtab, *itCond );
+            int result = ex.evaluate( ctx );
+            if ( result ) {
+                preproc.processInstantiable( *itInst, substs );
+                return;
+            }
+        }
+        if ( itInst != ifBlock.instantiables.end() ) {
+            preproc.processInstantiable( *itInst, substs );
+        }
+    }
+};
+
 struct System {
     Definitions &defs;
     Macros macros;
@@ -423,6 +451,10 @@ struct System {
         for ( parse::ForLoop< parse::System > & fl : inst.loops ) {
             parse::ForLoop< parse::System > fl2( fl, parse::ASTClone() );
             ForLoop< parse::System >( defs, macros, fl2, symtab, substs, *this );
+        }
+        for ( parse::IfBlock< parse::System > & ib : inst.ifs ) {
+            parse::IfBlock< parse::System > ib2( ib, parse::ASTClone() );
+            IfBlock< parse::System >( defs, macros, ib2, symtab, substs, *this );
         }
     }
 

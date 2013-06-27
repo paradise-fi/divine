@@ -994,11 +994,63 @@ struct ForLoop : Parser {
         eat( Token::BlockClose );
     }
 
-    ForLoop( const ForLoop &fl, ASTClone )
+    ForLoop( const ForLoop< T > &fl, ASTClone )
         : Parser( fl ), variable( fl.variable ),
         first( fl.first, ASTClone() ), last( fl.last, ASTClone() )
     {
         for ( const typename T::Instantiable &inst : fl.instantiables ) {
+            instantiables.push_back( typename T::Instantiable( inst, ASTClone() ) );
+        }
+    }
+};
+
+template< typename T >
+struct IfBlock : Parser {
+    std::vector< Expression > conditions;
+    std::vector< typename T::Instantiable > instantiables;
+    
+    void instantiable() {
+        instantiables.push_back( typename T::Instantiable( context() ) );
+    }
+
+    void elif() {
+        eat( Token::Else );
+        eat( Token::If );
+        expr();
+        body();
+    }
+
+    void _else() {
+        eat( Token::Else );
+        body();
+    }
+
+    void expr() {
+        eat( Token::ParenOpen );
+        conditions.push_back( Expression( context() ) );
+        eat( Token::ParenClose );
+    }
+
+    void body() {
+        eat( Token::BlockOpen );
+        instantiable();
+        eat( Token::BlockClose );
+    }
+
+    IfBlock( Context &c ) : Parser( c )
+    {
+        eat( Token::If );
+        while ( maybe( &IfBlock< T >::elif ) );
+        maybe( &IfBlock< T >::_else );
+    }
+
+    IfBlock( const IfBlock< T > & ib, ASTClone )
+        : Parser( ib )
+    {
+        for ( const Expression &cond : ib.conditions ) {
+            conditions.push_back( Expression( cond, ASTClone() ) );
+        }
+        for ( const typename T::Instantiable &inst : ib.instantiables ) {
             instantiables.push_back( typename T::Instantiable( inst, ASTClone() ) );
         }
     }
@@ -1018,6 +1070,7 @@ struct System : Parser {
     struct Instantiable : Parser {
         std::vector< MacroNode > procInstances;
         std::vector< ForLoop< System > > loops;
+        std::vector< IfBlock< System > > ifs;
 
         void processInstance() {
             eat( Token::Process );
@@ -1027,6 +1080,10 @@ struct System : Parser {
 
         void forLoop() {
             loops.push_back( ForLoop< System >( context() ) );
+        }
+
+        void ifBlock() {
+            ifs.push_back( IfBlock< System >( context() ) );
         }
 
         Instantiable( Context &c ) : Parser( c )
