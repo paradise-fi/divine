@@ -335,14 +335,15 @@ inline void makeProcess( parse::MacroNode &mn, parse::System &ast, Definitions &
         Automaton( defs, macros, ast.processes.back(), symtab, newsubsts );
 }
 
+template< typename T >
 struct ForLoop {
     Definitions &defs;
     Macros &macros;
-    parse::ForLoop &loop;
-    parse::System &ast;
+    parse::ForLoop< T > &loop;
 
-    ForLoop( Definitions &ds, Macros &ms, parse::ForLoop &fl, parse::System &sast, SymTab &symtab, const Substitutions &substs )
-        : defs( ds ), macros( ms ), loop( fl ), ast( sast )
+    template< typename U >
+    ForLoop( Definitions &ds, Macros &ms, parse::ForLoop< T > &fl, SymTab &symtab, const Substitutions &substs, U &preproc )
+        : defs( ds ), macros( ms ), loop( fl )
     {
         Expression( defs, macros, loop.first, symtab, substs );
         Expression( defs, macros, loop.last, symtab, substs );
@@ -360,14 +361,8 @@ struct ForLoop {
             Substitutions newsubsts( substs );
             newsubsts[ fl.variable.name() ] = i;
 
-            for ( parse::MacroNode &mn : fl.procInstances ) {
-                parse::MacroNode mn2( mn, parse::ASTClone() );
-                makeProcess( mn2, ast, defs, macros, symtab, newsubsts );
-            }
-
-            for ( parse::ForLoop &forl : fl.loops ) {
-                parse::ForLoop fl2( forl, parse::ASTClone() );
-                ForLoop( defs, macros, fl2, ast, symtab, newsubsts );
+            for ( typename T::Instantiable & inst : fl.instantiables ) {
+                preproc.processInstantiable( inst, newsubsts );
             }
         }
     }
@@ -378,6 +373,7 @@ struct System {
     Macros macros;
     typedef std::vector< std::pair< int, int > > BATrans;
     SymTab symtab;
+    parse::System * ast;
 
     parse::Property LTL2Process( parse::LTL &prop ) {
         parse::Property propBA;
@@ -419,7 +415,19 @@ struct System {
         return propBA;
     }
 
+    void processInstantiable( parse::System::Instantiable & inst, const Substitutions &substs ) {
+        for ( parse::MacroNode & mn : inst.procInstances ) {
+            parse::MacroNode mn2( mn, parse::ASTClone() );
+            makeProcess( mn2, *ast, defs, macros, symtab, substs );
+        }
+        for ( parse::ForLoop< parse::System > & fl : inst.loops ) {
+            parse::ForLoop< parse::System > fl2( fl, parse::ASTClone() );
+            ForLoop< parse::System >( defs, macros, fl2, symtab, substs, *this );
+        }
+    }
+
     void process( parse::System & ast ) {
+        this->ast = &ast;
         macros.exprs = ast.exprs;
         macros.processes = ast.templates;
 
@@ -440,11 +448,8 @@ struct System {
         for ( parse::Automaton & proc : ast.properties  ) {
             Automaton( defs, macros, proc, symtab, Substitutions() );
         }
-        for ( parse::MacroNode & mn : ast.procInstances ) {
-            makeProcess( mn, ast, defs, macros, symtab, Substitutions() );
-        }
-        for ( parse::ForLoop & fl : ast.loops ) {
-            ForLoop( defs, macros, fl, ast, symtab, Substitutions() );
+        for ( parse::System::Instantiable & inst : ast.instantiables ) {
+            processInstantiable( inst, Substitutions() );
         }
     }
 

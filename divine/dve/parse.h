@@ -964,21 +964,15 @@ struct LTL : Parser {
     }
 };
 
+template< typename T >
 struct ForLoop : Parser {
     Identifier variable;
     Expression first, last;
 
-    std::vector< ForLoop > loops;
-    std::vector< MacroNode > procInstances;
+    std::vector< typename T::Instantiable > instantiables;
 
-    void processInstance() {
-        eat( Token::Process );
-        procInstances.push_back( MacroNode( context() ) );
-        semicolon();
-    }
-
-    void forLoop() {
-        loops.push_back( ForLoop( context() ) );
+    void instantiable() {
+        instantiables.push_back( typename T::Instantiable( context() ) );
     }
 
     ForLoop( Context &c ) : Parser( c )
@@ -995,21 +989,17 @@ struct ForLoop : Parser {
         eat( Token::ParenClose );
         eat( Token::BlockOpen );
 
-        while ( maybe(
-            &ForLoop::processInstance,
-            &ForLoop::forLoop
-        ) );
+        while( maybe( &ForLoop< T >::instantiable ) );
+
         eat( Token::BlockClose );
     }
 
-    ForLoop( const ForLoop &fl, ASTClone ) : Parser( fl ), variable( fl.variable )
+    ForLoop( const ForLoop &fl, ASTClone )
+        : Parser( fl ), variable( fl.variable ),
+        first( fl.first, ASTClone() ), last( fl.last, ASTClone() )
     {
-        for ( const ForLoop &forloop : fl.loops ) {
-            loops.push_back( ForLoop( forloop, ASTClone() ) );
-        }
-
-        for ( const MacroNode &mn : fl.procInstances ) {
-            procInstances.push_back( MacroNode( mn, ASTClone() ) );
+        for ( const typename T::Instantiable &inst : fl.instantiables ) {
+            instantiables.push_back( typename T::Instantiable( inst, ASTClone() ) );
         }
     }
 };
@@ -1022,10 +1012,45 @@ struct System : Parser {
     std::vector< LTL > ltlprops;
     std::vector< Macro< Expression > > exprs;
     std::vector< Macro< Automaton > > templates;
-    std::vector< MacroNode > procInstances;
-    std::vector< ForLoop > loops;
     Identifier property;
     bool synchronous;
+
+    struct Instantiable : Parser {
+        std::vector< MacroNode > procInstances;
+        std::vector< ForLoop< System > > loops;
+
+        void processInstance() {
+            eat( Token::Process );
+            procInstances.push_back( MacroNode( context() ) );
+            semicolon();
+        }
+
+        void forLoop() {
+            loops.push_back( ForLoop< System >( context() ) );
+        }
+
+        Instantiable( Context &c ) : Parser( c )
+        {
+            while ( maybe( &Instantiable::processInstance,
+                           &Instantiable::forLoop ) );
+            if ( !procInstances.size() && !loops.size() ) {
+                fail("System::Instantiable");
+            }
+        }
+
+        Instantiable( const Instantiable &inst, ASTClone )
+            : Parser( inst )
+        {
+            for ( const MacroNode &mn : inst.procInstances ) {
+                procInstances.push_back( MacroNode( mn, ASTClone() ) );
+            }
+            for ( const ForLoop< System > &fl : inst.loops ) {
+                loops.push_back( ForLoop< System >( fl, ASTClone() ) );
+            }
+        }
+    };
+
+    std::vector< Instantiable > instantiables;
 
     void _property() {
         eat( Token::Property );
@@ -1066,14 +1091,8 @@ struct System : Parser {
         templates.back().content.setName( templates.back().name );
     }
 
-    void processInstance() {
-        eat( Token::Process );
-        procInstances.push_back( MacroNode( context() ) );
-        semicolon();
-    }
-
-    void forLoop() {
-        loops.push_back( ForLoop( context() ) );
+    void instantiable() {
+        instantiables.push_back( Instantiable( context() ) );
     }
 
     System( Context &c ) : Parser( c )
@@ -1085,8 +1104,7 @@ struct System : Parser {
                        &System::propDef,
                        &System::exprMacro,
                        &System::templateMacro,
-                       &System::processInstance,
-                       &System::forLoop ) );
+                       &System::instantiable ) );
 
         eat( Token::System );
 
