@@ -42,8 +42,7 @@ First, unzip the distribution tarball and enter the newly created directory
 
 ### Configuration
 
-        $ ./configure
-        $ make
+    $ ./configure
 
 The configure script will tell you what options you have available and what
 external packages you may be missing. To inspect configuration variables in
@@ -58,16 +57,25 @@ configuration and re-generate makefiles, respectively.
 
 Some parts of divine, especially the `compile` and `combine` sub-commands will
 need to run external tools. By default, divine will expect to find these
-commands in your `PATH` under their common names. If you are building a
-distribution package for a system which installs these commands under uncommon
-names, you should use cmake variables (check all variables start with
-`CMD_`). While you can override the commands to use on divine's command-line
-later (using `--cmd-xxx=yyy` switches), this may be somewhat inconvenient.
+commands in your `PATH` under their common names. Please pay close attention to
+the `CMD_` variables, as they are not checked at configure time, *especially if
+your system provides multiple versions of LLVM*. While you can override the
+commands to use on divine's command-line later (using `--cmd-xxx=yyy`
+switches), this may be inconvenient.
 
 **NB.** Please take extra care that the "GNU gold" linker you are providing to
-divine has plugin support, and that you provide correct path to the
+DIVINE has plugin support, and that you provide correct path to the
 `LLVMgold.so` plugin. A working installation of both is mandatory for `divine
-compile --llvm`.
+compile --llvm`. Moreover, you *must* provide matching versions of `clang`, the
+llvm tools and the `LLVMgold.so` plugin (most importantly, they must all be
+based on the same LLVM version as your DIVINE build!). Version mismatches will
+lead to bitcode linking or loading failures. Finally, versions of `clang` prior
+to 3.2 will fail to correctly compile the C standard library provided by
+DIVINE.
+
+Alternatively, you can use `--cmd-*` options to `divine compile --llvm` at
+runtime to specify the correct tools to use.
+
 
 ### Build and Installation
 
