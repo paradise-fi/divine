@@ -22,14 +22,15 @@ Prerequisites
   consult the output from `cmake` to determine what other libraries or tools
   you may need:
 
-    - LLVM headers and libraries are required for LLVM bitcode verification.
+    - LLVM 3.2 or later (headers and libraries) are required for LLVM bitcode verification.
+    - CLang 3.2 or later is required at *runtime* for `divine compile --llvm`.
     - Qt 4.5 or later is required for the GUI.
     - Boost libraries and libxml2 are required for verification of UPPAAL timed
       automata.
     - Pandoc is required for building HTML and PDF (also needs pdflatex) manual.
     - MPI header files and libraries (preferably OpenMPI) for distributed
       verification.
-    - flex and byacc for verification of Murphi models.
+    - `flex` and `byacc` for verification of Murphi models.
 
 Instructions
 ------------
@@ -41,7 +42,8 @@ First, unzip the distribution tarball and enter the newly created directory
 
 ### Configuration
 
-    $ ./configure
+        $ ./configure
+        $ make
 
 The configure script will tell you what options you have available and what
 external packages you may be missing. To inspect configuration variables in
