@@ -1,5 +1,6 @@
 #include <divine/llvm/interpreter.h>
-#include <llvm/LLVMContext.h>
+#include <divine/graph/graph.h> // allocator :-(
+#include <divine/llvm/wrap/LLVMContext.h>
 
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )

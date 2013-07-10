@@ -4,7 +4,7 @@
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
 
-#include <llvm/Function.h>
+#include <divine/llvm/wrap/Function.h>
 
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )

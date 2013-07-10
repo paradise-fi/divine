@@ -8,9 +8,10 @@
 #include <divine/llvm/machine.h>
 #include <divine/graph/graph.h> // for allocator. get rid of it...
 
-#include <llvm/Function.h>
-#include <llvm/Module.h>
-#include <llvm/Instructions.h>
+#include <divine/llvm/wrap/Function.h>
+#include <divine/llvm/wrap/Module.h>
+#include <divine/llvm/wrap/Instructions.h>
+
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>

@@ -6,8 +6,9 @@
 
 #include <divine/llvm/program.h>
 
-#include <llvm/Type.h>
-#include <llvm/GlobalVariable.h>
+#include <divine/llvm/wrap/Type.h>
+#include <divine/llvm/wrap/GlobalVariable.h>
+
 #include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/Support/CallSite.h>
 #include <divine/llvm/wrap/Constants.h>

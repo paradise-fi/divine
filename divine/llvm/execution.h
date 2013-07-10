@@ -9,8 +9,9 @@
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 
-#include <llvm/Instructions.h>
-#include <llvm/Constants.h>
+#include <divine/llvm/wrap/Instructions.h>
+#include <divine/llvm/wrap/Constants.h>
+
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/CallSite.h>
 #include <llvm/Config/config.h>
