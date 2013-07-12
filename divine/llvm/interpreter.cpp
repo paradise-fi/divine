@@ -36,9 +36,15 @@ void Interpreter::parseProperties( Module *M )
 
         std::string name( id, strlen( prefix ), std::string::npos );
         GlobalContext ctx( info(), TD, nullptr );
-        auto val = info().globals[ i ];
-        auto valptr = *reinterpret_cast< Pointer * >( ctx.dereference( val ) );
-        auto str = info().globals[ valptr.segment ];
+        int idx = i;
+        while ( true ) {
+            auto val = info().globals[ idx ];
+            if ( val.type != ProgramInfo::Value::Pointer )
+                break;
+            auto valptr = *reinterpret_cast< Pointer * >( ctx.dereference( val ) );
+            idx = valptr.segment;
+        }
+        auto str = info().globals[ idx ];
         properties[ name ] = ctx.dereference( str );
     }
 }
