@@ -15,7 +15,7 @@
 #undef assert
 #define assert( x ) __divine_assert( x )
 #define ap( x ) __divine_ap( x )
-#define LTL( name, x ) const char * const __divine_LTL_ ## name = #x
+#define LTL( name, x ) extern const char * const __divine_LTL_ ## name = #x
 
 #ifdef TRACE
 #define trace __divine_trace
