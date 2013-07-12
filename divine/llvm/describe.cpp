@@ -340,12 +340,11 @@ std::string Describe::all()
     if ( !state()._thread_count )
         s << "EXIT" << std::endl;
 
-#if 0
     if ( flags.ap ) {
         int ap = flags.ap;
         std::vector< std::string > x;
         int k = 0;
-        MDNode *apmeta = findEnum( "AP" );
+        MDNode *apmeta = interpreter->findEnum( "AP" );
         while ( ap ) {
             if ( ap % 2 ) {
                 MDString *name = cast< MDString >(
@@ -355,9 +354,8 @@ std::string Describe::all()
             ap = ap >> 1;
             ++k;
         }
-        s << "+ APs: " << wibble::str::fmt( x );
+        s << "+ APs: " << wibble::str::fmt( x ) << std::endl;
     }
-#endif
 
     return s.str();
 }
