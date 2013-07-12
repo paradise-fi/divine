@@ -46,7 +46,7 @@ BA_opt_graph_t buchi( std::string ltl, bool probabilistic )
     BA_opt_graph_t oG, oG1;
     L.nacti( ltl );
     if ( !L.syntax_check( F ) )
-        std::cerr << "Error: Syntax error in LTL formula." << std::endl;
+        std::cerr << "Error: Syntax error in LTL formula: '" << ltl << "'." << std::endl;
     F = F.negace();
     G.create_graph( F );
     G.transform_vwaa();

@@ -19,7 +19,7 @@ int Buchi::ltl3ba_parse( std::string ltl ) {
     LTL_formul_t F;
     parse.nacti( ltl );
     if ( !parse.syntax_check( F ) ) {
-        std::cerr << "Error: Syntax error in LTL formula." << std::endl;
+        std::cerr << "Error: Syntax error in LTL formula: '" << ltl << "'." << std::endl;
         return -1;
     }
     F = F.negace();
