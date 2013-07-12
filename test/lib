@@ -262,12 +262,18 @@ llvm_prepare() {
 llvm_verify() {
     test "$O_LLVM" = "ON" || skip
     llvm_prepare
-    ann divine verify testcase.bc -p assert -d -r 2>> progress | capture
-    test "$1" == valid && check reachability_valid
-    test "$1" == invalid && {
+    t=$1; shift
+    test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
+    prop=${1-assert}
+
+    ann divine verify testcase.bc -p $prop -d -r 2>> progress | capture
+    test "$t" == ltl_valid && check ltl_valid
+    test "$t" == ltl_invalid && check ltl_invalid
+    test "$t" == valid && check reachability_valid
+    test "$t" == invalid && {
         check reachability_goal
-        test -n "$2" && test -n "$3" && \
-            grep -A 50 '== The goal ==' progress | grep -i "^$2" | grep "$3"
+        test -n "$what" && \
+            grep -A 50 '== The goal ==' progress | grep -i "^$where" | grep "$what"
     }
     check clear
 }
