@@ -120,13 +120,13 @@ struct LLVM : Common< Blob > {
         std::string s = _interpreter_2->describe();
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
-            s += "\nLTL: " + wibble::str::fmt( buchi ) + " (";
+            s += "LTL: " + wibble::str::fmt( buchi ) + " (";
             for ( int i = 0; i < int( prop_next[ buchi ].size() ); ++i ) {
                 int next = prop_next[buchi][i];
                 s += wibble::str::fmt( prop_trans[next].first ) + " -> " +
                      wibble::str::fmt( prop_trans[next].second ) + "; ";
             }
-            s += ")";
+            s += ")\n";
         }
         return s;
     }
