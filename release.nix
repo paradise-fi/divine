@@ -30,7 +30,10 @@ let
       windows_img = windows7_img; inherit pkgs windows_mingw windows_cmake windows_python; };
 
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
-                 "libqt4-dev" "libboost-dev" "libncurses5-dev" ];
+                 "libqt4-dev" "libboost-dev" "libncurses5-dev"
+                 "binutils-gold" ];
+  extra_debs31 = extra_debs ++ [ "llvm-3.1-dev" ];
+  extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_rpms = [ "cmake" ];
 
   mkVM = { VM, extras, diskFun, mem ? 3072 }:
@@ -188,12 +191,14 @@ let
                       [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                      flags = [ "-DCOMPACT_CELL=ON" ]; clang = true; };
 
-    debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs; };
-    ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs; };
+    debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
+    ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
+    ubuntu1304_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304i386; extras = extra_debs32; };
     fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms; };
 
-    debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs; };
-    ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs; mem = 3072; };
+    debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs31; };
+    ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs31; };
+    ubuntu1304_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304x86_64; extras = extra_debs32; };
     fedora17_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora17x86_64; extras = extra_rpms; };
 
     win7_i386_small = mkwin windows7_img "-DSMALL=ON";
