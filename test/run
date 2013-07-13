@@ -59,7 +59,7 @@ llvm_assemble() {
     shift
 
     out=`basename $file .ll`.bc
-    ann llvm-as -o=$out $file
+    ann $(echo $LLVMCONFIG | sed -e s,llvm-config,llvm-as,) -o=$out $file
     "$@" $out
 }
 
