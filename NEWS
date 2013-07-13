@@ -1,3 +1,12 @@
+DiVinE 3.0 (13.7.2013)
+======================
+
+- Fix a bug in loading LTL properties in the LLVM backend.
+- Fix handling of property processes in the DVE compiler.
+- Add support for LLVM 3.3.
+- Fix a couple issues in `divine compile --llvm`.
+- Updates to the manual.
+
 DiVinE 2.97 (3.0 RC 2 ; 21.5.2013)
 ==================================
 
