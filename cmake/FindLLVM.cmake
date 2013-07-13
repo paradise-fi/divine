@@ -1,4 +1,6 @@
-find_program(LLVM_CONFIG_EXECUTABLE llvm-config DOC "path to the llvm-config executable")
+find_program(LLVM_CONFIG_EXECUTABLE
+             NAMES llvm-config llvm-config-3.3 llvm-config-3.2
+             DOC "path to the llvm-config executable")
 
 # llvm-config does not like to be called through a symlink
 get_filename_component(LLVM_CONFIG_REAL ${LLVM_CONFIG_EXECUTABLE} REALPATH)
