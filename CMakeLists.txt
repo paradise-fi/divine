@@ -91,12 +91,15 @@ set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )
 set( CMD_AR "ar" CACHE STRING "how to run GNU ar w/ gold plugin support" )
 
 find_file( CMD_LLVMGOLD "LLVMgold.so"
-    "/usr/lib/llvm-3.1/"
-    "/usr/lib/llvm-3.2/"
-    "/usr/lib/llvm-3.3/"
     "/usr/lib/"
     "/usr/lib/bfd-plugins/"
-    "/usr/lib/llvm/" )
+    "/usr/lib/llvm/"
+    "/usr/lib/llvm-3.2/"
+    "/usr/lib/llvm-3.2/lib/"
+    "/usr/lib/llvm-3.1/"
+    "/usr/lib/llvm-3.1/lib/"
+    "/usr/lib/llvm-3.3/"
+    "/usr/lib/llvm-3.3/lib/" )
 set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
 ###############################################
