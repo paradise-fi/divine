@@ -20,13 +20,12 @@ Feature Highlights
  * Runs on **Linux** and **MS Windows** (a Windows installer is available)
  * A **GUI**, with a simulator and a counter-example analyser for DVE
 
-DIVINE 3.0 RC 2 has been released
-=================================
+DIVINE 3.0 has been released
+============================
 
-(2013-05-22) A second release candidate has been released today (unless serious bugs
-are found in this release, it will become 3.0 final). Get the [source code] [1]
-or [pre-built binaries] [2]! The changelog is here: [what's
-new](whatsnew.html). The major highlights are:
+(2013-07-13) The final version of DIVINE 3.0 has been released today. Get the
+[source code] [1] or [pre-built binaries] [2]! The changelog is here: [what's
+new](whatsnew.html). The major highlights of the 3.0 release are:
 
  * Support for model checking of C and C++ code via LLVM bitcode (safety and LTL).
  * Model checking of timed automata (safety, time deadlocks and untimed LTL).
