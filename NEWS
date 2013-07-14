@@ -1,3 +1,14 @@
+DiVinE 3.0.90 (3.1 alpha 1; 14.7.2013)
+======================================
+
+- Improved shared-memory verification of safety properties.
+- Substantially improved memory efficiency.
+- Optional lossless tree-based state-space compression.
+- Support for C++ standard library in `divine compile --llvm`.
+- Improvements to the DVE specification language.
+- Extensive internal code refactorings.
+- More efficient memory allocation code.
+
 DiVinE 3.0 (13.7.2013)
 ======================
 
