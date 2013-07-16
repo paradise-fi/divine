@@ -54,7 +54,7 @@ option( LTL3BA "use ltl3ba for LTL to BA translation" OFF )
 option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
 option( HASH_COMPACTION "enable Hash Compaction" OFF )
-option( COMPRESSION "enable losseless compression" ON )
+option( COMPRESSION "enable lossless compression" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
