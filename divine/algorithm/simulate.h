@@ -205,7 +205,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     "HELP:\n"
                     "  1,2,3 use numbers to select a sucessor\n"
                     "  s     list successors\n"
-                    "  b     back to the prevoius state state\n"
+                    "  b     back to the previous state\n"
                     "  t     show current trace\n"
                     "  n     go to the next unvisited successor or go up if there is none (DFS)\n"
                     "  q     exit\n"
