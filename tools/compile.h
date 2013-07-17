@@ -291,7 +291,7 @@ struct Compile {
         compileLibrary( "libstdc++", libstdcpp_list, flags + " -I../libpdc -I../libm "
                         "-I../libsupc++ -I.. -I. -Ibackward -Istd -Ic_global -std=c++11" );
 
-        flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ ";
+        flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ -Ilibm ";
 
         if ( !o_precompiled->boolValue() ) {
             run( clang() + " -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
