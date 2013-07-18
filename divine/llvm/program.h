@@ -270,7 +270,7 @@ struct ProgramInfo {
     bool isCodePointerConst( ::llvm::Value *val );
     PC getCodePointer( ::llvm::Value *val );
 
-    void storeConstant( Value &result, ::llvm::Constant *, bool global = false );
+    void storeConstant( Value result, ::llvm::Constant *, bool global = false );
 
     bool globalPointerInBounds( Pointer p ) {
         assert_leq( int( p.segment ), int( globals.size() ) - 1 );
