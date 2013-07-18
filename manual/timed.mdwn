@@ -1,0 +1,87 @@
+Untime LTL Model Checking of Timed Automata
+===========================================
+
+Uppaal Timed Automata has become the standard modelling lanuguage for real-time
+systems.For such the system, DIVINE can verify the presence of time deadlock or
+validity of an LTL specification. DIVINE has support for most of this modelling
+formalism, though, some features are still left unimplemented. These are as
+follows:
+
+  * Meta variables are treated as regular variables, which means that their
+    value is deterministic and states that differ only in meta variables are
+    treated as different states. This does not affect verification results, but
+    may lead to a bigger state space.
+
+  * Only structures containing integers are supported. If the input model uses
+    any structures consisting of arrays or other structures, it cannot be loaded
+    by DIVINE.
+
+  * Clock constraints involving non-constant integers are limited. Even though
+    we were able to implemente basic heuristics that try to find the maximal and
+    minimal possible value of a non-constant expressions, and it is possible to
+    compare single clocks to such expressions, we only support comparisons of
+    clock differences to constants.
+
+On the other hand, DIVINE offers an important feature that is not available in
+Uppaal — the generation of error states. If an error occurs during the
+verification, DIVINE generates an error state corresponding to the type of the
+error and continues with the verification. These error states are found
+automatically during the reachability analysis and full trace from the initial
+state is generated to one of them if required.
+
+To run DIVINE on a Uppaal model, DIVINE should be applied directly onto a Uppaal
+XML file with the model.
+
+    $ divine verify model.xml
+
+DiVinE runs the reachability analysis to find an error state or a time
+deadlock. By default, the LU extrapolation is in use, so the time-lock detection
+is disabled (see [Havlicek 2013: Untimed LTL Model Checking of Timed Automata,
+Chapter 2). However, --no-reduce option can be used to force the maximal bounds
+extrapolation, thus allowing the time-lock detection.
+
+To check for validity of LTL properties, a file with a suffix .ltl and the same
+base name as the model file has to be created. This file can contain one or more
+L properties constructed using LTL specification language (see LTL specification
+format above).  Due to limitations of the tool that DiVinE uses to transform LTL
+formulae to corresponding Büchi automata, atomic propositions can contain only
+lower case letters, digits, underscore and must not begin with a digit. For this
+reason, C-like defines can be used before property declarations to name any
+boolean expression in the Uppaal modeling language with a suitable name.  The
+only additional limitation is that all clock constrains have to be defined as
+separate atomic propositions. All lines in the LTL file that do not begin with
+#define or #property are ignored and can be used for comments. An example of a
+valid LTL file is given below, other ones are shipped with DiVinE. 
+
+    #define time1 (time <= 60) 
+    #define time2 (time < 70) 
+    #define safe1 (V1.safe) 
+    #define safeall (V1.safe && V2.safe && V3.safe && V4.safe) 
+    #property !F(time1 && safeall) 
+    #property !((!safe1) U (time2 && safeall)) 
+
+Verification of the first property in the corresponding LTL file is run using
+the following command: 
+
+    $ divine verify -p 0 model.xml
+
+To exclude all Zeno runs during the LTL verification, option -f can be used,
+simlarly to obtain a full report of the verification including an error trace,
+use -r.  
+
+Semantics of property specifications is slightly different from Uppaal.  First
+of all, DiVinE considers only runs where action and delay transitions
+alternate. This means that DiVinE, unlike Uppaal, does not consider runs where
+the system stays in one location for an infinite amount of time.  The temporal
+operator X considers the next state to be a state that can be reached by
+performing exactly one action transition followed by an arbitrary delay
+transition. For the purpose of LTL verification, all runs ending in a deadlock
+are transformed to infinite ones by adding an artificial loop over the final
+state. This ensures that the LTL verification is meaningful even on systems,
+where not all runs are infinite. Without this transformation, the property
+F(false) would hold on a timed automaton with one state and no transitions,
+because it does not have any infinite runs, which means it cannot have any
+infinite runs violating this property. If the LU reduction is not applied,
+time-locks are also considered for this transformation.
+
+
