@@ -188,7 +188,11 @@ struct Main {
     }
 
     void run() {
+        Mpi mpi; // TODO: do not construct if not needed?
         algorithm::Algorithm *a = NULL;
+
+        meta.execution.nodes = mpi.size();
+        meta.execution.thisNode = mpi.rank();
 
         if ( opts.foundCommand() == cmd_draw )
             a = instantiate::selectDraw( meta );
@@ -202,10 +206,8 @@ struct Main {
 
         _meta = &a->meta();
 
-        Mpi mpi; // TODO: do not construct if not needed?
-
-        a->meta().execution.nodes = mpi.size();
-        a->meta().execution.thisNode = mpi.rank();
+        assert_eq( a->meta().execution.nodes, mpi.size() );
+        assert_eq( a->meta().execution.thisNode, mpi.rank() );
 
         if ( mpi.master() ) {
             setupOutput();
