@@ -95,7 +95,7 @@ namespace instantiate {
             return selectStatistics< algo, generator, transform, store, visitor,
                    ifPerformance( Topology::Local, Topology::Mpi ), statistics
                    >( meta );
-        return selectTopology< algo, generator, transform, store,
+        return selectStatistics< algo, generator, transform, store,
                visitor, Topology::Mpi, statistics >( meta );
     }
 
