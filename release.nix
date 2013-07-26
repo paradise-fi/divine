@@ -169,27 +169,25 @@ let
               checkPhase = ":";
           };
 
-    minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
-    mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
-    gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
-    llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
-    timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
-    compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
-                            flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" ]; };
-    compaction = mkbuild { name = "compaction"; inputs = { pkgs }: [];
-                            flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" ]; };
-    full = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                     flags = []; };
-    fullCompactCell = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                     flags = [ "-DCOMPACT_CELL=ON" ]; };
-    full-clang = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                     flags = []; clang = true; };
-    fullCompactCell-clang = mkbuild { name = "full"; inputs = { pkgs }:
-                      [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                     flags = [ "-DCOMPACT_CELL=ON" ]; clang = true; };
+    gcc_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
+    gcc_mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
+    gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
+    gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
+    gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
+                                flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" ]; };
+    gcc_compaction = mkbuild { name = "compaction"; inputs = { pkgs }: [];
+                               flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" ]; };
+    gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
+                          [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                         flags = []; };
+    gcc_hashcell = mkbuild { name = "full"; inputs = { pkgs }:
+                              [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                             flags = [ "-DCOMPACT_CELL=OFF" ]; };
+    clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
+    clang_full = mkbuild { name = "full"; inputs = { pkgs }:
+                            [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                           flags = []; clang = true; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
