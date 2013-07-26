@@ -28,3 +28,10 @@ void main() {
     memset( array, 1, 3 * sizeof( int ) );
 }
 EOF
+
+llvm_verify valid <<EOF
+struct self { struct self *a; };
+struct self s = { &s };
+void main() {}
+EOF
+
