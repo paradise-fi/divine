@@ -150,6 +150,8 @@ struct Main {
     Combine combine;
     Compile compile;
 
+    Mpi mpi; // TODO: do not construct if not needed?
+
     Main( int _argc, const char **_argv )
         : argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
@@ -162,6 +164,10 @@ struct Main {
                 execCommStr << argv[i] << " ";
             report.execCommand = execCommStr.str();
         }
+
+        // needs to be set up before parseCommandline
+        meta.execution.nodes = mpi.size();
+        meta.execution.thisNode = mpi.rank();
 
         setupSignals();
         setupCommandline();
@@ -188,11 +194,7 @@ struct Main {
     }
 
     void run() {
-        Mpi mpi; // TODO: do not construct if not needed?
         algorithm::Algorithm *a = NULL;
-
-        meta.execution.nodes = mpi.size();
-        meta.execution.thisNode = mpi.rank();
 
         if ( opts.foundCommand() == cmd_draw )
             a = instantiate::selectDraw( meta );
