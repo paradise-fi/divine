@@ -83,7 +83,7 @@ option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFO
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
-option( COMPACT_CELL "Use more compact cells in SharedHashSet (experimental)" OFF )
+option( COMPACT_CELL "use more compact cells in SharedHashSet" ON )
 
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
