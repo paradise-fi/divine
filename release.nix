@@ -19,7 +19,13 @@ let
     inherit wimlib;
     iso = windows7_iso;
     name = "windows7";
+    vmTools = import "${nixpkgs}/pkgs/build-support/vm/default.nix" {
+       inherit pkgs;
+       rootModules = [ "virtio_net" "virtio_pci" "virtio_blk" "virtio_balloon"
+                       "9p" "9pnet_virtio" "ext4" "fuse" "loop" "udf" ];
+    };
   };
+
   windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
   windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
   windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};

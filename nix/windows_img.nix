@@ -1,7 +1,7 @@
 {
  # packages
  stdenv, fetchurl, qemu_kvm, wimlib, writeText, writeScript,
- vmTools, module_init_tools,
+ vmTools,
  linux, utillinux, fuse, e2fsprogs,
  # pointer to a windows installation image
  iso,
@@ -76,12 +76,6 @@ let origname = name;
       set -x
 
       ln -s ${linux}/lib /lib
-      ${module_init_tools}/sbin/modprobe fuse
-      ${module_init_tools}/sbin/modprobe loop
-      ${module_init_tools}/sbin/modprobe udf
-      mknod /dev/loop0 b 7 0
-      mknod /dev/fuse c 10 229
-
       ensureDir $out
 
       mkdir /unpacked
