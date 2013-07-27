@@ -1,8 +1,39 @@
-{stdenv, lib, qemu_kvm, writeText, img, cdrkit, unzip, vmTools, writeScript,
+{stdenv, lib, qemu_kvm, writeText, img, cdrkit, unzip, socat, utillinux, samba, vmTools, writeScript,
  windows_mingw, name ? "build",
  tools ? [], src, buildScript, mem ? "1024M" }:
 
 let origtools = tools; origname = name;
+    startSamba = ''
+      export WHO=`whoami`
+      mkdir -p $TMPDIR/xchg
+
+      cat > $TMPDIR/smb.conf <<SMB
+      [global]
+        private dir = $TMPDIR
+        smb ports = 0
+        socket address = 127.0.0.1
+        pid directory = $TMPDIR
+        lock directory = $TMPDIR
+        log file = $TMPDIR/log.smbd
+        smb passwd file = $TMPDIR/smbpasswd
+        security = share
+      [store]
+        force user = $WHO
+        path = /nix/store
+        read only = no
+        guest ok = yes
+      [xchg]
+        force user = $WHO
+        path = $TMPDIR/xchg
+        read only = no
+        guest ok = yes
+      $EXTRA_SAMBA_CONF
+      SMB
+
+      rm -f ./samba
+      ${socat}/bin/socat unix-listen:./samba exec:"${utillinux}/bin/setsid ${samba}/sbin/smbd -s $TMPDIR/smb.conf",nofork > /dev/null 2>&1 &
+      while [ ! -e ./samba ]; do sleep 0.1; done # ugly
+    '';
  in stdenv.mkDerivation rec {
 
   inherit img unzip cdrkit;
@@ -77,7 +108,7 @@ let origtools = tools; origname = name;
     $cdrkit/bin/genisoimage -D -J -joliet-long -o tools.iso data
 
     TMPDIR=`pwd`
-    ${vmTools.startSamba}
+    ${startSamba}
 
     $kvm/bin/qemu-img create -f qcow2 -b $img/hda.img hda.img
     $kvm/bin/qemu-kvm -cdrom tools.iso -hda hda.img -m ${mem} -nographic \
