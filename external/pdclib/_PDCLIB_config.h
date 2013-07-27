@@ -132,9 +132,16 @@ struct _PDCLIB_lldiv_t
 /* -------------------------------------------------------------------------- */
 
 /* The result type of substracting two pointers */
+#ifdef __i386__
+#define _PDCLIB_ptrdiff int
+#define _PDCLIB_PTRDIFF INT
+#define _PDCLIB_PTR_CONV
+#else
 #define _PDCLIB_ptrdiff long
 #define _PDCLIB_PTRDIFF LONG
 #define _PDCLIB_PTR_CONV l
+#endif
+
 
 /* An integer type that can be accessed as atomic entity (think asynchronous
    interrupts). The type itself is not defined in a freestanding environment,
@@ -144,8 +151,13 @@ struct _PDCLIB_lldiv_t
 #define _PDCLIB_SIG_ATOMIC INT
 
 /* Result type of the 'sizeof' operator (must be unsigned) */
+#ifdef __i386__ // uh-oh?
+#define _PDCLIB_size unsigned
+#define _PDCLIB_SIZE UINT
+#else
 #define _PDCLIB_size unsigned long
 #define _PDCLIB_SIZE ULONG
+#endif
 
 /* Large enough an integer to hold all character codes of the largest supported
    locale.
