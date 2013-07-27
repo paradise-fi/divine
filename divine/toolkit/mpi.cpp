@@ -3,7 +3,7 @@
 namespace divine {
 struct Mpi::Data *Mpi::s_data = NULL;
 
-Mpi::Mpi()
+Mpi::Mpi( bool forceMpi )
 {
     if (!s_data) {
         s_data = new Data;
@@ -14,17 +14,21 @@ Mpi::Mpi()
         s_data->progress = 0;
 
 #ifdef O_MPI
-        MPI::Init();
-        s_data->size = MPI::COMM_WORLD.Get_size();
-        s_data->rank = MPI::COMM_WORLD.Get_rank();
-        s_data->is_master = !s_data->rank;
+        if ( getenv( "OMPI_UNIVERSE_SIZE" ) != nullptr || forceMpi ) {
+            s_data->isMpi = true;
+            MPI::Init();
+            s_data->size = MPI::COMM_WORLD.Get_size();
+            s_data->rank = MPI::COMM_WORLD.Get_rank();
+            s_data->is_master = !s_data->rank;
+        } else
+            s_data->isMpi = false;
 #endif
         s_data->instances = 1;
     } else
         s_data->instances ++;
 }
 
-Mpi::Mpi( const Mpi & ) {
+Mpi::Mpi( const Mpi &m ) {
     global().instances ++;
 }
 
@@ -34,7 +38,7 @@ Mpi::~Mpi() {
         wibble::sys::MutexLock _lock( global().mutex );
         notifySlaves( _lock, TAG_ALL_DONE, bitblock() );
 #ifdef O_MPI
-        if ( master() )
+        if ( master() && s_data->isMpi )
             MPI::Finalize();
 #endif
         _lock.drop();

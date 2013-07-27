@@ -83,6 +83,8 @@ private:
         bool is_master; // the master token
         int rank, size;
         int instances;
+
+        bool isMpi; // running with MPI enabled
     };
 
     static Data *s_data;
@@ -166,7 +168,7 @@ public:
 
     bool master() { return global().is_master; }
 
-    Mpi();
+    Mpi( bool forceMpi = false );
     Mpi( const Mpi & );
     ~Mpi();
 
