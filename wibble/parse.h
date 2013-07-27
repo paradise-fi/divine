@@ -198,8 +198,11 @@ struct Lexer {
 };
 
 template< typename Token, typename Stream >
-struct ParseContext {
-    Stream &stream;
+struct ParseContext
+{
+    Stream *_stream;
+    Stream &stream() { assert( _stream ); return *_stream; }
+
     std::deque< Token > window;
     int window_pos;
     int position;
@@ -284,7 +287,7 @@ struct ParseContext {
         if ( int( window.size() ) <= window_pos ) {
             Token t;
             do {
-                t = stream.remove();
+                t = stream().remove();
             } while ( t.id == Token::Comment ); // XXX
             window.push_back( t );
         }
@@ -306,7 +309,9 @@ struct ParseContext {
         return children.back();
     }
 
-    ParseContext( Stream &s, std::string name ) : stream( s ), window_pos( 0 ), position( 0 ), name( name ) {}
+    ParseContext( Stream &s, std::string name )
+        : _stream( &s ), window_pos( 0 ), position( 0 ), name( name )
+    {}
 };
 
 template< typename Token, typename Stream >
