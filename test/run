@@ -11,8 +11,8 @@ verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*,,g"); }
 
-mpi_verify() { mpi verify "$@"; }
-mpi_metrics() { mpi metrics "$@"; }
+mpi_verify() { mpi verify --mpi "$@"; }
+mpi_metrics() { mpi metrics --mpi "$@"; }
 
 mpi() {
     test "$O_MPI" = "ON" || exit 200;
