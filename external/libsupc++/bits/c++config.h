@@ -991,9 +991,11 @@ _GLIBCXX_END_NAMESPACE
 # define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 # define _GLIBCXX_END_NAMESPACE_CONTAINER
 
+#include <_PDCLIB_config.h>
+
 namespace std { /* FIXME? */
-typedef unsigned long size_t;
-typedef signed long ptrdiff_t;
+typedef _PDCLIB_size size_t;
+typedef _PDCLIB_ptrdiff ptrdiff_t;
 #if __cplusplus >= 201103L
 typedef decltype(nullptr) nullptr_t;
 #endif
@@ -1010,7 +1012,6 @@ typedef decltype(nullptr) nullptr_t;
 #define _GLIBCXX_STD_A std
 #define _GLIBCXX_STD_C std
 
-#include <_PDCLIB_config.h>
 #define _GLIBCXX_STDIO_EOF -1
 #define _GLIBCXX_STDIO_SEEK_END _PDCLIB_SEEK_END
 #define _GLIBCXX_STDIO_SEEK_CUR _PDCLIB_SEEK_CUR
