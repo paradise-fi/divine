@@ -31,7 +31,7 @@ export CXXFLAGS="%{optflags}" CFLAGS="%{optflags}"
 
 # "configure" is from cmake, not GNU, so there is no libdir option to invoke.
 # Therefore, ignore the rpmlint warning from this line:
-./configure -DCMAKE_INSTALL_PREFIX=/usr -DPROMELA_JARS=
+./configure -DCMAKE_INSTALL_PREFIX=/usr -DPROMELA_JARS= %(cat pkgbuildflags)
 
 # Use "make -k" so we can get all the errors at once; this is particularly
 # helpful with koji builds. Use VERBOSE=1 so we can check options invoked.
