@@ -3,6 +3,7 @@
 #include <queue>
 #include <iostream>
 #include <sstream>
+#include <memory>
 
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
@@ -142,6 +143,7 @@ struct Main {
     StringOption *o_inputTrace;
 
     BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
+    BoolOption *o_mpi;
 
     int argc;
     const char **argv;
@@ -150,7 +152,13 @@ struct Main {
     Combine combine;
     Compile compile;
 
-    Mpi mpi; // TODO: do not construct if not needed?
+    std::unique_ptr< Mpi > mpi;
+
+    void mpiFillMeta( Meta &meta ) {
+        // needs to be set up before parseCommandline
+        meta.execution.nodes = mpi->size();
+        meta.execution.thisNode = mpi->rank();
+    }
 
     Main( int _argc, const char **_argv )
         : argc( _argc ), argv( _argv ),
@@ -164,10 +172,6 @@ struct Main {
                 execCommStr << argv[i] << " ";
             report.execCommand = execCommStr.str();
         }
-
-        // needs to be set up before parseCommandline
-        meta.execution.nodes = mpi.size();
-        meta.execution.thisNode = mpi.rank();
 
         setupSignals();
         setupCommandline();
@@ -194,7 +198,11 @@ struct Main {
     }
 
     void run() {
+        if ( !mpi )
+            mpi.reset( new Mpi( o_mpi->boolValue() ) );
         algorithm::Algorithm *a = NULL;
+
+        mpiFillMeta( meta );
 
         if ( opts.foundCommand() == cmd_draw )
             a = instantiate::selectDraw( meta );
@@ -208,10 +216,10 @@ struct Main {
 
         _meta = &a->meta();
 
-        assert_eq( a->meta().execution.nodes, mpi.size() );
-        assert_eq( a->meta().execution.thisNode, mpi.rank() );
+        assert_eq( a->meta().execution.nodes, mpi->size() );
+        assert_eq( a->meta().execution.thisNode, mpi->rank() );
 
-        if ( mpi.master() ) {
+        if ( mpi->master() ) {
             setupOutput();
             if ( o_report->boolValue() )
                 _report = &report;
@@ -222,9 +230,9 @@ struct Main {
             TrackStatistics::global().start();
 
 
-        mpi.start();
+        mpi->start();
 
-        if ( mpi.master() && opts.foundCommand() != cmd_info ) {
+        if ( mpi->master() && opts.foundCommand() != cmd_info ) {
             auto a = meta.algorithm.name;
             std::cerr << " input: " << meta.input.model << std::endl
                       << " property " << meta.input.propertyName
@@ -241,7 +249,7 @@ struct Main {
         if ( meta.output.statistics )
             TrackStatistics::global().snapshot();
         Output::output().cleanup();
-        if ( mpi.master() && o_report->boolValue() )
+        if ( mpi->master() && o_report->boolValue() )
             report.final( std::cout, a->meta() );
 
         delete a;
@@ -365,6 +373,10 @@ struct Main {
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
             "select a property [default=deadlock]" );
+
+        o_mpi = common->add< BoolOption >(
+                "mpi", 0, "mpi", "",
+                "Force use of MPI (in case it is not detected properly)" );
 
         // definitions
         o_definitions = definitions->add< VectorOption< String > >(
@@ -606,20 +618,37 @@ struct Main {
             meta.algorithm.algorithm = meta::Algorithm::Metrics;
         else if ( opts.foundCommand() == cmd_verify ) {
 
-            /* the default algorithms based on property types */
-            switch ( pt ) {
-                case generator::PT_Deadlock:
-                case generator::PT_Goal:
-                    meta.algorithm.algorithm = meta::Algorithm::Reachability;
-                    break;
-                case generator::PT_Buchi:
-                    if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
-                        meta.algorithm.algorithm = meta::Algorithm::Owcty;
-                    else
-                        meta.algorithm.algorithm = meta::Algorithm::Ndfs;
-                    break;
-                default:
-                    assert_unimplemented();
+            bool oneSet = false;
+            for ( auto x : { o_ndfs->boolValue(), o_reachability->boolValue(),
+                    o_owcty->boolValue(), o_map->boolValue() } ) {
+                if ( oneSet && x )
+                    die( "FATAL: only one of --nested-dfs, --owcty, --map,"
+                            " --reachability can be specified" );
+                oneSet |= x;
+            }
+
+            if ( !oneSet ) {
+                /* the default algorithms based on property types */
+                switch ( pt ) {
+                    case generator::PT_Deadlock:
+                    case generator::PT_Goal:
+                        meta.algorithm.algorithm = meta::Algorithm::Reachability;
+                        break;
+                    case generator::PT_Buchi:
+                        // initialize meta from Mpi, this also calls MPI::init
+                        // and creates (singleton) Mpi instance
+                        // it is needed so that meta.execution.nodes is valid
+                        assert( !mpi );
+                        mpi.reset( new Mpi( o_mpi->boolValue() ) );
+                        mpiFillMeta( meta );
+                        if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
+                            meta.algorithm.algorithm = meta::Algorithm::Owcty;
+                        else
+                            meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                        break;
+                    default:
+                        assert_unimplemented();
+                }
             }
 
             if ( o_ndfs->boolValue() ) {
