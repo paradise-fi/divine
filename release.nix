@@ -198,7 +198,8 @@ let
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
     ubuntu1304_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304i386; extras = extra_debs32; };
-    fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms; };
+    fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms;
+                           mem = 2047; };
 
     debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs31; };
     ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs31; };
