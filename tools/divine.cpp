@@ -123,7 +123,8 @@ struct Main {
     Report report;
     Meta meta;
 
-    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info, *cmd_simulate;
+    Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
+           *cmd_simulate, *cmd_compact;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions, *ce;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
@@ -301,6 +302,9 @@ struct Main {
         cmd_simulate = opts.addEngine( "simulate",
                                        "<input>",
                                        "explore a state-space interactively" );
+        cmd_compact = opts.addEngine( "compact",
+                                      "<input>",
+                                      "convert state-space to compact explicit representation" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -450,6 +454,11 @@ struct Main {
         cmd_simulate->add( reduce );
         cmd_simulate->add( compression );
         cmd_simulate->add( definitions );
+
+        cmd_compact->add( common );
+        cmd_compact->add( reduce );
+        cmd_compact->add( compression );
+        cmd_compact->add( definitions );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -612,7 +621,9 @@ struct Main {
         } else if ( opts.foundCommand() == cmd_simulate ) {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Simulate;
-        } else if ( opts.foundCommand() == cmd_info )
+        } else if ( opts.foundCommand() == cmd_compact )
+            meta.algorithm.algorithm = meta::Algorithm::Compact;
+        else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )
             meta.algorithm.algorithm = meta::Algorithm::Metrics;
