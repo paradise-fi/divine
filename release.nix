@@ -40,7 +40,7 @@ let
                  "binutils-gold" ];
   extra_debs31 = extra_debs ++ [ "llvm-3.1-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
-  extra_rpms = [ "cmake" ];
+  extra_rpms = [ "cmake" "redhat-rpm-config" ];
 
   mkVM = { VM, extras, diskFun, mem ? 3072 }:
    VM rec {
