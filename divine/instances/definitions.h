@@ -234,11 +234,13 @@ namespace instantiate {
 
     template < Statistics statistics >
     struct SelectStatistics {
+        static const bool available = true;
         using T = ::divine::NoStatistics;
     };
 
     template<>
     struct SelectStatistics< Statistics::Enabled > {
+        static const bool available = true;
         using T = ::divine::TrackStatistics;
     };
 
@@ -259,46 +261,6 @@ namespace instantiate {
         using Statistics = _Statistics;
     };
 
-    template < bool, bool, bool, bool, bool, bool, Algorithm algo,
-             Generator generator, Transform transform, Store store,
-             Visitor visitor, Topology topology, Statistics statistics >
-    struct AlgorithmSelector2 {
-        algorithm::Algorithm* operator()( Meta& ) {
-            return nullptr;
-        }
-    };
-
-    template < Algorithm algo, Generator generator, Transform transform,
-             Store store, Visitor visitor, Topology topology,
-             Statistics statistics >
-    struct AlgorithmSelector2< true, true, true, true, true, true,
-        algo, generator, transform, store, visitor, topology, statistics>
-    {
-        algorithm::Algorithm* operator()( Meta& meta ) {
-#if O_LLVM
-            if ( generator == Generator::LLVM
-                    && meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
-            {
-                if ( !::llvm::llvm_start_multithreaded() ) {
-                    std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                              << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-                    return nullptr;
-                }
-            }
-#endif
-
-            return new typename SelectAlgorithm< algo >::template T< Setup<
-                    typename SelectGenerator< generator >::T,
-                    SelectTransform< transform >::template T,
-                    SelectStore< store, visitor >::template T,
-                    algorithm::Hasher,
-                    typename SelectVisitor< visitor >::T,
-                    SelectTopology< topology >::template T,
-                    typename SelectStatistics< statistics >::T
-                > >( meta );
-        }
-    };
-
     constexpr Store fixStore( Algorithm algo, Store store ) {
         return algo == Algorithm::Simulate ? Store::Partitioned : store;
     }
@@ -311,23 +273,19 @@ namespace instantiate {
              Store store, Visitor visitor, Topology topology,
              Statistics statistics >
     struct AlgorithmSelector {
-        algorithm::Algorithm* operator()( Meta& meta ) {
-            AlgorithmSelector2<
-                    SelectAlgorithm< algo >::available,
-                    SelectGenerator< generator >::available,
-                    SelectTransform< transform >::available,
-                    SelectStore< fixStore( algo, store ), fixVisitor( algo, visitor ) >::available,
-                    SelectVisitor< fixVisitor( algo, visitor ) >::available,
-                    SelectTopology< topology >::available,
-                    algo,
-                    generator,
-                    transform,
-                    fixStore( algo, store ),
-                    fixVisitor( algo, visitor ),
-                    topology,
-                    statistics
-                > select;
-            return select( meta );
+        static algorithm::Algorithm* algorithm( Meta& meta ) {
+            using Setup = Setup<
+                    typename SelectGenerator< generator >::T,
+                    SelectTransform< transform >::template T,
+                    SelectStore< store, visitor >::template T,
+                    algorithm::Hasher,
+                    typename SelectVisitor< visitor >::T,
+                    SelectTopology< topology >::template T,
+                    typename SelectStatistics< statistics >::T
+                >;
+
+            return new typename SelectAlgorithm< algo >
+                ::template T< Setup >( meta );
         }
     };
 
@@ -340,6 +298,7 @@ namespace instantiate {
         return noPerf;
 #endif
     }
+
 }
 }
 

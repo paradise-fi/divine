@@ -13,8 +13,66 @@ namespace instantiate {
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* makeAlgorithm( Meta& meta ) {
+    algorithm::Algorithm *makeAlgorithm( Meta &meta )
+    {
+        return AlgorithmSelector< algo, generator, transform, store,
+              visitor, topology, statistics >::algorithm( meta );
+    }
 
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    struct FinishInstantiation
+    {
+        static algorithm::Algorithm *run( Meta &meta )
+        {
+            return makeAlgorithm< algo, generator, transform, store,
+                  visitor, topology, statistics >( meta );
+        }
+    };
+
+#ifdef O_LLVM
+    template < Algorithm algo, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    struct FinishInstantiation< algo, Generator::LLVM, transform,
+          store, visitor, topology, statistics >
+    {
+        static algorithm::Algorithm *run( Meta &meta )
+        {
+            if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
+                if ( !::llvm::llvm_start_multithreaded() ) {
+                    std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
+                              << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
+                    return nullptr;
+                }
+            return makeAlgorithm< algo, Generator::LLVM, transform, store,
+                  visitor, topology, statistics >( meta );
+        }
+    };
+#endif
+
+    template< bool >
+    struct PurgeInstantiation
+    {
+        template < Algorithm, Generator, Transform, Store, Visitor, Topology, Statistics >
+        static std::nullptr_t run( Meta & ) { return nullptr; }
+    };
+
+    template<>
+    struct PurgeInstantiation< true >
+    {
+        template < Algorithm algo, Generator generator, Transform transform,
+                 Store store, Visitor visitor, Topology topology, Statistics statistics >
+        static algorithm::Algorithm *run( Meta &meta )
+        {
+            return FinishInstantiation< algo, generator, transform, store,
+                visitor, topology, statistics >::run( meta );
+        }
+    };
+
+    template < Algorithm algo, Generator generator, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    algorithm::Algorithm *checkInstantiation( Meta &meta )
+    {
         if ( !SelectAlgorithm< algo >::available )
             std::cerr << "Missing algorithm: "
                 << ShowT< Algorithm, algo >::value  << std::endl;
@@ -25,48 +83,55 @@ namespace instantiate {
             std::cerr << "Missing graf transformation: "
                 << ShowT< Transform, transform >::value
                 << ", disabling transformations." << std::endl;
-            return makeAlgorithm< algo, generator, Transform::None,
+            return checkInstantiation< algo, generator, Transform::None,
                    store, visitor, topology, statistics >( meta );
         }
         if ( !SelectStore< store, visitor >::available ) {
             std::cerr << "Missing store: "
                 << ShowT< Store, store >::value
                 << ", using Partitioned instead." << std::endl;
-            return makeAlgorithm< algo, generator, transform,
+            return checkInstantiation< algo, generator, transform,
                    Store::Partitioned, visitor, topology, statistics >( meta );
         }
         if ( !SelectVisitor< visitor >::available ) {
             std::cerr << "Missing visitor: "
                 << ShowT< Visitor, visitor >::value
                 << ", using Partitioned instead." << std::endl;
-            return makeAlgorithm< algo, generator, transform,
+            return checkInstantiation< algo, generator, transform,
                    store, Visitor::Partitioned, topology, statistics >( meta );
         }
         if ( !SelectTopology< topology >::available )
             std::cerr << "Missing topology: "
                 << ShowT< Topology, topology >::value << std::endl;
 
-        AlgorithmSelector< algo, generator, transform, store, visitor,
-            topology, statistics > selector;
-
-        return selector( meta );
+        return PurgeInstantiation<
+                    SelectAlgorithm< algo >::available
+                    && SelectGenerator< generator >::available
+                    && SelectTransform< transform >::available
+                    && SelectStore< store, visitor >::available
+                    && SelectVisitor< visitor >::available
+                    && SelectTopology< topology >::available
+                    && SelectStatistics< statistics >::available
+                >::template run< algo, generator, transform, store, visitor,
+                    topology, statistics >( meta );
     }
-
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectVisitor( Meta& meta ) {
+    algorithm::Algorithm *selectVisitor( Meta &meta )
+    {
         if ( meta.algorithm.sharedVisitor )
-            return makeAlgorithm< algo, generator, transform, store,
+            return checkInstantiation< algo, generator, transform, store,
                    Visitor::Shared, topology, statistics >( meta );
         else
-            return makeAlgorithm< algo, generator, transform, store,
+            return checkInstantiation< algo, generator, transform, store,
                    Visitor::Partitioned, topology, statistics>( meta );
     }
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectStore( Meta& meta ) {
+    algorithm::Algorithm *selectStore( Meta &meta )
+    {
         if ( meta.algorithm.hashCompaction )
             return selectVisitor< algo, generator, transform, Store::HashCompacted,
                    visitor, topology, statistics >( meta );
@@ -79,7 +144,8 @@ namespace instantiate {
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectStatistics( Meta& meta ) {
+    algorithm::Algorithm *selectStatistics( Meta &meta )
+    {
         if ( !meta.output.statistics )
             return selectStore< algo, generator, transform, store, visitor, topology,
                    ifPerformance( Statistics::Disabled, Statistics::Enabled )
@@ -90,7 +156,8 @@ namespace instantiate {
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectTopology( Meta& meta ) {
+    algorithm::Algorithm *selectTopology( Meta &meta )
+    {
         if ( meta.execution.nodes == 1 )
             return selectStatistics< algo, generator, transform, store, visitor,
                    ifPerformance( Topology::Local, Topology::Mpi ), statistics
@@ -101,7 +168,8 @@ namespace instantiate {
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectTransform( Meta& meta ) {
+    algorithm::Algorithm *selectTransform( Meta &meta )
+    {
         static_assert( generator != Generator::NotSelected,
                 "selectGenerator needs to be called before selectTransform" );
         const bool por = meta.algorithm.reduce.count( graph::R_POR );
@@ -128,7 +196,8 @@ namespace instantiate {
 
     template < Algorithm algo, Generator generator, Transform transform,
              Store store, Visitor visitor, Topology topology, Statistics statistics >
-    algorithm::Algorithm* selectGenerator( Meta& meta ) {
+    algorithm::Algorithm *selectGenerator( Meta &meta )
+    {
         if ( wibble::str::endsWith( meta.input.model, ".dve" ) ) {
             meta.input.modelType = "DVE";
             return selectTransform< algo, Generator::Dve, transform, store, visitor,
