@@ -283,6 +283,14 @@ llvm_verify() {
     check clear
 }
 
+dve_statespace() {
+    cat > testcase.dve
+    ann divine metrics testcase.dve -p $1 -r 2>> progress | capture
+    shift
+    check statespace "$@"
+    check clear
+}
+
 chmod +x check run
 
 PATH=".:$PATH"

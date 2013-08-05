@@ -5,6 +5,7 @@ file( GLOB tests ${root}/algorithm/*.sh
                  ${root}/shared/*.sh
                  ${root}/reduction/*.sh
                  ${root}/tools/*.sh
+                 ${root}/dve/*.sh
                  ${root}/llvm/*.sh )
 
 add_custom_target( functional
