@@ -55,6 +55,7 @@ option( MURPHI "enable Murphi model compiler" ON )
 option( CURSES "link to curses library for nice statistics" ON )
 option( HASH_COMPACTION "enable Hash Compaction" OFF )
 option( COMPRESSION "enable lossless compression" ON )
+option( COMPACT "include compact generator and algorithm" ON )
 
 option( MANUAL "build pdf/html manual" ON )
 option( GUI "compile the Qt GUI" ON )
@@ -194,6 +195,10 @@ endif()
 
 if( COMPRESSION )
     add_definitions( -DO_COMPRESSION )
+endif()
+
+if( COMPACT )
+    add_definitions( -DO_COMPACT )
 endif()
 
 if( MPIDEBUG )
