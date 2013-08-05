@@ -5,7 +5,7 @@ normal() {
 }
 
 labels() {
-    (grep '\->' out.dot || true) | not grep -v '\[.*label.*\]'
+    (grep -- '->' out.dot || true) | not grep -v '\[.*label.*\]'
 }
 
 test "$WIN32" = "1" && skip
