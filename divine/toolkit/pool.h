@@ -650,7 +650,7 @@ struct BlobComparerEQ : public BlobComparerBase {
 };
 
 struct BlobComparerLT : public BlobComparerBase {
-    const BlobComparerEQ eq;
+    BlobComparerEQ eq;
 
     BlobComparerLT( Pool& pool ) : BlobComparerBase( pool ), eq( pool )
     { }
