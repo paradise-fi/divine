@@ -3,6 +3,7 @@
 
 #include <divine/instances/definitions.h>
 #include <divine/utility/meta.h>
+#include <divine/compact/compact.h>
 
 #ifndef DIVINE_INSTANCES_INSTANTIATE
 #define DIVINE_INSTANCES_INSTANTIATE
@@ -49,6 +50,25 @@ namespace instantiate {
         }
     };
 #endif
+
+    template < Algorithm algo, Transform transform,
+             Store store, Visitor visitor, Topology topology, Statistics statistics >
+    struct FinishInstantiation< algo, Generator::Compact, transform,
+          store, visitor, topology, statistics >
+    {
+        static algorithm::Algorithm *run( Meta &meta )
+        {
+            compact::Compact compact( meta.input.model );
+
+            if ( compact.header->capabilities.has(
+                        compact::Capability::UInt64Labels ) )
+                return makeAlgorithm< algo, Generator::CompactWLabel,
+                       transform, store, visitor, topology, statistics >( meta );
+            else
+                return makeAlgorithm< algo, Generator::Compact, transform,
+                       store, visitor, topology, statistics >( meta );
+        }
+    };
 
     template< bool >
     struct PurgeInstantiation
@@ -222,6 +242,10 @@ namespace instantiate {
             meta.input.modelType = "dummy";
             return selectTransform< algo, Generator::Dummy, transform, store,
                    visitor, topology, statistics >( meta );
+        } else if ( wibble::str::endsWith( meta.input.model, ".dcess" ) ) {
+            meta.input.modelType = "DCESS";
+            return selectTransform< algo, Generator::Compact, transform, store,
+                   visitor, topology, statistics >( meta );
         }
         std::cerr << "FATAL: Unknown input file extension." << std::endl;
         std::cerr << "FATAL: Internal error choosing generator." << std::endl;
@@ -236,6 +260,7 @@ namespace instantiate {
     algorithm::Algorithm *selectProbabilistic( Meta &m );
     algorithm::Algorithm *selectCompact( Meta &m );
     algorithm::Algorithm *selectSimulate( Meta &m );
+    algorithm::Algorithm *selectCompact( Meta &m );
 }
 
 algorithm::Algorithm *select( Meta &m );

@@ -17,6 +17,9 @@ algorithm::Algorithm *select( Meta &m )
         case meta::Algorithm::Simulate:
             m.algorithm.name = "Simulate";
             return selectSimulate( m );
+        case meta::Algorithm::Compact:
+            m.algorithm.name = "Compact";
+            return selectCompact( m );
 
         case meta::Algorithm::Owcty:
             m.algorithm.name = "OWCTY";

@@ -12,6 +12,7 @@
 #include <divine/generator/cesmi.h>
 #include <divine/generator/timed.h>
 #include <divine/generator/dummy.h>
+#include <divine/generator/compact.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS
@@ -29,7 +30,8 @@ namespace instantiate {
     }
 
     enum class Algorithm {
-        NestedDFS, Owcty, Map, Reachability, Metrics, Simulate, Info, Draw,
+        NestedDFS, Owcty, Map, Reachability, Metrics, Simulate, Compact,
+        Info, Draw,
         NotSelected
     };
 
@@ -39,6 +41,7 @@ namespace instantiate {
     SHOW( Algorithm, Reachability );
     SHOW( Algorithm, Metrics );
     SHOW( Algorithm, Simulate );
+    SHOW( Algorithm, Compact );
     SHOW( Algorithm, Info );
     SHOW( Algorithm, Draw );
     SHOW( Algorithm, NotSelected );
@@ -54,7 +57,7 @@ namespace instantiate {
     SHOW( Transform, NotSelected );
 
     enum class Generator {
-        Dve, Coin, LLVM, Timed, CESMI, Dummy,
+        Dve, Coin, LLVM, Timed, CESMI, Dummy, Compact, CompactWLabel,
         NotSelected
     };
 
@@ -64,6 +67,8 @@ namespace instantiate {
     SHOW( Generator, Timed );
     SHOW( Generator, CESMI );
     SHOW( Generator, Dummy );
+    SHOW( Generator, Compact );
+    SHOW( Generator, CompactWLabel );
     SHOW( Generator, NotSelected );
 
     enum class Store {
@@ -207,6 +212,10 @@ namespace instantiate {
     GEN_SPEC( CESMI );
 #ifndef O_SMALL
     GEN_SPEC( Dummy );
+#endif
+#ifdef O_COMPACT
+    GEN_SPEC( Compact );
+    GEN_SPEC( CompactWLabel );
 #endif
 
 #undef GEN_SPEC
