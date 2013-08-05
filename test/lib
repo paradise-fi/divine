@@ -241,7 +241,12 @@ murphi_small() {
 }
 
 coin_small() {
-    :
+    test "$O_COIN" = "ON" || return 0
+
+    check clear
+    run identity data/coffee.coin "$@" --property=deadlock
+    check reachability_valid
+    check statespace 7 8 0 0
 }
 
 all_small() {

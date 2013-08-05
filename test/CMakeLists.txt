@@ -25,6 +25,7 @@ add_custom_target( functional
     "O_TIMED='${TIMED}'"
     "O_COMPRESSION='${COMPRESSION}'"
     "O_MURPHI='${MURPHI}'"
+    "O_COIN='${COIN}'"
     "LLVMCONFIG='${LLVM_CONFIG_EXECUTABLE}'"
     "O_LLVM='${LLVM}'" ${tests}
 )
