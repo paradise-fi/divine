@@ -1,0 +1,58 @@
+// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+
+#include <divine/compact/compact.h>
+#include <cstdint>
+#include <cstring>
+#include <algorithm>
+
+#ifndef DIVINE_COMPACT_TRANSPOSE_H
+#define DIVINE_COMPACT_TRANSPOSE_H
+
+namespace divine {
+namespace compact {
+
+template< typename EdgeSpec >
+void transpose( DataBlock &from, DataBlock &to ) {
+#if 0
+    static_assert( std::is_same< typename std::result_of<
+                dectype( &EdgeSpec::index() )( EdgeSpec ) >::type,
+                int64_t & >::value,
+            "Invalid EdgeSpec passed (expected method `int64_t &index()'" );
+#endif
+    assert_eq( from.count(), to.count() );
+
+    int64_t *counts = to.lowLevelIndices();
+    std::memset( counts, 0, from.count() * sizeof( int64_t ) );
+
+    // count outdegree
+    EdgeSpec *revEdges = reinterpret_cast< EdgeSpec * >( from[ 1 ] );
+    EdgeSpec *revEdgesEnd = reinterpret_cast< EdgeSpec * >( from[ from.count() ] );
+    for ( EdgeSpec *p = revEdges; p < revEdgesEnd; ++p )
+        ++counts[ p->index() ];
+
+    auto inserter = to.inserter();
+
+    // distribute space as needed
+    for ( int64_t i = 0; i < to.count(); ++i )
+        inserter.emplace( counts[ i ] * sizeof( EdgeSpec ), []( char *ptr, int64_t size ) {
+            std::memset( ptr, 0, size );
+        } );
+
+    // transpose
+    for ( int i = 1; i < from.count(); ++i )
+        from.map< EdgeSpec >( i )( [ &to, i ]( EdgeSpec *edges, int64_t size ) {
+            for ( int64_t j = 0; j < size; ++j )
+                to.map< EdgeSpec >( edges[ j ].index() )
+                    ( [ edges, i, j ]( EdgeSpec *de, int64_t size ) {
+                        for ( ; de->index(); ++de )
+                            assert_leq( de, de + size - 1 );
+                        de->index() = i;
+                        de->label() = edges[ j ].label();
+                    } );
+        } );
+}
+
+}
+}
+
+#endif // DIVINE_COMPACT_TRANSPOSE_H
