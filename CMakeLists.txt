@@ -117,6 +117,10 @@ if( SMALL )
   add_definitions( -DO_SMALL )
 endif( SMALL )
 
+if( COIN )
+  add_definitions( -DO_COIN )
+endif( COIN )
+
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
 if ( RX_PATH )
