@@ -105,7 +105,7 @@ graph, whose vertices represent various states your program can reach, i.e. the
 values of all its mapped memory locations, the values in all machine registers,
 etc. DIVINE normally doesn't store, or even construct, all the possible states
 -- only a relevant subset. In a multi-threaded program, it often happens that
-more than one thread can run at once, i.e. if your program is a given state,
+more than one thread can run at once, i.e. if your program is in a given state,
 the next state it will get into is determined by chance -- it all hinges on
 which thread gets to run. Hence, some (in fact, most) states in a parallel
 program can proceed to multiple different configurations, depending on a
