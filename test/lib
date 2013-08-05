@@ -64,16 +64,6 @@ for_dve_small() {
     $extracheck data/test6.dve
 
     check clear
-    run $wrapper data/commit1.dve "$@" --property=deadlock
-    check statespace 10 14 0 0
-    $extracheck data/commit1.dve
-
-    check clear
-    run $wrapper data/commit2.dve "$@" --property=deadlock
-    check statespace 8 8 0 2
-    $extracheck data/commit2.dve
-
-    check clear
     run $wrapper data/haoEEDM.dve "$@" --property=deadlock
     check statespace 502 922 0 0
     $extracheck data/haoEEDM.dve
@@ -253,6 +243,23 @@ dve_statespace() {
     ann divine metrics testcase.dve -p $1 -r 2>> progress | capture
     shift
     check statespace "$@"
+    check clear
+}
+
+dve_shape() {
+    cat > testcase.dve
+    echo "$2" > expected
+    ann divine draw testcase.dve -p $1 -r cat -o out.dot 2>> progress | capture
+    grep -- '->' out.dot | sed -e 's,\s,,g' > actual
+
+    for actual in $(cat actual); do
+        grep -- $actual expected
+    done
+
+    for expected in $(cat expected); do
+        grep -- $expected actual
+    done
+
     check clear
 }
 
