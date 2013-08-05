@@ -79,41 +79,6 @@ for_dve_small() {
     $extracheck data/haoEEDM.dve
 
     check clear
-    run $wrapper data/bufchan.dve "$@" --property=deadlock
-    check statespace 3 5 0 0
-    $extracheck data/bufchan.dve
-
-    check clear
-    run $wrapper data/bufchan2.dve "$@" --property=deadlock
-    check statespace 8 12 0 0
-    $extracheck data/bufchan2.dve
-
-    check clear
-    run $wrapper data/unbufchan.dve "$@" --property=deadlock
-    check statespace 2 3 0 0
-    $extracheck data/unbufchan.dve
-
-    check clear
-    run $wrapper data/bufchan-local.dve "$@" --property=deadlock
-    check statespace 3 5 0 0
-
-    check clear
-    run $wrapper data/bufchan-local2.dve "$@" --property=deadlock
-    check statespace 3 5 0 0
-
-    check clear
-    run $wrapper data/bufchan2-local.dve "$@" --property=deadlock
-    check statespace 8 12 0 0
-
-    check clear
-    run $wrapper data/unbufchan-local.dve "$@" --property=deadlock
-    check statespace 2 3 0 0
-
-    check clear
-    run $wrapper data/unbufchan-local2.dve "$@" --property=deadlock
-    check statespace 2 3 0 0
-
-    check clear
     run $wrapper data/assert.dve "$@" --property=assert
     check reachability_goal
     check statespace 6 6 0 0
