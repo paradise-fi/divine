@@ -160,7 +160,7 @@ int Coin::setSlack(int s) {
 }
 
 inline int Coin::getTotalSlack() {
-    return alloc._slack;
+    return this->slack();;
 }
 
 inline size_t Coin::getSize(unsigned int number_of_states) {
@@ -708,7 +708,7 @@ void Coin::setC0C2(const vector<transition_t *> * enabled_trans) {
 }
 
 inline Coin::Node Coin::newNode() {
-    Blob b = alloc.new_blob(State::metrics.size);
+    Blob b = makeBlobCleared(State::metrics.size);
     setAmpleSet(b, -1); //newly allocated node, ample set is unknown
     return b;
 }
