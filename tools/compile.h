@@ -78,9 +78,15 @@ struct Compile {
 #ifdef POSIX
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-        if ( status != -1 && WEXITSTATUS( status ) != 0 ) {
-            cleanup();
-            die( "Error running an external command." );
+        if ( status != -1 ) {
+            if ( WEXITSTATUS( status ) != 0 ) {
+                cleanup();
+                die( "Error running an external command." );
+            } else if ( WIFSIGNALED( status ) && ( WTERMSIG( status ) == SIGINT
+                        || WTERMSIG( status ) == SIGQUIT ) ) {
+                cleanup();
+                die( "Signaled or interrupted by user." );
+            }
         }
 #pragma GCC diagnostic pop
 #endif
