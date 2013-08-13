@@ -18,7 +18,7 @@
 namespace divine {
 namespace generator {
 
-static const char * const cesmi_ext =
+static constexpr const char * const cesmi_ext =
 #if defined(_WIN32)
     ".dll";
 #else
