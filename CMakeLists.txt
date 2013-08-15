@@ -86,6 +86,8 @@ option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
 option( COMPACT_CELL "use more compact cells in SharedHashSet" ON )
 
+set( INSTANCE_FILES_CNT "32" CACHE STRING
+    "number of instance files to generate -- more means less memory requirements" )
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )

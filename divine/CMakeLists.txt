@@ -15,6 +15,16 @@ foreach( D utility toolkit generator algorithm instances compact )
     endif()
 endforeach()
 
+# generated instantiate files
+set( H_INSTANCES_EXTERN "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/extern.h" )
+install( FILES "${H_INSTANCES_EXTERN}" DESTINATION include/divine/instances/auto COMPONENT divine_dev )
+foreach( I RANGE 1 ${INSTANCE_FILES_CNT} )
+    set( F "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/instance-${I}.cpp" )
+    list( APPEND SRC_auto_instances ${F} )
+endforeach()
+set_source_files_properties( ${INSTANCE_FILES_CNT} ${SRC_auto_instances}
+    PROPERTIES GENERATED ON )
+
 if ( LEGACY )
    file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
                          legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
@@ -79,6 +89,16 @@ stringify( llvm/usr-pthread.h )
 stringify( llvm/usr-pthread.cpp )
 stringify( llvm/usr-cstdlib.cpp )
 
+set( GENERATED_INSTANCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/instances/auto" )
+add_executable( instances-generator instances/generator/generator.cpp )
+file( MAKE_DIRECTORY ${GENERATED_INSTANCES_DIR} )
+add_custom_command( TARGET instances-generator POST_BUILD
+    COMMAND "${CMAKE_CURRENT_BINARY_DIR}/instances-generator" ${INSTANCE_FILES_CNT}
+    WORKING_DIRECTORY ${GENERATED_INSTANCES_DIR}
+    COMMENT "Generating instance files"
+    VERBATIM )
+target_link_libraries( instances-generator wibble )
+
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
@@ -89,10 +109,11 @@ add_library( libdivine STATIC
     "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
     ${STRINGIFIED} )
 
-add_library( libdivine-instances STATIC ${SRC_instances} )
+add_library( libdivine-instances STATIC ${SRC_instances} ${SRC_auto_instances} )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
+add_dependencies( libdivine-instances instances-generator )
 
 wibble_add_test( divine-test ${testh} ${llvmtesth} )
 
