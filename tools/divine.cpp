@@ -14,7 +14,7 @@
 
 #include <divine/utility/meta.h>
 #include <divine/utility/report.h>
-#include <divine/instances/instantiate.h>
+#include <divine/instances/select.h>
 
 #include <tools/draw.h>
 #include <tools/combine.h>
@@ -90,34 +90,6 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
         g.read( m.input.model, m.input.definitions );
     }
 };
-
-namespace instantiate {
-template<>
-struct SelectAlgorithm< Algorithm::Info > {
-    template < typename Setup >
-    using T = divine::Info< Setup >;
-    static const bool available = true;
-};
-
-template<>
-struct SelectAlgorithm< Algorithm::Draw > {
-    template < typename Setup >
-    using T = divine::Draw< Setup >;
-    static const bool available = true;
-};
-
-algorithm::Algorithm* selectInfo( Meta& m ) {
-    return selectGenerator< Algorithm::Info, Generator::NotSelected,
-           Transform::NotSelected, Store::NotSelected, Visitor::NotSelected,
-           Topology::NotSelected, Statistics::Enabled >( m );
-}
-
-algorithm::Algorithm* selectDraw( Meta& m ) {
-    return selectGenerator< Algorithm::Draw, Generator::NotSelected,
-           Transform::NotSelected, Store::NotSelected, Visitor::NotSelected,
-           Topology::NotSelected, Statistics::Enabled >( m );
-}
-}
 
 struct Main {
     Output *output;
@@ -202,16 +174,10 @@ struct Main {
     void run() {
         if ( !mpi )
             mpi.reset( new Mpi( o_mpi->boolValue() ) );
-        algorithm::Algorithm *a = NULL;
 
         mpiFillMeta( meta );
 
-        if ( opts.foundCommand() == cmd_draw )
-            a = instantiate::selectDraw( meta );
-        if ( opts.foundCommand() == cmd_info )
-            a = instantiate::selectInfo( meta );
-
-        if (!a) a = select( meta );
+        auto a = select( meta );
 
         if (!a)
             die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
@@ -254,7 +220,6 @@ struct Main {
         if ( mpi->master() && o_report->boolValue() )
             report.final( std::cout, a->meta() );
 
-        delete a;
         delete Output::_output;
         Output::_output = nullptr;
     }
@@ -606,12 +571,17 @@ struct Main {
         if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
-        InfoBase *ib = dynamic_cast< InfoBase * >( instantiate::selectInfo( meta ) );
-        if ( !ib )
-            die( "Fatal error encountered while processing input." );
+        {
+            Meta metaInfo( meta );
+            metaInfo.algorithm.algorithm = meta::Algorithm::Info;
+            auto infoAlg = select( metaInfo );
+            auto ib = dynamic_cast< InfoBase * >( infoAlg.get() );
+            if ( !ib )
+                die( "Fatal error encountered while processing input." );
 
-        ib->propertyInfo( meta.input.propertyName, meta );
-        meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
+            ib->propertyInfo( meta.input.propertyName, meta );
+            meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
+        }
 
         auto pt = meta.input.propertyType;
 
@@ -694,8 +664,6 @@ struct Main {
         }
         else
             die( "FATAL: Internal error in commandline parser." );
-
-        delete ib;
 
         meta.execution.initialTable = 1L << (o_initable->intValue());
 
