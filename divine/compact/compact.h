@@ -235,7 +235,7 @@ struct DataBlock {
             _ptr( reinterpret_cast< T * >( ptr ) ),
             _size( size / sizeof( T ) )
         {
-            assert_eq( 0, size % sizeof( T ) );
+            assert_eq( 0UL, size % sizeof( T ) );
         }
 
         template< typename Fn >
@@ -366,7 +366,10 @@ struct Compact {
         size_t size = st.st_size;
 
         void *ptr = ::mmap( nullptr, size, mmapProt, MAP_SHARED, fd, 0 );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
         assert_neq( ptr, MAP_FAILED );
+#pragma GCC diagnostic pop
 
         finishOpen( fd, ptr, size );
     }
@@ -436,7 +439,10 @@ namespace {
             assert_eq( ::posix_fallocate( fd, 0, fileSize ) , 0 );
 
             void *ptr = ::mmap( nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
             assert_neq( ptr, MAP_FAILED );
+#pragma GCC diagnostic pop
 
             Header *h = new ( ptr ) Header();
             h->capabilities = _capabilities;
@@ -451,7 +457,7 @@ namespace {
             Compact compact;
             compact.finishOpen( fd, ptr, fileSize );
 
-            auto end = _generator.end() - _generator.begin() > GENERATOR_FIELD_LENGTH
+            auto end = _generator.end() - _generator.begin() > int( GENERATOR_FIELD_LENGTH )
                         ? _generator.begin() + GENERATOR_FIELD_LENGTH
                         : _generator.end();
             std::copy( _generator.begin(), end, compact.header->generator );
