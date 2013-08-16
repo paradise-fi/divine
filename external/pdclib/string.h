@@ -161,6 +161,13 @@ void * memchr( const void * s, int c, size_t n ) _PDCLIB_nothrow;
 */
 char * strchr( const char * s, int c ) _PDCLIB_nothrow;
 
+/* Search the character array s (including terminating '\0') for the character c
+   (interpreted as char).
+   Returns a pointer to the matched character, or a pointer to the null byte at the end
+   of s (i.e., s+strlen(s)) if the character is not found.
+*/
+char * strchrnul( const char *s, int c ) _PDCLIB_nothrow;
+
 /* Determine the length of the initial substring of character array s1 which
    consists only of characters not from the character array s2.
    Returns the length of that substring.
