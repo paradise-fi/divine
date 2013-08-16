@@ -31,64 +31,64 @@ template<typename T>
 class Singleton
 {
 protected:
-	T value;
+    T value;
 
 public:
-	typedef T value_type;
+    typedef T value_type;
 
-	class const_iterator : public std::iterator<std::forward_iterator_tag, const T, void, const T*, const T&>
-	{
-		const T* value;
+    class const_iterator : public std::iterator<std::forward_iterator_tag, const T, void, const T*, const T&>
+    {
+        const T* value;
 
-	protected:
-		const_iterator(const T* value) : value(value) {}
+    protected:
+        const_iterator(const T* value) : value(value) {}
 
-	public:
-		const_iterator() : value(0) {}
+    public:
+        const_iterator() : value(0) {}
 
-		const T& operator*() const { return *value; }
-		const T* operator->() const { return value; }
-		const_iterator& operator++() { value = 0; return *this; }
-		bool operator==(const const_iterator& iter) const { return value == iter.value; }
-		bool operator!=(const const_iterator& iter) const { return value != iter.value; }
+        const T& operator*() const { return *value; }
+        const T* operator->() const { return value; }
+        const_iterator& operator++() { value = 0; return *this; }
+        bool operator==(const const_iterator& iter) const { return value == iter.value; }
+        bool operator!=(const const_iterator& iter) const { return value != iter.value; }
 
-		friend class Singleton<T>;
-	};
+        friend class Singleton<T>;
+    };
 
-	class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
-	{
-		T* value;
+    class iterator : public std::iterator<std::forward_iterator_tag, T, void, T*, T&>
+    {
+        T* value;
 
-	protected:
-		iterator(T* value) : value(value) {}
+    protected:
+        iterator(T* value) : value(value) {}
 
-	public:
-		iterator() : value(0) {}
+    public:
+        iterator() : value(0) {}
 
-		T& operator*() { return *value; }
-		T* operator->() { return value; }
-		iterator& operator++() { value = 0; return *this; }
-		bool operator==(const iterator& iter) const { return value == iter.value; }
-		bool operator!=(const iterator& iter) const { return value != iter.value; }
+        T& operator*() { return *value; }
+        T* operator->() { return value; }
+        iterator& operator++() { value = 0; return *this; }
+        bool operator==(const iterator& iter) const { return value == iter.value; }
+        bool operator!=(const iterator& iter) const { return value != iter.value; }
 
-		friend class Singleton<T>;
-	};
+        friend class Singleton<T>;
+    };
 
-	explicit Singleton(const T& value) : value(value) {}
+    explicit Singleton(const T& value) : value(value) {}
 
-	bool empty() const { return false; }
-	size_t size() const { return 1; }
+    bool empty() const { return false; }
+    size_t size() const { return 1; }
 
-	iterator begin() { return iterator(&value); }
-	iterator end() { return iterator(); }
-	const_iterator begin() const { return const_iterator(&value); }
-	const_iterator end() const { return const_iterator(); }
+    iterator begin() { return iterator(&value); }
+    iterator end() { return iterator(); }
+    const_iterator begin() const { return const_iterator(&value); }
+    const_iterator end() const { return const_iterator(); }
 };
 
 template<typename T>
 Singleton<T> singleton(const T& value)
 {
-	return Singleton<T>(value);
+    return Singleton<T>(value);
 }
 
 }
