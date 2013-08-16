@@ -278,6 +278,8 @@ struct Compile {
         // copy content of library files from memory to the directory
         fs::writeFile( "divine.h", llvm_usr_h_str );
         fs::writeFile( "pthread.h", llvm_usr_pthread_h_str );
+        fs::mkFilePath( "bits/pthreadtypes.h" );
+        fs::writeFile( "bits/pthreadtypes.h" , "#include <pthread.h>" );
         fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */

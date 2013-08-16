@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
+
 /* Includes */
 #include "pthread.h"
 #include <errno.h>
@@ -22,25 +24,11 @@
 #define WAIT( cond ) _WAIT( cond, false )
 #define WAIT_OR_CANCEL( cond ) _WAIT( cond, true )
 
-#define BREAK_MASK( command )                    \
-                do {                             \
-                    __divine_interrupt_unmask(); \
-                    command;                     \
-                    __divine_interrupt_mask();   \
-                } while( 0 );
+#define PTHREAD_FUN_BEGIN()         do { ATOMIC_FUN_BEGIN( false ); \
+                                         _initialize(); } while( 0 );
 
-#define _PTHREAD_FUN_BEGIN( visible_effect )                      \
-                do {                                              \
-                    __divine_interrupt_mask();                    \
-                    if ( visible_effect )                         \
-                        /* FIXME: this should be automatically */ \
-                        /*        detected in the system-space */ \
-                        BREAK_MASK( __divine_interrupt() )        \
-                    _initialize();                                \
-                } while( 0 );
-
-#define PTHREAD_FUN_BEGIN() _PTHREAD_FUN_BEGIN ( false )
-#define PTHREAD_VISIBLE_FUN_BEGIN() _PTHREAD_FUN_BEGIN( true )
+#define PTHREAD_VISIBLE_FUN_BEGIN() do { ATOMIC_FUN_BEGIN( true ); \
+                                         _initialize(); } while( 0 );
 
 // LTID = local thread ID - unique for thread lifetime (returned by __divine_get_tid)
 // GTID = global thread ID - unique during the entire execution
@@ -1154,7 +1142,7 @@ int pthread_once( pthread_once_t *once_control, void (*init_routine)(void) ) {
 
     if (*once_control) {
         *once_control = 0;
-        BREAK_MASK ( init_routine() )
+        init_routine();
     }
     return 0;
 }

@@ -5,20 +5,7 @@
 
 #include "divine.h"
 #include <time.h>
-
-typedef int pid_t;
-
-typedef unsigned int clockid_t;
-
-struct sched_param {
-    int sched_priority;
-#if defined(_POSIX_SPORADIC_SERVER) || defined(_POSIX_THREAD_SPORADIC_SERVER)
-    int sched_ss_low_priority;
-    struct timespec sched_ss_repl_period;
-    struct timespec sched_ss_init_budget;
-    int sched_ss_max_repl;
-#endif
-};
+#include <sys/types.h>
 
 /* Macros */
 
@@ -41,10 +28,19 @@ struct sched_param {
 #define PTHREAD_EXPLICIT_SCHED         0 /* TODO */
 #define PTHREAD_INHERIT_SCHED          0 /* TODO */
 
+  /* Single UNIX Specification v. 2  and later */
 #define PTHREAD_MUTEX_NORMAL           0
 #define PTHREAD_MUTEX_RECURSIVE        1
 #define PTHREAD_MUTEX_ERRORCHECK       2
 #define PTHREAD_MUTEX_DEFAULT          PTHREAD_MUTEX_NORMAL
+
+  /* for compatibility (prior to SUS v.2) */
+#define PTHREAD_MUTEX_TIMED_NP         PTHREAD_MUTEX_NORMAL
+#define PTHREAD_MUTEX_RECURSIVE_NP     PTHREAD_MUTEX_RECURSIVE
+#define PTHREAD_MUTEX_ERRORCHECK_NP    PTHREAD_MUTEX_ERRORCHECK
+#define PTHREAD_MUTEX_FAST_NP          PTHREAD_MUTEX_NORMAL
+#define PTHREAD_MUTEX_ADAPTIVE_NP      PTHREAD_MUTEX_FAST_NP
+
 #define PTHREAD_MUTEX_INITIALIZER      ( ( PTHREAD_MUTEX_DEFAULT << 24 ) | _INITIALIZED_MUTEX )
 
 #define PTHREAD_COND_INITIALIZER       { .mutex = NULL, .counter = _INITIALIZED_COND }
@@ -64,6 +60,7 @@ struct sched_param {
 
 #define PTHREAD_RWLOCK_INITIALIZER     { .wlock = ( PTHREAD_PROCESS_PRIVATE << 16  ) | _INITIALIZED_RWLOCK, \
                                          .rlocks = NULL }
+#define PTHREAD_RWLOCK_WRITER_NONRECURSIVE_INITIALIZER_NP   PTHREAD_RWLOCK_INITIALIZER
 
 #define PTHREAD_BARRIER_SERIAL_THREAD  1
 
@@ -100,6 +97,16 @@ typedef int pthread_rwlockattr_t;
 typedef pthread_cond_t pthread_barrier_t;
 typedef int pthread_barrierattr_t;
 
+struct sched_param {
+    int sched_priority;
+#if defined(_POSIX_SPORADIC_SERVER) || defined(_POSIX_THREAD_SPORADIC_SERVER)
+    int sched_ss_low_priority;
+    struct timespec sched_ss_repl_period;
+    struct timespec sched_ss_init_budget;
+    int sched_ss_max_repl;
+#endif
+};
+
 /* Function prototypes */
 
 #ifdef __cplusplus
@@ -109,7 +116,7 @@ extern "C" {
 int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) NOINLINE UNSUPPORTED_SYSTEM;
 
 int pthread_create( pthread_t *, const pthread_attr_t *, void *(*)(void *), void * ) NOINLINE;
-void pthread_exit( void * ) NOINLINE UNSUPPORTED_SYSTEM;
+void pthread_exit( void * ) NOINLINE /* XXX UNSUPPORTED_SYSTEM */;
 int pthread_join( pthread_t, void ** ) NOINLINE;
 int pthread_detach( pthread_t thread ) NOINLINE;
 
@@ -132,7 +139,7 @@ int pthread_attr_setschedpolicy( pthread_attr_t *, int ) NOINLINE UNSUPPORTED_SY
 int pthread_attr_setscope( pthread_attr_t *, int ) NOINLINE UNSUPPORTED_SYSTEM;
 int pthread_attr_setstack( pthread_attr_t *, void *, size_t ) NOINLINE UNSUPPORTED_SYSTEM;
 int pthread_attr_setstackaddr( pthread_attr_t *, void * ) NOINLINE UNSUPPORTED_SYSTEM;
-int pthread_attr_setstacksize( pthread_attr_t *, size_t ) NOINLINE UNSUPPORTED_SYSTEM;
+int pthread_attr_setstacksize( pthread_attr_t *, size_t ) NOINLINE NO_EFFECT;
 
 int pthread_getconcurrency( void ) NOINLINE UNSUPPORTED_SYSTEM;
 int pthread_getcpuclockid( pthread_t, clockid_t * ) NOINLINE UNSUPPORTED_SYSTEM;
@@ -182,10 +189,10 @@ int pthread_cond_broadcast( pthread_cond_t * ) NOINLINE;
 int pthread_cond_wait( pthread_cond_t *, pthread_mutex_t * ) NOINLINE;
 int pthread_cond_timedwait( pthread_cond_t *, pthread_mutex_t *, const struct timespec * ) NOINLINE;
 
-int pthread_condattr_destroy( pthread_condattr_t * ) NOINLINE UNSUPPORTED_USER;
+int pthread_condattr_destroy( pthread_condattr_t * ) NOINLINE NO_EFFECT;
 int pthread_condattr_getclock( const pthread_condattr_t *, clockid_t * ) NOINLINE UNSUPPORTED_USER;
 int pthread_condattr_getpshared( const pthread_condattr_t *, int * ) NOINLINE UNSUPPORTED_USER;
-int pthread_condattr_init( pthread_condattr_t * ) NOINLINE UNSUPPORTED_USER;
+int pthread_condattr_init( pthread_condattr_t * ) NOINLINE NO_EFFECT;
 int pthread_condattr_setclock( pthread_condattr_t *, clockid_t ) NOINLINE UNSUPPORTED_USER;
 int pthread_condattr_setpshared( pthread_condattr_t *, int ) NOINLINE UNSUPPORTED_USER;
 

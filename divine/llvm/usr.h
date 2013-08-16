@@ -67,6 +67,23 @@
 #define UNSUPPORTED_SYSTEM   ERROR( "the function is currently unsupported by system-space." )
 #define NO_EFFECT            WARNING( "the function is currently ignored during state space generation and" \
                                       " hence doesn't affect overall process of verification." )
+/* Some handy macros. */
+#define BREAK_MASK( command )                    \
+                do {                             \
+                    __divine_interrupt_unmask(); \
+                    command;                     \
+                    __divine_interrupt_mask();   \
+                } while( 0 );
+
+#define ATOMIC_FUN_BEGIN( visible_effect )                        \
+                do {                                              \
+                    __divine_interrupt_mask();                    \
+                    if ( visible_effect )                         \
+                        /* FIXME: this should be automatically */ \
+                        /*        detected in the system-space */ \
+                        BREAK_MASK( __divine_interrupt() )        \
+                } while( 0 );
+
 
 #ifdef __cplusplus
 #define NOTHROW throw()
