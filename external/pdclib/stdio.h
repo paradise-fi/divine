@@ -9,6 +9,7 @@
 #ifndef _PDCLIB_STDIO_H
 #define _PDCLIB_STDIO_H _PDCLIB_STDIO_H
 #include <_PDCLIB_int.h>
+#include <sys/types.h>
 _PDCLIB_BEGIN_EXTERN_C
 
 #ifndef _PDCLIB_SIZE_T_DEFINED
@@ -711,6 +712,30 @@ int getchar( void ) _PDCLIB_nothrow;
 */
 char * gets( char * s ) _PDCLIB_nothrow _PDCLIB_DEPRECATED;
 #endif
+
+/* getline() reads an entire line from stream, storing the address of the buffer
+   containing the text into *lineptr. The buffer is null-terminated and includes
+   the newline character, if one was found.
+
+   If *lineptr is NULL, then getline() will allocate a buffer for storing the line,
+   which should be freed by the user program.  (In this case, the value in *n is
+   ignored.)
+
+   Alternatively, before calling getline(), *lineptr can contain a pointer to
+   a malloc(3)-allocated buffer *n bytes in size.  If the buffer is not large enough
+   to hold the line, getline() resizes it with realloc(3), updating *lineptr and *n
+   as necessary.
+
+   In either case, on a successful call, *lineptr and *n will be updated to reflect
+   the buffer address and allocated size respectively.
+
+   On success, getline() return the number of characters read, including the delimiter
+   character, but not including the terminating null byte. This value can be used
+   to handle embedded null bytes in the line read.
+
+   The function returns -1 on failure to read a line (including end-of-file condition).
+*/
+ssize_t getline( char **lineptr, size_t *n, FILE *stream ) _PDCLIB_nothrow;
 
 /* Equivalent to fputc( c, stream ), but may be overloaded by a macro that
    evaluates its parameter more than once.
