@@ -155,6 +155,17 @@ size_t strxfrm( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2, si
 */
 void * memchr( const void * s, int c, size_t n ) _PDCLIB_nothrow;
 
+/* The rawmemchr() function is similar to memchr(): it assumes (i.e., the programmer
+   knows for certain) that an instance of c lies somewhere in the memory area starting
+   at the location pointed to by s, and so performs an optimized search for c
+  (i.e., no use of a count argument to limit the range of the search).
+  If an instance of c is not found, the results are unpredictable.
+
+  The rawmemchr() function returns a pointer to the matching byte, if one is found.
+  If no matching byte is found, the result is unspecified.
+  */
+void * rawmemchr(const void *s, int c) _PDCLIB_nothrow;
+
 /* Search the character array s (including terminating '\0') for the character c
    (interpreted as char).
    Returns a pointer to the first instance found, or NULL.
