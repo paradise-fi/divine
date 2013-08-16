@@ -55,6 +55,12 @@ void * memmove( void * s1, const void * , size_t n ) _PDCLIB_nothrow;
 */
 char * strcpy( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2 ) _PDCLIB_nothrow;
 
+/* Copy the character array s2 (including terminating '\0' byte) into the
+   character array s1.
+   Returns a pointer to the terminating NULL character copied into the s1 buffer.
+*/
+char *stpcpy( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2 ) _PDCLIB_nothrow;
+
 /* Copy a maximum of n characters from the character array s2 into the character
    array s1. If s2 is shorter than n characters, '\0' bytes will be appended to
    the copy in s1 until n characters have been written. If s2 is longer than n
