@@ -38,6 +38,12 @@ typedef _PDCLIB_size_t size_t;
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n ) _PDCLIB_nothrow;
 
 /* Copy a number of n characters from the memory area pointed to by s2 to the
+   area pointed to by s1. If the two areas overlap, behaviour is undefined.
+   Returns a pointer to the byte following the last written byte.
+*/
+void *mempcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n ) _PDCLIB_nothrow;
+
+/* Copy a number of n characters from the memory area pointed to by s2 to the
    area pointed to by s1. The two areas may overlap.
    Returns the value of s1.
 */
