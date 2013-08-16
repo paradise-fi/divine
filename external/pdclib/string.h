@@ -105,6 +105,29 @@ int strcoll( const char * s1, const char * s2 ) _PDCLIB_nothrow;
 */
 int strncmp( const char * s1, const char * s2, size_t n ) _PDCLIB_nothrow;
 
+#ifndef _PDCLIB_STRINGS_H
+/* The following is defined in both string.h and strings.h. */
+
+/* The strcasecmp() function shall compare, while ignoring differences in case,
+   the string pointed to by s1 to the string pointed to by s2.
+
+   Upon completion, strcasecmp() shall return an integer greater than, equal to,
+   or less than 0, if the string pointed to by s1 is, ignoring case, greater than,
+   equal to, or less than the string pointed to by s2, respectively.
+ */
+int strcasecmp( const char *s1, const char *s2 ) _PDCLIB_nothrow;
+
+/* The strncasecmp() function is similar to strcasecmp, except it only compares
+   the first n bytes of s1.
+
+   Upon completion, strncasecmp() shall return an integer greater than, equal to,
+   or less than 0, if the string pointed to by s1 is, ignoring case, greater than,
+   equal to, or less than the string pointed to by s2, respectively.
+ */
+int strncasecmp( const char *s1, const char *s2, size_t n ) _PDCLIB_nothrow;
+
+#endif /* strings.h */
+
 /* Transform the character array s2 as appropriate for the LC_COLLATE setting of
    the current locale. If length of resulting string is less than n, store it in
    the character array pointed to by s1. Return the length of the resulting
