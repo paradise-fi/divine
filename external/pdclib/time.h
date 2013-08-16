@@ -29,8 +29,16 @@ _PDCLIB_DEFINE_STRUCT_TIMESPEC()
 _PDCLIB_DEFINE_STRUCT_TM()
 #endif
 
+#define CLOCK_REALTIME              1
+#define CLOCK_MONOTONIC             2
+#define CLOCK_PROCESS_CPUTIME_ID    3
+#define CLOCK_THREAD_CPUTIME_ID     4
+
+typedef unsigned int clockid_t;
+
 time_t time( time_t* t ) _PDCLIB_nothrow;
 int timespec_get( struct timespec *ts, int base ) _PDCLIB_nothrow;
+double difftime ( time_t end, time_t beginning) _PDCLIB_nothrow;
 
 _PDCLIB_END_EXTERN_C
 #endif

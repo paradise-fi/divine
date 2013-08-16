@@ -1,6 +1,6 @@
 include( ../../cmake/stringify.cmake )
 
-file( GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.h functions/*/*.c opt/*/*.c posix/*.c *.c )
+file( GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.h sys/*.h bits/*.h functions/*/*.c opt/*/*.c posix/*.c *.c )
 foreach( f ${src} )
     stringify( ${f} )
 endforeach()

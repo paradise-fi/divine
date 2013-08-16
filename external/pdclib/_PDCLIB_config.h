@@ -371,6 +371,11 @@ struct _PDCLIB_imaxdiv_t
 #define _PDCLIB_SEEK_CUR 1
 #define _PDCLIB_SEEK_END 2
 
+/* Since version 3.1, Linux supports the following additional values for lseek:
+ */
+#define _PDCLIB_SEEK_DATA 3
+#define _PDCLIB_SEEK_HOLE 4
+
 /* The number of characters that can be buffered with ungetc(). The standard
    guarantees only one (1); anything larger would make applications relying on
    this capability dependent on implementation-defined behaviour (not good).

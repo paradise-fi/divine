@@ -59,6 +59,21 @@ typedef _PDCLIB_file_t FILE;
     #error SEEK_SET != _PDCLIB_SEEK_SET
 #endif
 
+/* See lseek(), third argument.
+ */
+
+#if !defined(SEEK_DATA)
+    #define SEEK_DATA _PDCLIB_SEEK_DATA
+#elif SEEK_DATA != _PDCLIB_SEEK_DATA
+    #error SEEK_DATA != _PDCLIB_SEEK_DATA
+#endif
+
+#if !defined(SEEK_HOLE)
+    #define SEEK_HOLE _PDCLIB_SEEK_HOLE
+#elif SEEK_HOLE != _PDCLIB_SEEK_HOLE
+    #error SEEK_HOLE != _PDCLIB_SEEK_HOLE
+#endif
+
 extern FILE * stdin;
 extern FILE * stdout;
 extern FILE * stderr;

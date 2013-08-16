@@ -191,8 +191,11 @@ size_t strlen( const char * s ) _PDCLIB_nothrow;
 size_t strnlen( const char * s, size_t maxlen ) _PDCLIB_nothrow;
 #endif
 
-#if _PDCLIB_POSIX_MIN(2008098L) || _PDCLIB_XOPEN_MIN(0)
+#if _PDCLIB_POSIX_MIN(200112L) || _PDCLIB_XOPEN_MIN(0)
 char * strdup( const char* src ) _PDCLIB_nothrow;
+#endif
+
+#if _PDCLIB_POSIX_MIN(2008098L) || _PDCLIB_XOPEN_MIN(0)
 char * strndup( const char* src, size_t n ) _PDCLIB_nothrow;
 #endif
 

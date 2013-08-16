@@ -249,5 +249,8 @@ int wctomb( char * s, wchar_t wc );
 size_t mbstowcs( wchar_t * _PDCLIB_restrict pwcs, const char * _PDCLIB_restrict s, size_t n );
 size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwcs, size_t n );
 
+int mkstemp( char *templ );
+int mkostemp( char *templ, int flags );
+
 _PDCLIB_END_EXTERN_C
 #endif
