@@ -215,6 +215,11 @@ void * memset( void * s, int c, size_t n ) _PDCLIB_nothrow;
 */
 char * strerror( int errnum ) _PDCLIB_nothrow;
 
+/* The strerror_r() function is similar to strerror(), but is thread safe.
+   TODO: PDCLib does not yet support locales.
+  */
+char * strerror_r( int errnum, char *buf, size_t buflen );
+
 /* Returns the length of the string s (excluding terminating '\0').
 */
 size_t strlen( const char * s ) _PDCLIB_nothrow;
