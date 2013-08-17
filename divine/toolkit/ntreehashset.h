@@ -67,24 +67,22 @@ struct NTreeHashSet
 
     template < typename Fork >
     class LeafOr {
-        uint64_t ptr;
-        static const uint64_t unionbit = 1ULL << 63;
+        Blob b;
     public:
-        LeafOr() : ptr( 0 ) { }
+        LeafOr() : b() { }
 
-        LeafOr( Fork f ) : ptr( f.b.raw() | unionbit )
-        {
-            assert_eq( f.b.raw() & unionbit, 0UL );
+        LeafOr( Fork f ) : b( f.b ) {
+            assert_eq( b.tag, 0UL );
+            b.tag = 1;
         }
 
-        LeafOr( Leaf l ) : ptr( l.b.raw() )
-        {
-            assert_eq( l.b.raw() & unionbit, 0UL );
+        LeafOr( Leaf l ) : b( l.b ) {
+            assert_eq( b.tag, 0UL );
         }
 
-        Blob blob() const { return Blob::fromRaw( ptr & ~unionbit ); }
+        Blob blob() const { Blob blob( b ); blob.tag = 0; return blob; }
         bool isLeaf() const { return !isFork(); }
-        bool isFork() const { return ptr & unionbit; }
+        bool isFork() const { assert( b.tag == 1 || b.tag == 0 ); return b.tag; }
         int32_t size( Pool &p ) const { return p.size( blob() ); }
         bool isNull( Pool &p ) const { return !p.valid( blob() ); }
 
