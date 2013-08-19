@@ -10,6 +10,7 @@
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
 #include <wibble/sys/process.h>
+#include <wibble/raii.h>
 
 #include "combine.h"
 #include "llvmpaths.h"
@@ -36,6 +37,8 @@ std::string ltl_to_c( int id, std::string ltl );
 
 using namespace wibble;
 
+struct DieException { };
+
 struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
@@ -50,8 +53,6 @@ struct Compile {
         std::string abspath;
     };
 
-    FilePath *cleanup_tmpdir;
-
     void die_help( std::string bla )
     {
         opts.outputHelp( std::cerr );
@@ -61,15 +62,13 @@ struct Compile {
     static void die( std::string bla ) __attribute__((noreturn))
     {
         std::cerr << bla << std::endl;
-        exit( 1 );
+        throw DieException();
     }
 
-    void cleanup() // XXX RAII
+    static void cleanup( FilePath &cleanup_tmpdir )
     {
-        if ( cleanup_tmpdir ) {
-            chdir( cleanup_tmpdir->abspath.c_str() );
-            wibble::sys::fs::rmtree( cleanup_tmpdir->basename );
-        }
+        chdir( cleanup_tmpdir.abspath.c_str() );
+        wibble::sys::fs::rmtree( cleanup_tmpdir.basename );
     }
 
     void run( std::string command ) {
@@ -79,14 +78,11 @@ struct Compile {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
         if ( status != -1 ) {
-            if ( WEXITSTATUS( status ) != 0 ) {
-                cleanup();
+            if ( WEXITSTATUS( status ) != 0 )
                 die( "Error running an external command." );
-            } else if ( WIFSIGNALED( status ) && ( WTERMSIG( status ) == SIGINT
-                        || WTERMSIG( status ) == SIGQUIT ) ) {
-                cleanup();
+            else if ( WIFSIGNALED( status ) && ( WTERMSIG( status ) == SIGINT
+                        || WTERMSIG( status ) == SIGQUIT ) )
                 die( "Signaled or interrupted by user." );
-            }
         }
 #pragma GCC diagnostic pop
 #endif
@@ -172,8 +168,7 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
         std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
 
-        if ( !o_keep->boolValue() )
-            cleanup_tmpdir = &tmp_dir;
+        auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
 
         chdir( tmp_dir.basename.c_str() );
         fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
@@ -229,7 +224,6 @@ struct Compile {
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
         run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
              generator::cesmi_ext + " " + in + extras );
-        cleanup();
     }
 
     template< typename Src >
@@ -276,8 +270,7 @@ struct Compile {
         tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
 
         // prepare cleanup
-        if ( !o_keep->boolValue() )
-            cleanup_tmpdir = &tmp_dir;
+        auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
 
         // enter tmp directory
         chdir( tmp_dir.basename.c_str() );
@@ -311,7 +304,6 @@ struct Compile {
             fs::renameIfExists( "libsupc++.a", tmp_dir.abspath + "/libsupc++.a" );
             fs::renameIfExists( "libstdc++.a", tmp_dir.abspath + "/libstdc++.a" );
             chdir( tmp_dir.abspath.c_str() );
-            cleanup();
             return;
         }
 
@@ -356,27 +348,30 @@ struct Compile {
              tmp_dir.basename + "/requires.bc " +
              "-lstdc++ -lsupc++ -lpdc -ldivine" );
 
-        cleanup();
 #else
         die( "LLVM is disabled" );
 #endif
     }
 
     void main() {
-        std::string input = opts.next();
-        if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
-            die( "FATAL: cannot open input file " + input + " for reading" );
-        if ( str::endsWith( input, ".dve" ) )
-            compileDve( input, o_definitions->values() );
-        else if ( str::endsWith( input, ".m" ) )
-            compileMurphi( input );
-        else if ( o_cesmi->boolValue() )
-            compileCESMI( input, o_cflags->stringValue() );
-        else if ( o_llvm->boolValue() )
-            compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
-        else {
-            std::cerr << "Do not know how to compile this file type." << std::endl
-                      << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
+        try {
+            std::string input = opts.next();
+            if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
+                die( "FATAL: cannot open input file " + input + " for reading" );
+            if ( str::endsWith( input, ".dve" ) )
+                compileDve( input, o_definitions->values() );
+            else if ( str::endsWith( input, ".m" ) )
+                compileMurphi( input );
+            else if ( o_cesmi->boolValue() )
+                compileCESMI( input, o_cflags->stringValue() );
+            else if ( o_llvm->boolValue() )
+                compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
+            else {
+                std::cerr << "Do not know how to compile this file type." << std::endl
+                          << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
+            }
+        } catch ( DieException& ) {
+            exit( 1 );
         }
     }
 
