@@ -135,12 +135,6 @@ struct Capabilities : std::bitset< 64 > {
     Capabilities( const Base &c ) : Base( c ) { }
 };
 
-enum class Generator : uint64_t {
-    None,
-    DVE, Timed, LLVM, CESMI, CoIn
-    // add new only at end
-};
-
 static const size_t MAGIC_LENGTH = 40UL;
 static const char MAGIC[ MAGIC_LENGTH ] = "DIVINE COMPACT EXPLICIT STATE SPACE";
 static const int64_t CURRENT_DCESS_VERSION = 1;
