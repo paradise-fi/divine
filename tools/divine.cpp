@@ -19,6 +19,7 @@
 #include <tools/draw.h>
 #include <tools/combine.h>
 #include <tools/compile.h>
+#include <tools/info.h>
 
 #ifdef POSIX
 #include <sys/resource.h>
