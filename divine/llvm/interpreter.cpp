@@ -27,7 +27,7 @@ void Interpreter::parseProperties( Module *M )
 {
     auto prefix = "__divine_LTL_";
 
-    for ( int i = 0; i < info().constinfo.size(); ++i ) {
+    for ( int i = 0; i < int( info().constinfo.size() ); ++i ) {
         auto v = info().constinfo[ i ];
         auto id = v.second;
 
