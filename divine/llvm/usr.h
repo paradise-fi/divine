@@ -13,7 +13,11 @@
 /* ------------------- */
 
 #undef assert
+#if __cplusplus
+#define assert( x ) __divine_assert( static_cast< int >( x ) )
+#else
 #define assert( x ) __divine_assert( x )
+#endif
 #define ap( x ) __divine_ap( x )
 #define LTL( name, x ) extern const char * const __divine_LTL_ ## name = #x
 
@@ -24,7 +28,11 @@
 #endif
 
 #ifdef DEBUG
-#define DBG_ASSERT( x ) __divine_assert( x );
+#if __cplusplus
+#define DBG_ASSERT( x ) __divine_assert( static_cast< int >( x ) )
+#else
+#define DBG_ASSERT( x ) __divine_assert( x )
+#endif
 #else
 #define DBG_ASSERT( x )
 #endif
