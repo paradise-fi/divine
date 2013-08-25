@@ -12,7 +12,7 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
-#include <divine/instances/instantiate.h>
+#include <divine/instances/select.h>
 
 #include <QMessageBox>
 
@@ -167,7 +167,7 @@ const QVector<int> DivineRunner::cycleTrail() const
 
 void DivineRunner::run()
 {
-  algorithm::Algorithm * alg = divine::select(meta_);
+  auto alg = divine::select(meta_);
 
   Q_ASSERT(alg);
 
