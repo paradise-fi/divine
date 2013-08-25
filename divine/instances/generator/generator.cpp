@@ -314,7 +314,7 @@ int main( int argc, char** argv ) {
     auto it = symbols.begin();
     auto end = symbols.end();
     for ( int i = 1; i <= files; ++i ) {
-        for ( cnt = 0 ; cnt < perFile && it != end; ++it, ++cnt )
+        for ( cnt = 0 ; ( cnt < perFile || i == files ) && it != end; ++it, ++cnt )
             sym.insert( *it );
         definitions( sym, i );
         sym.clear();
