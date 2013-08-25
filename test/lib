@@ -239,6 +239,7 @@ llvm_verify() {
 }
 
 dve_statespace() {
+    test "$O_DVE" = "ON" || skip
     cat > testcase.dve
     ann divine metrics testcase.dve -p $1 -r 2>> progress | capture
     shift
@@ -247,6 +248,7 @@ dve_statespace() {
 }
 
 dve_shape() {
+    test "$O_DVE" = "ON" || skip
     cat > testcase.dve
     echo "$2" > expected
     ann divine draw testcase.dve -p $1 -r cat -o out.dot 2>> progress | capture
