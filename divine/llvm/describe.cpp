@@ -298,7 +298,7 @@ std::string Describe::all()
 {
     std::stringstream s;
 
-    for ( int i = 0; i < info().globalinfo.size(); ++ i )
+    for ( int i = 0; i < int( info().globalinfo.size() ); ++ i )
         if ( info().globalinfo[ i ].first )
             this->value( info().globalinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
@@ -361,7 +361,7 @@ std::string Describe::all()
 }
 
 std::string Describe::constdata() {
-    for ( int i = 0; i < info().constinfo.size(); ++ i )
+    for ( int i = 0; i < int( info().constinfo.size() ); ++ i )
         if ( info().constinfo[ i ].first )
             value( info().constinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
