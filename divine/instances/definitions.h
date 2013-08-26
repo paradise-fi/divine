@@ -331,7 +331,11 @@ namespace statistics {
     }
 
     STATISTICS( TrackStatistics, meta.output.statistics );
+#ifdef O_PERFORMANCE
     STATISTICS( NoStatistics, true );
+#else
+    using NoStatistics = _Missing;
+#endif
 #undef STATISTICS
 
     using Statistics = TypeList< NoStatistics, TrackStatistics >;
