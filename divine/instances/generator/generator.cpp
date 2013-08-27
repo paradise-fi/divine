@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iterator>
 #include <fstream>
+#include <iostream>
 
 namespace divine {
 namespace instantiate {
@@ -319,5 +320,6 @@ int main( int argc, char** argv ) {
         definitions( sym, i );
         sym.clear();
     }
+    std::cerr << "Generated " << symbols.size() << " instances." << std::endl;
     return 0;
 }
