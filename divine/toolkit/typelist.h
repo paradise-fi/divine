@@ -119,8 +119,11 @@ struct Replace< Original, New, TypeList<> > {
 
 /* boolean expressions encoded in TypeList ***********************************/
 
+template< typename _T >
+struct Not { };
+
 struct True { };
-struct False { };
+using False = Not< True >;
 
 template< typename... Ts >
 struct And {
@@ -170,11 +173,13 @@ struct EvalBoolExpr< LeafFn, Or< Ts... > > : public
         typename Or< Ts... >::List >
 { };
 
-template< template< typename > class LeafFn >
-struct EvalBoolExpr< LeafFn, True > : public std::true_type { };
+template< template< typename > class LeafFn, typename T >
+struct EvalBoolExpr< LeafFn, Not< T > > {
+    static constexpr const bool value = !EvalBoolExpr< LeafFn, T >::value;
+};
 
 template< template< typename > class LeafFn >
-struct EvalBoolExpr< LeafFn, False > : public std::false_type { };
+struct EvalBoolExpr< LeafFn, True > : public std::true_type { };
 
 template< template< typename > class LeafFn > template< bool _true, typename Head >
 struct _EvalBoolExprAnd< LeafFn >::Fn : public EvalBoolExpr< LeafFn, Head > { };
