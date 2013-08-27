@@ -148,16 +148,9 @@ namespace generator {
 #endif
 
 #if O_COMPACT
-    template< typename Alg >
-    struct NotCompact : public std::true_type { };
-
-    template<>
-    struct NotCompact< algorithm::Compact > : public std::false_type { };
-
-    using NotCompactAlgs = Or< typename Filter< NotCompact, algorithm::Algorithms >::T >;
-    GENERATOR( Compact, ".dcess", "Compact", NotCompactAlgs, "divine/generator/compact.h" );
+    GENERATOR( Compact, ".dcess", "Compact", Not< algorithm::Compact >, "divine/generator/compact.h" );
     namespace intern {
-        GENERATOR( CompactWLabel, ".dcess", "Compact with labels", NotCompactAlgs,
+        GENERATOR( CompactWLabel, ".dcess", "Compact with labels", Not< algorithm::Compact >,
                 "divine/generator/compact.h" );
     }
     struct CompactWLabel : public intern::CompactWLabel {
@@ -210,10 +203,11 @@ namespace transform {
     TRANSFORM( None, "::divine::graph::NonPORGraph< Graph, Store >", true,
             Any, "divine/graph/por.h" );
 #ifndef O_SMALL
+    using ForReductions = And< generator::Dve, Not< algorithm::Info > >;
     TRANSFORM( Fairness, "::divine::graph::FairGraph< Graph, Store >",
-            meta.algorithm.fairness, generator::Dve, "divine/graph/fairness.h" );
+            meta.algorithm.fairness, ForReductions, "divine/graph/fairness.h" );
     TRANSFORM( POR, "::divine::algorithm::PORGraph< Graph, Store, Stat >",
-            meta.algorithm.reduce.count( graph::R_POR ), generator::Dve,
+            meta.algorithm.reduce.count( graph::R_POR ), ForReductions,
             "divine/algorithm/por-c3.h" );
 #else
     using Fairness = _Missing;
@@ -240,7 +234,8 @@ namespace visitor {
     }
 
     VISITOR( Partitioned, true, Any );
-    VISITOR( Shared, meta.algorithm.sharedVisitor, Any );
+    using ForShared = Not< Or< algorithm::Simulate, algorithm::Compact, algorithm::Info > >;
+    VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared );
 #undef VISITOR
 
     using Visitors = TypeList< Shared, Partitioned >;
@@ -261,15 +256,16 @@ namespace store {
         } \
     }
 
+using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
 #ifdef O_COMPRESSION
     STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::C_NTree,
-            Any );
+            ForCompressions );
 #else
     using NTreeStore = _Missing;
 #endif
 
 #ifdef O_HASH_COMPACTION
-    STORE( HcStore, meta.algorithm.hashCompaction, Any );
+    STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions );
 #else
     using HcStore = _Missing;
 #endif
@@ -300,7 +296,12 @@ namespace topology {
     }
 
 #if !defined( O_PERFORMANCE ) || defined( O_MPI )
-    TOPOLOGY( Mpi, meta.execution.nodes > 1, Any );
+#ifndef O_PERFORMANCE
+    using ForMpi = Any // as we need NDFS without O_PERFORMANCE
+#else
+    using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info > >;
+#endif
+    TOPOLOGY( Mpi, meta.execution.nodes > 1, ForMpi );
 #else
     using Mpi = _Missing;
 #endif
@@ -319,20 +320,21 @@ namespace topology {
 namespace statistics {
     struct IsStatisticsT { };
 
-#define STATISTICS( STAT, SELECTOR ) struct STAT { \
+#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY ) struct STAT { \
         using IsStatistics = IsStatisticsT; \
         static constexpr const char *symbol = "using _Statistics = ::divine::" #STAT ";\n"; \
         static constexpr const char *key = #STAT; \
         static constexpr const char *header = "divine/utility/statistics.h"; \
-        using SupportedBy = Any; \
+        using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
         } \
     }
 
-    STATISTICS( TrackStatistics, meta.output.statistics );
+    STATISTICS( TrackStatistics, meta.output.statistics, Any );
 #ifdef O_PERFORMANCE
-    STATISTICS( NoStatistics, true );
+    using ForNoStat = Not< Or< algorithm::Info, algorithm::Simulate > >;
+    STATISTICS( NoStatistics, true, ForNoStat );
 #else
     using NoStatistics = _Missing;
 #endif
