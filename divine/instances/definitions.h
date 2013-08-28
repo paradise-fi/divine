@@ -297,7 +297,7 @@ namespace topology {
 
 #if !defined( O_PERFORMANCE ) || defined( O_MPI )
 #ifndef O_PERFORMANCE
-    using ForMpi = Any // as we need NDFS without O_PERFORMANCE
+    using ForMpi = Any; // as we need NDFS without O_PERFORMANCE
 #else
     using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info > >;
 #endif
