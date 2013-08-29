@@ -59,9 +59,9 @@ extern "C" { /* POSIX kernel APIs */
 
     void raise( int ) { __divine_assert( 0 ); }
     int unlink( const char * ) { __divine_assert( 0 ); return 0; }
-    size_t read(int, void *, size_t) { __divine_assert( 0 ); return 0; }
-    size_t write(int, const void *, size_t) { __divine_assert( 0 ); return 0; }
-    int lseek(int, int, int) { __divine_assert( 0 ); return 0; }
+    ssize_t read(int, void *, size_t) { __divine_assert( 0 ); return 0; }
+    ssize_t write(int, const void *, size_t) { __divine_assert( 0 ); return 0; }
+    off_t lseek(int, off_t, int) { __divine_assert( 0 ); return 0; }
     int close(int) { __divine_assert( 0 ); return 0; }
 
 }
