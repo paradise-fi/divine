@@ -284,6 +284,8 @@ struct Compile {
         fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
 
+        fs::writeFile( "atomic", llvm_usr_atomic_h_str );
+
         // compile libraries
         std::string flags = "-emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
