@@ -213,20 +213,24 @@ all_small() {
     murphi_small "$@"
 }
 
+llvm_precompile() {
+    test libdivine.a -nt `which divine` || ann divine compile --llvm --libraries-only
+}
+
 llvm_prepare() {
     cat > testcase.c
-    test libdivine.a -nt `which divine` || ann divine compile --llvm --libraries-only
+    llvm_precompile
     ann divine compile --llvm testcase.c --precompiled=. >& progress
 }
 
-llvm_verify() {
+llvm_verify_file() {
     test "$O_LLVM" = "ON" || skip
-    llvm_prepare
+    f=$1; shift
     t=$1; shift
     test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
     prop=${1-assert}
 
-    ann divine verify testcase.bc -p $prop -d -r 2>> progress | capture
+    ann divine verify $f -p $prop -d -r 2>> progress | capture
     test "$t" == ltl_valid && check ltl_valid
     test "$t" == ltl_invalid && check ltl_invalid
     test "$t" == valid && check reachability_valid
@@ -236,6 +240,12 @@ llvm_verify() {
             grep -A 50 '== The goal ==' progress | grep -i "^$where" | grep "$what"
     }
     check clear
+}
+
+llvm_verify() {
+    test "$O_LLVM" = "ON" || skip
+    llvm_prepare
+    llvm_verify_file testcase.bc "$@"
 }
 
 dve_statespace() {
