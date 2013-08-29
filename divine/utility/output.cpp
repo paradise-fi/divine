@@ -200,6 +200,5 @@ Output *makeCurses() {
 
 }
 
-StdIO defoutput( std::cerr );
-divine::Output *divine::Output::_output = &defoutput;
+std::unique_ptr< divine::Output > divine::Output::_output( makeStdIO( std::cerr ) );
 

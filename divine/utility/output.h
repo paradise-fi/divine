@@ -1,5 +1,7 @@
 // -*- C++ -*- Copyright (c) 2010 Petr Rockai <me@mornfall.net>
 
+#include <memory>
+
 #ifndef DIVINE_OUTPUT_H
 #define DIVINE_OUTPUT_H
 
@@ -13,9 +15,9 @@ struct Output {
     virtual void cleanup() {}
     virtual ~Output() {}
 
-    static Output *_output;
+    static std::unique_ptr< Output > _output;
     static Output &output() {
-        assert( _output );
+        assert( !!_output );
         return *_output;
     }
 };

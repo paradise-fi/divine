@@ -180,9 +180,6 @@ struct Main {
         Output::output().cleanup();
         if ( mpi->master() && o_report->boolValue() )
             report.final( std::cout, a->meta() );
-
-        delete Output::_output;
-        Output::_output = nullptr;
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -204,9 +201,9 @@ struct Main {
 
     void setupOutput() {
         if ( o_curses->boolValue() )
-            Output::_output = makeCurses();
+            Output::_output.reset( makeCurses() );
         else
-            Output::_output = makeStdIO( std::cerr );
+            Output::_output.reset( makeStdIO( std::cerr ) );
     }
 
     void setupCommandline()
