@@ -34,7 +34,7 @@
 #define DBG_ASSERT( x ) __divine_assert( x )
 #endif
 #else
-#define DBG_ASSERT( x )
+#define DBG_ASSERT( x ) ((void)0)
 #endif
 
 // Inlining have potential to break desired logic of interruption masking.
