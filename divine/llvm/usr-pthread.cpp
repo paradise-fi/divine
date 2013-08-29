@@ -143,12 +143,12 @@ int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) {
 /* Thread */
 int _get_gtid( const int ltid ) {
 #ifndef NEW_INTERP_BUGS
-    DBG_ASSERT( ( ltid >= 0 ) && ( ltid < alloc_pslots ) )
+    DBG_ASSERT( ( ltid >= 0 ) && ( ltid < alloc_pslots ) );
 #endif
     if ( threads[ltid] != NULL ) {
         int gtid = threads[ltid]->gtid;
 #ifndef NEW_INTERP_BUGS
-        DBG_ASSERT( gtid >= 0 && gtid < thread_counter )
+        DBG_ASSERT( gtid >= 0 && gtid < thread_counter );
 #endif
         return gtid;
     } else
@@ -156,12 +156,12 @@ int _get_gtid( const int ltid ) {
 }
 
 void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
-    DBG_ASSERT( ltid >= 0 && gtid >= 0 )
+    DBG_ASSERT( ltid >= 0 && gtid >= 0 );
     pthread_key_t key;
 
     // reallocate thread local storage if neccessary
     if ( ltid >= alloc_pslots ) {
-        DBG_ASSERT( ltid == alloc_pslots ) // shouldn't skip unallocated slots
+        DBG_ASSERT( ltid == alloc_pslots ); // shouldn't skip unallocated slots
         int new_count = ltid + 1;
 
         // thread metadata
@@ -178,13 +178,13 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
     }
 
     // allocate slot for thread metadata
-    DBG_ASSERT( threads[ltid] == NULL )
+    DBG_ASSERT( threads[ltid] == NULL );
     threads[ltid] = static_cast< Thread* >( __divine_malloc( sizeof( Thread ) ) );
-    DBG_ASSERT( threads[ltid] != NULL )
+    DBG_ASSERT( threads[ltid] != NULL );
 
     // initialize thread metadata
     Thread* thread = threads[ltid];
-    DBG_ASSERT( thread != NULL )
+    DBG_ASSERT( thread != NULL );
     thread->gtid = gtid;
     thread->running = false;
     thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
@@ -207,7 +207,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 void _initialize( void )  {
     if ( !initialized ) {
         // initialize implicitly created main thread
-        DBG_ASSERT( alloc_pslots == 0 )
+        DBG_ASSERT( alloc_pslots == 0 );
         _init_thread( 0, 0, PTHREAD_CREATE_DETACHED );
         threads[0]->running = true;
 
@@ -259,9 +259,9 @@ void _pthread_entry( void *_args )
 
     Entry *args = static_cast< Entry* >( _args );
     int ltid = __divine_get_tid();
-    DBG_ASSERT( ltid < alloc_pslots )
+    DBG_ASSERT( ltid < alloc_pslots );
     Thread* thread = threads[ltid];
-    DBG_ASSERT( thread != NULL )
+    DBG_ASSERT( thread != NULL );
     pthread_key_t key;
 
     // copy arguments
@@ -285,7 +285,7 @@ void _pthread_entry( void *_args )
 #endif
     __divine_interrupt_mask();
 
-    DBG_ASSERT( thread->sleeping == false )
+    DBG_ASSERT( thread->sleeping == false );
 
     // all thread specific data destructors are run
     key = keys;
@@ -319,7 +319,7 @@ void _pthread_entry( void *_args )
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(void *),
                     void *arg ) {
     PTHREAD_VISIBLE_FUN_BEGIN()
-    DBG_ASSERT( alloc_pslots > 0 )
+    DBG_ASSERT( alloc_pslots > 0 );
 
     // test input arguments
     if ( ptid == NULL || entry == NULL )
@@ -331,7 +331,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     args->arg = arg;
     args->initialized = false;
     int ltid = __divine_new_thread( _pthread_entry, static_cast< void* >( args ) );
-    DBG_ASSERT( ltid >= 0 )
+    DBG_ASSERT( ltid >= 0 );
 
     // generate a unique ID
     int gtid = thread_counter++;    
@@ -342,7 +342,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
-    DBG_ASSERT( ltid < alloc_pslots )
+    DBG_ASSERT( ltid < alloc_pslots );
 
     WAIT( !args->initialized )  // wait, do not free args yet
 
@@ -638,7 +638,7 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
 
     if ( ( (*mutex) & _MUTEX_OWNER_MASK ) == gtid + 1 ) {
         // already locked by this thread
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ) // count should be > 0
+        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
         if ( ( *mutex & _MUTEX_TYPE_MASK ) != ( PTHREAD_MUTEX_RECURSIVE << 24 ) ) {
             if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_ERRORCHECK << 24 ) )
                 return EDEADLK;
@@ -648,7 +648,7 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
     }
 
     if ( !_mutex_can_lock( mutex, gtid ) ) {
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ) // count should be > 0
+        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
         if ( !wait )
             return EBUSY;
     }
@@ -723,7 +723,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
 
     if ( ( (*mutex) & _MUTEX_OWNER_MASK ) != ( gtid + 1 ) ) {
         // mutex is not locked or it is already locked by another thread
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ) // count should be > 0
+        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
         if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_NORMAL << 24 ) )
              __divine_assert( 0 );
         else
@@ -931,7 +931,7 @@ int pthread_setspecific( pthread_key_t key, const void *data ) {
         return EINVAL;
 
     int ltid = __divine_get_tid();
-    DBG_ASSERT( ltid < alloc_pslots )
+    DBG_ASSERT( ltid < alloc_pslots );
 
     key->data[ltid] = const_cast< void* >( data );
     return 0;
@@ -942,7 +942,7 @@ void *pthread_getspecific( pthread_key_t key ) {
     __divine_assert(key != NULL);
 
     int ltid = __divine_get_tid();
-    DBG_ASSERT( ltid < alloc_pslots )
+    DBG_ASSERT( ltid < alloc_pslots );
 
     return key->data[ltid];
 }
@@ -1028,7 +1028,7 @@ int _cond_signal( pthread_cond_t *cond, bool broadcast = false ) {
             }
         }
 
-        DBG_ASSERT( count == waiting )
+        DBG_ASSERT( count == waiting );
 
         if ( !_cond_adjust_count( cond,-wokenup ) )
             cond->mutex = NULL; // break binding between cond. variable and mutex
@@ -1401,7 +1401,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t * rwlock ) {
     }
 
     if ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) == gtid + 1 ) {
-        DBG_ASSERT( !rlock )
+        DBG_ASSERT( !rlock );
         // release write lock
         rwlock->wlock &= ~_WLOCK_WRITER_MASK;
     } else {
