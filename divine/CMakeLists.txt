@@ -88,6 +88,7 @@ stringify( llvm/usr.h )
 stringify( llvm/usr-pthread.h )
 stringify( llvm/usr-pthread.cpp )
 stringify( llvm/usr-cstdlib.cpp )
+stringify( llvm/usr-atomic.h )
 
 set( GENERATED_INSTANCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/instances/auto" )
 add_executable( instances-generator instances/generator/generator.cpp )
