@@ -48,6 +48,7 @@ using ::llvm::cast;
 using ::llvm::isa;
 using ::llvm::ICmpInst;
 using ::llvm::FCmpInst;
+using ::llvm::AtomicRMWInst;
 namespace Intrinsic = ::llvm::Intrinsic;
 using ::llvm::CallSite;
 using ::llvm::Type;
@@ -572,6 +573,39 @@ struct Evaluator
         bool resultIsPointer( std::vector< bool > ) { return false; }
     };
 
+    struct AtomicRMW : Implementation {
+        static const int arity = 3;
+        template< typename X = int >
+        auto operator()( X &result = Dummy< X >::v(),
+                         Pointer &p = Dummy< Pointer >::v(),
+                         X &x = Dummy< X >::v() )
+            -> decltype( declcheck( x + x, x ^ x ) )
+        {
+            X &v = *reinterpret_cast< X * >(
+                this->evaluator().dereference( p ) );
+
+            result = v;
+
+            switch (dyn_cast< AtomicRMWInst >( this->i().op )->getOperation()) {
+                case AtomicRMWInst::Xchg: v = x;     return Unit();
+                case AtomicRMWInst::Add:  v =  v + x; return Unit();
+                case AtomicRMWInst::Sub:  v =  v - x; return Unit();
+                case AtomicRMWInst::And:  v =  v & x; return Unit();
+                case AtomicRMWInst::Nand: v = ~v & x; return Unit();
+                case AtomicRMWInst::Or:   v =  v | x; return Unit();
+                case AtomicRMWInst::Xor:  v =  v ^ x; return Unit();
+                case AtomicRMWInst::Max:
+                case AtomicRMWInst::UMax: v = std::max( v, x ); return Unit();
+                case AtomicRMWInst::UMin:
+                case AtomicRMWInst::Min:  v = std::min( v, x ); return Unit();
+            }
+
+            return Unit();
+        }
+
+        bool resultIsPointer( std::vector< bool > ) { return false; }
+    };
+
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getAllocatedType();
@@ -845,6 +879,8 @@ struct Evaluator
                 implement_alloca(); break;
             case LLVMInst::AtomicCmpXchg:
                 implement< CmpXchg >(); break;
+            case LLVMInst::AtomicRMW:
+                implement< AtomicRMW >(); break;
 
             case LLVMInst::ExtractValue:
                 implement_extractvalue(); break;
