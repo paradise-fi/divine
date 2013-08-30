@@ -1,7 +1,7 @@
 #!/bin/sh
 
 LCOV() {
-       "${LCOV_BIN}" -d "${LCOV_IN}" "$@"
+       "${LCOV_BIN}" -d "${LCOV_IN}" --quiet "$@"
 }
 
 set -ex
@@ -19,7 +19,7 @@ test -e "${LCOV_OUT}/failed" && exit 0
 
 for i in `seq 1 32`; do
     test -f "${LCOV_OUT}/collect-$i.info" && continue
-    LCOV --gcov-tool="${GCOV_BIN}" --quiet -b "${LCOV_IN}" -c -o "${LCOV_OUT}/collect-$i.info"
+    LCOV --gcov-tool="${GCOV_BIN}" -b "${LCOV_IN}" -c -o "${LCOV_OUT}/collect-$i.info" 2>/dev/null
     break
 done
 LCOV --zerocounters
