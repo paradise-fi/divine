@@ -549,6 +549,29 @@ struct Evaluator
         bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
     };
 
+    struct CmpXchg : Implementation {
+        static const int arity = 4;
+        template< typename X = int >
+        auto operator()( X &result = Dummy< X >::v(),
+                         Pointer &p = Dummy< Pointer >::v(),
+                         X &expected = Dummy< X >::v(),
+                         X &changed = Dummy< X >::v() )
+            -> decltype( declcheck( expected == changed ) )
+        {
+            X &current = *reinterpret_cast< X * >(
+                this->evaluator().dereference( p ) );
+
+            result = current;
+
+            if ( current == expected )
+                current = changed;
+
+            return Unit();
+        }
+
+        bool resultIsPointer( std::vector< bool > ) { return false; }
+    };
+
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
         Type *ty = I->getAllocatedType();
@@ -820,6 +843,8 @@ struct Evaluator
                 implement_store(); break;
             case LLVMInst::Alloca:
                 implement_alloca(); break;
+            case LLVMInst::AtomicCmpXchg:
+                implement< CmpXchg >(); break;
 
             case LLVMInst::ExtractValue:
                 implement_extractvalue(); break;
