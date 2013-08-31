@@ -1,5 +1,7 @@
 . lib
 
+test "$O_LLVM" = "ON" || skip
+
 llvm_precompile
 
 compile_atomic() {
