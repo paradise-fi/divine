@@ -249,10 +249,9 @@ struct Lake {
         std::atomic< FreeList * > *chunk, *newchunk;
         if ( !( chunk = _freelist_big[ size / 4096 ] ) ) {
             if ( _freelist_big[ size / 4096 ].compare_exchange_strong(
-                     chunk, newchunk = new FreeListPtr[ 4096 ] ) ) {
+                     chunk, newchunk = new FreeListPtr[ 4096 ]() ) )
                 chunk = newchunk;
-                std::for_each( chunk, chunk + 4096, []( FreeListPtr &fp ) { fp.store( 0 ); } );
-            } else
+            else
                 delete newchunk;
         }
         assert( chunk );
