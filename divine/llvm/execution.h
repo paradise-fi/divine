@@ -598,6 +598,7 @@ struct Evaluator
                 case AtomicRMWInst::UMax: v = std::max( v, x ); return Unit();
                 case AtomicRMWInst::UMin:
                 case AtomicRMWInst::Min:  v = std::min( v, x ); return Unit();
+                case AtomicRMWInst::BAD_BINOP: assert_unreachable( "bad binop in atomicrmw" );
             }
 
             return Unit();
