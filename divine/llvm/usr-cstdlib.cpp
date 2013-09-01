@@ -50,6 +50,8 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
+extern "C" void __cxa_pure_virtual( void ) { __divine_assert( 0 ); }
+
 extern "C" void abort_message( const char * ) { __divine_assert( 0 ); }
 extern "C" void *dlsym( void *, void * ) { __divine_assert( 0 ); return 0; } // oh golly...
 
