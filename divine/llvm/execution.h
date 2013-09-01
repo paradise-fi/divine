@@ -825,11 +825,19 @@ struct Evaluator
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             memcopy( ValueRef( instruction.operand( i ), 1 ), function.values[ i ],
                      function.values[ i ].width );
+
         if ( function.vararg ) {
-            /* TODO allocate a new block, copy extra args into it and pass its
-             * address as a Pointer in values[ argcount ] */
-            assert_unimplemented();
-        } else if ( CS.arg_size() > function.argcount )
+            int size = 0;
+            for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
+                size += instruction.operand( i ).width;
+            Pointer vaptr = size ? econtext.malloc( size ) : Pointer();
+            withValues( Set< Pointer >( vaptr, true ), function.values[ function.argcount ] );
+            for ( int i = function.argcount; i < int( CS.arg_size() ); ++i ) {
+                auto op = instruction.operand( i );
+                memcopy( ValueRef( op, 1 ), vaptr, op.width );
+                vaptr = vaptr + int( op.width );
+            }
+        } else if ( int( CS.arg_size() ) > function.argcount )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
 
         assert( !isa< ::llvm::PHINode >( instruction.op ) );
