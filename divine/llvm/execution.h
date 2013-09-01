@@ -817,11 +817,16 @@ struct Evaluator
             return;
         }
 
+        ProgramInfo::Function function = info.function( PC( functionid, 0, 0 ) );
+
+        /* report problems with the call before pushing the new stackframe */
+        if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
+            ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
+
         ccontext.enter( functionid ); /* push a new frame */
         ccontext.jumped = true;
 
         /* Copy arguments to the new frame. */
-        ProgramInfo::Function function = info.function( ccontext.pc() );
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             memcopy( ValueRef( instruction.operand( i ), 1 ), function.values[ i ],
                      function.values[ i ].width );
@@ -837,8 +842,7 @@ struct Evaluator
                 memcopy( ValueRef( op, 1 ), vaptr, op.width );
                 vaptr = vaptr + int( op.width );
             }
-        } else if ( int( CS.arg_size() ) > function.argcount )
-            ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
+        }
 
         assert( !isa< ::llvm::PHINode >( instruction.op ) );
     }
