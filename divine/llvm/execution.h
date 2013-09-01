@@ -155,6 +155,7 @@ struct ControlContext {
     int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
     int stackDepth() { assert_die(); }
     int threadId() { assert_die(); }
+    void dump() {}
 };
 
 template< typename X >
