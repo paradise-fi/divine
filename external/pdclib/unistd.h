@@ -56,6 +56,10 @@ extern long int sysconf ( int name );
    which is not necessarily the same as the hardware page size.  */
 extern int getpagesize ( void );
 
+typedef unsigned useconds_t;
+unsigned int sleep(unsigned int seconds);
+int usleep(useconds_t usec);
+
 _PDCLIB_END_EXTERN_C
 
 /* Evaluate EXPRESSION, and repeat as long as it returns -1 with `errno'
