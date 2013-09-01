@@ -105,9 +105,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   __throw_system_error(int __i)
   { throw system_error(error_code(__i, generic_category())); }
 
+#ifndef __DISABLE_FUTURE
   void
   __throw_future_error(int __i)
   { throw future_error(make_error_code(future_errc(__i))); }
+#endif
 
   void
   __throw_bad_function_call()

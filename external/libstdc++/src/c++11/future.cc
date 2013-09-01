@@ -1,3 +1,4 @@
+#ifndef __DISABLE_FUTURE
 // future -*- C++ -*-
 
 // Copyright (C) 2009, 2010, 2011, 2012 Free Software Foundation, Inc.
@@ -90,3 +91,5 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std
+
+#endif // __DISABLE_FUTURE
