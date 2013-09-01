@@ -39,6 +39,7 @@
 #include <ext/numeric_traits.h>
 #include <bits/functexcept.h>
 #include <cstdlib>
+#include <cstdarg>
 #include <cwchar>
 #include <cstdio>
 #include <cerrno>
@@ -81,7 +82,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _String, typename _CharT = typename _String::value_type>
     _String
     __to_xstring(int (*__convf) (_CharT*, std::size_t, const _CharT*,
-				 __builtin_va_list), std::size_t __n,
+				 va_list), std::size_t __n,
 		 const _CharT* __fmt, ...)
     {
       // XXX Eventually the result will be constructed in place in
@@ -89,12 +90,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _CharT* __s = static_cast<_CharT*>(__builtin_alloca(sizeof(_CharT)
 							  * __n));
 
-      __builtin_va_list __args;
-      __builtin_va_start(__args, __fmt);
+      va_list __args;
+      va_start(__args, __fmt);
 
       const int __len = __convf(__s, __n, __fmt, __args);
 
-      __builtin_va_end(__args);
+      va_end(__args);
 
       return _String(__s, __s + __len);
     }
