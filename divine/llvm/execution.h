@@ -793,6 +793,10 @@ struct Evaluator
                     return;
                 }
                 case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
+                case BuiltinVaStart:
+                    auto f = info.functions[ ccontext.pc().function ];
+                    memcopy( f.values[ f.argcount ], instruction.result(), instruction.result().width );
+                    return;
             }
         }
 
