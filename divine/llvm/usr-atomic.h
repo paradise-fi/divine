@@ -416,19 +416,19 @@ T atomic_fetch_xor_explicit( atomic< T > *obj, T arg, memory_order ) {
     return obj->fetch_xor( arg );
 }
 
-bool atomic_flag_test_and_set( atomic_flag *p ) {
+inline static bool atomic_flag_test_and_set( atomic_flag *p ) {
     return p->test_and_set();
 }
 
-bool atomic_flag_test_and_set_explicit( atomic_flag *p, memory_order ) {
+inline static bool atomic_flag_test_and_set_explicit( atomic_flag *p, memory_order ) {
     return p->test_and_set();
 }
 
-void atomic_flag_clear( atomic_flag *p ) {
+inline static void atomic_flag_clear( atomic_flag *p ) {
     p->clear();
 }
 
-void atomic_flag_clear_explicit( atomic_flag *p, memory_order ) {
+inline static void atomic_flag_clear_explicit( atomic_flag *p, memory_order ) {
     p->clear();
 }
 
