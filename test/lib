@@ -218,9 +218,9 @@ llvm_precompile() {
 }
 
 llvm_prepare() {
-    cat > testcase.c
+    cat > $1
     llvm_precompile
-    ann divine compile --llvm testcase.c --precompiled=. >& progress
+    ann divine compile --llvm $1 --precompiled=. >& progress
 }
 
 llvm_verify_file() {
@@ -242,9 +242,15 @@ llvm_verify_file() {
     check clear
 }
 
+llvm_verify_cpp() {
+    test "$O_LLVM" = "ON" || skip
+    llvm_prepare testcase.cpp
+    llvm_verify_file testcase.bc "$@"
+}
+
 llvm_verify() {
     test "$O_LLVM" = "ON" || skip
-    llvm_prepare
+    llvm_prepare testcase.c
     llvm_verify_file testcase.bc "$@"
 }
 
