@@ -818,13 +818,15 @@ struct Evaluator
 
         /* Copy arguments to the new frame. */
         ProgramInfo::Function function = info.function( ccontext.pc() );
-        for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.values.size() ); ++i )
+        for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             memcopy( ValueRef( instruction.operand( i ), 1 ), function.values[ i ],
                      function.values[ i ].width );
-        if ( CS.arg_size() > function.values.size() )
+        if ( function.vararg ) {
+            /* TODO allocate a new block, copy extra args into it and pass its
+             * address as a Pointer in values[ argcount ] */
+            assert_unimplemented();
+        } else if ( CS.arg_size() > function.argcount )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
-
-        /* TODO varargs */
 
         assert( !isa< ::llvm::PHINode >( instruction.op ) );
     }

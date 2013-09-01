@@ -179,6 +179,8 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinMalloc;
     if ( name == "__divine_free" )
         return BuiltinFree;
+    if ( name == "__divine_va_start" )
+        return BuiltinVaStart;
     if ( name == "memcpy" || name == "memmove" )
         return BuiltinMemcpy;
 
@@ -315,9 +317,20 @@ void ProgramInfo::pass()
         if ( !codepointers ) {
             framealign = 1; /* force all args to go in in the first pass */
 
-            /* TODO: va_args; implement as a Pointer */
+            auto &pi_function = this->functions[ pc.function ];
+            pi_function.argcount = 0;
+
             for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
                 insert( pc.function, &*arg );
+                ++ pi_function.argcount;
+            }
+
+            if ( pi_function.vararg = function->isVarArg() ) {
+                Value vaptr;
+                vaptr.width = TD.getPointerSize();
+                vaptr.type = Value::Pointer;
+                allocateValue( pc.function, vaptr );
+                pi_function.values.push_back( vaptr );
             }
 
             framealign = _framealign;

@@ -120,7 +120,8 @@ enum Builtin {
     BuiltinMalloc,
     BuiltinFree,
     BuiltinAp,
-    BuiltinMemcpy
+    BuiltinMemcpy,
+    BuiltinVaStart
 };
 
 struct ProgramInfo {
@@ -180,6 +181,8 @@ struct ProgramInfo {
 
     struct Function {
         int datasize;
+        int argcount:31;
+        bool vararg:1;
         std::vector< Value > values;
         std::vector< BB > blocks;
         BB &block( PC pc ) {

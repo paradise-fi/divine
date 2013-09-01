@@ -103,6 +103,7 @@ void __divine_assert( int ) NOTHROW; // + some informative string ?
 void __divine_ap( int ) NOTHROW;
 void * __divine_malloc( unsigned long ) NOTHROW;
 void __divine_free( void * ) NOTHROW;
+void *__divine_va_start() NOTHROW;
 
 #ifdef TRACE
 void __divine_trace( const char *, ... ) NOTHROW;
