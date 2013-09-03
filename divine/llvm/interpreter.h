@@ -123,16 +123,29 @@ struct Interpreter
 
     MDNode *findEnum( std::string lookup ) {
         assert( bc->module );
-        MDNode *enums = node( bc->module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
+        auto meta =  bc->module->getNamedMetadata( "llvm.dbg.cu" );
+        // sadly metadata for enums are located at different locations in
+        // IR produced by clang 3.2 and 3.3
+        // to make it worse I didn't find way to distinguish between those
+        // by other method then trying
+        auto e = findEnum( node( meta, 0, 10, 0 ), lookup, 2 ); // clang <= 3.2
+        return e ? e : findEnum( node( meta, 0, 7 ), lookup, 3 ); // clang >= 3.3
+
+    }
+
+    MDNode *findEnum( MDNode *enums, std::string lookup, int nameOperand ) {
         if ( !enums )
             return nullptr;
         for ( int i = 0; i < int( enums->getNumOperands() ); ++i ) {
             MDNode *n = dyn_cast_or_null< MDNode >( enums->getOperand(i) );
             if ( !n )
-                continue;
-            MDString *name = dyn_cast_or_null< MDString >( n->getOperand(2) );
+                return nullptr; // this would means we hit wrong metadata list, not enums
+            auto no = n->getNumOperands();
+            if ( no <= 10 )
+                return nullptr; // same here
+            MDString *name = dyn_cast_or_null< MDString >( n->getOperand( nameOperand ) );
             if ( !name )
-                continue;
+                return nullptr;
             if ( name->getString() == lookup )
                 return cast< MDNode >( n->getOperand(10) ); // the list of enum items
         }
