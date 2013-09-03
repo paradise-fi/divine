@@ -345,16 +345,19 @@ std::string Describe::all()
         std::vector< std::string > x;
         int k = 0;
         MDNode *apmeta = interpreter->findEnum( "AP" );
-        while ( ap ) {
-            if ( ap % 2 ) {
-                MDString *name = cast< MDString >(
-                    cast< MDNode >( apmeta->getOperand( k ) )->getOperand( 1 ) );
-                x.push_back( name->getString() );
+        if ( apmeta ) {
+            while ( ap ) {
+                if ( ap % 2 ) {
+                    MDString *name = cast< MDString >(
+                        cast< MDNode >( apmeta->getOperand( k ) )->getOperand( 1 ) );
+                    x.push_back( name->getString() );
+                }
+                ap = ap >> 1;
+                ++k;
             }
-            ap = ap >> 1;
-            ++k;
-        }
-        s << "+ APs: " << wibble::str::fmt( x ) << std::endl;
+            s << "+ APs: " << wibble::str::fmt( x ) << std::endl;
+        } else
+            s << "+ APs: 0x" << std::hex << ap << std::dec;
     }
 
     return s.str();

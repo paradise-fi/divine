@@ -125,14 +125,18 @@ struct Interpreter
         assert( bc->module );
         MDNode *enums = node( bc->module->getNamedMetadata( "llvm.dbg.cu" ), 0, 10, 0 );
         if ( !enums )
-            return NULL;
+            return nullptr;
         for ( int i = 0; i < int( enums->getNumOperands() ); ++i ) {
-            MDNode *n = cast< MDNode >( enums->getOperand(i) );
-            MDString *name = cast< MDString >( n->getOperand(2) );
+            MDNode *n = dyn_cast_or_null< MDNode >( enums->getOperand(i) );
+            if ( !n )
+                continue;
+            MDString *name = dyn_cast_or_null< MDString >( n->getOperand(2) );
+            if ( !name )
+                continue;
             if ( name->getString() == lookup )
                 return cast< MDNode >( n->getOperand(10) ); // the list of enum items
         }
-        return NULL;
+        return nullptr;
     }
 
     explicit Interpreter( graph::Allocator &a, std::shared_ptr< BitCode > bc );
