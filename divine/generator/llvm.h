@@ -49,7 +49,8 @@ struct LLVM : Common< Blob > {
     {
         interpreter();
         Function *f = bitcode->module->getFunction( "main" );
-        assert( f );
+        if ( !f )
+            die( "FATAL: Missing function main in verified model." );
         yield( Node(), interpreter().initial( f ), Label() );
     }
 
@@ -157,7 +158,9 @@ struct LLVM : Common< Blob > {
 
     int literal_id( std::string lit ) {
         MDNode *ap = interpreter().findEnum( "AP" );
-        assert( ap );
+        if ( !ap )
+            die( "FATAL: atomic proposition names could not be detected.\n"
+                    "Maybe you are missing enum AP." );
         for ( int i = 0; i < int( ap->getNumOperands() ); ++i ) {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );

@@ -357,7 +357,7 @@ std::string Describe::all()
             }
             s << "+ APs: " << wibble::str::fmt( x ) << std::endl;
         } else
-            s << "+ APs: 0x" << std::hex << ap << std::dec;
+            s << "+ APs: 0x" << std::hex << ap << std::dec << std::endl;
     }
 
     return s.str();
