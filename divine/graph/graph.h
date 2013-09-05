@@ -17,6 +17,8 @@ enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_R
 enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap, R_LU };
 typedef std::set< ReductionType > ReductionSet;
 
+enum class DemangleStyle { None, Cpp };
+
 struct Allocator {
     Pool _pool;
     int _slack;
@@ -60,6 +62,8 @@ struct Base : Allocator {
 	// HACK: Inform the gaph if fairness is enabled,
 	// The timed automata interpreter uses this to enable Zeno reduction
 	void fairnessEnabled( bool ) {}
+
+    void demangleStyle( DemangleStyle ) { }
 
     template< typename Y >
     void properties( Y yield ) {
@@ -166,6 +170,10 @@ struct Transform {
 	void fairnessEnabled( bool enabled ) {
 		base().fairnessEnabled( enabled );
 	}
+
+    void demangleStyle( DemangleStyle st ) {
+        base().demangleStyle( st );
+    }
 
     bool isInAccepting( Node s, int acc_group ) {
         return base().isInAccepting( s, acc_group ); }

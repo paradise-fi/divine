@@ -54,6 +54,7 @@ struct Algorithm {
     bool sharedVisitor;
     bool fairness;
     graph::ReductionSet reduce;
+    graph::DemangleStyle demangle; // for llvm
 
     Algorithm() : algorithm( Info ),
                   hashSeed( 0 ),

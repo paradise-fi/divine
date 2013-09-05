@@ -112,6 +112,7 @@ struct Algorithm
         meta().algorithm.reduce =
             g->useReductions( meta().algorithm.reduce );
         g->fairnessEnabled( meta().algorithm.fairness );
+        g->demangleStyle( meta().algorithm.demangle );
         return g;
     }
 
