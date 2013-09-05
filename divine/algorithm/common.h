@@ -111,9 +111,6 @@ struct Algorithm
         g->useProperty( meta().input.propertyName );
         meta().algorithm.reduce =
             g->useReductions( meta().algorithm.reduce );
-        g->setDomainSize( meta().execution.thisNode,
-                          meta().execution.nodes,
-                          meta().execution.nodes * meta().execution.threads );
         g->fairnessEnabled( meta().algorithm.fairness );
         return g;
     }

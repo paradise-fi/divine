@@ -57,11 +57,6 @@ struct Base : Allocator {
     bool isInRejecting( Node, int /* acc_group */ ) { return false; }
     unsigned acceptingGroupCount() { return 0; }
 
-    // HACK: Inform the graph of the compute domain geometry, required by the
-    // Compact generator for more efficient operation
-    void setDomainSize( unsigned /* mpiRank */ = 0, unsigned /* mpiSize */ = 1,
-                        unsigned /* peersCount */ = 1 ) {}
-
 	// HACK: Inform the gaph if fairness is enabled,
 	// The timed automata interpreter uses this to enable Zeno reduction
 	void fairnessEnabled( bool ) {}
@@ -166,10 +161,6 @@ struct Transform {
     std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
     void read( std::string path, std::vector< std::string > definitions, Transform< G > *blueprint = nullptr ) {
         base().read( path, definitions, blueprint ? &blueprint->_base : nullptr );
-    }
-    void setDomainSize( const unsigned mpiRank = 0, const unsigned mpiSize = 1,
-                        const unsigned peersCount = 1 ) {
-        base().setDomainSize( mpiRank, mpiSize, peersCount );
     }
 
 	void fairnessEnabled( bool enabled ) {
