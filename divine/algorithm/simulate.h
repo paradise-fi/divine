@@ -1,6 +1,8 @@
 #include <divine/algorithm/common.h>
 //#include <wibble/regexp.h>
 
+#include <random>
+
 #ifndef DIVINE_ALGORITHM_SIMULATE
 #define DIVINE_ALGORITHM_SIMULATE
 
@@ -23,6 +25,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     std::vector< Vertex > trace;
     std::vector< Vertex > succs;
 
+    std::mt19937 rand{ std::random_device()() };
 
     // when true, edge labels are printed for each successor
     bool printEdges;
@@ -200,6 +203,15 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                 } else {
                     std::cerr << "Enter a number between 1 and " << succs.size() << std::endl;
                 }
+            } else if ( *part == "r" ) {
+                if ( succs.empty() ) {
+                    std::cerr << "Current state has no successor" << std::endl;
+                } else if ( succs.size() == 1 ) {
+                    goDown( 0 );
+                } else {
+                    std::uniform_int_distribution<> distr( 0, succs.size() - 1 );
+                    goDown( distr( rand ) );
+                }
             } else {
                std::cerr <<
                     "HELP:\n"
@@ -208,6 +220,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
                     "  b     back to the previous state\n"
                     "  t     show current trace\n"
                     "  n     go to the next unvisited successor or go up if there is none (DFS)\n"
+                    "  r     go to a random successor\n"
                     "  q     exit\n"
                     "multiple commands can be separated by a comma\n"
                     << std::endl;
