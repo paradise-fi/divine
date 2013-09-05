@@ -1,10 +1,13 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // for assert
 #include <vector>
+#ifndef NVALGRIND
 #include <iostream>
 #include <iomanip>
+#endif
 #include <memory>
 #include <map>
+#include <atomic>
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -13,7 +16,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include <divine/toolkit/shmem.h>
 #include <divine/toolkit/hash.h>
 
 #ifndef DIVINE_POOL_H
