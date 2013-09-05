@@ -292,7 +292,8 @@ struct Compile {
         compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
         compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I../libm -I.." );
         compileLibrary( "libstdc++", libstdcpp_list, flags + " -I../libpdc -I../libm "
-                        "-I../libsupc++ -I.. -I. -Ibackward -Istd -Ic_global -std=c++11" );
+                        "-I../libsupc++ -I.. -I. -Ibackward -Istd -Ic_global -std=c++11 "
+                        "-D__DISABLE_FUTURE " /* TODO: Remove this */ );
 
         flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ -Ilibm ";
 
