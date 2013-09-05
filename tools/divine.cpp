@@ -76,6 +76,7 @@ struct Main {
     StringOption *o_gnuplot;
     StringOption *o_property;
     StringOption *o_inputTrace;
+    StringOption *o_demangle;
 
     BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
     BoolOption *o_mpi;
@@ -306,6 +307,10 @@ struct Main {
                 "mpi", 0, "mpi", "",
                 "Force use of MPI (in case it is not detected properly)" );
 
+        o_demangle = common->add< StringOption >(
+                "demangle", 0, "demangle", "",
+                "Demagle style of symbols (only for LLVM verification) [default=none, available=node,cpp]" );
+
         // definitions
         o_definitions = definitions->add< VectorOption< String > >(
             "definition", 'D', "definition", "",
@@ -442,6 +447,12 @@ struct Main {
         throw wibble::exception::OutOfRange( "compression", "'" + s + "' is not a known compression type" ); // TODO: allowed
     }
 
+    graph::DemangleStyle parseDemangle( std::string s ) {
+        if ( s == "cpp" ) return graph::DemangleStyle::Cpp;
+        if ( s == "none" ) return graph::DemangleStyle::None;
+        throw wibble::exception::OutOfRange( "demangle", "'" + s + "' is not supported demangle style [available = none, cpp]" );
+    }
+
     void parseCommandline()
     {
         std::string input;
@@ -504,6 +515,9 @@ struct Main {
             meta.algorithm.compression = meta::Algorithm::C_None;
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
+        meta.algorithm.demangle = o_demangle->boolValue()
+            ? parseDemangle( o_demangle->stringValue() )
+            : graph::DemangleStyle::None;
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
