@@ -100,7 +100,3 @@ _Unwind_Word _Unwind_GetBSP (struct _Unwind_Context *) { __divine_assert( 0 ); r
 _Unwind_Ptr _Unwind_GetDataRelBase (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
 _Unwind_Ptr _Unwind_GetTextRelBase (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
 void * _Unwind_FindEnclosingFunction (void *pc) { __divine_assert( 0 ); return 0; }
-
-#include "libsupc++/bits/cxxabi_forced.h"
-
-namespace __cxxabiv1 { __forced_unwind::~__forced_unwind() throw() {} }
