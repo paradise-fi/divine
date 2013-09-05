@@ -133,5 +133,19 @@ void freelocale(locale_t loc);
 #endif
 
 _PDCLIB_END_EXTERN_C
+
+/* FIXME: remove this as soon as we can use real locale (that is PDClib supports it) */
+#include <assert.h>
+#include <stdlib.h>
+
+_PDCLIB_BEGIN_EXTERN_C
+
+inline static size_t strftime(char *s, size_t max, const char *format, const struct tm *tm) {
+    assert( 0 );
+}
+
+/* / */
+
+_PDCLIB_END_EXTERN_C
 #endif
 
