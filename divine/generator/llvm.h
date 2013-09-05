@@ -44,6 +44,8 @@ struct LLVM : Common< Blob > {
 
     bool use_property;
 
+    graph::DemangleStyle demangle;
+
     template< typename Yield >
     void initials( Yield yield )
     {
@@ -118,7 +120,7 @@ struct LLVM : Common< Blob > {
     std::string showNode( Node n ) {
         interpreter(); /* ensure _interpreter_2 is initialised */
         _interpreter_2->rewind( n );
-        std::string s = _interpreter_2->describe();
+        std::string s = _interpreter_2->describe( demangle );
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
             s += "LTL: " + wibble::str::fmt( buchi ) + " (";
@@ -259,6 +261,10 @@ struct LLVM : Common< Blob > {
         applyReductions();
 
         return *_interpreter;
+    }
+
+    void demangleStyle( graph::DemangleStyle st ) {
+        demangle = st;
     }
 
     LLVM() : _interpreter( 0 ), use_property( false ) {}

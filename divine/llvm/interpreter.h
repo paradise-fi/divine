@@ -154,7 +154,9 @@ struct Interpreter
 
     explicit Interpreter( graph::Allocator &a, std::shared_ptr< BitCode > bc );
 
-    std::string describe( bool detailed = false );
+    std::string describe( graph::DemangleStyle st = graph::DemangleStyle::None,
+            bool detailed = false );
+
     std::string describeConstdata();
 
     Blob initial( Function *f ); /* Make an initial state from Function. */

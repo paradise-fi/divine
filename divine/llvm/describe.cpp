@@ -15,6 +15,9 @@
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <cxxabi.h>
+#include <cstdlib>
+
 #pragma GCC diagnostic pop
 
 using namespace llvm;
@@ -36,7 +39,7 @@ struct Describe {
     std::string pointer( Type *t, Pointer p );
     Describe( Interpreter *i, bool detailed ) :  detailed( detailed ), anonymous( 1 ), interpreter( i ) {}
 
-    std::string all();
+    std::string all( graph::DemangleStyle );
     std::string constdata();
 
     ::llvm::TargetData &TD() { return interpreter->TD; }
@@ -246,7 +249,22 @@ std::string fileline( const Instruction &insn )
     return "";
 }
 
-std::string locinfo( ProgramInfo &info, PC pc,
+std::string demangle( divine::graph::DemangleStyle demangle, std::string mangled ) {
+    switch ( demangle ) {
+        case divine::graph::DemangleStyle::Cpp: {
+            int stat;
+            auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
+            auto ret = stat == 0 && x ? std::string( x ) : mangled;
+            std::free( x );
+            return ret; }
+        case divine::graph::DemangleStyle::None:
+            return mangled;
+        default:
+            assert_unreachable( "Unhandle case" );
+    }
+}
+
+std::string locinfo( ProgramInfo &info, PC pc, divine::graph::DemangleStyle ds,
                      bool instruction = false,
                      Function **fun = nullptr )
 {
@@ -258,7 +276,7 @@ std::string locinfo( ProgramInfo &info, PC pc,
     Instruction &insn = *cast< Instruction >( user );
     Function *f = insn.getParent()->getParent();
     std::string fl = fileline( insn );
-    locs << "<" << f->getName().str() << ">";
+    locs << "<" << demangle( ds, f->getName().str() ) << ">";
 
     if ( fun )
         *fun = f;
@@ -274,7 +292,7 @@ std::string locinfo( ProgramInfo &info, PC pc,
     return locs.str();
 }
 
-std::string describeProblem( ProgramInfo &info, Problem bad )
+std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::DemangleStyle ds )
 {
     std::stringstream s;
     switch ( bad.what ) {
@@ -290,11 +308,11 @@ std::string describeProblem( ProgramInfo &info, Problem bad )
             s << "DIVISION BY ZERO"; break;
     }
     s << " (thread " << int( bad.tid ) << "): ";
-    s << locinfo( info, bad.where, bad.what != Problem::Assert );
+    s << locinfo( info, bad.where, ds, bad.what != Problem::Assert );
     return s.str();
 }
 
-std::string Describe::all()
+std::string Describe::all( divine::graph::DemangleStyle ds )
 {
     std::stringstream s;
 
@@ -314,7 +332,7 @@ std::string Describe::all()
              info().instruction( state().frame( c ).pc ).op )
         {
             Function *f = nullptr;
-            location = locinfo( info(), state().frame( c ).pc, false, &f );
+            location = locinfo( info(), state().frame( c ).pc, ds, false, &f );
 
             if ( f ) {
                 bored = boring( f->getName(), true );
@@ -335,7 +353,7 @@ std::string Describe::all()
 
     MachineState::Flags &flags = state().flags();
     for ( int i = 0; i < flags.problemcount; ++i )
-        s << describeProblem( info(), flags.problems(i) ) << std::endl;
+        s << describeProblem( info(), flags.problems(i), ds ) << std::endl;
 
     if ( !state()._thread_count )
         s << "EXIT" << std::endl;
@@ -475,8 +493,8 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
     }
 }
 
-std::string Interpreter::describe( bool detailed ) {
-    return Describe( this, detailed ).all();
+std::string Interpreter::describe( graph::DemangleStyle st, bool detailed ) {
+    return Describe( this, detailed ).all( st );
 }
 
 std::string Interpreter::describeConstdata() {
