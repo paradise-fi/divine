@@ -1033,4 +1033,10 @@ typedef decltype(nullptr) nullptr_t;
 # define _GLIBCXX_END_EXTERN_C
 #endif
 
+/* ENABLE THREADS */
+
+#define _GLIBCXX_HAS_GTHREADS 1
+#define _GLIBCXX_USE_C99_STDINT_TR1 1
+#define _PTHREADS 1
+
 #endif // _CXXCONFIG_
