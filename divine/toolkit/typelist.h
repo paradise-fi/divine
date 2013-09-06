@@ -142,21 +142,27 @@ template< typename... Ts >
 struct Or< TypeList< Ts... > > : public Or< Ts... > { };
 
 
+template< template< typename > class LeafFn, bool _true, typename Head >
+struct _EvalBoolExprAnd3;
+template< template< typename > class LeafFn, typename H >
+struct _EvalBoolExprAnd3< LeafFn, false, H >;
+
 template< template< typename > class LeafFn >
 struct _EvalBoolExprAnd {
-    template< bool, typename > struct Fn;
+    template< bool X, typename H >
+    using Fn = _EvalBoolExprAnd3< LeafFn, X, H >;
 };
+
+template< template< typename > class LeafFn, bool _false, typename Head >
+struct _EvalBoolExprOr3;
+template< template< typename > class LeafFn, typename H >
+struct _EvalBoolExprOr3< LeafFn, true, H >;
 
 template< template< typename > class LeafFn >
 struct _EvalBoolExprOr {
-    template< bool, typename > struct Fn;
+    template< bool X, typename H >
+    using Fn = _EvalBoolExprOr3< LeafFn, X, H >;
 };
-
-template< template< typename > class LeafFn > template< typename H >
-struct _EvalBoolExprAnd< LeafFn >::Fn< false, H >;
-
-template< template< typename > class LeafFn > template< typename H >
-struct _EvalBoolExprOr< LeafFn >::Fn< true, H >;
 
 template< template< typename > class LeafFn, typename BoolExpr >
 struct EvalBoolExpr : public LeafFn< BoolExpr > { };
@@ -181,17 +187,17 @@ struct EvalBoolExpr< LeafFn, Not< T > > {
 template< template< typename > class LeafFn >
 struct EvalBoolExpr< LeafFn, True > : public std::true_type { };
 
-template< template< typename > class LeafFn > template< bool _true, typename Head >
-struct _EvalBoolExprAnd< LeafFn >::Fn : public EvalBoolExpr< LeafFn, Head > { };
+template< template< typename > class LeafFn, bool _true, typename Head >
+struct _EvalBoolExprAnd3 : public EvalBoolExpr< LeafFn, Head > { };
 
-template< template< typename > class LeafFn > template< typename Head >
-struct _EvalBoolExprAnd< LeafFn >::Fn< false, Head > : public std::false_type { };
+template< template< typename > class LeafFn, typename Head >
+struct _EvalBoolExprAnd3< LeafFn, false, Head > : public std::false_type { };
 
-template< template< typename > class LeafFn > template< bool _false, typename Head >
-struct _EvalBoolExprOr< LeafFn >::Fn : public EvalBoolExpr< LeafFn, Head > { };
+template< template< typename > class LeafFn, bool _false, typename Head >
+struct _EvalBoolExprOr3 : public EvalBoolExpr< LeafFn, Head > { };
 
-template< template< typename > class LeafFn > template< typename Head >
-struct _EvalBoolExprOr< LeafFn >::Fn< true, Head > : public std::true_type { };
+template< template< typename > class LeafFn, typename Head >
+struct _EvalBoolExprOr3< LeafFn, true, Head > : public std::true_type { };
 
 }
 
