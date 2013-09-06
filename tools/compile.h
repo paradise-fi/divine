@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <vector>
+#include <future>
 
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
@@ -44,8 +45,10 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only;
-    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold, *o_cmd_ar, *o_precompiled;
+    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold,
+                 *o_cmd_ar, *o_precompiled, *o_parallel;
     VectorOption< String > *o_definitions;
+    int parallelBuildJobs;
 
     struct FilePath {
         // filepath = joinpath(abspath, basename)
@@ -70,6 +73,36 @@ struct Compile {
         chdir( cleanup_tmpdir.abspath.c_str() );
         wibble::sys::fs::rmtree( cleanup_tmpdir.basename );
     }
+
+    struct RunQueue {
+        Compile *compile;
+        std::vector< std::string > commands;
+        std::atomic< size_t > current;
+
+        RunQueue( Compile *compile ) : compile( compile ), current( 0 ) { }
+
+        void push( std::string comm ) {
+            commands.push_back( comm );
+        }
+
+        void run() {
+            assert( compile );
+            int extra = compile->parallelBuildJobs - 1;
+            std::vector< std::future< void > > thrs;
+            for ( int i = 0; i < extra; ++i )
+                thrs.push_back( std::async( std::launch::async, &RunQueue::_run, this ) );
+
+            _run();
+            for ( auto &t : thrs )
+                t.get(); // get propagates exceptions
+        }
+
+        void _run() {
+            int job;
+            while ( (job = current.fetch_add( 1 )) < int( commands.size() ) )
+                compile->run( commands[ job ] );
+        }
+    };
 
     void run( std::string command ) {
         std::cerr << "+ " << command << std::endl;
@@ -246,17 +279,20 @@ struct Compile {
         }
 
         src = src_;
+
+        RunQueue rq( this );
         while ( src->n ) {
             if ( str::endsWith( src->n, ".cc" ) ||
                  str::endsWith( src->n, ".c" ) ||
                  str::endsWith( src->n, ".cpp" ) ||
                  str::endsWith( src->n, ".cxx" ) ) {
-                run( clang() + " -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
+                rq.push( clang() + " -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
                 files = files + src->n + ".bc ";
             }
             ++src;
         }
 
+        rq.run();
         run( gold_ar() + " ../" + name + ".a " + files );
         chdir( ".." );
     }
@@ -358,9 +394,21 @@ struct Compile {
 #endif
     }
 
+    int parseParallel( std::string str ) {
+        std::stringstream ss( str );
+        int j;
+        ss >> j;
+        if ( j <= 0 )
+            die( "Invalid value for --job/-j: '" + str + "'" );
+        return j;
+    }
+
     void main() {
         try {
             std::string input = opts.next();
+            parallelBuildJobs = o_parallel->boolValue()
+                ? parseParallel( o_parallel->stringValue() )
+                : 1;
             if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
                 die( "FATAL: cannot open input file " + input + " for reading" );
             if ( str::endsWith( input, ".dve" ) )
@@ -435,6 +483,10 @@ struct Compile {
         o_definitions = cmd_compile->add< VectorOption< String > >(
             "definition", 'D', "definition", "",
             "add definition for generator (can be specified multiple times)" );
+
+        o_parallel = cmd_compile->add< StringOption >(
+            "jobs", 'j', "jobs", "",
+            "parallel building (like with make but -j (without parameter) is not supported)" );
     }
 
 };
