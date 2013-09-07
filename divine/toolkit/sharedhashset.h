@@ -90,13 +90,13 @@ inline Blob unwrapBlobNewtype( Blob b ) {
 
 template< typename, typename = void >
 struct IsBlobNewtype {
-    constexpr operator bool() {
+    constexpr operator bool() const {
         return false;
     }
 };
 template< typename BlobNewtype >
 struct IsBlobNewtype< BlobNewtype, typename BlobNewtype::IsBlobNewtype > {
-    constexpr operator bool() {
+    constexpr operator bool() const {
         return true;
     }
 };
