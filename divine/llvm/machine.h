@@ -390,9 +390,12 @@ struct MachineState
             return nullptr;
         else if ( globalPointer( p ) )
             return global().dereference( _info, p );
-        else if ( constantPointer( p ) )
-            return &_info.constdata[ _info.globalPointerOffset( p ) ];
-        else if ( heap().owns( p ) )
+        else if ( constantPointer( p ) ) {
+            if ( _info.globalPointerInBounds( p ) )
+                return &_info.constdata[ _info.globalPointerOffset( p ) ];
+            else
+                return nullptr;
+        } else if ( heap().owns( p ) )
             return heap().dereference( p );
         else
             return nursery.dereference( p );
