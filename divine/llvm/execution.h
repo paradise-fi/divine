@@ -798,30 +798,21 @@ struct Evaluator
             }
         }
 
-        int functionid;
+        bool invoke = isa< ::llvm::InvokeInst >( instruction.op );
+        auto pc = withValues( Get< PC >(), instruction.operand( invoke ? -3 : -1 ) );
 
-        if ( F ) {
-            if ( F->isDeclaration() )
-                assert_unreachable( "Cannot call undefined function: %s", F->getName().str().c_str() );
-            else {
-                /* TODO (performance) Use an operand Value here instead. */
-                functionid = info.functionmap[ F ];
-            }
-        } else
-            functionid = withValues( Get< PC >(), instruction.operand( -1 ) ).function;
-
-        if ( !functionid ) {
+        if ( !pc.function ) {
             ccontext.problem( Problem::InvalidArgument ); /* function 0 does not exist */
             return;
         }
 
-        ProgramInfo::Function function = info.function( PC( functionid, 0, 0 ) );
+        auto function = info.function( pc );
 
         /* report problems with the call before pushing the new stackframe */
         if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
             ccontext.problem( Problem::InvalidArgument ); /* too many actual arguments */
 
-        ccontext.enter( functionid ); /* push a new frame */
+        ccontext.enter( pc.function ); /* push a new frame */
         ccontext.jumped = true;
 
         /* Copy arguments to the new frame. */
