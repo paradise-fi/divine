@@ -927,6 +927,10 @@ struct Evaluator
             case LLVMInst::LShr:
                 implement< Arithmetic >(); break;
 
+            case LLVMInst::Unreachable:
+                ccontext.problem( Problem::UnreachableExecuted );
+                break;
+
             case LLVMInst::Fence: /* noop until we have reordering simulation */
                 break;
 

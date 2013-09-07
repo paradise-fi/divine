@@ -306,6 +306,8 @@ std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::Dema
             s << "BOUND CHECK FAILED"; break;
         case Problem::DivisionByZero:
             s << "DIVISION BY ZERO"; break;
+        case Problem::UnreachableExecuted:
+            s << "UNREACHABLE EXECUTED"; break;
     }
     s << " (thread " << int( bad.tid ) << "): ";
     s << locinfo( info, bad.where, ds, bad.what != Problem::Assert );
