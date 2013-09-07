@@ -1,6 +1,9 @@
 #include "buchi.h"
-#include <external/ltl3ba/ltl3ba.h>
 #include <wibble/regexp.h>
+
+#ifdef O_LTL3BA
+#include <external/ltl3ba/ltl3ba.h>
+#endif
 
 using namespace divine;
 
