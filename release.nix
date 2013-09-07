@@ -65,8 +65,8 @@ let
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc47.gcc}/bin/gcov" ] else [];
         compiler = if clang
-                      then [ "-DCMAKE_CXX_COMPILER=${pkgs.clang}/bin/clang++"
-                             "-DCMAKE_C_COMPILER=${pkgs.clang}/bin/clang" ]
+                      then [ "-DCMAKE_CXX_COMPILER=${pkgs.clangSelf}/bin/clang++"
+                             "-DCMAKE_C_COMPILER=${pkgs.clangSelf}/bin/clang" ]
                       else [];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
@@ -191,9 +191,9 @@ let
                               [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                              flags = [ "-DCOMPACT_CELL=OFF" ]; };
     clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
-    clang_full = mkbuild { name = "full"; inputs = { pkgs }:
-                            [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                           flags = []; clang = true; };
+    clang_medium = mkbuild { name = "full"; inputs = { pkgs }:
+                              [ pkgs.openmpi pkgs.libcxxLLVM pkgs.clangSelf pkgs.libxml2 ];
+                             flags = []; clang = true; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
