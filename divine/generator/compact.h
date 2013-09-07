@@ -12,12 +12,13 @@ namespace generator {
 
 namespace {
     template< typename Label >
-    void showLabel( std::stringstream &ss, const Label &l ) {
+    static inline void showLabel( std::stringstream &ss, const Label &l ) {
         ss << " [ " << l << " ]";
     }
 
     template<>
-    void showLabel< wibble::Unit >( std::stringstream &ss, const wibble::Unit & ) { }
+    inline void showLabel< wibble::Unit >( std::stringstream &ss,
+            const wibble::Unit & ) { }
 }
 
 template< typename _Label >

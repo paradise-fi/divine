@@ -501,7 +501,7 @@ namespace {
     };
 }
 
-PrealocateHelper preallocate( const std::string &path ) {
+static inline PrealocateHelper preallocate( const std::string &path ) {
     return PrealocateHelper( path );
 }
 
