@@ -2,8 +2,7 @@
 
 #include <atomic>
 #include <algorithm>
-//#include <list>
-//#include <iostream>
+#include <numeric>
 
 #include "lockedqueue.h"
 #include <wibble/sys/thread.h>
