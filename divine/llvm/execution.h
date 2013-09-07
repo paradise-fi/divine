@@ -22,8 +22,6 @@
   #define TargetData DataLayout
 #endif
 
-#pragma GCC diagnostic pop
-
 #include <algorithm>
 #include <cmath>
 

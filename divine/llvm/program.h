@@ -15,7 +15,6 @@
 #endif
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
-#pragma GCC diagnostic pop
 
 #include <map>
 

@@ -31,8 +31,6 @@
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 
-#pragma GCC diagnostic pop
-
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H
 

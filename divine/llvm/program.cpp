@@ -15,8 +15,6 @@
 #include <divine/llvm/wrap/Module.h>
 #include <llvm/ADT/StringMap.h>
 
-#pragma GCC diagnostic pop
-
 using namespace divine::llvm;
 using ::llvm::isa;
 using ::llvm::dyn_cast;
@@ -325,7 +323,7 @@ void ProgramInfo::pass()
                 ++ pi_function.argcount;
             }
 
-            if ( pi_function.vararg = function->isVarArg() ) {
+            if ( ( pi_function.vararg = function->isVarArg() ) ) {
                 Value vaptr;
                 vaptr.width = TD.getPointerSize();
                 vaptr.type = Value::Pointer;
