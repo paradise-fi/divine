@@ -4,7 +4,7 @@
 #define WIBBLE_MIXIN_H
 
 #include <cstddef>
-#include <bits/stl_iterator_base_types.h>
+#include <iterator>
 
 namespace wibble {
 namespace mixin {

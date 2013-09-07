@@ -8,7 +8,6 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-#include <ext/algorithm>
 
 #include <wibble/iterator.h>
 #include <wibble/exception.h>
