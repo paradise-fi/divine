@@ -179,6 +179,10 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinFree;
     if ( name == "__divine_va_start" )
         return BuiltinVaStart;
+    if ( name == "__divine_unwind" )
+        return BuiltinUnwind;
+    if ( name == "__divine_landingpad" )
+        return BuiltinLandingPad;
     if ( name == "memcpy" || name == "memmove" )
         return BuiltinMemcpy;
 

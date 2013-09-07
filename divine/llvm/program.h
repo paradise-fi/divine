@@ -120,7 +120,9 @@ enum Builtin {
     BuiltinFree,
     BuiltinAp,
     BuiltinMemcpy,
-    BuiltinVaStart
+    BuiltinVaStart,
+    BuiltinUnwind,
+    BuiltinLandingPad
 };
 
 struct ProgramInfo {

@@ -733,6 +733,59 @@ struct Evaluator
         std::copy( copy.memory(), copy.memory() + framesize, original.memory() );
     }
 
+    /*
+     * NB. Internally, we only deal with positive frameid's and they are always
+     * relative to the *topmost* frame. The userspace doesn't know the stack
+     * depth though, so we need to transform the frameid.
+     */
+    bool transform_frameid( int &frameid )
+    {
+        if ( frameid > 0 )
+            // L - (L - id - 1) - 1 = L - L + id + 1 - 1 = id
+            frameid = ccontext.stackDepth() - frameid - 1;
+        else
+            frameid = std::min( -frameid, ccontext.stackDepth() );
+
+        if ( frameid > ccontext.stackDepth() ) {
+            ccontext.problem( Problem::InvalidArgument );
+            return false;
+        }
+
+        return true;
+    }
+
+    void unwind( int frameid, ProgramInfo::Value arg )
+    {
+        if ( !transform_frameid( frameid ) )
+            return;
+
+        PC target_pc;
+
+        /* we have a place to return to */
+        if ( frameid < ccontext.stackDepth() ) {
+            auto target = info.instruction( ccontext.frame( frameid ).pc );
+
+            if ( isa< ::llvm::InvokeInst >( target.op ) ) {
+                target_pc = *reinterpret_cast< PC* >(
+                    dereference( ValueRef( target.operand( -1 ), frameid ) ) );
+                target = info.instruction( target_pc );
+            }
+
+            if ( target.result().width == arg.width )
+                memcopy( arg, ValueRef( target.result(), frameid ), arg.width );
+            else
+                ccontext.problem( Problem::InvalidArgument );
+        }
+
+        while ( frameid ) { /* jump out */
+            ccontext.leave();
+            -- frameid;
+        }
+
+        if ( target_pc.function )
+            jumpTo( target_pc );
+    }
+
     void implement_call() {
         CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
         ::llvm::Function *F = CS.getCalledFunction();
@@ -791,10 +844,16 @@ struct Evaluator
                     return;
                 }
                 case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
-                case BuiltinVaStart:
+                case BuiltinVaStart: {
                     auto f = info.functions[ ccontext.pc().function ];
                     memcopy( f.values[ f.argcount ], instruction.result(), instruction.result().width );
                     return;
+                }
+                case BuiltinUnwind:
+                    return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
+                                   instruction.operand( 1 ) );
+                case BuiltinLandingPad:
+                    assert_unimplemented();
             }
         }
 
