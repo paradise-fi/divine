@@ -54,6 +54,8 @@ __gxx_exception_cleanup (_Unwind_Reason_Code code, _Unwind_Exception *exc)
 }
 
 
+extern "C" void __cxa_throw_divine( __cxa_exception *e );
+
 extern "C" void
 __cxxabiv1::__cxa_throw (void *obj, std::type_info *tinfo, 
 			 void (*dest) (void *))
@@ -74,11 +76,14 @@ __cxxabiv1::__cxa_throw (void *obj, std::type_info *tinfo,
   __cxa_eh_globals *globals = __cxa_get_globals ();
   globals->uncaughtExceptions += 1;
 
+#if 0
 #if __arm__
   _Unwind_SjLj_RaiseException (&header->unwindHeader);
 #else
   _Unwind_RaiseException (&header->unwindHeader);
 #endif
+#endif
+  __cxa_throw_divine(header);
 
   // Some sort of unwinding error.  Note that terminate is a handler.
   __cxa_begin_catch (&header->unwindHeader);
