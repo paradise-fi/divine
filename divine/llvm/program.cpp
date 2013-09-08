@@ -241,6 +241,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                         builtin( p );
                         break;
                     }
+                case ::llvm::Intrinsic::eh_typeid_for:
                 case ::llvm::Intrinsic::trap:
                 case ::llvm::Intrinsic::vastart:
                 case ::llvm::Intrinsic::vacopy:

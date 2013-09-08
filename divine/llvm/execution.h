@@ -862,6 +862,12 @@ struct Evaluator
                 case Intrinsic::vaend:
                 case Intrinsic::vacopy:
                     assert_unimplemented(); /* TODO */
+                case Intrinsic::eh_typeid_for: {
+                    auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                    int type_id = info.function( ccontext.pc() ).typeID( tag );
+                    withValues( Set< int >( type_id ), instruction.result() );
+                    return;
+                }
                 default:
                     /* We lowered everything in buildInfo. */
                     assert_unreachable( "unexpected intrinsic" );
