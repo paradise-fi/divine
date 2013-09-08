@@ -81,7 +81,7 @@ void __cxa_throw_divine( __cxa_exception *e )
 _Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
 _Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-void _Unwind_DeleteException (struct _Unwind_Exception *) { __divine_assert( 0 ); }
+void _Unwind_DeleteException (struct _Unwind_Exception *) {} /* do nothing */
 _Unwind_Word _Unwind_GetGR (struct _Unwind_Context *, int) { __divine_assert( 0 ); return 0; }
 void _Unwind_SetGR (struct _Unwind_Context *, int, _Unwind_Word) { __divine_assert( 0 ); }
 _Unwind_Ptr _Unwind_GetIP (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
