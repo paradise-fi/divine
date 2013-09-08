@@ -76,25 +76,3 @@ extern "C" { /* pdclib glue functions */
     void _PDCLIB_Exit( int ) { __divine_assert( 0 ); }
 }
 
-/******** unwind library stubs */
-
-#include "libsupc++/unwind.h"
-
-_Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-_Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-_Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-void _Unwind_DeleteException (struct _Unwind_Exception *) { __divine_assert( 0 ); }
-_Unwind_Word _Unwind_GetGR (struct _Unwind_Context *, int) { __divine_assert( 0 ); return 0; }
-void _Unwind_SetGR (struct _Unwind_Context *, int, _Unwind_Word) { __divine_assert( 0 ); }
-_Unwind_Ptr _Unwind_GetIP (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-_Unwind_Ptr _Unwind_GetIPInfo (struct _Unwind_Context *, int *) { __divine_assert( 0 ); return 0; }
-void _Unwind_SetIP (struct _Unwind_Context *, _Unwind_Ptr) { __divine_assert( 0 ); }
-_Unwind_Word _Unwind_GetCFA (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-void *_Unwind_GetLanguageSpecificData (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-_Unwind_Ptr _Unwind_GetRegionStart (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __divine_assert( 0 ); }
-void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __divine_assert( 0 ); }
-_Unwind_Word _Unwind_GetBSP (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-_Unwind_Ptr _Unwind_GetDataRelBase (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-_Unwind_Ptr _Unwind_GetTextRelBase (struct _Unwind_Context *) { __divine_assert( 0 ); return 0; }
-void * _Unwind_FindEnclosingFunction (void *pc) { __divine_assert( 0 ); return 0; }
