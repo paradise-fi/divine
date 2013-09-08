@@ -28,7 +28,10 @@ void MachineState::rewind( Blob to, int thread )
 void MachineState::switch_thread( int thread )
 {
     _thread = thread;
-    _frame = &stack().get( stack().get().length() - 1 );
+    if ( stack().get().length() )
+        _frame = &stack().get( stack().get().length() - 1 );
+    else
+        _frame = nullptr;
 }
 
 int MachineState::new_thread()
