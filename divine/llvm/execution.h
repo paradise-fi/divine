@@ -869,8 +869,9 @@ struct Evaluator
                     return;
                 }
                 default:
-                    /* We lowered everything in buildInfo. */
-                    assert_unreachable( "unexpected intrinsic" );
+                    /* We lowered everything else in buildInfo. */
+                    F->dump();
+                    assert_unreachable( "unexpected intrinsic %d", F->getIntrinsicID() );
             }
 
             switch( instruction.builtin ) {
@@ -1072,7 +1073,9 @@ struct Evaluator
             case LLVMInst::Fence: /* noop until we have reordering simulation */
                 break;
 
-            default: assert_unreachable( "unknown opcode %d", instruction.opcode );
+            default:
+                instruction.op->dump();
+                assert_unreachable( "unknown opcode %d", instruction.opcode );
         }
     }
 
