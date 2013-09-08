@@ -259,6 +259,17 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     if ( isa< ::llvm::ExtractValueInst >( p.I ) )
         insertIndices< ::llvm::ExtractValueInst >( p );
 
+    if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( p.I ) ) {
+        for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
+            if ( LPI->isFilter( i ) )
+                continue;
+            Pointer ptr = constant< Pointer >( insn.operand( i + 1 ) );
+            if ( !function( p.pc ).typeID( ptr ) )
+                function( p.pc ).typeIDs.push_back( ptr );
+            assert( function( p.pc ).typeID( ptr ) );
+        }
+    }
+
     pcmap.insert( std::make_pair( p.I, p.pc ) );
     insn.result() = insert( p.pc.function, &*p.I );
 

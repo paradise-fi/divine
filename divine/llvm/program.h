@@ -186,6 +186,12 @@ struct ProgramInfo {
         bool vararg:1;
         std::vector< Value > values;
         std::vector< BB > blocks;
+        std::vector< Pointer > typeIDs; /* for landing pads */
+        int typeID( Pointer p )
+        {
+            auto found = std::find( typeIDs.begin(), typeIDs.end(), p );
+            return found == typeIDs.end() ? 0 : 1 + (found - typeIDs.begin());
+        }
         BB &block( PC pc ) {
             assert_leq( int( pc.block ), int( blocks.size() ) - 1 );
             return blocks[ pc.block ];
