@@ -803,6 +803,29 @@ struct Evaluator
         maybe_die();
     }
 
+    struct LPInfo {
+        bool cleanup;
+        Pointer person;
+        std::vector< std::pair< int, Pointer > > items;
+        LPInfo() : cleanup( false ) {}
+    };
+
+    LPInfo getLPInfo( PC pc, int frameid = 0 )
+    {
+        LPInfo r;
+        auto lpi = info.instruction( pc );
+        if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( lpi.op ) ) {
+            r.cleanup = LPI->isCleanup();
+            r.person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
+            for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
+                auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
+                auto type_id = LPI->isFilter( i ) ? -1 : info.function( pc ).typeID( tag );
+                r.items.push_back( std::make_pair( type_id, tag ) );
+            }
+        }
+        return r;
+    }
+
     Pointer make_lpinfo( int frameid )
     {
         if ( !transform_frameid( frameid ) )
@@ -810,38 +833,25 @@ struct Evaluator
         if ( frameid == ccontext.stackDepth() )
             return Pointer();
 
+        LPInfo lp;
+
         PC pc = ccontext.frame( frameid ).pc;
         auto insn = info.instruction( pc );
-
-        std::vector< std::pair< bool, Pointer > > items;
-        bool cleanup = false;
-        Pointer person;
-
         if ( isa< ::llvm::InvokeInst >( insn.op ) ) {
             pc = withValues( Get< PC >(), ValueRef( insn.operand( -1 ), frameid ) );
-            auto lpi = info.instruction( pc );
-            if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( lpi.op ) ) {
-                cleanup = LPI->isCleanup();
-                person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
-                for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
-                    auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
-                    items.push_back( std::make_pair( LPI->isFilter( i ), tag ) );
-                }
-            }
+            lp = getLPInfo( pc, frameid );
         }
 
         /* Well, this is not very pretty. */
-
         int psize = info.TD.getPointerSize();
-
-        Pointer r = econtext.malloc( 8 + psize + (4 + psize) * items.size() );
+        Pointer r = econtext.malloc( 8 + psize + (4 + psize) * lp.items.size() );
 
         auto c = econtext.dereference( r );
-        *reinterpret_cast< int32_t * >( c ) = cleanup; c += 4;
-        *reinterpret_cast< int32_t * >( c ) = items.size(); c += 4;
-        *reinterpret_cast< Pointer * >( c ) = person; c+= psize;
+        *reinterpret_cast< int32_t * >( c ) = lp.cleanup; c += 4;
+        *reinterpret_cast< int32_t * >( c ) = lp.items.size(); c += 4;
+        *reinterpret_cast< Pointer * >( c ) = lp.person; c+= psize;
 
-        for ( auto p : items ) {
+        for ( auto p : lp.items ) {
             *reinterpret_cast< int32_t * >( c ) = p.first; c += 4;
             *reinterpret_cast< Pointer * >( c ) = p.second; c+= psize;
         }

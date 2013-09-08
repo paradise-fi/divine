@@ -149,7 +149,7 @@ void *__divine_va_start( void ) NOTHROW;
 void __divine_unwind( int frameid, ... ) NOTHROW __attribute__((noreturn));
 
 struct _DivineLP_Clause {
-    int32_t is_filter;
+    int32_t type_id; // -1 for a filter
     void *tag; /* either a pointer to an array constant for a filter, or a
                   typeinfo pointer for catch */
 } __attribute__((packed));
