@@ -260,6 +260,9 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     if ( isa< ::llvm::ExtractValueInst >( p.I ) )
         insertIndices< ::llvm::ExtractValueInst >( p );
 
+    if ( isa< ::llvm::InsertValueInst >( p.I ) )
+        insertIndices< ::llvm::InsertValueInst >( p );
+
     if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( p.I ) ) {
         for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
             if ( LPI->isFilter( i ) )
