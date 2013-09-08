@@ -1,10 +1,11 @@
 . lib
 
 llvm_verify valid <<EOF
+#include <assert.h>
 int array[2];
 void main() {
     array[1] = 3;
-    __divine_assert( array[1] == 3 );
+    assert( array[1] == 3 );
 }
 EOF
 
