@@ -6,3 +6,11 @@ void main() {
     a = a / 0;
 }
 EOF
+
+llvm_verify valid <<EOF
+#include <assert.h>
+void main() {
+    int a = -1;
+    assert( a < 0 );
+}
+EOF

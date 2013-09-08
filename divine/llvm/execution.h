@@ -966,10 +966,20 @@ struct Evaluator
                 implement( GetElement(), 2 ); break;
             case LLVMInst::Select:
                 implement< Select >(); break;
+
             case LLVMInst::ICmp:
+                switch ( dyn_cast< ICmpInst >( instruction.op )->getPredicate() ) {
+                    case ICmpInst::ICMP_SLT:
+                    case ICmpInst::ICMP_SGT:
+                    case ICmpInst::ICMP_SLE:
+                    case ICmpInst::ICMP_SGE: is_signed = true;
+                    default: ;
+                }
                 implement< ICmp >(); break;
+
             case LLVMInst::FCmp:
                 implement< FCmp >(); break;
+
             case LLVMInst::ZExt:
             case LLVMInst::FPExt:
             case LLVMInst::UIToFP:
@@ -1017,6 +1027,10 @@ struct Evaluator
             case LLVMInst::InsertValue:
                 implement_insertvalue(); break;
 
+            case LLVMInst::SDiv:
+            case LLVMInst::SRem:
+            case LLVMInst::AShr:
+                is_signed = true;
             case LLVMInst::FAdd:
             case LLVMInst::Add:
             case LLVMInst::FSub:
@@ -1024,16 +1038,13 @@ struct Evaluator
             case LLVMInst::FMul:
             case LLVMInst::Mul:
             case LLVMInst::FDiv:
-            case LLVMInst::SDiv:
             case LLVMInst::UDiv:
             case LLVMInst::FRem:
             case LLVMInst::URem:
-            case LLVMInst::SRem:
             case LLVMInst::And:
             case LLVMInst::Or:
             case LLVMInst::Xor:
             case LLVMInst::Shl:
-            case LLVMInst::AShr:
             case LLVMInst::LShr:
                 implement< Arithmetic >(); break;
 
