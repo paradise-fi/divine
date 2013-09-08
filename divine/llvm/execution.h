@@ -800,6 +800,52 @@ struct Evaluator
         maybe_die();
     }
 
+    Pointer make_lpinfo( int frameid )
+    {
+        if ( !transform_frameid( frameid ) )
+            return Pointer();
+        if ( frameid == ccontext.stackDepth() )
+            return Pointer();
+
+        PC pc = ccontext.frame( frameid ).pc;
+        auto insn = info.instruction( pc );
+
+        std::vector< std::pair< bool, Pointer > > items;
+        bool cleanup = false;
+        Pointer person;
+
+        if ( isa< ::llvm::InvokeInst >( insn.op ) ) {
+            pc = withValues( Get< PC >(), ValueRef( insn.operand( -1 ), frameid ) );
+            auto lpi = info.instruction( pc );
+            if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( lpi.op ) ) {
+                cleanup = LPI->isCleanup();
+                person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
+                for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
+                    auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
+                    items.push_back( std::make_pair( LPI->isFilter( i ), tag ) );
+                }
+            }
+        }
+
+        /* Well, this is not very pretty. */
+
+        int psize = info.TD.getPointerSize();
+
+        Pointer r = econtext.malloc( 8 + psize + (4 + psize) * items.size() );
+
+        auto c = econtext.dereference( r );
+        *reinterpret_cast< int32_t * >( c ) = cleanup; c += 4;
+        *reinterpret_cast< int32_t * >( c ) = items.size(); c += 4;
+        *reinterpret_cast< Pointer * >( c ) = person; c+= psize;
+
+        for ( auto p : items ) {
+            *reinterpret_cast< int32_t * >( c ) = p.first; c += 4;
+            *reinterpret_cast< Pointer * >( c ) = p.second; c+= psize;
+        }
+
+        return r;
+    }
+
     void implement_call() {
         CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
         ::llvm::Function *F = CS.getCalledFunction();
@@ -867,7 +913,9 @@ struct Evaluator
                     return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
                                    instruction.operand( 1 ) );
                 case BuiltinLandingPad:
-                    assert_unimplemented();
+                    withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ), true ),
+                                instruction.result() );
+                    return;
             }
         }
 
