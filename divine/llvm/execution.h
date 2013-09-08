@@ -779,8 +779,7 @@ struct Evaluator
             auto target = info.instruction( ccontext.frame( frameid ).pc );
 
             if ( isa< ::llvm::InvokeInst >( target.op ) ) {
-                target_pc = *reinterpret_cast< PC* >(
-                    dereference( ValueRef( target.operand( -1 ), frameid ) ) );
+                target_pc = withValues( Get< PC >(), ValueRef( target.operand( -1 ), frameid ) );
                 target = info.instruction( target_pc );
             }
 
