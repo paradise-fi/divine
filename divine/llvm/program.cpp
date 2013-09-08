@@ -48,6 +48,10 @@ PC ProgramInfo::getCodePointer( ::llvm::Value *val )
             throw wibble::exception::Consistency(
                 "ProgramInfo::insert",
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
+
+        if ( builtin( F ) )
+            return PC( 0, 0, 0 );
+
         return PC( functionmap[ F ], 0, 0 );
     }
     return PC();
