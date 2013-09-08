@@ -107,6 +107,8 @@ __cxxabiv1::__cxa_rethrow ()
       else
 	header->handlerCount = -header->handlerCount;
 
+      __cxa_throw_divine(header);
+#if 0
 #if __arm__
       _Unwind_SjLj_Resume_or_Rethrow (&header->unwindHeader);
 #else
@@ -114,6 +116,7 @@ __cxxabiv1::__cxa_rethrow ()
       _Unwind_RaiseException (&header->unwindHeader);
 #else
       _Unwind_Resume_or_Rethrow (&header->unwindHeader);
+#endif
 #endif
 #endif
   
