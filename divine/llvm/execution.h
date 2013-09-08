@@ -767,7 +767,9 @@ struct Evaluator
         return true;
     }
 
-    void unwind( int frameid, ProgramInfo::Value arg )
+    typedef std::vector< ProgramInfo::Value > Values;
+
+    void unwind( int frameid, const Values &args )
     {
         if ( !transform_frameid( frameid ) )
             return;
@@ -783,10 +785,11 @@ struct Evaluator
                 target = info.instruction( target_pc );
             }
 
-            if ( target.result().width == arg.width )
-                memcopy( arg, ValueRef( target.result(), frameid ), arg.width );
-            else
-                ccontext.problem( Problem::InvalidArgument );
+            int copied = 0;
+            for ( auto arg : args ) {
+                memcopy( arg, ValueRef( target.result(), frameid, -1, copied ), arg.width );
+                copied += arg.width;
+            }
         }
 
         while ( frameid ) { /* jump out */
@@ -911,7 +914,8 @@ struct Evaluator
                 }
                 case BuiltinUnwind:
                     return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
-                                   instruction.operand( 1 ) );
+                                   Values( instruction.values.begin() + 2,
+                                           instruction.values.end() ) );
                 case BuiltinLandingPad:
                     withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ), true ),
                                 instruction.result() );
@@ -1053,7 +1057,7 @@ struct Evaluator
                 break;
 
             case LLVMInst::Resume:
-                unwind( -1 /* the immediate caller */, instruction.operand( 0 ) );
+                unwind( -1, Values( { instruction.operand( 0 ) } ) );
                 break;
 
             case LLVMInst::LandingPad:
