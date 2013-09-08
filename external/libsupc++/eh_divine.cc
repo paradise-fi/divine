@@ -8,7 +8,7 @@ struct LPReturn
 {
     _Unwind_Exception *e;
     int handle;
-};
+} __attribute__((packed));
 
 static inline LPReturn lpreturn( _Unwind_Exception *e, int h )
 {
@@ -55,14 +55,17 @@ void __cxa_throw_divine( __cxa_exception *e )
 
         int cc = lp->clause_count;
         for ( int i = 0; i < cc; i ++ ) {
-            int filter = lp->clause[i].is_filter;
+            int type_id = lp->clause[i].type_id;
             void *tag = lp->clause[i].tag;
-            if ( !filter && ( !tag || tag == e->exceptionType ) )
+            if ( type_id > 0 && ( !tag || tag == e->exceptionType ) )
             {
-                handler = i;
+                handler = type_id;
                 personality = (Personality) lp->personality;
                 break; // found the right lp, stop looking
             }
+            /* TODO: Handle filters aka exception specifications, aka
+               int blee(...) throws( stuff ). The spec wants us to call the
+               unexpected handler. */
         }
 
         -- frameid;
