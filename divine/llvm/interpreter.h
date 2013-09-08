@@ -282,6 +282,8 @@ struct Interpreter
     int new_thread( Function *f );
     int new_thread( PC pc, Maybe< Pointer > arg, bool = false );
     int threadId() { return tid; }
+    int threadCount() { return state._thread_count; }
+    void switch_thread( int t ) { state.switch_thread( t ); }
     PC &pc() { return state._frame->pc; }
 };
 

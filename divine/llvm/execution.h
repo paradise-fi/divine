@@ -153,6 +153,8 @@ struct ControlContext {
     int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
     int stackDepth() { assert_die(); }
     int threadId() { assert_die(); }
+    int threadCount() { assert_die(); }
+    void switch_thread( int ) { assert_die(); }
     void dump() {}
 };
 
@@ -660,10 +662,21 @@ struct Evaluator
         switchBB( to );
     }
 
+    void maybe_die() {
+        /* kill off everything if the main thread died */
+        if ( ccontext.threadId() == 0 && ccontext.stackDepth() == 0 ) {
+            for ( int i = 1; i < ccontext.threadCount(); ++i ) {
+                ccontext.switch_thread( i );
+                while ( ccontext.stackDepth() )
+                    ccontext.leave();
+            }
+        }
+    }
+
     void implement_ret() {
         if ( ccontext.stackDepth() == 1 ) {
             ccontext.leave();
-            return;
+            return maybe_die();
         }
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
@@ -784,6 +797,8 @@ struct Evaluator
 
         if ( target_pc.function )
             jumpTo( target_pc );
+
+        maybe_die();
     }
 
     void implement_call() {
