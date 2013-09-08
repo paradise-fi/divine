@@ -74,6 +74,9 @@ extern "C" FILE *tmpfile() throw() { __divine_assert( 0 ); return 0; }
 extern "C" { /* pdclib glue functions */
     int _PDCLIB_rename( const char *, const char * ) { __divine_assert( 0 ); return 0; }
     int _PDCLIB_open( const char *, int ) { __divine_assert( 0 ); return 0; }
-    void _PDCLIB_Exit( int ) { __divine_unwind( INT_MIN ); }
+    void _PDCLIB_Exit( int rv ) {
+        __divine_assert( !rv );
+        __divine_unwind( INT_MIN );
+    }
 }
 

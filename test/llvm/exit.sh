@@ -8,3 +8,11 @@ void main() {
     assert( 0 );
 }
 EOF
+
+llvm_verify invalid ASSERT Exit <<EOF
+#include <stdlib.h>
+
+void main() {
+    exit( 1 );
+}
+EOF
