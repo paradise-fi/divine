@@ -993,6 +993,13 @@ struct Evaluator
                 ccontext.problem( Problem::UnreachableExecuted );
                 break;
 
+            case LLVMInst::Resume:
+                unwind( -1 /* the immediate caller */, instruction.operand( 0 ) );
+                break;
+
+            case LLVMInst::LandingPad:
+                break; /* nothing to do, handled by the unwinder */
+
             case LLVMInst::Fence: /* noop until we have reordering simulation */
                 break;
 
