@@ -1,7 +1,6 @@
 #include <divine/utility/strings.h>
 #include <divine/dve/compiler.h>
-#include <divine/generator/common.h>
-//*
+
 using namespace wibble::str;
 using namespace std;
 
