@@ -79,7 +79,7 @@ struct Main {
     StringOption *o_demangle;
 
     BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
-    BoolOption *o_mpi;
+    BoolOption *o_mpi, *o_probabilistic;
 
     int argc;
     const char **argv;
@@ -329,6 +329,9 @@ struct Main {
         o_dummy = input->add< BoolOption >(
             "dummy", '\0', "dummy", "",
             "use a \"dummy\" benchmarking model instead of real input" );
+        o_probabilistic = input->add< BoolOption >(
+            "probabilistic", '\0', "probabilistic", "",
+            "enable probabilistic extensions (where available)" );
 
         // drawing options
         o_distance = drawing->add< IntOption >(
@@ -500,6 +503,7 @@ struct Main {
         meta.input.model = input;
         meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
         meta.input.definitions = o_definitions->values();
+        meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
         meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
         meta.algorithm.sharedVisitor = o_shared->boolValue();
