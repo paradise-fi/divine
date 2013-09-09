@@ -31,6 +31,8 @@
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 
+#include <divine/toolkit/probability.h>
+
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H
 
@@ -39,6 +41,7 @@ namespace llvm {
 
 struct Interpreter;
 using wibble::Maybe;
+using toolkit::Probability;
 
 using namespace ::llvm;
 
@@ -184,7 +187,7 @@ struct Interpreter
         while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            run( tid, yield );
+            run( tid, yield, Probability( (tid + 1) * 2 ) );
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
@@ -197,13 +200,13 @@ struct Interpreter
     void evaluateSwitchBB( PC to );
 
     template< typename Yield >
-    void run( int tid, Yield yield ) {
+    void run( int tid, Yield yield, Probability p ) {
         std::set< PC > seen;
-        run( tid, yield, seen );
+        run( tid, yield, p, seen );
     }
 
     template< typename Yield >
-    void run( int tid, Yield yield, std::set< PC > &seen ) {
+    void run( int tid, Yield yield, Probability p, std::set< PC > &seen ) {
 
         if ( !state._thread_count )
             return; /* no more successors for you */
@@ -218,17 +221,17 @@ struct Interpreter
             if ( !pc().masked && !seen.empty() ) {
                 if ( tauplus ) {
                     if ( observable( seen ) || seen.count( pc() ) ) {
-                        yield( state.snapshot() );
+                        yield( state.snapshot(), p );
                         return;
                     }
                 } else if ( tauminus ) {
                     /* look at seen too, because jumps might have been masked */
                     if ( observable( seen ) || jumped || seen.count( pc() ) ) {
-                        yield( state.snapshot() );
+                        yield( state.snapshot(), p );
                         return;
                     }
                 } else {
-                    yield( state.snapshot() );
+                    yield( state.snapshot(), p );
                     return;
                 }
             }
@@ -249,7 +252,7 @@ struct Interpreter
                     state.rewind( fork, tid );
                     choose( i );
                     advance();
-                    run( tid, yield, seen );
+                    run( tid, yield, p, seen );
                 }
                 alloc.pool().free( fork );
                 return;
@@ -259,7 +262,7 @@ struct Interpreter
                 advance();
         }
 
-        yield( state.snapshot() );
+        yield( state.snapshot(), p );
     }
 
     /* EvalContext interface. */

@@ -24,14 +24,28 @@ namespace divine {
 namespace generator {
 
 using namespace ::llvm;
+using divine::llvm::Probability;
 
-struct LLVM : Common< Blob > {
+struct NoLabel
+{
+    NoLabel() {}
+    NoLabel( Probability ) {}
+    std::string text() { return ""; }
+};
+
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, const NoLabel & ) { return bs; }
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, NoLabel & ) { return bs; }
+
+template< typename _Label >
+struct _LLVM : Common< Blob > {
     typedef Blob Node;
     std::shared_ptr< divine::llvm::BitCode > bitcode;
     divine::llvm::Interpreter *_interpreter;
     std::shared_ptr< divine::llvm::Interpreter > _interpreter_2;
     Node _initial;
-    typedef wibble::Unit Label;
+    typedef _Label Label;
 
     typedef std::vector< int > PropGuard;
     typedef std::pair< PropGuard, int > PropTrans;
@@ -67,8 +81,8 @@ struct LLVM : Common< Blob > {
     template< typename Yield >
     void successors( Node st, Yield yield ) {
         if ( !use_property )
-            return interpreter().run( st, [&]( Node n ) { yield( n, Label() ); } );
-        interpreter().run( st, [&]( Node n ){
+            return interpreter().run( st, [&]( Node n, Probability p ) { yield( n, Label( p ) ); } );
+        interpreter().run( st, [&]( Node n, Probability p ){
                 std::vector< int > buchi_succs;
                 for ( auto next : prop_next[ flags( n ).buchi ] ) {
                     auto trans = prop_trans[ next ];
@@ -90,7 +104,7 @@ struct LLVM : Common< Blob > {
                 }
 
                 flags( n ).buchi = buchi_succs.front();
-                yield( n, Label() );
+                yield( n, p ); /* TODO? */
             } );
     }
 
@@ -98,8 +112,10 @@ struct LLVM : Common< Blob > {
         pool().free( s );
     }
 
-    divine::llvm::MachineState::Flags &flags( Blob b ) {
-        return pool().get< divine::llvm::MachineState::Flags >( b, this->slack() );
+    using Flags = divine::llvm::MachineState::Flags;
+
+    Flags &flags( Blob b ) {
+        return pool().template get< Flags >( b, this->slack() );
     }
 
     bool isGoal( Node n ) {
@@ -134,8 +150,8 @@ struct LLVM : Common< Blob > {
         return s;
     }
 
-    std::string showTransition( Node from, Node to, Label ) {
-        return ""; // dummy
+    std::string showTransition( Node from, Node to, Label l ) {
+        return l.text();
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
@@ -143,7 +159,9 @@ struct LLVM : Common< Blob > {
         exit( 1 );
     }
 
-    void read( std::string file, std::vector< std::string > definitions, LLVM *blueprint = nullptr ) {
+    void read( std::string file, std::vector< std::string > definitions,
+               _LLVM *blueprint = nullptr )
+    {
         if ( blueprint )
             bitcode = blueprint->bitcode;
         else
@@ -267,18 +285,21 @@ struct LLVM : Common< Blob > {
         demangle = st;
     }
 
-    LLVM() : _interpreter( 0 ), use_property( false ) {}
-    LLVM( const LLVM &other ) {
+    _LLVM() : _interpreter( 0 ), use_property( false ) {}
+    _LLVM( const _LLVM &other ) {
         *this = other;
         _interpreter = 0;
         _initial = Node();
     }
 
-    ~LLVM() {
+    ~_LLVM() {
         delete _interpreter;
     }
 
 };
+
+typedef _LLVM< NoLabel > LLVM;
+typedef _LLVM< Probability > ProbabilisticLLVM;
 
 }
 }
