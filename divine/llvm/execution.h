@@ -143,7 +143,7 @@ MATCH( 4, decons< 3 >( x ), decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x )
  * control-flow-free snippets (like ConstantExpr). */
 struct ControlContext {
     bool jumped;
-    int choice;
+    Choice choice;
     void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
     MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
@@ -886,9 +886,17 @@ struct Evaluator
 
             switch( instruction.builtin ) {
                 case NotBuiltin: break;
-                case BuiltinChoice:
-                    ccontext.choice = withValues( GetInt(), instruction.operand( 0 ) );
+                case BuiltinChoice: {
+                    auto &c = ccontext.choice;
+                    c.options = withValues( GetInt(), instruction.operand( 0 ) );
+                    for ( int i = 1; i < instruction.values.size() - 2; ++i )
+                        c.p.push_back( withValues( GetInt(), instruction.operand( i ) ) );
+                    if ( !c.p.empty() && c.p.size() != c.options ) {
+                        ccontext.problem( Problem::InvalidArgument );
+                        c.p.clear();
+                    }
                     return;
+                }
                 case BuiltinAssert:
                     if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
                         ccontext.problem( Problem::Assert );

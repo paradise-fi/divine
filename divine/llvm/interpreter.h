@@ -85,7 +85,7 @@ struct Interpreter
     std::map< std::string, std::string > properties;
 
     bool jumped;
-    int choice;
+    Choice choice;
     int tid;
 
     bool tauminus, tauplus, taustores;
@@ -237,22 +237,25 @@ struct Interpreter
             }
 
             jumped = false;
-            choice = 0;
+            choice.p.clear();
+            choice.options = 0;
             seen.insert( pc() );
             evaluate();
 
             if ( !state.stack().get().length() )
                 break; /* this thread is done */
 
-            if ( choice ) {
+            if ( choice.options ) {
                 assert( !jumped );
                 Blob fork = state.snapshot();
-                int limit = choice; /* make a copy, sublings must overwrite the original */
-                for ( int i = 0; i < limit; ++i ) {
+                Choice c = choice; /* make a copy, sublings must overwrite the original */
+                for ( int i = 0; i < c.options; ++i ) {
                     state.rewind( fork, tid );
                     choose( i );
                     advance();
-                    run( tid, yield, p, seen );
+                    auto pp = c.p.empty() ? p.levelup( i + 1 ) :
+                              p * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
+                    run( tid, yield, pp, seen );
                 }
                 alloc.pool().free( fork );
                 return;

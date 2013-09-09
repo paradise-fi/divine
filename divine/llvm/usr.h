@@ -108,8 +108,14 @@ void __divine_ap( int id ) NOTHROW;
  * Non-deterministic choice: when __divine_choice is encountered, the
  * "universe" of the program splits into n copies. Each copy of the "universe"
  * will see a different return value from __divine_choice, starting from 0.
+ *
+ * When more than one parameter is given, the choice becomes probabilistic: for
+ * N choices, you need to provide N additional integers, giving probability
+ * weight of a given alternative (numbering from 0). E.g.
+ * `__divine_choice( 2, 1, 9 )` will return 0 with probability 1/10 and 1 with
+ * probability 9/10.
  */
-int __divine_choice( int n ) NOTHROW;
+int __divine_choice( int n, ... ) NOTHROW;
 
 /*
  * Heap access. To obtain a new heap block, call __divine_malloc with a

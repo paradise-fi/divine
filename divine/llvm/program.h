@@ -125,6 +125,12 @@ enum Builtin {
     BuiltinLandingPad
 };
 
+struct Choice {
+    int options;
+    // might be empty or contain probability for each option
+    std::vector< int > p;
+};
+
 struct ProgramInfo {
     ::llvm::IntrinsicLowering *IL;
     ::llvm::Module *module;
