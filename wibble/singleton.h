@@ -6,6 +6,7 @@
  * Degenerated container to hold a single value
  *
  * Copyright (C) 2006  Enrico Zini <enrico@debian.org>
+ *           (C) 2013  Petr Rockai <me@mornfall.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -75,6 +76,7 @@ public:
     };
 
     explicit Singleton(const T& value) : value(value) {}
+    Singleton() : value() {}
 
     bool empty() const { return false; }
     size_t size() const { return 1; }
@@ -83,6 +85,17 @@ public:
     iterator end() { return iterator(); }
     const_iterator begin() const { return const_iterator(&value); }
     const_iterator end() const { return const_iterator(); }
+
+    iterator insert( iterator position, const value_type &v )
+    {
+        value = v;
+        return begin();
+    }
+
+    iterator insert( const value_type &v ) {
+        value = v;
+        return begin();
+    }
 };
 
 template<typename T>
