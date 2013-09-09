@@ -20,10 +20,11 @@ struct Input {
     std::string trace;
     graph::PropertyType propertyType;
     bool dummygen;
+    bool probabilistic;
 
     std::vector< std::string > definitions;
 
-    Input() : propertyType( graph::PT_Goal ), dummygen( false ) {}
+    Input() : propertyType( graph::PT_Goal ), dummygen( false ), probabilistic( false ) {}
 };
 
 struct Execution {

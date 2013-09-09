@@ -132,19 +132,33 @@ namespace generator {
 #ifdef O_LLVM
     namespace intern {
         GENERATOR( LLVM, ".bc", "LLVM", Any, "divine/generator/llvm.h" );
+        GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any, "divine/generator/llvm.h" );
+        struct LLVMInit {
+            void init( Meta &meta ) {
+                if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
+                    if ( !::llvm::llvm_start_multithreaded() ) {
+                        std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
+                                  << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
+                        assert_unreachable( "LLVM error" );
+                    }
+            }
+        };
     }
-    struct LLVM : public intern::LLVM {
-        void init( Meta &meta ) {
-            if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
-                if ( !::llvm::llvm_start_multithreaded() ) {
-                    std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                              << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-                    assert_unreachable( "LLVM error" );
-                }
+
+    struct LLVM : intern::LLVM, intern::LLVMInit {
+        static bool select( Meta &meta ) {
+            return intern::LLVM::select( meta ) && !meta.input.probabilistic;
         }
     };
+    struct ProbabilisticLLVM : intern::ProbabilisticLLVM, intern::LLVMInit {
+        static bool select( Meta &meta ) {
+            return intern::LLVM::select( meta ) && meta.input.probabilistic;
+        }
+    };
+
 #else
     using LLVM = _Missing;
+    using ProbabilisticLLVM = _Missing;
 #endif
 
 #if O_COMPACT
@@ -178,8 +192,8 @@ namespace generator {
     using Dummy = _Missing;
 #endif
 
-    using Generators = TypeList< Dve, Coin, LLVM, Timed, CESMI,
-          CompactWLabel, Compact, Dummy, NoGeneratorErr >;
+    using Generators = TypeList< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
+                                 CompactWLabel, Compact, Dummy, NoGeneratorErr >;
 
 #undef GENERATOR
 }
