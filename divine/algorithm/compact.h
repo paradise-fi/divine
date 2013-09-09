@@ -443,7 +443,9 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
                         reinterpret_cast< EdgeSpec * >( ptr ) );
                 } );
 
-        assert( this->topology().ring( true, &This::_writeFile ) );
+        auto r = this->topology().ring( true, &This::_writeFile );
+        assert( r );
+        static_cast< void >( r );
     }
 
     std::tuple< Node, int64_t > _getNodeId( std::tuple< Node, int64_t > q ) {

@@ -356,7 +356,9 @@ struct Compact {
         struct stat st;
         int fd = ::open( path.c_str(), openmode );
         assert_leq( 0, fd );
-        assert_eq( ::fstat( fd, &st ), 0 );
+        auto r = ::fstat( fd, &st );
+        assert_eq( r, 0 );
+        static_cast< void >( r );
         size_t size = st.st_size;
 
         void *ptr = ::mmap( nullptr, size, mmapProt, MAP_SHARED, fd, 0 );
@@ -430,7 +432,9 @@ namespace {
                 fileSize += nodeData;
 
 
-            assert_eq( ::posix_fallocate( fd, 0, fileSize ) , 0 );
+            auto r = ::posix_fallocate( fd, 0, fileSize );
+            assert_eq( r , 0 );
+            static_cast< void >( r );
 
             void *ptr = ::mmap( nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
 #pragma GCC diagnostic push
