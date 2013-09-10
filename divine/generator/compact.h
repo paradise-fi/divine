@@ -24,6 +24,8 @@ namespace {
 template< typename _Label >
 struct _Compact : public Common< Blob > {
 
+    using IsCompact = wibble::Unit;
+
     using Node = Blob;
     using Label = _Label;
     using Common = generator::Common< Blob >;
@@ -35,6 +37,10 @@ struct _Compact : public Common< Blob > {
         EdgeSpec() = default;
         EdgeSpec( Node n, Label l ) : std::tuple< Node, Label >( n, l ) { }
     };
+
+    compact::Capabilities capabilities() {
+        return compact.header->capabilities;
+    }
 
     int64_t index( Node n ) {
         return *reinterpret_cast< int64_t * >(

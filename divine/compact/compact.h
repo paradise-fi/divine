@@ -82,21 +82,17 @@ enum class Capability : uint64_t {
     UInt64Labels = 0x100
 };
 
-template< Capability c >
-struct ShowCapability { };
-
-#define SHOW_CAPABILITY( C ) template<> \
-    struct ShowCapability< Capability::C > { \
-        using Defined = wibble::Unit; \
-        static constexpr const char *value = #C; \
-    }
-
-SHOW_CAPABILITY( ForwardEdges );
-SHOW_CAPABILITY( BackwardEdges );
-SHOW_CAPABILITY( Nodes );
-SHOW_CAPABILITY( UInt64Labels );
-
+static inline std::string showCapability( Capability c ) {
+#define SHOW_CAPABILITY( C ) if ( c == Capability::C ) return #C;
+    SHOW_CAPABILITY( ForwardEdges );
+    SHOW_CAPABILITY( BackwardEdges );
+    SHOW_CAPABILITY( Nodes );
+    SHOW_CAPABILITY( UInt64Labels );
+    SHOW_CAPABILITY( Probability );
 #undef SHOW_CAPABILITY
+
+    return "<<UNKNOWN=" + std::to_string( uint64_t( c ) ) + ">>";
+}
 
 
 struct Capabilities : std::bitset< 64 > {
@@ -128,7 +124,15 @@ struct Capabilities : std::bitset< 64 > {
     }
 
     std::string string() const {
-        assert_unimplemented();
+        std::stringstream ss;
+        for ( uint64_t mask = 1; mask; mask <<= 1 ) {
+            if ( ( (*this) & mask ) == mask )
+                ss << " | " << showCapability( static_cast< Capability >( mask ) );
+        }
+        ss << " )";
+        auto str = ss.str();
+        str[ 1 ] = '(';
+        return str.substr( 1 );
     }
 
   protected:
