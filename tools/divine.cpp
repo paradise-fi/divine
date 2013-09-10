@@ -391,6 +391,7 @@ struct Main {
         cmd_compact->add( reduce );
         cmd_compact->add( compression );
         cmd_compact->add( definitions );
+        cmd_compact->add( input );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
