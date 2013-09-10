@@ -14,3 +14,13 @@ void main() {
     assert( a < 0 );
 }
 EOF
+
+llvm_verify valid <<EOF
+#include <assert.h>
+void main() {
+    char *p = malloc(4);
+    assert( (p + 1) - p == 1 );
+    assert( p - (p + 1) == -1 );
+}
+EOF
+

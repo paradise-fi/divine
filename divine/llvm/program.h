@@ -32,19 +32,16 @@ struct MachineState;
 
 struct PC : wibble::mixin::Comparable< PC >
 {
-    uint32_t code:1;
     uint32_t function:12;
     uint32_t block:10;
     uint32_t instruction:8;
     bool masked:1;
+    uint32_t code:1;
 
     PC( int f, int b, int i )
-        : code( 1 ), function( f ), block( b ), instruction( i ), masked( false )
+        : function( f ), block( b ), instruction( i ), masked( false ), code( 1 )
     {}
-
-    PC()
-        : code( 1 ), function( 0 ), block( 0 ), instruction( 0 ), masked( false )
-    {}
+    PC() : PC( 0, 0, 0 ) {}
 
     bool operator<= ( PC o ) const {
         /* masked is irrelevant for equality! */
@@ -58,18 +55,20 @@ struct PC : wibble::mixin::Comparable< PC >
  * segments*. Each allocation creates a new segment. Pointers cannot cross
  * segment boundaries through pointer arithmetic or any other manipulation.
  */
-struct Pointer : wibble::mixin::Comparable< Pointer > {
-    uint32_t code:1;
-    uint32_t offset:14;
+struct Pointer : wibble::mixin::Comparable< Pointer >
+{
+    uint32_t offset:14;// TODO use a bittuple for guaranteed layout; offset
+                       // *must* be stored in the lowest 14 bits
     uint32_t segment:16;
     bool heap:1; /* make a (0, 0) pointer different from NULL */
+    uint32_t code:1;
     Pointer operator+( int relative ) {
         return Pointer( heap, segment, offset + relative );
     }
     Pointer( bool heap, int segment, int offset )
-        : code( 0 ), offset( offset ), segment( segment ), heap( heap )
+        : offset( offset ), segment( segment ), heap( heap ), code( 0 )
     {}
-    Pointer() : code( 0 ), offset( 0 ), segment( 0 ), heap( false ) {}
+    Pointer() : Pointer( false, 0, 0 ) {}
     bool null() { return !heap && !segment && !offset; }
 
     operator uint32_t() const {
