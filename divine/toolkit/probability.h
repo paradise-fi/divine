@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2013 Petr Rockai <me@mornfall.net>
 
 #include <divine/toolkit/bitstream.h>
+#include <cmath>
 
 #ifndef DIVINE_TOOLKIT_PROBABILITY_H
 #define DIVINE_TOOLKIT_PROBABILITY_H
@@ -47,7 +48,7 @@ struct Probability {
         int l;
         assert( i );
         for ( l = 1; p.cluster % prime( l ) == 0; ++l );
-        p.cluster *= pow( prime( l ), i );
+        p.cluster *= std::pow( prime( l ), i );
         return p;
     }
     std::string text() {
