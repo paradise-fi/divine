@@ -277,14 +277,16 @@ void definitions( std::set< Symbol > &sym, int i ) {
     ss << "instance-" << i << ".cpp";
     std::ofstream file( ss.str() );
 
-    for ( const auto &h : defaultHeaders )
-        printInclude( h, file );
-    for ( const auto &h : headers )
-        printInclude( h, file );
-    file << std::endl;
+    if ( sym.size() ) {
+        for ( const auto &h : defaultHeaders )
+            printInclude( h, file );
+        for ( const auto &h : headers )
+            printInclude( h, file );
+        file << std::endl;
 
-    for ( const auto &symbol : sym )
-        symbol.specialization( file );
+        for ( const auto &symbol : sym )
+            symbol.specialization( file );
+    }
 }
 
 }
@@ -297,29 +299,31 @@ int main( int argc, char** argv ) {
     SymbolListSelector sls;
     runSelector( sls, Instantiate(), TypeList<>() );
 
-    assert_eq( argc, 2 );
+    assert_eq( argc, 3 );
 
-    std::stringstream ss( argv[ 1 ] );
-    int files;
-    ss >> files;
+    int files = std::stoi( argv[ 1 ] );
+    int min = std::stoi( argv[ 2 ] );
     assert_leq( 1, files );
+    assert_leq( 1, min );
 
     std::ofstream externh( "extern.h" );
     sls.externDeclarations( externh );
     externh.close();
 
-    int perFile = int( double( sls.symbolSet().size() ) / files + 0.5 );
-    int cnt = 0;
+    int perFile = std::max( min, int( std::ceil( double( sls.symbolSet().size() ) / files ) ) );
     std::set< Symbol > sym;
+    int used = 0;
     auto symbols = sls.symbolSet();
     auto it = symbols.begin();
     auto end = symbols.end();
     for ( int i = 1; i <= files; ++i ) {
-        for ( cnt = 0 ; ( cnt < perFile || i == files ) && it != end; ++it, ++cnt )
+        for ( int cnt = 0 ; cnt < perFile && it != end; ++it, ++cnt, ++used )
             sym.insert( *it );
         definitions( sym, i );
         sym.clear();
     }
+    assert_eq( used, symbols.size() );
+    static_cast< void >( used );
     std::cerr << "Generated " << symbols.size() << " instances." << std::endl;
     return 0;
 }
