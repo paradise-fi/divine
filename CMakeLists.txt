@@ -96,8 +96,12 @@ option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
 option( COMPACT_CELL "use more compact cells in SharedHashSet" ON )
 
-set( INSTANCE_FILES_CNT "32" CACHE STRING
-    "number of instance files to generate -- more means less memory requirements" )
+set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
+    "maximal number of used instance files to generate -- more means less memory requirements" )
+set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
+    "minimal number of instances in one instance file" )
+mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
+
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )

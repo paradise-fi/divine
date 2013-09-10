@@ -18,12 +18,11 @@ endforeach()
 # generated instantiate files
 set( H_INSTANCES_EXTERN "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/extern.h" )
 install( FILES "${H_INSTANCES_EXTERN}" DESTINATION include/divine/instances/auto COMPONENT divine_dev )
-foreach( I RANGE 1 ${INSTANCE_FILES_CNT} )
+foreach( I RANGE 1 ${MAX_INSTANCE_FILES_COUNT} )
     set( F "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/instance-${I}.cpp" )
     list( APPEND SRC_auto_instances ${F} )
 endforeach()
-set_source_files_properties( ${INSTANCE_FILES_CNT} ${SRC_auto_instances}
-    PROPERTIES GENERATED ON )
+set_source_files_properties( ${SRC_auto_instances} PROPERTIES GENERATED ON )
 
 if ( LEGACY )
    file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
@@ -94,7 +93,7 @@ set( GENERATED_INSTANCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/instances/auto" )
 add_executable( instances-generator instances/generator/generator.cpp )
 file( MAKE_DIRECTORY ${GENERATED_INSTANCES_DIR} )
 add_custom_command( TARGET instances-generator POST_BUILD
-    COMMAND "${CMAKE_CURRENT_BINARY_DIR}/instances-generator" ${INSTANCE_FILES_CNT}
+    COMMAND "${CMAKE_CURRENT_BINARY_DIR}/instances-generator" ${MAX_INSTANCE_FILES_COUNT} ${MIN_INSTANCES_PER_FILE}
     WORKING_DIRECTORY ${GENERATED_INSTANCES_DIR}
     COMMENT "Generating instance files"
     VERBATIM )
