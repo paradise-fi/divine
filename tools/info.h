@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 #include <divine/utility/meta.h>
+#include <type_traits>
 
 #ifndef DIVINE_ALGORITHM_INFO
 #define DIVINE_ALGORITHM_INFO
@@ -23,6 +24,9 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
         g.properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
                 std::cout << " * " << name << ": " << descr << std::endl;
             } );
+        auto cap = compactCapabilities();
+        if ( std::get< 0 >( cap ) )
+            std::cout << "Saved features: " << std::get< 1 >( cap ) << std::endl;
     }
 
     int id() { return 0; }
@@ -38,6 +42,27 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 
     virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
         return g.useReductions( rs );
+    }
+
+    template< typename T >
+    T *ptr_cast( T *ptr ) { return reinterpret_cast< T * >( ptr ); }
+
+    template< typename Gen >
+    auto _capa( wibble::Preferred ) ->
+        decltype( typename Gen::IsCompact(), std::tuple< bool, std::string >() )
+    {
+        return std::make_tuple( true, g.base().capabilities().string() );
+    }
+
+    template< typename Gen >
+    auto _capa( wibble::NotPreferred ) -> std::tuple< bool, std::string >
+    {
+        return std::make_tuple( false, std::string() );
+    }
+
+    std::tuple< bool, std::string > compactCapabilities() {
+        return _capa< typename std::remove_reference<
+            decltype( this->graph().base() ) >::type >( wibble::Preferred() );
     }
 
     Info( Meta m ) : Algorithm( m ) {
