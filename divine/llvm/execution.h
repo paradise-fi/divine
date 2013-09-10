@@ -940,7 +940,7 @@ struct Evaluator
                 case BuiltinUnwind:
                     return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
                                    Values( instruction.values.begin() + 2,
-                                           instruction.values.end() ) );
+                                           instruction.values.end() - 1 ) );
                 case BuiltinLandingPad:
                     withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ), true ),
                                 instruction.result() );
