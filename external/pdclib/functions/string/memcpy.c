@@ -7,18 +7,15 @@
 */
 
 #include <string.h>
+#include <assert.h>
 
 #ifndef REGTEST
 
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {
-    char * dest = (char *) s1;
-    const char * src = (const char *) s2;
-    while ( n-- )
-    {
-        *dest++ = *src++;
-    }
-    return s1;
+    int distance = s1 - s2;
+    assert( distance > 0 ? distance >= n : -distance >= n );
+    return __divine_memcpy( s1, s2, n );
 }
 
 #endif
