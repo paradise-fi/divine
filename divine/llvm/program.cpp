@@ -187,7 +187,7 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinUnwind;
     if ( name == "__divine_landingpad" )
         return BuiltinLandingPad;
-    if ( name == "memcpy" || name == "memmove" )
+    if ( name == "__divine_memcpy" )
         return BuiltinMemcpy;
 
     if ( f->getIntrinsicID() != ::llvm::Intrinsic::not_intrinsic )
@@ -332,7 +332,8 @@ void ProgramInfo::pass()
         functionmap[ function ] = pc.function;
         pc.block = 0;
 
-        if ( codepointers && function->getName() == "memset" )
+        auto name = function->getName();
+        if ( codepointers && ( name == "memset" || name == "memmove" || name == "memcpy" ) )
             function->setLinkage( ::llvm::GlobalValue::ExternalLinkage );
 
         if ( !codepointers ) {

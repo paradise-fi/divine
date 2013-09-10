@@ -85,6 +85,7 @@
                 } while( 0 );
 
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __cplusplus
 #define NOTHROW throw()
@@ -131,6 +132,15 @@ int __divine_choice( int n, ... ) NOTHROW;
 
 void *__divine_malloc( unsigned long size ) NOTHROW;
 void __divine_free( void *ptr ) NOTHROW;
+
+/*
+ * Copy memory. Doing a per-byte copy would destroy pointer maps, hence you are
+ * required to copy memory blocks using this builtin. The llvm memcpy
+ * intrinsics are automatically mapped memcpy, which is provided by pdclib and
+ * calls __divine_memcpy. Unlike libc memcpy, the memory areas are allowed to
+ * overlap (i.e. __divine_memcpy behaves like memmove).
+ */
+void *__divine_memcpy( void *dest, void *src, size_t count ) NOTHROW;
 
 /*
  * Variable argument handling. Calling __divine_va_start gives you a pointer to

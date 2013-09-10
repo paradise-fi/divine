@@ -349,9 +349,9 @@ struct Compile {
         }
 
         fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
-                       "extern void *memset;\n"
+                       "extern void *memset, *memcpy, *memmove;\n"
                        "void __divine_requires() {\n"
-                       "    (void)memset;\n"
+                       "    (void) memset; (void) memcpy; (void) memmove;\n"
                        "}" );
         run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
 
