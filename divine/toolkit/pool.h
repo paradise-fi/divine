@@ -225,7 +225,12 @@ struct Lake {
      */
     Lake() : usedblocks( 8 ) {
         for ( int i = 0; i < 4096; ++i )
+            _freelist[ i ] = nullptr;
+        for ( int i = 0; i < 4096; ++i )
             _freelist_big[ i ] = nullptr;
+        for ( int i = 0; i < blockcount; ++i )
+            block[ i ] = nullptr;
+        valgrindInit();
     }
     Lake( const Lake & ) = delete;
 
