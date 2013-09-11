@@ -51,6 +51,8 @@
  * Because dcess files are mapped into memory they are endianity-dependent!
  */
 
+#include <divine/toolkit/probability.h>
+
 #include <cstdint>
 #include <cstring>
 #include <bitset>
@@ -79,7 +81,8 @@ enum class Capability : uint64_t {
     ForwardEdges = 0x1,
     BackwardEdges = 0x2,
     Nodes = 0x4,
-    UInt64Labels = 0x100
+    UInt64Labels = 0x100,
+    Probability = 0x200
 };
 
 static inline std::string showCapability( Capability c ) {
@@ -137,6 +140,7 @@ struct Capabilities : std::bitset< 64 > {
 
   protected:
     Capabilities( const Base &c ) : Base( c ) { }
+    Capabilities( uint64_t c ) : Base( c ) { }
 };
 
 static const size_t MAGIC_LENGTH = 40UL;
@@ -145,11 +149,17 @@ static const int64_t CURRENT_DCESS_VERSION = 1;
 static const uint64_t EXPECTED_BYTE_ORDER = 0x0807060504030201ULL;
 static const size_t GENERATOR_FIELD_LENGTH = 24UL;
 
+static inline void die( std::string &&msg ) {
+    std::cout << msg << std::endl;
+    std::abort();
+}
+
 struct Header {
     // some meta about divine & compact
     char magic[ MAGIC_LENGTH ];                     //  40B
     uint64_t byteOrder;                             //  48B
-    int64_t compactVersion;                         //  56B
+    int32_t compactVersion;
+    int32_t labelSize;                              //  56B
 
     static_assert( sizeof( Capabilities ) == 8, "Unexpected size of Capabilities" );
     // informations aubout content of file
@@ -188,9 +198,18 @@ struct Header {
                 << std::endl;
             std::abort();
         }
+        assert_leq( 1, ptr->compactVersion );
         if ( ptr->compactVersion > CURRENT_DCESS_VERSION )
             std::cerr << "WARNING: DCESS file was created by newer version of "
                 "DiVinE\n and might not be compatible with this version";
+        if ( ptr->capabilities.has( Capability::UInt64Labels ) &&
+                ptr->labelSize != sizeof( uint64_t ) )
+            die( "ERROR: invalid size of saved labels" );
+        if ( ptr->capabilities.has( Capability::Probability ) &&
+                ptr->labelSize != sizeof( toolkit::Probability ) )
+            die( "Error: invalid size of saved probability labels. ["
+                    + std::to_string( ptr->labelSize ) + "] != ["
+                    + std::to_string( sizeof( toolkit::Probability ) ) + "]" );
         return ptr;
     }
 };
@@ -406,11 +425,12 @@ namespace {
         int64_t _edges;
         int64_t _nodes;
         int64_t _nodeDataSize;
+        int32_t _labelSize;
         Capabilities _capabilities;
         std::string _generator;
 
         PrealocateHelper( const std::string &path ) : _edges( 0 ), _nodes( 0 ),
-            _nodeDataSize( 0 ), _capabilities()
+            _nodeDataSize( 0 ), _labelSize( 0 ), _capabilities()
         {
             fd = ::open( path.c_str(), O_RDWR | O_CREAT,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
@@ -419,11 +439,17 @@ namespace {
 
         Compact operator()() {
             assert_leq( 0, fd );
+            assert( ( !_capabilities.has( Capability::Probability )
+                        && !_capabilities.has( Capability::UInt64Labels ) )
+                    || ( _capabilities.has( Capability::Probability )
+                        ^ _capabilities.has( Capability::UInt64Labels ) ) );
 
             int64_t edgeData = sizeof( int64_t ) * _nodes
-                + _edges * sizeof( int64_t );
-            if ( _capabilities.has( Capability::UInt64Labels ) )
-                edgeData += _edges * sizeof( uint64_t );
+                + _edges * (sizeof( int64_t ) + _labelSize);
+            assert( !_capabilities.has( Capability::UInt64Labels )
+                    || _labelSize == sizeof( uint64_t ) );
+            assert( !_capabilities.has( Capability::Probability )
+                    || _labelSize == sizeof( toolkit::Probability ) );
 
             int64_t nodeData = sizeof( int64_t ) * _nodes + _nodeDataSize;
 
@@ -455,6 +481,7 @@ namespace {
                 ? edgeData : 0;
             h->nodesOffset = h->backwardOffset
                 + (_capabilities.has( Capability::BackwardEdges ) ? edgeData : 0);
+            h->labelSize = _labelSize;
 
             Compact compact;
             compact.finishOpen( fd, ptr, fileSize );
@@ -483,8 +510,19 @@ namespace {
             return *this;
         }
 
-        PrealocateHelper &labels() {
+        PrealocateHelper &labelSize( size_t size ) {
+            assert_eq( _labelSize, 0 );
+            _labelSize = size;
+            return *this;
+        }
+
+        PrealocateHelper &uint64Labels() {
             _capabilities |= Capability::UInt64Labels;
+            return *this;
+        }
+
+        PrealocateHelper &probability() {
+            _capabilities |= Capability::Probability;
             return *this;
         }
 

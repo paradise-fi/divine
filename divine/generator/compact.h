@@ -2,6 +2,7 @@
 
 #include <divine/generator/common.h>
 #include <divine/compact/compact.h>
+#include <divine/toolkit/probability.h>
 #include <functional>
 
 #ifndef DIVINE_GENERATOR_COMPACT_H
@@ -130,7 +131,7 @@ struct _Compact : public Common< Blob > {
 };
 
 using Compact = _Compact< wibble::Unit >;
-using CompactWLabel = _Compact< uint64_t >;
+using ProbabilisticCompact = _Compact< toolkit::Probability >;
 
 }
 }

@@ -44,8 +44,10 @@ void transpose( DataBlock &from, DataBlock &to ) {
             for ( int64_t j = 0; j < size; ++j )
                 to.map< EdgeSpec >( edges[ j ].index() )
                     ( [ edges, i, j ]( EdgeSpec *de, int64_t size ) {
+                        auto last = de + size - 1;
                         for ( ; de->index(); ++de )
-                            assert_leq( de, de + size - 1 );
+                            assert_leq( de, last );
+                        static_cast< void >( last );
                         de->index() = i;
                         de->label() = edges[ j ].label();
                     } );

@@ -4,6 +4,7 @@
 #include <divine/algorithm/metrics.h>
 #include <divine/compact/compact.h>
 #include <divine/compact/transpose.h>
+#include <divine/toolkit/probability.h>
 #include <cstdint>
 #include <algorithm>
 
@@ -426,11 +427,14 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
             .edges( meta().statistics.transitions + initials.size() )
             .forward()
             .backward()
-            .generator( meta().input.modelType );
+            .generator( meta().input.modelType )
+            .labelSize( sizeof( Label ) );
         if ( params.saveNodes )
             creator.saveNodes( nodesSize );
         if ( std::is_same< Label, uint64_t >::value )
-            creator.labels();
+            creator.uint64Labels();
+        if ( std::is_same< Label, toolkit::Probability >::value )
+            creator.probability();
 
         auto compact = creator();
 
