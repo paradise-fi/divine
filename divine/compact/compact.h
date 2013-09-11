@@ -284,7 +284,7 @@ struct DataBlock {
         assert_leq( ix, _count - 1 );
         return _MapHelper< T >( _ix( ix ), size( ix ) );
     }
-
+/*
     template< typename T >
     struct Inserter {
         Inserter( DataBlock &db, int64_t from ) :
@@ -315,7 +315,7 @@ struct DataBlock {
     Inserter< T > inserter( int64_t from = 0 ) {
         return Inserter< T >( *this, from );
     }
-
+*/
     struct FInserter {
         FInserter( DataBlock &db, int64_t from ) :
             _ptr( db._indices + from ),
@@ -323,10 +323,15 @@ struct DataBlock {
             _dataBlock( &db )
         { }
 
+        FInserter() : _ptr( nullptr ), _dataNext( nullptr ),
+            _dataBlock( nullptr )
+        { }
+
         template< typename Fn >
         auto emplace( int64_t size, Fn fn )
             -> typename std::result_of< Fn( char *, int64_t ) >::type
         {
+            assert( _ptr ); assert( _dataNext ); assert( _dataBlock );
             char *data = _dataNext;
             _dataNext += size;
             *_ptr = _dataNext - _dataBlock->_data;
@@ -341,7 +346,7 @@ struct DataBlock {
     };
 
     FInserter inserter( int64_t from = 0 ) {
-        return FInserter( *this, from );
+        return _count ? FInserter( *this, from ) : FInserter();
     }
 
     int64_t *lowLevelIndices() { return _indices; }
