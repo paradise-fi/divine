@@ -187,7 +187,7 @@ struct Interpreter
         while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            run( tid, yield, Probability( (tid + 1) * 2 ) );
+            run( tid, yield, Probability( pow( 2, tid + 1 ) ) );
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
