@@ -51,7 +51,7 @@ struct Probability {
         p.cluster *= std::pow( prime( l ), i );
         return p;
     }
-    std::string text() {
+    std::string text() const {
         std::stringstream s;
         if ( numerator ) {
             s << cluster << ": " << numerator << "/" << denominator;
@@ -74,6 +74,10 @@ typename BS::bitstream &operator>>( BS &bs, Probability &p )
     p.cluster = x;
     p.numerator = y;
     return r;
+}
+
+static inline std::ostream &operator<<( std::ostream &os, const Probability &p ) {
+    return os << p.text();
 }
 
 }
