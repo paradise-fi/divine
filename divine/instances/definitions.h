@@ -164,19 +164,19 @@ namespace generator {
 #if O_COMPACT
     GENERATOR( Compact, ".dcess", "Compact", Not< algorithm::Compact >, "divine/generator/compact.h" );
     namespace intern {
-        GENERATOR( CompactWLabel, ".dcess", "Compact with labels", Not< algorithm::Compact >,
+        GENERATOR( ProbabilisticCompact, ".dcess", "Compact with labels", Not< algorithm::Compact >,
                 "divine/generator/compact.h" );
     }
-    struct CompactWLabel : public intern::CompactWLabel {
+    struct ProbabilisticCompact : public intern::ProbabilisticCompact {
         static bool select( Meta &meta ) {
-            return intern::CompactWLabel::select( meta )
+            return intern::ProbabilisticCompact::select( meta )
                 && compact::Compact( meta.input.model )
-                    .header->capabilities.has( compact::Capability::UInt64Labels );
+                    .header->capabilities.has( compact::Capability::Probability );
         }
     };
 #else
     using Compact = _Missing;
-    using CompactWLabel = _Missing;
+    using ProbabilisticCompact = _Missing;
 #endif
 
 #ifndef O_SMALL
@@ -193,7 +193,7 @@ namespace generator {
 #endif
 
     using Generators = TypeList< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
-                                 CompactWLabel, Compact, Dummy, NoGeneratorErr >;
+                                 ProbabilisticCompact, Compact, Dummy, NoGeneratorErr >;
 
 #undef GENERATOR
 }
