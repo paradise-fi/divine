@@ -59,7 +59,8 @@ struct Main {
 
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
            *cmd_simulate, *cmd_compact;
-    OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions, *ce;
+    OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
+                *ce, *compactOutput;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
@@ -72,11 +73,13 @@ struct Main {
     IntOption *o_distance;
     IntOption *o_seed;
     BoolOption *o_labels, *o_traceLabels, *o_bfsLayout;
-    StringOption *o_drawTrace, *o_output, *o_render;
+    StringOption *o_drawTrace, *o_drawOutput, *o_render;
     StringOption *o_gnuplot;
     StringOption *o_property;
     StringOption *o_inputTrace;
     StringOption *o_demangle;
+    StringOption *o_outputFile;
+    BoolOption *o_noSaveStates;
 
     BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
     BoolOption *o_mpi, *o_probabilistic;
@@ -238,6 +241,7 @@ struct Main {
         compression = opts.createGroup( "Compression Options" );
         definitions = opts.createGroup( "Definitions" );
         ce = opts.createGroup( "Counterexample Options" );
+        compactOutput = opts.createGroup( "Output option" );
 
         o_curses = opts.add< BoolOption >(
             "curses", '\0', "curses", "", "use curses-based progress monitoring" );
@@ -341,7 +345,7 @@ struct Main {
         o_drawTrace = drawing->add< StringOption >(
             "trace", '\0', "trace", "",
             "draw and highlight a particular trace in the output" );
-        o_output = drawing->add< StringOption >(
+        o_drawOutput = drawing->add< StringOption >(
             "output", 'o', "output", "",
             "the output file name (display to X11 if not specified)" );
         o_render = drawing->add< StringOption >(
@@ -369,6 +373,13 @@ struct Main {
             "trace", '\0', "trace", "",
             "generate states of a numeric trace and exit" );
 
+        o_outputFile = compactOutput->add< StringOption >(
+                "output", 'o', "output", "",
+                "the output file name (if not specified <current-dir>/<model-name>.dcess is used)" );
+        o_noSaveStates = compactOutput->add< BoolOption >(
+                "no-save-states", 0, "no-save-states", "",
+                "do not save states in DCESS file, only save transitions." );
+
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
         cmd_metrics->add( compression );
@@ -392,6 +403,7 @@ struct Main {
         cmd_compact->add( compression );
         cmd_compact->add( definitions );
         cmd_compact->add( input );
+        cmd_compact->add( compactOutput );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -546,7 +558,11 @@ struct Main {
 
         setupLimits();
 
-        meta.output.file = o_output->stringValue();
+        meta.output.file = o_drawOutput->isSet()
+            ? o_drawOutput->stringValue()
+            : o_outputFile->stringValue();
+        meta.output.saveStates = !o_noSaveStates->boolValue();
+
 
         if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
