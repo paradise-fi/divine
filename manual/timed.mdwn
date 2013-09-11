@@ -7,15 +7,6 @@ validity of an LTL specification. DIVINE has support for most of this modelling
 formalism, though, some features are still left unimplemented. These are as
 follows:
 
-  * Meta variables are treated as regular variables, which means that their
-    value is deterministic and states that differ only in meta variables are
-    treated as different states. This does not affect verification results, but
-    may lead to a bigger state space.
-
-  * Only structures containing integers are supported. If the input model uses
-    any structures consisting of arrays or other structures, it cannot be loaded
-    by DIVINE.
-
   * Clock constraints involving non-constant integers are limited. Even though
     we were able to implemente basic heuristics that try to find the maximal and
     minimal possible value of a non-constant expressions, and it is possible to
