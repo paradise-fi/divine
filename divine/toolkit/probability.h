@@ -30,9 +30,9 @@ static_assert( prime( 4 ) ==  7, "x" );
 static_assert( prime( 5 ) == 11, "x" );
 
 struct Probability {
-    unsigned cluster:16;
+    uint64_t cluster;
     int numerator:16;
-    unsigned denominator;
+    unsigned denominator:16;
     Probability() : Probability( 0 ) {}
     Probability( int c ) : Probability( c, 1, 1 ) {}
     Probability( int c, int x, int y ) : cluster( c ), numerator( x ), denominator( y ) {}
@@ -70,9 +70,9 @@ template< typename BS >
 typename BS::bitstream &operator>>( BS &bs, Probability &p )
 {
     int x, y;
-    auto &r = bs >> x >> y >> p.denominator;
-    p.cluster = x;
-    p.numerator = y;
+    auto &r = bs >> p.cluster >> x >> y;
+    p.numerator = x;
+    p.denominator = y;
     return r;
 }
 
