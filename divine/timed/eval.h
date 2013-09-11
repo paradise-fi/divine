@@ -20,8 +20,10 @@ private:
     struct VarData {
         Type type;
         PrefixType prefix;
-        int32_t offset; // used by variables
-        std::vector< int > arraySizes;
+
+        // offset gives a position in value vector of this variable,
+        // or unique id of clock or channel
+        int32_t offset;
         int elementsCount;
 
         std::pair< int, int > ranges;
@@ -56,6 +58,58 @@ private:
         FuncData( ) {}
         FuncData( const UTAP::function_t &f ) : fun ( &f ) {}
     };
+
+    struct Value {
+        private:
+
+        enum Kind {
+            Int, Array
+        };
+        const Kind kind;
+        const int32_t num;
+        const struct Array {
+            // base_ptr is nullptr for clocks or channels and it points to
+            //  the first element of underlying array/record
+            //  otherwise
+            int32_t *base_ptr;
+
+            // index is equal to the offset for channel or clocks expressions
+            //  and to the offset *inside* the top-level array of integers
+            //  (i.e. for a[1][1], where type of _a_ is int[2][3],
+            //  index==4)
+            int index;
+
+            // the "type" of this value; number of elements in the
+            //  value, e.g. for simple integer len==1, for int[2][3] len==6
+            int len;
+        } _array;
+
+        // used for values not residing in the "memory"
+
+        public:
+
+        const struct Array& array() {
+            assert( kind == Array );
+            return _array;
+        }
+
+        const struct Array& array() const {
+            assert( kind == Array );
+            return _array;
+        }
+
+        Value( int32_t val ) : kind( Int ), num( val ), _array( { nullptr, 0, 0 } ) {}
+        Value( int32_t *ptr, int i, int l ) : kind( Array ), num( 0 ), _array( { ptr, i, l } ) {}
+
+        int32_t get_int() const {
+            assert( kind == Int || ( kind == Array && array().len == 1 ) );
+            if ( kind == Int )
+                return num;
+            else
+                return array().base_ptr[ array().index ];
+        }
+    };
+
 
     struct NamedInstance : public UTAP::instance_t {
         std::string name;
