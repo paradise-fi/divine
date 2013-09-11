@@ -21,7 +21,7 @@ private:
         Type type;
         PrefixType prefix;
 
-        // offset gives a position in value vector of this variable,
+        // offset gives the position in value vector of the variable,
         // or unique id of clock or channel
         int32_t offset;
         int elementsCount;
@@ -35,14 +35,13 @@ private:
                 const std::pair< int, int > r = std::make_pair( std::numeric_limits< int >::min(),
                                                                 std::numeric_limits< int >::max() ) ) :
                 type( t ), prefix( p ), offset( off ), ranges( r ) {}
-        VarData(    Type t, PrefixType p, int off, const std::vector< int > &aS,
+        VarData(    Type t, PrefixType p, int off,
                     int elC, const std::pair< int, int > r = std::make_pair(
                                                                 std::numeric_limits< int >::min(),
                                                                 std::numeric_limits< int >::max() ) ) :
                 type( t ),
                 prefix( p ),
                 offset( off ),
-                arraySizes( aS ),
                 elementsCount( elC ),
                 ranges( r ) {}
 
@@ -66,6 +65,8 @@ private:
             Int, Array
         };
         const Kind kind;
+
+        // used for values not residing in the "memory"
         const int32_t num;
         const struct Array {
             // base_ptr is nullptr for clocks or channels and it points to
@@ -83,8 +84,6 @@ private:
             //  value, e.g. for simple integer len==1, for int[2][3] len==6
             int len;
         } _array;
-
-        // used for values not residing in the "memory"
 
         public:
 
@@ -117,10 +116,11 @@ private:
         NamedInstance( const UTAP::instance_t& inst, const std::string& n ) : UTAP::instance_t( inst ), name( n ) {}
     };
 
+    int getRecordElementIndex( int procId, const UTAP::type_t record_type, unsigned field_index );
+    int getElementCount( int procId, const UTAP::type_t t );
     const VarData &getVarData( int procId, const UTAP::symbol_t & s ) const;
-    const VarData &getVarData( int procId, const UTAP::expression_t &expr );
+    const VarData &getVarData( int procId, UTAP::expression_t expr );
     const FuncData &getFuncData( int procId, const UTAP::symbol_t & s ) const;
-    std::pair< const VarData*, int > getArray( int procId, const UTAP::expression_t& e, int *pSize = NULL ) ;
     Clocks clocks;
 
     typedef std::pair< UTAP::symbol_t, int > VariableIdentifier;
@@ -142,11 +142,9 @@ private:
     Locations locations;
     void computeLocalBounds();
 
-    /*
-     *  getArraySizes returns the size of the whole array (i.e. for a[2][3]
-     *  returns 6). Moreover, vector _output_ is filled with the size for each dimension.
-     */
-    int getArraySizes( int procId, const UTAP::type_t &type, std::vector< int > &output );
+    void assign( const UTAP::expression_t& lexp, const Value &val, int pId ) {
+        assign( lexp, val.get_int(), pId );
+    }
     void assign( const UTAP::expression_t& lexp, int32_t val, int pId );
     void assign( const UTAP::expression_t& lexp, const UTAP::expression_t& rexp, int pId );
     static UTAP::type_t getBasicType( const UTAP::type_t &type );
@@ -158,10 +156,10 @@ private:
                             const UTAP::expression_t &initializer,
                             int procId,
                             bool local = false );
-    int32_t unop( int procId, const UTAP::Constants::kind_t op, const UTAP::expression_t &a );
-    int32_t binop( int procId, const UTAP::Constants::kind_t &op, const UTAP::expression_t &a,
+    Value unop( int procId, const UTAP::Constants::kind_t op, const UTAP::expression_t &a );
+    Value binop( int procId, const UTAP::Constants::kind_t &op, const UTAP::expression_t &a,
             const UTAP::expression_t &b );
-    int32_t ternop( int procId, const UTAP::Constants::kind_t op, const UTAP::expression_t &a,
+    Value ternop( int procId, const UTAP::Constants::kind_t op, const UTAP::expression_t &a,
                     const UTAP::expression_t &b, const UTAP::expression_t &c );
     int32_t *getValue( const VarData &var );
     int32_t *getValue( int procId, const UTAP::symbol_t& s );
@@ -186,7 +184,7 @@ private:
     void pushStatements( int, std::vector< StatementInfo > &, StatementInfo );
     void emitError( int code ) __attribute__((noreturn));
     void setClockLimits( int procId, const UTAP::expression_t &exp, std::vector< std::pair< int32_t, int32_t > > & );
-    const UTAP::expression_t evalFunCall( int procId, const UTAP::expression_t &exp );
+    Value evalFunCall( int procId, const UTAP::expression_t &exp );
     int resolveId( int procId, const UTAP::expression_t& expr );
 
 public:
@@ -208,7 +206,7 @@ public:
     void processDecl( const std::vector< UTAP::instance_t > &procs );
 
     // evaluate expression and return its value
-    int32_t eval( int procId, const UTAP::expression_t& expr );
+    Value eval( int procId, const UTAP::expression_t& expr );
 
     // run command
     void evalCmd( int procId, const UTAP::expression_t& expr );
@@ -219,7 +217,7 @@ public:
     // evaluate boolean expression
     bool evalBool( int procId, const UTAP::expression_t& expr ) {
         assert( (computeLocalBounds(), true) ); // computeLocalBounds() has to be called so asserts in Clocks::constrain* work
-        return eval( procId, expr );
+        return eval( procId, expr ).get_int();
     }
 
     // set variables and clocks to their initial values

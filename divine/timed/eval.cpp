@@ -15,17 +15,16 @@ using namespace std;
 
 std::pair< int, int > Evaluator::evalRange( int procId, const UTAP::type_t &type ) {
     auto range = type.getRange();
-    return make_pair( eval( procId, range.first ), eval( procId, range.second ) );
+    return make_pair( eval( procId, range.first ).get_int(), eval( procId, range.second ).get_int() );
 }
 
 void Evaluator::computeChannelPriorities( UTAP::TimedAutomataSystem &sys ) {
     ChannelPriorities.resize( ChannelTable.size(), sys.getTauPriority() );
     for ( auto& ch : sys.getChanPriorities() ) {
         if ( ch.chanElement.getType().isArray() ) {
-            int size;
-            auto arr = getArray( -1, ch.chanElement, &size );
-            unsigned int begin = arr.first->offset + arr.second;
-            unsigned int end = begin + size;
+            const Value ch_val = eval( -1, ch.chanElement );
+            unsigned int begin = ch_val.array().index;
+            unsigned int end = begin + ch_val.array().len;
             for ( unsigned int i = begin; i < end; ++i ) {
                 ChannelPriorities[ i ] = ch.chanPriority;
             }
@@ -42,29 +41,37 @@ void Evaluator::emitError( int code ) {
 
 UTAP::type_t Evaluator::getBasicType( const UTAP::type_t &type ) {
     UTAP::type_t type_tmp = type;
-    while ( type_tmp.isArray() || type_tmp.isRecord() ) {
+    while ( type_tmp.isArray() || type_tmp.isRecord() || type_tmp.is( REF ) ) {
         type_tmp = type_tmp[0];
     }
     return type_tmp;
 }
 
-int Evaluator::getArraySizes ( int procId, const type_t &type, vector< int > &output ) {
-    type_t t = type;
+int Evaluator::getRecordElementIndex( int procId, const type_t record_type, unsigned field_index ) {
+    int index = 0;
 
-    int size = 1;
-    while ( t.isArray() || t.isRecord() ) {
-        if ( t.isArray() ) {
-            output.push_back( eval( procId, t.getArraySize().getRange().second ) + 1 );
-            t = t.getSub();
-        } else {
-            output.push_back( t.getRecordSize() );
-            size *= output.back();
-            break;
-        }
-        size *= output.back();
-    }
+    assert( record_type.isRecord() );
+    assert( field_index < record_type.getRecordSize() );
 
-    return size;
+    for ( unsigned i = 0; i < field_index; ++i )
+        index += getElementCount( procId, record_type.getSub( i ) );
+
+    return index;
+}
+
+int Evaluator::getElementCount( int procId, const type_t t ) {
+    if ( t.getKind() == REF )
+        return getElementCount( procId, t[0] );
+    else if ( t.getKind() == ARRAY ) {
+        int cell_element_count = eval( procId, t.getArraySize().getRange().second ).get_int() + 1;
+        return getElementCount( procId, t.getSub() ) * cell_element_count;
+    } else if ( t.isRecord() ) {
+        int size = 0;
+        for ( unsigned i = 0; i < t.getRecordSize(); ++i )
+            size += getElementCount( procId, t.getSub( i ) );
+        return size;
+    } else
+        return 1;
 }
 
 const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::symbol_t & s ) const {
@@ -76,7 +83,10 @@ const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::symbol_
     return var->second;
 }
 
-const Evaluator::VarData &Evaluator::getVarData( int procId, const UTAP::expression_t &expr ) {
+const Evaluator::VarData &Evaluator::getVarData( int procId, UTAP::expression_t expr ) {
+    while ( expr.getKind() == ARRAY || expr.getKind() == DOT )
+        expr = expr[ 0 ];
+
     if ( expr.getKind() == DOT ) {
         assert( procId == -1 );
         procId = resolveId( -1, expr[0] );
@@ -106,37 +116,20 @@ void Evaluator::parseArrayValue(   const expression_t &exp,
         if ( exp.getKind() == LIST ) {
             int arraySize;
             if ( exp.getType().isArray() )
-                arraySize = eval( procId, exp.getType().getArraySize().getRange().second ) + 1;
+                arraySize = eval( procId, exp.getType().getArraySize().getRange().second ).get_int() + 1;
             else
                 arraySize = exp.getType().getRecordSize();
             for ( int i = 0; i < arraySize; i++ )
                 parseArrayValue( exp[i], output, procId );
         } else {
-            expression_t init_exp = exp;
-            while ( init_exp.getKind() == FUNCALL )
-                init_exp = evalFunCall( procId, init_exp );
-            if ( init_exp.getType().isArray() ) {
-                symbol_t s = init_exp.getSymbol();
-                int pSize;
-                auto p = getArray( procId, init_exp, &pSize );
-                const VarData &var = *(p.first);
-                if ( var.prefix == PrefixType::CONSTANT ) {
-                    const int32_t *varContent = getValue( procId, s );
-                    if ( p.second+pSize > var.elementsCount ) {
-                        emitError( EvalError::ARRAY_INDEX );
-                    }
-                    for ( int i = p.second; i < p.second + pSize; i++ )
-                        output.push_back( varContent[ i ] );
-                }
-            } else {
-                symbol_t s = init_exp.getSymbol();
-                const int32_t *varContent = getValue( procId, s );
-                for ( size_t i = 0; i < init_exp.getType().getRecordSize(); i++ )
-                    output.push_back( varContent[ i ] );
-            }
+            Value init_val = eval( procId, exp );
+
+            int32_t *array = init_val.array().base_ptr + init_val.array().index;
+            for ( int i = 0; i < init_val.array().len; ++i )
+                output.push_back( array[ i ] );
         }
     } else {
-        output.push_back( eval( procId, exp ) );
+        output.push_back( eval( procId, exp ).get_int() );
     }
 }
 
@@ -162,24 +155,25 @@ void Evaluator::processSingleDecl( const symbol_t &s,
 
         VarData new_vardata( getVarData( procId, ref_symbol ) );
         if ( ref_symbol.getType().isArray() && initializer.getKind() != IDENTIFIER ) {
-            int pSize;
-            auto p = getArray( procId, initializer, &pSize );
+            Value init_val = eval( procId, initializer );
 
-            for ( expression_t tmp = initializer; tmp.getKind() != IDENTIFIER; tmp = tmp[0] ) {
-                int size = new_vardata.arraySizes.front();
-                new_vardata.arraySizes.erase(new_vardata.arraySizes.begin());
-                new_vardata.elementsCount /= size;
-            }
-            new_vardata.offset += p.second;
-            assert(new_vardata.elementsCount == pSize);
+            new_vardata.elementsCount = init_val.array().len;
+
+            const type_t &init_basic_type = getBasicType( initializer.getType() );
+            if (       init_basic_type.isClock()
+                    || init_basic_type.isChannel()
+                    || init_basic_type.isProcess()
+            )
+                new_vardata.offset = init_val.array().index;
+            else
+                new_vardata.offset += init_val.array().index;
         } // else nothing
         vars[ make_pair( s, procId ) ] = new_vardata;
     } else if ( basicType.isChannel() ) {
         if ( type.isArray() ) {
-            vector< int > arrSizes;
-            int size = getArraySizes( procId, type, arrSizes );
+            int size = getElementCount( procId, type );
             vars[ make_pair( s, procId) ] = VarData ( Type::CHANNEL, variablePrefix,
-                                                        ChannelTable.size(), arrSizes, size );
+                                                        ChannelTable.size(), size );
             for ( int i = 0; i < size; i++ )
                 ChannelTable.push_back( &s );
         } else {
@@ -191,10 +185,9 @@ void Evaluator::processSingleDecl( const symbol_t &s,
             return;
         std::string basename = ( procId < 0 ? "" : getProcessName( procId ) + "." ) + s.getName();
         if ( type.isArray() ) {
-            vector< int > arrSizes;
-            int size = getArraySizes( procId, type, arrSizes );
+            int size = getElementCount( procId, type );
             vars[ make_pair( s, procId) ] = VarData ( Type::CLOCK, variablePrefix,
-                                                        ClockTable.size(), arrSizes, size );
+                                                        ClockTable.size(), size );
             for ( int i = 0; i < size; i++ ) {
                 std::stringstream ss( basename );
                 ss << "[" << i << "]";
@@ -229,20 +222,11 @@ void Evaluator::processSingleDecl( const symbol_t &s,
 
             PrefixType prefix = basicType.is( CONSTANT ) ? PrefixType::CONSTANT : variablePrefix;
 
-            if ( type.isRecord() ) {
-                for ( size_t i = 0; i  < type.getRecordSize(); i++ ) {
-                    if ( type.getSub( i ).isArray() || type.getSub( i ).isRecord() )
-                        throw runtime_error( "Nested structures and structures "
-                                                "with arrays are not supported." );
-                }
-            }
-
-            vector< int > arrSizes;
-            int size = getArraySizes( procId, type, arrSizes );
+            int size = getElementCount( procId, type );
 
             if ( prefix == PrefixType::NONE ) {
                 vars.insert( make_pair( make_pair( s, procId ),
-                            VarData( Type::ARRAY, prefix, initValues.size(), arrSizes, size, ranges ) ) );
+                            VarData( Type::ARRAY, prefix, initValues.size(), size, ranges ) ) );
                 if ( initializer.empty() )
                     initValues.insert( initValues.end(), size, default_value );
                 else
@@ -251,7 +235,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
                 decltype( vars )::iterator it = vars.find( make_pair( s, procId ) );
                 if ( it == vars.end() ) {
                     vars.insert( it, make_pair ( make_pair ( s, procId ),
-                                VarData( Type::ARRAY, prefix, metaValues.size(), arrSizes, size, ranges ) ) );
+                                VarData( Type::ARRAY, prefix, metaValues.size(), size, ranges ) ) );
                     if ( initializer.empty() )
                         metaValues.insert( metaValues.end(), size, default_value );
                     else
@@ -277,7 +261,7 @@ void Evaluator::processSingleDecl( const symbol_t &s,
              */
             assert( basicType == type );
             PrefixType prefix = type.is( CONSTANT ) ? PrefixType::CONSTANT : variablePrefix;
-            int32_t value = initializer.empty() ? default_value : eval( procId, initializer );
+            int32_t value = initializer.empty() ? default_value : eval( procId, initializer ).get_int();
 
             if ( prefix == PrefixType::NONE ) {
                 vars.insert( make_pair( make_pair( s, procId ),
@@ -303,27 +287,27 @@ void Evaluator::processSingleDecl( const symbol_t &s,
     }
 }
 
-int32_t Evaluator::unop( int procId, const Constants::kind_t op, const expression_t &a ) {
+Evaluator::Value Evaluator::unop( int procId, const Constants::kind_t op, const expression_t &a ) {
     int result;
     switch ( op ) {
-    case UNARY_MINUS:   return -eval( procId, a );
-    case NOT:           return !eval( procId, a );
+    case UNARY_MINUS:   return -eval( procId, a ).get_int();
+    case NOT:           return !eval( procId, a ).get_int();
     case PREINCREMENT:
-        result = eval( procId, a );
+        result = eval( procId, a ).get_int();
         assign( a, result + 1, procId );
         return result + 1;
     case POSTINCREMENT:
-        result = eval( procId, a );
+        result = eval( procId, a ).get_int();
         assign( a, result + 1, procId );
         return result;
 
     case PREDECREMENT:
-        result = eval( procId, a );
+        result = eval( procId, a ).get_int();
         assign( a, result - 1, procId );
         return result - 1;
 
     case POSTDECREMENT:
-        result = eval( procId, a );
+        result = eval( procId, a ).get_int();
         assign( a, result - 1, procId );
         return result;
 
@@ -334,14 +318,14 @@ int32_t Evaluator::unop( int procId, const Constants::kind_t op, const expressio
     }
 }
 
-int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const expression_t &a,
+Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, const expression_t &a,
         const expression_t &b ) {
 
     if ( a.getType().isClock() || b.getType().isClock() ) {
         int clock_id, value;
         if ( a.getType().isClock() ) {
             clock_id = resolveId( procId, a );
-            value = eval( procId, b );
+            value = eval( procId, b ).get_int();
             switch ( op ) {
             case LT:    return clocks.constrainBelow( clock_id, value, true );
             case LE:    return clocks.constrainBelow( clock_id, value, false );
@@ -356,7 +340,7 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
             }
         } else {
             clock_id = resolveId( procId, b );
-            value = eval( procId, a );
+            value = eval( procId, a ).get_int();
             switch ( op ) {
             case GT:    return clocks.constrainBelow( clock_id, value, true );
             case GE:    return clocks.constrainBelow( clock_id, value, false );
@@ -376,7 +360,7 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
         if ( a.getType().isDiff() ) {
             clock_idL = resolveId( procId, a[0] );
             clock_idR = resolveId( procId, a[1] );
-            value = eval( procId, b );
+            value = eval( procId, b ).get_int();
             switch ( op ) {
             case LT:    return clocks.constrainClocks( clock_idL, clock_idR, value, true );
             case LE:    return clocks.constrainClocks( clock_idL, clock_idR, value, false );
@@ -392,7 +376,7 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
         } else {
             clock_idL = resolveId( procId, b[0] );
             clock_idR = resolveId( procId, b[1] );
-            value = eval( procId, a );
+            value = eval( procId, a ).get_int();
             switch ( op ) {
             case GT:    return clocks.constrainClocks( clock_idL, clock_idR, value, true );
             case GE:    return clocks.constrainClocks( clock_idL, clock_idR, value, false );
@@ -412,76 +396,90 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
     pair< const VarData*, int > p;
     switch ( op ) {
     case ASSPLUS:
-    case PLUS:  return eval( procId, a ) + eval( procId, b );
+    case PLUS:  return eval( procId, a ).get_int() + eval( procId, b ).get_int();
     case ASSMINUS:
     case MINUS:
-        return eval( procId, a ) - eval( procId, b );
+        return eval( procId, a ).get_int() - eval( procId, b ).get_int();
     case ASSMULT:
-    case MULT:  return eval( procId, a ) * eval( procId, b );
+    case MULT:  return eval( procId, a ).get_int() * eval( procId, b ).get_int();
     case ASSDIV:
     case DIV:
-        b_num = eval( procId, b );
+        b_num = eval( procId, b ).get_int();
         if ( b_num == 0 ) {
             emitError( EvalError::DIVIDE_BY_ZERO );
         }
-        return eval( procId, a ) / b_num;
+        return eval( procId, a ).get_int() / b_num;
     case ASSMOD:
     case MOD:
-        b_num = eval( procId, b );
+        b_num = eval( procId, b ).get_int();
         if ( b_num == 0 ) {
             emitError( EvalError::DIVIDE_BY_ZERO );
         }
-        return eval( procId, a ) % b_num;
+        return eval( procId, a ).get_int() % b_num;
 
     case ASSAND:
-    case BIT_AND:   return eval( procId, a ) & eval( procId, b );
+    case BIT_AND:   return eval( procId, a ).get_int() & eval( procId, b ).get_int();
     case ASSOR:
-    case BIT_OR:    return eval( procId, a ) | eval( procId, b );
+    case BIT_OR:    return eval( procId, a ).get_int() | eval( procId, b ).get_int();
     case ASSXOR:
-    case BIT_XOR:   return eval( procId, a ) ^ eval( procId, b );
+    case BIT_XOR:   return eval( procId, a ).get_int() ^ eval( procId, b ).get_int();
     case ASSLSHIFT:
     case BIT_LSHIFT:
-        b_num = eval( procId, b );
+        b_num = eval( procId, b ).get_int();
         if ( (b_num & 31) != b_num )
             emitError( EvalError::SHIFT );
-        return eval( procId, a ) << b_num;
+        return eval( procId, a ).get_int() << b_num;
     case ASSRSHIFT:
     case BIT_RSHIFT:
-        b_num = eval( procId, b );
+        b_num = eval( procId, b ).get_int();
         if ( (b_num & 31) != b_num )
             emitError( EvalError::SHIFT );
-        return eval( procId, a ) >> b_num;
+        return eval( procId, a ).get_int() >> b_num;
 
-    case AND:   return eval( procId, a) && eval( procId, b);
-    case OR:    return eval( procId, a) || eval( procId, b);
+    case AND:   return eval( procId, a).get_int() && eval( procId, b).get_int();
+    case OR:    return eval( procId, a).get_int() || eval( procId, b).get_int();
 
-    case LT:    return eval( procId, a) < eval( procId, b);
-    case LE:    return eval( procId, a) <= eval( procId, b);
-    case GT:    return eval( procId, a) > eval( procId, b);
-    case GE:    return eval( procId, a) >= eval( procId, b);
+    case LT:    return eval( procId, a).get_int() < eval( procId, b).get_int();
+    case LE:    return eval( procId, a).get_int() <= eval( procId, b).get_int();
+    case GT:    return eval( procId, a).get_int() > eval( procId, b).get_int();
+    case GE:    return eval( procId, a).get_int() >= eval( procId, b).get_int();
 
-    case EQ:    return eval( procId, a) == eval( procId, b);
-    case NEQ:   return eval( procId, a) != eval( procId, b);
+    case EQ:    return eval( procId, a).get_int() == eval( procId, b).get_int();
+    case NEQ:   return eval( procId, a).get_int() != eval( procId, b).get_int();
 
-    case MAX:   return max( eval( procId, a ), eval( procId, b ) );
-    case MIN:   return min( eval( procId, a ), eval( procId, b ) );
+    case MAX:   return max( eval( procId, a ).get_int(), eval( procId, b ).get_int() );
+    case MIN:   return min( eval( procId, a ).get_int(), eval( procId, b ).get_int() );
 
-    case ARRAY:
-        p = getArray( procId, expression_t::createBinary( ARRAY, a, b ) );
-        return getValue( *p.first )[ p.second ];
+    case ARRAY: {
+        const expression_t expr = expression_t::createBinary( ARRAY, a, b );
+        Value a_val = eval( procId, a );
+        Value index = eval( procId, b );
+
+        type_t a_elem_type = a.getType();
+        while( a_elem_type.getKind() == REF )
+            a_elem_type = a_elem_type[ 0 ];
+        a_elem_type = a_elem_type[ 0 ];
+
+        int factor = getElementCount( procId, a_elem_type );
+
+        return Value( a_val.array().base_ptr, a_val.array().index + index.get_int() * factor, factor );
+    }
 
     case FORALL: {
         bool ret = true;
         auto range = evalRange( procId, a.getType() );
-        for ( int val = range.first; val <= range.second; ++val )
-            ret = ret && eval( procId, b.subst( a.getSymbol(), UTAP::expression_t::createConstant( val ) ) );
+        for ( int val = range.first; val <= range.second; ++val ) {
+            expression_t b_subs = b.subst( a.getSymbol(), UTAP::expression_t::createConstant( val ) );
+            ret = ret && eval( procId, b_subs ).get_int();
+        }
         return ret;
     }
     case EXISTS: {
         bool ret = false;
         auto range = evalRange( procId, a.getType() );
         for ( int val = range.first; val <= range.second; ++val ) {
-            ret = ret || eval( procId, b.subst( a.getSymbol(), UTAP::expression_t::createConstant( val ) ) );
+            expression_t b_subs = b.subst( a.getSymbol(), UTAP::expression_t::createConstant( val ) );
+            ret = ret || eval( procId, b_subs ).get_int();
         }
         return ret;
     }
@@ -493,11 +491,11 @@ int32_t Evaluator::binop( int procId, const Constants::kind_t &op, const express
     return -1;
 }
 
-int32_t Evaluator::ternop( int procId, const Constants::kind_t op, const expression_t &a,
+Evaluator::Value Evaluator::ternop( int procId, const Constants::kind_t op, const expression_t &a,
                 const expression_t &b, const expression_t &c ) {
     switch ( op ) {
     case INLINEIF:
-        return eval( procId, a ) ? eval( procId, b ) : eval( procId, c );
+        return eval( procId, a ).get_int() ? eval( procId, b ) : eval( procId, c );
     default:
         cerr << "Unknown ternop " << op << endl;
         assert( false );
@@ -505,87 +503,34 @@ int32_t Evaluator::ternop( int procId, const Constants::kind_t op, const express
     }
 }
 
-// evaluates array expression, returns value identifier and index
-// if the result is a value, returns index of that value and sets pSize to 1
-// if the result is still an array, returns index to the first element of the array and pSize is set to its size
-std::pair< const Evaluator::VarData*, int > Evaluator::getArray( int procId, const expression_t& e, int *pSize ) {
-    assert( e.getKind() == ARRAY || e.getKind() == IDENTIFIER || e.getKind() == DOT );
-    std::vector< uint32_t > indices;
-    expression_t sub = e;
-    while ( sub.getKind() == ARRAY ) {
-        indices.push_back( eval( procId, sub[ 1 ] ) );
-        sub = sub[ 0 ];
-        int32_t offset = eval( procId, sub.getType().getArraySize().getRange().first );
-        indices.back() -= offset;
-    }
-    const VarData& var = getVarData( procId, sub );
-    int size = var.elementsCount;
-    int index = 0;
-    reverse( indices.begin(), indices.end() );
-    for ( unsigned i = 0; i < indices.size(); i++ ) {
-        if ( intptr_t( indices[ i ] ) >= var.arraySizes[ i ] ) {
-            emitError( EvalError::ARRAY_INDEX );
-        }
-        size /= var.arraySizes[ i ];
-        index += size * indices[ i ];
-    }
-    if ( pSize )
-        *pSize = size;
-    return std::make_pair( &var, index );
-}
-
 void Evaluator::assign( const expression_t& lval, int32_t val, int pId ) {
-    std::pair< const VarData*, int > var;
-    if ( lval.getKind() == IDENTIFIER )
-        var = make_pair( &getVarData( pId, lval.getSymbol() ), 0 );
-    else if ( lval.getKind() == ARRAY )
-        var = getArray( pId, lval );
-    else if ( lval.getKind() == DOT )
-        var = make_pair( &getVarData( pId, lval[0].getSymbol() ), lval.getIndex() );
-    else
-        assert( false );
-    int index = var.first->offset + var.second;
-    int32_t *data;
-    if ( var.first->prefix == PrefixType::LOCAL )
-        data = &metaValues[0];
-    else
-        data = Evaluator::data;
+    Value l_evaluated = eval( pId, lval );
+
+    const VarData& var = getVarData( pId, lval );
 
     if ( lval.getType().is( CLOCK ) )   // assign to clock
-        clocks.set( index, val );
+        clocks.set( l_evaluated.array().index, val );
     else {      // assign to variable
-        if ( !var.first->inRange( val ) ) {
+        if ( !var.inRange( val ) ) {
             emitError( EvalError::OUT_OF_RANGE );
         }
-        assert( data );
-        data[ index ] = val;
+        l_evaluated.array().base_ptr[ l_evaluated.array().index ] = val;
     }
 }
 
 void Evaluator::assign( const expression_t& lexp, const expression_t& rexp, int pId ) {
-    if ( rexp.getKind() == FUNCALL ) {
-        assign( lexp, evalFunCall( pId, rexp ), pId );
-        return;
-    }
-
     if ( rexp.getType().isArray() || rexp.getType().isRecord() ) { // assign array to array
+        Value dest = eval( pId, lexp );
+        int32_t *pDest = dest.array().base_ptr + dest.array().index;
 
-        int size;
-        auto arr = getArray( pId, lexp );
-        int32_t *dataSrc;
+        const VarData& var = getVarData( pId, lexp );
 
-        int32_t *pDest = data + arr.first->offset + arr.second;
-        arr = getArray( pId, rexp, &size );
-        if ( arr.first->prefix == PrefixType::LOCAL )
-            dataSrc = &metaValues[0];
-        else
-            dataSrc = Evaluator::data;
-
-        int32_t *pSrc = dataSrc + arr.first->offset + arr.second;
-        int32_t *pEnd = pSrc + size;
-        assert ( pEnd - pSrc <= arr.first->elementsCount );
+        Value src = eval( pId, rexp );
+        int32_t *pSrc = src.array().base_ptr + src.array().index;
+        int32_t *pEnd = pSrc + src.array().len;
+        assert ( pEnd - pSrc <= var.elementsCount );
         while ( pSrc != pEnd ) {
-            if ( !arr.first->inRange( *pSrc ) ) {
+            if ( !var.inRange( *pSrc ) ) {
                 emitError( EvalError::OUT_OF_RANGE );
             }
             *pDest++ = *pSrc++;
@@ -648,19 +593,17 @@ void Evaluator::processDecl( const vector< instance_t > &procs ) {
         // save the symbol so it can be used in property
         auto type = p.uid.getType();
         if ( type.isProcessSet() ) { // partial instances are represended as arrays of processes
-            vector< int > arrSizes;
             int size = 1;
             for ( size_t i = 0; i < type.size(); ++i ) {
                 auto r = evalRange( -1, type[ i ] );
-                arrSizes.push_back( r.second - r.first + 1 );
-                size *= arrSizes.back();
+                size *= r.second - r.first + 1;
                 // build name for partial instance
                 ss << ( i ? ',' : '[' );
-                ss << eval( -1, p.mapping.at( p.parameters[i] ) );
+                ss << eval( -1, p.mapping.at( p.parameters[i] ) ).get_int();
             }
             ss << ']';
             // insert array of processes or do nothing if we have already seen this uid
-            vars.insert( make_pair( make_pair( p.uid, -1 ), VarData( Type::PROCESS, PrefixType::NONE, pId, arrSizes, size ) ) );
+            vars.insert( make_pair( make_pair( p.uid, -1 ), VarData( Type::PROCESS, PrefixType::NONE, pId, size ) ) );
         } else {
             vars[ make_pair( p.uid, -1 ) ] = VarData ( Type::PROCESS, PrefixType::NONE, pId );
         }
@@ -813,7 +756,7 @@ void Evaluator::evalCmd( int procId, const expression_t& expr ) {
 
     symbol_t dest_sym = expr[0].getSymbol();
     if ( dest_sym.getType().isClock() ) {
-        int value =  eval( procId, expr[ 1 ] );
+        int value =  eval( procId, expr[ 1 ] ).get_int();
         if ( value < 0 ) {
             emitError( EvalError::NEG_CLOCK );
         }
@@ -861,7 +804,7 @@ void Evaluator::pushStatements( int procId, vector< StatementInfo > &stack, Stat
     }
 }
 
-const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
+Evaluator::Value Evaluator::evalFunCall( int procId, const UTAP::expression_t &exp ) {
     const symbol_t &sym_f = exp[0].getSymbol();
     const FuncData &fdata = getFuncData( procId, sym_f );
     assert( fdata.fun );
@@ -896,7 +839,7 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
                 evalCmd( procId, for_stmt->init );
             else
                 evalCmd( procId, for_stmt->step );
-            if ( eval( procId, for_stmt->cond ) ) {
+            if ( eval( procId, for_stmt->cond ).get_int() ) {
                 ++stmt_info.iterCount;
                 pushStatements( procId, statementStack, stmt_info );
                 pushStatements( procId, statementStack, StatementInfo( for_stmt->stat ) );
@@ -919,7 +862,7 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
 
         } else if ( dynamic_cast< const WhileStatement* >( stmt ) ) {
             const WhileStatement *while_stmt = dynamic_cast< const WhileStatement* >( stmt );
-            if ( eval( procId, while_stmt->cond) ) {
+            if ( eval( procId, while_stmt->cond).get_int() ) {
                 assert( while_stmt->stat );
                 ++stmt_info.iterCount;
                 pushStatements( procId, statementStack, stmt_info );
@@ -930,7 +873,7 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
             const DoWhileStatement *dowhile_stmt = dynamic_cast< const DoWhileStatement* >( stmt );
             ++stmt_info.iterCount;
             assert( dowhile_stmt->stat );
-            if ( stmt_info.iterCount == 0 || eval( procId, dowhile_stmt->cond ) ) {
+            if ( stmt_info.iterCount == 0 || eval( procId, dowhile_stmt->cond ).get_int() ) {
                 pushStatements( procId, statementStack, stmt_info );
                 pushStatements( procId, statementStack, StatementInfo( dowhile_stmt->stat ) );
             }
@@ -943,21 +886,21 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
             // UTAP does not know switch, case, default keywords
             cerr << "Switch statement is not supported" << endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
 
         } else if ( dynamic_cast< const CaseStatement* >( stmt ) ) {
             cerr << "Case statement is not supported" << endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
 
         } else if ( dynamic_cast< const DefaultStatement* >( stmt ) ) {
             cerr << "Default statement is not supported" << endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
 
         } else if ( dynamic_cast< const IfStatement* >( stmt ) ) {
             const IfStatement *eval_stmt = dynamic_cast< const IfStatement* >( stmt );
-            bool cond_value = eval( procId, eval_stmt->cond );
+            bool cond_value = eval( procId, eval_stmt->cond ).get_int();
             if ( cond_value ) {
                 assert( eval_stmt->trueCase );
                 pushStatements( procId, statementStack, StatementInfo( eval_stmt->trueCase ) );
@@ -972,37 +915,34 @@ const expression_t Evaluator::evalFunCall( int procId, const UTAP::expression_t 
             // delete current block + one more statement (while/for "header")
             cerr << "Break statement is not supported" << endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
 
         } else if ( dynamic_cast< const ContinueStatement* >( stmt ) ) {
             cerr << "Continue statement is not supported" << endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
 
         } else if ( dynamic_cast< const ReturnStatement* >( stmt ) ) {
-            return dynamic_cast< const ReturnStatement* >( stmt )->value;
+            return eval( procId, dynamic_cast< const ReturnStatement* >( stmt )->value );
 
         } else {
             cerr << "Unknown statement type" << std::endl;
             assert( false );
-            return expression_t::createConstant( 0 );
+            return 0;
         }
     }
 
-    return expression_t::createConstant( 0 );
+    return 0;
 }
 
-int32_t Evaluator::eval( int procId, const expression_t& expr ) {
+Evaluator::Value Evaluator::eval( int procId, const expression_t& expr ) {
     if ( expr.empty() )
         return 1;
     if ( expr.getKind() == RECORD || expr.getKind() == LIST )
         return 1;
 
-    assert( !expr.getType().isClock() );
-    assert( !expr.getType().isChannel() );
-
     if ( expr.getKind() == FUNCALL )
-        return eval( procId, evalFunCall( procId, expr ) );
+        return evalFunCall( procId, expr );
 
     switch ( expr.getSize() ) {
         case 3:
@@ -1012,11 +952,11 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
         case 1:
             if ( expr.getKind() == DOT ) {
                 if ( expr[0].getType().isRecord() ) {
-                    int index = expr.getIndex();
-                    expression_t struct_expr = expr[0];
-                    if ( struct_expr.getKind() == FUNCALL )
-                        struct_expr = evalFunCall( procId, struct_expr );
-                    return getValue( procId, struct_expr.getSymbol() )[ index ];
+                    int index = getRecordElementIndex( procId, expr[0].getType(), expr.getIndex() );
+                    Value s_val = eval( procId, expr[0] );
+                    int elem_count = getElementCount( procId, expr.getType() );
+
+                    return Value( s_val.array().base_ptr, s_val.array().index + index, elem_count );
                 } else {
                     int pId = resolveId( -1, expr[0] );
                     auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
@@ -1025,16 +965,23 @@ int32_t Evaluator::eval( int procId, const expression_t& expr ) {
                         auto location = static_cast< const state_t* >( symb.getData() );   // get location
                         return locations[ pId ] == location->locNr;
                     } else {
-                        return *getValue( getVarData( procId, expr ) );
+                        return eval( pId, expression_t::createIdentifier( symb ) );
                     }
                 }
             }
             return unop( procId, expr.getKind(), expr[0] ) ;
         case 0:
             switch ( expr.getKind() ) {
-                case IDENTIFIER:
-                    return *getValue( procId, expr.getSymbol() );
-                case CONSTANT:
+                case IDENTIFIER: {
+                    const type_t &basicType = getBasicType( expr.getType() );
+                    if ( basicType.isClock() || basicType.isChannel() || basicType.isProcess() ) {
+                        int offset = getVarData( procId, expr.getSymbol() ).offset;
+                        return Value( nullptr, offset, 1 );
+                    } else {
+                        int32_t *base_ptr = getValue( procId, expr.getSymbol() );
+                        return Value( base_ptr, 0, getElementCount( procId, expr.getType() ) );
+                    }
+                } case CONSTANT:
                     return expr.getValue();
                 default:
                     cerr << "unknown nulop" << expr.getKind() << endl;
@@ -1063,13 +1010,9 @@ void Evaluator::extrapolate() {
  *  resolveId()
  */
 int Evaluator::resolveId( int procId, const expression_t& expr ) {
-    assert( expr.getType().is( CHANNEL ) || expr.getType().is( CLOCK ) || expr.getType().is( PROCESS ) );
-    if ( expr.getKind() != ARRAY ) {
-        return getVarData( procId, expr ).offset;
-    } else {
-        auto p = getArray( procId, expr );
-        return p.first->offset + p.second;
-    }
+    assert( expr.getType().isChannel() || expr.getType().isClock() || expr.getType().isProcess() );
+
+    return eval( procId, expr ).array().index;
 }
 
 std::ostream& operator<<( std::ostream& o, Evaluator& e ) {
@@ -1199,7 +1142,7 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
 
 pair < int32_t, int32_t > Evaluator::getRange( int procId, const expression_t &expr ) {
     if ( isConstant( expr ) )
-        return make_pair( eval( procId, expr ), eval( procId, expr ) );
+        return make_pair( eval( procId, expr ).get_int(), eval( procId, expr ).get_int() );
     else if ( expr.getKind() == IDENTIFIER )
         return evalRange( procId, expr.getType() );
     else if ( expr.getKind() == PLUS ) {
