@@ -307,17 +307,20 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
     {
         this->init( *this );
 
-        std::string basename = m.input.model;
-        std::string output = basename + ".dcess";
-        for ( int i = 0; access( output.c_str(), F_OK ) == 0; ++i ) {
-            std::stringstream ss;
-            ss << basename << "-" << i << ".dcess";
-            output = ss.str();
-        }
-        params.path = output;
+        if ( m.output.file.empty() ) {
+            std::string basename = wibble::str::basename( m.input.model );
+            std::string output = basename + ".dcess";
+            for ( int i = 0; access( output.c_str(), F_OK ) == 0; ++i ) {
+                std::stringstream ss;
+                ss << basename << "-" << i << ".dcess";
+                output = ss.str();
+            }
+            params.path = output;
+        } else
+            params.path = m.output.file;
 
-        params.saveNodes = true;
-        params.forward = false;
+        params.saveNodes = m.output.saveStates;
+        params.forward = true;
     }
 
     _Compact( _Compact &master, int id ) :
