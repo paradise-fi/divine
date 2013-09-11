@@ -73,8 +73,11 @@ struct Output {
     bool statistics;
     std::string filterProgram;
     std::string file;
+    bool saveStates; // for compact
 
-    Output() : quiet( false ), wantCe( false ), statistics( false ) {}
+    Output() : quiet( false ), wantCe( false ), statistics( false ),
+        saveStates( false )
+    { }
 };
 
 struct Statistics {
