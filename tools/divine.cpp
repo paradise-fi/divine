@@ -514,15 +514,18 @@ struct Main {
             else
                 meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por,LU" );
         }
-        if ( o_compression->boolValue() )
-            meta.algorithm.compression = parseCompression( o_compression->stringValue() );
-        else
-            meta.algorithm.compression = meta::Algorithm::C_None;
+        meta.algorithm.compression = o_compression->boolValue()
+            ? parseCompression( o_compression->stringValue() )
+            : ( o_compression->isSet()
+                    ? meta::Algorithm::C_NTree
+                    : meta::Algorithm::C_None );
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
         meta.algorithm.demangle = o_demangle->boolValue()
             ? parseDemangle( o_demangle->stringValue() )
-            : graph::DemangleStyle::None;
+            : ( o_demangle->isSet()
+                    ? graph::DemangleStyle::Cpp
+                    : graph::DemangleStyle::None );
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
