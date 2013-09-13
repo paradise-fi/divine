@@ -5,10 +5,10 @@
 
 llvm_verify ltl_valid p0 <<EOF
 #include <divine.h>
-enum AP { _test_ap_bla_bla_123_ = 0x42 };
+enum APs { _test_ap_bla_bla_123_ = 0x42 };
 LTL(p0, GF _test_ap_bla_bla_123_ );
 
 int main() {
-    while (1) { ap( _test_ap_bla_bla_123_ ); }
+    while (1) { AP( _test_ap_bla_bla_123_ ); }
 }
 EOF

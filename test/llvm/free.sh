@@ -1,6 +1,6 @@
 . lib
 
-llvm_verify invalid "bad argument" cstdlib <<EOF
+llvm_verify invalid "bad argument" '<free>' <<EOF
 #include <stdlib.h>
 
 void main() {
