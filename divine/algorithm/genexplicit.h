@@ -478,7 +478,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
 
     template< bool saveStates >
     bool _writeFileT() {
-        dess::Explicit dess( params.path, O_RDWR, PROT_READ | PROT_WRITE );
+        dess::Explicit dess( params.path, dess::Explicit::OpenMode::Write );
         auto start = limits[ params.ringId ].indexStart;
         auto edgeInserter = dess.backward.inserter( start );
         auto nodeInserter = dess.nodes.inserter( start );
@@ -543,7 +543,7 @@ struct _GenExplicitTranspose : Algorithm, Sequential
     }
 
     void transpose() {
-        dess::Explicit dess( path, O_RDWR, PROT_READ | PROT_WRITE );
+        dess::Explicit dess( path, dess::Explicit::OpenMode::Write );
         dess::transpose< typename _GenExplicit< Setup >::EdgeSpec >(
                 dess.backward, dess.forward );
     }
