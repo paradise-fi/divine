@@ -45,6 +45,7 @@ __cxa_get_globals() throw()
 
 #include <stdlib.h>
 #include <pthread.h>
+#include <divine.h>
 
 namespace __cxxabiv1
 {
@@ -78,7 +79,7 @@ __cxa_get_globals() throw()
     __cxa_eh_globals* eh_globals = (__cxa_eh_globals*)pthread_getspecific(key);
     if (eh_globals == 0)
     {   // construct key for one thread
-        eh_globals = (__cxa_eh_globals*)::calloc(1, sizeof(__cxa_eh_globals));
+        eh_globals = (__cxa_eh_globals*) __divine_malloc( sizeof(__cxa_eh_globals) );
         if (eh_globals == 0)
             abort_message("cannot allocate __cxa_eh_globals");
         if (pthread_setspecific(key, eh_globals) != 0)

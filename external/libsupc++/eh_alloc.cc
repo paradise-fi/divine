@@ -37,10 +37,12 @@
 
 #include <exception>
 #include "unwind-cxx.h"
-
+#include <divine.h>
 
 
 using namespace __cxxabiv1;
+
+#define NO_EMERGENCY_BUFFER
 
 /* APPLE LOCAL begin reduce emergency buffer size */
 /* 256 bytes is more than large enough for an std::bad_alloc object */
@@ -72,7 +74,7 @@ __cxxabiv1::__cxa_allocate_exception(size_t thrown_size) throw()
   void *ret;
 
   thrown_size += sizeof (__cxa_exception);
-  ret = malloc (thrown_size);
+  ret = __divine_malloc (thrown_size);
 
   if (! ret)
     {
@@ -132,7 +134,7 @@ extern "C" void*
 __cxxabiv1::__cxa_allocate_dependent_exception() throw()
 {
     size_t thrown_size = sizeof(__cxa_dependent_exception);
-    void* ret = ::malloc(thrown_size);
+    void* ret = __divine_malloc(thrown_size);
     if (!ret)
     {
 #ifndef NO_EMERGENCY_BUFFER
