@@ -49,7 +49,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 
     template< typename Gen >
     auto _capa( wibble::Preferred ) ->
-        decltype( typename Gen::IsCompact(), std::tuple< bool, std::string >() )
+        decltype( typename Gen::IsExplicit(), std::tuple< bool, std::string >() )
     {
         return std::make_tuple( true, g.base().capabilities().string() );
     }
