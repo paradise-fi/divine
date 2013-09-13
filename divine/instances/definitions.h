@@ -11,8 +11,8 @@
 #include <llvm/Support/Threading.h>
 #endif
 
-#ifdef O_COMPACT
-#include <divine/compact/compact.h>
+#ifdef O_EXPLICIT
+#include <divine/explicit/explicit.h>
 #endif
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
@@ -65,17 +65,17 @@ namespace algorithm {
     ALGORITHM( Reachability, Reachability, "Reachability", "divine/algorithm/reachability.h" );
     ALGORITHM( Metrics,      Metrics,      "Metrics",      "divine/algorithm/metrics.h" );
     ALGORITHM( Simulate,     Simulate,     "Simulate",     "divine/algorithm/simulate.h" );
-#if O_COMPACT
-    ALGORITHM( Compact,      Compact,      "Compact",      "divine/algorithm/compact.h" );
+#if O_EXPLICIT
+    ALGORITHM( GenExplicit,      GenExplicit,      "GenExplicit",      "divine/algorithm/genexplicit.h" );
 #else
-    using Compact = _Missing;
+    using GenExplicit = _Missing;
 #endif
     ALGORITHM_NS( Draw,      Draw,         "Draw",         "tools/draw.h", ::divine );
     ALGORITHM_NS( Info,      Info,         "Info",         "tools/info.h", ::divine );
 
 
     using Algorithms = TypeList< NestedDFS, Owcty, Map, Reachability,
-              Metrics, Simulate, Compact, Draw, Info,
+              Metrics, Simulate, GenExplicit, Draw, Info,
               NoAlgorithmErr
           >;
 #undef ALGORITHM
@@ -161,22 +161,22 @@ namespace generator {
     using ProbabilisticLLVM = _Missing;
 #endif
 
-#if O_COMPACT
-    GENERATOR( Compact, ".dcess", "Compact", Not< algorithm::Compact >, "divine/generator/compact.h" );
+#if O_EXPLICIT
+    GENERATOR( Explicit, ".dcess", "Explicit", Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
     namespace intern {
-        GENERATOR( ProbabilisticCompact, ".dcess", "Compact with labels", Not< algorithm::Compact >,
-                "divine/generator/compact.h" );
+        GENERATOR( ProbabilisticExplicit, ".dcess", "Probabilistic explicit", Not< algorithm::GenExplicit >,
+                "divine/generator/explicit.h" );
     }
-    struct ProbabilisticCompact : public intern::ProbabilisticCompact {
+    struct ProbabilisticExplicit : public intern::ProbabilisticExplicit {
         static bool select( Meta &meta ) {
-            return intern::ProbabilisticCompact::select( meta )
-                && compact::Compact( meta.input.model )
-                    .header->capabilities.has( compact::Capability::Probability );
+            return intern::ProbabilisticExplicit::select( meta )
+                && dess::Explicit( meta.input.model )
+                    .header->capabilities.has( dess::Capability::Probability );
         }
     };
 #else
-    using Compact = _Missing;
-    using ProbabilisticCompact = _Missing;
+    using Explicit = _Missing;
+    using ProbabilisticExplicit = _Missing;
 #endif
 
 #ifndef O_SMALL
@@ -193,7 +193,7 @@ namespace generator {
 #endif
 
     using Generators = TypeList< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
-                                 ProbabilisticCompact, Compact, Dummy, NoGeneratorErr >;
+                                 ProbabilisticExplicit, Explicit, Dummy, NoGeneratorErr >;
 
 #undef GENERATOR
 }
@@ -248,7 +248,7 @@ namespace visitor {
     }
 
     VISITOR( Partitioned, true, Any );
-    using ForShared = Not< Or< algorithm::Simulate, algorithm::Compact, algorithm::Info > >;
+    using ForShared = Not< Or< algorithm::Simulate, algorithm::GenExplicit, algorithm::Info > >;
     VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared );
 #undef VISITOR
 
