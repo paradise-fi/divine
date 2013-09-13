@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill
 
-#include <divine/compact/compact.h>
+#include <divine/explicit/explicit.h>
 
 using namespace divine::compact;
 

@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine/compact/compact.h>
+#include <divine/explicit/explicit.h>
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
@@ -9,7 +9,7 @@
 #define DIVINE_COMPACT_TRANSPOSE_H
 
 namespace divine {
-namespace compact {
+namespace dess {
 
 template< typename EdgeSpec >
 void transpose( DataBlock &from, DataBlock &to ) {
