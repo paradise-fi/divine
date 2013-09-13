@@ -218,6 +218,7 @@ namespace transform {
         using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
+            static_cast< void >( meta ); \
         } \
     }
 
@@ -251,6 +252,7 @@ namespace visitor {
         using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
+            static_cast< void >( meta ); \
         } \
     }
 
@@ -274,6 +276,7 @@ namespace store {
         using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
+            static_cast< void >( meta ); \
         } \
     }
 
@@ -313,6 +316,7 @@ namespace topology {
         using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
+            static_cast< void >( meta ); \
         } \
     }
 
@@ -349,6 +353,7 @@ namespace statistics {
         using SupportedBy = SUPPORTED_BY; \
         static bool select( Meta &meta ) { \
             return SELECTOR; \
+            static_cast< void >( meta ); \
         } \
     }
 

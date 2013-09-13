@@ -323,7 +323,7 @@ int main( int argc, char** argv ) {
         definitions( sym, i );
         sym.clear();
     }
-    assert_eq( used, symbols.size() );
+    assert_eq( used, int( symbols.size() ) );
     static_cast< void >( used );
     std::cerr << "Generated " << symbols.size() << " instances." << std::endl;
     return 0;
