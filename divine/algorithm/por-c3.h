@@ -78,7 +78,7 @@ struct PORGraph : graph::Transform< G > {
     template< typename Setup >
     struct POREliminate : algorithm::Visit< This, Setup >
     {
-        static visitor::ExpansionAction expansion( This &, Vertex n ) {
+        static visitor::ExpansionAction expansion( This &, Vertex ) {
             return visitor::ExpansionAction::Expand;
         }
 

@@ -279,7 +279,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             return visitor::ExpansionAction::Expand;
         }
 
-        static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
+        static visitor::TransitionAction transition( This &o, Vertex, Vertex t, Label )
         {
             assert( o.store().valid( t ) );
             assert( o.extension( t ).inS );

@@ -280,7 +280,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
     }
 
     struct TrackPredecessors : Visit< This, Setup > {
-        static visitor::ExpansionAction expansion( This &c, const Vertex &st )
+        static visitor::ExpansionAction expansion( This &, const Vertex & )
         {
             return visitor::ExpansionAction::Expand;
         }
@@ -293,7 +293,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
             return act;
         }
 
-        static visitor::DeadlockAction deadlocked( This &c, Vertex ) {
+        static visitor::DeadlockAction deadlocked( This &, Vertex ) {
             return visitor::DeadlockAction::Ignore;
         }
     };
@@ -445,7 +445,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
             dess.nodes.inserter().emplace( 0, []( char *, int64_t ) { } );
         dess.backward.inserter().emplace(
             sizeof( EdgeSpec ) * initials.size(),
-                [ &initials ]( char *ptr, int64_t size ) {
+                [ &initials ]( char *ptr, int64_t ) {
                     std::copy( initials.begin(), initials.end(),
                         reinterpret_cast< EdgeSpec * >( ptr ) );
                 } );
