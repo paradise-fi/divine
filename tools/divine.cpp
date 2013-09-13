@@ -58,7 +58,7 @@ struct Main {
     Meta meta;
 
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
-           *cmd_simulate, *cmd_compact;
+           *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
                 *ce, *compactOutput;
     BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
@@ -230,9 +230,9 @@ struct Main {
         cmd_simulate = opts.addEngine( "simulate",
                                        "<input>",
                                        "explore a state-space interactively" );
-        cmd_compact = opts.addEngine( "compact",
+        cmd_genexplicit = opts.addEngine( "gen-explicit",
                                       "<input>",
-                                      "convert state-space to compact explicit representation" );
+                                      "convert state-space to explicit representation" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -398,12 +398,12 @@ struct Main {
         cmd_simulate->add( compression );
         cmd_simulate->add( definitions );
 
-        cmd_compact->add( common );
-        cmd_compact->add( reduce );
-        cmd_compact->add( compression );
-        cmd_compact->add( definitions );
-        cmd_compact->add( input );
-        cmd_compact->add( compactOutput );
+        cmd_genexplicit->add( common );
+        cmd_genexplicit->add( reduce );
+        cmd_genexplicit->add( compression );
+        cmd_genexplicit->add( definitions );
+        cmd_genexplicit->add( input );
+        cmd_genexplicit->add( compactOutput );
 
         cmd_draw->add( drawing );
         cmd_draw->add( reduce );
@@ -588,8 +588,8 @@ struct Main {
         } else if ( opts.foundCommand() == cmd_simulate ) {
             meta.execution.threads = 1; // never runs in parallel
             meta.algorithm.algorithm = meta::Algorithm::Simulate;
-        } else if ( opts.foundCommand() == cmd_compact )
-            meta.algorithm.algorithm = meta::Algorithm::Compact;
+        } else if ( opts.foundCommand() == cmd_genexplicit )
+            meta.algorithm.algorithm = meta::Algorithm::GenExplicit;
         else if ( opts.foundCommand() == cmd_info )
             meta.algorithm.algorithm = meta::Algorithm::Info;
         else if ( opts.foundCommand() == cmd_metrics )
