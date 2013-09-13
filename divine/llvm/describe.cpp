@@ -364,7 +364,7 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
         int ap = flags.ap;
         std::vector< std::string > x;
         int k = 0;
-        MDNode *apmeta = interpreter->findEnum( "AP" );
+        MDNode *apmeta = interpreter->findEnum( "APs" );
         if ( apmeta ) {
             while ( ap ) {
                 if ( ap % 2 ) {

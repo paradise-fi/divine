@@ -1,16 +1,20 @@
-/* Includes */
-#include <divine.h>
+// -*- C++ -*- (c) 2013 Petr Rockai <me@mornfall.net>
+
 #include <cstdlib>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
 
+#include <divine.h>
+
+/*
+ * Glue code that ties various bits of C and C++ runtime to the divine runtime
+ * support. It's not particularly pretty. Other bits of this code are also
+ * exploded over external/ which is even worse.
+ */
+
 /* Memory allocation */
 void * malloc( size_t size ) throw() {
-    __divine_interrupt_mask();
-#ifdef TRACE
-    trace( "malloc( %d ) called..", size );
-#endif
     __divine_interrupt_mask();
 #ifdef NO_MALLOC_FAILURE
     return __divine_malloc( size ); // always success
@@ -26,14 +30,7 @@ void * malloc( size_t size ) throw() {
 /* TODO malloc currently gives zeroed memory */
 void *calloc( size_t n, size_t size ) throw() { return malloc( n * size ); }
 void *realloc( void *ptr, size_t size ) throw() { __divine_assert( 0 ); return 0; }
-
-void free( void * p) throw() {
-    __divine_interrupt_mask();
-#ifdef TRACE
-    trace( "free( %p ) called..", p );
-#endif
-    __divine_free( p );
-}
+void free( void * p) throw() { return __divine_free( p ); }
 
 /* IOStream */
 

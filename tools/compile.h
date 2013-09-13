@@ -317,13 +317,13 @@ struct Compile {
         fs::mkFilePath( "bits/pthreadtypes.h" );
         fs::writeFile( "bits/pthreadtypes.h" , "#include <pthread.h>" );
         fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
-        fs::writeFile( "cstdlib.cpp", llvm_usr_cstdlib_cpp_str );
+        fs::writeFile( "glue.cpp", llvm_usr_glue_cpp_str );
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
 
         fs::writeFile( "atomic", llvm_usr_atomic_h_str );
 
         // compile libraries
-        std::string flags = "-emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
+        std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
         compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I../libm -I.." );
@@ -334,9 +334,9 @@ struct Compile {
         flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ -Ilibm ";
 
         if ( !o_precompiled->boolValue() ) {
-            run( clang() + " -c -I. " + flags + " cstdlib.cpp -o cstdlib.bc" );
+            run( clang() + " -c -I. " + flags + " glue.cpp -o glue.bc" );
             run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
-            run( gold_ar() + " libdivine.a cstdlib.bc pthread.bc" );
+            run( gold_ar() + " libdivine.a glue.bc pthread.bc" );
         }
 
         if ( o_libs_only->boolValue() ) {

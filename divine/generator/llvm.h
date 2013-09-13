@@ -177,10 +177,10 @@ struct _LLVM : Common< Blob > {
     }
 
     int literal_id( std::string lit ) {
-        MDNode *ap = interpreter().findEnum( "AP" );
+        MDNode *ap = interpreter().findEnum( "APs" );
         if ( !ap )
             die( "FATAL: atomic proposition names could not be detected.\n"
-                    "Maybe you are missing enum AP." );
+                    "Maybe you are missing enum APs." );
         for ( int i = 0; i < int( ap->getNumOperands() ); ++i ) {
             MDNode *it = cast< MDNode >( ap->getOperand(i) );
             MDString *name = cast< MDString >( it->getOperand(1) );

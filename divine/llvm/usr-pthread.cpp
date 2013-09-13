@@ -58,6 +58,26 @@
 
 #define _BARRIER_COUNT_MASK        0xFFFE0000
 
+#define DBG_ASSERT( x ) __divine_assert( static_cast< int >( x ) )
+
+#define ATOMIC_FUN_BEGIN( visible_effect )                        \
+                do {                                              \
+                    __divine_interrupt_mask();                    \
+                    if ( visible_effect )                         \
+                        /* FIXME: this should be automatically */ \
+                        /*        detected in the system-space */ \
+                        BREAK_MASK( __divine_interrupt() );       \
+                } while ( 0 );
+
+/* Some handy macros. */
+#define BREAK_MASK( command )                    \
+                do {                             \
+                    __divine_interrupt_unmask(); \
+                    command;                     \
+                    __divine_interrupt_mask();   \
+                } while( 0 );
+
+
 /* TEMPORARY */
 #ifdef NEW_INTERP_BUGS
 #define bool int

@@ -2,21 +2,21 @@
 
 llvm_verify ltl_valid progress <<EOF
 #include <divine.h>
-enum AP { a };
+enum APs { a };
 LTL(progress, GF a);
 
 void main() {
-    while (1) { ap( a ); }
+    while (1) { AP( a ); }
 }
 EOF
 
 llvm_verify ltl_invalid progress <<EOF
 #include <divine.h>
-enum AP { a };
+enum APs { a };
 LTL(progress, GFa);
 
 void main() {
-    ap( a );
+    AP( a );
     while (1);
 }
 EOF

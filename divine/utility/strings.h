@@ -12,7 +12,7 @@ extern const char *compile_defines_str;
 extern const char *llvm_usr_h_str;
 extern const char *llvm_usr_pthread_h_str;
 extern const char *llvm_usr_pthread_cpp_str;
-extern const char *llvm_usr_cstdlib_cpp_str;
+extern const char *llvm_usr_glue_cpp_str;
 extern const char *llvm_usr_atomic_h_str;
 }
 
