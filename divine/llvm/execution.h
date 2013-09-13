@@ -754,7 +754,7 @@ struct Evaluator
     bool transform_frameid( int &frameid )
     {
         if ( frameid > 0 )
-            // L - (L - id - 1) - 1 = L - L + id + 1 - 1 = id
+            // L - (L - id) - 1 = L - L + id - 1 = id - 1
             frameid = ccontext.stackDepth() - frameid;
         else
             frameid = std::min( frameid == INT_MIN ? INT_MAX : -frameid, ccontext.stackDepth() );
