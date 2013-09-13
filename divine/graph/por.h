@@ -36,7 +36,7 @@ struct NonPORGraph : graph::Transform< G > {
     }
 
     template< typename Yield >
-    void porExpand( St&, Yield yield ) {}
+    void porExpand( St&, Yield ) {}
 
 
     template< typename Yield >

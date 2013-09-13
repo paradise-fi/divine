@@ -95,7 +95,7 @@ struct LtlCE {
     // --
 
     template< typename Worker, typename Store >
-    void _parentTrace( Worker &w, Store &s ) {
+    void _parentTrace( Worker &, Store &s ) {
         if ( shared().ce.current_updated )
             return;
         assert( s.valid( shared().ce.current ) );
@@ -111,7 +111,7 @@ struct LtlCE {
     }
 
     template < typename Worker, typename Store >
-    void _ceIsInitial( Worker& w, Store& s ) {
+    void _ceIsInitial( Worker &, Store& s ) {
         if ( shared().ce.current_updated )
             return;
         if ( !s.valid( shared().ce.current ) )
@@ -123,7 +123,7 @@ struct LtlCE {
     }
 
     template < typename Worker, typename Store >
-    void _successorTrace( Worker& w, Store& s ) {
+    void _successorTrace( Worker &, Store& s ) {
         if ( shared().ce.current_updated )
             return;
         assert( s.valid( shared().ce.parent ) );
@@ -134,7 +134,7 @@ struct LtlCE {
         int succnum = 0;
         Node parent = shared().ce.parent;
         g().allSuccessors(
-            parent, [ this, &s, &succnum, &w ]( Node n, Label ) {
+            parent, [ this, &s, &succnum ]( Node n, Label ) {
                 if ( this->shared().ce.current_updated )
                     return;
                 ++succnum;
@@ -193,7 +193,7 @@ struct LtlCE {
     struct FindCycle : algorithm::Visit< This, Setup >
     {
 
-        static visitor::ExpansionAction expansion( This &, Vertex n ) {
+        static visitor::ExpansionAction expansion( This &, Vertex ) {
             return visitor::ExpansionAction::Expand;
         }
 
@@ -333,9 +333,9 @@ struct LtlCE {
     using Linear = std::integral_constant< TraceType, TraceType::Linear >;
     using Lasso = std::integral_constant< TraceType, TraceType::Lasso >;
 
-    template< typename Domain, typename Alg, typename TT >
-    Traces parentTrace( Domain &d, Alg &a, TT traceType ) {
-        return parentTrace< Domain, Alg, TT >( d, a );
+    template< typename Domain, typename Alg, typename TraceType >
+    Traces parentTrace( Domain &d, Alg &a, TraceType ) {
+        return parentTrace< Domain, Alg, TraceType >( d, a );
     }
 
 
@@ -381,11 +381,11 @@ struct LtlCE {
     }
 
 
-    template< typename Domain, typename Alg, typename Iter, typename TT >
-    Traces succTrace( Domain &d, Alg &a, TT traceType, Node parent,
+    template< typename Domain, typename Alg, typename Iter, typename TraceType >
+    Traces succTrace( Domain &d, Alg &a, TraceType, Node parent,
             Iter hTraceBegin, Iter hTraceEnd )
     {
-        return succTrace< Domain, Alg, Iter, TT >( d, a, parent, hTraceBegin,
+        return succTrace< Domain, Alg, Iter, TraceType >( d, a, parent, hTraceBegin,
                 hTraceEnd );
     }
 
@@ -436,7 +436,7 @@ struct LtlCE {
     }
 
     template< typename Alg, typename Iter, typename TT >
-    Traces succTraceLocal( Alg &a, TT traceType, Node parent,
+    Traces succTraceLocal( Alg &a, TT, Node parent,
                            Iter hTraceBegin, Iter hTraceEnd )
     {
         // track forward by handles, generating full traces
