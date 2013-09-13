@@ -6,7 +6,7 @@ include( ../cmake/stringify.cmake )
 file( GLOB SRC *.cpp )
 file( GLOB H *.h )
 
-foreach( D utility toolkit generator algorithm instances compact )
+foreach( D utility toolkit generator algorithm instances explicit )
     file( GLOB SRC_${D} ${D}/*.cpp )
     file( GLOB H_${D} ${D}/*.h )
     install( FILES ${H_${D}} DESTINATION include/divine/${D} COMPONENT divine_dev )
@@ -54,7 +54,7 @@ endif( TIMED )
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
 
-file( GLOB testh *.test.h toolkit/*.test.h graph/*.test.h compact/*.test.h )
+file( GLOB testh *.test.h toolkit/*.test.h graph/*.test.h explicit/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
