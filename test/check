@@ -94,7 +94,7 @@ statespace() {
 }
 
 clear() {
-    rm -f progress report testcase.c
+    rm -f progress report testcase.{c,dve}
     echo "#### PASSED"
     echo
 }
