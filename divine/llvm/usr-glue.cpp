@@ -14,17 +14,12 @@
  */
 
 /* Memory allocation */
-void * malloc( size_t size ) throw() {
+void * malloc( size_t size ) throw() __attribute__((noinline)) {
     __divine_interrupt_mask();
-#ifdef NO_MALLOC_FAILURE
-    return __divine_malloc( size ); // always success
-#else
-    if ( __divine_choice( 2 ) ) {
+    if ( __divine_choice( 2 ) )
         return __divine_malloc( size ); // success
-    } else {
+    else
         return NULL; // failure
-    }
-#endif
 }
 
 /* TODO malloc currently gives zeroed memory */
