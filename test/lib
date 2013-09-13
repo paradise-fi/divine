@@ -214,13 +214,13 @@ all_small() {
 }
 
 llvm_precompile() {
-    test libdivine.a -nt `which divine` || ann divine compile --llvm --libraries-only
+    test libdivine.a -nt `which divine` || divine compile --llvm --libraries-only
 }
 
 llvm_prepare() {
     cat > $1
     llvm_precompile
-    ann divine compile --llvm $1 --precompiled=. >& progress
+    divine compile --llvm $1 --precompiled=. >& progress
 }
 
 llvm_verify_file() {
@@ -230,7 +230,7 @@ llvm_verify_file() {
     test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
     prop=${1-assert}
 
-    ann divine verify $f -p $prop -d -r 2>> progress | capture
+    divine verify $f -p $prop -d -r 2>> progress | capture
     test "$t" == ltl_valid && check ltl_valid
     test "$t" == ltl_invalid && check ltl_invalid
     test "$t" == valid && check reachability_valid
@@ -257,7 +257,7 @@ llvm_verify() {
 dve_statespace() {
     test "$O_DVE" = "ON" || skip
     cat > testcase.dve
-    ann divine metrics testcase.dve -p $1 -r 2>> progress | capture
+    divine metrics testcase.dve -p $1 -r 2>> progress | capture
     shift
     check statespace "$@"
     check clear
@@ -267,7 +267,7 @@ dve_shape() {
     test "$O_DVE" = "ON" || skip
     cat > testcase.dve
     echo "$2" > expected
-    ann divine draw testcase.dve -p $1 -r cat -o out.dot 2>> progress | capture
+    divine draw testcase.dve -p $1 -r cat -o out.dot 2>> progress | capture
     grep -- '->' out.dot | sed -e 's,\s,,g' > actual
 
     for actual in $(cat actual); do
