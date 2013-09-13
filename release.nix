@@ -52,7 +52,10 @@ let
      memSize = mem;
    };
 
-  mkbuild = { name, inputs, flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" ], clang ? false }:
+  mkbuild = { name, inputs,
+              flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=OFF" ],
+              clang ? false
+            }:
             { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
@@ -181,9 +184,11 @@ let
     gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
     gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
     gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
-                                flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" ]; };
-    gcc_compaction = mkbuild { name = "compaction"; inputs = { pkgs }: [];
-                               flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" ]; };
+                       flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
+    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = { pkgs }: [];
+                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" "-DEXPLICIT=OFF" ]; };
+    gcc_explicit = mkbuild { name = "explicit"; inputs = { pkgs }: [];
+                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
     gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
                           [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                          flags = []; };
