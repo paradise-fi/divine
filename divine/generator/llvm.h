@@ -150,7 +150,7 @@ struct _LLVM : Common< Blob > {
         return s;
     }
 
-    std::string showTransition( Node from, Node to, Label l ) {
+    std::string showTransition( Node, Node, Label l ) {
         return l.text();
     }
 
@@ -159,7 +159,7 @@ struct _LLVM : Common< Blob > {
         exit( 1 );
     }
 
-    void read( std::string file, std::vector< std::string > definitions,
+    void read( std::string file, std::vector< std::string > /* definitions */,
                _LLVM *blueprint = nullptr )
     {
         if ( blueprint )

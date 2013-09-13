@@ -18,7 +18,7 @@ namespace {
     }
 
     template<>
-    inline void showLabel< wibble::Unit >( std::stringstream &ss,
+    inline void showLabel< wibble::Unit >( std::stringstream &,
             const wibble::Unit & ) { }
 }
 
@@ -48,7 +48,7 @@ struct _Explicit : public Common< Blob > {
                 this->pool().dereference( n ) + _slack );
     }
 
-    void read( std::string file, std::vector< std::string > definitions,
+    void read( std::string file, std::vector< std::string > /* definitions */,
             _Explicit *c = nullptr )
     {
         if ( c )
@@ -69,9 +69,9 @@ struct _Explicit : public Common< Blob > {
                     std::placeholders::_1, std::placeholders::_2 ) );
     }
 
-    bool isAccepting( Node n ) { return false; } // TODO
+    bool isAccepting( Node ) { return false; } // TODO
 
-    bool isGoal( Node n ) { return false; } // TODO
+    bool isGoal( Node ) { return false; } // TODO
 
     std::string showNode( Node n ) {
         std::stringstream ss;
@@ -96,12 +96,6 @@ struct _Explicit : public Common< Blob > {
     void properties( Yield yield ) {
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
     }
-
-    ReductionSet useReductions( ReductionSet r ) override {
-        return ReductionSet();
-    }
-
-    void fairnessEnabled( bool enabled ) { }
 
   private:
     template< typename Yield >

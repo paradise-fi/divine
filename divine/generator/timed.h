@@ -115,7 +115,9 @@ struct Timed : public Common< Blob > {
 
     void release( Node s ) { pool().free( s ); }
 
-    void read( std::string file, std::vector< std::string > definitions, Timed * = nullptr ) {
+    void read( std::string file, std::vector< std::string > /* definitions */,
+            Timed * = nullptr )
+    {
         gen.read( file );
 
         // replace extension with .ltl and try to read properties
@@ -195,7 +197,7 @@ struct Timed : public Common< Blob > {
 
     // yield( Recurse, length, remaining count )
     template< typename Yield >
-    void splitHint( Node n, int from, int length, Yield yield ) {
+    void splitHint( Node, int from, int length, Yield yield ) {
         assert_leq( slack(), from );
         from -= slack();
 
@@ -229,7 +231,7 @@ struct Timed : public Common< Blob > {
 
     // top-level split
     template< typename Yield >
-    void splitHint( Node n, Yield yield ) {
+    void splitHint( Node, Yield yield ) {
         auto splits = gen.getSplitPoints();
         yield( Recurse::Yes, splits[ 1 ], 1 );
         yield( Recurse::Yes, gen.stateSize() - splits[ 1 ], 0 );

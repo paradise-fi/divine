@@ -122,7 +122,8 @@ struct CESMI : public Common< Blob > {
         *result = sym;
     }
 
-    void read( std::string path, std::vector< std::string > definitions, CESMI *blueprint = nullptr )
+    void read( std::string path, std::vector< std::string > /* definitions */,
+            CESMI *blueprint = nullptr )
     {
         if ( blueprint ) {
             dl = blueprint->dl;
