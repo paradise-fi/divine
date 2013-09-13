@@ -77,6 +77,8 @@
 namespace divine {
 namespace dess {
 
+constexpr const char *extension = ".dess";
+
 enum class Capability : uint64_t {
     ForwardEdges = 0x1,
     BackwardEdges = 0x2,
