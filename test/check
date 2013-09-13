@@ -118,8 +118,8 @@ debris() {
     echo "#### TEST END"
     echo
     test -f progress && (cat progress; echo) || true
-    test -f testcase.c && (cat testcase.c; echo) || true
-    test -f testcase.dve && (cat testcase.dve; echo) || true
+    test -f testcase.c && (nl -ba testcase.c; echo) || true
+    test -f testcase.dve && (nl -ba testcase.dve; echo) || true
     test -f complaint && cat complaint || true
     rm -f testcase.{c,dve} complaint progress
     echo
