@@ -162,11 +162,18 @@ namespace generator {
 #endif
 
 #if O_EXPLICIT
-    GENERATOR( Explicit, ".dcess", "Explicit", Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
     namespace intern {
-        GENERATOR( ProbabilisticExplicit, ".dcess", "Probabilistic explicit", Not< algorithm::GenExplicit >,
-                "divine/generator/explicit.h" );
+        GENERATOR( Explicit, dess::extension, "Explicit",
+                Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
+        GENERATOR( ProbabilisticExplicit, dess::extension, "Probabilistic explicit",
+                Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
     }
+    struct Explicit : public intern::Explicit {
+        static bool select( Meta &meta ) {
+            return intern::Explicit::select( meta ) &&
+                dess::Explicit( meta.input.model ).header->labelSize == 0;
+        }
+    };
     struct ProbabilisticExplicit : public intern::ProbabilisticExplicit {
         static bool select( Meta &meta ) {
             return intern::ProbabilisticExplicit::select( meta )
