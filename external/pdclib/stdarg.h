@@ -10,6 +10,7 @@
 #define _PDCLIB_STDARG_H _PDCLIB_STDARG_H
 #include <_PDCLIB_aux.h>
 #include <_PDCLIB_config.h>
+#include <divine.h> // for __divine_va_start()...
 _PDCLIB_BEGIN_EXTERN_C
 
 typedef _PDCLIB_va_list va_list;
