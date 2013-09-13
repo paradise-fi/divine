@@ -309,10 +309,10 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
 
         if ( m.output.file.empty() ) {
             std::string basename = wibble::str::basename( m.input.model );
-            std::string output = basename + ".dcess";
+            std::string output = basename + dess::extension;
             for ( int i = 0; access( output.c_str(), F_OK ) == 0; ++i ) {
                 std::stringstream ss;
-                ss << basename << "-" << i << ".dcess";
+                ss << basename << "-" << i << dess::extension;
                 output = ss.str();
             }
             params.path = output;
