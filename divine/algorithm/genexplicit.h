@@ -2,8 +2,8 @@
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
-#include <divine/compact/compact.h>
-#include <divine/compact/transpose.h>
+#include <divine/explicit/explicit.h>
+#include <divine/explicit/transpose.h>
 #include <divine/toolkit/probability.h>
 #include <cstdint>
 #include <algorithm>
@@ -18,8 +18,8 @@ namespace divine {
 namespace algorithm {
 
 template< typename Setup >
-struct _Compact : Algorithm, AlgorithmUtils< Setup >,
-                 Parallel< Setup::template Topology, _Compact< Setup > >
+struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
+                 Parallel< Setup::template Topology, _GenExplicit< Setup > >
 {
     enum class Iteration : int8_t {
         Start = 0,
@@ -29,7 +29,7 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
         WriteFile
     };
 
-    typedef _Compact< Setup > This;
+    typedef _GenExplicit< Setup > This;
 
     struct ThreadLimit {
         int64_t indexStart; // inclusive
@@ -302,7 +302,7 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
         this->visit( this, TrackPredecessors() );
     }
 
-    _Compact( Meta m ) : Algorithm( m, sizeof( Extension ) ),
+    _GenExplicit( Meta m ) : Algorithm( m, sizeof( Extension ) ),
         params(), limits(), nodes( 0 ), nodesSize( 0 )
     {
         this->init( *this );
@@ -323,7 +323,7 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
         params.forward = true;
     }
 
-    _Compact( _Compact &master, int id ) :
+    _GenExplicit( _GenExplicit &master, int id ) :
         Algorithm( master.meta(), sizeof( Extension ) ),
         params(), limits(), nodes( 0 ), nodesSize( 0 )
     {
@@ -425,7 +425,7 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
         } );
 
         assert_eq( nodes, meta().statistics.visited );
-        auto creator = compact::preallocate( params.path )
+        auto creator = dess::preallocate( params.path )
             .nodes( nodes + 1 ) // pseudo-initial
             .edges( meta().statistics.transitions + initials.size() )
             .forward()
@@ -439,11 +439,11 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
         if ( std::is_same< Label, toolkit::Probability >::value )
             creator.probability();
 
-        auto compact = creator();
+        auto dess = creator();
 
         if ( params.saveNodes )
-            compact.nodes.inserter().emplace( 0, []( char *, int64_t ) { } );
-        compact.backward.inserter().emplace(
+            dess.nodes.inserter().emplace( 0, []( char *, int64_t ) { } );
+        dess.backward.inserter().emplace(
             sizeof( EdgeSpec ) * initials.size(),
                 [ &initials ]( char *ptr, int64_t size ) {
                     std::copy( initials.begin(), initials.end(),
@@ -478,10 +478,10 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
 
     template< bool saveStates >
     bool _writeFileT() {
-        compact::Compact compact( params.path, O_RDWR, PROT_READ | PROT_WRITE );
+        dess::Explicit dess( params.path, O_RDWR, PROT_READ | PROT_WRITE );
         auto start = limits[ params.ringId ].indexStart;
-        auto edgeInserter = compact.backward.inserter( start );
-        auto nodeInserter = compact.nodes.inserter( start );
+        auto edgeInserter = dess.backward.inserter( start );
+        auto nodeInserter = dess.nodes.inserter( start );
 
         for ( auto st : this->store() ) {
             assert( extension( st ).iteration == Iteration::PrececessorTracking );
@@ -513,25 +513,25 @@ struct _Compact : Algorithm, AlgorithmUtils< Setup >,
     }
 };
 
-ALGORITHM_RPC( _Compact );
-ALGORITHM_RPC_ID( _Compact, 1, _init );
-ALGORITHM_RPC_ID( _Compact, 2, _count );
-ALGORITHM_RPC_ID( _Compact, 3, _por );
-ALGORITHM_RPC_ID( _Compact, 4, _por_worker );
-ALGORITHM_RPC_ID( _Compact, 5, _normalize );
-ALGORITHM_RPC_ID( _Compact, 6, _trackPredecessors );
-ALGORITHM_RPC_ID( _Compact, 7, _writeFile );
-ALGORITHM_RPC_ID( _Compact, 8, _collectCount );
-ALGORITHM_RPC_ID( _Compact, 9, _setLimits );
-ALGORITHM_RPC_ID( _Compact, 10, _getNodeId );
-ALGORITHM_RPC_ID( _Compact, 11, _cleanup );
+ALGORITHM_RPC( _GenExplicit );
+ALGORITHM_RPC_ID( _GenExplicit, 1, _init );
+ALGORITHM_RPC_ID( _GenExplicit, 2, _count );
+ALGORITHM_RPC_ID( _GenExplicit, 3, _por );
+ALGORITHM_RPC_ID( _GenExplicit, 4, _por_worker );
+ALGORITHM_RPC_ID( _GenExplicit, 5, _normalize );
+ALGORITHM_RPC_ID( _GenExplicit, 6, _trackPredecessors );
+ALGORITHM_RPC_ID( _GenExplicit, 7, _writeFile );
+ALGORITHM_RPC_ID( _GenExplicit, 8, _collectCount );
+ALGORITHM_RPC_ID( _GenExplicit, 9, _setLimits );
+ALGORITHM_RPC_ID( _GenExplicit, 10, _getNodeId );
+ALGORITHM_RPC_ID( _GenExplicit, 11, _cleanup );
 
 template< typename Setup >
-struct _CompactTranspose : Algorithm, Sequential
+struct _GenExplicitTranspose : Algorithm, Sequential
 {
     std::string path;
 
-    _CompactTranspose( Meta &meta, std::string path ) :
+    _GenExplicitTranspose( Meta &meta, std::string path ) :
         Algorithm( meta ),
         path( path )
     { }
@@ -543,28 +543,28 @@ struct _CompactTranspose : Algorithm, Sequential
     }
 
     void transpose() {
-        compact::Compact compact( path, O_RDWR, PROT_READ | PROT_WRITE );
-        compact::transpose< typename _Compact< Setup >::EdgeSpec >(
-                compact.backward, compact.forward );
+        dess::Explicit dess( path, O_RDWR, PROT_READ | PROT_WRITE );
+        dess::transpose< typename _GenExplicit< Setup >::EdgeSpec >(
+                dess.backward, dess.forward );
     }
 };
 
 template< typename Setup >
-struct Compact : Algorithm {
+struct GenExplicit : Algorithm {
 
-    using Stage1 = _Compact< Setup >;
-    using Stage2 = _CompactTranspose< Setup >;
+    using Stage1 = _GenExplicit< Setup >;
+    using Stage2 = _GenExplicitTranspose< Setup >;
 
     std::unique_ptr< Stage1 > stage1;
     std::unique_ptr< Stage2 > stage2;
 
-    Compact( Meta m ) :
+    GenExplicit( Meta m ) :
         Algorithm( m ),
         stage1( new Stage1( m ) ),
         stage2()
     { }
 
-    Compact( Compact &master, int id ) :
+    GenExplicit( GenExplicit &master, int id ) :
         stage1( new Stage1( master._stage1, id ) ),
         stage2()
     { }
