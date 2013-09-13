@@ -228,6 +228,8 @@ struct MachineState
         template< typename T = char >
         T *dereference( Pointer p ) {
             assert( owns( p ) );
+            if ( p.offset >= size( p ) )
+                return nullptr;
             return reinterpret_cast< T * >(
                 memory() + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p ) );
         }

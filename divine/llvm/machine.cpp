@@ -149,6 +149,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
     int size = pointerSize( original );
     heap.jumptable( edit ) = canonic.boundary / 4;
     canonic.boundary += size;
+    heap.jumptable( edit.segment + 1 ) = canonic.boundary / 4;
 
     /* And trace it. We work in 4 byte steps, pointers are 4 bytes and 4-byte aligned. */
     original.offset = edited.offset = 0;
