@@ -9,7 +9,7 @@ struct TestDataBlock {
         DataBlock empty;
     }
 
-    Test inserterT() {
+    void inserterT() { /* this was dropped from code as it was not used
         char *data = new char[ 100 * sizeof( int64_t ) + 100 * 100 ];
         DataBlock block( 100, data );
 
@@ -22,7 +22,7 @@ struct TestDataBlock {
             block.map( i )( [ i ]( char *data, int64_t size ) -> void {
                 assert_eq( int64_t( sizeof( int64_t ) ), size );
                 assert_eq( *reinterpret_cast< int64_t *>( data ), i );
-            } );
+            } );*/
     }
 
     Test inserter() {
