@@ -43,7 +43,10 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
-extern "C" void abort_message( const char * ) { __divine_assert( 0 ); }
+extern "C" void abort_message( const char * ) {
+    __divine_assert( 0 );
+    __divine_unwind( INT_MIN );
+}
 extern "C" void *dlsym( void *, void * ) { __divine_assert( 0 ); return 0; } // oh golly...
 
 extern "C" void *__errno_location() { __divine_assert( 0 ); return 0; }
