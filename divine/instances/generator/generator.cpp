@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cmath>
 #include <iterator>
 #include <fstream>
 #include <iostream>
