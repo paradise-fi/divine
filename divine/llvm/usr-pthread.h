@@ -3,7 +3,6 @@
 
 /* Includes */
 
-#include "divine.h"
 #include <time.h>
 #include <sys/types.h>
 

@@ -1,7 +1,8 @@
 // -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
 
 /* Includes */
-#include "pthread.h"
+#include <pthread.h>
+#include <divine.h>
 #include <errno.h>
 
 #ifndef NO_JMP
@@ -78,11 +79,6 @@
                 } while( 0 );
 
 
-/* TEMPORARY */
-#ifdef NEW_INTERP_BUGS
-#define bool int
-#endif
-
 /* Internal data types */
 struct Entry {
     void *(*entry)(void *);
@@ -114,15 +110,9 @@ struct Thread { // (user-space) information maintained for every (running) threa
     bool sleeping;
     pthread_cond_t* condition;
 
-    // cancellation
-#ifdef NEW_INTERP_BUGS
-    int cancel_state;
-    int cancel_type;
-#else
     int cancel_state:1;
     int cancel_type:1;
-#endif
-    bool cancelled;
+    bool cancelled:1;
     CleanupHandler *cleanup_handlers;
 };
 
@@ -142,15 +132,10 @@ template< typename T >
 T* realloc( T* old_ptr, unsigned old_count, unsigned new_count ) {
     T* new_ptr = static_cast< T* >( __divine_malloc( sizeof( T ) * new_count ) );
     if ( old_ptr ) {
-#ifdef NEW_INTERP_BUGS
-        for (int i = 0; i < ( old_count < new_count ? old_count : new_count ); i++)
-            new_ptr[i] = old_ptr[i]; // only basic types are copied
-#else
-        memcpy( static_cast< void* >( &new_ptr ), static_cast< void* >( &old_ptr ),
+        memcpy( static_cast< void* >( new_ptr ), static_cast< void* >( old_ptr ),
                 sizeof( T ) * ( old_count < new_count ? old_count : new_count ));
-#endif
         __divine_free( old_ptr );
-    }    
+    }
     return new_ptr;
 }
 
@@ -162,14 +147,10 @@ int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) {
 
 /* Thread */
 int _get_gtid( const int ltid ) {
-#ifndef NEW_INTERP_BUGS
     DBG_ASSERT( ( ltid >= 0 ) && ( ltid < alloc_pslots ) );
-#endif
     if ( threads[ltid] != NULL ) {
         int gtid = threads[ltid]->gtid;
-#ifndef NEW_INTERP_BUGS
         DBG_ASSERT( gtid >= 0 && gtid < thread_counter );
-#endif
         return gtid;
     } else
         return -1; // invalid gtid
