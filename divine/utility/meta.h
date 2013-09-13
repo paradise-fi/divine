@@ -40,7 +40,7 @@ struct Execution {
 
 struct Algorithm {
     enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
-                Draw, Info, Compact, Probabilistic, Simulate };
+                Draw, Info, GenExplicit, Probabilistic, Simulate };
     enum CompressionType { C_None, C_Tree, C_NTree };
 
     Type algorithm;
