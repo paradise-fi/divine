@@ -4,10 +4,7 @@
 #include <pthread.h>
 #include <divine.h>
 #include <errno.h>
-
-#ifndef NO_JMP
-#include <setjmp.h>
-#endif
+#include <limits.h>
 
 /* Macros */
 #define _WAIT( cond, cancel_point )                                            \
@@ -100,11 +97,6 @@ struct Thread { // (user-space) information maintained for every (running) threa
     bool running;
     bool detached;
     void *result;
-
-#ifndef NO_JMP
-    // exit -> back to the entry wrapper
-    jmp_buf entry_buf;
-#endif
 
     // conditional variables
     bool sleeping;
@@ -242,11 +234,7 @@ void _cancel() {
 
     // call all cleanup handlers
     _cleanup();
-
-    // return to _pthread_entry
-#ifndef NO_JMP
-    longjmp( threads[ltid]->entry_buf, 1 );
-#endif
+    __divine_unwind( 1, NULL );
 }
 
 bool _canceled() {
@@ -274,16 +262,10 @@ void _pthread_entry( void *_args )
 
     // call entry function
     thread->running = true;
-#ifndef NO_JMP
-    if ( !setjmp( thread->entry_buf ) ) {
-#endif
-        __divine_interrupt_unmask();
-        // from now on, args and _args should not be accessed
+    __divine_interrupt_unmask();
+    // from now on, args and _args should not be accessed
 
-        thread->result = entry(arg);
-#ifndef NO_JMP
-    } // else: exited by pthread_exit or cancelled
-#endif
+    thread->result = entry(arg);
     __divine_interrupt_mask();
 
     DBG_ASSERT( thread->sleeping == false );
@@ -358,27 +340,17 @@ void pthread_exit( void *result ) {
     int ltid = __divine_get_tid();
     int gtid = _get_gtid( ltid );
 
-    threads[ltid]->result = result;
-
     if (gtid == 0) {
         // join every other thread and exit
         for ( int i = 1; i < alloc_pslots; i++ ) {
             WAIT_OR_CANCEL( threads[i] && threads[i]->running )
         }
 
-        // call all cleanup handlers
         _cleanup();
-
-        // FIXME: how to return from main()?
-
+        __divine_unwind(INT_MIN);
     } else {
-        // call all cleanup handlers
         _cleanup();
-
-        // return to _pthread_entry
-#ifndef NO_JMP
-        longjmp( threads[ltid]->entry_buf, 1 );
-#endif
+        __divine_unwind(1, result);
     }
 }
 
