@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/generator/common.h>
-#include <divine/compact/compact.h>
+#include <divine/explicit/explicit.h>
 #include <divine/toolkit/probability.h>
 #include <functional>
 
@@ -23,9 +23,9 @@ namespace {
 }
 
 template< typename _Label >
-struct _Compact : public Common< Blob > {
+struct _Explicit : public Common< Blob > {
 
-    using IsCompact = wibble::Unit;
+    using IsExplicit = wibble::Unit;
 
     using Node = Blob;
     using Label = _Label;
@@ -39,8 +39,8 @@ struct _Compact : public Common< Blob > {
         EdgeSpec( Node n, Label l ) : std::tuple< Node, Label >( n, l ) { }
     };
 
-    compact::Capabilities capabilities() {
-        return compact.header->capabilities;
+    dess::Capabilities capabilities() {
+        return dess.header->capabilities;
     }
 
     int64_t index( Node n ) {
@@ -49,12 +49,12 @@ struct _Compact : public Common< Blob > {
     }
 
     void read( std::string file, std::vector< std::string > definitions,
-            _Compact *c = nullptr )
+            _Explicit *c = nullptr )
     {
         if ( c )
-            compact = c->compact;
+            dess = c->dess;
         else
-            compact.open( file );
+            dess.open( file );
     }
 
     template< typename Yield >
@@ -106,7 +106,7 @@ struct _Compact : public Common< Blob > {
   private:
     template< typename Yield >
     void _successors( int64_t ix, Yield yield ) {
-        compact.forward.map< EdgeSpec >( ix )
+        dess.forward.map< EdgeSpec >( ix )
             ( [ yield, this ]( EdgeSpec *succs, int64_t cnt ) {
                 for ( int64_t i = 0; i < cnt; ++i )
                     this->_unwrapEdge( yield, succs[ i ] );
@@ -127,11 +127,11 @@ struct _Compact : public Common< Blob > {
         return n;
     }
 
-    compact::Compact compact;
+    dess::Explicit dess;
 };
 
-using Compact = _Compact< wibble::Unit >;
-using ProbabilisticCompact = _Compact< toolkit::Probability >;
+using Explicit = _Explicit< wibble::Unit >;
+using ProbabilisticExplicit = _Explicit< toolkit::Probability >;
 
 }
 }
