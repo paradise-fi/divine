@@ -31,6 +31,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     bool printEdges;
     // when true, all successors are automatically printed whenever the interactive prompt is shown
     bool autoSuccs;
+    // force interactive even after trace is generated
+    bool interactive;
     // command to run, the interactive prompt is shown if blank
     std::string inputTrace;
     std::string last;
@@ -234,6 +236,10 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         generateInitials();
         printUpdate();
 
+        evalLoop();
+    }
+
+    void evalLoop() {
         std::string line;
         do {
             if ( autoSuccs ) {
@@ -251,6 +257,10 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         } else {
             generateInitials();
             runCommand( inputTrace );
+            if ( interactive ) {
+                inputTrace.clear();
+                evalLoop();
+            }
         }
     }
 
@@ -259,6 +269,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
         printEdges = true;
         autoSuccs = false;
         inputTrace = m.input.trace;
+        interactive = m.algorithm.interactive;
     }
 };
 

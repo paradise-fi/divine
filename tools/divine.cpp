@@ -76,7 +76,7 @@ struct Main {
     StringOption *o_drawTrace, *o_drawOutput, *o_render;
     StringOption *o_gnuplot;
     StringOption *o_property;
-    StringOption *o_inputTrace;
+    StringOption *o_inputTrace, *o_interactiveInputTrace;
     StringOption *o_demangle;
     StringOption *o_outputFile;
     BoolOption *o_noSaveStates;
@@ -370,8 +370,11 @@ struct Main {
 
         // simulate options
         o_inputTrace = cmd_simulate->add< StringOption >(
-            "trace", '\0', "trace", "",
+            "trace", 't', "trace", "",
             "generate states of a numeric trace and exit" );
+        o_interactiveInputTrace = cmd_simulate->add< StringOption >(
+            "interactive-trace", 'T', "interactive-trace", "",
+            "generate states of a numeric trace and continue in interactive mode" );
 
         o_outputFile = compactOutput->add< StringOption >(
                 "output", 'o', "output", "",
@@ -551,8 +554,14 @@ struct Main {
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
         meta.execution.diskFifo = o_diskFifo->boolValue();
-        if ( opts.foundCommand() == cmd_simulate )
-            meta.input.trace = o_inputTrace->stringValue();
+        if ( opts.foundCommand() == cmd_simulate ) {
+            if ( o_inputTrace->isSet() && o_interactiveInputTrace->isSet() )
+                die( "Use just one of --trace / --int-trace" );
+            meta.input.trace = o_inputTrace->isSet()
+                ? o_inputTrace->stringValue()
+                : o_interactiveInputTrace->stringValue();
+            meta.algorithm.interactive = !o_inputTrace->isSet();
+        }
         else
             meta.input.trace = o_drawTrace->stringValue();
 

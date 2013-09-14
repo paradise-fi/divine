@@ -56,6 +56,7 @@ struct Algorithm {
     bool fairness;
     graph::ReductionSet reduce;
     graph::DemangleStyle demangle; // for llvm
+    bool interactive; // for simulate
 
     Algorithm() : algorithm( Info ),
                   hashSeed( 0 ),
@@ -64,7 +65,9 @@ struct Algorithm {
                   hashCompaction( false ),
                   compression( C_None ),
                   sharedVisitor( false ),
-                  fairness( false ) {}
+                  fairness( false ),
+                  interactive( false )
+    {}
 };
 
 struct Output {
