@@ -2,7 +2,7 @@
 
 #include <divine/explicit/explicit.h>
 
-using namespace divine::compact;
+using namespace divine::dess;
 
 struct TestDataBlock {
     Test empty() {
