@@ -818,9 +818,13 @@ struct Evaluator
             r.cleanup = LPI->isCleanup();
             r.person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
             for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
-                auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
-                auto type_id = LPI->isFilter( i ) ? -1 : info.function( pc ).typeID( tag );
-                r.items.push_back( std::make_pair( type_id, tag ) );
+                if ( LPI->isFilter( i ) ) {
+                    r.items.push_back( std::make_pair( -1, Pointer() ) );
+                } else {
+                    auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
+                    auto type_id = info.function( pc ).typeID( tag );
+                    r.items.push_back( std::make_pair( type_id, tag ) );
+                }
             }
         }
         return r;
