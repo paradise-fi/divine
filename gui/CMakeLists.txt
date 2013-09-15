@@ -36,8 +36,6 @@ add_subdirectory(baseIde)
 add_subdirectory(baseTools)
 add_subdirectory(dve)
 
-add_subdirectory(help)
-
 # Install the shared Qt component
 if(WIN32)
   find_path(GUI_QTCORE_DLL QtCore4.dll)
