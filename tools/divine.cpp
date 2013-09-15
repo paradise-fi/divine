@@ -378,7 +378,7 @@ struct Main {
 
         o_outputFile = compactOutput->add< StringOption >(
                 "output", 'o', "output", "",
-                "the output file name (if not specified <current-dir>/<model-name>.dcess is used)" );
+                "the output file name (if not specified <current-dir>/<model-name>.dess is used)" );
         o_noSaveStates = compactOutput->add< BoolOption >(
                 "no-save-states", 0, "no-save-states", "",
                 "do not save states in DCESS file, only save transitions." );
