@@ -50,6 +50,7 @@ let
      configurePhase = "echo -DCMAKE_BUILD_TYPE=${buildType} > pkgbuildflags";
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
+     size = 6144;
    };
 
   mkbuild = { name, inputs,
