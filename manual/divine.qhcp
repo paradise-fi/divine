@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<QHelpCollectionProject version="1.0">
+  <assistant>
+    <title>DiVinE Help</title>
+    <startPage>qthelp://divine/manual/manual.html</startPage>
+    <homePage>qthelp://divine/manual/manual.html</homePage>
+    <aboutDialog>
+      <file>about.txt</file>
+    </aboutDialog>
+  </assistant>
+
+  <docFiles>
+    <generate>
+      <file>
+        <input>manual.qhp</input>
+        <output>manual.qch</output>
+      </file>
+    </generate>
+    <register>
+      <file>manual.qch</file>
+    </register>
+  </docFiles>
+</QHelpCollectionProject>

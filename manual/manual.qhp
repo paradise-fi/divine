@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<QtHelpProject version="1.0">
+  <namespace>divine</namespace>
+  <virtualFolder>manual</virtualFolder>
+  <customFilter name="DiVinE">
+    <filterAttribute>divine</filterAttribute>
+  </customFilter>
+  <filterSection>
+    <filterAttribute>divine</filterAttribute>
+    <toc>
+      <section title="Introduction" ref="manual.html#introduction"/>
+      <section title="Installation" ref="manual.html#installation"/>
+      <section title="Using the DiVinE commandline interface" ref="manual.html#using-the-divine-commandline-interface"/>
+    </toc>
+    <keywords>
+<!--      <keyword name="foo" id="MyApplication::foo" ref="doc.html#foo"/>
+      <keyword name="bar" ref="doc.html#bar"/>
+      <keyword id="MyApplication::foobar" ref="doc.html#foobar"/>-->
+    </keywords>
+    <files>
+      <file>manual.html</file>
+    </files>
+  </filterSection>
+</QtHelpProject>

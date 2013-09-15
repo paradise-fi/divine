@@ -1,0 +1,5 @@
+DIVINE is a general-purpose model checker. See <a
+href=\"http://divine.fi.muni.cz\">http://divine.fi.muni.cz</a> for more
+details about the project.
+
+(c) 2008-2013 ParaDiSe Laboratory

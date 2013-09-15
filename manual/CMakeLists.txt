@@ -13,6 +13,15 @@ if( PDFLATEX AND BIBTEX )
   set( PDFMAN "manual.pdf" )
 endif()
 
+if( GUI )
+    add_custom_command(OUTPUT divine.qhc manual.qch
+                       COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/{divine.qhcp,manual.qhp,about.txt} .
+                       COMMAND ${QT_QCOLLECTIONGENERATOR_EXECUTABLE} divine.qhcp
+                       DEPENDS manual.html ${CMAKE_CURRENT_SOURCE_DIR}/divine.qhcp
+                               ${CMAKE_CURRENT_SOURCE_DIR}/manual.qhp )
+  set( QTHELP "divine.qhc;manual.qch" )
+endif()
+
 add_custom_command(
   OUTPUT manual.html
   DEPENDS ${SOURCES}
@@ -27,7 +36,7 @@ add_custom_command(
   COMMAND pandoc --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1 commands.mdwn
 )
 
-add_custom_target( manual ALL DEPENDS ${PDFMAN} manual.html divine.1 )
+add_custom_target( manual ALL DEPENDS ${PDFMAN} ${QTHELP} manual.html divine.1 )
 
 include( GNUInstallDirs )
 
