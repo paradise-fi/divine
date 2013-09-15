@@ -47,6 +47,8 @@
 #include "textEditor.h"
 #include "textEditorHandlers.h"
 
+#include <memory>
+
 namespace divine {
 namespace gui {
 
@@ -244,7 +246,7 @@ void DveModule::install(MainForm * root)
   lock_ = new DivineLock(root_, runner_, this);
 
   DivineOutput * output = new DivineOutput(this);
-  Output::_output = output;
+  Output::_output.reset( output );
 
   connect(output, SIGNAL(message(QString)), this, SIGNAL(message(QString)));
   connect(this, SIGNAL(message(QString)), root_, SIGNAL(message(QString)));
