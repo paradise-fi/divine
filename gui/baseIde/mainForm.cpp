@@ -1166,7 +1166,7 @@ void MainForm::help()
     if(envPlugins)
       helpdir = envPlugins;
 
-    helpProc_->start(QString("%1 -enableRemoteControl -collectionFile %2/divine-ide.qhc").arg(ASSISTANT_BIN, helpdir),
+    helpProc_->start(QString("%1 -enableRemoteControl -collectionFile %2/divine.qhc").arg(ASSISTANT_BIN, helpdir),
                      QIODevice::WriteOnly);
     helpProc_->waitForStarted();
 
