@@ -43,9 +43,12 @@ include( GNUInstallDirs )
 if( WIN32 )
   install( FILES manual.html DESTINATION ./ COMPONENT sys )
 else()
-  install( FILES "${CMAKE_CURRENT_BINARY_DIR}/divine.1" DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT doc )
-  install( FILES "${CMAKE_CURRENT_BINARY_DIR}/manual.html" DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT doc )
+  install( FILES "${CMAKE_CURRENT_BINARY_DIR}/divine.1"
+           DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT doc )
+  install( FILES "${CMAKE_CURRENT_BINARY_DIR}/manual.html"
+           DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT doc )
   if ( PDFMAN )
-      install( FILES "${CMAKE_CURRENT_BINARY_DIR}/manual.pdf" DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT doc )
+      install( FILES "${CMAKE_CURRENT_BINARY_DIR}/manual.pdf"
+               DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT doc )
   endif()
 endif()
