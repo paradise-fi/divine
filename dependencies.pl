@@ -7,7 +7,7 @@ my $cluster = "";
 
 sub want() {
     my ( $x ) = @_;
-    return $x =~ /^divine|^tools/ && $x !~ /legacy|test\.h/;
+    return $x =~ /^divine\/|^tools/ && $x !~ /legacy|test\.h/;
 }
 
 sub dir() {
@@ -34,7 +34,7 @@ for my $f (@files) {
         my $sloc = `sloccount $dirname | grep "^Total Physical" | cut -d= -f2`;
         chomp $sloc;
         if ($collapse) {
-            print "\"$dir\" [label=\"$dir: $sloc\"];\n" if $cluster;
+            print "\"$dir\" [label=\"$dir: $sloc\"];\n";
         } else {
             print "}\n" if $cluster;
             print "subgraph \"cluster_$dir\" {\n";
