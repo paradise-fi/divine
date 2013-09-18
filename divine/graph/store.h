@@ -22,43 +22,28 @@ namespace visitor {
 /* Global utility functions independent of store type
  */
 
-template< typename T >
-struct IsNew : T {
-    T &base() { return *this; }
-    bool _isnew;
-    IsNew( const T &t, bool isnew ) : T( t ), _isnew( isnew ) {}
-    bool isnew() { return _isnew; }
-    operator T() { return base(); }
-
-    template< typename F >
-    auto map( F f ) -> IsNew< typename std::result_of< F( T ) >::type >
-    {
-        return isNew( f( base() ), _isnew );
-    }
-};
-
-template< typename T >
-IsNew< T > isNew( const T &x, bool y ) {
-    return IsNew< T >( x, y );
-}
-
 template < typename TableProvider, typename Statistics >
 struct StoreCommon : TableProvider
 {
     using Table = typename TableProvider::Table;
-    using Hasher = typename Table::Hasher;
-    using InsertItem = typename Table::InsertItem;
-    using StoredItem = typename Table::StoredItem;
+    using Hasher = typename TableProvider::Hasher;
+    using InsertItem = typename TableProvider::Node;
+    using StoredItem = typename Table::value_type;
 
     typename TableProvider::ThreadData td;
 
     template< typename... Args >
-    StoreCommon( Pool &p, Args&&... args )
-        : TableProvider( std::forward< Args >( args )... ), _pool( p ) {}
+    StoreCommon( Pool &p, Hasher h, Args&&... args )
+        : TableProvider( h, std::forward< Args >( args )... ), _pool( p ), _hasher( h ) {}
+
+    StoreCommon( const StoreCommon &s ) = default;
+    StoreCommon( StoreCommon &&s ) = default;
+    StoreCommon &operator=( const StoreCommon & ) { assert_unimplemented(); }
 
     Pool &_pool;
+    Hasher _hasher;
 
-    Hasher& hasher() { return this->table().hasher; }
+    Hasher& hasher() { return _hasher; } // this->table().hasher; }
     Pool& pool() { return _pool; }
 
     hash64_t hash( InsertItem node ) { return hasher().hash( node ).first; }
@@ -78,42 +63,43 @@ struct StoreCommon : TableProvider
         return TableProvider::knows( hint ? hint : hash( n ) );
     }
 
-    IsNew< StoredItem > _fetch( InsertItem s, hash64_t h ) {
-        StoredItem found;
-        bool had;
-        std::tie( found, had ) = this->table().getHinted( s, h ? h : hash( s ), td );
-        assert( hasher().valid( found ) == had );
-        return isNew( found, !had );
+    Found< StoredItem > _fetch( InsertItem s, hash64_t h ) {
+        auto found = this->table().withTD( td ).findHinted( s, h ? h : hash( s ) );
+        return isNew( found.valid() ? *found : StoredItem(), found.isnew() );
     }
 
-    IsNew< StoredItem > _store( InsertItem s, hash64_t h ) {
-        StoredItem s2;
-        bool inserted;
-        std::tie( s2, inserted ) = this->table().insertHinted( s, h ? h : hash( s ), td );
-        if ( inserted ) {
+    Found< StoredItem > _store( InsertItem s, hash64_t h ) {
+        auto found = this->table().withTD( td ).insertHinted( s, h ? h : hash( s ) );
+        if ( found.isnew() ) {
             Statistics::global().hashadded( this->id(), memSize( s, hasher().pool() ) );
             Statistics::global().hashsize( this->id(), this->table().size() );
         }
-        return isNew( s2, inserted );
+        return isNew( *found, found.isnew() );
     }
 };
 
-template< typename Generator, typename Hasher >
+template< typename Generator, typename H >
 struct IdentityWrap {
-    template< template< typename, typename > class T >
-    using Make = T< typename Generator::Node, Hasher >;
+    using Node = typename Generator::Node;
+    using Hasher = H;
 
-    struct SpecificData {};
+    template< template< typename, typename > class T >
+    using Make = T< Node, H >;
+
+    template< template < typename, typename > class T >
+    using ThreadData = typename T< Node, H >::ThreadData;
 };
 
-template< typename Generator, typename Hasher >
+template< typename Generator, typename H >
 struct NTreeWrap {
-    template< template < typename, typename > class T >
-    using Make = NTreeHashSet< T, typename Generator::Node, Hasher >;
+    using Node = typename Generator::Node;
+    using Hasher = H;
 
-    struct SpecificData {
-        Generator *generator;
-    };
+    template< template < typename, typename > class T >
+    using Make = NTreeHashSet< T, Node, H >;
+
+    template< template < typename, typename > class T >
+    using ThreadData = typename NTreeHashSet< T, Node, H >::template ThreadData< Generator >;
 };
 
 struct ProviderCommon {
@@ -135,33 +121,27 @@ using PlainTable = typename Provider::template Make< IdentityWrap< Generator, Ha
 
 struct PartitionedProvider {
     template < typename WrapTable >
-    struct Make : ProviderCommon {
-        using Table = typename WrapTable::template Make< HashSet >;
-
-        struct ThreadData :
-            Table::ThreadData,
-            WrapTable::SpecificData
-        {};
+    struct Make : ProviderCommon, WrapTable  {
+        using Table = typename WrapTable::template Make< FastSet >;
+        using ThreadData = typename WrapTable::template ThreadData< FastSet >;
+        using Hasher = typename WrapTable::Hasher;
 
         Table _table;
 
         Table &table() { return _table; }
         const Table &table() const { return _table; }
 
-        Make( typename Table::InputHasher h, Make * ) : _table( h ) {}
+        Make( Hasher h, Make * ) : _table( h ) {}
     };
 };
 
 struct SharedProvider {
     template < typename WrapTable >
-    struct Make : ProviderCommon {
-        using Table = typename WrapTable::template Make< SharedHashSet >;
+    struct Make : ProviderCommon, WrapTable {
+        using Table = typename WrapTable::template Make< ConcurrentSet >;
         using TablePtr = std::shared_ptr< Table >;
-
-        struct ThreadData :
-            Table::ThreadData,
-            WrapTable::SpecificData
-        {};
+        using ThreadData = typename WrapTable::template ThreadData< ConcurrentSet >;
+        using Hasher = typename WrapTable::Hasher;
 
         TablePtr _table;
 
@@ -173,7 +153,7 @@ struct SharedProvider {
             assert_unreachable( "no owners in shared store" );
         }
 
-        Make ( typename Table::InputHasher h, Make *master )
+        Make ( Hasher h, Make *master )
             : _table( master ? master->_table : std::make_shared< Table >( h ) )
         {}
     };
@@ -192,8 +172,7 @@ class StoreIterator
     This& store;
 
     void bump() {
-        while ( i < store.table().size()
-                && !store.hasher().valid( store.table()[ i ] ) )
+        while ( i < store.table().size() && !store.table().valid( i ) )
             ++i;
     }
 
@@ -239,7 +218,7 @@ struct _Vertex
     Node node() const {
         if ( _s && !foreign() && !_s->valid( _n ) && _s->valid( _h ) )
             _n = _s->unpack( _h, _p );
-        _n.tag = 0; // Nodes must not be tagged so they can be easily compared
+        _n.setTag( 0 ); // Nodes must not be tagged so they can be easily compared
         return _n;
     }
 
@@ -301,7 +280,7 @@ struct _Vertex
         return bs >> v._h >> v._n;
     }
 
-private:
+//private:
     Store *_s; // origin store
     Handle _h;
     Pool *_p; // local pool
@@ -312,11 +291,11 @@ struct TrivialHandle {
     Blob b;
     TrivialHandle() = default;
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
-        b.tag = rank;
+        b.setTag( rank );
     }
     uint64_t asNumber() { return b.raw(); }
     int rank() const {
-        return b.tag;
+        return b.tag();
     }
 } __attribute__((packed));
 
@@ -381,21 +360,18 @@ struct DefaultStore
 
     Blob unpack( Handle h, Pool * ) { return h.b; }
 
-    IsNew< Vertex > store( Node n, hash64_t h = 0 ) {
-        return this->_store( n, h ).map(
-            [this, &n]( Node x ) {
-                assert_eq( x.tag, 0u );
-                assert_eq( n.tag, 0u );
-                if ( x.raw() != n.raw() )
+    Found< Vertex > store( Node n, hash64_t h = 0 ) {
+        return fmap( [this, &n]( Node x ) {
+                if ( x.raw_address() != n.raw_address() )
                     this->free( n );
                 return this->vertex( x );
-            } );
+            }, this->_store( n, h ) );
     }
 
-    IsNew< Vertex > fetch( Node n, hash64_t h = 0 )
+    Found< Vertex > fetch( Node n, hash64_t h = 0 )
     {
-        return this->_fetch( n, h ).map(
-            [this]( Node x ) { return this->vertex( x ); } );
+        return fmap( [this]( Node x ) { return this->vertex( x ); },
+                     this->_fetch( n, h ) );
     }
 
     template< typename T = char >
@@ -413,139 +389,118 @@ private:
     Vertex vertex( Node n ) { return Vertex( *this, Handle( n, this->rank() ) ); }
 };
 
-#if 0
 template< typename Hasher >
 struct HcHasher : Hasher
 {
-    HcHasher( Pool& pool, int slack ) : Hasher( pool, slack )
-    { }
-
-    bool equal(Blob a, Blob b) {
-        return true;
-    }
+    HcHasher( Pool& pool, int slack ) : Hasher( pool, slack ) {}
+    bool equal( Blob a, Blob b ) { return true; }
 };
 
-template < template < typename, typename, template <
-              template < typename, typename > class,
-              typename, typename > class
-            > class Utils,
-         typename _Generator, typename _Hasher, typename Statistics >
+template < typename TableProvider,
+           typename _Generator, typename _Hasher, typename Statistics >
 struct HcStore
-    : public StoreCommon< HcStore< Utils, _Generator, _Hasher, Statistics >,
-                          Utils< _Generator, HcHasher< _Hasher >, TableIdentity >,
-                          Statistics >
+    : StoreCommon< PlainTable< TableProvider, _Generator, HcHasher< _Hasher > >,
+                   Statistics >
 {
-    using TableUtils = Utils< _Generator, HcHasher< _Hasher >, TableIdentity >;
-    using This = HcStore< Utils,_Generator, _Hasher, Statistics >;
-    using Base = StoreCommon< This, TableUtils, Statistics >;
-    STORE_CLASS;
+    using Hasher = HcHasher< _Hasher >;
+    using This = HcStore< TableProvider, _Generator, _Hasher, Statistics >;
+    using Base = StoreCommon< PlainTable< TableProvider, _Generator, Hasher >, Statistics >;
+    using Table = typename Base::Table;
+
+    using Node = typename Base::InsertItem;
+    using Vertex = _Vertex< This >;
+    using Handle = TrivialHandle;
+
     static_assert( wibble::TSame< Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
 
-    using VertexId = StdVertexId< Node >;
-    using Vertex = CompressedVertex< Node, Node >;
-    using QueueVertex = Vertex;
+    hash64_t& stubHash( Blob stub ) {
+        return this->pool().template get< hash64_t >( stub, this->slack() );
+    }
 
-    template < typename Graph >
-    HcStore( Graph& g, Hasher h, This *master = nullptr ) :
-        Base( master, h )
+    void free_unpacked( Node n, Pool *p, bool foreign ) {
+        if ( foreign ) {
+            assert( p );
+            p->free( n );
+        }
+    }
+    void free( Node n ) { this->pool().free( n ); }
+
+    bool valid( Node n ) { return Base::valid( n ); }
+    bool valid( Handle h ) { return this->pool().valid( h.b ); }
+    bool valid( Vertex v ) { return valid( v.handle() ); }
+    bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
+    bool equal( Node a, Node b ) { return Base::equal( a, b ); }
+
+    int owner( Vertex v, hash64_t hint = 0 ) { return owner( v.node(), hint ); }
+    int owner( Node n, hash64_t hint = 0 ) { return Base::owner( n, hint ); }
+
+    int knows( Handle h, hash64_t hint = 0 ) {
+        return h.rank() == this->rank() && knows( h.b, hint );
+    }
+    int knows( Node n, hash64_t hint = 0 ) { return Base::knows( n, hint ); }
+
+    Vertex vertex( Handle h ) { return Vertex( *this, h ); }
+
+    /* Remember the extension for this Handle, but we won't need to get
+     * successors from it. A Vertex obtained from a discarded Handle may fail
+     * to produce a valid Node. */
+    void discard( Handle ) {}
+
+    Blob unpack( Handle h, Pool * ) { return h.b; }
+
+    Found< Vertex > store( Node n, hash64_t h = 0 ) {
+        return fmap( [this, &n]( Node x ) {
+                if ( x.raw_address() != n.raw_address() )
+                    this->free( n );
+                return this->vertex( x );
+            }, this->_store( n, h ) );
+    }
+
+    Found< Vertex > fetch( Node n, hash64_t h = 0 )
     {
-        static_assert( wibble::TSame< typename Graph::Node, Node >::value,
-                "using incompatible graph" );
+        return fmap( [this]( Node x ) { return this->vertex( x ); },
+                     this->_fetch( n, h ) );
+    }
+
+    template< typename T = char >
+    T *extension( Handle h ) {
+        return reinterpret_cast< T* >( this->pool().dereference( h.b ) );
     }
 
     template < typename Graph >
-    HcStore( Graph& g, int slack, This *m = nullptr ) :
-             This( g, Hasher( g.pool(), slack ), m )
+    HcStore( Graph &g, int slack, This *m = nullptr )
+        : Base( g.pool(), Hasher( g.pool(), slack ), m )
     { }
 
-    hash_t& stubHash( Blob stub ) {
-        return pool().template get< hash_t >( stub, slack() );
+    STORE_ITERATOR;
+private:
+    Vertex vertex( Node n ) { return Vertex( *this, Handle( n, this->rank() ) ); }
+
+#if 0
+    IsNew< Vertex > fetch( Blob s, hash64_t h = 0 ) {
+        return this->_fetch( s, h ).map(
+            [this, s]( Blob found ) {
+                this->pool().copy( found, s, this->slack() );
+                return this->vertex( s );
+            } );
     }
 
-    hash_t stubHash( const Blob stub ) const {
-        return this->pool().template get< hash_t >( stub, this->slack() );
-    }
-
-    std::tuple< Vertex, bool > fetch( Blob s, hash_t h ) {
-        Blob found;
-        bool had;
-        std::tie( found, had ) = Base::_fetch( s, h );
-
-        if ( had ) {
-            // copy saved state information
-            pool().copy( found, s, slack() );
-            return std::make_tuple( Vertex( s, found ), had );
-        }
-        return std::make_tuple( Vertex( found, Node() ), had );
-    }
-
-    Vertex fetchByVertexId( VertexId ) {
-        assert_unimplemented();
-    }
-
-    VertexId fetchVertexId( VertexId vi ) {
-        return VertexId( std::get< 0 >( Base::_fetch( vi.node, stubHash( vi.node ) ) ) );
-    }
-
-    std::tuple< Vertex, bool > store( Blob s, hash_t h ) {
+    IsNew< Vertex > store( Blob s, hash64_t h = 0 ) {
         // store just a stub containing state information
-        Blob stub = this->pool().allocate( slack() + int( sizeof( hash_t ) ) );
-        this->pool().copy( s, stub, slack() );
+        Blob stub = this->pool().allocate( this->slack() + int( sizeof( hash64_t ) ) );
+        this->pool().copy( s, stub, this->slack() );
         stubHash( stub ) = h;
         Node n;
         bool inserted;
         std::tie( n, inserted ) = Base::_store( stub, h );
         if ( !inserted )
-            pool().free( stub );
+            this->pool().free( stub );
         assert( equal( s, stub ) );
-        return std::make_tuple( Vertex( s, n ), inserted );
+        assert_unimplemented(); // return std::make_tuple( Vertex( s, n ), inserted );
     }
-
-    void update( Blob s, hash_t h ) {
-        // update state information in hashtable
-        Blob stub;
-        bool had;
-        std::tie( stub, had ) = table().getHinted( s, h );
-        assert( valid( stub ) );
-        assert( had );
-        pool().copy( s, stub, slack() );
-    }
-
-    bool has( Node node ) {
-        return table().has( node );
-    }
-
-    template< typename W >
-    int owner( W &w, Node n, hash_t hint = 0 ) const {
-        return _owner( w, hint ? hint : hash( n ) );
-    }
-
-    template< typename W >
-    int owner( W &w, Vertex s, hash_t hint = 0 ) const {
-        return _owner( w, stubHash( s.compressed ) );
-    }
-
-    template< typename W >
-    int owner( W &w, VertexId h ) const {
-        return _owner( w, stubHash( h.node ) );
-    }
-
-    bool valid( Vertex v ) {
-        return valid( v.base.node );
-    }
-
-    bool valid( VertexId vi ) {
-        return valid( vi.node );
-    }
-
-    ptrdiff_t compareId( VertexId a, VertexId b ) {
-        return Base::_compareId( []( VertexId x ) { return x.node; }, a, b );
-    }
-
-    STORE_ITERATOR;
-};
 #endif
+};
 
 template < typename TableProvider,
            typename _Generator, typename _Hasher, typename Statistics >
@@ -568,21 +523,21 @@ struct NTreeStore
     NTreeStore( Graph& g, int slack, This *m = nullptr ) :
         Base( g.pool(), Hasher( g.pool(), slack ), m )
     {
-        this->td.generator = &g.base();
+        this->td._splitter = &g.base();
+        this->td._pool = &g.pool();
     }
 
-    IsNew< Vertex > store( Node n, hash64_t h = 0 ) {
-        return this->_store( n, h ).map(
-            [this, &n]( Root x ) {
+    Found< Vertex > store( Node n, hash64_t h = 0 ) {
+        return fmap( [this, &n]( Root x ) {
                 this->free( n );
                 return this->vertex( x );
-            } );
+            }, this->_store( n, h ) );
     }
 
-    IsNew< Vertex > fetch( Node n, hash64_t h = 0 )
+    Found< Vertex > fetch( Node n, hash64_t h = 0 )
     {
-        return this->_fetch( n, h ).map(
-            [this]( Root x ) { return this->vertex( x ); } );
+        return fmap( [this]( Root x ) { return this->vertex( x ); },
+                     this->_fetch( n, h ) );
     }
 
     Blob unpack( Handle h, Pool *p ) {
@@ -600,7 +555,7 @@ struct NTreeStore
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     hash64_t hash( Node n ) { return this->hasher().hash( n ).first; }
-    hash64_t hash( Handle n ) { return this->hasher().hash( Root( n.b ) ).first; }
+    hash64_t hash( Handle n ) { return this->table().hash( Root( n.b ) ); }
 
     int owner( Vertex v, hash64_t hint = 0 ) {
         return Base::owner( hint ? hint : hash( v.node() ) );
@@ -621,7 +576,7 @@ struct NTreeStore
 
     STORE_ITERATOR;
 private:
-    Vertex vertex( Root n ) { return Vertex( *this, Handle( n.b, this->rank() ) ); }
+    Vertex vertex( Root n ) { return Vertex( *this, Handle( n.unwrap(), this->rank() ) ); }
 };
 
 }

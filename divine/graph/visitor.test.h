@@ -9,7 +9,7 @@
 #include <divine/toolkit/parallel.h>
 #include <divine/graph/visitor.h>
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/hashset.h> // default_hasher
+#include <divine/toolkit/hashset.test.h> // default_hasher
 
 using namespace divine;
 using namespace wibble;

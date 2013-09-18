@@ -157,9 +157,9 @@ struct Common {
                     ? store().fetch( _to, hint )
                     : store().store( _to, hint );
         assert( readOnly == ReadOnly::No || !to.isnew() );
-        assert( store().valid( to ) );
+        assert( store().valid( *to ) );
 
-        tact = S::transition( notify, from, to, label );
+        tact = S::transition( notify, from, *to, label );
 
         /**
          * If this thread attempted to store the node and the node has been already stored before,
@@ -167,9 +167,9 @@ struct Common {
          */
         if ( tact == TransitionAction::Expand ||
              ( tact == TransitionAction::Follow && to.isnew() ) ) {
-            eact = S::expansion( notify, to );
+            eact = S::expansion( notify, *to );
             if ( eact == ExpansionAction::Expand )
-                _queue.push( to.handle() );
+                _queue.push( to->handle() );
         }
 
         if ( tact == TransitionAction::Terminate ||
@@ -372,7 +372,6 @@ struct Shared {
     template< typename S >
     struct Data {
         typedef divine::SharedQueue< S > Chunker;
-        typedef SharedHashSet< typename S::Graph::Node > Table;
 
         std::shared_ptr< typename Chunker::ChunkQ > chunkq;
         std::shared_ptr< typename Chunker::Terminator > terminator;

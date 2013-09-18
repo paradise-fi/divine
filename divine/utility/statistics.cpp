@@ -104,7 +104,7 @@ void TrackStatistics::format( std::ostream &o ) {
         o << std::endl;
         for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
-            long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof(HashSet< Blob >::Cell);
+            long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof( Blob ) /* FIXME */;
             for ( int i = 0; i < nthreads; ++ i)
                 threadMem += thread( i ).memSent[ j ] - thread( j ).memReceived[ i ];
             memSum += threadMem;
