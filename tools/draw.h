@@ -247,7 +247,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
                 this->extension( v ).distance = 1;
                 this->extension( v ).initial = 1;
                 this->extension( v ).intrace = false;
-                visitor.queue( Vertex(), v.node(), l );
+                visitor.queue( Vertex(), v->node(), l );
             } );
 
         loadTrace();
