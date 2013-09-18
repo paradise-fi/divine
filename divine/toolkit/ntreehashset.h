@@ -23,66 +23,68 @@ template< typename T >
 struct NewtypeHasher {
     Pool &p;
     NewtypeHasher( Pool &p ) : p( p ) {}
-    hash128_t hash( T t ) const { return p.hash( t.b ); }
-    bool valid( T t ) const { return p.valid( t.b ); }
-    bool equal( T a, T b ) const { return p.equal( a.b, b.b ); }
+    hash128_t hash( T t ) const { return p.hash( t.unwrap() ); }
+    bool valid( T t ) const { return p.valid( t.unwrap() ); }
+    bool equal( T a, T b ) const { return p.equal( a.unwrap(), b.unwrap() ); }
+};
+
+template< typename T, typename Self >
+struct NewTypeTag {
+    static const int tagBits = T::tagBits;
+    Self &self() { return *static_cast< Self * >( this ); }
+    int tag() { return self().unwrap().tag(); }
+    void setTag( int t ) { return self().unwrap().setTag( t ); }
 };
 
 // NTreeHashSet :: ( * -> * -> * ) -> * -> * -> *
 // Item can be any type with same interface as Blob
-template< template< typename, typename > class HashSet,
-          typename _Item, typename _Hasher >
+template< template< typename, typename > class HashSet, typename T, typename Hasher >
 struct NTreeHashSet
 {
-    typedef _Item Item;
-    typedef _Hasher UncompressedHasher;
-    typedef NTreeHashSet< HashSet, _Item, _Hasher > This;
+    struct Root;
 
-    using InputHasher = UncompressedHasher;
+    using insert_type = T;
+    using value_type = Root;
+
+    typedef NTreeHashSet< HashSet, T, Hasher > This;
 
     NTreeHashSet() : NTreeHashSet( Hasher() ) { }
+    NTreeHashSet( Hasher _hasher ) : _d( _hasher )
+    {}
 
-    NTreeHashSet( UncompressedHasher _hasher ) :
-    hasher( _hasher ),
-    _roots( hasher ),
-    _forks( ForkHasher( hasher.pool() ) ),
-    _leafs( LeafHasher( hasher.pool() ) )
-    { }
-
-    struct Leaf {
-        using IsBlobNewtype = void;
-        Blob b;
-
+    struct Leaf : NewType< Blob >, NewTypeTag< Blob, Leaf > {
         Leaf() = default;
-        Leaf( Blob b ) : b( b ) {}
+        Leaf( Blob b ) : NewType( b ) {}
         Leaf( int32_t size, char* source, Pool& pool )
         {
             assert_leq( 1, size );
-            b = pool.allocate( size );
-            std::copy( source, source + size, pool.dereference( b ) );
+            this->unwrap() = pool.allocate( size );
+            std::copy( source, source + size, pool.dereference( this->unwrap() ) );
         }
-        char *data( Pool &p ) { return p.dereference( b ); }
-        int32_t size( Pool &p ) { return p.size( b ); }
+        char *data( Pool &p ) { return p.dereference( this->unwrap() ); }
+        int32_t size( Pool &p ) { return p.size( this->unwrap() ); }
+        operator bool() { return !!this->unwrap(); }
     };
 
     template < typename Fork >
-    class LeafOr {
-        Blob b;
-    public:
-        LeafOr() : b() { }
+    struct LeafOr : NewType< Blob >, NewTypeTag< Blob, LeafOr< Fork > > {
+        LeafOr() = default;
 
-        LeafOr( Fork f ) : b( f.b ) {
-            assert_eq( b.tag, 0UL );
-            b.tag = 1;
+        const Blob &b() const { return this->unwrap(); }
+        Blob &b() { return this->unwrap(); }
+
+        LeafOr( Fork f ) : NewType< Blob >( f.unwrap() ) {
+            assert_eq( b().tag(), 0UL );
+            b().setTag( 1 );
         }
 
-        LeafOr( Leaf l ) : b( l.b ) {
-            assert_eq( b.tag, 0UL );
+        LeafOr( Leaf l ) : NewType< Blob >( l.unwrap() ) {
+            assert_eq( b().tag(), 0UL );
         }
 
-        Blob blob() const { Blob blob( b ); blob.tag = 0; return blob; }
+        Blob blob() const { Blob blob( b() ); blob.setTag( 0 ); return blob; }
         bool isLeaf() const { return !isFork(); }
-        bool isFork() const { assert( b.tag == 1 || b.tag == 0 ); return b.tag; }
+        bool isFork() const { assert( b().tag() == 1 || b().tag() == 0 ); return b().tag(); }
         int32_t size( Pool &p ) const { return p.size( blob() ); }
         bool isNull( Pool &p ) const { return !p.valid( blob() ); }
 
@@ -133,41 +135,40 @@ struct NTreeHashSet
         }
     };
 
-    struct Fork : WithChildren< Fork, Fork > {
-        using IsBlobNewtype = void;
-        Blob b;
-
+    struct Fork : WithChildren< Fork, Fork >, NewType< Blob >, NewTypeTag< Blob, Fork > {
         Fork() = default;
-        Fork( Blob b ) : b( b ) {}
+        Fork( Blob b ) : NewType< Blob >( b ) {}
         Fork( int32_t children, Pool& pool ) {
             assert_leq( 2, children );
             int32_t size = children * sizeof( LeafOr< Fork > );
-            b = pool.allocate( size );
-            pool.clear( b );
+            this->unwrap() = pool.allocate( size );
+            pool.clear( this->unwrap() );
         }
 
         int32_t forkcount( Pool &p ) {
-            return p.size( b ) / sizeof( LeafOr< Fork > );
+            return p.size( this->unwrap() ) / sizeof( LeafOr< Fork > );
         }
         LeafOr< Fork > *forkdata( Pool &p ) {
-            return p.dereference< LeafOrFork >( b );
+            return p.dereference< LeafOrFork >( this->unwrap() );
         }
+        operator bool() { return !!this->unwrap(); }
     };
 
     typedef LeafOr< Fork > LeafOrFork;
 
-    struct Root : WithChildren< Root, Fork > {
-        using IsBlobNewtype = void;
-        Blob b;
-
+    struct Root : WithChildren< Root, Fork >, NewType< Blob >, NewTypeTag< Blob, Root > {
         struct Header { int32_t forks; };
 
+        Blob &b() { return this->unwrap(); }
+
         Root() = default;
-        explicit Root( Blob b ) : b( b ) {}
-        Header &header( Pool &p ) { return *p.dereference< Header >( b ); }
+        explicit Root( Blob b ) : NewType< Blob >( b ) {}
+        Header &header( Pool &p ) { return *p.dereference< Header >( b() ); }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
-        char *rawdata( Pool &p ) { return p.dereference( b ) + sizeof( Header ); }
+        char *rawdata( Pool &p ) { return p.dereference( b() ) + sizeof( Header ); }
+
+        operator bool() { return !!this->unwrap(); }
 
         char *data( Pool &p ) {
             assert( leaf( p ) );
@@ -180,7 +181,7 @@ struct NTreeHashSet
         }
 
         int32_t dataSize( Pool &p, int32_t slack ) {
-            return p.size( b ) - sizeof( Header ) - slack;
+            return p.size( b() ) - sizeof( Header ) - slack;
         }
 
         int32_t slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
@@ -188,9 +189,9 @@ struct NTreeHashSet
 
         Blob reassemble( Pool& p )
         {
-            assert( p.valid( b ) );
+            assert( p.valid( b() ) );
             if ( leaf( p ) ) {
-                int32_t size = p.size( b ) - sizeof( Header );
+                int32_t size = p.size( b() ) - sizeof( Header );
                 assert_leq( 0, size );
                 Blob out = p.allocate( size );
                 std::copy( data( p ), data( p ) + size, p.dereference( out ) );
@@ -207,54 +208,54 @@ struct NTreeHashSet
                 } );
 
             char* slackptr = slack( p );
-            int32_t slacksize = p.size( b ) - sizeof( Header ) - slackoffset( p );
+            int32_t slacksize = p.size( b() ) - sizeof( Header ) - slackoffset( p );
             size += slacksize;
             Blob out = p.allocate( size );
             char* outptr = p.dereference( out );
             outptr = std::copy( slackptr, slackptr + slacksize, outptr );
             for ( auto l : leaves ) {
                 assert_leq( outptr - p.dereference( out ), p.size( out ) );
-                outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.b ), outptr );
+                outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.unwrap() ), outptr );
             }
             assert_eq( outptr - p.dereference( out ), p.size( out ) );
             return out;
         }
 
-        static Root createFlat( Item it, Pool& pool ) {
+        static Root createFlat( insert_type it, Pool& pool ) {
             assert( pool.valid( it ) );
             Root r;
-            r.b = pool.allocate( sizeof( Header ) + pool.size( it ) );
+            r.unwrap() = pool.allocate( sizeof( Header ) + pool.size( it ) );
             r.header( pool ).forks = 0;
             std::copy( pool.dereference( it ), pool.dereference( it ) + pool.size( it ),
-                       pool.dereference( r.b ) + sizeof( Header ) );
+                       pool.dereference( r.unwrap() ) + sizeof( Header ) );
             return r;
         }
 
-        static Root create( Item it, int32_t children, int32_t slack, Pool& pool ) {
+        static Root create( insert_type it, int32_t children, int32_t slack, Pool& pool ) {
             assert_leq( 2, children );
             assert_leq( 0, slack );
             uintptr_t size = sizeof( Header ) + slack + sizeof( LeafOrFork ) * children;
             Root root;
-            root.b = pool.allocate( size );
+            root.unwrap() = pool.allocate( size );
             root.header( pool ).forks = children;
             std::memset( root.rawdata( pool ), 0, sizeof( LeafOrFork ) * children );
-            std::memcpy( pool.dereference( root.b ) + size - slack,
+            std::memcpy( pool.dereference( root.unwrap() ) + size - slack,
                          pool.dereference( it ), slack );
             return root;
         }
     };
 
-    struct Uncompressed { Item i; Uncompressed( Item i ) : i( i ) {} };
+    struct Uncompressed { insert_type i; Uncompressed( insert_type i ) : i( i ) {} };
 
     using ForkHasher = NewtypeHasher< Fork >;
     using LeafHasher = NewtypeHasher< Leaf >;
 
     struct RootHasher {
-        UncompressedHasher uhasher;
+        Hasher uhasher;
         uint32_t salt;
 
-        RootHasher( UncompressedHasher uhasher ) : RootHasher( uhasher, 0 ) { }
-        RootHasher( UncompressedHasher uhasher, uint32_t salt )
+        RootHasher( Hasher uhasher ) : RootHasher( uhasher, 0 ) { }
+        RootHasher( Hasher uhasher, uint32_t salt )
             : uhasher( uhasher), salt( salt )
         { }
 
@@ -265,7 +266,7 @@ struct NTreeHashSet
         hash128_t hash( Root r ) {
             if ( r.leaf( pool() ) ) {
                 auto offset = sizeof( typename Root::Header ) + uhasher.slack;
-                return pool().hash( r.b, offset, offset + r.dataSize( pool(), uhasher.slack ) );
+                return pool().hash( r.unwrap(), offset, offset + r.dataSize( pool(), uhasher.slack ) );
             } else {
                 SpookyState state( salt, salt );
                 r.forAllLeaves( pool(), [ this, &state ]( Leaf l ) {
@@ -276,21 +277,21 @@ struct NTreeHashSet
             }
         }
 
-        bool valid( Root r ) { return pool().valid( r.b ); }
+        bool valid( Root r ) { return pool().valid( r.unwrap() ); }
         bool valid( Uncompressed r ) { return pool().valid( r.i ); }
         void setSeed( hash64_t s ) { uhasher.setSeed( s ); }
 
         bool equal( Root r1, Root r2 ) {
-            if ( r1.b.raw() == r2.b.raw() )
+            if ( r1.unwrap().raw() == r2.unwrap().raw() )
                 return true;
             if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
-                return pool().equal( r1.b, r2.b, sizeof( typename Root::Header )
+                return pool().equal( r1.unwrap(), r2.unwrap(), sizeof( typename Root::Header )
                         + uhasher.slack );
             else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) ) {
-                int32_t s1 = pool().size( r1.b );
-                int32_t s2 = pool().size( r2.b );
+                int32_t s1 = pool().size( r1.unwrap() );
+                int32_t s2 = pool().size( r2.unwrap() );
                 return s1 == s2
-                    && pool().equal( r1.b, r2.b, sizeof( typename Root::Header ),
+                    && pool().equal( r1.unwrap(), r2.unwrap(), sizeof( typename Root::Header ),
                             sizeof( typename Root::Header ) + r1.slackoffset( pool() ) );
             }
 
@@ -323,7 +324,7 @@ struct NTreeHashSet
 
             root.forAllLeaves( pool(), [&] ( Leaf leaf ) {
                     assert( equal );
-                    assert( this->pool().valid( leaf.b ) );
+                    assert( this->pool().valid( leaf.unwrap() ) );
                     assert( itemPtr != nullptr );
                     assert_leq( 0, pos );
 
@@ -344,159 +345,208 @@ struct NTreeHashSet
         }
     };
 
-    typedef Blob InsertItem;
-    typedef Root StoredItem;
+    using RootSet = HashSet< Root, RootHasher >;
+    using ForkSet = HashSet< Fork, ForkHasher >;
+    using LeafSet = HashSet< Leaf, LeafHasher >;
 
-    using Hasher = RootHasher;
+    using iterator = typename RootSet::iterator;
 
-    struct ThreadData{
-        typename HashSet< Root, RootHasher >::ThreadData roots;
-        typename HashSet< Fork, ForkHasher >::ThreadData forks;
-        typename HashSet< Leaf, LeafHasher >::ThreadData leafs;
+    template< typename Splitter >
+    struct ThreadData {
+        typename RootSet::ThreadData roots;
+        typename ForkSet::ThreadData forks;
+        typename LeafSet::ThreadData leaves;
+        Splitter *_splitter;
+        Pool *_pool;
+        Splitter &splitter() { assert( _splitter ); return *_splitter; }
+        Pool &pool() { assert( _pool ); return *_pool; }
+
+        ThreadData() : _splitter( nullptr ), _pool( nullptr ) {}
+        ThreadData( Pool &p, Splitter &sp )
+            : _splitter( &sp ), _pool( &p )
+        {}
     };
 
-    RootHasher hasher;
+    struct Data
+    {
+        Data( Hasher h ) :
+            pool( h.pool() ), // FIXME
+            slack( h.slack ),
+            roots( RootHasher( h ) ),
+            forks( ForkHasher( h.pool() ) ),
+            leaves( LeafHasher( h.pool() ) )
+        {}
 
-    HashSet< Root, RootHasher > _roots; // stores slack and roots of tree
-                                        // (also in case when root leaf)
-    HashSet< Fork, ForkHasher > _forks; // stores intermediate nodes
-    HashSet< Leaf, LeafHasher > _leafs; // stores leafs if they are not root
+        Pool &pool;
+        int slack; // FIXME
+        RootSet roots; // stores slack and roots of tree
+                        // (also in case when root leaf)
+        ForkSet forks; // stores intermediate nodes
+        LeafSet leaves; // stores leaves if they are not root
+    };
 
-    Pool& pool() { return hasher.pool(); }
-    int32_t slack() { return hasher.slack(); }
-    bool valid( Item i ) { return hasher.valid( i ); }
-    char* slackPtr( Item item ) { return pool().dereference( item ); }
+    /* struct NoSplitter
+    {
+        template< typename Yield >
+        void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
+            yield( Recurse::No, length, 0 );
+        }
 
-    void copySlack( Item slackSource, Item root ) {
+        template< typename Yield >
+        void splitHint( Blob n, Yield yield ) {
+            splitHint( n, 0, pool().size( n ), yield );
+        }
+    }; */
+
+    Pool& pool() { return _d.pool; }
+    int32_t slack() { return _d.slack; }
+    char* slackPtr( insert_type item ) { return pool().dereference( item ); }
+
+    void copySlack( insert_type slackSource, insert_type root ) {
         pool().copy( slackSource, root, slack() );
     }
 
-    size_t size() { return _roots.size(); }
-    bool empty() { return _roots.empty(); }
+    size_t size() { return _d.roots.size(); }
+    bool empty() { return _d.roots.empty(); }
+    hash64_t hash( const value_type &t ) { return _d.roots.hash( t ); }
 
-    template < typename TD >
-    std::tuple< Root, bool > insertHinted( Item item, hash64_t hash,
-                                           TD &td )
+    Data _d;
+    // ThreadData< NoSplitter > _global; /* for single-thread access */
+
+    template< typename Splitter >
+    struct WithTD
     {
-        assert( hasher.valid( item ) );
+        using iterator = typename RootSet::iterator;
+        using insert_type = T;
+        using value_type = Root;
 
-        Pool& pool = td.generator->pool();
+        Data &_d;
+        ThreadData< Splitter > &_td;
 
-        Root root;
+        WithTD( Data &d, ThreadData< Splitter > &td )
+            : _d( d ), _td( td )
+        {}
 
-        LeafOrFork* ptr = nullptr;
-        char* from = pool.dereference( item ) + slack();
-        td.generator->splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
-                if ( rec == Recurse::No ) {
-                    root = Root::createFlat( item, pool );
-                    assert_eq( remaining, 0 );
-                } else {
-                    if ( !pool.valid( root.b ) ) {
-                        root = Root::create( item, remaining + 1,
-                                             this->slack(), pool );
-                        ptr = root.forkdata( pool );
-                        assert_leq( 1, remaining );
+        iterator insertHinted( insert_type item, hash64_t hash )
+        {
+            Root root;
+
+            LeafOrFork* ptr = nullptr;
+            char* from = _td.pool().dereference( item ) + _d.slack;
+            _td.splitter().splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
+                    if ( rec == Recurse::No ) {
+                        root = Root::createFlat( item, _td.pool() );
+                        assert_eq( remaining, 0 );
+                    } else {
+                        if ( !_td.pool().valid( root.unwrap() ) ) {
+                            root = Root::create( item, remaining + 1, _d.slack, _td.pool() );
+                            ptr = root.forkdata( _td.pool() );
+                            assert_leq( 1, remaining );
+                        }
+                        assert( ptr != nullptr );
+
+                        *ptr = createChild( item, from, length, _td.pool() );
+                        ++ptr;
                     }
-                    assert( ptr != nullptr );
 
-                    *ptr = this->createChild( item, from, length, pool, td );
-                    ++ptr;
-                }
+                    assert( _td.pool().valid( root.unwrap() ) );
+                    from += length;
+                } );
 
-                assert( pool.valid( root.b ) );
-                from += length;
-            } );
+            assert( _td.pool().valid( root.unwrap() ) );
+            assert_eq( size_t( from ), size_t( _td.pool().dereference( item ) + _td.pool().size( item ) ) );
 
-        assert( pool.valid( root.b ) );
-        assert_eq( size_t( from ), size_t( pool.dereference( item ) + pool.size( item ) ) );
+            auto tr = _d.roots.withTD( _td.roots ).insertHinted( root, hash );
+            if ( !tr.isnew() )
+                _td.pool().free( root.unwrap() );
 
-        Root tr;
-        bool inserted;
-        std::tie( tr, inserted ) = _roots.insertHinted( root, hash, td.roots );
-        if ( !inserted )
-            pool.free( root.b );
-
-        return std::make_tuple( tr, inserted );
-    }
-
-    template < typename TD >
-    LeafOrFork createChild( Item item, char* from, intptr_t length,
-                            Pool &pool, TD &td )
-    {
-        assert_leq( pool.dereference( item ) + slack(), from );
-        assert_leq( from, pool.dereference( item ) + pool.size( item ) );
-
-        LeafOrFork child;
-        LeafOrFork* ptr = nullptr;
-        td.generator->splitHint( item, from - pool.dereference( item ), length,
-                             [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
-                if ( rec == Recurse::No ) {
-                    assert( child.isNull( pool ) );
-                    assert( ptr == nullptr );
-                    assert_eq( remaining, 0 );
-                    child = Leaf( length, from, pool );
-                } else {
-                    if ( child.isNull( pool ) ) {
-                        child = Fork( remaining + 1, pool );
-                        ptr = child.fork().forkdata( pool );
-                    }
-                    assert( !child.isNull( pool ) );
-                    assert( ptr != nullptr );
-
-                    *ptr = this->createChild( item, from, length, pool, td );
-                    ++ptr;
-                }
-                from += length;
-            } );
-
-        bool inserted;
-        LeafOrFork tlf;
-        if ( child.isLeaf() ) {
-            std::tie( tlf, inserted ) = _leafs.insert( child.leaf(), td.leafs );
-            if ( !inserted ) {
-                pool.free( child.blob() );
-            }
-        } else {
-            std::tie( tlf, inserted ) = _forks.insert( child.fork(), td.forks );
-            if ( !inserted )
-                pool.free( child.blob() );
+            return tr;
         }
 
-        return tlf;
-    }
+        LeafOrFork createChild( insert_type item, char* from, intptr_t length, Pool &pool )
+        {
+            assert_leq( pool.dereference( item ) + _d.slack, from );
+            assert_leq( from, pool.dereference( item ) + pool.size( item ) );
 
-    template< typename TD >
-    std::tuple< Root, bool > get( Item item, TD &td ) {
-        return getHinted( item, hasher.hash( item ).first, td );
-    }
+            LeafOrFork child;
+            LeafOrFork* ptr = nullptr;
+            _td.splitter().splitHint( item, from - pool.dereference( item ), length,
+                                 [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
+                    if ( rec == Recurse::No ) {
+                        assert( child.isNull( pool ) );
+                        assert( ptr == nullptr );
+                        assert_eq( remaining, 0 );
+                        child = Leaf( length, from, pool );
+                    } else {
+                        if ( child.isNull( pool ) ) {
+                            child = Fork( remaining + 1, pool );
+                            ptr = child.fork().forkdata( pool );
+                        }
+                        assert( !child.isNull( pool ) );
+                        assert( ptr != nullptr );
 
-    template< typename T, typename TD >
-    std::tuple< Root, bool > getHinted( T i, hash64_t h, TD &td ) {
-        return _roots.getHinted( Uncompressed( i ), h, td.roots );
-    }
+                        *ptr = createChild( item, from, length, pool );
+                        ++ptr;
+                    }
+                    from += length;
+                } );
 
-    template< typename TD >
-    bool has( Item i, TD &td ) {
-        return std::get< 1 >( get( i, td ) );
+            if ( child.isLeaf() ) {
+                auto c = _d.leaves.withTD( _td.leaves ).insert( child.leaf() );
+                if ( !c.isnew() )
+                    pool.free( child.blob() );
+                return c.copy();
+            } else {
+                auto c = _d.forks.withTD( _td.forks ).insert( child.fork() );
+                if ( !c.isnew() )
+                    pool.free( child.blob() );
+                return c.copy();
+            }
+        }
+
+        iterator find( insert_type item ) {
+            return findHinted( item, _d.hasher.hash( item ).first );
+        }
+
+        iterator findHinted( insert_type i, hash64_t h ) {
+            return _d.roots.withTD( _td.roots ).findHinted( Uncompressed( i ), h );
+        }
+
+        bool has( insert_type i ) {
+            return get( i ).valid();
+        }
+    };
+
+    template< typename Splitter >
+    WithTD< Splitter > withTD( ThreadData< Splitter > &td ) {
+        return WithTD< Splitter >( _d, td );
     }
 
     void setSize( size_t s ) {
-        _roots.setSize( s );
-        _forks.setSize( s );
-        _leafs.setSize( s );
+        _d.roots.setSize( s );
+        _d.forks.setSize( s );
+        _d.leaves.setSize( s );
     }
 
     void clear() {
-        _roots.clear();
-        _forks.clear();
-        _leafs.clear();
+        _d.roots.clear();
+        _d.forks.clear();
+        _d.leaves.clear();
     }
 
     Root operator[]( intptr_t off ) {
         assert_leq( 0, off );
         assert_leq( off, intptr_t( size() ) - 1 );
-        return _roots[ off ];
+        return _d.roots[ off ];
     }
+
+    bool valid( intptr_t off ) {
+        return _d.roots.valid( off );
+    }
+
+    /* iterator insertHinted( value_type item, hash64_t hash ) {
+        return withTD( _global ).insertHinted( item, hash );
+     } */
 };
 
 }

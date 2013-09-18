@@ -48,12 +48,17 @@ struct Lake {
         static const unsigned blockBits = 24;
         static const unsigned offsetBits = 24;
         static const unsigned tagBits = 64 - blockBits - offsetBits;
-        uint64_t tag:tagBits;
+        uint64_t _tag:tagBits;
         uint64_t block:blockBits;
         uint64_t offset:offsetBits;
-        Pointer() noexcept : tag( 0 ), block( 0 ), offset( 0 ) {}
+        Pointer() noexcept : _tag( 0 ), block( 0 ), offset( 0 ) {}
         // XXX: Pointer() : block( 0xFFFFFFFFFF ), offset( 0 ) {}
-        uint64_t raw() { return *reinterpret_cast< uint64_t * >( this ); }
+        uint64_t raw() const { return *reinterpret_cast< const uint64_t * >( this ); }
+        uint64_t raw_address() const { return offset | (block << offsetBits); }
+
+        int tag() const { return _tag; }
+        void setTag( int v ) { _tag = v; }
+
         static Pointer fromRaw( uint64_t r ) {
             union {
                 uint64_t r;
@@ -61,6 +66,8 @@ struct Lake {
             } c = { r };
             return c.p;
         }
+        operator bool() const { return raw(); }
+        bool operator!() const { return !raw(); }
     } __attribute__((packed));
 
     struct BlockHeader {

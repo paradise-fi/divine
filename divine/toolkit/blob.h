@@ -10,6 +10,31 @@
 
 struct TestBlob;
 
+namespace divine {
+
+/* template< template< typename > class M, typename T, typename F >
+   using FMap = M< typename std::result_of< F( T ) > >;
+
+template< typename T >
+struct Unwrap {};
+
+template< typename T >
+struct Wrap {
+    T _wrapped;
+};
+
+template< typename T >
+struct Unwrap< Wrap< T > > {
+};
+
+template< typename T >
+Unwrap< T >::Blob unwrap( const T &t ) {
+    Unwrap< T >::blob( t );
+}
+*/
+
+}
+
 #include <wibble/string.h>
 #include <divine/toolkit/bitstream.h>
 
