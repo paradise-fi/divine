@@ -47,6 +47,12 @@ struct CompactCell : CellBase< T, Hasher >
         return h.equal( _value, v );
     }
 
+    bool empty() { return !_value; } /* meh */
+    void store( T bn, hash64_t ) { _value = bn; }
+
+    T &fetch() { return _value; }
+    T copy() { return _value; }
+    hash64_t hash( Hasher &h ) { return h.hash( _value ).first; }
 };
 
 template< typename T, typename Hasher >
