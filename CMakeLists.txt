@@ -96,7 +96,6 @@ option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFO
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
-option( COMPACT_CELL "use more compact cells in SharedHashSet" ON )
 
 set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
     "maximal number of used instance files to generate -- more means less memory requirements" )
@@ -244,10 +243,6 @@ endif( USE32 )
 if( POOLS )
   add_definitions( "-DO_POOLS" )
 endif( POOLS )
-
-if( COMPACT_CELL )
-  add_definitions( "-DO_COMPACT_CELL" )
-endif( COMPACT_CELL )
 
 find_program( SHA1SUM sha1sum )
 
