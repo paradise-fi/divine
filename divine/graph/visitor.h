@@ -1,10 +1,9 @@
-// -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007-2013 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
-#include <divine/toolkit/hashset.h>
+
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/fifo.h>
-#include <divine/toolkit/sharedhashset.h>
 #include <divine/toolkit/shmem.h>
 #include <divine/graph/datastruct.h>
 #include <divine/graph/store.h>

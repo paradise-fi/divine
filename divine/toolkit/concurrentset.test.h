@@ -2,7 +2,7 @@
 
 #include <set>
 #include <wibble/sys/thread.h>
-#include <divine/toolkit/sharedhashset.h>
+#include <divine/toolkit/concurrentset.h>
 #include <divine/toolkit/hashset.test.h>
 
 using namespace divine;
