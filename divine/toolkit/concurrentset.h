@@ -328,7 +328,9 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
     explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : Base( h ), _d( h, maxGrows )
-    {}
+    {
+        setSize( 16 ); // by default
+    }
 
     ~_ConcurrentHashSet() {
         for ( unsigned i = 0; i != _d.table.size(); ++i ) {
@@ -337,11 +339,12 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         }
     }
 
-    /* only usable before the first insert */
+    /* XXX only usable before the first insert; rename? */
     void setSize( size_t s ) {
         s = bitops::fill( s - 1 ) + 1;
-        if ( !_d.table[ 1 ] )
-            _d.table[ 1 ] = new Row( s );
+        if ( _d.table[ 1 ] )
+            delete _d.table[ 1 ];
+        _d.table[ 1 ] = new Row( s );
     }
 
     hash64_t hash( const value_type &t ) { return _d.hasher.hash( t ).first; }
