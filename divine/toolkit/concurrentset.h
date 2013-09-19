@@ -366,6 +366,9 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 };
 
 template< typename T, typename Hasher = default_hasher< T > >
+using FastConcurrentSet = _ConcurrentHashSet< FastAtomicCell< T, Hasher > >;
+
+template< typename T, typename Hasher = default_hasher< T > >
 using ConcurrentSet = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
 
 }
