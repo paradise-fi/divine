@@ -44,8 +44,6 @@ struct CESMI : public Common< Blob > {
         void *handle;
 
         decltype( &cesmi::setup             ) setup;
-        decltype( &cesmi::get_property_type ) get_property_type;
-        decltype( &cesmi::show_property     ) show_property;
 
         decltype( &cesmi::get_initial       ) get_initial;
         decltype( &cesmi::get_successor     ) get_successor;
@@ -56,8 +54,6 @@ struct CESMI : public Common< Blob > {
 
         Dl() :
             setup( nullptr ),
-            get_property_type( nullptr ),
-            show_property( nullptr ),
             get_initial( nullptr ),
             get_successor( nullptr ),
             get_flags( nullptr ),

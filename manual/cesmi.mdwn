@@ -50,11 +50,9 @@ follows:
      int get_successor     ( const cesmi_setup *, int,
                              cesmi_node, cesmi_node * );
 uint64_t get_flags         ( const cesmi_setup *, cesmi_node );
-     int get_property_type ( const cesmi_setup *, int );
    char *show_node         ( const cesmi_setup *, cesmi_node );
    char *show_transition   ( const cesmi_setup *, cesmi_node,
                              int );
-   char *show_property     ( const cesmi_setup *, int );
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -68,10 +66,12 @@ structure, which has the following C definition:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
 
 typedef struct {
-    void *allocation_handle;
-    cesmi_node (*make_node)( void *handle, int size );
+    void *loader;
+    cesmi_node (*make_node)( const cesmi_setup *, int );
+    int (*add_property)( cesmi_setup *, char *, char *, int );
     void *instance; // per-instance data; never touched by DiVinE
-    int property_count;
+    int property_count; /* filled in by setup */
+    int property; /* filled in by loader */
     int instance_initialised;
     /* extensions at the end are ABI-compatible */
 } cesmi_setup;
@@ -82,7 +82,9 @@ For each instance of the CESMI module created by the loader, there is a unique
 `cesmi_setup` value which is passed to all calls into the module. At the time of
 the `setup` call, the `cesmi_setup` structure must be initialised by the loader
 to its default state. The `setup` implementation of the module may change the
-fields `property_count` and `instance`, the remainder is for *reading only*.
+field `instance`, the remainder is for *reading only*. The `setup`
+implementation may also modify the `cesmi_setup` structure via calls to
+`add_property`.
 
 Since the model checker might use the CESMI module in multiple threads, the
 CESMI module *must not* retain any global state. All instance-specific state
@@ -115,8 +117,7 @@ int get_successor( const cesmi_setup *setup, int handle,
     struct state *in = (struct state *) from.memory;
 
     if (in->a < 4 && in->b < 4 && handle < 3) {
-        *to = setup->make_node( setup->allocation_handle,
-                                sizeof( struct state ) );
+        *to = setup->make_node( setup, sizeof( struct state ) );
         struct state *out = (struct state *) to->memory;
         *out = *in;
         switch (handle) {
@@ -134,9 +135,9 @@ Memory Management
 
 The module is responsible for allocating memory for new states, and it must use
 the `make_node` function provided in the `cesmi_setup` structure it is given,
-passing the `allocation_handle` as its first parameter, and size of the bit
-vector it requires. The loader might need to store additional data with the
-state, hence it returns a structure with two pointers in it.
+passing the `setup` as its first parameter, and size of the bit vector it
+requires. The loader might need to store additional data with the state, hence
+it returns a structure with two pointers in it.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
 
@@ -221,8 +222,6 @@ char *buchi_show_transition( const cesmi_setup *setup,
                              cesmi_node from,
                              int handle, show_transition_t next );
 
-char *buchi_show_property( const cesmi_setup *setup,
-                           int property );
 void buchi_setup( cesmi_setup *setup );
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
