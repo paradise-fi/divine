@@ -33,15 +33,26 @@ struct default_hasher< int > {
 
 using namespace divine;
 
-struct TestHashSet {
-    Test basic() {
-        FastSet< int > set;
-        set.insert( 1 );
+template< template< typename > class HS >
+struct Cases
+{
+    static void basic() {
+        HS< int > set;
+
+        assert( !set.count( 1 ) );
+        assert( set.insert( 1 ).isnew() );
         assert( set.count( 1 ) );
+
+        unsigned count = 0;
+        for ( unsigned i = 0; i != set.size(); ++i )
+            if ( set[ i ] )
+                ++count;
+
+        assert_eq( count, unsigned(1) );
     }
 
-    Test stress() {
-        FastSet< int > set;
+    static void stress() {
+        HS< int > set;
         for ( int i = 1; i < 32*1024; ++i ) {
             set.insert( i );
             assert( set.count( i ) );
@@ -51,8 +62,8 @@ struct TestHashSet {
         }
     }
 
-    Test set() {
-        FastSet< int > set;
+    static void set() {
+        HS< int > set;
 
         for ( int i = 1; i < 32*1024; ++i ) {
             assert( !set.count( i ) );
@@ -73,9 +84,9 @@ struct TestHashSet {
         }
     }
 
-    Test blobish() {
+    static void blobish() {
         Pool p;
-        FastSet< Blob > set( ( typename FastSet< Blob >::Hasher( p ) ) );
+        HS< Blob > set( ( typename FastSet< Blob >::Hasher( p ) ) );
         for ( int i = 1; i < 32*1024; ++i ) {
             Blob b = p.allocate( sizeof( int ) );
             p.get< int >( b ) = i;
@@ -88,4 +99,21 @@ struct TestHashSet {
             assert( set.count( b ) );
         }
     }
+};
+
+struct TestHashSet {
+    template< typename T > using CS = CompactSet< T >;
+    template< typename T > using FS = FastSet< T >;
+
+    Test basicCS() { Cases< CS >::basic(); }
+    Test basicFS() { Cases< FS >::basic(); }
+
+    Test stressCS() { Cases< CS >::stress(); }
+    Test stressFS() { Cases< FS >::stress(); }
+
+    Test setCS() { Cases< CS >::set(); }
+    Test setFS() { Cases< FS >::set(); }
+
+    Test blobishCS() { Cases< CS >::blobish(); }
+    Test blobishFS() { Cases< FS >::blobish(); }
 };

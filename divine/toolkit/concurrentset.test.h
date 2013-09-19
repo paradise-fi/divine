@@ -7,27 +7,12 @@
 
 using namespace divine;
 
-struct TestSharedHashSet
+template< template< typename > class HS >
+struct Parallel
 {
-
-    Test basic() {
-        ConcurrentSet< int > set;
-
-        set.setSize( 8 );
-
-        assert( !set.count( 1 ) );
-        assert( set.insert( 1 ).isnew() );
-        assert( set.count( 1 ) );
-        unsigned count = 0;
-        for ( unsigned i = 0; i != set.size(); ++i )
-            if ( set[ i ] )
-                ++count;
-        assert_eq( count, unsigned(1) );
-    }
-
     struct Insert : wibble::sys::Thread {
-        ConcurrentSet< int > *_set;
-        typename ConcurrentSet< int >::ThreadData td;
+        HS< int > *_set;
+        typename HS< int >::ThreadData td;
         int from, to;
         bool overlap;
 
@@ -43,8 +28,8 @@ struct TestSharedHashSet
         }
     };
 
-    Test stress() {
-        ConcurrentSet< int > set;
+    static void insert() {
+        HS< int > set;
         set.setSize( 4 * 1024 );
         Insert a;
         a._set = &set;
@@ -56,7 +41,7 @@ struct TestSharedHashSet
             assert( set.count( i ) );
     }
 
-    void par( ConcurrentSet< int > *set, int f1, int t1, int f2, int t2 )
+    static void _par( HS< int > *set, int f1, int t1, int f2, int t2 )
     {
         Insert a, b;
 
@@ -74,29 +59,31 @@ struct TestSharedHashSet
         b.join();
     }
 
-    void multi( ConcurrentSet< int > *set, std::size_t count, int from, int to ) {
-        Insert *field = new Insert[ count ];
+    static void _multi( HS< int > *set, std::size_t count, int from, int to )
+    {
+        Insert *arr = new Insert[ count ];
 
         for ( std::size_t i = 0; i < count; ++i ) {
-            field[ i ].from = from;
-            field[ i ].to = to;
-            field[ i ]._set = set;
-            field[ i ].overlap = true;
+            arr[ i ].from = from;
+            arr[ i ].to = to;
+            arr[ i ]._set = set;
+            arr[ i ].overlap = true;
         }
 
         for ( std::size_t i = 0; i < count; ++i )
-            field[ i ].start();
+            arr[ i ].start();
 
         for ( std::size_t i = 0; i < count; ++i )
-            field[ i ].join();
+            arr[ i ].join();
 
-        delete[] field;
+        delete[] arr;
     }
 
-    Test multistress() {
-        ConcurrentSet< int > set;
+    static void multi()
+    {
+        HS< int > set;
         set.setSize( 4 * 1024 );
-        multi( &set, 10, 1, 32 * 1024 );
+        _multi( &set, 10, 1, 32 * 1024 );
 
         for  ( int i = 1; i < 32 * 1024; ++i )
             assert( set.count( i ) );
@@ -115,23 +102,24 @@ struct TestSharedHashSet
         assert_eq( count, 32 * 1024 - 1 );
     }
 
-    Test parstress() {
-        ConcurrentSet< int > set;
+    static void stress()
+    {
+        HS< int > set;
 
         set.setSize( 4 * 1024 );
-        par( &set, 1, 16*1024, 8*1024, 32*1024 );
+        _par( &set, 1, 16*1024, 8*1024, 32*1024 );
 
         for ( int i = 1; i < 32*1024; ++i )
             assert( set.count( i ) );
     }
 
-    Test set() {
-        ConcurrentSet< int > set;
+    static void set() {
+        HS< int > set;
         set.setSize( 4 * 1024 );
         for ( int i = 1; i < 32*1024; ++i )
             assert( !set.count( i ) );
 
-        par( &set, 1, 16*1024, 16*1024, 32*1024 );
+        _par( &set, 1, 16*1024, 16*1024, 32*1024 );
 
         for ( int i = 1; i < 32*1024; ++i )
             assert_eq( i, i * set.count( i ) );
@@ -139,4 +127,34 @@ struct TestSharedHashSet
         for ( int i = 32*1024; i < 64 * 1024; ++i )
             assert( !set.count( i ) );
     }
+};
+
+struct TestConcurrentSet
+{
+    template< typename T > using CS = ConcurrentSet< T >;
+    template< typename T > using FCS = FastConcurrentSet< T >;
+
+    Test basicCS() { Cases< CS >::basic(); }
+    Test basicFCS() { Cases< FCS >::basic(); }
+
+    Test stressCS() { Cases< CS >::stress(); }
+    Test stressFCS() { Cases< FCS >::stress(); }
+
+    Test setCS() { Cases< CS >::set(); }
+    Test setFCS() { Cases< FCS >::set(); }
+
+    Test blobishCS() { Cases< CS >::blobish(); }
+    Test blobishFCS() { Cases< FCS >::blobish(); }
+
+    Test insertCS() { Parallel< CS >::insert(); }
+    Test insertFCS() { Parallel< FCS >::insert(); }
+
+    Test pSetCS() { Parallel< CS >::set(); }
+    Test pSetFCS() { Parallel< FCS >::set(); }
+
+    Test pStressCS() { Parallel< CS >::stress(); }
+    Test pStressFCS() { Parallel< FCS >::stress(); }
+
+    Test pMultiCS() { Parallel< CS >::multi(); }
+    Test pMultiFCS() { Parallel< FCS >::multi(); }
 };
