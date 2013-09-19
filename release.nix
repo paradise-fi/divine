@@ -193,9 +193,6 @@ let
     gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
                           [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                          flags = []; };
-    gcc_hashcell = mkbuild { name = "hashcell"; inputs = { pkgs }:
-                              [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                             flags = [ "-DCOMPACT_CELL=OFF" ]; };
     clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
     clang_medium = mkbuild { name = "medium"; inputs = { pkgs }:
                               [ pkgs.openmpi pkgs.libcxxLLVM pkgs.clangSelf pkgs.libxml2 ];
