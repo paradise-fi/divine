@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <unistd.h>
 #include <vector>
@@ -31,8 +32,9 @@ namespace divine {
 struct stringtable { const char *n, *c; };
 extern stringtable pdclib_list[];
 extern stringtable libm_list[];
-extern stringtable libsupcpp_list[];
-extern stringtable libstdcpp_list[];
+extern stringtable libunwind_list[];
+extern stringtable libcxxabi_list[];
+extern stringtable libcxx_list[];
 
 std::string ltl_to_c( int id, std::string ltl );
 
@@ -260,19 +262,26 @@ struct Compile {
     }
 
     template< typename Src >
-    void compileLibrary( std::string name, Src src, std::string flags )
-    {
-        std::string files;
+    void prepareIncludes( std::string name, Src src ) {
         fs::mkdirIfMissing( name, 0755 );
         chdir( name.c_str() );
 
-        auto src_ = src;
         while ( src->n ) {
             fs::mkFilePath( src->n );
             fs::writeFile( src->n, src->c );
             ++src;
         }
+        chdir( ".." );
+    }
 
+    template< typename Src >
+    void compileLibrary( std::string name, Src src, std::string flags )
+    {
+        std::string files;
+        auto src_ = src;
+        prepareIncludes( name, src );
+
+        chdir( name.c_str() );
         if ( o_precompiled->boolValue() ) {
             chdir( ".." );
             return; /* we only need the headers from above */
@@ -321,29 +330,36 @@ struct Compile {
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
 
         fs::writeFile( "atomic", llvm_usr_atomic_h_str );
+        fs::writeFile( "cxa_exception_divine.cpp", llvm_usr_cxa_exception_cpp_str );
+        fs::writeFile( "unwind.h", llvm_usr_unwind_h_str ); // from libunwind
 
         // compile libraries
         std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
-        compileLibrary( "libsupc++", libsupcpp_list, flags + " -I../libpdc -I../libm -I.." );
-        compileLibrary( "libstdc++", libstdcpp_list, flags + " -I../libpdc -I../libm "
-                        "-I../libsupc++ -I.. -I. -Ibackward -Istd -Ic_global -std=c++11 "
-                        "-D__DISABLE_FUTURE " /* TODO: Remove this */ );
 
-        flags += " -Ilibsupc++ -Ilibpdc -Ilibstdc++/std -Ilibstdc++/c_global -Ilibstdc++ -Ilibm ";
+        prepareIncludes( "libcxx", libcxx_list ); // cyclic dependency cxxabi <-> cxx
+        compileLibrary( "libcxxabi", libcxxabi_list, flags + " -I../libpdc -I../libm "
+                        "-I.. -Iinclude -I../libcxx/std -I../libcxx -std=c++11 -fstrict-aliasing" );
+        compileLibrary( "libcxx", libcxx_list, flags + " -I../libpdc -I../libm "
+                        "-I../libcxxabi/include -I.. -Istd -I. -fstrict-aliasing -std=c++11 -fstrict-aliasing" );
+
+        flags += " -Ilibcxxabi/include -Ilibpdc -Ilibcxx/std -Ilibcxx -Ilibm ";
 
         if ( !o_precompiled->boolValue() ) {
             run( clang() + " -c -I. " + flags + " glue.cpp -o glue.bc" );
             run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
-            run( gold_ar() + " libdivine.a glue.bc pthread.bc" );
+            run( clang() + " -c -I. -Ilibcxxabi " + flags // needs part of private cxxabi headers
+                    + " cxa_exception_divine.cpp -o cxa_exception_divine.bc" );
+            run( gold_ar() + " libdivine.a glue.bc pthread.bc cxa_exception_divine.bc" );
         }
 
         if ( o_libs_only->boolValue() ) {
             fs::renameIfExists( "libdivine.a", tmp_dir.abspath + "/libdivine.a" );
             fs::renameIfExists( "libpdc.a", tmp_dir.abspath + "/libpdc.a" );
-            fs::renameIfExists( "libsupc++.a", tmp_dir.abspath + "/libsupc++.a" );
-            fs::renameIfExists( "libstdc++.a", tmp_dir.abspath + "/libstdc++.a" );
+            fs::renameIfExists( "libcxxabi.a", tmp_dir.abspath + "/libcxxabi.a" );
+            fs::renameIfExists( "libcxx.a", tmp_dir.abspath + "/libcxx.a" );
+            fs::renameIfExists( "libunwind.a", tmp_dir.abspath + "/libunwind.a" );
             chdir( tmp_dir.abspath.c_str() );
             return;
         }
@@ -387,7 +403,7 @@ struct Compile {
                ( " -L" + o_precompiled->stringValue() ) :
                ( " -L./" + tmp_dir.basename ) ) + " " +
              tmp_dir.basename + "/requires.bc " +
-             "-lstdc++ -lsupc++ -lpdc -ldivine" );
+             "-ldivine -lcxxabi -lcxx -lcxxabi -lpdc -ldivine" );
 
 #else
         die( "LLVM is disabled" );
