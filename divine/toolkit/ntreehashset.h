@@ -505,7 +505,7 @@ struct NTreeHashSet
         }
 
         iterator find( insert_type item ) {
-            return findHinted( item, _d.hasher.hash( item ).first );
+            return findHinted( item, _d.roots.hasher.hash( item ).first );
         }
 
         iterator findHinted( insert_type i, hash64_t h ) {
