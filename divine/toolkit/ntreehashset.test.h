@@ -17,12 +17,14 @@
 using namespace divine;
 using divine::algorithm::Hasher;
 
-struct FakeGeneratorFlat {
-    Pool *_pool;
+struct FakeGeneratorBase {
+    Pool _pool;
     Pool& pool() {
-        return *_pool;
+        return _pool;
     }
+};
 
+struct FakeGeneratorFlat : public FakeGeneratorBase {
     template< typename Yield >
     void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
         yield( Recurse::No, length, 0 );
@@ -34,12 +36,7 @@ struct FakeGeneratorFlat {
     }
 };
 
-struct FakeGeneratorBinary {
-
-    Pool *_pool;
-    Pool& pool() {
-        return *_pool;
-    }
+struct FakeGeneratorBinary : public FakeGeneratorBase {
 
     template< typename Yield >
     void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
@@ -58,94 +55,187 @@ struct FakeGeneratorBinary {
     }
 };
 
-#if 0
-struct BestNTreeHashSet {
-    using BlobSet = NTreeHashSet< FastSet, Blob, Hasher >;
+struct FakeGeneratorFixed : public FakeGeneratorBase {
 
-    FakeGeneratorBinary fgb;
-    FakeGeneratorFlat fgf;
-    Pool pool;
-    Hasher hasher;
+    std::vector< int > limits;
 
-    BlobSet::ThreadData< FakeGeneratorBinary > tdb;
-    BlobSet::ThreadData< FakeGeneratorFlat > tdf;
-
-    TestNTreeHashSet()
-        : hasher( pool ), tdb( pool, fgb ), tdf( pool, fgf )
+    FakeGeneratorFixed( std::initializer_list< int > limits )
     {
-        fgf._pool = fgb._pool = &pool;
+        int sum = 0;
+        for ( auto i : limits )
+            this->limits.push_back( sum += i );
     }
+
+    template< typename Yield >
+    void splitHint( Blob, intptr_t from, intptr_t length, Yield yield ) {
+
+        for ( auto it = limits.begin(); it != limits.end(); ++it ) {
+            if ( *it == from ) {
+                if ( it + 1 == limits.end() )
+                    yield( Recurse::No, length, 0 );
+                else {
+                    int len = it[ 1 ] - *it;
+                    yield( Recurse::Yes, len, 1 );
+                    yield( Recurse::Yes, length - len, 0 );
+                }
+                return;
+            }
+        }
+        yield( Recurse::No, length, 0 );
+    }
+
+    template< typename Yield >
+    void splitHint( Blob n, Yield yield ) {
+        splitHint( n, 0, pool().size( n ), yield );
+    }
+};
+
+template< typename Generator, typename Set >
+struct ThreadData : Set::ThreadData {
+    Generator *generator;
+};
+
+using BlobSet = NTreeHashSet< FastSet, Blob, Hasher >;
+
+template< typename Generator >
+struct TestBase {
+    Generator _gen;
+    using TD = BlobSet::ThreadData< Generator >;
+    TD _td;
+    BlobSet _set;
+
+    template< typename... Args >
+    TestBase( Args &&... args ) : _gen( std::forward< Args >( args )... ),
+        _set( Hasher( _gen.pool() ) )
+    {
+        _td._splitter = &_gen;
+        _td._pool = &pool();
+    }
+
+    template< typename T >
+    TestBase( std::initializer_list< T > il ) : _gen( il ),
+        _set( Hasher( _gen.pool() ) )
+    {
+        _td._splitter = &_gen;
+        _td._pool = &pool();
+    }
+
+    Pool &pool() {
+        return _gen.pool();
+    }
+
+    BlobSet &set() {
+        return _set;
+    }
+
+    auto leaves() -> decltype( ( _set._d.leaves.withTD( _td.leaves ) ) ) {
+        return _set._d.leaves.withTD( _td.leaves );
+    }
+
+    auto forks() -> decltype( ( _set._d.forks.withTD( _td.forks ) ) ) {
+        return _set._d.forks.withTD( _td.forks );
+    }
+
+    auto roots() -> decltype( ( _set._d.roots.withTD( _td.roots ) ) ) {
+        return _set._d.roots.withTD( _td.roots );
+    }
+
+    auto applyTD( BlobSet &bs ) -> decltype( bs.withTD( _td ) ) {
+        return bs.withTD( _td );
+    }
+
+    auto insertSet( BlobSet &bs, Blob b )
+        -> decltype( this->applyTD( bs ).insertHinted( b, 0 ) )
+    {
+        return applyTD( bs ).insertHinted( b, pool().hash( b ).first );
+    }
+
+    auto insert( Blob b ) -> decltype( this->insertSet( _set, b ) ) {
+        return insertSet( _set, b );
+    }
+
+    auto getSet( BlobSet &bs, Blob b ) -> decltype( this->applyTD( bs ).find( b ) ) {
+        return applyTD( bs ).find( b );
+    }
+
+    auto get( Blob b ) -> decltype( this->getSet( _set, b ) ) {
+        return getSet( _set, b );
+    }
+};
+
+struct TestNTreeHashSet {
 
     static unsigned c2u( char c ) {
         return static_cast< unsigned >( static_cast< unsigned char >( c ) );
     }
 
     Test binary2() {
-        auto set = BlobSet( hasher ).withTD( tdb );
+        TestBase< FakeGeneratorBinary > test;
 
-        assert_eq( hasher.slack, 0 );
+        // assert_eq( test.set().hasher.slack(), 0 );
 
-        Blob b = pool.allocate( 33 );
+        Blob b = test.pool().allocate( 33 );
         for ( unsigned i = 0; i < 33; ++i )
-            pool.dereference( b )[ i ] = char(i & 0xff);
+            test.pool().dereference( b )[ i ] = char(i & 0xff);
 
-        auto root = set.insertHinted( b, hasher.hash( b ).first );
+        auto root = test.insert( b );
         assert( root.isnew() );
-        assert( !root->leaf( pool ) );
-        assert_eq( size_t( pool.size( root->b ) ),
+        assert( !root->leaf( test.pool() ) );
+        assert_eq( size_t( test.pool().size( root->b() ) ),
                    sizeof( BlobSet::Root::Header ) + 2 * sizeof( BlobSet::LeafOrFork ) );
-        assert_eq( root->forkcount( pool ), 2 );
+        assert_eq( root->forkcount( test.pool() ), 2 );
 
-        auto children = root->childvector( pool );
+        auto children = root->childvector( test.pool() );
 
         assert( children[ 0 ].isLeaf() );
         assert( children[ 1 ].isLeaf() );
 
         assert_eq( children.size(), 2UL );
 
-        assert_eq( children[ 0 ].leaf().size( pool ), 17 );
-        assert_eq( children[ 1 ].leaf().size( pool ), 16 );
+        assert_eq( children[ 0 ].leaf().size( test.pool() ), 17 );
+        assert_eq( children[ 1 ].leaf().size( test.pool() ), 16 );
 
         for ( unsigned i = 0; i < 33; ++i )
-            assert_eq( c2u( children[ i / 17 ].leaf().data( pool )[ i % 17 ] ), i & 0xff );
+            assert_eq( c2u( children[ i / 17 ].leaf().data( test.pool() )[ i % 17 ] ), i & 0xff );
 
-        Blob b2 = root->reassemble( pool );
-        assert( pool.equal( b, b2 ) );
+        Blob b2 = root->reassemble( test.pool() );
+        assert( test.pool().equal( b, b2 ) );
 
-        assert( !set.insertHinted( b, hasher.hash( b ).first ).isnew() );
+        assert( !test.insert( b ).isnew() );
 
-        auto root2 = set.get( b );
+        auto root2 = test.get( b );
         assert( !root2.isnew() );
-        assert_eq( root->b.raw(), root2->b.raw() );
+        assert_eq( root->b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
-            pool.free( x );
+            test.pool().free( x );
     }
 
     Test binary4() {
-        BlobSet set( hasher );
-        set._global.generator = &fgb;
+        TestBase< FakeGeneratorBinary > test;
 
-        Blob b = pool.allocate( 67 );
+        BlobSet set( Hasher( test.pool() ) );
+
+        Blob b = test.pool().allocate( 67 );
         for ( unsigned i = 0; i < 67; ++i )
-            pool.dereference( b )[ i ] = char(i & 0xff);
+            test.pool().dereference( b )[ i ] = char(i & 0xff);
 
-        auto root = set.insertHinted( b, hasher.hash( b ).first, td );
+        auto root = test.insert( b );
         assert( root.isnew() );
-        assert( !root.leaf( pool ) );
-        assert_eq( root->forkcount( pool ), 2 );
-        auto children = root.childvector( pool );
+        assert( !root->leaf( test.pool() ) );
+        assert_eq( root->forkcount( test.pool() ), 2 );
+        auto children = root->childvector( test.pool() );
 
         assert( children[ 0 ].isFork() );
         assert( children[ 1 ].isFork() );
 
         assert_eq( children.size(), 2UL );
 
-        assert_eq( children[ 0 ].fork()->forkcount( pool ), 2 );
-        assert_eq( children[ 1 ].fork()->forkcount( pool ), 2 );
+        assert_eq( children[ 0 ].fork().forkcount( test.pool() ), 2 );
+        assert_eq( children[ 1 ].fork().forkcount( test.pool() ), 2 );
 
-        auto left = children[ 0 ].fork()->childvector( pool );
-        auto right = children[ 1 ].fork()->childvector( pool );
+        auto left = children[ 0 ].fork().childvector( test.pool() );
+        auto right = children[ 1 ].fork().childvector( test.pool() );
 
         assert( left[ 0 ].isLeaf() );
         assert( left[ 1 ].isLeaf() );
@@ -155,79 +245,86 @@ struct BestNTreeHashSet {
         assert_eq( left.size(), 2UL );
         assert_eq( right.size(), 2UL );
 
-        assert_eq( left[ 0 ].leaf().size( pool ), 17 );
-        assert_eq( left[ 1 ].leaf().size( pool ), 17 );
-        assert_eq( right[ 0 ].leaf().size( pool ), 17 );
-        assert_eq( right[ 1 ].leaf().size( pool ), 16 );
+        assert_eq( left[ 0 ].leaf().size( test.pool() ), 17 );
+        assert_eq( left[ 1 ].leaf().size( test.pool() ), 17 );
+        assert_eq( right[ 0 ].leaf().size( test.pool() ), 17 );
+        assert_eq( right[ 1 ].leaf().size( test.pool() ), 16 );
 
         for ( unsigned i = 0; i < 67; ++i )
             assert_eq( c2u( ( i < 34 ? left : right )[ (i / 17) % 2 ]
-                            .leaf().data( pool )[ i % 17 ] ),
+                            .leaf().data( test.pool() )[ i % 17 ] ),
                        i & 0xff );
 
-        Blob b2 = root.reassemble( pool );
-        assert( pool.equal( b, b2 ) );
+        Blob b2 = root->reassemble( test.pool() );
+        assert( test.pool().equal( b, b2 ) );
 
-        assert( !set.insertHinted( b, hasher.hash( b ).first, td ).isnew() );
+        assert( !test.insert( b ).isnew() );
 
-        auto root2 = set.get( b, td );
-        assert( !root2.isnew() );
-        assert_eq( root.b.raw(), root2.b.raw() );
+        auto r = test.get( b );
+        assert( !r.isnew() );
+        assert_eq( root->b().raw(), r->b().raw() );
 
         for ( auto x : { b, b2 } )
-            pool.free( x );
+            test.pool().free( x );
     }
 
     Test basicFlat() {
-        return basic< FakeGeneratorFlat, true >( fgf );
+        return basic< FakeGeneratorFlat, true >();
     }
 
     Test basicBinary() {
-        return basic< FakeGeneratorBinary, false >( fgb );
+        return basic< FakeGeneratorBinary, false >();
     }
 
     template< typename Generator, bool leaf  >
-    void basic( Generator &fg ) {
-        BlobSet set( hasher );
-        set._global.generator = &fg;
+    void basic() {
+        TestBase< Generator > test;
 
-        Blob b = pool.allocate( 1000 );
+        BlobSet set( Hasher( test.pool() ) );
+
+        Blob b = test.pool().allocate( 1000 );
         for ( unsigned i = 0; i < 1000; ++i )
-            pool.dereference( b )[ i ] = char(i & 0xff);
+            test.pool().dereference( b )[ i ] = char(i & 0xff);
 
-        auto root = set.insertHinted( b, hasher.hash( b ).first, td );
+        auto root = test.insert( b );
         assert( root.isnew() );
         for ( unsigned i = 0; i < 1000; ++i )
-            assert_eq( c2u( pool.dereference( b )[ i ] ), i & 0xff );
+            assert_eq( c2u( test.pool().dereference( b )[ i ] ), i & 0xff );
 
-        assert_eq( root.leaf( pool ), leaf );
-        if ( root.leaf( pool ) ) {
+        assert_eq( root->leaf( test.pool() ), leaf );
+        if ( root->leaf( test.pool() ) ) {
             for ( unsigned i = 0; i < 1000; ++i )
-                assert_eq( c2u( root.data( pool )[ i ] ), i & 0xff );
+                assert_eq( c2u( root->data( test.pool() )[ i ] ), i & 0xff );
         }
 
-        Blob b2 = root.reassemble( pool );
+        Blob b2 = root->reassemble( test.pool() );
         for ( unsigned i = 0; i < 1000; ++i )
-            assert_eq( c2u( pool.dereference( b2 )[ i ] ), i & 0xff );
-        assert( pool.equal( b, b2 ) );
+            assert_eq( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
+        assert( test.pool().equal( b, b2 ) );
 
-        assert( !set.insertHinted( b, hasher.hash( b ).first, td ).isnew() );
+        assert( !test.insert( b ).isnew() );
 
-        auto root2 = set.get( b, td );
+        auto root2 = test.get( b );
         assert( !root2.isnew() );
-        assert_eq( root.b.raw(), root2.b.raw() );
+        assert_eq( root->b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
-            pool.free( x );
+            test.pool().free( x );
     }
 
     static std::mt19937 random;
 
     Blob randomBlob( size_t size, Pool &p ) {
+        size_t excess = size & 0x3;
+        size &= ~0x3;
         Blob b = p.allocate( size );
         std::for_each( reinterpret_cast< uint32_t * >( p.dereference( b ) ),
             reinterpret_cast< uint32_t * >( p.dereference( b ) + p.size( b ) ),
             []( uint32_t &ptr ) { ptr = TestNTreeHashSet::random(); } );
+        if ( excess )
+            std::for_each( reinterpret_cast< uint8_t * >( p.dereference( b ) ),
+                reinterpret_cast< uint8_t * >( p.dereference( b ) + p.size( b ) ),
+                []( uint8_t &ptr ) { ptr = TestNTreeHashSet::random(); } );
         return b;
     }
 
@@ -244,67 +341,100 @@ struct BestNTreeHashSet {
 
     template< typename Set >
     size_t count( Set &set, Pool &p ) {
-        return std::accumulate( set.m_table.begin(), set.m_table.end(), 0,
-            [ &p ]( const size_t &c, const typename Set::Cell &b ) {
-                return c + ( p.valid( b.fetch().b ) ? 1 : 0 );
-            } );
+        struct Closure {
+            Pool &pool;
+            Closure( Pool &p ) : pool( p ) { }
+            template< typename T >
+            size_t operator()( const size_t &c, T &t ) {
+                return c + ( this->pool.valid( t.fetch().unwrap() ) ? 1 : 0 );
+            }
+        };
+        return std::accumulate( set._table.begin(), set._table.end(), 0, Closure( p ) );
     }
 
     Test reuse() {
-        BlobSet set( Hasher( pool ) );
-        set._global.generator = &fgb; // FIXME
+        TestBase< FakeGeneratorBinary > test;
 
-        Blob b1 = randomBlob( 128, pool );
-        Blob b2 = randomBlob( 128, pool );
-        Blob c = concatBlob( { b1, b2 }, pool );
-        assert_neq( size_t( &set._leafs ), size_t( &set._forks ) );
-        assert_neq( size_t( &set._leafs ), size_t( &set._roots ) );
-        set.insertHinted( b1, pool.hash( b1 ).first, td );
-        set.insertHinted( b2, pool.hash( b2 ).first, td );
-        size_t leafs = count( set._leafs, pool );
-        size_t forks = count( set._forks, pool );
+        Blob b1 = randomBlob( 128, test.pool() );
+        Blob b2 = randomBlob( 128, test.pool() );
+        Blob c = concatBlob( { b1, b2 }, test.pool() );
+        assert_neq( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.forks ) );
+        assert_neq( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.roots ) );
+        test.insert( b1 );
+        test.insert( b2 );
+        size_t leaves = count( test.leaves(), test.pool() );
+        size_t forks = count( test.forks(), test.pool() );
 
-        assert( !set.insertHinted( b1, pool.hash( b1 ).first, td ).isnew() );
-        assert_eq( leafs, count( set._leafs, pool ) );
-        assert_eq( forks, count( set._forks, pool ) );
-        assert_eq( 2ul, count( set._roots, pool ) );
+        assert( !test.insert( b1 ).isnew() );
+        assert_eq( leaves, count( test.leaves(), test.pool() ) );
+        assert_eq( forks, count( test.forks(), test.pool() ) );
+        assert_eq( 2ul, count( test.roots(), test.pool() ) );
 
-        set.insertHinted( c, pool.hash( c ).first, td );
-        assert_eq( leafs, count( set._leafs, pool ) );
-        assert_eq( forks + 2, count( set._forks, pool ) );
-        assert_eq( 3ul, count( set._roots, pool ) );
+        test.insert( c );
+        assert_eq( leaves, count( test.leaves(), test.pool() ) );
+        assert_eq( forks + 2, count( test.forks(), test.pool() ) );
+        assert_eq( 3ul, count( test.roots(), test.pool() ) );
     }
 
     Test incrementalHash() {
-        BlobSet set( hasher );
-        set._global.generator = &fgb;
+        TestBase< FakeGeneratorBinary > test;
 
-        Blob b = randomBlob( 128, pool );
-        hash128_t hash = pool.hash( b );
-        auto root = set.insertHinted( b, hash.first );
-        hash128_t rootHash = set.hasher.hash( root );
+        Blob b = randomBlob( 128, test.pool() );
+        hash128_t hash = test.pool().hash( b );
+        auto root = *test.insert( b );
+        hash128_t rootHash = test.set()._d.roots.hasher.hash( root );
         assert_eq( rootHash.first, hash.first );
         assert_eq( rootHash.second, hash.second );
     }
+
+    Test internalReuse() {
+        TestBase< FakeGeneratorBinary > test;
+
+        Blob b = randomBlob( 128, test.pool() );
+        assert( test.insert( b ).isnew() );
+        size_t leaves = count( test.leaves(), test.pool() );
+        size_t forks = count( test.forks(), test.pool() );
+        assert_eq( 1ul, count( test.roots(), test.pool() ) );
+
+        BlobSet set( Hasher( test.pool() ) );
+        Blob composite = concatBlob( { b, b }, test.pool() );
+        assert( test.insertSet( set, composite ).isnew() );
+
+        assert_eq( leaves, count( set._d.leaves, test.pool() ) );
+        assert_eq( forks + 1, count( set._d.forks, test.pool() ) ); // tree it higher by one
+        assert_eq( 1ul, count( set._d.roots, test.pool() ) );
+    }
+
+    Test shortLeaves() {
+        TestBase< FakeGeneratorFixed > test{ 32, 5, 4, 3, 2, 1 };
+
+        Blob b32 = randomBlob( 32, test.pool() );
+        auto r32 = *test.insert( b32 );
+        assert( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
+
+        Blob b37 = randomBlob( 37, test.pool() );
+        auto r37 = *test.insert( b37 );
+        assert( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
+
+        Blob b41 = randomBlob( 41, test.pool() );
+        auto r41 = *test.insert( b41 );
+        assert( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
+
+        Blob b44 = randomBlob( 44, test.pool() );
+        auto r44 = *test.insert( b44 );
+        assert( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
+
+        Blob b46 = randomBlob( 46, test.pool() );
+        auto r46 = *test.insert( b46 );
+        assert( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
+
+        Blob b47 = randomBlob( 47, test.pool() );
+        auto r47 = *test.insert( b47 );
+        assert( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
+    }
+
 };
 
 std::mt19937 TestNTreeHashSet::random = std::mt19937( 0 );
-#endif
-
-struct TestNTreeHashSet {
-    void foo();
-};
-#endif
-
-#ifdef NTREE_STANDALONE_TEST
-
-int main( void ) {
-    TestNTreeHashSet test;
-    test.basicFlat();
-    test.binary2();
-    test.binary4();
-    test.basicBinary();
-    test.reuse();
-}
 
 #endif
