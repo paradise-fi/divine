@@ -309,7 +309,7 @@ typedef __char32_t char32_t;
 #if defined(__FreeBSD__)
 #define _LIBCPP_HAS_QUICK_EXIT
 #define _LIBCPP_HAS_C11_FEATURES
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(__divine__)
 #include <features.h>
 #if __GLIBC_PREREQ(2, 15)
 #define _LIBCPP_HAS_QUICK_EXIT
@@ -578,5 +578,11 @@ template <unsigned> struct __static_assert_check {};
 #define _LIBCPP_CONSTEXPR_AFTER_CXX11 constexpr
 #define _LIBCPP_EXPLICIT_AFTER_CXX11 explicit
 #endif
+
+// FOR DIVINE
+
+#undef _LIBCPP_HAS_QUICK_EXIT
+#undef _LIBCPP_HAS_C11_FEATURES
+#undef __GLIBC__
 
 #endif  // _LIBCPP_CONFIG

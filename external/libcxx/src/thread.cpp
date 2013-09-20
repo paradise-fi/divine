@@ -14,7 +14,7 @@
 #include "limits"
 #include <sys/types.h>
 #if !defined(_WIN32)
-#if !defined(__sun__) && !defined(__linux__) && !defined(_AIX)
+#if !defined(__sun__) && !defined(__linux__) && !defined(_AIX) && !defined(__divine__)
 #include <sys/sysctl.h>
 #endif // !__sun__ && !__linux__ && !_AIX
 #include <unistd.h>
@@ -73,7 +73,7 @@ thread::hardware_concurrency() _NOEXCEPT
     std::size_t s = sizeof(n);
     sysctl(mib, 2, &n, &s, 0, 0);
     return n;
-#elif defined(_SC_NPROCESSORS_ONLN)
+#elif defined(_SC_NPROCESSORS_ONLN) && !defined(__divine__)
     long result = sysconf(_SC_NPROCESSORS_ONLN);
     // sysconf returns -1 if the name is invalid, the option does not exist or
     // does not have a definite limit.

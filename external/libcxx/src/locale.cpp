@@ -31,7 +31,9 @@
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
 #else // _LIBCPP_MSVCRT
+#ifndef __divine__
 #include <langinfo.h>
+#endif
 #endif // !_LIBCPP_MSVCRT
 #include <stdlib.h>
 #include <stdio.h>

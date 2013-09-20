@@ -60,7 +60,11 @@ public:
         monetary = LC_MONETARY_MASK,
         numeric  = LC_NUMERIC_MASK,
         time     = LC_TIME_MASK,
+#ifndef __divine__
         messages = LC_MESSAGES_MASK,
+#else
+        messages = LC_TIME_MASK << 1, // FIXME: locale
+#endif
         all = collate | ctype | monetary | numeric | time | messages;
 
     // construct/copy/destroy:

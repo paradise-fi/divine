@@ -8,7 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "chrono"
+#ifndef __divine__
 #include <sys/time.h>        //for gettimeofday and timeval
+#else
+#include <cassert>
+#endif
 #ifdef __APPLE__
 #include <mach/mach_time.h>  // mach_absolute_time, mach_timebase_info_data_t
 #else  /* !__APPLE__ */
@@ -29,9 +33,13 @@ const bool system_clock::is_steady;
 system_clock::time_point
 system_clock::now() _NOEXCEPT
 {
+#ifndef __divine__
     timeval tv;
     gettimeofday(&tv, 0);
     return time_point(seconds(tv.tv_sec) + microseconds(tv.tv_usec));
+#else
+    assert( 0 );
+#endif
 }
 
 time_t

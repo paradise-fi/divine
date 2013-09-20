@@ -189,6 +189,10 @@ void __cxa_free_dependent_exception (void * dependent_exception) {
     do_free(dependent_exception);
 }
 
+#ifdef __divine__
+extern "C" void __cxa_throw_divine( __cxa_exception *e );
+#endif
+
 
 // 2.4.3 Throwing the Exception Object
 /*
@@ -234,6 +238,8 @@ __cxa_throw(void* thrown_object, std::type_info* tinfo, void (*dest)(void*))
     exception_header->unwindHeader.exception_cleanup = exception_cleanup_func;
 #if __arm__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
+#elif defined(__divine__)
+    __cxa_throw_divine(exception_header);
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif

@@ -158,7 +158,9 @@ using ::fputc;
 using ::fputs;
 using ::getc;
 using ::getchar;
-using ::gets;
+#ifndef __divine__
+using ::gets; // FIXME
+#endif __divine__
 using ::putc;
 using ::putchar;
 using ::puts;

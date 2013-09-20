@@ -194,11 +194,45 @@ template <class charT> class messages_byname;
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
 #else // _LIBCPP_MSVCRT
+#ifndef __divine__
 #include <nl_types.h>
+#endif
 #endif  // !_LIBCPP_MSVCRT
 
 #ifdef __APPLE__
 #include <Availability.h>
+#endif
+
+#ifdef __divine__ // FIXME: locale
+#define strtoll_l(p1,p2,p3,x)  strtoll(p1,p2,p3)
+#define strtoull_l(p1,p2,p3,x) strtoull(p1,p2,p3)
+#define strtold_l(p1,p2,x)     strtold(p1,p2)
+#define isdigit_l(p1,x)        isdigit(p1)
+#define isxdigit_l(p1,x)       isxdigit(p1)
+#define strcoll_l(p1,p2,l)     strcoll(p1,p2)
+#define strxfrm_l(p1,p2,p3,l)  strxfrm(p1,p2,p3)
+#define wstrcoll_l(p1,p2,l)    wstrcoll(p1,p2)
+#define wstrxfrm_l(p1,p2,p3,l) wstrxfrm(p1,p2,p3)
+#define islower_l(p1,l)        islower(p1)
+#define iswlower_l(p1,l)       iswlower(p1)
+#define isupper_l(p1,l)        isupper(p1)
+#define iswupper_l(p1,l)       iswupper(p1)
+#define tolower_l(p1,l)        tolower(p1)
+#define towlower_l(p1,l)       towlower(p1)
+#define toupper_l(p1,l)        toupper(p1)
+#define towupper_l(p1,l)       towupper(p1)
+#define isspace_l(p1,l)        isspace(p1)
+#define iswspace_l(p1,l)       iswspace(p1)
+#define wcscoll_l(p1,p2,l)     wcscoll(p1,p2)
+#define wcsxfrm_l(p1,p2,p3,l)  wcsxfrm(p1,p2,p3)
+#define iswprint_l(p1,l)       iswprint(p1)
+#define iswcntrl_l(p1,l)       iswcntrl(p1)
+#define iswalpha_l(p1,l)       iswalpha(p1)
+#define iswpunct_l(p1,l)       iswpunct(p1)
+#define iswdigit_l(p1,l)       iswdigit(p1)
+#define iswxdigit_l(p1,l)      iswxdigit(p1)
+#define strftime_l(p1,p2,p3,p4,l) strftime(p1,p2,p3,p4)
+#define iswblank_l(p1,l)       iswblank(p1)
 #endif
 
 #include <__undef_min_max>
@@ -229,7 +263,7 @@ typedef _VSTD::unique_ptr<__locale_struct, decltype(&uselocale)> __locale_raii;
 // OSX has nice foo_l() functions that let you turn off use of the global
 // locale.  Linux, not so much.  The following functions avoid the locale when
 // that's possible and otherwise do the wrong thing.  FIXME.
-#if defined(__linux__) || defined(EMSCRIPTEN) || defined(_AIX)
+#if defined(__linux__) || defined(EMSCRIPTEN) || defined(_AIX) || defined( __divine__ )
 
 #ifdef _LIBCPP_LOCALE__L_EXTENSIONS
 decltype(MB_CUR_MAX_L(_VSTD::declval<locale_t>()))
@@ -3921,7 +3955,7 @@ template <class _CharT>
 typename messages<_CharT>::catalog
 messages<_CharT>::do_open(const basic_string<char>& __nm, const locale&) const
 {
-#ifdef _WIN32
+#if defined( _WIN32 ) || defined( __divine__ )
     return -1;
 #else // _WIN32
     catalog __cat = (catalog)catopen(__nm.c_str(), NL_CAT_LOCALE);
@@ -3936,7 +3970,7 @@ typename messages<_CharT>::string_type
 messages<_CharT>::do_get(catalog __c, int __set, int __msgid,
                          const string_type& __dflt) const
 {
-#ifdef _WIN32
+#if defined( _WIN32 ) || defined( __divine__ )
     return __dflt;
 #else // _WIN32
     string __ndflt;
@@ -3958,9 +3992,9 @@ template <class _CharT>
 void
 messages<_CharT>::do_close(catalog __c) const
 {
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined( __divine__ )
     if (__c != -1)
-        __c <<= 1;
+       && !defined( __divine__ )  __c <<= 1;
     nl_catd __cat = (nl_catd)__c;
     catclose(__cat);
 #endif // !_WIN32

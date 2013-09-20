@@ -13,12 +13,16 @@
 #ifdef __sun__
 #define rename solaris_headers_are_broken
 #endif
+#ifndef __divine__
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
+
+#ifndef __divine__
 random_device::random_device(const string& __token)
     : __f_(open(__token.c_str(), O_RDONLY))
 {
@@ -44,5 +48,20 @@ random_device::entropy() const _NOEXCEPT
 {
     return 0;
 }
+#else
+
+// FIXME: this is very very bad
+
+random_device::random_device( const string & ) { }
+random_device::~random_device() { }
+unsigned random_device::operator()() {
+    return random_device::min() + __divine_choice( random_device::max() - random_device::min() );
+}
+
+double random_device::entropy() const _NOEXCEPT {
+    return 0;
+}
+
+#endif
 
 _LIBCPP_END_NAMESPACE_STD
