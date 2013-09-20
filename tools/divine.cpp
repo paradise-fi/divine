@@ -102,7 +102,7 @@ struct Main {
     Main( int _argc, const char **_argv )
         : argc( _argc ), argv( _argv ),
           opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
-          combine( opts, argc, argv ),
+          combine( opts ),
           compile( opts )
     {
         {
@@ -386,14 +386,14 @@ struct Main {
         cmd_metrics->add( common );
         cmd_metrics->add( reduce );
         cmd_metrics->add( compression );
-	cmd_metrics->add( input );
+        cmd_metrics->add( input );
         cmd_metrics->add( definitions );
 
         cmd_verify->add( common );
         cmd_verify->add( ce );
         cmd_verify->add( reduce );
         cmd_verify->add( compression );
-	cmd_verify->add( input );
+        cmd_verify->add( input );
         cmd_verify->add( definitions );
 
         cmd_simulate->add( common );
@@ -412,7 +412,7 @@ struct Main {
         cmd_draw->add( reduce );
         cmd_draw->add( o_property );
         cmd_draw->add( compression );
-	cmd_draw->add( input );
+        cmd_draw->add( input );
         cmd_draw->add( definitions );
     }
 

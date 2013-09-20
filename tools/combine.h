@@ -87,8 +87,7 @@ struct Combine {
         exit( 1 );
     }
 
-    Combine( commandline::StandardParserWithMandatoryCommand &_opts,
-             int argc, const char **argv )
+    Combine( commandline::StandardParserWithMandatoryCommand &_opts )
         : opts( _opts )
     {
         cmd_combine = opts.addEngine(
