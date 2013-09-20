@@ -43,10 +43,6 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
-extern "C" void abort_message( const char * ) {
-    __divine_assert( 0 );
-    __divine_unwind( INT_MIN );
-}
 extern "C" void *dlsym( void *, void * ) { __divine_assert( 0 ); return 0; } // oh golly...
 
 extern "C" void *__errno_location() { __divine_assert( 0 ); return 0; }
@@ -75,3 +71,14 @@ extern "C" { /* pdclib glue functions */
     }
 }
 
+extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
+    // I believe we will do nothing wrong if we verify nanosleep as NOOP,
+    // it does not guearantee anything anyway
+}
+
+extern "C" {
+    double atof( const char *r ) throw() { __divine_assert( 0 ); return 0; }
+    double strtod( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
+    float strtof( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
+    long double strtold( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
+}
