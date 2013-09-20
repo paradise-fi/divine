@@ -128,5 +128,11 @@ size_t wcrtomb(char *_PDCLIB_restrict s, wchar_t wc, mbstate_t *_PDCLIB_restrict
 size_t mbsrtowcs(wchar_t *_PDCLIB_restrict dst, const char **_PDCLIB_restrict src, size_t len, mbstate_t *_PDCLIB_restrict ps);
 size_t wcsrtombs(char *_PDCLIB_restrict dst, const wchar_t **_PDCLIB_restrict src, size_t len, mbstate_t *_PDCLIB_restrict ps);
 
+/* FIXME: remove this (DIVINE) */
+size_t mbsnrtowcs(wchar_t *dest, const char **src,
+                  size_t nms, size_t len, mbstate_t *ps);
+size_t wcsnrtombs(char *dest, const wchar_t **src, size_t nwc,
+                  size_t len, mbstate_t *ps);
+
 _PDCLIB_END_EXTERN_C
 #endif

@@ -932,5 +932,9 @@ _PDCLIB_uint_fast64_t _PDCLIB_ftell64( FILE * stream ) _PDCLIB_nothrow;
 _PDCLIB_uint_fast64_t _PDCLIB_ftell64_unlocked( FILE * stream ) _PDCLIB_nothrow;
 #endif
 
+/* FIXME: divine */
+int asprintf(char **strp, const char *fmt, ...);
+int vasprintf(char **strp, const char *fmt, _PDCLIB_va_list ap);
+
 _PDCLIB_END_EXTERN_C
 #endif

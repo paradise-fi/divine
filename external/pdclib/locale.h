@@ -97,7 +97,7 @@ struct lconv * localeconv( void ) _PDCLIB_nothrow;
 #define LC_CTYPE_MASK    (1 << LC_CTYPE)
 #define LC_MONETARY_MASK (1 << LC_MONETARY)
 #define LC_NUMERIC_MASK  (1 << LC_NUMERIC)
-#define LC_TIME_MASK     (1 << LC_TIME) 
+#define LC_TIME_MASK     (1 << LC_TIME)
 #define LC_ALL_MASK      (LC_COLLATE_MASK | LC_CTYPE_MASK | LC_MONETARY_MASK | \
                           LC_NUMERIC_MASK | LC_TIME_MASK)
 
@@ -139,10 +139,6 @@ _PDCLIB_END_EXTERN_C
 #include <stdlib.h>
 
 _PDCLIB_BEGIN_EXTERN_C
-
-inline static size_t strftime(char *s, size_t max, const char *format, const struct tm *tm) {
-    assert( 0 );
-}
 
 /* / */
 

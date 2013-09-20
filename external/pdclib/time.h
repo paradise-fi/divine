@@ -40,5 +40,17 @@ time_t time( time_t* t ) _PDCLIB_nothrow;
 int timespec_get( struct timespec *ts, int base ) _PDCLIB_nothrow;
 double difftime ( time_t end, time_t beginning) _PDCLIB_nothrow;
 
+/* added for DIVINE */
+clockid_t clock( void );
+time_t mktime(struct tm *tm);
+char *asctime(const struct tm *tm);
+char *ctime(const time_t *timep);
+struct tm *gmtime(const time_t *timep);
+struct tm *localtime(const time_t *timep);
+size_t strftime(char *s, size_t max, const char *format,
+                const struct tm *tm);
+int nanosleep(const struct timespec *req, struct timespec *rem);
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 _PDCLIB_END_EXTERN_C
 #endif
