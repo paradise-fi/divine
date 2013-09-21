@@ -103,7 +103,7 @@ namespace generator {
             return wibble::str::endsWith( meta.input.model, extension ); \
         } \
         \
-        void postSelect( Meta &meta ) { \
+        static void postSelect( Meta &meta ) { \
             meta.input.modelType = name; \
         } \
     }
