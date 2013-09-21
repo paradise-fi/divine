@@ -13,7 +13,7 @@ Prerequisites
 -------------
 
 * A POSIX-compatible operating system (tested on Linux), or NT-based 32 bit Windows.
-* Recent GNU C++ (4.7 or later) or clang (3.2 or later). MinGW on Windows.
+* Recent GNU C++ (4.7.3 or later) or clang (3.2 or later). MinGW on Windows.
 * Cmake \[[www.cmake.org](http://www.cmake.org)\]  
   Note: If your computer is connected to the Internet during installation, the
   configure script is able to download and compile cmake package for you.
