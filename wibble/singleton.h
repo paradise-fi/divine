@@ -86,7 +86,7 @@ public:
     const_iterator begin() const { return const_iterator(&value); }
     const_iterator end() const { return const_iterator(); }
 
-    iterator insert( iterator position, const value_type &v )
+    iterator insert( iterator /* position */, const value_type &v )
     {
         value = v;
         return begin();
