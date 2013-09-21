@@ -60,6 +60,8 @@
 #include <type_traits>
 #include <memory>
 #include <wibble/test.h>
+#include <wibble/strongenumflags.h>
+#include <wibble/sys/mmap_v2.h>
 
 #ifndef DIVINE_COMPACT_COMPACT_H
 #define DIVINE_COMPACT_COMPACT_H
@@ -79,41 +81,8 @@ enum class Capability : uint64_t {
     /* when adding don't forget to update showCapability in explicit.cpp ! */
 };
 
-
-struct Capabilities : std::bitset< 64 > {
-    using Base = std::bitset< 64 >;
-
-    Capabilities() = default;
-    Capabilities( Capability c ) : Base( uint64_t( c ) ) { }
-
-    Capabilities &operator|=( const Capabilities &o ) {
-        Base::operator|=( o );
-        return *this;
-    }
-
-    friend Capabilities operator|( const Capabilities &a, const Capabilities &b ) {
-        return Capabilities( Base( a ) | Base( b ) );
-    }
-
-    Capabilities operator&=( const Capabilities &o ) {
-        Base::operator&=( o );
-        return *this;
-    }
-
-    friend Capabilities operator&( const Capabilities &a, const Capabilities &b ) {
-        return Capabilities( Base( a ) & Base( b ) );
-    }
-
-    bool has( const Capabilities &o ) const {
-        return ( (*this) & o ) == o;
-    }
-
-    std::string string() const;
-
-  protected:
-    Capabilities( const Base &c ) : Base( c ) { }
-    Capabilities( uint64_t c ) : Base( c ) { }
-};
+using Capabilities = wibble::StrongEnumFlags< Capability >;
+std::string to_string( Capabilities );
 
 static const size_t MAGIC_LENGTH = 40UL;
 static const char MAGIC[ MAGIC_LENGTH ] = "DIVINE COMPACT EXPLICIT STATE SPACE";
@@ -316,10 +285,11 @@ struct Explicit {
 
     enum class OpenMode { Read, Write };
 
-    std::shared_ptr< Header > header;
+    Header *header;
     DataBlock forward;
     DataBlock backward;
     DataBlock nodes;
+    wibble::sys::MMap map;
 
     Explicit() : header(),
         forward(), backward(), nodes()
@@ -330,7 +300,7 @@ struct Explicit {
     }
 
     void open( std::string path, OpenMode = OpenMode::Read );
-    void finishOpen( int fd, void *ptr, int size );
+    void finishOpen();
 
     bool valid() { return static_cast< bool >( header ); }
 };

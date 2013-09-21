@@ -5,12 +5,14 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <fcntl.h>
 
 namespace divine {
 namespace dess {
+
+using namespace wibble::sys;
+using wibble::operator|;
 
 static std::string showCapability( Capability c ) {
 #define SHOW_CAPABILITY( C ) if ( c == Capability::C ) return #C;
@@ -24,10 +26,10 @@ static std::string showCapability( Capability c ) {
     return "<<UNKNOWN=" + std::to_string( uint64_t( c ) ) + ">>";
 }
 
-std::string Capabilities::string() const {
+std::string to_string( Capabilities c ) {
     std::stringstream ss;
     for ( uint64_t mask = 1; mask; mask <<= 1 ) {
-        if ( ( (*this) & mask ) == mask )
+        if ( ( c & mask ) == mask )
             ss << " | " << showCapability( static_cast< Capability >( mask ) );
     }
     ss << " )";
@@ -64,34 +66,16 @@ Header *Header::ptr( void *p ) {
 }
 
 void Explicit::open( std::string path, OpenMode om ) {
-    int openmode = om == OpenMode::Read ? O_RDONLY : O_RDWR;
-    int mmapProt = om == OpenMode::Read ? PROT_READ : PROT_READ | PROT_WRITE;
+    auto mmapProt = om == OpenMode::Read ? MMap::ProtectMode::Read
+        : MMap::ProtectMode::Read | MMap::ProtectMode::Write;
 
-    struct stat st;
-    int fd = ::open( path.c_str(), openmode );
-    assert_leq( 0, fd );
-    auto r = ::fstat( fd, &st );
-    assert_eq( r, 0 );
-    static_cast< void >( r );
-    size_t size = st.st_size;
-
-    void *ptr = ::mmap( nullptr, size, mmapProt, MAP_SHARED, fd, 0 );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-    assert_neq( ptr, MAP_FAILED );
-#pragma GCC diagnostic pop
-
-    finishOpen( fd, ptr, size );
+    map.map( path, MMap::ProtectMode::Shared | mmapProt );
+    finishOpen();
 }
 
-void Explicit::finishOpen( int fd, void *ptr, int size ) {
-    header = std::shared_ptr< Header >( Header::ptr( ptr ),
-            [ fd, size ]( Header *h ) {
-                ::munmap( h, size );
-                ::close( fd );
-            } );
-
-    char *cptr = reinterpret_cast< char* >( ptr );
+void Explicit::finishOpen() {
+    header = Header::ptr( map.asArrayOf< void >() );
+    char *cptr = map.asArrayOf< char >();
 
     assert_leq( header->compactVersion, 1 );
     assert_leq( header->dataStartOffset, int64_t( sizeof( Header ) ) );
@@ -145,13 +129,10 @@ Explicit PrealocateHelper::operator()() {
     assert_eq( r , 0 );
     static_cast< void >( r );
 
-    void *ptr = ::mmap( nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-    assert_neq( ptr, MAP_FAILED );
-#pragma GCC diagnostic pop
+    MMap map( fd, MMap::ProtectMode::Read | MMap::ProtectMode::Write
+            | MMap::ProtectMode::Shared );
 
-    Header *h = new ( ptr ) Header();
+    Header *h = new ( map.asArrayOf< void >() ) Header();
     h->capabilities = _capabilities;
     h->nodeCount = _nodes;
 
@@ -163,7 +144,8 @@ Explicit PrealocateHelper::operator()() {
     h->labelSize = _labelSize;
 
     Explicit compact;
-    compact.finishOpen( fd, ptr, fileSize );
+    compact.map = map;
+    compact.finishOpen();
 
     auto end = _generator.end() - _generator.begin() > int( GENERATOR_FIELD_LENGTH )
                 ? _generator.begin() + GENERATOR_FIELD_LENGTH
