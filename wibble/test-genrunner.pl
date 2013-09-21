@@ -26,7 +26,7 @@ sub process() {
             }
             for (split /[;]/, $_) {
                 #print "parsing: $_\n";
-                if (/struct ([tT]est_?)([A-Za-z]+)/) {
+                if (/struct ([tT]est_?)([A-Za-z][A-Za-z0-9_]*)/) {
                     #push @sets, $1;
                     $set = $2;
                     $filename{$set} = $file;
