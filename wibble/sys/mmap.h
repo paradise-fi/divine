@@ -28,7 +28,9 @@
 
 namespace wibble {
 namespace sys {
-
+#if __cplusplus >= 201103L
+inline namespace v1 {
+#endif
 /**
  * Map a file into memory.
  *
@@ -56,6 +58,9 @@ public:
 
 };
 
+#if __cplusplus >= 201103L
+}
+#endif
 }
 }
 
