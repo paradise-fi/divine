@@ -3,21 +3,26 @@ with_warnings()
 include_directories( ${DIVINE_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
-link_libraries( libdivine libdivine-instances wibble )
+set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
+set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
+
+add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
+
+target_link_libraries( divine libdivine-instances libdivine wibble )
 if( MURPHI )
-    link_libraries( murphi )
+    target_link_libraries( divine murphi )
 endif()
 
 if( NOT WIN32 )
-  link_libraries( libdivine pthread )
+  target_link_libraries( divine pthread )
 endif( NOT WIN32 )
 
 if( HOARD )
-  link_libraries( hoard )
+  target_link_libraries( divine hoard )
 endif( HOARD )
 
 if( TBBMALLOC )
-  link_libraries( tbbmalloc )
+  target_link_libraries( divine tbbmalloc )
 endif()
 
 set( llvmpaths "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
@@ -30,10 +35,6 @@ set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths} )
 
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 
-set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
-set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
-
-add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
 # target_link_libraries( divine lpsolve )
 if( NOT WIN32 )
     target_link_libraries( divine rt )
