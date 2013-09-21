@@ -333,9 +333,10 @@ struct PrealocateHelper {
         return *this;
     }
 
-    PrealocateHelper &labelSize( size_t size ) {
+    template< typename Label >
+    PrealocateHelper &labelSize( Label ) {
         assert_eq( _labelSize, 0 );
-        _labelSize = size;
+        _labelSize = std::is_empty< Label >::value ? 0 : sizeof( Label );
         return *this;
     }
 

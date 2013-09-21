@@ -431,7 +431,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
             .forward()
             .backward()
             .generator( meta().input.modelType )
-            .labelSize( sizeof( Label ) );
+            .labelSize( Label() );
         if ( params.saveNodes )
             creator.saveNodes( nodesSize );
         if ( std::is_same< Label, uint64_t >::value )
