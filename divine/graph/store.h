@@ -129,6 +129,12 @@ struct PartitionedProvider {
         using ThreadData = typename WrapTable::template ThreadData< FastSet >;
         using Hasher = typename WrapTable::Hasher;
 
+        // just dummy
+        template< typename Mutex, int >
+        struct Guard {
+            Guard( Mutex *, Mutex * = nullptr ) {}
+        };
+
         Table _table;
 
         Table &table() { return _table; }
@@ -145,6 +151,44 @@ struct SharedProvider {
         using TablePtr = std::shared_ptr< Table >;
         using ThreadData = typename WrapTable::template ThreadData< ConcurrentSet >;
         using Hasher = typename WrapTable::Hasher;
+
+        template< typename Mutex, int N > struct Guard {};
+
+        template< typename Mutex >
+        struct Guard< Mutex, 1 > {
+            Mutex *m;
+
+            Guard( Mutex *m ) : m( m ) {
+                if ( m ) m->lock();
+            }
+
+            ~Guard() {
+                if ( m ) m->unlock();
+            }
+        };
+
+        template< typename Mutex >
+        struct Guard< Mutex, 2 > {
+            Mutex *m1;
+            Mutex *m2;
+
+            Guard( Mutex *m1, Mutex *m2 ) : m1( first( m1, m2 ) ), m2( second( m1, m2 ) ) {
+                if ( m1 ) m1->lock();
+                if ( m2 ) m2->lock();
+            }
+
+            ~Guard() {
+                if ( m2 ) m2->unlock();
+                if ( m1 ) m1->unlock();
+            }
+
+            static Mutex *first( Mutex *m1, Mutex *m2 ) {
+                return m1 < m2 ? m1 : m2;
+            }
+            static Mutex *second( Mutex *m1, Mutex *m2 ) {
+                return m1 < m2 ? m2 : m1;
+            }
+        };
 
         TablePtr _table;
 
