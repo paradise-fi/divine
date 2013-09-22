@@ -3,6 +3,7 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/graph/ltlce.h>
+#include <divine/toolkit/bittuple.h>
 
 #ifndef DIVINE_ALGORITHM_MAP_H
 #define DIVINE_ALGORITHM_MAP_H
@@ -85,15 +86,38 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     struct Extension {
-        Handle parent;
-        MapVertexId map;
-        MapVertexId oldmap;
-        bool seen:1;
-        short iteration:13;
-        // elim: 0 = candidate for elimination, 1 = not a canditate, 2 = eliminated
-        // 3 = not accepting
-        unsigned short elim:2;
-    } __attribute__((packed));
+        BitTuple<
+            BitField< Handle >,
+            BitField< MapVertexId >,
+            BitField< MapVertexId >,
+            BitLock,
+            BitField< bool, 1 >,// seen
+            BitField< short, 13 >,// iteration
+            BitField< unsigned short, 2 >// elim
+        > data;
+
+        void lock() { get< 3 >( data ).lock(); }
+        void unlock() { get< 3 >( data ).unlock(); }
+
+        auto parent() -> decltype( get< 0 >( data ) ) {
+            return get< 0 >( data );
+        }
+        auto map() -> decltype( get< 1 >( data ) ) {
+            return get< 1 >( data );
+        }
+        auto oldmap() -> decltype( get< 2 >( data ) ) {
+            return get< 2 >( data );
+        }
+        auto seen() -> decltype( get< 4 >( data ) ) {
+            return get< 4 >( data );
+        }
+        auto iteration() -> decltype( get< 5 >( data ) ) {
+            return get< 5 >( data );
+        }
+        auto elim() -> decltype( get< 6 >( data ) ) {
+            return get< 6 >( data );
+        }
+    };
 
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
@@ -103,8 +127,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     visitor::TransitionAction updateIteration( Vertex t ) {
-        int old = extension( t ).iteration;
-        extension( t ).iteration = shared.iteration;
+        int old = extension( t ).iteration();
+        extension( t ).iteration() = shared.iteration;
         return (old != shared.iteration) ?
             visitor::TransitionAction::Expand :
             visitor::TransitionAction::Forget;
@@ -130,10 +154,10 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     bool isAccepting( Vertex st ) {
-        if ( extension( st ).elim >= 2 )
+        if ( extension( st ).elim() >= 2 )
             return false;
         if ( !this->graph().isAccepting ( st.node() ) ) {
-            extension( st ).elim = 3;
+            extension( st ).elim() = 3;
             return false;
         }
         return true;
@@ -144,12 +168,12 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         static visitor::ExpansionAction expansion( This &m, Vertex st )
         {
             ++ m.shared.expanded;
-            if ( !m.extension( st ).seen ) {
-                m.extension( st ).seen = true;
+            if ( !m.extension( st ).seen() ) {
+                m.extension( st ).seen() = true;
                 if ( m.graph().isAccepting ( st.node() ) )
                     ++ m.shared.accepting;
                 else
-                    m.extension( st ).elim = 3; // not accepting
+                    m.extension( st ).elim() = 3; // not accepting
                 m.shared.stats.addNode( m.graph(), st );
             } else
                 m.shared.stats.addExpansion();
@@ -165,8 +189,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             if ( !m.store().valid( f ) )
                 return m.updateIteration( t );
 
-            if ( !m.store().valid( m.extension( t ).parent ) )
-                m.extension( t ).parent = f.handle();
+            if ( !m.store().valid( m.extension( t ).parent() ) )
+                m.extension( t ).parent() = f.handle();
 
             /* self loop */
             if ( m.graph().isAccepting( f.node() ) &&
@@ -177,26 +201,26 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             }
 
             /* MAP arrived to its origin */
-            if ( m.isAccepting( t ) && m.extension( f ).map == m.makeId( t ) ) {
+            if ( m.isAccepting( t ) && m.extension( f ).map() == m.makeId( t ) ) {
                 m.shared.ce.initial = t.handle();
                 return visitor::TransitionAction::Terminate;
             }
 
-            if ( m.extension( f ).oldmap.valid() && m.extension( t ).oldmap.valid() )
-                if ( m.extension( f ).oldmap != m.extension( t ).oldmap )
+            if ( m.extension( f ).oldmap().get().valid() && m.extension( t ).oldmap().get().valid() )
+                if ( m.extension( f ).oldmap() != m.extension( t ).oldmap() )
                     return m.updateIteration( t );
 
-            MapVertexId map = std::max( m.extension( f ).map, m.extension( t ).map );
+            MapVertexId map = std::max( m.extension( f ).map().get(), m.extension( t ).map().get() );
             if ( m.isAccepting( t ) )
                 map = std::max( map, m.makeId( t ) );
 
-            if ( m.extension( t ).map < map ) {
+            if ( m.extension( t ).map() < map ) {
                 // we are *not* the MAP of our successors anymore, so not a
                 // candidate for elimination (shrinking), remove from set
                 // elim == 0 means we are candidate for elimination now
-                if ( m.isAccepting( t ) && m.extension( t ).elim == 0 && m.makeId( t ) < map )
-                    m.extension( t ).elim = 1;
-                m.extension( t ).map = map;
+                if ( m.isAccepting( t ) && m.extension( t ).elim() == 0 && m.makeId( t ) < map )
+                    m.extension( t ).elim() = 1;
+                m.extension( t ).map() = map;
                 return visitor::TransitionAction::Expand;
             }
 
@@ -213,15 +237,15 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     void _cleanup() {
         for ( auto st : this->store() ) {
             if ( this->store().valid( st ) ) {
-                extension( st ).oldmap = extension( st ).map;
-                extension( st ).map = MapVertexId();
+                extension( st ).oldmap() = extension( st ).map();
+                extension( st ).map() = MapVertexId();
 //                 if ( isAccepting( st ) ) {
-                if ( extension( st ).elim != 3 ) {
+                if ( extension( st ).elim() != 3 ) {
                     /* elim == 1 means NOT to be eliminated (!) */
-                    if ( extension( st ).elim == 1 )
-                        extension( st ).elim = 0;
+                    if ( extension( st ).elim() == 1 )
+                        extension( st ).elim() = 0;
                     else {
-                        extension( st ).elim = 2;
+                        extension( st ).elim() = 2;
                         ++ shared.eliminated;
                     }
                 }
