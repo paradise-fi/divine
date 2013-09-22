@@ -154,6 +154,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     bool isAccepting( Vertex st ) {
+        auto guard( this->store().template acquire< Extension >( st ) );
         if ( extension( st ).elim() >= 2 )
             return false;
         if ( !this->graph().isAccepting ( st.node() ) ) {
@@ -167,6 +168,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     {
         static visitor::ExpansionAction expansion( This &m, Vertex st )
         {
+            auto guard( m.store().template acquire< Extension >( st ) );
             ++ m.shared.expanded;
             if ( !m.extension( st ).seen() ) {
                 m.extension( st ).seen() = true;
@@ -183,6 +185,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
         static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
         {
+            auto guard( m.store().template acquire< Extension >( f, t ) );
             if ( m.shared.iteration == 1 )
                 m.graph().porTransition( m.store(), f, t );
 
