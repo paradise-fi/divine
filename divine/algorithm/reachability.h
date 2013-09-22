@@ -48,7 +48,10 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
     bool deadlocked;
 
     struct Extension {
-        Handle parent;
+        Handle _parent;
+        Handle &parent() {
+            return _parent;
+        }
     };
 
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
@@ -72,10 +75,10 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 
         static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
         {
-            if ( !r.store().valid( r.extension( t ).parent ) ) {
-                r.extension( t ).parent = f.handle();
+            if ( !r.store().valid( r.extension( t ).parent() ) ) {
+                r.extension( t ).parent() = f.handle();
                 assert( !r.store().valid( f )
-                        || r.store().valid( r.extension( t ).parent ) );
+                        || r.store().valid( r.extension( t ).parent() ) );
             }
             r.shared.stats.addEdge( r.store(), f, t );
 
