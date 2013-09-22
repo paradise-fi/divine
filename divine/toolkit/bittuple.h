@@ -10,7 +10,7 @@
 
 namespace divine {
 
-uint64_t bitshift( uint64_t t, int shift ) {
+static inline uint64_t bitshift( uint64_t t, int shift ) {
 #if BYTE_ORDER == LITTLE_ENDIAN
     return bswap_64( shift < 0 ? bswap_64( t << -shift ) : bswap_64( t >> shift ) );
 #else
@@ -39,11 +39,11 @@ private:
     int _bitoffset;
 };
 
-uint64_t mask( int first, int count ) {
+static inline uint64_t mask( int first, int count ) {
     return bitshift(uint64_t(-1), -first) & bitshift(uint64_t(-1), (64 - first - count));
 }
 
-void bitcopy( BitPointer from, BitPointer to, int bitcount )
+static inline void bitcopy( BitPointer from, BitPointer to, int bitcount )
 {
     while ( bitcount ) {
         int w = std::min( 32 - from.bitoffset(), bitcount );
