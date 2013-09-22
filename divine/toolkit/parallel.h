@@ -175,23 +175,26 @@ struct FifoMatrix
 struct WithID {
     int _id;
     int _peers;
+    int _locals;
     int _rank;
     int id() const { assert_leq( 0, _id ); return _id; }
     int peers() const { assert_leq( 0, _id ); return _peers; }
     int rank() const { assert_leq( 0, _id ); return _rank; }
-    void setId( int id, int peers, int rank ) {
+    int locals() const { assert_leq( 0, _locals ); return _locals; }
+    void setId( int id, int peers, int locals, int rank ) {
         _id = id;
         _peers = peers;
+        _locals = locals;
         _rank = rank;
     }
     WithID() : _id( -1 ) {}
-    WithID( int id, int peers, int rank ) :
-        _id( id ), _peers( peers ), _rank( rank )
+    WithID( int id, int peers, int locals, int rank ) :
+        _id( id ), _peers( peers ), _locals( locals ), _rank( rank )
     { }
 };
 
 struct Sequential : WithID {
-    Sequential() { setId( 0, 1, 0 ); }
+    Sequential() { setId( 0, 1, 1, 0 ); }
 
     Pool m_pool;
     const Pool& masterPool() const {
@@ -239,12 +242,12 @@ struct Parallel : Terminable, WithID {
         is_master = true;
         assert( !m_topology );
         m_topology = new Topology< Instance >( n ); // TODO int is kind of limited
-        setId( -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
+        setId( -1, -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
     }
 
     void becomeSlave( Topology< Instance > &topology, int id ) {
         m_topology = &topology;
-        setId( id, m_topology->peers(), m_topology->rank() );
+        setId( id, m_topology->peers(), m_topology->locals(), m_topology->rank() );
     }
 
     template< typename X = Instance >
@@ -378,6 +381,7 @@ struct Local
     }
 
     int peers() { return m_slavesCount; }
+    int locals() { return m_slavesCount; }
     void wakeup( int id ) { barrier().wakeup( &m_slaves[ id ] ); }
 
     auto parallel( void (Instance::*fun)() )
@@ -430,6 +434,7 @@ struct Mpi : MpiMonitor
     Barrier< Terminable > &barrier() { return m_local.barrier(); }
 
     int peers() { return m_local.peers() * mpi.size(); } // XXX
+    int locals() { return m_local.peers(); }
     void wakeup( int id ) {
         int start = mpi.rank() * _pernode, end = start + _pernode;
         if ( id >= start && id < end )
