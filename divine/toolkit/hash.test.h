@@ -128,7 +128,7 @@ Test Results()
         saw[i] = SpookyHash::Hash32(buf, i, 0);
         if (saw[i] != expected[i])
         {
-	    printf("%3d: saw 0x%.8lx, expected 0x%.8lx\n", i, saw[i], expected[i]);
+	    printf("%3d: saw 0x%.8x, expected 0x%.8lx\n", i, saw[i], expected[i]);
         assert( false );
         }
     }
@@ -282,12 +282,12 @@ Test Pieces()
 
         if (a != c)
         {
-            printf("wrong a %d: %.16llx %.16llx\n", i, a,c);
+            printf("wrong a %d: %.16lx %.16lx\n", i, a,c);
             assert( false );
         }
         if (b != d)
         {
-            printf("wrong b %d: %.16llx %.16llx\n", i, b,d);
+            printf("wrong b %d: %.16lx %.16lx\n", i, b,d);
             assert( false );
         }
 
@@ -302,12 +302,12 @@ Test Pieces()
             std::tie( c, d ) = state.Final();
             if (a != c)
             {
-                printf("wrong a %d %d: %.16llx %.16llx\n", j, i, a,c);
+                printf("wrong a %d %d: %.16lx %.16lx\n", j, i, a,c);
                 assert( false );
             }
             if (b != d)
             {
-                printf("wrong b %d %d: %.16llx %.16llx\n", j, i, b,d);
+                printf("wrong b %d %d: %.16lx %.16lx\n", j, i, b,d);
                 assert( false );
             }
         }
