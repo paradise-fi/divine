@@ -128,4 +128,16 @@ struct TestBitTuple {
         assert( !get< 0 >( x ).locked() );
         assert_eq( get< 0 >( y ), 5u );
     }
+
+    Test assign() {
+        BitTuple<
+            BitField< bool, 1 >,
+            BitField< int, 6 >,
+            BitField< bool, 1 >
+        > tuple;
+
+        get< 0 >( tuple ) = true;
+        get< 2 >( tuple ) = get< 0 >( tuple );
+        assert( get< 2 >( tuple ).get() );
+    }
 };
