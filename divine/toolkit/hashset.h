@@ -165,7 +165,7 @@ struct _HashSet : HashSetBase< Cell >
     iterator findHinted( const T &item, hash64_t hash )
     {
         size_t idx;
-        for ( int i = 0; i < this->maxcollisions; ++i ) {
+        for ( size_t i = 0; i < this->maxcollisions; ++i ) {
             idx = this->index( hash, i, _bits );
 
             if ( _table[ idx ].empty() )
@@ -190,7 +190,7 @@ struct _HashSet : HashSetBase< Cell >
             grow();
 
         size_t idx;
-        for ( int i = 0; i < this->maxcollisions; ++i ) {
+        for ( size_t i = 0; i < this->maxcollisions; ++i ) {
             idx = this->index( h, i, _bits );
 
             if ( table[ idx ].empty() ) {
