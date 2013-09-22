@@ -341,15 +341,10 @@ struct TestNTreeHashSet {
 
     template< typename Set >
     size_t count( Set &set, Pool &p ) {
-        struct Closure {
-            Pool &pool;
-            Closure( Pool &p ) : pool( p ) { }
-            template< typename T >
-            size_t operator()( const size_t &c, T &t ) {
-                return c + ( this->pool.valid( t.fetch().unwrap() ) ? 1 : 0 );
-            }
-        };
-        return std::accumulate( set._table.begin(), set._table.end(), 0, Closure( p ) );
+        return std::accumulate( set._table.begin(), set._table.end(), 0,
+            [&]( size_t c, decltype( *set._table.begin() ) &cell ) -> size_t {
+                return c + ( p.valid( cell.fetch().unwrap() ) ? 1 : 0 );
+            } );
     }
 
     Test reuse() {
