@@ -85,8 +85,8 @@ struct LtlCE {
     }
 
     bool updateIteration( Vertex t ) {
-        int old = extension( t ).iteration;
-        extension( t ).iteration = shared().iteration;
+        int old = extension( t ).iteration();
+        extension( t ).iteration() = shared().iteration;
         return old != shared().iteration;
     }
 
@@ -103,7 +103,7 @@ struct LtlCE {
         Handle h = shared().ce.current;
         if ( s.knows( h ) ) {
             shared().ce.successor = h;
-            shared().ce.current = extension( store().vertex( h ) ).parent;
+            shared().ce.current = extension( store().vertex( h ) ).parent();
             shared().ce.current_updated = true;
             Handle init = shared().ce.initial;
             shared().ce.is_ce_initial = s.equal( init, h );
@@ -201,11 +201,11 @@ struct LtlCE {
             if ( !t.store().valid( from ) )
                 return visitor::TransitionAction::Expand;
             if ( t.store().valid( from ) && t.whichInitial( to.node() ) ) {
-                t.extension( to ).parent = from.handle();
+                t.extension( to ).parent() = from.handle();
                 return visitor::TransitionAction::Terminate;
             }
             if ( t.updateIteration( to ) ) {
-                t.extension( to ).parent = from.handle();
+                t.extension( to ).parent() = from.handle();
                 return visitor::TransitionAction::Expand;
             }
             return visitor::TransitionAction::Forget;
