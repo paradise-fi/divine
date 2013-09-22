@@ -110,9 +110,10 @@ struct ProviderCommon {
 
     int id() const { return _id.id(); }
     int rank() const { return _id.rank(); }
+    int locals() const { return _id.locals(); }
     int owner( hash64_t hash ) const { return hash % _id.peers(); }
     bool knows( hash64_t hash ) const { return owner( hash ) == _id.id(); }
-    ProviderCommon() : _id( 0, 1, 0 ) { }
+    ProviderCommon() : _id( 0, 1, 1, 0 ) { }
 };
 
 template< typename Provider, typename Generator, typename Hasher >
