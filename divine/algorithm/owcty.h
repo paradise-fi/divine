@@ -181,6 +181,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
+            auto guard( o.store().template acquire< Extension >( st ) );
             assert( o.extension( st ).predCount() > 0 );
             assert( o.extension( st ).inS() );
             ++ o.shared.size;
@@ -190,6 +191,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
         {
+            auto guard( o.store().template acquire< Extension >( t ) );
             ++ o.extension( t ).predCount();
             o.extension( t ).inS() = true;
             if ( o.extension( t ).inF() && o.store().valid( f ) )
@@ -221,6 +223,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
+            auto guard( o.store().template acquire< Extension >( from, to ) );
             if ( !o.store().valid( o.extension( to ).parent() ) )
                 o.extension( to ).parent() = from.handle();
             if ( o.store().valid( from ) ) {
@@ -250,6 +253,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
+            auto guard( o.store().template acquire< Extension >( st ) );
             o.extension( st ).inF() = o.extension( st ).inS() = o.graph().isAccepting( st.node() );
             o.shared.size += o.extension( st ).inS();
             o.shared.stats.addNode( o.graph(), st );
@@ -297,6 +301,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
+            auto guard( o.store().template acquire< Extension >( st ) );
             assert( o.extension( st ).predCount() == 0 );
             o.extension( st ).inS() = false;
             if ( o.extension( st ).inF() )
@@ -307,6 +312,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         static visitor::TransitionAction transition( This &o, Vertex, Vertex t, Label )
         {
+            auto guard( o.store().template acquire< Extension >( t ) );
             assert( o.store().valid( t ) );
             assert( o.extension( t ).inS() );
             assert( o.extension( t ).predCount() >= 1 );
@@ -340,6 +346,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     struct FindCE : Visit< This, Setup > {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
+            auto guard( o.store().template acquire< Extension >( to ) );
             if ( !o.extension( to ).inS() )
                 return visitor::TransitionAction::Forget;
 
