@@ -152,7 +152,7 @@ struct Expression : Parser {
     std::shared_ptr< Expression > lhs, rhs;
     std::shared_ptr< RValue > rval;
 
-    void setName( Identifier newname ) {}
+    void setName( Identifier ) {}
 
     void parens() {
         eat( Token::ParenOpen );
