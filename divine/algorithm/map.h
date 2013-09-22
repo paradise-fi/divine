@@ -13,18 +13,6 @@ namespace algorithm {
 struct MapVertexId {
     uint64_t raw;
 
-    bool operator<( const MapVertexId other ) const {
-        return raw < other.raw;
-    }
-
-    bool operator!=( const MapVertexId other ) const {
-        return raw != other.raw;
-    }
-
-    bool operator==( const MapVertexId other ) const {
-        return raw == other.raw;
-    }
-
     bool valid() const {
         return raw != Blob().raw();
     }
@@ -37,6 +25,18 @@ struct MapVertexId {
     template< typename Handle >
     MapVertexId( Handle h ) : raw( h.asNumber() ) { }
 } __attribute__((packed));
+
+static inline bool operator==( MapVertexId a, MapVertexId b ) {
+    return a.raw == b.raw;
+}
+
+static inline bool operator!=( MapVertexId a, MapVertexId b ) {
+    return a.raw != b.raw;
+}
+
+static inline bool operator<( MapVertexId a, MapVertexId b ) {
+    return a.raw < b.raw;
+}
 
 template < typename Handle >
 struct MapShared {
