@@ -56,8 +56,8 @@ struct Lake {
         uint64_t raw() const { return *reinterpret_cast< const uint64_t * >( this ); }
         uint64_t raw_address() const { return offset | (block << offsetBits); }
 
-        int tag() const { return _tag; }
-        void setTag( int v ) { _tag = v; }
+        unsigned tag() const { return _tag; }
+        void setTag( unsigned v ) { _tag = v; }
 
         static Pointer fromRaw( uint64_t r ) {
             union {
