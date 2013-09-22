@@ -57,7 +57,7 @@ static inline void bitcopy( BitPointer from, BitPointer to, int bitcount )
     }
 }
 
-template< typename T, int width >
+template< typename T, int width = sizeof( T ) * 8 >
 struct BitField
 {
     static const int bitwidth = width;
