@@ -67,7 +67,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     void generateInitials() {
         assert( trace.empty() );
         clearSuccs();
-        this->graph().initials( [ this ] ( Node f, Node n, Label ) {
+        this->graph().initials( [ this ] ( Node, Node n, Label ) {
             this->addSucc( n );
         });
     }
