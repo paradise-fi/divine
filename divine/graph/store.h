@@ -29,6 +29,9 @@ struct StoreCommon : TableProvider
     using InsertItem = typename TableProvider::Node;
     using StoredItem = typename Table::value_type;
 
+    template< typename Mutex, int N >
+    using Guard = typename TableProvider::template Guard< Mutex, N >;
+
     typename TableProvider::ThreadData td;
 
     template< typename... Args >
@@ -328,6 +331,9 @@ struct DefaultStore
     using Vertex = _Vertex< This >;
     using Handle = TrivialHandle;
 
+    template< typename Mutex, int N >
+    using Guard = typename Base::template Guard< Mutex, N >;
+
     void free_unpacked( Node n, Pool *p, bool foreign ) {
         if ( foreign ) {
             assert( p );
@@ -376,6 +382,21 @@ struct DefaultStore
     template< typename T = char >
     T *extension( Handle h ) {
         return reinterpret_cast< T* >( this->pool().dereference( h.b ) );
+    }
+
+    template< typename Extension >
+    Guard< Extension, 1 > acquire( Vertex &v ) {
+        return Guard< Extension, 1 >(
+                valid(v) ? &v.template extension< Extension >() : nullptr
+            );
+    }
+
+    template< typename Extension >
+    Guard< Extension, 2 > acquire( Vertex &v1, Vertex &v2 ) {
+        return Guard< Extension, 2 >(
+                valid( v1 ) ? &v1.template extension< Extension >() : nullptr,
+                valid( v2 ) ? &v2.template extension< Extension >() : nullptr
+            );
     }
 
     template < typename Graph >
@@ -517,6 +538,8 @@ struct NTreeStore
     using Handle = TrivialHandle;
 
     using Root = typename Table::Root;
+    template< typename Mutex, int N >
+    using Guard = typename Base::template Guard< Mutex, N >;
 
     template< typename Graph >
     NTreeStore( Graph& g, int slack, This *m = nullptr ) :
@@ -571,6 +594,21 @@ struct NTreeStore
     template< typename T = char >
     T *extension( Handle h ) {
         return reinterpret_cast< T* >( Root( h.b ).slack( this->pool() ) );
+    }
+
+    template< typename Extension >
+    Guard< Extension, 1 > acquire( Vertex &v ) {
+        return Guard< Extension, 1 >(
+                valid(v) ? &v.template extension< Extension >() : nullptr
+            );
+    }
+
+    template< typename Extension >
+    Guard< Extension, 2 > acquire( Vertex &v1, Vertex &v2 ) {
+        return Guard< Extension, 2 >(
+                valid( v1 ) ? &v1.template extension< Extension >() : nullptr,
+                valid( v2 ) ? &v2.template extension< Extension >() : nullptr
+            );
     }
 
     STORE_ITERATOR;
