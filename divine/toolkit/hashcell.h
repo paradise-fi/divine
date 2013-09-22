@@ -108,8 +108,6 @@ struct FastAtomicCell : CellBase< T, Hasher >
     FastAtomicCell( const FastAtomicCell & ) : hashLock( 0 ), value() {}
 };
 
-namespace {
-
 template< typename T, typename = void >
 struct Tagged {
     T t;
@@ -133,8 +131,6 @@ struct Tagged< T, typename std::enable_if< (T::tagBits > 0) >::type >
     Tagged() noexcept : t() {}
     Tagged( const T &t ) : t( t ) {}
 };
-
-}
 
 template< typename T, typename Hasher >
 struct AtomicCell : CellBase< T, Hasher >
