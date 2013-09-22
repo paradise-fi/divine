@@ -114,8 +114,8 @@ struct Tagged {
     uint32_t _tag;
 
     static const int tagBits = 16;
-    void setTag( int v ) { _tag = v; }
-    int tag() { return _tag; }
+    void setTag( uint32_t v ) { _tag = v; }
+    uint32_t tag() { return _tag; }
     Tagged() noexcept : t(), _tag( 0 ) {}
     Tagged( const T &t ) : t( t ), _tag( 0 ) {}
 };
@@ -126,8 +126,8 @@ struct Tagged< T, typename std::enable_if< (T::tagBits > 0) >::type >
     T t;
 
     static const int tagBits = T::tagBits;
-    void setTag( int value ) { t.setTag( value ); }
-    int tag() { return t.tag(); }
+    void setTag( uint32_t value ) { t.setTag( value ); }
+    uint32_t tag() { return t.tag(); }
     Tagged() noexcept : t() {}
     Tagged( const T &t ) : t( t ) {}
 };
