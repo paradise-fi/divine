@@ -3,6 +3,7 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/map.h> // for MapVertexId
 #include <divine/graph/ltlce.h>
+#include <divine/toolkit/bittuple.h>
 
 #ifndef DIVINE_ALGORITHM_OWCTY_H
 #define DIVINE_ALGORITHM_OWCTY_H
@@ -60,14 +61,39 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     // --
 
     struct Extension {
-        Handle parent;
-        MapVertexId map;
+        BitTuple<
+            BitField< Handle >,
+            BitField< MapVertexId >,
+            BitLock,
+            BitField< bool, 1 >,
+            BitField< bool, 1 >,
+            BitField< size_t, 19 >,// up to 1M predecessors per node
+            BitField< size_t, 10 > // handle up to 1024 iterations
+        > data;
 
-        bool inS:1;
-        bool inF:1;
-        size_t predCount:20; // up to 1M predecessors per node
-        size_t iteration:10; // handle up to 1024 iterations
-    } __attribute__((packed));
+        void lock() { get< 2 >( data ).lock(); }
+        void unlock() { get< 2 >( data ).unlock(); }
+
+        auto parent() -> decltype( get< 0 >( data ) ) {
+            return get< 0 >( data );
+        }
+        auto map() -> decltype( get< 1 >( data ) ) {
+            return get< 1 >( data );
+        }
+
+        auto inS() -> decltype( get< 3 >( data ) ) {
+            return get< 3 >( data );
+        }
+        auto inF() -> decltype( get< 4 >( data ) ) {
+            return get< 4 >( data );
+        }
+        auto predCount() -> decltype( get< 5 >( data ) ) {
+            return get< 5 >( data );
+        }
+        auto iteration() -> decltype( get< 6 >( data ) ) {
+            return get< 6 >( data );
+        }
+    };
 
     typedef LtlCE< Setup, Shared, Extension, Hasher > CE;
     CE ce;
@@ -123,8 +149,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         for ( auto st : this->store() ) {
             if ( this->store().valid( st ) ) {
                 if ( reset )
-                    extension( st ).predCount = 0;
-                if ( extension( st ).inS && extension( st ).inF ) {
+                    extension( st ).predCount() = 0;
+                if ( extension( st ).inS() && extension( st ).inF() ) {
                     assert_eq( store().owner( st ), visitor.worker.id() );
                     visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
                     st.disown();
@@ -138,16 +164,16 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     MapVertexId getMap( Vertex t ) {
-        return extension( t ).map;
+        return extension( t ).map();
     }
 
     void setMap( Vertex t, MapVertexId id ) {
-        extension( t ).map = id;
+        extension( t ).map() = id;
     }
 
     bool updateIteration( Vertex t ) {
-        int old = extension( t ).iteration;
-        extension( t ).iteration = shared.iteration;
+        int old = extension( t ).iteration();
+        extension( t ).iteration() = shared.iteration;
         return old != shared.iteration;
     }
 
@@ -155,8 +181,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
-            assert( o.extension( st ).predCount > 0 );
-            assert( o.extension( st ).inS );
+            assert( o.extension( st ).predCount() > 0 );
+            assert( o.extension( st ).inS() );
             ++ o.shared.size;
             o.shared.stats.addExpansion();
             return visitor::ExpansionAction::Expand;
@@ -164,9 +190,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         static visitor::TransitionAction transition( This &o, Vertex f, Vertex t, Label )
         {
-            ++ o.extension( t ).predCount;
-            o.extension( t ).inS = true;
-            if ( o.extension( t ).inF && o.store().valid( f ) )
+            ++ o.extension( t ).predCount();
+            o.extension( t ).inS() = true;
+            if ( o.extension( t ).inF() && o.store().valid( f ) )
                 return visitor::TransitionAction::Forget;
             else {
                 return o.updateIteration( t ) ?
@@ -195,8 +221,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
-            if ( !o.store().valid( o.extension( to ).parent ) )
-                o.extension( to ).parent = from.handle();
+            if ( !o.store().valid( o.extension( to ).parent() ) )
+                o.extension( to ).parent() = from.handle();
             if ( o.store().valid( from ) ) {
                 MapVertexId fromMap = o.getMap( from );
                 MapVertexId fromId = o.makeId( from );
@@ -224,8 +250,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
-            o.extension( st ).inF = o.extension( st ).inS = o.graph().isAccepting( st.node() );
-            o.shared.size += o.extension( st ).inS;
+            o.extension( st ).inF() = o.extension( st ).inS() = o.graph().isAccepting( st.node() );
+            o.shared.size += o.extension( st ).inS();
             o.shared.stats.addNode( o.graph(), st );
             return visitor::ExpansionAction::Expand;
         }
@@ -271,9 +297,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
-            assert( o.extension( st ).predCount == 0 );
-            o.extension( st ).inS = false;
-            if ( o.extension( st ).inF )
+            assert( o.extension( st ).predCount() == 0 );
+            o.extension( st ).inS() = false;
+            if ( o.extension( st ).inF() )
                 o.shared.size ++;
             o.shared.stats.addExpansion();
             return visitor::ExpansionAction::Expand;
@@ -282,12 +308,12 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         static visitor::TransitionAction transition( This &o, Vertex, Vertex t, Label )
         {
             assert( o.store().valid( t ) );
-            assert( o.extension( t ).inS );
-            assert( o.extension( t ).predCount >= 1 );
-            -- o.extension( t ).predCount;
+            assert( o.extension( t ).inS() );
+            assert( o.extension( t ).predCount() >= 1 );
+            -- o.extension( t ).predCount();
             // we follow a transition only if the target state is going to
             // be eliminated
-            if ( o.extension( t ).predCount == 0 ) {
+            if ( o.extension( t ).predCount() == 0 ) {
                 return o.updateIteration( t ) ?
                     visitor::TransitionAction::Expand :
                     visitor::TransitionAction::Forget;
@@ -314,7 +340,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     struct FindCE : Visit< This, Setup > {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
-            if ( !o.extension( to ).inS )
+            if ( !o.extension( to ).inS() )
                 return visitor::TransitionAction::Forget;
 
             if ( o.store().valid( from ) &&
@@ -358,9 +384,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             shared.cycle_node = st.handle();
             if ( !this->store().valid( st ) )
                 continue;
-            if ( extension( st ).iteration == shared.iteration )
+            if ( int( extension( st ).iteration() ) == shared.iteration )
                 continue; // already seen
-            if ( !extension( st ).inS || !extension( st ).inF )
+            if ( !extension( st ).inS() || !extension( st ).inF() )
                 continue;
             parallel( &This::_checkCycle );
         }
