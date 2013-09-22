@@ -42,21 +42,6 @@ private:
     uint64 m_d;
 };
 
-// fastest conceivable hash function (for comparison)
-static void Add(const void *data, size_t length, uint64 *hash1, uint64 *hash2)
-{
-    uint64 *p64 = const_cast< uint64 * >( reinterpret_cast< const uint64* >( data ) );
-    uint64 *end = p64 + length/8;
-    uint64 hash = *hash1 + *hash2;
-    while (p64 < end)
-    {
-      hash += *p64;
-      ++p64;
-    }
-    *hash1 = hash;
-    *hash2 = hash;
-}
-
 #define BUFSIZE (512)
 Test Results()
 {
