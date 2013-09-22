@@ -35,8 +35,8 @@ struct StoreCommon : TableProvider
     StoreCommon( Pool &p, Hasher h, Args&&... args )
         : TableProvider( h, std::forward< Args >( args )... ), _pool( p ), _hasher( h ) {}
 
-    StoreCommon( const StoreCommon &s ) = default;
-    StoreCommon( StoreCommon &&s ) = default;
+    StoreCommon( const StoreCommon & ) = default;
+    StoreCommon( StoreCommon && ) = default;
     StoreCommon &operator=( const StoreCommon & ) { assert_unimplemented(); }
 
     Pool &_pool;
