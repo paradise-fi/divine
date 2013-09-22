@@ -30,6 +30,8 @@ struct NewtypeHasher {
 
 template< typename T, typename Self >
 struct NewTypeTag {
+    NewTypeTag() noexcept {}
+
     static const int tagBits = T::tagBits;
     Self &self() { return *static_cast< Self * >( this ); }
     int tag() { return self().unwrap().tag(); }
@@ -53,8 +55,8 @@ struct NTreeHashSet
     {}
 
     struct Leaf : NewType< Blob >, NewTypeTag< Blob, Leaf > {
-        Leaf() = default;
-        Leaf( Blob b ) : NewType( b ) {}
+        Leaf() noexcept {}
+        Leaf( Blob b ) noexcept : NewType( b ) {}
         Leaf( int32_t size, char* source, Pool& pool )
         {
             assert_leq( 1, size );
@@ -68,7 +70,7 @@ struct NTreeHashSet
 
     template < typename Fork >
     struct LeafOr : NewType< Blob >, NewTypeTag< Blob, LeafOr< Fork > > {
-        LeafOr() = default;
+        LeafOr() noexcept {}
 
         const Blob &b() const { return this->unwrap(); }
         Blob &b() { return this->unwrap(); }
@@ -136,8 +138,8 @@ struct NTreeHashSet
     };
 
     struct Fork : WithChildren< Fork, Fork >, NewType< Blob >, NewTypeTag< Blob, Fork > {
-        Fork() = default;
-        Fork( Blob b ) : NewType< Blob >( b ) {}
+        Fork() noexcept {}
+        Fork( Blob b ) noexcept : NewType< Blob >( b ) {}
         Fork( int32_t children, Pool& pool ) {
             assert_leq( 2, children );
             int32_t size = children * sizeof( LeafOr< Fork > );
@@ -161,8 +163,8 @@ struct NTreeHashSet
 
         Blob &b() { return this->unwrap(); }
 
-        Root() = default;
-        explicit Root( Blob b ) : NewType< Blob >( b ) {}
+        Root() noexcept {}
+        explicit Root( Blob b ) noexcept : NewType< Blob >( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b() ); }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
