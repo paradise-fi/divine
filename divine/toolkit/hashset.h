@@ -26,8 +26,9 @@ template< typename T >
 struct NewType : wibble::Singleton< T >
 {
     template< typename X > using FMap = NewType< X >;
-    NewType() = default;
-    NewType( const T &t ) : wibble::Singleton< T >( t ) {}
+    NewType() noexcept {}
+    NewType( const T &t ) noexcept : wibble::Singleton< T >( t ) {}
+
     T &unwrap() { return *this->begin(); }
     const T &unwrap() const { return *this->begin(); }
 };
