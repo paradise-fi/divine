@@ -5,6 +5,9 @@
 #include <atomic>
 #include <divine/toolkit/pool.h> // for align
 
+#ifndef DIVINE_BITTUPLE_H
+#define DIVINE_BITTUPLE_H
+
 namespace divine {
 
 uint64_t bitshift( uint64_t t, int shift ) {
@@ -135,3 +138,5 @@ typename BT::template AccessAt< I >::T::Head get( BT &bt )
 }
 
 }
+
+#endif
