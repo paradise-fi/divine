@@ -63,11 +63,40 @@ struct BitField
     static const int bitwidth = width;
     struct Virtual : BitPointer {
         void set( T t ) { bitcopy( BitPointer( &t ), *this, bitwidth ); }
-        operator T() { return get(); }
-        T get() {
+        Virtual operator=( T t ) {
+            set( t );
+            return *this;
+        }
+        Virtual operator=( Virtual v ) {
+            set( v.get() );
+            return *this;
+        }
+
+        operator T() const { return get(); }
+        T get() const {
             T t = T();
             bitcopy( *this, BitPointer( &t ), bitwidth );
             return t;
+        }
+
+        Virtual &operator++() {
+            T value = get();
+            set( ++value );
+            return *this;
+        }
+        Virtual operator++(int) {
+            set( get()++ );
+            return *this;
+        }
+
+        Virtual &operator--() {
+            T value = get();
+            set( --value );
+            return *this;
+        }
+        Virtual operator--(int) {
+            set( get()-- );
+            return *this;
         }
     };
 };
