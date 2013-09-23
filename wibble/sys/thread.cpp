@@ -1,7 +1,7 @@
 /*
  * OO encapsulation of Posix threads
  *
- * Copyright (C) 2003--2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003--2013  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,13 +18,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+#define _BSD_SOURCE
 #include <wibble/sys/thread.h>
 #include <sstream>
+#include <unistd.h>
 
 //using namespace std;
 
 namespace wibble {
 namespace sys {
+
+void sleep( int secs ) {
+#ifdef _WIN32
+    Sleep( secs * 1000 );
+#else
+    ::sleep( secs );
+#endif
+}
+
+void usleep( int usecs ) {
+#ifdef _WIN32
+    Sleep( usecs / 1000 );
+#else
+    ::usleep( usecs );
+#endif
+}
 
 #ifdef POSIX
 void* Thread::Starter(void* parm)
