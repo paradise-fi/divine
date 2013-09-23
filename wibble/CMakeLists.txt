@@ -65,7 +65,9 @@ wibble_check_target( wibble-test )
 
 set( prefix "${CMAKE_INSTALL_PREFIX}" )
 set( exec_prefix "${prefix}/bin" )
-set( libdir "${prefix}/lib" )
+if (NOT DEFINED libdir)
+	set( libdir "${prefix}/lib" )
+endif()
 set( includedir "${prefix}/include" )
 
 # cmake-time configuration
