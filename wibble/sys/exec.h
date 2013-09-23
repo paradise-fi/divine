@@ -1,5 +1,5 @@
-#ifndef EXEC_H
-#define EXEC_H
+#ifndef WIBBLE_SYS_EXEC_H
+#define WIBBLE_SYS_EXEC_H
 
 /*
  * OO wrapper for execve
