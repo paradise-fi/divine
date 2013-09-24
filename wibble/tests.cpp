@@ -151,6 +151,11 @@ void test_assert_not_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname)
     }
 }
 
+void impl_ensure(const Location& loc, bool res)
+{
+    if (!res)
+        loc.fail_test("assertion failed");
+}
 
 void impl_ensure_contains(const wibble::tests::Location& loc, const std::string& haystack, const std::string& needle)
 {
