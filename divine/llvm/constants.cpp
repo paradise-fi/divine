@@ -26,6 +26,16 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
     } else if ( auto I = dyn_cast< ::llvm::ConstantInt >( C ) ) {
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
         std::copy( mem, mem + v.width, econtext.dereference( v ) );
+    } else if ( auto FP = dyn_cast< ::llvm::ConstantFP >( C ) ) {
+        float fl = FP->getValueAPF().convertToFloat();
+        double dbl = FP->getValueAPF().convertToDouble();
+        const uint8_t *mem;
+        switch ( v.width ) {
+            case sizeof( float ): mem = reinterpret_cast< uint8_t * >( &fl ); break;
+            case sizeof( double ): mem = reinterpret_cast< uint8_t * >( &dbl ); break;
+            default: assert_unreachable( "non-double, non-float FP constant" );
+        }
+        std::copy( mem, mem + v.width, econtext.dereference( v ) );
     } else if ( isa< ::llvm::ConstantPointerNull >( C ) ) {
         /* nothing to do, everything is zeroed by default */
     } else if ( isa< ::llvm::ConstantAggregateZero >( C ) ) {
