@@ -62,6 +62,7 @@ public:
     Location(const Location& parent, const char* file, int line, const char* args);
     Location nest(const wibble::tests::LocationInfo& info, const char* file, int line, const char* args=0) const;
 
+    std::string locstr() const;
     std::string msg(const std::string m) const;
     void fail_test(const std::string& msg) const WIBBLE_TESTS_ALWAYS_THROWS;
     void backtrace(std::ostream& out) const;

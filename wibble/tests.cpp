@@ -55,6 +55,13 @@ void Location::backtrace(std::ostream& out) const
     out << endl;
 }
 
+std::string Location::locstr() const
+{
+    std::stringstream ss;
+    backtrace(ss);
+    return ss.str();
+}
+
 std::string Location::msg(const std::string msg) const
 {
     std::stringstream ss;
