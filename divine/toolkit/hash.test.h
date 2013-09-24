@@ -194,6 +194,7 @@ void Deltas(int seed)
                 {
                     for (int m=0; m<MEASURES; ++m)
                     {
+                        measure[m][l] = 0;
                         counter[m][l] = 0;
                     }
                 }
