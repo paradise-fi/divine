@@ -1,6 +1,6 @@
 set( STRINGIFY ${CMAKE_SOURCE_DIR}/cmake/stringify.sh )
 
-macro( stringify file )
+macro( stringify namespace file )
   string( REPLACE "." "_" fileu "${file}" )
   string( REPLACE "/" "_" fileu "${fileu}" )
   string( REPLACE "+" "_" fileu "${fileu}" )
@@ -8,18 +8,18 @@ macro( stringify file )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${file}" ${STRINGIFY}
-    COMMAND sh ${STRINGIFY} "${CMAKE_CURRENT_SOURCE_DIR}" "${file}"
+    COMMAND sh ${STRINGIFY} "${namespace}" "${CMAKE_CURRENT_SOURCE_DIR}" "${file}"
     VERBATIM
   )
   list( APPEND STRINGIFIED_FILES "${file}" )
   list( APPEND STRINGIFIED "${fileu}_str.cpp" )
 endmacro( stringify )
 
-macro( stringlist out )
+macro( stringlist namespace out )
   add_custom_command(
     OUTPUT ${out}_list.cpp
     DEPENDS ${STRINGIFY}
-    COMMAND sh ${STRINGIFY} "-l" "${out}" ${STRINGIFIED_FILES}
+    COMMAND sh ${STRINGIFY} ${namespace} "-l" "${out}" ${STRINGIFIED_FILES}
     VERBATIM
   )
 endmacro( stringlist )
