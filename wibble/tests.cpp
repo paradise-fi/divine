@@ -1,47 +1,168 @@
 /*
- * Implementation of some test utility functions
+ * @file test-utils.cpp
+ * @author Enrico Zini <enrico@enricozini.org>, Peter Rockai (mornfall) <me@mornfall.net>
+ * @brief Utility functions for the unit tests
  *
- * Copyright (C) 2003,2004,2005,2006  Enrico Zini <enrico@debian.org>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ * Copyright (C) 2003--2013  Enrico Zini <enrico@debian.org>
  */
 
-#include <wibble/tests/tut-wibble.h>
+#include <wibble/tests.h>
+#include <wibble/regexp.h>
+#include <wibble/sys/fs.h>
+
+using namespace std;
+using namespace wibble;
+
+const wibble::tests::Location wibble_test_location;
+const wibble::tests::LocationInfo wibble_test_location_info;
 
 namespace wibble {
 namespace tests {
 
-std::string Location::locstr() const
+Location::Location()
+    : parent(0), info(0), file(0), line(0), args(0)
 {
-	std::stringstream ss;
-	ss << file << ":" << line << "(" << str << ")";
-	if (!testfile.empty())
-		ss << "[" << testfile << ":" << testline << "(" << teststr << ")]";
-	ss << ": ";
-	return ss.str();
+    // Build a special, root location
 }
 
-std::string Location::msg(const std::string m) const
+Location::Location(const Location* parent, const wibble::tests::LocationInfo& info, const char* file, int line, const char* args)
+    : parent(parent), info(&info), file(file), line(line), args(args)
 {
-	return locstr() + ": " + m;
 }
-	
-void impl_ensure(const Location& loc, bool res)
+
+Location::Location(const char* file, int line, const char* args)
+    : parent(&wibble_test_location), info(&wibble_test_location_info), file(file), line(line), args(args)
 {
-	if (!res)
-		throw tut::failure(loc.locstr());
+}
+
+Location::Location(const Location& parent, const char* file, int line, const char* args)
+    : parent(&parent), info(&wibble_test_location_info), file(file), line(line), args(args)
+{
+}
+
+Location Location::nest(const wibble::tests::LocationInfo& info, const char* file, int line, const char* args) const
+{
+    return Location(this, info, file, line, args);
+}
+
+void Location::backtrace(std::ostream& out) const
+{
+    if (parent) parent->backtrace(out);
+    if (!file) return; // Root node, nothing to print
+    out << file << ":" << line << ":" << args;
+    if (!info->str().empty())
+        out << " [" << info->str() << "]";
+    out << endl;
+}
+
+std::string Location::msg(const std::string msg) const
+{
+    std::stringstream ss;
+    ss << "Test failed at:" << endl;
+    backtrace(ss);
+    ss << file << ":" << line << ":error: " << msg << endl;
+    return ss.str();
+}
+
+void Location::fail_test(const std::string& msg) const
+{
+    throw tut::failure(this->msg(msg));
+}
+
+std::ostream& LocationInfo::operator()()
+{
+    str(std::string());
+    clear();
+    return *this;
+}
+
+
+void test_assert_re_match(WIBBLE_TEST_LOCPRM, const std::string& regexp, const std::string& actual)
+{
+    ERegexp re(regexp);
+    if (!re.match(actual))
+    {
+        std::stringstream ss;
+        ss << "'" << actual << "' does not match regexp '" << regexp << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void test_assert_startswith(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual)
+{
+    if (!str::startsWith(actual, expected))
+    {
+        std::stringstream ss;
+        ss << "'" << actual << "' does not start with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void test_assert_endswith(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual)
+{
+    if (!str::endsWith(actual, expected))
+    {
+        std::stringstream ss;
+        ss << "'" << actual << "' does not end with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void test_assert_contains(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual)
+{
+    if (actual.find(expected) == string::npos)
+    {
+        std::stringstream ss;
+        ss << "'" << actual << "' does not contain '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void test_assert_istrue(WIBBLE_TEST_LOCPRM, bool val)
+{
+    if (!val)
+        wibble_test_location.fail_test("result is false");
+}
+
+void test_assert_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname)
+{
+    if (not sys::fs::exists(fname))
+    {
+        std::stringstream ss;
+        ss << "file '" << fname << "' does not exists";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void test_assert_not_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname)
+{
+    if (sys::fs::exists(fname))
+    {
+        std::stringstream ss;
+        ss << "file '" << fname << "' does exists";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+
+void impl_ensure_contains(const wibble::tests::Location& loc, const std::string& haystack, const std::string& needle)
+{
+    if( haystack.find(needle) == std::string::npos )
+    {
+        std::stringstream ss;
+        ss << "'" << haystack << "' does not contain '" << needle << "'";
+        loc.fail_test(ss.str());
+    }
+}
+
+void impl_ensure_not_contains(const wibble::tests::Location& loc, const std::string& haystack, const std::string& needle)
+{
+    if( haystack.find(needle) != std::string::npos )
+    {
+        std::stringstream ss;
+        ss << "'" << haystack << "' must not contain '" << needle << "'";
+        loc.fail_test(ss.str());
+    }
 }
 
 }
