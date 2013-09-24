@@ -29,10 +29,12 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
     } else if ( auto FP = dyn_cast< ::llvm::ConstantFP >( C ) ) {
         float fl = FP->getValueAPF().convertToFloat();
         double dbl = FP->getValueAPF().convertToDouble();
+        long double ldbl = FP->getValueAPF().convertToDouble();
         const uint8_t *mem;
         switch ( v.width ) {
             case sizeof( float ): mem = reinterpret_cast< uint8_t * >( &fl ); break;
             case sizeof( double ): mem = reinterpret_cast< uint8_t * >( &dbl ); break;
+            case sizeof( long double ): mem = reinterpret_cast< uint8_t * >( &ldbl ); break;
             default: assert_unreachable( "non-double, non-float FP constant" );
         }
         std::copy( mem, mem + v.width, econtext.dereference( v ) );
