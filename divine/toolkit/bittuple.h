@@ -109,6 +109,41 @@ struct BitField
             set( get()-- );
             return *this;
         }
+        template< typename U >
+        Virtual operator+=( U value ) {
+            T t( get() );
+            t += value;
+            set( t );
+            return *this;
+        }
+        template< typename U >
+        Virtual operator-=( U value ) {
+            T t( get() );
+            t -= value;
+            set( t );
+            return *this;
+        }
+        template< typename U >
+        Virtual operator*=( U value ) {
+            T t( get() );
+            t *= value;
+            set( t );
+            return *this;
+        }
+        template< typename U >
+        Virtual operator/=( U value ) {
+            T t( get() );
+            t /= value;
+            set( t );
+            return *this;
+        }
+        template< typename U >
+        Virtual operator%=( U value ) {
+            T t( get() );
+            t %= value;
+            set( t );
+            return *this;
+        }
     };
 };
 
