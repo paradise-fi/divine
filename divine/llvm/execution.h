@@ -353,12 +353,12 @@ struct Evaluator
 
     struct Convert : Implementation {
         static const int arity = 2;
-        template< typename X = int, typename Y = X >
-        auto operator()( X &r = Dummy< X >::v(),
-                         Y &l = Dummy< Y >::v() )
-            -> decltype( declcheck( r = l ) )
+        template< typename L = int, typename R = L >
+        auto operator()( L &l = Dummy< L >::v(),
+                         R &r = Dummy< R >::v() )
+            -> decltype( declcheck( l = L( r ) ) )
         {
-            r = l;
+            l = L( r );
             return Unit();
         }
 

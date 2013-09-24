@@ -29,6 +29,7 @@ namespace divine {
 namespace llvm {
 
 struct MachineState;
+struct Pointer;
 
 struct PC : wibble::mixin::Comparable< PC >
 {
@@ -48,6 +49,9 @@ struct PC : wibble::mixin::Comparable< PC >
         return std::make_tuple( int( function ), int( block ), int( instruction ) )
             <= std::make_tuple( int( o.function ), int( o.block ), int( o.instruction ) );
     }
+
+    explicit PC( const uint32_t &x ) { *this = *reinterpret_cast< const PC * >( &x ); }
+    explicit PC( const Pointer &p ) { *this = *reinterpret_cast< const PC * >( &p ); }
 };
 
 /*
@@ -75,29 +79,8 @@ struct Pointer : wibble::mixin::Comparable< Pointer >
         return *reinterpret_cast< const uint32_t * >( this );
     }
 
-    Pointer( uint32_t x ) {
-        *reinterpret_cast< uint32_t * >( this ) = x;
-    }
-
-    /* For conversion of function pointers to plain pointers. */
-    Pointer( PC x ) {
-        std::copy( reinterpret_cast< char * >( &x ),
-                reinterpret_cast< char * >( &x ) + sizeof( x ),
-                reinterpret_cast< char* >( this ) );
-    }
-
-    operator PC() const {
-        assert( code );
-        return *reinterpret_cast< const PC * >( this );
-    }
-
-    Pointer &operator=( PC x ) {
-        assert( x.code );
-        std::copy( reinterpret_cast< char * >( &x ),
-                reinterpret_cast< char * >( &x ) + sizeof( x ),
-                reinterpret_cast< char* >( this ) );
-        return *this;
-    }
+    explicit Pointer( uint32_t x ) { *this = *reinterpret_cast< const Pointer * >( &x ); }
+    explicit Pointer( const PC &x ) { *this = *reinterpret_cast< const Pointer * >( &x ); }
 
     bool operator<=( Pointer o ) const {
         return std::make_tuple( int( heap ), int( segment ), int( offset ) )
