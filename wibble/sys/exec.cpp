@@ -60,7 +60,7 @@ void Exec::spawnChild()
 void Exec::exec()
 {
 	// Prepare the argument list
-        char** exec_args = static_cast<char **>( alloca(args.size() + 1) );
+        char** exec_args = (char **) alloca(args.size() + 1);
 	for (size_t i = 0; i < args.size(); ++i)
 		exec_args[i] = strdup(args[i].c_str());
 	exec_args[args.size()] = 0;
@@ -74,16 +74,21 @@ void Exec::exec()
 			throw wibble::exception::System("trying to run " + pathname);
 	} else {
 		// Prepare the custom environment
-                char ** exec_env = static_cast<char **>( alloca (env.size() + 1) );
+                char ** exec_env = (char **) alloca (env.size() + 1);
 		for (size_t i = 0; i < env.size(); ++i)
 			// We can just store a pointer to the internal strings, since later
 			// we're calling exec and no destructors will be called
 			exec_env[i] = strdup(env[i].c_str());
 		exec_env[env.size()] = 0;
 
-		if (execve(pathname.c_str(), exec_args, exec_env) == -1)
-			throw wibble::exception::System("trying to run " + pathname);
-	}
+    if (searchInPath)
+    {
+        if (execvpe(pathname.c_str(), exec_args, exec_env) == -1)
+            throw wibble::exception::System("trying to run " + pathname);
+    } else {
+        if (execve(pathname.c_str(), exec_args, exec_env) == -1)
+            throw wibble::exception::System("trying to run " + pathname);
+    }
 	throw wibble::exception::Consistency(
 			"trying to run " + pathname,
 			"Program flow continued after successful exec()");
