@@ -39,6 +39,7 @@ if( LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp )
     STRING( REPLACE "llvm/usr-pthread.cpp" "" SRC_LLVM "${SRC_LLVM}" )
     STRING( REPLACE "llvm/usr-glue.cpp" "" SRC_LLVM "${SRC_LLVM}" )
+    STRING( REPLACE "llvm/usr-cxa_exception.cpp" "" SRC_LLVM "${SRC_LLVM}" )
     file( GLOB llvmtesth llvm/*.test.h )
 endif( LLVM )
 
