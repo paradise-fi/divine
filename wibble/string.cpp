@@ -397,6 +397,64 @@ YamlStream::const_iterator& YamlStream::const_iterator::operator++()
 	return *this;
 }
 
+std::string c_escape(const std::string& str)
+{
+    string res;
+    for (string::const_iterator i = str.begin(); i != str.end(); ++i)
+        if (*i == '\n')
+            res += "\\n";
+        else if (*i == '\t')
+            res += "\\t";
+        else if (*i == 0 || iscntrl(*i))
+        {
+            char buf[5];
+            snprintf(buf, 5, "\\x%02x", (unsigned int)*i);
+            res += buf;
+        }
+        else if (*i == '"' || *i == '\\')
+        {
+            res += "\\";
+            res += *i;
+        }
+        else
+            res += *i;
+    return res;
+}
+
+std::string c_unescape(const std::string& str, size_t& lenParsed)
+{
+    string res;
+    string::const_iterator i = str.begin();
+    for ( ; i != str.end() && *i != '"'; ++i)
+        if (*i == '\\' && (i+1) != str.end())
+        {
+            switch (*(i+1))
+            {
+                case 'n': res += '\n'; break;
+                case 't': res += '\t'; break;
+                case 'x': {
+                              size_t j;
+                              char buf[5] = "0x\0\0";
+                              // Read up to 2 extra hex digits
+                              for (j = 0; j < 2 && i+2+j != str.end() && isxdigit(*(i+2+j)); ++j)
+                                  buf[2+j] = *(i+2+j);
+                              i += j;
+                              res += (char)atoi(buf);
+                              break;
+                          }
+                default:
+                          res += *(i+1);
+                          break;
+            }
+            ++i;
+        } else
+            res += *i;
+    if (i != str.end() && *i == '"')
+        ++i;
+    lenParsed = i - str.begin();
+    return res;
+}
+
 
 }
 }

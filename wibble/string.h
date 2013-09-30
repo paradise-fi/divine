@@ -470,6 +470,21 @@ public:
 	const_iterator end() { return const_iterator(); }
 };
 
+/**
+ * Escape the string so it can safely used as a C string inside double quotes
+ */
+std::string c_escape(const std::string& str);
+
+/**
+ * Unescape a C string, stopping at the first double quotes or at the end of
+ * the string.
+ *
+ * lenParsed is set to the number of characters that were pased (which can be
+ * greather than the size of the resulting string in case escapes were found)
+ */
+std::string c_unescape(const std::string& str, size_t& lenParsed);
+
+
 }
 }
 
