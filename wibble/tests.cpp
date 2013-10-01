@@ -177,6 +177,87 @@ void impl_ensure_not_contains(const wibble::tests::Location& loc, const std::str
     }
 }
 
+void TestStartsWith::check(WIBBLE_TEST_LOCPRM) const
+{
+    if (!inverted)
+    {
+        if (str::startsWith(actual, expected)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' does not start with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    } else {
+        if (!str::startsWith(actual, expected)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' starts with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void TestEndsWith::check(WIBBLE_TEST_LOCPRM) const
+{
+    if (!inverted)
+    {
+        if (str::endsWith(actual, expected)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' does not end with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    } else {
+        if (!str::endsWith(actual, expected)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' ends with '" << expected << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void TestContains::check(WIBBLE_TEST_LOCPRM) const
+{
+    if (!inverted)
+    {
+        if (actual.find(expected) != std::string::npos) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' does not contain '" << actual << "'";
+        wibble_test_location.fail_test(ss.str());
+    } else {
+        if (actual.find(expected) == std::string::npos) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' contains '" << actual << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void TestRegexp::check(WIBBLE_TEST_LOCPRM) const
+{
+    ERegexp re(regexp);
+    if (!inverted)
+    {
+        if (re.match(actual)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' does not match regexp '" << regexp << "'";
+        wibble_test_location.fail_test(ss.str());
+    } else {
+        if (!re.match(actual)) return;
+        std::stringstream ss;
+        ss << "'" << actual << "' matches regexp '" << regexp << "'";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
+void TestFileExists::check(WIBBLE_TEST_LOCPRM) const
+{
+    if (!inverted)
+    {
+        if (sys::fs::exists(pathname)) return;
+        std::stringstream ss;
+        ss << "file '" << pathname << "' does not exists";
+        wibble_test_location.fail_test(ss.str());
+    } else {
+        if (not sys::fs::exists(pathname)) return;
+        std::stringstream ss;
+        ss << "file '" << pathname << "' exists";
+        wibble_test_location.fail_test(ss.str());
+    }
+}
+
 }
 }
 

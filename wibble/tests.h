@@ -137,61 +137,267 @@ void impl_ensure_contains(const wibble::tests::Location& loc, const std::string&
 void impl_ensure_not_contains(const wibble::tests::Location& loc, const std::string& haystack, const std::string& needle);
 
 
-void test_assert_istrue(WIBBLE_TEST_LOCPRM, bool val);
-
-template <class Expected, class Actual>
-void test_assert_equals(WIBBLE_TEST_LOCPRM, const Expected& expected, const Actual& actual)
+template<typename A>
+struct TestBool
 {
-    if (expected != actual)
+    const A& actual;
+    bool inverted;
+    TestBool(const A& actual, bool inverted=false) : actual(actual), inverted(inverted) {}
+
+    TestBool<A> operator!() { return TestBool(actual, !inverted); }
+
+    void check(WIBBLE_TEST_LOCPRM) const
     {
-        std::stringstream ss;
-        ss << "expected '" << expected << "' actual '" << actual << "'";
-        wibble_test_location.fail_test(ss.str());
+        if (!inverted)
+        {
+            if (actual) return;
+            wibble_test_location.fail_test("actual value is false");
+        } else {
+            if (!actual) return;
+            wibble_test_location.fail_test("actual value is true");
+        }
     }
-}
+};
 
-template <class Expected, class Actual>
-void test_assert_gt(WIBBLE_TEST_LOCPRM, const Expected& expected, const Actual& actual)
+template<typename A, typename E>
+struct TestEquals
 {
-    if (actual > expected) return;
-    std::stringstream ss;
-    ss << "value '" << actual << "' not greater than the expected '" << expected << "'";
-    wibble_test_location.fail_test(ss.str());
-}
+    A actual;
+    E expected;
+    bool inverted;
+    TestEquals(const A& actual, const E& expected, bool inverted=false)
+        : actual(actual), expected(expected), inverted(inverted) {}
 
-template <class Expected, class Actual>
-void test_assert_gte(WIBBLE_TEST_LOCPRM, const Expected& expected, const Actual& actual)
+    TestEquals<A, E> operator!() { return TestEquals<A, E>(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const
+    {
+        if (!inverted)
+        {
+            if (actual == expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is different than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        } else {
+            if (actual != expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is not different than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        }
+    }
+};
+
+template<typename A, typename E>
+struct TestIsLt
 {
-    if (actual >= expected) return;
-    std::stringstream ss;
-    ss << "value '" << actual << "' not greater or equal than the expected '" << expected << "'";
-    wibble_test_location.fail_test(ss.str());
-}
+    A actual;
+    E expected;
+    bool inverted;
+    TestIsLt(const A& actual, const E& expected, bool inverted=false)
+        : actual(actual), expected(expected), inverted(inverted) {}
 
-template <class Expected, class Actual>
-void test_assert_lt(WIBBLE_TEST_LOCPRM, const Expected& expected, const Actual& actual)
+    TestIsLt<A, E> operator!() { return TestIsLt<A, E>(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const
+    {
+        if (!inverted)
+        {
+            if (actual < expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is not less than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        } else {
+            if (!(actual < expected)) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is less than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        }
+    }
+};
+
+template<typename A, typename E>
+struct TestIsLte
 {
-    if (actual < expected) return;
-    std::stringstream ss;
-    ss << "value '" << actual << "' not less than the expected '" << expected << "'";
-    wibble_test_location.fail_test(ss.str());
-}
+    A actual;
+    E expected;
+    bool inverted;
+    TestIsLte(const A& actual, const E& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
 
-template <class Expected, class Actual>
-void test_assert_lte(WIBBLE_TEST_LOCPRM, const Expected& expected, const Actual& actual)
+    TestIsLte<A, E> operator!() { return TestIsLte<A, E>(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const
+    {
+        if (!inverted)
+        {
+            if (actual <= expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is not less than or equals to the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        } else {
+            if (!(actual <= expected)) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is less than or equals to the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        }
+    }
+};
+
+template<typename A, typename E>
+struct TestIsGt
 {
-    if (actual <= expected) return;
-    std::stringstream ss;
-    ss << "value '" << actual << "' not less than or equal than the expected '" << expected << "'";
-    wibble_test_location.fail_test(ss.str());
+    A actual;
+    E expected;
+    bool inverted;
+    TestIsGt(const A& actual, const E& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
+
+    TestIsGt<A, E> operator!() { return TestIsGt<A, E>(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const
+    {
+        if (!inverted)
+        {
+            if (actual > expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is not greater than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        } else {
+            if (!(actual > expected)) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is greater than the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        }
+    }
+};
+
+template<typename A, typename E>
+struct TestIsGte
+{
+    A actual;
+    E expected;
+    bool inverted;
+    TestIsGte(const A& actual, const E& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
+
+    TestIsGte<A, E> operator!() { return TestIsGte<A, E>(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const
+    {
+        if (!inverted)
+        {
+            if (actual >= expected) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is not greater than or equals to the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        } else {
+            if (!(actual >= expected)) return;
+            std::stringstream ss;
+            ss << "value '" << actual << "' is greater than or equals to the expected '" << expected << "'";
+            wibble_test_location.fail_test(ss.str());
+        }
+    }
+};
+
+struct TestStartsWith
+{
+    std::string actual;
+    std::string expected;
+    bool inverted;
+    TestStartsWith(const std::string& actual, const std::string& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
+
+    TestStartsWith operator!() { return TestStartsWith(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const;
+};
+
+struct TestEndsWith
+{
+    std::string actual;
+    std::string expected;
+    bool inverted;
+    TestEndsWith(const std::string& actual, const std::string& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
+
+    TestEndsWith operator!() { return TestEndsWith(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const;
+};
+
+struct TestContains
+{
+    std::string actual;
+    std::string expected;
+    bool inverted;
+    TestContains(const std::string& actual, const std::string& expected, bool inverted=false) : actual(actual), expected(expected), inverted(inverted) {}
+
+    TestContains operator!() { return TestContains(actual, expected, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const;
+};
+
+struct TestRegexp
+{
+    std::string actual;
+    std::string regexp;
+    bool inverted;
+    TestRegexp(const std::string& actual, const std::string& regexp, bool inverted=false) : actual(actual), regexp(regexp), inverted(inverted) {}
+
+    TestRegexp operator!() { return TestRegexp(actual, regexp, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const;
+};
+
+struct TestFileExists
+{
+    std::string pathname;
+    bool inverted;
+    TestFileExists(const std::string& pathname, bool inverted=false) : pathname(pathname), inverted(inverted) {}
+    TestFileExists operator!() { return TestFileExists(pathname, !inverted); }
+    void check(WIBBLE_TEST_LOCPRM) const;
+};
+
+
+template<class A>
+struct Actual
+{
+    A actual;
+    Actual(const A& actual) : actual(actual) {}
+    ~Actual() {}
+
+    template<typename E> TestEquals<A, E> operator==(const E& expected) const { return TestEquals<A, E>(actual, expected); }
+    template<typename E> TestEquals<A, E> operator!=(const E& expected) const { return !TestEquals<A, E>(actual, expected); }
+    template<typename E> TestIsLt<A, E> operator<(const E& expected) const { return TestIsLt<A, E>(actual, expected); }
+    template<typename E> TestIsLte<A, E> operator<=(const E& expected) const { return TestIsLte<A, E>(actual, expected); }
+    template<typename E> TestIsGt<A, E> operator>(const E& expected) const { return TestIsGt<A, E>(actual, expected); }
+    template<typename E> TestIsGte<A, E> operator>=(const E& expected) const { return TestIsGte<A, E>(actual, expected); }
+    TestBool<A> istrue() const { return TestBool<A>(actual); }
+    TestBool<A> isfalse() const { return TestBool<A>(actual, true); }
+};
+
+struct ActualString : public Actual<std::string>
+{
+    ActualString(const std::string& s) : Actual<std::string>(s) {}
+    TestEquals<std::string, std::string> operator==(const std::string& expected) const { return TestEquals<std::string, std::string>(actual, expected); }
+    TestEquals<std::string, std::string> operator!=(const std::string& expected) const { return !TestEquals<std::string, std::string>(actual, expected); }
+    TestIsLt<std::string, std::string> operator<(const std::string& expected) const { return TestIsLt<std::string, std::string>(actual, expected); }
+    TestIsLte<std::string, std::string> operator<=(const std::string& expected) const { return TestIsLte<std::string, std::string>(actual, expected); }
+    TestIsGt<std::string, std::string> operator>(const std::string& expected) const { return TestIsGt<std::string, std::string>(actual, expected); }
+    TestIsGte<std::string, std::string> operator>=(const std::string& expected) const { return TestIsGte<std::string, std::string>(actual, expected); }
+    TestStartsWith startswith(const std::string& expected) const { return TestStartsWith(actual, expected); }
+    TestEndsWith endswith(const std::string& expected) const { return TestEndsWith(actual, expected); }
+    TestContains contains(const std::string& expected) const { return TestContains(actual, expected); }
+    TestRegexp matches(const std::string& regexp) const { return TestRegexp(actual, regexp); }
+    TestFileExists fileexists() const { return TestFileExists(actual); }
+};
+
+template<typename A>
+inline Actual<A> actual(const A& actual) { return Actual<A>(actual); }
+inline ActualString actual(const std::string& actual) { return ActualString(actual); }
+inline ActualString actual(const char* actual) { return ActualString(actual); }
+inline ActualString actual(char* actual) { return ActualString(actual); }
+
+/*
+template<typename T, typename P>
+void _wassert(WIBBLE_TEST_LOCPRM, T& a, P& op)
+{
+    op.invoke(wibble_test_location, a);
+}
+*/
+
+template<typename T>
+static inline void _wassert(WIBBLE_TEST_LOCPRM, const T& expr)
+{
+    expr.check(wibble_test_location);
 }
 
-void test_assert_startswith(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual);
-void test_assert_endswith(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual);
-void test_assert_contains(WIBBLE_TEST_LOCPRM, const std::string& expected, const std::string& actual);
-void test_assert_re_match(WIBBLE_TEST_LOCPRM, const std::string& regexp, const std::string& actual);
-void test_assert_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname);
-void test_assert_not_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname);
 
 #define test_runner(loc, func, ...) \
     do { try { \
@@ -206,6 +412,7 @@ void test_assert_not_file_exists(WIBBLE_TEST_LOCPRM, const std::string& fname);
 // function test, just runs the function without mangling its name
 #define ftest(test, ...) test_runner(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, "function: " #test "(" #__VA_ARGS__ ")"), test, ##__VA_ARGS__)
 
+#define wassert(...) _wassert(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, #__VA_ARGS__), ##__VA_ARGS__)
 
 }
 }
