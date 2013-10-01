@@ -1,7 +1,7 @@
 /*
  * Variable-size, reference-counted memory buffer
  *
- * Copyright (C) 2003--2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003--2013  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,6 +19,7 @@
  */
 
 #include <wibble/sys/buffer.h>
+#include <wibble/string.h>
 
 #include <string.h>	// memcpy
 #include <stdlib.h>	// malloc, free, realloc
@@ -100,6 +101,23 @@ bool Buffer::Data::operator<(const Data& d) const throw()
 	if (d._data == 0)
 		return false;
 	return memcmp(_data, d._data, _size) < 0;
+}
+
+std::string Buffer::print_preview(unsigned size) const
+{
+    if (this->size() > size)
+    {
+        std::string res = str::c_escape(std::string((const char*)data(), 100));
+        res += "[...]";
+        return res;
+    } else {
+        return str::c_escape(std::string((const char*)data(), this->size()));
+    }
+}
+
+std::ostream& operator<<(std::ostream& o, const Buffer& b)
+{
+    return o << b.print_preview(100);
 }
 
 }

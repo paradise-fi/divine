@@ -4,7 +4,7 @@
 /*
  * Variable-size, reference-counted memory buffer
  *
- * Copyright (C) 2003--2006  Enrico Zini <enrico@debian.org>
+ * Copyright (C) 2003--2013  Enrico Zini <enrico@debian.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
  */
 
 #include <stddef.h> // for size_t
+#include <ostream>
 
 namespace wibble {
 namespace sys {
@@ -189,7 +190,17 @@ public:
 			return false;
 		return *item < *buf.item;
 	}
+
+    /**
+     * Render a c-string escaped print preview of maximum \a size buffer bytes.
+     *
+     * If the buffer is longer than \a size, "[...]" will be appended to the
+     * result.
+     */
+    std::string print_preview(unsigned size) const;
 };
+
+std::ostream& operator<<(std::ostream& o, const Buffer& b);
 
 }
 }
