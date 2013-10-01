@@ -127,8 +127,11 @@ char *buchi_show_node( const cesmi_setup *setup, cesmi_node from, show_node_t ne
 
     char *system = next( &sys_setup, system_state( from ) );
     char *res = 0;
-    asprintf( &res, "%s [LTL: %d]", system, *buchi_state( from ) );
-    free( system );
+    int result = asprintf( &res, "%s [LTL: %d]", system, *buchi_state( from ) );
+    if ( result == -1 ) // asprintf failed
+        res = system;   // this is better than nothing
+    else
+        free( system );
     return res;
 }
 
