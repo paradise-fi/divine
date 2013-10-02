@@ -68,6 +68,7 @@ structure, which has the following C definition:
 typedef struct {
     void *loader;
     cesmi_node (*make_node)( const cesmi_setup *, int );
+    cesmi_node (*clone_node)( const cesmi_setup *, cesmi_node );
     int (*add_property)( cesmi_setup *, char *, char *, int );
     void *instance; // per-instance data; never touched by DiVinE
     int property_count; /* filled in by setup */
@@ -134,10 +135,11 @@ Memory Management
 -----------------
 
 The module is responsible for allocating memory for new states, and it must use
-the `make_node` function provided in the `cesmi_setup` structure it is given,
-passing the `setup` as its first parameter, and size of the bit vector it
-requires. The loader might need to store additional data with the state, hence
-it returns a structure with two pointers in it.
+the `make_node` or `clone_node` functions provided in the `cesmi_setup`
+structure it is given, passing the `setup` as their first parameter, and either
+the size of the bit vector it requires (`make_node`) or a state to be cloned
+(`clone_node`). The loader might need to store additional data with the state,
+hence it returns a structure with two pointers in it.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
 
@@ -152,8 +154,9 @@ The `memory` field of the returned structure is for use by the CESMI module to
 store state information. The module *must not* alter the `handle` -- it must be
 retained in the result of the respective `get_initial` or `get_successor` call.
 The `memory` pointer *must not* be passed to `free`. The module should only
-call `make_node` at a point where it is known that a state will be generated,
-along with its size, otherwise, it will cause undesirable memory leaks.
+call `make_node`/`clone_node` at a point where it is known that a state will be
+generated, along with its size, otherwise it will cause undesirable memory
+leaks.
 
 Human-readable Labels
 ---------------------
