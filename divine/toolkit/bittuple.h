@@ -21,21 +21,21 @@ static inline uint64_t bitshift( uint64_t t, int shift ) {
 struct BitPointer {
     BitPointer() : base( nullptr ), _bitoffset( 0 ) {}
     template< typename T > BitPointer( T *t, int offset = 0 )
-        : base( reinterpret_cast< uint32_t * >( t ) ), _bitoffset( offset )
+        : base( static_cast< void * >( t ) ), _bitoffset( offset )
     {
         normalize();
     }
-    uint32_t &word() { return *base; }
-    uint64_t &dword() { return *reinterpret_cast< uint64_t * >( base ); }
+    uint32_t &word() { return *static_cast< uint32_t * >( base ); }
+    uint64_t &dword() { return *static_cast< uint64_t * >( base ); }
     void normalize() {
-        base += _bitoffset / 32;
+        base = &word() + _bitoffset / 32;
         _bitoffset = _bitoffset % 32;
     }
     void shift( int bits ) { _bitoffset += bits; normalize(); }
     void fromReference( BitPointer r ) { *this = r; }
     int bitoffset() { return _bitoffset; }
 private:
-    uint32_t *base;
+    void *base;
     int _bitoffset;
 };
 
@@ -43,6 +43,13 @@ static inline uint64_t mask( int first, int count ) {
     return bitshift(uint64_t(-1), -first) & bitshift(uint64_t(-1), (64 - first - count));
 }
 
+/*
+ * NB. This function will alias whatever "to" points to with an uint64_t. With
+ * aggressive optimisations, this might break code that passes an address of a
+ * variable of different type. When "to" points to a stack variable, take
+ * precautions to avoid breaking strict aliasing rules (the violation is not
+ * detected by GCC as of 4.7.3).
+ */
 static inline void bitcopy( BitPointer from, BitPointer to, int bitcount )
 {
     while ( bitcount ) {
@@ -74,8 +81,12 @@ struct BitField
 
         operator T() const { return get(); }
         T get() const {
-            T t = T();
-            bitcopy( *this, BitPointer( &t ), bitwidth );
+            union {
+                uint64_t x;
+                T t;
+            };
+            t = T();
+            bitcopy( *this, BitPointer( &x ), bitwidth );
             return t;
         }
 
