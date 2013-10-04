@@ -399,20 +399,28 @@ static inline void _wassert(WIBBLE_TEST_LOCPRM, const T& expr)
 }
 
 
-#define test_runner(loc, func, ...) \
+#define wibble_test_runner(loc, func, ...) \
     do { try { \
         func(loc, ##__VA_ARGS__); \
-    } catch (wibble::exception::Generic& e) { \
+    } catch (tut::failure) { \
+        throw; \
+    } catch (std::exception& e) { \
         loc.fail_test(e.what()); \
     } } while(0)
 
-// wibble::tests::test_assert_* test
-#define wtest(test, ...) test_runner(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, #test ": " #__VA_ARGS__), wibble::tests::test_assert_##test, ##__VA_ARGS__)
+#define wrunchecked(func) \
+    do { try { \
+        func; \
+    } catch (tut::failure) { \
+        throw; \
+    } catch (std::exception& e) { \
+        wibble_test_location.fail_test(e.what()); \
+    } } while(0)
 
 // function test, just runs the function without mangling its name
-#define ftest(test, ...) test_runner(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, "function: " #test "(" #__VA_ARGS__ ")"), test, ##__VA_ARGS__)
+#define wruntest(test, ...) wibble_test_runner(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, "function: " #test "(" #__VA_ARGS__ ")"), test, ##__VA_ARGS__)
 
-#define wassert(...) _wassert(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, #__VA_ARGS__), ##__VA_ARGS__)
+#define wassert(...) wibble_test_runner(wibble_test_location.nest(wibble_test_location_info, __FILE__, __LINE__, #__VA_ARGS__), _wassert, ##__VA_ARGS__)
 
 }
 }
