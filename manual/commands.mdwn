@@ -109,7 +109,7 @@ Syntax of LTL formulas as accepted by DiVinE is as follows:
         :== '->' (implication)
         :== '<->' (equivalence) 
         :== '^' (xor)
-        :== 'U' (unitl)
+        :== 'U' (until)
         :== 'V' | 'R' (release)
         :== 'W' (weak until)
     term :== 'true' | 'false'

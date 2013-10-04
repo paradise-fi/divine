@@ -1,7 +1,7 @@
 Untime LTL Model Checking of Timed Automata
 ===========================================
 
-Uppaal Timed Automata has become the standard modelling lanuguage for real-time
+Uppaal Timed Automata has become the standard modelling language for real-time
 systems.For such the system, DIVINE can verify the presence of time deadlock or
 validity of an LTL specification. DIVINE has support for most of this modelling
 formalism, though, some features are still left unimplemented. These are as
@@ -38,7 +38,7 @@ format above).  Due to limitations of the tool that DiVinE uses to transform LTL
 formulae to corresponding Büchi automata, atomic propositions can contain only
 lower case letters, digits, underscore and must not begin with a digit. For this
 reason, C-like defines can be used before property declarations to name any
-boolean expression in the Uppaal modeling language with a suitable name.  The
+boolean expression in the Uppaal modelling language with a suitable name.  The
 only additional limitation is that all clock constrains have to be defined as
 separate atomic propositions. All lines in the LTL file that do not begin with
 #define or #property are ignored and can be used for comments. An example of a
@@ -57,7 +57,7 @@ the following command:
     $ divine verify -p 0 model.xml
 
 To exclude all Zeno runs during the LTL verification, option -f can be used,
-simlarly to obtain a full report of the verification including an error trace,
+similarly to obtain a full report of the verification including an error trace,
 use -r.  
 
 Semantics of property specifications is slightly different from Uppaal.  First

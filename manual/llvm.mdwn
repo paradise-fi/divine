@@ -21,12 +21,12 @@ that while retaining any semblance of speed and scalability.
 Despite all its shortcomings, lock-based (or alternatively atomics-based, which
 is yet more difficult) programming is on a rise. Model checking provides a
 powerful tool to ascertain correctness of programs written with locks around
-concurrent access to shared memroy. Most programmers will agree that bugs that
+concurrent access to shared memory. Most programmers will agree that bugs that
 show up rarely and are nearly impossible to reproduce are the worst kind to
 deal with. Sadly, most concurrency bugs are of this nature, since they arise
 from subtle interactions of nondeterministically scheduled threads of
 execution. A test-case may work 99 times out of 100, yet the 100th time die in
-a flames with an unfathomable invalid memory access. Even sofisticated modern
+a flames with an unfathomable invalid memory access. Even sophisticated modern
 debugging tools like valgrind are often powerless in this situation.
 
 This is where DIVINE can help, since it systematically and efficiently explores

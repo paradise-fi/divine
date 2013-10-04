@@ -24,7 +24,7 @@ The CESMI Specification
 CESMI is a set of APIs (Application Programming Interface) to represent model
 checking problems in a form independent of a specific model-checker. The API is
 explicit-state (states of the model are represented discretely) and allows for
-implicit (on the fly) representation of models -- local neighborhood of a given
+implicit (on the fly) representation of models -- local neighbourhood of a given
 vertex needs to be provided. The exact semantics of vertices and edges
 represented by a CESMI model depend on the model checking algorithm in
 question. Multiple interpretations of a given graph are possible, and will be

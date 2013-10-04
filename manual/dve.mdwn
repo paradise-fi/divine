@@ -94,8 +94,8 @@ sequence of transitions beginning with a transition leading to a committed state
 and ending with a transition leading to a non-committed state cannot be
 interlaced with other transitions leading from non-committed states.
 
-Synchronization between processes in committed states and non-committed states is
-ignored. Synchronization between processes (both) in committed states is
+Synchronisation between processes in committed states and non-committed states is
+ignored. Synchronisation between processes (both) in committed states is
 permitted (but it is probably very rare).
 
 ### Transitions
@@ -104,8 +104,8 @@ Transitions are written as a transitions from one process state to another (e.g.
 in the initial process state of a transition (in the above mentioned example in
 a state run). You should also define an additional condition when the
 transition can be executed (keyword guard ) and sometimes also a channel to
-synchronize through (keyword `sync` with followed by the channel name and `!` or
-`?`). There can synchronize only transitions with the same channel name and
+synchronise through (keyword `sync` with followed by the channel name and `!` or
+`?`). There can synchronise only transitions with the same channel name and
 opposite operators `!` and `?`. When you want to transmit a value through the
 channel, you can write a value after `!` and a variable (where the value will
 be transmitted) after `?`. The last but not least element of transitions are
@@ -128,7 +128,7 @@ Example:
         }
 
 ### Expressions
-In assignments, guards and synchronization values you can write arithmetic
+In assignments, guards and synchronisation values you can write arithmetic
 expressions. They can contain:
 * constants: numbers, `true`, `false`
 * parentheses: (, )
@@ -468,7 +468,7 @@ add some local variables as well.
             for_j -> inCS { guard j == N; effect q[$1] = N; },
             ...
 
-We have just modelled the initialization of the outer for loop, the end of it
+We have just modelled the initialisation of the outer for loop, the end of it
 and the *locking* itself (`q[i] = n` means that process `i` is in the critical
 section). Let's go to the inside of the loop:
 
