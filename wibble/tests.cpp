@@ -221,12 +221,12 @@ void TestContains::check(WIBBLE_TEST_LOCPRM) const
     {
         if (actual.find(expected) != std::string::npos) return;
         std::stringstream ss;
-        ss << "'" << actual << "' does not contain '" << actual << "'";
+        ss << "'" << actual << "' does not contain '" << expected << "'";
         wibble_test_location.fail_test(ss.str());
     } else {
         if (actual.find(expected) == std::string::npos) return;
         std::stringstream ss;
-        ss << "'" << actual << "' contains '" << actual << "'";
+        ss << "'" << actual << "' contains '" << expected << "'";
         wibble_test_location.fail_test(ss.str());
     }
 }
