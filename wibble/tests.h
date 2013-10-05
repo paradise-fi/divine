@@ -65,6 +65,7 @@ public:
     std::string locstr() const;
     std::string msg(const std::string m) const;
     void fail_test(const std::string& msg) const WIBBLE_TESTS_ALWAYS_THROWS;
+    void fail_test(const wibble::tests::LocationInfo& info, const char* file, int line, const char* args, const std::string& msg) const WIBBLE_TESTS_ALWAYS_THROWS;
     void backtrace(std::ostream& out) const;
 };
 
@@ -414,7 +415,7 @@ static inline void _wassert(WIBBLE_TEST_LOCPRM, const T& expr)
     } catch (tut::failure) { \
         throw; \
     } catch (std::exception& e) { \
-        wibble_test_location.fail_test(e.what()); \
+        wibble_test_location.fail_test(wibble_test_location_info, __FILE__, __LINE__, #func, e.what()); \
     } } while(0)
 
 // function test, just runs the function without mangling its name

@@ -76,6 +76,12 @@ void Location::fail_test(const std::string& msg) const
     throw tut::failure(this->msg(msg));
 }
 
+void Location::fail_test(const wibble::tests::LocationInfo& info, const char* file, int line, const char* args, const std::string& msg) const
+{
+    Location loc = nest(info, file, line, args);
+    loc.fail_test(msg);
+}
+
 std::ostream& LocationInfo::operator()()
 {
     str(std::string());
