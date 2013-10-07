@@ -173,28 +173,31 @@ struct FifoMatrix
 };
 
 struct WithID {
+    int _localId;
     int _id;
     int _peers;
     int _locals;
     int _rank;
+    int localId() const { assert_leq( 0, _localId ); return _localId; }
     int id() const { assert_leq( 0, _id ); return _id; }
     int peers() const { assert_leq( 0, _id ); return _peers; }
     int rank() const { assert_leq( 0, _id ); return _rank; }
     int locals() const { assert_leq( 0, _locals ); return _locals; }
-    void setId( int id, int peers, int locals, int rank ) {
-        _id = id;
+    void setId( std::pair< int, int > id, int peers, int locals, int rank ) {
+        _localId = id.first;
+        _id = id.second;
         _peers = peers;
         _locals = locals;
         _rank = rank;
     }
     WithID() : _id( -1 ) {}
-    WithID( int id, int peers, int locals, int rank ) :
-        _id( id ), _peers( peers ), _locals( locals ), _rank( rank )
+    WithID( std::pair< int, int > id, int peers, int locals, int rank ) :
+        _localId( id.first ), _id( id.second ), _peers( peers ), _locals( locals ), _rank( rank )
     { }
 };
 
 struct Sequential : WithID {
-    Sequential() { setId( 0, 1, 1, 0 ); }
+    Sequential() { setId( std::make_pair( 0, 0 ), 1, 1, 0 ); }
 
     Pool m_pool;
     const Pool& masterPool() const {
@@ -242,10 +245,10 @@ struct Parallel : Terminable, WithID {
         is_master = true;
         assert( !m_topology );
         m_topology = new Topology< Instance >( n ); // TODO int is kind of limited
-        setId( -1, -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
+        setId( std::make_pair( -1, -1 ), -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
     }
 
-    void becomeSlave( Topology< Instance > &topology, int id ) {
+    void becomeSlave( Topology< Instance > &topology, std::pair< int, int > id ) {
         m_topology = &topology;
         setId( id, m_topology->peers(), m_topology->locals(), m_topology->rank() );
     }
@@ -353,7 +356,7 @@ struct Local
     template< typename X = Instance >
     void initSlaves( X &init ) {
         for ( int i = 0; i < m_slavesCount; ++ i )
-            m_slaves.emplace_back( init, m_offset + i );
+            m_slaves.emplace_back( init, std::make_pair( i, m_offset + i ) );
     }
 
     const Pool &masterPool() const {

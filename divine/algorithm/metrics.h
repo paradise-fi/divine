@@ -131,7 +131,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         this->init( *this );
     }
 
-    Metrics( Metrics &master, int id ) : Algorithm( master.meta(), 0 )
+    Metrics( Metrics &master, std::pair< int, int > id ) : Algorithm( master.meta(), 0 )
     {
         this->init( *this, master, id );
     }

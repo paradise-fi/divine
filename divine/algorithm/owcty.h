@@ -514,7 +514,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         this->init( *this );
     }
 
-    Owcty( Owcty &master, int id ) : Algorithm( master.meta(), sizeof( Extension ) )
+    Owcty( Owcty &master, std::pair< int, int > id ) : Algorithm( master.meta(), sizeof( Extension ) )
     {
         this->init( *this, master, id );
     }

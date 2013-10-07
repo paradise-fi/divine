@@ -50,7 +50,7 @@ struct TestParallel {
             this->initSlaves( *this );
         }
 
-        ParallelCounter( ParallelCounter& m, int i ) {
+        ParallelCounter( ParallelCounter& m, std::pair< int, int > i ) {
             this->becomeSlave( m.topology(), i );
         }
     };
@@ -99,7 +99,7 @@ struct TestParallel {
             counter.i = 0;
         }
 
-        CommCounter( CommCounter &m, int i ) {
+        CommCounter( CommCounter &m, std::pair< int, int > i ) {
             this->becomeSlave( m.topology(), i );
         }
     };

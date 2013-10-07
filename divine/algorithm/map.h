@@ -357,7 +357,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         this->init( *this );
     }
 
-    Map( Map &master, int id ) : Algorithm( master.meta(), sizeof( Extension ) )
+    Map( Map &master, std::pair< int, int > id ) : Algorithm( master.meta(), sizeof( Extension ) )
     {
         this->init( *this, master, id );
     }

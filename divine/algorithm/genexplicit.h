@@ -323,7 +323,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
         params.forward = true;
     }
 
-    _GenExplicit( _GenExplicit &master, int id ) :
+    _GenExplicit( _GenExplicit &master, std::pair< int, int > id ) :
         Algorithm( master.meta(), sizeof( Extension ) ),
         params(), limits(), nodes( 0 ), nodesSize( 0 )
     {
@@ -564,7 +564,7 @@ struct GenExplicit : Algorithm {
         stage2()
     { }
 
-    GenExplicit( GenExplicit &master, int id ) :
+    GenExplicit( GenExplicit &master, std::pair< int, int > id ) :
         stage1( new Stage1( master._stage1, id ) ),
         stage2()
     { }

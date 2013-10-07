@@ -261,7 +261,7 @@ struct TestVisitor {
             this->initSlaves( *this );
         }
 
-        ParallelCheck( ParallelCheck &m, int i ) :
+        ParallelCheck( ParallelCheck &m, std::pair< int, int > i ) :
             Check< G >( m ), store( this->_graph, 0 ), expected( m.expected )
         {
             this->becomeSlave( m.topology(), i );
@@ -327,7 +327,7 @@ struct TestVisitor {
             this->initSlaves( *this );
         }
 
-        PartitionCheck( PartitionCheck &m, int i ) :
+        PartitionCheck( PartitionCheck &m, std::pair< int, int > i ) :
             Check< G >( m ), store( this->_graph, 0 ), expected( m.expected )
         {
             this->becomeSlave( m.topology(), i );
@@ -398,7 +398,7 @@ struct TestVisitor {
             this->initSlaves( *this );
         }
 
-        SharedCheck( SharedCheck &m, int i ) : SharedCheck( m )
+        SharedCheck( SharedCheck &m, std::pair< int, int > i ) : SharedCheck( m )
 //            Check< G >( m ), expected( m.expected ), store( this->_graph, 0, &m.store )
         {
             this->becomeSlave( m.topology(), i );
@@ -469,7 +469,7 @@ struct TestVisitor {
             this->initSlaves( *this );
         }
 
-        TerminableCheck( TerminableCheck &m, int i ) :
+        TerminableCheck( TerminableCheck &m, std::pair< int, int > i ) :
             Check< G >( m ), store( this->_graph, 0 )
         {
             this->becomeSlave( m.topology(), i );
@@ -522,7 +522,7 @@ struct TestVisitor {
 
         typename CheckSetup::Store s( g, 0 );
         WithID wid;
-        wid.setId( 0, 1, 1, 0 );
+        wid.setId( std::make_pair( 0, 0 ), 1, 1, 0 );
         s.setId( wid );
 
         Visitor< CheckSetup > bfv( c, g, s );

@@ -129,7 +129,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         this->init( *this );
     }
 
-    Reachability( Reachability &master, int id ) : Algorithm( master.meta(), sizeof( Extension ) )
+    Reachability( Reachability &master, std::pair< int, int > id ) : Algorithm( master.meta(), sizeof( Extension ) )
     {
         this->init( *this, master, id );
     }

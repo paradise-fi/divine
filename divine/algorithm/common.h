@@ -179,7 +179,7 @@ struct AlgorithmUtils {
     typename Setup::Visitor::template Data< Setup > data;
 
     template< typename Self >
-    void init( Self &self, Self &master, int id ) {
+    void init( Self &self, Self &master, std::pair< int, int > id ) {
         self.becomeSlave( master.topology(), id );
         _init( self, &master );
     }
