@@ -141,6 +141,13 @@ struct PartitionedProvider {
         Table &table() { return _table; }
         const Table &table() const { return _table; }
 
+        size_t firstIndex() {
+            return 0;
+        }
+        size_t lastIndex() {
+            return table().size();
+        }
+
         Make( Hasher h, Make * ) : _table( h ) {}
     };
 };
@@ -201,6 +208,15 @@ struct SharedProvider {
             assert_unreachable( "no owners in shared store" );
         }
 
+        size_t firstIndex() {
+            return table().size() / locals() * localId();
+        }
+        size_t lastIndex() {
+            return std::min(
+                table().size() / locals() * ( localId() + 1 ),
+                table().size() );
+        }
+
         Make ( Hasher h, Make *master )
             : _table( master ? master->_table : std::make_shared< Table >( h ) )
         {}
@@ -208,8 +224,8 @@ struct SharedProvider {
 };
 
 #define STORE_ITERATOR using Iterator = StoreIterator< This >; \
-    Iterator begin() { return Iterator( *this, 0 ); } \
-    Iterator end() { return Iterator( *this, this->table().size() ); } \
+    Iterator begin() { return Iterator( *this, this->firstIndex() ); } \
+    Iterator end() { return Iterator( *this, this->lastIndex() ); } \
     friend class StoreIterator< This >
 
 template < typename This >
