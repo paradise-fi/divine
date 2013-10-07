@@ -241,7 +241,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor:
         visitor::BFV< This >
             visitor( *this, this->graph(), this->store() );
 
-        this->graph().initials( [ this, &visitor ]( Node f, Node t, Label l ) {
+        this->graph().initials( [ this, &visitor ]( Node /*f*/, Node t, Label l ) {
                 auto v = this->store().store( t );
                 this->extension( v ).serial = ++this->serial;
                 this->extension( v ).distance = 1;
