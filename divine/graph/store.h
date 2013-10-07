@@ -133,6 +133,7 @@ struct PartitionedProvider {
         template< typename Mutex, int >
         struct Guard {
             Guard( Mutex *, Mutex * = nullptr ) {}
+            ~Guard() {}
         };
 
         Table _table;
