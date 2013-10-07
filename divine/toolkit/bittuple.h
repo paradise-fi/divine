@@ -91,7 +91,7 @@ struct BitField
         }
 
         Virtual &operator++() {
-            T value = get();
+            T value( get() );
             set( ++value );
             return *this;
         }
@@ -101,7 +101,7 @@ struct BitField
         }
 
         Virtual &operator--() {
-            T value = get();
+            T value( get() );
             set( --value );
             return *this;
         }
