@@ -177,17 +177,17 @@ struct SharedProvider {
 
         template< typename Mutex >
         struct Guard< Mutex, 2 > {
-            Mutex *m1;
-            Mutex *m2;
+            Mutex *_1;
+            Mutex *_2;
 
-            Guard( Mutex *m1, Mutex *m2 ) : m1( first( m1, m2 ) ), m2( second( m1, m2 ) ) {
-                if ( m1 ) m1->lock();
-                if ( m2 ) m2->lock();
+            Guard( Mutex *m1, Mutex *m2 ) : _1( first( m1, m2 ) ), _2( second( m1, m2 ) ) {
+                if ( _1 ) _1->lock();
+                if ( _2 ) _2->lock();
             }
 
             ~Guard() {
-                if ( m2 ) m2->unlock();
-                if ( m1 ) m1->unlock();
+                if ( _2 ) _2->unlock();
+                if ( _1 ) _1->unlock();
             }
 
             static Mutex *first( Mutex *m1, Mutex *m2 ) {
