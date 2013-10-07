@@ -194,6 +194,8 @@ struct SharedProvider {
                 return m1 < m2 ? m1 : m2;
             }
             static Mutex *second( Mutex *m1, Mutex *m2 ) {
+                if ( m1 == m2 )
+                    return nullptr;
                 return m1 < m2 ? m2 : m1;
             }
         };
