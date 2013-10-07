@@ -46,7 +46,7 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only;
+    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link;
     StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold,
                  *o_cmd_ar, *o_precompiled, *o_parallel;
     VectorOption< String > *o_definitions;
@@ -282,7 +282,7 @@ struct Compile {
         prepareIncludes( name, src );
 
         chdir( name.c_str() );
-        if ( o_precompiled->boolValue() ) {
+        if ( o_precompiled->boolValue() || o_dont_link->boolValue() ) {
             chdir( ".." );
             return; /* we only need the headers from above */
         }
@@ -325,13 +325,14 @@ struct Compile {
         fs::writeFile( "pthread.h", llvm_usr_pthread_h_str );
         fs::mkFilePath( "bits/pthreadtypes.h" );
         fs::writeFile( "bits/pthreadtypes.h" , "#include <pthread.h>" );
-        fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
-        fs::writeFile( "glue.cpp", llvm_usr_glue_cpp_str );
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
-
         fs::writeFile( "atomic", llvm_usr_atomic_h_str );
-        fs::writeFile( "cxa_exception_divine.cpp", llvm_usr_cxa_exception_cpp_str );
         fs::writeFile( "unwind.h", llvm_usr_unwind_h_str ); // from libunwind
+        if ( !o_dont_link->boolValue() ) {
+            fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
+            fs::writeFile( "glue.cpp", llvm_usr_glue_cpp_str );
+            fs::writeFile( "cxa_exception_divine.cpp", llvm_usr_cxa_exception_cpp_str );
+        }
 
         // compile libraries
         std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
@@ -346,7 +347,7 @@ struct Compile {
 
         flags += " -Ilibcxxabi/include -Ilibpdc -Ilibcxx/std -Ilibcxx -Ilibm ";
 
-        if ( !o_precompiled->boolValue() ) {
+        if ( !o_precompiled->boolValue() && !o_dont_link->boolValue() ) {
             run( clang() + " -c -I. " + flags + " glue.cpp -o glue.bc" );
             run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
             run( clang() + " -c -I. -Ilibcxxabi " + flags // needs part of private cxxabi headers
@@ -364,46 +365,70 @@ struct Compile {
             return;
         }
 
-        fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
-                       "extern void *memset, *memcpy, *memmove;\n"
-                       "void __divine_requires() {\n"
-                       "    (void) memset; (void) memcpy; (void) memmove;\n"
-                       "}" );
-        run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
+        if ( !o_dont_link->boolValue() ) {
+            fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
+                           "extern void *memset, *memcpy, *memmove;\n"
+                           "void __divine_requires() {\n"
+                           "    (void) memset; (void) memcpy; (void) memmove;\n"
+                           "}" );
+            run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
+         }
 
         // compile input file(s)
-        std::string basename;
+        std::string basename, compilename;
         std::string file = first_file, all_unlinked;
 
         flags += cflags;
+
+        if ( opts.hasNext() && o_dont_link->boolValue() && !out.empty() )
+            die( "Cannot specify both -o and --dont-link with multiple files." );
 
         do {
             if ( file.empty() )
                 file = opts.next();
 
             basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
+            compilename = basename + ".bc";
 
-            if ( out.empty() )
-                out = basename + ".bc";
+            if ( out.empty() && !o_dont_link->boolValue() ) {
+                // If -o and --dont-link are not specified, then choose the name of the first file in the list
+                // for the target name.
+                out = compilename;
+            }
 
-            all_unlinked += str::joinpath( tmp_dir.basename, basename + ".bc" ) + " ";
-            run( clang() + " -c -I. " + flags + wibble::str::appendpath( " ../", file )
-                    + " -o " + basename + ".bc" );
+            if ( !str::endsWith( file, ".bc" ) ) {
+                run( clang() + " -c -I. " + flags + " " + wibble::str::appendpath( "../", file )
+                     + " -o " + compilename );
+
+                if ( o_dont_link->boolValue() ) {
+                    fs::renameIfExists( compilename,
+                                        out.empty() ? ( wibble::str::appendpath( "../", compilename ) ) :
+                                                      ( wibble::str::appendpath( "../", out ) ) );
+                } else {
+                    all_unlinked += str::joinpath( tmp_dir.basename, compilename ) + " ";
+                }
+            } else {
+                if ( !o_dont_link->boolValue() ) {
+                    all_unlinked += file + " ";
+                }
+            }
 
             file.clear();
         } while ( opts.hasNext() );
 
         chdir( tmp_dir.abspath.c_str() );
 
-        run( gold() +
-             " -plugin-opt emit-llvm " +
-             " -o " + out + " " +
-             all_unlinked +
-             ( o_precompiled->boolValue() ?
-               ( " -L" + o_precompiled->stringValue() ) :
-               ( " -L./" + tmp_dir.basename ) ) + " " +
-             tmp_dir.basename + "/requires.bc " +
-             "-ldivine -lcxxabi -lcxx -lcxxabi -lpdc -ldivine" );
+        if ( !o_dont_link->boolValue() ) {
+            run( gold() +
+                " -plugin-opt emit-llvm " +
+                " -o " + out + " " +
+                all_unlinked +
+                ( o_precompiled->boolValue() ?
+                    ( " -L" + o_precompiled->stringValue() ) :
+                    ( " -L./" + tmp_dir.basename ) ) + " " +
+                tmp_dir.basename + "/requires.bc " +
+                "-ldivine -lcxxabi -lcxx -lcxxabi -lpdc -ldivine" );
+        }
 
 #else
         die( "LLVM is disabled" );
@@ -479,6 +504,10 @@ struct Compile {
             "output-file", 'o', "output-file", "",
             "specify the output file name "
             "(only works with --llvm/-l)");
+
+        o_dont_link = cmd_compile->add< BoolOption >(
+            "dont-link", 0, "dont-link", "",
+            "compile the source files, but do not link" );
 
         o_cmd_clang = cmd_compile->add< StringOption >(
             "cmd-clang", 0, "cmd-clang", "",
