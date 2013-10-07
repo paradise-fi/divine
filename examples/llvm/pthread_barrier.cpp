@@ -35,15 +35,11 @@
 
 
 #include <pthread.h>
+#include <assert.h>
 
 #define RELEASE_COUNT   2
 #define PASS_COUNT      2
 #define NUM_OF_THREADS  ( RELEASE_COUNT * PASS_COUNT )
-
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
-#endif
 
 unsigned count = 0;
 unsigned serial = 0;

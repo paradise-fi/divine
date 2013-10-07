@@ -52,17 +52,25 @@
 #define NUM_OF_RIDES    2
 
 #include <pthread.h>
-#include <cstdlib>
-
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
-#include <iostream>
+#include <stdlib.h>
+#include <assert.h>
 #include <unistd.h>
 
-#define ap( x )
+#ifdef __divine__    // verification
+#include "divine.h"
 
-pthread_mutex_t mutex;
+LTL(exclusion, G(!(in_elevator1 && in_elevator2)));
+LTL(progress1, G(waiting1 -> F(in_elevator1)));
+LTL(progress2, G(in_elevator1 -> F(out1)));
+
+#else                // native execution
+#include <iostream>
+
+#define AP( x )
+
+#define __divine_choice( x ) ( rand() % ( x ) )
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 template <typename T>
 void _info(const T& value) {
@@ -78,20 +86,14 @@ void _info(const U& head, const T&... tail) {
 
 template <typename... T>
 void info( const T&... args) {
-#ifndef DIVINE
+#ifndef __divine__
     pthread_mutex_lock( &mutex );
     _info( args... );
     pthread_mutex_unlock( &mutex );
 #endif
 }
 
-enum AP { waiting1, in_elevator1, out1, in_elevator2 };
-
-#ifdef DIVINE
-LTL(exclusion, G(!(in_elevator1 && in_elevator2)));
-LTL(progress1, G(waiting1 -> F(in_elevator1)));
-LTL(progress2, G(in_elevator1 -> F(out1)));
-#endif
+enum atoms { waiting1, in_elevator1, out1, in_elevator2 };
 
 template< typename T, int size >
 struct Queue {
@@ -146,27 +148,27 @@ struct Elevator {
         floor_queue[ from-1 ].enqueue( who );
         info ( "Person ", who, " called the elevator." );
         if ( who == 1 )
-            ap( waiting1 );
+            AP( waiting1 );
         while ( waits_for != who );
 
         info ( "Person ", who, " is being transported by the elevator to the ", dest, ". floor." );
         if ( who == 1 )
-            ap( in_elevator1 );
+            AP( in_elevator1 );
         if ( who == 2 )
-            ap( in_elevator2 );
+            AP( in_elevator2 );
         going_to = dest;
         waits_for = 0;
         while ( current != dest );
 
         info ( "Person ", who, " leaved the elevator." );
         if ( who == 1 )
-            ap( out1 );
+            AP( out1 );
         going_to = 0;
         return dest;
     }
 
     void _move( int direction ) { // 1 = up, -1 = down
-#ifndef DIVINE
+#ifndef __divine__
         usleep( 500000 );
 #endif
         assert( direction == 1 || direction == -1 );
@@ -251,11 +253,7 @@ struct Person {
         for (;;) {
 #endif
             // Randomly choose destination.
-#ifdef DIVINE
             int dest = __divine_choice( FLOORS - 1 ) + 1;
-#else // native execution
-            int dest = ( rand() % (FLOORS - 1) ) + 1;
-#endif
             if ( dest >= self->at_floor )
                 ++dest;
 

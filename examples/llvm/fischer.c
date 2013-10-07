@@ -47,21 +47,21 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <assert.h>
+#include <stdlib.h>
 
-// For native execution.
-#ifndef DIVINE
-#include "assert.h"
-#include "stdlib.h"
+#ifdef __divine__    // verification
+#include "divine.h"
 
-#define ap( x )
-#endif
-
-enum AP { wait0, critical0, wait1, critical1 };
-
-#ifdef DIVINE
 LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
 LTL(exclusion, G(!(critical0 && critical1)));
+
+#else                // native execution
+#define AP( x )
+
 #endif
+
+enum atoms { wait0, critical0, wait1, critical1 };
 
 // Protocol constants - do not change!
 #define OFF    255
@@ -84,9 +84,9 @@ void *fnc_thread( void *arg ) {
     intptr_t id = (intptr_t) arg;
 
     if ( id == 0 )
-        ap( wait0 );
+        AP( wait0 );
     if ( id == 1 )
-        ap( wait1 );
+        AP( wait1 );
 
     do {
         do {
@@ -117,9 +117,9 @@ void *fnc_thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 0 )
-        ap( critical0 );
+        AP( critical0 );
     if ( id == 1 )
-        ap( critical1 );
+        AP( critical1 );
     critical();
 
     owner = 0; // Leave the critical section.

@@ -65,6 +65,8 @@
 // arbitrary, feel free to change or add new ones and adjust macro N accordingly.
 int times[] = {5, 10, 20, 25, 30, 30, 40, 45};
 
+#include "divine.h"
+#include <assert.h>
 #include <pthread.h>
 
 int total_time = 0; // Elapsed time.

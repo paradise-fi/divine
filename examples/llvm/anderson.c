@@ -62,21 +62,21 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <assert.h>
+#include <stdlib.h>
 
-// For native execution.
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
+#ifdef __divine__    // verification
+#include "divine.h"
 
-#define ap( x )
-#endif
-
-enum AP { wait1, critical1, wait2, critical2 };
-
-#ifdef DIVINE
 LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
 LTL(exclusion, G(!(critical1 && critical2)));
+
+#else                // native execution
+#define AP( x )
+
 #endif
+
+enum atoms { wait1, critical1, wait2, critical2 };
 
 int *slot;
 int next = 0;
@@ -90,7 +90,7 @@ void critical() {
     _critical = 0;
 }
 
-#if defined( DIVINE ) && !defined( BUG )
+#if defined( __divine__ ) && !defined( BUG )
 int fetch_and_add ( int *ptr, int value ) {
     __divine_interrupt_mask();
     int tmp = *ptr;
@@ -102,38 +102,38 @@ int fetch_and_add ( int *ptr, int value ) {
 void *thread( void *arg ) {
     intptr_t id = ( intptr_t )arg;
 
-#ifdef BUG                 // incorrect
+#ifdef BUG                   // incorrect
     int my_place = next++;
-#elif defined( DIVINE )    // correct, for verification
+#elif defined( __divine__ )  // correct, for verification
     int my_place = fetch_and_add( &next, 1 );
-#else                      // correct, native execution
+#else                        // correct, native execution
     int my_place = __sync_fetch_and_add( &next, 1 );
 #endif
 
     if ( my_place == NUM_OF_THREADS - 1 )
-#ifdef BUG                 // incorrect
+#ifdef BUG                   // incorrect
         next -= NUM_OF_THREADS;
-#elif defined( DIVINE )    // correct, for verification
+#elif defined( __divine__ )  // correct, for verification
         fetch_and_add( &next, -NUM_OF_THREADS );
-#else                      // correct, native execution
+#else                        // correct, native execution
         __sync_fetch_and_add( &next, -NUM_OF_THREADS );
 #endif
     else
         my_place %= NUM_OF_THREADS;
 
     if ( id == 1 )
-        ap( wait1 );
+        AP( wait1 );
     if ( id == 2 )
-        ap( wait2 );
+        AP( wait2 );
 
     while ( !slot[my_place] ); // wait
     slot[my_place] = 0;
 
     // The critical section goes here...
     if ( id == 1 )
-        ap( critical1 );
+        AP( critical1 );
     if ( id == 2 )
-        ap( critical2 );
+        AP( critical2 );
     critical();
 
     slot[( my_place + 1 ) % NUM_OF_THREADS] = 1;

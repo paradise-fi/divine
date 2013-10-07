@@ -89,16 +89,20 @@
 
 #include <pthread.h>
 #include <cstdlib>
-
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
-#include <iostream>
+#include <assert.h>
 #include <unistd.h>
 
-#define ap( x )
+#ifdef __divine__    // verification
+#include "divine.h"
 
-pthread_mutex_t mutex;
+LTL(progress, F(elected));
+
+#else                // native execution
+#include <iostream>
+
+#define AP( x )
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 template <typename T>
 void _info(const T& value) {
@@ -114,18 +118,14 @@ void _info(const U& head, const T&... tail) {
 
 template <typename... T>
 void info( const T&... args) {
-#ifndef DIVINE
+#ifndef __divine__
     pthread_mutex_lock( &mutex );
     _info( args... );
     pthread_mutex_unlock( &mutex );
 #endif
 }
 
-enum AP { elected };
-
-#ifdef DIVINE
-LTL(progress, F(elected));
-#endif
+enum atoms { elected };
 
 int chef = -1;
 
@@ -133,7 +133,7 @@ void leader( int who ) { // Elected process should run this once.
     assert( chef == -1 );
     assert( who > -1 );
     chef = who;
-    ap( elected );
+    AP( elected );
 }
 
 template< typename T, int size >
@@ -184,7 +184,7 @@ struct Process {
     Process* next;
 
     void send( const Message &msg, int sender ) {
-#ifndef DIVINE
+#ifndef __divine__
         usleep( 100000 );
 #endif
         info( "Process ", sender, " sent a message (", msg.type, ",", msg.pid, ") to process ", id, "." );

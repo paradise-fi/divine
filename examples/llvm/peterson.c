@@ -33,13 +33,19 @@
  */
 
 #include <pthread.h>
+#include <stdlib.h>
+#include <assert.h>
 
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
+#ifdef __divine__    // verification
+#include "divine.h"
 
-#define ap( x )
+LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
+/* TODO: progress fails due to lack of fairness */
+LTL(exclusion, G(!(critical1 && critical2))); // OK
+
+#else                // native execution
+#define AP( x )
+
 #endif
 
 struct state {
@@ -54,13 +60,7 @@ struct p {
     struct state *s;
 };
 
-enum AP { wait1, critical1, wait2, critical2 };
-
-#ifdef DIVINE
-LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
-/* TODO: progress fails due to lack of fairness */
-LTL(exclusion, G(!(critical1 && critical2))); // OK
-#endif
+enum atoms { wait1, critical1, wait2, critical2 };
 
 void * thread( void *in ) __attribute__((noinline));
 void * thread( void *in ) {
@@ -72,11 +72,11 @@ void * thread( void *in ) {
 #endif
     p->s->turn = 1 - p->id;
 
-    ap( p->id ? wait1 : wait2 );
+    AP( p->id ? wait1 : wait2 );
     while ( p->s->flag[1 - p->id] == 1 && p->s->turn == 1 - p->id ) ;
 
     p->s->in_critical[p->id] = 1;
-    ap( p->id ? critical1 : critical2 );
+    AP( p->id ? critical1 : critical2 );
     assert( !p->s->in_critical[1 - p->id] );
     p->s->in_critical[p->id] = 0;
 

@@ -32,12 +32,8 @@
  */
 
 #include <pthread.h>
-#include <cstdlib>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include <cassert>
-#endif
+#include <stdlib.h>
+#include <assert.h>
 
 template< typename T, int size >
 struct Ring {

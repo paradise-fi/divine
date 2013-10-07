@@ -60,17 +60,36 @@
 #define NUM_OF_REQUESTS  -1
 
 #include <pthread.h>
-#include <cstdlib>
-
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
-#include <iostream>
+#include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 
-#define ap( x )
+#ifdef __divine__    // verification
+#include "divine.h"
+\
+// If level 1 is requested, it is served eventually.
+LTL(property1, G(r1 -> (F(c1 && open))));
 
-pthread_mutex_t mutex;
+// If level 1 is requested, it is served as soon as the cab passes.
+LTL(property2, G(r1 -> (!c1 U (c1 U (c1 && open)))));
+
+// If level 1 is requested, the cab passes the level without serving it at most once.
+LTL(property3, G(r1 -> (!c1 U (c1 U (!c1 U (c1 U (c1 && open)))))));
+
+// If level 2 is requested, the cab passes the level without serving it at most once.
+LTL(property4, G(r2 -> (!c2 U (c2 U (!c2 U (c2 U (c2 && open)))))));
+
+// The cab will remain at level 1 forever from some moment.
+LTL(property5, F(G c1));
+
+#else                // native execution
+#include <iostream>
+
+#define AP( x )
+
+#define __divine_choice( x ) ( rand() % ( x ) )
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 template <typename T>
 void _info(const T& value) {
@@ -86,31 +105,14 @@ void _info(const U& head, const T&... tail) {
 
 template <typename... T>
 void info( const T&... args) {
-#ifndef DIVINE
+#ifndef __divine__
     pthread_mutex_lock( &mutex );
     _info( args... );
     pthread_mutex_unlock( &mutex );
 #endif
 }
 
-enum AP { r1, r2, c1, c2, open };
-
-#ifdef DIVINE
-// If level 1 is requested, it is served eventually.
-LTL(property1, G(r1 -> (F(c1 && open))));
-
-// If level 1 is requested, it is served as soon as the cab passes.
-LTL(property2, G(r1 -> (!c1 U (c1 U (c1 && open)))));
-
-// If level 1 is requested, the cab passes the level without serving it at most once.
-LTL(property3, G(r1 -> (!c1 U (c1 U (!c1 U (c1 U (c1 && open)))))));
-
-// If level 2 is requested, the cab passes the level without serving it at most once.
-LTL(property4, G(r2 -> (!c2 U (c2 U (!c2 U (c2 U (c2 && open)))))));
-
-// The cab will remain at level 1 forever from some moment.
-LTL(property5, F(G c1));
-#endif
+enum atoms { r1, r2, c1, c2, open };
 
 struct Elevator;
 
@@ -133,7 +135,7 @@ struct Elevator {
     int ldir; // Direction of the last cab movement (1 = up, -1 = down).
 
     int call( int floor ) {
-#ifndef DIVINE
+#ifndef __divine__
         usleep( 500000 );
 #endif
         assert( floor > 0 && floor <= FLOORS );
@@ -146,16 +148,16 @@ struct Elevator {
     }
 
     void _move( int direction ) { // 1 = up, -1 = down
-#ifndef DIVINE
+#ifndef __divine__
         usleep( 500000 );
 #endif
         assert( direction == 1 || direction == -1 );
         current += direction;
         assert( current >= 1 && current <= FLOORS );
         if ( current == 1 )
-            ap( c1 );
+            AP( c1 );
         if ( current == 2 )
-            ap( c2 );
+            AP( c2 );
     }
 
     void _adjust_req_count( int inc ) {
@@ -179,7 +181,7 @@ struct Elevator {
                 self->_move( -1 );
             while ( next > self->current )
                 self->_move( 1 );
-            ap( open ); // the doors are open
+            AP( open ); // the doors are open
             info( "Elevator arrived at the ", self->current, ". floor.");
 
             self->request[next-1] = false;
@@ -213,11 +215,7 @@ struct Naive : public Controller {
         if ( !elevator->req_count )
             return 0;
 
-#ifdef DIVINE
         int floor = __divine_choice( elevator->req_count ) + 1;
-#else // native execution
-        int floor = ( rand() % elevator->req_count ) + 1;
-#endif
         int idx = -1;
         while ( floor ) {
             ++idx;
@@ -257,17 +255,13 @@ struct Environment {
         for (;;) {
 #endif
             // Randomly create new request.
-#ifdef DIVINE
             int dest = __divine_choice( FLOORS  ) + 1;
-#else // native execution
-            int dest = ( rand() % FLOORS ) + 1;
-#endif
             info( "Calling for the elevator at the ", dest, ". floor." );
             if ( elevator->call( dest ) ) {
                 if ( dest == 1 )
-                    ap( r1 );
+                    AP( r1 );
                 if ( dest == 2 )
-                    ap( r2 );
+                    AP( r2 );
             }
         }
     }
@@ -277,10 +271,6 @@ struct Environment {
 };
 
 int main() {
-#ifndef DIVINE
-    pthread_mutex_init( &mutex, NULL );
-#endif
-
     // Create a controller.
 #if ( CONTROLLER == 1 )
     Naive controller;

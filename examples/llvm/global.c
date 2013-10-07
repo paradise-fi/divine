@@ -36,12 +36,8 @@
  */
 
 #include <pthread.h>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include "assert.h"
-#include "stdlib.h"
-#endif
+#include <assert.h>
+#include <stdlib.h>
 
 int i = 33;
 

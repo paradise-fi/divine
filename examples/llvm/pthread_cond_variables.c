@@ -58,13 +58,10 @@
 
 #include <pthread.h>
 #include <stdint.h>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
-#include "unistd.h"
-#endif
+#include <stdlib.h>
+#include <assert.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #define NUM_OF_CONSUMERS         2
 #define NUM_OF_ITEMS_TO_PROCESS  2
@@ -77,7 +74,7 @@ pthread_cond_t queue_emptiness_cv;
 
 void *consumer( void *arg )
 {
-#ifdef TRACE
+#ifndef __divine__
     intptr_t id = ( intptr_t ) arg;
 #endif
     while ( 1 ) {
@@ -89,12 +86,12 @@ void *consumer( void *arg )
 #else // correct
         while ( dequeued < NUM_OF_ITEMS_TO_PROCESS && enqueued == 0 ) {
 #endif
-#ifdef TRACE
-            trace( "Consumer ID = %d is going to sleep.", id );
+#ifndef __divine__
+            printf( "Consumer ID = %d is going to sleep.\n", id );
 #endif
             pthread_cond_wait( &queue_emptiness_cv, &queue_mutex );
-#ifdef TRACE
-            trace( "Consumer ID = %d was woken up.", id );
+#ifndef __divine__
+            printf( "Consumer ID = %d was woken up.\n", id );
 #endif
         }
 
@@ -107,14 +104,14 @@ void *consumer( void *arg )
         assert( enqueued > 0 ); // fails if macro BUG is defined
         ++dequeued;
         --enqueued;
-#ifdef TRACE
-        trace( "Consumer ID = %d dequeued an item.", id );
+#ifndef __divine__
+        printf( "Consumer ID = %d dequeued an item.\n", id );
 #endif
 
         pthread_mutex_unlock( &queue_mutex );
 
         // here the thread would do some work with dequeued item (in his local space)
-#ifndef DIVINE
+#ifndef __divine__
         sleep( 1 );
 #endif
     }
@@ -140,7 +137,7 @@ int main( void )
   // producer:
   for ( i=0; i<NUM_OF_ITEMS_TO_PROCESS; i++ ) {
       // here the main thread would produce some item to process
-#ifndef DIVINE
+#ifndef __divine__
       sleep(1);
 #endif
 

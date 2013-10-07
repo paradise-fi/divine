@@ -38,12 +38,8 @@
  */
 
 #include <pthread.h>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
-#endif
+#include <stdlib.h>
+#include <assert.h>
 
 #define NUM_OF_READERS     2
 #define NUM_OF_WRITERS     2
@@ -72,7 +68,7 @@ void check() {
 }
 #endif
 
-void write() {
+void global_write() {
 #ifdef VERIFY_RWLOCK
     ++writers;
 
@@ -85,7 +81,7 @@ void write() {
 #endif
 }
 
-int read() {
+int global_read() {
 #ifdef VERIFY_RWLOCK
     pthread_mutex_lock( &mutex );
     ++readers;
@@ -109,7 +105,7 @@ void *reader( void *arg ) {
 
     // read initial value
     ERRNO( pthread_rwlock_tryrdlock( &rwlock ) ) // shouldn't fail
-    int local = read();
+    int local = global_read();
     assert( local == INITIAL );
     ERRNO( pthread_rwlock_unlock( &rwlock ) )
 
@@ -129,10 +125,10 @@ void *reader( void *arg ) {
         ERRNO( pthread_rwlock_rdlock( &rwlock ) )
 #endif
 
-        local = read();
+        local = global_read();
         // Here the thread would continue with reading and processing of loaded data
         // (which won't change meanwhile, if the read lock is obtained).
-        assert( local == read() ); // fails with macro BUG defined
+        assert( local == global_read() ); // fails with macro BUG defined
 
 #ifndef BUG
         ERRNO( pthread_rwlock_unlock( &rwlock ) )
@@ -151,10 +147,10 @@ void *writer( void *arg ) {
 
     do {
         ERRNO( pthread_rwlock_wrlock( &rwlock ) )
-        local = read();
+        local = global_read();
         if ( local != EOF ) {
             // here the thread would produce next value
-            write();
+            global_write();
         }
         ERRNO( pthread_rwlock_unlock( &rwlock ) )
     } while ( local != EOF );

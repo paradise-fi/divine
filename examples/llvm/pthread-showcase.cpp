@@ -33,19 +33,16 @@
  */
 
 #include <pthread.h>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include <cassert>
-#include <cstdlib>
-#endif
+#include <assert.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #define THREADS 2
 
 #ifdef DEBUG
-#ifdef TRACE
-#include <errno.h>
-#define PRINT_ERROR( x ) trace( x " at line %d", __LINE__ )
+#ifndef __divine__  // native execution + debug
+#include <iostream>
+#define PRINT_ERROR( x ) std::cout << x << " at line " << __LINE__ << std::endl
 #define ERRNO( fun ) do { int ec = fun;                                        \
                           switch ( ec ) {                                      \
                               case EINVAL: PRINT_ERROR( "EINVAL" ); break;     \
@@ -56,10 +53,10 @@
                               case EDEADLK: PRINT_ERROR( "EDEADLK" ); break;   \
                           }                                                    \
                         assert( !ec ); } while( 0 );
-#else // trace is not available
+#else               // verification + debug
 #define ERRNO( fun ) assert( !fun );
 #endif
-#else // debug is disabled
+#else               // verification or native execution, but debug is disabled
 #define ERRNO( fun ) fun;
 #endif
 
@@ -73,7 +70,6 @@ pthread_once_t once[] = { PTHREAD_ONCE_INIT, PTHREAD_ONCE_INIT };
 volatile bool once_triggered[2] = { false, false };
 pthread_mutex_t once_mutex[2];
 
-#ifndef NEW_INTERP_BUGS
 template< int idx >
 void init_key( void ) {
    /* verify correctness of pthread_once implementation */
@@ -85,39 +81,11 @@ void init_key( void ) {
    /* allocation of TLS */
     ERRNO( pthread_key_create( &key[idx], NULL ) )
 }
-#else
-void init_key0( void ) {
-   /* verify correctness of pthread_once implementation */
-    ERRNO( pthread_mutex_lock( &once_mutex[0] ) )
-    assert( !once_triggered[0] );
-    once_triggered[0] = true;
-    ERRNO( pthread_mutex_unlock( &once_mutex[0] ) )
-
-   /* allocation of TLS */
-    ERRNO( pthread_key_create( &key[0], NULL ) )
-}
-
-void init_key1( void ) {
-   /* verify correctness of pthread_once implementation */
-    ERRNO( pthread_mutex_lock( &once_mutex[1] ) )
-    assert( !once_triggered[1] );
-    once_triggered[1] = true;
-    ERRNO( pthread_mutex_unlock( &once_mutex[1] ) )
-
-   /* allocation of TLS */
-    ERRNO( pthread_key_create( &key[1], NULL ) )
-}
-#endif
 
 void* thread( void * arg ) {
   /* once-only execution */
-#ifndef NEW_INTERP_BUGS
     ERRNO( pthread_once( &once[0], init_key<0> ) )
     ERRNO( pthread_once( &once[1], init_key<1> ) )
-#else
-    ERRNO( pthread_once( &once[0], init_key0 ) )
-    ERRNO( pthread_once( &once[1], init_key1 ) )
-#endif
 
   /* conditional variables (barrier) */
     ERRNO( pthread_mutex_lock( &counter_mutex ) )
@@ -149,9 +117,9 @@ int main( void ) {
     for ( int i = 0; i < THREADS; i++ ) {
         ERRNO( pthread_create( &t[i], 0, thread, reinterpret_cast<void*>( i+1 ) ) )
 
+#ifdef __divine__
         // Barrier implemented in the thread entry function ensures that thread IDs
-        // are not recycled.
-#ifdef DIVINE
+        // are not recycled. But this is specific to the implementation provided by DiVinE.
         assert( t[i] == ( ( (i+1) << 16) | (i+1) ) );
 #endif
     }

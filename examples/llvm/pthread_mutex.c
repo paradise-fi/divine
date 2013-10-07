@@ -35,12 +35,9 @@
  */
 
 #include <pthread.h>
-
-// For native execution (in future we will provide cassert).
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
-#endif
+#include <stdlib.h>
+#include <assert.h>
+#include <stdio.h>
 
 int _critical = 0;
 
@@ -84,8 +81,8 @@ int main() {
     pthread_mutex_unlock( &mutex );
 #endif
 
-#ifdef TRACE
-    trace( "Waiting for %d.", id );
+#ifndef __divine__
+    printf( "Waiting for %d.\n", id );
 #endif
 
     pthread_join( id, &result );

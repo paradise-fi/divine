@@ -50,11 +50,11 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
 
-// For native execution.
-#ifndef DIVINE
-#include "stdlib.h"
-#include "assert.h"
+#ifdef __divine__
+#include "divine.h"
 #endif
 
 int assigned = 0;

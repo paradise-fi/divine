@@ -61,19 +61,19 @@
 #define NUM_OF_DESTINATIONS       3
 
 #include <pthread.h>
-#include <cstdlib>
-
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
-#include <iostream>
+#include <assert.h>
 #include <unistd.h>
+#include <stdlib.h>
 
-#define ap( x )
+#ifdef __divine__       // verification
+#include "divine.h"
+
+#else                   // native execution
+#include <iostream>
 
 #define __divine_choice( x ) ( rand() % ( x ) )
 
-pthread_mutex_t mutex;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 template <typename T>
 void _info(const T& value) {
@@ -89,7 +89,7 @@ void _info(const U& head, const T&... tail) {
 
 template <typename... T>
 void info( const T&... args) {
-#ifndef DIVINE
+#ifndef __divine__
     pthread_mutex_lock( &mutex );
     _info( args... );
     pthread_mutex_unlock( &mutex );

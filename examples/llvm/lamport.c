@@ -58,20 +58,20 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <assert.h>
 
-// For native execution.
-#ifndef DIVINE
-#include "assert.h"
+#ifdef __divine__    // verification
+#include "divine.h"
 
-#define ap( x )
-#endif
-
-enum AP { wait1, critical1, wait2, critical2 };
-
-#ifdef DIVINE
 LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
 LTL(exclusion, G(!(critical1 && critical2)));
+
+#else                // native execution
+#define AP( x )
+
 #endif
+
+enum atoms { wait1, critical1, wait2, critical2 };
 
 char entering[NUM_OF_THREADS];
 intptr_t x, y = 0;
@@ -89,9 +89,9 @@ void *thread( void *arg ) {
     intptr_t id = ( intptr_t ) arg;
 
     if ( id == 1 )
-        ap( wait1 );
+        AP( wait1 );
     if ( id == 2 )
-        ap( wait2 );
+        AP( wait2 );
 
   Start:
     entering[id-1] = 1;
@@ -117,9 +117,9 @@ void *thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 1 )
-        ap( critical1 );
+        AP( critical1 );
     if ( id == 2 )
-        ap( critical2 );
+        AP( critical2 );
     critical();
 
     // Leave the critical section.

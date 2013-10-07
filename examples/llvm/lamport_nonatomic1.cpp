@@ -78,21 +78,23 @@
 #define NUM_OF_THREADS  2
 
 #include <pthread.h>
-#include <cstdlib>
+#include <stdlib.h>
+#include <assert.h>
 
-// For native execution.
-#ifndef DIVINE
-#include <cassert>
+#ifdef __divine__    // verification
+#include "divine.h"
 
-#define ap( x )
-#endif
-
-enum AP { wait0, critical0, wait1, critical1 };
-
-#ifdef DIVINE
 LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
 LTL(exclusion, G(!(critical0 && critical1)));
+
+#else                // native execution
+#define AP( x )
+
+#define __divine_choice( x ) ( rand() % ( x ) )
+
 #endif
+
+enum atoms { wait0, critical0, wait1, critical1 };
 
 int _critical = 0;
 
@@ -109,11 +111,7 @@ struct NonAtomicBit {
 
     bool read() {
         if ( state != -1 )
-#ifdef DIVINE
             return ( __divine_choice( 2 ) == 1 );
-#else
-            return ( ( rand() % 2 ) == 1 );
-#endif
         return bit;
     }
 
@@ -134,9 +132,9 @@ void *thread( void *arg ) {
     int i;
 
     if ( id == 0 )
-        ap( wait0 );
+        AP( wait0 );
     if ( id == 1 )
-        ap( wait1 );
+        AP( wait1 );
 
   Start:
     entering[id].write( true );
@@ -158,9 +156,9 @@ void *thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 0 )
-        ap( critical0 );
+        AP( critical0 );
     if ( id == 1 )
-        ap( critical1 );
+        AP( critical1 );
     critical();
 
     // Leave the critical section.

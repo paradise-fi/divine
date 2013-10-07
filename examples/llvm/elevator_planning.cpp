@@ -118,13 +118,18 @@
 #endif
 
 #include <pthread.h>
-#include <cstdlib>
-
-// For native execution.
-#ifndef DIVINE
-#include <iostream>
+#include <stdlib.h>
 #include <unistd.h>
+
+#ifdef __divine__    // verification
+#include "divine.h"
+
+#else                // native execution
+#include <iostream>
+
 #define __divine_choice( x ) ( rand() % ( x ) )
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 template <typename T>
 void _info(const T& value) {
@@ -140,9 +145,10 @@ void _info(const U& head, const T&... tail) {
 
 template <typename... T>
 void info( const T&... args) {
-#ifndef DIVINE
+#ifndef __divine__
+    pthread_mutex_lock( &mutex );
     _info( args... );
-    usleep( 500000 );
+    pthread_mutex_unlock( &mutex );
 #endif
 }
 
@@ -181,7 +187,7 @@ struct Elevator {
         int can_in, can_out;
 
         for (;;) {
-#ifdef DIVINE
+#ifdef __divine__
             assert( at_zero != N ); // When this fails, we have a solution.
 #else
             if ( at_zero == N ) {
