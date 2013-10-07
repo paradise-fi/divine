@@ -154,7 +154,6 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
     bool isAccepting( Vertex st ) {
-        auto guard( this->store().template acquire< Extension >( st ) );
         if ( extension( st ).elim() >= 2 )
             return false;
         if ( !this->graph().isAccepting ( st.node() ) ) {
