@@ -366,7 +366,7 @@ namespace statistics {
 #endif
 #undef STATISTICS
 
-    using Statistics = TypeList< NoStatistics, TrackStatistics >;
+    using Statistics = TypeList< TrackStatistics, NoStatistics >;
 }
 
 template< typename Graph, typename Store >
