@@ -95,9 +95,11 @@ struct BitField
             set( ++value );
             return *this;
         }
-        Virtual operator++(int) {
-            set( get()++ );
-            return *this;
+        T operator++(int) {
+            T value( get() );
+            T result( value++ );
+            set( value );
+            return result;
         }
 
         Virtual &operator--() {
@@ -105,9 +107,11 @@ struct BitField
             set( --value );
             return *this;
         }
-        Virtual operator--(int) {
-            set( get()-- );
-            return *this;
+        T operator--(int) {
+            T value( get() );
+            T result( value-- );
+            set( value );
+            return result;
         }
         template< typename U >
         Virtual operator+=( U value ) {
