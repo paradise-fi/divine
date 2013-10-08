@@ -522,7 +522,7 @@ struct TestVisitor {
 
         typename CheckSetup::Store s( g, 0 );
         WithID wid;
-        wid.setId( std::make_pair( 0, 0 ), 1, 1, 0 );
+        wid.setId( 0, 0, 1, 1, 0 );
         s.setId( wid );
 
         Visitor< CheckSetup > bfv( c, g, s );
