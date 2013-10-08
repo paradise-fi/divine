@@ -9,6 +9,16 @@ struct TestBitTuple {
     using U10 = BitField< unsigned, 10 >;
     using T10_10 = BitTuple< U10, U10 >;
 
+    int bitcount( uint32_t word ) {
+        int i = 0;
+        while ( word ) {
+            if ( word & 1 )
+                ++i;
+            word >>= 1;
+        }
+        return i;
+    }
+
     Test mask() {
         /* only works on little endian machines ... */
         assert_eq( 0xFF00u, ::mask( 8, 8 ) );
@@ -111,22 +121,37 @@ struct TestBitTuple {
     }
 
     Test locked() {
-        typedef BitTuple< BitLock, T10_10 > X;
-        X x;
+        BitTuple<
+            BitField< int, 15 >,
+            BitLock,
+            BitField< int, 16 >
+        > bt;
 
-        assert_eq( X::bitwidth, 21 );
-        assert_eq( X::offset< 0 >(), 0 );
-        assert_eq( X::offset< 1 >(), 1 );
-        assert( !get< 0 >( x ).locked() );
-        auto y = get< 1 >( x );
-        get< 0 >( x ).lock();
-        assert( get< 0 >( x ).locked() );
-        get< 0 >( y ).set( 5u );
-        assert( get< 0 >( x ).locked() );
-        assert_eq( get< 0 >( y ), 5u );
-        get< 0 >( x ).unlock();
-        assert( !get< 0 >( x ).locked() );
-        assert_eq( get< 0 >( y ), 5u );
+        get< 1 >( bt ).lock();
+
+        assert_eq( get< 0 >( bt ), 0 );
+        assert_eq( get< 2 >( bt ), 0 );
+        assert( get< 1 >( bt ).locked() );
+        assert( get< 0 >( bt ).word() );
+
+        get< 0 >( bt ) = 1;
+        get< 2 >( bt ) = 1;
+
+        assert_eq( get< 0 >( bt ), 1 );
+        assert_eq( get< 2 >( bt ), 1 );
+
+        assert_eq( bitcount( get< 0 >( bt ).word() ), 3 );
+
+        get< 1 >( bt ).unlock();
+        assert_eq( get< 0 >( bt ), 1 );
+        assert_eq( get< 2 >( bt ), 1 );
+        assert( !get< 1 >( bt ).locked() );
+
+        assert_eq( bitcount( get< 0 >( bt ).word() ), 2 );
+
+        get< 0 >( bt ) = 0;
+        get< 2 >( bt ) = 0;
+        assert( !get< 0 >( bt ).word() );
     }
 
     Test assign() {
