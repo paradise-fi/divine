@@ -140,4 +140,85 @@ struct TestBitTuple {
         get< 2 >( tuple ) = get< 0 >( tuple );
         assert( get< 2 >( tuple ).get() );
     }
+
+    struct OperatorTester {
+        int value;
+        int expected;
+        OperatorTester &operator++() { assert_die(); return *this; }
+        OperatorTester operator++( int ) { assert_die(); return *this; }
+        OperatorTester &operator--() { assert_die(); return *this; }
+        OperatorTester &operator--( int ) { assert_die(); return *this; }
+        OperatorTester &operator+=( int ) { assert_die(); return *this; }
+        OperatorTester &operator-=( int ) { assert_die(); return *this; }
+        OperatorTester &operator*=( int ) { assert_die(); return *this; }
+        OperatorTester &operator/=( int ) { assert_die(); return *this; }
+        OperatorTester &operator%=( int ) { assert_die(); return *this; }
+        void test() { assert_eq( value, expected ); }
+        void set( int v, int e ) { value = v; expected = e; }
+    };
+    struct TPrI : OperatorTester {
+        TPrI &operator++() { ++value; return *this; }
+    };
+    struct TPoI : OperatorTester {
+        TPoI operator++( int ) { auto r = *this; value++; return r; }
+    };
+    struct TPrD : OperatorTester {
+        TPrD &operator--() { --value; return *this; }
+    };
+    struct TPoD : OperatorTester {
+        TPoD operator--( int ) { auto r = *this; value--; return r; }
+    };
+    struct TPlO : OperatorTester {
+        TPlO &operator+=( int v ) { value += v; return *this; }
+    };
+    struct TMO : OperatorTester {
+        TMO &operator-=( int v ) { value -= v; return *this; }
+    };
+    struct TPoO : OperatorTester {
+        TPoO &operator*=( int v ) { value *= v; return *this; }
+    };
+    struct TSO : OperatorTester {
+        TSO &operator/=( int v ) { value /= v; return *this; }
+    };
+    struct TPrO : OperatorTester {
+        TPrO &operator%=( int v ) { value %= v; return *this; }
+    };
+
+    template< int N, typename BT, typename L >
+    void checkOperator( BT &bt, int v, int e, L l ) {
+        auto t = get< N >( bt ).get();
+        t.set( v, e );
+        get< N >( bt ) = t;
+        l( get< N >( bt ) );
+        get< N >( bt ).get().test();
+    }
+
+#define CHECK( N, bt, v, e, test ) checkOperator< N >( bt, v, e, []( decltype( get< N >( bt ) ) item ) { test; } )
+
+    Test operators() {
+        BitTuple<
+            BitField< bool, 4 >,
+            BitField< TPrI >,// ++v
+            BitField< TPoI >,// v++
+            BitField< TPrD >,// --v
+            BitField< TPoD >,// v--
+            BitField< TPlO >,// v+=
+            BitField< TMO >,// v-=
+            BitField< TPoO >,// v*=
+            BitField< TSO >,// v/=
+            BitField< TPrO >,// v%=
+            BitField< bool, 4 >
+        > bt;
+
+        CHECK( 1, bt, 0, 1, ++item );
+        CHECK( 2, bt, 0, 1, item++ );
+        CHECK( 3, bt, 0, -1, --item );
+        CHECK( 4, bt, 0, -1, item-- );
+        CHECK( 5, bt, 0, 5, item += 5 );
+        CHECK( 6, bt, 0, -5, item -= 5 );
+        CHECK( 7, bt, 2, 14, item *= 7 );
+        CHECK( 8, bt, 42, 6, item /= 7 );
+        CHECK( 9, bt, 42, 9, item %= 11 );
+    }
+#undef CHECK
 };
