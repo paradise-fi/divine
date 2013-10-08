@@ -346,7 +346,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     struct FindCE : Visit< This, Setup > {
         static visitor::TransitionAction transition( This &o, Vertex from, Vertex to, Label )
         {
-            auto guard( o.store().template acquire< Extension >( to ) );
+            auto guard( o.store().template acquire< Extension >( from, to ) );
             if ( !o.extension( to ).inS() )
                 return visitor::TransitionAction::Forget;
 
