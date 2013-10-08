@@ -159,7 +159,7 @@ struct BitLock
         Atomic &atomic() { return *reinterpret_cast< Atomic * >( &word() ); }
         uint32_t bit() {
             assert_leq( bitoffset(), 31 );
-            return uint32_t( 1 ) << (32 - bitoffset() - 1);
+            return uint32_t( 1 ) << bitoffset();
         }
         void lock() {
             uint32_t l = word();
