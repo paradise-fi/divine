@@ -324,8 +324,9 @@ namespace topology {
 #ifndef O_PERFORMANCE
     using ForMpi = Any; // as we need NDFS without O_PERFORMANCE
 #else
-    using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info > >;
+    using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info, visitor::Shared > >;
 #endif
+
     TOPOLOGY( Mpi, meta.execution.nodes > 1, ForMpi );
 #else
     using Mpi = _Missing;
