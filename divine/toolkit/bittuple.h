@@ -81,13 +81,13 @@ struct BitField
 
         operator T() const { return get(); }
         T get() const {
-            union {
+            union U {
                 uint64_t x;
                 T t;
-            };
-            t = T();
-            bitcopy( *this, BitPointer( &x ), bitwidth );
-            return t;
+                U() : t() { }
+            } u;
+            bitcopy( *this, BitPointer( &u.x ), bitwidth );
+            return u.t;
         }
 
         Virtual &operator++() {
