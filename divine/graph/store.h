@@ -347,7 +347,7 @@ struct _Vertex
         return bs >> v._h >> v._n;
     }
 
-//private:
+private:
     Store *_s; // origin store
     Handle _h;
     Pool *_p; // local pool
