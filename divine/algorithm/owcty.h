@@ -377,13 +377,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     Shared _counterexample( Shared sh ) {
+        if ( sh.cycle_found )
+            return sh;
+
         shared = sh;
         for ( auto st : this->store() ) {
-            if ( cycleFound() ) {
-                shared.cycle_node = cycleNode();
-                shared.cycle_found = true;
-                return shared;
-            }
             shared.cycle_node = st.handle();
             if ( !this->store().valid( st ) )
                 continue;
@@ -392,6 +390,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             if ( !extension( st ).inS() || !extension( st ).inF() )
                 continue;
             parallel( &This::_checkCycle );
+            if ( cycleFound() ) {
+                shared.cycle_node = cycleNode();
+                shared.cycle_found = true;
+                return shared;
+            }
         }
         return shared;
     }
