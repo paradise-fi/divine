@@ -1,3 +1,20 @@
+DIVINE 3.0.91 (3.1 alpha 2; 15.10.2013)
+=======================================
+
+- Implement `--shared` support in OWCTY and MAP (liveness checking).
+- Support creation of persistent, explicit graph dumps (.dess).
+- Support for exception handling in C++ w/ LLVM.
+- Optional probabilistic choice with LLVM.
+- Support for std::atomic in C++ verification w/ LLVM.
+- LLVM support for cmpxchg, atomicrmw instructions.
+- Varargs support in C, C++ w/ LLVM.
+- Optionally demangle C++ symbols in counterexamples.
+- Port and use libc++ and libc++abi in `divine compile --llvm`.
+- `divine compile --llvm` now #defines `__divine__`.
+- Reduced memory requirements for compilation.
+- Support for UPPAAL nested structures, arrays and meta variables.
+- Implement conditional instantiation in DVE.
+
 DiVinE 3.0.90 (3.1 alpha 1; 14.7.2013)
 ======================================
 
