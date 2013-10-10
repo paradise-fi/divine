@@ -361,11 +361,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 visitor::TransitionAction::Expand :
                 visitor::TransitionAction::Forget;
         }
-/* Not called from anywhere
-        static visitor::ExpansionAction ccExpansion( Node ) {
-            return visitor::ExpandState;
-        }
-*/
+
         template< typename V > void queueInitials( This &o, V &v ) {
             if ( o.store().knows( o.shared.cycle_node ) ) {
                 Vertex c = o.store().vertex( o.shared.cycle_node );
