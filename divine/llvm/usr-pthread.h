@@ -12,6 +12,7 @@
 #define _INITIALIZED_MUTEX  ( 1 << 26 )
 #define _INITIALIZED_COND   ( 1 << 16 )
 #define _INITIALIZED_RWLOCK ( 1 << 17 )
+#define _EXECUTE_ONCE       ( 1 << 27 )
 
 // pthread-specified macros
 #define PTHREAD_CREATE_JOINABLE        0
@@ -44,7 +45,7 @@
 
 #define PTHREAD_COND_INITIALIZER       { .mutex = NULL, .counter = _INITIALIZED_COND }
 
-#define PTHREAD_ONCE_INIT              1
+#define PTHREAD_ONCE_INIT              ( PTHREAD_MUTEX_INITIALIZER | _EXECUTE_ONCE )
 
 #define PTHREAD_DESTRUCTOR_ITERATIONS  8
 
@@ -82,7 +83,7 @@ typedef int pthread_mutexattr_t;
 typedef pthread_mutex_t pthread_spinlock_t;
 typedef struct { pthread_mutex_t * mutex; int counter; } pthread_cond_t;
 typedef int pthread_condattr_t;
-typedef int pthread_once_t;
+typedef pthread_mutex_t pthread_once_t;
 
 typedef struct _PerThreadData {
     void ** data;

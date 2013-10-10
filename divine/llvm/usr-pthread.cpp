@@ -116,7 +116,6 @@ unsigned alloc_pslots = 0; // num. of pointers (not actuall slots) allocated
 unsigned thread_counter = 1;
 Thread ** threads = NULL;
 pthread_key_t keys = NULL;
-
 }
 
 /* Helper functions */
@@ -1110,13 +1109,25 @@ int pthread_condattr_setpshared( pthread_condattr_t *, int ) {
 }
 
 /* Once-only execution */
-int pthread_once( pthread_once_t *once_control, void (*init_routine)(void) ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+/*
+  pthread_once_t representation (extends pthread_mutex_t):
+  --------------------------------------------------------------------------------
+ | *free* | should be init_routine called?: 1bit | < pthread_mutex_t (27 bits) >  |
+  --------------------------------------------------------------------------------
+  */
 
-    if (*once_control) {
-        *once_control = 0;
+int pthread_once( pthread_once_t *once_control, void (*init_routine)(void) ) {
+    if ( ~(*once_control) & _EXECUTE_ONCE )
+        return 0;
+
+    pthread_mutex_lock( once_control );
+
+    if ( (*once_control) & _EXECUTE_ONCE ) {
         init_routine();
+        (*once_control) &= ~_EXECUTE_ONCE;
     }
+
+    pthread_mutex_unlock( once_control );
     return 0;
 }
 
