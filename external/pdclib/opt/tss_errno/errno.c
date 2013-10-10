@@ -7,15 +7,30 @@
 */
 
 #ifndef REGTEST
-#include <threads.h>
+#include <pthread.h>
+#include <divine.h>
 
-/* Temporary */
+static pthread_key_t key;
+static pthread_once_t once = PTHREAD_ONCE_INIT;
 
-static int _PDCLIB_errno = 0;
+void  _PDCLIB_delete_errno( void *errno ) {
+    __divine_free( errno );
+}
 
-int * _PDCLIB_errno_func()
-{
-    return &_PDCLIB_errno;
+void  _PDCLIB_init_errno ( void ) {
+    pthread_key_create( &key, _PDCLIB_delete_errno );
+}
+
+int * _PDCLIB_errno_func() {
+    pthread_once( &once, _PDCLIB_init_errno );
+
+    if ( !pthread_getspecific( key )) {
+        int *errno = __divine_malloc( sizeof( int ) );
+        *errno = 0;
+        pthread_setspecific( key, errno );
+    }
+
+    return (int *)pthread_getspecific( key );
 }
 
 #endif
