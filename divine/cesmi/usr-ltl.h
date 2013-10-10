@@ -13,7 +13,7 @@ extern "C" {
 int buchi_initial( int property );
 int buchi_next( int property, int from, int transition, const cesmi_setup *setup, cesmi_node evalstate );
 int buchi_accepting( int property, int id );
-char *buchi_formula( int propery );
+char *buchi_formula( int property );
 
 typedef int (*get_initial_t)( const cesmi_setup *setup, int handle, cesmi_node *to );
 typedef int (*get_successor_t)( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to );
