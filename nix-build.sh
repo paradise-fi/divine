@@ -2,7 +2,7 @@
 set -e
 rm -f divine-snapshot.tar.gz
 
-echo preparing divine-snapshot
+echo preparing divine-snapshot >&2
 rm -rf divine-snapshot
 mkdir divine-snapshot
 # show files includes files that were darcs add-ed but not recorded
