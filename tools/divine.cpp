@@ -675,6 +675,7 @@ struct Main {
         if ( meta.algorithm.sharedVisitor ) {
             if ( meta.algorithm.algorithm != meta::Algorithm::Metrics &&
                  meta.algorithm.algorithm != meta::Algorithm::Reachability &&
+                 meta.algorithm.algorithm != meta::Algorithm::Owcty &&
                  meta.algorithm.algorithm != meta::Algorithm::Map &&
                  meta.algorithm.algorithm != meta::Algorithm::Ndfs )
                 die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
