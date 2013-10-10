@@ -376,7 +376,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     }
 
     Shared _counterexample( Shared sh ) {
-        if ( sh.cycle_found )
+        if ( sh.cycle_found ) /* shortcut */
             return sh;
 
         shared = sh;
