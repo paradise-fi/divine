@@ -151,7 +151,6 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
                 if ( reset )
                     extension( st ).predCount() = 0;
                 if ( extension( st ).inS() && extension( st ).inF() ) {
-                    assert_eq( store().owner( st ), visitor.worker.id() );
                     visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
                     st.disown();
                 }
