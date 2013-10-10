@@ -200,10 +200,6 @@ struct LtlCE {
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
             if ( !t.store().valid( from ) )
                 return visitor::TransitionAction::Expand;
-            if ( t.store().valid( from ) && t.whichInitial( to.node() ) ) {
-                t.extension( to ).parent() = from.handle();
-                return visitor::TransitionAction::Terminate;
-            }
             if ( t.updateIteration( to ) ) {
                 t.extension( to ).parent() = from.handle();
                 return visitor::TransitionAction::Expand;
