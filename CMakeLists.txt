@@ -61,6 +61,7 @@ option( MPI "compile DiVinE with MPI for clustering support" ON )
 option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
 option( DVE "include the DVE interpreter in the build" ON )
 option( COIN "include the CoIn interpreter in the build" ON )
+option( CESMI "include the CESMI binary interface in the build" ON )
 option( TIMED "include timed automata interpreter in the build" ON )
 option( LTL3BA "use ltl3ba for LTL to BA translation" OFF )
 option( MURPHI "enable Murphi model compiler" ON )
@@ -143,6 +144,10 @@ endif( SMALL )
 if( COIN )
   add_definitions( -DO_COIN )
 endif( COIN )
+
+if( CESMI )
+    add_definitions( -DO_CESMI )
+endif( CESMI )
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
