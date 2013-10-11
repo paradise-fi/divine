@@ -35,6 +35,7 @@ int openFlags( MMap::ProtectModeFlags flags ) {
         return O_RDONLY;
     if ( flags.has( MMap::ProtectMode::Write ) )
         return O_WRONLY;
+    assert_unreachable( "No open flags specified" );
 }
 
 MMap::MMap( const std::string &file, ProtectModeFlags flags ) :
