@@ -7,13 +7,8 @@
 #include <divine/generator/cesmi.h>
 #include <divine/toolkit/typelist.h>
 
-#ifdef O_LLVM
-#include <llvm/Support/Threading.h>
-#endif
-
-#ifdef O_EXPLICIT
-#include <divine/explicit/explicit.h>
-#endif
+#include <divine/llvm/support.h>
+#include <divine/explicit/header.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS
@@ -135,12 +130,10 @@ namespace generator {
         GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any, "divine/generator/llvm.h" );
         struct LLVMInit {
             void init( Meta &meta ) {
-                if ( meta.execution.threads > 1 && !::llvm::llvm_is_multithreaded() )
-                    if ( !::llvm::llvm_start_multithreaded() ) {
-                        std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                                  << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-                        assert_unreachable( "LLVM error" );
-                    }
+                if ( meta.execution.threads > 1 && !llvm::initMultithreaded() )
+                    std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
+                              << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
+                    assert_unreachable( "LLVM error" );
             }
         };
     }
@@ -171,14 +164,14 @@ namespace generator {
     struct Explicit : public intern::Explicit {
         static bool select( Meta &meta ) {
             return intern::Explicit::select( meta ) &&
-                dess::Explicit( meta.input.model ).header->labelSize == 0;
+                dess::Header::fromFile( meta.input.model ).labelSize == 0;
         }
     };
     struct ProbabilisticExplicit : public intern::ProbabilisticExplicit {
         static bool select( Meta &meta ) {
             return intern::ProbabilisticExplicit::select( meta )
-                && dess::Explicit( meta.input.model )
-                    .header->capabilities.has( dess::Capability::Probability );
+                && dess::Header::fromFile( meta.input.model )
+                    .capabilities.has( dess::Capability::Probability );
         }
     };
 #else
