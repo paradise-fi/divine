@@ -24,7 +24,7 @@ template< typename I >
 auto _show( std::stringstream &ss, I )
         -> typename std::enable_if< ( I::length > 0 ) >::type
 {
-    ss << I::Head::symbol << ", ";
+    ss << I::Head::key << ", ";
     _show( ss, typename I::Tail() );
 }
 
