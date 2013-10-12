@@ -21,51 +21,6 @@ static const std::vector< std::string > defaultHeaders = {
 struct Symbol {
     using str = std::string;
 
-    struct Atom {
-//        static const std::string NAMESPACE;
-        std::string name;
-        std::string get;
-        std::vector< std::string > headers;
-
-        Atom() = default;
-
-        template< typename S >
-        Atom( S ) : get( S::symbol ) {
-            init( S(), wibble::Preferred() );
-        }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-value"
-        template< typename S >
-        auto init( S, wibble::Preferred ) -> decltype( S::header, void() ) {
-#pragma GCC diagnostic pop
-            std::string head( S::header );
-            for ( size_t from = 0, to;
-                    to = head.find( ':', from ), from != std::string::npos;
-                    from = to == std::string::npos ? to : to + 1 )
-                headers.push_back( head.substr( from, to ) );
-            name = symbolName( S() );
-        }
-
-        template< typename S >
-        auto init( S, wibble::NotPreferred ) -> void {
-            name = symbolName( S() );
-        }
-
-#define SYMBOL_NAME( TRAIT, NS ) template< typename S > \
-        auto symbolName( S ) -> decltype( typename S::TRAIT(), std::string() ) { \
-            return str( NS ) + str( S::key ); \
-        }
-
-        SYMBOL_NAME( IsAlgorithm,  "algorithm::" );
-        SYMBOL_NAME( IsGenerator,  "generator::" );
-        SYMBOL_NAME( IsTransform,  "transform::" );
-        SYMBOL_NAME( IsVisitor,    "visitor::" );
-        SYMBOL_NAME( IsStore,      "store::" );
-        SYMBOL_NAME( IsTopology,   "topology::" );
-        SYMBOL_NAME( IsStatistics, "statistics::" );
-    };
-
     std::array< Atom, Instantiate::length > atoms;
 
     template< typename List >
@@ -189,9 +144,7 @@ struct Symbol {
     { }
 };
 
-// const std::string Symbol::Atom::NAMESPACE = "divine::instantiate::";
-
-bool operator<( const Symbol::Atom &a, const Symbol::Atom &b ) {
+bool operator<( const Atom &a, const Atom &b ) {
     return a.name < b.name;
 }
 
