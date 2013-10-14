@@ -17,6 +17,19 @@
 namespace divine {
 namespace instantiate {
 
+enum SelectOption { SE_WarnOther = 0x1, SE_LastDefault = 0x2 };
+
+template< SelectOption _opts, typename... Ts >
+struct _Select {
+    using List = TypeList< Ts... >;
+    constexpr static SelectOption opts = _opts;
+    using WarnOtherAvailable = _Select< SelectOption( SE_WarnOther | _opts ), Ts... >;
+    using LastAvailableIsDefault = _Select< SelectOption( SE_LastDefault | _opts ), Ts... >;
+};
+
+template< typename... Ts >
+struct Select : public _Select< SelectOption( 0 ), Ts... > { };
+
 struct Traits {
     /* this is kind of boilerplate code for accessing compile time macro definitions
      * at runtime
@@ -155,12 +168,6 @@ using Any = True;
 namespace algorithm {
     struct IsAlgorithmT { };
 
-    struct NoAlgorithmErr : public InstantiationError {
-        static std::string instantiationError( Meta & ) {
-            return "Selected algorithm is not available";
-        }
-    };
-
 #define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS, TR ) struct ALGO { \
         using IsAlgorithm = IsAlgorithmT; \
         static constexpr const char *header = HEADER; \
@@ -192,22 +199,14 @@ namespace algorithm {
     ALGORITHM( GenExplicit,      GenExplicit,      "GenExplicit",      "divine/algorithm/genexplicit.h", &Traits::dess );
 
 
-    using Algorithms = TypeList< NestedDFS, Owcty, Map, Reachability,
-              Metrics, Simulate, GenExplicit, Draw, Info,
-              NoAlgorithmErr
-          >;
+    using Algorithms = Select< NestedDFS, Owcty, Map, Reachability,
+              Metrics, Simulate, GenExplicit, Draw, Info >;
 #undef ALGORITHM
 #undef ALGORITHM_NS
 }
 
 namespace generator {
     struct IsGeneratorT { };
-
-    struct NoGeneratorErr : public InstantiationError {
-        static std::string instantiationError( Meta & ) {
-            return "Unknown input file extension.";
-        }
-    };
 
 #define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER, TR ) struct GEN { \
         using IsGenerator = IsGeneratorT; \
@@ -288,8 +287,8 @@ namespace generator {
         }
     };
 
-    using Generators = TypeList< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
-                                 ProbabilisticExplicit, Explicit, Dummy, NoGeneratorErr >;
+    using Generators = Select< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
+                                 ProbabilisticExplicit, Explicit, Dummy >;
 
 #undef GENERATOR
 }
@@ -324,7 +323,7 @@ namespace transform {
             "divine/algorithm/por-c3.h", !Tr( &Traits::small ) );
 #undef TRANSFORM
 
-    using Transforms = TypeList< POR, Fairness, None >;
+    using Transforms = Select< POR, Fairness, None >::WarnOtherAvailable::LastAvailableIsDefault;
 }
 
 namespace visitor {
@@ -349,7 +348,7 @@ namespace visitor {
     VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared, &Traits::always );
 #undef VISITOR
 
-    using Visitors = TypeList< Shared, Partitioned >;
+    using Visitors = Select< Shared, Partitioned >::LastAvailableIsDefault;
 }
 
 namespace store {
@@ -376,7 +375,8 @@ using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
     STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions, &Traits::hc );
     STORE( DefaultStore, true, Any, &Traits::always );
 
-    using Stores = TypeList< NTreeStore, HcStore, DefaultStore >;
+    using Stores = Select< NTreeStore, HcStore, DefaultStore >
+                    ::WarnOtherAvailable::LastAvailableIsDefault;
 }
 
 namespace topology {
@@ -411,7 +411,7 @@ namespace topology {
 
 #undef TOPOLOGY
 
-    using Topologies = TypeList< Mpi, Local >;
+    using Topologies = Select< Mpi, Local >::LastAvailableIsDefault;
 }
 
 namespace statistics {
@@ -435,7 +435,7 @@ namespace statistics {
     STATISTICS( NoStatistics, true, ForNoStat, &Traits::performance );
 #undef STATISTICS
 
-    using Statistics = TypeList< TrackStatistics, NoStatistics >;
+    using Statistics = Select< TrackStatistics, NoStatistics >::LastAvailableIsDefault;
 }
 
 template< typename Graph, typename Store >
@@ -450,7 +450,6 @@ using Instantiate = TypeList<
               topology::Topologies,
               statistics::Statistics
           >;
-
 }
 }
 

@@ -51,8 +51,16 @@ struct MetaSelector {
     template< typename T, typename TrueFn, typename FalseFn >
     ReturnType ifSelect( T, TrueFn trueFn, FalseFn falseFn ) {
         if ( T::select( meta ) ) {
-            postSelect( meta, T(), wibble::Preferred() );
-            return trueFn();
+            if ( T::trait( Traits::available() ) ) {
+                postSelect( meta, T(), wibble::Preferred() );
+                return trueFn();
+            } else {
+                std::cerr << "WARNING: " << Atom( T() ).friendlyName
+                          << " should be selected, but it is not available" << std::endl
+                          << "(when selecting " << Atom( T() ).component << ")." << std::endl
+                          << "Will try other instances..." << std::endl;
+                return falseFn();
+            }
         }
         else
             return falseFn();
@@ -63,6 +71,26 @@ struct MetaSelector {
         std::cerr << "FATAL: " << Error::instantiationError( meta ) << std::endl
                   << "FATAL: Internal instantiation error." << std::endl;
         return nullptr;
+    }
+
+    ReturnType instantiationError( std::string component ) {
+        std::cerr << "FATAL: Failed to select " << component << " please check your input." << std::endl
+                  << "FATAL: Internal instantiation error." << std::endl;
+        return nullptr;
+    }
+
+    template< typename Array >
+    void warnOtherAvailable( Atom selected, Array others ) {
+        std::string component = selected.component;
+        std::vector< std::string > otherNames;
+        std::for_each( others.begin(), others.end(), [ &otherNames ]( const Atom &at ) {
+                otherNames.push_back( at.friendlyName );
+            } );
+        std::cerr << "WARNING: Following components of type " << component
+                  << " were not selected" << std::endl
+                  << "because " << selected.friendlyName
+                  << " has higher priority:" << std::endl
+                  << wibble::str::fmt_container( otherNames, '[', ']' ) << std::endl;
     }
 
     template< typename Selected >

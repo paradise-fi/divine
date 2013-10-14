@@ -73,9 +73,6 @@ struct Symbol {
     void specializationDecl( OStream &os ) const {
         os << "template<>" << std::endl
            << "AlgoR createInstance< " << typeList() << " >( Meta & );" << std::endl;
-/*           << "{" << std::endl
-           << "    static AlgoR create( Meta & );" << std::endl
-           << "};" << std::endl;*/
     }
 
     auto externDeclaration() const -> std::string {
@@ -188,6 +185,9 @@ struct SymbolListSelector {
 
     template< typename T >
     ReturnType instantiationError( T ) { return ReturnType(); }
+
+    template< typename... T >
+    void warnOtherAvailable( T... ) { }
 
     template< typename Selected >
     ReturnType create() {
