@@ -1,19 +1,19 @@
 Common Explicit-State Model Interface
 =====================================
 
-DiVinE provides an implementation for CESMI, which defines a simple common
+DIVINE provides an implementation for CESMI, which defines a simple common
 interface between a model-checking core and a module that generates the state
 space of the model in a demand-driven fashion.
 
 CESMI does not specifically demand any concrete implementation of the
-interface. DiVinE provides a C-runtime-compatible ABI conforming to the CESMI
+interface. DIVINE provides a C-runtime-compatible ABI conforming to the CESMI
 specification, as well as C (and C++) and Haskell APIs, which can then be
 translated to conform to the provided ABI using standard tools. Loading a
 compiled CESMI module is facilitated by using dynamic (shared) libraries on the
 target platform: ELF Shared Object files are supported on POSIX platforms, and
 Dynamically Linked Libraries (DLLs) on Win32 (Win64) platforms.
 
-DiVinE currently provides two compilers to translate models in specific
+DIVINE currently provides two compilers to translate models in specific
 modelling formalisms to CESMI modules: a compiler for the DVE language (which
 is also supported directly through an interpreter) and a compiler for the
 MurPHI language, adapted from the original MurPHI model compiler.
@@ -70,7 +70,7 @@ typedef struct {
     cesmi_node (*make_node)( const cesmi_setup *, int );
     cesmi_node (*clone_node)( const cesmi_setup *, cesmi_node );
     int (*add_property)( cesmi_setup *, char *, char *, int );
-    void *instance; // per-instance data; never touched by DiVinE
+    void *instance; // per-instance data; never touched by DIVINE
     int property_count; /* filled in by setup */
     int property; /* filled in by loader */
     int instance_initialised;
@@ -172,7 +172,7 @@ given, plus a handle. The handle is treated the same way as in `get_successor`:
 in the given origin state, or, if no such transition exists, return a `NULL`
 pointer.
 
-Building CESMI Modules with DiVinE
+Building CESMI Modules with DIVINE
 ==================================
 
 The CESMI module more or less represents a generic oriented graph. It is
@@ -191,7 +191,7 @@ repetitive, since large part of the work is the same from model to model:
 constructing the Büchi automaton from an LTL formula and synchronising its
 guards with the system, based on values of atomic propositions of the formula.
 
-To this end, DiVinE provides a small framework to help you build CESMI modules
+To this end, DIVINE provides a small framework to help you build CESMI modules
 suitable for LTL model checking out of a system description and a set of LTL
 formulas, exposed via the `divine compile --cesmi` sub-command.
 
@@ -243,7 +243,7 @@ int get_initial( const cesmi_setup *s, int h, cesmi_node *n ) {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For a full example, please refer to `examples/cesmi/withltl.c` shipped in
-DiVinE source tarballs. Compile and test it like this:
+DIVINE source tarballs. Compile and test it like this:
 
     $ divine compile --cesmi examples/cesmi/withltl.c \
                              examples/cesmi/withltl.ltl

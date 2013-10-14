@@ -25,7 +25,7 @@ XML file with the model.
 
     $ divine verify model.xml
 
-DiVinE runs the reachability analysis to find an error state or a time
+DIVINE runs the reachability analysis to find an error state or a time
 deadlock. By default, the LU extrapolation is in use, so the time-lock detection
 is disabled (see [Havlicek 2013: Untimed LTL Model Checking of Timed Automata,
 Chapter 2). However, --no-reduce option can be used to force the maximal bounds
@@ -34,7 +34,7 @@ extrapolation, thus allowing the time-lock detection.
 To check for validity of LTL properties, a file with a suffix .ltl and the same
 base name as the model file has to be created. This file can contain one or more
 L properties constructed using LTL specification language (see LTL specification
-format above).  Due to limitations of the tool that DiVinE uses to transform LTL
+format above).  Due to limitations of the tool that DIVINE uses to transform LTL
 formulae to corresponding Büchi automata, atomic propositions can contain only
 lower case letters, digits, underscore and must not begin with a digit. For this
 reason, C-like defines can be used before property declarations to name any
@@ -42,7 +42,7 @@ boolean expression in the Uppaal modelling language with a suitable name.  The
 only additional limitation is that all clock constrains have to be defined as
 separate atomic propositions. All lines in the LTL file that do not begin with
 #define or #property are ignored and can be used for comments. An example of a
-valid LTL file is given below, other ones are shipped with DiVinE. 
+valid LTL file is given below, other ones are shipped with DIVINE.
 
     #define time1 (time <= 60) 
     #define time2 (time < 70) 
@@ -61,8 +61,8 @@ similarly to obtain a full report of the verification including an error trace,
 use -r.  
 
 Semantics of property specifications is slightly different from Uppaal.  First
-of all, DiVinE considers only runs where action and delay transitions
-alternate. This means that DiVinE, unlike Uppaal, does not consider runs where
+of all, DIVINE considers only runs where action and delay transitions
+alternate. This means that DIVINE, unlike Uppaal, does not consider runs where
 the system stays in one location for an infinite amount of time.  The temporal
 operator X considers the next state to be a state that can be reached by
 performing exactly one action transition followed by an arbitrary delay

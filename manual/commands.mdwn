@@ -1,11 +1,11 @@
-Using the DiVinE commandline interface
+Using the DIVINE commandline interface
 ======================================
 
-The main interface to DiVinE is the command-line tool simply called
+The main interface to DIVINE is the command-line tool simply called
 `divine`. Additionally, some of the functionality is also available via
-`divine.ide` which is documented separately. DiVinE supports a number of input
+`divine.ide` which is documented separately. DIVINE supports a number of input
 languages and not all features are available with all input languages. These
-limitations are documented here. Additionally, since DiVinE has many build
+limitations are documented here. Additionally, since DIVINE has many build
 dependencies and needs substantial amount of RAM and disk space to compile,
 many features can be disabled at compile time to reduce some of these
 requirements. The binary will normally give you an explanation if you request
@@ -13,7 +13,7 @@ an operation that has been disabled at compile time. To get a list of options
 your `divine` binary has been compiled with, simply issue
 
     $ divine --version
-    DiVinE version 2.91
+    DIVINE version 2.91
     Version: 2.91
     Build-Date: 2013-01-18, 09:22 UTC
     Pointer-Width: 64
@@ -97,7 +97,7 @@ To pick a specific formula, use -p N (with N being the sequence number of a
 `#property` in the `.ltl` file, in this case 1 or 2). When -p is in effect,
 `-o` can be used to direct the generated DVE file to standard output.
 
-Syntax of LTL formulas as accepted by DiVinE is as follows:
+Syntax of LTL formulas as accepted by DIVINE is as follows:
 
     F :== un_op F | F bin_op F | (F) | term
     un_op :== '!' (logical negation)
@@ -118,7 +118,7 @@ Syntax of LTL formulas as accepted by DiVinE is as follows:
 Configuring the Parallel Model Checking Engine
 ----------------------------------------------
 
-Many of the algorithms divine can use are parallel and optionally
+Many of the algorithms DIVINE can use are parallel and optionally
 distributed. Both `metrics` and in common cases the `verify` subcommand will
 use a parallel algorithm to explore the state space of the system. All the
 parallel algorithms have a number of parameters in common, and we will discuss
@@ -165,19 +165,19 @@ them in this section.
 Distributed Execution
 ---------------------
 
-DiVinE can be built with support for MPI-based distributed verification. To
-execute divine across multiple machines, you should use `mpiexec` or `mpirun`
+DIVINE can be built with support for MPI-based distributed verification. To
+execute DIVINE across multiple machines, you should use `mpiexec` or `mpirun`
 from your MPI distribution (consult your MPI manual for details and exact
 invocation parameters you need). An usual invocation will look like this:
 
     $ mpiexec -H hostname1,hostname2 divine -w 4 model.dve
 
-This command will execute divine on 2 machines specified with -H, using 4
+This command will execute DIVINE on 2 machines specified with -H, using 4
 worker threads on each (for a total of 8 threads). You should make sure that
-your divine binary is available on $PATH for non-interactive ssh commands (try
+your DIVINE binary is available on $PATH for non-interactive ssh commands (try
 running `ssh hostname1 divine`). Alternatively, you can specify an absolute
-path to your divine binary, assuming it lives in the same place across all
-machines. Finally, input file(s) to divine need to be available on each machine
+path to your DIVINE binary, assuming it lives in the same place across all
+machines. Finally, input file(s) to DIVINE need to be available on each machine
 as well, using the same path used in your invocation.
 
 State Space Metrics, Visualisation & Exploration
@@ -190,7 +190,7 @@ State Space Metrics, Visualisation & Exploration
 
 The `metrics` sub-command runs a simple reachability on the entire state space
 of a system, reporting summary statistics. This is the most efficient algorithm
-in divine that explores the state space, both in terms of memory and CPU,
+in DIVINE that explores the state space, both in terms of memory and CPU,
 although only by a slight margin. See [next section] [#model-checking] on
 details of the model-related switches.
 

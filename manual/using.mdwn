@@ -1,16 +1,16 @@
-An Introduction to Using DiVinE
+An Introduction to Using DIVINE
 ===============================
 
-In this section, we will give a short example on how to invoke divine and its
+In this section, we will give a short example on how to invoke DIVINE and its
 various functions. First of all, we need a "model" or "system" to work on. This
-is the main input file to divine, and can come in a few different formats. It
+is the main input file to DIVINE, and can come in a few different formats. It
 could be a LLVM bitcode file, a CESMI shared object, or a DVE model or an
 UPPAAL model. The workflow is very similar for all input languages, although
 the details vary. We will use a C program as an example "system" in this
 section, along with a few simple properties. You may have noticed that "C
-program" was not listed as an input option above -- this is because divine does
+program" was not listed as an input option above -- this is because DIVINE does
 not directly understand C programs. They first need to be translated into LLVM
-bitcode, and divine can work with that.
+bitcode, and DIVINE can work with that.
 
 System Modelling Basics
 -----------------------
@@ -44,7 +44,7 @@ int main() {
 `i`. We will deal with that later.)
 
 The program as it is can be compiled using your system's C compiler just fine
-(assuming access to `pthread.h`) and you can try running it. To use DiVinE, we
+(assuming access to `pthread.h`) and you can try running it. To use DIVINE, we
 will need to compile it a little differently:
 
     $ divine compile --llvm program.c
@@ -76,10 +76,10 @@ program yet):
                2 deadlocks
      =============================================
 
-One thing you might notice off-hand is that DiVinE said that there are
+One thing you might notice off-hand is that DIVINE said that there are
 deadlocks in the program. This sounds strange at first, but the notion of a
-"deadlock" in DiVinE is not the same as you would expect in a C program. In
-many other formalisms out of the spectrum supported by DiVinE, any system state
+"deadlock" in DIVINE is not the same as you would expect in a C program. In
+many other formalisms out of the spectrum supported by DIVINE, any system state
 for which there are no legal successor states is considered a deadlock. For our
 C program, this is what happens when the program exits. Hence, terminating C
 programs will always have some "deadlocks" in them -- this is no reason for
@@ -88,7 +88,7 @@ state space, and we will need a different approach for detection of such
 deadlocks.
 
 Anyhow, we have learned that our program has 25 unique states and there are 42
-transitions between these states. By default, DiVinE tries to use the most
+transitions between these states. By default, DIVINE tries to use the most
 efficient reduction available which is still exact (i.e. it will not use
 hash-compaction or other approximation techniques unless explicitly enabled).
 We can try turning off those reductions to see what happens:
@@ -116,7 +116,7 @@ Property Verification & Counter-Example Analysis
 ------------------------------------------------
 
 Now let's turn to some more interesting properties. With the above program, the
-first thing that comes to mind is asking DiVinE whether the assertion in the
+first thing that comes to mind is asking DIVINE whether the assertion in the
 program can ever be violated:
 
     $ divine verify program.bc -p assert
@@ -128,7 +128,7 @@ program can ever be violated:
                The property DOES NOT hold      
      ============================================= 
 
-Here, as we have anticipated, DiVinE tells us that in fact, the assertion *can*
+Here, as we have anticipated, DIVINE tells us that in fact, the assertion *can*
 be violated. However, in itself, this is not extremely helpful: we would also
 like to know why this is so. Let's try to get a counterexample:
 

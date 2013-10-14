@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <QHelpCollectionProject version="1.0">
   <assistant>
-    <title>DiVinE Help</title>
+    <title>DIVINE Help</title>
     <startPage>qthelp://divine/manual/manual.html</startPage>
     <homePage>qthelp://divine/manual/manual.html</homePage>
     <aboutDialog>

@@ -18,7 +18,7 @@ Prerequisites
   Note: If your computer is connected to the Internet during installation, the
   configure script is able to download and compile cmake package for you.
 * About 2GB of disk space. 4GB of RAM is recommended.
-* Various optional components of DiVinE have further dependencies. Please
+* Various optional components of DIVINE have further dependencies. Please
   consult the output from `cmake` to determine what other libraries or tools
   you may need:
 
@@ -55,12 +55,12 @@ configuration and re-generate makefiles, respectively.
 
 ### External Programs
 
-Some parts of divine, especially the `compile` and `combine` sub-commands will
-need to run external tools. By default, divine will expect to find these
+Some parts of DIVINE, especially the `compile` and `combine` sub-commands will
+need to run external tools. By default, DIVINE will expect to find these
 commands in your `PATH` under their common names. Please pay close attention to
 the `CMD_` variables, as they are not checked at configure time, *especially if
 your system provides multiple versions of LLVM*. While you can override the
-commands to use on divine's command-line later (using `--cmd-xxx=yyy`
+commands to use on DIVINE's command-line later (using `--cmd-xxx=yyy`
 switches), this may be inconvenient.
 
 **NB.** Please take extra care that the "GNU gold" linker you are providing to
@@ -92,13 +92,13 @@ check that your installation is working as expected:
     $ ./divine verify -p LTL ../../examples/dve/peterson-liveness.dve
     $ ./divine verify -p LTL ../../examples/dve/peterson-naive.dve
 
-You can also run the test-suites, to ensure that divine is working properly on
+You can also run the test-suites, to ensure that DIVINE is working properly on
 your system and with your versions of libraries and tools:
 
     $ make check
 
 While there is no need to install the binary (it is self-contained and you can
-move or copy it to a location of your choice), you can easily install divine
+move or copy it to a location of your choice), you can easily install DIVINE
 system-wide for convenient access:
 
     # make install

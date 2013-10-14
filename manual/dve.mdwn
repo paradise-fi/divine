@@ -6,7 +6,7 @@ interpret and sufficiently powerful to express interesting problems for the
 purpose of model checking.
 
 A set of "case studies" is available, in the form of DVE source code, in the
-`examples` subdirectory of the DiVinE distribution.
+`examples` subdirectory of the DIVINE distribution.
 
 * toc
 {:toc}
@@ -295,11 +295,11 @@ inside a critical section, and outside it.
 
 The process starts in state `outCS` and there's one transition from `outCS` to
 `inCS` and one from `inCS` to `outCS`, neither of them having any guards or
-effects. Indeed, performing a reachability analysis using DiVinE tells us that
+effects. Indeed, performing a reachability analysis using DIVINE tells us that
 two states are reachable.
 
 If we omit one of the transitions, we create a *deadlock* state -- the
-automaton is stuck in it, not able to proceed. DiVinE is able to detect and
+automaton is stuck in it, not able to proceed. DIVINE is able to detect and
 describe such states.
 
 Next, we'd like to have multiple similar processes, all described by one
@@ -415,7 +415,7 @@ The whole model of this faulty lock looks like this:
 
         system async;
 
-Now, you may want DiVinE to tell you if it is possible to get to a state where
+Now, you may want DIVINE to tell you if it is possible to get to a state where
 two processes are both in a critical section. An LTL property claiming that it
 is not is this:
 
@@ -424,7 +424,7 @@ is not is this:
         #property !F (c0 && c1)
 
 If we find a counterexample to this property then it is possible to reach
-such state and the lock is faulty. DiVinE finds such counterexample indeed.
+such state and the lock is faulty. DIVINE finds such counterexample indeed.
 For information about using `divine-mc.combine` and `divine-mc owcty` to
 perform the check, please see the [Tool guide][toolguide].
 

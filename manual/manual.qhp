@@ -2,7 +2,7 @@
 <QtHelpProject version="1.0">
   <namespace>divine</namespace>
   <virtualFolder>manual</virtualFolder>
-  <customFilter name="DiVinE">
+  <customFilter name="DIVINE">
     <filterAttribute>divine</filterAttribute>
   </customFilter>
   <filterSection>
@@ -10,7 +10,7 @@
     <toc>
       <section title="Introduction" ref="manual.html#introduction"/>
       <section title="Installation" ref="manual.html#installation"/>
-      <section title="Using the DiVinE commandline interface" ref="manual.html#using-the-divine-commandline-interface"/>
+      <section title="Using the DIVINE commandline interface" ref="manual.html#using-the-divine-commandline-interface"/>
     </toc>
     <keywords>
 <!--      <keyword name="foo" id="MyApplication::foo" ref="doc.html#foo"/>

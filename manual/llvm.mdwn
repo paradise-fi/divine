@@ -45,7 +45,7 @@ depending on your use-case, and on the amount of memory and time that you have.
 With the universal LLVM backend, DIVINE can support a wide range of compiled
 programming languages. However, language-specific support is only provided for
 C and C++. A fairly complete ISO C runtime library is provided as part of
-divine, with appropriate hooks into divine, as well as an implementation of the
+DIVINE, with appropriate hooks into DIVINE, as well as an implementation of the
 `pthread` specification, i.e. the POSIX threading interface.
 
 If your language interfaces with the C library, that part of language support
@@ -58,7 +58,7 @@ Compiling Programs
 ------------------
 
 The first step to take when you want to use DIVINE for C/C++ verification is to
-compile your program into LLVM bitcode and link it against the divine-provided
+compile your program into LLVM bitcode and link it against the DIVINE-provided
 runtime libraries. When you issue `divine compile --llvm program.c`, `divine`
 will compile the runtime support and your program and link them together
 automatically, using clang. You can use `--only-libraries` (without a program)
@@ -68,14 +68,14 @@ layout (basically, on common x86 platforms, this boils down to whether your
 clang is configured to use 32b or 64b pointers), you can re-use them with later
 `divine compile --llvm` invocations by adding the
 `--precompiled=/path/to/the/libraries` switch. Please be sure that you always
-use libraries built by a matching version of divine. To change the switches
+use libraries built by a matching version of DIVINE. To change the switches
 passed to clang when you compile your program, use `--cflags`.
 
 Alternatively, you can compile your program manually (possibly to use
-gcc/dragonegg instead of clang) and link the resulting bitcode with divine's
+gcc/dragonegg instead of clang) and link the resulting bitcode with DIVINE's
 runtime libraries mentioned above. You can obtain the correct linker invocation
 from the output of `divine compile --llvm`. Assuming that you now have a
-`program.bc` file, you should proceed to check that divine can load it, by
+`program.bc` file, you should proceed to check that DIVINE can load it, by
 issuing `divine info program.bc`. Your program might be missing some symbols,
 as the LLVM linkers currently fail to report when this happens.
 
