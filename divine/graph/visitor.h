@@ -434,7 +434,7 @@ struct Shared {
         void run() {
             worker.restart();
             detector.visitorStart();
-            do {
+            while( detector.waitForAll( worker.peers() ) ) {
                 while ( !bfv.open().termination.isZero() ) {
                     /* Take a whole chunk of work. */
                     if ( bfv.open().empty() ) {
@@ -447,7 +447,7 @@ struct Shared {
 
                     bfv.processQueue();
                 }
-            } while ( worker.peers() > detector.started() );
+            }
         }
 
         inline void setIds() {
