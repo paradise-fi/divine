@@ -191,8 +191,24 @@ struct SymbolListSelector {
 
     template< typename Selected >
     ReturnType create() {
-        addSymbol( Symbol( Selected() ) );
+        if ( checkSelected( Selected(), Traits::compiled() ) )
+            addSymbol( Symbol( Selected() ) );
         return wibble::Unit();
+    }
+
+    template< typename Selected >
+    auto checkSelected( Selected, const Traits &tr ) -> typename
+        std::enable_if< ( Selected::length > 0 ), bool >::type
+    {
+        return Selected::Head::trait( tr )
+            && checkSelected( typename Selected::Tail(), tr );
+    }
+
+    template< typename Selected >
+    auto checkSelected( Selected, const Traits & ) -> typename
+        std::enable_if< Selected::length == 0, bool >::type
+    {
+        return true;
     }
 
     auto externDeclarations() const -> std::string {

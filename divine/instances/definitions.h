@@ -6,6 +6,7 @@
 #include <wibble/sfinae.h>
 #include <divine/generator/cesmi.h>
 #include <divine/toolkit/typelist.h>
+#include <array>
 
 #include <divine/llvm/support.h>
 #include <divine/explicit/header.h>
@@ -15,6 +16,131 @@
 
 namespace divine {
 namespace instantiate {
+
+struct Traits {
+    /* this is kind of boilerplate code for accessing compile time macro definitions
+     * at runtime
+     *
+     * no bitfiels -- pointers to members will be taken
+     */
+    bool performance;
+    bool small;
+    bool dve;
+    bool llvm;
+    bool timed;
+    bool mpi;
+    bool coin;
+    bool cesmi;
+    bool dess; //explicit
+    bool ntree;
+    bool hc;
+    bool pools;
+    bool jit;
+
+    struct Get {
+        Get( bool Traits::* p ) :
+            fn( [ p ]( const Traits &tr ) -> bool { return tr.*p; } )
+        { }
+        Get( bool (Traits::*f)() const ) :
+            fn( [ f ]( const Traits &tr ) -> bool { return (tr.*f)(); } )
+        { }
+
+        bool operator()( const Traits &tr ) { return fn( tr ); }
+
+        Get operator!() const {
+            auto fn_ = fn;
+            return Get( [ fn_ ]( const Traits &tr ) { return !fn_( tr ); } );
+        }
+
+        friend Get operator&&( const Get &a, const Get &b ) {
+            auto fa = a.fn;
+            auto fb = b.fn;
+            return Get( [ fa, fb ]( const Traits &tr ) { return fa( tr ) && fb( tr ); } );
+        }
+
+        friend Get operator||( const Get &a, const Get &b ) {
+            auto fa = a.fn;
+            auto fb = b.fn;
+            return Get( [ fa, fb ]( const Traits &tr ) { return fa( tr ) || fb( tr ); } );
+        }
+
+      private:
+        std::function< bool( const Traits & ) > fn;
+
+        Get( std::function< bool( const Traits & ) > fn ) : fn( fn ) { }
+    };
+
+    bool always() const { return true; }
+
+    friend Traits operator|( const Traits &a, const Traits &b ) {
+        using BoolArray = std::array< bool, sizeof( Traits ) / sizeof( bool ) >;
+
+        union U {
+            BoolArray arr;
+            Traits tr;
+            U() : tr() { }
+            U( const Traits &tr ) : tr( tr ) { }
+        };
+
+        U out;
+        U au( a ), bu( b );
+        for ( int i = 0; i < out.arr.size(); ++i )
+            out.arr[ i ] = au.arr[ i ] | bu.arr[ i ];
+        return out.tr;
+    }
+
+    Traits() { std::memset( this, 0, sizeof( Traits ) ); }
+
+    static Traits available() { return compiled(); }
+
+    static Traits compiled() {
+        Traits t;
+#ifdef O_PERFORMANCE
+        t.performance = true;
+#endif
+#ifdef O_SMALL
+        t.small = true;
+#endif
+#ifdef O_DVE
+        t.dve = true;
+#endif
+#ifdef O_LLVM
+        t.llvm = true;
+#endif
+#ifdef O_TIMED
+        t.timed = true;
+#endif
+#ifdef O_MPI
+        t.mpi = true;
+#endif
+#ifdef O_COIN
+        t.coin = true;
+#endif
+#ifdef O_CESMI
+        t.cesmi = true;
+#endif
+#ifdef O_EXPLICIT
+        t.dess = true;
+#endif
+#ifdef O_COMPRESSION
+        t.ntree = true;
+#endif
+#ifdef O_HASH_COMPACTION
+        t.hc = true;
+#endif
+#ifdef O_POOLS
+        t.pools = true;
+#endif
+#ifdef O_JIT
+        t.jit = true;
+#endif
+        return t;
+    }
+};
+
+using Tr = Traits::Get;
+
+#define TRAIT_STATIC( x ) static bool trait( const Traits &tr ) { return Traits::Get( x )( tr ); }
 
 struct NotSelected { };
 
@@ -35,7 +161,7 @@ namespace algorithm {
         }
     };
 
-#define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS ) struct ALGO { \
+#define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS, TR ) struct ALGO { \
         using IsAlgorithm = IsAlgorithmT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "template< typename Setup >\n" \
@@ -49,24 +175,21 @@ namespace algorithm {
         static void postSelect( Meta &meta ) { \
             meta.algorithm.name = name; \
         } \
+        TRAIT_STATIC( TR ) \
     }
 
-#define ALGORITHM( ALGO, META_ID, NAME, HEADER ) \
-    ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, ::divine::algorithm )
+#define ALGORITHM( ALGO, META_ID, NAME, HEADER, TR ) \
+    ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, ::divine::algorithm, TR )
 
-    ALGORITHM( NestedDFS,    Ndfs,         "Nested DFS",   "divine/algorithm/nested-dfs.h" );
-    ALGORITHM( Owcty,        Owcty,        "OWCTY",        "divine/algorithm/owcty.h" );
-    ALGORITHM( Map,          Map,          "MAP",          "divine/algorithm/map.h" );
-    ALGORITHM( Reachability, Reachability, "Reachability", "divine/algorithm/reachability.h" );
-    ALGORITHM( Metrics,      Metrics,      "Metrics",      "divine/algorithm/metrics.h" );
-    ALGORITHM( Simulate,     Simulate,     "Simulate",     "divine/algorithm/simulate.h" );
-#if O_EXPLICIT
-    ALGORITHM( GenExplicit,      GenExplicit,      "GenExplicit",      "divine/algorithm/genexplicit.h" );
-#else
-    using GenExplicit = _Missing;
-#endif
-    ALGORITHM_NS( Draw,      Draw,         "Draw",         "tools/draw.h", ::divine );
-    ALGORITHM_NS( Info,      Info,         "Info",         "tools/info.h", ::divine );
+    ALGORITHM( NestedDFS,    Ndfs,         "Nested DFS",   "divine/algorithm/nested-dfs.h", &Traits::always );
+    ALGORITHM( Owcty,        Owcty,        "OWCTY",        "divine/algorithm/owcty.h", &Traits::always );
+    ALGORITHM( Map,          Map,          "MAP",          "divine/algorithm/map.h", &Traits::always );
+    ALGORITHM( Reachability, Reachability, "Reachability", "divine/algorithm/reachability.h", &Traits::always );
+    ALGORITHM( Metrics,      Metrics,      "Metrics",      "divine/algorithm/metrics.h", &Traits::always );
+    ALGORITHM( Simulate,     Simulate,     "Simulate",     "divine/algorithm/simulate.h", &Traits::always );
+    ALGORITHM_NS( Draw,      Draw,         "Draw",         "tools/draw.h", ::divine, &Traits::always );
+    ALGORITHM_NS( Info,      Info,         "Info",         "tools/info.h", ::divine, &Traits::always );
+    ALGORITHM( GenExplicit,      GenExplicit,      "GenExplicit",      "divine/algorithm/genexplicit.h", &Traits::dess );
 
 
     using Algorithms = TypeList< NestedDFS, Owcty, Map, Reachability,
@@ -86,7 +209,7 @@ namespace generator {
         }
     };
 
-#define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER ) struct GEN { \
+#define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER, TR ) struct GEN { \
         using IsGenerator = IsGeneratorT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "using _Generator = ::divine::generator::" #GEN ";\n"; \
@@ -101,33 +224,20 @@ namespace generator {
         static void postSelect( Meta &meta ) { \
             meta.input.modelType = name; \
         } \
+        TRAIT_STATIC( TR ) \
     }
 
-#ifdef O_DVE
-    GENERATOR( Dve, ".dve", "DVE", Any, "divine/generator/dve.h" );
-#else
-    using Dve = _Missing;
-#endif
-
-#if defined( O_COIN ) && !defined( O_SMALL )
-    GENERATOR( Coin, ".coin", "CoIn", Any, "divine/generator/coin.h" );
-#else
-    using Coin = _Missing;
-#endif
-
-#ifdef O_TIMED
-    GENERATOR( Timed, ".xml", "Timed", Any, "divine/generator/timed.h" );
-#else
-    using Timed = _Missing;
-#endif
-
+    GENERATOR( Dve, ".dve", "DVE", Any, "divine/generator/dve.h", &Traits::dve );
+    GENERATOR( Coin, ".coin", "CoIn", Any, "divine/generator/coin.h", &Traits::coin );
+    GENERATOR( Timed, ".xml", "Timed", Any, "divine/generator/timed.h", &Traits::timed );
     GENERATOR( CESMI, ::divine::generator::cesmi_ext, "CESMI", Any,
-            "divine/generator/cesmi.h" );
+            "divine/generator/cesmi.h", &Traits::cesmi );
 
-#ifdef O_LLVM
     namespace intern {
-        GENERATOR( LLVM, ".bc", "LLVM", Any, "divine/generator/llvm.h" );
-        GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any, "divine/generator/llvm.h" );
+        GENERATOR( LLVM, ".bc", "LLVM", Any, "divine/generator/llvm.h", &Traits::llvm );
+        GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any,
+                "divine/generator/llvm.h", &Traits::llvm );
+
         struct LLVMInit {
             void init( Meta &meta ) {
                 if ( meta.execution.threads > 1 && !llvm::initMultithreaded() )
@@ -149,17 +259,11 @@ namespace generator {
         }
     };
 
-#else
-    using LLVM = _Missing;
-    using ProbabilisticLLVM = _Missing;
-#endif
-
-#if O_EXPLICIT
     namespace intern {
         GENERATOR( Explicit, dess::extension, "Explicit",
-                Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
+                Not< algorithm::GenExplicit >, "divine/generator/explicit.h", &Traits::dess );
         GENERATOR( ProbabilisticExplicit, dess::extension, "Probabilistic explicit",
-                Not< algorithm::GenExplicit >, "divine/generator/explicit.h" );
+                Not< algorithm::GenExplicit >, "divine/generator/explicit.h", &Traits::dess );
     }
     struct Explicit : public intern::Explicit {
         static bool select( Meta &meta ) {
@@ -174,23 +278,15 @@ namespace generator {
                     .capabilities.has( dess::Capability::Probability );
         }
     };
-#else
-    using Explicit = _Missing;
-    using ProbabilisticExplicit = _Missing;
-#endif
 
-#ifndef O_SMALL
     namespace intern {
-        GENERATOR( Dummy, nullptr, "Dummy", Any, "divine/generator/dummy.h" );
+        GENERATOR( Dummy, nullptr, "Dummy", Any, "divine/generator/dummy.h", !Tr( &Traits::small ) );
     }
     struct Dummy : public intern::Dummy {
         static bool select( Meta &meta ) {
             return meta.input.dummygen;
         }
     };
-#else
-    using Dummy = _Missing;
-#endif
 
     using Generators = TypeList< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
                                  ProbabilisticExplicit, Explicit, Dummy, NoGeneratorErr >;
@@ -201,7 +297,7 @@ namespace generator {
 namespace transform {
     struct IsTransformT { };
 
-#define TRANSFORM( TRANS, SYMBOL, SELECTOR, SUPPORTED_BY, HEADER ) struct TRANS { \
+#define TRANSFORM( TRANS, SYMBOL, SELECTOR, SUPPORTED_BY, HEADER, TR ) struct TRANS { \
         using IsTransform = IsTransformT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "template< typename Graph, " \
@@ -213,21 +309,19 @@ namespace transform {
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
+        TRAIT_STATIC( TR ) \
     }
 
     TRANSFORM( None, "::divine::graph::NonPORGraph< Graph, Store >", true,
-            Any, "divine/graph/por.h" );
-#ifndef O_SMALL
+            Any, "divine/graph/por.h", &Traits::always );
+
     using ForReductions = And< generator::Dve, Not< algorithm::Info > >;
     TRANSFORM( Fairness, "::divine::graph::FairGraph< Graph, Store >",
-            meta.algorithm.fairness, ForReductions, "divine/graph/fairness.h" );
+            meta.algorithm.fairness, ForReductions, "divine/graph/fairness.h",
+            !Tr( &Traits::small ) );
     TRANSFORM( POR, "::divine::algorithm::PORGraph< Graph, Store, Stat >",
             meta.algorithm.reduce.count( graph::R_POR ), ForReductions,
-            "divine/algorithm/por-c3.h" );
-#else
-    using Fairness = _Missing;
-    using POR = _Missing;
-#endif
+            "divine/algorithm/por-c3.h", !Tr( &Traits::small ) );
 #undef TRANSFORM
 
     using Transforms = TypeList< POR, Fairness, None >;
@@ -236,7 +330,7 @@ namespace transform {
 namespace visitor {
     struct IsVisitorT { };
 
-#define VISITOR( VISIT, SELECTOR, SUPPORTED_BY ) struct VISIT { \
+#define VISITOR( VISIT, SELECTOR, SUPPORTED_BY, Tr ) struct VISIT { \
         using IsVisitor = IsVisitorT; \
         static constexpr const char *symbol = \
                     "using _Visitor = ::divine::visitor::" #VISIT ";\n" \
@@ -247,11 +341,12 @@ namespace visitor {
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
+        TRAIT_STATIC( Tr ) \
     }
 
-    VISITOR( Partitioned, true, Any );
+    VISITOR( Partitioned, true, Any, &Traits::always );
     using ForShared = Not< Or< algorithm::Simulate, algorithm::GenExplicit, algorithm::Info > >;
-    VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared );
+    VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared, &Traits::always );
 #undef VISITOR
 
     using Visitors = TypeList< Shared, Partitioned >;
@@ -260,7 +355,7 @@ namespace visitor {
 namespace store {
     struct IsStoreT { };
 
-#define STORE( STOR, SELECTOR, SUPPORTED_BY ) struct STOR { \
+#define STORE( STOR, SELECTOR, SUPPORTED_BY, Tr ) struct STOR { \
         using IsStore = IsStoreT; \
         static constexpr const char *symbol = \
             "template < typename Provider, typename Generator, typename Hasher, typename Stat >\n" \
@@ -271,24 +366,15 @@ namespace store {
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
+        TRAIT_STATIC( Tr ) \
     }
 
 using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
 #ifdef O_COMPRESSION
-    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::Compression::Tree,
-            ForCompressions );
-#else
-    using NTreeStore = _Missing;
-#endif
-
-#ifdef O_HASH_COMPACTION
-    STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions );
-#else
-    using HcStore = _Missing;
-#endif
-
-    STORE( DefaultStore, true, Any );
-#undef STORE
+    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::C_NTree,
+            ForCompressions, &Traits::ntree );
+    STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions, &Traits::hc );
+    STORE( DefaultStore, true, Any, &Traits::always );
 
     using Stores = TypeList< NTreeStore, HcStore, DefaultStore >;
 }
@@ -296,7 +382,7 @@ using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
 namespace topology {
     struct IsTopologyT { };
 
-#define TOPOLOGY( TOPO, SELECTOR, SUPPORTED_BY ) struct TOPO { \
+#define TOPOLOGY( TOPO, SELECTOR, SUPPORTED_BY, Tr ) struct TOPO { \
         using IsTopology = IsTopologyT; \
         static constexpr const char *symbol = \
             "template< typename Transition >\n" \
@@ -311,25 +397,17 @@ namespace topology {
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
+        TRAIT_STATIC( Tr ) \
     }
 
-#if !defined( O_PERFORMANCE ) || defined( O_MPI )
 #ifndef O_PERFORMANCE
     using ForMpi = Any; // as we need NDFS without O_PERFORMANCE
 #else
     using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info, visitor::Shared > >;
 #endif
 
-    TOPOLOGY( Mpi, meta.execution.nodes > 1, ForMpi );
-#else
-    using Mpi = _Missing;
-#endif
-
-#ifdef O_PERFORMANCE
-    TOPOLOGY( Local, true, Any );
-#else
-    using Local = _Missing;
-#endif
+    TOPOLOGY( Mpi, meta.execution.nodes > 1, ForMpi, !Tr( &Traits::performance ) || &Traits::mpi );
+    TOPOLOGY( Local, true, Any, &Traits::performance );
 
 #undef TOPOLOGY
 
@@ -339,7 +417,7 @@ namespace topology {
 namespace statistics {
     struct IsStatisticsT { };
 
-#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY ) struct STAT { \
+#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY, Tr ) struct STAT { \
         using IsStatistics = IsStatisticsT; \
         static constexpr const char *symbol = "using _Statistics = ::divine::" #STAT ";\n"; \
         static constexpr const char *key = #STAT; \
@@ -349,15 +427,12 @@ namespace statistics {
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
+        TRAIT_STATIC( Tr ) \
     }
 
-    STATISTICS( TrackStatistics, meta.output.statistics, Any );
-#ifdef O_PERFORMANCE
+    STATISTICS( TrackStatistics, meta.output.statistics, Any, &Traits::always );
     using ForNoStat = Not< Or< algorithm::Info, algorithm::Simulate > >;
-    STATISTICS( NoStatistics, true, ForNoStat );
-#else
-    using NoStatistics = _Missing;
-#endif
+    STATISTICS( NoStatistics, true, ForNoStat, &Traits::performance );
 #undef STATISTICS
 
     using Statistics = TypeList< TrackStatistics, NoStatistics >;
@@ -378,5 +453,7 @@ using Instantiate = TypeList<
 
 }
 }
+
+#undef TRAIT_STATIC
 
 #endif // DIVINE_INSTANCES_DEFINITIONS
