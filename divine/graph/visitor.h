@@ -147,9 +147,11 @@ struct Common {
         TransitionAction tact;
         ExpansionAction eact = ExpansionAction::Expand;
 
-        hash64_t hint = store().hash( _to );
+        hash64_t hint;
+        hash64_t ownership;
+        std::tie( hint, ownership ) = store().hash128( _to );
 
-        if ( S::transitionFilter( notify, from, _to, label, hint ) == TransitionFilter::Ignore )
+        if ( S::transitionFilter( notify, from, _to, label, ownership ) == TransitionFilter::Ignore )
             return;
 
         auto to = readOnly == ReadOnly::Yes
