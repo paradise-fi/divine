@@ -72,11 +72,19 @@ struct TestFs {
 
     // Ensure that nonexisting directories and files are reported as not valid
     Test invalidDirectories() {
-        Directory dir1("/antaniblindalasupercazzola123456");
-        assert(!dir1.valid());
+#ifdef POSIX
+        try {
+            Directory dir1("/antaniblindalasupercazzola123456");
+            assert(false);
+        } catch (wibble::exception::System& e) {
+        }
 
-        Directory dir2("/etc/passwd");
-        assert(!dir2.valid());
+        try {
+            Directory dir2("/etc/passwd");
+            assert(false);
+        } catch (wibble::exception::System& e) {
+        }
+#endif
     }
 
     Test _mkPath() {
@@ -149,19 +157,23 @@ struct TestFs {
     }
 
     Test _deleteIfExists() {
-	system("rm -f does-not-exist");
-	assert(!deleteIfExists("does-not-exist"));
-	system("touch does-exist");
-	assert(deleteIfExists("does-exist"));
+#ifdef POSIX
+        system("rm -f does-not-exist");
+        assert(!deleteIfExists("does-not-exist"));
+        system("touch does-exist");
+        assert(deleteIfExists("does-exist"));
+#endif
     }
 
-    Test _isDirectory() {
-	system("rm -rf testdir");
-	assert(!isDirectory("testdir"));
-	system("touch testdir");
-	assert(!isDirectory("testdir"));
-	system("rm testdir; mkdir testdir");
-	assert(isDirectory("testdir"));
+    Test _isdir() {
+#ifdef POSIX
+        system("rm -rf testdir");
+        assert(!isdir("testdir"));
+        system("touch testdir");
+        assert(!isdir("testdir"));
+        system("rm testdir; mkdir testdir");
+        assert(isdir("testdir"));
+#endif
     }
 };
 
