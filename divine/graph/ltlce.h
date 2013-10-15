@@ -198,6 +198,7 @@ struct LtlCE {
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
+            auto guard( t.store().template acquire< Extension >( from, to ) );
             if ( !t.store().valid( from ) )
                 return visitor::TransitionAction::Expand;
             if ( t.updateIteration( to ) ) {
