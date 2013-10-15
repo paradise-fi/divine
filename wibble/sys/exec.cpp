@@ -59,27 +59,23 @@ void Exec::spawnChild()
 
 void Exec::exec()
 {
-	// Prepare the argument list
-        char** exec_args = (char **) alloca(args.size() + 1);
-	for (size_t i = 0; i < args.size(); ++i)
-		exec_args[i] = strdup(args[i].c_str());
-	exec_args[args.size()] = 0;
+    // Prepare the argument list
+    char** exec_args = static_cast<char **>( alloca(args.size() + 1) );
+    for (size_t i = 0; i < args.size(); ++i)
+        exec_args[i] = strdup(args[i].c_str());
+    exec_args[args.size()] = 0;
 
-	if (searchInPath)
-	{
-		if (execvp(pathname.c_str(), exec_args) == -1)
-			throw wibble::exception::System("trying to run " + pathname);
-	} else if (envFromParent) {
-		if (execve(pathname.c_str(), exec_args, environ) == -1)
-			throw wibble::exception::System("trying to run " + pathname);
-	} else {
-		// Prepare the custom environment
-                char ** exec_env = (char **) alloca (env.size() + 1);
-		for (size_t i = 0; i < env.size(); ++i)
-			// We can just store a pointer to the internal strings, since later
-			// we're calling exec and no destructors will be called
-			exec_env[i] = strdup(env[i].c_str());
-		exec_env[env.size()] = 0;
+    char** exec_env = environ;
+    if (!envFromParent)
+    {
+        // Prepare the custom environment
+        exec_env = new char*[env.size() + 1];
+        for (size_t i = 0; i < env.size(); ++i)
+            // We can just store a pointer to the internal strings, since later
+            // we're calling exec and no destructors will be called
+            exec_env[i] = strdup(env[i].c_str());
+        exec_env[env.size()] = 0;
+    }
 
     if (searchInPath)
     {
