@@ -48,7 +48,8 @@ struct StoreCommon : TableProvider
     Hasher& hasher() { return _hasher; } // this->table().hasher; }
     Pool& pool() { return _pool; }
 
-    hash64_t hash( InsertItem node ) { return hasher().hash( node ).first; }
+    hash64_t hash( InsertItem node ) { return hash128( node ).first; }
+    hash128_t hash128( InsertItem node ) { return hasher().hash( node ); }
     int slack() { return hasher().slack; }
     bool valid( InsertItem n ) { return hasher().valid( n ); }
     bool equal( InsertItem m, InsertItem n ) { return hasher().equal( m, n ); }
@@ -641,8 +642,11 @@ struct NTreeStore
     bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
-    hash64_t hash( Node n ) { return this->hasher().hash( n ).first; }
-    hash64_t hash( Handle n ) { return this->table().hash( Root( n.b ) ); }
+    hash64_t hash( Node n ) { return hash128( n ).first; }
+    hash64_t hash( Handle n ) { return hash128( n ).first; }
+
+    hash128_t hash128( Node n ) { return Base::hash128( n ); }
+    hash128_t hash128( Handle h ) { return this->table().hash128( Root( h.b ) ); }
 
     int owner( Vertex v, hash64_t hint = 0 ) {
         return Base::owner( hint ? hint : hash( v.node() ) );
