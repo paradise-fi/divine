@@ -58,12 +58,12 @@ struct StoreCommon : TableProvider
 
     int owner( hash64_t h ) { return TableProvider::owner( h ); }
     int owner( InsertItem n, hash64_t hint = 0 ) {
-        return owner( hint ? hint : hash( n ) );
+        return owner( hint ? hint : hash128( n ).second );
     }
 
     bool knows( hash64_t h ) { return TableProvider::knows( h ); }
     bool knows( InsertItem n, hash64_t hint = 0 ) {
-        return TableProvider::knows( hint ? hint : hash( n ) );
+        return TableProvider::knows( hint ? hint : hash128( n ).second );
     }
 
     Found< StoredItem > _fetch( InsertItem s, hash64_t h ) {
@@ -649,12 +649,12 @@ struct NTreeStore
     hash128_t hash128( Handle h ) { return this->table().hash128( Root( h.b ) ); }
 
     int owner( Vertex v, hash64_t hint = 0 ) {
-        return Base::owner( hint ? hint : hash( v.node() ) );
+        return Base::owner( hint ? hint : hash128( v.node() ).second );
     }
     int owner( Node n, hash64_t hint = 0 ) { return Base::owner( n, hint ); }
 
     int knows( Handle h, hash64_t hint = 0 ) {
-        return h.rank() == this->rank() && Base::knows( hint ? hint : hash( h ) );
+        return h.rank() == this->rank() && Base::knows( hint ? hint : hash128( h ).second );
     }
     int knows( Node n, hash64_t hint = 0 ) { return Base::knows( n, hint ); }
 
