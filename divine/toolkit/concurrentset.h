@@ -347,7 +347,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         _d.table[ 1 ] = new Row( s );
     }
 
-    hash64_t hash( const value_type &t ) { return _d.hasher.hash( t ).first; }
+    hash64_t hash( const value_type &t ) { return hash128( t ).first; }
+    hash128_t hash128( const value_type &t ) { return _d.hasher.hash( t ); }
     iterator insert( const value_type &t ) { return withTD( _global ).insert( t ); }
     int count( const value_type &t ) { return withTD( _global ).count( t ); }
     size_t size() { return withTD( _global ).size(); }

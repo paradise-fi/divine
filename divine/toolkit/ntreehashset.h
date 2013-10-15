@@ -410,7 +410,8 @@ struct NTreeHashSet
 
     size_t size() { return _d.roots.size(); }
     bool empty() { return _d.roots.empty(); }
-    hash64_t hash( const value_type &t ) { return _d.roots.hash( t ); }
+    hash64_t hash( const value_type &t ) { return hash128( t ).first; }
+    hash128_t hash128( const value_type &t ) { return _d.roots.hash128( t ); }
 
     Data _d;
     // ThreadData< NoSplitter > _global; /* for single-thread access */

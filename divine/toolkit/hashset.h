@@ -153,7 +153,8 @@ struct _HashSet : HashSetBase< Cell >
     bool empty() const { return !_used; }
 
     int count( const value_type &i ) { return find( i ).valid(); }
-    hash64_t hash( const value_type &i ) { return this->hasher.hash( i ).first; }
+    hash64_t hash( const value_type &i ) { return hash128( i ).first; }
+    hash128_t hash128( const value_type &i ) { return this->hasher.hash( i ); }
     iterator insert( value_type i ) { return insertHinted( i, hash( i ) ); }
 
     template< typename T >
