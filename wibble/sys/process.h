@@ -73,6 +73,23 @@ void setCoreSizeLimit(int value);
 /// Close stdin, stdout and stderr and detach from the tty
 void detachFromTTY();
 
+/**
+ * Call from main() if you intend to set a different process title later on
+ *
+ * On Linux, this function moves the environment to a different location to
+ * allow its memory to be reused for the process title
+ */
+void initproctitle(int argc, char **argv);
+
+/**
+ * Change the process title, overwriting the contents of argv
+ *
+ * This is currently only implemented for Linux: on other systems it does not
+ * do anything.
+ */
+void setproctitle(const std::string& title);
+#endif
+
 }
 }
 }
