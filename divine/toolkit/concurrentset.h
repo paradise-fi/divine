@@ -119,6 +119,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                             break;
                         }
                     case Resolution::Growing:
+                        helpWithRehashing();
                         updateIndex( _td.currentRow );
                         break;
                     default:
@@ -138,6 +139,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     case Resolution::NotFound:
                         return iterator();
                     case Resolution::Growing:
+                        helpWithRehashing();
                         updateIndex( _td.currentRow );
                         break;
                     default:
@@ -150,9 +152,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         template< typename T >
         Find findCell( T v, hash64_t h, unsigned rowIndex )
         {
-            while( _d.growing ) // help rehashing the table
-                while( rehashSegment() );
-
+            helpWithRehashing();
             if ( changed( rowIndex ) )
                 return Find( Resolution::Growing );
 
@@ -185,9 +185,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 // usage is never greater than size
                 if ( ( s >> 2 ) >= s - u )
                     return Insert( Resolution::NoSpace );
-                while( _d.growing ) // help with rehashing
-                    while ( rehashSegment() );
-
+                helpWithRehashing();
                 if ( changed( _td.currentRow ) )
                     return Insert( Resolution::Growing );
             }
@@ -246,6 +244,11 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             while ( _d.doneSegments != segments );
 
             return true;
+        }
+
+        void helpWithRehashing() {
+            while ( _d.growing )
+                while( rehashSegment() );
         }
 
         bool rehashSegment() {
