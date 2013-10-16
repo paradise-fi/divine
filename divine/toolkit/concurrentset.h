@@ -241,7 +241,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             _d.availableSegments.exchange( segments );
 
             while ( rehashSegment() );
-            while ( _d.doneSegments != segments );
 
             return true;
         }
