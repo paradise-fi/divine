@@ -382,7 +382,7 @@ struct ActualString : public Actual<std::string>
 template<typename A>
 inline Actual<A> actual(const A& actual) { return Actual<A>(actual); }
 inline ActualString actual(const std::string& actual) { return ActualString(actual); }
-inline ActualString actual(const char* actual) { return ActualString(actual); }
+inline ActualString actual(const char* actual) { return ActualString(actual ? actual : ""); }
 inline ActualString actual(char* actual) { return ActualString(actual ? actual : ""); }
 
 /*
