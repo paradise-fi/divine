@@ -1,15 +1,15 @@
-Untime LTL Model Checking of Timed Automata
+Untimed LTL Model Checking of Timed Automata
 ===========================================
 
 Uppaal Timed Automata has become the standard modelling language for real-time
-systems.For such the system, DIVINE can verify the presence of time deadlock or
+systems. For such systems, DIVINE can verify the presence of time deadlock or
 validity of an LTL specification. DIVINE has support for most of this modelling
 formalism, though, some features are still left unimplemented. These are as
 follows:
 
   * Clock constraints involving non-constant integers are limited. Even though
     we were able to implemente basic heuristics that try to find the maximal and
-    minimal possible value of a non-constant expressions, and it is possible to
+    minimal possible value of non-constant expressions, and it is possible to
     compare single clocks to such expressions, we only support comparisons of
     clock differences to constants.
 
@@ -27,9 +27,9 @@ XML file with the model.
 
 DIVINE runs the reachability analysis to find an error state or a time
 deadlock. By default, the LU extrapolation is in use, so the time-lock detection
-is disabled (see [Havlicek 2013: Untimed LTL Model Checking of Timed Automata,
-Chapter 2). However, --no-reduce option can be used to force the maximal bounds
-extrapolation, thus allowing the time-lock detection.
+is disabled (see Havlicek, 2013: Untimed LTL Model Checking of Timed Automata,
+Chapter 2). However, the `--no-reduce` option can be used to force the maximal
+bounds extrapolation, thus allowing the time-lock detection.
 
 To check for validity of LTL properties, a file with a suffix .ltl and the same
 base name as the model file has to be created. This file can contain one or more
@@ -41,24 +41,24 @@ reason, C-like defines can be used before property declarations to name any
 boolean expression in the Uppaal modelling language with a suitable name.  The
 only additional limitation is that all clock constrains have to be defined as
 separate atomic propositions. All lines in the LTL file that do not begin with
-#define or #property are ignored and can be used for comments. An example of a
-valid LTL file is given below, other ones are shipped with DIVINE.
+`#define` or `#property` are ignored and can be used for comments. An example of
+a valid LTL file is given below, other ones are shipped with DIVINE.
 
-    #define time1 (time <= 60) 
-    #define time2 (time < 70) 
-    #define safe1 (V1.safe) 
-    #define safeall (V1.safe && V2.safe && V3.safe && V4.safe) 
-    #property !F(time1 && safeall) 
-    #property !((!safe1) U (time2 && safeall)) 
+    #define time1 (time <= 60)
+    #define time2 (time < 70)
+    #define safe1 (V1.safe)
+    #define safeall (V1.safe && V2.safe && V3.safe && V4.safe)
+    #property !F(time1 && safeall)
+    #property !((!safe1) U (time2 && safeall))
 
 Verification of the first property in the corresponding LTL file is run using
-the following command: 
+the following command:
 
     $ divine verify -p 0 model.xml
 
-To exclude all Zeno runs during the LTL verification, option -f can be used,
+To exclude all Zeno runs during the LTL verification, we can use the option `-f`,
 similarly to obtain a full report of the verification including an error trace,
-use -r.  
+we can use `-r`.
 
 Semantics of property specifications is slightly different from Uppaal.  First
 of all, DIVINE considers only runs where action and delay transitions

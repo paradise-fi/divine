@@ -13,9 +13,9 @@ an operation that has been disabled at compile time. To get a list of options
 your `divine` binary has been compiled with, simply issue
 
     $ divine --version
-    DIVINE version 2.91
-    Version: 2.91
-    Build-Date: 2013-01-18, 09:22 UTC
+    DIVINE version 3.0
+    Version: 3.0
+    Build-Date: 2013-10-17, 13:17 UTC
     Pointer-Width: 64
     Debug: enabled
     Compile-Flags: POSIX DVE HASH_COMPACTION COIN LLVM
@@ -51,7 +51,7 @@ name of a property that needs to be passed to the `--property` option of `draw`,
 
 In this case, the model has three properties, `deadlock`, `assert` and `LTL`
 (the last being a neverclaim property generated from an LTL formula, see
-section on `divine combine` below).
+the section on `divine combine` below).
 
 Using LTL Properties
 --------------------
@@ -82,8 +82,8 @@ file would look, for example, like this:
     #property ((GF(a_0 && w_0)) -> GF(c_0)) && ((GF(a_1 && w_1)) -> GF(c_1))
 
 Each `#define` gives a symbolic name for an atomic proposition, and each
-`#property` specifies a single LTL formula. Without the -p (--property) and -o
-(--stdout) options, the output of `divine combine` looks like this:
+`#property` specifies a single LTL formula. Without the `-p` (`--property`) and
+`-o` (`--stdout`) options, the output of `divine combine` looks like this:
 
     $ divine combine peterson.dve -f peterson.ltl
     peterson.prop1.dve: G(p0cs->F(!p0cs))
@@ -93,8 +93,8 @@ Each `#define` gives a symbolic name for an atomic proposition, and each
     $ divine verify peterson.prop1.dve
     ...
 
-To pick a specific formula, use -p N (with N being the sequence number of a
-`#property` in the `.ltl` file, in this case 1 or 2). When -p is in effect,
+To pick a specific formula, use `-p` N (with N being the sequence number of a
+`#property` in the `.ltl` file, in this case 1 or 2). When `-p` is in effect,
 `-o` can be used to direct the generated DVE file to standard output.
 
 Syntax of LTL formulas as accepted by DIVINE is as follows:
@@ -107,7 +107,7 @@ Syntax of LTL formulas as accepted by DIVINE is as follows:
     bin_op :== '&&' | '*' (and)
         :== '||' | '+' (or)
         :== '->' (implication)
-        :== '<->' (equivalence) 
+        :== '<->' (equivalence)
         :== '^' (xor)
         :== 'U' (until)
         :== 'V' | 'R' (release)
@@ -191,7 +191,7 @@ State Space Metrics, Visualisation & Exploration
 The `metrics` sub-command runs a simple reachability on the entire state space
 of a system, reporting summary statistics. This is the most efficient algorithm
 in DIVINE that explores the state space, both in terms of memory and CPU,
-although only by a slight margin. See [next section] [#model-checking] on
+although only by a slight margin. See [next section](#model-checking) on
 details of the model-related switches.
 
     divine draw [--distance=N] [--trace=N,N,N...]
@@ -201,8 +201,8 @@ details of the model-related switches.
                 [--render=<cmd>|-r <cmd>]
 
 To visualise (a part of) the state space, you can use `divine draw`, which
-creates a graphviz-compatible representation. By default, it will run "dot
--Tx11" to display the resulting graph. You can override the drawing command to
+creates a graphviz-compatible representation. By default, it will run "`dot
+-Tx11`" to display the resulting graph. You can override the drawing command to
 run by using the `-r`/`--render` switch. The command will get the dot-formatted
 graph description on its standard input.
 
@@ -226,12 +226,12 @@ Model Checking
 --------------
 
     divine verify [--reachability|--owcty|--map|--nested-dfs]
-                  [--property=<name>]
+                  [--property=<name> | -p <name>]
                   [--fair]
                   [--reduce=<reduction>]
-                  [--report]
-                  [--no-counterexample]
-                  [--display-counterexample]
+                  [--report | -r]
+                  [--no-counterexample | -n]
+                  [--display-counterexample | -d]
                   [engine options]
                   <model file>
 
@@ -242,16 +242,16 @@ input file.
 
     $ divine verify examples/dve/peterson-liveness.dve --property=deadlock --no-reduce
       searching... 	736677 states, 2848427 edges
-     ===================================== 
-               The property HOLDS          
-     ===================================== 
+     =====================================
+               The property HOLDS
+     =====================================
 
 ### Options
 
 `--reachability, --owcty, --map, --nested-dfs`
 :    Override the algorithm to use.
 
-`--property=name`
+`--property=name | -p name`
 :    Select which property to model-check. Use `divine info` to
      obtain a list of properties available in any given model. Defaults to
      `deadlock`.
@@ -275,10 +275,10 @@ input file.
      and may be available with some CESMI models. To specify multiple reductions,
      provide them as a comma-separated list.
 
-`--no-counterexample`
+`--no-counterexample | -n`
 :    Disable generation of counterexamples. This is mainly
      useful for benchmarking verification speed.
 
-`--report`
+`--report | -r`
 :    At the end of a verification run, produce a comprehensive,
      machine-readable report.

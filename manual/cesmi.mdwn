@@ -195,7 +195,7 @@ To this end, DIVINE provides a small framework to help you build CESMI modules
 suitable for LTL model checking out of a system description and a set of LTL
 formulas, exposed via the `divine compile --cesmi` sub-command.
 
-When using `divine compile--cesmi`, you should always `#include "cesmi.h"` --
+When using `divine compile --cesmi`, you should always `#include "cesmi.h"` --
 this will allow the C/C++ compiler to check your function prototypes against
 those mandated by the CESMI specification. It will also give you access to the
 `struct` types `cesmi_setup` and `cesmi_node` and the `cesmi_flags` /
@@ -203,7 +203,7 @@ those mandated by the CESMI specification. It will also give you access to the
 
 To add LTL formula(s) to your CESMI module, you should additionally `#include
 "cesmi-ltl.h"` which provides a number of helper functions to make your job
-easier. To get access to "cesmi-ltl.h", you must provide a file with LTL
+easier. To get access to `cesmi-ltl.h`, you must provide a file with LTL
 formulas on the commandline, say `divine compile --cesmi mymodule.c
 mymodule.ltl`. In this case, `divine` will generate code for traversing the
 Büchi automaton from each LTL formula and links it to your module. To use this

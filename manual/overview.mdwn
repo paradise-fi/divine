@@ -3,7 +3,7 @@ Introduction
 
 The DIVINE project aims to develop a general-purpose, fast, reliable and
 easy-to-use model checker. The roots of the project go back to a
-special-purpose,, explicit-state, asynchronous system model checking tool for
+special-purpose, explicit-state, asynchronous system model checking tool for
 LTL properties. However, the landscape of software development is changing, and
 rigorous, inflexible development processes are in a steady decline, being
 displaced by more agile, flexible and dynamic methods. In the agile world,

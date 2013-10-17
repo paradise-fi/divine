@@ -5,17 +5,14 @@ DVE specification language has been created as a language that is both easy to
 interpret and sufficiently powerful to express interesting problems for the
 purpose of model checking.
 
-A set of "case studies" is available, in the form of DVE source code, in the
+A set of case studies is available, in the form of DVE source code, in the
 `examples` subdirectory of the DIVINE distribution.
-
-* toc
-{:toc}
 
 ## Philosophy of DVE language
 
-The basic modelling unit in DVE is a system, which is composed of processes.
+The basic modelling unit in DVE is a system that is composed of processes.
 Processes can go from one process state to another through transitions, which
-can be guarded by a condition -- this condition, also called a "guard"
+can be guarded by a condition -- this condition, also called a "guard",
 determines whether the transition can be activated.
 
 Transitions can be synchronised through (named) channels. Only exactly 2
@@ -37,42 +34,42 @@ A system may be synchronous or asynchronous.
 
 There is a single common namespace for channels, variables, processes and
 states. Identifiers have to be unique in any given scope of visibility. It
-means that e.g. when variable **A** is declared in the process **P1**, then
-there cannot be a variable **A**, a state **A** in that process or a global
-variable **A**, nor a channel or a process **A**. The only other **A** variable
-may occur in a different process, eg. **P2**.
+means that e.g. when variable `A` is declared in the process `P1`, then
+there cannot be another variable `A`, a state `A` in that process or a global
+variable `A`, nor a channel or a process `A` The only other variable `A`
+may occur in a different process, e.g. `P2`.
 
 ## Syntax elements
 
 ### Processes
-Declaration - short example:
+Declaration -- short example:
 
         process My_really_nice_process
         { <code of a process> }
 
 ### Variables
 Variables can be global (declared at the beginning of DVE source) or local
-(declared at the beginning of a process). They can be of `byte` or `int`
+(declared at the beginning of a process). These can be of either `byte` or `int`
 type. E.g.:
 
         byte A[9];
         int i,j;
 
 ### Constants
-Constants can be declared identically as variables using the keyword `const`:
+Constants can be declared identically to variables using the keyword `const`:
 
         const byte k = 3;
 
-This time constants cannot be used as parameters in declarations of arrays. For
-example this construct is erroneous:
+As of yet, the constants cannot be used as parameters in declarations of
+arrays. For example, this construct is erroneous:
 
         byte field[k];
 
 ### Process states
-Declared after declaration of variables. You also have to write which of
-declared process states is the initial one. You can also optionally write which
-of them are accepting (but you probably will not need this feature at this
-moment). E.g.:
+Declared after the declaration of variables. You also have to write which of
+the declared process states is the initial one. You can also optionally specify
+some of them as accepting (but you probably do not need this feature at
+this moment). E.g.:
 
         state start, run, reading_input, writing_output;
         init start;
@@ -99,17 +96,17 @@ ignored. Synchronisation between processes (both) in committed states is
 permitted (but it is probably very rare).
 
 ### Transitions
-Transitions are written as a transitions from one process state to another (e.g.
+Transitions are written as arrows going from one process state to another (e.g.
 `run -> writing_output`). The transition can be executed only if the process
-in the initial process state of a transition (in the above mentioned example in
-a state run). You should also define an additional condition when the
-transition can be executed (keyword guard ) and sometimes also a channel to
-synchronise through (keyword `sync` with followed by the channel name and `!` or
-`?`). There can synchronise only transitions with the same channel name and
-opposite operators `!` and `?`. When you want to transmit a value through the
-channel, you can write a value after `!` and a variable (where the value will
-be transmitted) after `?`. The last but not least element of transitions are
-effects -- they are simple assignments to the variables.
+is in the source process state of a transition (in the above mentioned example in
+the state `run`). You should also define an additional condition when the
+transition can be executed (using the keyword `guard`) and sometimes also a
+channel to synchronise through (using the keyword `sync` followed by the
+channel name and `!` or `?`). Only transitions with the same channel name and
+opposite operators `!` and `?` can synchronise. When you want to transmit a
+value through the channel, you can write the value after `!` and a variable
+that will receive the transmitted value after `?`. The last but not least element
+of transitions are effects -- they are simple assignments to the variables.
 
 Example:
 
@@ -129,28 +126,29 @@ Example:
 
 ### Expressions
 In assignments, guards and synchronisation values you can write arithmetic
-expressions. They can contain:
+expressions. They may contain:
+
 * constants: numbers, `true`, `false`
-* parentheses: (, )
+* parentheses: `(`, `)`
 * variable identifiers
-* unary operators `-`, `~` (= negation of bits) and `not` (= boolean negation)
-* binary operators (ordered by precedence - higher line means a lower precedence):  
-  `imply`,  
-  `or`,  
-  `and`,  
-  `|`,  
-  `^`,  
-  `&`,  
-  `==`, `!=`,  
-  `<`, `<=`, `>`, `>=`,  
-  `<<`, `>>`,  
-  `-`, `+`,  
-  `/`, `*`, `%`  
-  their semantics is the same as in C programming language except for boolean
+* unary operators `-`, `~` (= bit complement) and `not` (= boolean negation)
+* binary operators (ordered by precedence - higher line means a lower precedence):
+  `imply`,
+  `or`,
+  `and`,
+  `|`,
+  `^`,
+  `&`,
+  `==`, `!=`,
+  `<`, `<=`, `>`, `>=`,
+  `<<`, `>>`,
+  `-`, `+`,
+  `/`, `*`, `%` --
+  their semantics is the same as in the C programming language except for boolean
   operators `and`, `or` and `imply` (but their meaning is obvious).
-* question on a state of some process (e.g. `Sender.ready` is equal to `1`,
-  iff process `Sender` is in a state `ready`. Otherwise it is equal to
-  `0`).
+* question about the current state of a given process
+  (e.g. `Sender.ready` is equal to `1`, iff process `Sender` is in a state
+  `ready`. Otherwise it is equal to `0`).
 
 ### Channels
 Declarations of channels follow declarations of global variables. For example:
@@ -169,19 +167,20 @@ Declarations of channels follow declarations of global variables. For example:
         channel {byte,int} buf_bi_send[4], buf_bi_receive[1];
 
 There is a big difference between buffered and unbuffered channels:
-* unbuffered channels can be untyped and they do not need to transmit values
-  (they can play a role of handshake communication)
-* buffered channels have to be always typed
-* value transmission or handshake using unbuffered channel is synchronous --
+
+* Unbuffered channels can be untyped and they do not need to transmit values
+  (they can play a role of handshake communication).
+* Buffered channels always have to be typed.
+* Value transmission or handshake using unbuffered channel is synchronous --
   i.e.  both sending and receiving processes execute their transitions in the
-  same transition of a system
-* value transmission using buffered channel is asynchronous -- i.e. If the
-  buffer is not full, value can be sent. If the buffer is not empty, value can
+  same transition of a system.
+* Value transmission using buffered channel is asynchronous -- i.e. if the
+  buffer is not full, a value can be sent. If the buffer is not empty, a value can
   be received. But this happens always in different transitions of a system.
 
 **Be aware:** `channel xxx` and `channel {byte} xxx[0]` are both unbuffered
 channels and they behave almost the same way, but the second declaration is
-typed and the transmitted value is type casted (in this case to byte) before
+typed and the transmitted value is type casted (in this case to `byte`) before
 its transmission.
 
 ### Type of a system
@@ -258,7 +257,7 @@ void process(int process_id) {
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We will create a model of the `process` procedure and, using *m4* macro
+We will create a model of the `process` procedure and, using the *m4* macro
 language, make the model parametric.
 
 ## Model, Processes, Transitions
@@ -425,7 +424,7 @@ is not is this:
 
 If we find a counterexample to this property then it is possible to reach
 such state and the lock is faulty. DIVINE finds such counterexample indeed.
-For information about using `divine-mc.combine` and `divine-mc owcty` to
+For information about using `divine combine` and `divine verify` to
 perform the check, please see the [Tool guide][toolguide].
 
 ## Arrays, back to Peterson
