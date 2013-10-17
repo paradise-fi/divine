@@ -56,8 +56,7 @@ struct RunAll {
             s.tests[i].run();
             feedback->status( std::string( "t/d: " ) + s.tests[i].name );
             feedback->waitForAck();
-            // exit( 0 ); // TODO make this optional; safety vs
-                          // performance tradeoff
+            exit( 0 ); // ensures next test runs in a new process
         }
         feedback->status( std::string( "s/d: " ) + s.name );
     }
