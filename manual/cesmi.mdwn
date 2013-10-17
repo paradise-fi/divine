@@ -242,6 +242,19 @@ int get_initial( const cesmi_setup *s, int h, cesmi_node *n ) {
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The `buchi_setup` is different as it is supposed to be called at the end of
+the `setup` function like this:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C}
+
+void setup( cesmi_setup *s ) {
+    s->add_property( s, NULL, NULL, cesmi_pt_goal );
+    s->add_property( s, NULL, NULL, cesmi_pt_deadlock );
+    buchi_setup( s );
+}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 For a full example, please refer to `examples/cesmi/withltl.c` shipped in
 DIVINE source tarballs. Compile and test it like this:
 
