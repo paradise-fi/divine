@@ -10,6 +10,7 @@ file( GLOB tests ${root}/algorithm/*.sh
 
 add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
+  COMMAND cp -R ${CMAKE_SOURCE_DIR}/examples/llvm llvm_examples
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/util .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
