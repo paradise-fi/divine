@@ -148,7 +148,8 @@ if( TIMED )
   target_link_libraries( libdivine utap )
 endif()
 
-target_link_libraries( divine-test libdivine wibble )
+target_link_libraries( libdivine wibble )
+target_link_libraries( divine-test libdivine )
 
 if( NOT WIN32 )
   target_link_libraries( libdivine dl )
