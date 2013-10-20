@@ -59,11 +59,11 @@ void Exec::spawnChild()
 
 void Exec::exec()
 {
-	// Prepare the argument list
-        char** exec_args = (char **) alloca(args.size() + 1);
-	for (size_t i = 0; i < args.size(); ++i)
-		exec_args[i] = strdup(args[i].c_str());
-	exec_args[args.size()] = 0;
+    // Prepare the argument list
+    char** exec_args = new char*[args.size() + 1];
+    for (size_t i = 0; i < args.size(); ++i)
+        exec_args[i] = strdup(args[i].c_str());
+    exec_args[args.size()] = 0;
 
     char** exec_env = environ;
     if (!envFromParent)
