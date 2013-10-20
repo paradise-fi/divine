@@ -149,13 +149,12 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     template< typename V >
     void queueAll( V &visitor, bool reset = false ) {
         for ( auto st : this->store() ) {
-            if ( this->store().valid( st ) ) {
-                if ( reset )
-                    extension( st ).predCount() = 0;
-                if ( extension( st ).inS() && extension( st ).inF() ) {
-                    visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
-                    st.disown();
-                }
+            if ( reset )
+                extension( st ).predCount() = 0;
+            if ( extension( st ).inS() && extension( st ).inF() ) {
+                std::cerr << "queued " << this->graph().showNode( st.node() ) << std::endl;
+                visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
+                st.disown();
             }
         }
     }
