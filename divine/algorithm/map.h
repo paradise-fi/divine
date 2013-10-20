@@ -119,6 +119,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         }
     };
 
+    using Guard = typename Store::template Guard< Extension >;
+
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
 
@@ -167,7 +169,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     {
         static visitor::ExpansionAction expansion( This &m, Vertex st )
         {
-            auto guard( m.store().template acquire< Extension >( st ) );
+            Guard guard( st );
             ++ m.shared.expanded;
             if ( !m.extension( st ).seen() ) {
                 m.extension( st ).seen() = true;
@@ -184,7 +186,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
 
         static visitor::TransitionAction transition( This &m, Vertex f, Vertex t, Label )
         {
-            auto guard( m.store().template acquire< Extension >( f, t ) );
+            Guard guard( f, t );
             if ( m.shared.iteration == 1 )
                 m.graph().porTransition( m.store(), f, t );
 

@@ -29,9 +29,6 @@ struct StoreCommon : TableProvider
     using InsertItem = typename TableProvider::Node;
     using StoredItem = typename Table::value_type;
 
-    template< typename Mutex, int N >
-    using Guard = typename TableProvider::template Guard< Mutex, N >;
-
     typename TableProvider::ThreadData td;
 
     template< typename... Args >
@@ -131,11 +128,10 @@ struct PartitionedProvider {
         using ThreadData = typename WrapTable::template ThreadData< FastSet >;
         using Hasher = typename WrapTable::Hasher;
 
-        // just dummy
-        template< typename Mutex, int >
+        template< typename Mutex >
         struct Guard {
-            Guard( Mutex *, Mutex * = nullptr ) {}
-            ~Guard() {}
+            template< typename V > Guard( V ) {}
+            template< typename V > Guard( V, V ) {}
         };
 
         Table _table;
@@ -162,25 +158,17 @@ struct SharedProvider {
         using ThreadData = typename WrapTable::template ThreadData< ConcurrentSet >;
         using Hasher = typename WrapTable::Hasher;
 
-        template< typename Mutex, int N > struct Guard {};
-
         template< typename Mutex >
-        struct Guard< Mutex, 1 > {
-            Mutex *m;
-
-            Guard( Mutex *m ) : m( m ) {
-                if ( m ) m->lock();
-            }
-
-            ~Guard() {
-                if ( m ) m->unlock();
-            }
-        };
-
-        template< typename Mutex >
-        struct Guard< Mutex, 2 > {
+        struct Guard {
             Mutex *_1;
             Mutex *_2;
+
+            template< typename V >
+            Guard( V v ) : Guard( v.valid() ? &v.template extension< Mutex >() : nullptr, nullptr ) {}
+
+            template< typename V >
+            Guard( V a, V b ) : Guard( a.valid() ? &a.template extension< Mutex >() : nullptr,
+                                       b.valid() ? &b.template extension< Mutex >() : nullptr ) {}
 
             Guard( Mutex *m1, Mutex *m2 ) : _1( first( m1, m2 ) ), _2( second( m1, m2 ) ) {
                 if ( _1 ) _1->lock();
@@ -200,6 +188,8 @@ struct SharedProvider {
                     return nullptr;
                 return m1 < m2 ? m2 : m1;
             }
+
+            Guard( const Guard & ) = delete;
         };
 
         TablePtr _table;
@@ -215,6 +205,7 @@ struct SharedProvider {
         size_t firstIndex() {
             return table().size() / locals() * localId();
         }
+
         size_t lastIndex() {
             return std::min(
                 table().size() / locals() * ( localId() + 1 ),
@@ -291,6 +282,7 @@ struct _Vertex
     }
 
     void disown() { if ( !foreign() ) _n = Node(); }
+    bool valid() { return _s && _s->valid( _h ); }
     Handle handle() { return _h; }
     // belongs to another machine -> cannot be dereferenced...
     bool foreign() const { assert( _s ); return _h.rank() != _s->rank(); }
@@ -397,9 +389,6 @@ struct DefaultStore
     using Vertex = _Vertex< This >;
     using Handle = TrivialHandle;
 
-    template< typename Mutex, int N >
-    using Guard = typename Base::template Guard< Mutex, N >;
-
     void free_unpacked( Node n, Pool *p, bool foreign ) {
         if ( foreign ) {
             assert( p );
@@ -448,21 +437,6 @@ struct DefaultStore
     template< typename T = char >
     T *extension( Handle h ) {
         return reinterpret_cast< T* >( this->pool().dereference( h.b ) );
-    }
-
-    template< typename Extension >
-    Guard< Extension, 1 > acquire( Vertex &v ) {
-        return Guard< Extension, 1 >(
-                valid(v) ? &v.template extension< Extension >() : nullptr
-            );
-    }
-
-    template< typename Extension >
-    Guard< Extension, 2 > acquire( Vertex &v1, Vertex &v2 ) {
-        return Guard< Extension, 2 >(
-                valid( v1 ) ? &v1.template extension< Extension >() : nullptr,
-                valid( v2 ) ? &v2.template extension< Extension >() : nullptr
-            );
     }
 
     template < typename Graph >
@@ -604,8 +578,6 @@ struct NTreeStore
     using Handle = TrivialHandle;
 
     using Root = typename Table::Root;
-    template< typename Mutex, int N >
-    using Guard = typename Base::template Guard< Mutex, N >;
 
     template< typename Graph >
     NTreeStore( Graph& g, int slack, This *m = nullptr ) :
@@ -663,21 +635,6 @@ struct NTreeStore
     template< typename T = char >
     T *extension( Handle h ) {
         return reinterpret_cast< T* >( Root( h.b ).slack( this->pool() ) );
-    }
-
-    template< typename Extension >
-    Guard< Extension, 1 > acquire( Vertex &v ) {
-        return Guard< Extension, 1 >(
-                valid(v) ? &v.template extension< Extension >() : nullptr
-            );
-    }
-
-    template< typename Extension >
-    Guard< Extension, 2 > acquire( Vertex &v1, Vertex &v2 ) {
-        return Guard< Extension, 2 >(
-                valid( v1 ) ? &v1.template extension< Extension >() : nullptr,
-                valid( v2 ) ? &v2.template extension< Extension >() : nullptr
-            );
     }
 
     STORE_ITERATOR;
