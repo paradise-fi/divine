@@ -11,6 +11,7 @@ for I in llvm_examples/*.c llvm_examples/*.cpp; do
             STD=$(echo $COMPILATION | sed 's/^.*-std=\([^ ]*\).*$/\1/')
         fi
     fi
+    unset CFLAGS
     if ! [ -z $STD ]; then
         CFLAGS="--cflags='-std=$STD'"
     fi
