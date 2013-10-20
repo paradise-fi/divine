@@ -87,6 +87,7 @@ struct LocationInfo : public std::stringstream
      * }
      */
     std::ostream& operator()();
+    LocationInfo() {}
 };
 
 #define WIBBLE_TEST_LOCPRM wibble::tests::Location wibble_test_location
