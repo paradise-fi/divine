@@ -817,7 +817,7 @@ struct Evaluator
         if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( lpi.op ) ) {
             r.cleanup = LPI->isCleanup();
             r.person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
-            for ( int i = 0; i < LPI->getNumClauses(); ++i ) {
+            for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
                 if ( LPI->isFilter( i ) ) {
                     r.items.push_back( std::make_pair( -1, Pointer() ) );
                 } else {
@@ -893,9 +893,9 @@ struct Evaluator
                 case BuiltinChoice: {
                     auto &c = ccontext.choice;
                     c.options = withValues( GetInt(), instruction.operand( 0 ) );
-                    for ( int i = 1; i < instruction.values.size() - 2; ++i )
+                    for ( int i = 1; i < int( instruction.values.size() ) - 2; ++i )
                         c.p.push_back( withValues( GetInt(), instruction.operand( i ) ) );
-                    if ( !c.p.empty() && c.p.size() != c.options ) {
+                    if ( !c.p.empty() && int( c.p.size() ) != c.options ) {
                         ccontext.problem( Problem::InvalidArgument );
                         c.p.clear();
                     }
