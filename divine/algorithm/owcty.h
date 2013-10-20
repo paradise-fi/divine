@@ -152,7 +152,6 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
             if ( reset )
                 extension( st ).predCount() = 0;
             if ( extension( st ).inS() && extension( st ).inF() ) {
-                std::cerr << "queued " << this->graph().showNode( st.node() ) << std::endl;
                 visitor.queue( Vertex(), st.node(), Label() ); // slightly faster maybe
                 st.disown();
             }
