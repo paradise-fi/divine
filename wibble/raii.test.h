@@ -1,12 +1,13 @@
 #if __cplusplus >= 201103L
-
 #include <wibble/raii.h>
+using namespace wibble::raii;
+#endif
+
 #include <wibble/test.h>
 
-using namespace wibble::raii;
 
 struct TestRAII {
-
+#if __cplusplus >= 201103L
     Test basic() {
         int y = 0;
         {
@@ -57,6 +58,10 @@ struct TestRAII {
         }
         assert_eq( x, 0 );
     }
-};
-
+#else /* FIXME: workaround */
+    void basic() {}
+    void ref() {}
+    void refIf() {}
+    void fn() {}
 #endif
+};

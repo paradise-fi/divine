@@ -1,16 +1,18 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+#if __cplusplus >= 201103L
 #include <wibble/sys/mmap_v2.h>
+using namespace wibble::sys;
+#endif
 
 #include <wibble/test.h>
 #include <string.h>
 
 using namespace std;
-using namespace wibble::sys;
 using namespace wibble;
 
 struct TestMMapV2 {
     Test read() {
-#ifdef POSIX
+#if defined POSIX && __cplusplus >= 201103L
         MMap map;
         assert_eq( map.size(), 0U );
         assert( !map );

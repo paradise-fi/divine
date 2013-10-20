@@ -1,16 +1,20 @@
 #if __cplusplus >= 201103L
-
 #include <wibble/strongenumflags.h>
+#endif
+
 #include <wibble/test.h>
 
 using namespace wibble;
 
+#if __cplusplus >= 201103L
 enum class A : unsigned char  { X = 1, Y = 2, Z = 4 };
 enum class B : unsigned short { X = 1, Y = 2, Z = 4 };
 enum class C : unsigned       { X = 1, Y = 2, Z = 4 };
 enum class D : unsigned long  { X = 1, Y = 2, Z = 4 };
+#endif
 
 struct TestStrongEnumFlags {
+#if __cplusplus >= 201103L
     template< typename Enum >
     void testEnum() {
         StrongEnumFlags< Enum > e1;
@@ -31,7 +35,9 @@ struct TestStrongEnumFlags {
         assert( !( Enum::X & Enum::Y & Enum::Z ) );
         assert( ( Enum::X | Enum::Y | Enum::Z ) & Enum::X );
     }
+#endif
 
+#if __cplusplus >= 201103L
     // we don't want to break classical enums and ints by out operators
     Test regression() {
         enum Classic { C_X = 1, C_Y = 2, C_Z = 4 };
@@ -45,6 +51,12 @@ struct TestStrongEnumFlags {
     Test enum_ushort() { testEnum< B >(); }
     Test enum_uint() { testEnum< C >(); }
     Test enum_ulong() { testEnum< D >(); }
+#else /* FIXME work around issues with non-C++11 builds */
+    void regression() {}
+    void enum_uchar() {}
+    void enum_ushort() {}
+    void enum_uint() {}
+    void enum_ulong() {}
+#endif
 };
 
-#endif
