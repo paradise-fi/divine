@@ -101,11 +101,13 @@ struct Interpreter
         if ( tauplus && s.empty() )
             return false; /* this already caused an interrupt, if applicable */
 
-        if ( isa< StoreInst >( instruction().op ) ) {
+        bool store = isa< StoreInst >( instruction().op );
+        if ( store || isa< LoadInst >( instruction().op ) ) {
             if ( !taustores )
                 return true;
 
-            Pointer *p = reinterpret_cast< Pointer * >( dereference( instruction().operand( 1 ) ) );
+            Pointer *p = reinterpret_cast< Pointer * >(
+                dereference( instruction().operand( store ? 1 : 0 ) ) );
             return p && !state.isPrivate( state._thread, *p );
         }
         return instruction().builtin == BuiltinInterrupt || instruction().builtin == BuiltinAp;
