@@ -59,11 +59,11 @@ void Exec::spawnChild()
 
 void Exec::exec()
 {
-    // Prepare the argument list
-    char** exec_args = static_cast<char **>( alloca(args.size() + 1) );
-    for (size_t i = 0; i < args.size(); ++i)
-        exec_args[i] = strdup(args[i].c_str());
-    exec_args[args.size()] = 0;
+	// Prepare the argument list
+        char** exec_args = (char **) alloca(args.size() + 1);
+	for (size_t i = 0; i < args.size(); ++i)
+		exec_args[i] = strdup(args[i].c_str());
+	exec_args[args.size()] = 0;
 
     char** exec_env = environ;
     if (!envFromParent)
@@ -85,6 +85,9 @@ void Exec::exec()
         if (execve(pathname.c_str(), exec_args, exec_env) == -1)
             throw wibble::exception::System("trying to run " + pathname);
     }
+
+    delete[] exec_args;
+    if (exec_env != environ) delete[] exec_env;
 	throw wibble::exception::Consistency(
 			"trying to run " + pathname,
 			"Program flow continued after successful exec()");
