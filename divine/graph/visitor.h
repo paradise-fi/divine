@@ -435,20 +435,17 @@ struct Shared {
 
         void run() {
             worker.restart();
-            detector.visitorStart();
-            while( detector.waitForAll( worker.peers() ) ) {
-                while ( !bfv.open().termination.isZero() ) {
-                    /* Take a whole chunk of work. */
-                    if ( bfv.open().empty() ) {
-                        /* Whenever queue is empty, we push the current chunk to queue
-                        * and synchronize the termination balance, then try again. */
-                        bfv.open().flush();
-                        bfv.open().termination.sync();
-                        continue;
-                    }
-
-                    bfv.processQueue();
+            detector.waitForAll( worker.peers() );
+            while ( !bfv.open().termination.isZero() ) {
+                /* Take a whole chunk of work. */
+                if ( bfv.open().empty() ) {
+                    /* Whenever queue is empty, we push the current chunk to queue
+                    * and synchronize the termination balance, then try again. */
+                    bfv.open().flush();
+                    bfv.open().termination.sync();
+                    continue;
                 }
+                bfv.processQueue();
             }
         }
 

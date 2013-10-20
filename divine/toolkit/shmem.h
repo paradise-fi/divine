@@ -114,17 +114,13 @@ struct StartDetector {
     StartDetector( Shared &s ) : shared( s ) {}
     StartDetector( const StartDetector &s ) : shared( s.shared ) {}
 
-    bool waitForAll( unsigned short peers ) {
-        unsigned short counter = shared.counter;
-        if ( counter == peers ) {
-            shared.counter = 0;
-            return true;
-        }
-        return counter;
-    }
-
-    void visitorStart() {
+    void waitForAll( unsigned short peers ) {
         ++shared.counter;
+
+        while ( shared.counter != 0 ) {
+            if ( shared.counter == peers )
+                shared.counter = 0;
+        }
     }
 
 };

@@ -6,21 +6,6 @@
 
 struct TestSharedMemoryUtilities {
 
-    Test sequential() {
-        divine::StartDetector::Shared sh;
-        divine::StartDetector detector( sh );
-
-        const unsigned short peers = 15;
-
-        for ( int r = 0; r != 2; ++r ) {
-            for ( int i = 0; i < peers; ++i ) {
-                detector.visitorStart();
-                assert( detector.waitForAll( peers ) );
-            }
-            assert( !detector.waitForAll( peers ) );
-        }
-    }
-
     struct Worker : wibble::sys::Thread {
 
         divine::StartDetector detector;
@@ -31,8 +16,7 @@ struct TestSharedMemoryUtilities {
         {}
 
         void* main() {
-            detector.visitorStart();
-            while ( detector.waitForAll( peers ) );
+            detector.waitForAll( peers );
             return nullptr;
         }
     };
@@ -49,6 +33,7 @@ struct TestSharedMemoryUtilities {
                 w.start();
             for ( Worker &w : threads )
                 w.join();
+            assert_eq( sh.counter.load(), 0 );
         }
     }
 };
