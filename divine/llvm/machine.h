@@ -4,6 +4,8 @@
 #include <divine/toolkit/lens.h>
 #include <divine/graph/graph.h>
 
+#include <wibble/param.h>
+
 #ifndef DIVINE_LLVM_MACHINE_H
 #define DIVINE_LLVM_MACHINE_H
 
@@ -104,6 +106,7 @@ struct MachineState
         template< typename T = char >
         T *dereference( ProgramInfo &i, ValueRef v ) {
             assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
+            wibble::param::discard( i );
             return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
         }
     };
@@ -157,7 +160,7 @@ struct MachineState
         return 2 * (2 + segcount - segcount % 2);
     }
 
-    static int size_bitmap( int bytecount, int align = 4 ) {
+    static int size_bitmap( int bytecount, int /*align*/ = 4 ) {
         return divine::align( bytecount / 32 + ((bytecount % 32) ? 1 : 0), 4 );
     }
 

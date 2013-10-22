@@ -146,7 +146,7 @@ struct ControlContext {
     Choice choice;
     void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
-    MachineState::Frame &frame( int depth = 0 ) { assert_die(); }
+    MachineState::Frame &frame( int /*depth*/ = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
     void problem( Problem::What ) { assert_die(); }
     PC &pc() { assert_die(); }
@@ -1102,7 +1102,7 @@ struct Evaluator
     }
 
     template< typename Fun, typename I, typename Cons >
-    typename Fun::T implement( wibble::NotPreferred, I i, I e, Cons list, Fun = Fun() ) {
+    typename Fun::T implement( wibble::NotPreferred, I /*i*/, I /*e*/, Cons /*list*/, Fun = Fun() ) {
         instruction.op->dump();
         assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
     }
@@ -1116,6 +1116,7 @@ struct Evaluator
         typedef ProgramInfo::Value Value;
 
         assert( i == e );
+        wibble::param::discard( i, e );
         fun._evaluator = this;
         auto retval = match( fun, list );
         econtext.setPointer( result.back(), fun.resultIsPointer( pointers.back() ) );
