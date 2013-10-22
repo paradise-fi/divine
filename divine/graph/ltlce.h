@@ -192,7 +192,7 @@ struct LtlCE {
     {
 
         static visitor::ExpansionAction expansion( This &t, Vertex v ) {
-            assert( t.extension( v ).iteration() == t.shared().iteration );
+            assert( int( t.extension( v ).iteration() ) == t.shared().iteration );
             return visitor::ExpansionAction::Expand;
         }
 
@@ -203,12 +203,12 @@ struct LtlCE {
                 return visitor::TransitionAction::Expand;
             }
             if ( t.store().equal( to.handle(), t.shared().ce.initial ) ) {
-                assert( t.extension( to ).iteration() == t.shared().iteration );
+                assert( int( t.extension( to ).iteration() ) == t.shared().iteration );
                 return visitor::TransitionAction::Terminate;
             }
             if ( t.updateIteration( to ) ) {
                 t.extension( to ).parent() = from.handle();
-                assert( t.extension( from ).iteration() == t.shared().iteration );
+                assert( int( t.extension( from ).iteration() ) == t.shared().iteration );
                 return visitor::TransitionAction::Expand;
             }
             return visitor::TransitionAction::Forget;
