@@ -231,13 +231,34 @@ struct DFVReadOnly : Common< Stack, S, ReadOnly::Yes > {
         : Super( n, g, s, typename Super::Queue( g, s ) ) {}
 };
 
+template< typename Self, typename S >
+struct Interruptible
+{
+    Self &self() { return *static_cast< Self * >( this ); }
+
+    visitor::TransitionAction transition( typename S::Store::Vertex f, typename S::Node t ) {
+        visitor::TransitionAction tact = S::transition( self().notify, f, t );
+        if ( tact == TransitionAction::Terminate )
+            self().worker.interrupt();
+        return tact;
+    }
+
+    visitor::ExpansionAction expansion( typename S::Store::Vertex n ) {
+        ExpansionAction eact = S::expansion( self().notify, n );
+        if ( eact == ExpansionAction::Terminate )
+            self().worker.interrupt();
+        return eact;
+    }
+};
+
 struct Partitioned {
     template< typename S >
     struct Data {
     };
 
     template< typename S, typename Worker >
-    struct Implementation {
+    struct Implementation : Interruptible< Implementation< S, Worker >, S >
+    {
         typedef typename S::Node Node;
         typedef typename S::Label Label;
         typedef typename S::Graph Graph;
@@ -269,21 +290,6 @@ struct Partitioned {
             int _to = store().owner( to, hint ), _from = worker.id();
             Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
             worker.submit( _from, _to, std::make_tuple( from, to, label ) );
-        }
-
-        visitor::TransitionAction transition( Vertex f, Node t ) {
-            visitor::TransitionAction tact = S::transition( notify, f, t );
-            if ( tact == TransitionAction::Terminate )
-                worker.interrupt();
-            return tact;
-        }
-
-        visitor::ExpansionAction expansion( Vertex n ) {
-            assert_eq( store().owner( n ), worker.id() );
-            ExpansionAction eact = S::expansion( notify, n );
-            if ( eact == ExpansionAction::Terminate )
-                worker.interrupt();
-            return eact;
         }
 
         template< typename BFV >
@@ -385,7 +391,8 @@ struct Shared {
     };
 
     template< typename S, typename Worker >
-    struct Implementation {
+    struct Implementation : Interruptible< Implementation< S, Worker >, S >
+    {
         typedef Implementation< S, Worker > This;
         typedef typename S::Graph Graph;
         typedef typename S::Node Node;
@@ -396,8 +403,11 @@ struct Shared {
 
         typedef divine::SharedQueue< S > Chunker;
 
+        struct S2 : SetupOverride< S, This > {};
+
         Store closed;
-        BFVShared< S > bfv;
+        std::pair< typename S::Listener*, This* > bfvListener;
+        BFVShared< S2 > bfv;
         StartDetector detector;
 
         Store& store() {
@@ -416,21 +426,6 @@ struct Shared {
             queue( from, to, label );
         }
 
-        TransitionAction transition( Vertex f, Node t ) {
-            visitor::TransitionAction tact = S::transition( notify, f, t );
-            if ( tact == TransitionAction::Terminate )
-                worker.interrupt();
-            return tact;
-        }
-
-        ExpansionAction expansion( Vertex n ) {
-            assert_eq( store().owner( n ), worker.id() );
-            ExpansionAction eact = S::expansion( notify, n );
-            if ( eact == ExpansionAction::Terminate )
-                worker.interrupt();
-            return eact;
-        }
-
         void run() {
             worker.restart();
             detector.waitForAll( worker.peers() );
@@ -445,6 +440,8 @@ struct Shared {
                 }
                 bfv.processQueue();
             }
+            if ( worker.interrupted() )
+                bfv.terminate();
         }
 
         inline void setIds() {
@@ -467,7 +464,7 @@ struct Shared {
 
         Implementation( typename S::Listener &l, Worker &w, Graph &g, Store& s,
                         Data< typename S::AlgorithmSetup >& d )
-            : closed( s ), bfv( l, g, s, d.chunkq, d.terminator ),
+            : closed( s ), bfvListener( &l, this ), bfv( bfvListener, g, s, d.chunkq, d.terminator ),
               detector( *d.detector ), worker( w ), notify( l )
         {}
     };
