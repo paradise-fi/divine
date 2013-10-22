@@ -89,7 +89,7 @@ struct ApproximateCounter {
          * too often; the counter might drop below zero when reset() is called
          * due to early termination, and a sync() intervenes, substracting a
          * non-zero local approximation */
-        return shared.counter <= 0;
+        return shared.counter < 0 ? (shared.counter = 0) : (shared.counter == 0);
     }
 
     void reset() { shared.counter = 0; }
