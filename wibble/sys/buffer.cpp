@@ -107,11 +107,11 @@ std::string Buffer::print_preview(unsigned size) const
 {
     if (this->size() > size)
     {
-        std::string res = str::c_escape(std::string((const char*)data(), 100));
+        std::string res = str::c_escape(std::string(static_cast<const char*>(data()), 100));
         res += "[...]";
         return res;
     } else {
-        return str::c_escape(std::string((const char*)data(), this->size()));
+        return str::c_escape(std::string(static_cast<const char*>(data()), this->size()));
     }
 }
 

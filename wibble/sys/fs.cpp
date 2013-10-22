@@ -250,7 +250,7 @@ Directory::const_iterator& Directory::const_iterator::operator++()
     if (!d) d = new struct dirent;
 
     struct dirent* dres;
-    int res = readdir_r((DIR*)(dir->dir), d, &dres);
+    int res = readdir_r(static_cast<DIR*>(dir->dir), d, &dres);
     if (res != 0)
         throw wibble::exception::System(res, "reading directory " + dir->m_path);
 
@@ -361,7 +361,7 @@ Directory::Directory(const std::string& path)
 
 Directory::~Directory()
 {
-    if (dir) closedir((DIR*)dir);
+    if (dir) closedir(static_cast<DIR*>(dir));
 }
 
 Directory::const_iterator Directory::begin()

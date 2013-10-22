@@ -408,7 +408,7 @@ std::string c_escape(const std::string& str)
         else if (*i == 0 || iscntrl(*i))
         {
             char buf[5];
-            snprintf(buf, 5, "\\x%02x", (unsigned int)*i);
+            snprintf(buf, 5, "\\x%02x", unsigned(*i));
             res += buf;
         }
         else if (*i == '"' || *i == '\\')
@@ -439,7 +439,7 @@ std::string c_unescape(const std::string& str, size_t& lenParsed)
                               for (j = 0; j < 2 && i+2+j != str.end() && isxdigit(*(i+2+j)); ++j)
                                   buf[2+j] = *(i+2+j);
                               i += j;
-                              res += (char)atoi(buf);
+                              res += char(atoi(buf));
                               break;
                           }
                 default:
