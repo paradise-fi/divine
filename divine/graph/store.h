@@ -139,12 +139,8 @@ struct PartitionedProvider {
         Table &table() { return _table; }
         const Table &table() const { return _table; }
 
-        size_t firstIndex() {
-            return 0;
-        }
-        size_t lastIndex() {
-            return table().size();
-        }
+        size_t firstIndex() { return 0; }
+        size_t lastIndex() { return table().size(); }
 
         Make( Hasher h, Make * ) : _table( h ) {}
     };

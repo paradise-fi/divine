@@ -14,12 +14,13 @@
 namespace divine {
 namespace visitor {
 
-enum class TransitionAction { Terminate,
-                        Expand, // force expansion on the target state
-                        Follow, // expand the target state if it's
-                                // not been expanded yet
-                        Forget  // do not act upon this transition;
-                                // target state is freed by visitor
+enum class TransitionAction {
+    Terminate,
+    Expand, // force expansion on the target state
+    Follow, // expand the target state if it's
+            // not been expanded yet
+    Forget  // do not act upon this transition;
+            // target state is freed by visitor
 };
 
 enum class TransitionFilter { Take, Ignore };
@@ -104,10 +105,7 @@ struct Common {
     Store &_store;
     Queue _queue;
 
-    Pool &pool() {
-        return graph.pool();
-    }
-
+    Pool &pool() { return graph.pool(); }
     Store &store() { return _store; }
 
     void expand( Node n ) {
@@ -174,7 +172,7 @@ struct Common {
         }
 
         if ( tact == TransitionAction::Terminate ||
-                eact == ExpansionAction::Terminate )
+             eact == ExpansionAction::Terminate )
             this->terminate();
     }
 

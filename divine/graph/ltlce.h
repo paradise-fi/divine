@@ -76,9 +76,7 @@ struct LtlCE {
     }
 
     Store &store() { assert( _store ); return *_store; }
-    Pool& pool() {
-        return g().pool();
-    }
+    Pool& pool() { return g().pool(); }
 
     Extension& extension( Vertex vi ) {
         return vi.template extension< Extension >();
@@ -338,7 +336,6 @@ struct LtlCE {
     Traces parentTrace( Domain &d, Alg &a, TraceType ) {
         return parentTrace< Domain, Alg, TraceType >( d, a );
     }
-
 
     template< typename Domain, typename Alg, typename TT >
     Traces parentTrace( Domain &d, Alg &a ) {
