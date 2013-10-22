@@ -272,6 +272,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     }
 
     Handle front() {
+        assert( !incoming.empty() );
         return incoming.front();
     }
 
