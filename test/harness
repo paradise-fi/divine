@@ -25,7 +25,12 @@ eval "\$@"
 EOF
 chmod +x $TOOLS/ssh
 
-test -z "$MPIEXEC" && MPIEXEC=false
+if test -z "$MPIEXEC"; then
+    MPIEXEC=false
+else
+    MPIEXEC=$(readlink -f `which $MPIEXEC`)
+fi
+
 
 tests="$@"
 good=0
