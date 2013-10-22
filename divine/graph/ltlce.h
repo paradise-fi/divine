@@ -340,6 +340,7 @@ struct LtlCE {
     Traces parentTrace( Domain &d, Alg &a ) {
         Node parent = shared().ce.parent;
         std::deque< Handle > hTrace;
+        std::set< uint64_t > hSeen;
 
         // trace backward to initial using handles
         shared().ce.current = shared().ce.initial;
@@ -353,6 +354,11 @@ struct LtlCE {
             d.ring( &Alg::_parentTrace );
             assert( shared().ce.current_updated );
             hTrace.push_front( shared().ce.current );
+
+            if ( !shared().ce.is_ce_initial ) {
+                assert( hSeen.count( shared().ce.current.asNumber() ) == 0 );
+                hSeen.insert( shared().ce.current.asNumber() );
+            }
 
             if ( TT::value == TraceType::Linear ) {
                 shared().ce.successor_id = 0;
