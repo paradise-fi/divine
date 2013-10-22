@@ -15,7 +15,9 @@ endif()
 
 if( GUI )
     add_custom_command(OUTPUT divine.qhc manual.qch
-                       COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/{divine.qhcp,manual.qhp,about.txt} .
+                       COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/divine.qhcp .
+                       COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/manual.qhp .
+                       COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/about.txt .
                        COMMAND ${QT_QCOLLECTIONGENERATOR_EXECUTABLE} divine.qhcp
                        DEPENDS manual.html ${CMAKE_CURRENT_SOURCE_DIR}/divine.qhcp
                                ${CMAKE_CURRENT_SOURCE_DIR}/manual.qhp )
