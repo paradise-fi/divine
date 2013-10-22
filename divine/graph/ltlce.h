@@ -223,15 +223,11 @@ struct LtlCE {
         typename Find::Visitor::template Implementation< Find, Algorithm >
             visitor( *this, a, a.graph(), a.store(), a.data );
 
-        assert( a.store().valid( shared().ce.parent ) );
-        if ( a.store().knows( shared().ce.parent ) ) {
-            assert( a.store().knows( shared().ce.initial ) );
-            Vertex parent = a.store().fetch( shared().ce.parent );
-            shared().ce.parent = parent.node();
-            // since initial must be parent's handle
-            assert( a.store().equal( parent.handle(), shared().ce.initial ) );
-            visitor.queue( Vertex(), parent.node(), Label() );
-            parent.disown();
+        assert( a.store().valid( shared().ce.initial ) );
+        if ( a.store().knows( shared().ce.initial ) ) {
+            Vertex i = a.store().vertex( shared().ce.initial );
+            visitor.queue( Vertex(), i.node(), Label() );
+            i.disown();
         }
         visitor.processQueue();
     }
@@ -508,9 +504,7 @@ struct LtlCE {
     template< typename Domain, typename Alg >
     void lasso( Domain &d, Alg &a )
     {
-        Node cycleNode = linear( d, a );
-        assert( a.store().valid( cycleNode ) );
-        shared().ce.parent = cycleNode;
+        linear( d, a );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
         generateLasso( a, g(),
