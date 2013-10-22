@@ -193,16 +193,24 @@ struct LtlCE {
     struct FindCycle : algorithm::Visit< This, Setup >
     {
 
-        static visitor::ExpansionAction expansion( This &, Vertex ) {
+        static visitor::ExpansionAction expansion( This &t, Vertex v ) {
+            assert( t.extension( v ).iteration() == t.shared().iteration );
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &t, Vertex from, Vertex to, Label ) {
             typename Store::template Guard< Extension > guard( from, to );
-            if ( !t.store().valid( from ) )
+            if ( !t.store().valid( from ) ) {
+                t.updateIteration( to );
                 return visitor::TransitionAction::Expand;
+            }
+            if ( t.store().equal( to.handle(), t.shared().ce.initial ) ) {
+                assert( t.extension( to ).iteration() == t.shared().iteration );
+                return visitor::TransitionAction::Terminate;
+            }
             if ( t.updateIteration( to ) ) {
                 t.extension( to ).parent() = from.handle();
+                assert( t.extension( from ).iteration() == t.shared().iteration );
                 return visitor::TransitionAction::Expand;
             }
             return visitor::TransitionAction::Forget;
