@@ -19,6 +19,7 @@ template< typename Setup, typename Self >
 struct QueueFrontend {
     Self &self() { return *static_cast< Self * >( this ); }
     bool deadlocked;
+    bool axed;
 
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
@@ -27,11 +28,13 @@ struct QueueFrontend {
     template< typename Next >
     void processOpen( Next next ) {
         deadlocked = true;
+        axed = false;
 
         auto from = self().store().vertex( self().front() );
         self().g.successors( from, [&]( Node n, Label label ) {
                 deadlocked = false;
-                next( from, n, label );
+                if ( !axed )
+                    next( from, n, label );
             } );
     }
 
@@ -88,7 +91,7 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     }
 
     bool empty() { return _queue.empty(); }
-    void clear() { _queue.clear(); }
+    void clear() { _queue.clear(); this->axed = true; }
 
     Queue( Graph &g, Store &s ) : g( g ), s( s ), id( 0 ) {}
 };
@@ -286,8 +289,10 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 
     void clear() {
         incoming.clear();
+        outgoing.clear();
         while ( !chunkq().empty )
             chunkq().pop();
+        this->axed = true;
     }
 
     SharedQueue( void ) = delete;
