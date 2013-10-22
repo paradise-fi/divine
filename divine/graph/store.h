@@ -186,6 +186,7 @@ struct SharedProvider {
             }
 
             Guard( const Guard & ) = delete;
+            Guard( Guard && ) = delete;
         };
 
         TablePtr _table;
