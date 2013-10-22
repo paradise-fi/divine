@@ -79,7 +79,14 @@ struct Pointer : wibble::mixin::Comparable< Pointer >
         return *reinterpret_cast< const uint32_t * >( this );
     }
 
-    explicit Pointer( uint32_t x ) { *this = *reinterpret_cast< const Pointer * >( &x ); }
+    explicit Pointer( uint32_t x ) {
+        union U {
+            uint32_t x;
+            Pointer p;
+            U( uint32_t x ) : x( x ) {}
+        } u( x );
+        *this = u.p;
+    }
     explicit Pointer( const PC &x ) { *this = *reinterpret_cast< const Pointer * >( &x ); }
 
     bool operator<=( Pointer o ) const {
