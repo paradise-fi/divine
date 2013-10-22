@@ -5,9 +5,7 @@
 #include <stdint.h>
 #include <tuple>
 #include <algorithm>
-#include <wibble/sys/mutex.h>
 #include <divine/toolkit/hashset.h>
-#include <divine/toolkit/shmem.h>
 #include <divine/toolkit/bitoperations.h>
 
 #ifndef DIVINE_SHAREDHASHSET_H
