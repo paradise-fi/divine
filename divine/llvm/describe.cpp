@@ -337,7 +337,6 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
 
         state().eachframe( state().stack( c ), [&]( MachineState::Frame &f ) {
                 ++ i;
-                bool bored = false;
                 location = "<unknown>";
                 lines.clear();
                 if ( info().instruction( f.pc ).op )
@@ -346,7 +345,6 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
                     location = locinfo( info(), f.pc, ds, false, &fun );
 
                     if ( fun ) {
-                        bored = boring( fun->getName(), true );
                         for ( auto arg = fun->arg_begin(); arg != fun->arg_end(); ++ arg )
                             value( &*arg, ValueRef( info().valuemap[ &*arg ], fcount - i, c ), Pointer() );
 
@@ -357,7 +355,7 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
                         }
                     }
                 }
-                s << "  #" << i << ": " << location << " " << ( bored ? "(internal)" : wibble::str::fmt( lines ) ) << std::endl;
+                s << "  #" << i << ": " << location << " " << wibble::str::fmt( lines ) << std::endl;
             } );
     }
 
