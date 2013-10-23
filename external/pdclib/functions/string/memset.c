@@ -7,12 +7,14 @@
 */
 
 #include <string.h>
+#include <divine.h>
 
 #ifndef REGTEST
 
 void * memset( void * s, int c, size_t n )
 {
     unsigned char * p = (unsigned char *) s;
+    __divine_interrupt_mask();
     while ( n-- )
     {
         *p++ = (unsigned char) c;
