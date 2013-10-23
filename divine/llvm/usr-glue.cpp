@@ -74,6 +74,7 @@ extern "C" { /* pdclib glue functions */
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
     // I believe we will do nothing wrong if we verify nanosleep as NOOP,
     // it does not guearantee anything anyway
+    return 0;
 }
 
 extern "C" {
