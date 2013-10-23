@@ -461,6 +461,9 @@ struct Evaluator
     template < typename From, typename To, typename FromC, typename ToC >
     Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
     {
+        if ( !bytes )
+            return Problem::NoProblem; /* this is apparently always OK */
+
         char *from = fromc.dereference( f ),
              *to = toc.dereference( t );
         int f_end = f.offset + bytes;
