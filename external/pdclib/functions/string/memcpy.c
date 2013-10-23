@@ -13,8 +13,8 @@
 
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {
-    int distance = s1 - s2;
-    assert( distance > 0 ? distance >= n : -distance >= n );
+    size_t distance = s1 > s2 ? s1 - s2 : s2 - s1;
+    assert( distance >= n );
     return __divine_memcpy( s1, s2, n );
 }
 
