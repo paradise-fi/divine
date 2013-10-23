@@ -8,7 +8,7 @@ formalism, though, some features are still left unimplemented. These are as
 follows:
 
   * Clock constraints involving non-constant integers are limited. Even though
-    we were able to implemente basic heuristics that try to find the maximal and
+    we were able to implement basic heuristics that try to find the maximal and
     minimal possible value of non-constant expressions, and it is possible to
     compare single clocks to such expressions, we only support comparisons of
     clock differences to constants.
@@ -33,7 +33,7 @@ bounds extrapolation, thus allowing the time-lock detection.
 
 To check for validity of LTL properties, a file with a suffix .ltl and the same
 base name as the model file has to be created. This file can contain one or more
-L properties constructed using LTL specification language (see LTL specification
+LTL properties constructed using LTL specification language (see LTL specification
 format above).  Due to limitations of the tool that DIVINE uses to transform LTL
 formulae to corresponding Büchi automata, atomic propositions can contain only
 lower case letters, digits, underscore and must not begin with a digit. For this
@@ -60,9 +60,24 @@ To exclude all Zeno runs during the LTL verification, we can use the option `-f`
 similarly to obtain a full report of the verification including an error trace,
 we can use `-r`.
 
-Semantics of property specifications is slightly different from Uppaal.  First
-of all, DIVINE considers only runs where action and delay transitions
-alternate. This means that DIVINE, unlike Uppaal, does not consider runs where
+The LTL specification language differs from subset of CTL used by Uppaal, but
+all properties that may be used in Uppaal may be verified by DIVINE as well.
+In CTL you may qualify your formula as existential (E...) or universal (A...).
+DIVINE does universal verification only, i.e. it decides whether *all* runs
+meets given conditions. However, negation of existential formula is a universal
+formula. Therefore, if your desired CTL specification is in the form `A[]p` or
+`A<>p`, you can directly translate it to equivalent LTL formula `Gp` or `Fp`
+respectively. `E<>p` can be translated to `G!p` and `E[]p` to `F!p`, but these formulas
+are not equivalent, in fact, they have exactly opposite meaning; hence when
+DIVINE says a formula `F!p` does not hold in some model, Uppaal says that `E[]p` is
+satisfied and vice versa. In the case of existential CTL formula that holds,
+DIVINE reports a counterexample to corresponding LTL formula, which is actually
+a witness for the original CTL formula. The last class of formulas Uppaal is able
+to verify are *response* or *leads-to properties*; `p-->q` is equivalent to LTL formula
+`G(p -> Fq)`.
+
+DIVINE considers only runs where action and delay transitions
+alternate. This means that DIVINE does not consider runs where
 the system stays in one location for an infinite amount of time.  The temporal
 operator X considers the next state to be a state that can be reached by
 performing exactly one action transition followed by an arbitrary delay
