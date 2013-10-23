@@ -322,35 +322,43 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
         if ( info().globalinfo[ i ].first )
             this->value( info().globalinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
-    if ( lines.size() )
-        s << "global: " << wibble::str::fmt( lines ) << std::endl;
+    if ( lines.size() ) {
+        s << "globals: " << std::endl;
+        for ( auto l : lines )
+            s << "  " << l << std::endl;
+    }
 
     for ( int c = 0; c < state()._thread_count; ++c ) {
         std::string location;
-        bool bored = false;
-        lines.clear();
 
-        if ( state().stack( c ).get().length() &&
-             info().instruction( state().frame( c ).pc ).op )
-        {
-            Function *f = nullptr;
-            location = locinfo( info(), state().frame( c ).pc, ds, false, &f );
+        int fcount = state().stack( c ).get().length();
+        s << "thread " << c << ":" << (fcount ? "" : " (zombie)") << std::endl;
+        int i = 0;
 
-            if ( f ) {
-                bored = boring( f->getName(), true );
-                for ( auto arg = f->arg_begin(); arg != f->arg_end(); ++ arg )
-                    value( &*arg, ValueRef( info().valuemap[ &*arg ], 0, c ), Pointer() );
+        state().eachframe( state().stack( c ), [&]( MachineState::Frame &f ) {
+                ++ i;
+                bool bored = false;
+                location = "<unknown>";
+                lines.clear();
+                if ( info().instruction( f.pc ).op )
+                {
+                    Function *fun = nullptr;
+                    location = locinfo( info(), f.pc, ds, false, &fun );
 
-                for ( auto block = f->begin(); block != f->end(); ++block ) {
-                    value( &*block, ValueRef(), Pointer() ); // just for counting
-                    for ( auto v = block->begin(); v != block->end(); ++v )
-                        value( &*v, ValueRef( info().valuemap[ &*v ], 0, c), Pointer() );
+                    if ( fun ) {
+                        bored = boring( fun->getName(), true );
+                        for ( auto arg = fun->arg_begin(); arg != fun->arg_end(); ++ arg )
+                            value( &*arg, ValueRef( info().valuemap[ &*arg ], fcount - i, c ), Pointer() );
+
+                        for ( auto block = fun->begin(); block != fun->end(); ++block ) {
+                            value( &*block, ValueRef(), Pointer() ); // just for counting
+                            for ( auto v = block->begin(); v != block->end(); ++v )
+                                value( &*v, ValueRef( info().valuemap[ &*v ], fcount - i, c), Pointer() );
+                        }
+                    }
                 }
-            }
-        } else
-            location = "<null>";
-
-        s << c << ": " << location << " " << ( bored ? "(internal)" : wibble::str::fmt( lines ) ) << std::endl;
+                s << "  #" << i << ": " << location << " " << ( bored ? "(internal)" : wibble::str::fmt( lines ) ) << std::endl;
+            } );
     }
 
     MachineState::Flags &flags = state().flags();
