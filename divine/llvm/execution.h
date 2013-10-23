@@ -772,6 +772,15 @@ struct Evaluator
 
     typedef std::vector< ProgramInfo::Value > Values;
 
+    int find_invoke() {
+        for ( int fid = 1; fid < ccontext.stackDepth() - 1; ++fid ) {
+            auto target = info.instruction( ccontext.frame( fid ).pc );
+            if ( isa< ::llvm::InvokeInst >( target.op ) )
+                return fid;
+        }
+        return ccontext.stackDepth(); /* past the end */
+    }
+
     void unwind( int frameid, const Values &args )
     {
         if ( !transform_frameid( frameid ) )
@@ -1089,7 +1098,8 @@ struct Evaluator
                 break;
 
             case LLVMInst::Resume:
-                unwind( -1, Values( { instruction.operand( 0 ) } ) );
+                /* unwind down to the next invoke instruction in the stack */
+                unwind( -find_invoke(), Values( { instruction.operand( 0 ) } ) );
                 break;
 
             case LLVMInst::LandingPad:
