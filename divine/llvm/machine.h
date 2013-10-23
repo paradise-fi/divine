@@ -495,7 +495,7 @@ struct MachineState
         _stack[thread].first = true;
 
         if ( !_alloc.pool().valid( _stack[thread].second ) )
-            _stack[thread].second = _alloc.pool().allocate( 4096 );
+            _stack[thread].second = _alloc.pool().allocate( 65536 );
 
         _alloc.pool().get< int >( _stack[thread].second ) = 0; /* clear any pre-existing state */
 
