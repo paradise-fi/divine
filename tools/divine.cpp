@@ -65,7 +65,7 @@ struct Main {
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
-    StringOption *o_compression;
+    OptvalStringOption *o_compression;
     VectorOption< String > *o_definitions;
     BoolOption *o_noreduce;
     BoolOption *o_curses;
@@ -77,7 +77,7 @@ struct Main {
     StringOption *o_gnuplot;
     StringOption *o_property;
     StringOption *o_inputTrace, *o_interactiveInputTrace;
-    StringOption *o_demangle;
+    OptvalStringOption *o_demangle;
     StringOption *o_outputFile;
     BoolOption *o_noSaveStates;
 
@@ -130,7 +130,7 @@ struct Main {
             TrackStatistics::global().gnuplot = NoStatistics::global().gnuplot
                 = true;
             TrackStatistics::global().output = NoStatistics::global().output
-                = new std::ofstream( o_gnuplot->stringValue().c_str() );
+                = new std::ofstream( o_gnuplot->value().c_str() );
         }
 
         run();
@@ -154,8 +154,8 @@ struct Main {
 
         if ( mpi->master() ) {
             setupOutput();
-            if ( o_report->boolValue() )
-                _report = &report;
+            if ( o_report->isSet() )
+                _report = report;
         }
 
         TrackStatistics::global().setup( a->meta() );
@@ -182,8 +182,8 @@ struct Main {
         if ( meta.output.statistics )
             TrackStatistics::global().snapshot();
         Output::output().cleanup();
-        if ( mpi->master() && o_report->boolValue() )
-            report.final( std::cout, a->meta() );
+        if ( mpi->master() && o_report->isSet() )
+            report->final( a->meta() );
     }
 
     static void die( std::string bla ) __attribute__((noreturn))
@@ -278,7 +278,7 @@ struct Main {
             "fairness", 'f', "fair", "",
             "consider only weakly fair executions" );
 
-        o_compression = compression->add< StringOption >(
+        o_compression = compression->add< OptvalStringOption >(
                 "compression", '\0', "compression", "",
                 "configure state compression [default = none], available: none, tree" );
 
@@ -311,7 +311,7 @@ struct Main {
                 "mpi", 0, "mpi", "",
                 "Force use of MPI (in case it is not detected properly)" );
 
-        o_demangle = common->add< StringOption >(
+        o_demangle = common->add< OptvalStringOption >(
                 "demangle", 0, "demangle", "",
                 "Demagle style of symbols (only for LLVM verification) [default=none, available=node,cpp]" );
 
@@ -517,7 +517,7 @@ struct Main {
         // else default (currently set to 2)
 
         meta.input.model = input;
-        meta.input.propertyName = o_property->boolValue() ? o_property->stringValue() : "deadlock";
+        meta.input.propertyName = o_property->boolValue() ? o_property->value() : "deadlock";
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
@@ -525,31 +525,31 @@ struct Main {
         meta.algorithm.sharedVisitor = o_shared->boolValue();
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
-                meta.algorithm.reduce = parseReductions( o_reduce->stringValue() );
+                meta.algorithm.reduce = parseReductions( o_reduce->value() );
             else
                 meta.algorithm.reduce = parseReductions( "tau+,taustores,heap,por,LU" );
         }
-        meta.algorithm.compression = o_compression->boolValue()
-            ? parseCompression( o_compression->stringValue() )
+        meta.algorithm.compression = o_compression->isSet()
+            ? parseCompression( o_compression->value() )
             : ( o_compression->isSet()
                     ? meta::Algorithm::C_NTree
                     : meta::Algorithm::C_None );
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
-        meta.algorithm.demangle = o_demangle->boolValue()
-            ? parseDemangle( o_demangle->stringValue() )
+        meta.algorithm.demangle = o_demangle->isSet()
+            ? parseDemangle( o_demangle->value() )
             : ( o_demangle->isSet()
                     ? graph::DemangleStyle::Cpp
                     : graph::DemangleStyle::None );
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
-        if ( !o_dispCe->boolValue() && !o_report->boolValue() )
+        if ( !o_dispCe->boolValue() && !o_report->isSet() )
             meta.output.wantCe = false;
 
         meta.output.displayCe = o_dispCe->boolValue();
         meta.algorithm.maxDistance = o_distance->intValue();
-        meta.output.filterProgram = o_render->stringValue();
+        meta.output.filterProgram = o_render->value();
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
@@ -558,18 +558,18 @@ struct Main {
             if ( o_inputTrace->isSet() && o_interactiveInputTrace->isSet() )
                 die( "Use just one of --trace / --int-trace" );
             meta.input.trace = o_inputTrace->isSet()
-                ? o_inputTrace->stringValue()
-                : o_interactiveInputTrace->stringValue();
+                ? o_inputTrace->value()
+                : o_interactiveInputTrace->value();
             meta.algorithm.interactive = !o_inputTrace->isSet();
         }
         else
-            meta.input.trace = o_drawTrace->stringValue();
+            meta.input.trace = o_drawTrace->value();
 
         setupLimits();
 
         meta.output.file = o_drawOutput->isSet()
-            ? o_drawOutput->stringValue()
-            : o_outputFile->stringValue();
+            ? o_drawOutput->value()
+            : o_outputFile->value();
         meta.output.saveStates = !o_noSaveStates->boolValue();
 
 
