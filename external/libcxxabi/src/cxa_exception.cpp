@@ -21,6 +21,10 @@
 #include "cxa_exception.hpp"
 #include "cxa_handlers.hpp"
 
+#ifdef __divine__
+#include <divine.h>
+#endif
+
 // +---------------------------+-----------------------------+---------------+
 // | __cxa_exception           | _Unwind_Exception CLNGC++\0 | thrown object |
 // +---------------------------+-----------------------------+---------------+
@@ -102,18 +106,28 @@ static inline  int decrementHandlerCount(__cxa_exception *exception) {
     return --exception->handlerCount;
 }
 
+#ifndef __divine__
 #include "fallback_malloc.ipp"
+#endif
 
 //  Allocate some memory from _somewhere_
 static void *do_malloc(size_t size) {
+#ifdef __divine__
+    return ::__divine_malloc(size);
+#else
     void *ptr = std::malloc(size);
     if (NULL == ptr) // if malloc fails, fall back to emergency stash
         ptr = fallback_malloc(size);
     return ptr;
+#endif
 }
 
 static void do_free(void *ptr) {
+#ifdef __divine__
+    ::__divine_free(ptr);
+#else
     is_fallback_ptr(ptr) ? fallback_free(ptr) : std::free(ptr);
+#endif
 }
 
 /*
