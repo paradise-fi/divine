@@ -7,6 +7,7 @@ DIVINE 3.0.91 (3.1 alpha 2; 15.10.2013)
 - Optional probabilistic choice with LLVM.
 - Support for std::atomic in C++ verification w/ LLVM.
 - LLVM support for cmpxchg, atomicrmw instructions.
+- Fix for a bug in tau reduction for LLVM (bad load coalescing).
 - Varargs support in C, C++ w/ LLVM.
 - Optionally demangle C++ symbols in counterexamples.
 - Port and use libc++ and libc++abi in `divine compile --llvm`.
