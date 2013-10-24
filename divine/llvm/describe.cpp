@@ -452,7 +452,7 @@ void MachineState::dump( std::ostream &r ) {
         int count = 0;
         r << "thread " << i << ", stack depth = " << stack( i ).get().length();
         if (_stack[i].first) {
-            r << " [detached at " << (void*)_alloc.pool().dereference( _stack[i].second ) << "]";
+            r << " [detached at " << static_cast< void * >( _alloc.pool().dereference( _stack[i].second ) ) << "]";
         }
         r << std::endl;
         eachframe( stack( i ), [&]( Frame &f ) {
