@@ -157,7 +157,7 @@ struct TestLLVM {
     {
         divine::Blob b = _ith( code_loop(), 1 );
         assert_eq( _descr( code_loop(), b ),
-                   "0: <testf> << br label %entry >> []\n" );
+                   "thread 0:\n  #1: <testf> << br label %entry >> []\n" );
     }
 
     Test describe2()
@@ -167,53 +167,57 @@ struct TestLLVM {
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
-        assert_eq( "0: <testf> << br label %entry >> []\n"
-                   "1: <testf> << br label %entry >> []\n", interpreter.describe() );
+        assert_eq( "thread 0:\n  #1: <testf> << br label %entry >> []\n"
+                   "thread 1:\n  #1: <testf> << br label %entry >> []\n", interpreter.describe() );
     }
 
     Test describe3()
     {
         divine::Blob b = _ith( code_add(), 0 );
         assert_eq( _descr( code_add(), b ),
-                   "0: <testf> << %meh = add i32 1, 2 >> [ meh = 0 ]\n" );
+                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = 0 ]\n" );
 
         b = _ith( code_add(), 2 );
         assert_eq( _descr( code_add(), b ),
-                   "0: <testf> << %meh = add i32 1, 2 >> [ meh = 3 ]\n" );
+                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = 3 ]\n" );
     }
 
     Test describe4()
     {
         divine::Blob b = _ith( code_call(), 0 );
         assert_eq( _descr( code_call(), b ),
-                   "0: <testf> << %0 = call i32 @helper() >> []\n" );
+                   "thread 0:\n  #1: <testf> << %0 = call i32 @helper() >> []\n" );
         b = _ith( code_call(), 1 );
         assert_eq( _descr( code_call(), b ),
-                   "0: <helper> << br label %entry >> []\n" );
+                   "thread 0:\n"
+                   "  #1: <testf> << %0 = call i32 @helper() >> []\n"
+                   "  #2: <helper> << br label %entry >> []\n" );
     }
 
     Test describe5()
     {
         divine::Blob b = _ith( code_callarg(), 0 );
         assert_eq( _descr( code_callarg(), b ),
-                   "0: <testf> << %0 = call i32 @helper(i32 7) >> []\n" );
+                   "thread 0:\n  #1: <testf> << %0 = call i32 @helper(i32 7) >> []\n" );
         b = _ith( code_callarg(), 3 );
         assert_eq( _descr( code_callarg(), b ),
-                   "0: <helper> << %meh = add i32 %0, %0 >> [ meh = 14 ]\n" );
+                   "thread 0:\n"
+                   "  #1: <testf> << %0 = call i32 @helper(i32 7) >> []\n"
+                   "  #2: <helper> << %meh = add i32 %0, %0 >> [ meh = 14 ]\n" );
     }
 
     Test describe6()
     {
         divine::Blob b = _ith( code_callret(), 3 );
         assert_eq( _descr( code_callret(), b ),
-                   "0: <testf> << %meh = call i32 @helper() >> [ meh = 42 ]\n" );
+                   "thread 0:\n  #1: <testf> << %meh = call i32 @helper() >> [ meh = 42 ]\n" );
     }
 
     Test memory1()
     {
         divine::Blob b = _ith( code_mem(), 2 );
         assert_eq( _descr( code_mem(), b ),
-                   "0: <testf> << br label %tail >> [ foo = @(0:0| 33) ]\n" );
+                   "thread 0:\n  #1: <testf> << br label %tail >> [ foo = @(0:0| 33) ]\n" );
     }
 
     Test idempotency()
