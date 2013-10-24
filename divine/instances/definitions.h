@@ -282,7 +282,7 @@ namespace store {
 
 using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
 #ifdef O_COMPRESSION
-    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::C_NTree,
+    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::Compression::Tree,
             ForCompressions );
 #else
     using NTreeStore = _Missing;
