@@ -36,7 +36,7 @@ void MachineState::switch_thread( int thread )
 
 int MachineState::new_thread()
 {
-    detach_stack( _thread_count );
+    detach_stack( _thread_count, 0 );
     _thread = _thread_count ++;
     stack().get().length() = 0;
     return _thread;

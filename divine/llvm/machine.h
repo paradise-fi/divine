@@ -37,6 +37,8 @@ struct MachineState
     {
         ProgramInfo *_info;
 
+        StateAddress() : _info( nullptr ) {}
+
         StateAddress( StateAddress base, int index, int offset )
             : LinearAddress( base, index, offset ), _info( base._info )
         {}
@@ -485,25 +487,31 @@ struct MachineState
         return state().sub( Threads(), i );
     }
 
-    void detach_stack( int thread ) {
+    void detach_stack( int thread, int needbytes ) {
         if ( int( _stack.size() ) <= thread )
             _stack.resize( thread + 1, std::make_pair( false, Blob() ) );
 
-        if ( _stack[thread].first )
-            return;
+        StateAddress current, next;
+        auto &ss = _stack[thread];
+        auto &pool = _alloc.pool();
 
-        _stack[thread].first = true;
+        if ( !pool.valid( ss.second ) )
+            ss.second = pool.allocate( std::max( 65536, needbytes ) );
 
-        if ( !_alloc.pool().valid( _stack[thread].second ) )
-            _stack[thread].second = _alloc.pool().allocate( 65536 );
+        current = next = StateAddress( &pool, &_info, ss.second, 0 );
 
-        _alloc.pool().get< int >( _stack[thread].second ) = 0; /* clear any pre-existing state */
+        if ( !ss.first ) {
+            if ( thread < threads().get().length() )
+                current = state().address( Threads(), thread );
+            pool.get< int >( ss.second ) = 0; /* clear any pre-existing state */
+        }
 
-        if ( thread < threads().get().length() ) {
-            StateAddress newstack( &_alloc.pool(), &_info, _stack[thread].second, 0 );
-            _blob_stack( thread ).copy( newstack );
-            assert_eq( _blob_stack( thread ).get().length(),
-                       stack( thread ).get().length() );
+        ss.first = true; /* activate */
+
+        if ( !pool.equal( current.b, next.b ) ) {
+            Lens< Stack > from( current );
+            from.copy( next );
+            assert_eq( from.get().length(), stack( thread ).get().length() );
         }
     }
 
@@ -539,7 +547,8 @@ struct MachineState
     }
 
     void enter( int function ) {
-        detach_stack( _thread );
+        PC target( function, 0, 0 );
+        detach_stack( _thread, _info.function( target ).datasize );
         int depth = stack().get().length();
         bool masked = depth ? frame().pc.masked : false;
         stack().get().length() ++;
@@ -554,7 +563,7 @@ struct MachineState
         /* TODO this isn't very efficient and shouldn't be necessary, but we
          * currently can't keep partially empty stacks in the blob, since their
          * length is used to compute the offset of the following stack. */
-        detach_stack( _thread );
+        detach_stack( _thread, 0 );
 
         auto &s = stack().get();
         s.length() --;
