@@ -316,7 +316,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
         int64_t old_eliminated = 0;
         shared.iteration = 1;
         acceptingCount = eliminated = expanded = 0;
-        result().fullyExplored = meta::Result::No;
+        result().fullyExplored = meta::Result::R::No;
         bool valid = true;
         do {
             progress() << " iteration " << std::setw( 3 ) << shared.iteration
@@ -331,13 +331,13 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             valid = !this->store().valid( cycle_node );
 
             if ( valid )
-                result().fullyExplored = meta::Result::Yes;
+                result().fullyExplored = meta::Result::R::Yes;
 
             ++ shared.iteration;
         } while ( ( eliminated - old_eliminated ) > 0
                 && eliminated < acceptingCount && valid );
 
-        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
+        result().propertyHolds = valid ? meta::Result::R::Yes : meta::Result::R::No;
         meta().statistics.deadlocks = -1; /* did not count */
         meta().statistics.transitions = -1; /* cannot count */
 
@@ -350,7 +350,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
             ce.setup( *this, shared );
             ce.lasso( *this, *this );
             progress() << "done" << std::endl;
-            result().ceType = meta::Result::Cycle;
+            result().ceType = meta::Result::CET::Cycle;
         }
     }
 

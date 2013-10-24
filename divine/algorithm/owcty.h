@@ -269,7 +269,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         shared.oldsize = shared.size = totalSize();
         while ( true ) {
             if ( cycleFound() ) {
-                result().fullyExplored = meta::Result::No;
+                result().fullyExplored = meta::Result::R::No;
                 return;
             }
 
@@ -466,7 +466,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     {
         size_t oldsize = 0;
 
-        result().fullyExplored = meta::Result::Yes;
+        result().fullyExplored = meta::Result::R::Yes;
         progress() << " initialise...\t\t    " << std::flush;
         shared.size = 0;
         initialise();
@@ -500,10 +500,10 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
 
         if ( want_ce && !valid ) {
             counterexample();
-            result().ceType = meta::Result::Cycle;
+            result().ceType = meta::Result::CET::Cycle;
         }
 
-        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
+        result().propertyHolds = valid ? meta::Result::R::Yes : meta::Result::R::No;
         meta().statistics.deadlocks = -1; /* did not count */
     }
 

@@ -93,7 +93,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                                           ce_lasso.rbegin(), ce_lasso.rend() );
         ce.generateLasso( *this, this->graph(), ceLasso );
         progress() << "done" << std::endl;
-        result().ceType = meta::Result::Cycle;
+        result().ceType = meta::Result::CET::Cycle;
     }
 
     void run() {
@@ -139,8 +139,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         stats.update( meta().statistics );
         meta().statistics.deadlocks = -1; /* did not count */
-        result().propertyHolds = valid ? meta::Result::Yes : meta::Result::No;
-        result().fullyExplored = valid ? meta::Result::Yes : meta::Result::No;
+        result().propertyHolds = valid ? meta::Result::R::Yes : meta::Result::R::No;
+        result().fullyExplored = valid ? meta::Result::R::Yes : meta::Result::R::No;
     }
 
     struct Outer : Visit< This, Setup >

@@ -169,7 +169,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         progress() << "done" << std::endl;
         banner( progress() );
 
-        result().fullyExplored = meta::Result::Yes;
+        result().fullyExplored = meta::Result::R::Yes;
         shared.update( meta().statistics );
     }
 };

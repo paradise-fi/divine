@@ -203,13 +203,13 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         resultBanner( !this->store().valid( goal ) );
         if ( this->store().valid( goal ) && this->meta().output.wantCe ) {
             counterexample( goal );
-            result().ceType = deadlocked ? meta::Result::Deadlock : meta::Result::Goal;
+            result().ceType = deadlocked ? meta::Result::CET::Deadlock : meta::Result::CET::Goal;
         }
 
         result().propertyHolds = this->store().valid( goal )
-                                  ? meta::Result::No : meta::Result::Yes;
+                                  ? meta::Result::R::No : meta::Result::R::Yes;
         result().fullyExplored = this->store().valid( goal )
-                                  ? meta::Result::No : meta::Result::Yes;
+                                  ? meta::Result::R::No : meta::Result::R::Yes;
     }
 };
 
