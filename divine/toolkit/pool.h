@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // for assert
+#include <wibble/mixin.h>
+
 #include <vector>
 #ifndef NVALGRIND
 #include <iostream>
@@ -44,7 +46,7 @@ constexpr inline int align( int v, int a ) {
  */
 struct Lake {
 
-    struct Pointer {
+    struct Pointer : wibble::mixin::Comparable< Pointer > {
         static const unsigned blockBits = 24;
         static const unsigned offsetBits = 24;
         static const unsigned tagBits = 64 - blockBits - offsetBits;
@@ -68,6 +70,7 @@ struct Lake {
         }
         operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
+        bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
     } __attribute__((packed));
 
     struct BlockHeader {
