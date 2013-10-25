@@ -510,13 +510,22 @@ struct MachineState
             pool.get< int >( ss.second ) = 0; /* clear any pre-existing state */
         }
 
-        ss.first = true; /* activate */
 
-        if ( !pool.equal( current.b, next.b ) ) {
-            Lens< Stack > from( current );
-            from.copy( next );
-            assert_eq( from.get().length(), stack( thread ).get().length() );
+        Lens< Stack > from( current );
+        int neednow = lens::LinearSize< Stack >::get( current );
+
+        if ( neednow + needbytes > pool.size( next.b ) ) {
+            next = StateAddress( &pool, &_info,
+                                 ss.second = pool.allocate( neednow + needbytes ), 0 );
         }
+
+        if ( current.b != ss.second ) {
+            from.copy( next );
+            if ( ss.first )
+                pool.free( current.b );
+        }
+
+        ss.first = true; /* activate */
     }
 
     Lens< Stack > stack( int thread = -1 )
