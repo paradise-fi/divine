@@ -67,8 +67,12 @@ struct MachineState
             std::fill( memory(), memory() + framesize( i ), 0 );
         }
 
+        static int framesize( ProgramInfo &i, int dsize ) {
+            return align( dsize + 2 * size_bitmap( dsize, 1 ), 4 );
+        }
+
         int framesize( ProgramInfo &i ) {
-            return align( datasize( i ) + 2 * size_bitmap( datasize( i ), 1 ), 4 );
+            return framesize( i, datasize( i ) );
         }
 
         int datasize( ProgramInfo &i ) {
@@ -548,7 +552,8 @@ struct MachineState
 
     void enter( int function ) {
         PC target( function, 0, 0 );
-        detach_stack( _thread, _info.function( target ).datasize );
+        detach_stack( _thread,
+                      sizeof( Frame ) + Frame::framesize( _info, _info.function( target ).datasize ) );
         int depth = stack().get().length();
         bool masked = depth ? frame().pc.masked : false;
         stack().get().length() ++;
