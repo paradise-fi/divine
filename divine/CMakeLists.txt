@@ -148,6 +148,10 @@ if( TIMED )
   target_link_libraries( libdivine utap )
 endif()
 
+if ( DATABASE )
+    target_link_libraries( libdivine nanodbc )
+endif()
+
 target_link_libraries( libdivine wibble )
 target_link_libraries( divine-test libdivine )
 

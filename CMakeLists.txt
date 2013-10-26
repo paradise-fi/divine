@@ -82,6 +82,8 @@ option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 include (VersionAppend)
 
+option( SQL_REPORT "Include feature for reporting into database (requires ODBC)" ON )
+
 ############################################
 ## DEVELOPER-ORIENTED OPTIONS
 ##
@@ -425,6 +427,33 @@ if( GUI )
   endif()
 endif( GUI )
 
+if( SQL_REPORT )
+  include( FindODBC )
+  if( NOT ODBC_FOUND )
+    disabling( "SQL_REPORT" "" "Could not find ODBC." )
+    set( SQL_REPORT OFF )
+  else()
+      add_definitions( -DO_SQL_REPORT )
+      add_definitions( "-DNANODBC_USE_CPP11" )
+      link_directories( ${ODBC_LIBRARY_DIRS} )
+  endif()
+endif()
+
+if( MANUAL )
+  find_program( PANDOC pandoc )
+  find_program( PDFLATEX pdflatex )
+  find_program( BIBTEX bibtex )
+  if ( PANDOC )
+    if ( NOT PDFLATEX OR NOT BIBTEX )
+      message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
+    endif()
+  else()
+    disabling( "MANUAL" " (build pdf/html documentation)" "Could not find pandoc.")
+    set( MANUAL OFF )
+  endif()
+endif()
+
+
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
@@ -509,6 +538,10 @@ endif( GUI )
 if( MANUAL )
   add_subdirectory( manual )
   add_subdirectory( website )
+endif()
+
+if( SQL_REPORT )
+    add_subdirectory( external/nanodbc )
 endif()
 
 ###############################################
