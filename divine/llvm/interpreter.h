@@ -171,8 +171,7 @@ struct Interpreter
         pc().instruction ++;
         if ( !instruction().op ) {
             PC to = pc();
-            to.block ++;
-            to.instruction = 0;
+            to.instruction ++;
             evaluateSwitchBB( to );
         }
     }

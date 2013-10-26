@@ -50,9 +50,9 @@ PC ProgramInfo::getCodePointer( ::llvm::Value *val )
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
 
         if ( builtin( F ) )
-            return PC( 0, 0, 0 );
+            return PC( 0, 0 );
 
-        return PC( functionmap[ F ], 0, 0 );
+        return PC( functionmap[ F ], 0 );
     }
     return PC();
 }
@@ -230,7 +230,7 @@ void ProgramInfo::insertIndices( Position p )
 
 ProgramInfo::Position ProgramInfo::insert( Position p )
 {
-    makeFit( function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
+    makeFit( function( p.pc ).instructions, p.pc.instruction );
     ProgramInfo::Instruction &insn = instruction( p.pc );
 
     insn.opcode = p.I->getOpcode();
@@ -260,29 +260,32 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
         }
     }
 
-    insn.values.resize( 1 + p.I->getNumOperands() );
-    for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
-        insn.values[ i + 1 ] = insert( p.pc.function, p.I->getOperand( i ) );
+    if ( !codepointers )
+    {
+        insn.values.resize( 1 + p.I->getNumOperands() );
+        for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
+            insn.values[ i + 1 ] = insert( p.pc.function, p.I->getOperand( i ) );
 
-    if ( isa< ::llvm::ExtractValueInst >( p.I ) )
-        insertIndices< ::llvm::ExtractValueInst >( p );
+        if ( isa< ::llvm::ExtractValueInst >( p.I ) )
+            insertIndices< ::llvm::ExtractValueInst >( p );
 
-    if ( isa< ::llvm::InsertValueInst >( p.I ) )
-        insertIndices< ::llvm::InsertValueInst >( p );
+        if ( isa< ::llvm::InsertValueInst >( p.I ) )
+            insertIndices< ::llvm::InsertValueInst >( p );
 
-    if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( p.I ) ) {
-        for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
-            if ( LPI->isFilter( i ) )
-                continue;
-            Pointer ptr = constant< Pointer >( insn.operand( i + 1 ) );
-            if ( !function( p.pc ).typeID( ptr ) )
-                function( p.pc ).typeIDs.push_back( ptr );
-            assert( function( p.pc ).typeID( ptr ) );
+        if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( p.I ) ) {
+            for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
+                if ( LPI->isFilter( i ) )
+                    continue;
+                Pointer ptr = constant< Pointer >( insn.operand( i + 1 ) );
+                if ( !function( p.pc ).typeID( ptr ) )
+                    function( p.pc ).typeIDs.push_back( ptr );
+                assert( function( p.pc ).typeID( ptr ) );
+            }
         }
-    }
 
-    pcmap.insert( std::make_pair( p.I, p.pc ) );
-    insn.result() = insert( p.pc.function, &*p.I );
+        pcmap.insert( std::make_pair( p.I, p.pc ) );
+        insn.result() = insert( p.pc.function, &*p.I );
+    }
 
     ++ p.I; /* next please */
 
@@ -305,6 +308,10 @@ void ProgramInfo::build()
     nullpage.constant = false;
     globals.push_back( nullpage );
 
+    for ( auto &f : *module )
+        if ( f.getName() == "memset" || f.getName() == "memmove" || f.getName() == "memcpy" )
+            f.setLinkage( ::llvm::GlobalValue::ExternalLinkage );
+
     framealign = 1;
 
     codepointers = true;
@@ -323,7 +330,7 @@ void ProgramInfo::build()
 
 void ProgramInfo::pass()
 {
-    PC pc( 1, 0, 0 );
+    PC pc( 1, 0 );
     int _framealign = framealign;
 
     for ( auto function = module->begin(); function != module->end(); ++ function )
@@ -345,10 +352,7 @@ void ProgramInfo::pass()
 
         makeFit( functions, pc.function );
         functionmap[ function ] = pc.function;
-        pc.block = 0;
-
-        if ( codepointers && ( name == "memset" || name == "memmove" || name == "memcpy" ) )
-            function->setLinkage( ::llvm::GlobalValue::ExternalLinkage );
+        pc.instruction = 0;
 
         if ( !codepointers ) {
             framealign = 1; /* force all args to go in in the first pass */
@@ -375,37 +379,21 @@ void ProgramInfo::pass()
                 align( this->function( pc ).datasize, framealign );
         }
 
-        int blockid = 0;
-        for ( auto block = function->begin(); block != function->end(); ++block, ++blockid )
-            blockmap[ &*block ] = PC( pc.function, blockid, 0 );
-
-        if ( codepointers )
-            continue;
-
         for ( auto block = function->begin(); block != function->end(); ++ block )
         {
+            blockmap[ &*block ] = pc;
+
             if ( block->begin() == block->end() )
                 throw wibble::exception::Consistency(
                     "ProgramInfo::build",
                     "Can't deal with an empty BasicBlock in function " + name.str() );
 
-            pc.instruction = 0;
-
-            makeFit( this->function( pc ).blocks, pc.block );
-            if ( !this->block( pc ).bb )
-                this->block( pc ).bb = &*block;
-            else
-                assert( this->block( pc ).bb == &*block );
-
             ProgramInfo::Position p( pc, block->begin() );
             while ( p.I != block->end() )
                 p = insert( p );
-            makeFit( this->function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
 
-            if ( ! ++ pc.block )
-                throw wibble::exception::Consistency(
-                    "ProgramInfo::build",
-                    "Too many basic blocks in function " + name.str() + ": capacity exceeded" );
+            pc = p.pc;
+            makeFit( this->function( p.pc ).instructions, p.pc.instruction );
         }
     }
 

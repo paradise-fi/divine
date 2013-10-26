@@ -560,7 +560,7 @@ struct MachineState
     }
 
     void enter( int function ) {
-        PC target( function, 0, 0 );
+        PC target( function, 0 );
         detach_stack( _thread,
                       sizeof( Frame ) + Frame::framesize( _info, _info.function( target ).datasize ) );
         int depth = stack().get().length();
@@ -568,7 +568,7 @@ struct MachineState
         stack().get().length() ++;
 
         _frame = &stack().get( depth );
-        _frame->pc = PC( function, 0, 0 );
+        _frame->pc = PC( function, 0 );
         _frame->pc.masked = masked; /* inherit */
         _frame->clear( _info );
     }

@@ -69,7 +69,7 @@ struct Describe {
 };
 
 std::ostream &operator<<( std::ostream &o, PC p ) {
-    return o << p.function << ":" << p.block << ":" << p.instruction;
+    return o << p.function << ":" << p.instruction;
 }
 
 std::ostream &operator<<( std::ostream &o, Pointer p ) {

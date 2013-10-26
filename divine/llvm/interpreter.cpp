@@ -81,6 +81,6 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
 
 int Interpreter::new_thread( Function *f )
 {
-    return new_thread( PC( info().functionmap[ f ], 0, 0 ), Maybe< Pointer >::Nothing() );
+    return new_thread( PC( info().functionmap[ f ], 0 ), Maybe< Pointer >::Nothing() );
 }
 

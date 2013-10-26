@@ -33,21 +33,20 @@ struct Pointer;
 
 struct PC : wibble::mixin::Comparable< PC >
 {
-    uint32_t function:12;
-    uint32_t block:10;
-    uint32_t instruction:8;
+    uint32_t function:13;
+    uint32_t instruction:17;
     bool masked:1;
     uint32_t code:1;
 
-    PC( int f, int b, int i )
-        : function( f ), block( b ), instruction( i ), masked( false ), code( 1 )
+    PC( int f, int i )
+        : function( f ), instruction( i ), masked( false ), code( 1 )
     {}
-    PC() : PC( 0, 0, 0 ) {}
+    PC() : PC( 0, 0 ) {}
 
     bool operator<= ( PC o ) const {
         /* masked is irrelevant for equality! */
-        return std::make_tuple( int( function ), int( block ), int( instruction ) )
-            <= std::make_tuple( int( o.function ), int( o.block ), int( o.instruction ) );
+        return std::make_tuple( int( function ), int( instruction ) )
+            <= std::make_tuple( int( o.function ), int( o.instruction ) );
     }
 
     explicit PC( const uint32_t &x ) { *this = *reinterpret_cast< const PC * >( &x ); }
@@ -165,31 +164,21 @@ struct ProgramInfo {
         /* next instruction is in the same BB unless op == NULL */
     };
 
-    struct BB {
-        std::vector< Instruction > instructions;
-        ::llvm::BasicBlock *bb;
-        Instruction &instruction( PC pc ) {
-            assert_leq( int( pc.instruction ), int( instructions.size() ) - 1 );
-            return instructions[ pc.instruction ];
-        }
-        BB() : bb( nullptr ) {}
-    };
-
     struct Function {
         int datasize;
         int argcount:31;
         bool vararg:1;
         std::vector< Value > values;
-        std::vector< BB > blocks;
+        std::vector< Instruction > instructions;
         std::vector< Pointer > typeIDs; /* for landing pads */
         int typeID( Pointer p )
         {
             auto found = std::find( typeIDs.begin(), typeIDs.end(), p );
             return found == typeIDs.end() ? 0 : 1 + (found - typeIDs.begin());
         }
-        BB &block( PC pc ) {
-            assert_leq( int( pc.block ), int( blocks.size() ) - 1 );
-            return blocks[ pc.block ];
+        Instruction &instruction( PC pc ) {
+            assert_leq( int( pc.instruction ), int( instructions.size() ) - 1 );
+            return instructions[ pc.instruction ];
         }
         Function() : datasize( 0 ) {}
     };
@@ -215,13 +204,7 @@ struct ProgramInfo {
     }
 
     Instruction &instruction( PC pc ) {
-        assert_leq( int( pc.block ), int( function( pc ).blocks.size() ) - 1 );
-        return block( pc ).instruction( pc );
-    }
-
-    BB &block( PC pc ) {
-        assert_leq( int( pc.block ), int( function( pc ).blocks.size() ) - 1 );
-        return function( pc ).block( pc );
+        return function( pc ).instruction( pc );
     }
 
     Function &function( PC pc ) {

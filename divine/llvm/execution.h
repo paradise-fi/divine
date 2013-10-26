@@ -740,7 +740,8 @@ struct Evaluator
         std::copy( original.memory(), original.memory() + framesize, copy.memory() );
         while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
-            auto v = info.valuemap[ PN->getIncomingValueForBlock( info.block( origin ).bb ) ];
+            auto v = info.valuemap[ PN->getIncomingValueForBlock(
+                    cast< ::llvm::Instruction >( info.instruction( origin ).op )->getParent() ) ];
             FrameContext copyctx( info, copy );
             memcopy( v, instruction.result(), v.width, econtext, copyctx );
             ccontext.pc().instruction ++;
