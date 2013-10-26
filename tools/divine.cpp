@@ -256,7 +256,8 @@ struct Main {
                 "text (stdout, human readable),\n"
                 "text:<filename> (text into file),\n"
                 "plain (stdout, same as text but without empty lines),\n"
-                "plain:<filename> (plain into file)" );
+                "plain:<filename> (plain into file),\n"
+                "sql:<table>:<ODBC connection string> (write report to database -- see manual for details)" );
 
         o_workers = common->add< IntOption >(
             "workers", 'w', "workers", "",
@@ -464,6 +465,14 @@ struct Main {
                 if ( file.empty() )
                     throw wibble::exception::Consistency( "No file given for report." );
                 rep = Report::get< PlainFileReport >( file );
+            } else if ( o_report->value().substr( 0, 4 ) == "sql:" ) {
+                std::string sqlrep = o_report->value().substr( 4 );
+                int pos = sqlrep.find( ':' );
+                std::string db = sqlrep.substr( 0, pos );
+                std::string connstr = sqlrep.substr( pos + 1 );
+                if ( connstr.empty() )
+                    throw wibble::exception::Consistency( "No connection string given for report." );
+                rep = Report::get< SqlReport >( db, connstr );
             }
             if ( !rep )
                 throw wibble::exception::Consistency( "Unknown or unsupported report: " + o_report->value() );
