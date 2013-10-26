@@ -55,32 +55,36 @@ struct SetupBase {
     }
 };
 
-template< typename A, typename BListener >
-struct SetupOverride : A {
-    typedef typename A::Node Node;
-    typedef typename A::Label Label;
-    typedef typename A::Store::Vertex Vertex;
-    typedef std::pair< typename A::Listener *, BListener * > Listener;
+template< typename _ASetup, typename _BListener >
+struct SetupOverride : _ASetup {
+    using A = typename _ASetup::Listener;
+    using B = _BListener;
+    using S = _ASetup;
+
+    typedef typename _ASetup::Node Node;
+    typedef typename _ASetup::Label Label;
+    typedef typename _ASetup::Store::Vertex Vertex;
+    typedef std::pair< A *, B * > Listener;
 
     static TransitionAction transition( Listener &l, Vertex a, Vertex b, Label label ) {
-        return A::transition( *l.first, a, b, label );
+        return S::transition( *l.first, a, b, label );
     }
 
     static ExpansionAction expansion( Listener &l, Vertex x ) {
-        return A::expansion( *l.first, x );
+        return S::expansion( *l.first, x );
     }
 
     static void finished( Listener &l, Vertex n ) {
-        A::finished( *l.first, n );
+        S::finished( *l.first, n );
     }
 
     static DeadlockAction deadlocked( Listener &l, Vertex x ) {
-        return A::deadlocked( *l.first, x );
+        return S::deadlocked( *l.first, x );
     }
 
     template< typename Listener, typename Vertex, typename Node >
     static TransitionFilter transitionFilter( Listener &l, Vertex a, Node b, Label label, hash64_t h ) {
-        return A::transitionFilter( *l.first, a, b, label, h );
+        return S::transitionFilter( *l.first, a, b, label, h );
     }
 };
 
@@ -231,22 +235,28 @@ struct DFVReadOnly : Common< Stack, S, ReadOnly::Yes > {
         : Super( n, g, s, typename Super::Queue( g, s ) ) {}
 };
 
-template< typename Self, typename S >
-struct Interruptible
+template< typename Override >
+struct Interruptible : Override
 {
-    Self &self() { return *static_cast< Self * >( this ); }
+    using Listener = typename Override::Listener;
+    using Label = typename Override::S::Label;
+    using Vertex = typename Override::S::Store::Vertex;
 
-    visitor::TransitionAction transition( typename S::Store::Vertex f, typename S::Node t ) {
-        visitor::TransitionAction tact = S::transition( self().notify, f, t );
-        if ( tact == TransitionAction::Terminate )
-            self().worker.interrupt();
+    static visitor::TransitionAction transition( Listener &l, Vertex f, Vertex t, Label label )
+    {
+        auto tact = Override::transition( l, f, t, label );
+        if ( tact == TransitionAction::Terminate ) {
+            std::cerr << "termination time..." << std::endl;
+            l.second->worker.interrupt();
+        }
         return tact;
     }
 
-    visitor::ExpansionAction expansion( typename S::Store::Vertex n ) {
-        ExpansionAction eact = S::expansion( self().notify, n );
+    static visitor::ExpansionAction expansion( Listener &l, Vertex n )
+    {
+        auto eact = Override::expansion( l, n );
         if ( eact == ExpansionAction::Terminate )
-            self().worker.interrupt();
+            l.second->worker.interrupt();
         return eact;
     }
 };
@@ -257,7 +267,7 @@ struct Partitioned {
     };
 
     template< typename S, typename Worker >
-    struct Implementation : Interruptible< Implementation< S, Worker >, S >
+    struct Implementation
     {
         typedef typename S::Node Node;
         typedef typename S::Label Label;
@@ -334,10 +344,10 @@ struct Partitioned {
             }
         }
 
-        typedef Implementation< S, Worker > P;
-        struct Ours : SetupOverride< S, This >
+        struct Ours : Interruptible< SetupOverride< S, This > >
         {
             typedef typename SetupOverride< S, This >::Listener Listener;
+
             static inline TransitionFilter transitionFilter(
                  Listener l, Vertex f, Node t, Label label, hash64_t hint )
             {
@@ -391,7 +401,7 @@ struct Shared {
     };
 
     template< typename S, typename Worker >
-    struct Implementation : Interruptible< Implementation< S, Worker >, S >
+    struct Implementation
     {
         typedef Implementation< S, Worker > This;
         typedef typename S::Graph Graph;
@@ -403,7 +413,7 @@ struct Shared {
 
         typedef divine::SharedQueue< S > Chunker;
 
-        struct S2 : SetupOverride< S, This > {};
+        using S2 = Interruptible< SetupOverride< S, This > >;
 
         Store closed;
         std::pair< typename S::Listener*, This* > bfvListener;
