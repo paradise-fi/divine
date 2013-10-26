@@ -68,7 +68,7 @@ struct Lake {
             } c = { r };
             return c.p;
         }
-        operator bool() const { return raw(); }
+        explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
         bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
     } __attribute__((packed));

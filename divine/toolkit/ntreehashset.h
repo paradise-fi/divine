@@ -65,7 +65,7 @@ struct NTreeHashSet
         }
         char *data( Pool &p ) { return p.dereference( this->unwrap() ); }
         int32_t size( Pool &p ) { return p.size( this->unwrap() ); }
-        operator bool() { return !!this->unwrap(); }
+        explicit operator bool() { return !!this->unwrap(); }
     };
 
     template < typename Fork >
@@ -153,7 +153,7 @@ struct NTreeHashSet
         LeafOr< Fork > *forkdata( Pool &p ) {
             return p.dereference< LeafOrFork >( this->unwrap() );
         }
-        operator bool() { return !!this->unwrap(); }
+        explicit operator bool() { return !!this->unwrap(); }
     };
 
     typedef LeafOr< Fork > LeafOrFork;
@@ -170,7 +170,7 @@ struct NTreeHashSet
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
         char *rawdata( Pool &p ) { return p.dereference( b() ) + sizeof( Header ); }
 
-        operator bool() { return !!this->unwrap(); }
+        explicit operator bool() { return !!this->unwrap(); }
 
         char *data( Pool &p ) {
             assert( leaf( p ) );
