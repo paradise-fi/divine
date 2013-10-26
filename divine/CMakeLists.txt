@@ -148,7 +148,7 @@ if( TIMED )
   target_link_libraries( libdivine utap )
 endif()
 
-if ( DATABASE )
+if ( SQL_REPORT )
     target_link_libraries( libdivine nanodbc )
 endif()
 
