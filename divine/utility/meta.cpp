@@ -38,7 +38,9 @@ std::string tostr( T t ) {
 }
 
 Rep Input::report() const {
-    return { { "Property-Type", tostr( propertyType ) },
+    return { { "Model", model },
+             { "Model-Type", modelType },
+             { "Property-Type", tostr( propertyType ) },
              { "Property-Name", propertyName.empty() ? "-" : propertyName },
              { "Property", property.empty() ? "-" : property }
            };
