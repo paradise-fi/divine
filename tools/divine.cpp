@@ -34,7 +34,7 @@ using namespace commandline;
 
 namespace divine {
 
-Report *_report = 0;
+std::shared_ptr< Report > _report = 0;
 Meta *_meta = 0;
 
 void handler( int s ) {
@@ -47,21 +47,22 @@ void handler( int s ) {
     Output::output().cleanup();
     if ( _report && _meta ) {
         _report->signal( s );
-        _report->final( std::cout, *_meta );
+        _report->final( *_meta );
     }
     raise( s );
 }
 
 struct Main {
     Output *output;
-    Report report;
+    std::shared_ptr< Report > report;
     Meta meta;
 
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
            *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
                 *ce, *compactOutput;
-    BoolOption *o_noCe, *o_dispCe, *o_report, *o_dummy, *o_statistics;
+    BoolOption *o_noCe, *o_dispCe, *o_dummy, *o_statistics, *o_shortReport;
+    OptvalStringOption *o_report;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
@@ -105,16 +106,17 @@ struct Main {
           combine( opts ),
           compile( opts )
     {
+        setupSignals();
+        setupCommandline();
+        parseCommandline();
+
         {
             std::ostringstream execCommStr;
             for( int i = 0; i < argc; ++i )
                 execCommStr << argv[i] << " ";
-            report.execCommand = execCommStr.str();
+            report = getReport();
+            report->execCommand( execCommStr.str() );
         }
-
-        setupSignals();
-        setupCommandline();
-        parseCommandline();
 
         if ( opts.foundCommand() == compile.cmd_compile ) {
             compile.main();
@@ -154,7 +156,7 @@ struct Main {
 
         if ( mpi->master() ) {
             setupOutput();
-            if ( o_report->isSet() )
+            if ( o_report->isSet() || o_shortReport->boolValue() )
                 _report = report;
         }
 
@@ -177,12 +179,12 @@ struct Main {
 
         a->run();
 
-        report.finished();
+        report->finished();
 
         if ( meta.output.statistics )
             TrackStatistics::global().snapshot();
         Output::output().cleanup();
-        if ( mpi->master() && o_report->isSet() )
+        if ( mpi->master() && (o_report->isSet() || o_shortReport->boolValue())  )
             report->final( a->meta() );
     }
 
@@ -246,8 +248,15 @@ struct Main {
         o_curses = opts.add< BoolOption >(
             "curses", '\0', "curses", "", "use curses-based progress monitoring" );
 
-        o_report = common->add< BoolOption >(
-            "report", 'r', "report", "", "output standardised report" );
+        o_shortReport = common->add< BoolOption >(
+            "report", 'r', "", "", "output standardised report" );
+
+        o_report = common->add< OptvalStringOption >(
+            "report", '\0', "report", "", "output report, one of:\n"
+                "text (stdout, human readable),\n"
+                "text:<filename> (text into file),\n"
+                "plain (stdout, same as text but without empty lines),\n"
+                "plain:<filename> (plain into file)" );
 
         o_workers = common->add< IntOption >(
             "workers", 'w', "workers", "",
@@ -438,6 +447,34 @@ struct Main {
         }
     }
 
+    std::shared_ptr< Report > getReport() {
+        std::shared_ptr< Report > rep;
+        if ( o_report->isSet() ) {
+            if ( !o_report->hasValue() || o_report->value() == "text" )
+                rep = Report::get< TextReport >( std::cout );
+            else if ( o_report->value() == "plain" )
+                rep = Report::get< PlainReport >( std::cout );
+            else if ( o_report->value().substr( 0, 5 ) == "text:" ) {
+                std::string file = o_report->value().substr( 5 );
+                if ( file.empty() )
+                    throw wibble::exception::Consistency( "No file given for report." );
+                rep = Report::get< TextFileReport >( file );
+            } else if ( o_report->value().substr( 0, 6 ) == "plain:" ) {
+                std::string file = o_report->value().substr( 6 );
+                if ( file.empty() )
+                    throw wibble::exception::Consistency( "No file given for report." );
+                rep = Report::get< PlainFileReport >( file );
+            }
+            if ( !rep )
+                throw wibble::exception::Consistency( "Unknown or unsupported report: " + o_report->value() );
+        } else if ( o_shortReport->isSet() )
+            rep = Report::get< TextReport >( std::cout );
+
+        if ( !rep )
+            rep = Report::get< NoReport >();
+
+        return rep;
+    }
 
     graph::ReductionSet parseReductions( std::string s )
     {
@@ -458,15 +495,17 @@ struct Main {
         return r;
     }
 
-    meta::Algorithm::CompressionType parseCompression( std::string s )
+    meta::Algorithm::Compression parseCompression( std::string s )
     {
-        if ( s == "none" ) return meta::Algorithm::C_None;
-        if ( s == "tree" ) return meta::Algorithm::C_NTree;
-        if ( s == "ntree" ) return meta::Algorithm::C_NTree;
+        if ( s.empty() ) return meta::Algorithm::Compression::Tree;
+        if ( s == "none" ) return meta::Algorithm::Compression::None;
+        if ( s == "tree" ) return meta::Algorithm::Compression::Tree;
+        if ( s == "ntree" ) return meta::Algorithm::Compression::Tree;
         throw wibble::exception::OutOfRange( "compression", "'" + s + "' is not a known compression type" ); // TODO: allowed
     }
 
     graph::DemangleStyle parseDemangle( std::string s ) {
+        if ( s.empty() ) return graph::DemangleStyle::Cpp;
         if ( s == "cpp" ) return graph::DemangleStyle::Cpp;
         if ( s == "none" ) return graph::DemangleStyle::None;
         throw wibble::exception::OutOfRange( "demangle", "'" + s + "' is not supported demangle style [available = none, cpp]" );
@@ -531,20 +570,16 @@ struct Main {
         }
         meta.algorithm.compression = o_compression->isSet()
             ? parseCompression( o_compression->value() )
-            : ( o_compression->isSet()
-                    ? meta::Algorithm::C_NTree
-                    : meta::Algorithm::C_None );
+            : meta::Algorithm::Compression::None;
         meta.algorithm.hashSeed = static_cast< uint32_t >( o_seed->intValue() );
         meta.algorithm.fairness = o_fair->boolValue();
         meta.algorithm.demangle = o_demangle->isSet()
             ? parseDemangle( o_demangle->value() )
-            : ( o_demangle->isSet()
-                    ? graph::DemangleStyle::Cpp
-                    : graph::DemangleStyle::None );
+            : graph::DemangleStyle::None;
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
-        if ( !o_dispCe->boolValue() && !o_report->isSet() )
+        if ( !o_dispCe->boolValue() && !o_report->isSet() && !o_shortReport->boolValue() )
             meta.output.wantCe = false;
 
         meta.output.displayCe = o_dispCe->boolValue();
@@ -578,7 +613,7 @@ struct Main {
 
         {
             Meta metaInfo( meta );
-            metaInfo.algorithm.algorithm = meta::Algorithm::Info;
+            metaInfo.algorithm.algorithm = meta::Algorithm::Type::Info;
             auto infoAlg = select( metaInfo );
             auto ib = dynamic_cast< InfoBase * >( infoAlg.get() );
             if ( !ib )
@@ -592,17 +627,17 @@ struct Main {
 
         if ( opts.foundCommand() == cmd_draw ) {
             meta.execution.threads = 1; // never runs in parallel
-            meta.algorithm.algorithm = meta::Algorithm::Draw;
+            meta.algorithm.algorithm = meta::Algorithm::Type::Draw;
             meta.algorithm.name = "Draw";
         } else if ( opts.foundCommand() == cmd_simulate ) {
             meta.execution.threads = 1; // never runs in parallel
-            meta.algorithm.algorithm = meta::Algorithm::Simulate;
+            meta.algorithm.algorithm = meta::Algorithm::Type::Simulate;
         } else if ( opts.foundCommand() == cmd_genexplicit )
-            meta.algorithm.algorithm = meta::Algorithm::GenExplicit;
+            meta.algorithm.algorithm = meta::Algorithm::Type::GenExplicit;
         else if ( opts.foundCommand() == cmd_info )
-            meta.algorithm.algorithm = meta::Algorithm::Info;
+            meta.algorithm.algorithm = meta::Algorithm::Type::Info;
         else if ( opts.foundCommand() == cmd_metrics )
-            meta.algorithm.algorithm = meta::Algorithm::Metrics;
+            meta.algorithm.algorithm = meta::Algorithm::Type::Metrics;
         else if ( opts.foundCommand() == cmd_verify ) {
 
             bool oneSet = false;
@@ -619,7 +654,7 @@ struct Main {
                 switch ( pt ) {
                     case generator::PT_Deadlock:
                     case generator::PT_Goal:
-                        meta.algorithm.algorithm = meta::Algorithm::Reachability;
+                        meta.algorithm.algorithm = meta::Algorithm::Type::Reachability;
                         break;
                     case generator::PT_Buchi:
                         // initialize meta from Mpi, this also calls MPI::init
@@ -629,9 +664,9 @@ struct Main {
                         mpi.reset( new Mpi( o_mpi->boolValue() ) );
                         mpiFillMeta( meta );
                         if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
-                            meta.algorithm.algorithm = meta::Algorithm::Owcty;
+                            meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
                         else
-                            meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                            meta.algorithm.algorithm = meta::Algorithm::Type::Ndfs;
                         break;
                     default:
                         assert_unimplemented();
@@ -642,7 +677,7 @@ struct Main {
                 if ( pt != generator::PT_Buchi )
                     std::cerr << "WARNING: NDFS is only suitable for LTL/Büchi properties." << std::endl;
 
-                meta.algorithm.algorithm = meta::Algorithm::Ndfs;
+                meta.algorithm.algorithm = meta::Algorithm::Type::Ndfs;
                 if ( !o_workers->boolValue() )
                     meta.execution.threads = 1;
             }
@@ -651,19 +686,19 @@ struct Main {
                 if ( pt == generator::PT_Buchi )
                     std::cerr << "WARNING: Reachability is not suitable for checking LTL/Büchi properties."
                               << std::endl;
-                meta.algorithm.algorithm = meta::Algorithm::Reachability;
+                meta.algorithm.algorithm = meta::Algorithm::Type::Reachability;
             }
 
             if ( o_owcty->boolValue() ) {
                 if ( pt != generator::PT_Buchi )
                     std::cerr << "WARNING: OWCTY is only suitable for LTL/Büchi properties." << std::endl;
-                meta.algorithm.algorithm = meta::Algorithm::Owcty;
+                meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
             }
 
             if ( o_map->boolValue() ) {
                 if ( pt != generator::PT_Buchi )
                     std::cerr << "WARNING: MAP is only suitable for LTL/Büchi properties." << std::endl;
-                meta.algorithm.algorithm = meta::Algorithm::Map;
+                meta.algorithm.algorithm = meta::Algorithm::Type::Map;
             }
 
         }
@@ -673,20 +708,20 @@ struct Main {
         meta.execution.initialTable = 1L << (o_initable->intValue());
 
         if ( meta.algorithm.sharedVisitor ) {
-            if ( meta.algorithm.algorithm != meta::Algorithm::Metrics &&
-                 meta.algorithm.algorithm != meta::Algorithm::Reachability &&
-                 meta.algorithm.algorithm != meta::Algorithm::Owcty &&
-                 meta.algorithm.algorithm != meta::Algorithm::Map &&
-                 meta.algorithm.algorithm != meta::Algorithm::Ndfs )
+            if ( meta.algorithm.algorithm != meta::Algorithm::Type::Metrics &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Reachability &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Owcty &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Map &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs )
                 die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
         }
 
         // ndfs needs a shared table, also Shared visitor have to have size without dividing
-        if ( meta.algorithm.algorithm != meta::Algorithm::Ndfs
+        if ( meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs
              && !meta.algorithm.sharedVisitor )
             meta.execution.initialTable /= meta.execution.threads;
 
-        if ( meta.algorithm.algorithm == meta::Algorithm::Ndfs &&
+        if ( meta.algorithm.algorithm == meta::Algorithm::Type::Ndfs &&
                 meta.execution.threads > 1 && !meta.algorithm.sharedVisitor )
         {
             std::cerr << "WARNING: Parallel Nested DFS will use shared hash-table." << std::endl;
