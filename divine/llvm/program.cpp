@@ -284,7 +284,13 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     pcmap.insert( std::make_pair( p.I, p.pc ) );
     insn.result() = insert( p.pc.function, &*p.I );
 
-    p.pc.instruction ++; p.I ++; /* next please */
+    ++ p.I; /* next please */
+
+    if ( ! ++ p.pc.instruction )
+        throw wibble::exception::Consistency(
+            "ProgramInfo::insert() in " + p.I->getParent()->getParent()->getName().str(),
+            "Too many instructions in a basic block, capacity exceeded" );
+
     return p;
 }
 
@@ -324,18 +330,23 @@ void ProgramInfo::pass()
     {
         if ( function->isDeclaration() )
             continue; /* skip */
-        ++ pc.function;
+
+        auto name = function->getName();
+
+        if ( !++ pc.function )
+            throw wibble::exception::Consistency(
+                "ProgramInfo::build in " + name.str(),
+                "Too many functions, capacity exceeded" );
 
         if ( function->begin() == function->end() )
             throw wibble::exception::Consistency(
-                "ProgramInfo::build",
-                "Can't deal with empty functions." );
+                "ProgramInfo::build in " + name.str(),
+                "Can't deal with empty functions" );
 
         makeFit( functions, pc.function );
         functionmap[ function ] = pc.function;
         pc.block = 0;
 
-        auto name = function->getName();
         if ( codepointers && ( name == "memset" || name == "memmove" || name == "memcpy" ) )
             function->setLinkage( ::llvm::GlobalValue::ExternalLinkage );
 
@@ -371,13 +382,12 @@ void ProgramInfo::pass()
         if ( codepointers )
             continue;
 
-        for ( auto block = function->begin(); block != function->end();
-              ++ block, ++ pc.block )
+        for ( auto block = function->begin(); block != function->end(); ++ block )
         {
             if ( block->begin() == block->end() )
                 throw wibble::exception::Consistency(
                     "ProgramInfo::build",
-                    "Can't deal with an empty BasicBlock" );
+                    "Can't deal with an empty BasicBlock in function " + name.str() );
 
             pc.instruction = 0;
 
@@ -391,6 +401,11 @@ void ProgramInfo::pass()
             while ( p.I != block->end() )
                 p = insert( p );
             makeFit( this->function( p.pc ).block( p.pc ).instructions, p.pc.instruction );
+
+            if ( ! ++ pc.block )
+                throw wibble::exception::Consistency(
+                    "ProgramInfo::build",
+                    "Too many basic blocks in function " + name.str() + ": capacity exceeded" );
         }
     }
 
