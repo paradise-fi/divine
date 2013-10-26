@@ -621,6 +621,7 @@ struct Mpi : MpiMonitor
     void interrupt() {
         wibble::sys::MutexLock _lock( mpi.global().mutex );
         mpi.notify( _lock, TAG_INTERRUPT, bitblock( m_mpiForwarder.pool ) );
+        m_local.interrupt();
     }
 
 };
