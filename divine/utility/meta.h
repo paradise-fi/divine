@@ -30,7 +30,7 @@ struct Input : WithReport {
 
     Input() : propertyType( graph::PT_Goal ), dummygen( false ), probabilistic( false ) {}
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct Execution : WithReport {
@@ -43,7 +43,7 @@ struct Execution : WithReport {
 
     Execution() : initialTable( 32 ), diskFifo( false ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct Algorithm : WithReport {
@@ -77,7 +77,7 @@ struct Algorithm : WithReport {
                   interactive( false )
     {}
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct Output : WithReport {
@@ -92,14 +92,14 @@ struct Output : WithReport {
         saveStates( false )
     { }
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct Statistics : WithReport {
     int64_t visited, expanded, deadlocks, transitions, accepting;
     Statistics() : visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ), accepting( 0 ) {}
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct Result : WithReport {
@@ -113,7 +113,7 @@ struct Result : WithReport {
         ceType( CET::NoCE ), iniTrail( "-" ), cycleTrail( "-" )
     {}
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 }
@@ -126,7 +126,7 @@ struct Meta : WithReport {
     meta::Result result;
     meta::Statistics statistics;
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 }

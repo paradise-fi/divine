@@ -8,19 +8,19 @@
 
 namespace divine {
 
-struct ReportPair {
+struct ReportLine {
     std::string key;
     std::string value;
 
-    ReportPair( std::string key, std::string value ) : key( key ), value( value ) { }
+    ReportLine( std::string key, std::string value ) : key( key ), value( value ) { }
 };
 
 struct WithReport {
-    virtual std::vector< ReportPair > report() const = 0;
+    virtual std::vector< ReportLine > report() const = 0;
 
     template< typename... Ts >
-    static std::vector< ReportPair > merge( const Ts &...ts ) {
-        std::vector< ReportPair > vec;
+    static std::vector< ReportLine > merge( const Ts &...ts ) {
+        std::vector< ReportLine > vec;
         auto inserter = std::back_inserter( vec );
         _merge( inserter, ts... );
         return vec;
@@ -29,15 +29,15 @@ struct WithReport {
     virtual ~WithReport() { }
 
   private:
-    using BIV = std::back_insert_iterator< std::vector< ReportPair > >;
+    using BIV = std::back_insert_iterator< std::vector< ReportLine > >;
     static void _merge( BIV & ) { }
     template< typename... Ts >
-    static void _merge( BIV &target, const std::vector< ReportPair > &source, const Ts &...ts ) {
+    static void _merge( BIV &target, const std::vector< ReportLine > &source, const Ts &...ts ) {
         std::copy( source.begin(), source.end(), target );
         _merge( target, ts... );
     }
     template< typename... Ts >
-    static void _merge( BIV &target, const ReportPair &source, const Ts &...ts ) {
+    static void _merge( BIV &target, const ReportLine &source, const Ts &...ts ) {
         target = source;
         _merge( target, ts... );
     }
@@ -48,7 +48,7 @@ struct WithReport {
 };
 
 struct Empty : WithReport {
-    std::vector< ReportPair > report() const override {
+    std::vector< ReportLine > report() const override {
         return { { "", "" } };
     }
 };

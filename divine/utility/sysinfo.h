@@ -28,7 +28,7 @@ struct Info : WithReport { /* singleton */
 
     static Data *data;
 
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 
 struct ResourceLimit : wibble::exception::Generic {

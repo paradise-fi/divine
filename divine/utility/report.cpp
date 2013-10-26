@@ -3,15 +3,15 @@
 #include <wibble/string.h>
 #include <map>
 
-#ifdef O_DATABASE
+#ifdef O_SQL_REPORT
 #include <external/nanodbc/nanodbc.h>
 #endif
 
 namespace divine {
-std::vector< ReportPair > Report::Merged::report() const {
-    ReportPair ec{ "Execution-Command", r._execCommand };
-    ReportPair empty{ "", "" };
-    std::vector< ReportPair > term{
+std::vector< ReportLine > Report::Merged::report() const {
+    ReportLine ec{ "Execution-Command", r._execCommand };
+    ReportLine empty{ "", "" };
+    std::vector< ReportLine > term{
             { "Termination-Signal", std::to_string( r._signal ) },
             { "Finished", r._finished ? "Yes" : "No" }
         };
@@ -29,7 +29,7 @@ std::string Report::mangle( std::string str ) {
     return str;
 }
 
-#ifndef O_DATABASE
+#ifndef O_SQL_REPORT
 SqlReport::SqlReport( const std::string &db, const std::string &connstr ) {
     wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
 }

@@ -213,7 +213,7 @@ void *ResourceGuard::main() {
     return nullptr;
 }
 
-std::vector< ReportPair > Info::report() const {
+std::vector< ReportLine > Info::report() const {
     update();
     return { { "Architecture", architecture() },
              { "Memory-Used", std::to_string( peakVmSize() ) },

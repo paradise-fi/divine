@@ -33,7 +33,7 @@ const char *versionString() {
     return version.c_str();
 }
 
-std::vector< ReportPair > BuildInfo::report() const {
+std::vector< ReportLine > BuildInfo::report() const {
     std::stringstream ss;
 #ifdef O_MPI
         int vers, subvers;

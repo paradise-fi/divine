@@ -50,7 +50,7 @@ struct Report
 
         Merged( const Report &r, const Meta &m ) : r( r ), m( m ) { }
 
-        std::vector< ReportPair > report() const override;
+        std::vector< ReportLine > report() const override;
     };
 
     Merged mergedReport( const Meta &meta ) const {
@@ -139,7 +139,7 @@ struct SqlReport : Report {
     SqlReport( const std::string &db, const std::string &connstr );
     void doFinal( const Meta &meta ) override;
 
-#ifndef O_DATABASE
+#ifndef O_SQL_REPORT
     template< typename... X >
     static std::shared_ptr< Report > get( X &&...  ) { return nullptr; }
 #endif

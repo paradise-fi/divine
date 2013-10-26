@@ -3,7 +3,7 @@
 using namespace divine;
 
 namespace divine {
-using Rep = std::vector< ReportPair >;
+using Rep = std::vector< ReportLine >;
 
 namespace meta {
 
@@ -97,7 +97,7 @@ Rep Execution::report() const {
 }
 
 Rep Meta::report() const {
-    ReportPair empty = { "", "" };
+    ReportLine empty = { "", "" };
     return WithReport::merge( input, empty, algorithm, empty, execution,
             empty, result, empty, statistics );
 }

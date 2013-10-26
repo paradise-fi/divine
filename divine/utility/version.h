@@ -13,7 +13,7 @@ namespace divine {
 const char *versionString();
 const char *buildDateString();
 struct BuildInfo : WithReport {
-    std::vector< ReportPair > report() const override;
+    std::vector< ReportLine > report() const override;
 };
 }
 
