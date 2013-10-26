@@ -1,6 +1,6 @@
 . lib
 
-dve_shape deadlock "1->2 2->3 3->4 4->5 5->2" <<EOF
+dve_shape deadlock "1->2 1->3 2->4 3->5 3->1 4->6 5->7 6->8 7->9 8->2 8->10 9->10 10->5 10->8" <<EOF
 process Pcom
 {
     int x=0;
@@ -27,7 +27,7 @@ process P1
 system async;
 EOF
 
-dve_shape deadlock "1->2 2->3 3->4" <<EOF
+dve_shape deadlock "1->2 1->3 2->4 3->5 3->1 4->6 5->7 7->8" <<EOF
 process Pcom
 {
     int x=0;
