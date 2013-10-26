@@ -85,11 +85,14 @@ struct ApproximateCounter {
     }
 
     bool isZero() {
+        intptr_t value = shared.counter;
+        if ( value < 0 )
+            shared.counter.compare_exchange_strong( value, 0 );
         /* user is responsible for calling sync(), this method is called way
          * too often; the counter might drop below zero when reset() is called
          * due to early termination, and a sync() intervenes, substracting a
          * non-zero local approximation */
-        return shared.counter < 0 ? (shared.counter = 0) : (shared.counter == 0);
+        return shared.counter == 0;
     }
 
     void reset() { shared.counter = 0; }
@@ -115,12 +118,10 @@ struct StartDetector {
     StartDetector( const StartDetector &s ) : shared( s.shared ) {}
 
     void waitForAll( unsigned short peers ) {
-        ++shared.counter;
+        if ( ++shared.counter == peers )
+            shared.counter = 0;
 
-        while ( shared.counter != 0 ) {
-            if ( shared.counter == peers )
-                shared.counter = 0;
-        }
+        while ( shared.counter );
     }
 
 };
