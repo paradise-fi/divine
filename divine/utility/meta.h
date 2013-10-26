@@ -4,7 +4,11 @@
 #include <fstream>
 #include <divine/graph/graph.h>
 #include <divine/utility/sysinfo.h>
+#include <divine/utility/withreport.h>
 #include <stdint.h>
+#include <vector>
+#include <iterator>
+#include <initializer_list>
 
 #ifndef DIVINE_META_H
 #define DIVINE_META_H
@@ -12,7 +16,7 @@
 namespace divine {
 namespace meta {
 
-struct Input {
+struct Input : WithReport {
     std::string modelType;
     std::string model;
     std::string property;
@@ -25,9 +29,11 @@ struct Input {
     std::vector< std::string > definitions;
 
     Input() : propertyType( graph::PT_Goal ), dummygen( false ), probabilistic( false ) {}
+
+    std::vector< ReportPair > report() const override;
 };
 
-struct Execution {
+struct Execution : WithReport {
     intptr_t initialTable;
     bool diskFifo;
 
@@ -36,12 +42,14 @@ struct Execution {
     int thisNode;
 
     Execution() : initialTable( 32 ), diskFifo( false ), threads( 2 ), nodes( 1 ), thisNode( 0 ) {}
+
+    std::vector< ReportPair > report() const override;
 };
 
-struct Algorithm {
-    enum Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
+struct Algorithm : WithReport {
+    enum class Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, GenExplicit, Probabilistic, Simulate };
-    enum CompressionType { C_None, C_Tree, C_NTree };
+    enum class Compression { None, Tree };
 
     Type algorithm;
     std::string name;
@@ -51,26 +59,28 @@ struct Algorithm {
 
     bool labels, traceLabels, bfsLayout; /* for drawing */
     bool hashCompaction;
-    CompressionType compression;
+    Compression compression;
     bool sharedVisitor;
     bool fairness;
     graph::ReductionSet reduce;
     graph::DemangleStyle demangle; // for llvm
     bool interactive; // for simulate
 
-    Algorithm() : algorithm( Info ),
+    Algorithm() : algorithm( Type::Info ),
                   hashSeed( 0 ),
                   maxDistance( 32 ),
                   labels( false ), traceLabels( false ), bfsLayout( false ),
                   hashCompaction( false ),
-                  compression( C_None ),
+                  compression( Compression::None ),
                   sharedVisitor( false ),
                   fairness( false ),
                   interactive( false )
     {}
+
+    std::vector< ReportPair > report() const override;
 };
 
-struct Output {
+struct Output : WithReport {
     bool quiet;
     bool wantCe, displayCe;
     bool statistics;
@@ -81,48 +91,43 @@ struct Output {
     Output() : quiet( false ), wantCe( false ), statistics( false ),
         saveStates( false )
     { }
+
+    std::vector< ReportPair > report() const override;
 };
 
-struct Statistics {
+struct Statistics : WithReport {
     int64_t visited, expanded, deadlocks, transitions, accepting;
     Statistics() : visited( 0 ), expanded( 0 ), deadlocks( 0 ), transitions( 0 ), accepting( 0 ) {}
+
+    std::vector< ReportPair > report() const override;
 };
 
-struct Result
-{
-    enum R { Yes, No, Unknown };
-    enum CET { NoCE, Cycle, Deadlock, Goal };
+struct Result : WithReport {
+    enum class R { Yes, No, Unknown };
+    enum class CET { NoCE, Cycle, Deadlock, Goal };
     R propertyHolds, fullyExplored;
     CET ceType;
     std::string iniTrail, cycleTrail;
     Result() :
-        propertyHolds( Unknown ), fullyExplored( Unknown ),
-        ceType( NoCE ), iniTrail( "-" ), cycleTrail( "-" )
+        propertyHolds( R::Unknown ), fullyExplored( R::Unknown ),
+        ceType( CET::NoCE ), iniTrail( "-" ), cycleTrail( "-" )
     {}
+
+    std::vector< ReportPair > report() const override;
 };
 
 }
 
-std::ostream &operator<<( std::ostream &o, meta::Result::R v );
-std::ostream &operator<<( std::ostream &o, meta::Result::CET v );
-std::ostream &operator<<( std::ostream &o, graph::PropertyType v );
-std::ostream &operator<<( std::ostream &o, meta::Input i );
-std::ostream &operator<<( std::ostream &o, meta::Result r );
-std::ostream &operator<<( std::ostream &o, meta::Algorithm a );
-std::ostream &operator<<( std::ostream &o, meta::Execution a );
-std::ostream &operator<<( std::ostream &o, meta::Output a );
-std::ostream &operator<<( std::ostream &o, meta::Statistics a );
-
-struct Meta {
+struct Meta : WithReport {
     meta::Input input;
     meta::Algorithm algorithm;
     meta::Execution execution;
     meta::Output output;
     meta::Result result;
     meta::Statistics statistics;
-};
 
-std::ostream &operator<<( std::ostream &o, Meta m );
+    std::vector< ReportPair > report() const override;
+};
 
 }
 

@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
-#include <iostream>
+#include <divine/utility/withreport.h>
 
 // Set version information in version.cpp.
 
@@ -12,8 +12,9 @@ extern const char* divineCompileFlags;
 namespace divine {
 const char *versionString();
 const char *buildDateString();
-struct BuildInfo {};
-std::ostream &operator<<( std::ostream &, BuildInfo );
+struct BuildInfo : WithReport {
+    std::vector< ReportPair > report() const override;
+};
 }
 
 #endif

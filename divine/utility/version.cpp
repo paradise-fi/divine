@@ -1,5 +1,6 @@
 #include <divine/utility/version.h>
 #include <string>
+#include <sstream>
 
 #ifdef O_MPI
 #include <mpi.h>
@@ -32,18 +33,8 @@ const char *versionString() {
     return version.c_str();
 }
 
-std::ostream &operator<<( std::ostream &o, BuildInfo )
-{
-        o << "Version: " << versionString() << std::endl;
-        o << "Build-Date: " << buildDateString() << std::endl;
-        o << "Pointer-Width: " << 8 * sizeof( void* ) << std::endl;
-#ifdef NDEBUG
-        o << "Debug: disabled" << std::endl;
-#else
-        o << "Debug: enabled" << std::endl;
-#endif
-        o << "Compile-Flags: " << divineCompileFlags << std::endl;
-
+std::vector< ReportPair > BuildInfo::report() const {
+    std::stringstream ss;
 #ifdef O_MPI
         int vers, subvers;
         std::string impl = "unknown implementation";
@@ -51,11 +42,22 @@ std::ostream &operator<<( std::ostream &o, BuildInfo )
 #ifdef OMPI_VERSION
         impl = std::string( "OpenMPI " ) + OMPI_VERSION;
 #endif
-        o << "MPI-Version: " << vers << "." << subvers << " (" << impl << ")" << std::endl;
+        ss << vers << "." << subvers << " (" << impl << ")";
 #else
-        o << "MPI-Version: n/a" << std::endl;
+        ss << "n/a";
 #endif
-        return o;
+
+    return { { "Version", versionString() },
+             { "Build-Date", buildDateString() },
+             { "Pointer-Width", std::to_string( 8 * sizeof( void* ) ) },
+#ifdef NDEBUG
+             { "Debug", "disabled" },
+#else
+             { "Debug", "enabled" },
+#endif
+             { "Compile-Flags", divineCompileFlags },
+             { "MPI-Version", ss.str() }
+           };
 }
 
 }

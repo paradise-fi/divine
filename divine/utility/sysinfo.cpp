@@ -72,7 +72,7 @@ double SystemTimeToDouble(SYSTEMTIME &time)
 }
 #endif
 
-double Info::userTime() {
+double Info::userTime() const {
 #ifdef POSIX
     return interval( zeroTime(), data->usage.ru_utime );
 #elif defined(_WIN32)
@@ -80,7 +80,7 @@ double Info::userTime() {
 #endif
 }
 
-double Info::systemTime() {
+double Info::systemTime() const {
 #ifdef POSIX
     return interval( zeroTime(), data->usage.ru_stime );
 #elif defined(_WIN32)
@@ -88,7 +88,7 @@ double Info::systemTime() {
 #endif
 }
 
-double Info::wallTime() {
+double Info::wallTime() const {
 #ifdef POSIX
     return interval( data->tv, data->now );
 #elif defined(_WIN32)
@@ -104,7 +104,7 @@ Info::Info() {
     start();
 }
 
-void Info::start() {
+void Info::start() const {
 #ifdef POSIX
     gettimeofday(&data->tv, NULL);
 #endif
@@ -115,7 +115,7 @@ void Info::start() {
 #endif
 }
 
-void Info::update() {
+void Info::update() const {
 #ifdef POSIX
     gettimeofday(&data->now, NULL);
     getrusage( RUSAGE_SELF, &data->usage );
@@ -126,13 +126,13 @@ void Info::update() {
 #endif
 }
 
-void Info::stop() {
+void Info::stop() const {
 #if defined(_WIN32)
     CloseHandle(data->hProcess);
 #endif
 }
 
-uint64_t Info::peakVmSize() {
+uint64_t Info::peakVmSize() const {
     uint64_t vmsz = 0;
 #ifdef __linux
     std::stringstream file;
@@ -151,7 +151,7 @@ uint64_t Info::peakVmSize() {
     return vmsz;
 }
 
-std::string Info::architecture() {
+std::string Info::architecture() const {
 #ifdef __linux
     wibble::ERegexp r( "model name[\t ]*: (.+)", 2 );
     if ( matchLine( "/proc/cpuinfo", r ) )
@@ -213,18 +213,16 @@ void *ResourceGuard::main() {
     return nullptr;
 }
 
+std::vector< ReportPair > Info::report() const {
+    update();
+    return { { "Architecture", architecture() },
+             { "Memory-Used", std::to_string( peakVmSize() ) },
+             { "User-Time", std::to_string( userTime() ) },
+             { "System-Time", std::to_string( systemTime() ) },
+             { "Wall-Time", std::to_string( wallTime() ) }
+           };
 }
 
-std::ostream &operator<<( std::ostream &o, sysinfo::Info i )
-{
-    i.update();
-    o << "Architecture: " << i.architecture() << std::endl;
-    o << "Memory-Used: " << i.peakVmSize() << std::endl;
-    o << "User-Time: " << i.userTime() << std::endl;
-    o << "System-Time: " << i.systemTime() << std::endl;
-    o << "Wall-Time: " << i.wallTime() << std::endl;
-    return o;
 }
-
 }
 

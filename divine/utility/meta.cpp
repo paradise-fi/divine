@@ -1,84 +1,75 @@
 #include <divine/utility/meta.h>
 
 using namespace divine;
-using namespace meta;
 
 namespace divine {
+using Rep = std::vector< ReportPair >;
 
-std::ostream &operator<<( std::ostream &o, Result::R v )
-{
-    return o << (v == Result::Unknown ? "-" :
-                 (v == Result::Yes ? "Yes" : "No" ) );
+namespace meta {
+
+std::string tostr( Result::R v ) {
+    return v == Result::R::Unknown
+        ? "Unknown"
+        : (v == Result::R::Yes ? "Yes" : "No");
 }
 
-std::ostream &operator<<( std::ostream &o, Result::CET t )
+std::string tostr( Result::CET t ) {
+    switch (t) {
+        case Result::CET::NoCE: return "none";
+        case Result::CET::Goal: return "goal";
+        case Result::CET::Cycle: return "cycle";
+        case Result::CET::Deadlock: return "deadlock";
+    }
+}
+
+std::string tostr( graph::PropertyType t )
 {
     switch (t) {
-        case Result::NoCE: return o << "none";
-        case Result::Goal: return o << "goal";
-        case Result::Cycle: return o << "cycle";
-        case Result::Deadlock: return o << "deadlock";
+        case graph::PT_Deadlock: return "deadlock";
+        case graph::PT_Goal: return "goal";
+        case graph::PT_Buchi: return "neverclaim";
+        default: return "unknonw";
     }
-    return o;
 }
 
-std::ostream &operator<<( std::ostream &o, graph::PropertyType t )
-{
-    switch (t) {
-        case graph::PT_Deadlock: return o << "deadlock";
-        case graph::PT_Goal: return o << "goal";
-        case graph::PT_Buchi: return o << "neverclaim";
-        default: return o << "unknonw";
-    }
-    return o;
+template< typename T >
+std::string tostr( T t ) {
+    return std::to_string( t );
 }
 
-std::ostream &operator<<( std::ostream &o, Input i )
-{
-    o << "Property-Type: " << i.propertyType << std::endl;
-    o << "Property-Name: " << (i.propertyName.empty() ? "-" : i.propertyName) << std::endl;
-    o << "Property: " << (i.property.empty() ? "-" : i.property) << std::endl;
-    return o;
+Rep Input::report() const {
+    return { { "Property-Type", tostr( propertyType ) },
+             { "Property-Name", propertyName.empty() ? "-" : propertyName },
+             { "Property", property.empty() ? "-" : property }
+           };
 }
 
-std::ostream &operator<<( std::ostream &o, Result r )
-{
-    o << "Property-Holds: " << r.propertyHolds << std::endl;
-    o << "Full-State-Space: " << r.fullyExplored << std::endl;
-    o << "CE-Type: " << r.ceType << std::endl;
-    o << "CE-Init: " << r.iniTrail << std::endl;
-    o << "CE-Cycle: " << r.cycleTrail << std::endl;
-    return o;
+Rep Result::report() const {
+    return { { "Property-Holds", tostr( propertyHolds ) },
+             { "Full-State-Space", tostr( fullyExplored ) },
+             { "CE-Type", tostr( ceType ) },
+             { "CE-Init", iniTrail },
+             { "CE-Cycle", cycleTrail }
+           };
 }
 
-std::ostream &operator<<( std::ostream &o, Statistics r )
-{
-    o << "States-Visited: " << r.visited << std::endl;
-    o << "States-Accepting: " << r.accepting << std::endl;
-    o << "States-Expanded: " << r.expanded << std::endl;
-
-    o << "Transition-Count: ";
-    if (r.transitions >= 0)
-        o << r.transitions << std::endl;
-    else
-        o << "-" << std::endl;
-
-    o << "Deadlock-Count: ";
-    if (r.deadlocks >= 0)
-        o << r.deadlocks << std::endl;
-    else
-        o << "-" << std::endl;
-
-    return o;
+Rep Output::report() const {
+    return { };
 }
 
-std::ostream &operator<<( std::ostream &o, Algorithm a )
-{
-    o << "Algorithm: " << a.name << std::endl;
-    o << "Transformations: ";
+Rep Statistics::report() const {
+    return { { "States-Visited", tostr( visited ) },
+             { "States-Accepting", tostr( accepting ) },
+             { "States-Expanded", tostr( expanded ) },
+             { "Transition-Count", transitions >= 0 ? tostr( transitions ) : "-" },
+             { "Deadlock-Count", deadlocks >= 0 ? tostr( deadlocks ) : "-" }
+           };
+}
+
+Rep Algorithm::report() const {
     std::vector< std::string > txt;
 
-    for ( auto r = a.reduce.begin(); r != a.reduce.end(); ++r )
+    for ( auto r = reduce.begin(); r != reduce.end(); ++r )
         switch ( *r ) {
             case graph::R_POR: txt.push_back( "POR" ); break;
             case graph::R_TauPlus: txt.push_back( "tau+" ); break;
@@ -88,27 +79,25 @@ std::ostream &operator<<( std::ostream &o, Algorithm a )
             case graph::R_LU: txt.push_back( "LU" ); break;
         }
 
-    if ( a.fairness )
+    if ( fairness )
         txt.push_back( "fairness" );
 
-    return o << wibble::str::fmt( txt ) << std::endl;
+    return { { "Algorithm", name },
+             { "Transformations", wibble::str::fmt( txt ) }
+           };
 }
 
-std::ostream &operator<<( std::ostream &o, Execution a )
-{
-    o << "Threads: " << a.threads << std::endl;
-    o << "MPI-Nodes: "<< a.nodes << std::endl;
-    return o;
+Rep Execution::report() const {
+    return { { "Threads", tostr( threads ) },
+             { "MPI-Nodes", tostr( nodes ) }
+           };
+}
 }
 
-std::ostream &operator<<( std::ostream &o, Meta m )
-{
-    o << m.input << std::endl;
-    o << m.algorithm << std::endl;
-    o << m.execution << std::endl;
-    o << m.result << std::endl;
-    o << m.statistics;
-    return o;
+Rep Meta::report() const {
+    ReportPair empty = { "", "" };
+    return WithReport::merge( input, empty, algorithm, empty, execution,
+            empty, result, empty, statistics );
 }
 
 }

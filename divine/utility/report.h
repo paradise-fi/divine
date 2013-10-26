@@ -3,6 +3,10 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <type_traits>
+#include <memory>
+#include <wibble/sfinae.h>
 
 #include <divine/utility/version.h>
 #include <divine/utility/meta.h>
@@ -14,41 +18,153 @@ namespace divine {
 
 struct Report
 {
-    sysinfo::Info sysinfo;
-    std::string execCommand;
+    Report() : _signal( 0 ), _finished( false ), _dumped( false )
+    { }
 
-    int m_signal;
-    bool m_finished, m_dumped;
-
-    Report() : m_signal( 0 ), m_finished( false ), m_dumped( false )
-    {
+    virtual void signal( int s ) {
+        _finished = false;
+        _signal = s;
     }
 
-    void signal( int s )
-    {
-        m_finished = false;
-        m_signal = s;
+    virtual void finished() {
+        _finished = true;
     }
 
-    void finished()
-    {
-        m_finished = true;
-    }
-
-    void final( std::ostream &o, Meta meta ) {
-        if ( m_dumped )
+    void final( const Meta &meta ) {
+        if ( _dumped )
             return;
-        m_dumped = true;
+        _dumped = true;
 
-        if (execCommand.size() > 0)
-            o << "Execution-Command: " << execCommand << std::endl << std::endl;
-        o << BuildInfo() << std::endl;
-        o << sysinfo << std::endl;
-        o << meta << std::endl;
-
-        o << "Termination-Signal: " << m_signal << std::endl;
-        o << "Finished: " << (m_finished ? "Yes" : "No") << std::endl;
+        doFinal( meta );
     }
+
+    virtual void execCommand( const std::string &ec ) {
+        _execCommand = ec;
+    }
+
+    virtual void doFinal( const Meta & ) = 0;
+
+    struct Merged : WithReport {
+        const Report &r;
+        const Meta &m;
+
+        Merged( const Report &r, const Meta &m ) : r( r ), m( m ) { }
+
+        std::vector< ReportPair > report() const override;
+    };
+
+    Merged mergedReport( const Meta &meta ) const {
+        return Merged( *this, meta );
+    }
+
+    static std::string mangle( std::string str );
+
+    template< typename Rep, typename... Ts >
+    static std::shared_ptr< Report > get( Ts &&... ts ) {
+        return _get< Rep >( wibble::Preferred(), std::forward< Ts >( ts )... );
+    }
+
+  private:
+    sysinfo::Info _sysinfo;
+    std::string _execCommand;
+
+    int _signal;
+    bool _finished, _dumped;
+
+    template< typename Rep, typename... X >
+    std::shared_ptr< Rep > declcheck( X... ) {
+        static_assert( std::is_base_of< Report, Rep >::value,
+                "Required report does not inherit from Report." );
+        assert_unreachable( "declcheck" );
+    }
+
+    template< typename Rep, typename... Ts >
+    static auto _get( wibble::Preferred, Ts &&... ts ) ->
+        decltype( declcheck( Rep::get( std::forward< Ts >( ts )... ) ) )
+    {
+        return Rep::get( std::forward< Ts >( ts )... );
+    }
+
+    template< typename Rep, typename... Ts >
+    static std::shared_ptr< Report > _get( wibble::NotPreferred, Ts &&... ts ) {
+        return std::make_shared< Rep >( std::forward< Ts >( ts )... );
+    }
+};
+
+template< typename Out >
+struct TextReportBase : Report {
+    Out output;
+
+    template< typename... Ts >
+    TextReportBase( Ts &&...ts ) : output( std::forward< Ts >( ts )... ) { }
+
+    void doFinal( const Meta &meta ) override {
+        output << mergedReport( meta );
+    }
+};
+
+struct TextReport : TextReportBase< std::ostream & > {
+    TextReport( std::ostream &o ) : TextReportBase< std::ostream & >( o ) { }
+};
+
+struct TextFileReport : TextReportBase< std::ofstream > {
+    TextFileReport( std::string name ) : TextReportBase< std::ofstream >( name ) { }
+};
+
+template< typename Out >
+struct PlainReportBase : Report {
+    Out output;
+
+    template< typename... Ts >
+    PlainReportBase( Ts &&...ts ) : output( std::forward< Ts >( ts )... ) { }
+
+    void doFinal( const Meta &meta ) override {
+        auto merged = mergedReport( meta ).report();
+        for ( auto x : merged ) {
+            if ( x.key != "" )
+                output << x.key << ": " << x.value << std::endl;
+        }
+    }
+};
+
+struct PlainReport : PlainReportBase< std::ostream & > {
+    PlainReport( std::ostream &o ) : PlainReportBase< std::ostream & >( o ) { }
+};
+
+struct PlainFileReport : PlainReportBase< std::ofstream > {
+    PlainFileReport( std::string name ) : PlainReportBase< std::ofstream >( name ) { }
+};
+
+/*
+struct AggregateReport : Report {
+
+    void add( std::shared_ptr< Report > report ) {
+        _reports.push_back( report );
+    }
+
+    void doFinal( const Meta &meta ) override {
+        for ( auto r : _reports )
+            r->doFinal( meta );
+    }
+
+    void signal( int s ) override {
+        for ( auto r : _reports )
+            r->signal( s );
+    }
+
+    void finished() override {
+        for ( auto r : _reports )
+            r->finished();
+    }
+
+  private:
+};
+
+*/
+struct NoReport : Report {
+    void doFinal( const Meta &meta ) override { }
+    void signal( int s ) override { }
+    void finished() override { }
 };
 
 }

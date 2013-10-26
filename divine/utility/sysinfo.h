@@ -2,6 +2,7 @@
 
 #include <string>
 #include <wibble/sys/thread.h>
+#include <divine/utility/withreport.h>
 
 #ifndef DIVINE_SYSINFO_H
 #define DIVINE_SYSINFO_H
@@ -11,21 +12,23 @@ namespace sysinfo {
 
 struct Data;
 
-struct Info { /* singleton */
+struct Info : WithReport { /* singleton */
     Info();
 
-    void start();
-    void stop();
-    void update();
+    void start() const;
+    void stop() const;
+    void update() const ;
 
-    std::string architecture();
-    uint64_t peakVmSize();
+    std::string architecture() const;
+    uint64_t peakVmSize() const;
 
-    double userTime();
-    double systemTime();
-    double wallTime();
+    double userTime() const;
+    double systemTime() const;
+    double wallTime() const;
 
     static Data *data;
+
+    std::vector< ReportPair > report() const override;
 };
 
 struct ResourceLimit : wibble::exception::Generic {
@@ -41,8 +44,6 @@ struct ResourceGuard : wibble::sys::Thread {
 };
 
 }
-
-std::ostream &operator<<( std::ostream &o, sysinfo::Info i );
 
 }
 
