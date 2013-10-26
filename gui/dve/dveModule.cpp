@@ -480,7 +480,7 @@ void DveModule::onCombineTriggered()
 void DveModule::onMetricsTriggered()
 {
   Meta meta;
-  meta.algorithm.algorithm = divine::meta::Algorithm::Metrics;
+  meta.algorithm.algorithm = divine::meta::Algorithm::Type::Metrics;
 
   runAlgorithm(meta);
 }
@@ -488,7 +488,7 @@ void DveModule::onMetricsTriggered()
 void DveModule::onReachabilityTriggered()
 {
   Meta meta;
-  meta.algorithm.algorithm = divine::meta::Algorithm::Reachability;
+  meta.algorithm.algorithm = divine::meta::Algorithm::Type::Reachability;
 
   runAlgorithm(meta);
 }
@@ -502,13 +502,13 @@ void DveModule::onVerifyTriggered()
 {
   Meta meta;
   QString algorithm = Settings("ide/verification").value("algorithm", defVerificationAlgorithm).toString();
- 
+
   if(algorithm == "OWCTY") {
-    meta.algorithm.algorithm = divine::meta::Algorithm::Owcty;
+    meta.algorithm.algorithm = divine::meta::Algorithm::Type::Owcty;
   } else if(algorithm == "MAP") {
-    meta.algorithm.algorithm = divine::meta::Algorithm::Map;
+    meta.algorithm.algorithm = divine::meta::Algorithm::Type::Map;
   } else if(algorithm == "Nested DFS") {
-    meta.algorithm.algorithm = divine::meta::Algorithm::Ndfs;
+    meta.algorithm.algorithm = divine::meta::Algorithm::Type::Ndfs;
   }
 
   runAlgorithm(meta);
