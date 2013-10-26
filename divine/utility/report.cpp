@@ -1,4 +1,11 @@
 #include <divine/utility/report.h>
+#include <wibble/param.h>
+#include <wibble/string.h>
+#include <map>
+
+#ifdef O_DATABASE
+#include <external/nanodbc/nanodbc.h>
+#endif
 
 namespace divine {
 std::vector< ReportPair > Report::Merged::report() const {
@@ -22,9 +29,80 @@ std::string Report::mangle( std::string str ) {
     return str;
 }
 
-std::string Report::quote( std::string str ) {
-    str.insert( str.begin(), '"' );
-    str.insert( str.end(), '"' );
-    return str;
+#ifndef O_DATABASE
+SqlReport::SqlReport( const std::string &db, const std::string &connstr ) {
+    wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
 }
+
+
+void SqlReport::doFinal( const Meta &meta ) {
+    wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
+}
+#else
+
+SqlReport::SqlReport( const std::string &db, const std::string &connstr ) :
+    _connstr( connstr ), _db( db )
+{
+    // test connection string
+    nanodbc::connection connection( _connstr );
+    wibble::param::discard( connection );
+}
+
+void SqlReport::doFinal( const Meta &meta ) {
+    nanodbc::connection connection( _connstr );
+    auto merged = mergedReport( meta ).report();
+    std::vector< std::string > allcols;
+    std::map< std::string, std::string > values;
+    for ( auto a : merged ) {
+        if ( a.key != "" ) {
+            values[ Report::mangle( a.key ) ] = a.value;
+            allcols.push_back( Report::mangle( a.key ) );
+        }
+    }
+
+    std::vector< std::string > usedkeys;
+
+    try {
+        auto res = execute( connection, "SELECT * FROM " + _db + " WHERE 1 = 0;" );
+
+        for ( int i = 0; i < res.columns(); ++i ) {
+            auto colname = res.column_name( i );
+            if ( values.count( colname ) )
+                usedkeys.push_back( colname );
+        }
+    } catch ( const nanodbc::database_error & ) {
+        std::cerr << "INFO: Table not found, creating..." << std::endl;
+
+        // create table
+        usedkeys = allcols;
+        std::vector< std::string > cols;
+        std::transform( allcols.begin(), allcols.end(), std::back_inserter( cols ),
+            []( std::string col ) { return col + " varchar"; } );
+        std::stringstream create;
+        create << "CREATE TABLE "
+               << _db << " (" << wibble::str::fmt_container( cols, ' ', ' ' )
+               << ");";
+        // std::cerr << create.str() << std::endl;
+        execute( connection, create.str() );
+    }
+
+    std::vector< std::string > placeholders( usedkeys.size(), "?" );
+    std::stringstream com;
+    com << "INSERT INTO " << _db
+        << " (" << wibble::str::fmt_container( usedkeys, ' ', ' ' ) << ") "
+        << "VALUES (" << wibble::str::fmt_container( placeholders, ' ', ' ' ) << ");";
+    try {
+        nanodbc::statement stmtins( connection );
+        nanodbc::prepare( stmtins, com.str() );
+        for ( int i = 0; i < usedkeys.size(); ++i )
+            stmtins.bind_parameter( i, values[ usedkeys[ i ] ].c_str() );
+        execute( stmtins );
+    } catch ( const nanodbc::database_error & ) {
+        std::cerr << "There was an error inserting report to database" << std::endl;
+        throw;
+    }
+}
+#endif
+
+
 }

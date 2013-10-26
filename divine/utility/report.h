@@ -71,8 +71,8 @@ struct Report
     int _signal;
     bool _finished, _dumped;
 
-    template< typename Rep, typename... X >
-    std::shared_ptr< Rep > declcheck( X... ) {
+    template< typename Rep >
+    static std::shared_ptr< Rep > declcheck( std::shared_ptr< Rep > ) {
         static_assert( std::is_base_of< Report, Rep >::value,
                 "Required report does not inherit from Report." );
         assert_unreachable( "declcheck" );
@@ -135,32 +135,20 @@ struct PlainFileReport : PlainReportBase< std::ofstream > {
     PlainFileReport( std::string name ) : PlainReportBase< std::ofstream >( name ) { }
 };
 
-/*
-struct AggregateReport : Report {
+struct SqlReport : Report {
+    SqlReport( const std::string &db, const std::string &connstr );
+    void doFinal( const Meta &meta ) override;
 
-    void add( std::shared_ptr< Report > report ) {
-        _reports.push_back( report );
-    }
-
-    void doFinal( const Meta &meta ) override {
-        for ( auto r : _reports )
-            r->doFinal( meta );
-    }
-
-    void signal( int s ) override {
-        for ( auto r : _reports )
-            r->signal( s );
-    }
-
-    void finished() override {
-        for ( auto r : _reports )
-            r->finished();
-    }
+#ifndef O_DATABASE
+    template< typename... X >
+    static std::shared_ptr< Report > get( X &&...  ) { return nullptr; }
+#endif
 
   private:
+    std::string _connstr;
+    std::string _db;
 };
 
-*/
 struct NoReport : Report {
     void doFinal( const Meta &meta ) override { }
     void signal( int s ) override { }
