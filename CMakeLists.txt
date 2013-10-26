@@ -450,7 +450,8 @@ endif( LLVM )
 
 get_property( BUILDOPTS1 DIRECTORY PROPERTY COMPILE_DEFINITIONS )
 string(REPLACE ";" " " BUILDOPTS2 "${BUILDOPTS1}")
-string(REPLACE "O_" "" BUILDOPTS "${BUILDOPTS2}")
+string(REPLACE " NANODBC_USE_CPP11" "" BUILDOPTS3 "${BUILDOPTS2}")
+string(REPLACE "O_" "" BUILDOPTS "${BUILDOPTS3}")
 
 ##########################################
 ## SOURCE DIRECTORIES
