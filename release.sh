@@ -49,7 +49,7 @@ else
 fi
 
 
-head -n1 NEWS | grep -q "DiVinE $version" || \
+head -n1 NEWS | grep -iq "DIVINE $version" || \
     die "Seems that first entry in NEWS is not for $version..."
 
 ## BUILD ###############
