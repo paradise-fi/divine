@@ -62,9 +62,16 @@ struct ApproximateCounter {
     ~ApproximateCounter() { sync(); }
 
     void sync() {
-        if ( local > 0 ) {
-            shared.counter -= local;
-            local = 0;
+        intptr_t value = shared.counter;
+
+        while ( local > 0 ) {
+            if ( value >= local ) {
+                if ( shared.counter.compare_exchange_weak( value, value - local ) )
+                    local = 0;
+            } else {
+                if ( shared.counter.compare_exchange_weak( value, 0 ) )
+                    local = 0;
+            }
         }
     }
 
@@ -84,14 +91,8 @@ struct ApproximateCounter {
         return *this;
     }
 
+    // NB. sync() must be called manually as this method is called too often
     bool isZero() {
-        intptr_t value = shared.counter;
-        if ( value < 0 )
-            shared.counter.compare_exchange_strong( value, 0 );
-        /* user is responsible for calling sync(), this method is called way
-         * too often; the counter might drop below zero when reset() is called
-         * due to early termination, and a sync() intervenes, substracting a
-         * non-zero local approximation */
         return shared.counter == 0;
     }
 
