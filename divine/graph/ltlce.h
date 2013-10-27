@@ -203,6 +203,7 @@ struct LtlCE {
                 return visitor::TransitionAction::Expand;
             }
             if ( t.store().equal( to.handle(), t.shared().ce.initial ) ) {
+                t.extension( to ).parent() = from.handle();
                 assert( int( t.extension( to ).iteration() ) == t.shared().iteration );
                 return visitor::TransitionAction::Terminate;
             }
