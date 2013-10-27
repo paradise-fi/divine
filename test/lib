@@ -257,7 +257,7 @@ llvm_verify() {
 dve_statespace() {
     test "$O_DVE" = "ON" || skip
     cat > testcase.dve
-    divine metrics testcase.dve -p $1 -r 2>> progress | capture
+    divine metrics testcase.dve --no-reduce -p $1 -r 2>> progress | capture
     shift
     check statespace "$@"
     check clear
