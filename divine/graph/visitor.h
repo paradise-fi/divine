@@ -245,10 +245,8 @@ struct Interruptible : Override
     static visitor::TransitionAction transition( Listener &l, Vertex f, Vertex t, Label label )
     {
         auto tact = Override::transition( l, f, t, label );
-        if ( tact == TransitionAction::Terminate ) {
-            std::cerr << "termination time..." << std::endl;
+        if ( tact == TransitionAction::Terminate )
             l.second->worker.interrupt();
-        }
         return tact;
     }
 
