@@ -354,7 +354,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
 
         progress() << "  counting vertices... \t\t " << std::flush;
         count();
-        result().fullyExplored = meta::Result::Yes;
+        result().fullyExplored = meta::Result::R::Yes;
         progress() << "found " << nodes << " states, "
                    << nodesSize << " bytes" << std::endl;
         assert_eq( nodes, meta().statistics.visited );
