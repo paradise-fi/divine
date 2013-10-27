@@ -1,4 +1,4 @@
-DIVINE 3.0.91 (3.1 alpha 2; 15.10.2013)
+DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
 =======================================
 
 - Implement `--shared` support in OWCTY and MAP (liveness checking).
