@@ -143,7 +143,8 @@ struct LtlCE {
                 } else
                     this->g().release( n );
             } );
-        shared().ce.current_updated = true;
+        assert( shared().ce.current_updated );
+        assert( shared().ce.successor_id );
     }
 
     int whichInitial( Node n ) {
@@ -366,8 +367,10 @@ struct LtlCE {
                 shared().ce.successor_id = 0;
                 shared().ce.current_updated = false;
                 d.ring( &Alg::_ceIsInitial );
-                if ( shared().ce.current_updated )
+                if ( shared().ce.current_updated ) {
+                    assert( shared().ce.successor_id );
                     break;
+                }
             } else if ( TT::value == TraceType::Lasso ) {
                 if ( shared().ce.is_ce_initial ) {
                     if ( first )
@@ -430,6 +433,7 @@ struct LtlCE {
             ++hTraceBegin;
             d.ring( &Alg::_successorTrace );
             assert( shared().ce.current_updated );
+            assert( shared().ce.successor_id );
             trace.push_back( shared().ce.parent );
             numTrace.push_back( shared().ce.successor_id );
         }
