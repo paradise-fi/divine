@@ -5,14 +5,14 @@
 #include <vector>
 
 struct TestSharedMemoryUtilities {
+    static const int peers = 12;
 
-    struct Worker : wibble::sys::Thread {
+    struct DetectorWorker : wibble::sys::Thread {
 
         divine::StartDetector detector;
-        unsigned short peers;
 
-        Worker( divine::StartDetector::Shared &sh, unsigned short peers ) :
-            detector( sh ), peers( peers )
+        DetectorWorker( divine::StartDetector::Shared &sh ) :
+            detector( sh )
         {}
 
         void* main() {
@@ -21,17 +21,16 @@ struct TestSharedMemoryUtilities {
         }
     };
 
-    Test parallel() {// this test must finish
-        const unsigned peers = 12;
+    Test startDetector() {// this test must finish
         divine::StartDetector::Shared sh;
-        std::vector< Worker > threads{ peers, Worker{ sh, peers } };
+        std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh } };
 
         alarm( 1 );
 
         for ( int i = 0; i != 4; ++i ) {
-            for ( Worker &w : threads )
+            for ( auto &w : threads )
                 w.start();
-            for ( Worker &w : threads )
+            for ( auto &w : threads )
                 w.join();
             assert_eq( sh.counter.load(), 0 );
         }
