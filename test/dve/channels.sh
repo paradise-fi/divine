@@ -4,7 +4,7 @@
 for bufsize in 0 1 3; do
     test $bufsize = 0 && size="2 3";
     test $bufsize = 1 && size="3 5";
-    test $bufsize = 3 && size="8 12";
+    test $bufsize = 3 && size="3 5";
 
     dve_statespace deadlock $size 0 0 <<EOF
     channel {int,int} test[$bufsize];
