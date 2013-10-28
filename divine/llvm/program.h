@@ -319,6 +319,7 @@ struct GlobalContext {
     bool isPointer( Pointer ) { return false; }
     void setPointer( ValueRef, bool ) {}
     void setPointer( Pointer, bool ) {}
+    void dump() {}
 
     /* TODO */
     bool inBounds( ValueRef, int ) { return true; }
