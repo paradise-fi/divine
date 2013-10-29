@@ -34,12 +34,12 @@ new](whatsnew.html). The major highlights of the 3.0 release are:
  * Hash compaction.
  * Experimental support for shared-memory hashtables and queues.
 
-DIVINE 3.1 alpha 1 has been released
+DIVINE 3.1 alpha 2 has been released
 ====================================
 
-(2013-07-14) A first alpha release in preparation of version 3.1 of DIVINE has
-been released today. Please download the [source code] [1] (or visit [our
-hydra] [4] to obtain recent binary snapshots) and help us testing this
+(2013-10-27) We are pleased to announce another alpha release in preparation of
+version 3.1 of DIVINE. Please download the [source code] [1] (or visit [our
+hydra] [4] to obtain recent binary snapshots) and help us by testing this
 pre-release.
 
 The major improvements making a debut in version 3.1 are more sophisticated
@@ -49,10 +49,14 @@ also includes improved support for compilation of C++ into LLVM bitcode (now
 including the standard library out of the box) and improvements to the DVE
 specification language.
 
+Additionally, a number of improvements and bug fixes has been added since the
+last alpha release in summer. Please consult the [changelog] [5].
+
 [1]: download.html
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/release
 [3]: manual.html#common-explicit-state-model-interface
 [4]: http://divine.fi.muni.cz/hydra/project/divine
+[5]: whatsnew.html
 
 Contacting Us
 =============

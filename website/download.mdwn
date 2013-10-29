@@ -22,7 +22,7 @@ Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
 > * An installer for 32 bit windows:
 >   **[divine-2.97-installer.exe](download/divine-2.97-installer.exe)**.
 >
-> * Latest *development* version: **[divine-3.0.90.tar.gz](download/divine-3.0.90.tar.gz)** (3.1 alpha 1).
+> * Latest *development* version: **[divine-3.0.91.tar.gz](download/divine-3.0.91.tar.gz)** (3.1 alpha 2).
 >
 > Please consult [release notes] [1] for a summary of changes between
 > releases. Binaries and source tarballs of development snapshots can be
