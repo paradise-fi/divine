@@ -19,17 +19,29 @@ std::string tostr( Result::CET t ) {
         case Result::CET::Goal: return "goal";
         case Result::CET::Cycle: return "cycle";
         case Result::CET::Deadlock: return "deadlock";
+        default: assert_unreachable( "unknown CE type" );
     }
 }
 
-std::string tostr( graph::PropertyType t )
-{
+std::string tostr( graph::PropertyType t ) {
     switch (t) {
         case graph::PT_Deadlock: return "deadlock";
         case graph::PT_Goal: return "goal";
         case graph::PT_Buchi: return "neverclaim";
-        default: return "unknonw";
+        default: assert_unreachable( "unknown property" );
     }
+}
+
+std::string tostr( Algorithm::Compression c ) {
+    switch ( c ) {
+        case Algorithm::Compression::None: return "None";
+        case Algorithm::Compression::Tree: return "Tree";
+        default: assert_unreachable( "unknown compression" );
+    }
+}
+
+std::string tostr( bool b ) {
+    return b ? "Yes" : "No";
 }
 
 template< typename T >
@@ -85,7 +97,9 @@ Rep Algorithm::report() const {
         txt.push_back( "fairness" );
 
     return { { "Algorithm", name },
-             { "Transformations", wibble::str::fmt( txt ) }
+             { "Transformations", wibble::str::fmt( txt ) },
+             { "Compression", tostr( compression ) },
+             { "Shared", tostr( sharedVisitor ) }
            };
 }
 
