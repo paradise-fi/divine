@@ -149,6 +149,36 @@ struct SqlReport : Report {
     std::string _db;
 };
 
+struct AggregateReport : Report {
+
+    void signal( int s ) override {
+        for ( auto r : _reports )
+            r->signal( s );
+    }
+
+    void finished() override {
+        for ( auto r : _reports )
+            r->finished();
+    }
+
+    void execCommand( const std::string &ec ) override {
+        for ( auto r : _reports )
+            r->execCommand( ec );
+    }
+
+    void doFinal( const Meta &meta ) override {
+        for ( auto r : _reports )
+            r->doFinal( meta );
+    }
+
+    void addReport( std::shared_ptr< Report > rep ) {
+        _reports.push_back( rep );
+    }
+
+  private:
+    std::vector< std::shared_ptr< Report > > _reports;
+};
+
 struct NoReport : Report {
     void doFinal( const Meta &meta ) override { }
     void signal( int s ) override { }
