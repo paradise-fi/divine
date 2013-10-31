@@ -19,6 +19,7 @@
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
 #include <divine/utility/strings.h>
+#include <divine/utility/die.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -40,8 +41,6 @@ std::string ltl_to_c( int id, std::string ltl );
 
 using namespace wibble;
 
-struct DieException { };
-
 struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
@@ -62,12 +61,6 @@ struct Compile {
     {
         opts.outputHelp( std::cerr );
         die( bla );
-    }
-
-    static void die( std::string bla ) __attribute__((noreturn))
-    {
-        std::cerr << bla << std::endl;
-        throw DieException();
     }
 
     static void cleanup( FilePath &cleanup_tmpdir )
@@ -445,27 +438,23 @@ struct Compile {
     }
 
     void main() {
-        try {
-            std::string input = opts.next();
-            parallelBuildJobs = o_parallel->boolValue()
-                ? parseParallel( o_parallel->stringValue() )
-                : 1;
-            if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
-                die( "FATAL: cannot open input file " + input + " for reading" );
-            if ( str::endsWith( input, ".dve" ) )
-                compileDve( input, o_definitions->values() );
-            else if ( str::endsWith( input, ".m" ) )
-                compileMurphi( input );
-            else if ( o_cesmi->boolValue() )
-                compileCESMI( input, o_cflags->stringValue() );
-            else if ( o_llvm->boolValue() )
-                compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
-            else {
-                std::cerr << "Do not know how to compile this file type." << std::endl
-                          << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
-            }
-        } catch ( DieException& ) {
-            exit( 1 );
+        std::string input = opts.next();
+        parallelBuildJobs = o_parallel->boolValue()
+            ? parseParallel( o_parallel->stringValue() )
+            : 1;
+        if ( !o_libs_only->boolValue() && access( input.c_str(), R_OK ) )
+            die( "FATAL: cannot open input file " + input + " for reading" );
+        if ( str::endsWith( input, ".dve" ) )
+            compileDve( input, o_definitions->values() );
+        else if ( str::endsWith( input, ".m" ) )
+            compileMurphi( input );
+        else if ( o_cesmi->boolValue() )
+            compileCESMI( input, o_cflags->stringValue() );
+        else if ( o_llvm->boolValue() )
+            compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
+        else {
+            std::cerr << "Do not know how to compile this file type." << std::endl
+                      << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
         }
     }
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <divine/ltl2ba/main.h>
+#include <divine/utility/die.h>
 #include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
@@ -79,12 +80,6 @@ struct Combine {
     {
         opts.outputHelp( std::cerr );
         die( bla );
-    }
-
-    void die( std::string bla )
-    {
-        std::cerr << bla << std::endl;
-        exit( 1 );
     }
 
     Combine( commandline::StandardParserWithMandatoryCommand &_opts )

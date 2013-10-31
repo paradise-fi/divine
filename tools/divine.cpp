@@ -16,6 +16,7 @@
 
 #include <divine/utility/meta.h>
 #include <divine/utility/report.h>
+#include <divine/utility/die.h>
 #include <divine/instances/select.h>
 
 #include <tools/draw.h>
@@ -188,12 +189,6 @@ struct Main {
         Output::output().cleanup();
         if ( mpi->master() && (o_report->isSet() || o_shortReport->boolValue())  )
             report->final( a->meta() );
-    }
-
-    static void die( std::string bla ) __attribute__((noreturn))
-    {
-        std::cerr << bla << std::endl;
-        exit( 1 );
     }
 
     void setupSignals()
@@ -767,6 +762,20 @@ struct Main {
 
 int main( int argc, const char **argv )
 {
-    divine::Main m( argc, argv );
+    try {
+        divine::Main m( argc, argv );
+    } catch ( divine::DieException &ex ) {
+        std::cerr << ex.desc() << std::endl;
+        std::cerr << "Exiting after receiving fatal error." << std::endl;
+        std::exit( ex.exitcode );
+    } catch ( wibble::exception::Generic &ex ) {
+        std::cerr << "FATAL ERROR: caught error during verification:" << std::endl
+                  << "    " << ex.what() << std::endl;
+        std::cerr << "Exiting after receiving fatal error." << std::endl;
+        exit( 2 );
+    } catch ( std::bad_alloc & ) {
+        std::cerr << "FATAL ERROR: failed to allocate memory, exiting." << std::endl;
+        exit( 3 );
+    }
     return 0;
 }
