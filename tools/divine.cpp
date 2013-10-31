@@ -1,4 +1,6 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+
 #include <wibble/test.h> // for assert
 #include <queue>
 #include <iostream>
@@ -62,7 +64,7 @@ struct Main {
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
                 *ce, *compactOutput;
     BoolOption *o_noCe, *o_dispCe, *o_dummy, *o_statistics, *o_shortReport;
-    OptvalStringOption *o_report;
+    OptvalStringVectorOption *o_report;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
     StringOption *o_reduce;
@@ -251,7 +253,7 @@ struct Main {
         o_shortReport = common->add< BoolOption >(
             "report", 'r', "", "", "output standardised report" );
 
-        o_report = common->add< OptvalStringOption >(
+        o_report = common->add< OptvalStringVectorOption >(
             "report", '\0', "report", "", "output report, one of:\n"
                 "text (stdout, human readable),\n"
                 "text:<filename> (text into file),\n"
@@ -448,34 +450,55 @@ struct Main {
         }
     }
 
+    std::shared_ptr< Report > getOneReport( std::string repStr ) {
+        std::shared_ptr< Report > rep;
+
+        if ( repStr == "" || repStr == "text" )
+            rep = Report::get< TextReport >( std::cout );
+        else if ( repStr == "plain" )
+            rep = Report::get< PlainReport >( std::cout );
+        else if ( repStr.substr( 0, 5 ) == "text:" ) {
+            std::string file = repStr.substr( 5 );
+            if ( file.empty() )
+                throw wibble::exception::Consistency( "No file given for report." );
+            rep = Report::get< TextFileReport >( file );
+        } else if ( repStr.substr( 0, 6 ) == "plain:" ) {
+            std::string file = repStr.substr( 6 );
+            if ( file.empty() )
+                throw wibble::exception::Consistency( "No file given for report." );
+            rep = Report::get< PlainFileReport >( file );
+        } else if ( repStr.substr( 0, 4 ) == "sql:" ) {
+            std::string sqlrep = repStr.substr( 4 );
+            int pos = sqlrep.find( ':' );
+            std::string db = sqlrep.substr( 0, pos );
+            std::string connstr = sqlrep.substr( pos + 1 );
+            if ( connstr.empty() )
+                throw wibble::exception::Consistency( "No connection string given for report." );
+            rep = Report::get< SqlReport >( db, connstr );
+        }
+
+        if ( !rep )
+            throw wibble::exception::Consistency( "Unknown or unsupported report: " + repStr );
+
+        return rep;
+    }
+
     std::shared_ptr< Report > getReport() {
         std::shared_ptr< Report > rep;
         if ( o_report->isSet() ) {
-            if ( !o_report->hasValue() || o_report->value() == "text" )
-                rep = Report::get< TextReport >( std::cout );
-            else if ( o_report->value() == "plain" )
-                rep = Report::get< PlainReport >( std::cout );
-            else if ( o_report->value().substr( 0, 5 ) == "text:" ) {
-                std::string file = o_report->value().substr( 5 );
-                if ( file.empty() )
-                    throw wibble::exception::Consistency( "No file given for report." );
-                rep = Report::get< TextFileReport >( file );
-            } else if ( o_report->value().substr( 0, 6 ) == "plain:" ) {
-                std::string file = o_report->value().substr( 6 );
-                if ( file.empty() )
-                    throw wibble::exception::Consistency( "No file given for report." );
-                rep = Report::get< PlainFileReport >( file );
-            } else if ( o_report->value().substr( 0, 4 ) == "sql:" ) {
-                std::string sqlrep = o_report->value().substr( 4 );
-                int pos = sqlrep.find( ':' );
-                std::string db = sqlrep.substr( 0, pos );
-                std::string connstr = sqlrep.substr( pos + 1 );
-                if ( connstr.empty() )
-                    throw wibble::exception::Consistency( "No connection string given for report." );
-                rep = Report::get< SqlReport >( db, connstr );
-            }
-            if ( !rep )
-                throw wibble::exception::Consistency( "Unknown or unsupported report: " + o_report->value() );
+            auto values = o_report->values();
+            if ( o_report->emptyValueSet() )
+                values.push_back( "" );
+            assert_leq( 1, values.size() );
+
+            if ( values.size() > 1 ) {
+                rep = Report::get< AggregateReport >();
+                auto agreg = std::dynamic_pointer_cast< AggregateReport >( rep );
+                for ( auto s : values )
+                    agreg->addReport( getOneReport( s ) );
+            } else
+                rep = getOneReport( values[ 0 ] );
+
         } else if ( o_shortReport->isSet() )
             rep = Report::get< TextReport >( std::cout );
 
