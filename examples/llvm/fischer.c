@@ -61,7 +61,7 @@ LTL(exclusion, G(!(critical0 && critical1)));
 
 #endif
 
-enum atoms { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0, wait1, critical1 };
 
 // Protocol constants - do not change!
 #define OFF    255

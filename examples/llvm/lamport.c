@@ -71,7 +71,7 @@ LTL(exclusion, G(!(critical1 && critical2)));
 
 #endif
 
-enum atoms { wait1, critical1, wait2, critical2 };
+enum APs { wait1, critical1, wait2, critical2 };
 
 char entering[NUM_OF_THREADS];
 intptr_t x, y = 0;

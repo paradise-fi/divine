@@ -131,7 +131,7 @@ void info( const T&... args) {
 #endif
 }
 
-enum atoms { elected };
+enum APs { elected };
 
 int chef = -1;
 

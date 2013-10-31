@@ -93,7 +93,7 @@ void info( const T&... args) {
 #endif
 }
 
-enum atoms { waiting1, in_elevator1, out1, in_elevator2 };
+enum APs { waiting1, in_elevator1, out1, in_elevator2 };
 
 template< typename T, int size >
 struct Queue {

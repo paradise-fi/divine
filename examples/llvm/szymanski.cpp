@@ -54,7 +54,7 @@ LTL(exclusion, G(!(critical0 && critical1)));
 
 #endif
 
-enum atoms { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0, wait1, critical1 };
 
 typedef enum { non_participant    = 1,
                outside            = 2,

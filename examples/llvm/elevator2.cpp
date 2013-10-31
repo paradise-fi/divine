@@ -112,7 +112,7 @@ void info( const T&... args) {
 #endif
 }
 
-enum atoms { r1, r2, c1, c2, open };
+enum APs { r1, r2, c1, c2, open };
 
 struct Elevator;
 

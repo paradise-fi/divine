@@ -76,7 +76,7 @@ LTL(exclusion, G(!(critical1 && critical2)));
 
 #endif
 
-enum atoms { wait1, critical1, wait2, critical2 };
+enum APs { wait1, critical1, wait2, critical2 };
 
 int *slot;
 int next = 0;

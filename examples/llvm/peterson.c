@@ -60,7 +60,7 @@ struct p {
     struct state *s;
 };
 
-enum atoms { wait1, critical1, wait2, critical2 };
+enum APs { wait1, critical1, wait2, critical2 };
 
 void * thread( void *in ) __attribute__((noinline));
 void * thread( void *in ) {
