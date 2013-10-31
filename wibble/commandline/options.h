@@ -352,6 +352,44 @@ public:
 	friend class Engine;
 };
 
+template< typename T >
+class VectorOptvalOption : public VectorOption< T > {
+    bool _emptyVal;
+
+  protected:
+    VectorOptvalOption(const std::string& name)
+        : VectorOption< T >( name ), _emptyVal( false )
+    {
+        this->usage = "<val>";
+    }
+    VectorOptvalOption(const std::string& name,
+            char shortName,
+            const std::string& longName,
+            const std::string& usage = std::string(),
+            const std::string& description = std::string())
+        : VectorOption< T >(name, 0, longName, usage, description), _emptyVal( false )
+    {
+        if (shortName != 0)
+            throw wibble::exception::Consistency(
+                    "creating option " + name + " with optional value"
+                    "short options with optional values are not allowed");
+    }
+
+    virtual bool arg_is_optional() const { return true; }
+
+    void parse_noarg() {
+        _emptyVal = true;
+        this->m_isset = true;
+    }
+
+  public:
+    bool emptyValueSet() { return _emptyVal; }
+
+	friend class OptionGroup;
+	friend class Engine;
+};
+
+typedef VectorOptvalOption<String> OptvalStringVectorOption;
 
 /**
  * Group related commandline options
