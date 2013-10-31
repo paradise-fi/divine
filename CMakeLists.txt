@@ -190,6 +190,37 @@ if( HAVE_CXX11 )
 
       int main() { return 0; }
   " HAVE_CXX11_UNRESTRICTED_UNIONS )
+
+  check_cxx_source_compiles("
+      #include <atomic>
+
+      int main() {
+          std::atomic< int > aint( 0 );
+          int a( 0 ), b( 1 );
+          aint.compare_exchange_strong( a, b );
+          aint++;
+          aint |= 1;
+          aint.exchange( 0 );
+          aint.compare_exchange_weak( a, b );
+          return 0;
+      }
+  " HAVE_CXX11_ATOMIC )
+
+  check_cxx_source_compiles("
+      #include <type_traits>
+
+      enum class Enum : unsigned { A, B, C };
+
+      template< typename E >
+      class A {
+          static_assert( std::is_same< typename std::underlying_type< E >::type, unsigned >::value, \"\" );
+      };
+
+      int main() {
+          A< Enum > e;
+          return 0;
+      }
+  " HAVE_CXX11_TRAITS )
 endif()
 
 set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
@@ -201,6 +232,14 @@ endif()
 
 if( NOT HAVE_CXX11 )
     message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
+endif()
+
+if( NOT HAVE_CXX11_ATOMIC )
+    message( FATAL_ERROR "DiVinE requires working C++11 std::atomic." )
+endif()
+
+if ( NOT HAVE_CXX11_TRAITS )
+    message( FATAL_ERROR "DiVinE requires working C++11 type traits." )
 endif()
 
 if( DVE )
