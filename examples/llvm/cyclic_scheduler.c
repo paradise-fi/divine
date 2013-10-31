@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Cyclic scheduler
+ * Cyclic scheduler
+ * ================
  *
- * Category
- * ====================
- *  Scheduler
- *
- * Short description
- * ====================
  *  Milner's cyclic scheduler.
  *
- * Long description
- * ====================
+ *  *tags*: scheduler, C99
+ *
+ * Description
+ * -----------
+ *
  *  This program describes a (distributed) scheduler for `N` concurrent processes.
  *  The processes are scheduled in cyclic fashion so that the first process is
  *  reactivated after the Nth process has been activated.
@@ -21,32 +17,56 @@
  *  this specific model is inspired by [1].
  *
  *  There is no buffer between scheduler and consumer, therefore scheduler shouldn't
- *  assign a new job to the consumer he manages, if the consumer hasn't fully finished his
+ *  assign a new job to the consumer he manages if the consumer hasn't fully finished his
  *  previous job yet. In such a case, scheduler waits even if he is the current owner of
  *  the token. But when compiled with macro `BUG` defined, this wait is not implemented.
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. http://laser.cs.umass.edu/counterexamplesearch/
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_CONSUMERS`:  a number of processes among which jobs are distributed by the scheduling algorithm
+ *  - `NUM_OF_JOBS`: a number of jobs to be scheduled
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] cyclic_scheduler.c
- *     $ divine verify -p assert cyclic_scheduler.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm cyclic_scheduler.c
+ *         $ divine verify -p assert cyclic_scheduler.bc -d
+ *         $ divine verify -p deadlock cyclic_scheduler.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" cyclic_scheduler.c -o cyclic_scheduler-bug.bc
+ *         $ divine verify -p assert cyclic_scheduler-bug.bc -d
+ *
+ *  - customizing the parameters:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_CONSUMERS=4 -DNUM_OF_JOBS=5" cyclic_scheduler.c
+ *         $ divine verify -p assert cyclic_scheduler.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o cyclic_scheduler.exe cyclic_scheduler.c
- *     $ ./cyclic_scheduler.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o cyclic_scheduler.exe cyclic_scheduler.c
+ *       $ ./cyclic_scheduler.exe
  */
 
+// A number of processes among which jobs are distributed by the scheduling algorithm.
+#ifndef NUM_OF_CONSUMERS
 #define NUM_OF_CONSUMERS   2
+#endif
+
+// A number of jobs to be scheduled.
+#ifndef NUM_OF_JOBS
 #define NUM_OF_JOBS        3
+#endif
 
 #include <pthread.h>
 #include <stdint.h>

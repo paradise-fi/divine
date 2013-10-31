@@ -1,44 +1,61 @@
 /*
- * Name
- * ====================
- *  Pthread barrier
+ * Pthread barrier
+ * ===============
  *
- * Category
- * ====================
- *  Test
+ *  Test case of the implementation of a barrier for threads in the Pthread library
+ *  provided by DiVinE.
  *
- * Short description
- * ====================
- *  Test case of the implementation of the barrier in Pthread library provided
- *  by DiVinE.
+ *  *tags*: test, C++98
  *
- * Long description
- * ====================
- *  This program is a simple test case of the implementation of the barrier in
- *  Pthread library provided by DiVinE. This test is not complete, but it gives
+ * Description
+ * -----------
+ *
+ *  This program is a simple test case of the implementation of a barrier for threads in
+ *  the Pthread library provided by DiVinE. This test is not complete, but it gives
  *  quite a strong evidence of its correctness.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `RELEASE_COUNT`: a number of threads that must call `pthread_barrier_wait()` before
+ *                     any of them successfully return from the call
+ *                     (the third argument of the `pthread_barrier_init()` function)
+ *  - `PASS_COUNT`: specifies how many times the barrier should perform the release of waiting threads
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] pthread_barrier.c
- *     $ divine verify -p assert pthread_barrier.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm pthread_barrier.cpp
+ *         $ divine verify -p assert pthread_barrier.bc -d
+ *         $ divine verify -p deadlock pthread_barrier.bc -d
+ *
+ *  - playing with the parameters:
+ *
+ *         $ divine compile --llvm --cflags="-DRELEASE_COUNT=5 -DPASS_COUNT=3" pthread_barrier.cpp
+ *         $ divine verify -p assert pthread_barrier.bc -d
+ *         $ divine verify -p deadlock pthread_barrier.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o pthread_barrier.exe pthread_barrier.cpp
- *     $ ./pthread_barrier.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o pthread_barrier.exe pthread_barrier.cpp
+ *       $ ./pthread_barrier.exe
  */
 
 
 #include <pthread.h>
 #include <assert.h>
 
+#ifndef RELEASE_COUNT
 #define RELEASE_COUNT   2
+#endif
+
+#ifndef PASS_COUNT
 #define PASS_COUNT      2
+#endif
+
 #define NUM_OF_THREADS  ( RELEASE_COUNT * PASS_COUNT )
 
 unsigned count = 0;

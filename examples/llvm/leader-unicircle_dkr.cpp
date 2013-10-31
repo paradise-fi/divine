@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Leader in uni-circle (Dolev, Klawe, Rodeh)
+ * Leader election in an Uni-circle (Dolev, Klawe, Rodeh)
+ * ======================================================
  *
- * Category
- * ====================
- *  Leader election
- *
- * Short description
- * ====================
  *  A simulation of a O(n*log(n)) unidirectional distributed algorithm for extrema finding
  *  in a circle.
  *
- * Long description:
- * ====================
+ *  *tags*: leader election, C++11
+ *
+ * Description:
+ * ------------
+ *
  *  This program is a simulation of a O(n*log(n)) unidirectional distributed algorithm
  *  for extrema finding in a circle, proposed by Dolev, Klawe and Rodeh [1]
  *  (this algorithm is referred to as "Algorithm B" in the paper).
@@ -36,10 +32,9 @@
  *  it should respond with changing it's state to *Passive*. But be aware that second `M1` message
  *  should be treated as if the process was already in the *Passive* mode before reception, thus
  *  the message should be forwarded -- however this is omitted when the program is compiled with
- *  macro `BUG` defined (this can lead to deadlock state).
+ *  macro `BUG` defined (this can lead to a deadlock state).
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. An O(n log n) Unidirectional Distributed Algorithm for Extrema Finding in a Circle.
  *
@@ -52,32 +47,65 @@
  *                     year = {1982},
  *                   }
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the deadlock-free property
+ *  - `NUM_OF_PROCESSES`: a number of processes in the ring
+ *  - `PIDS`: a distribution of identification numbers among processes to verify;
+ *            use the syntax for static array declaration in C/C++, i.e. `{ x, y, z, ...}`;
+ *            length of the array must match `NUM_OF_PROCESSES`
+ *  - `MSG_BUFFER_SIZE`: how many messages can be buffered at each node
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: leader will be eventually elected (but does not cover uniqueness)
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_dkr.cpp
- *     $ divine verify -p assert leader-unicircle_dkr.bc [-d]
- *     $ divine verify -p deadlock leader-unicircle_dkr.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" leader-unicircle_dkr.cpp
+ *         $ divine verify -p assert leader-unicircle_dkr.bc -d
+ *         $ divine verify -p deadlock leader-unicircle_dkr.bc -d
+ *         $ divine verify -p progress leader-unicircle_dkr.bc -f -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DBUG" leader-unicircle_dkr.cpp -o leader-unicircle_dkr-bug.bc
+ *         $ divine verify -p deadlock leader-unicircle_dkr-bug.bc -d
+ *
+ *  - customizing the number of processes and the distribution of IDs:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_PROCESSES=3 -DPIDS=\"{2, 1, 3}\"" leader-unicircle_dkr.cpp
+ *         $ divine verify -p progress leader-unicircle_dkr.bc -f -d
+ *         $ divine verify -p deadlock leader-unicircle_dkr.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
- *     $ ./leader-unicircle_dkr.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
+ *       $ ./leader-unicircle_dkr.exe
  */
 
+#ifndef NUM_OF_PROCESSES
 #define NUM_OF_PROCESSES  3
+#endif
 
 // Distribution of identification numbers among processes to verify. It would be too expensive
 // to try them all -- n! outgoing edges for given set of ID numbers.
 // The size of the array should match value of macro NUM_OF_PROCESSES.
+#ifndef PIDS
 #define PIDS              { 8, 5, 3 }
+#endif
 
 // How many messages can be buffered at each node. When buffer is full, the send operation becomes
 // blocking for that particular node. Larger buffer gives higher level of concurrency.
+#ifndef MSG_BUFFER_SIZE
 #define MSG_BUFFER_SIZE   2
+#endif
 
 // Protocol constants - do not change!
 #define M1    1

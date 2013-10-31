@@ -1,35 +1,42 @@
 /*
- * Name
- * ====================
- *  Pthread showcase
+ * Pthread library -- showcase
+ * ===========================
  *
- * Category
- * ====================
- *  Test
+ *  Showcase of some Pthread features already interpreted by DiVinE.
  *
- * Short description
- * ====================
- * Showcase of some Pthread features already interpreted by DiVinE.
+ *  *tags*: test, C++98
  *
- * Long description
- * ====================
+ * Description
+ * -----------
+ *
  *  This program is just a showcase (suitable for testing) of some Pthread features
  *  already interpreted by DiVinE. Verification should proceed without detecting
  *  any safety violation.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `NUM_OF_THREADS`: the number of threads to be created (other than the main thread)
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] pthread-showcase.cpp
- *     $ divine verify -p assert pthread-showcase.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm pthread_showcase.cpp
+ *         $ divine verify -p assert pthread_showcase.bc -d
+ *         $ divine verify -p deadlock pthread_showcase.bc -d
+ *
+ *  - changing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=4" pthread-showcase.cpp
+ *         $ divine verify -p assert pthread-showcase.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o pthread-showcase.exe pthread-showcase.cpp
- *     $ ./pthread-showcase.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o pthread-showcase.exe pthread-showcase.cpp
+ *       $ ./pthread-showcase.exe
  */
 
 #include <pthread.h>
@@ -37,7 +44,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#define THREADS 2
+#ifndef NUM_OF_THREADS
+#define NUM_OF_THREADS 2
+#endif
 
 #ifdef DEBUG
 #ifndef __divine__  // native execution + debug
@@ -90,9 +99,9 @@ void* thread( void * arg ) {
   /* conditional variables (barrier) */
     ERRNO( pthread_mutex_lock( &counter_mutex ) )
     ++counter;
-    if ( counter == THREADS )
+    if ( counter == NUM_OF_THREADS )
         ERRNO( pthread_cond_broadcast( &counter_cond ) )
-    while ( counter < THREADS ) {
+    while ( counter < NUM_OF_THREADS ) {
         ERRNO( pthread_cond_wait( &counter_cond, &counter_mutex ) )
     }
     ERRNO( pthread_mutex_unlock( &counter_mutex ) )
@@ -107,14 +116,14 @@ void* thread( void * arg ) {
 
 int main( void ) {
   /* init */
-    pthread_t t[THREADS];
+    pthread_t t[NUM_OF_THREADS];
     ERRNO( pthread_mutex_init( &counter_mutex, NULL ) )
     ERRNO( pthread_mutex_init( &once_mutex[0], NULL ) )
     ERRNO( pthread_mutex_init( &once_mutex[1], NULL ) )
     ERRNO( pthread_cond_init( &counter_cond, NULL ) )
 
   /* pthread_create */
-    for ( int i = 0; i < THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         ERRNO( pthread_create( &t[i], 0, thread, reinterpret_cast<void*>( i+1 ) ) )
 
 #ifdef __divine__
@@ -126,7 +135,7 @@ int main( void ) {
 
   /* pthread_join */
     void* result;
-    for ( int i = 0; i < THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         ERRNO( pthread_join( t[i], &result ) )
 
         long int _result = reinterpret_cast<long int>( result );

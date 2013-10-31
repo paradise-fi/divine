@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Pthread conditional variables
+ * Pthread conditional variables
+ * =============================
  *
- * Category
- * ====================
- *  Test
- *
- * Short description
- * ====================
  *  Simulation of the producer-consument(s) pattern, implemented using conditional
  *  variables.
  *
- * Long description
- * ====================
+ *  *tags*: test, C99
+ *
+ * Description
+ * -----------
+ *
  *  This program simulates the *producer-consument(s) pattern*, implemented using
  *  conditional variables. Instead of spinning, consumers are sleeping
  *  until some item is enqueued into the shared queue.
@@ -33,6 +29,8 @@
  *    6. *Cons_1* unlocks queue_mutex and the scheduler resumes *Cons_0*.
  *    7. *Cons_0* now tries to remove from an empty queue.
  *
+ *  <!-- -->
+ *
  *  Thus at least two consumers and two items to process are needed to have
  *  assertion violated in some run of the program.
  *
@@ -41,19 +39,33 @@
  *  can send signal to more than one thread (as it is defined in the *POSIX* specifications).
  *  However spurious wakeup is not yet implemented.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_CONSUMERS`: the number of consumers
+ *  - `NUM_OF_ITEMS_TO_PROCESS`: the number of items to be processed by consumers
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] pthread_cond_variables.c
- *     $ divine verify -p assert pthread_cond_variables.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm pthread_cond_variables.c
+ *         $ divine verify -p assert pthread_cond_variables.bc -d
+ *         $ divine verify -p deadlock pthread_cond_variables.bc -d
+ *
+ *  - playing with the parameters:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_CONSUMERS=4 -DNUM_OF_ITEMS_TO_PROCESS=8" pthread_cond_variables.c
+ *         $ divine verify -p assert pthread_cond_variables.bc -d
+ *         $ divine verify -p deadlock pthread_cond_variables.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
- *     $ ./pthread_cond_variables.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o pthread_cond_variables.exe pthread_cond_variables.c
+ *       $ ./pthread_cond_variables.exe
  */
 
 #include <pthread.h>
@@ -63,8 +75,13 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#ifndef NUM_OF_CONSUMERS
 #define NUM_OF_CONSUMERS         2
+#endif
+
+#ifndef NUM_OF_ITEMS_TO_PROCESS
 #define NUM_OF_ITEMS_TO_PROCESS  2
+#endif
 
 volatile int enqueued = 0;
 volatile int dequeued = 0;

@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Leader in uni-circle (Peterson)
+ * Leader election in an Uni-circle (Peterson)
+ * ===========================================
  *
- * Category
- * ====================
- *  Leader election
- *
- * Short description
- * ====================
  *  A simulation of Peterson's O(n*log(n)) unidirectional distributed algorithm
  *  for extrema finding in a circle.
  *
- * Long description
- * ====================
+ *  *tags*: leader election, C++11
+ *
+ * Description
+ * -----------
+ *
  *  Given `n` processes in a ring, communicating only with message passing to its right
  *  neighbour, the unidirectional circular extrema-finding problem (more likely known as a leader
  *  election problem) is to select a maximum (or minimum) process.
@@ -26,7 +22,7 @@
  *  1.44*n * log(n) + O(n) message passes.
  *
  *  The idea of the algorithm is similar to that of the Basic algorithm, except that the local
- *  maxima test is split to the two separate steps, the first is comparison with the left active
+ *  maxima test is split into two separate steps, the first is comparison with the left active
  *  process and the second is comparison to the right. The former step might be sufficient to
  *  disprove the maximality and so in such case the latter comparison is skipped, thus
  *  the number of messages sent is reduced (by a constant factor).
@@ -40,8 +36,7 @@
  *  process to the left. But when compiled with `-DBUG`, local maximas don't make the move and
  *  therefore get dismisshed.
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. An O(nlog n) Unidirectional Algorithm for the Circular Extrema Problem.
  *
@@ -56,31 +51,65 @@
  *                    address = "New York, NY, USA"
  *                  }
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_PROCESSES`: a number of processes in the ring
+ *  - `PIDS`: a distribution of identification numbers among processes to verify;
+ *            use the syntax for static array declaration in C/C++, i.e. `{ x, y, z, ...}`;
+ *            length of the array must match `NUM_OF_PROCESSES`
+ *  - `MSG_BUFFER_SIZE`: how many messages can be buffered at each node
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: leader will be eventually elected (but does not cover uniqueness)
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" leader-unicircle_peterson.cpp
- *     $ divine verify -p assert leader-unicircle_peterson.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" leader-unicircle_peterson.cpp
+ *         $ divine verify -p assert leader-unicircle_peterson.bc -d
+ *         $ divine verify -p deadlock leader-unicircle_peterson.bc -d
+ *         $ divine verify -p progress leader-unicircle_peterson.bc -f -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DBUG" leader-unicircle_peterson.cpp -o leader-unicircle_peterson-bug.bc
+ *         $ divine verify -p assert leader-unicircle_peterson-bug.bc -d
+ *
+ *  - customizing the number of processes and the distribution of IDs:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_PROCESSES=4 -DPIDS=\"{2, 3, 4, 1}\"" leader-unicircle_peterson.cpp
+ *         $ divine verify -p progress leader-unicircle_peterson.bc -f -d
+ *         $ divine verify -p assert leader-unicircle_peterson.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o leader-unicircle_peterson.exe leader-unicircle_peterson.cpp
- *     $ ./leader-unicircle_peterson.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o leader-unicircle_peterson.exe leader-unicircle_peterson.cpp
+ *       $ ./leader-unicircle_peterson.exe
  */
 
+#ifndef NUM_OF_PROCESSES
 #define NUM_OF_PROCESSES  5
+#endif
 
 // Distribution of identification numbers among processes to verify. It would be too expensive
 // to try them all -- n! outgoing edges for given set of ID numbers.
 // The size of the array should match value of macro NUM_OF_PROCESSES.
+#ifndef PIDS
 #define PIDS              { 9, 12, 4, 7, 8 }
+#endif
 
 // How many messages can be buffered at each node. When buffer is full, the send operation becomes
 // blocking for that particular node. Larger buffer gives higher level of concurrency.
+#ifndef MSG_BUFFER_SIZE
 #define MSG_BUFFER_SIZE   2
+#endif
 
 // Protocol constants - do not change!
 #define M1    1

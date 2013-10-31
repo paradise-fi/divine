@@ -1,38 +1,45 @@
 /*
- * Name
- * ====================
- *  Global
+ * Global
+ * ======
  *
- * Category
- * ====================
- *  Test
- *
- * Short description
- * ====================
  *  Demonstration of a non-atomicity of integer incrementation.
  *
- * Long description
- * ====================
+ *  *tags*: test, C99
+ *
+ * Description
+ * -----------
+ *
  *  This program is a simple demonstration of a non-atomicity of integer incrementation,
  *  showing that such operation should be protected with mutex to be immune from
  *  concurrent access.
  *
- *  When compiled with macro `BUG` defined (`--cflags="-DBUG"`), locking is disabled
- *  and therefore assertion violation is detected.
+ *  When compiled with macro `BUG` defined, locking is disabled and therefore assertion
+ *  violation is detected.
+ *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the program is incorrect and violates the safety property
  *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] global.c
- *     $ divine verify global.bc -p assert [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm global.c
+ *         $ divine verify -p assert global.bc -d
+ *         $ divine verify -p deadlock global.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" global.c -o global-bug.bc
+ *         $ divine verify -p assert global-bug.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o global.exe global.c
- *     $ ./global.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o global.exe global.c
+ *       $ ./global.exe
  */
 
 #include <pthread.h>

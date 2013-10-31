@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Lamport non-atomic 2
+ * Lamport non-atomic #2
+ * =====================
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  Improved Lamport mutual exclusion protocol with nonatomic operations.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C++98
+ *
+ * Description
+ * -----------
+ *
  *  This program implements the Lamport's Three-Bit mutual exclusion algorithm and
  *  alongside with that simulates a computational environment in which execution
  *  of an operation on a shared variable has its duration and may be concurrent.
@@ -41,8 +37,7 @@
  *  are dynamically ordered so that any such process eventually has highest priority.
  *  To implement this, we used terminology from a well-known token passing technique.
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. The mutual exclusion problem: partII -- statement and solutions.
  *
@@ -62,22 +57,50 @@
  *              address = {New York, NY, USA},
  *            }
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the deadlock-free property
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] lamport_nonatomic2.cpp
- *     $ divine verify -p assert lamport_nonatomic2.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm lamport_nonatomic2.cpp
+ *         $ divine verify -p assert lamport_nonatomic2.bc -d
+ *         $ divine verify -p deadlock lamport_nonatomic2.bc -d
+ *         $ divine verify -p progress lamport_nonatomic2.bc -f -d
+ *         $ divine verify -p exclusion lamport_nonatomic2.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" lamport_nonatomic2.cpp -o lamport_nonatomic2-bug.bc
+ *         $ divine verify -p deadlock lamport_nonatomic2-bug.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=5" lamport_nonatomic2.cpp
+ *         $ divine verify -p progress lamport_nonatomic2.bc -f -d
+ *         $ divine verify -p exclusion lamport_nonatomic2.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
- *     $ ./lamport_nonatomic2.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o lamport_nonatomic2.exe lamport_nonatomic2.cpp
+ *       $ ./lamport_nonatomic2.exe
  */
 
+#ifndef NUM_OF_THREADS
 #define NUM_OF_THREADS  2
+#endif
 
 #include <pthread.h>
 #include <stdlib.h>

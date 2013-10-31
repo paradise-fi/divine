@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Anderson
+ * Anderson
+ * ========
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  Anderson's queue lock mutual exclusion algorithm.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C99
+ *
+ * Description
+ * -----------
+ *
  *  A *ring-queue* like mechanism is used to order the processes requesting to enter
  *  the *critical section*. The association of slots to processes is not fixed but
  *  the ordering of the slots comprising the queue of waiting processes is.
@@ -24,11 +20,10 @@
  *  instead a set of simple instructions implements operation enqueue as
  *  a *non-atomic* operation, hence the algorithm violates the safety property.
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. Anderson (The performance of spin lock alternatives for shared-memory
- *  synchronization), model according to:
+ *     synchronization), model according to:
  *
  *           @article{ shared-memory-since-1986,
  *                     author = {James H. Anderson and Yong-Jik Kim and Ted Herman},
@@ -43,22 +38,50 @@
  *                     publisher = {Springer-Verlag},
  *                   }
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] anderson.c
- *     $ divine verify -p assert anderson.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm anderson.c
+ *         $ divine verify -p assert anderson.bc -d
+ *         $ divine verify -p deadlock anderson.bc -d
+ *         $ divine verify -p progress anderson.bc -f -d
+ *         $ divine verify -p exclusion anderson.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" anderson.c -o anderson-bug.c
+ *         $ divine verify -p assert anderson-bug.bc -d
+ *         $ divine verify -p exclusion anderson-bug.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG -DNUM_OF_THREADS=4" anderson.c
+ *         $ divine verify -p exclusion anderson.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o anderson.exe anderson.c
- *     $ ./anderson.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o anderson.exe anderson.c
+ *       $ ./anderson.exe
  */
 
+#ifndef NUM_OF_THREADS
 #define NUM_OF_THREADS  2
+#endif
 
 #include <pthread.h>
 #include <stdint.h>

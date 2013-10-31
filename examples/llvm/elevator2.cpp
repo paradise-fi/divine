@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Elevator2
+ * Elevator2
+ * =========
  *
- * Category
- * ====================
- *  Controller
- *
- * Short description
- * ====================
  *  Another elevator controller.
  *
- * Long description
- * ====================
- *  Motivated by model elevator2.dve (from the *BEEM database*), written by
+ *  *tags*: controller, C++11
+ *
+ * Description
+ * -----------
+ *
+ *  Motivated by the model elevator2.dve (from the *BEEM database*), written by
  *  _Jiri Barnat_.
  *  Original idea comes from the elevator promela model from the *SPIN*
  *  distribution, but actually implements *LEGO* elevator model built in the
@@ -34,30 +30,68 @@
  *  such floor then in direction oposite to the direction of the last cab
  *  movement.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `FLOORS`: a number of served floors, should be >= 1
+ *  - `CONTROLLER`: choose between naive (1) and clever (2) controller
+ *  - `NUM_OF_REQUESTS`: a number of requests to handle (-1 = infinity)
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `property1`: if level 1 is requested, it is served eventually
+ *  - `property2`: if level 1 is requested, it is served as soon as the cab passes
+ *  - `property3`: if level 1 is requested, the cab passes the level without serving it at most once
+ *  - `property4`: if level 2 is requested, the cab passes the level without serving it at most once
+ *  - `property5`: the cab will remain at level 1 forever from some moment
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator2.cpp
- *     $ divine verify -p assert elevator2.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" elevator2.cpp
+ *         $ divine verify -p assert elevator2.bc -d
+ *         $ divine verify -p deadlock elevator2.bc -d
+ *         $ divine verify -p property1 elevator2.bc -f -d
+ *         $ divine verify -p property2 elevator2.bc -d
+ *         $ divine verify -p property3 elevator2.bc -d
+ *         $ divine verify -p property4 elevator2.bc -d
+ *         $ divine verify -p property5 elevator2.bc -d
+ *
+ *  - changing the number of floors and requests:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DFLOORS=3 -DNUM_OF_REQUESTS=5" elevator2.cpp
+ *         $ divine verify -p assert elevator2.bc -d
+ *
+ *  - switching to the clever controller:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DCONTROLLER=2" elevator2.cpp
+ *         $ divine verify -p assert elevator2.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
- *     $ ./elevator2.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
+ *       $ ./elevator2.exe
  */
 
 // A number of served floors, should be >= 1.
+#ifndef FLOORS
 #define FLOORS  5
+#endif
 
 // 1 = naive, 2 = clever
+#ifndef CONTROLLER
 #define CONTROLLER  1
+#endif
 
 // Number of requests.
-// -1 = infinite.
+// -1 = infinity.
+#ifndef NUM_OF_REQUESTS
 #define NUM_OF_REQUESTS  -1
+#endif
 
 #include <pthread.h>
 #include <stdlib.h>

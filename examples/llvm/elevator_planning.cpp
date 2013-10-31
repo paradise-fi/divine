@@ -1,62 +1,73 @@
 /*
- * Name
- * ====================
- *  Elevator planning
+ * Elevator planning
+ * =================
  *
- * Category
- * ====================
- *  Puzzle
- *
- * Short description
- * ====================
  *  Planning of elevator strategy under several constraints.
  *
- * Long description
- * ====================
- *  This program is more or less just a demonstration of one possible usage of
+ *  *tags*: Puzzle, C++11
+ *
+ * Description
+ * -----------
+ *
+ *  This program is more or less just a demonstration of one possible usage of the
  *  `__divine_choice` builtin.
  *  You can use this builtin for writing non-deterministic algorithms and then
  *  let DiVinE to do a complete search in order to find out if there is any
  *  computational path leading to a correct solution.
  *
- *  * __Task__: Planning of elevator strategy under several constraints.
- *              This is an example from [AIPS 2000 contest][1].
+ *  * __Task__: planning of elevator strategy under several constraints;
+ *              this is an example from [AIPS 2000 contest][1]
  *      * _Input_: a number of floors, passangers and their initial locations;
  *                 several restricting constraints (capacity of the elevator, conflicts
  *                 between pasangers, etc.)
  *      * _Output_: "Yes" if it is possible to transport all passangers from their initial
- *                  locations to the zeroth floor, "No" otherwise.
+ *                  locations to the zeroth floor, "No" otherwise
  *
  *  [1]: http://www.cs.toronto.edu/aips2000/
  *
+ * Parameters
+ * ----------
+ *
+ *  - `VERSION`: which version to consider; choose between `1`, `2`, `3` and `4`
+ *
  * Solution
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" elevator_planning.cpp
- *     $ divine verify -p assert elevator_planning.bc [-d]
+ * --------
+ *
+ *  - solve the puzzle for the default configuration (version = 1):
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" elevator_planning.cpp
+ *         $ divine verify -p assert elevator_planning.bc -d
+ *
+ *  - solve the third instance of the puzzle:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DVERSION=3" elevator_planning.cpp
+ *         $ divine verify -p assert elevator_planning.bc -d
+ *
+ *  <!-- -->
  *
  *  Output is rather unintuitive. We actually verify if it holds that
  *  there is no solution:
- *   * Property HOLDS        = there is no solution
- *   * Property DOESN'T HOLD = there is a solution
- *   * Counterexample        = solution
+ *
+ *    - property HOLDS        = there is no solution
+ *    - property DOESN'T HOLD = there is a solution
+ *    - counterexample        = solution
  *
  * Execution
- * ====================
+ * ---------
+ *
  *  Run and watch some computational path with:
  *
- *      $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
- *      $ ./elevator_planning.exe
- *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o elevator_planning.exe elevator_planning.cpp
+ *       $ ./elevator_planning.exe
  */
 
 // Which version to consider. There are four versions available: 1, 2, 3, 4.
 // Feel free to add some new ones.
 // Meaning of each parameter and constraint is explained in the definition block
 // of the first version.
+#ifndef VERSION
 #define VERSION  1
+#endif
 
 #if ( VERSION == 1 )
 

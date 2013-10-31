@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  At
+ * Alur-Taubenfeld
+ * ===============
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  Discrete time model of Alur-Taubenfeld fast timing-based mutual exclusion
  *  algorithm.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C99
+ *
+ * Description
+ * -----------
+ *
  *  One significant drawback of Fischer's real time mutual exclusion protocol
  *  (see *fischer.c*) is that a process must delay itself even in the absence of
  *  contention. This problem was addressed by Lamport, who constructed a fast
@@ -39,25 +35,59 @@
  *  since `y` equals 0.
  *  This error can really occur only if `NUM_OF_THREADS` is at least 3.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG1`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *  - `BUG2`: another artifical bug, breaking the validity of the same set of properties as `BUG1`
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] at.c
- *     $ divine verify -p assert at.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm at.c
+ *         $ divine verify -p assert at.bc -d
+ *         $ divine verify -p deadlock at.bc -d
+ *         $ divine verify -p progress at.bc -f -d
+ *         $ divine verify -p exclusion at.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG1" at.c -o at-bug1.bc
+ *         $ divine verify -p assert at-bug1.bc -d
+ *         $ divine verify -p exclusion at-bug1.bc -d
+ *
+ *         $ divine compile --llvm --cflags="-DBUG2" at.c -o at-bug2.bc
+ *         $ divine verify -p assert at-bug2.bc -d
+ *         $ divine verify -p exclusion at-bug2.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=5" at.c
+ *         $ divine verify -p assert at.bc -d
+ *         $ divine verify -p exclusion at.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o at.exe at.c
- *     $ ./at.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o at.exe at.c
+ *       $ ./at.exe
  */
 
+#ifndef NUM_OF_THREADS
 #ifdef BUG2
 #define NUM_OF_THREADS  3
 #else
 #define NUM_OF_THREADS  2
+#endif
 #endif
 
 #include <pthread.h>

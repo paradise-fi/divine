@@ -1,37 +1,44 @@
 /*
- * Name
- * ====================
- *  Pthread mutex
+ * Pthread mutex
+ * =============
  *
- * Category
- * ====================
- *  Test
- *
- * Short description
- * ====================
  *  This program is a simple test case for the implementation of the recursive
- *  mutex in Pthread library provided by DiVinE.
+ *  mutex in the Pthread library provided by DiVinE.
  *
- * Long description
- * ====================
- *  When recursive mutex is used, program usually becomes less vulnerable for
- *  deadlocks, but still number of unlocks have to match number of locks applied
+ *  *tags*: test, C99
+ *
+ * Description
+ * -----------
+ *
+ *  When a recursive mutex is used, program usually becomes less vulnerable to
+ *  deadlock, but still the number of unlocks has to match the number of locks applied
  *  for the mutex to become available for other threads to acquire and also
- *  for final destruction. But when compiled with `-DBUG`, this rule is violated.
+ *  for the final destruction. But when compiled with `-DBUG`, this rule is violated.
+ *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
  *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] pthread_mutex.c
- *     $ divine verify -p assert pthread_mutex.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm pthread_mutex.c
+ *         $ divine verify -p assert pthread_mutex.bc -d
+ *         $ divine verify -p deadlock pthread_mutex.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" pthread_mutex.c
+ *         $ divine verify -p assert pthread_mutex.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o pthread_mutex.exe pthread_mutex.cpp
- *     $ ./pthread_mutex.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o pthread_mutex.exe pthread_mutex.cpp
+ *       $ ./pthread_mutex.exe
  */
 
 #include <pthread.h>

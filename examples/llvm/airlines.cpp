@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Airlines
+ * Airlines
+ * ========
  *
- * Category
- * ====================
- *  Information systems (IS)
- *
- * Short description
- * ====================
  *  Simple simulation of a system for selling airplane tickets,
  *  supporting multiple transactions running in parallel.
  *
- * Long description
- * ====================
+ *  *tags*: information systems (IS), C++11
+ *
+ * Description
+ * -----------
+ *
  *  This is a C++ port of a benchmark *Airlines* written by *Zdenek Letko*
  *  from the research group [VeriFIT][1] at *FIT VUT Brno*.
  *
@@ -34,31 +30,86 @@
  *
  *  [1]: http://www.fit.vutbr.cz/research/groups/verifit/.cs
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_STHREADS`: a number of ticket sellers
+ *  - `NUM_OF_CTHREADS`: a number of generators, each producing new customers
+ *  - `NUM_OF_CUSTOMS_IN_THREAD`: a number of customers running in one thread
+ *  - `NUM_OF_AIRLINES`: a number of airlines,
+ *  - `MAX_NUM_OF_FLIGHTS`: a maximum number of flights an airline can provide
+ *  - `MAX_NUM_OF_SEATS`: a maximum number of seats an airplane can have
+ *  - `QUEUE_SIZE`: a size of the queue used for storing customers' requests
+ *  - `NUM_OF_DESTINATIONS`: a number of airports
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 < other flags >" airlines.cpp
- *     $ divine verify -p assert airlines.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" airlines.cpp
+ *         $ divine verify -p assert airlines.bc -d
+ *         $ divine verify -p deadlock airlines.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DBUG" airlines.cpp -o airlines-bug.bc
+ *         $ divine verify -p assert airlines-bug.bc -d
+ *
+ *  - customizing some integer parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_AIRLINES=5 -DQUEUE_SIZE=10" airlines.cpp
+ *         $ divine verify -p assert airlines.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o airlines.exe airlines.cpp
- *     $ ./airlines.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o airlines.exe airlines.cpp
+ *       $ ./airlines.exe
  */
 
 // XXX: we do not provide operators _new_ and _delete_ yet
 
+// Number of ticket sellers.
+#ifndef NUM_OF_STHREADS
 #define NUM_OF_STHREADS           2
+#endif
+
+// Number of customer generators.
+#ifndef NUM_OF_CTHREADS
 #define NUM_OF_CTHREADS           2
+#endif
+
+// Number of customers running in one thread.
+#ifndef NUM_OF_CUSTOMS_IN_THREAD
 #define NUM_OF_CUSTOMS_IN_THREAD  2
+#endif
+
+// Number of airlines.
+#ifndef NUM_OF_AIRLINES
 #define NUM_OF_AIRLINES           3
+#endif
+
+// Maximum number of flights an airline can offer.
+#ifndef MAX_NUM_OF_FLIGHTS
 #define MAX_NUM_OF_FLIGHTS        10
+#endif
+
+// Maximum number of seats an airplane can have.
+#ifndef MAX_NUM_OF_SEATS
 #define MAX_NUM_OF_SEATS          2
+#endif
+
+// Size of the queue used for storing customers' requests.
+#ifndef QUEUE_SIZE
 #define QUEUE_SIZE                4
+#endif
+
+// Number of airports.
+#ifndef NUM_OF_DESTINATIONS
 #define NUM_OF_DESTINATIONS       3
+#endif
 
 #include <pthread.h>
 #include <assert.h>

@@ -1,34 +1,29 @@
 /*
- * Name
- * ====================
- *  Ring
+ * Ring
+ * ====
  *
- * Category
- * ====================
- *  Data structures
- *
- * Short description
- * ====================
  *  Lock-free inter-thread ring buffer.
  *
- * Long description
- * ====================
+ *  *tags*: data structures, C++98
+ *
+ * Description
+ * -----------
+ *
  *  This program is an example of a lock-free inter-thread ring buffer.
  *  Verification should proceed without detecting any safety violation.
  *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] ring.cpp
- *     $ divine verify -p assert ring.bc [-d]
+ * ------------
+ *
+ *       $ divine compile --llvm ring.cpp
+ *       $ divine verify -p assert ring.bc -d
+ *       $ divine verify -p deadlock ring.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o ring.exe ring.cpp
- *     $ ./ring.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o ring.exe ring.cpp
+ *       $ ./ring.exe
  */
 
 #include <pthread.h>

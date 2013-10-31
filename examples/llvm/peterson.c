@@ -1,35 +1,50 @@
 /*
- * Name
- * ====================
- *  Peterson
- *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
+ * Peterson
+ * ========
  *  Peterson's mutual exclusion algorithm.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C99
+ *
+ * Description
+ * -----------
+ *
  *  This program implements the Peterson's mutual exclusion algorithm. When
  *  compiled with `-DBUG`, the algorithm is incorrect but runs without tripping
  *  assertions more often than not.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] peterson.c
- *     $ divine verify -p assert peterson.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm peterson.c
+ *         $ divine verify -p assert peterson.bc -d
+ *         $ divine verify -p deadlock peterson.bc -d
+ *         $ divine verify -p progress peterson.bc -f -d
+ *         $ divine verify -p exclusion peterson.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" peterson.c -o peterson-bug.bc
+ *         $ divine verify -p assert peterson-bug.bc -d
+ *         $ divine verify -p exclusion peterson-bug.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o peterson.exe peterson.c
- *     $ ./peterson.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o peterson.exe peterson.c
+ *       $ ./peterson.exe
  */
 
 #include <pthread.h>

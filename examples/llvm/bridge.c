@@ -1,30 +1,26 @@
 /*
- * Name
- * ====================
- *  Bridge
+ * Bridge
+ * ======
  *
- * Category
- * ====================
- *  Puzzle
- *
- * Short description
- * ====================
  *  Puzzle about men crossing a bridge.
  *
- * Long description
- * ====================
+ *  *tags*: puzzle, C99
+ *
+ * Description
+ * -----------
+ *
  *  This program is more or less just a demonstration of one possible usage of
  *  `__divine_choice` builtin.
  *  You can use this builtin for writing non-deterministic algorithms and then
  *  let DiVinE to do a complete search in order to find out if there is any
  *  computational path leading to a correct solution.
  *
- *  * __Task__: Solve puzzle of soldiers going over bridge.
+ *  * __Task__: solve puzzle of soldiers going over bridge
  *
- *      * _Input_: N soldiers and their individual times + overall time limit.
+ *      * _Input_: N soldiers and their individual times + overall time limit
  *
  *      * _Output_: "Yes" if it is possible for soldiers to get to the other
- *                  side within the time limit, "No" otherwise.
+ *                  side within the time limit, "No" otherwise
  *
  *  * __Rules__: Four men (soldiers) have to cross a bridge at night.
  *               The bridge is old and dilapidated and can hold at most two
@@ -38,28 +34,44 @@
  *               get to the other side in 60 minutes? (The program is generalized
  *               for larger number of men.)
  *
+ * Parameters
+ * ----------
+ *
+ *  - `N`: a number of soldiers
+ *  - `TIME_LIMIT`: overall time limit
+ *
  * Solution
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] bridge.c
- *     $ divine verify -p assert bridge.bc [-d]
+ * --------
+ *
+ *  - solve the puzzle for the default values of parameters:
+ *
+ *         $ divine compile --llvm bridge.c
+ *         $ divine verify -p assert bridge.bc -d
+ *
+ *  - solving for redefined values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-DN=6 -DTIME_LIMIT=120" bridge.c
+ *         $ divine verify -p assert bridge.bc -d
+ *
+ *  <!-- -->
  *
  *  Output is rather unintuitive. We actually verify if it holds that
  *  there is no solution:
  *
- *   * Property HOLDS        = there is no solution
- *   * Property DOESN'T HOLD = there is a solution
- *   * Counterexample        = solution
- *
- * Standard
- * ====================
- *  C99
+ *    - property HOLDS        = there is no solution
+ *    - property DOESN'T HOLD = there is a solution
+ *    - counterexample        = solution
  */
 
 // Number of soldiers.
+#ifndef N
 #define N  4
+#endif
 
 // Overall time limit.
+#ifndef TIME_LIMIT
 #define TIME_LIMIT  60
+#endif
 
 // Individual times. First four values are classical, others are rather
 // arbitrary, feel free to change or add new ones and adjust macro N accordingly.

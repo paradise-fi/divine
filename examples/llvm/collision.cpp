@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Collision
+ * Collision
+ * =========
  *
- * Category
- * ====================
- *  Communication protocol
+ *  A simple collision avoidance protocol.
  *
- * Short description
- * ====================
- *  Collision avoidance protocol.
+ *  *tags*: communication protocol, C++11
  *
- * Long description
- * ====================
+ * Description
+ * -----------
+ *
  *  We assume that a number of stations are connected on an *Ethernet-like* medium,
  *  that is, the basic protocol is of type *CSMA/CD*. On the top of this basic protocol
  *  we want to design a protocol without collisions. This is a simple solution
@@ -29,7 +25,7 @@
  *  In order to eliminate this discrepancy and make the algorithm a bit more practical,
  *  we present a modified version in which all communication between master and slave
  *  stations goes throught the ethernet medium. This is done by implementing a new message
- *  type representing the token being returned from a slave to the master.
+ *  type representing a token being returned from a slave to the master.
  *  If the thread that received the token is not interested to send any message, a message
  *  returning the token to the master is send immediately (more precisely -- when the medium
  *  becomes free). Otherwise the token owner sends a message wrapping both actual data and
@@ -44,40 +40,63 @@
  *  broadcast finnishes and medium becomes free. This is violated when the program is built
  *  with a macro `BUG` defined.
  *
- * References:
- * --------------------
+ * ### References: ###
  *
  *  1. Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL.
  *
- *           @inproceedings{
+ *           @inproceedings {
  *               Jensen96modellingand,
  *               author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and Arne Skou",
  *               title = "Modelling and Analysis of a Collision Avoidance Protocol using SPIN and UPPAAL",
  *               booktitle = "Proceedings of the 2nd International Workshop on the SPIN Verification System",
- *               year = "1996" }
+ *               year = "1996"
+ *           }
+ *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_THREADS`: a number of stations connected to the ethernet (includes the master)
+ *  - `NUM_OF_PASSES`: how many times the token is passed from one station to another
+ *                     (with the aid of the master) before the algorithm finishes (`-1` = infinity)
  *
  * Verification
- * ====================
- *     $ divine compile --llvm --cflags="-std=c++11 "[" < flags > "] collision.cpp
- *     $ divine verify -p assert collision.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11" collision.cpp
+ *         $ divine verify -p assert collision.bc -d
+ *         $ divine verify -p deadlock collision.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DBUG" collision.cpp -o collision-bug.bc
+ *         $ divine verify -p assert collision-bug.bc -d
+ *
+ *  - customizing the parameters:
+ *
+ *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_THREADS=4 -DNUM_OF_PASSES=3" collision.c
+ *         $ divine verify -p assert collision.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ -std=c++11 [ < flags > ] -lpthread -lstdc++ -o collision.exe collision.cpp
- *     $ ./collision.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++11
+ *       $ clang++ -std=c++11 -lpthread -lstdc++ -o collision.exe collision.cpp
+ *       $ ./collision.exe
  */
 
 // A number of stations connected to the ethernet (includes the master).
+#ifndef NUM_OF_STATIONS
 #define NUM_OF_STATIONS    3
+#endif
 
 // How many times the token is passed from one station to another (with the aid of the master)
 // before the algorithm finishes.
-// -1 = infinite.
+// -1 = infinity.
+#ifndef NUM_OF_PASSES
 #define NUM_OF_PASSES      2
+#endif
 
 // Protocol constants -- do not change!
 #define DATA     0

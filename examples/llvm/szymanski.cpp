@@ -1,43 +1,68 @@
 /*
- * Name
- * ====================
- *  Szymanski
+ * Szymanski
+ * =========
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  This program implements the Szymanski's mutual exclusion algorithm.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C++98
+ *
+ * Description
+ * -----------
+ *
  *  When compiled with `-DBUG`, the algorithm is incorrect, because the
- *  flag `waiting_for_others` and its usage is omitted. This leads to the scenario
+ *  flag `waiting_for_others` and its usage is omitted. This leads to a scenario
  *  in which threads enter the "room", but don't wait for each other to update
  *  their flags.
  *  Thread with lower id (higher priority) can be interrupted by
- *  scheduler after entering the room, but just before updating his flag,
+ *  the scheduler after entering the room but just before updating his flag,
  *  while the other thread continues into the critical section, even thought he
- *  shouldn't as there is this thread with higher prority.
+ *  shouldn't as there is this thread with a higher prority.
+ *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
  *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] szymanski.cpp
- *     $ divine verify -p assert szymanski.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm szymanski.cpp
+ *         $ divine verify -p assert szymanski.bc -d
+ *         $ divine verify -p deadlock szymanski.bc -d
+ *         $ divine verify -p progress szymanski.bc -f -d
+ *         $ divine verify -p exclusion szymanski.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" szymanski.cpp -o szymanski-bug.bc
+ *         $ divine verify -p assert szymanski-bug.bc -d
+ *         $ divine verify -p exclusion szymanski-bug.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=5" szymanski.cpp
+ *         $ divine verify -p assert szymanski.bc -d
+ *         $ divine verify -p exclusion szymanski.bc -d
  *
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o szymanski.exe szymanski.cpp
- *     $ ./szymanski.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o szymanski.exe szymanski.cpp
+ *       $ ./szymanski.exe
  */
 
+#ifndef NUM_OF_THREADS
 #define NUM_OF_THREADS  2
+#endif
 
 #include <pthread.h>
 #include <stdlib.h>

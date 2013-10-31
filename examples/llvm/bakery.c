@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Bakery
+ * Bakery
+ * ======
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  This program implements the Lamport's bakery mutual exclusion algorithm.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C99
+ *
+ * Description
+ * -----------
+ *
  *  When compiled with macro `BUG` defined, usage of variable `choosing` is omitted.
  *  The necessity of variable `choosing` might not be obvious at the first glance.
  *  However, suppose the variable was removed and two processes computed the same
@@ -27,22 +23,50 @@
  *  never see a number equal to zero for a process `j` that is going to pick the same
  *  number as `i`.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] bakery.c
- *     $ divine verify -p assert bakery.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm bakery.c
+ *         $ divine verify -p assert bakery.bc -d
+ *         $ divine verify -p deadlock bakery.bc -d
+ *         $ divine verify -p exclusion bakery.bc -d
+ *         $ divine verify -p progress bakery.bc -f -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" bakery.c -o bakery-bug.bc
+ *         $ divine verify -p assert bakery-bug.bc -d
+ *         $ divine verify -p exclusion bakery-bug.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=4" bakery.c
+ *         $ divine verify -p exclusion bakery.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o bakery.exe bakery.c
- *     $ ./bakery.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o bakery.exe bakery.c
+ *       $ ./bakery.exe
  */
 
+#ifndef NUM_OF_THREADS
 #define NUM_OF_THREADS  2
+#endif
 
 #include <pthread.h>
 #include <stdint.h>

@@ -1,19 +1,15 @@
 /*
- * Name
- * ====================
- *  Fifo
+ * Fifo
+ * ====
  *
- * Category
- * ====================
- *  Data structures
- *
- * Short description
- * ====================
  *  Intra-thread fifo, used for shared-memory communication between threads
  *  in DiVinE.
  *
- * Long description
- * ====================
+ *  *tags*: data structures, C++98
+ *
+ * Description
+ * -----------
+ *
  *  This program is a simple test case for the divine intra-thread fifo, the
  *  tool's main shared-memory communication primitive. We fire off two threads,
  *  a writer and a reader. The writer pushes 3 values, while the reader checks
@@ -21,18 +17,17 @@
  *  empty/non-empty at the right places &c.
  *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] fifo.cpp
- *     $ divine verify -p assert fifo.bc [-d]
+ * ------------
+ *
+ *       $ divine compile --llvm fifo.cpp
+ *       $ divine verify -p assert fifo.bc -d
+ *       $ divine deadlock -p assert fifo.bc -d
  * 
  * Execution
- * ====================
- *     $ clang++ [ < flags > ] -lpthread -o fifo.exe fifo.cpp
- *     $ ./fifo.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C++98
+ *       $ clang++ -lpthread -o fifo.exe fifo.cpp
+ *       $ ./fifo.exe
  */
 
 // -*- C++ -*- (c) 2008-2011 Petr Rockai <me@mornfall.net>

@@ -1,52 +1,78 @@
 /*
- * Name
- * ====================
- *  Pthread rwlock
+ * Pthread rwlock
+ * ==============
  *
- * Category
- * ====================
- *  Test
- *
- * Short description
- * ====================
  *  This program is a simple test case for the implementation
- *  of the Readers-Writer lock in Pthread library provided by DiVinE.
+ *  of the Readers-Writer lock in the Pthread library provided by DiVinE.
  *
- * Long description
- * ====================
+ *  *tags*: test, C99
+ *
+ * Description
+ * -----------
+ *
  *  Reading and writing is interleaved in all (visible) possibilities
  *  (currently also those unfair) and at some points safety is verified.
  *
  *  Read lock ensures for reader that reading consisting of possibly
  *  more than one load will not be interleaved with writing. But when compiled
- *  with macro `BUG` defined, read lock is disabled and hence safety is violated
+ *  with the macro `BUG` defined, read lock is disabled and hence safety is violated
  *  (even thought writer still uses write lock).
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety property
+ *  - `NUM_OF_READERS`: the number of readers
+ *  - `NUM_OF_WRITERS`: the number of writers
+ *  - `INITIAL`, `EOF`: the stream of exchanged data = `INITIAL, INITIAL + 1, ... , EOF - 1, EOF`
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] pthread_rwlock.c
- *     $ divine verify -p assert pthread_rwlock.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm pthread_rwlock.c
+ *         $ divine verify -p assert pthread_rwlock.bc -d
+ *         $ divine verify -p deadlock pthread_rwlock.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_READERS=3 -DNUM_OF_WRITERS=4" pthread_rwlock.c
+ *         $ divine verify -p assert pthread_rwlock.bc -d
+ *         $ divine verify -p deadlock pthread_rwlock.bc -d
+ *
+ *  - configuring the stream of exchanged data between writers and readers:
+ *
+ *         $ divine compile --llvm --cflags="-DINITIAL=0 -DEOF=20" pthread_rwlock.c
+ *         $ divine verify -p assert pthread_rwlock.bc -d
+ *         $ divine verify -p deadlock pthread_rwlock.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o pthread_rwlock.exe pthread_rwlock.cpp
- *     $ ./pthread_rwlock.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o pthread_rwlock.exe pthread_rwlock.cpp
+ *       $ ./pthread_rwlock.exe
  */
 
 #include <pthread.h>
 #include <stdlib.h>
 #include <assert.h>
 
+#ifndef NUM_OF_READERS
 #define NUM_OF_READERS     2
-#define NUM_OF_WRITERS     2
+#endif
 
-#define INITIAL            1
-#define EOF                3
+#ifndef NUM_OF_WRITERS
+#define NUM_OF_WRITERS     2
+#endif
+
 // stream of exchanged data = INITIAL, INITIAL + 1, ... , EOF - 1, EOF
+#ifndef INITIAL
+#define INITIAL            1
+#endif
+#ifndef EOF
+#define EOF                3
+#endif
 
 #define ERRNO( fun ) assert( !fun );
 

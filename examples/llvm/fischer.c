@@ -1,18 +1,14 @@
 /*
- * Name
- * ====================
- *  Fischer
+ * Fischer
+ * =======
  *
- * Category
- * ====================
- *  Mutual exclusion
- *
- * Short description
- * ====================
  *  Discrete time simulation of the Fischer's real time mutual exclusion protocol.
  *
- * Long description
- * ====================
+ *  *tags*: mutual exclusion, C99
+ *
+ * Description
+ * -----------
+ *
  *  Fischer's algorithm is based on the known-delay model. The algorithm is quite simple.
  *  A process `p` waits until the "lock" is available, which is indicated by `owner = 0`.
  *  If `p` reads `owner = 0`, then it writes its process identifier to the variable `owner`,
@@ -28,22 +24,51 @@
  *  by compiling the program with macro `BUG` defined and running it throught *DiVinE* model
  *  checker.
  *
+ * Parameters
+ * ----------
+ *
+ *  - `BUG`: if defined than the algorithm is incorrect and violates the safety and the exclusion property
+ *  - `NUM_OF_THREADS`: a number of threads requesting to enter the critical section
+ *
+ * LTL Properties
+ * --------------
+ *
+ *  - `progress`: if a thread requests to enter a critical section, it will eventually be allowed to do so
+ *  - `exclusion`: critical section can only be executed by one process at a time
+ *
  * Verification
- * ====================
- *     $ divine compile --llvm [--cflags=" < flags > "] fischer.c
- *     $ divine verify -p assert fischer.bc [-d]
+ * ------------
+ *
+ *  - all available properties with the default values of parameters:
+ *
+ *         $ divine compile --llvm fischer.c
+ *         $ divine verify -p assert fischer.bc -d
+ *         $ divine verify -p deadlock fischer.bc -d
+ *         $ divine verify -p progress fischer.bc -f -d
+ *         $ divine verify -p exclusion fischer.bc -d
+ *
+ *  - introducing a bug:
+ *
+ *         $ divine compile --llvm --cflags="-DBUG" fischer.c -o fischer-bug.bc
+ *         $ divine verify -p assert fischer-bug.bc -d
+ *         $ divine verify -p exclusion fischer-bug.bc -d
+ *
+ *  - customizing the number of threads:
+ *
+ *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=5" fischer.c
+ *         $ divine verify -p assert fischer.bc -d
+ *         $ divine verify -p exclusion fischer.bc -d
  *
  * Execution
- * ====================
- *     $ clang [ < flags > ] -lpthread -o fischer.exe fischer.c
- *     $ ./fischer.exe
+ * ---------
  *
- * Standard
- * ====================
- *  C99
+ *       $ clang -lpthread -o fischer.exe fischer.c
+ *       $ ./fischer.exe
  */
 
+#ifndef NUM_OF_THREADS
 #define NUM_OF_THREADS  2
+#endif
 
 #include <pthread.h>
 #include <stdint.h>
