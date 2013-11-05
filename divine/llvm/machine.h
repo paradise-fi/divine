@@ -579,6 +579,11 @@ struct MachineState
          * length is used to compute the offset of the following stack. */
         detach_stack( _thread, 0 );
 
+        /* Clear any alloca'd heap objects created by this frame. */
+        for ( auto v : _info.function( frame().pc ).values )
+            if ( v.type == ProgramInfo::Value::Alloca )
+                free( followPointer( v ) );
+
         auto &s = stack().get();
         s.length() --;
         if ( stack().get().length() )

@@ -82,6 +82,9 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.type = Value::Aggregate;
         result.width = CDS->getNumElements() * CDS->getElementByteSize();
     }
+
+    if ( isa< ::llvm::AllocaInst >( val ) )
+        result.type = ProgramInfo::Value::Alloca;
 }
 
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )

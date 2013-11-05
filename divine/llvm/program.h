@@ -125,7 +125,7 @@ struct ProgramInfo {
     ::llvm::TargetData TD;
 
     struct Value {
-        enum { Void, Pointer, Integer, Float, Aggregate, CodePointer } type:3;
+        enum { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
         uint32_t width:29;
         bool constant:1;
         bool global:1;
@@ -136,7 +136,8 @@ struct ProgramInfo {
                  < static_cast< uint32_t >( v );
         }
 
-        bool pointer() { return type == Pointer; }
+        bool pointer() { return type == Pointer || type == Alloca; }
+        bool alloca() { return type == Alloca; }
         bool integer() { return type == Integer; }
         bool isfloat() { return type == Float; }
         bool aggregate() { return type == Aggregate; }
