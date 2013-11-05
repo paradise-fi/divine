@@ -1,3 +1,4 @@
+// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <divine/utility/report.h>
 #include <wibble/param.h>
 #include <wibble/string.h>

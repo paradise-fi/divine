@@ -1,3 +1,4 @@
+// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <divine/utility/meta.h>
 
 using namespace divine;

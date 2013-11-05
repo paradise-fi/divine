@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <wibble/test.h> // for assert
 #include <iostream>
 #include <fstream>

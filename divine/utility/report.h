@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
+//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <iomanip>
 #include <sstream>
