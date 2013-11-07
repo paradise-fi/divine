@@ -220,9 +220,11 @@ divine::Blob MachineState::snapshot()
     }
 
     Pointer p( true, 0, 0 );
-    for ( p.segment = 1; p.segment < heap().segcount + nursery.offsets.size() - 1; ++ p.segment )
-        if ( !canonic.seen( p ) && !freed.count( p.segment ) )
+    for ( p.segment = 0; p.segment < heap().segcount + nursery.offsets.size() - 1; ++ p.segment )
+        if ( !canonic.seen( p ) && !freed.count( p.segment ) ) {
+            trace( p, canonic );
             problem( Problem::MemoryLeak, p );
+        }
 
     int problemcount = flags().problemcount + problems.size();
     Blob b = _alloc.makeBlobCleared(
@@ -277,6 +279,12 @@ divine::Blob MachineState::snapshot()
         eachframe( stack( tid ), [&]( Frame &fr ) {
                 snapshot( fr, canonic, *_heap, address );
             });
+    }
+
+    for ( int i = 0; i < problemcount; ++i ) {
+        auto &p = fl.problems( i ).pointer;
+        if ( !p.null() )
+            snapshot( p, p, canonic, *_heap );
     }
 
     assert_eq( canonic.segdone, canonic.segcount );
