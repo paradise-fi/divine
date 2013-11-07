@@ -181,6 +181,8 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinChoice;
     if ( name == "__divine_assert" )
         return BuiltinAssert;
+    if ( name == "__divine_problem" )
+        return BuiltinProblem;
     if ( name == "__divine_ap" )
         return BuiltinAp;
     if ( name == "__divine_malloc" )

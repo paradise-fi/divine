@@ -25,8 +25,10 @@ void __divine_interrupt_mask( void ) NOTHROW;
 void __divine_interrupt_unmask( void ) NOTHROW;
 void __divine_interrupt( void ) NOTHROW;
 
-void __divine_assert( int value ) NOTHROW; // + some informative string ?
+void __divine_assert( int value ) NOTHROW;
 void __divine_ap( int id ) NOTHROW;
+
+void __divine_problem( int type, const char *data ) NOTHROW;
 
 /*
  * Non-deterministic choice: when __divine_choice is encountered, the

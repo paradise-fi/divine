@@ -110,7 +110,8 @@ enum Builtin {
     BuiltinMemcpy,
     BuiltinVaStart,
     BuiltinUnwind,
-    BuiltinLandingPad
+    BuiltinLandingPad,
+    BuiltinProblem
 };
 
 struct Choice {

@@ -918,6 +918,11 @@ struct Evaluator
                     if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
                         ccontext.problem( Problem::Assert );
                     return;
+                case BuiltinProblem:
+                    ccontext.problem(
+                        Problem::What( withValues( GetInt(), instruction.operand( 0 ) ) ),
+                        withValues( Get< Pointer >(), instruction.operand( 1 ) ) );
+                    return;
                 case BuiltinAp:
                     ccontext.flags().ap |= (1 << withValues( GetInt(), instruction.operand( 0 ) ));
                     return;
