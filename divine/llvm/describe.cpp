@@ -35,11 +35,14 @@ struct Describe {
     bool detailed;
     int anonymous;
     Interpreter *interpreter;
+    graph::DemangleStyle ds;
 
     std::string pointer( Type *t, Pointer p );
-    Describe( Interpreter *i, bool detailed ) :  detailed( detailed ), anonymous( 1 ), interpreter( i ) {}
+    Describe( Interpreter *i, graph::DemangleStyle ds, bool detailed )
+        : detailed( detailed ), anonymous( 1 ), interpreter( i ), ds( ds )
+    {}
 
-    std::string all( graph::DemangleStyle );
+    std::string all();
     std::string constdata();
 
     ::llvm::TargetData &TD() { return interpreter->TD; }
@@ -54,6 +57,10 @@ struct Describe {
     template< typename Ptr >
     std::string value( std::pair< ::llvm::Type *, std::string >, ValueRef vref, Ptr p );
 
+    std::string problem( Problem bad );
+    std::string locinfo( PC pc, bool instruction = false,
+                         Function **fun = nullptr );
+
     bool boring( std::string n, bool fun = false ) {
         if ( n.empty() )
             return true;
@@ -64,6 +71,21 @@ struct Describe {
         if ( fun && ( wibble::str::startsWith( n, "pthread_" ) ) )
              return true;
         return false;
+    }
+
+    std::string demangle( std::string mangled ) {
+        switch ( ds ) {
+            case divine::graph::DemangleStyle::Cpp: {
+                int stat;
+                auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
+                auto ret = stat == 0 && x ? std::string( x ) : mangled;
+                std::free( x );
+                return ret; }
+            case divine::graph::DemangleStyle::None:
+                return mangled;
+            default:
+                assert_unreachable( "Unhandle case" );
+        }
     }
 
 };
@@ -249,26 +271,10 @@ std::string fileline( const Instruction &insn )
     return "";
 }
 
-std::string demangle( divine::graph::DemangleStyle demangle, std::string mangled ) {
-    switch ( demangle ) {
-        case divine::graph::DemangleStyle::Cpp: {
-            int stat;
-            auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
-            auto ret = stat == 0 && x ? std::string( x ) : mangled;
-            std::free( x );
-            return ret; }
-        case divine::graph::DemangleStyle::None:
-            return mangled;
-        default:
-            assert_unreachable( "Unhandle case" );
-    }
-}
-
-std::string locinfo( ProgramInfo &info, PC pc, divine::graph::DemangleStyle ds,
-                     bool instruction = false,
-                     Function **fun = nullptr )
+std::string Describe::locinfo( PC pc, bool instruction,
+                               Function **fun )
 {
-    auto user = info.instruction( pc ).op;
+    auto user = info().instruction( pc ).op;
     if ( !isa< ::llvm::Instruction >( user ) )
         return "<non-code location>";
 
@@ -276,7 +282,7 @@ std::string locinfo( ProgramInfo &info, PC pc, divine::graph::DemangleStyle ds,
     Instruction &insn = *cast< Instruction >( user );
     Function *f = insn.getParent()->getParent();
     std::string fl = fileline( insn );
-    locs << "<" << demangle( ds, f->getName().str() ) << ">";
+    locs << "<" << demangle( f->getName().str() ) << ">";
 
     if ( fun )
         *fun = f;
@@ -292,7 +298,7 @@ std::string locinfo( ProgramInfo &info, PC pc, divine::graph::DemangleStyle ds,
     return locs.str();
 }
 
-std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::DemangleStyle ds )
+std::string Describe::problem( Problem bad )
 {
     std::stringstream s;
     switch ( bad.what ) {
@@ -313,14 +319,14 @@ std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::Dema
     }
     if ( bad.where.function ) {
         s << " (thread " << int( bad.tid ) << "): ";
-        s << locinfo( info, bad.where, ds, bad.what != Problem::Assert );
+        s << locinfo( bad.where, bad.what != Problem::Assert );
     }
     if ( !bad.pointer.null() )
         s << ": " << bad.pointer;
     return s.str();
 }
 
-std::string Describe::all( divine::graph::DemangleStyle ds )
+std::string Describe::all()
 {
     std::stringstream s;
 
@@ -348,7 +354,7 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
                 if ( info().instruction( f.pc ).op )
                 {
                     Function *fun = nullptr;
-                    location = locinfo( info(), f.pc, ds, false, &fun );
+                    location = locinfo( f.pc, false, &fun );
 
                     if ( fun ) {
                         for ( auto arg = fun->arg_begin(); arg != fun->arg_end(); ++ arg )
@@ -367,7 +373,7 @@ std::string Describe::all( divine::graph::DemangleStyle ds )
 
     MachineState::Flags &flags = state().flags();
     for ( int i = 0; i < flags.problemcount; ++i )
-        s << describeProblem( info(), flags.problems(i), ds ) << std::endl;
+        s << problem( flags.problems(i) ) << std::endl;
 
     if ( !state()._thread_count )
         s << "EXIT" << std::endl;
@@ -512,10 +518,10 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
 }
 
 std::string Interpreter::describe( graph::DemangleStyle st, bool detailed ) {
-    return Describe( this, detailed ).all( st );
+    return Describe( this, st, detailed ).all();
 }
 
 std::string Interpreter::describeConstdata() {
-    return Describe( this, false ).constdata();
+    return Describe( this, graph::DemangleStyle::None, false ).constdata();
 }
 
