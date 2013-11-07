@@ -23,6 +23,7 @@ struct Problem {
         OutOfBounds,
         DivisionByZero,
         UnreachableExecuted,
+        MemoryLeak
     };
     PC where;
     uint8_t what;

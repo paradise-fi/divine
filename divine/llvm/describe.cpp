@@ -308,6 +308,8 @@ std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::Dema
             s << "DIVISION BY ZERO"; break;
         case Problem::UnreachableExecuted:
             s << "UNREACHABLE EXECUTED"; break;
+        case Problem::MemoryLeak:
+            s << "MEMORY LEAK"; break;
     }
     if ( bad.where.function ) {
         s << " (thread " << int( bad.tid ) << "): ";
