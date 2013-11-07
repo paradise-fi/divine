@@ -435,9 +435,14 @@ void MachineState::dump( std::ostream &r ) {
     /* TODO problem/flag stuff */
 
     r << "globals: [ ";
-    for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ )
-        if ( !v->constant )
+    for ( auto v = _info.globals.begin(); v != _info.globals.end(); v ++ ) {
+        if ( v->constant )
+            continue;
+        if ( v->pointer() )
+            r << followPointer( *v ) << " ";
+        else
             r << fmtInteger( dereference( *v ), v->width * 8 ) << " ";
+    }
     r << "]" << std::endl;
 
     r << "constdata: [ ";
