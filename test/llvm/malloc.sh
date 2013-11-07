@@ -7,6 +7,7 @@ void main() {
     int *mem = malloc(4);
     if ( mem ) {
         mem[2] = 3;
+        free( mem );
     }
 }
 EOF
@@ -18,6 +19,7 @@ void main() {
     int *mem = malloc(4);
     if ( mem ) {
         mem[0] = 3;
+        free( mem );
     }
 }
 EOF
