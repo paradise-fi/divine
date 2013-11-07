@@ -43,18 +43,17 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
-extern "C" void *dlsym( void *, void * ) { __divine_assert( 0 ); return 0; } // oh golly...
-
-extern "C" void *__errno_location() { __divine_assert( 0 ); return 0; }
+extern "C" void *dlsym( void *, void * ) { __divine_problem( 9, 0 ); return 0; }
+extern "C" void *__errno_location() { __divine_problem( 9, 0 ); return 0; }
 
 extern "C" { /* POSIX kernel APIs */
 
-    void raise( int ) { __divine_assert( 0 ); }
-    int unlink( const char * ) { __divine_assert( 0 ); return 0; }
-    ssize_t read(int, void *, size_t) { __divine_assert( 0 ); return 0; }
-    ssize_t write(int, const void *, size_t) { __divine_assert( 0 ); return 0; }
-    off_t lseek(int, off_t, int) { __divine_assert( 0 ); return 0; }
-    int close(int) { __divine_assert( 0 ); return 0; }
+    void raise( int ) { __divine_problem( 9, 0 ); }
+    int unlink( const char * ) { __divine_problem( 9, 0 ); return 0; }
+    ssize_t read(int, void *, size_t) { __divine_problem( 9, 0 ); return 0; }
+    ssize_t write(int, const void *, size_t) { __divine_problem( 9, 0 ); return 0; }
+    off_t lseek(int, off_t, int) { __divine_problem( 9, 0 ); return 0; }
+    int close(int) { __divine_problem( 9, 0 ); return 0; }
 
 }
 
@@ -63,10 +62,11 @@ extern "C" FILE *tmpfile() throw() { __divine_assert( 0 ); return 0; }
 
 
 extern "C" { /* pdclib glue functions */
-    int _PDCLIB_rename( const char *, const char * ) { __divine_assert( 0 ); return 0; }
-    int _PDCLIB_open( const char *, int ) { __divine_assert( 0 ); return 0; }
+    int _PDCLIB_rename( const char *, const char * ) { __divine_problem( 9, 0 ); return 0; }
+    int _PDCLIB_open( const char *, int ) { __divine_problem( 9, 0 ); return 0; }
     void _PDCLIB_Exit( int rv ) {
-        __divine_assert( !rv );
+        if ( rv )
+            __divine_problem( 1, "exit called with non-zero value" );
         __divine_unwind( INT_MIN );
     }
 }
@@ -78,8 +78,8 @@ extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
 }
 
 extern "C" {
-    double atof( const char *r ) throw() { __divine_assert( 0 ); return 0; }
-    double strtod( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
-    float strtof( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
-    long double strtold( const char *, char ** ) throw() { __divine_assert( 0 ); return 0; }
+    double atof( const char *r ) throw() { __divine_problem( 9, 0 ); return 0; }
+    double strtod( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
+    float strtof( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
+    long double strtold( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
 }
