@@ -17,13 +17,15 @@ struct Canonic;
 struct Problem {
     enum What {
         NoProblem = 0,
+        Other = 1,
         Assert,
         InvalidDereference,
         InvalidArgument,
         OutOfBounds,
         DivisionByZero,
         UnreachableExecuted,
-        MemoryLeak
+        MemoryLeak,
+        NotImplemented,
     };
     PC where;
     uint8_t what;

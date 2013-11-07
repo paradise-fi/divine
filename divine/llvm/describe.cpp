@@ -302,6 +302,8 @@ std::string Describe::problem( Problem bad )
 {
     std::stringstream s;
     switch ( bad.what ) {
+        case Problem::Other:
+            s << "PROBLEM"; break;
         case Problem::Assert:
             s << "ASSERTION FAILED"; break;
         case Problem::InvalidDereference:
@@ -316,6 +318,8 @@ std::string Describe::problem( Problem bad )
             s << "UNREACHABLE EXECUTED"; break;
         case Problem::MemoryLeak:
             s << "MEMORY LEAK"; break;
+        case Problem::NotImplemented:
+            s << "NOT IMPLEMENTED"; break;
     }
 
     if ( bad.where.function ) {
