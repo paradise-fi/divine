@@ -324,7 +324,7 @@ std::string Describe::problem( Problem bad )
 
     if ( bad.where.function ) {
         s << " (thread " << int( bad.tid ) << "): ";
-        s << locinfo( bad.where, bad.what != Problem::Assert );
+        s << locinfo( bad.where, !info().instruction( bad.where ).builtin );
     }
 
     if ( state().validate( bad.pointer ) ) {
