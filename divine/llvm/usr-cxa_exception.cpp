@@ -69,6 +69,7 @@ void __cxa_throw_divine( __cxa_exception *e )
                unexpected handler. */
         }
 
+        __divine_free( lp );
         -- frameid;
     }
     e->handlerSwitchValue = handler;
