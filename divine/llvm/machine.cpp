@@ -132,7 +132,10 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
 
     /* clear invalid pointers, in case they would accidentally become valid later */
     if ( !validate( original ) ) {
-        edit = Pointer( false, 0, 1 ); /* not NULL, so we can detect an invalid free */
+        if ( original.null() )
+            edit = Pointer( false, 0, 0 );
+        else
+            edit = Pointer( false, 0, 1 ); /* not NULL, so we can detect an invalid free */
         return;
     }
 
@@ -215,6 +218,11 @@ divine::Blob MachineState::snapshot()
                 trace( fr, canonic );
             } );
     }
+
+    Pointer p( true, 0, 0 );
+    for ( p.segment = 1; p.segment < heap().segcount + nursery.offsets.size() - 1; ++ p.segment )
+        if ( !canonic.seen( p ) && !freed.count( p.segment ) )
+            problem( Problem::MemoryLeak, p );
 
     int problemcount = flags().problemcount + problems.size();
     Blob b = _alloc.makeBlobCleared(
