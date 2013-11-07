@@ -13,7 +13,7 @@ if( PDFLATEX AND BIBTEX )
   set( PDFMAN "manual.pdf" )
 endif()
 
-if( GUI )
+if( GUI AND QCOLLECTIONGENERATOR_EXECUTABLE )
     add_custom_command(OUTPUT divine.qhc manual.qch
                        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/divine.qhcp .
                        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/manual.qhp .

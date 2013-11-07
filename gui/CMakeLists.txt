@@ -72,6 +72,8 @@ if(WIN32)
   endif()
 endif(WIN32)
 
+if ( QCOLLECTIONGENERATOR_EXECUTABLE )
 install(FILES ${divine_BINARY_DIR}/manual/divine.qhc
               ${divine_BINARY_DIR}/manual/manual.qch
         DESTINATION ${GUI_HELP_DEST} COMPONENT help)
+endif()
