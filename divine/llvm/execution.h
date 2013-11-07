@@ -774,7 +774,7 @@ struct Evaluator
     typedef std::vector< ProgramInfo::Value > Values;
 
     int find_invoke() {
-        for ( int fid = 1; fid < ccontext.stackDepth() - 1; ++fid ) {
+        for ( int fid = 1; fid < ccontext.stackDepth(); ++fid ) {
             auto target = info.instruction( ccontext.frame( fid ).pc );
             if ( isa< ::llvm::InvokeInst >( target.op ) )
                 return fid;
