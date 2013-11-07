@@ -317,12 +317,29 @@ std::string Describe::problem( Problem bad )
         case Problem::MemoryLeak:
             s << "MEMORY LEAK"; break;
     }
+
     if ( bad.where.function ) {
         s << " (thread " << int( bad.tid ) << "): ";
         s << locinfo( bad.where, bad.what != Problem::Assert );
     }
-    if ( !bad.pointer.null() )
-        s << ": " << bad.pointer;
+
+    if ( state().validate( bad.pointer ) ) {
+        std::vector< char > str;
+        char *ptr = state().dereference( bad.pointer );
+        for ( int i = 0; state().inBounds( bad.pointer, i ); ++i )
+            str.push_back( ptr[i] );
+
+        s << ": (" << bad.pointer << ")" << ": \""
+          << std::string( str.begin(), str.end() ) << "\"";
+        for ( int i = 0; i < str.size(); ++ i ) {
+            if ( i % 32 == 0 )
+                s << "\n    ";
+            s << std::setbase( 16 )
+              << std::setw( 2 ) << std::setfill( '0' )
+              << unsigned( uint8_t( str[i] ) ) << " ";
+        }
+    }
+
     return s.str();
 }
 
