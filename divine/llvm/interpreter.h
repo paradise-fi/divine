@@ -283,7 +283,7 @@ struct Interpreter
     int stackDepth() { return state.stack().get().length(); }
     MachineState::Frame &frame( int depth = 0 ) { return state.frame( -1, depth ); }
     MachineState::Flags &flags() { return state.flags(); }
-    void problem( Problem::What p ) { state.problem( p ); }
+    void problem( Problem::What p, Pointer ptr = Pointer() ) { state.problem( p, ptr ); }
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
     int new_thread( Function *f );

@@ -28,6 +28,7 @@ struct Problem {
     uint8_t what;
     uint8_t tid;
     uint16_t _padding;
+    Pointer pointer;
     Problem() : what( NoProblem ), tid( -1 ), _padding( 0 ) {}
 };
 
@@ -620,7 +621,7 @@ struct MachineState
     void snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
     void rewind( Blob, int thread = 0 );
-    void problem( Problem::What );
+    void problem( Problem::What, Pointer p = Pointer() );
 
     int size( int stack, int heapbytes, int heapsegs, int problems ) {
         return sizeof( Flags ) +

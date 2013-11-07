@@ -309,8 +309,12 @@ std::string describeProblem( ProgramInfo &info, Problem bad, divine::graph::Dema
         case Problem::UnreachableExecuted:
             s << "UNREACHABLE EXECUTED"; break;
     }
-    s << " (thread " << int( bad.tid ) << "): ";
-    s << locinfo( info, bad.where, ds, bad.what != Problem::Assert );
+    if ( bad.where.function ) {
+        s << " (thread " << int( bad.tid ) << "): ";
+        s << locinfo( info, bad.where, ds, bad.what != Problem::Assert );
+    }
+    if ( !bad.pointer.null() )
+        s << ": " << bad.pointer;
     return s.str();
 }
 

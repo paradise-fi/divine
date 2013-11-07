@@ -280,12 +280,14 @@ divine::Blob MachineState::snapshot()
 }
 
 
-void MachineState::problem( Problem::What w )
+void MachineState::problem( Problem::What w, Pointer ptr )
 {
     Problem p;
     p.what = w;
-    p.where = frame().pc;
+    if ( _frame )
+        p.where = frame().pc;
     p.tid = _thread;
+    p.pointer = ptr;
     problems.push_back( p );
     flags().problem = 1;
 }

@@ -148,7 +148,7 @@ struct ControlContext {
     void leave() { assert_die(); }
     MachineState::Frame &frame( int /*depth*/ = 0 ) { assert_die(); }
     MachineState::Flags &flags() { assert_die(); }
-    void problem( Problem::What ) { assert_die(); }
+    void problem( Problem::What, Pointer = Pointer() ) { assert_die(); }
     PC &pc() { assert_die(); }
     int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
     int stackDepth() { assert_die(); }
@@ -945,7 +945,7 @@ struct Evaluator
                 case BuiltinFree: {
                     Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     if ( !econtext.free( v ) )
-                        ccontext.problem( Problem::InvalidArgument );
+                        ccontext.problem( Problem::InvalidArgument, v );
                     return;
                 }
                 case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
