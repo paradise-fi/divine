@@ -150,7 +150,7 @@ struct ControlContext {
     MachineState::Flags &flags() { assert_die(); }
     void problem( Problem::What, Pointer = Pointer() ) { assert_die(); }
     PC &pc() { assert_die(); }
-    int new_thread( PC, Maybe< Pointer >, bool = false ) { assert_die(); }
+    int new_thread( PC, Maybe< Pointer >, MemoryFlag ) { assert_die(); }
     int stackDepth() { assert_die(); }
     int threadId() { assert_die(); }
     int threadCount() { assert_die(); }
@@ -193,8 +193,8 @@ struct Evaluator
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
     std::vector< ValueRef > values; /* a withValues stash */
-    typedef std::vector< bool > Pointers;
-    std::vector< Pointers > pointers;
+    typedef std::vector< MemoryFlag > MemoryFlags;
+    std::vector< MemoryFlags > flags;
     std::vector< ValueRef > result;
 
     struct Implementation {
@@ -205,7 +205,7 @@ struct Evaluator
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
         ::llvm::TargetData &TD() { return econtext().TD; }
-        bool resultIsPointer( std::vector< bool > ) { return false; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > ) { return MemoryFlag::Data; }
     };
 
     template< typename X >
@@ -255,7 +255,13 @@ struct Evaluator
             assert_die();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[1] || x[2]; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) {
+            if ( x[1] == MemoryFlag::Uninitialised || x[2] == MemoryFlag::Uninitialised )
+                return MemoryFlag::Uninitialised;
+            if ( x[1] == MemoryFlag::HeapPointer || x[2] == MemoryFlag::HeapPointer )
+                return MemoryFlag::HeapPointer;
+            return MemoryFlag::Data;
+        }
     };
 
     struct Select : Implementation {
@@ -272,7 +278,7 @@ struct Evaluator
             r = a ? b : c;
             return Unit();
         }
-        bool resultIsPointer( std::vector< bool > x ) { return x[ _selected ]; }
+        MemoryFlag resulFlag( std::vector< MemoryFlag > x ) { return x[ _selected ]; }
     };
 
     struct ICmp : Implementation {
@@ -362,7 +368,7 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[1]; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[1]; }
     };
 
     void implement_bitcast() {
@@ -382,14 +388,14 @@ struct Evaluator
             return static_cast< T >( l );
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[0]; }
     };
 
     template< typename _T >
     struct Set : Implementation {
         typedef _T Arg;
         Arg v;
-        bool _pointer;
+        MemoryFlag _flag;
         static const int arity = 1;
 
         template< typename X = int >
@@ -400,9 +406,9 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return _pointer; } /* noop */
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return _flag; }
 
-        Set( Arg v, bool ptr = false ) : v( v ), _pointer( ptr ) {}
+        Set( Arg v, MemoryFlag f = MemoryFlag::Data ) : v( v ), _flag( f ) {}
     };
 
     typedef Get< bool > IsTrue;
@@ -440,7 +446,7 @@ struct Evaluator
                 this->i().op->getOperand(0)->getType(), 1, this->i().values.size() - 1 );
             return Unit();
         }
-        bool resultIsPointer( std::vector< bool > x ) {
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) {
             assert_leq( 2U, x.size() );
             return x[1];
         }
@@ -479,32 +485,24 @@ struct Evaluator
 
         int unalignment = t.offset % 4;
 
-        std::vector< std::pair< To, bool > > setptr;
+        std::vector< std::pair< To, MemoryFlag > > setflags;
 
-        /* check whether we are writing over part of something that might have
-         * been a pointer */
-
+        /* check whether we are writing over part of a (former) pointer */
         if ( unalignment ) {
             t.offset -= unalignment;
-            setptr.emplace_back( t, false );
-            f.offset += 4 - unalignment;
-            t.offset += 4;
+            if ( toc.memoryflag( t ).get() == MemoryFlag::HeapPointer )
+                setflags.emplace_back( t, MemoryFlag::Uninitialised );
+            t.offset += unalignment;
         }
 
-        /* If f.offset + align is actually unaligned, that's OK because that
-         * means we are copying from an unaligned address to an aligned one,
-         * and the result is not a pointer. */
-        while ( f.offset + 4 <= f_end ) {
-            setptr.emplace_back( t, fromc.isPointer( f ) );
-            f.offset += 4;
-            t.offset += 4;
+        while ( f.offset < f_end ) {
+            setflags.emplace_back( t, fromc.memoryflag( f ).get() );
+            f.offset ++;
+            t.offset ++;
         }
 
-        if ( f.offset + 4 < f_end ) /* partial overwrite at the end */
-            setptr.emplace_back( t, false );
-
-        for ( auto s : setptr )
-            toc.setPointer( s.first, s.second );
+        for ( auto s : setflags )
+            toc.memoryflag( s.first ).set( s.second );
 
         return Problem::NoProblem;
     }
@@ -530,7 +528,8 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[1]; } /* copy status from dest */
+        /* copy status from dest */
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[1]; }
     };
 
     struct Switch : Implementation {
@@ -551,7 +550,7 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > x ) { return x[0]; } /* noop */
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[0]; }
     };
 
     struct CmpXchg : Implementation {
@@ -574,7 +573,9 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > ) { return false; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > ) {
+            return MemoryFlag::Data; /* nothing */
+        }
     };
 
     struct AtomicRMW : Implementation {
@@ -608,7 +609,9 @@ struct Evaluator
             return Unit();
         }
 
-        bool resultIsPointer( std::vector< bool > ) { return false; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > ) {
+            return MemoryFlag::Data; /* nothing */
+        }
     };
 
     void implement_alloca() {
@@ -622,7 +625,7 @@ struct Evaluator
         Pointer &p = *reinterpret_cast< Pointer * >(
             dereference( instruction.result() ) );
         p = econtext.malloc( alloc );
-        econtext.setPointer( instruction.result(), true );
+        econtext.memoryflag( instruction.result() ).set( MemoryFlag::HeapPointer );
     }
 
     void implement_extractvalue() {
@@ -937,14 +940,14 @@ struct Evaluator
                     Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
                     int tid = ccontext.new_thread(
                         entry, Maybe< Pointer >::Just( arg ),
-                        econtext.isPointer( instruction.operand( 1 ) ) );
+                        econtext.memoryflag( instruction.operand( 1 ) ).get() );
                     withValues( SetInt( tid ), instruction.result() );
                     return;
                 }
                 case BuiltinMalloc: {
                     int size = withValues( Get< int >(), instruction.operand( 0 ) );
                     Pointer result = size ? econtext.malloc( size ) : Pointer();
-                    withValues( Set< Pointer >( result, true ), instruction.result() );
+                    withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
                     return;
                 }
                 case BuiltinFree: {
@@ -964,7 +967,8 @@ struct Evaluator
                                    Values( instruction.values.begin() + 2,
                                            instruction.values.end() - 1 ) );
                 case BuiltinLandingPad:
-                    withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ), true ),
+                    withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ),
+                                                MemoryFlag::HeapPointer ),
                                 instruction.result() );
                     return;
             }
@@ -997,7 +1001,8 @@ struct Evaluator
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += instruction.operand( i ).width;
             Pointer vaptr = size ? econtext.malloc( size ) : Pointer();
-            withValues( Set< Pointer >( vaptr, true ), function.values[ function.argcount ] );
+            withValues( Set< Pointer >( vaptr, MemoryFlag::HeapPointer ),
+                        function.values[ function.argcount ] );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i ) {
                 auto op = instruction.operand( i );
                 memcopy( ValueRef( op, 1 ), vaptr, op.width );
@@ -1138,8 +1143,8 @@ struct Evaluator
         wibble::param::discard( i, e );
         fun._evaluator = this;
         auto retval = match( fun, list );
-        econtext.setPointer( result.back(), fun.resultIsPointer( pointers.back() ) );
-        pointers.pop_back();
+        econtext.memoryflag( result.back() ).set( fun.resultFlag( flags.back() ) );
+        flags.pop_back();
         result.pop_back();
         return retval;
     }
@@ -1157,7 +1162,7 @@ struct Evaluator
 
         ValueRef v = *i++;
         char *mem = dereference( v );
-        pointers.back().push_back( econtext.isPointer( v ) );
+        flags.back().push_back( econtext.memoryflag( v ).get() );
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
@@ -1194,7 +1199,7 @@ struct Evaluator
     template< typename Fun, int Limit = 3 >
     typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
     {
-        pointers.push_back( Pointers() );
+        flags.push_back( MemoryFlags() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
         result.push_back( instruction.result() );
         return implement( wibble::Preferred(), i, e, Nil(), fun );
@@ -1202,7 +1207,7 @@ struct Evaluator
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
-        pointers.push_back( Pointers() );
+        flags.push_back( MemoryFlags() );
         return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil(), fun );
     }
 

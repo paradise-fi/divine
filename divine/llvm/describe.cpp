@@ -245,7 +245,7 @@ std::string Describe::value( std::pair< ::llvm::Type *, std::string > val,
     if ( !where.null() ) {
         value = this->value( type, where );
     } else { /* scalar */
-        if ( type->isPointerTy() && state().isPointer( vref ) ) {
+        if ( type->isPointerTy() && state().memoryflag( vref ).get() == MemoryFlag::HeapPointer ) {
             char *mem = state().dereference( vref );
             value = pointer( type, *reinterpret_cast< Pointer * >( mem ) );
         } else if ( vref.v.type == ProgramInfo::Value::Aggregate )
@@ -459,7 +459,7 @@ void MachineState::dump( std::ostream &r ) {
         char *where = heap().dereference( Pointer( true, i, 0 ) );
         int size = heap().size( Pointer( true, i, 0 ) );
         for ( ; p.offset < size; p.offset += 4 ) {
-            if ( validate( p ) && heap().isPointer( p ) ) {
+            if ( validate( p ) && heap().flag( p ).get() == MemoryFlag::HeapPointer ) {
                 r << followPointer( p ) << " ";
             } else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
@@ -477,7 +477,7 @@ void MachineState::dump( std::ostream &r ) {
         char *where = nursery.dereference( p );
         int size = nursery.size( p );
         for ( ; p.offset < size; p.offset += 4 ) {
-            if ( nursery.isPointer( p ) )
+            if ( nursery.flag( p ).get() == MemoryFlag::HeapPointer )
                 r << followPointer( p ) << " ";
             else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
@@ -506,7 +506,7 @@ void MachineState::dump( std::ostream &r ) {
                 r << "[" << fun.datasize << " bytes] ";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
                     r << "[" << i->offset << "]";
-                    if ( f.isPointer( _info, *i ) )
+                    if ( f.flag( _info, *i ).get() == MemoryFlag::HeapPointer )
                         r << *f.dereference< Pointer >( _info, *i ) << " ";
                     else
                         r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";
@@ -537,7 +537,7 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
                   << ", type " << v.type << " at " << v.offset << ", width = " << v.width;
         if ( !v.constant ) {
             std::cerr << ", value = " << fmtInteger( state.dereference( v ), v.width * 8 );
-            std::cerr << ", pointer = " << state.isPointer( v );
+            std::cerr << ", flag = " << int( state.memoryflag( v ).get() );
         } else
              std::cerr << ", value = " << fmtInteger( &info.constdata[ v.offset ], v.width * 8 );
         std::cerr << std::endl;

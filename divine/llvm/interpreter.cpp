@@ -64,14 +64,14 @@ divine::Blob Interpreter::initial( Function *f )
     return result;
 }
 
-int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
+int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
 {
     int current = state._thread;
     int tid = state.new_thread();
     state.enter( pc.function );
     if ( !arg.nothing() ) {
         auto v = info().function( pc ).values[ 0 ];
-        frame().setPointer( info(), v, ptr );
+        frame().flag( info(), v ).set( fl );
         *frame().dereference< Pointer >( info(), v ) = arg.value();
     }
     if ( current >= 0 )
@@ -81,6 +81,7 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, bool ptr )
 
 int Interpreter::new_thread( Function *f )
 {
-    return new_thread( PC( info().functionmap[ f ], 0 ), Maybe< Pointer >::Nothing() );
+    return new_thread( PC( info().functionmap[ f ], 0 ),
+                       Maybe< Pointer >::Nothing(), MemoryFlag::Data );
 }
 

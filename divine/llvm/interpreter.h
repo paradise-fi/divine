@@ -275,8 +275,7 @@ struct Interpreter
     Pointer malloc( int size ) { return state.malloc( size ); }
     bool free( Pointer p ) { return state.free( p ); }
 
-    template< typename X > bool isPointer( X p ) { return state.isPointer( p ); }
-    template< typename X > void setPointer( X p, bool is ) { state.setPointer( p, is ); }
+    template< typename X > MemoryBits memoryflag( X p ) { return state.memoryflag( p ); }
     template< typename X > bool inBounds( X p, int o ) { return state.inBounds( p, o ); }
 
     /* ControlContext interface. */
@@ -287,7 +286,7 @@ struct Interpreter
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }
     int new_thread( Function *f );
-    int new_thread( PC pc, Maybe< Pointer > arg, bool = false );
+    int new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag );
     int threadId() { return tid; }
     int threadCount() { return state._thread_count; }
     void switch_thread( int t ) { state.switch_thread( t ); }

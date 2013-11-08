@@ -72,7 +72,7 @@ struct MachineState
         }
 
         static int framesize( ProgramInfo &i, int dsize ) {
-            return align( dsize + 2 * size_bitmap( dsize, 1 ), 4 );
+            return align( dsize + size_memoryflags( dsize ), 4 );
         }
 
         int framesize( ProgramInfo &i ) {
@@ -83,34 +83,15 @@ struct MachineState
             return i.function( pc ).datasize;
         }
 
-        uint8_t &pbitmap( ProgramInfo &i, ProgramInfo::Value v ) {
-            return *(memory() + datasize( i ) + v.offset / 32);
-        }
-
-        uint8_t &abitmap( ProgramInfo &i, ProgramInfo::Value v ) {
-            return *(memory() + datasize( i ) + size_bitmap( datasize( i ), 1 ) + v.offset / 32);
-        }
-
-        uint8_t mask( ProgramInfo::Value v ) {
-            return 1 << ((v.offset % 32) / 4);
-        }
-
-        bool isPointer( ProgramInfo &i, ValueRef v ) {
-            v.v.offset += v.offset; /* beware of dragons */
-            return pbitmap( i, v.v ) & mask( v.v );
-        }
-
-        void setPointer( ProgramInfo &i, ValueRef v, bool ptr ) {
-            v.v.offset += v.offset; /* beware of dragons */
-            if ( ptr )
-                pbitmap( i, v.v ) |= mask( v.v );
-            else
-                pbitmap( i, v.v ) &= ~mask( v.v );
+        MemoryBits flag( ProgramInfo &i, ValueRef v ) {
+            return MemoryBits( memory() + datasize( i ),
+                               v.offset + v.v.offset );
         }
 
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, sizeof( Frame ) + framesize( *a._info ) );
         }
+
         int end() { return 0; }
 
         template< typename T = char >
@@ -128,26 +109,11 @@ struct MachineState
         int end() { return 0; }
 
         static int size( ProgramInfo &i ) {
-            return i.globalsize + size_bitmap( i.globalsize );
+            return i.globalsize + size_memoryflags( i.globalsize );
         }
 
-        uint8_t &bitmap( ProgramInfo &i, Pointer p ) {
-            return *(memory() + i.globalsize + i.globalPointerOffset( p ) / 32);
-        }
-
-        uint8_t mask( ProgramInfo &i, Pointer v ) {
-            return 1 << ((i.globalPointerOffset( v ) % 32) / 4);
-        }
-
-        bool isPointer( ProgramInfo &i, Pointer p ) {
-            return bitmap( i, p ) & mask( i, p );
-        }
-
-        void setPointer( ProgramInfo &i, Pointer p, bool ptr ) {
-            if ( ptr )
-                bitmap( i, p ) |= mask( i, p );
-            else
-                bitmap( i, p ) &= ~mask( i, p );
+        MemoryBits flag( ProgramInfo &i, Pointer p ) {
+            return MemoryBits( memory() + i.globalsize, i.globalPointerOffset( p ) );
         }
 
         bool owns( ProgramInfo &i, Pointer p ) {
@@ -170,15 +136,16 @@ struct MachineState
         return 2 * (2 + segcount - segcount % 2);
     }
 
-    static int size_bitmap( int bytecount, int /*align*/ = 4 ) {
-        return divine::align( bytecount / 32 + ((bytecount % 32) ? 1 : 0), 4 );
+    static int size_memoryflags( int bytecount ) {
+        const int bitcount = bytecount * MemoryBits::bitwidth;
+        return divine::align( bitcount / 8 + ((bitcount % 8) ? 1 : 0), 4 );
     }
 
     static int size_heap( int segcount, int bytecount ) {
         return sizeof( Heap ) +
             bytecount +
             size_jumptable( segcount ) +
-            size_bitmap( bytecount );
+            size_memoryflags( bytecount );
     }
 
     struct Heap : WithMemory< Heap > {
@@ -197,10 +164,10 @@ struct MachineState
             return jumptable( p.segment );
         }
 
-        uint16_t &bitmap( Pointer p ) {
+        MemoryBits flag( Pointer p ) {
             assert( owns( p ) );
-            return reinterpret_cast< uint16_t * >(
-                memory() + size_jumptable( segcount ) )[ offset( p ) / 64 ];
+            return MemoryBits( memory() + size_jumptable( segcount ),
+                               offset( p ) );
         }
 
         int offset( Pointer p ) {
@@ -213,26 +180,10 @@ struct MachineState
             return 4 * (jumptable( p.segment + 1 ) - jumptable( p ));
         }
 
-        uint16_t mask( Pointer p ) {
-            assert_eq( offset( p ) % 4, 0 );
-            return 1 << ((offset( p ) % 64) / 4);
-        }
-
         StateAddress advance( StateAddress a, int ) {
             return StateAddress( a, 0, size_heap( segcount, size() ) );
         }
         int end() { return 0; }
-
-        void setPointer( Pointer p, bool ptr ) {
-            if ( ptr )
-                bitmap( p ) |= mask( p );
-            else
-                bitmap( p ) &= ~mask( p );
-        }
-
-        bool isPointer( Pointer p ) {
-            return bitmap( p ) & mask( p );
-        }
 
         bool owns( Pointer p ) {
             return p.heap && p.segment < segcount;
@@ -244,14 +195,14 @@ struct MachineState
             if ( p.offset >= size( p ) )
                 return nullptr;
             return reinterpret_cast< T * >(
-                memory() + size_bitmap( size() ) + size_jumptable( segcount ) + offset( p ) );
+                memory() + size_memoryflags( size() ) + size_jumptable( segcount ) + offset( p ) );
         }
     };
 
     struct Nursery {
         std::vector< int > offsets;
         std::vector< char > memory;
-        std::vector< bool > pointer;
+        std::vector< uint8_t > flags;
         int segshift;
 
         Pointer malloc( int size ) {
@@ -259,10 +210,8 @@ struct MachineState
             int start = offsets[ segment ];
             int end = align( start + size, 4 );
             offsets.push_back( end );
-            memory.resize( end );
-            pointer.resize( end / 4 );
-            std::fill( memory.begin() + start, memory.end(), 0 );
-            std::fill( pointer.begin() + start / 4, pointer.end(), 0 );
+            memory.resize( end, 0 );
+            flags.resize( size_memoryflags( end ), 0 );
             return Pointer( true, segment + segshift, 0 );
         }
 
@@ -281,13 +230,8 @@ struct MachineState
             return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
         }
 
-        bool isPointer( Pointer p ) {
-            assert_eq( p.offset % 4, 0 );
-            return pointer[ offset( p ) / 4 ];
-        }
-
-        void setPointer( Pointer p, bool is ) {
-            pointer[ offset( p ) / 4 ] = is;
+        MemoryBits flag( Pointer p ) {
+            return MemoryBits( &flags.front(), offset( p ) );
         }
 
         char *dereference( Pointer p ) {
@@ -303,7 +247,7 @@ struct MachineState
             memory.clear();
             offsets.clear();
             offsets.push_back( 0 );
-            pointer.clear();
+            flags.clear();
         }
     };
 
@@ -385,27 +329,28 @@ struct MachineState
         return Lens< State >( StateAddress( &_alloc.pool(), &_info, _blob, _alloc._slack ) );
     }
 
-    bool isPointer( Pointer p, int offset = 0 ) {
+    MemoryBits memoryflag( Pointer p, int offset = 0 ) {
         p.offset += offset; /* beware of dragons! */
-        if ( p.offset % 4 != 0 )
-            return false;
         if ( nursery.owns( p ) )
-            return nursery.isPointer( p );
+            return nursery.flag( p );
         if ( heap().owns( p ) )
-            return heap().isPointer( p );
+            return heap().flag( p );
         if ( globalPointer( p ) )
-            return global().isPointer( _info, p );
-        return false;
+            return global().flag( _info, p );
+        assert_unreachable( "invalid pointer passed to memoryflags" );
     }
 
-    void setPointer( Pointer p, bool is, int offset = 0 ) {
-        p.offset += offset; /* beware of dragons! */
-        if ( nursery.owns( p ) )
-            nursery.setPointer( p, is );
-        if ( heap().owns( p ) )
-            heap().setPointer( p, is );
-        if ( globalPointer( p ) )
-            global().setPointer( _info, p, is );
+    MemoryFlag _const_flag;
+
+    MemoryBits memoryflag( ValueRef v ) {
+        if ( v.tid < 0 )
+            v.tid = _thread;
+        if ( v.v.constant ) {
+            assert( _const_flag == MemoryFlag::Data );
+            return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
+        }
+        assert( !v.v.global );
+        return frame( v ).flag( _info, v );
     }
 
     char *dereference( Pointer p ) {
@@ -431,24 +376,6 @@ struct MachineState
         if ( v.tid != _thread || v.frame )
             f = &stack( v.tid ).get( stack( v.tid ).get().length() - v.frame - 1 );
         return *f;
-    }
-
-    bool isPointer( ValueRef v ) {
-        if ( v.tid < 0 )
-            v.tid = _thread;
-        if ( v.v.constant )
-            return false; /* can't point to heap by definition */
-        assert( !v.v.global );
-        return frame( v ).isPointer( _info, v );
-    }
-
-    void setPointer( ValueRef v, bool is ) {
-        if ( v.tid < 0 )
-            v.tid = _thread;
-        if ( v.v.constant )
-            return;
-        assert( !v.v.global );
-        frame( v ).setPointer( _info, v, is );
     }
 
     /*
@@ -639,7 +566,7 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, graph::Allocator &alloc )
-        : _info( i ), _alloc( alloc )
+        : _info( i ), _alloc( alloc ), _const_flag( MemoryFlag::Data )
     {
         _thread_count = 0;
         _frame = nullptr;
@@ -654,8 +581,7 @@ struct FrameContext {
     ProgramInfo &info;
     MachineState::Frame &frame;
 
-    template< typename X > bool isPointer( X x ) { return frame.isPointer( info, x ); }
-    template< typename X > void setPointer( X x, bool s ) { frame.setPointer( info, x, s ); }
+    template< typename X > MemoryBits memoryflag( X x ) { return frame.flag( info, x ); }
     template< typename X > char *dereference( X x ) { return frame.dereference( info, x ); }
     template< typename X > bool inBounds( X x, int off ) {
         x.offset += off;

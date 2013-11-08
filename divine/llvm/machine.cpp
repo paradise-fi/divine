@@ -93,7 +93,7 @@ void MachineState::trace( Pointer p, Canonic &canonic )
         int size = pointerSize( p );
         canonic[ p ];
         for ( p.offset = 0; p.offset < size; p.offset += 4 )
-            if ( isPointer( p ) ) {
+            if ( memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
                 trace( followPointer( p ), canonic );
             }
     }
@@ -102,7 +102,7 @@ void MachineState::trace( Pointer p, Canonic &canonic )
 template< typename Fun >
 void forPointers( MachineState::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 {
-    if ( f.isPointer( i, v ) )
+    if ( f.flag( i, v ).get() == MemoryFlag::HeapPointer )
         fun( v, *f.dereference< Pointer >( i, v ) );
 /*
     while ( v.offset < v.v.width - 4 ) {
@@ -157,8 +157,9 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
     /* And trace it. We work in 4 byte steps, pointers are 4 bytes and 4-byte aligned. */
     original.offset = edited.offset = 0;
     for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
-        bool recurse = this->isPointer( original );
-        heap.setPointer( edited, recurse );
+        bool recurse = this->memoryflag( original ).get() == MemoryFlag::HeapPointer;
+        if ( recurse )
+            heap.flag( edited ).set( MemoryFlag::HeapPointer );
         if ( recurse ) /* points to a pointer, recurse */
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
@@ -179,7 +180,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
         /* make a straight copy first, we will rewrite pointers next */
         std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
-                target.setPointer( _info, v, true );
+                target.flag( _info, v ).set( MemoryFlag::HeapPointer );
                 snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
             } );
     }
@@ -200,7 +201,7 @@ divine::Blob MachineState::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().isPointer( _info, p ) )
+            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
                 trace( followPointer( p ), canonic );
     }
 
@@ -268,7 +269,7 @@ divine::Blob MachineState::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().isPointer( _info, p ) )
+            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
                 snapshot( *(_global->dereference< Pointer >( _info, p )),
                           followPointer( p ), canonic, *_heap );
     }
@@ -321,7 +322,7 @@ bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
     if ( p.heap && !freed.count( p.segment ) ) {
         int size = pointerSize( p );
         for ( p.offset = 0; p.offset < size; p.offset += 4 )
-            if ( isPointer( p ) ) {
+            if ( memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
             }
@@ -360,7 +361,7 @@ bool MachineState::isPrivate( int tid, Pointer needle )
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().isPointer( _info, p ) )
+            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
     }

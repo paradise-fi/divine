@@ -3,6 +3,7 @@
 #include <wibble/mixin.h>
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
+#include <divine/toolkit/bittuple.h>
 
 #include <divine/llvm/wrap/Function.h>
 
@@ -309,18 +310,54 @@ struct ValueRef {
     {}
 };
 
+enum class MemoryFlag {
+    Uninitialised, Data, HeapPointer
+};
+
+struct MemoryBits : BitPointer {
+    static const int bitwidth = 2;
+
+    MemoryBits( uint8_t *base, int offset )
+        : BitPointer( base, offset * bitwidth )
+    {}
+
+    void set( MemoryFlag s ) {
+        bitcopy( BitPointer( &s ), *this, bitwidth );
+    }
+
+    MemoryFlag get() {
+        union U {
+            uint64_t x;
+            MemoryFlag t;
+            U() : t() { }
+        } u;
+        bitcopy( *this, BitPointer( &u.x ), bitwidth );
+        return u.t;
+    }
+
+    MemoryBits operator++() {
+        shift( bitwidth );
+        return *this;
+    }
+};
+
 struct GlobalContext {
     ProgramInfo &info;
     ::llvm::TargetData &TD;
     bool allow_global;
 
+    MemoryFlag _const_flag;
+
     Pointer malloc( int ) { assert_die(); }
     bool free( Pointer ) { assert_die(); }
 
-    bool isPointer( ValueRef ) { return false; }
-    bool isPointer( Pointer ) { return false; }
-    void setPointer( ValueRef, bool ) {}
-    void setPointer( Pointer, bool ) {}
+    MemoryBits memoryflag( Pointer ) {
+        assert( _const_flag == MemoryFlag::Data );
+        return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
+    }
+
+    MemoryBits memoryflag( ValueRef ) { return memoryflag( Pointer() ); }
+
     void dump() {}
 
     /* TODO */
@@ -343,7 +380,7 @@ struct GlobalContext {
     }
 
     GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )
-        : info( i ), TD( TD ), allow_global( global )
+        : info( i ), TD( TD ), allow_global( global ), _const_flag( MemoryFlag::Data )
     {}
 };
 
