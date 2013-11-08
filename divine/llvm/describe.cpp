@@ -336,7 +336,7 @@ std::string Describe::problem( Problem bad )
 
         s << ": (" << bad.pointer << ")" << ": \""
           << std::string( str.begin(), str.end() ) << "\"";
-        for ( int i = 0; i < str.size(); ++ i ) {
+        for ( int i = 0; i < int( str.size() ); ++ i ) {
             if ( i % 32 == 0 )
                 s << "\n    ";
             s << std::setbase( 16 )
