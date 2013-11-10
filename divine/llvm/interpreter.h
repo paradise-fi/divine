@@ -165,7 +165,7 @@ struct Interpreter
     Blob initial( Function *f ); /* Make an initial state from Function. */
     void rewind( Blob b ) { state.rewind( b, -1 ); }
     void choose( int32_t i );
-    void dump() { state.dump(); }
+    void dump();
 
     void advance() {
         pc().instruction ++;

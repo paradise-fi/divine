@@ -559,3 +559,7 @@ std::string Interpreter::describeConstdata() {
     return Describe( this, graph::DemangleStyle::None, false ).constdata();
 }
 
+void Interpreter::dump() {
+    state.dump();
+    std::cerr << describe( graph::DemangleStyle::None, true ) << std::endl;
+}
