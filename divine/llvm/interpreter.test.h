@@ -148,9 +148,9 @@ struct TestLLVM {
     Test successor3()
     {
         assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 2 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 0, 0 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
         assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 4 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 0, 0 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
     }
 
     Test describe1()
@@ -175,7 +175,7 @@ struct TestLLVM {
     {
         divine::Blob b = _ith( code_add(), 0 );
         assert_eq( _descr( code_add(), b ),
-                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = 0 ]\n" );
+                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = ? ]\n" );
 
         b = _ith( code_add(), 2 );
         assert_eq( _descr( code_add(), b ),
