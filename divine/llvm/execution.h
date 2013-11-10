@@ -467,44 +467,7 @@ struct Evaluator
     template < typename From, typename To, typename FromC, typename ToC >
     Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
     {
-        if ( !bytes )
-            return Problem::NoProblem; /* this is apparently always OK */
-
-        char *from = fromc.dereference( f ),
-             *to = toc.dereference( t );
-        int f_end = f.offset + bytes;
-
-        if ( !from || !to )
-            return Problem::InvalidDereference;
-
-        if ( !fromc.inBounds( f, bytes - 1 ) ||
-             !toc.inBounds( t, bytes - 1 ) )
-            return Problem::OutOfBounds;
-
-        memmove( to, from, bytes );
-
-        int unalignment = t.offset % 4;
-
-        std::vector< std::pair< To, MemoryFlag > > setflags;
-
-        /* check whether we are writing over part of a (former) pointer */
-        if ( unalignment ) {
-            t.offset -= unalignment;
-            if ( toc.memoryflag( t ).get() == MemoryFlag::HeapPointer )
-                setflags.emplace_back( t, MemoryFlag::Uninitialised );
-            t.offset += unalignment;
-        }
-
-        while ( f.offset < f_end ) {
-            setflags.emplace_back( t, fromc.memoryflag( f ).get() );
-            f.offset ++;
-            t.offset ++;
-        }
-
-        for ( auto s : setflags )
-            toc.memoryflag( s.first ).set( s.second );
-
-        return Problem::NoProblem;
+        return llvm::memcopy( f, t, bytes, fromc, toc );
     }
 
     template < typename From, typename To >

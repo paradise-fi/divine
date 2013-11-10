@@ -164,8 +164,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
         else
-            std::copy( dereference( original ), dereference( original ) + 4,
-                       heap.dereference( edited ) );
+            memcopy( original, edited, 4, *this, heap );
     }
 }
 
@@ -176,9 +175,9 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     target.pc = f.pc;
 
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        char *from_addr = f.dereference( _info, *val );
         /* make a straight copy first, we will rewrite pointers next */
-        std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
+        FrameContext fctx( _info, f ), tctx( _info, target );
+        memcopy( *val, *val, val->width, fctx, tctx );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
                 target.memoryflag( _info, v ).set( MemoryFlag::HeapPointer );
                 snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
