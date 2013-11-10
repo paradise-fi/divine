@@ -329,6 +329,8 @@ std::string Describe::problem( Problem bad )
             s << "MEMORY LEAK"; break;
         case Problem::NotImplemented:
             s << "NOT IMPLEMENTED"; break;
+        case Problem::Uninitialised:
+            s << "UNDEFINED VALUE"; break;
     }
 
     if ( bad.where.function ) {

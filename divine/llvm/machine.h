@@ -26,6 +26,7 @@ struct Problem {
         UnreachableExecuted,
         MemoryLeak,
         NotImplemented,
+        Uninitialised
     };
     PC where;
     uint8_t what;
