@@ -132,8 +132,8 @@ std::string Describe::aggregate( Type *t, Ptr where )
         int index = 0;
         for ( auto st = stru->element_begin(); st != stru->element_end(); ++ st )
         {
-            vec.push_back( value( (*st), where ) );
             where.offset = startoffset + SLO->getElementOffset( index );
+            vec.push_back( value( (*st), where ) );
             ++ index;
         }
     }
