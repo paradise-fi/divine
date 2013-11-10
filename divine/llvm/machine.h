@@ -393,18 +393,22 @@ struct MachineState
             return heap().memoryflag( p );
         if ( globalPointer( p ) )
             return global().memoryflag( _info, p );
+        if ( constantPointer( p ) )
+            return _const_bits();
         assert_unreachable( "invalid pointer passed to memoryflags" );
     }
 
     MemoryFlag _const_flag;
+    MemoryBits _const_bits() {
+        assert( _const_flag == MemoryFlag::Data );
+        return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
+    }
 
     MemoryBits memoryflag( ValueRef v ) {
         if ( v.tid < 0 )
             v.tid = _thread;
-        if ( v.v.constant ) {
-            assert( _const_flag == MemoryFlag::Data );
-            return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
-        }
+        if ( v.v.constant )
+            return _const_bits();
         assert( !v.v.global );
         return frame( v ).memoryflag( _info, v );
     }
