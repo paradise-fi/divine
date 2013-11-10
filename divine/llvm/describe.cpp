@@ -487,10 +487,7 @@ void MachineState::dump( std::ostream &r ) {
         char *where = nursery.dereference( p );
         int size = nursery.size( p );
         for ( ; p.offset < size; p.offset += 4 ) {
-            if ( nursery.flag( p ).get() == MemoryFlag::HeapPointer )
-                r << followPointer( p ) << " ";
-            else
-                r << fmtInteger( where + p.offset, 32 ) << " ";
+            r << fmtInteger( where + p.offset, 32 ) << " ";
         }
         if ( i < int( nursery.offsets.size() ) - 1 )
             r << "| ";
