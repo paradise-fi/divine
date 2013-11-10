@@ -203,8 +203,11 @@ std::string Describe::value( Type *t, Ptr where )
         char *mem = interpreter->dereference( where );
         return pointer( t, mem ? *reinterpret_cast< Pointer * >( mem ) : Pointer() );
     }
-    if ( t->isIntegerTy() )
+    if ( t->isIntegerTy() ) {
+        if ( state().memoryflag( where ).get() == MemoryFlag::Uninitialised )
+            return "?";
         return fmtInteger( state().dereference( where ), TD().getTypeAllocSize( t ) * 8 );
+    }
     if ( t->getPrimitiveSizeInBits() )
         return "<weird scalar>";
     return "<weird type>";
@@ -250,8 +253,13 @@ std::string Describe::value( std::pair< ::llvm::Type *, std::string > val,
             value = pointer( type, *reinterpret_cast< Pointer * >( mem ) );
         } else if ( vref.v.type == ProgramInfo::Value::Aggregate )
             value = aggregate( type, vref );
-        else
-            value = fmtInteger( state().dereference( vref ), vref.v.width * 8 );
+        else {
+            if ( vref.v.width && state().dereference( vref ) &&
+                 state().memoryflag( vref ).get() == MemoryFlag::Uninitialised )
+                value = "?";
+            else
+                value = fmtInteger( state().dereference( vref ), vref.v.width * 8 );
+        }
     }
 
     if ( !boring( name ) )
