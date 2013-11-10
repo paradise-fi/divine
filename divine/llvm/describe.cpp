@@ -542,11 +542,11 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
             std::cerr << "  operand " << i - 1 << ": ";
         std::cerr << (v.constant ? "constant" : (v.global ? "global" : "local"))
                   << ", type " << v.type << " at " << v.offset << ", width = " << v.width;
-        if ( !v.constant ) {
+        if ( !v.constant )
             std::cerr << ", value = " << fmtInteger( state.dereference( v ), v.width * 8 );
-            std::cerr << ", flag = " << int( state.memoryflag( v ).get() );
-        } else
+        else
              std::cerr << ", value = " << fmtInteger( &info.constdata[ v.offset ], v.width * 8 );
+        std::cerr << ", flag = " << int( state.memoryflag( v ).get() );
         std::cerr << std::endl;
     }
 }
