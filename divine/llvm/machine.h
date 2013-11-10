@@ -84,7 +84,7 @@ struct MachineState
             return i.function( pc ).datasize;
         }
 
-        MemoryBits flag( ProgramInfo &i, ValueRef v ) {
+        MemoryBits memoryflag( ProgramInfo &i, ValueRef v ) {
             return MemoryBits( memory() + datasize( i ),
                                v.offset + v.v.offset );
         }
@@ -113,8 +113,13 @@ struct MachineState
             return i.globalsize + size_memoryflags( i.globalsize );
         }
 
-        MemoryBits flag( ProgramInfo &i, Pointer p ) {
+        MemoryBits memoryflag( ProgramInfo &i, Pointer p ) {
+            assert( owns( i, p ) );
             return MemoryBits( memory() + i.globalsize, i.globalPointerOffset( p ) );
+        }
+
+        MemoryBits memoryflag( ProgramInfo &i ) {
+            return MemoryBits( memory() + i.globalsize, 0 );
         }
 
         bool owns( ProgramInfo &i, Pointer p ) {
@@ -165,7 +170,7 @@ struct MachineState
             return jumptable( p.segment );
         }
 
-        MemoryBits flag( Pointer p ) {
+        MemoryBits memoryflag( Pointer p ) {
             assert( owns( p ) );
             return MemoryBits( memory() + size_jumptable( segcount ),
                                offset( p ) );
@@ -231,7 +236,7 @@ struct MachineState
             return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
         }
 
-        MemoryBits flag( Pointer p ) {
+        MemoryBits memoryflag( Pointer p ) {
             return MemoryBits( &flags.front(), offset( p ) );
         }
 
@@ -333,11 +338,11 @@ struct MachineState
     MemoryBits memoryflag( Pointer p, int offset = 0 ) {
         p.offset += offset; /* beware of dragons! */
         if ( nursery.owns( p ) )
-            return nursery.flag( p );
+            return nursery.memoryflag( p );
         if ( heap().owns( p ) )
-            return heap().flag( p );
+            return heap().memoryflag( p );
         if ( globalPointer( p ) )
-            return global().flag( _info, p );
+            return global().memoryflag( _info, p );
         assert_unreachable( "invalid pointer passed to memoryflags" );
     }
 
@@ -351,7 +356,7 @@ struct MachineState
             return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
         }
         assert( !v.v.global );
-        return frame( v ).flag( _info, v );
+        return frame( v ).memoryflag( _info, v );
     }
 
     char *dereference( Pointer p ) {
@@ -582,7 +587,7 @@ struct FrameContext {
     ProgramInfo &info;
     MachineState::Frame &frame;
 
-    template< typename X > MemoryBits memoryflag( X x ) { return frame.flag( info, x ); }
+    template< typename X > MemoryBits memoryflag( X x ) { return frame.memoryflag( info, x ); }
     template< typename X > char *dereference( X x ) { return frame.dereference( info, x ); }
     template< typename X > bool inBounds( X x, int off ) {
         x.offset += off;

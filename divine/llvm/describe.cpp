@@ -469,7 +469,7 @@ void MachineState::dump( std::ostream &r ) {
         char *where = heap().dereference( Pointer( true, i, 0 ) );
         int size = heap().size( Pointer( true, i, 0 ) );
         for ( ; p.offset < size; p.offset += 4 ) {
-            if ( validate( p ) && heap().flag( p ).get() == MemoryFlag::HeapPointer ) {
+            if ( validate( p ) && heap().memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
                 r << followPointer( p ) << " ";
             } else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
@@ -513,7 +513,7 @@ void MachineState::dump( std::ostream &r ) {
                 r << "[" << fun.datasize << " bytes] ";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
                     r << "[" << i->offset << "]";
-                    if ( f.flag( _info, *i ).get() == MemoryFlag::HeapPointer )
+                    if ( f.memoryflag( _info, *i ).get() == MemoryFlag::HeapPointer )
                         r << *f.dereference< Pointer >( _info, *i ) << " ";
                     else
                         r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";

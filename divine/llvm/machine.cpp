@@ -102,7 +102,7 @@ void MachineState::trace( Pointer p, Canonic &canonic )
 template< typename Fun >
 void forPointers( MachineState::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 {
-    if ( f.flag( i, v ).get() == MemoryFlag::HeapPointer )
+    if ( f.memoryflag( i, v ).get() == MemoryFlag::HeapPointer )
         fun( v, *f.dereference< Pointer >( i, v ) );
 /*
     while ( v.offset < v.v.width - 4 ) {
@@ -159,7 +159,7 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
     for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
         bool recurse = this->memoryflag( original ).get() == MemoryFlag::HeapPointer;
         if ( recurse )
-            heap.flag( edited ).set( MemoryFlag::HeapPointer );
+            heap.memoryflag( edited ).set( MemoryFlag::HeapPointer );
         if ( recurse ) /* points to a pointer, recurse */
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
@@ -180,7 +180,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
         /* make a straight copy first, we will rewrite pointers next */
         std::copy( from_addr, from_addr + val->width, target.dereference( _info, *val ) );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
-                target.flag( _info, v ).set( MemoryFlag::HeapPointer );
+                target.memoryflag( _info, v ).set( MemoryFlag::HeapPointer );
                 snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
             } );
     }
@@ -201,7 +201,7 @@ divine::Blob MachineState::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
                 trace( followPointer( p ), canonic );
     }
 
@@ -269,7 +269,7 @@ divine::Blob MachineState::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
                 snapshot( *(_global->dereference< Pointer >( _info, p )),
                           followPointer( p ), canonic, *_heap );
     }
@@ -361,7 +361,7 @@ bool MachineState::isPrivate( int tid, Pointer needle )
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().flag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
     }
