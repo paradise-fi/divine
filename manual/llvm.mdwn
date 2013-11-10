@@ -61,7 +61,7 @@ The first step to take when you want to use DIVINE for C/C++ verification is to
 compile your program into LLVM bitcode and link it against the DIVINE-provided
 runtime libraries. When you issue `divine compile --llvm program.c`, `divine`
 will compile the runtime support and your program and link them together
-automatically, using clang. You can use `--only-libraries` (without a program)
+automatically, using clang. You can use `--libraries-only` (without a program)
 to pre-build the three libraries (archives) of support bitcode: `libpdc.a`,
 `libsupc++.a` and `libdivine.a`. When you have these files in the correct data
 layout (basically, on common x86 platforms, this boils down to whether your
