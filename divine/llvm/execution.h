@@ -713,11 +713,11 @@ struct Evaluator
     }
 
     /*
-     * Two-phase PHI handler. This method does this because all of the PHI nodes
-     * must be executed atomically, reading their inputs before any of the results
-     * are updated.  Not doing this can cause problems if the PHI nodes depend on
-     * other PHI nodes for their inputs.  If the input PHI node is updated before
-     * it is read, incorrect results can happen.
+     * Two-phase PHI handler. We do this because all of the PHI nodes must be
+     * executed atomically, reading their inputs before any of the results are
+     * updated.  Not doing this can cause problems if the PHI nodes depend on
+     * other PHI nodes for their inputs.  If the input PHI node is updated
+     * before it is read, incorrect results can happen.
      */
 
     void switchBB( PC target )
