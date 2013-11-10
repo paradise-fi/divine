@@ -54,6 +54,11 @@ divine::Blob Interpreter::initial( Function *f )
     Blob pre_initial = alloc.makeBlobCleared( state.size( 0, 0, 0, 0 ) );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
     std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
+    auto fl = state.global().memoryflag( info() );
+    for ( int i = 0; i < info().globaldata.size(); ++ i ) {
+        fl.set( MemoryFlag::Data );
+        ++ fl;
+    }
     int tid = state.new_thread(); // switches automagically
     assert_eq( tid, 0 ); // just to be on the safe side...
     static_cast< void >( tid );
