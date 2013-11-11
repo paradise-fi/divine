@@ -16,3 +16,26 @@ void main() {
     exit( 1 );
 }
 EOF
+
+llvm_verify invalid assert testcase.c:4 <<EOF
+#include <stdlib.h>
+#include <assert.h>
+
+void diediedie() { assert( 0 ); }
+void main() {
+    atexit( diediedie );
+    exit( 0 );
+}
+EOF
+
+llvm_verify valid <<EOF
+#include <stdlib.h>
+
+void ok() {}
+
+void main() {
+    for ( int i = 0; i < 33; ++i )
+        atexit( ok );
+    exit( 0 );
+}
+EOF
