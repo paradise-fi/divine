@@ -22,9 +22,21 @@ void * malloc( size_t size ) throw() __attribute__((noinline)) {
         return NULL; // failure
 }
 
+void *realloc( void *orig, size_t size ) throw() __attribute__((noinline)) {
+    __divine_interrupt_mask();
+    if ( size && __divine_choice( 2 ) ) {
+        void *n = __divine_malloc( size );
+        if ( orig ) {
+            ::memcpy( n, orig, __divine_heap_object_size( orig ) );
+            __divine_free( orig );
+        }
+        return n;
+    } else
+        return NULL; // failure
+}
+
 /* TODO malloc currently gives zeroed memory */
 void *calloc( size_t n, size_t size ) throw() { return malloc( n * size ); }
-void *realloc( void *ptr, size_t size ) throw() { __divine_assert( 0 ); return 0; }
 void free( void * p) throw() { return __divine_free( p ); }
 
 /* IOStream */
