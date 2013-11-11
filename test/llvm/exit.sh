@@ -9,7 +9,7 @@ void main() {
 }
 EOF
 
-llvm_verify invalid ASSERT Exit <<EOF
+llvm_verify invalid problem Exit <<EOF
 #include <stdlib.h>
 
 void main() {
