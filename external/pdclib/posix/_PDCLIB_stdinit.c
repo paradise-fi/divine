@@ -21,6 +21,16 @@
 #include <_PDCLIB_clocale.h>
 #include <threads.h>
 
+#ifdef __divine__
+
+FILE * stdin  = NULL;
+FILE * stdout = NULL;
+FILE * stderr = NULL;
+
+FILE * _PDCLIB_filelist = NULL;
+
+#else
+
 /* In a POSIX system, stdin / stdout / stderr are equivalent to the (int) file
    descriptors 0, 1, and 2 respectively.
 */
@@ -79,10 +89,12 @@ FILE * stdin  = &_PDCLIB_sin;
 FILE * stdout = &_PDCLIB_sout;
 FILE * stderr = &_PDCLIB_serr;
 
-tss_t _PDCLIB_locale_tss;
-
 /* FIXME: This approach is a possible attack vector. */
 FILE * _PDCLIB_filelist = &_PDCLIB_sin;
+
+#endif
+
+tss_t _PDCLIB_locale_tss;
 
 /* "C" locale - defaulting to ASCII-7.
    1 kByte (+ 4 byte) of <ctype.h> data.
