@@ -10,6 +10,8 @@
 
 #ifndef REGTEST
 
+#ifndef __divine__
+
 extern void (*_PDCLIB_regstack[])( void );
 extern size_t _PDCLIB_regptr;
 
@@ -25,6 +27,32 @@ int atexit( void (*func)( void ) )
         return 0;
     }
 }
+
+#else
+
+#include <divine.h>
+
+extern void (**_PDCLIB_regstack)( void );
+extern size_t _PDCLIB_regptr;
+
+int atexit( void (*func)( void ) )
+{
+    const size_t ptrsize = sizeof( void (*)( void ) );
+
+    if ( _PDCLIB_regptr >= 32 ) {
+        void *n = realloc( _PDCLIB_regstack, ptrsize * ( _PDCLIB_regptr + 1 ) );
+        if ( n )
+            _PDCLIB_regstack = n;
+        else
+            return 1; /* ? */
+    } else if ( !_PDCLIB_regstack )
+        _PDCLIB_regstack = __divine_malloc( 32 * ptrsize );
+
+    _PDCLIB_regstack[ _PDCLIB_regptr ++ ] = func;
+    return 0;
+}
+
+#endif
 
 #endif
 

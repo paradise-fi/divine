@@ -15,6 +15,8 @@
    functions that had already been called at the time it was registered.
 */
 
+#ifndef __divine__
+
 /* TODO: 32 is guaranteed. This should be dynamic but ATM gives problems
    with my malloc.
 */
@@ -31,6 +33,27 @@ void exit( int status )
     }
     _Exit( status );
 }
+
+#else
+
+#include <divine.h>
+
+void (**_PDCLIB_regstack)( void ) = NULL;
+size_t _PDCLIB_regptr = 0;
+
+void exit( int status )
+{
+
+    if ( _PDCLIB_regstack )
+        for ( int i = 1; i <= _PDCLIB_regptr; ++i )
+            _PDCLIB_regstack[ _PDCLIB_regptr - i ]();
+
+    __divine_free( _PDCLIB_regstack );
+    _PDCLIB_closeall();
+    _Exit( status );
+}
+
+#endif
 
 #endif
 
