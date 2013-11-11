@@ -107,6 +107,7 @@ enum Builtin {
     BuiltinAssert,
     BuiltinMalloc,
     BuiltinFree,
+    BuiltinHeapObjectSize,
     BuiltinAp,
     BuiltinMemcpy,
     BuiltinVaStart,
@@ -350,6 +351,7 @@ struct GlobalContext {
 
     Pointer malloc( int ) { assert_die(); }
     bool free( Pointer ) { assert_die(); }
+    int pointerSize( Pointer ) { assert_die(); }
 
     MemoryBits memoryflag( Pointer ) {
         assert( _const_flag == MemoryFlag::Data );

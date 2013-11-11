@@ -272,6 +272,7 @@ struct Interpreter
     /* EvalContext interface. */
     char *dereference( ValueRef v ) { return state.dereference( v ); }
     char *dereference( Pointer p ) { return state.dereference( p ); }
+    int pointerSize( Pointer p ) { return state.pointerSize( p ); }
     Pointer malloc( int size ) { return state.malloc( size ); }
     bool free( Pointer p ) { return state.free( p ); }
 

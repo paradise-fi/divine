@@ -922,6 +922,14 @@ struct Evaluator
                         ccontext.problem( Problem::InvalidArgument, v );
                     return;
                 }
+                case BuiltinHeapObjectSize: {
+                    Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                    if ( !econtext.dereference( v ) )
+                        ccontext.problem( Problem::InvalidArgument, v );
+                    else
+                        withValues( Set< int >( econtext.pointerSize( v ) ), instruction.result() );
+                    return;
+                }
                 case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
                 case BuiltinVaStart: {
                     auto f = info.functions[ ccontext.pc().function ];

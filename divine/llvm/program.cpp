@@ -187,6 +187,8 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinAp;
     if ( name == "__divine_malloc" )
         return BuiltinMalloc;
+    if ( name == "__divine_heap_object_size" )
+        return BuiltinHeapObjectSize;
     if ( name == "__divine_free" )
         return BuiltinFree;
     if ( name == "__divine_va_start" )
