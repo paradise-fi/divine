@@ -93,19 +93,17 @@ struct Thread { // (user-space) information maintained for every (running) threa
     // global thread ID
     int gtid;
 
-    // join & detach
-    bool running;
-    bool detached;
     void *result;
-
-    // conditional variables
-    bool sleeping;
     pthread_cond_t* condition;
+    CleanupHandler *cleanup_handlers;
+
+    bool running:1;
+    bool detached:1;
+    bool sleeping:1;
+    bool cancelled:1;
 
     int cancel_state:1;
     int cancel_type:1;
-    bool cancelled:1;
-    CleanupHandler *cleanup_handlers;
 };
 
 namespace {
@@ -177,16 +175,13 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
     // initialize thread metadata
     Thread* thread = threads[ltid];
     DBG_ASSERT( thread != NULL );
+    memset( thread, 0, sizeof( Thread ) );
+
     thread->gtid = gtid;
-    thread->running = false;
     thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
-    thread->sleeping = false;
-    thread->result = NULL;
     // thread->condition = NULL; (FIXME: memset (hmm?) is not yet supported)
-    thread->cancelled = false;
     thread->cancel_state = PTHREAD_CANCEL_ENABLE;
     thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
-    thread->cleanup_handlers = NULL;
 
     // associate value NULL with all defined keys for this new thread
     key = keys;
