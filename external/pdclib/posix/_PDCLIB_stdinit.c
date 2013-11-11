@@ -349,8 +349,9 @@ _PDCLIB_ctype_t global_ctype[] = {
     { 0x00, 0xFF, 0xFF, 0xFF }
 };
 
-extern struct _PDCLIB_charcodec _PDCLIB_ascii_codec;
-struct _PDCLIB_locale _PDCLIB_global_locale = {
+extern const struct _PDCLIB_charcodec _PDCLIB_ascii_codec;
+
+const struct _PDCLIB_locale _PDCLIB_global_locale = {
     ._Codec = &_PDCLIB_ascii_codec,
     ._Conv  = { 
         /* decimal_point      */ (char *)".",
