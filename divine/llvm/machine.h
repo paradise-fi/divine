@@ -103,11 +103,9 @@ struct MachineState
 
     template< typename F >
     struct WithMemory {
-        template< typename T >
-        struct BaseSize : T { int x; };
-
         uint8_t *memory() {
-            return reinterpret_cast< uint8_t * >( this ) + sizeof( BaseSize< F > ) - sizeof( int );
+            return reinterpret_cast< uint8_t * >( this ) +
+                ( std::is_empty< F >::value ? 0 : sizeof( F ) );
         }
     };
 
