@@ -101,6 +101,8 @@
 #endif
 #define _PDCLIB_ULLONG_MIN 0
 
+_PDCLIB_BEGIN_EXTERN_C
+
 /* -------------------------------------------------------------------------- */
 /* <stdint.h> exact-width types and their limits                              */
 /* -------------------------------------------------------------------------- */
@@ -388,5 +390,7 @@ struct _PDCLIB_status_t
     _PDCLIB_file_t * stream; /* *fprintf() / *fscanf() stream         */
     _PDCLIB_va_list  arg;    /* argument stack                               */
 };
+
+_PDCLIB_END_EXTERN_C
 
 #endif
