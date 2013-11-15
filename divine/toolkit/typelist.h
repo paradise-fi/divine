@@ -40,8 +40,8 @@ struct Append< _X, TypeList< _T, _Ts... > > {
 template< template< typename > class Cond, typename List >
 struct Filter : public
     std::conditional< Cond< typename List::Head >::value,
-        Filter< Cond, typename List::Tail >,
-        Append< typename List::Head, typename Filter< Cond, typename List::Tail >::T >
+        Append< typename List::Head, typename Filter< Cond, typename List::Tail >::T >,
+        Filter< Cond, typename List::Tail >
     >::type { };
 
 template< template< typename > class Cond >
