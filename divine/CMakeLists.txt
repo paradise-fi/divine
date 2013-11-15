@@ -101,6 +101,7 @@ add_custom_command( TARGET instances-generator POST_BUILD
     COMMENT "Generating instance files"
     VERBATIM )
 target_link_libraries( instances-generator wibble )
+target_link_libraries( instances-generator libdivine )
 
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
@@ -117,6 +118,7 @@ add_library( libdivine-instances STATIC ${SRC_instances} ${SRC_auto_instances} )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
 add_dependencies( libdivine-instances instances-generator )
+target_link_libraries( libdivine-instances libdivine )
 
 wibble_add_test( divine-test ${testh} ${llvmtesth} )
 
