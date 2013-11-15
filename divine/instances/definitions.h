@@ -10,6 +10,7 @@
 
 #include <divine/llvm/support.h>
 #include <divine/explicit/header.h>
+#include <divine/instances/atom.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS
