@@ -177,10 +177,14 @@ struct SymbolListSelector {
         _data->symbols.insert( sym );
     }
 
-    template< typename T, typename TrueFn, typename FalseFn >
-    ReturnType ifSelect( T, TrueFn trueFn, FalseFn falseFn ) {
+    bool trySelect( const Selectable & ) { return false; }
+
+    template< typename TrueFn, typename NotSelAvailFn, typename NotAvailFn >
+    ReturnType ifSelect( const Selectable &, bool, TrueFn trueFn,
+            NotSelAvailFn notSelAvailFn, NotAvailFn notAvailFn )
+    {
         trueFn();
-        return falseFn();
+        return notAvailFn();
     }
 
     template< typename T >
@@ -200,7 +204,7 @@ struct SymbolListSelector {
     auto checkSelected( Selected, const Traits &tr ) -> typename
         std::enable_if< ( Selected::length > 0 ), bool >::type
     {
-        return Selected::Head::trait( tr )
+        return typename Selected::Head().trait( tr )
             && checkSelected( typename Selected::Tail(), tr );
     }
 

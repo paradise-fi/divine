@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/instances/select-impl.h>
-
 #include <divine/instances/create.h>
 #include <divine/instances/auto/extern.h>
 
@@ -15,62 +14,30 @@ struct MetaSelector {
 
     MetaSelector( Meta &meta ) : meta( meta ) { }
 
-    template< typename T >
-    auto postSelect( Meta &meta, T, wibble::Preferred )
-        -> decltype( T::postSelect( meta ) )
-    {
-        T::postSelect( meta );
+    bool trySelect( const Selectable &s ) {
+        return s.trait( Traits::available() ) && s.select( meta );
     }
 
-    template< typename T >
-    auto postSelect( Meta &, T, wibble::NotPreferred ) -> void { }
-
-    template< typename Selected >
-    auto runInits( Meta &meta, Selected )
-        -> typename std::enable_if< ( Selected::length > 0 ) >::type
+    template< typename TrueFn, typename NotSelAvailFn, typename NotAvailFn >
+    ReturnType ifSelect( const Selectable &s, bool warn, TrueFn trueFn,
+            NotSelAvailFn notSelAvailFn, NotAvailFn notAvailFn )
     {
-        runInit( meta, typename Selected::Head(), wibble::Preferred() );
-        runInits( meta, typename Selected::Tail() );
-    }
-
-    template< typename Selected >
-    auto runInits( Meta &, Selected )
-        -> typename std::enable_if< Selected::length == 0 >::type
-    { }
-
-    template< typename T >
-    auto runInit( Meta &meta, T, wibble::Preferred )
-        -> decltype( T::init( meta ) )
-    {
-        T::init( meta );
-    }
-
-    template< typename T >
-    auto runInit( Meta &, T, wibble::NotPreferred ) -> void { }
-
-    template< typename T, typename TrueFn, typename FalseFn >
-    ReturnType ifSelect( T, TrueFn trueFn, FalseFn falseFn ) {
-        if ( T::select( meta ) ) {
-            if ( T::trait( Traits::available() ) ) {
-                postSelect( meta, T(), wibble::Preferred() );
+        if ( s.trait( Traits::available() ) ) {
+            if ( s.select( meta ) ) {
+                s.postSelect( meta );
+                s.init( meta );
                 return trueFn();
-            } else {
-                std::cerr << "WARNING: " << Atom( T() ).friendlyName
+            } else
+                return notSelAvailFn();
+        } else {
+            Meta metacopy( meta );
+            if ( warn && s.select( metacopy ) )
+                std::cerr << "WARNING: " << s.atom().friendlyName
                           << " should be selected, but it is not available" << std::endl
-                          << "(when selecting " << Atom( T() ).component << ")." << std::endl
-                          << "Will try other instances..." << std::endl;
-                return falseFn();
-            }
+                          << "    (when selecting " << s.atom().component << ")." << std::endl
+                          << "    Will try other instances..." << std::endl;
+            return notAvailFn();
         }
-        else
-            return falseFn();
-    }
-
-    template< typename Error >
-    ReturnType instantiationError( Error ) {
-        std::cerr << "FATAL: " << Error::instantiationError( meta ) << std::endl
-                  << "FATAL: Internal instantiation error." << std::endl;
-        return nullptr;
     }
 
     ReturnType instantiationError( std::string component ) {
@@ -88,14 +55,13 @@ struct MetaSelector {
             } );
         std::cerr << "WARNING: Following components of type " << component
                   << " were not selected" << std::endl
-                  << "because " << selected.friendlyName
+                  << "    because " << selected.friendlyName
                   << " has higher priority:" << std::endl
-                  << wibble::str::fmt_container( otherNames, '[', ']' ) << std::endl;
+                  << "    " << wibble::str::fmt_container( otherNames, '[', ']' ) << std::endl;
     }
 
     template< typename Selected >
     ReturnType create() {
-        runInits( meta, Selected() );
         return createInstance< Selected >( meta );
     }
 };

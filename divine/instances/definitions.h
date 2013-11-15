@@ -18,7 +18,7 @@
 namespace divine {
 namespace instantiate {
 
-enum SelectOption { SE_WarnOther = 0x1, SE_LastDefault = 0x2 };
+enum SelectOption { SE_WarnOther = 0x1, SE_LastDefault = 0x2, SE_WarnUnavailable = 0x4 };
 
 template< SelectOption _opts, typename... Ts >
 struct _Select {
@@ -26,6 +26,7 @@ struct _Select {
     constexpr static SelectOption opts = _opts;
     using WarnOtherAvailable = _Select< SelectOption( SE_WarnOther | _opts ), Ts... >;
     using LastAvailableIsDefault = _Select< SelectOption( SE_LastDefault | _opts ), Ts... >;
+    using WarnUnavailable = _Select< SelectOption( SE_WarnUnavailable | _opts ), Ts... >;
 };
 
 template< typename... Ts >
@@ -98,7 +99,7 @@ struct Traits {
 
         U out;
         U au( a ), bu( b );
-        for ( int i = 0; i < out.arr.size(); ++i )
+        for ( int i = 0; i < int( out.arr.size() ); ++i )
             out.arr[ i ] = au.arr[ i ] | bu.arr[ i ];
         return out.tr;
     }
@@ -154,22 +155,28 @@ struct Traits {
 
 using Tr = Traits::Get;
 
-#define TRAIT_STATIC( x ) static bool trait( const Traits &tr ) { return Traits::Get( x )( tr ); }
+#define TRAIT( x ) bool trait( const Traits &tr ) const override { return Traits::Get( x )( tr ); }
+#define ATOM( x ) Atom atom() const override { return Atom( x() ); }
 
 struct NotSelected { };
 
 /* for marking components as missing based on cmake */
 struct _Missing { using Missing = wibble::Unit; };
 
-/* base for isntantiation errors if no component is available */
-struct InstantiationError { };
-
 using Any = True;
+
+struct Selectable {
+    virtual bool select( const Meta &meta ) const = 0;
+    virtual void postSelect( Meta &meta ) const { }
+    virtual void init( Meta &meta ) const { }
+    virtual bool trait( const Traits &tr ) const = 0;
+    virtual Atom atom() const = 0;
+};
 
 namespace algorithm {
     struct IsAlgorithmT { };
 
-#define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS, TR ) struct ALGO { \
+#define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS, TR ) struct ALGO : virtual Selectable { \
         using IsAlgorithm = IsAlgorithmT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "template< typename Setup >\n" \
@@ -177,13 +184,14 @@ namespace algorithm {
         static constexpr const char *key = #ALGO; \
         static constexpr const char *name = NAME; \
         using SupportedBy = Any; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return meta.algorithm.algorithm == meta::Algorithm::Type:: META_ID; \
         } \
-        static void postSelect( Meta &meta ) { \
+        void postSelect( Meta &meta ) const override { \
             meta.algorithm.name = name; \
         } \
-        TRAIT_STATIC( TR ) \
+        TRAIT( TR ) \
+        ATOM( ALGO ) \
     }
 
 #define ALGORITHM( ALGO, META_ID, NAME, HEADER, TR ) \
@@ -201,7 +209,7 @@ namespace algorithm {
 
 
     using Algorithms = Select< NestedDFS, Owcty, Map, Reachability,
-              Metrics, Simulate, GenExplicit, Draw, Info >;
+              Metrics, Simulate, GenExplicit, Draw, Info >::WarnUnavailable;
 #undef ALGORITHM
 #undef ALGORITHM_NS
 }
@@ -209,7 +217,7 @@ namespace algorithm {
 namespace generator {
     struct IsGeneratorT { };
 
-#define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER, TR ) struct GEN { \
+#define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER, TR ) struct GEN : virtual Selectable { \
         using IsGenerator = IsGeneratorT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "using _Generator = ::divine::generator::" #GEN ";\n"; \
@@ -217,14 +225,15 @@ namespace generator {
         static constexpr const char *name = NAME; \
         static constexpr const char *extension = EXTENSION; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return wibble::str::endsWith( meta.input.model, extension ); \
         } \
         \
-        static void postSelect( Meta &meta ) { \
+        void postSelect( Meta &meta ) const override { \
             meta.input.modelType = name; \
         } \
-        TRAIT_STATIC( TR ) \
+        TRAIT( TR ) \
+        ATOM( GEN ) \
     }
 
     GENERATOR( Dve, ".dve", "DVE", Any, "divine/generator/dve.h", &Traits::dve );
@@ -238,24 +247,25 @@ namespace generator {
         GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any,
                 "divine/generator/llvm.h", &Traits::llvm );
 
-        struct LLVMInit {
-            void init( Meta &meta ) {
-                if ( meta.execution.threads > 1 && !llvm::initMultithreaded() )
+        struct LLVMInit : virtual Selectable {
+            void init( Meta &meta ) const override {
+                if ( meta.execution.threads > 1 && !llvm::initMultithreaded() ) {
                     std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
                               << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
                     assert_unreachable( "LLVM error" );
+                }
             }
         };
     }
 
     struct LLVM : intern::LLVM, intern::LLVMInit {
-        static bool select( Meta &meta ) {
+        bool select( const Meta &meta ) const override {
             return intern::LLVM::select( meta ) && !meta.input.probabilistic;
         }
     };
     struct ProbabilisticLLVM : intern::ProbabilisticLLVM, intern::LLVMInit {
-        static bool select( Meta &meta ) {
-            return intern::LLVM::select( meta ) && meta.input.probabilistic;
+        bool select( const Meta &meta ) const override {
+            return intern::ProbabilisticLLVM::select( meta ) && meta.input.probabilistic;
         }
     };
 
@@ -266,13 +276,13 @@ namespace generator {
                 Not< algorithm::GenExplicit >, "divine/generator/explicit.h", &Traits::dess );
     }
     struct Explicit : public intern::Explicit {
-        static bool select( Meta &meta ) {
+        bool select( const Meta &meta ) const override {
             return intern::Explicit::select( meta ) &&
                 dess::Header::fromFile( meta.input.model ).labelSize == 0;
         }
     };
     struct ProbabilisticExplicit : public intern::ProbabilisticExplicit {
-        static bool select( Meta &meta ) {
+        bool select( const Meta &meta ) const override {
             return intern::ProbabilisticExplicit::select( meta )
                 && dess::Header::fromFile( meta.input.model )
                     .capabilities.has( dess::Capability::Probability );
@@ -283,13 +293,13 @@ namespace generator {
         GENERATOR( Dummy, nullptr, "Dummy", Any, "divine/generator/dummy.h", !Tr( &Traits::small ) );
     }
     struct Dummy : public intern::Dummy {
-        static bool select( Meta &meta ) {
+        bool select( const Meta &meta ) const override {
             return meta.input.dummygen;
         }
     };
 
     using Generators = Select< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
-                                 ProbabilisticExplicit, Explicit, Dummy >;
+                 ProbabilisticExplicit, Explicit, Dummy >::WarnUnavailable;
 
 #undef GENERATOR
 }
@@ -297,7 +307,7 @@ namespace generator {
 namespace transform {
     struct IsTransformT { };
 
-#define TRANSFORM( TRANS, SYMBOL, SELECTOR, SUPPORTED_BY, HEADER, TR ) struct TRANS { \
+#define TRANSFORM( TRANS, SYMBOL, SELECTOR, SUPPORTED_BY, HEADER, TR ) struct TRANS : virtual Selectable { \
         using IsTransform = IsTransformT; \
         static constexpr const char *header = HEADER; \
         static constexpr const char *symbol = "template< typename Graph, " \
@@ -305,11 +315,12 @@ namespace transform {
                 "using _Transform = " SYMBOL ";\n"; \
         static constexpr const char *key = #TRANS; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
-        TRAIT_STATIC( TR ) \
+        TRAIT( TR ) \
+        ATOM( TRANS ) \
     }
 
     TRANSFORM( None, "::divine::graph::NonPORGraph< Graph, Store >", true,
@@ -324,24 +335,26 @@ namespace transform {
             "divine/algorithm/por-c3.h", !Tr( &Traits::small ) );
 #undef TRANSFORM
 
-    using Transforms = Select< POR, Fairness, None >::WarnOtherAvailable::LastAvailableIsDefault;
+    using Transforms = Select< POR, Fairness, None >::WarnOtherAvailable
+        ::LastAvailableIsDefault::WarnUnavailable;
 }
 
 namespace visitor {
     struct IsVisitorT { };
 
-#define VISITOR( VISIT, SELECTOR, SUPPORTED_BY, Tr ) struct VISIT { \
+#define VISITOR( VISIT, SELECTOR, SUPPORTED_BY, Tr ) struct VISIT : virtual Selectable { \
         using IsVisitor = IsVisitorT; \
         static constexpr const char *symbol = \
                     "using _Visitor = ::divine::visitor::" #VISIT ";\n" \
                     "using _TableProvider = ::divine::visitor::" #VISIT "Provider;\n"; \
         static constexpr const char *key = #VISIT; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
-        TRAIT_STATIC( Tr ) \
+        TRAIT( Tr ) \
+        ATOM( VISIT ) \
     }
 
     VISITOR( Partitioned, true, Any, &Traits::always );
@@ -349,41 +362,41 @@ namespace visitor {
     VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared, &Traits::always );
 #undef VISITOR
 
-    using Visitors = Select< Shared, Partitioned >::LastAvailableIsDefault;
+    using Visitors = Select< Shared, Partitioned >::LastAvailableIsDefault::WarnUnavailable;
 }
 
 namespace store {
     struct IsStoreT { };
 
-#define STORE( STOR, SELECTOR, SUPPORTED_BY, Tr ) struct STOR { \
+#define STORE( STOR, SELECTOR, SUPPORTED_BY, Tr ) struct STOR : virtual Selectable { \
         using IsStore = IsStoreT; \
         static constexpr const char *symbol = \
             "template < typename Provider, typename Generator, typename Hasher, typename Stat >\n" \
             "using _Store = ::divine::visitor::" #STOR "< Provider, Generator, Hasher, Stat >;\n"; \
         static constexpr const char *key = #STOR; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
-        TRAIT_STATIC( Tr ) \
+        TRAIT( Tr ) \
+        ATOM( STOR ) \
     }
 
 using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
-#ifdef O_COMPRESSION
-    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::C_NTree,
+    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::Compression::Tree,
             ForCompressions, &Traits::ntree );
     STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions, &Traits::hc );
     STORE( DefaultStore, true, Any, &Traits::always );
 
     using Stores = Select< NTreeStore, HcStore, DefaultStore >
-                    ::WarnOtherAvailable::LastAvailableIsDefault;
+            ::WarnOtherAvailable::WarnUnavailable::LastAvailableIsDefault;
 }
 
 namespace topology {
     struct IsTopologyT { };
 
-#define TOPOLOGY( TOPO, SELECTOR, SUPPORTED_BY, Tr ) struct TOPO { \
+#define TOPOLOGY( TOPO, SELECTOR, SUPPORTED_BY, Tr ) struct TOPO : virtual Selectable { \
         using IsTopology = IsTopologyT; \
         static constexpr const char *symbol = \
             "template< typename Transition >\n" \
@@ -394,11 +407,12 @@ namespace topology {
             "};\n"; \
         static constexpr const char *key = #TOPO; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
-        TRAIT_STATIC( Tr ) \
+        TRAIT( Tr ) \
+        ATOM( TOPO ) \
     }
 
 #ifndef O_PERFORMANCE
@@ -418,17 +432,18 @@ namespace topology {
 namespace statistics {
     struct IsStatisticsT { };
 
-#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY, Tr ) struct STAT { \
+#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY, Tr ) struct STAT : virtual Selectable { \
         using IsStatistics = IsStatisticsT; \
         static constexpr const char *symbol = "using _Statistics = ::divine::" #STAT ";\n"; \
         static constexpr const char *key = #STAT; \
         static constexpr const char *header = "divine/utility/statistics.h"; \
         using SupportedBy = SUPPORTED_BY; \
-        static bool select( Meta &meta ) { \
+        bool select( const Meta &meta ) const override { \
             return SELECTOR; \
             static_cast< void >( meta ); \
         } \
-        TRAIT_STATIC( Tr ) \
+        TRAIT( Tr ) \
+        ATOM( STAT ) \
     }
 
     STATISTICS( TrackStatistics, meta.output.statistics, Any, &Traits::always );
@@ -454,6 +469,6 @@ using Instantiate = TypeList<
 }
 }
 
-#undef TRAIT_STATIC
+#undef TRAIT
 
 #endif // DIVINE_INSTANCES_DEFINITIONS
