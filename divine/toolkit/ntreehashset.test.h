@@ -169,6 +169,11 @@ struct TestNTreeHashSet {
         return static_cast< unsigned >( static_cast< unsigned char >( c ) );
     }
 
+    template< typename T >
+    auto valDeref( T t ) -> typename std::remove_reference< decltype( *t ) >::type {
+        return *t;
+    }
+
     Test binary2() {
         TestBase< FakeGeneratorBinary > test;
 
@@ -201,11 +206,13 @@ struct TestNTreeHashSet {
         Blob b2 = root->reassemble( test.pool() );
         assert( test.pool().equal( b, b2 ) );
 
+        auto rootVal = valDeref( root ); // avoid iterator invalidation on insert
+
         assert( !test.insert( b ).isnew() );
 
         auto root2 = test.get( b );
         assert( !root2.isnew() );
-        assert_eq( root->b().raw(), root2->b().raw() );
+        assert_eq( rootVal.b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -258,11 +265,13 @@ struct TestNTreeHashSet {
         Blob b2 = root->reassemble( test.pool() );
         assert( test.pool().equal( b, b2 ) );
 
+        auto rootVal = valDeref( root );
+
         assert( !test.insert( b ).isnew() );
 
         auto r = test.get( b );
         assert( !r.isnew() );
-        assert_eq( root->b().raw(), r->b().raw() );
+        assert_eq( rootVal.b().raw(), r->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -302,11 +311,13 @@ struct TestNTreeHashSet {
             assert_eq( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
         assert( test.pool().equal( b, b2 ) );
 
+        auto rootVal = valDeref( root );
+
         assert( !test.insert( b ).isnew() );
 
         auto root2 = test.get( b );
         assert( !root2.isnew() );
-        assert_eq( root->b().raw(), root2->b().raw() );
+        assert_eq( rootVal.b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -404,27 +415,27 @@ struct TestNTreeHashSet {
         TestBase< FakeGeneratorFixed > test{ 32, 5, 4, 3, 2, 1 };
 
         Blob b32 = randomBlob( 32, test.pool() );
-        auto r32 = *test.insert( b32 );
+        auto r32 = valDeref( test.insert( b32 ) );
         assert( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
 
         Blob b37 = randomBlob( 37, test.pool() );
-        auto r37 = *test.insert( b37 );
+        auto r37 = valDeref( test.insert( b37 ) );
         assert( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
 
         Blob b41 = randomBlob( 41, test.pool() );
-        auto r41 = *test.insert( b41 );
+        auto r41 = valDeref( test.insert( b41 ) );
         assert( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
 
         Blob b44 = randomBlob( 44, test.pool() );
-        auto r44 = *test.insert( b44 );
+        auto r44 = valDeref( test.insert( b44 ) );
         assert( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
 
         Blob b46 = randomBlob( 46, test.pool() );
-        auto r46 = *test.insert( b46 );
+        auto r46 = valDeref( test.insert( b46 ) );
         assert( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
 
         Blob b47 = randomBlob( 47, test.pool() );
-        auto r47 = *test.insert( b47 );
+        auto r47 = valDeref( test.insert( b47 ) );
         assert( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
     }
 
