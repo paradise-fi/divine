@@ -237,7 +237,7 @@ llvm_verify_file() {
     test "$t" == invalid && {
         check reachability_goal
         test -n "$what" && \
-            grep -A 50 '== The goal ==' progress | grep -i "^$where" | grep "$what"
+            grep -a -A 50 '== The goal ==' progress | grep -a -i "^$where" | grep -a "$what"
     }
     check clear
 }
