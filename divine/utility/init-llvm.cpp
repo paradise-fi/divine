@@ -2,6 +2,8 @@
 #include <llvm/Support/Threading.h>
 #endif
 
+#include <wibble/test.h>
+
 namespace divine {
 namespace llvm {
 
