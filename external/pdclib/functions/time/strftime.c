@@ -45,6 +45,17 @@
  * January 1996
  */
 
+#ifdef __divine__
+#include <divine.h>
+
+size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
+{
+    __divine_problem( 9, 0 );
+    return 0;
+}
+
+#else
+
 #ifndef GAWK
 #include <stdio.h>
 #include <ctype.h>
@@ -660,3 +671,4 @@ out:
                 return 0;
 }
 
+#endif
