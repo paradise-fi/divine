@@ -190,7 +190,8 @@ as well, using the same path used in your invocation.
 State Space Metrics, Visualisation & Exploration
 ------------------------------------------------
 
-    divine metrics [--reduce=R] [--no-reduce] [--fair] [--report]
+    divine metrics [--reduce=R] [--no-reduce] [--fair]
+                   [--report[=<report format>] | -r]
                    [--property=N] [--fair]
                    [engine options]
                    <model file>
@@ -199,7 +200,7 @@ The `metrics` sub-command runs a simple reachability on the entire state space
 of a system, reporting summary statistics. This is the most efficient algorithm
 in DIVINE that explores the state space, both in terms of memory and CPU,
 although only by a slight margin. See [next section](#model-checking) on
-details of the model-related switches.
+details of the model-related switches and reporting.
 
     divine draw [--distance=N] [--trace=N,N,N...]
                 [-l|--labels|--trace-labels]
@@ -237,7 +238,7 @@ Model Checking
                   [--property=<name> | -p <name>]
                   [--fair]
                   [--reduce=<reduction>]
-                  [--report | -r]
+                  [--report[=<report format>] | -r]
                   [--no-counterexample | -n]
                   [--display-counterexample | -d]
                   [engine options]
@@ -287,9 +288,45 @@ input file.
 :    Disable generation of counterexamples. This is mainly
      useful for benchmarking verification speed.
 
-`--report | -r`
+`--report[=<report format>] | -r`
 :    At the end of a verification run, produce a comprehensive,
      machine-readable report.
+
+     There are several formats of reports supported by DIVINE.
+     Also it is possible to specify `--report` option repeatedly
+     to get multiple reports (for example to file and on console).
+
+     The value of `<report format>` can be one of:
+
+     `text`
+     :    Report good for both machine and human readability, produced
+          on standard output.
+
+     `text:file`
+     :    Same as `text` but output is saved to given file (which is overriden
+          if already present).
+
+     `plain`
+     :    Similar to `text` but optimized for machine readability, without
+          empty lines.
+
+     `plain:file`
+     :    `plain` into file.
+
+     `sql:table:ODBC connection string`
+     :    Report is saved into given table of database, ODBC with given
+          connection string is used to connect to database. This feature
+          requires DIVINE compiled with ODBC support.
+
+          The report is saves as follows: for every line of report (in text
+          format) the table column name is derived from value name (which
+          is converted to lowercase and all non alphanumeric characters are
+          converted to underscode). Then table is queried for available column
+          names and columns which are both in table and in report are saved
+          (as text).
+
+          If table is not present DIVINE will attempt to create it.
+          Automatically created table will contain all collumns of report.
 
 State Space Compression
 -----------------------
