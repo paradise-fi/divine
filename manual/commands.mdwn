@@ -132,6 +132,7 @@ them in this section.
                             [--seed=N]
                             [-i N|--initial-table=N]
                             [--hash-compaction]
+                            [--compression]
 
 `-w N | --workers=N`
 :    The number of threads to use for verification. The default is 2. For optimal
@@ -161,6 +162,12 @@ them in this section.
 :    Print realtime statistics during verification, optionally using curses for
      neater output. Useful as entertainment, for diagnosing performance issues
      and to impress laymen.
+
+`--compression`
+:    Use lossless compression of state space to reduce memory consumption of
+     verification. The default compression method is tree compression.
+     See [state space compression](#state-space-compression)
+     on details of compression.
 
 Distributed Execution
 ---------------------
@@ -199,6 +206,7 @@ details of the model-related switches.
                 [--bfs-layout]
                 [--reduce=R] [--no-reduce] [-f|--fair]
                 [--render=<cmd>|-r <cmd>]
+                [--compression]
 
 To visualise (a part of) the state space, you can use `divine draw`, which
 creates a graphviz-compatible representation. By default, it will run "`dot
@@ -282,3 +290,22 @@ input file.
 `--report | -r`
 :    At the end of a verification run, produce a comprehensive,
      machine-readable report.
+
+State Space Compression
+-----------------------
+DIVINE supports lossless state space compression based on tree compression.
+This compression mechanism is particularly efficient on large models with
+relatively large size of one state. Therefore LLVM and timed automata
+verification benefits the most from state space compression -- the compression
+is often capable of reducing large state spaces (several gigabytes and more)
+to less than tenth of original size. Also, for these modelling formalisms
+time overhead from compression is usually negligible.
+
+The compression is supported by all verification algorithms and can be enabled
+by `--compression` switch (or `--compression=tree`). The following DIVINE
+commands allow compression option: `metrics`, `verify`, `gen-explicit`, `draw`.
+
+There are no limitations on other options implied by use of compression,
+it is supported with parallel verification (including MPI), however
+to achieve best compression ratio it is recommended to use shared verification
+option (`--shared`) if possible.
