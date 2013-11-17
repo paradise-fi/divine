@@ -110,12 +110,14 @@ h1 #trac { color: darkred; }
     /* background-image: url('trac-logo.png'); */
 }
 
-#hydra table thead {
-    display: none;
-}
-
-#hydra table td { padding-left: 1em; }
-#hydra table .wide { width: 23em; }
+table.hydra td { padding-left: 1em; text-align: center; border-bottom: 1px dotted gray; }
+table.hydra td.job { padding-left: 1em; text-align: right; font-weight: bold; }
+table.hydra .wide { width: 23em; }
+a.good:link, a.good:visited { color: green; }
+a.build:link, a.build:visited { color: red; }
+a.deps:link, a.deps:visited { color: #808000; }
+a.aborted:link, a.aborted:visited { color: #A0A000; }
+a.tests:link, a.tests:visited { color: purple; }
 
 #changes h2 { font-size: 110%; margin-top: .8ex; margin-bottom: .4ex; font-weight: normal; }
 #changes dl { margin-top: .3ex; margin-bottom: .3ex; margin-left: 1em; }

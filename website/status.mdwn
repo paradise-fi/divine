@@ -1,65 +1,123 @@
-Latest Changes
+Current Builds
 ==============
 
-<div id="changes">(loading, please wait)</div>
-
-Latest Builds
-=============
-
-Click on the build number to inspect logs and/or download outputs.
-
-<div id="hydra">
+**Debug** builds have debug symbols, assertions enabled and no compiler
+optimisations. **Release** builds have debug symbols, but no assertions and
+compiler optimisations enabled.
 
 Mainline
 --------
 
-**Debug** builds (with debug symbols, assertions enabled and no compiler
-optimisations):
-
-<div id="mainline-debug">(loading, please wait)</div>
-
-**Release** builds (with debug symbols, but with no assertions and with compiler
-optimisations enabled):
-
-<div id="mainline-release">(loading, please wait)</div>
+<table class="hydra" id="mainline"></table>
 
 Release Branch
 --------------
 
 Builds from the currently active release branch.
 
-**Debug** builds (with debug symbols, assertions enabled and no compiler
-optimisations):
+<table class="hydra" id="branch-3_0"></table>
 
-<div id="branch-3_0-debug">(loading, please wait)</div>
+Latest Changes
+==============
 
-**Release** builds (with debug symbols, but with no assertions and with compiler
-optimisations enabled):
+<div id="changes">(loading, please wait)</div>
 
-<div id="branch-3_0-release">(loading, please wait)</div>
-
+<!--
 Latest Release
 --------------
 
 Builds of the latest release tarball. Only release-mode builds are available
 here (no assertions, *no debug symbols*, compiler optimisation enabled):
 
-<div id="release">(loading, please wait)</div>
-</div>
+<table id="release"></table>
+-->
 
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script type="text/javascript">
+  var base = 'http://divine.fi.muni.cz/hydra/';
+  function bs(s) {
+      if ( s == 0 ) return "good";
+      if ( s == 1 ) return "build error";
+      if ( s == 2 ) return "dependency";
+      if ( s == 3 ) return "aborted";
+      if ( s == 4 ) return "4";
+      if ( s == 5 ) return "5";
+      if ( s == 6 ) return "tests failed";
+      return "??";
+  }
+  function bc(s) {
+      if ( s == 0 ) return "good";
+      if ( s == 1 ) return "build";
+      if ( s == 2 ) return "deps";
+      if ( s == 3 ) return "aborted";
+      if ( s == 6 ) return "tests";
+      return "";
+  }
+
   function hydra(what) {
-      $('#hydra #'+ what).load('http://divine.fi.muni.cz/hydra/jobset/divine/' + what + '/jobstatus table', function() {
-          $('#hydra table td:nth-child(4)').addClass("invisible");
-      });
+      function setupbuild(job) {
+          var row = '<tr class="' + job + '">';
+          row += '<td class="job">' + job + '</td>';
+          row += '<td class="i686-linux_debug"></td>';
+          row += '<td class="i686-linux_release"></td>';
+          row += '<td class="x86_64-linux_release"></td>';
+          row += '<td class="x86_64-linux_debug"></td>';
+          row += '</tr>';
+          $('table#' + what).append( row );
+      }
+
+      function getbuild(eval, job, sys, type) {
+          function renderbuild(builds) {
+              if ( builds.length == 0 ) return;
+              var build = builds[0];
+              var type = build.jobset.replace(/.*-/, "");
+              var current = 0;
+              for ( var i = 0; i < build.evals.length; ++i )
+                  if ( eval == build.evals[i] )
+                      current = 1;
+
+              console.log( "build.job = " + build.job + ", type = " + type + ", system = " + build.system );
+              $('table#' + what + ' .' + build.job + ' .' + build.system + '_' + type).html(
+                (current ? "" : "(") +
+                '<a href="' + base + 'build/' + build.id + '" class="' + bc( build.buildstatus ) + '">' +
+                bs( build.buildstatus ) + '</a>' + (current ? "" : ")") );
+          }
+
+          $.getJSON(base + 'api/latestbuilds?nr=1&project=divine&system=' + sys + '&jobset='
+                              + what + '-' + type + '&job=' + job, renderbuild );
+      }
+
+      $.getJSON(base + 'api/latestevals?nr=1&project=divine&jobset=' + what + '-debug',
+          function(evals) {
+              console.log( "eval id = " + evals[0].id );
+              $.getJSON(base + 'api/jobs?project=divine&jobset=' + what + '-debug&eval=' + evals[0].id,
+                  function(jobs) {
+                      if ( jobs.length == 0 ) return;
+                      $('table#'+ what).html('<tr><td class="job">job</td>' + 
+                          '<td>i686 debug</td><td>i686 release</td>' +
+                          '<td>x64 debug</td><td>x64 release</td></tr>');
+                      for ( var i = 0; i < jobs.length; ++i ) {
+                          setupbuild(jobs[i].name);
+                          getbuild(evals[0].id, jobs[i].name, "i686-linux", "debug");
+                          getbuild(evals[0].id, jobs[i].name, "i686-linux", "release");
+                          getbuild(evals[0].id, jobs[i].name, "x86_64-linux", "debug");
+                          getbuild(evals[0].id, jobs[i].name, "x86_64-linux", "release");
+                      }
+                  }
+              );
+          }
+      );
+      /* act.done( function() {
+          $.getJSON(jobsuri("project=divine&jobset=" + what), function(builds)
+              {
+              }
+          );
+      } ); */
   }
 
   $('#changes').load('http://divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
-  hydra("mainline-debug");
-  hydra("mainline-release");
-  hydra("branch-3_0-debug");
-  hydra("branch-3_0-release");
+  hydra("mainline");
+  hydra("branch-3_0");
   hydra("release");
 </script>
 
