@@ -328,6 +328,29 @@ input file.
           If table is not present DIVINE will attempt to create it.
           Automatically created table will contain all collumns of report.
 
+DIVINE Explicit State Space Generator
+----------------------------------
+    divine gen-explicit [--fair] [--reduce=<reduction>]
+                        [--report[=<report format>]]
+                        [engine options]
+                        [--no-save-states]
+                        [-o <file> | --output=<file>]
+
+The `gen-explicit` subcommand can be used to generate whole state-space
+of model into file which can then be processed either by DIVINE or any other
+tool capable of loading
+[DIVINE Explicit State Space Format](#divine-explicit-state-space-format).
+
+The output file contains both forward and backward edges of state space
+and may contain also memory of nodes of state space. Please note that
+output file is approximately as big as the amount of memory required for
+verification itself (it is smaller if states are omitted).
+
+The `gen-explicit` command can run in parallel and can use MPI, but
+it is not yet supported in conjunction with `--shared` option.
+If `gen-explicit` is used over MPI it expects that output file is located
+on shared filesystem (for example NFS).
+
 State Space Compression
 -----------------------
 DIVINE supports lossless state space compression based on tree compression.
