@@ -103,12 +103,22 @@ The source code is currently laid out like this:
 * **divine/** contains sources and headers of the verification & state space
   generation framework and actual model checking algorithms
 
-  * **divine/legacy/** contains code from original DiVinE library, among
-    others the DVE state space generator and utilities it requires
   * **divine/algorithm/** contains model checking algorithm implementations (the
     model checking frontend)
-  * **divine/generator/** contains the implementations of state space generators (the
-    backends)
+  * **divine/generator/** contains the implementations of state space
+      generators (the backends)
+  * **divine/llvm/** contains the implementation of LLVM interpreter for
+      verification of C and C++ using LLVM bitcode
+  * **divine/timed** contains the implementation of UppAll timed automata format
+      for DIVINE.
+  * **divine/dve/** contains the implementation of DVE interpreter for
+      verification of DVE format.
+  * **divine/coin/** contains the implementation of CoIn interpreter for
+      verification of CoIn models.
+  * **divine/cesmi/** contains the implementation of CESMI interface.
+  * **divine/explicit/** contains the implementation of [DESS format](#divine-explicit-state-space-format).
+  * **divine/utility/** contains implementation of DIVINE specific utility
+      functions.
   * **divine/ltl2ba/** contains an implementation of the LTL to Büchi translator
 
 * **tools/** is for binaries
@@ -117,8 +127,8 @@ The source code is currently laid out like this:
   * **tools/simple.cpp** is the entry point of the Simple algorithm (see also
     divine/algorithm/simple.h)
 
-* **murphi/** has the core of the murphi compiler for divine
-* **hoard/** is Emery Berger's HOARD multi-threaded allocator
+* **external/** the external code used in DIVINE such as the libc++ library,
+    the murphi compiler for divine, or the parallel allocators.
 * **wibble/** is the wibble C++ library used for threading, command line
   parsing and a couple of other utilities used throughout the code
 * **gui/** is the Qt graphical interface of divine
@@ -128,7 +138,7 @@ detail.
 
 ### Wibble
 
-Divine uses libwibble, a general-purpose utility library for C++ for several
+DIVINE uses libwibble, a general-purpose utility library for C++ for several
 things. Most importantly, the threading abstraction is provided by this library
 and comes with a pthread-based and a win32-based implementation.
 
@@ -148,9 +158,15 @@ exploration, but is geared toward high-performance computing.
   without locking. Used by parallel.h to implement inter-thread communication.
 * **hashset.h**: The current implementation of a hash table for use as a
   set. Primarily intended to use with **Blob** objects.
+* **ntreehashset.h** The implementation of tree compressed hash set
+  to facilitate lossless state space compression. It uses either
+  hashset or concurrentset backend.
+* **concurrentset.h** The implementation of high-performance shared memory
+  resizeable hash table.
 * **blob.h**: A semi-smart pointer. Addresses an object with known size and a
   couple of flag bits. No reference counting.
-* **pool.h**: A very fast, very simple allocator, suitable for allocating huge
+* **pool.h**: A very fast **Blob** object allocator designed for efficient
+  handling of short-lived objects. It is suitable for allocating huge
   numbers of objects that only come in a small number of different sizes.
 * **rpc.h**: A generic but very simple marshalling/demarshalling layer, used in
   implementing MPI.
@@ -184,11 +200,13 @@ builds heavily on the parallel primitives from **toolkit**.
   goal states. (See also section on generators below.)
 * **metrics.h**: A very efficient parallel state space generator. Suitable for
   obtaining state space statistics and for benchmarking.
+* **genexplicit.h**: Algorithm used to generate the DESS explicit state
+  space format.
 
 ### Generators
 
 The state space generators, or system interpreters, are a major part of
-DiVinE. Each is usually split into two parts, the bulk of the implementation of
+DIVINE. Each is usually split into two parts, the bulk of the implementation of
 a given language living under its own subdirectory in **divine/**, and a
 comparatively small *adaptor* -- a piece of code that implements a standardised
 graph-traversal interface on top of the interpreter -- found under
@@ -199,11 +217,13 @@ The currently available generators are:
 * **divine/cesmi**: Not a language interpreter, but a binary interface for
   shared objects. See the [user manual] [8] for the specification of its
   API/ABI.
-* **divine/dve**: The DVE language. The most traditional of DiVinE input
+* **divine/dve**: The DVE language. The most traditional of DIVINE input
   languages.
 * **divine/timed**: Interpreter for UPPAAL Timed Automata.
 * **divine/llvm**: LLVM bitcode interpreter, suitable for verifying C(++) code.
 * **divine/coin**: CoIn, aka Component-Interaction Automata.
+* **divine/explicit**: Simple generator for loading DESS (DIVINE explicit
+  state space) files.
 
 [8]: manual.html#the-cesmi-specification
 
@@ -221,12 +241,12 @@ point of the combined system.
 
 ### LTL to Büchi translation
 
-In order to perform LTL model checking, DiVinE needs to translate LTL formulas
+In order to perform LTL model checking, DIVINE needs to translate LTL formulas
 into Büchi automata. There are currently two components which implement this
-translation, the "traditional" ltl2ba which has been part of DiVinE since
+translation, the "traditional" ltl2ba which has been part of DIVINE since
 forever, found in **divine/ltl2ba** and a "modern" implementation based on the
 unrelated external tool called, confusingly, "LTL2BA". The implementation
-shipped with DiVinE is however called LTL3BA and is found in
+shipped with DIVINE is however called LTL3BA and is found in
 **external/ltl3ba**. There is a compile time option to enable/disable LTL3BA.
 
 ### Tools
@@ -241,26 +261,23 @@ modules may move to the library over time.
 * **compile.h**, **compile.cpp**: Entry point of the model compiler. Calls into
   either the DVE or the Murphi compiler to generate C++ code and executes an
   external C++ compiler on the result.
-* **dvecompile.cpp**: Implementation of a DVE to C++ compiler.
 * **compile-pml.pl**, **packjars.pl**: Parts of an external Java-based ProMeLa
   compiler. Currently not part of `divine compile`, only available as a
   standalone tool.
 * **combine.h**: Implementation of `divine combine`. Calls out to (external)
   `cpp`, `m4` and into the ltl2ba part of the divine library to translate
   dve/mdve/ltl files into raw DVE.
-* **simple.cpp**: A stand-alone implementation of a very simple parallel,
-  shared-memory reachability. Mainly useful for pedagogical purposes.
 
 ### GUI
 
 Finally, the **gui** directory contains the sources of a graphical user
-interface for the DiVinE tool, based on Qt 4.x. Comes with a DVE simulator and
+interface for the DIVINE tool, based on Qt 4.x. Comes with a DVE simulator and
 counterexample browser.
 
 Debugging
 ---------
 
-When debugging DiVinE with **`gdb`**, no special precautions are usually
+When debugging DIVINE with **`gdb`**, no special precautions are usually
 needed. You however probably want a build with debugging enabled and
 optimisations disabled: pass `-DCMAKE_BUILD_TYPE=Debug` to obtain such a
 build. This also enables assertion checking, which is definitely useful for
@@ -268,5 +285,5 @@ debugging.
 
 Moreover, when using **`valgrind`** to hunt down leaks and/or memory
 corruption, it is often desirable do disable custom memory management: pass
-`-DHOARD=OFF` and `-DPOOLS=OFF` (in addition to the above) at configure time to
+`-DTBBMALLOC=OFF` (in addition to the above) at configure time to
 achieve this.
