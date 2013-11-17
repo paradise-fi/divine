@@ -60,7 +60,8 @@ let
             { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
-                   (if lib.eqStrings name "llvm" || lib.eqStrings name "full"
+                   (if lib.eqStrings name "llvm" || lib.eqStrings name "full" ||
+                       lib.eqStrings name "medium"
                       then [ "-DCMD_CLANG=${pkgs.clangUnwrapped}/bin/clang"
                              "-DCMD_AR=${pkgs.binutils_gold}/bin/ar"
                              "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
