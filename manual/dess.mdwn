@@ -1,0 +1,156 @@
+DIVINE Explicit State Space Format
+==================================
+
+The DIVINE Explicit State Space (DESS) format is format of explicit graph
+representation which can be generated from the 
+[`gen-explicit` command](#divine-explicit-state-space-generator).
+It can also be used as input formalism for DIVINE or as standardised way
+to represent models, largely independent of DIVINE.
+
+The DESS file contains fixed header and graph encoding, which consists
+of following sections (at least one of edges section must be present):
+forward edges, backward edges, node memory. The edge sections are model
+independent, the node memory section is model (and DIVINE version)
+dependent.
+
+Graph encoding
+--------------
+
+In DESS format graph is encoded as transition relation on set of sequentially
+numbered vertices. Since vertices are numbered sequentially is is sufficient
+to only give their count to describe the set. The transitions (edges) are oriented,
+encoded as one-to-many mapping of outgoing transitions for each vertex.
+
+The first vertex of graph has index 1.
+
+### Initial states of model
+To represent uniquely initial states of models independent of their count,
+an additional virtual vertex with index 0 is added to states of model.
+This vertex has outgoing edges to the initial vertices of state space.
+
+### Transpose graph
+The DESS format may also contain transpose of graph, which is then encoded
+the same way as the original graph and edges in transposed graph correspond
+to backward edges of original graph. Notably all initial states of original
+graph have edge to virtual state 0.
+
+Header format
+-------------
+The header has length of 128B and following format:
+
+    +--------------------------------+--------------------------------+
+    | DESS identification string (40B)                                |
+    |                                                                 |
+    |                                                                 |
+    |                                                                 |
+    |                                                                 |
+    +--------------------------------+--------------------------------+
+    | byte order check (8B)                                           |
+    +--------------------------------+--------------------------------+
+    | DESS version (4B)              | label size (4B)                |
+    +--------------------------------+--------------------------------+
+    | supported features (8B)                                         |
+    +--------------------------------+--------------------------------+
+    | generator identifier string (24B)                               |
+    |                                                                 |
+    |                                                                 |
+    +--------------------------------+--------------------------------+
+    | node count (8B)                                                 |
+    +--------------------------------+--------------------------------+
+    | data start offset (8B)                                          |
+    +--------------------------------+--------------------------------+
+    | forward edges offset (8B)                                       |
+    +--------------------------------+--------------------------------+
+    | backward edges offset (8B)                                      |
+    +--------------------------------+--------------------------------+
+    | nodes offset (8B)                                               |
+    +--------------------------------+--------------------------------+
+
+All non-string values are saved as signed integers of given length,
+the only exception is byte order check which is unsigned integer.
+
+DESS identification string
+:   String allowing to identify DESS file. It reads
+    "`DIVINE COMPACT EXPLICIT STATE SPACE`."
+
+byte order check
+:   This field is used to verify endianity of DESS file, it should
+    contain value `0x0807060504030201`.
+
+DESS version
+:   Currently set to 1, in future will be used if new revision of header format
+    will be necessary.
+
+label size
+:   Size of edge labels saved with edges, in bytes. Those labels are model
+    specific.
+
+supported features
+:   Bitwise or of flags of supported features, as of DIVINE 3.1, following
+    features can be set (together with their value):
+
+    `ForwardEdges = 0x1`
+    :   file contains encoding of forward edges
+
+    `BackwardEdges = 0x2`
+    :   file contains encoding of bacward edges
+
+    `Nodes = 0x4`
+    :   file constains memory of states
+
+    `UInt64Labels = 0x100`
+    :   labels are encoded in unsigned 64 bit integers
+
+    `Probability = 0x200`
+    :   labels are probabilities
+
+generator identifier string
+:   String uniquely identifying generator used to create DESS file.
+
+node count
+:   Number of nodes (vertices) of graph. The graph nodes are numbered
+    from 1 to *node count* with additional virtual vertex 0
+    [used to mart initial vertices](#initial-states-of-model).
+
+data start offset
+:   Offset from beginning of file to the beginning of data, in bytes (it equals
+    size of header for files generated by DIVINE 3.1).
+
+forward edges offset
+:   Offset of forward edges data block from data start offset, in bytes.
+
+backward edges offset
+:   Offset of backward edges data block from data start offset, in bytes.
+
+nodes offset
+:   Offset of nodes data block from data start offset, in bytes.
+
+
+
+Data block format
+-------------------
+
+Data block is encoding of array of variable sized data. It consists of
+two sections: indices and data.
+
+Indices section is fixed size, containing exactly *node count* 64bit indices to
+data section. Data section starts at offset 8 * *node count* bytes. Value on
+*i*th position in index section is offset of end of *i*th data field, measured
+in bytes from beginning of data section. Therefore *i*th value begins on offset
+specified by (*i*--1)th index or at the beginning of data section for *i*=0.
+
+The exact meaning of data in data block depends on encoded values, which are
+either edges or nodes.
+
+### Edge data format
+
+In the case of edge data, the value corresponding to *i*th index encodes edges
+outgoing from *i*th vertex, each value being tuple of 64bit vertex index and
+optional label (of size *label size*).
+
+### Node data format
+
+In the case of node data, the value corresponding to *i*th index is
+implementation defined encoding of vertex with index *i*. There are currently
+no guarantees on compatibility of node data across different versions of DIVINE.
+
