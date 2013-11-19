@@ -398,7 +398,7 @@ struct Evaluator
         MemoryFlag _flag;
         static const int arity = 1;
 
-        template< typename X = int >
+        template< typename X = Arg >
         auto operator()( X &r = Dummy< X >::v() )
             -> decltype( declcheck( static_cast< X >( v ) ) )
         {
