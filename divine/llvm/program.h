@@ -56,6 +56,7 @@ struct PC : wibble::mixin::Comparable< PC >
     explicit operator uint32_t() const {
         return *reinterpret_cast< const uint32_t * >( this );
     }
+    explicit operator uint64_t() const { return uint32_t( *this ); }
 };
 
 /*
@@ -82,6 +83,7 @@ struct Pointer : wibble::mixin::Comparable< Pointer >
     explicit operator uint32_t() const {
         return *reinterpret_cast< const uint32_t * >( this );
     }
+    explicit operator uint64_t() const { return uint32_t( *this ); }
 
     explicit Pointer( uint32_t x ) {
         union U {
