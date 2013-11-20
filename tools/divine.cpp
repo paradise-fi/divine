@@ -286,8 +286,9 @@ struct Main {
             "consider only weakly fair executions" );
 
         o_compression = compression->add< OptvalStringOption >(
-                "compression", '\0', "compression", "",
-                "configure state compression [default = none], available: none, tree" );
+            "compression", '\0', "compression", "",
+            "configure state space compression; available: none, tree; "
+            "default is none if --compression is not specified, tree otherwise" );
 
         o_initable = common->add< IntOption >(
             "initial-table", 'i', "initial-table", "",
@@ -319,8 +320,10 @@ struct Main {
                 "Force use of MPI (in case it is not detected properly)" );
 
         o_demangle = common->add< OptvalStringOption >(
-                "demangle", 0, "demangle", "",
-                "Demagle style of symbols (only for LLVM verification) [default=none, available=node,cpp]" );
+            "demangle", 0, "demangle", "",
+            "Demagle style of symbols (only for LLVM verification), "
+            "available=node,cpp; default is none if --demangle in not "
+            "specified, cpp otherwise" );
 
         // definitions
         o_definitions = definitions->add< VectorOption< String > >(
