@@ -230,8 +230,8 @@ struct Main {
                                        "<input>",
                                        "explore a state-space interactively" );
         cmd_genexplicit = opts.addEngine( "gen-explicit",
-                                      "<input>",
-                                      "convert state-space to explicit representation" );
+                                          "<input>",
+                                          "convert state-space to explicit representation" );
 
         common = opts.createGroup( "Common Options" );
         drawing = opts.createGroup( "Drawing Options" );
@@ -250,11 +250,11 @@ struct Main {
 
         o_report = common->add< OptvalStringVectorOption >(
             "report", '\0', "report", "", "output report, one of:\n"
-                "text (stdout, human readable),\n"
-                "text:<filename> (text into file),\n"
-                "plain (stdout, same as text but without empty lines),\n"
-                "plain:<filename> (plain into file),\n"
-                "sql:<table>:<ODBC connection string> (write report to database -- see manual for details)" );
+            "text (stdout, human readable),\n"
+            "text:<filename> (text into file),\n"
+            "plain (stdout, same as text but without empty lines),\n"
+            "plain:<filename> (plain into file),\n"
+            "sql:<table>:<ODBC connection string> (write report to database -- see manual for details)" );
 
         o_workers = common->add< IntOption >(
             "workers", 'w', "workers", "",
@@ -316,8 +316,8 @@ struct Main {
             "select a property [default=deadlock]" );
 
         o_mpi = common->add< BoolOption >(
-                "mpi", 0, "mpi", "",
-                "Force use of MPI (in case it is not detected properly)" );
+            "mpi", 0, "mpi", "",
+            "Force use of MPI (in case it is not detected properly)" );
 
         o_demangle = common->add< OptvalStringOption >(
             "demangle", 0, "demangle", "",
@@ -531,14 +531,16 @@ struct Main {
         if ( s == "none" ) return meta::Algorithm::Compression::None;
         if ( s == "tree" ) return meta::Algorithm::Compression::Tree;
         if ( s == "ntree" ) return meta::Algorithm::Compression::Tree;
-        throw wibble::exception::OutOfRange( "compression", "'" + s + "' is not a known compression type" ); // TODO: allowed
+        throw wibble::exception::OutOfRange( "compression", "'" + s
+                + "' is not a known compression type" ); // TODO: allowed
     }
 
     graph::DemangleStyle parseDemangle( std::string s ) {
         if ( s.empty() ) return graph::DemangleStyle::Cpp;
         if ( s == "cpp" ) return graph::DemangleStyle::Cpp;
         if ( s == "none" ) return graph::DemangleStyle::None;
-        throw wibble::exception::OutOfRange( "demangle", "'" + s + "' is not supported demangle style [available = none, cpp]" );
+        throw wibble::exception::OutOfRange( "demangle", "'" + s
+                + "' is not supported demangle style [available = none, cpp]" );
     }
 
     void parseCommandline()
