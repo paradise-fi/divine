@@ -81,6 +81,8 @@ let
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
+          cp -R test/results $out/test-results && \
+            echo "report tests $out/test-results" >> $out/nix-support/hydra-build-products || true
           make lcov-report && \
             cp -R lcov-report $out/ && \
             echo "report coverage $out/lcov-report" >> $out/nix-support/hydra-build-products || \
