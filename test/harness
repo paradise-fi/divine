@@ -38,6 +38,8 @@ goodsub=0
 skipcount=0
 ran=0
 
+mkdir -p results
+echo -n > results/list
 for t_ in $tests; do
     # cut+rev is nicer but the latter's in util-linux
     t=`echo $t_ | sed -e 's,.*/\([^/]\+/[^/]\+\)$,\1,'`
@@ -48,10 +50,12 @@ for t_ in $tests; do
     printf "Running %-40s" "$t ..."
     outf=`mktemp output.XXXXXX`
     if test -n "$INTERACTIVE"; then bash $t_ ; else  bash $t_ > $outf 2>&1; fi
+
     ret=$?
     sub=$(grep -c "^#### PASSED" $outf)
     goodsub=$(($goodsub + $sub))
     if test $ret = 0; then
+        result=good
         good=$(($good + 1))
         if test "$sub" -ne 0; then
 	    echo " passed $sub subtests."
@@ -59,11 +63,13 @@ for t_ in $tests; do
             echo " passed."
         fi
     elif test $ret = 200; then
+        result=skipped
         ran=$(($ran - 1))
         skipcount=$(($skipcount + 1))
         skipped="$skipped $t"
 	echo " skipped."
     else
+        result=failed
 	echo " FAILED!"
 	len=`echo $t | wc -c`
 	# fancy formatting...
@@ -78,6 +84,10 @@ for t_ in $tests; do
 	for i in `seq $(($len + 14)) 78`; do echo -n "-"; done; echo
 	failed="$failed $t"
     fi
+
+    echo "$t $result" >> results/list
+    cp $outf "results/$(echo $t | sed -e s,/,_,g).txt"
+
     rm -f $outf
 done
 
