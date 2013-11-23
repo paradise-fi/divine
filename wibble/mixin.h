@@ -40,6 +40,37 @@ struct Comparable {
     // bool operator<=( const Self &o ) const { return this <= &o; }
 };
 
+#if __cplusplus >= 201103L
+template< typename Self >
+struct LexComparable {
+    const Self &lcSelf() const { return *static_cast< const Self * >( this ); }
+
+    bool operator==( const Self &o ) const {
+        return lcSelf().toTuple() == o.toTuple();
+    }
+
+    bool operator!=( const Self &o ) const {
+        return lcSelf().toTuple() != o.toTuple();
+    }
+
+    bool operator<( const Self &o ) const {
+        return lcSelf().toTuple() < o.toTuple();
+    }
+
+    bool operator<=( const Self &o ) const {
+        return lcSelf().toTuple() <= o.toTuple();
+    }
+
+    bool operator>( const Self &o ) const {
+        return lcSelf().toTuple() > o.toTuple();
+    }
+
+    bool operator>=( const Self &o ) const {
+        return lcSelf().toTuple() >= o.toTuple();
+    }
+};
+#endif
+
 /**
  * Mixin with output iterator paperwork.
  *
