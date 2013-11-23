@@ -10,7 +10,10 @@
 
 #include <divine/llvm/support.h>
 #include <divine/explicit/header.h>
-#include <divine/instances/atom.h>
+#include <wibble/mixin.h>
+#include <wibble/fixarray.h>
+#include <wibble/strongenumflags.h>
+#include <wibble/union.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS
@@ -18,19 +21,9 @@
 namespace divine {
 namespace instantiate {
 
-enum SelectOption { SE_WarnOther = 0x1, SE_LastDefault = 0x2, SE_WarnUnavailable = 0x4 };
-
-template< SelectOption _opts, typename... Ts >
-struct _Select {
-    using List = TypeList< Ts... >;
-    constexpr static SelectOption opts = _opts;
-    using WarnOtherAvailable = _Select< SelectOption( SE_WarnOther | _opts ), Ts... >;
-    using LastAvailableIsDefault = _Select< SelectOption( SE_LastDefault | _opts ), Ts... >;
-    using WarnUnavailable = _Select< SelectOption( SE_WarnUnavailable | _opts ), Ts... >;
-};
-
-template< typename... Ts >
-struct Select : public _Select< SelectOption( 0 ), Ts... > { };
+enum class SelectOption { WarnOther = 0x1, LastDefault = 0x2, WarnUnavailable = 0x4, ErrUnavailable = 0x8 };
+using SelectOptions = wibble::StrongEnumFlags< SelectOption >;
+using wibble::operator|;
 
 struct Traits {
     /* this is kind of boilerplate code for accessing compile time macro definitions
@@ -60,7 +53,7 @@ struct Traits {
             fn( [ f ]( const Traits &tr ) -> bool { return (tr.*f)(); } )
         { }
 
-        bool operator()( const Traits &tr ) { return fn( tr ); }
+        bool operator()( const Traits &tr ) const { return fn( tr ); }
 
         Get operator!() const {
             auto fn_ = fn;
@@ -155,320 +148,556 @@ struct Traits {
 
 using Tr = Traits::Get;
 
-#define TRAIT( x ) bool trait( const Traits &tr ) const override { return Traits::Get( x )( tr ); }
-#define ATOM( x ) Atom atom() const override { return Atom( x() ); }
-
-struct NotSelected { };
-
-/* for marking components as missing based on cmake */
-struct _Missing { using Missing = wibble::Unit; };
-
-using Any = True;
-
-struct Selectable {
-    virtual bool select( const Meta &meta ) const = 0;
-    virtual void postSelect( Meta &meta ) const { }
-    virtual void init( Meta &meta ) const { }
-    virtual bool trait( const Traits &tr ) const = 0;
-    virtual Atom atom() const = 0;
+enum class Type {
+    Begin,
+    Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics,
+    End
 };
 
-namespace algorithm {
-    struct IsAlgorithmT { };
+// std::map does not allow operator [] on const
+template< typename K, typename T >
+struct CMap : std::map< K, T > {
+    CMap( std::initializer_list< std::pair< const K, T > > init ) : std::map< K, T >( init ) { }
 
-#define ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, NS, TR ) struct ALGO : virtual Selectable { \
-        using IsAlgorithm = IsAlgorithmT; \
-        static constexpr const char *header = HEADER; \
-        static constexpr const char *symbol = "template< typename Setup >\n" \
-                        "using _Algorithm = " #NS "::" #ALGO "< Setup >;\n"; \
-        static constexpr const char *key = #ALGO; \
-        static constexpr const char *name = NAME; \
-        using SupportedBy = Any; \
-        bool select( const Meta &meta ) const override { \
-            return meta.algorithm.algorithm == meta::Algorithm::Type:: META_ID; \
-        } \
-        void postSelect( Meta &meta ) const override { \
-            meta.algorithm.name = name; \
-        } \
-        TRAIT( TR ) \
-        ATOM( ALGO ) \
+    const T &operator[]( const K &k ) const {
+        auto it = this->find( k );
+        assert( it != this->end() );
+        return it->second;
     }
+};
 
-#define ALGORITHM( ALGO, META_ID, NAME, HEADER, TR ) \
-    ALGORITHM_NS( ALGO, META_ID, NAME, HEADER, ::divine::algorithm, TR )
+// options specifiing how selction should work
+const CMap< Type, SelectOptions > options {
+    { Type::Algorithm,  SelectOption::ErrUnavailable },
+    { Type::Generator,  SelectOption::ErrUnavailable },
+    { Type::Transform,  SelectOption::WarnOther | SelectOption::WarnUnavailable | SelectOption::LastDefault },
+    { Type::Visitor,    SelectOption::ErrUnavailable },
+    { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault },
+    { Type::Topology,   SelectOption::LastDefault },
+    { Type::Statistics, SelectOption::LastDefault }
+};
 
-    ALGORITHM( NestedDFS,    Ndfs,         "Nested DFS",   "divine/algorithm/nested-dfs.h", &Traits::always );
-    ALGORITHM( Owcty,        Owcty,        "OWCTY",        "divine/algorithm/owcty.h", &Traits::always );
-    ALGORITHM( Map,          Map,          "MAP",          "divine/algorithm/map.h", &Traits::always );
-    ALGORITHM( Reachability, Reachability, "Reachability", "divine/algorithm/reachability.h", &Traits::always );
-    ALGORITHM( Metrics,      Metrics,      "Metrics",      "divine/algorithm/metrics.h", &Traits::always );
-    ALGORITHM( Simulate,     Simulate,     "Simulate",     "divine/algorithm/simulate.h", &Traits::always );
-    ALGORITHM_NS( Draw,      Draw,         "Draw",         "tools/draw.h", ::divine, &Traits::always );
-    ALGORITHM_NS( Info,      Info,         "Info",         "tools/info.h", ::divine, &Traits::always );
-    ALGORITHM( GenExplicit,      GenExplicit,      "GenExplicit",      "divine/algorithm/genexplicit.h", &Traits::dess );
+enum class Algorithm {
+    Begin,
+    NestedDFS, Owcty, Map, Reachability, Metrics, Simulate, GenExplicit, Draw, Info,
+    End
+};
+enum class Generator {
+    Begin,
+    Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
+    End
+};
+enum class Transform {
+    Begin,
+    POR, Fairness, None,
+    End
+};
+enum class Visitor {
+    Begin,
+    Shared, Partitioned,
+    End
+};
+enum class Store {
+    Begin,
+    NTreeStore, HcStore, DefaultStore,
+    End
+};
+enum class Topology {
+    Begin,
+    Mpi, Local,
+    End
+};
+enum class Statistics {
+    Begin,
+    TrackStatistics, NoStatistics,
+    End
+};
 
+// discriminated union of components
+struct Key : wibble::mixin::LexComparable< Key > {
+    Type type;
+    int key;
 
-    using Algorithms = Select< NestedDFS, Owcty, Map, Reachability,
-              Metrics, Simulate, GenExplicit, Draw, Info >::WarnUnavailable;
-#undef ALGORITHM
-#undef ALGORITHM_NS
+    Key() : type( Type( -1 ) ), key( -1 ) { }
+
+    Key( Algorithm alg ) : type( Type::Algorithm ), key( int( alg ) ) { }
+    Key( Generator gen ) : type( Type::Generator ), key( int( gen ) ) { }
+    Key( Transform tra ) : type( Type::Transform ), key( int( tra ) ) { }
+    Key( Visitor vis )   : type( Type::Visitor ),   key( int( vis ) ) { }
+    Key( Store stor )    : type( Type::Store ),     key( int( stor ) ) { }
+    Key( Topology top )  : type( Type::Topology ),  key( int( top ) ) { }
+    Key( Statistics st ) : type( Type::Statistics ),key( int( st ) ) { }
+
+    std::tuple< Type, int > toTuple() const { return std::make_tuple( type, key ); }
+};
+
+static inline std::tuple< std::string, std::string > showGen( Key component ) {
+#define SHOW( TYPE, COMPONENT ) if ( component == TYPE::COMPONENT ) return std::make_tuple( #TYPE, #COMPONENT )
+    SHOW( Algorithm, NestedDFS );
+    SHOW( Algorithm, Owcty );
+    SHOW( Algorithm, Map );
+    SHOW( Algorithm, Reachability );
+    SHOW( Algorithm, Metrics );
+    SHOW( Algorithm, Simulate );
+    SHOW( Algorithm, GenExplicit );
+    SHOW( Algorithm, Draw );
+    SHOW( Algorithm, Info );
+
+    SHOW( Generator, Dve );
+    SHOW( Generator, Coin );
+    SHOW( Generator, LLVM );
+    SHOW( Generator, ProbabilisticLLVM );
+    SHOW( Generator, Timed );
+    SHOW( Generator, CESMI );
+    SHOW( Generator, ProbabilisticExplicit );
+    SHOW( Generator, Explicit );
+    SHOW( Generator, Dummy );
+
+    SHOW( Transform, POR );
+    SHOW( Transform, Fairness );
+    SHOW( Transform, None );
+
+    SHOW( Visitor, Shared );
+    SHOW( Visitor, Partitioned );
+
+    SHOW( Store, NTreeStore );
+    SHOW( Store, HcStore );
+    SHOW( Store, DefaultStore );
+
+    SHOW( Topology, Mpi );
+    SHOW( Topology, Local );
+
+    SHOW( Statistics, TrackStatistics );
+    SHOW( Statistics, NoStatistics );
+
+    std::string emsg = "show: unhandled option ( " + std::to_string( int( component.type ) ) + ", " + std::to_string( component.key ) + " )";
+    assert_unreachable( emsg.c_str() );
+#undef SHOW
 }
 
-namespace generator {
-    struct IsGeneratorT { };
+static inline std::string show( Key component ) {
+    std::string a, b;
+    std::tie( a, b ) = showGen( component );
+    return a + "::" + b;
+}
 
-#define GENERATOR( GEN, EXTENSION, NAME, SUPPORTED_BY, HEADER, TR ) struct GEN : virtual Selectable { \
-        using IsGenerator = IsGeneratorT; \
-        static constexpr const char *header = HEADER; \
-        static constexpr const char *symbol = "using _Generator = ::divine::generator::" #GEN ";\n"; \
-        static constexpr const char *key = #GEN; \
-        static constexpr const char *name = NAME; \
-        static constexpr const char *extension = EXTENSION; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return wibble::str::endsWith( meta.input.model, extension ); \
-        } \
-        \
-        void postSelect( Meta &meta ) const override { \
-            meta.input.modelType = name; \
-        } \
-        TRAIT( TR ) \
-        ATOM( GEN ) \
+using Instantiation = TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
+using InstT = std::array< std::vector< Key >, Instantiation::length >;
+
+template< size_t i, typename I >
+static inline InstT _buildInst( InstT &&inst, I ) {
+    using Head = typename I::Head;
+    for ( int j = int( Head::Begin ) + 1; j < int( Head::End ); ++j ) {
+        std::get< i >( inst ).emplace_back( Head( j ) );
     }
+    return _buildInst< i + 1 >( std::move( inst ), typename I::Tail() );
+}
 
-    GENERATOR( Dve, ".dve", "DVE", Any, "divine/generator/dve.h", &Traits::dve );
-    GENERATOR( Coin, ".coin", "CoIn", Any, "divine/generator/coin.h", &Traits::coin );
-    GENERATOR( Timed, ".xml", "Timed", Any, "divine/generator/timed.h", &Traits::timed );
-    GENERATOR( CESMI, ::divine::generator::cesmi_ext, "CESMI", Any,
-            "divine/generator/cesmi.h", &Traits::cesmi );
+template<>
+inline InstT _buildInst< Instantiation::length, TypeList<> >( InstT &&inst, TypeList<> ) {
+    return inst;
+}
 
-    namespace intern {
-        GENERATOR( LLVM, ".bc", "LLVM", Any, "divine/generator/llvm.h", &Traits::llvm );
-        GENERATOR( ProbabilisticLLVM, ".bc", "Probabilistic LLVM", Any,
-                "divine/generator/llvm.h", &Traits::llvm );
+const InstT instantiation = _buildInst< 0 >( InstT(), Instantiation() );
 
-        struct LLVMInit : virtual Selectable {
-            void init( Meta &meta ) const override {
-                if ( meta.execution.threads > 1 && !llvm::initMultithreaded() ) {
-                    std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
-                              << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-                    assert_unreachable( "LLVM error" );
-                }
-            }
-        };
+static bool constTrue( const Meta & ) { return true; }
+
+// list of headers for each component -- optional
+static const CMap< Key, std::vector< std::string > > headers = {
+    { Algorithm::NestedDFS,    { "divine/algorithm/nested-dfs.h" } },
+    { Algorithm::Owcty,        { "divine/algorithm/owcty.h" } },
+    { Algorithm::Map,          { "divine/algorithm/map.h" } },
+    { Algorithm::Reachability, { "divine/algorithm/reachability.h" } },
+    { Algorithm::Metrics,      { "divine/algorithm/metrics.h" } },
+    { Algorithm::Simulate,     { "divine/algorithm/simulate.h" } },
+    { Algorithm::Draw,         { "tools/draw.h" } },
+    { Algorithm::Info,         { "tools/info.h" } },
+    { Algorithm:: GenExplicit, { "divine/algorithm/genexplicit.h" } },
+
+    { Generator::Dve,                   { "divine/generator/dve.h" } },
+    { Generator::Coin,                  { "divine/generator/coin.h"} },
+    { Generator::Timed,                 { "divine/generator/timed.h" } },
+    { Generator::CESMI,                 { "divine/generator/cesmi.h" } },
+    { Generator::LLVM,                  { "divine/generator/llvm.h" } },
+    { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } },
+    { Generator::Explicit,              { "divine/generator/explicit.h" } },
+    { Generator::ProbabilisticExplicit, { "divine/generator/explicit.h" } },
+    { Generator::Dummy,                 { "divine/generator/dummy.h" } },
+
+    { Transform::None,     { "divine/graph/por.h" } },
+    { Transform::Fairness, { "divine/graph/fairness.h" } },
+    { Transform::POR,      { "divine/algorithm/por-c3.h" } },
+
+    { Statistics::NoStatistics,    { "divine/utility/statistics.h" } },
+    { Statistics::TrackStatistics, { "divine/utility/statistics.h" } }
+};
+
+struct AlgSelect {
+    meta::Algorithm::Type alg;
+    AlgSelect( meta::Algorithm::Type alg ) : alg( alg ) { }
+
+    bool operator()( const Meta &meta ) {
+        return meta.algorithm.algorithm == alg;
     }
+};
 
-    struct LLVM : intern::LLVM, intern::LLVMInit {
-        bool select( const Meta &meta ) const override {
-            return intern::LLVM::select( meta ) && !meta.input.probabilistic;
-        }
-    };
-    struct ProbabilisticLLVM : intern::ProbabilisticLLVM, intern::LLVMInit {
-        bool select( const Meta &meta ) const override {
-            return intern::ProbabilisticLLVM::select( meta ) && meta.input.probabilistic;
-        }
-    };
+struct GenSelect {
+    std::string extension;
+    bool useProb;
+    bool prob;
+    GenSelect( std::string extension ) : extension( extension ), useProb( false ) { }
+    GenSelect( std::string extension, bool probabilistic ) :
+        extension( extension ), useProb( true ), prob( probabilistic )
+    { }
 
-    namespace intern {
-        GENERATOR( Explicit, dess::extension, "Explicit",
-                Not< algorithm::GenExplicit >, "divine/generator/explicit.h", &Traits::dess );
-        GENERATOR( ProbabilisticExplicit, dess::extension, "Probabilistic explicit",
-                Not< algorithm::GenExplicit >, "divine/generator/explicit.h", &Traits::dess );
+    bool operator()( const Meta &meta ) {
+        return wibble::str::endsWith( meta.input.model, extension )
+            && (!useProb || (prob == meta.input.probabilistic));
     }
-    struct Explicit : public intern::Explicit {
-        bool select( const Meta &meta ) const override {
-            return intern::Explicit::select( meta ) &&
+};
+
+// selection function -- mandatory
+static const CMap< Key, std::function< bool( const Meta & ) > > select = {
+    { Algorithm::NestedDFS,    AlgSelect( meta::Algorithm::Type::Ndfs ) },
+    { Algorithm::Owcty,        AlgSelect( meta::Algorithm::Type::Owcty ) },
+    { Algorithm::Map,          AlgSelect( meta::Algorithm::Type::Map ) },
+    { Algorithm::Reachability, AlgSelect( meta::Algorithm::Type::Reachability ) },
+    { Algorithm::Metrics,      AlgSelect( meta::Algorithm::Type::Metrics ) },
+    { Algorithm::Simulate,     AlgSelect( meta::Algorithm::Type::Simulate ) },
+    { Algorithm::Draw,         AlgSelect( meta::Algorithm::Type::Draw ) },
+    { Algorithm::Info,         AlgSelect( meta::Algorithm::Type::Info ) },
+    { Algorithm::GenExplicit,  AlgSelect( meta::Algorithm::Type::GenExplicit ) },
+
+    { Generator::Dve,               GenSelect( ".dve" ) },
+    { Generator::Coin,              GenSelect( ".coin" ) },
+    { Generator::Timed,             GenSelect( ".xml" ) },
+    { Generator::CESMI,             GenSelect( generator::cesmi_ext ) },
+    { Generator::LLVM,              GenSelect( ".bc", false ) },
+    { Generator::ProbabilisticLLVM, GenSelect( ".bc", true ) },
+    { Generator::Explicit,
+        []( const Meta &meta ) {
+            return GenSelect( dess::extension )( meta ) &&
                 dess::Header::fromFile( meta.input.model ).labelSize == 0;
-        }
-    };
-    struct ProbabilisticExplicit : public intern::ProbabilisticExplicit {
-        bool select( const Meta &meta ) const override {
-            return intern::ProbabilisticExplicit::select( meta )
-                && dess::Header::fromFile( meta.input.model )
+        } },
+    { Generator::ProbabilisticExplicit,
+        []( const Meta &meta ) {
+            return GenSelect( dess::extension )( meta ) &&
+                dess::Header::fromFile( meta.input.model )
                     .capabilities.has( dess::Capability::Probability );
-        }
-    };
+        } },
+    { Generator::Dummy, []( const Meta &meta ) { return meta.input.dummygen; } },
 
-    namespace intern {
-        GENERATOR( Dummy, nullptr, "Dummy", Any, "divine/generator/dummy.h", !Tr( &Traits::small ) );
+    { Transform::None,     constTrue },
+    { Transform::Fairness, []( const Meta &meta ) { return meta.algorithm.fairness; } },
+    { Transform::POR,      []( const Meta &meta ) { return meta.algorithm.reduce.count( graph::R_POR ); } },
+
+    { Visitor::Partitioned, constTrue },
+    { Visitor::Shared, []( const Meta &meta ) { return meta.algorithm.sharedVisitor; } },
+
+    { Store::DefaultStore, constTrue },
+    { Store::NTreeStore,   []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
+    { Store::HcStore,      []( const Meta &meta ) { return meta.algorithm.hashCompaction; } },
+
+    { Topology::Mpi,   []( const Meta &meta ) { return meta.execution.nodes > 1; } },
+    { Topology::Local, constTrue },
+
+    { Statistics::TrackStatistics, []( const Meta &meta ) { return meta.output.statistics; } },
+    { Statistics::NoStatistics,    constTrue }
+};
+
+struct NameAlgo {
+    std::string name;
+    NameAlgo( std::string name ) : name( name ) { }
+    void operator()( Meta &meta ) { meta.algorithm.name = name; }
+};
+
+struct NameGen {
+    std::string name;
+    NameGen( std::string name ) : name( name ) { }
+    void operator()( Meta &meta ) { meta.input.modelType = name; }
+};
+
+// post select meta modification -- optional
+static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
+    { Algorithm::NestedDFS,    NameAlgo( "Nested DFS" ) },
+    { Algorithm::Owcty,        NameAlgo( "OWCTY" ) },
+    { Algorithm::Map,          NameAlgo( "MAP" ) },
+    { Algorithm::Reachability, NameAlgo( "Reachability" ) },
+    { Algorithm::Metrics,      NameAlgo( "Metrics" ) },
+    { Algorithm::Simulate,     NameAlgo( "Simulate" ) },
+    { Algorithm::Draw,         NameAlgo( "Draw" ) },
+    { Algorithm::Info,         NameAlgo( "Info" ) },
+    { Algorithm::GenExplicit,  NameAlgo( "Gen-Explicit" ) },
+
+    { Generator::Dve,                   NameGen( "DVE" ) },
+    { Generator::Coin,                  NameGen( "CoIn" ) },
+    { Generator::Timed,                 NameGen( "Timed" ) },
+    { Generator::CESMI,                 NameGen( "CESMI" ) },
+    { Generator::LLVM,                  NameGen( "LLVM" ) },
+    { Generator::ProbabilisticLLVM,     NameGen( "LLVM (probabilistic)" ) },
+    { Generator::Explicit,              NameGen( "Explicit" ) },
+    { Generator::ProbabilisticExplicit, NameGen( "Explicit (probabilistic)" ) },
+    { Generator::Dummy,                 NameGen( "Dummy" ) },
+
+    { Transform::POR,      []( Meta &meta ) { meta.algorithm.fairness = false; meta.algorithm.reduce.insert( graph::R_POR ); } },
+    { Transform::Fairness, []( Meta &meta ) { meta.algorithm.fairness = true; meta.algorithm.reduce.erase( graph::R_POR ); } },
+    { Transform::None,     []( Meta &meta ) { meta.algorithm.fairness = false; meta.algorithm.reduce.erase( graph::R_POR ); } }
+};
+
+static void initLLVM( const Meta &meta ) {
+    if ( meta.execution.threads > 1 && !llvm::initMultithreaded() ) {
+        std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
+                  << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
+        assert_unreachable( "LLVM error" );
     }
-    struct Dummy : public intern::Dummy {
-        bool select( const Meta &meta ) const override {
-            return meta.input.dummygen;
-        }
-    };
-
-    using Generators = Select< Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI,
-                 ProbabilisticExplicit, Explicit, Dummy >::WarnUnavailable;
-
-#undef GENERATOR
 }
 
-namespace transform {
-    struct IsTransformT { };
+// aditional initialization of runtime parameters -- optional
+static const CMap< Key, std::function< void( const Meta & ) > > init = {
+    { Generator::LLVM,              initLLVM },
+    { Generator::ProbabilisticLLVM, initLLVM },
+};
 
-#define TRANSFORM( TRANS, SYMBOL, SELECTOR, SUPPORTED_BY, HEADER, TR ) struct TRANS : virtual Selectable { \
-        using IsTransform = IsTransformT; \
-        static constexpr const char *header = HEADER; \
-        static constexpr const char *symbol = "template< typename Graph, " \
-                "typename Store, typename Stat >\n" \
-                "using _Transform = " SYMBOL ";\n"; \
-        static constexpr const char *key = #TRANS; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return SELECTOR; \
-            static_cast< void >( meta ); \
-        } \
-        TRAIT( TR ) \
-        ATOM( TRANS ) \
-    }
+// traits can be used to specify required configure time options for component -- optional
+static const CMap< Key, Traits::Get > traits = {
+    { Algorithm::GenExplicit, &Traits::dess },
 
-    TRANSFORM( None, "::divine::graph::NonPORGraph< Graph, Store >", true,
-            Any, "divine/graph/por.h", &Traits::always );
+    { Generator::Dve,                   &Traits::dve },
+    { Generator::Coin,                  &Traits::coin },
+    { Generator::Timed,                 &Traits::timed },
+    { Generator::CESMI,                 &Traits::cesmi },
+    { Generator::LLVM,                  &Traits::llvm },
+    { Generator::ProbabilisticLLVM,     &Traits::llvm },
+    { Generator::Explicit,              &Traits::dess },
+    { Generator::ProbabilisticExplicit, &Traits::dess },
+    { Generator::Dummy,                 !Tr( &Traits::small ) },
 
-    using ForReductions = And< generator::Dve, Not< algorithm::Info > >;
-    TRANSFORM( Fairness, "::divine::graph::FairGraph< Graph, Store >",
-            meta.algorithm.fairness, ForReductions, "divine/graph/fairness.h",
-            !Tr( &Traits::small ) );
-    TRANSFORM( POR, "::divine::algorithm::PORGraph< Graph, Store, Stat >",
-            meta.algorithm.reduce.count( graph::R_POR ), ForReductions,
-            "divine/algorithm/por-c3.h", !Tr( &Traits::small ) );
-#undef TRANSFORM
+    { Transform::POR, !Tr( &Traits::small ) },
+    { Transform::Fairness, !Tr( &Traits::small ) },
 
-    using Transforms = Select< POR, Fairness, None >::WarnOtherAvailable
-        ::LastAvailableIsDefault::WarnUnavailable;
+    { Store::NTreeStore, &Traits::ntree },
+    { Store::HcStore,    &Traits::hc },
+
+    { Topology::Mpi,   !Tr( &Traits::performance ) || &Traits::mpi },
+    { Topology::Local, &Traits::performance },
+
+    { Statistics::NoStatistics, &Traits::performance }
+};
+
+// algoritm symbols -- mandatory for each algorithm
+static const CMap< Algorithm, std::string > algorithm = {
+    { Algorithm::NestedDFS,    "divine::algorithm::NestedDFS" },
+    { Algorithm::Owcty,        "divine::algorithm::Owcty" },
+    { Algorithm::Map,          "divine::algorithm::Map" },
+    { Algorithm::Reachability, "divine::algorithm::Reachability" },
+    { Algorithm::Metrics,      "divine::algorithm::Metrics" },
+    { Algorithm::Simulate,     "divine::algorithm::Simulate" },
+    { Algorithm::Draw,         "divine::Draw" },
+    { Algorithm::Info,         "divine::Info" },
+    { Algorithm::GenExplicit,  "divine::algorithm::GenExplicit" },
+};
+
+struct SupportedBy;
+
+struct And {
+    And( std::initializer_list< SupportedBy > init ) : val( init ) { }
+    wibble::FixArray< SupportedBy > val;
+};
+struct Or {
+    Or( std::initializer_list< SupportedBy > init ) : val( init ) { }
+    wibble::FixArray< SupportedBy > val;
+};
+
+template< typename SuppBy >
+static std::unique_ptr< SupportedBy > box( const SuppBy & );
+
+struct Not {
+    template< typename SuppBy >
+    explicit Not( SuppBy sb ) : val( box( sb ) ) { }
+    Not( const Not &other ) : val( box( *other.val.get() ) ) { }
+
+    std::unique_ptr< SupportedBy > val;
+};
+
+struct SupportedBy : wibble::Union< And, Or, Not, Key > {
+    template< typename... Args >
+    SupportedBy( Args &&...args ) :
+        wibble::Union< And, Or, Not, Key >( std::forward< Args >( args )... )
+    { }
+};
+
+template< typename SuppBy >
+static inline std::unique_ptr< SupportedBy > box( const SuppBy &sb ) {
+    return std::unique_ptr< SupportedBy >( new SupportedBy( sb ) );
 }
 
-namespace visitor {
-    struct IsVisitorT { };
+// Specification of supported component combination,
+// the component later in instatiation can depend only on components
+// instantiated before it
+static const CMap< Key, SupportedBy > supportedBy = {
+    { Generator::Explicit,              Not{ Algorithm::GenExplicit } },
+    { Generator::ProbabilisticExplicit, Not{ Algorithm::GenExplicit } },
 
-#define VISITOR( VISIT, SELECTOR, SUPPORTED_BY, Tr ) struct VISIT : virtual Selectable { \
-        using IsVisitor = IsVisitorT; \
-        static constexpr const char *symbol = \
-                    "using _Visitor = ::divine::visitor::" #VISIT ";\n" \
-                    "using _TableProvider = ::divine::visitor::" #VISIT "Provider;\n"; \
-        static constexpr const char *key = #VISIT; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return SELECTOR; \
-            static_cast< void >( meta ); \
-        } \
-        TRAIT( Tr ) \
-        ATOM( VISIT ) \
-    }
+    { Transform::POR,      And{ Generator::Dve, Not{ Algorithm::Info } } },
+    { Transform::Fairness, And{ Generator::Dve, Not{ Algorithm::Info } } },
 
-    VISITOR( Partitioned, true, Any, &Traits::always );
-    using ForShared = Not< Or< algorithm::Simulate, algorithm::GenExplicit, algorithm::Info > >;
-    VISITOR( Shared, meta.algorithm.sharedVisitor, ForShared, &Traits::always );
-#undef VISITOR
+    { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::GenExplicit, Algorithm::Info } } },
 
-    using Visitors = Select< Shared, Partitioned >::LastAvailableIsDefault::WarnUnavailable;
-}
+    { Store::NTreeStore, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
+    { Store::HcStore,    Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 
-namespace store {
-    struct IsStoreT { };
-
-#define STORE( STOR, SELECTOR, SUPPORTED_BY, Tr ) struct STOR : virtual Selectable { \
-        using IsStore = IsStoreT; \
-        static constexpr const char *symbol = \
-            "template < typename Provider, typename Generator, typename Hasher, typename Stat >\n" \
-            "using _Store = ::divine::visitor::" #STOR "< Provider, Generator, Hasher, Stat >;\n"; \
-        static constexpr const char *key = #STOR; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return SELECTOR; \
-            static_cast< void >( meta ); \
-        } \
-        TRAIT( Tr ) \
-        ATOM( STOR ) \
-    }
-
-using ForCompressions = Not< Or< algorithm::Info, algorithm::Simulate > >;
-    STORE( NTreeStore, meta.algorithm.compression == meta::Algorithm::Compression::Tree,
-            ForCompressions, &Traits::ntree );
-    STORE( HcStore, meta.algorithm.hashCompaction, ForCompressions, &Traits::hc );
-    STORE( DefaultStore, true, Any, &Traits::always );
-
-    using Stores = Select< NTreeStore, HcStore, DefaultStore >
-            ::WarnOtherAvailable::WarnUnavailable::LastAvailableIsDefault;
-}
-
-namespace topology {
-    struct IsTopologyT { };
-
-#define TOPOLOGY( TOPO, SELECTOR, SUPPORTED_BY, Tr ) struct TOPO : virtual Selectable { \
-        using IsTopology = IsTopologyT; \
-        static constexpr const char *symbol = \
-            "template< typename Transition >\n" \
-            "struct _Topology {\n" \
-            "    template< typename I >\n" \
-            "    using T = typename ::divine::Topology< Transition >\n" \
-            "                  ::template " #TOPO "< I >;\n" \
-            "};\n"; \
-        static constexpr const char *key = #TOPO; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return SELECTOR; \
-            static_cast< void >( meta ); \
-        } \
-        TRAIT( Tr ) \
-        ATOM( TOPO ) \
-    }
-
-#ifndef O_PERFORMANCE
-    using ForMpi = Any; // as we need NDFS without O_PERFORMANCE
-#else
-    using ForMpi = Not< Or< algorithm::NestedDFS, algorithm::Info, visitor::Shared > >;
+#ifdef O_PERFORMANCE
+    { Topology::Mpi, Not{ Or{ Algorithm::NestedDFS, Algorithm::Info, Visitor::Shared } } },
 #endif
 
-    TOPOLOGY( Mpi, meta.execution.nodes > 1, ForMpi, !Tr( &Traits::performance ) || &Traits::mpi );
-    TOPOLOGY( Local, true, Any, &Traits::performance );
+    { Statistics::NoStatistics, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
+};
 
-#undef TOPOLOGY
-
-    using Topologies = Select< Mpi, Local >::LastAvailableIsDefault;
+using SymbolPair = std::pair< const Key, wibble::FixArray< std::string > >;
+static inline SymbolPair symGen( Generator g ) {
+    return { g, { "using _Generator = ::divine::generator::" + std::get< 1 >( showGen( g ) ) + ";" } };
 }
 
-namespace statistics {
-    struct IsStatisticsT { };
-
-#define STATISTICS( STAT, SELECTOR, SUPPORTED_BY, Tr ) struct STAT : virtual Selectable { \
-        using IsStatistics = IsStatisticsT; \
-        static constexpr const char *symbol = "using _Statistics = ::divine::" #STAT ";\n"; \
-        static constexpr const char *key = #STAT; \
-        static constexpr const char *header = "divine/utility/statistics.h"; \
-        using SupportedBy = SUPPORTED_BY; \
-        bool select( const Meta &meta ) const override { \
-            return SELECTOR; \
-            static_cast< void >( meta ); \
-        } \
-        TRAIT( Tr ) \
-        ATOM( STAT ) \
-    }
-
-    STATISTICS( TrackStatistics, meta.output.statistics, Any, &Traits::always );
-    using ForNoStat = Not< Or< algorithm::Info, algorithm::Simulate > >;
-    STATISTICS( NoStatistics, true, ForNoStat, &Traits::performance );
-#undef STATISTICS
-
-    using Statistics = Select< TrackStatistics, NoStatistics >::LastAvailableIsDefault;
+static inline SymbolPair symTrans( Transform t, std::string symbol ) {
+    return { t, { "template< typename Graph, typename Store, typename Stat >",
+                  "using _Transform = " + symbol + ";" } };
 }
+
+static inline SymbolPair symVis( Visitor v ) {
+    auto vis = std::get< 1 >( showGen( v ) );
+    return { v, { "using _Visitor = ::divine::visitor::" + vis + ";",
+                  "using _TableProvider = ::divine::visitor::" + vis + "Provider;" } };
+}
+
+static inline SymbolPair symStore( Store s ) {
+    auto stor = std::get< 1 >( showGen( s ) );
+    return { s, { "template < typename Provider, typename Generator, typename Hasher, typename Stat >",
+                  "using _Store = ::divine::visitor::" + stor + "< Provider, Generator, Hasher, Stat >;" } };
+}
+
+static inline SymbolPair symTopo( Topology t ) {
+    auto topo = std::get< 1 >( showGen( t ) );
+    return { t, { "template< typename Transition >",
+                  "struct _Topology {",
+                  "    template< typename I >",
+                  "    using T = typename ::divine::Topology< Transition >",
+                  "                  ::template " + topo + "< I >;",
+                  "};" } };
+}
+
+static inline SymbolPair symStat( Statistics s ) {
+    auto stat = std::get< 1 >( showGen( s ) );
+    return { s, { "using _Statistics = ::divine::" + stat + ";" } };
+}
+
+// symbols for components with exception of algorithm -- mandatory (except for algorithm)
+static const CMap< Key, wibble::FixArray< std::string > > symbols = {
+    symGen( Generator::Dve ),
+    symGen( Generator::Coin ),
+    symGen( Generator::Timed ),
+    symGen( Generator::CESMI ),
+    symGen( Generator::LLVM ),
+    symGen( Generator::ProbabilisticLLVM ),
+    symGen( Generator::Explicit ),
+    symGen( Generator::ProbabilisticExplicit ),
+    symGen( Generator::Dummy ),
+
+    symTrans( Transform::None,     "::divine::graph::NonPORGraph< Graph, Store >" ),
+    symTrans( Transform::Fairness, "::divine::graph::FairGraph< Graph, Store >" ),
+    symTrans( Transform::POR,      "::divine::algorithm::PORGraph< Graph, Store, Stat >" ),
+
+    symVis( Visitor::Partitioned ),
+    symVis( Visitor::Shared ),
+
+    symStore( Store::NTreeStore ),
+    symStore( Store::HcStore ),
+    symStore( Store::DefaultStore ),
+
+    symTopo( Topology::Mpi ),
+    symTopo( Topology::Local ),
+
+    symStat( Statistics::NoStatistics ),
+    symStat( Statistics::TrackStatistics )
+};
 
 template< typename Graph, typename Store >
 using Transition = std::tuple< typename Store::Vertex, typename Graph::Node, typename Graph::Label >;
 
-using Instantiate = TypeList<
-              algorithm::Algorithms,
-              generator::Generators,
-              transform::Transforms,
-              visitor::Visitors,
-              store::Stores,
-              topology::Topologies,
-              statistics::Statistics
-          >;
-}
+static inline bool _select( const Meta &meta, Key k ) {
+    return select[ k ]( meta );
 }
 
-#undef TRAIT
+static inline bool _traits( Key k ) {
+    auto it = traits.find( k );
+    return it == traits.end() || it->second( Traits::available() );
+}
+
+static inline void _postSelect( Meta &meta, Key k ) {
+    auto it = postSelect.find( k );
+    if ( it != postSelect.end() )
+        it->second( meta );
+}
+
+static inline void _init( const Meta &meta, wibble::FixArray< Key > instance ) {
+    for ( auto k : instance ) {
+        auto it = init.find( k );
+        if ( it != init.end() )
+            it->second( meta );
+    }
+}
+
+static inline void _warningMissing( Key key ) {
+    std::cerr << "WARNING: The " + std::get< 1 >( showGen( key ) ) + " is not available "
+              << "while selecting " + std::get< 0 >( showGen( key ) ) + "." << std::endl
+              << "    Will try to select other option." << std::endl;
+}
+
+static inline std::nullptr_t _errorMissing( wibble::FixArray< Key > trace ) {
+    std::vector< std::string > strace;
+    for ( auto x : trace )
+        strace.push_back( show( x ) );
+    std::cerr << "ERROR: The " << std::get< 1 >( showGen( trace.back() ) ) << " is not available "
+              << "while selecting " << std::get< 0 >( showGen( trace.back() ) ) << "." << std::endl
+              << "    Selector come to dead end after selecting: "
+              << wibble::str::fmt_container( strace, '[', ']' ) << std::endl;
+    return nullptr;
+}
+
+static inline std::nullptr_t _noDefault( wibble::FixArray< Key > trace ) {
+    std::vector< std::string > strace;
+    for ( auto x : trace )
+        strace.push_back( show( x ) );
+    std::cerr << "ERROR: Selector come to dead end after selecting: "
+              << wibble::str::fmt_container( strace, '[', ']' ) << std::endl
+              << "    No default available." << std::endl;
+    return nullptr;
+}
+
+static inline void _warnOtherAvailable( Meta metacopy, Key k ) {
+    for ( auto i : instantiation ) {
+        if ( i[ 0 ].type == k.type ) {
+            std::vector< std::string > skipped;
+            for ( auto l : i ) {
+                if ( l.key > k.key && _select( metacopy, l ) )
+                    skipped.push_back( std::get< 1 >( showGen( l ) ) );
+            }
+            if ( options[ k.type ].has( SelectOption::LastDefault ) && skipped.size() )
+                skipped.pop_back();
+
+            if ( skipped.empty() )
+                return;
+
+            std::cerr << "WARNING: symbols " << wibble::str::fmt_container( skipped, '{', '}' )
+                      << " were not selected because " << std::get< 1 >( showGen( k ) )
+                      << " has higher priority." << std::endl
+                      << "    When instantiating " << std::get< 0 >( showGen( k ) ) << "." << std::endl;
+            return;
+        }
+    }
+    assert_unreachable( "Invalid key" );
+}
+
+}
+}
 
 #endif // DIVINE_INSTANCES_DEFINITIONS

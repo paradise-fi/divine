@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine/instances/select-impl.h>
+#include <divine/instances/definitions.h>
+#include <wibble/fixarray.h>
 
 #include <array>
 #include <cstdint>
@@ -12,267 +13,404 @@
 namespace divine {
 namespace instantiate {
 
+using wibble::FixArray;
+
 static const std::vector< std::string > defaultHeaders = {
-        "divine/instances/definitions.h",
-        "divine/instances/create.h",
-        "divine/instances/auto/extern.h"
+        "divine/instances/auto/extern.h",
+        "divine/instances/definitions.h"
     };
 
-struct Symbol {
-    using str = std::string;
+struct InstGenerator {
+    bool good;
 
-    std::array< Atom, Instantiate::length > atoms;
+    std::ofstream _select;
+    std::ofstream _extern;
+    std::string _instancePrefix;
 
-    template< typename List >
-    Symbol( List ) {
-        static_assert( List::length == Instantiate::length, "Invalid symbol list" );
-        saveAtoms< 0 >( List() );
+    int _perFile, _files;
+
+    InstGenerator( int perFile, int files ) : _perFile( perFile ), _files( files ) {
+        _checkConsistency();
+
+        _select.open( "select.cpp" );
+        _extern.open( "extern.h" );
+        _instancePrefix = "instances-";
     }
 
-    template< size_t I, typename List >
-    auto saveAtoms( List )
-        -> typename std::enable_if< ( List::length > 0 ) >::type
-    {
-        std::get< I >( atoms ) = Atom( typename List::Head() );
-        saveAtoms< I + 1 >( typename List::Tail() );
-    }
-
-    template< size_t I, typename List >
-    auto saveAtoms( List )
-        -> typename std::enable_if< List::length == 0 >::type
-    { }
-
-    auto headers() const -> std::set< std::string > {
-        std::set< std::string > head;
-        auto ins = std::inserter( head, head.begin() );
-        mapAtoms( [ &ins ]( const Atom &atom, size_t ) {
-                std::copy( atom.headers.begin(), atom.headers.end(), ins );
-            } );
-        return head;
-    }
-
-    auto typeList() const -> std::string {
-        std::stringstream ss;
-        ss << "divine::TypeList< ";
-        mapAtoms( [ &ss ]( const Atom &atom, size_t i ) {
-                ss << atom.name;
-                if ( i < Instantiate::length - 1 )
-                    ss << ", ";
-            } );
-        ss << " >";
-        return ss.str();
-    }
-
-    auto specializationDecl() const -> std::string {
-        std::stringstream ss;
-        specializationDecl( ss );
-        return ss.str();
-    }
-
-    template< typename OStream >
-    void specializationDecl( OStream &os ) const {
-        os << "template<>" << std::endl
-           << "AlgoR createInstance< " << typeList() << " >( Meta & );" << std::endl;
-    }
-
-    auto externDeclaration() const -> std::string {
-        return str( "extern template AlgoR createInstance< " ) + typeList() + str( " >( Meta & );" );
-    }
-
-    auto specialization() const -> std::string {
-        std::stringstream ss;
-        specialization( ss );
-        return ss.str();
-    }
-
-    template< typename OStream >
-    void specialization( OStream &os ) const {
-        os << "namespace divine {" << std::endl
-           << "namespace instantiate {" << std::endl
-           << "template<>" << std::endl
-           << "struct Setup< " << typeList() << " >" << std::endl
-           << "{" << std::endl
-
-           << "  private:" << std::endl
-           << "    using _Hasher = ::divine::algorithm::Hasher;" << std::endl;
-        mapAtoms( [ &os ]( const Atom &a, size_t ) {
-                os << a.get;
-            } );
-
-        os << "  public:" << std::endl
-           << "    using Store = _Store< _TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
-           << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
-           << "    using Visitor = _Visitor;" << std::endl
-           << "    template< typename I >" << std::endl
-           << "    using Topology = typename _Topology< Transition< Graph, Store > >" << std::endl
-           << "                       ::template T< I >;" << std::endl
-           << "    using Statistics = _Statistics;" << std::endl
-           << "    friend AlgoR createInstance< " << typeList() << " >( Meta & );" << std::endl
-           << "};" << std::endl
-           << std::endl
-           << "template<>" << std::endl
-           << "AlgoR createInstance< " << typeList() << " >( Meta &meta )" << std::endl
-           << "{" << std::endl
-           << "    using Setup = Setup< " << typeList() << " >;" << std::endl
-           << "    return AlgoR( new Setup::_Algorithm< Setup >( meta ) );" << std::endl
-           << "}" << std::endl
-           << std::endl
-           << "template AlgoR createInstance< " << typeList() << " >( Meta & );" << std::endl
-           << "}" << std::endl
-           << "}" << std::endl;
-    }
-
-    template< typename Fn >
-    void mapAtoms( Fn fn ) const {
-        _mapAtoms< 0 >( fn );
-    }
-
-    template< size_t I, typename Fn >
-    auto _mapAtoms( Fn fn ) const
-        -> typename std::enable_if< ( I < Instantiate::length ) >::type
-    {
-        fn( std::get< I >( atoms ), I );
-        _mapAtoms< I + 1 >( fn );
-    }
-
-    template< size_t I, typename Fn >
-    auto _mapAtoms( Fn ) const
-        -> typename std::enable_if< I == Instantiate::length >::type
-    { }
-};
-
-bool operator<( const Atom &a, const Atom &b ) {
-    return a.name < b.name;
-}
-
-bool operator<( const Symbol &a, const Symbol &b ) {
-    return a.atoms < b.atoms;
-}
-
-struct SymbolListSelector {
-    using ReturnType = wibble::Unit;
-
-    struct Data {
-        std::set< Symbol > symbols;
+    void error( std::initializer_list< std::string > msg ) {
+        good = false;
+        std::cerr << "Error: ";
+        bool first = true;
+        for ( auto m : msg ) {
+            std::cerr << (first ? "" : "      ") << m << std::endl;
+            first = false;
+        }
     };
 
-    std::shared_ptr< Data > _data;
+    void _checkConsistency() {
+        good = true;
 
-    SymbolListSelector() : _data( new Data() ) { }
-
-    std::vector< Symbol > symbols() {
-        return std::vector< Symbol >(
-                _data->symbols.begin(), _data->symbols.end() );
+        for ( const auto &v : instantiation ) {
+            if ( v.size() <= 0 )
+                error( { "Some component does not have any choices." } );
+            if ( options.find( v[0].type ) == options.end() )
+                error( { "Component " + std::get< 0 >( showGen( v[0] ) ) + " does not define instantiation options" } );
+            for ( auto component : v ) {
+                if ( component.type != v[0].type )
+                    error( { "Component " + std::get< 0 >( showGen( component ) ) + " is misplacet between other components",
+                             "of type " + std::get< 0 >( showGen( v[0] ) ) + "." } );
+                if ( select.find( component ) == select.end() )
+                    error( { "Component " + show( component ) + " does not define select" } );
+                if ( (component.type == Type::Algorithm || component.type == Type::Generator
+                            || component.type == Type::Transform )
+                        && headers.find( component ) == headers.end() )
+                    error( { show( component ) + " does not define header" } );
+                if ( (component.type == Type::Algorithm || component.type == Type::Generator)
+                        && postSelect.find( component ) == postSelect.end() )
+                    error( { show( component ) + " does not define postSelect" } );
+            }
+        }
+        assert( good );
     }
 
-    std::set< Symbol > symbolSet() const {
-        return _data->symbols;
+    std::vector< std::string > _headers( Key k ) {
+        auto it = headers.find( k );
+        return it == headers.end() ? it->second : std::vector< std::string >();
     }
 
-    std::set< Symbol > symbolSet() {
-        return _data->symbols;
+    std::string _label( Key k ) {
+        std::string a, b;
+        std::tie( a, b ) = showGen( k );
+        return "_" + a + "_" + b + "_";
     }
 
-    void addSymbol( Symbol sym ) {
-        _data->symbols.insert( sym );
+    std::string _label( const FixArray< Key > &trace ) {
+        std::string label = "";
+        for ( auto k : trace )
+            label += _label( k );
+        return label;
     }
 
-    bool trySelect( const Selectable & ) { return false; }
+    std::string _label( const FixArray< Key > &trace, Key last ) {
+        return _label( trace ) + _label( last );
+    }
 
-    template< typename TrueFn, typename NotSelAvailFn, typename NotAvailFn >
-    ReturnType ifSelect( const Selectable &, bool, TrueFn trueFn,
-            NotSelAvailFn notSelAvailFn, NotAvailFn notAvailFn )
+    std::string _show( Key k ) {
+        return "instantiate::" + show( k );
+    }
+
+    std::string _ctor( const FixArray< Key > &trace, Key last ) {
+        std::string ctor = "{ ";
+        for ( auto k : trace )
+            ctor += _show( k ) + ", ";
+        return ctor + _show( last ) + " }";
+    }
+
+    std::string _ctor( FixArray< Key > trace ) {
+        if ( trace.size() == 0 )
+            return "{ }";
+
+        Key last = trace.back();
+        trace.resize( trace.size() - 1 );
+        return _ctor( trace, last );
+    }
+
+    std::string _algorithm( Algorithm alg ) {
+        return algorithm[ alg ];
+    }
+
+    std::set< FixArray< Key > > graph;
+
+    int buildGraph() {
+
+        using ID = std::pair< int, FixArray< Key > >;
+        std::deque< ID > stack;
+        stack.emplace_back( 0, FixArray< Key >() );
+
+        std::vector< ID > branches;
+        std::vector< FixArray< Key > > finals;
+
+        while ( !stack.empty() ) {
+            ID now = std::move( stack.front() );
+            stack.pop_front();
+
+            const auto &trace = now.second;
+            if ( !graph.insert( trace ).second )
+                continue;
+
+            if ( now.first < int( Instantiation::length ) ) {
+                branches.emplace_back( now );
+                const auto &succs = instantiation[ now.first ];
+                for ( auto s : succs ) {
+                    auto newtrace = appendArray( trace, s );
+                    if ( _valid( newtrace ) )
+                        stack.emplace_back( now.first + 1, std::move( newtrace ) );
+                }
+            } else
+                finals.emplace_back( std::move( trace ) );
+
+        }
+
+        emitSelect( branches, finals );
+        emitExtern( finals );
+        return emitInstances( finals );
+    }
+
+    void emitSelect( std::vector< std::pair< int, FixArray< Key > > > branches,
+            std::vector< FixArray< Key > > finals )
     {
-        trueFn();
-        return notAvailFn();
+        emitFileHeader();
+
+        for ( auto trace : finals )
+            emitFinalCode( trace );
+
+        for ( auto it = branches.rbegin(); it != branches.rend(); ++it ) {
+            auto now = *it;
+            const auto &trace = now.second;
+            const auto &succs = instantiation[ now.first ];
+
+            emitSelectFnBegin( trace );
+            for ( auto s : succs ) {
+                auto newtrace = appendArray( trace, s );
+                if ( _valid( newtrace ) )
+                    emitJumpCode( trace, s );
+            }
+            emitDefault( trace, succs );
+            emitSelectFnEnd();
+        }
+
+        emitFileEnd();
     }
 
-    template< typename T >
-    ReturnType instantiationError( T ) { return ReturnType(); }
-
-    template< typename... T >
-    void warnOtherAvailable( T... ) { }
-
-    template< typename Selected >
-    ReturnType create() {
-        if ( checkSelected( Selected(), Traits::compiled() ) )
-            addSymbol( Symbol( Selected() ) );
-        return wibble::Unit();
+    void emitFileHeader() {
+        _select << "#include <divine/instances/select.h>" << std::endl
+                << "#include <divine/instances/auto/extern.h>" << std::endl
+                << "#include <divine/instances/definitions.h>" << std::endl
+                << std::endl
+                << "namespace divine {" << std::endl
+                << "using RetT = std::unique_ptr< ::divine::algorithm::Algorithm >;" << std::endl
+                << std::endl;
     }
 
-    template< typename Selected >
-    auto checkSelected( Selected, const Traits &tr ) -> typename
-        std::enable_if< ( Selected::length > 0 ), bool >::type
-    {
-        return typename Selected::Head().trait( tr )
-            && checkSelected( typename Selected::Tail(), tr );
+    void emitFileEnd() {
+        _select << std::endl << "}" << std::endl;
     }
 
-    template< typename Selected >
-    auto checkSelected( Selected, const Traits & ) -> typename
-        std::enable_if< Selected::length == 0, bool >::type
-    {
+    void emitSelectFnEnd() {
+        _select << std::endl << "    assert_unreachable( \"end select\" );" << std::endl
+                << "}" << std::endl;
+    }
+
+    void emitSelectFnBegin( const FixArray< Key > &trace ) {
+        std::string label = _label( trace );
+        if ( label.size() != 0 )
+            _select << std::endl
+                    << "RetT " << label << "( Meta &meta ) {" << std::endl;
+        else
+            _select << "RetT select( Meta &meta ) {" << std::endl;
+    }
+
+    void emitJumpCode( const FixArray< Key > &trace, Key next ) {
+        std::string label = _label( trace );
+        std::string snext = _show( next );
+        _select << "    if ( instantiate::_select( meta, " << snext << " ) ) {" << std::endl
+                << "        if ( instantiate::_traits( " << snext << " ) ) {" << std::endl;
+        if ( options[ next.type ].has( SelectOption::WarnOther ) )
+            _select << "            instantiate::_warnOtherAvailable( meta, " << snext << " );" << std::endl;
+        _select << "            instantiate::_postSelect( meta, " << snext << " );" << std::endl
+                << "            return " << _label( trace, next ) << "( meta );" << std::endl
+                << "        }" << std::endl;
+        if ( options[ next.type ].has( SelectOption::WarnUnavailable ) )
+            _select << "        else instantiate::_warningMissing( " << snext << " );" << std::endl;
+        if ( options[ next.type ].has( SelectOption::ErrUnavailable ) )
+            _select << "        else return instantiate::_errorMissing( " << _ctor( trace, next ) << " );" << std::endl;
+        _select << "    }" << std::endl;
+    }
+
+    template< typename Succs >
+    void emitDefault( const FixArray< Key > &trace, Succs succs ) {
+        if ( options[ succs[0].type ].has( SelectOption::LastDefault ) ) {
+            for ( auto it = succs.rbegin(); it != succs.rend(); ++it ) {
+                if ( _valid( wibble::appendArray( trace, *it ) ) )
+                    _select << "    if ( instantiate::_traits( " << _show( *it ) << " ) )" << std::endl
+                            << "        return " << _label( trace, *it ) << "( meta );" << std::endl;
+            }
+        }
+        _select << "    return instantiate::_noDefault( " << _ctor( trace ) << " );" << std::endl;
+    }
+    void emitFinalCode( FixArray< Key > trace ) {
+        _select << std::endl
+               << "RetT " << _label( trace ) << "( Meta &meta ) {" << std::endl
+               << "    instantiate::_init( meta, " << _ctor( trace ) << " );" << std::endl
+               << "    return instantiate::create" << _label( trace ) << "( meta );" << std::endl
+               << "}" << std::endl;
+    }
+
+    void emitExtern( std::vector< FixArray< Key > > finals ) {
+        _extern << "#include <divine/utility/meta.h>" << std::endl
+                << "#include <divine/utility/die.h>" << std::endl
+                << "#include <divine/algorithm/common.h>" << std::endl
+                << "#include <memory>" << std::endl
+                << "namespace divine {" << std::endl
+                 << "namespace instantiate {" << std::endl << std::endl;
+
+        for ( auto symbol : finals )
+            _extern << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
+                    << _label( symbol ) << "( Meta & );" << std::endl;
+
+        _extern << "}" << std::endl << "}" << std::endl;
+    }
+
+    int emitInstances( std::vector< FixArray< Key > > finals ) {
+        int size = 0;
+        for ( auto symbol : finals )
+            if ( _allTraits( symbol ) )
+                ++size;
+
+        int perFile;
+        if ( _perFile * _files >= size )
+            perFile = _perFile;
+        else
+            perFile = std::ceil( double( size ) / _files );
+
+        int inFile = 0;
+        int numFiles = 0;
+
+        FixArray< std::vector< FixArray< Key > > > files( _files );
+        for ( auto symbol : finals ) {
+            if ( _allTraits( symbol ) )
+                ++inFile;
+            files[ numFiles ].push_back( symbol );
+            if ( inFile == perFile ) {
+                inFile = 0;
+                ++numFiles;
+            }
+        }
+        for ( int i = 0; i < _files; ++i ) {
+            std::ofstream file( _instancePrefix + std::to_string( i + 1 ) + ".cpp" );
+            if ( files[ i ].size() > 0 ) {
+            emitHeaders( file, files[ i ] );
+                for ( auto sym : files[ i ] )
+                    emitCreate( file, sym );
+                emitInstancesEnd( file );
+            }
+            file.close();
+        }
+        return size;
+    }
+
+    void emitHeaders( std::ofstream &file, std::vector< FixArray< Key > > instances ) {
+        std::set< std::string > hdrs{ defaultHeaders.begin(), defaultHeaders.end() };
+        for ( auto inst : instances ) {
+            for ( auto sym : inst ) {
+                auto it = headers.find( sym );
+                if ( it != headers.end() )
+                    std::copy( it->second.begin(), it->second.end(), std::inserter( hdrs, hdrs.begin() ) );
+            }
+        }
+        for ( auto header : hdrs )
+            file << "#include <" << header << ">" << std::endl;
+        file << "namespace divine {" << std::endl
+             << "namespace instantiate {" << std::endl;
+    }
+
+    void emitInstancesEnd( std::ofstream &file ) {
+        file << "}" << std::endl << "}" << std::endl;
+    }
+
+    bool emitCreate( std::ofstream &file, FixArray< Key > symbol ) {
+        Algorithm alg = Algorithm::Begin;
+        for ( auto c : symbol )
+            if ( c.type == Type::Algorithm )
+                alg = Algorithm( c.key );
+        if ( alg == Algorithm::Begin )
+            assert_unreachable( "Algorithm missing in selection." );
+
+        if ( _allTraits( symbol ) ) {
+            file << "struct Setup" << _label( symbol ) << " {" << std::endl
+                 << "  private:" << std::endl
+                 << "    using _Hasher = ::divine::algorithm::Hasher;" << std::endl;
+            for ( auto c : symbol ) {
+                if ( c.type == Type::Algorithm )
+                    continue;
+                for ( auto sym : symbols[ c ] )
+                    file << sym << std::endl;
+            }
+
+            file << "  public:" << std::endl
+                 << "    using Store = _Store< _TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
+                 << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
+                 << "    using Visitor = _Visitor;" << std::endl
+                 << "    template< typename I >" << std::endl
+                 << "    using Topology = typename _Topology< Transition< Graph, Store > >" << std::endl
+                 << "                       ::template T< I >;" << std::endl
+                 << "    using Statistics = _Statistics;" << std::endl
+                 << "};" << std::endl;
+
+            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
+                 << _label( symbol ) << "( Meta &meta ) {" << std::endl
+                 << "    return std::unique_ptr< ::divine::algorithm::Algorithm >( new "
+                 <<          algorithm[ alg ] << "< Setup" << _label( symbol ) << ">( meta ) );" << std::endl
+                 << "}" << std::endl << std::endl;
+            return true;
+        } else {
+            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
+                 << _label( symbol ) << "( Meta & ) {" << std::endl
+                 << "    die( \"Missing instance: " << _ctor( symbol ) << ".\" );" << std::endl
+                 << "    return nullptr;" << std::endl
+                 << "}" << std::endl << std::endl;
+            return false;
+        }
+    }
+
+    bool _allTraits( FixArray< Key > symbol ) {
+        return std::accumulate( symbol.begin(), symbol.end(), true,
+                []( bool val, Key key ) -> bool {
+                    auto tr = traits.find( key );
+                    return val && (tr == traits.end() || tr->second( Traits::available() ));
+                } );
+    }
+
+    bool _evalSuppBy( const SupportedBy &suppBy, const std::vector< Key > &vec ) {
+        if ( suppBy.is< Not >() )
+            return !_evalSuppBy( *suppBy.get< Not >().val, vec );
+        if ( suppBy.is< And >() ) {
+            for ( auto s : suppBy.get< And >().val )
+                if ( !_evalSuppBy( s, vec ) )
+                    return false;
+            return true;
+        }
+        if ( suppBy.is< Or >() ) {
+            for ( auto s : suppBy.get< Or >().val )
+                if ( _evalSuppBy( s, vec ) )
+                        return true;
+            return false;
+        }
+        assert( suppBy.is< Key >() );
+        for ( auto v : vec )
+            if ( v == suppBy.get< Key >() )
+                return true;
+        return false;
+    }
+
+    bool _valid( FixArray< Key > trace ) {
+        std::vector< Key > vec;
+        for ( int i = 0; i < trace.size(); ++i ) {
+            auto supp = supportedBy.find( trace[ i ] );
+            if ( supp != supportedBy.end() ) {
+                if ( !_evalSuppBy( supp->second, vec ) )
+                    return false;
+            }
+            vec.push_back( trace[ i ] );
+        }
         return true;
     }
-
-    auto externDeclarations() const -> std::string {
-        std::stringstream ss;
-        externDeclarations( ss );
-        return ss.str();
-    }
-
-    template< typename OStream >
-    void externDeclarations( OStream &os ) const {
-        os << "#include <divine/instances/create.h>" << std::endl
-           << "namespace divine {" << std::endl
-           << "namespace instantiate {" << std::endl;
-        for ( const auto &sym : symbolSet() ) {
-            sym.specializationDecl( os );
-            os << sym.externDeclaration() << std::endl;
-        }
-        os << "}" << std::endl
-           << "}" << std::endl;
-    }
 };
-
-void printInclude( const std::string &h, std::ofstream &file ) {
-    file << "#include <" << h << ">" << std::endl;
-}
-
-void definitions( std::set< Symbol > &sym, int i ) {
-    std::set< std::string > headers;
-    auto inserter = std::inserter( headers, headers.begin() );
-    for ( const auto &symbol : sym ) {
-        auto sh = symbol.headers();
-        std::copy( sh.begin(), sh.end(), inserter );
-    }
-
-    std::stringstream ss;
-    ss << "instance-" << i << ".cpp";
-    std::ofstream file( ss.str() );
-
-    if ( sym.size() ) {
-        for ( const auto &h : defaultHeaders )
-            printInclude( h, file );
-        for ( const auto &h : headers )
-            printInclude( h, file );
-        file << std::endl;
-
-        for ( const auto &symbol : sym )
-            symbol.specialization( file );
-    }
-}
 
 }
 }
 
 int main( int argc, char** argv ) {
-    using namespace divine;
-    using namespace divine::instantiate;
-
-    SymbolListSelector sls;
-    runSelector( sls, Instantiate(), TypeList<>() );
-
     assert_eq( argc, 3 );
 
     int files = std::stoi( argv[ 1 ] );
@@ -280,24 +418,9 @@ int main( int argc, char** argv ) {
     assert_leq( 1, files );
     assert_leq( 1, min );
 
-    std::ofstream externh( "extern.h" );
-    sls.externDeclarations( externh );
-    externh.close();
+    divine::instantiate::InstGenerator gen( min, files );
+    int size = gen.buildGraph();
 
-    int perFile = std::max( min, int( std::ceil( double( sls.symbolSet().size() ) / files ) ) );
-    std::set< Symbol > sym;
-    int used = 0;
-    auto symbols = sls.symbolSet();
-    auto it = symbols.begin();
-    auto end = symbols.end();
-    for ( int i = 1; i <= files; ++i ) {
-        for ( int cnt = 0 ; cnt < perFile && it != end; ++it, ++cnt, ++used )
-            sym.insert( *it );
-        definitions( sym, i );
-        sym.clear();
-    }
-    assert_eq( used, int( symbols.size() ) );
-    static_cast< void >( used );
-    std::cerr << "Generated " << symbols.size() << " instances." << std::endl;
+    std::cerr << "Generated " << size << " instances." << std::endl;
     return 0;
 }
