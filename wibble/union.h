@@ -12,6 +12,7 @@
 #include <wibble/test.h>
 
 #include <memory>
+#include <cstring>
 #include <type_traits>
 
 #ifndef WIBBLE_UNION_H
