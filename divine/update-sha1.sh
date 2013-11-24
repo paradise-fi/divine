@@ -7,12 +7,12 @@ empty="0000000000000000000000000000000000000000";
 cd $from
 
 interesting='^./divine.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
-boring='utility/version.cpp$|\.test\.h$';
+boring='utility/version.cpp$|\.test\.h$|~$';
 if test -e manifest; then
     manifest=`cat manifest`;
 else
     if ! test -d _darcs || ! darcs --version > /dev/null; then
-        manifest=`find -type f divine` # assume...
+        manifest=`find divine -type f` # assume...
     else
         manifest=`darcs query manifest`
     fi
