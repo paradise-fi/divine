@@ -47,17 +47,43 @@ struct TestUnion {
         assert_eq( u.get< int >(), 5 );
     }
 
-    Test sstream() {
-        Union< long, std::stringstream > wierd;
+    Test moveNoCopy() {
+        // if one of contained structures does not define copy ctor+assignment
+        // move should still be available
+        struct Move {
+            Move() = default;
+            Move( const Move & ) = delete;
+            Move( Move && ) = default;
+
+            Move &operator=( Move ) { return *this; }
+        };
+        Union< long, Move > wierd;
         assert( wierd.empty() );
 
         wierd = 2L;
         assert( !!wierd );
         assert( wierd.is< long >() );
+        assert_eq( wierd.get< long >(), 2L );
 
-        wierd = std::stringstream( "baf" );
+        wierd = Move();
         assert( !!wierd );
-        assert( wierd.is< std::stringstream >() );
+        assert( wierd.is< Move >() );
+    }
+
+    Test ctorCast() {
+        assert( ( Union< int, long >{ int( 1 ) }.is< int >() ) );
+        assert( ( Union< int, long >{ long( 1 ) }.is< long >() ) );
+
+        assert( ( Union< long, std::string >{ int( 1 ) }.is< long >() ) );
+
+        struct A { operator int(){ return 1; } };
+        assert( ( Union< int, A >{ A() }.is< A >() ) );
+        assert( ( Union< int, std::string >{ A() }.is< int >() ) );
+
+        struct B { B( int ) { } B() = default; };
+        assert( ( Union< int, B >{ B() }.is< B >() ) );
+        assert( ( Union< int, B >{ 1 }.is< int >() ) );
+        assert( ( Union< B, std::string >{ 1 }.is< B >() ) );
     }
 };
 
