@@ -114,8 +114,8 @@ struct FixArray : mixin::Comparable< FixArray< T > > {
     }
 
     ssize_t size() const { return _size; }
-    T *data() { return data; }
-    const T *data() const { return data; }
+    T *data() { return _data.get(); }
+    const T *data() const { return _data.get(); }
 
   private:
     std::unique_ptr< T[] > _data;
