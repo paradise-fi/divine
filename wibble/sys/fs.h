@@ -50,6 +50,9 @@ void mkFilePath(const std::string& file);
 /// Read whole file into memory. Throws exceptions on failure.
 std::string readFile(const std::string &file);
 
+/// Read whole file into memory. Throws exceptions on failure.
+std::string readFile(std::ifstream &file);
+
 /// Write \a data to \a file, replacing existing contents if it already exists
 void writeFile(const std::string &file, const std::string &data);
 

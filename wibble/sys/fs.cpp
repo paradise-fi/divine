@@ -155,11 +155,10 @@ void mkFilePath(const std::string& file)
 		mkpath(file.substr(0, pos));
 }
 #endif
-std::string readFile( const std::string &file )
-{
-    std::ifstream in( file.c_str(), std::ios::binary );
+
+std::string readFile( std::ifstream &in ) {
     if (!in.is_open())
-        throw wibble::exception::System( "reading file " + file );
+        throw wibble::exception::System( "reading filestream" );
     size_t length;
 
     in.seekg(0, std::ios::end);
@@ -171,6 +170,13 @@ std::string readFile( const std::string &file )
 
     in.read( &buffer[ 0 ], length );
     return buffer;
+}
+
+std::string readFile( const std::string &file ) {
+    std::ifstream in( file.c_str(), std::ios::binary );
+    if (!in.is_open())
+        throw wibble::exception::System( "reading file " + file );
+    return readFile( in );
 }
 
 void writeFile( const std::string &file, const std::string &data )
