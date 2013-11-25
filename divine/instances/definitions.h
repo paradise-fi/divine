@@ -1,19 +1,18 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-/* Automatic instantiation definitions -- see divine/instances/README */
-
 #include <divine/utility/meta.h>
-#include <wibble/sfinae.h>
-#include <divine/generator/cesmi.h>
-#include <divine/toolkit/typelist.h>
-#include <array>
-
 #include <divine/llvm/support.h>
+#include <divine/generator/cesmi.h>
 #include <divine/explicit/header.h>
-#include <wibble/mixin.h>
-#include <wibble/fixarray.h>
+
+#include <divine/toolkit/typelist.h>
 #include <wibble/strongenumflags.h>
+#include <wibble/fixarray.h>
 #include <wibble/union.h>
+#include <wibble/mixin.h>
+#include <wibble/sfinae.h>
+#include <array>
+#include <map>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS
