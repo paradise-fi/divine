@@ -2,6 +2,7 @@
 
 #include <divine/instances/definitions.h>
 #include <wibble/fixarray.h>
+#include <wibble/sys/fs.h>
 
 #include <array>
 #include <cstdint>
@@ -9,6 +10,8 @@
 #include <iterator>
 #include <fstream>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 namespace divine {
 namespace instantiate {
@@ -23,18 +26,16 @@ static const std::vector< std::string > defaultHeaders = {
 struct InstGenerator {
     bool good;
 
-    std::ofstream _select;
-    std::ofstream _extern;
-    std::string _instancePrefix;
+    std::stringstream _select;
+    std::stringstream _extern;
+    FixArray< std::stringstream > _instances;
 
-    int _perFile, _files;
+    int _perFile;
 
-    InstGenerator( int perFile, int files ) : _perFile( perFile ), _files( files ) {
+    InstGenerator( int perFile, int files ) :
+        _select(), _extern(), _instances( files ), _perFile( perFile )
+    {
         _checkConsistency();
-
-        _select.open( "select.cpp" );
-        _extern.open( "extern.h" );
-        _instancePrefix = "instances-";
     }
 
     void error( std::initializer_list< std::string > msg ) {
@@ -268,15 +269,15 @@ struct InstGenerator {
                 ++size;
 
         int perFile;
-        if ( _perFile * _files >= size )
+        if ( _perFile * _instances.size() >= size )
             perFile = _perFile;
         else
-            perFile = std::ceil( double( size ) / _files );
+            perFile = std::ceil( double( size ) / _instances.size() );
 
         int inFile = 0;
         int numFiles = 0;
 
-        FixArray< std::vector< FixArray< Key > > > files( _files );
+        FixArray< std::vector< FixArray< Key > > > files( _instances.size() );
         for ( auto symbol : finals ) {
             if ( _allTraits( symbol ) )
                 ++inFile;
@@ -286,20 +287,19 @@ struct InstGenerator {
                 ++numFiles;
             }
         }
-        for ( int i = 0; i < _files; ++i ) {
-            std::ofstream file( _instancePrefix + std::to_string( i + 1 ) + ".cpp" );
+        for ( int i = 0; i < _instances.size(); ++i ) {
+            auto &file = _instances[ i ];
             if ( files[ i ].size() > 0 ) {
             emitHeaders( file, files[ i ] );
                 for ( auto sym : files[ i ] )
                     emitCreate( file, sym );
                 emitInstancesEnd( file );
             }
-            file.close();
         }
         return size;
     }
 
-    void emitHeaders( std::ofstream &file, std::vector< FixArray< Key > > instances ) {
+    void emitHeaders( std::ostream &file, std::vector< FixArray< Key > > instances ) {
         std::set< std::string > hdrs{ defaultHeaders.begin(), defaultHeaders.end() };
         for ( auto inst : instances ) {
             for ( auto sym : inst ) {
@@ -314,11 +314,11 @@ struct InstGenerator {
              << "namespace instantiate {" << std::endl;
     }
 
-    void emitInstancesEnd( std::ofstream &file ) {
+    void emitInstancesEnd( std::ostream &file ) {
         file << "}" << std::endl << "}" << std::endl;
     }
 
-    bool emitCreate( std::ofstream &file, FixArray< Key > symbol ) {
+    bool emitCreate( std::ostream &file, FixArray< Key > symbol ) {
         Algorithm alg = Algorithm::Begin;
         for ( auto c : symbol )
             if ( c.type == Type::Algorithm )
@@ -405,6 +405,32 @@ struct InstGenerator {
         }
         return true;
     }
+
+    int writeFile( std::string name, std::stringstream &data, uint64_t s1 = 0, uint64_t s2 = 0 ) {
+        std::string sdata = data.str();
+
+        std::ifstream ifile{ name };
+        if ( !ifile.good() || wibble::sys::fs::readFile( ifile ) != sdata ) {
+            ifile.close();
+            std::ofstream ofile{ name };
+            ofile << sdata;
+            ofile.close();
+            return 1;
+        }
+        return 0;
+    }
+
+    int writeFiles( std::string selName, std::string extName, std::string instancesPrefix ) {
+        int cnt = 0;
+        cnt += writeFile( selName, _select, 1 );
+        cnt += writeFile( extName, _extern, 2 );
+        for ( int i = 0; i < _instances.size(); ++i )
+            cnt += writeFile( instancesPrefix + std::to_string( i + 1 ) + ".cpp",
+                        _instances[ i ], 3, i );
+        return cnt;
+    }
+
+
 };
 
 }
@@ -420,7 +446,8 @@ int main( int argc, char** argv ) {
 
     divine::instantiate::InstGenerator gen( min, files );
     int size = gen.buildGraph();
+    int regen = gen.writeFiles( "select.cpp", "extern.h", "instances-" );
 
-    std::cerr << "Generated " << size << " instances." << std::endl;
+    std::cerr << "Generated " << size << " instances, " << regen << " new files." << std::endl;
     return 0;
 }
