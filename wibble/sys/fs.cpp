@@ -160,16 +160,17 @@ std::string readFile( const std::string &file )
     std::ifstream in( file.c_str(), std::ios::binary );
     if (!in.is_open())
         throw wibble::exception::System( "reading file " + file );
-    std::string ret;
     size_t length;
 
     in.seekg(0, std::ios::end);
     length = in.tellg();
     in.seekg(0, std::ios::beg);
-    char *buffer = static_cast<char *>( alloca( length ) );
 
-    in.read(buffer, length);
-    return std::string( buffer, length );
+    std::string buffer;
+    buffer.resize( length );
+
+    in.read( &buffer[ 0 ], length );
+    return buffer;
 }
 
 void writeFile( const std::string &file, const std::string &data )
