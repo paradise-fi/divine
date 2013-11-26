@@ -6,9 +6,9 @@ llvm_precompile
 for I in llvm_examples/*.c llvm_examples/*.cpp; do
 
     if echo "$I" | grep '\.c\(pp\|c\)$'; then
-        COMPILATION=$(cat $I | grep -A3 '\(Verification\|Solution\)' | fgrep 'divine compile' | head -n1 | fgrep -- '--cflags' | sed 's/^.*\*//')
+        COMPILATION=$(cat $I | grep -A5 '\(Verification\|Solution\)' | fgrep 'divine compile' | head -n1 | fgrep -- '--cflags' | sed 's/^.*\*//') || true
         if echo "$COMPILATION" | fgrep -- '-std='; then
-            STD=$(echo $COMPILATION | sed 's/^.*-std=\([^ ]*\).*$/\1/')
+            STD=$(echo $COMPILATION | sed "s/^.*-std=\([^'\" ]*\).*$/\1/")
         fi
     fi
     unset CFLAGS
