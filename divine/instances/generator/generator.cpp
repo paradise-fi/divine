@@ -139,7 +139,6 @@ struct InstGenerator {
         std::deque< ID > stack;
         stack.emplace_back( 0, FixArray< Key >() );
 
-        std::vector< ID > branches;
         std::vector< FixArray< Key > > finals;
 
         while ( !stack.empty() ) {
@@ -151,7 +150,6 @@ struct InstGenerator {
                 continue;
 
             if ( now.first < int( Instantiation::length ) ) {
-                branches.emplace_back( now );
                 const auto &succs = instantiation[ now.first ];
                 for ( auto s : succs ) {
                     auto newtrace = appendArray( trace, s );
@@ -163,13 +161,12 @@ struct InstGenerator {
 
         }
 
-        emitSelect( branches, finals );
+        emitSelect( finals );
         emitExtern( finals );
         return emitInstances( finals );
     }
 
-    void emitSelect( std::vector< std::pair< int, FixArray< Key > > > branches,
-            std::vector< FixArray< Key > > finals )
+    void emitSelect( std::vector< FixArray< Key > > finals )
     {
         _select << "#include <divine/instances/auto/extern.h>" << std::endl
                 << "#include <divine/instances/definitions.h>" << std::endl
