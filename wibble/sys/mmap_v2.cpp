@@ -1,4 +1,5 @@
 #if __cplusplus >= 201103L
+#ifdef POSIX
 
 #include <wibble/sys/mmap_v2.h>
 #include <wibble/exception.h>
@@ -92,4 +93,5 @@ void MMap::_map( int fd ) {
 
 
 
-#endif
+#endif // POSIX
+#endif // __cplusplus
