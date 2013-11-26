@@ -220,12 +220,14 @@ struct InstGenerator {
             _select << "            instantiate::_warnOtherAvailable( meta, " << snext << " );" << std::endl;
         _select << "            instantiate::_postSelect( meta, " << snext << " );" << std::endl
                 << "            return " << _label( trace, next ) << "( meta );" << std::endl
-                << "        }" << std::endl;
+                << "        } else {" << std::endl
+                << "            instantiate::_deactivation( meta, " << snext << " );" << std::endl;
         if ( options[ next.type ].has( SelectOption::WarnUnavailable ) )
-            _select << "        else instantiate::_warningMissing( " << snext << " );" << std::endl;
+            _select << "            instantiate::_warningMissing( " << snext << " );" << std::endl;
         if ( options[ next.type ].has( SelectOption::ErrUnavailable ) )
-            _select << "        else return instantiate::_errorMissing( " << _ctor( trace, next ) << " );" << std::endl;
-        _select << "    }" << std::endl;
+            _select << "            return instantiate::_errorMissing( " << _ctor( trace, next ) << " );" << std::endl;
+        _select << "        }" << std::endl
+                << "    }" << std::endl;
     }
 
     template< typename Succs >

@@ -436,11 +436,14 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Generator::ProbabilisticLLVM,     NameGen( "LLVM (probabilistic)" ) },
     { Generator::Explicit,              NameGen( "Explicit" ) },
     { Generator::ProbabilisticExplicit, NameGen( "Explicit (probabilistic)" ) },
-    { Generator::Dummy,                 NameGen( "Dummy" ) },
+    { Generator::Dummy,                 NameGen( "Dummy" ) }
+};
 
-    { Transform::POR,      []( Meta &meta ) { meta.algorithm.fairness = false; meta.algorithm.reduce.insert( graph::R_POR ); } },
-    { Transform::Fairness, []( Meta &meta ) { meta.algorithm.fairness = true; meta.algorithm.reduce.erase( graph::R_POR ); } },
-    { Transform::None,     []( Meta &meta ) { meta.algorithm.fairness = false; meta.algorithm.reduce.erase( graph::R_POR ); } }
+// those functions will be called if given component should be selected
+// but it is not available
+static const CMap< Key, std::function< void( Meta & ) > > deactivation = {
+    { Transform::POR,      []( Meta &meta ) { meta.algorithm.reduce.erase( graph::R_POR ); } },
+    { Transform::Fairness, []( Meta &meta ) { meta.algorithm.fairness = false; } },
 };
 
 static void initLLVM( const Meta &meta ) {
@@ -643,6 +646,12 @@ static inline void _init( const Meta &meta, wibble::FixArray< Key > instance ) {
         if ( it != init.end() )
             it->second( meta );
     }
+}
+
+static inline void _deactivation( Meta &meta, Key key ) {
+    auto it = deactivation.find( key );
+    if ( it != deactivation.end() )
+        it->second( meta );
 }
 
 static inline void _warningMissing( Key key ) {
