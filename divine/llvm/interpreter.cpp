@@ -55,7 +55,7 @@ divine::Blob Interpreter::initial( Function *f )
     state.rewind( pre_initial, 0 ); // there isn't a thread really
     std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
     auto fl = state.global().memoryflag( info() );
-    for ( int i = 0; i < info().globaldata.size(); ++ i ) {
+    for ( int i = 0; i < int( info().globaldata.size() ); ++ i ) {
         fl.set( MemoryFlag::Data );
         ++ fl;
     }
