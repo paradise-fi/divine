@@ -112,7 +112,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                         return iterator( ir.c, false );
                     case Resolution::NoSpace:
                         if ( grow( _td.currentRow + 1 ) ) {
-                            releaseRow( _td.currentRow );
                             ++_td.currentRow;
                             break;
                         }
@@ -244,8 +243,9 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         }
 
         void helpWithRehashing() {
-            while ( _d.growing )
+            if ( _d.growing )
                 while( rehashSegment() );
+            while( _d.growing );
         }
 
         bool rehashSegment() {
@@ -278,8 +278,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     assert_unreachable( "ran out of space during growth" );
             }
 
-            if ( ++_d.doneSegments == segments )
+            if ( ++_d.doneSegments == segments ) {
                 _d.growing.exchange( false ); /* done */
+                releaseRow( _d.currentRow - 1 );
+            }
 
             return segment > 0;
         }
@@ -305,9 +307,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         void acquireRow( unsigned index ) {
             do {
-                if ( 1 < ++_d.tableWorkers[ index ] )
-                    break;
-                if ( _d.table[ index ] && index == 1 )
+                ++_d.tableWorkers[ index ];
+                if ( index == _d.currentRow )
                     break;
                 --_d.tableWorkers[ index ];
                 index = _d.currentRow;
