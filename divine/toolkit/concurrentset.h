@@ -196,9 +196,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 Cell &cell = row[ Base::index( h, i, mask ) ];
 
                 if ( cell.empty() ) {
-                    if ( cell.tryStore( x, h, [&]() -> bool {
-                                return force || !this->changed( _td.currentRow );
-                            } ) )
+                    if ( cell.tryStore( x, h ) )
                         return Insert( Resolution::Success, &cell );
                     if ( !force && changed( _td.currentRow ) )
                         return Insert( Resolution::Growing );

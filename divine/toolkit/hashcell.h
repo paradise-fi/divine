@@ -80,14 +80,9 @@ struct FastAtomicCell : CellBase< T, Hasher >
         return true;
     }
 
-    template< typename Guard >
-    bool tryStore( T v, hash64_t hash, Guard guard ) {
+    bool tryStore( T v, hash64_t hash ) {
         hash64_t chl = 0;
         if ( hashLock.compare_exchange_strong( chl, (hash << 2) | 1 ) ) {
-            if ( !guard() ) {
-                invalidate();
-                return false;
-            }
             value = v;
             hashLock.exchange( hash << 2 );
             return true;
@@ -166,11 +161,10 @@ struct AtomicCell : CellBase< T, Hasher >
     bool wait() { return !invalid(); }
 
     void store( T bn, hash64_t hash ) {
-        return tryStore( bn, hash, []() -> bool { return true; } );
+        return tryStore( bn, hash );
     }
 
-    template< typename Guard >
-    bool tryStore( T b, hash64_t hash, Guard ) {
+    bool tryStore( T b, hash64_t hash ) {
         Tagged< T > zero;
         Tagged< T > next( b );
         next.setTag( hashToTag( hash ) );
