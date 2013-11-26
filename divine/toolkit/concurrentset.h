@@ -56,7 +56,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     struct Data
     {
         Hasher hasher;
-        std::vector< Row * > table;
+        std::vector< Row > table;
         std::vector< std::atomic< unsigned short > > tableWorkers;
         std::atomic< unsigned > currentRow;
         std::atomic< int > availableSegments;
@@ -65,7 +65,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         std::atomic< bool > growing;
 
         Data( const Hasher &h, unsigned maxGrows )
-            : hasher( h ), table( maxGrows, nullptr ), tableWorkers( maxGrows ), currentRow( 1 ),
+            : hasher( h ), table( maxGrows ), tableWorkers( maxGrows ), currentRow( 1 ),
               availableSegments( 0 ), used( 0 ), growing( false )
         {}
     };
@@ -83,8 +83,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         WithTD( Data &d, ThreadData &td ) : _d( d ), _td( td ) {}
 
         size_t size() { return current().size(); }
-        Row &current() { return *_d.table[ _d.currentRow ]; }
-        Row &current( unsigned index ) { return *_d.table[ index ]; }
+        Row &current() { return _d.table[ _d.currentRow ]; }
+        Row &current( unsigned index ) { return _d.table[ index ]; }
         bool changed( unsigned row ) { return row < _d.currentRow; }
 
         iterator insert( value_type x ) {
@@ -231,7 +231,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             }
 
             Row &row = current( rowIndex - 1 );
-            _d.table[ rowIndex ] = new Row( row.size() * 2 );
+            _d.table[ rowIndex ].resize( row.size() * 2 );
             _d.currentRow.exchange( rowIndex );
             _d.tableWorkers[ rowIndex ] = 1;
             _d.doneSegments.exchange( 0 );
@@ -299,8 +299,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 return;
             // only last thread releases memory
             if ( !--_d.tableWorkers[ index ] ) {
-                delete _d.table[ index ];
-                _d.table[ index ] = nullptr;
+                _d.table[ index ] = Row();
             }
         }
 
@@ -332,19 +331,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         setSize( 16 ); // by default
     }
 
-    ~_ConcurrentHashSet() {
-        for ( unsigned i = 0; i != _d.table.size(); ++i ) {
-            if ( _d.table[ i ] )
-                delete _d.table[ i ];
-        }
-    }
-
     /* XXX only usable before the first insert; rename? */
     void setSize( size_t s ) {
         s = bitops::fill( s - 1 ) + 1;
-        if ( _d.table[ 1 ] )
-            delete _d.table[ 1 ];
-        _d.table[ 1 ] = new Row( s );
+        _d.table[ 1 ].resize( s );
     }
 
     hash64_t hash( const value_type &t ) { return hash128( t ).first; }
@@ -358,11 +348,11 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
     /* multiple threads may use operator[], but not concurrently with insertions */
     value_type operator[]( size_t index ) { // XXX return a reference
-        return (*_d.table[ _d.currentRow ])[ index ].fetch();
+        return _d.table[ _d.currentRow ][ index ].fetch();
     }
 
     bool valid( size_t index ) {
-        return !(*_d.table[ _d.currentRow ])[ index ].empty();
+        return !_d.table[ _d.currentRow ][ index ].empty();
     }
 };
 
