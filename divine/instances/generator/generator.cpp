@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/instances/definitions.h>
-#include <wibble/fixarray.h>
 #include <wibble/sys/fs.h>
 
 #include <array>
@@ -16,7 +15,8 @@
 namespace divine {
 namespace instantiate {
 
-using wibble::FixArray;
+template< typename T >
+using FixArray = std::vector< T >;
 
 static const std::vector< std::string > defaultHeaders = {
         "divine/instances/auto/extern.h",
@@ -100,6 +100,17 @@ struct InstGenerator {
         return "instantiate::" + show( k );
     }
 
+    std::string _show( const FixArray< Key > &trace ) {
+        std::string label = "";
+        for ( auto k : trace )
+            label += (label.size() ? ", " : "") + _show( k );
+        return "{ " + label + " }";
+    }
+
+    std::string _show( const FixArray< Key > &trace, Key last ) {
+        return _show( appendArray( trace, last ) );
+    }
+
     std::string _ctor( const FixArray< Key > &trace, Key last ) {
         std::string ctor = "{ ";
         for ( auto k : trace )
@@ -160,93 +171,21 @@ struct InstGenerator {
     void emitSelect( std::vector< std::pair< int, FixArray< Key > > > branches,
             std::vector< FixArray< Key > > finals )
     {
-        emitFileHeader();
-
-        for ( auto trace : finals )
-            emitFinalCode( trace );
-
-        for ( auto it = branches.rbegin(); it != branches.rend(); ++it ) {
-            auto now = *it;
-            const auto &trace = now.second;
-            const auto &succs = instantiation[ now.first ];
-
-            emitSelectFnBegin( trace );
-            for ( auto s : succs ) {
-                auto newtrace = appendArray( trace, s );
-                if ( _valid( newtrace ) )
-                    emitJumpCode( trace, s );
-            }
-            emitDefault( trace, succs );
-            emitSelectFnEnd();
-        }
-
-        emitFileEnd();
-    }
-
-    void emitFileHeader() {
-        _select << "#include <divine/instances/select.h>" << std::endl
-                << "#include <divine/instances/auto/extern.h>" << std::endl
+        _select << "#include <divine/instances/auto/extern.h>" << std::endl
                 << "#include <divine/instances/definitions.h>" << std::endl
                 << std::endl
-                << "namespace divine {" << std::endl
-                << "using RetT = std::unique_ptr< ::divine::algorithm::Algorithm >;" << std::endl
+                << "namespace divine { namespace instantiate {" << std::endl
                 << std::endl;
-    }
 
-    void emitFileEnd() {
-        _select << std::endl << "}" << std::endl;
-    }
+        _select << "const instantiate::CMap< Trace, AlgorithmPtr (*)( Meta & ) > jumptable = {";
 
-    void emitSelectFnEnd() {
-        _select << std::endl << "    assert_unreachable( \"end select\" );" << std::endl
-                << "}" << std::endl;
-    }
+        for ( auto trace : finals )
+            _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create"
+                    << _label( trace ) << " },";
 
-    void emitSelectFnBegin( const FixArray< Key > &trace ) {
-        std::string label = _label( trace );
-        if ( label.size() != 0 )
-            _select << std::endl
-                    << "RetT " << label << "( Meta &meta ) {" << std::endl;
-        else
-            _select << "RetT select( Meta &meta ) {" << std::endl;
-    }
+        _select << std::endl << "};" << std::endl;
 
-    void emitJumpCode( const FixArray< Key > &trace, Key next ) {
-        std::string label = _label( trace );
-        std::string snext = _show( next );
-        _select << "    if ( instantiate::_select( meta, " << snext << " ) ) {" << std::endl
-                << "        if ( instantiate::_traits( " << snext << " ) ) {" << std::endl;
-        if ( options[ next.type ].has( SelectOption::WarnOther ) )
-            _select << "            instantiate::_warnOtherAvailable( meta, " << snext << " );" << std::endl;
-        _select << "            instantiate::_postSelect( meta, " << snext << " );" << std::endl
-                << "            return " << _label( trace, next ) << "( meta );" << std::endl
-                << "        } else {" << std::endl
-                << "            instantiate::_deactivation( meta, " << snext << " );" << std::endl;
-        if ( options[ next.type ].has( SelectOption::WarnUnavailable ) )
-            _select << "            instantiate::_warningMissing( " << snext << " );" << std::endl;
-        if ( options[ next.type ].has( SelectOption::ErrUnavailable ) )
-            _select << "            return instantiate::_errorMissing( " << _ctor( trace, next ) << " );" << std::endl;
-        _select << "        }" << std::endl
-                << "    }" << std::endl;
-    }
-
-    template< typename Succs >
-    void emitDefault( const FixArray< Key > &trace, Succs succs ) {
-        if ( options[ succs[0].type ].has( SelectOption::LastDefault ) ) {
-            for ( auto it = succs.rbegin(); it != succs.rend(); ++it ) {
-                if ( _valid( wibble::appendArray( trace, *it ) ) )
-                    _select << "    if ( instantiate::_traits( " << _show( *it ) << " ) )" << std::endl
-                            << "        return " << _label( trace, *it ) << "( meta );" << std::endl;
-            }
-        }
-        _select << "    return instantiate::_noDefault( " << _ctor( trace ) << " );" << std::endl;
-    }
-    void emitFinalCode( FixArray< Key > trace ) {
-        _select << std::endl
-               << "RetT " << _label( trace ) << "( Meta &meta ) {" << std::endl
-               << "    instantiate::_init( meta, " << _ctor( trace ) << " );" << std::endl
-               << "    return instantiate::create" << _label( trace ) << "( meta );" << std::endl
-               << "}" << std::endl;
+        _select << std::endl << "} }" << std::endl;
     }
 
     void emitExtern( std::vector< FixArray< Key > > finals ) {

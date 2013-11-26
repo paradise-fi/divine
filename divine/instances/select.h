@@ -8,7 +8,8 @@
 
 namespace divine {
 
-std::unique_ptr< ::divine::algorithm::Algorithm > select( Meta &meta );
+using AlgorithmPtr = std::unique_ptr< algorithm::Algorithm >;
+AlgorithmPtr select( Meta &meta );
 
 }
 
