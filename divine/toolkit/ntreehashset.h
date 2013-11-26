@@ -435,24 +435,24 @@ struct NTreeHashSet
             Root root;
 
             LeafOrFork* ptr = nullptr;
-            char* from = _td.pool().dereference( item ) + _d.slack;
+            char* from = _td.pool().dereference( item ) + this->_d.slack;
             _td.splitter().splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
                     if ( rec == Recurse::No ) {
-                        root = Root::createFlat( item, _td.pool() );
+                        root = Root::createFlat( item, this->_td.pool() );
                         assert_eq( remaining, 0 );
                     } else {
-                        if ( !_td.pool().valid( root.unwrap() ) ) {
-                            root = Root::create( item, remaining + 1, _d.slack, _td.pool() );
-                            ptr = root.forkdata( _td.pool() );
+                        if ( !this->_td.pool().valid( root.unwrap() ) ) {
+                            root = Root::create( item, remaining + 1, this->_d.slack, this->_td.pool() );
+                            ptr = root.forkdata( this->_td.pool() );
                             assert_leq( 1, remaining );
                         }
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length, _td.pool() );
+                        *ptr = this->createChild( item, from, length, this->_td.pool() );
                         ++ptr;
                     }
 
-                    assert( _td.pool().valid( root.unwrap() ) );
+                    assert( this->_td.pool().valid( root.unwrap() ) );
                     from += length;
                 } );
 
@@ -461,7 +461,7 @@ struct NTreeHashSet
 
             auto tr = _d.roots.withTD( _td.roots ).insertHinted( root, hash );
             if ( !tr.isnew() )
-                _td.pool().free( root.unwrap() );
+                this->_td.pool().free( root.unwrap() );
 
             return tr;
         }

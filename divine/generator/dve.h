@@ -69,7 +69,7 @@ struct Dve : public Common< Blob > {
         enabledConts(
             from,
             [&]( dve::System::Continuation p ) {
-                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
+                this->yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
                 return true;
             }
         );

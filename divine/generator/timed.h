@@ -147,8 +147,8 @@ struct Timed : public Common< Blob > {
                 [this]( const Buchi::DNFClause& clause ) -> int {
                     if ( clause.empty() )
                         return 0;
-                    propGuards.push_back( gen.buildPropGuard( clause, ltlDefs ) );
-                    return propGuards.size() - 1;
+                    this->propGuards.push_back( this->gen.buildPropGuard( clause, this->ltlDefs ) );
+                    return this->propGuards.size() - 1;
                 }
             );
         }

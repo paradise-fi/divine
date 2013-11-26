@@ -32,8 +32,8 @@ struct QueueFrontend {
 
         auto from = self().store().vertex( self().front() );
         self().g.successors( from, [&]( Node n, Label label ) {
-                deadlocked = false;
-                if ( !axed )
+                this->deadlocked = false;
+                if ( !this->axed )
                     next( from, n, label );
             } );
     }
@@ -155,8 +155,8 @@ struct Stack {
         deadlocked = true;
         g.successors( _from, [&]( Node n, Label l ) {
                 ++ this->_pushes;
-                deadlocked = false;
-                _stack.push_back( StackItem( n, l ) );
+                this->deadlocked = false;
+                this->_stack.push_back( StackItem( n, l ) );
             } );
     }
 

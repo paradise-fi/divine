@@ -302,7 +302,7 @@ struct CESMI : public Common< Blob > {
         if ( dl.show_transition && pool().valid( from ) ) {
             _successors( from, [&]( Node n, int handle ) {
                     if ( pool().equal( to, n, slack() ) )
-                        fmt = dl.show_transition( &setup, data( from ), handle );
+                        fmt = this->dl.show_transition( &this->setup, this->data( from ), handle );
                 }, dl.get_successor );
         }
 

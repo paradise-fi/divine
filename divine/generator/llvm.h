@@ -84,9 +84,9 @@ struct _LLVM : Common< Blob > {
             return interpreter().run( st, [&]( Node n, Probability p ) { yield( n, Label( p ) ); } );
         interpreter().run( st, [&]( Node n, Probability p ){
                 std::vector< int > buchi_succs;
-                for ( auto next : prop_next[ flags( n ).buchi ] ) {
-                    auto trans = prop_trans[ next ];
-                    if ( buchi_enabled( trans.first, flags( n ).ap ) )
+                for ( auto next : this->prop_next[ this->flags( n ).buchi ] ) {
+                    auto trans = this->prop_trans[ next ];
+                    if ( this->buchi_enabled( trans.first, this->flags( n ).ap ) )
                         buchi_succs.push_back( trans.second );
                 }
 
@@ -96,14 +96,14 @@ struct _LLVM : Common< Blob > {
                 }
 
                 while ( buchi_succs.size() > 1 ) {
-                    Blob b = pool().allocate( pool().size( n ) );
-                    pool().copy( n, b );
-                    flags( b ).buchi = buchi_succs.back();
+                    Blob b = this->pool().allocate( this->pool().size( n ) );
+                    this->pool().copy( n, b );
+                    this->flags( b ).buchi = buchi_succs.back();
                     buchi_succs.pop_back();
                     yield( b, Label() );
                 }
 
-                flags( n ).buchi = buchi_succs.front();
+                this->flags( n ).buchi = buchi_succs.front();
                 yield( n, p ); /* TODO? */
             } );
     }
