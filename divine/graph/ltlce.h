@@ -234,7 +234,7 @@ struct LtlCE {
 
     // Obtaining CE output
 
-    typedef std::vector< unsigned > NumericTrace;
+    typedef std::vector< int > NumericTrace;
     typedef std::deque< Node > Trace;
     typedef std::pair< Trace, NumericTrace > Traces;
 
@@ -264,9 +264,8 @@ struct LtlCE {
 
     /// Generates traces; when numTrace is null, computes a numeric trace sequentially in a single thread
     template< typename Alg, typename T >
-    std::string generateTrace( Alg &a, G &_g, T trace, NumericTrace *numTrace = NULL ) {
-        std::stringstream o_tr_str;
-
+    NumericTrace generateTrace( Alg &a, G &_g, T trace, NumericTrace *numTrace = nullptr )
+    {
         NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
 
         while ( !trace.empty() ) {
@@ -279,16 +278,11 @@ struct LtlCE {
             trace.pop_front();
         }
 
-        for ( unsigned next : ntrace ) {
-            o_tr_str << next << ",";
-        }
-
-        // drop trailing comma
-        return std::string( o_tr_str.str(), 0, o_tr_str.str().length() - 1 );
+        return ntrace;
     }
 
     template< typename Alg >
-    std::string generateTrace( Alg &a, G &_g, Traces traces ) {
+    NumericTrace generateTrace( Alg &a, G &_g, Traces traces ) {
         return generateTrace( a, _g, traces.first, &traces.second );
     }
 
