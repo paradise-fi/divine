@@ -1,8 +1,8 @@
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 
-#include "compile.h"
-#include "combine.h"
+#include <tools/compile.h>
+#include <tools/combine.h>
 #include <divine/utility/buchi.h>
 
 bool mucompile( const char *, const char * );

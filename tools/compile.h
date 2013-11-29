@@ -14,8 +14,8 @@
 #include <wibble/sys/process.h>
 #include <wibble/raii.h>
 
-#include "combine.h"
-#include "llvmpaths.h"
+#include <tools/combine.h>
+#include <tools/llvmpaths.h>
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
 #include <divine/utility/strings.h>
