@@ -154,7 +154,7 @@ public:
 	// TODO: add iterator_traits
 	class const_iterator
 	{
-		wibble::Regexp& re;
+		wibble::Regexp *re;
 		std::string cur;
 		std::string next;
 
@@ -165,8 +165,8 @@ public:
 		typedef value_type &reference;
 		typedef std::forward_iterator_tag iterator_category;
 
-		const_iterator(wibble::Regexp& re, const std::string& str) : re(re), next(str) { ++*this; }
-		const_iterator(wibble::Regexp& re) : re(re) {}
+		const_iterator(wibble::Regexp& re, const std::string& str) : re(&re), next(str) { ++*this; }
+		const_iterator(wibble::Regexp& re) : re(&re) {}
 
 		const_iterator& operator++();
 

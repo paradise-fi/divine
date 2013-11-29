@@ -142,12 +142,13 @@ Tokenizer::const_iterator& Tokenizer::const_iterator::operator++()
 
 Splitter::const_iterator& Splitter::const_iterator::operator++()
 {
-	if (re.match(next))
+    assert( re );
+	if (re->match(next))
 	{
-		if (re.matchLength(0))
+		if (re->matchLength(0))
 		{
-			cur = next.substr(0, re.matchStart(0));
-			next = next.substr(re.matchStart(0) + re.matchLength(0));
+			cur = next.substr(0, re->matchStart(0));
+			next = next.substr(re->matchStart(0) + re->matchLength(0));
 		}
 		else
 		{
