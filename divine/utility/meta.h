@@ -108,11 +108,11 @@ struct Result : WithReport {
     enum class CET { NoCE, Cycle, Deadlock, Goal };
     R propertyHolds, fullyExplored;
     CET ceType;
-    std::string iniTrail, cycleTrail;
+    std::vector< int > iniTrail, cycleTrail;
     Result() :
         propertyHolds( R::Unknown ), fullyExplored( R::Unknown ),
-        ceType( CET::NoCE ), iniTrail( "-" ), cycleTrail( "-" )
-    {}
+        ceType( CET::NoCE ), iniTrail{ -1 }, cycleTrail{ -1 }
+    { }
 
     std::vector< ReportLine > report() const override;
 };

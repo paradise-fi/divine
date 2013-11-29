@@ -8,6 +8,23 @@ using Rep = std::vector< ReportLine >;
 
 namespace meta {
 
+template< typename Trace >
+std::string showTrace( Trace ntrace ) {
+    if ( ntrace.size() == 1 && ntrace.front() == -1 )
+        return "-";
+    if ( ntrace.empty() )
+        return "";
+
+    std::stringstream ss;
+
+    for ( auto next : ntrace )
+        ss << next << ",";
+
+    auto str = ss.str();
+    // drop trailing comma
+    return std::string( str, 0, str.length() - 1 );
+}
+
 std::string tostr( Result::R v ) {
     return v == Result::R::Unknown
         ? "Unknown"
@@ -63,8 +80,8 @@ Rep Result::report() const {
     return { { "Property-Holds", tostr( propertyHolds ) },
              { "Full-State-Space", tostr( fullyExplored ) },
              { "CE-Type", tostr( ceType ) },
-             { "CE-Init", iniTrail },
-             { "CE-Cycle", cycleTrail }
+             { "CE-Init", showTrace( iniTrail ) },
+             { "CE-Cycle",showTrace( cycleTrail ) }
            };
 }
 
