@@ -177,8 +177,9 @@ struct InstGenerator {
         _select << "const instantiate::CMap< Trace, AlgorithmPtr (*)( Meta & ) > jumptable = {";
 
         for ( auto trace : finals )
-            _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create"
-                    << _label( trace ) << " },";
+            if ( _allTraits(trace) )
+                _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create"
+                        << _label( trace ) << " },";
 
         _select << std::endl << "};" << std::endl;
 
@@ -291,14 +292,8 @@ struct InstGenerator {
                  <<          algorithm[ alg ] << "< Setup" << _label( symbol ) << ">( meta ) );" << std::endl
                  << "}" << std::endl << std::endl;
             return true;
-        } else {
-            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
-                 << _label( symbol ) << "( Meta & ) {" << std::endl
-                 << "    die( \"Missing instance: " << _ctor( symbol ) << ".\" );" << std::endl
-                 << "    return nullptr;" << std::endl
-                 << "}" << std::endl << std::endl;
+        } else
             return false;
-        }
     }
 
     bool _allTraits( FixArray< Key > symbol ) {
