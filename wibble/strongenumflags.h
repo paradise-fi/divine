@@ -41,12 +41,21 @@ struct StrongEnumFlags {
         return *this;
     }
 
+    This &operator^=( This o ) noexcept {
+        store ^= o.store;
+        return *this;
+    }
+
     friend constexpr This operator|( This a, This b ) noexcept {
         return This( a.store | b.store );
     }
 
     friend constexpr This operator&( This a, This b ) noexcept {
         return This( a.store & b.store );
+    }
+
+    friend constexpr This operator^( This a, This b ) noexcept {
+        return This( a.store ^ b.store );
     }
 
     friend constexpr bool operator==( This a, This b ) noexcept {
