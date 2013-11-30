@@ -279,8 +279,8 @@ struct _Vertex
     }
 
     void disown() { if ( !foreign() ) _n = Node(); }
-    bool valid() { return _s && _s->valid( _h ); }
-    Handle handle() { return _h; }
+    bool valid() const { return _s && _s->valid( _h ); }
+    Handle handle() const { return _h; }
     // belongs to another machine -> cannot be dereferenced...
     bool foreign() const { assert( _s ); return _h.rank() != _s->rank(); }
     void initForeign( Store& s ) {
