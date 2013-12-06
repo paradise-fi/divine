@@ -34,6 +34,7 @@ struct TestFs {
 
     Test directoryIsdir()
     {
+#ifdef POSIX
         {
             Directory dir("/");
             for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
@@ -68,6 +69,7 @@ struct TestFs {
                 }
             }
         }
+#endif
     }
 
     // Ensure that nonexisting directories and files are reported as not valid
