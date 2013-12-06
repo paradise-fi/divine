@@ -22,20 +22,6 @@
 namespace divine {
 namespace gui {
 
-namespace {
-  QVector<int> extract(const QString & trail)
-  {
-    QVector<int> res;
-    QStringList spl = trail.split(',');
-
-    foreach(QString str, spl) {
-      // trail in meta.result is numbered from 1
-      res.append(str.toInt() - 1);
-    }
-    return res;
-  }
-}
- 
 //
 // DivineStreambuf
 //
@@ -157,12 +143,12 @@ void DivineRunner::init(const Meta & meta)
 
 const QVector<int> DivineRunner::iniTrail() const
 {
-  return extract(meta_.result.iniTrail.c_str());
+  return QVector< int >::fromStdVector( meta_.result.iniTrail );
 }
 
 const QVector<int> DivineRunner::cycleTrail() const
 {
-  return extract(meta_.result.cycleTrail.c_str());
+  return QVector< int >::fromStdVector( meta_.result.cycleTrail );
 }
 
 void DivineRunner::run()

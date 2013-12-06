@@ -533,7 +533,7 @@ void DveModule::onRunnerFinished()
   lock_->forceRelease();
 
   // ask for counterexample
-  if(runner_->meta().result.iniTrail != "-") {
+  if( !runner_->meta().result.iniTrail.empty() ) {
     int res = QMessageBox::information(
       root_, tr("DiVinE IDE"), tr("A counterexample has been generated, do you wish to load it?"),
       QMessageBox::Yes | QMessageBox::Default, QMessageBox::No | QMessageBox::Escape);
