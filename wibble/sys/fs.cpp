@@ -154,7 +154,7 @@ void mkFilePath(const std::string& file)
 	if (pos != std::string::npos)
 		mkpath(file.substr(0, pos));
 }
-#endif
+#endif // POSIX
 
 std::string readFile( std::ifstream &in ) {
     if (!in.is_open())
@@ -231,8 +231,6 @@ void rmtree(const std::string& dir)
     }
     rmdir(dir);
 }
-
-#ifdef POSIX
 
 Directory::const_iterator::~const_iterator()
 {
@@ -380,14 +378,6 @@ Directory::const_iterator Directory::end() const
 {
     return const_iterator();
 }
-#endif
-
-#ifdef _WIN32
-bool access(const std::string &s, int m)
-{
-	return 1; /* FIXME */
-}
-#endif
 
 std::string mkdtemp( std::string tmpl )
 {
@@ -395,8 +385,7 @@ std::string mkdtemp( std::string tmpl )
     strcpy( _tmpl, tmpl.c_str() );
     return ::mkdtemp( _tmpl );
 }
-
-#endif
+#endif // POSIX
 
 #ifdef _WIN32
 bool access(const std::string &s, int m)
