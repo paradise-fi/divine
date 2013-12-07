@@ -126,6 +126,7 @@ struct TestFs {
     }
 
     Test _mkdirIfMissing() {
+#ifdef POSIX
         // Creating works and is idempotent
         {
             system("rm -rf test-mkpath");
@@ -156,6 +157,7 @@ struct TestFs {
                 assert(string(e.what()).find("looks like a dangling symlink") != string::npos);
             }
         }
+#endif // POSIX
     }
 
     Test _deleteIfExists() {
