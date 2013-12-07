@@ -488,5 +488,41 @@ std::string c_unescape(const std::string& str, size_t& lenParsed);
 }
 }
 
+// _WIN32 std::to_string hack
+#if defined( _WIN32 ) \
+    && __GNUC__ == 4 && __GNUC_MINOR__ == 7 \
+    && __cplusplus >= 201103L
+
+#warning WIBBLE string defines std::to_string (which is missing on GCC < 4.8 on win)
+#include <stdexcept>
+
+namespace std {
+    static inline std::string to_string( int value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( long value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( long long value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( unsigned value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( unsigned long value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( unsigned long long value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( float value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( double value ) { return wibble::str::fmt( value ); }
+    static inline std::string to_string( long double value ) { return wibble::str::fmt( value ); }
+
+    static inline int       stoi( const std::string& str, size_t *pos = 0, int base = 10 ) {
+        char *end;
+        long ret = std::strtol( str.c_str(), &end, base );
+        if ( end == str.c_str() )
+            throw  std::invalid_argument( "stoi" );
+        if ( errno == ERANGE || long( int( ret ) ) != ret  )
+            throw std::out_of_range( "stoi" );
+        if ( pos )
+            *pos = end - str.c_str();
+        return ret;
+    }/*
+    static inline long      stol( const std::string& str, size_t *pos = 0, int base = 10 );
+    static inline long long stoll( const std::string& str, size_t *pos = 0, int base = 10 );
+    */
+}
+#endif // _WIN32 std::to_string hack
+
 // vim:set ts=4 sw=4:
 #endif
