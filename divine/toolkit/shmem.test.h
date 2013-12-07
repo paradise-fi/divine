@@ -25,7 +25,9 @@ struct TestSharedMemoryUtilities {
         divine::StartDetector::Shared sh;
         std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh } };
 
+#ifdef POSIX // hm
         alarm( 1 );
+#endif
 
         for ( int i = 0; i != 4; ++i ) {
             for ( auto &w : threads )
@@ -115,7 +117,9 @@ struct TestSharedMemoryUtilities {
             ++i;
         }
 
+#ifdef POSIX // hm
         alarm( 1 );
+#endif
 
         for ( auto &w : threads )
             w.start();
