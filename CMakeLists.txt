@@ -264,7 +264,11 @@ if( COMPRESSION )
 endif()
 
 if( EXPLICIT )
-    add_definitions( -DO_EXPLICIT )
+    if ( WIN32 )
+        message( "EXPLICIT" "" "is currently disabled on Windows." )
+    else()
+        add_definitions( -DO_EXPLICIT )
+    endif()
 endif()
 
 if( MPIDEBUG )
