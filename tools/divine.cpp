@@ -64,7 +64,7 @@ struct Main {
            *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
                 *ce, *compactOutput;
-    BoolOption *o_noCe, *o_dispCe, *o_dummy, *o_statistics, *o_shortReport;
+    BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statistics, *o_shortReport;
     OptvalStringVectorOption *o_report;
     BoolOption *o_diskFifo;
     BoolOption *o_fair, *o_hashCompaction, *o_shared;
@@ -189,6 +189,17 @@ struct Main {
         Output::output().cleanup();
         if ( mpi->master() && (o_report->isSet() || o_shortReport->boolValue())  )
             report->final( a->meta() );
+
+        if ( mpi->master() && o_simulateCe->boolValue()
+                && a->meta().result.propertyHolds == meta::Result::R::No )
+        {
+            Meta copy = a->meta();
+            copy.algorithm.algorithm = meta::Algorithm::Type::Simulate;
+            auto simulate = select( copy );
+
+            std::cerr << std::endl << "Counterexample found, running simulate..." << std::endl;
+            simulate->run();
+        }
     }
 
     void setupSignals()
@@ -338,6 +349,10 @@ struct Main {
         o_dispCe = ce->add< BoolOption >(
             "display-counterexample", 'd', "display-counterexample", "",
             "display the counterexample after finishing" );
+
+        o_simulateCe = ce->add< BoolOption >(
+            "simulate-counterexample", '\0', "simulate-counterexample", "",
+            "run simulate with counterexample after finishing (if CE is found)" );
 
         // input options
         o_dummy = input->add< BoolOption >(
@@ -611,7 +626,8 @@ struct Main {
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
-        if ( !o_dispCe->boolValue() && !o_report->isSet() && !o_shortReport->boolValue() )
+        if ( !o_dispCe->boolValue() && !o_simulateCe->boolValue()
+                && !o_report->isSet() && !o_shortReport->boolValue() )
             meta.output.wantCe = false;
 
         meta.output.displayCe = o_dispCe->boolValue();
