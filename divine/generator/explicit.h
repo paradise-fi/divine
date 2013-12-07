@@ -5,6 +5,8 @@
 #include <divine/toolkit/probability.h>
 #include <functional>
 
+#undef Yield
+
 #ifndef DIVINE_GENERATOR_COMPACT_H
 #define DIVINE_GENERATOR_COMPACT_H
 
