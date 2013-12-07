@@ -1,7 +1,14 @@
 // -*- C++ -*- (c) 2013 Petr Ročkai <me@mornfall.net>
 
+#ifndef _WIN32
 #include <asm/byteorder.h>
 #include <byteswap.h>
+#else // WIN32
+#define BYTE_ORDER 1234
+#define LITTLE_ENDIAN 1234
+#define bswap_64 __builtin_bswap64
+#endif // WIN32
+
 #include <atomic>
 #include <divine/toolkit/pool.h> // for align
 
