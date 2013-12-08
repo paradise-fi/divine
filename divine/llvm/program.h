@@ -21,6 +21,7 @@
 
 #ifndef DIVINE_LLVM_PROGRAM_H
 #define DIVINE_LLVM_PROGRAM_H
+#undef alloca
 
 namespace llvm {
 class IntrinsicLowering;
