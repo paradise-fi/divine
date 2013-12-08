@@ -173,7 +173,7 @@ protected:
 			const std::string& longName,
 			const std::string& usage = std::string(),
 			const std::string& description = std::string())
-		: Option(name, shortName, longName, usage, description)
+            : Option(name, shortName, longName, usage, description), m_value(T::init_val)
 	{
 		if (usage.empty())
 			this->usage = "<val>";
@@ -229,7 +229,7 @@ protected:
     bool m_hasval;
 
     SingleOptvalOption(const std::string& name)
-        : Option(name)
+        : Option(name), m_value(T::init_val), m_hasval(false)
     {
         usage = "<val>";
     }
@@ -238,7 +238,7 @@ protected:
             const std::string& longName,
             const std::string& usage = std::string(),
             const std::string& description = std::string())
-        : Option(name, 0, longName, usage, description)
+        : Option(name, 0, longName, usage, description), m_value(T::init_val), m_hasval(false)
     {
         if (shortName != 0)
             throw wibble::exception::Consistency(
