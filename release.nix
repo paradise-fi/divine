@@ -89,9 +89,9 @@ let
        '';
     };
 
-  mkwin = image: flags: pkgs.callPackage nix/windows_build.nix {
+  mkwin = image: flags: with_llvm: pkgs.callPackage nix/windows_build.nix {
     inherit windows_mingw;
-    tools = [ windows_cmake windows_nsis /* windows_llvm */ windows_qt ];
+    tools = [ windows_cmake windows_nsis windows_qt ] ++ (if with_llvm then [ windows_llvm ] else []);
     img = image;
     src = jobs.tarball;
     name = "divine";
@@ -211,8 +211,9 @@ let
     ubuntu1304_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304x86_64; extras = extra_debs32; };
     fedora17_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora17x86_64; extras = extra_rpms; };
 
-    win7_i386_small = mkwin windows7_img "-DSMALL=ON";
-    win7_i386 = mkwin windows7_img "";
+    win7_i386_small = mkwin windows7_img "-DSMALL=ON" false;
+    win7_i386 = mkwin windows7_img "" false;
+    win7_i386_llvm = mkwin windows7_img "" true;
   };
 in
   jobs
