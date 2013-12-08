@@ -30,7 +30,7 @@ LPReturn __gxx_personality_v0( __cxa_exception *e )
 }
 
 void __cxa_call_unexpected( void *) {
-    __divine_assert( 0 ); // TODO
+    __divine_problem( 1, "unexpected exception" );
 }
 
 void __cxa_throw_divine( __cxa_exception *e )
@@ -47,7 +47,7 @@ void __cxa_throw_divine( __cxa_exception *e )
         lp = __divine_landingpad( frameid );
 
         if ( !lp ) {
-            __divine_assert( 0 ); /* FIXME call terminate or something */
+            __divine_problem( 1, "unhandled exception" );
             __divine_unwind( INT_MIN );
         }
 
