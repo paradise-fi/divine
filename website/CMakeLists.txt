@@ -40,5 +40,5 @@ page( manual.html ../manual "--toc;-N"
         using.mdwn llvm.mdwn dve.mdwn timed.mdwn cesmi.mdwn
         dess.mdwn ../HACKING )
 pages( . download.mdwn index.mdwn status.mdwn )
-resources( style.css button.png button-over.png divine-logo.png trac-logo.png )
+resources( style.css hydra-api.js button.png button-over.png divine-logo.png trac-logo.png )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} )
