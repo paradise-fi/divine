@@ -59,7 +59,10 @@ function Hydra(base, project) {
         var s = ""; // = ".hydra";
         if ( sel["jobset"] )
             s += '.hydra#' + (this.variants.length ?
-                              sel.jobset.replace(/-.*/, "") : sel.jobset) + ' ';
+                              sel.jobset.replace(/(.*)-[^-]*/, "$1") : sel.jobset) + ' ';
+        else if ( sel["what"] )
+            s += '.hydra#' + sel.what;
+
         if ( sel["job"] )
             s += '.job_' + sel.job + ' ';
         if ( sel["system"] )
@@ -76,6 +79,7 @@ function Hydra(base, project) {
     this.fetch = function(what)
     {
         var h = this;
+        var ev = new Object();
 
         function setupbuild(job) {
             var row = '<tr class="job_' + job + '">';
@@ -88,19 +92,21 @@ function Hydra(base, project) {
                            ' variant_' + h.variants[j] + '"></td>';
             }
             row += '</tr>';
-            h.select({jobset: what}).append( row );
+            h.select({what: what}).append( row );
         }
 
-        function getbuild(eval, job, sys, js) {
+        function getbuild(job, sys, js) {
 
             function renderbuild(js, builds) {
                 if ( builds.length == 0 ) return;
                 var build = builds[0];
                 var type = build.jobset.replace(/.*-/, "");
                 var current = 0;
-                for ( var i = 0; i < build.evals.length; ++i )
-                    if ( eval == build.evals[i] )
-                        current = 1;
+
+                for ( var i = 0; i < ev.list.length; ++i )
+                    for ( var j = 0; j < build.evals.length; ++j )
+                        if ( ev.list[i].id == build.evals[j] )
+                            current = 1;
 
                 console.log( "build.job = " + build.job + ", type = " + type + ", system = " + build.system );
                 h.select({ job: build.job, jobset: js, system: sys }).html(
@@ -122,17 +128,22 @@ function Hydra(base, project) {
                     tbl += '<td>' + h.systems[i] + ' ' + v + ' </td>';
                 } );
             tbl += '</tr>';
-            h.select({jobset: what}).html(tbl);
+            h.select({ what: what }).html(tbl);
             for ( var i = 0; i < jobs.length; ++i ) {
                 setupbuild( jobs[i].name );
                 for ( var j = 0; j < h.systems.length; ++j )
                     h.forvariants( what, function(v) {
-                        getbuild(evid, jobs[i].name, h.systems[j], v);
+                        getbuild(jobs[i].name, h.systems[j], v);
                     } );
             }
         }
 
-        h.json( "latestevals", { nr: 1, project: project, jobset: h.basevariant( what ) }, 
+        ev.list = new Array();
+        ev.wait = $.Deferred();
+        ev.fetched = 0;
+
+        ev.wait.done( function() {
+            h.json( "latestevals", { nr: 1, project: project, jobset: h.basevariant( what ) }, 
                 function(evals) {
                     if (!evals.length)
                         return; /* nothing to do */
@@ -140,7 +151,19 @@ function Hydra(base, project) {
                     h.json("jobs", { project: project, jobset: h.basevariant( what ),
                                      eval: evals[0].id }, function(j) { rendertable( evals[0].id, j ); } );
                 }
-        );
+            );
+        } );
+
+        h.forvariants(what, function(js, v) {
+            h.json( "latestevals", { nr: 1, project: project, jobset: js }, function(evals) {
+                if ( evals.length ) {
+                    ev.list.push(evals[0]);
+                    console.log( "fetched eval: " + evals[0].id + ", " + ev.fetched + " out of " + h.variants.length );
+                }
+                if ( ++ev.fetched == (h.variants.length ? h.variants.length : 1) )
+                    ev.wait.resolve();
+            } );
+        } );
     }
 
     function tr(id, testname, initial) {
