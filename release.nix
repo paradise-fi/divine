@@ -47,7 +47,11 @@ let
      name = "divine";
      src = jobs.tarball;
      diskImage = diskFun { extraPackages = extras; size = 6144; };
-     configurePhase = "echo -DCMAKE_BUILD_TYPE=${buildType} > pkgbuildflags";
+     configurePhase = ''
+          echo "-DCMAKE_BUILD_TYPE=${buildType}" > pkgbuildflags
+          echo "override_dh_auto_test:" >> debian/rules
+          echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
+     '';
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
    };
