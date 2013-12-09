@@ -105,7 +105,7 @@ struct Main {
 
     Main( int _argc, const char **_argv )
         : argc( _argc ), argv( _argv ),
-          opts( "DiVinE", versionString(), 1, "DiVinE Team <divine@fi.muni.cz>" ),
+          opts( "DIVINE", versionString(), 1, "DIVINE Team <divine@fi.muni.cz>" ),
           combine( opts ),
           compile( opts )
     {
