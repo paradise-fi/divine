@@ -81,6 +81,7 @@ let
        src = jobs.tarball;
        buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov ] ++ inputs { inherit pkgs; };
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
+       dontStrip = true;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
           make functional || touch $out/nix-support/failed
