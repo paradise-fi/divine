@@ -38,7 +38,7 @@ std::string to_string( Capabilities c ) {
 Header *Header::ptr( void *p ) {
     Header *ptr = static_cast< Header * >( p );
     if ( std::memcmp( ptr->magic, MAGIC, MAGIC_LENGTH ) != 0 ) {
-        std::cerr << "ERROR: Invalid DiVinE Explicit format" << std::endl;
+        std::cerr << "ERROR: Invalid DIVINE Explicit format" << std::endl;
         std::abort();
     }
     if ( ptr->byteOrder != EXPECTED_BYTE_ORDER ) {
@@ -50,7 +50,7 @@ Header *Header::ptr( void *p ) {
     assert_leq( 1, ptr->compactVersion );
     if ( ptr->compactVersion > CURRENT_DCESS_VERSION )
         std::cerr << "WARNING: DCESS file was created by newer version of "
-            "DiVinE\n and might not be compatible with this version";
+            "DIVINE\n and might not be compatible with this version";
     if ( ptr->capabilities.has( Capability::UInt64Labels ) &&
             ptr->labelSize != sizeof( uint64_t ) )
         die( "ERROR: invalid size of saved labels" );
