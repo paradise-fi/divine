@@ -9,6 +9,8 @@
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 
+#include <divine/toolkit/list.h>
+
 #include <divine/llvm/wrap/Instructions.h>
 #include <divine/llvm/wrap/Constants.h>
 
@@ -53,66 +55,12 @@ using ::llvm::Type;
 using wibble::Unit;
 using wibble::Maybe;
 
-template< int N, typename _T > struct Z;
-template< int N, typename _T > struct NZ { typedef _T T; };
-
-template< typename _T > struct Z< 0, _T > { typedef _T T; };
-template< typename _T > struct NZ< 0, _T > {};
-
-struct Nil {
-    static const int length = 0;
-};
-
-template< int N > struct ConsAt;
-
-template<>
-struct ConsAt< 0 > {
-    template< typename Cons >
-    static auto get( Cons &c ) -> decltype( c.car ) {
-        return c.car;
-    }
-};
-
-template< int N >
-struct ConsAt {
-    template< typename Cons >
-    static auto get( Cons &c ) -> decltype( ConsAt< N - 1 >::get( c.cdr ) )
-    {
-        return ConsAt< N - 1 >::get( c.cdr );
-    }
-};
-
 template< int, int > struct Eq;
 template< int i > struct Eq< i, i > { typedef int Yes; };
 
-template< typename A, typename B >
-struct Cons {
-    typedef A Car;
-    typedef B Cdr;
-    A car;
-    B cdr;
-    static const int length = 1 + B::length;
-
-    template< int N >
-    auto get() -> decltype( ConsAt< N >::get( *this ) )
-    {
-        return ConsAt< N >::get( *this );
-    }
-};
-
-template< typename A, typename B >
-Cons< A, B > cons( A a, B b ) {
-    Cons< A, B > r;
-    r.car = a; r.cdr = b;
-    return r;
-}
-
 template< typename As, typename A, typename B >
-Cons< As *, B > consPtr( A *a, B b ) {
-    Cons< As *, B > r;
-    r.car = reinterpret_cast< As * >( a );
-    r.cdr = b;
-    return r;
+list::Cons< As *, B > consPtr( A *a, B b ) {
+    return list::Cons< As *, B >( reinterpret_cast< As * >( a ), b );
 }
 
 template< typename X >
@@ -121,7 +69,7 @@ template< typename X >
 struct UnPtr< X * > { typedef X T; };
 
 template< int I, typename Cons >
-auto decons( Cons c ) -> typename UnPtr< decltype( ConsAt< I >::get( c ) ) >::T &
+auto deconsptr( Cons c ) -> typename UnPtr< decltype( list::ConsAt< I >::get( c ) ) >::T &
 {
     return *c.template get< I >();
 }
@@ -132,10 +80,10 @@ auto decons( Cons c ) -> typename UnPtr< decltype( ConsAt< I >::get( c ) ) >::T 
     { return f( __VA_ARGS__ ); }
 
 MATCH( 0, /**/ )
-MATCH( 1, decons< 0 >( x ) )
-MATCH( 2, decons< 1 >( x ), decons< 0 >( x ) )
-MATCH( 3, decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x ) )
-MATCH( 4, decons< 3 >( x ), decons< 2 >( x ), decons< 1 >( x ), decons< 0 >( x ) )
+MATCH( 1, deconsptr< 0 >( x ) )
+MATCH( 2, deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
+MATCH( 3, deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
+MATCH( 4, deconsptr< 3 >( x ), deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
 
 #undef MATCH
 
@@ -1176,13 +1124,13 @@ struct Evaluator
         flags.push_back( MemoryFlags() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
         result.push_back( instruction.result() );
-        return implement( wibble::Preferred(), i, e, Nil(), fun );
+        return implement( wibble::Preferred(), i, e, list::Nil(), fun );
     }
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
         flags.push_back( MemoryFlags() );
-        return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), Nil(), fun );
+        return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), list::Nil(), fun );
     }
 
     template< typename Fun, typename... Values >
