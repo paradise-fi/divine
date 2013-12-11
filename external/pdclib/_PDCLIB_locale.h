@@ -9,6 +9,7 @@
 #define _PDCLIB_LOCALE_METHOD_TSS           't'
 #define _PDCLIB_LOCALE_METHOD_THREAD_LOCAL  'T'
 
+#if !defined(__cplusplus)
 #if !defined(_PDCLIB_LOCALE_METHOD)
     #error _PDCLIB_LOCALE_METHOD undefined: don't know where I'm storing the thread locale
 #elif _PDCLIB_LOCALE_METHOD == _PDCLIB_LOCALE_METHOD_TSS
@@ -43,6 +44,7 @@
     }
 #else
     #error Locale TSS method unspecified
+#endif
 #endif
 
 /* -------------------------------------------------------------------------- */
