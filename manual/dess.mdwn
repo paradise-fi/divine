@@ -1,42 +1,43 @@
 DIVINE Explicit State Space Format
 ==================================
 
-The DIVINE Explicit State Space (DESS) format is format of explicit graph
-representation which can be generated from the 
-[`gen-explicit` command](#divine-explicit-state-space-generator).
-It can also be used as input formalism for DIVINE or as standardised way
-to represent models, largely independent of DIVINE.
+The DIVINE Explicit State Space (DESS) format is a format for explicit graph
+representation which can be generated using the [`gen-explicit`
+command](#divine-explicit-state-space-generator).  It can also be used as an
+input formalism for DIVINE or as a standardised way to represent models,
+largely independent of DIVINE.
 
-The DESS file contains fixed header and graph encoding, which consists
-of following sections (at least one of edges section must be present):
-forward edges, backward edges, node memory. The edge sections are model
-independent, the node memory section is model (and DIVINE version)
-dependent.
+The DESS file contains a fixed-length header followed by an encoding of the
+graph, which consists of the following sections (at least one of edges section
+must be present): forward edges, backward edges, node memory. The edge sections
+are model-independent, the node memory section depends on the model and DIVINE
+version.
 
 Graph encoding
 --------------
 
-In DESS format graph is encoded as transition relation on set of sequentially
-numbered vertices. Since vertices are numbered sequentially is is sufficient
-to only give their count to describe the set. The transitions (edges) are oriented,
-encoded as one-to-many mapping of outgoing transitions for each vertex.
+In the DESS format, the graph is encoded as a transition relation on set of
+sequentially numbered vertices. Since vertices are numbered sequentially is is
+sufficient to only give their count to describe the set. The transitions
+(edges) are directed, encoded as a one-to-many mapping of outgoing transitions
+for each vertex.
 
-The first vertex of graph has index 1.
+The first vertex of the graph has index 1.
 
 ### Initial states of model
-To represent uniquely initial states of models independent of their count,
-an additional virtual vertex with index 0 is added to states of model.
-This vertex has outgoing edges to the initial vertices of state space.
+To uniquely represent the initial states of models, independently of their
+count, an additional virtual vertex with index 0 is included.  This vertex has
+an outgoing edge for each initial vertex of the state space.
 
-### Transpose graph
-The DESS format may also contain transpose of graph, which is then encoded
-the same way as the original graph and edges in transposed graph correspond
-to backward edges of original graph. Notably all initial states of original
-graph have edge to virtual state 0.
+### Transposed graph
+The DESS format may also contain the transposition of the graph, which is then
+encoded the same way as the original graph and edges the in the transposed
+graph correspond to the backward edges of the original graph. Notably all
+initial states of the original graph have an edge to the virtual vertex 0.
 
 Header format
 -------------
-The header has length of 128B and following format:
+The header has length of 128B and the following format:
 
     +--------------------------------+--------------------------------+
     | DESS identification string (40B)                                |
@@ -66,20 +67,20 @@ The header has length of 128B and following format:
     | nodes offset (8B)                                               |
     +--------------------------------+--------------------------------+
 
-All non-string values are saved as signed integers of given length,
-the only exception is byte order check which is unsigned integer.
+All non-string values are stored as signed integers of a given length, the only
+exception is the byte order check which is an unsigned integer.
 
 DESS identification string
-:   String allowing to identify DESS file. It reads
+:   String allowing to identify the DESS file. It reads
     "`DIVINE COMPACT EXPLICIT STATE SPACE`."
 
 byte order check
-:   This field is used to verify endianity of DESS file, it should
-    contain value `0x0807060504030201`.
+:   This field is used to verify the endianity of the DESS file, it should
+    contain the value `0x0807060504030201`.
 
 DESS version
-:   Currently set to 1, in future will be used if new revision of header format
-    will be necessary.
+:   Currently set to 1. In future, it will be changed if a revision of the
+    header format becomes necessary.
 
 label size
 :   Size of edge labels saved with edges, in bytes. Those labels are model
