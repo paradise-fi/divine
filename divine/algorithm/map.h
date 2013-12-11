@@ -74,7 +74,14 @@ template< typename Setup >
 struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
 {
     typedef Map< Setup > This;
+
     ALGORITHM_CLASS( Setup, MapShared< typename Setup::Store::Handle > );
+    DIVINE_RPC( rpc::Root,
+                &This::getShared, &This::setShared,
+                &This::_visit, &This::_cleanup,
+                &This::_parentTrace, &This::_traceCycle,
+                &This::_por, &This::_por_worker,
+                &This::_successorTrace, &This::_ceIsInitial );
 
     int64_t acceptingCount,
             eliminated,
@@ -365,16 +372,6 @@ struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topol
     }
 
 };
-
-ALGORITHM_RPC( Map );
-ALGORITHM_RPC_ID( Map, 1, _visit );
-ALGORITHM_RPC_ID( Map, 2, _cleanup );
-ALGORITHM_RPC_ID( Map, 3, _parentTrace );
-ALGORITHM_RPC_ID( Map, 4, _traceCycle );
-ALGORITHM_RPC_ID( Map, 5, _por );
-ALGORITHM_RPC_ID( Map, 6, _por_worker );
-ALGORITHM_RPC_ID( Map, 7, _successorTrace );
-ALGORITHM_RPC_ID( Map, 8, _ceIsInitial );
 
 }
 }

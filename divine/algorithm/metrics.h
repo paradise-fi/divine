@@ -90,6 +90,9 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     };
 
     ALGORITHM_CLASS( Setup, Shared );
+    DIVINE_RPC( rpc::Root,
+                &This::getShared, &This::setShared,
+                &This::_visit, &This::_por, &This::_por_worker );
 
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, const Vertex &st )
@@ -173,11 +176,6 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         shared.update( meta().statistics );
     }
 };
-
-ALGORITHM_RPC( Metrics );
-ALGORITHM_RPC_ID( Metrics, 1, _visit );
-ALGORITHM_RPC_ID( Metrics, 2, _por );
-ALGORITHM_RPC_ID( Metrics, 3, _por_worker );
 
 }
 }

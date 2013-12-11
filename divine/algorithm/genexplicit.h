@@ -147,6 +147,12 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
     };
 
     ALGORITHM_CLASS( Setup, Shared );
+    DIVINE_RPC( rpc::Root,
+                &This::getShared, &This::setShared,
+                &This::_init, &This::_count,
+                &This::_por, &This::_por_worker, &This::_normalize,
+                &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
+                &This::_setLimits, &This::_getNodeId, &This::_cleanup );
 
     Params params;
     Limits limits;
@@ -512,19 +518,6 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
         }
     }
 };
-
-ALGORITHM_RPC( _GenExplicit );
-ALGORITHM_RPC_ID( _GenExplicit, 1, _init );
-ALGORITHM_RPC_ID( _GenExplicit, 2, _count );
-ALGORITHM_RPC_ID( _GenExplicit, 3, _por );
-ALGORITHM_RPC_ID( _GenExplicit, 4, _por_worker );
-ALGORITHM_RPC_ID( _GenExplicit, 5, _normalize );
-ALGORITHM_RPC_ID( _GenExplicit, 6, _trackPredecessors );
-ALGORITHM_RPC_ID( _GenExplicit, 7, _writeFile );
-ALGORITHM_RPC_ID( _GenExplicit, 8, _collectCount );
-ALGORITHM_RPC_ID( _GenExplicit, 9, _setLimits );
-ALGORITHM_RPC_ID( _GenExplicit, 10, _getNodeId );
-ALGORITHM_RPC_ID( _GenExplicit, 11, _cleanup );
 
 template< typename Setup >
 struct _GenExplicitTranspose : Algorithm, Sequential

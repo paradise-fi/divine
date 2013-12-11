@@ -54,7 +54,15 @@ template< typename Setup >
 struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Owcty< Setup > >
 {
     typedef Owcty< Setup > This;
+
     ALGORITHM_CLASS( Setup, OwctyShared< typename Setup::Store::Handle > );
+    DIVINE_RPC( rpc::Root,
+                &This::getShared, &This::setShared,
+                &This::_initialise, &This::_reachability, &This::_elimination,
+                &This::_counterexample, &This::_checkCycle,
+                &This::_parentTrace, &This::_traceCycle,
+                &This::_por, &This::_por_worker,
+                &This::_successorTrace, &This::_ceIsInitial );
 
     // -------------------------------
     // -- Some useful types
@@ -517,19 +525,6 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
         this->init( *this, master, id );
     }
 };
-
-ALGORITHM_RPC( Owcty );
-ALGORITHM_RPC_ID( Owcty, 1, _initialise );
-ALGORITHM_RPC_ID( Owcty, 2, _reachability );
-ALGORITHM_RPC_ID( Owcty, 3, _elimination );
-ALGORITHM_RPC_ID( Owcty, 4, _counterexample );
-ALGORITHM_RPC_ID( Owcty, 5, _checkCycle );
-ALGORITHM_RPC_ID( Owcty, 6, _parentTrace );
-ALGORITHM_RPC_ID( Owcty, 7, _traceCycle );
-ALGORITHM_RPC_ID( Owcty, 8, _por );
-ALGORITHM_RPC_ID( Owcty, 9, _por_worker );
-ALGORITHM_RPC_ID( Owcty, 10, _successorTrace );
-ALGORITHM_RPC_ID( Owcty, 11, _ceIsInitial );
 
 }
 }

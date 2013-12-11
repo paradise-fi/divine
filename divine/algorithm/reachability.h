@@ -43,6 +43,10 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
 {
     typedef Reachability< Setup > This;
     ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::Store::Handle > );
+    DIVINE_RPC( rpc::Root,
+                &This::getShared, &This::setShared,
+                &This::_visit, &This::_por, &This::_por_worker,
+                &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
 
     Handle goal;
     bool deadlocked;
@@ -212,15 +216,6 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
                                   ? meta::Result::R::No : meta::Result::R::Yes;
     }
 };
-
-
-ALGORITHM_RPC( Reachability );
-ALGORITHM_RPC_ID( Reachability, 1, _visit );
-ALGORITHM_RPC_ID( Reachability, 2, _parentTrace );
-ALGORITHM_RPC_ID( Reachability, 3, _por );
-ALGORITHM_RPC_ID( Reachability, 4, _por_worker );
-ALGORITHM_RPC_ID( Reachability, 5, _successorTrace );
-ALGORITHM_RPC_ID( Reachability, 6, _ceIsInitial );
 
 }
 }
