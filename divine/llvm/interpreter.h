@@ -179,7 +179,6 @@ struct Interpreter
     template< typename Yield >
     void run( Blob b, Yield yield ) {
         state.rewind( b, -1 ); /* rewind first to get sense of thread count */
-        state.flags().clear();
         state.flags().ap = 0; /* TODO */
         tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
@@ -192,7 +191,6 @@ struct Interpreter
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
-            state.flags().clear();
             state.flags().ap = 0; /* TODO */
         }
     }

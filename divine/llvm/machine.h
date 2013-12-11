@@ -323,20 +323,11 @@ struct MachineState
 
     struct Flags : WithMemory< Flags >
     {
-        uint64_t problemcount:7;
-        uint64_t problem:1;
+        uint64_t problemcount:8;
         uint64_t ap:44;
         uint64_t buchi:12;
         Problem &problems( int i ) {
             return *( reinterpret_cast< Problem * >( memory() ) + i );
-        }
-
-        void clear() {
-            problem = 0;
-        }
-
-        bool bad() {
-            return problem;
         }
 
         StateAddress advance( StateAddress a, int ) {

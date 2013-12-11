@@ -120,7 +120,7 @@ struct _LLVM : Common< Blob > {
 
     bool isGoal( Node n ) {
         auto fl = flags( n );
-        return fl.bad();
+        return fl.problemcount;
     }
 
     bool isAccepting( Node n ) {

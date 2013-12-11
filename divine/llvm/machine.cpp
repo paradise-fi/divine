@@ -228,8 +228,7 @@ divine::Blob MachineState::snapshot()
 
     int problemcount = flags().problemcount + problems.size();
     Blob b = _alloc.makeBlobCleared(
-        size( canonic.stack, canonic.allocated, canonic.segcount,
-              flags().problem ? problemcount : 0 ) );
+        size( canonic.stack, canonic.allocated, canonic.segcount, problemcount ) );
 
     StateAddress address( &_alloc.pool(), &_info, b, _alloc._slack );
     Flags &fl = address.as< Flags >();
@@ -237,16 +236,14 @@ divine::Blob MachineState::snapshot()
     fl.problemcount = 0;
     address.advance( sizeof( Flags ) );
 
-    if ( fl.problem ) {
-        for ( int i = 0; i < problemcount; ++i ) {
-            address.advance( sizeof( Problem ) );
-            fl.problems( i ) =
-                i < flags().problemcount ?
-                    flags().problems( i ) :
-                    problems[ i - flags().problemcount ];
-        }
-        fl.problemcount = problemcount;
+    for ( int i = 0; i < problemcount; ++i ) {
+        address.advance( sizeof( Problem ) );
+        fl.problems( i ) =
+            i < flags().problemcount ?
+                flags().problems( i ) :
+            problems[ i - flags().problemcount ];
     }
+    fl.problemcount = problemcount;
 
     Globals *_global = &address.as< Globals >();
     address = state().sub( Globals() ).copy( address );
@@ -305,7 +302,6 @@ void MachineState::problem( Problem::What w, Pointer ptr )
     p.tid = _thread;
     p.pointer = ptr;
     problems.push_back( p );
-    flags().problem = 1;
 }
 
 bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
