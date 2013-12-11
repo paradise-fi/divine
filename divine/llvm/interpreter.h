@@ -219,6 +219,9 @@ struct Interpreter
         if ( !tauplus && jumped )
             return true;
 
+        if ( state.flags().problemcount || state.problems.size() )
+           return true;
+
         return false;
     }
 
