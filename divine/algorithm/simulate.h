@@ -164,8 +164,7 @@ struct ProcessLoop {
 
     static std::pair< int, bool > parse( std::string s ) {
         try {
-            int i;
-            i = std::stoi( s );
+            int i = std::stoi( s );
             return std::make_pair( i, true );
         } catch ( std::invalid_argument & ) {
             return std::make_pair( 0, false );
@@ -589,8 +588,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     }
 
     void evalLoop() {
-        std::string line;
-        CmdResponse resp;
+        CmdResponse resp = CmdResponse::Continue;
         do {
             if ( resp == CmdResponse::Continue && options.has( Option::AutoSuccs ) )
                 printSuccessors();
