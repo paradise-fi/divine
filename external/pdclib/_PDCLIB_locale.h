@@ -88,7 +88,8 @@ struct _PDCLIB_locale {
     /* ctype / wctype */
     _PDCLIB_wcinfo_t            *_WCType;
     _PDCLIB_size_t               _WCTypeSize;
-    _PDCLIB_ctype_t             *_CType; 
+    _PDCLIB_ctype_t             *_CType;
+    _PDCLIB_uint16_t            *_CTypeFlags;
 
     /* perror/strerror */
     char                        *_ErrnoStr[_PDCLIB_ERRNO_MAX];
