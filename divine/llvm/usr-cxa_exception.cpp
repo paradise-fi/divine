@@ -73,6 +73,7 @@ void __cxa_throw_divine( __cxa_exception *e )
         -- frameid;
     }
     e->handlerSwitchValue = handler;
+    e->adjustedPtr = &e->unwindHeader + 1;
     __divine_unwind( destination, personality ? personality( e ) : lpreturn( 0, 0 ) );
 }
 
