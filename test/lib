@@ -144,7 +144,7 @@ llvm_small() {
     check clear
     run llvm_assemble data/global-bug.ll "$@" --property=assert --reduce=tau+,taustores,heap
     check reachability_goal
-    check statespace 49 89 0 0
+    check statespace 50 90 0 0
 }
 
 timed_small() {
