@@ -95,7 +95,7 @@ void SqlReport::doFinal( const Meta &meta ) {
     try {
         nanodbc::statement stmtins( connection );
         nanodbc::prepare( stmtins, com.str() );
-        for ( int i = 0; i < usedkeys.size(); ++i )
+        for ( int i = 0; i < int( usedkeys.size() ); ++i )
             stmtins.bind_parameter( i, values[ usedkeys[ i ] ].c_str() );
         execute( stmtins );
     } catch ( const nanodbc::database_error & ) {

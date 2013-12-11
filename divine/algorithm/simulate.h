@@ -248,7 +248,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
     // go to i-th successor
     void goDown( int i ) {
         assert_leq( 0, i );
-        assert_leq( i, succs.size() - 1 );
+        assert_leq( i, int( succs.size() - 1 ) );
 
         // store selected successor
         trace.push_back( succs[ i ] );
@@ -377,7 +377,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         Vertex from;
         if ( trace.empty() ) {
-            assert_leq( 1, iniTrail.size() );
+            assert_leq( 1, int( iniTrail.size() ) );
             from = getInitial( iniTrail[ 0 ] );
             assert( from.valid() );
         } else {

@@ -502,7 +502,7 @@ struct Main {
             auto values = o_report->values();
             if ( o_report->emptyValueSet() )
                 values.push_back( "" );
-            assert_leq( 1, values.size() );
+            assert_leq( 1UL, values.size() );
 
             if ( values.size() > 1 ) {
                 rep = Report::get< AggregateReport >();

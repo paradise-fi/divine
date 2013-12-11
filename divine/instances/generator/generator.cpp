@@ -208,7 +208,7 @@ struct InstGenerator {
                 ++size;
 
         int perFile;
-        if ( _perFile * _instances.size() >= size )
+        if ( _perFile * int( _instances.size() ) >= size )
             perFile = _perFile;
         else
             perFile = std::ceil( double( size ) / _instances.size() );
@@ -226,7 +226,7 @@ struct InstGenerator {
                 ++numFiles;
             }
         }
-        for ( int i = 0; i < _instances.size(); ++i ) {
+        for ( int i = 0; i < int( _instances.size() ); ++i ) {
             auto &file = _instances[ i ];
             if ( files[ i ].size() > 0 ) {
             emitHeaders( file, files[ i ] );
@@ -328,7 +328,7 @@ struct InstGenerator {
 
     bool _valid( FixArray< Key > trace ) {
         std::vector< Key > vec;
-        for ( int i = 0; i < trace.size(); ++i ) {
+        for ( int i = 0; i < int( trace.size() ); ++i ) {
             auto supp = supportedBy.find( trace[ i ] );
             if ( supp != supportedBy.end() ) {
                 if ( !_evalSuppBy( supp->second, vec ) )
@@ -357,7 +357,7 @@ struct InstGenerator {
         int cnt = 0;
         cnt += writeFile( selName, _select, 1 );
         cnt += writeFile( extName, _extern, 2 );
-        for ( int i = 0; i < _instances.size(); ++i )
+        for ( int i = 0; i < int( _instances.size() ); ++i )
             cnt += writeFile( instancesPrefix + std::to_string( i + 1 ) + ".cpp",
                         _instances[ i ], 3, i );
         return cnt;
