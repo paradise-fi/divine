@@ -303,7 +303,7 @@ input file.
           on standard output.
 
      `text:file`
-     :    Same as `text` but output is saved to given file (which is overriden
+     :    Same as `text` but output is saved to given file (which is overwritten
           if already present).
 
      `plain`
@@ -336,36 +336,39 @@ DIVINE Explicit State Space Generator
                         [--no-save-states]
                         [-o <file> | --output=<file>]
 
-The `gen-explicit` subcommand can be used to generate whole state-space
-of model into file which can then be processed either by DIVINE or any other
+The `gen-explicit` subcommand can be used to generate the entire state-space
+of a model into file which can then be processed either by DIVINE or any other
 tool capable of loading
 [DIVINE Explicit State Space Format](#divine-explicit-state-space-format).
 
-The output file contains both forward and backward edges of state space
-and may contain also memory of nodes of state space. Please note that
-output file is approximately as big as the amount of memory required for
-verification itself (it is smaller if states are omitted).
+The output file contains both forward and backward edges of the state space and
+may contain the memory associated with each node of the state space. Please
+note that the size of the output file approximately corresponds to the amount
+of memory required for verification (it is smaller if state memory is omitted,
+though).
 
-The `gen-explicit` command can run in parallel and can use MPI, but
-it is not yet supported in conjunction with `--shared` option.
-If `gen-explicit` is used over MPI it expects that output file is located
-on shared filesystem (for example NFS).
+The `gen-explicit` command can run in parallel and can use MPI, but it is not
+yet available in conjunction with the `--shared` option.  If `gen-explicit` is
+used with MPI, it expects that the output file is located on a shared
+filesystem (for example NFS).
 
 State Space Compression
 -----------------------
+
 DIVINE supports lossless state space compression based on tree compression.
 This compression mechanism is particularly efficient on large models with
-relatively large size of one state. Therefore LLVM and timed automata
-verification benefits the most from state space compression -- the compression
-is often capable of reducing large state spaces (several gigabytes and more)
-to less than tenth of original size. Also, for these modelling formalisms
-time overhead from compression is usually negligible.
+relatively large state vectors (individual states). Therefore LLVM and timed
+automata verification benefits the most from state space compression -- the
+compression can often reduce large state spaces (several gigabytes and more) to
+less than one tenth of their original size. Also, for these modelling
+formalisms, the time overhead from compression is usually negligible.
 
 The compression is supported by all verification algorithms and can be enabled
-by `--compression` switch (or `--compression=tree`). The following DIVINE
-commands allow compression option: `metrics`, `verify`, `gen-explicit`, `draw`.
+by supplying the `--compression` switch (alternatively,
+`--compression=tree`). The following DIVINE commands allow compression option:
+`metrics`, `verify`, `gen-explicit`, `draw`.
 
-There are no limitations on other options implied by use of compression,
-it is supported with parallel verification (including MPI), however
-to achieve best compression ratio it is recommended to use shared verification
-option (`--shared`) if possible.
+There are no limitations on other options implied by use of compression, it is
+supported with parallel verification (including MPI); however, to achieve best
+compression ratio it is recommended to use shared-memory verification
+(`--shared`), if possible.
