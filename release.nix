@@ -46,7 +46,7 @@ let
    VM rec {
      name = "divine";
      src = jobs.tarball;
-     diskImage = diskFun { extraPackages = extras; size = 6144; };
+     diskImage = diskFun { extraPackages = extras; size = 8192; };
      configurePhase = ''
           echo "-DCMAKE_BUILD_TYPE=${buildType}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
