@@ -367,9 +367,12 @@ struct Local
         return 0;
     }
 
+    template< typename T >
+    static void _check( T t );
+
     template< typename Base, typename Bit >
     auto distribute( Bit bit, void (Base::*set)( Bit ) )
-         -> decltype( rpc::check_void< void (Instance::*)( Bit ) >( set ) )
+         -> decltype( _check< void (Instance::*)( Bit ) >( set ) )
     {
         for ( int i = 0; i < int( m_slaves.size() ); ++i )
             (m_slaves[ i ].*set)( bit );
@@ -377,7 +380,7 @@ struct Local
 
     template< typename Base, typename Bits, typename Bit >
     auto collect( Bits &bits, Bit (Base::*get)() )
-         -> decltype( rpc::check_void< Bit (Instance::*)() >( get ) )
+         -> decltype( _check< Bit (Instance::*)() >( get ) )
     {
         for ( int i = 0; i < int( m_slaves.size() ); ++i )
             bits.push_back( (m_slaves[ i ].*get)() );
@@ -388,7 +391,7 @@ struct Local
     void wakeup( int id ) { barrier().wakeup( &m_slaves[ id ] ); }
 
     auto parallel( void (Instance::*fun)() )
-         -> decltype( rpc::check_void< void (Instance::*)() >( fun ) )
+         -> decltype( _check< void (Instance::*)() >( fun ) )
     {
         parallel( this, fun );
     }
@@ -483,7 +486,7 @@ struct Mpi : MpiMonitor
     {
         if ( mpi.size() > 1 ) {
             bitblock bs( m_mpiForwarder.pool );
-            rpc::marshall( set, bit, bs );
+            rpc::marshall( bs, set, bit );
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
         }
@@ -499,7 +502,7 @@ struct Mpi : MpiMonitor
             return;
 
         bitblock bs( m_mpiForwarder.pool );
-        rpc::marshall( get, bs );
+        rpc::marshall( bs, get );
         if ( mpi.master() ) {
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
@@ -514,7 +517,7 @@ struct Mpi : MpiMonitor
     void parallel( void (Instance::*fun)() )
     {
         bitblock bs( m_mpiForwarder.pool );
-        rpc::marshall( fun, bs );
+        rpc::marshall( bs, fun );
 
         {
             wibble::sys::MutexLock _lock( mpi.global().mutex );
@@ -533,7 +536,7 @@ struct Mpi : MpiMonitor
         retval = x = m_local.ring( x, fun );
 
         if ( mpi.size() > 1 ) {
-            rpc::marshall( fun, x, bs );
+            rpc::marshall( bs, fun, x );
 
             wibble::sys::MutexLock _lock( mpi.global().mutex );
             mpi.global().is_master = false;
@@ -551,7 +554,8 @@ struct Mpi : MpiMonitor
     template< typename MPIT, typename F > struct RingFromRemote
     {
         template< typename X >
-        auto operator()( MPIT &mpit, X (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
+        auto operator()( MPIT &mpit, X (Instance::*fun)( X ), X x )
+            -> typename std::enable_if< !std::is_void< X >::value >::type
         {
             if ( !mpit.mpi.rank() )
                 mpit.async_retval << x; /* done, x is the final value */
@@ -566,7 +570,8 @@ struct Mpi : MpiMonitor
     template< typename MPIT, typename F > struct ParallelFromRemote
     {
         template< typename X >
-        auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x ) -> NOT_VOID( X )
+        auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x )
+            -> typename std::enable_if< !std::is_void< X >::value >::type
         {
             mpit.distribute( x, fun );
         }

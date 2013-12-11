@@ -1,244 +1,154 @@
-// -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2012-2013 Petr Rockai <me@mornfall.net>
 
-#include <wibble/sfinae.h>
+#include <type_traits>
 #include <wibble/test.h>
-
+#include <divine/toolkit/list.h>
 #include <divine/toolkit/bitstream.h>
 
 #ifndef DIVINE_RPC_H
 #define DIVINE_RPC_H
 
-#define RPC_MAX 64
-
 namespace divine {
 namespace rpc {
 
-/* --------------------------------------------------------------------------
-   ---- some helpers (maybe try to lift this from a lib somewhere?)
-   -------------------------------------------------------------------------- */
+template< typename Stream, typename F, typename... Args >
+struct Marshall {
+    Stream &s;
+    F f;
+    std::tuple< Args... > args;
 
-template< typename F >
-struct Owner {};
-template< typename _T, typename R >
-struct Owner< R (_T::*)() > { typedef _T T; };
-template< typename _T, typename R, typename P0 >
-struct Owner< R (_T::*)( P0 ) > { typedef _T T; };
-template< typename _T, typename R, typename P0, typename P1 >
-struct Owner< R (_T::*)( P0, P1 ) > { typedef _T T; };
+    Marshall( Stream &s, F f, Args... args ) : s( s ), f( f ), args( args... ) {}
 
-template< typename R > struct Returnable { typedef R T; };
-template<> struct Returnable< void > { typedef wibble::Unit T; };
-
-template< typename F >
-struct Return {};
-template< typename _T, typename _R >
-struct Return< _R (_T::*)() > { typedef _R T; typedef typename Returnable< _R >::T R; };
-template< typename _T, typename _R, typename P0 >
-struct Return< _R (_T::*)( P0 ) > { typedef _R T; typedef typename Returnable< _R >::T R; };
-template< typename _T, typename _R, typename P0, typename P1 >
-struct Return< _R (_T::*)( P0, P1 ) > { typedef _R T; typedef typename Returnable< _R >::T R; };
-
-template< typename F >
-struct Param1 {};
-template< typename _T, typename _R, typename P0 >
-struct Param1< _R (_T::*)( P0 ) > { typedef P0 T; };
-template< typename _T, typename _R, typename P0, typename P1 >
-struct Param1< _R (_T::*)( P0, P1 ) > { typedef P0 T; };
-
-template< typename F >
-struct Param2 {};
-template< typename _T, typename _R, typename P0, typename P1 >
-struct Param2< _R (_T::*)( P0, P1 ) > { typedef P1 T; };
-
-/* --------------------------------------------------------------------------
-   ---- MARSHALLING
-   -------------------------------------------------------------------------- */
-
-template< typename T, typename F, int n >
-int findID_helper( wibble::NotPreferred, F f );
-
-template< typename F > int check( F f );
-template< typename F > void check_void( F f );
-
-template< typename T, typename F, int n >
-auto findID_helper( wibble::Preferred, F f ) ->
-    decltype( check< typename T::template RpcId< n, true >::Fun >( f ) )
-{
-    assert( n );
-    if ( f == T::template RpcId< n, true >::fun() )
-        return n;
-    return findID_helper< T, F, n == 0 ? 0 : (n - 1) >( wibble::Preferred(), f );
-}
-
-template< typename T, typename F, int n >
-int findID_helper( wibble::NotPreferred, F f ) {
-    assert( n );
-    return findID_helper< T, F, n == 0 ? 0 : (n - 1) >( wibble::Preferred(), f );
-}
-
-template< typename F >
-int findID( F f ) {
-    return findID_helper< typename Owner< F >::T, F, RPC_MAX >( wibble::Preferred(), f );
-}
-
-template< typename T, typename R, typename stream >
-void marshall( R (T::*f)(), stream &s ) {
-    s << findID_helper< T, R (T::*)(), RPC_MAX >( wibble::Preferred(), f );
-}
-
-template< typename T, typename R, typename P1, typename stream >
-void marshall( R (T::*f)( P1 ), P1 p, stream &s ) {
-    s << findID_helper< T, R (T::*)( P1 ), RPC_MAX >( wibble::Preferred(), f ) << p;
-}
-
-template< typename T, typename R, typename P1, typename P2, typename stream >
-void marshall( R (T::*f)( P1 ), P1 p1, P2 p2, stream &s ) {
-    s << findID_helper< T, R (T::*)( P1 ), RPC_MAX >( wibble::Preferred(), f ) << p1 << p2;
-}
-
-/* --------------------------------------------------------------------------
-   ---- DE-MARSHALLING
-   -------------------------------------------------------------------------- */
+    template< typename L >
+    void handle( L l ) {
+        s << lookup( f, l ) << args;
+    }
+};
 
 template< typename T, typename F >
 struct Call {
-    typename Return< F >::T operator()( T t, F fun ) { return (t.*fun)(); }
-
-    template< typename P0 >
-    typename Return< F >::T operator()( T t, F fun, P0 p0 ) { return (t.*fun)( p0 ); }
-};
-
-#define IS_VOID(x) typename wibble::EnableIf< wibble::TSame< x, void >, void >::T
-#define NOT_VOID(x) typename wibble::DisableIf< wibble::TSame< x, void >, void >::T
-
-template< typename T, typename X, template< typename, typename > class With, typename _F, typename BSI, typename BSO >
-struct Apply {
-    typedef _F F;
-    typedef typename Return< F >::T R;
-    typedef With< X, F > Wrapper;
-    BSI &in;
-    BSO &out;
-
-    Apply( BSI &in, BSO &out ) : in( in ), out( out ) {}
-
-    template< typename... P >
-    auto grab( wibble::Preferred, P&&... p ) -> IS_VOID( decltype( With< X, F >()( p... ) ) )
-    {
-        With< X, F > f;
-        f( p... );
-    }
-
-    template< typename... P >
-    auto grab( wibble::Preferred, P&&... p ) -> NOT_VOID( decltype( With< X, F >()( p... ) ) )
-    {
-        With< X, F > f;
-        out << f( p... );
-    }
-
-    template< typename... P >
-    void grab( wibble::NotPreferred, P&&... )
-    {
-        assert_die(); // the function does not exist or overloads failed to resolve
-    }
-
-    template< typename FF >
-    void match( X &&x, R (T::*f)() )
-    {
-        grab( wibble::Preferred(), std::forward< X >( x ), f );
-    }
-
-    template< typename FF >
-    void match( X &&x, R (T::*f)( typename Param1< FF >::T ) )
-    {
-        typename Param1< FF >::T p1;
-        in >> p1;
-
-        grab( wibble::Preferred(), std::forward< X >( x ), f, p1 );
-    }
-
-    template< typename FF >
-    void match( X &&x, R (T::*f)( typename Param1< FF >::T, typename Param2< FF >::T ) )
-    {
-        typename Param1< FF >::T p1;
-        typename Param2< FF >::T p2;
-
-        in >> p1 >> p2;
-        grab( wibble::Preferred(), std::forward< X >( x ), f, p1, p2 );
+    template< typename... Ps >
+    auto operator()( T &t, F fun, Ps... ps ) -> decltype( (t.*fun)( ps... ) ) {
+        return (t.*fun)( ps... );
     }
 };
 
-template< typename T, typename X, template< typename, typename > class With,
-          int id, typename BSI, typename BSO >
-auto applyID( wibble::Preferred, X &&x, BSI &in, BSO &out ) ->
-    typename wibble::TPair< typename T::template RpcId< id, true >::Fun, void >::Second
-{
-    typedef typename T::template RpcId< id, true >::Fun F;
-    F f = T::template RpcId< id, true >::fun();
-    Apply< T, X, With, F, BSI, BSO > apply( in, out );
-    apply.template match< F >( std::forward< X >( x ), f );
-}
+template<int ...> struct Indices {};
 
-template< typename T, typename X, template< typename, typename > class With, int id, typename BSI, typename BSO >
-void applyID( wibble::NotPreferred, X &&, BSI &, BSO & ) {
-    assert_die();
-}
+template<int N, int ...S>
+struct IndicesTo: IndicesTo<N-1, N-1, S...> {};
 
-template< typename T, typename X, template< typename F, typename > class With, int n, typename BSI, typename BSO >
-void lookupAndApplyID( int id, X &&x, BSI &in, BSO &out ) {
-    assert( n );
-    if ( n == id )
-        applyID< T, X, With, n >( wibble::Preferred(), std::forward< X >( x ), in, out );
-    else
-        lookupAndApplyID< T, X, With, n == 0 ? 0 : (n - 1) >( id, std::forward< X >( x ), in, out );
+template<int ...S>
+struct IndicesTo<0, S...> {
+  typedef Indices<S...> T;
+};
+
+template< template < typename, typename > class With, typename X, typename T, typename BSI, typename BSO >
+struct DeMarshall {
+    X &x;
+    BSI &bsi;
+    BSO &bso;
+
+    DeMarshall( X &x, BSI &bsi, BSO &bso ) : x( x ), bsi( bsi ), bso( bso ) {}
+
+    template< typename F, typename Args, int... indices >
+    void invoke_with_list( list::not_preferred, F f, Args args, Indices< indices... > )
+    {
+        assert_unreachable( "demarshallWith failed to match" );
+    }
+
+    template< typename F, typename Args, int... indices >
+    auto invoke_with_list( list::preferred, F f, Args args, Indices< indices... > )
+        -> typename std::enable_if<
+            std::is_void< decltype( With< X, F >()( x, f, list::decons< indices >( args )... ) )
+                          >::value >::type
+    {
+        With< X, F >()(
+            x, f, list::decons< indices >( args )... );
+    }
+
+    template< typename F, typename Args, int... indices >
+    auto invoke_with_list( list::preferred, F f, Args args, Indices< indices... > )
+        -> typename std::enable_if<
+            !std::is_void< decltype( With< X, F >()( x, f, list::decons< indices >( args )... ) )
+                           >::value >::type
+    {
+        bso << With< X, F >()(
+            x, f, list::decons< indices >( args )... );
+    }
+
+    template< typename ToUnpack, typename F, typename Args >
+    auto read_and_invoke( F f, Args args )
+        -> typename std::enable_if< ToUnpack::length == 0 >::type
+    {
+        invoke_with_list( list::preferred(), f, args, typename IndicesTo< Args::length >::T() );
+    }
+
+    template< typename ToUnpack, typename F, typename Args >
+    auto read_and_invoke( F f, Args args )
+        -> typename std::enable_if< ToUnpack::length != 0 >::type
+    {
+        typename ToUnpack::Car car;
+        bsi >> car;
+        read_and_invoke< typename ToUnpack::Cdr >( f, cons( car, args ) );
+    }
+
+    template< typename T_, typename RV, typename... Args >
+    void invoke( RV (T_::*f)( Args... ) ) {
+        read_and_invoke< typename list::List< Args... >::T >( f, list::Nil() );
+    }
+
+    void handle( int id, list::Nil ) {
+        assert_unreachable( "could not demarshall method %d", id );
+    }
+
+    template< typename L >
+    auto handle( int id, L list )
+        -> typename std::enable_if< L::length != 0 >::type
+    {
+        if ( id == 1 )
+            invoke( list.car );
+        else
+            handle( id - 1, list.cdr );
+    }
+
+    template< typename L >
+    void handle( L list ) {
+        int id;
+        bsi >> id;
+        handle( id, list );
+    }
+};
+
+struct Root {
+    template< typename Req, typename L >
+    static void rpc_request( Req r, L l ) {
+        r.handle( l );
+    }
+};
+
+template< typename BS, typename R, typename T, typename... Args >
+void marshall( BS &bs, R (T::*f)( Args... ), Args... args ) {
+    T::rpc_request( Marshall< BS, R (T::*)( Args... ), Args... >( bs, f, args... ) );
 }
 
 template< typename T, template< typename, typename > class With, typename X, typename BSI, typename BSO >
-void demarshallWith( X &&x, BSI &in, BSO &out )
-{
-    int id;
-    in >> id;
-    lookupAndApplyID< T, X, With, RPC_MAX >( id, std::forward< X >( x ), in, out );
+void demarshallWith( X &x, BSI &bsi, BSO &bso ) {
+    T::rpc_request( DeMarshall< With, X, T, BSI, BSO >( x, bsi, bso ) );
 }
 
-template< typename T, typename BSI, typename BSO >
-void demarshall( T t, BSI &in, BSO &out )
-{
-    demarshallWith< T, Call >( t, in, out );
+template< typename BSI, typename BSO, typename T >
+void demarshall( T &t, BSI &bsi, BSO &bso ) {
+    demarshallWith< T, Call >( t, bsi, bso );
 }
-
-template< typename T, typename F, int n >
-F lookupID_helper( wibble::NotPreferred, int id );
-
-template< typename T, typename F, int n >
-typename wibble::EnableIf<
-    wibble::TSame< typename T::template RpcId< n, true >::Fun, F >, F >::T
-lookupID_helper( wibble::Preferred, int id ) {
-    assert( n );
-    if ( n == id )
-        return T::template RpcId< n, true >::fun();
-    return lookupID_helper< T, F, n == 0 ? 0 : n - 1 >( wibble::Preferred(), id );
-}
-
-template< typename T, typename F, int n >
-F lookupID_helper( wibble::NotPreferred, int id ) {
-    assert( n );
-    return lookupID_helper< T, F, n == 0 ? 0 : n - 1 >( wibble::Preferred(), id );
-}
-
-template< typename F >
-F lookupID( int id ) {
-    return lookupID_helper< typename Owner< F >::T, F, RPC_MAX >( wibble::Preferred(), id );
-}
-
-#define RPC_CLASS template< int id, bool > struct RpcId
-#define RPC_ID(_type, _fun, _id) \
-  template< bool xoxo > struct _type::RpcId< _id, xoxo > { \
-    typedef decltype( &_type::_fun ) Fun; \
-    static Fun fun() { return &_type::_fun; } \
-  }
-
 
 }
 }
+
+#define DIVINE_RPC(super, x...)                                       \
+    template< typename Req, typename L = list::Nil >                  \
+    static void rpc_request( Req req, L l = list::Nil() ) {           \
+        super::rpc_request( req, concat( list::list( x ), l ) );      \
+    }
 
 #endif
