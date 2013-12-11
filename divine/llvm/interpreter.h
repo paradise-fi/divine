@@ -206,6 +206,22 @@ struct Interpreter
         run( tid, yield, p, seen );
     }
 
+    bool interrupt( std::set< PC > &seen ) {
+        if ( pc().masked || seen.empty() )
+            return false;
+
+        if ( !tauplus && !tauminus )
+            return true;
+
+        if ( observable( seen ) || seen.count( pc() ) )
+            return true;
+
+        if ( !tauplus && jumped )
+            return true;
+
+        return false;
+    }
+
     template< typename Yield >
     void run( int tid, Yield yield, Probability p, std::set< PC > &seen ) {
 
@@ -219,22 +235,9 @@ struct Interpreter
 
         while ( true ) {
 
-            if ( !pc().masked && !seen.empty() ) {
-                if ( tauplus ) {
-                    if ( observable( seen ) || seen.count( pc() ) ) {
-                        yield( state.snapshot(), p );
-                        return;
-                    }
-                } else if ( tauminus ) {
-                    /* look at seen too, because jumps might have been masked */
-                    if ( observable( seen ) || jumped || seen.count( pc() ) ) {
-                        yield( state.snapshot(), p );
-                        return;
-                    }
-                } else {
-                    yield( state.snapshot(), p );
-                    return;
-                }
+            if ( interrupt( seen ) ) {
+                yield( state.snapshot(), p );
+                return;
             }
 
             jumped = false;
