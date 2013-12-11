@@ -488,7 +488,7 @@ struct NTreeHashSet
                         assert( !child.isNull( pool ) );
                         assert( ptr != nullptr );
 
-                        *ptr = createChild( item, from, length, pool );
+                        *ptr = this->createChild( item, from, length, pool );
                         ++ptr;
                     }
                     from += length;
