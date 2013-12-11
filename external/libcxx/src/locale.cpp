@@ -1026,6 +1026,8 @@ ctype<char>::classic_table()  _NOEXCEPT
     return *__ctype_b_loc();
 #elif defined(_AIX)
     return (const unsigned long *)__lc_ctype_ptr->obj->mask;
+#elif __divine__
+    return _PDCLIB_global_locale._CTypeFlags;
 #else
     // Platform not supported: abort so the person doing the port knows what to
     // fix
