@@ -32,8 +32,6 @@ struct MMap
 #define DEFAULT_MODE (ProtectMode::Read | ProtectMode::Shared)
     using ProtectModeFlags = StrongEnumFlags< ProtectMode >;
 
-    constexpr const static ProtectModeFlags defaultMode = DEFAULT_MODE;
-
     MMap() : _size( 0 ) { }
     MMap( const std::string &, ProtectModeFlags = DEFAULT_MODE );
     MMap( int fd, ProtectModeFlags );
