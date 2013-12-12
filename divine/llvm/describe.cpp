@@ -165,7 +165,7 @@ std::string Describe::pointer( Type *t, Pointer p )
         res = ptr + " <...>";
     } else {
         seen.insert( std::make_pair( p, pointeeTy ) );
-        if ( state().validate( p ) )
+        if ( state().validate( p ) && state().inBounds( p, 0 ) )
             res = "@(" + ptr + "| " + value( pointeeTy, p ) + ")";
         else
             res = "@(" + ptr + "| invalid)";
