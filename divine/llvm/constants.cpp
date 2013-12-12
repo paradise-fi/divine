@@ -51,6 +51,10 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
     } else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
         int offset = 0;
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
+            if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) ) {
+                const ::llvm::StructLayout *SLO = econtext.TD.getStructLayout(CS->getType());
+                offset = SLO->getElementOffset( i );
+            }
             auto sub = insert( 0, C->getOperand( i ) );
             char *from = econtext.dereference( sub );
             char *to = econtext.dereference( v ) + offset;
