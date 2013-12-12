@@ -6,6 +6,7 @@
 #include <limits.h>
 
 #include <divine.h>
+#include <_PDCLIB_locale.h>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -130,7 +131,13 @@ extern "C" {
     int gettimeofday(struct timeval *, struct timezone *) { __divine_problem( 9, 0 ); return 0; }
     int settimeofday(const struct timeval *, const struct timezone *) { __divine_problem( 9, 0 ); return 0; }
 
-    locale_t newlocale( int, const char *, locale_t ) { __divine_problem( 9, 0 ); return 0; }
+    locale_t newlocale( int, const char *lc, locale_t ) {
+        if ( strcmp( lc, "C" ) == 0 )
+            return const_cast< locale_t >( &_PDCLIB_global_locale );
+
+        __divine_problem( 9, 0 );
+        return 0;
+    }
 
     int main(...);
     struct global_ctor { int prio; void (*fn)(); };
