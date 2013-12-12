@@ -183,7 +183,11 @@ static std::string fmtInteger( char *where, int bits ) {
         case 16: return wibble::str::fmt( *reinterpret_cast< int16_t* >( where ) );
         case 8: return wibble::str::fmt( int( *reinterpret_cast< int8_t * >( where ) ) );
         case 1: return wibble::str::fmt( *reinterpret_cast< bool * >( where ) );
-        default: return "<" + wibble::str::fmt( bits ) + "-bit integer>";
+        default:
+            std::string rv = "< ";
+            for ( int i = 0; i < bits / 8; i += 4 )
+                rv += fmtInteger( where + i, 32 ) + " ";
+            return rv + ">";
     }
 }
 
