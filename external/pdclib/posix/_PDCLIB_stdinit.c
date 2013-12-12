@@ -667,9 +667,12 @@ __attribute__((constructor)) void init_stdio(void)
 {
     _PDCLIB_initclocale( &_PDCLIB_global_locale );
     tss_create(&_PDCLIB_locale_tss, (tss_dtor_t) freelocale);
-    mtx_init(&stdin->lock,  mtx_recursive);
-    mtx_init(&stdout->lock, mtx_recursive);
-    mtx_init(&stderr->lock, mtx_recursive);
+    if ( stdin )
+        mtx_init(&stdin->lock,  mtx_recursive);
+    if ( stdout )
+        mtx_init(&stdout->lock, mtx_recursive);
+    if ( stderr )
+        mtx_init(&stderr->lock, mtx_recursive);
 }
 
 #endif
