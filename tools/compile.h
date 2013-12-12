@@ -360,9 +360,9 @@ struct Compile {
 
         if ( !o_dont_link->boolValue() ) {
             fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
-                           "extern void *memset, *memcpy, *memmove;\n"
+                           "extern void *memset, *memcpy, *memmove, *_divine_start;\n"
                            "void __divine_requires() {\n"
-                           "    (void) memset; (void) memcpy; (void) memmove;\n"
+                           "    (void) memset; (void) memcpy; (void) memmove; (void) _divine_start;\n"
                            "}" );
             run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
          }
