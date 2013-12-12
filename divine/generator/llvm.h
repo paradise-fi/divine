@@ -64,10 +64,15 @@ struct _LLVM : Common< Blob > {
     void initials( Yield yield )
     {
         interpreter();
-        Function *f = bitcode->module->getFunction( "main" );
+        Function *f = bitcode->module->getFunction( "_divine_start" );
+        bool is_start = true;
+        if ( !f ) {
+            f = bitcode->module->getFunction( "main" );
+            is_start = false;
+        }
         if ( !f )
-            die( "FATAL: Missing function main in verified model." );
-        yield( Node(), interpreter().initial( f ), Label() );
+            die( "FATAL: Missing both _divine_start and main in verified model." );
+        yield( Node(), interpreter().initial( f, is_start ), Label() );
     }
 
     bool buchi_enabled( PropGuard guard, unsigned ap ) {
