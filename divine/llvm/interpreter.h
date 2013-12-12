@@ -162,7 +162,7 @@ struct Interpreter
 
     std::string describeConstdata();
 
-    Blob initial( Function *f ); /* Make an initial state from Function. */
+    Blob initial( Function *f, bool is_start = false );
     void rewind( Blob b ) { state.rewind( b, -1 ); }
     void choose( int32_t i );
     void dump();

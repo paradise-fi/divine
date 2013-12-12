@@ -49,7 +49,7 @@ void Interpreter::parseProperties( Module *M )
     }
 }
 
-divine::Blob Interpreter::initial( Function *f )
+divine::Blob Interpreter::initial( Function *f, bool is_start )
 {
     Blob pre_initial = alloc.makeBlobCleared( state.size( 0, 0, 0, 0 ) );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
@@ -63,6 +63,30 @@ divine::Blob Interpreter::initial( Function *f )
     assert_eq( tid, 0 ); // just to be on the safe side...
     static_cast< void >( tid );
     state.enter( info().functionmap[ f ] );
+
+    if ( is_start ) {
+        auto &fun = info().function( PC( info().functionmap[ f ], 0 ) );
+        auto ctors = info().module->getNamedGlobal( "llvm.global_ctors" );
+        if ( ctors ) {
+            auto ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
+            auto ctors_val = info().valuemap[ ctors ];
+
+            assert_eq( fun.values[ 0 ].width, sizeof( int ) );
+            assert_eq( fun.values[ 1 ].width, ctors_val.width );
+            assert_eq( fun.values[ 2 ].width, sizeof( int ) );
+            assert( info().module->getFunction( "main" ) );
+
+            for ( int i = 0; i <= 2; ++i )
+                state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
+
+            *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
+                ctor_arr->getNumOperands();
+            memcopy( ctors_val, fun.values[ 1 ], ctors_val.width, state, state );
+            *reinterpret_cast< int * >( state.dereference( fun.values[ 2 ] ) ) =
+                info().module->getFunction( "main" )->arg_size();
+        }
+    }
+
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
     alloc.pool().free( pre_initial );
