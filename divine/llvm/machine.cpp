@@ -345,7 +345,7 @@ bool MachineState::isPrivate( Pointer needle, Frame &f, Canonic &canonic )
 bool MachineState::isPrivate( int tid, Pointer needle )
 {
     if ( !needle.heap ) /* globals are never private */
-        return false;
+        return _thread_count <= 1;
 
     bool found = false;
 
