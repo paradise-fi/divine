@@ -220,13 +220,10 @@ divine::Blob MachineState::snapshot()
             } );
     }
 
-    for ( int i = 0; i < flags().problemcount + problems.size(); ++i ) {
-        auto &problem = i < flags().problemcount ?
-                            flags().problems( i ) :
-                        problems[ i - flags().problemcount ];
-        if ( !problem.pointer.null() )
-            trace( problem.pointer, canonic );
-    }
+    /* we only store new problems, discarding those we inherited */
+    for ( int i = 0; i < problems.size(); ++i )
+        if ( !problems[ i ].pointer.null() )
+            trace( problems[ i ].pointer, canonic );
 
     Pointer p( true, 0, 0 );
     for ( p.segment = 0; p.segment < heap().segcount + nursery.offsets.size() - 1; ++ p.segment )
@@ -235,25 +232,19 @@ divine::Blob MachineState::snapshot()
             problem( Problem::MemoryLeak, p );
         }
 
-    int problemcount = flags().problemcount + problems.size();
-
     Blob b = _alloc.makeBlobCleared(
-        size( canonic.stack, canonic.allocated, canonic.segcount, problemcount ) );
+        size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
 
     StateAddress address( &_alloc.pool(), &_info, b, _alloc._slack );
     Flags &fl = address.as< Flags >();
     fl = flags();
-    fl.problemcount = 0;
+    fl.problemcount = problems.size();
     address.advance( sizeof( Flags ) );
 
-    for ( int i = 0; i < problemcount; ++i ) {
+    for ( int i = 0; i < problems.size(); ++i ) {
         address.advance( sizeof( Problem ) );
-        fl.problems( i ) =
-            i < flags().problemcount ?
-                flags().problems( i ) :
-            problems[ i - flags().problemcount ];
+        fl.problems( i ) = problems[ i ];
     }
-    fl.problemcount = problemcount;
 
     Globals *_global = &address.as< Globals >();
     address = state().sub( Globals() ).copy( address );
@@ -288,7 +279,7 @@ divine::Blob MachineState::snapshot()
             });
     }
 
-    for ( int i = 0; i < problemcount; ++i ) {
+    for ( int i = 0; i < fl.problemcount; ++i ) {
         auto &p = fl.problems( i ).pointer;
         if ( !p.null() )
             snapshot( p, p, canonic, *_heap );
