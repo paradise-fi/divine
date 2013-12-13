@@ -66,7 +66,7 @@ struct VFoldl : public VFoldl< SeedType, F,
 template< typename SeedType, template< SeedType, typename > class F,
     SeedType seed, template< typename... > class List >
 struct VFoldl< SeedType, F, seed, List<> > {
-    static constexpr const SeedType value = seed;
+    static constexpr SeedType value = seed;
 };
 
 template< typename List, typename Elem >
@@ -181,7 +181,7 @@ struct EvalBoolExpr< LeafFn, Or< Ts... > > : public
 
 template< template< typename > class LeafFn, typename T >
 struct EvalBoolExpr< LeafFn, Not< T > > {
-    static constexpr const bool value = !EvalBoolExpr< LeafFn, T >::value;
+    static constexpr bool value = !EvalBoolExpr< LeafFn, T >::value;
 };
 
 template< template< typename > class LeafFn >
