@@ -1045,14 +1045,15 @@ struct Evaluator
         }
     }
 
-    template< typename Fun, typename I, typename Cons >
-    typename Fun::T implement( wibble::NotPreferred, I /*i*/, I /*e*/, Cons /*list*/, Fun = Fun() ) {
+    template< typename Fun >
+    typename Fun::T implement( wibble::NotPreferred, Fun = Fun(), ... )
+    {
         instruction.op->dump();
         assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
     }
 
     template< typename Fun, typename I, typename Cons >
-    auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
+    auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
         -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
                                                   typename Eq< true, (Fun::arity == Cons::length) >::Yes >,
                                    typename Fun::T >::Second
@@ -1070,7 +1071,7 @@ struct Evaluator
     }
 
     template< typename Fun, typename I, typename Cons >
-    auto implement( wibble::Preferred, I i, I e, Cons list, Fun fun = Fun() )
+    auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
         -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
                                                   typename Eq< true, (Fun::arity > Cons::length) >::Yes >,
                                    typename Fun::T >::Second
@@ -1086,31 +1087,31 @@ struct Evaluator
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
-                    case 1: return implement( p, i, e, consPtr<  int8_t >( mem, list ), fun );
-                    case 4: return implement( p, i, e, consPtr< int32_t >( mem, list ), fun );
-                    case 2: return implement( p, i, e, consPtr< int16_t >( mem, list ), fun );
-                    case 8: return implement( p, i, e, consPtr< int64_t >( mem, list ), fun );
+                    case 1: return implement( p, fun, i, e, consPtr<  int8_t >( mem, list ) );
+                    case 4: return implement( p, fun, i, e, consPtr< int32_t >( mem, list ) );
+                    case 2: return implement( p, fun, i, e, consPtr< int16_t >( mem, list ) );
+                    case 8: return implement( p, fun, i, e, consPtr< int64_t >( mem, list ) );
                 } else switch ( v.v.width ) {
-                    case 1: return implement( p, i, e, consPtr<  uint8_t >( mem, list ), fun );
-                    case 4: return implement( p, i, e, consPtr< uint32_t >( mem, list ), fun );
-                    case 2: return implement( p, i, e, consPtr< uint16_t >( mem, list ), fun );
-                    case 8: return implement( p, i, e, consPtr< uint64_t >( mem, list ), fun );
+                    case 1: return implement( p, fun, i, e, consPtr<  uint8_t >( mem, list ) );
+                    case 4: return implement( p, fun, i, e, consPtr< uint32_t >( mem, list ) );
+                    case 2: return implement( p, fun, i, e, consPtr< uint16_t >( mem, list ) );
+                    case 8: return implement( p, fun, i, e, consPtr< uint64_t >( mem, list ) );
                 }
                 assert_unreachable( "Wrong integer width %d", v.v.width );
             case Value::Pointer: case Value::Alloca:
-                return implement( p, i, e, consPtr< Pointer >( mem, list ), fun );
+                return implement( p, fun, i, e, consPtr< Pointer >( mem, list ) );
             case Value::CodePointer:
-                return implement( p, i, e, consPtr< PC >( mem, list ), fun );
+                return implement( p, fun, i, e, consPtr< PC >( mem, list ) );
             case Value::Float: switch ( v.v.width ) {
                 case sizeof(float):
-                    return implement( p, i, e, consPtr< float >( mem, list ), fun );
+                    return implement( p, fun, i, e, consPtr< float >( mem, list ) );
                 case sizeof(double):
-                    return implement( p, i, e, consPtr< double >( mem, list ), fun );
+                    return implement( p, fun, i, e, consPtr< double >( mem, list ) );
             }
             case Value::Aggregate:
-                return implement( p, i, e, consPtr< void >( mem, list ), fun );
+                return implement( p, fun, i, e, consPtr< void >( mem, list ) );
             case Value::Void:
-                return implement( p, i, e, list, fun ); /* ignore void items */
+                return implement( p, fun, i, e, list ); /* ignore void items */
         }
 
         assert_die();
@@ -1122,13 +1123,13 @@ struct Evaluator
         flags.push_back( MemoryFlags() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
         result.push_back( instruction.result() );
-        return implement( wibble::Preferred(), i, e, list::Nil(), fun );
+        return implement( wibble::Preferred(), fun, i, e, list::Nil() );
     }
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
         flags.push_back( MemoryFlags() );
-        return implement< Fun >( wibble::Preferred(), values.begin(), values.end(), list::Nil(), fun );
+        return implement< Fun >( wibble::Preferred(), fun, values.begin(), values.end(), list::Nil() );
     }
 
     template< typename Fun, typename... Values >
