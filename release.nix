@@ -208,13 +208,13 @@ let
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
     ubuntu1304_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304i386; extras = extra_debs32; };
-    fedora17_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora17i386; extras = extra_rpms;
+    fedora18_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora18i386; extras = extra_rpms;
                            mem = 2047; };
 
     debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs31; };
     ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs31; };
     ubuntu1304_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304x86_64; extras = extra_debs32; };
-    fedora17_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora17x86_64; extras = extra_rpms; };
+    fedora18_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora18x86_64; extras = extra_rpms; };
 
     win7_i386_small = mkwin windows7_img "-DSMALL=ON" false;
     win7_i386 = mkwin windows7_img "" false;
