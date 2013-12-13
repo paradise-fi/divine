@@ -114,12 +114,10 @@ add_library( libdivine STATIC
     "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
     ${STRINGIFIED} )
 
-add_library( libdivine-instances STATIC ${SRC_instances} ${SRC_auto_instances} )
+add_library( libdivine-instances OBJECT ${SRC_instances} ${SRC_auto_instances} )
+add_dependencies( libdivine-instances instances-generator )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
-set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
-add_dependencies( libdivine-instances instances-generator )
-target_link_libraries( libdivine-instances libdivine )
 
 wibble_add_test( divine-test ${testh} ${llvmtesth} )
 
@@ -166,7 +164,6 @@ else()
 endif( NOT WIN32 )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
-install( TARGETS libdivine-instances DESTINATION lib COMPONENT divine_dev )
 
 install( FILES ${H} DESTINATION include/divine COMPONENT divine_dev )
 install( FILES ${H_LEGACY} DESTINATION include/divine/legacy COMPONENT divine_dev )

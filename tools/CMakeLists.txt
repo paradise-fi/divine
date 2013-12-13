@@ -6,9 +6,10 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
 set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
 
-add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
+add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H}
+                $<TARGET_OBJECTS:libdivine-instances> )
 
-target_link_libraries( divine libdivine-instances libdivine wibble )
+target_link_libraries( divine libdivine wibble )
 if( MURPHI )
     target_link_libraries( divine murphi )
 endif()
