@@ -329,16 +329,19 @@ struct MemoryBits : BitPointer {
         : BitPointer( base, offset * bitwidth )
     {}
 
+    union U {
+        uint64_t x;
+        volatile MemoryFlag t;
+        U() : x() { }
+    };
+
     void set( MemoryFlag s ) {
-        bitcopy( BitPointer( &s ), *this, bitwidth );
+        U u; u.t = s;
+        bitcopy( BitPointer( &u.x ), *this, bitwidth );
     }
 
     MemoryFlag get() {
-        union U {
-            uint64_t x;
-            MemoryFlag t;
-            U() : t() { }
-        } u;
+        U u;
         bitcopy( *this, BitPointer( &u.x ), bitwidth );
         return u.t;
     }
