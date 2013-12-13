@@ -141,7 +141,7 @@ struct _LLVM : Common< Blob > {
     std::string showNode( Node n ) {
         interpreter(); /* ensure _interpreter_2 is initialised */
         _interpreter_2->rewind( n );
-        std::string s = _interpreter_2->describe( demangle );
+        std::string s = _interpreter_2->describe( demangle == DemangleStyle::Cpp );
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
             s += "LTL: " + wibble::str::fmt( buchi ) + " (";
@@ -278,9 +278,9 @@ struct _LLVM : Common< Blob > {
         if (_interpreter)
             return *_interpreter;
 
-        _interpreter = new divine::llvm::Interpreter( *this, bitcode );
+        _interpreter = new divine::llvm::Interpreter( this->pool(), this->_slack, bitcode );
         if ( !_interpreter_2 )
-            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( *this, bitcode );
+            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( this->pool(), this->_slack, bitcode );
         applyReductions();
 
         return *_interpreter;

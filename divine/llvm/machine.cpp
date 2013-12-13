@@ -7,9 +7,9 @@ using namespace divine::llvm;
 
 void MachineState::rewind( Blob to, int thread )
 {
-    _alloc.pool().free( _blob );
-    _blob = _alloc.pool().allocate( _alloc.pool().size( to ) );
-    _alloc.pool().copy( to, _blob );
+    _pool.free( _blob );
+    _blob = _pool.allocate( _pool.size( to ) );
+    _pool.copy( to, _blob );
 
     _thread = -1; // special
 
@@ -186,7 +186,7 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     }
 
     address = target.advance( address, 0 );
-    assert_eq( (address.offset - _alloc._slack) % 4, 0 );
+    assert_eq( (address.offset - _slack) % 4, 0 );
 }
 
 divine::Blob MachineState::snapshot()
@@ -232,10 +232,11 @@ divine::Blob MachineState::snapshot()
             problem( Problem::MemoryLeak, p );
         }
 
-    Blob b = _alloc.makeBlobCleared(
+    Blob b = _pool.allocate( _slack +
         size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
+    _pool.clear( b );
 
-    StateAddress address( &_alloc.pool(), &_info, b, _alloc._slack );
+    StateAddress address( &_pool, &_info, b, _slack );
     Flags &fl = address.as< Flags >();
     fl = flags();
     fl.problemcount = problems.size();
@@ -287,8 +288,8 @@ divine::Blob MachineState::snapshot()
 
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
-    assert_eq( address.offset, _alloc.pool().size( b ) );
-    assert_eq( (_alloc.pool().size( b ) - _alloc._slack) % 4, 0 );
+    assert_eq( address.offset, _pool.size( b ) );
+    assert_eq( (_pool.size( b ) - _slack) % 4, 0 );
 
     return b;
 }

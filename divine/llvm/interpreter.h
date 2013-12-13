@@ -6,7 +6,6 @@
 
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
-#include <divine/graph/graph.h> // for allocator. get rid of it...
 
 #include <divine/llvm/wrap/Function.h>
 #include <divine/llvm/wrap/Module.h>
@@ -32,6 +31,8 @@
 #include <llvm/Bitcode/ReaderWriter.h>
 
 #include <divine/toolkit/probability.h>
+
+#include <numeric>
 
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H
@@ -78,7 +79,7 @@ struct BitCode {
 
 struct Interpreter
 {
-    graph::Allocator &alloc;
+    Pool &pool;
     std::shared_ptr< BitCode > bc;
     TargetData TD;
     MachineState state; /* the state we are dealing with */
@@ -155,11 +156,9 @@ struct Interpreter
         return nullptr;
     }
 
-    explicit Interpreter( graph::Allocator &a, std::shared_ptr< BitCode > bc );
+    explicit Interpreter( Pool &a, int slack, std::shared_ptr< BitCode > bc );
 
-    std::string describe( graph::DemangleStyle st = graph::DemangleStyle::None,
-            bool detailed = false );
-
+    std::string describe( bool demangle = false, bool detailed = false );
     std::string describeConstdata();
 
     Blob initial( Function *f, bool is_start = false );
@@ -262,7 +261,7 @@ struct Interpreter
                               p * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
                     run( tid, yield, pp, seen );
                 }
-                alloc.pool().free( fork );
+                pool.free( fork );
                 return;
             }
 

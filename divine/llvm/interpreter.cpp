@@ -14,8 +14,8 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Interpreter( graph::Allocator &alloc, std::shared_ptr< BitCode > bc )
-    : alloc( alloc ), bc( bc ), TD( bc->module.get() ), state( info(), alloc )
+Interpreter::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
+    : pool( pool ), bc( bc ), TD( bc->module.get() ), state( info(), pool, slack )
 {
     tauplus = false;
     taustores = false;
@@ -51,7 +51,8 @@ void Interpreter::parseProperties( Module *M )
 
 divine::Blob Interpreter::initial( Function *f, bool is_start )
 {
-    Blob pre_initial = alloc.makeBlobCleared( state.size( 0, 0, 0, 0 ) );
+    Blob pre_initial = pool.allocate( state._slack + state.size( 0, 0, 0, 0 ) );
+    pool.clear( pre_initial );
     state.rewind( pre_initial, 0 ); // there isn't a thread really
     std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
     auto fl = state.global().memoryflag( info() );
@@ -89,7 +90,7 @@ divine::Blob Interpreter::initial( Function *f, bool is_start )
 
     Blob result = state.snapshot();
     state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
-    alloc.pool().free( pre_initial );
+    pool.free( pre_initial );
     return result;
 }
 

@@ -2,7 +2,6 @@
 
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
-#include <divine/graph/graph.h>
 
 #include <wibble/param.h>
 
@@ -313,7 +312,8 @@ struct MachineState
     std::vector< Problem > problems;
 
     ProgramInfo &_info;
-    graph::Allocator &_alloc; /* XXX */
+    Pool &_pool;
+    int _slack;
     int _thread; /* the currently scheduled thread */
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
@@ -371,7 +371,7 @@ struct MachineState
     bool isPrivate( Pointer p, Pointer, Canonic & );
 
     Lens< State > state() {
-        return Lens< State >( StateAddress( &_alloc.pool(), &_info, _blob, _alloc._slack ) );
+        return Lens< State >( StateAddress( &_pool, &_info, _blob, _slack ) );
     }
 
     MemoryBits memoryflag( Pointer p, int offset = 0 ) {
@@ -477,32 +477,31 @@ struct MachineState
 
         StateAddress current, next;
         auto &ss = _stack[thread];
-        auto &pool = _alloc.pool();
 
-        if ( !pool.valid( ss.second ) )
-            ss.second = pool.allocate( std::max( 65536, needbytes ) );
+        if ( !_pool.valid( ss.second ) )
+            ss.second = _pool.allocate( std::max( 65536, needbytes ) );
 
-        current = next = StateAddress( &pool, &_info, ss.second, 0 );
+        current = next = StateAddress( &_pool, &_info, ss.second, 0 );
 
         if ( !ss.first ) {
             if ( thread < threads().get().length() )
                 current = state().address( Threads(), thread );
-            pool.get< int >( ss.second ) = 0; /* clear any pre-existing state */
+            _pool.get< int >( ss.second ) = 0; /* clear any pre-existing state */
         }
 
 
         Lens< Stack > from( current );
         int neednow = lens::LinearSize< Stack >::get( current );
 
-        if ( neednow + needbytes > pool.size( next.b ) ) {
-            next = StateAddress( &pool, &_info,
-                                 ss.second = pool.allocate( neednow + needbytes ), 0 );
+        if ( neednow + needbytes > _pool.size( next.b ) ) {
+            next = StateAddress( &_pool, &_info,
+                                 ss.second = _pool.allocate( neednow + needbytes ), 0 );
         }
 
         if ( current.b != ss.second ) {
             from.copy( next );
             if ( ss.first )
-                pool.free( current.b );
+                _pool.free( current.b );
         }
 
         ss.first = true; /* activate */
@@ -514,7 +513,7 @@ struct MachineState
             thread = _thread;
 
         if ( thread < int( _stack.size() ) && _stack[thread].first )
-            return Lens< Stack >( StateAddress( &_alloc.pool(), &_info, _stack[thread].second, 0 ) );
+            return Lens< Stack >( StateAddress( &_pool, &_info, _stack[thread].second, 0 ) );
         else
             return _blob_stack( thread );
     }
@@ -614,8 +613,8 @@ struct MachineState
                stack + size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }
 
-    MachineState( ProgramInfo &i, graph::Allocator &alloc )
-        : _info( i ), _alloc( alloc ), _const_flag( MemoryFlag::Data )
+    MachineState( ProgramInfo &i, Pool &pool, int slack )
+        : _info( i ), _pool( pool ), _slack( slack ), _const_flag( MemoryFlag::Data )
     {
         _thread_count = 0;
         _frame = nullptr;

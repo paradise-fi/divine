@@ -36,11 +36,11 @@ struct Describe {
     bool detailed;
     int anonymous;
     Interpreter *interpreter;
-    graph::DemangleStyle ds;
+    bool _demangle;
 
     std::string pointer( Type *t, Pointer p );
-    Describe( Interpreter *i, graph::DemangleStyle ds, bool detailed )
-        : detailed( detailed ), anonymous( 1 ), interpreter( i ), ds( ds )
+    Describe( Interpreter *i, bool demangle, bool detailed )
+        : detailed( detailed ), anonymous( 1 ), interpreter( i ), _demangle( demangle )
     {}
 
     std::string all();
@@ -74,19 +74,16 @@ struct Describe {
         return false;
     }
 
-    std::string demangle( std::string mangled ) {
-        switch ( ds ) {
-            case divine::graph::DemangleStyle::Cpp: {
-                int stat;
-                auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
-                auto ret = stat == 0 && x ? std::string( x ) : mangled;
-                std::free( x );
-                return ret; }
-            case divine::graph::DemangleStyle::None:
-                return mangled;
-            default:
-                assert_unreachable( "Unhandle case" );
+    std::string demangle( std::string mangled )
+    {
+        if ( _demangle ) {
+            int stat;
+            auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
+            auto ret = stat == 0 && x ? std::string( x ) : mangled;
+            std::free( x );
+            return ret;
         }
+        return mangled;
     }
 
 };
@@ -495,7 +492,7 @@ void MachineState::dump( std::ostream &r ) {
         int count = 0;
         r << "thread " << i << ", stack depth = " << stack( i ).get().length();
         if (_stack[i].first) {
-            r << " [detached at " << static_cast< void * >( _alloc.pool().dereference( _stack[i].second ) ) << "]";
+            r << " [detached at " << static_cast< void * >( _pool.dereference( _stack[i].second ) ) << "]";
         }
         r << std::endl;
         eachframe( stack( i ), [&]( Frame &f ) {
@@ -548,15 +545,15 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
     }
 }
 
-std::string Interpreter::describe( graph::DemangleStyle st, bool detailed ) {
-    return Describe( this, st, detailed ).all();
+std::string Interpreter::describe( bool demangle, bool detailed ) {
+    return Describe( this, demangle, detailed ).all();
 }
 
 std::string Interpreter::describeConstdata() {
-    return Describe( this, graph::DemangleStyle::None, false ).constdata();
+    return Describe( this, false, false ).constdata();
 }
 
 void Interpreter::dump() {
     state.dump();
-    std::cerr << describe( graph::DemangleStyle::None, true ) << std::endl;
+    std::cerr << describe( false, true ) << std::endl;
 }

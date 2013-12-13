@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #include <divine/llvm/interpreter.h>
 #include <divine/graph/graph.h> // allocator :-(
 #include <divine/llvm/wrap/LLVMContext.h>
@@ -15,12 +16,10 @@ namespace dlvm = divine::llvm;
 struct TestLLVM {
     LLVMContext &ctx;
     IRBuilder<> builder;
-    divine::graph::Allocator alloc;
+    divine::Pool pool;
     std::shared_ptr< Module > module;
 
-    TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {
-        alloc.setPool( divine::Pool() );
-    }
+    TestLLVM() : ctx( getGlobalContext() ), builder( ctx ) {}
 
     std::shared_ptr< dlvm::BitCode > bitcode() {
         return std::make_shared< dlvm::BitCode >( module );
@@ -103,25 +102,25 @@ struct TestLLVM {
     }
 
     divine::Blob _ith( Function *f, int step ) {
-        dlvm::Interpreter interpreter( alloc, bitcode() );
+        dlvm::Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob ini = interpreter.initial( f ), fin;
         fin = ini;
 
         for ( int i = 0; i < step; ++i ) {
             fin = divine::Blob();
             interpreter.run( ini, [&]( divine::Blob b, divine::llvm::Probability ) {
-                    assert( !alloc.pool().valid( fin ) ); // only one allowed
+                    assert( !pool.valid( fin ) ); // only one allowed
                     fin = b;
                 });
             ini = fin;
-            assert( alloc.pool().valid( fin ) );
+            assert( pool.valid( fin ) );
         }
 
         return fin;
     }
 
     std::string _descr( Function *f, divine::Blob b ) {
-        dlvm::Interpreter interpreter( alloc, bitcode() );
+        dlvm::Interpreter interpreter( pool, 0, bitcode() );
         interpreter.rewind( b );
         return interpreter.describe();
     }
@@ -129,27 +128,27 @@ struct TestLLVM {
     Test initial()
     {
         Function *main = code_ret();
-        dlvm::Interpreter i( alloc, bitcode() );
+        dlvm::Interpreter i( pool, 0, bitcode() );
         i.initial( main );
     }
 
     Test successor1()
     {
-        assert_eq( fmtblob( alloc.pool(), _ith( code_ret(), 1 ) ),
+        assert_eq( fmtblob( pool, _ith( code_ret(), 1 ) ),
                    "[ 0, 0, 0, 0, 0 ]" );
     }
 
     Test successor2()
     {
-        assert_eq( fmtblob( alloc.pool(), _ith( code_loop(), 1 ) ),
+        assert_eq( fmtblob( pool, _ith( code_loop(), 1 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147483650 ]" );
     }
 
     Test successor3()
     {
-        assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 2 ) ),
+        assert_eq( fmtblob( pool, _ith( code_add(), 2 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
-        assert_eq( fmtblob( alloc.pool(), _ith( code_add(), 4 ) ),
+        assert_eq( fmtblob( pool, _ith( code_add(), 4 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
     }
 
@@ -163,7 +162,7 @@ struct TestLLVM {
     Test describe2()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( alloc, bitcode() );
+        dlvm::Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
@@ -223,10 +222,10 @@ struct TestLLVM {
     Test idempotency()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( alloc, bitcode() );
+        dlvm::Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();
-        assert( alloc.pool().equal( b1, b2 ) );
+        assert( pool.equal( b1, b2 ) );
     }
 };
