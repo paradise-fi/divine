@@ -231,11 +231,11 @@ struct Evaluator
 
     struct ICmp : Implementation {
         static const int arity = 3;
-        template< typename R = int, typename X = int >
+        template< typename R = uint8_t, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
                          X &a = Dummy< X >::v(),
                          X &b = Dummy< X >::v() )
-            -> decltype( declcheck( r = a < b ) )
+            -> typename std::enable_if< sizeof( R ) == 1, decltype( declcheck( r = a < b ) ) >::type
         {
             switch (dyn_cast< ICmpInst >( this->i().op )->getPredicate()) {
                 case ICmpInst::ICMP_EQ:  r = a == b; return Unit();
@@ -255,11 +255,12 @@ struct Evaluator
 
     struct FCmp : Implementation {
         static const int arity = 3;
-        template< typename R = int, typename X = int >
+        template< typename R = uint8_t, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
                          X &a = Dummy< X >::v(),
                          X &b = Dummy< X >::v() )
-            -> decltype( declcheck( r = isnan( a ) && isnan( b ) ) )
+            -> typename std::enable_if< sizeof( R ) == 1,
+                                        decltype( declcheck( r = isnan( a ) && isnan( b ) ) ) >::type
         {
             switch ( dyn_cast< FCmpInst >( this->i().op )->getPredicate() ) {
                 case FCmpInst::FCMP_FALSE: r = false; return Unit();
