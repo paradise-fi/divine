@@ -573,9 +573,7 @@ struct Evaluator
     void jumpTo( PC to )
     {
         if ( ccontext.pc().function != to.function )
-            throw wibble::exception::Consistency(
-                "Evaluator::jumpTo",
-                "Can't deal with cross-function jumps." );
+            assert_unreachable( "Can't deal with cross-function jumps." );
         switchBB( to );
     }
 
