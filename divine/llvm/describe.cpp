@@ -504,13 +504,14 @@ void MachineState::dump( std::ostream &r ) {
                     return;
                 }
                 auto fun = _info.function( f.pc );
-                r << "[" << fun.datasize << " bytes] ";
+                r << "[" << fun.datasize << " bytes]\n";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
-                    r << "[" << i->offset << "]";
+                    r << "          " << *i << " offset " << i->offset << ": ";
                     if ( f.memoryflag( _info, *i ).get() == MemoryFlag::HeapPointer )
                         r << *f.dereference< Pointer >( _info, *i ) << " ";
                     else
                         r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";
+                    r << ", flags = " << static_cast< int >( f.memoryflag( _info, *i ).get() ) << "\n";
                 }
                 r << std::endl;
             });
