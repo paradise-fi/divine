@@ -148,6 +148,7 @@ let
         src = divineSrc;
         buildInputs = (with pkgs; [ cmake gcc47 ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
+        dontFixCmake = true;
         autoconfPhase = ''
           sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
           sed -e 's,"","${versionSuffix}",' -i cmake/VersionAppend.cmake
