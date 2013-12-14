@@ -244,6 +244,7 @@ struct PipeThrough
             out.wait();
             ret += out.nextChunk();
         }
+        in.writer.join();
         return ret;
     }
 };
