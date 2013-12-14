@@ -51,6 +51,7 @@ let
           echo "-DCMAKE_BUILD_TYPE=${buildType}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
           echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
+          sed -e "s,^make check$,make check || touch $out/nix-support/failed," -i divine.spec
      '';
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
