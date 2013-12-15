@@ -278,7 +278,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
             if ( ++_d.doneSegments == segments ) {
                 _d.growing.exchange( false ); /* done */
-                releaseRow( _d.currentRow - 1 );
+                releaseRow( td.currentRow - 1 );
             }
 
             return segment > 0;
