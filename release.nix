@@ -146,7 +146,7 @@ let
                            then "+pre${toString divineSrc.revCount}"
                            else "";
         src = divineSrc;
-        buildInputs = (with pkgs; [ cmake gcc47 ]);
+        buildInputs = (with pkgs; [ cmake gcc47 which ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         dontFixCmake = true;
         autoconfPhase = ''
@@ -177,7 +177,8 @@ let
           in pkgs.releaseTools.nixBuild {
               name = "divine-manual";
               src = jobs.tarball;
-              buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.haskellPackages.pandoc tex ];
+              buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.which
+                              pkgs.haskellPackages.pandoc tex ];
               buildPhase = "make manual website";
               installPhase = ''
                 mkdir $out/manual $out/website
