@@ -80,7 +80,8 @@ let
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
-       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov ] ++ inputs { inherit pkgs; };
+       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++
+                     inputs { inherit pkgs; };
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
