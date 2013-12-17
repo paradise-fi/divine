@@ -7,17 +7,9 @@ using namespace __cxxabiv1;
 
 struct LPReturn
 {
-    _Unwind_Exception *e;
-    int handle;
+    void *e;
+    int h;
 } __attribute__((packed));
-
-static inline LPReturn lpreturn( _Unwind_Exception *e, int h )
-{
-    LPReturn rv;
-    rv.e = e;
-    rv.handle = h;
-    return rv;
-}
 
 extern "C" {
 
@@ -26,7 +18,10 @@ extern "C" {
  * the C++ frontend has generated for the landingpad. */
 LPReturn __gxx_personality_v0( __cxa_exception *e )
 {
-    return lpreturn( &e->unwindHeader, e->handlerSwitchValue );
+    LPReturn rv;
+    rv.e = &e->unwindHeader;
+    rv.h = e->handlerSwitchValue;
+    return rv;
 }
 
 void __cxa_call_unexpected( void *) {
@@ -72,9 +67,14 @@ void __cxa_throw_divine( __cxa_exception *e )
         __divine_free( lp );
         -- frameid;
     }
+
     e->handlerSwitchValue = handler;
     e->adjustedPtr = &e->unwindHeader + 1;
-    __divine_unwind( destination, personality ? personality( e ) : lpreturn( 0, 0 ) );
+    LPReturn ret = { 0, 0 };
+    if ( personality )
+        ret = personality( e );
+
+    __divine_unwind( destination, ret.e, ret.h );
 }
 
 }
