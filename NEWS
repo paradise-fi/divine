@@ -1,3 +1,23 @@
+DIVINE 3.0.92 (3.1 beta 1; 6.1.2014)
+====================================
+
+- LLVM: Make "problem" reports more informative.
+- LLVM: Make std::thread work, albeit inefficiently.
+- LLVM: Add a low-level interface to report custom errors.
+- LLVM: Detect dereferences of out-of-scope local variables.
+- LLVM: Detect memory leaks.
+- LLVM: Detect branches conditional on uninitialised values.
+- LLVM: Implement `realloc`, `atexit` (in user-space).
+- LLVM: Report unhandled (C++) exceptions.
+- LLVM: Fix an alignment bug in global aggregate initialisers.
+- LLVM: Run global constructors before `main()`.
+- Fix win32 builds.
+- Improve the CLI simulator.
+- Add a `--simulate-counterexample` option to verify.
+- Allow multiple reports (text + sql) for a single run.
+- Significantly improved build efficiency (time and memory).
+- Various bugfixes and minor enhancements.
+
 DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
 =======================================
 
