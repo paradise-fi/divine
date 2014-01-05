@@ -35,6 +35,7 @@ DIVINE 3.0.91 (3.1 alpha 2; 27.10.2013)
 - Reduced memory requirements for compilation.
 - Support for UPPAAL nested structures, arrays and meta variables.
 - Implement conditional instantiation in DVE.
+- The verification report can be now stored using SQL/ODBC.
 
 DiVinE 3.0.90 (3.1 alpha 1; 14.7.2013)
 ======================================
