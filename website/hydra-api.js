@@ -6,7 +6,8 @@ function Hydra(base, project) {
                        'warnings': '!',
                        'failed': 'x',
                        'skipped': '–',
-                       'timeout': 'T' };
+                       'timeout': 'T',
+                       'undef': '?' };
 
     this.basevariant = function(branch) {
         if (this.variants.length)
@@ -172,9 +173,9 @@ function Hydra(base, project) {
                 console.log( "create: " + id );
                 $element = $('<tr onMouseOver="this.className = \'mouseover\'" ' +
                              '    onMouseOut="this.className = \'\'" ' +
-                             'id="' + id + '">' + initial + '</tr>').appendTo('#results');
-                $('#leftcol').append("<tr>" + td("testname",
-                            testname.replace("shell/", "").replace(/.sh$/, "")) + "</tr>");
+                             'id="' + id + '">' + td("testname",
+                                 testname.replace("shell/", "").replace(/.sh$/, ""))
+                             + initial + '</tr>').appendTo('#testmatrix');
         }
         return $element;
     }
@@ -205,9 +206,7 @@ function Hydra(base, project) {
         var builds = new Object();
 
         // clear the table
-        $('#header').html('');
-        $('#results').html('');
-        $('#leftcol').html('');
+        $('#testmatrix').html('');
         $('.synthcss').remove();
 
         function cutname(n) {
@@ -218,9 +217,10 @@ function Hydra(base, project) {
                 .replace("ubuntu", "ub").replace("fedora", "fc").replace("_small", "s");
         }
 
-        function colhead(id, what) {
-            return $("."+name[id]).filter(".hdr").html(
-                      '<a href="' + base + "/build/" + id + '">' + cutname(name[id]) + '</a>: ' + what);
+        function colhead(build, what) {
+            return $("."+build.job).filter(".hdr").html(
+                      '<a href="' + base + "/build/" + build.id + '">' +
+                      cutname(build.job) + '</a>: ' + what);
         }
 
         function eachid(builds, fun) {
@@ -267,7 +267,7 @@ function Hydra(base, project) {
             function oneresult(build, data) {
                 var pattern = h.flavours.length > 1 ?
                     /^([^ :]*):([^ ]*) (.*)$/mg : /^()([^ ]*) (.*)$/mg;
-                colhead(build.id,
+                colhead(build,
                     '<a href="' + base + "/build/" + build.id + '/download/2/coverage">c</a>' );
                 while ( match = pattern.exec(data) ) {
                     var fl = match[1];
@@ -284,10 +284,12 @@ function Hydra(base, project) {
                             sel += "." + build.variant; */
                     }
                     var $td = sel ? $tds.filter(sel) : $tds;
+                    var sst = h.shortstat[match[3]];
                     $td.html( div( build.job, // + " " + build.id,
                         '<a href="' + base + '/build/' + build.id + '/download/1/test-results/' +
-                                  (fl ? fl + ':' : "") + file + '.txt">' +
-                        h.shortstat[match[3]]+ '</a>' ) );
+                                  (fl ? fl + ':' : "") + file + '.txt" title="' +
+                                  build.job + ": " + test + " on " + fl + '">' +
+                        (sst ? sst : "?") + '</a>' ) );
                     $td.addClass( match[3] );
                 }
             }
@@ -312,11 +314,11 @@ function Hydra(base, project) {
                     }
                 } );
 
-                $('#header').html('<thead><tr>' + header1 + '</tr>' +
-                                  '<tr>' + header2 + '</tr></thead>');
+                $('#testmatrix').html('<thead class="hdr"><tr><td>job →</td>' + header1 + '</tr>' +
+                                      '<tr><td>test ↓</td>' + header2 + '</tr></thead>');
 
                 eachid( builds, function(build) {
-                    colhead(build.id, "...");
+                    colhead(build, "...");
                     addrule('.' + build.job + '{ width: .75em; }' );
                 } );
 
@@ -326,9 +328,9 @@ function Hydra(base, project) {
                     $.get(base + '/build/' + build.id + "/download/1/test-results/list",
                         function(data) { oneresult(build, data); } ).fail( function() {
                             console.log( "failed: " + build.id );
-                            colhead(build.id, '<a href="' + base + "/build/" +
+                            colhead(build, '<a href="' + base + "/build/" +
                                 build.id + '/log/raw">?</a>'); 
-                            addrule("#results ." + build.job + " { background: lightgray; }");
+                            addrule("#testmatrix." + build.job + " { background: lightgray; }");
                         } );
                     console.log( "loading: " + build.id );
                 } );
@@ -344,17 +346,4 @@ function Hydra(base, project) {
                         eval: evals[0].id }, processjobs );
                 } ); } );
     }
-
-    function scroller() {
-        $("#scroller").scroll(function () { 
-            $("#headerdiv").scrollLeft($("#scroller").scrollLeft());
-            $("#resultsdiv").scrollLeft($("#scroller").scrollLeft());
-        });
-
-        $("#resultsdiv").scroll(function () { 
-            $("#headerdiv").scrollLeft($("#resultsdiv").scrollLeft());
-            $("#scroller").scrollLeft($("#resultsdiv").scrollLeft());
-        });
-    }
-
 }
