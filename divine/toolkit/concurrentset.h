@@ -303,13 +303,13 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             }
         }
 
-        void acquireRow( unsigned index ) {
+        void acquireRow( unsigned &index ) {
             do {
                 ++_d.tableWorkers[ index ];
                 if ( index == _d.currentRow )
                     break;
-                --_d.tableWorkers[ index ];
-                index = _d.currentRow;
+                releaseRow( index );
+                index = _d.currentRow; // fetch new index
             } while ( true );
         }
 
