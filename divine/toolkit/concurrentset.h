@@ -271,9 +271,15 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 if ( !it->wait() )
                     continue;
                 value_type value = it->fetch();
-                if ( WithTD( _d, td ).insertCell< true >( value, it->hash( _d.hasher ) ).r ==
-                     Resolution::NoSpace )
-                    assert_unreachable( "ran out of space during growth" );
+                Resolution r = WithTD( _d, td ).insertCell< true >( value, it->hash( _d.hasher ) ).r;
+                switch( r ) {
+                    case Resolution::Success:
+                        break;
+                    case Resolution::NoSpace:
+                        assert_unreachable( "ran out of space during growth" );
+                    default:
+                        assert_unreachable( "internal error" );
+                }
             }
 
             if ( ++_d.doneSegments == segments ) {
