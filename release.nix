@@ -184,7 +184,7 @@ let
               installPhase = ''
                 mkdir $out/manual $out/website
                 cp manual/manual.pdf manual/manual.html $out/manual/
-                cp website/*.html website/*.png website/*.css $out/website/
+                cp website/*.html website/*.png website/*.css website/*.js $out/website/ #*/
                 cp ../website/template.html $out/website
               '';
               checkPhase = ":";
