@@ -32,12 +32,12 @@ here (no assertions, *no debug symbols*, compiler optimisation enabled):
 <table id="release"></table>
 -->
 
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script type="text/javascript" src="hydra-api.js"></script>
 <script type="text/javascript">
-  var h = new Hydra('http://divine.fi.muni.cz/hydra/', 'divine');
+  var h = new Hydra('//divine.fi.muni.cz/hydra/', 'divine');
 
-  $('#changes').load('http://divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
+  $('#changes').load('//divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
   h.fetch("mainline");
   h.fetch("branch-3_0");
   h.fetch("release");
