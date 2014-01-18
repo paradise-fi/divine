@@ -2,7 +2,7 @@
 
 llvm_verify valid <<EOF
 #include <assert.h>
-const float x = 0;
+const volatile float x = 0;
 
 void main() {
     assert( x == 0 );
@@ -11,7 +11,7 @@ EOF
 
 llvm_verify valid <<EOF
 #include <assert.h>
-const float x = 1.3;
+const volatile float x = 1.3;
 
 void main() {
     assert( x < 1.31 );
