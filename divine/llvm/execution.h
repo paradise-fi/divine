@@ -87,6 +87,20 @@ MATCH( 4, deconsptr< 3 >( x ), deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsp
 
 #undef MATCH
 
+template< typename T >
+auto rem( wibble::Preferred, T a, T b )
+    -> decltype( a % b )
+{
+    return a % b;
+}
+
+template< typename T >
+auto rem( wibble::NotPreferred, T a, T b )
+    -> decltype( std::fmod( a, b ) )
+{
+    return std::fmod( a, b );
+}
+
 /* Dummy implementation of a ControlContext, useful for Evaluator for
  * control-flow-free snippets (like ConstantExpr). */
 struct ControlContext {
@@ -164,13 +178,24 @@ struct Evaluator
 
     /******** Arithmetic & comparisons *******/
 
-    struct Arithmetic : Implementation {
+    struct BinaryOperator : Implementation {
+        MemoryFlag resultFlag( std::vector< MemoryFlag > x )
+        {
+            if ( x[1] == MemoryFlag::Uninitialised || x[2] == MemoryFlag::Uninitialised )
+                return MemoryFlag::Uninitialised;
+            if ( x[1] == MemoryFlag::HeapPointer || x[2] == MemoryFlag::HeapPointer )
+                return MemoryFlag::HeapPointer;
+            return MemoryFlag::Data;
+        }
+    };
+
+    struct Arithmetic : BinaryOperator {
         static const int arity = 3;
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v(),
                          X &a = Dummy< X >::v(),
                          X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a + b, a % b, std::fmod( a, b ) ) )
+            -> decltype( declcheck( a + b, rem( wibble::Preferred(), a, b ) ) )
         {
             switch( this->i().opcode ) {
                 case LLVMInst::FAdd:
@@ -186,29 +211,37 @@ struct Evaluator
                         this->ccontext().problem( Problem::DivisionByZero );
                     r = b ? (a / b) : 0;
                     return Unit();
-                case LLVMInst::FRem: r = std::fmod( a, b ); return Unit();
+                case LLVMInst::FRem:
                 case LLVMInst::URem:
                 case LLVMInst::SRem:
                     if ( !b )
                         this->ccontext().problem( Problem::DivisionByZero );
-                    r = b ? (a % b) : 0;
+                    r = b ? rem( wibble::Preferred(), a, b ) : 0;
                     return Unit();
+                default:
+                    assert_unreachable( "invalid arithmetic opcode %d", this->i().opcode );
+            }
+        }
+    };
+
+    struct Bitwise : BinaryOperator {
+        static const int arity = 3;
+        template< typename X = int >
+        auto operator()( X &r = Dummy< X >::v(),
+                         X &a = Dummy< X >::v(),
+                         X &b = Dummy< X >::v() )
+            -> decltype( declcheck( a | b ) )
+        {
+            switch( this->i().opcode ) {
                 case LLVMInst::And:  r = a & b; return Unit();
                 case LLVMInst::Or:   r = a | b; return Unit();
                 case LLVMInst::Xor:  r = a ^ b; return Unit();
                 case LLVMInst::Shl:  r = a << b; return Unit();
                 case LLVMInst::AShr:  // XXX?
                 case LLVMInst::LShr:  r = a >> b; return Unit();
+                default:
+                    assert_unreachable( "invalid bitwise opcode %d", this->i().opcode );
             }
-            assert_die();
-        }
-
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) {
-            if ( x[1] == MemoryFlag::Uninitialised || x[2] == MemoryFlag::Uninitialised )
-                return MemoryFlag::Uninitialised;
-            if ( x[1] == MemoryFlag::HeapPointer || x[2] == MemoryFlag::HeapPointer )
-                return MemoryFlag::HeapPointer;
-            return MemoryFlag::Data;
         }
     };
 
@@ -276,6 +309,17 @@ struct Evaluator
                 case FCmpInst::FCMP_UGT:
                     if ( isnan( a ) || isnan( b ) ) {
                         r = true;
+                        return Unit();
+                    }
+                    break;
+                case FCmpInst::FCMP_OEQ:
+                case FCmpInst::FCMP_ONE:
+                case FCmpInst::FCMP_OGE:
+                case FCmpInst::FCMP_OLE:
+                case FCmpInst::FCMP_OLT:
+                case FCmpInst::FCMP_OGT:
+                    if ( isnan( a ) || isnan( b ) ) {
+                        r = false;
                         return Unit();
                     }
                     break;
@@ -1018,12 +1062,14 @@ struct Evaluator
             case LLVMInst::UDiv:
             case LLVMInst::FRem:
             case LLVMInst::URem:
+                implement< Arithmetic >(); break;
+
             case LLVMInst::And:
             case LLVMInst::Or:
             case LLVMInst::Xor:
             case LLVMInst::Shl:
             case LLVMInst::LShr:
-                implement< Arithmetic >(); break;
+                implement< Bitwise >(); break;
 
             case LLVMInst::Unreachable:
                 ccontext.problem( Problem::UnreachableExecuted );
