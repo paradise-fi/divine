@@ -1050,6 +1050,7 @@ struct Evaluator
 
             case LLVMInst::SDiv:
             case LLVMInst::SRem:
+                is_signed = true;
             case LLVMInst::FAdd:
             case LLVMInst::Add:
             case LLVMInst::FSub:
