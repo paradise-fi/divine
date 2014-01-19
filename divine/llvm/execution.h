@@ -1050,8 +1050,6 @@ struct Evaluator
 
             case LLVMInst::SDiv:
             case LLVMInst::SRem:
-            case LLVMInst::AShr:
-                is_signed = true;
             case LLVMInst::FAdd:
             case LLVMInst::Add:
             case LLVMInst::FSub:
@@ -1064,6 +1062,8 @@ struct Evaluator
             case LLVMInst::URem:
                 implement< Arithmetic >(); break;
 
+            case LLVMInst::AShr:
+                is_signed = true;
             case LLVMInst::And:
             case LLVMInst::Or:
             case LLVMInst::Xor:
