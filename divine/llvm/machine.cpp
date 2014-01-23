@@ -221,7 +221,7 @@ divine::Blob MachineState::snapshot()
     }
 
     /* we only store new problems, discarding those we inherited */
-    for ( int i = 0; i < problems.size(); ++i )
+    for ( int i = 0; i < int( problems.size() ); ++i )
         if ( !problems[ i ].pointer.null() )
             trace( problems[ i ].pointer, canonic );
 
@@ -242,7 +242,7 @@ divine::Blob MachineState::snapshot()
     fl.problemcount = problems.size();
     address.advance( sizeof( Flags ) );
 
-    for ( int i = 0; i < problems.size(); ++i ) {
+    for ( int i = 0; i < int( problems.size() ); ++i ) {
         address.advance( sizeof( Problem ) );
         fl.problems( i ) = problems[ i ];
     }
