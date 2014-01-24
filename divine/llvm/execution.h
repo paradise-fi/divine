@@ -69,7 +69,7 @@ template< typename X >
 struct UnPtr< X * > { typedef X T; };
 
 template< int I, typename Cons >
-auto deconsptr( Cons c ) -> typename UnPtr< decltype( list::ConsAt< I >::get( c ) ) >::T &
+auto deconsptr( Cons c ) -> typename UnPtr< typename list::ConsAt< I >::template T< Cons > >::T &
 {
     return *c.template get< I >();
 }
