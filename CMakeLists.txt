@@ -349,6 +349,9 @@ if( LLVM )
     if ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234][^0-9]*" )
       add_definitions( -DO_LLVM )
       link_directories( ${LLVM_LIBRARY_DIRS} )
+
+      # this is not very nice but it works and ncurses & zlib break builds under NixOS
+      list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
     else()
       disabling( "LLVM" "" "Found version ${LLVM_STRING_VERSION} but 3.1 to 3.4 is required." )
       set( LLVM OFF )
