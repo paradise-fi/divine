@@ -185,6 +185,22 @@ struct PORGraph : graph::Transform< G > {
             fullexpand( yield, store.vertex( h ) );
     }
 
+    /* This closure is used instead of lambda to work-around bug in clang 3.4
+     * which causes compiler to terminate with SIGSEGV
+     * http://llvm.org/bugs/show_bug.cgi?id=18473
+     */
+    template< typename Set >
+    struct SuccInserter {
+        Set &set;
+
+        SuccInserter( Set &set ) : set( set ) { }
+
+        void operator()( Node x, Label l ) { set.insert( std::make_pair( x, l ) ); }
+    };
+
+    template< typename Set >
+    SuccInserter< Set > succInserter( Set &set ) { return SuccInserter< Set >( set ); }
+
     template< typename Yield >
     void fullexpand( Yield yield, Vertex v ) {
         extension( v ).full = true;
@@ -192,8 +208,8 @@ struct PORGraph : graph::Transform< G > {
         std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ) , ample( bcomp ), out( bcomp );
         std::vector< std::pair< Node, Label > > extra;
 
-        this->base().successors( v.node(), [&]( Node x, Label l ) { all.insert( std::make_pair( x, l ) ); } );
-        this->base().ample( v.node(), [&]( Node x, Label l ) { ample.insert( std::make_pair( x, l ) ); } );
+        this->base().successors( v.node(), succInserter( all ) );
+        this->base().ample( v.node(), succInserter( ample ) );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ), bcomp );
