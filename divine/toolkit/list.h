@@ -18,8 +18,9 @@ template<>
 struct ConsAt< 0 > {
     template< typename Cons >
     using T = typename Cons::Car;
+
     template< typename Cons >
-    static constexpr T< Cons > get( Cons c ) {
+    static constexpr T< Cons > get( const Cons &c ) {
         return c.car;
     }
 };
@@ -28,15 +29,13 @@ template< int N >
 struct ConsAt {
     template< typename Cons >
     using T = typename ConsAt< N - 1 >::template T< typename Cons::Cdr >;
+
     template< typename Cons >
-    static constexpr T< Cons > get( Cons c )
+    static constexpr T< Cons > get( const Cons &c )
     {
         return ConsAt< N - 1 >::get( c.cdr );
     }
 };
-
-template< int, int > struct Eq;
-template< int i > struct Eq< i, i > { typedef int Yes; };
 
 template< typename A, typename B >
 struct Cons {
@@ -88,7 +87,7 @@ constexpr auto concat( L1 l1, L2 l2 ) -> typename Concat< L1, L2 >::T {
 }
 
 template< int I, typename Cons >
-auto decons( Cons c ) -> typename list::ConsAt< I >::template T< Cons >
+auto decons( const Cons &c ) -> typename ConsAt< I >::template T< Cons >
 {
     return c.template get< I >();
 }
