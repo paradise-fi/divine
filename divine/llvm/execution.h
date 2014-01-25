@@ -1106,8 +1106,6 @@ struct Evaluator
                                                   typename Eq< true, (Fun::arity == Cons::length) >::Yes >,
                                    typename Fun::T >::Second
     {
-        typedef ProgramInfo::Value Value;
-
         assert( i == e );
         wibble::param::discard( i, e );
         fun._evaluator = this;
