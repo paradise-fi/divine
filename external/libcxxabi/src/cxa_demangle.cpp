@@ -4621,8 +4621,7 @@ __cxa_demangle(const char* mangled_name, char* buf, size_t* n, int* status)
         bool fix_forward_references;
         bool try_to_parse_template_args;
 
-        template <size_t N>
-        Db(arena<N>& ar) :
+        Db(arena<bs>& ar) :
             names(ar),
             subs(0, names, ar),
             template_param(0, subs, ar)
