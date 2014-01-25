@@ -328,7 +328,7 @@ struct Compile {
         }
 
         // compile libraries
-        std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -nostdsysteminc -nostdinc++ -g ";
+        std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -Xclang -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
 
