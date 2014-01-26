@@ -59,24 +59,28 @@ let
 
   mkbuild = { name, inputs,
               flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=OFF" ],
-              clang ? false
+              clang ? false,
+              clang_runtime ? pkgs.clang, # version of clang used in divine compile --llvm
+              llvm ? pkgs.llvm
             }:
             { system ? builtins.currentSystem }:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
-                   (if lib.eqStrings name "llvm" || lib.eqStrings name "full" ||
+                   (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
+                       lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
-                      then [ "-DCMD_CLANG=${pkgs.clangUnwrapped}/bin/clang"
+                      then [ "-DCMD_CLANG=${clang_runtime.clang}/bin/clang"
                              "-DCMD_AR=${pkgs.binutils_gold}/bin/ar"
                              "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
-                             "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
+                             "-DCMD_LLVMGOLD=${llvm}/lib/LLVMgold.so" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler = if clang
                       then [ "-DCMAKE_CXX_COMPILER=${pkgs.clangSelf}/bin/clang++"
                              "-DCMAKE_C_COMPILER=${pkgs.clangSelf}/bin/clang" ]
-                      else [];
+                      else [ "-DCMAKE_CXX_COMPILER=${pkgs.gcc}/bin/g++"
+                             "-DCMAKE_C_COMPILER=${pkgs.gcc}/bin/gcc" ];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
@@ -138,6 +142,12 @@ let
                (lib.splitString "\n" versionFile));
   version = builtins.head (builtins.tail (lib.splitString "\"" (versionLine + " ")));
 
+  gcc_llvm_vers = vers: llvm: clang: mkbuild {
+      name = "llvm_${vers}";
+      inputs = { pkgs }: [ llvm clang ];
+      llvm = llvm; clang_runtime = clang;
+  };
+
   jobs = rec {
 
     tarball = pkgs.releaseTools.sourceTarball rec {
@@ -193,7 +203,13 @@ let
     gcc_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
     gcc_mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
     gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
+
     gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    gcc_llvm_31 = gcc_llvm_vers "3.1" pkgs.llvm_31 pkgs.clang_31;
+    gcc_llvm_32 = gcc_llvm_vers "3.2" pkgs.llvm_32 pkgs.clang_32;
+    gcc_llvm_33 = gcc_llvm_vers "3.3" pkgs.llvm_33 pkgs.clang_33;
+    gcc_llvm_34 = gcc_llvm_vers "3.4" pkgs.llvm_34 pkgs.clang_34;
+
     gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
     gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
                        flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
