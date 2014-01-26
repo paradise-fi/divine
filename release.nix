@@ -72,7 +72,7 @@ let
                              "-DCMD_LLVMGOLD=${pkgs.llvm}/lib/LLVMgold.so" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
-                     then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc47.gcc}/bin/gcov" ] else [];
+                     then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler = if clang
                       then [ "-DCMAKE_CXX_COMPILER=${pkgs.clangSelf}/bin/clang++"
                              "-DCMAKE_C_COMPILER=${pkgs.clangSelf}/bin/clang" ]
@@ -80,7 +80,7 @@ let
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
-       buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++
+       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++
                      inputs { inherit pkgs; };
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
        dontStrip = true;
@@ -147,7 +147,7 @@ let
                            then "+pre${toString divineSrc.revCount}"
                            else "";
         src = divineSrc;
-        buildInputs = (with pkgs; [ cmake gcc47 which ]);
+        buildInputs = (with pkgs; [ cmake which ]);
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         dontFixCmake = true;
         autoconfPhase = ''
@@ -178,7 +178,7 @@ let
           in pkgs.releaseTools.nixBuild {
               name = "divine-manual";
               src = jobs.tarball;
-              buildInputs = [ pkgs.gcc47 pkgs.cmake pkgs.perl pkgs.which
+              buildInputs = [ pkgs.cmake pkgs.perl pkgs.which
                               pkgs.haskellPackages.pandoc tex ];
               buildPhase = "make manual website";
               installPhase = ''
