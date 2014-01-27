@@ -70,8 +70,8 @@ let
                        lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
                       then [ "-DCMD_CLANG=${clang_runtime.clang}/bin/clang"
-                             "-DCMD_AR=${pkgs.binutils_gold}/bin/ar"
-                             "-DCMD_GOLD=${pkgs.binutils_gold}/bin/ld.gold"
+                             "-DCMD_AR=${pkgs.gcc.binutils}/bin/ar"
+                             "-DCMD_GOLD=${pkgs.gcc.binutils}/bin/ld.gold"
                              "-DCMD_LLVMGOLD=${llvm}/lib/LLVMgold.so" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
