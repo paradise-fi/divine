@@ -48,7 +48,19 @@
 #elif __cplusplus == 199711L
    #define _PDCLIB_CXX_VERSION 1997
 #else
+#if __cplusplus == 1 && __clang__ && __clang_major__ == 3 && __clang_minor__ == 1
+    /* clang 3.1 does not state it is C++98 unless -std=c++98 is given
+     * later versions do that by default.
+     *
+     * This of course breaks build of divine's models if you use clang 3.1
+     * so we work-around this here
+     *
+     * We don't care about older clangs since we don't support them at all in divine.
+     */
+   #define _PDCLIB_CXX_VERSION 1997
+#else
    #error Unsupported _ _cplusplus (__cplusplus) (supported: ISO/IEC 14882:1997, ISO/IEC 14882:2011).
+#endif
 #endif
 
 #ifndef __STDC_HOSTED__
