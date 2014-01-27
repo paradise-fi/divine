@@ -7,6 +7,7 @@
 
 #include <divine.h>
 #include <_PDCLIB_locale.h>
+#include <_PDCLIB_aux.h>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -15,7 +16,7 @@
  */
 
 /* Memory allocation */
-void * malloc( size_t size ) throw() __attribute__((noinline)) {
+void * malloc( size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
     __divine_interrupt_mask();
     if ( __divine_choice( 2 ) )
         return __divine_malloc( size ); // success
@@ -23,7 +24,7 @@ void * malloc( size_t size ) throw() __attribute__((noinline)) {
         return NULL; // failure
 }
 
-void *realloc( void *orig, size_t size ) throw() __attribute__((noinline)) {
+void *realloc( void *orig, size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
     __divine_interrupt_mask();
     if ( size && __divine_choice( 2 ) ) {
         void *n = __divine_malloc( size );
@@ -37,8 +38,8 @@ void *realloc( void *orig, size_t size ) throw() __attribute__((noinline)) {
 }
 
 /* TODO malloc currently gives zeroed memory */
-void *calloc( size_t n, size_t size ) throw() { return malloc( n * size ); }
-void free( void * p) throw() { return __divine_free( p ); }
+void *calloc( size_t n, size_t size ) _PDCLIB_nothrow { return malloc( n * size ); }
+void free( void * p) _PDCLIB_nothrow { return __divine_free( p ); }
 
 /* IOStream */
 
@@ -71,7 +72,7 @@ extern "C" { /* POSIX kernel APIs */
 }
 
 /* currently missing from our pdclib */
-extern "C" FILE *tmpfile() throw() { __divine_assert( 0 ); return 0; }
+extern "C" FILE *tmpfile() _PDCLIB_nothrow { __divine_assert( 0 ); return 0; }
 
 
 extern "C" { /* pdclib glue functions */
@@ -94,10 +95,10 @@ extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
 #include <locale.h>
 
 extern "C" {
-    double atof( const char *r ) throw() { __divine_problem( 9, 0 ); return 0; }
-    double strtod( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
-    float strtof( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
-    long double strtold( const char *, char ** ) throw() { __divine_problem( 9, 0 ); return 0; }
+    double atof( const char *r ) _PDCLIB_nothrow { __divine_problem( 9, 0 ); return 0; }
+    double strtod( const char *, char ** ) _PDCLIB_nothrow { __divine_problem( 9, 0 ); return 0; }
+    float strtof( const char *, char ** ) _PDCLIB_nothrow { __divine_problem( 9, 0 ); return 0; }
+    long double strtold( const char *, char ** ) _PDCLIB_nothrow { __divine_problem( 9, 0 ); return 0; }
     size_t mbsrtowcs( wchar_t *, const char **, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); return 0; }
     int wcscoll( const wchar_t *, const wchar_t *) { __divine_problem( 9, 0 ); return 0; }
     size_t wcsxfrm( wchar_t *, const wchar_t *, size_t ) { __divine_problem( 9, 0 ); return 0; }
@@ -125,7 +126,7 @@ extern "C" {
     int vfwprintf( FILE *, const wchar_t *, va_list ) { __divine_problem( 9, 0 ); return 0; }
     int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) { __divine_problem( 9, 0 ); return 0; }
 
-    char *getenv( const char * ) { __divine_problem( 9, 0 ); return 0; }
+    char *getenv( const char * ) _PDCLIB_nothrow { __divine_problem( 9, 0 ); return 0; }
 
     void tzset() { __divine_problem( 9, 0 ); }
     int gettimeofday(struct timeval *, struct timezone *) { __divine_problem( 9, 0 ); return 0; }
