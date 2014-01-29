@@ -1,6 +1,7 @@
 #ifndef BIT_OPS_H
 #define BIT_OPS_H
 
+#include <type_traits>
 
 namespace divine {
 namespace bitops {
@@ -15,6 +16,11 @@ constexpr unsigned MSB( T x ) {
 template< typename T >
 constexpr T fill( T x ) {
     return x ? x | fill( x >> 1 ) : x;
+}
+
+template< typename T >
+constexpr size_t sizeOf() {
+    return std::is_empty< T >::value ? 0 : sizeof( T );
 }
 
 }
