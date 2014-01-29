@@ -29,9 +29,9 @@ constexpr size_t sizeOf() {
  *  Comlexity is O(log n), n is sizeof(x)*8
  */
 template< typename number >
-static inline number fill( register number x ) {
+static inline number fill( number x ) {
     static const unsigned m = sizeof( number ) * 8;
-    register unsigned r = 1;
+    unsigned r = 1;
     if ( !x )
         return 0;
     while ( m != r ) {
