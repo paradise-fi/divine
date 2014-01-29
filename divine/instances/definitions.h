@@ -188,7 +188,7 @@ const CMap< Type, SelectOptions > options {
 
 enum class Algorithm {
     Begin,
-    NestedDFS, Owcty, Map, Reachability, Metrics, Simulate, GenExplicit, Draw, Info,
+    NestedDFS, Owcty, Map, Reachability, WeakReachability, Metrics, Simulate, GenExplicit, Draw, Info,
     End
 };
 enum class Generator {
@@ -249,6 +249,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Algorithm, Owcty );
     SHOW( Algorithm, Map );
     SHOW( Algorithm, Reachability );
+    SHOW( Algorithm, WeakReachability );
     SHOW( Algorithm, Metrics );
     SHOW( Algorithm, Simulate );
     SHOW( Algorithm, GenExplicit );
@@ -322,6 +323,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Algorithm::Owcty,        { "divine/algorithm/owcty.h" } },
     { Algorithm::Map,          { "divine/algorithm/map.h" } },
     { Algorithm::Reachability, { "divine/algorithm/reachability.h" } },
+    { Algorithm::WeakReachability, { "divine/algorithm/reachability.h" } },
     { Algorithm::Metrics,      { "divine/algorithm/metrics.h" } },
     { Algorithm::Simulate,     { "divine/algorithm/simulate.h" } },
     { Algorithm::Draw,         { "tools/draw.h" } },
@@ -376,6 +378,7 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Algorithm::Owcty,        AlgSelect( meta::Algorithm::Type::Owcty ) },
     { Algorithm::Map,          AlgSelect( meta::Algorithm::Type::Map ) },
     { Algorithm::Reachability, AlgSelect( meta::Algorithm::Type::Reachability ) },
+    { Algorithm::WeakReachability, AlgSelect( meta::Algorithm::Type::WeakReachability ) },
     { Algorithm::Metrics,      AlgSelect( meta::Algorithm::Type::Metrics ) },
     { Algorithm::Simulate,     AlgSelect( meta::Algorithm::Type::Simulate ) },
     { Algorithm::Draw,         AlgSelect( meta::Algorithm::Type::Draw ) },
@@ -437,6 +440,7 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Algorithm::Owcty,        NameAlgo( "OWCTY" ) },
     { Algorithm::Map,          NameAlgo( "MAP" ) },
     { Algorithm::Reachability, NameAlgo( "Reachability" ) },
+    { Algorithm::WeakReachability, NameAlgo( "Weak Reachability" ) },
     { Algorithm::Metrics,      NameAlgo( "Metrics" ) },
     { Algorithm::Simulate,     NameAlgo( "Simulate" ) },
     { Algorithm::Draw,         NameAlgo( "Draw" ) },
@@ -507,6 +511,7 @@ static const CMap< Algorithm, std::string > algorithm = {
     { Algorithm::Owcty,        "divine::algorithm::Owcty" },
     { Algorithm::Map,          "divine::algorithm::Map" },
     { Algorithm::Reachability, "divine::algorithm::Reachability" },
+    { Algorithm::WeakReachability, "divine::algorithm::WeakReachability" },
     { Algorithm::Metrics,      "divine::algorithm::Metrics" },
     { Algorithm::Simulate,     "divine::algorithm::Simulate" },
     { Algorithm::Draw,         "divine::Draw" },

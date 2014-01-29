@@ -48,7 +48,7 @@ struct Execution : WithReport {
 };
 
 struct Algorithm : WithReport {
-    enum class Type { Metrics, Reachability, Ndfs, Map, Owcty, Verify,
+    enum class Type { Metrics, Reachability, WeakReachability, Ndfs, Map, Owcty, Verify,
                 Draw, Info, GenExplicit, Probabilistic, Simulate };
     enum class Compression { None, Tree };
 

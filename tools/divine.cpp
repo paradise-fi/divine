@@ -85,7 +85,7 @@ struct Main {
     StringOption *o_outputFile;
     BoolOption *o_noSaveStates;
 
-    BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability;
+    BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability, *o_weakReachability;
     BoolOption *o_mpi, *o_probabilistic;
 
     int argc;
@@ -392,6 +392,8 @@ struct Main {
             "owcty", 0, "owcty", "", "force use of OWCTY" );
         o_reachability = cmd_verify->add< BoolOption >(
             "reachability", 0, "reachability", "", "force reachability" );
+        o_weakReachability = cmd_verify->add< BoolOption >(
+            "weak", 0, "weak", "force weak reachability" );
 
         // simulate options
         o_inputTrace = cmd_simulate->add< StringOption >(
@@ -690,10 +692,10 @@ struct Main {
 
             bool oneSet = false;
             for ( auto x : { o_ndfs->boolValue(), o_reachability->boolValue(),
-                    o_owcty->boolValue(), o_map->boolValue() } ) {
+                    o_weakReachability->boolValue(), o_owcty->boolValue(), o_map->boolValue() } ) {
                 if ( oneSet && x )
                     die( "FATAL: only one of --nested-dfs, --owcty, --map,"
-                            " --reachability can be specified" );
+                            " --reachability, --weak can be specified" );
                 oneSet |= x;
             }
 
@@ -735,6 +737,13 @@ struct Main {
                     std::cerr << "WARNING: Reachability is not suitable for checking LTL/Büchi properties."
                               << std::endl;
                 meta.algorithm.algorithm = meta::Algorithm::Type::Reachability;
+            }
+
+            if ( o_weakReachability->boolValue() ) {
+                if ( pt == generator::PT_Buchi )
+                    std::cerr << "WARNING: Weak reachability is not suitable for checking LTL/Büchi properties."
+                              << std::endl;
+                meta.algorithm.algorithm = meta::Algorithm::Type::WeakReachability;
             }
 
             if ( o_owcty->boolValue() ) {

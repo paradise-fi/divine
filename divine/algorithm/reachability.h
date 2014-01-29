@@ -11,9 +11,12 @@
 namespace divine {
 namespace algorithm {
 
-template < typename Handle >
+template < typename Vertex >
 struct ReachabilityShared {
+    using Handle = typename Vertex::Handle;
+
     Handle goal;
+    typename Vertex::Node goalData;
     bool deadlocked;
     algorithm::Statistics stats;
     CeShared< Blob, Handle > ce;
@@ -21,42 +24,39 @@ struct ReachabilityShared {
     ReachabilityShared() : need_expand( false ) {}
 };
 
-template< typename BS, typename Handle >
-typename BS::bitstream &operator<<( BS &bs, ReachabilityShared< Handle > st )
+template< typename BS, typename Vertex >
+typename BS::bitstream &operator<<( BS &bs, ReachabilityShared< Vertex > st )
 {
-    return bs << st.goal << st.deadlocked << st.stats << st.ce << st.need_expand;
+    return bs << st.goal << st.goalData << st.deadlocked << st.stats << st.ce << st.need_expand;
 }
 
-template< typename BS, typename Handle >
-typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Handle > &st )
+template< typename BS, typename Vertex >
+typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Vertex > &st )
 {
-    return bs >> st.goal >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
+    return bs >> st.goal >> st.goalData >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
 }
 
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
  * about here.
  */
-template< typename Setup >
-struct Reachability : Algorithm, AlgorithmUtils< Setup >,
-                      Parallel< Setup::template Topology, Reachability< Setup > >
+template< template< typename > class E, typename Setup >
+struct CommonReachability : Algorithm, AlgorithmUtils< Setup >,
+                      Parallel< Setup::template Topology, CommonReachability< E, Setup > >
 {
-    typedef Reachability< Setup > This;
-    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::Store::Handle > );
+    using This = CommonReachability< E, Setup >;
+    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::Store::Vertex > );
     DIVINE_RPC( rpc::Root,
                 &This::getShared, &This::setShared,
                 &This::_visit, &This::_por, &This::_por_worker,
                 &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
 
-    Handle goal;
-    bool deadlocked;
 
-    struct Extension {
-        Handle _parent;
-        Handle &parent() {
-            return _parent;
-        }
-    };
+    using Extension = E< Handle >;
+
+    Handle goal;
+    Node goalData;
+    bool deadlocked;
 
     typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
     CE ce;
@@ -65,8 +65,8 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return this->graph().pool();
     }
 
-    Extension &extension( Vertex n ) {
-        return n.template extension< Extension >();
+    Extension &extension( Vertex v ) {
+        return v.template extension< Extension >();
     }
 
     struct Main : Visit< This, Setup >
@@ -77,21 +77,25 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             return visitor::ExpansionAction::Expand;
         }
 
+        static void setGoal( This &r, Vertex v ) {
+            r.shared.goal = v.handle();
+            r.shared.goalData = r.pool().allocate( r.pool().size( v.node() ) );
+            r.pool().copy( v.node(), r.shared.goalData );
+            assert( r.store().valid( r.shared.goal ) );
+            r.shared.deadlocked = false;
+        }
+
         static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
         {
-            if ( !r.store().valid( r.extension( t ).parent() ) ) {
+            if ( !r.store().valid( r.extension( t ).parent() ) )
                 r.extension( t ).parent() = f.handle();
-                assert( !r.store().valid( f )
-                        || r.store().valid( r.extension( t ).parent() ) );
-            }
+
             r.shared.stats.addEdge( r.store(), f, t );
 
             if ( r.meta().input.propertyType == graph::PT_Goal
                  && r.graph().isGoal( t.node() ) )
             {
-                r.shared.goal = t.handle();
-                assert( r.store().valid( r.shared.goal ) );
-                r.shared.deadlocked = false;
+                setGoal( r, t );
                 return visitor::TransitionAction::Terminate;
             }
 
@@ -106,9 +110,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::DeadlockAction::Ignore;
 
-            r.shared.goal = n.handle();
-            assert( r.store().valid( r.shared.goal ) );
-            r.shared.deadlocked = true;
+            setGoal( r, n );
             return visitor::DeadlockAction::Terminate;
         }
     };
@@ -128,13 +130,13 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return shared;
     }
 
-    Reachability( Meta m ) : Algorithm( m, sizeof( Extension ) )
+    CommonReachability( Meta m ) : Algorithm( m, bitops::compiletime::sizeOf< Extension >() )
     {
         this->init( *this );
     }
 
-    Reachability( Reachability &master, std::pair< int, int > id )
-        : Algorithm( master.meta(), sizeof( Extension ) )
+    CommonReachability( This &master, std::pair< int, int > id )
+        : Algorithm( master.meta(), bitops::compiletime::sizeOf< Extension >() )
     {
         this->init( *this, master, id );
     }
@@ -158,7 +160,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         return runCe( sh, &CE::_ceIsInitial );
     }
 
-    void counterexample( Handle n ) {
+    virtual void counterexample( Handle n ) {
         shared.ce.initial = n;
         ce.setup( *this, shared );
         Node goal = ce.linear( *this, *this );
@@ -171,6 +173,7 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
             shareds[ i ].stats.update( meta().statistics );
             if ( this->store().valid( shareds[ i ].goal ) ) {
                 goal = shareds[ i ].goal;
+                goalData = shareds[ i ].goalData;
                 if ( shareds[ i ].deadlocked )
                     deadlocked = true;
             }
@@ -216,6 +219,40 @@ struct Reachability : Algorithm, AlgorithmUtils< Setup >,
         result().fullyExplored = this->store().valid( goal )
                                   ? meta::Result::R::No : meta::Result::R::Yes;
     }
+};
+
+template< typename Handle >
+struct Extension {
+    Handle _parent;
+    Handle &parent() {
+        return _parent;
+    }
+};
+
+template< typename Handle >
+struct NoExtension {
+    Handle parent() { return Handle(); }
+};
+
+template< typename Setup >
+using Reachability = CommonReachability< Extension, Setup >;
+
+template< typename Setup >
+struct WeakReachability : CommonReachability< NoExtension, Setup > {
+
+    using Parent = CommonReachability< NoExtension, Setup >;
+    using Handle = typename Parent::Handle;
+
+    template< typename... Args >
+    WeakReachability( Args &&... args ) :
+        Parent( std::forward< Args >( args )... )
+    {}
+
+    virtual void counterexample( Handle ) {
+        this->ce.setup( *this, this->shared );
+        this->ce.goal( *this, this->goalData, false );
+    }
+
 };
 
 }
