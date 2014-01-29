@@ -263,11 +263,9 @@ struct LtlCE {
     }
 
     /// Generates traces; when numTrace is null, computes a numeric trace sequentially in a single thread
-    template< typename Alg, typename T >
+    template< typename Alg, typename T, bool NT = true >
     NumericTrace generateTrace( Alg &a, G &_g, T trace, NumericTrace *numTrace = nullptr )
     {
-        NumericTrace ntrace = numTrace ? *numTrace : numericTrace( a, _g, trace );
-
         while ( !trace.empty() ) {
             if ( pool().valid( trace.front() ) ) {
                 o_ce( a ) << _g.showNode( trace.front () ) << std::endl;
@@ -277,8 +275,9 @@ struct LtlCE {
             }
             trace.pop_front();
         }
-
-        return ntrace;
+        if ( NT )
+            return numTrace ? *numTrace : numericTrace( a, _g, trace );
+        return NumericTrace();
     }
 
     template< typename Alg >
@@ -309,12 +308,15 @@ struct LtlCE {
     }
 
     template< typename Alg, typename T >
-    void goal( Alg &a, T goal ) {
+    void goal( Alg &a, T goal, bool saveTrail = true ) {
         o_ce( a ) << std::endl << "===== The goal =====" << std::endl << std::endl;
-
         std::deque< T > trace;
         trace.push_back( goal );
-        a.result().cycleTrail = generateTrace( a, g(), trace );
+
+        if ( saveTrail )
+            a.result().cycleTrail = generateTrace( a, g(), trace );
+        else
+            generateTrace< Alg, std::deque< T >, false >( a, g(), trace );
     }
 
     // ------------------------------------------------
