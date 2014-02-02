@@ -440,7 +440,20 @@ struct Parser {
             return false;
         }
     }
-    
+
+#if __cplusplus >= 201103L
+    template< typename F >
+    auto maybe( F f ) -> decltype( f(), true ) {
+        int fallback = position();
+        try {
+            f(); return true;
+        } catch ( Fail fail ) {
+            rewind( position() - fallback );
+            return false;
+        }
+    }
+#endif
+
     bool maybe( TokenId id ) {
         int fallback = position();
         try {
