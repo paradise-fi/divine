@@ -44,7 +44,7 @@ namespace tests {
 
 #define WIBBLE_TESTS_ALWAYS_THROWS __attribute__ ((noreturn))
 
-class Location
+struct Location
 {
     const Location* parent;
     const wibble::tests::LocationInfo* info;
