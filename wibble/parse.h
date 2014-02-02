@@ -245,7 +245,7 @@ struct ParseContext
                 << "expected " << fail.expected
                 << " at line " << t.position.line
                 << ", column " << t.position.column
-                << ", but seen " << Token::tokenName[ t.id ] << " '" << t.data << "'"
+                << ", but seen " << Token::tokenName[ static_cast< int >( t.id ) ] << " '" << t.data << "'"
                 << std::endl;
                 return;
             case Fail::Semantic:
@@ -375,7 +375,7 @@ struct Parser {
         if ( t.id == id )
             return t;
         rewind( 1 );
-        fail( Token::tokenName[id].c_str() );
+        fail( Token::tokenName[ static_cast< int >( id ) ].c_str() );
     }
 
 
