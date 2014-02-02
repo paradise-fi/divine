@@ -506,7 +506,7 @@ struct Parser {
     void list( I i, void (F::*sep)() ) {
         int fallback = position();
         try {
-            while ( true ) {                
+            while ( true ) {
                 *i++ = T( context() );
                 fallback = position();
                 (static_cast< F* >( this )->*sep)();
