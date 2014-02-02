@@ -118,11 +118,11 @@ protected:
 
 template<>
 struct Maybe< void > {
-    using T = void;
+    typedef void T;
     static Maybe Just() { return Maybe( false ); }
     static Maybe Nothing() { return Maybe( true ); }
     bool isNothing() { return _nothing; }
-    bool isJust(  ) { return !_nothing; }
+    bool isJust() { return !_nothing; }
 private:
     Maybe( bool nothing ) : _nothing( nothing ) {}
     bool _nothing;
