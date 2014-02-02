@@ -192,6 +192,11 @@ struct Union {
     }
 
     template< typename T >
+    operator T() {
+        return get< T >();
+    }
+
+    template< typename T >
     T &get() {
         assert( is< T >() );
         return unsafeGet< T >();
