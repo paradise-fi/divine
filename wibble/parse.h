@@ -182,10 +182,12 @@ struct Lexer {
         }
     }
 
-    void skipWhitespace() {
-        while ( !eof() && isspace( window( 1 )[ 0 ] ) )
+    void skipWhile( int (*pred)(int) ) {
+        while ( !eof() && pred( window( 1 )[ 0 ] ) )
             consume( 1 );
     }
+
+    void skipWhitespace() { skipWhile( isspace ); }
 
     Token decide() {
         Token t;
