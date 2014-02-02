@@ -15,11 +15,11 @@ static_assert( _impl::In< int, int >::value, "" );
 static_assert( _impl::In< A, A, B >::value, "" );
 static_assert( _impl::In< A, B, A >::value, "" );
 
-template class Union<>;
-template class Union< int, long >;
-template class Union< int, long, A >;
-template class Union< int, long, A, B >;
-template class Union< int, long, A, B, std::string >;
+template struct Union<>;
+template struct Union< int, long >;
+template struct Union< int, long, A >;
+template struct Union< int, long, A, B >;
+template struct Union< int, long, A, B, std::string >;
 
 struct TestUnion {
     Test basic() {
