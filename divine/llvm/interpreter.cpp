@@ -99,7 +99,7 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
     int current = state._thread;
     int tid = state.new_thread();
     state.enter( pc.function );
-    if ( !arg.nothing() ) {
+    if ( !arg.isNothing() ) {
         auto v = info().function( pc ).values[ 0 ];
         frame().memoryflag( info(), v ).set( fl );
         *frame().dereference< Pointer >( info(), v ) = arg.value();
