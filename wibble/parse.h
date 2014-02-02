@@ -2,12 +2,12 @@
 //             (c) 2013 Jan Kriho
 // Support code for writing backtracking recursive-descent parsers
 #include <string>
-#include <cassert>
 #include <deque>
 #include <vector>
 #include <map>
 #include <queue>
 
+#include <wibble/test.h>
 #include <wibble/regexp.h>
 
 #ifndef WIBBLE_PARSE_H
