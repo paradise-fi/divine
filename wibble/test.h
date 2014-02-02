@@ -4,25 +4,17 @@
 #include <iostream>
 #include <cstdlib>
 
-#ifndef WIBBLE_TEST_H
-#define WIBBLE_TEST_H
-
-namespace wibble {
-
-// TODO use TLS
-extern int assertFailure;
-
-struct Location {
-    const char *file;
-    int line, iteration;
-    std::string stmt;
-    Location( const char *f, int l, std::string st, int iter = -1 )
-        : file( f ), line( l ), iteration( iter ), stmt( st ) {}
-};
-
-#define LOCATION(stmt) ::wibble::Location( __FILE__, __LINE__, stmt )
-
 #undef assert // silence a gcc warning if we had assert.h included
+#undef assert_pred
+#undef assert_eq
+#undef assert_leq
+#undef assert_eq_l
+#undef assert_neq
+#undef assert_list_eq
+
+#undef assert_unreachable
+#undef assert_unimplemented
+#undef assert_die
 
 #ifndef NDEBUG
 #define LOCATION_I(stmt, i) ::wibble::Location( __FILE__, __LINE__, stmt, i )
@@ -50,6 +42,24 @@ struct Location {
 #define assert_unreachable(...) assert_die_fn( LOCATION( wibble::str::fmtf(__VA_ARGS__) ) )
 #define assert_unimplemented() assert_die_fn( LOCATION( "not imlemented" ) )
 #define assert_die() assert_die_fn( LOCATION( "forbidden code path tripped" ) )
+
+#ifndef WIBBLE_TEST_H
+#define WIBBLE_TEST_H
+
+namespace wibble {
+
+// TODO use TLS
+extern int assertFailure;
+
+struct Location {
+    const char *file;
+    int line, iteration;
+    std::string stmt;
+    Location( const char *f, int l, std::string st, int iter = -1 )
+        : file( f ), line( l ), iteration( iter ), stmt( st ) {}
+};
+
+#define LOCATION(stmt) ::wibble::Location( __FILE__, __LINE__, stmt )
 
 struct AssertFailed {
     std::ostream &stream;
