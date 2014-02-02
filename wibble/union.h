@@ -10,6 +10,7 @@
 #endif
 
 #include <wibble/test.h>
+#include <wibble/maybe.h>
 
 #include <memory>
 #include <cstring>
@@ -93,6 +94,24 @@ namespace _impl {
     struct AllDistinct< T, Ts... > : std::integral_constant< bool,
         !In< T, Ts... >::value && AllDistinct< Ts... >::value >
     { };
+
+template< typename F, typename T, typename Fallback, typename Check = bool >
+struct _ApplyResult : Fallback {};
+
+template< typename F, typename T, typename Fallback >
+struct _ApplyResult< F, T, Fallback, decltype( std::declval< F >()( std::declval< T >() ), true ) >
+{
+    using Parameter = T;
+    using Result = decltype( std::declval< F >()( std::declval< T >() ) );
+};
+
+template< typename F, typename... Ts > struct ApplyResult;
+
+template< typename F, typename T, typename... Ts >
+struct ApplyResult< F, T, Ts... > : _ApplyResult< F, T, ApplyResult< F, Ts... > > {};
+
+template< typename F > struct ApplyResult< F > {};
+
 }
 
 template< typename T >
@@ -241,6 +260,35 @@ struct Union {
         return std::move( *reinterpret_cast< T * >( &storage ) );
     }
 
+    template< typename F >
+    using Applied = Maybe< typename _impl::ApplyResult< F, Types... >::Result >;
+
+    // invoke `f` on the stored value if the type currently stored in the union
+    // can be legally passed to that function as an argument
+    template< typename F >
+    auto apply( F f ) -> Applied< F > {
+        return _apply< F, Types... >( Preferred(), f );
+    }
+
+    template< typename R >
+    R _match() { return R::Nothing(); }
+
+    // invoke the first function that can handle the currently stored value
+    // (type-based pattern matching)
+    template< typename R, typename F, typename... Args >
+    R _match( F f, Args... args ) {
+        auto x = apply( f );
+        if ( x.isNothing() )
+            return _match< R >( args... );
+        else
+            return x;
+    }
+
+    template< typename F, typename... Args >
+    Applied< F > match( F f, Args... args ) {
+        return _match< Applied< F > >( f, args... );
+    }
+
   private:
     static constexpr size_t size = _impl::MaxSizeof< 1, Types... >::value;
     static constexpr size_t algignment = _impl::MaxAlign< 1, Types... >::value;
@@ -354,6 +402,39 @@ struct Union {
             _moveConstruct< 1, Types... >( target, std::move( other ) );
         discriminator = target;
     }
+
+    template< typename F > Applied< F > _apply( Preferred, F ) { return Applied< F >::Nothing(); }
+
+    template< typename F, typename T >
+    auto fixvoid( F f ) ->
+        typename std::enable_if< std::is_void< typename Applied< F >::T >::value, Applied< F > >::type
+    {
+        f( get< T >() );
+        return Maybe< void >::Just();
+    }
+
+    template< typename F, typename T >
+    auto fixvoid( F f ) ->
+        typename std::enable_if< !std::is_void< typename Applied< F >::T >::value, Applied< F > >::type
+    {
+        return Applied< F >::Just( f( get< T >() ) );
+    }
+
+    template< typename F, typename T, typename... Args >
+    auto _apply( Preferred, F f ) -> Maybe< typename _impl::_ApplyResult< F, T, Unit >::Result >
+    {
+        if ( !is< T >() )
+            return _apply< F, Args... >( Preferred(), f );
+
+        return fixvoid< F, T >( f );
+    }
+
+    template< typename F, typename T, typename... Args >
+    auto _apply( NotPreferred, F f ) -> Applied< F >
+    {
+        return _apply< F, Args... >( Preferred(), f );
+    }
+
 };
 
 }

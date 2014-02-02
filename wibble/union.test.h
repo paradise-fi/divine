@@ -10,6 +10,7 @@ namespace wibble {
 
 struct A { };
 struct B { B() { }; ~B() { } };
+struct C { int x; C( int x ) : x( x ) {} C() : x( 0 ) {} };
 
 static_assert( _impl::In< int, int >::value, "" );
 static_assert( _impl::In< A, A, B >::value, "" );
@@ -84,6 +85,26 @@ struct TestUnion {
         assert( ( Union< int, B >{ B() }.is< B >() ) );
         assert( ( Union< int, B >{ 1 }.is< int >() ) );
         assert( ( Union< B, std::string >{ 1 }.is< B >() ) );
+    }
+
+    static C idC( C c ) { return c; };
+    static C constC( B b ) { return C( 32 ); };
+
+    Test apply() {
+        Union< B, C > u;
+        u = B();
+
+        Maybe< C > result = u.match( idC, constC );
+        assert( !result.nothing() );
+        assert_eq( result.value().x, 32 );
+
+        u = C( 12 );
+        result = u.match( idC, constC );
+        assert( !result.nothing() );
+        assert_eq( result.value().x, 12 );
+
+        result = u.match( constC );
+        assert( result.nothing() );
     }
 };
 
