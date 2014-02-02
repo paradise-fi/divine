@@ -483,6 +483,9 @@ struct Parser {
         return maybe( f );
     }
 
+    // NB. Accepts any ordering of sub-parsers, some possibly more than
+    // once. It is slightly bogus and won't catch all errors in most reasonable
+    // languages. Avoid.
     template< typename F, typename... Args >
     bool arbitrary( F f, Args... args ) {
         bool retval = arbitrary( args... );
