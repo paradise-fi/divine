@@ -38,4 +38,11 @@ struct TestSilkEval
         assert_eq( _expression( "1 + ((|x| 1 + (|y| x - y) 2) 4)" ), 4 );
         assert_eq( _expression( "(|x| 1 + (|y| x * y) 2) 4" ), 9 );
     }
+
+    Test conditional() {
+        assert_eq( _expression( "if 1 then 5 else 2" ), 5 );
+        assert_eq( _expression( "1 + (if 1 then 5 else 2)" ), 6 );
+        assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 0" ), 2 );
+        assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 1" ), 6 );
+    }
 };

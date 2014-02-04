@@ -109,10 +109,10 @@ struct Compiler
                 compile( *x.rhs, code );
             },
             [&]( const parse::IfThenElse &x ) {
+                code.push_back( Op::If );
+                compile( *x.cond, code );
                 compile( thunk( x.yes ), code );
                 compile( thunk( x.no ), code );
-                compile( *x.cond, code );
-                code.push_back( Op::If );
             }
         );
     }
