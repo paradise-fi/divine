@@ -88,7 +88,7 @@ struct TestList {
     Test filtered() {
         My list( 1, 1024 );
         checkOddList( list::filter( list, odd ) );
-        assert_eq( list::count( list::filter( list, odd ) ), 512 );
+        assert_eq( list::count( list::filter( list, odd ) ), 512UL );
     }
 
     Test sorted() {
@@ -114,8 +114,8 @@ struct TestList {
 
     Test unique() {
         My2 list( 0, 20, 3 );
-        assert_eq( list::count( list ), 80 );
-        assert_eq( list::count( list::unique( list ) ), 20 );
+        assert_eq( list::count( list ), 80UL );
+        assert_eq( list::count( list::unique( list ) ), 20UL );
         assert_eq( list::unique( list ).head(), 0 );
         assert_eq( list::unique( list ).tail().head(), 1 );
     }
@@ -162,6 +162,6 @@ struct TestList {
 
     Test appendCount() {
         assert_eq( list::count( list::append( My( 0, 10 ),
-                                              My2( 0, 5, 1 ) ) ), 20 );
+                                              My2( 0, 5, 1 ) ) ), 20UL );
     }
 };
