@@ -59,6 +59,7 @@ template< typename T >
 struct StorableRef {
     T _t;
     T &t() { return _t; }
+    const T &t() const { return _t; }
     StorableRef( T t ) : _t( t ) {}
 };
 
@@ -66,6 +67,7 @@ template< typename T >
 struct StorableRef< T & > {
     T *_t;
     T &t() { return *_t; }
+    const T &t() const { return *_t; }
     StorableRef( T &t ) : _t( &t ) {}
 };
 
@@ -94,6 +96,14 @@ struct Maybe : mixin::Comparable< Maybe< _T > >
         _nothing = m.isNothing();
         if ( !_nothing )
             _v.t = m._v.t;
+    }
+
+    bool operator <=( const Maybe< T > &o ) const {
+        if (o.isNothing())
+            return true;
+        if (isNothing())
+            return false;
+        return value() <= o.value();
     }
 
 protected:
