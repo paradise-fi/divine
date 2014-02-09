@@ -95,16 +95,16 @@ struct TestUnion {
         u = B();
 
         Maybe< C > result = u.match( idC, constC );
-        assert( !result.nothing() );
+        assert( !result.isNothing() );
         assert_eq( result.value().x, 32 );
 
         u = C( 12 );
         result = u.match( idC, constC );
-        assert( !result.nothing() );
+        assert( !result.isNothing() );
         assert_eq( result.value().x, 12 );
 
         result = u.match( constC );
-        assert( result.nothing() );
+        assert( result.isNothing() );
     }
 };
 
