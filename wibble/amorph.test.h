@@ -70,13 +70,13 @@ struct TestAmorph {
         T3 t3;
         T t = testMorph( t1 );
         assert_eq( t.value(), 1 );
-        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 1 ) );
+        assert( t.ifType( ExtractT1Value() ) == Maybe< int >::Just( 1 ) );
         t = testMorph( t2 );
         assert_eq( t.value(), 2 );
-        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Nothing() );
+        assert( t.ifType( ExtractT1Value() ) == Maybe< int >::Nothing() );
         t = testMorph( t3 );
         assert_eq( t.value(), 3 );
-        assert_eq( t.ifType( ExtractT1Value() ), Maybe< int >::Just( 3 ) );
+        assert( t.ifType( ExtractT1Value() ) == Maybe< int >::Just( 3 ) );
     }
 };
 
