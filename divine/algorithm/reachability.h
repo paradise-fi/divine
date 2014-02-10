@@ -77,12 +77,12 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup >,
             return visitor::ExpansionAction::Expand;
         }
 
-        static void setGoal( This &r, Vertex v ) {
+        static void setGoal( This &r, Vertex v, bool deadlock ) {
             r.shared.goal = v.handle();
             r.shared.goalData = r.pool().allocate( r.pool().size( v.node() ) );
             r.pool().copy( v.node(), r.shared.goalData );
             assert( r.store().valid( r.shared.goal ) );
-            r.shared.deadlocked = false;
+            r.shared.deadlocked = deadlock;
         }
 
         static visitor::TransitionAction transition( This &r, Vertex f, Vertex t, Label )
@@ -95,7 +95,7 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup >,
             if ( r.meta().input.propertyType == graph::PT_Goal
                  && r.graph().isGoal( t.node() ) )
             {
-                setGoal( r, t );
+                setGoal( r, t, false );
                 return visitor::TransitionAction::Terminate;
             }
 
@@ -110,7 +110,7 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup >,
             if ( r.meta().input.propertyType != graph::PT_Deadlock )
                 return visitor::DeadlockAction::Ignore;
 
-            setGoal( r, n );
+            setGoal( r, n, true );
             return visitor::DeadlockAction::Terminate;
         }
     };
