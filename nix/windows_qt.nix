@@ -6,7 +6,7 @@ stdenv.mkDerivation rec {
   pkg = "qt-${version}-x86";
 
   source = fetchurl {
-    url = "http://releases.qt-project.org/qt4/source/qt-everywhere-opensource-src-4.8.4.tar.gz";
+    url = "http://download.qt-project.org/archive/qt/4.8/4.8.4/qt-everywhere-opensource-src-4.8.4.tar.gz";
     sha256 = "0w1j16q6glniv4hppdgcvw52w72gb2jab35ylkw0qjn5lj5y7c1k";
   };
 
@@ -19,7 +19,7 @@ stdenv.mkDerivation rec {
     buildScript = ''
       set -ex
       cd source
-      echo y | ./configure.exe -opensource -fast -release -qt-sql-sqlite
+      echo y | ./configure.exe -opensource -fast -release -qt-sql-sqlite -platform win32-g++-4.6 -make make
       for i in `seq 1 20`; do # make seems to die often due to a bug in MSYS
           make && break
       done
