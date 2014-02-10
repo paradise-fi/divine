@@ -11,7 +11,8 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
     for f in $pkgs; do
        tar xaf $f || ${p7zip}/bin/7z x $f
        test -d mingw32 && cp -R mingw32/* .
-       rm -rf mingw32
+       test -d mingw32-dw2 && cp -R mingw32-dw2/* .
+       rm -rf mingw32 mingw32-dw2
     done
     echo "D:\\ /tools" > etc/fstab
     cd ..
@@ -132,8 +133,8 @@ let mingw = { pkg, hash }: fetchurl { url = "mirror://sourceforge/mingw/${pkg}";
   toolchain =
     if ruben
        then [ (fetchurl {
-                url = "mirror://sourceforge/mingw-w64/i686-w64-mingw32-gcc-4.7-1-stdthread-win32_rubenvb.7z";
-                sha256 = "1mzz4j5nca3vyf6vnrnb3gs5i8knqjdmla734nyk60y75ny8na5b"; }) ]
+                url = "mirror://sourceforge/mingw-w64/i686-w64-mingw32-gcc-dw2-4.8-stdthread-win32_rubenvb.7z";
+                sha256 = "1csgfa4qb1gmn1bcfafq2xvi805agdx4gld7js3hpah8fdpxiv9z"; }) ]
        else [ gcc_core gcc_cpp gcc_libstdcpp binutils w32api mingw_rt ];
 
 }
