@@ -5,6 +5,12 @@
 
 namespace wibble {
 
+#if __cplusplus >= 201103L
+#define WB_CONSTEXPR constexpr
+#else
+#define WB_CONSTEXPR
+#endif
+
 struct Unit {
     bool operator<( Unit ) const { return false; }
     bool operator==( Unit ) const { return true; }
@@ -98,8 +104,10 @@ struct TPair {
     typedef B Second;
 };
 
-struct Preferred {};
-struct NotPreferred { NotPreferred( Preferred ) {} };
+struct Preferred { WB_CONSTEXPR Preferred() { } };
+struct NotPreferred { WB_CONSTEXPR NotPreferred( Preferred ) {} };
+
+#undef WB_CONSTEXPR
 
 
 }
