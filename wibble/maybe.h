@@ -1,6 +1,7 @@
 // -*- C++ -*-
 
 #include <wibble/mixin.h>
+#include <wibble/test.h>
 
 #ifndef WIBBLE_MAYBE_H
 #define WIBBLE_MAYBE_H
