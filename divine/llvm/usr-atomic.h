@@ -34,6 +34,9 @@ enum memory_order {
 #define ATOMIC_LLONG_LOCK_FREE 2
 #define ATOMIC_POINTER_LOCK_FREE 2
 
+#define __BEGIN_ATOMIC_BLOCK __divine_interrupt_mask()
+#define __END_ATOMIC_BLOCK __divine_interrupt_unmask(); __divine_interrupt()
+
 namespace __at_impl {
 
     template< typename T >
@@ -57,16 +60,16 @@ namespace __at_impl {
         }
 
         void store( T desired, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             memcpy( &value, &desired, sizeof( T ) );
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
         }
 
         T load( memory_order = memory_order_seq_cst ) const {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result;
             memcpy( &result, &value, sizeof( T ) );
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
@@ -75,11 +78,11 @@ namespace __at_impl {
         }
 
         T exchange( T desired, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result;
             memcpy( &result, &value, sizeof( T ) );
             memcpy( &value, &desired, sizeof( T ) );
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
@@ -90,7 +93,7 @@ namespace __at_impl {
 
         bool compare_exchange_weak( T &expected, T desired, memory_order = memory_order_seq_cst ) {
             bool result = false;
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             if ( !memcmp( &value, &expected, sizeof( T ) )
                     && __divine_choice( 2 ) )  // simulate spurious fail in weak CAS
             {
@@ -99,7 +102,7 @@ namespace __at_impl {
             }
             else
                 memcpy( &expected, &value, sizeof( T ) );
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
@@ -109,14 +112,14 @@ namespace __at_impl {
 
         bool compare_exchange_strong( T &expected, T desired, memory_order = memory_order_seq_cst ) {
             bool result = false;
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             if ( !memcmp( &value, &expected, sizeof( T ) ) ) {
                 memcpy( &value, &desired, sizeof( T ) );
                 result = true;
             }
             else
                 memcpy( &expected, &value, sizeof( T ) );
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
     };
@@ -133,41 +136,41 @@ namespace __at_impl {
         atomic_integral( const atomic_integral& ) = delete;
 
         T fetch_add( T arg, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result = this->value;
             this->value += arg;
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
         T fetch_sub( T arg, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result = this->value;
             this->value -= arg;
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
         T fetch_and( T arg, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result = this->value;
             this->value &= arg;
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
         T fetch_or( T arg, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result = this->value;
             this->value |= arg;
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
         T fetch_xor( T arg, memory_order = memory_order_seq_cst ) {
-            __divine_interrupt_mask();
+            __BEGIN_ATOMIC_BLOCK;
             T result = this->value;
             this->value ^= arg;
-            __divine_interrupt_unmask();
+            __END_ATOMIC_BLOCK;
             return result;
         }
 
@@ -237,17 +240,17 @@ public:
     }
 
     T *fetch_add( ptrdiff_t arg, memory_order = memory_order_seq_cst ) {
-        __divine_interrupt_mask();
+        __BEGIN_ATOMIC_BLOCK;
         T *result = this->value;
         this->value += arg;
-        __divine_interrupt_unmask();
+        __END_ATOMIC_BLOCK;
         return result;
     }
     T *fetch_sub( ptrdiff_t arg, memory_order = memory_order_seq_cst ) {
-        __divine_interrupt_mask();
+        __BEGIN_ATOMIC_BLOCK;
         T *result = this->value;
         this->value -= arg;
-        __divine_interrupt_unmask();
+        __END_ATOMIC_BLOCK;
         return result;
     }
 
@@ -285,16 +288,16 @@ public:
     atomic_flag &operator=( const atomic_flag& ) = delete;
 
     void clear( memory_order = memory_order_seq_cst ) {
-        __divine_interrupt_mask();
+        __BEGIN_ATOMIC_BLOCK;
         flag = false;
-        __divine_interrupt_unmask();
+        __END_ATOMIC_BLOCK;
     }
 
     bool test_and_set( memory_order = memory_order_seq_cst ) {
-        __divine_interrupt_mask();
+        __BEGIN_ATOMIC_BLOCK;
         bool result = flag;
         flag = true;
-        __divine_interrupt_unmask();
+        __END_ATOMIC_BLOCK;
         return result;
     }
 
@@ -494,6 +497,8 @@ inline static void atomic_flag_clear_explicit( atomic_flag *p, memory_order ) {
 
 #undef INTEGRAL_ATOMIC
 #undef INTEGRAL_ATOMIC_TYPEDEF
+#undef __BEGIN_ATOMIC_BLOCK
+#undef __END_ATOMIC_BLOCK
 
 }
 
