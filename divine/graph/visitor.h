@@ -452,7 +452,6 @@ struct Shared {
                     break;
                 }
             }
-            assert( bfv.open().termination.isZero() );
         }
 
         inline void setIds() {
