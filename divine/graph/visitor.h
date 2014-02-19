@@ -447,8 +447,10 @@ struct Shared {
                     continue;
                 }
                 bfv.processQueue();
-                if ( worker.interrupted() )
+                if ( worker.interrupted() ) {
                     bfv.terminate();
+                    break;
+                }
             }
             assert( bfv.open().termination.isZero() );
         }
