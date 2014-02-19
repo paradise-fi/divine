@@ -767,6 +767,7 @@ struct Main {
         if ( meta.algorithm.sharedVisitor ) {
             if ( meta.algorithm.algorithm != meta::Algorithm::Type::Metrics &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Reachability &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::WeakReachability &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Owcty &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Map &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs )
