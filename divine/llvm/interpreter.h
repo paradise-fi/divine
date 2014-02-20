@@ -103,7 +103,9 @@ struct Interpreter
             return false; /* this already caused an interrupt, if applicable */
 
         bool store = isa< StoreInst >( instruction().op );
-        if ( store || isa< LoadInst >( instruction().op ) ) {
+        if ( store || isa< AtomicRMWInst >( instruction().op ) ||
+             isa< LoadInst >( instruction().op ) )
+        {
             if ( !taustores )
                 return true;
 
