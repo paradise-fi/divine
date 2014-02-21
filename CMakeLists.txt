@@ -111,18 +111,24 @@ set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )
 set( CMD_AR "ar" CACHE STRING "how to run GNU ar w/ gold plugin support" )
 
+include( FindLLVM )
+
 find_file( CMD_LLVMGOLD "LLVMgold.so"
-    "/usr/lib/"
-    "/usr/lib/bfd-plugins/"
-    "/usr/lib/llvm/"
-    "/usr/lib/llvm-3.2/"
-    "/usr/lib/llvm-3.2/lib/"
-    "/usr/lib/llvm-3.1/"
-    "/usr/lib/llvm-3.1/lib/"
-    "/usr/lib/llvm-3.3/"
-    "/usr/lib/llvm-3.3/lib/"
-    "$ENV{HOME}/.nix-profile/lib"
-    "/run/current-system/sw/lib/"
+    HINTS "${LLVM_LIBRARY_DIRS}"
+    PATHS
+        "/usr/lib/"
+        "/usr/lib/bfd-plugins/"
+        "/usr/lib/llvm/"
+        "/usr/lib/llvm-3.2/"
+        "/usr/lib/llvm-3.2/lib/"
+        "/usr/lib/llvm-3.1/"
+        "/usr/lib/llvm-3.1/lib/"
+        "/usr/lib/llvm-3.3/"
+        "/usr/lib/llvm-3.3/lib/"
+        "/usr/lib/llvm-3.4/"
+        "/usr/lib/llvm-3.4/lib/"
+        "$ENV{HOME}/.nix-profile/lib"
+        "/run/current-system/sw/lib/"
     )
 set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
@@ -342,7 +348,6 @@ if ( TIMED )
 endif()
 
 if( LLVM )
-  include( FindLLVM )
   if( NOT LLVM_FOUND )
     disabling( "LLVM" "" "Could not find LLVM." )
     set( LLVM OFF )
