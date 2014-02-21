@@ -60,9 +60,9 @@ function Hydra(base, project) {
         var s = ""; // = ".hydra";
         if ( sel["jobset"] )
             s += '.hydra#' + (this.variants.length ?
-                              sel.jobset.replace(/(.*)-[^-]*/, "$1") : sel.jobset) + ' ';
+                              sel.jobset.replace(/(.*)-[^-]*/, "$1") : sel.jobset).replace('.', "\\.") + ' ';
         else if ( sel["what"] )
-            s += '.hydra#' + sel.what;
+            s += '.hydra#' + sel.what.replace('.', '\\.');
 
         if ( sel["job"] )
             s += '.job_' + sel.job + ' ';
