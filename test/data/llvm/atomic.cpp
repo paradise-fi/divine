@@ -8,7 +8,10 @@ struct _TestData {
     std::atomic< T > at1;
     std::atomic< T > at2;
 
-    _TestData() : at1( 0 ), at2( 0 ) { }
+    _TestData() :
+        at1( 0 ),
+        at2( 0 )
+    { }
 };
 
 template< typename T >
@@ -67,6 +70,5 @@ int main( void ) {
 
     std::atomic< bool > x = { true };
 
-    runTest< int >();
     runTest< uint64_t >();
 }
