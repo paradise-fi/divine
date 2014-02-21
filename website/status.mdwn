@@ -15,7 +15,7 @@ Release Branch
 
 Builds from the currently active release branch.
 
-<table class="hydra" id="branch-3_0"></table>
+<table class="hydra" id="branch-3.1"></table>
 
 Latest Changes
 ==============
@@ -39,7 +39,6 @@ here (no assertions, *no debug symbols*, compiler optimisation enabled):
 
   $('#changes').load('//divine.fi.muni.cz/trac/timeline?max=10 #content > dl, #content > h2');
   h.fetch("mainline");
-  h.fetch("branch-3_0");
-  h.fetch("release");
+  h.fetch("branch-3.1");
 </script>
 
