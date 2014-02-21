@@ -45,7 +45,7 @@ namespace __at_impl {
         T value;
     public:
 
-        atomic_base() : value() {};
+        atomic_base() = default;
         atomic_base( T desired ) : value( desired ) {}
         atomic_base( const atomic_base& ) = delete;
         ~atomic_base() {}
@@ -131,7 +131,7 @@ namespace __at_impl {
 
     public:
 
-        atomic_integral() {};
+        atomic_integral() = default;
         atomic_integral( T desired ) : atomic_base< T >( desired ) {}
         atomic_integral( const atomic_integral& ) = delete;
 
@@ -212,7 +212,7 @@ namespace __at_impl {
 template< typename T >
 class atomic : public __at_impl::atomic_base< T > {
 public:
-    atomic() {}
+    atomic() = default;
     atomic( T desired ) : __at_impl::atomic_base< T >( desired ) {}
     atomic( const atomic& ) = delete;
 
@@ -228,7 +228,7 @@ template< typename T >
 class atomic< T * > : public __at_impl::atomic_base< T * > {
 
 public:
-    atomic() {};
+    atomic() = default;
     atomic( T *desired ) : __at_impl::atomic_base< T * >( desired ) {}
     atomic( const atomic& ) = delete;
 
@@ -277,13 +277,11 @@ public:
 
 };
 
-#define ATOMIC_FLAG_INIT {}
+#define ATOMIC_FLAG_INIT { false }
 class atomic_flag {
     bool flag;
 public:
-    atomic_flag() :
-        flag( false )
-    {}
+    atomic_flag() = default;
 
     atomic_flag &operator=( const atomic_flag& ) = delete;
 
@@ -444,7 +442,7 @@ inline static void atomic_flag_clear_explicit( atomic_flag *p, memory_order ) {
 #define INTEGRAL_ATOMIC(type, shortcut) \
     template<> class atomic< type > : public __at_impl::atomic_integral< type > { \
     public: \
-        atomic() {} \
+        atomic() = default; \
         atomic( type desired ) : atomic_integral< type >( desired ) {} \
         atomic( const atomic& ) = delete; \
         atomic &operator=( const atomic& ) = delete; \
