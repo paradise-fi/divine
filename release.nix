@@ -40,6 +40,7 @@ let
                  "binutils-gold" ];
   extra_debs31 = extra_debs ++ [ "llvm-3.1-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
+  extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
   extra_rpms = [ "cmake" "redhat-rpm-config" ];
 
   mkVM = { VM, extras, diskFun, mem ? 3072 }:
@@ -228,12 +229,14 @@ let
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
     ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
     ubuntu1304_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304i386; extras = extra_debs32; };
+    ubuntu1310_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1310i386; extras = extra_debs34; };
     fedora18_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora18i386; extras = extra_rpms;
                            mem = 2047; };
 
     debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs31; };
     ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs31; };
     ubuntu1304_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304x86_64; extras = extra_debs32; };
+    ubuntu1310_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1310x86_64; extras = extra_debs34; };
     fedora18_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora18x86_64; extras = extra_rpms; };
 
     win7_i386_small = mkwin windows7_img "-DSMALL=ON" false;
