@@ -347,7 +347,7 @@ if( LLVM )
     disabling( "LLVM" "" "Could not find LLVM." )
     set( LLVM OFF )
   else()
-    if ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234][^0-9]*" )
+    if ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234]([^0-9]*|[.].*)" )
       add_definitions( -DO_LLVM )
       link_directories( ${LLVM_LIBRARY_DIRS} )
 
