@@ -450,7 +450,7 @@ template< typename Hasher >
 struct HcHasher : Hasher
 {
     HcHasher( Pool& pool, int slack ) : Hasher( pool, slack ) {}
-    bool equal( Blob a, Blob b ) { return true; }
+    bool equal( Blob, Blob ) { return true; }
 };
 
 template < typename TableProvider,

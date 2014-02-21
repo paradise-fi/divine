@@ -52,7 +52,7 @@ FMap< Wrapper, S, F > fmap( F f, Wrapper< S > n ) {
 */
 
 template< template< typename > class C, typename S, typename F >
-auto fmap( F f, C< S > n ) -> decltype( FMap< C, S, F >( n.unwrap() ) ) {
+auto fmap( F, C< S > n ) -> decltype( FMap< C, S, F >( n.unwrap() ) ) {
     return FMap< C, S, F >( n.unwrap() );
 }
 

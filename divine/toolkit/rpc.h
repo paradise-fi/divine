@@ -52,7 +52,7 @@ struct DeMarshall {
     DeMarshall( X &x, BSI &bsi, BSO &bso ) : x( x ), bsi( bsi ), bso( bso ) {}
 
     template< typename F, typename Args, int... indices >
-    void invoke_with_list( list::not_preferred, F f, Args args, Indices< indices... > )
+    void invoke_with_list( list::not_preferred, F, Args, Indices< indices... > )
     {
         assert_unreachable( "demarshallWith failed to match" );
     }
@@ -145,10 +145,10 @@ void demarshall( T &t, BSI &bsi, BSO &bso ) {
 }
 }
 
-#define DIVINE_RPC(super, x...)                                       \
+#define DIVINE_RPC(super, ...)                                       \
     template< typename Req, typename L = list::Nil >                  \
     static void rpc_request( Req req, L l = list::Nil() ) {           \
-        super::rpc_request( req, concat( list::list( x ), l ) );      \
+        super::rpc_request( req, concat( list::list( __VA_ARGS__ ), l ) );      \
     }
 
 #endif

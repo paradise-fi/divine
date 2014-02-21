@@ -115,7 +115,7 @@ struct MachineState
             std::fill( memory(), memory() + framesize( i ), 0 );
         }
 
-        static int framesize( ProgramInfo &i, int dsize ) {
+        static int framesize( ProgramInfo &, int dsize ) {
             return align( dsize + size_memoryflags( dsize ), 4 );
         }
 

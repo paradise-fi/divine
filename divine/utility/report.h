@@ -181,8 +181,8 @@ struct AggregateReport : Report {
 };
 
 struct NoReport : Report {
-    void doFinal( const Meta &meta ) override { }
-    void signal( int s ) override { }
+    void doFinal( const Meta & ) override { }
+    void signal( int ) override { }
     void finished() override { }
 };
 

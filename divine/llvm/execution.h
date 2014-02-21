@@ -399,7 +399,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return _flag; }
+        MemoryFlag resultFlag( std::vector< MemoryFlag > ) { return _flag; }
 
         Set( Arg v, MemoryFlag f = MemoryFlag::Data ) : v( v ), _flag( f ) {}
     };

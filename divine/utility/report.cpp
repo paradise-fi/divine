@@ -31,12 +31,12 @@ std::string Report::mangle( std::string str ) {
 }
 
 #ifndef O_SQL_REPORT
-SqlReport::SqlReport( const std::string &db, const std::string &connstr ) {
+SqlReport::SqlReport( const std::string &, const std::string & ) {
     wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
 }
 
 
-void SqlReport::doFinal( const Meta &meta ) {
+void SqlReport::doFinal( const Meta & ) {
     wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
 }
 #else

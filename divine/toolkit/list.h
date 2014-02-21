@@ -100,7 +100,7 @@ constexpr auto list( X x, Xs... xs ) -> typename List< X, Xs... >::T {
 }
 
 template< typename X >
-constexpr auto lookup( X x, Nil, int ) -> int { return -1; }
+constexpr auto lookup( X, Nil, int ) -> int { return -1; }
 
 struct preferred {};
 struct not_preferred { constexpr not_preferred( preferred ) {} };
