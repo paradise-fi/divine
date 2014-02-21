@@ -33,7 +33,7 @@ if(NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
      "Choose the type of build, options are: Debug Release RelWithDebInfo RelWithDebug RelWithAssert MinSizeRel."
      FORCE)
-endif(NOT CMAKE_BUILD_TYPE)
+endif()
 
 macro(appendFlag flags value)
   foreach( F ${flags} )
@@ -78,7 +78,13 @@ option( TBBMALLOC "use Intel TBB memory allocator" ON )
 
 option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
 
-option( WARNINGS "enable extra compiler warnings" OFF )
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set( WARNINGS_DEF ON )
+else()
+    set( WARNINGS_DEF OFF )
+endif()
+option( WARNINGS "enable extra compiler warnings" ${WARNINGS_DEF} )
+
 option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
 option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
 include (VersionAppend)
