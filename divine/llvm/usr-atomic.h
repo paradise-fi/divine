@@ -278,27 +278,26 @@ public:
 };
 
 #define ATOMIC_FLAG_INIT { false }
-class atomic_flag {
-    bool flag;
-public:
+struct atomic_flag {
     atomic_flag() = default;
 
     atomic_flag &operator=( const atomic_flag& ) = delete;
 
     void clear( memory_order = memory_order_seq_cst ) {
         __BEGIN_ATOMIC_BLOCK;
-        flag = false;
+        __flag = false;
         __END_ATOMIC_BLOCK;
     }
 
     bool test_and_set( memory_order = memory_order_seq_cst ) {
         __BEGIN_ATOMIC_BLOCK;
-        bool result = flag;
-        flag = true;
+        bool result = __flag;
+        __flag = true;
         __END_ATOMIC_BLOCK;
         return result;
     }
 
+    bool __flag;
 };
 
 #define ATOMIC_VAR_INIT( value ) { value }
