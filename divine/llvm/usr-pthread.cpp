@@ -311,7 +311,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     DBG_ASSERT( ltid >= 0 );
 
     // generate a unique ID
-    int gtid = thread_counter++;    
+    int gtid = thread_counter++;
     // 65535 is in fact the maximum number of threads (created during the entire execution)
     // we can handle (capacity of pthread_t, mutex & rwlock types are limiting factors).
     __divine_assert( thread_counter < (1 << 16) );
@@ -386,6 +386,10 @@ int pthread_join( pthread_t ptid, void **result ) {
 
     // let the thread to terminate now
     threads[ltid]->detached = true;
+
+    // force us to synchrozie with the thread on its end, to avoid it from
+    // ending nondeterministically in all subsequent states
+    WAIT( threads[ ltid ] != NULL );
     return 0;
 }
 
@@ -405,7 +409,14 @@ int pthread_detach( pthread_t ptid ) {
     if ( threads[ltid]->detached )
         return EINVAL;
 
+    bool ended = !threads[ ltid ]->running;
     threads[ltid]->detached = true;
+
+    if ( ended ) {
+        // force us to synchrozie with the thread on its end, to avoid it from
+        // ending nondeterministically in all subsequent states
+        WAIT( threads[ ltid ] != NULL );
+    }
     return 0;
 }
 
