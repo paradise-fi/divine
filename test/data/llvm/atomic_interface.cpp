@@ -200,9 +200,10 @@ void integralIT() {
     assert( ( at ^= 0xf0 ) == ( t ^= 0xf0 ) );
 }
 
+std::atomic_flag fstatic = ATOMIC_FLAG_INIT;
+
 void atomicFlagIT() {
     std::atomic_flag f = ATOMIC_FLAG_INIT;
-    std::atomic_flag f2( ATOMIC_FLAG_INIT );
 
     assert( !f.test_and_set() );
     assert( f.test_and_set() );
