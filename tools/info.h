@@ -19,7 +19,6 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     typename Setup::Graph g;
 
     void run() {
-        typedef std::vector< std::pair< std::string, std::string > > Props;
         std::cout << "Available properties:" << std::endl;
         g.properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
                 std::cout << " * " << name << ": " << descr << std::endl;
