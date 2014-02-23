@@ -63,6 +63,7 @@ struct DeMarshall {
             std::is_void< decltype( With< X, F >()( x, f, list::decons< indices >( args )... ) )
                           >::value >::type
     {
+        static_cast< void >( args ); // if indices are {} we can get unused param warning
         With< X, F >()(
             x, f, list::decons< indices >( args )... );
     }
@@ -73,6 +74,7 @@ struct DeMarshall {
             !std::is_void< decltype( With< X, F >()( x, f, list::decons< indices >( args )... ) )
                            >::value >::type
     {
+        static_cast< void >( args );
         bso << With< X, F >()(
             x, f, list::decons< indices >( args )... );
     }

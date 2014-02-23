@@ -23,7 +23,7 @@ Interpreter::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
     parseProperties( bc->module.get() );
 }
 
-void Interpreter::parseProperties( Module *M )
+void Interpreter::parseProperties( Module * )
 {
     auto prefix = "__divine_LTL_";
 

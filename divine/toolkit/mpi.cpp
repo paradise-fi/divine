@@ -22,13 +22,15 @@ Mpi::Mpi( bool forceMpi )
             s_data->is_master = !s_data->rank;
         } else
             s_data->isMpi = false;
+#else
+        wibble::param::discard( forceMpi );
 #endif
         s_data->instances = 1;
     } else
         s_data->instances ++;
 }
 
-Mpi::Mpi( const Mpi &m ) {
+Mpi::Mpi( const Mpi & ) {
     global().instances ++;
 }
 

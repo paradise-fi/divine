@@ -180,7 +180,7 @@ public:
         pool().free( s );
     }
 
-    bool isGoal(Node s) {
+    bool isGoal(Node) {
         return false;
     }
 

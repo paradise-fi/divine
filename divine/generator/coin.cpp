@@ -272,7 +272,7 @@ std::string Coin::showNode(Node compressed_state) {
     return stream.str();
 }
 
-std::string Coin::showTransition( Node from, Node to, Label )
+std::string Coin::showTransition( Node, Node, Label )
 {
     return "";
 }

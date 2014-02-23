@@ -77,7 +77,7 @@ auto deconsptr( Cons c ) -> typename UnPtr< typename list::ConsAt< I >::template
 #define MATCH(l, ...) template< typename F, typename X > \
     auto match( F &f, X x ) -> \
         typename wibble::TPair< typename Eq< l, X::length >::Yes, decltype( f( __VA_ARGS__ ) ) >::Second \
-    { return f( __VA_ARGS__ ); }
+    { static_cast< void >( x ); return f( __VA_ARGS__ ); }
 
 MATCH( 0, /**/ )
 MATCH( 1, deconsptr< 0 >( x ) )
