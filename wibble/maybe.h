@@ -99,6 +99,11 @@ struct Maybe : mixin::Comparable< Maybe< _T > >
             _v.t = m._v.t;
     }
 
+    ~Maybe() {
+        if ( !_nothing )
+            _v.t.~StorableRef< T >();
+    }
+
     bool operator <=( const Maybe< T > &o ) const {
         if (o.isNothing())
             return true;
@@ -120,6 +125,7 @@ protected:
         Empty empty;
         V() : empty() {}
         V( const T &t ) : t( t ) {}
+        ~V() { } // see dtor of Maybe
     };
     V _v;
     bool _nothing;
