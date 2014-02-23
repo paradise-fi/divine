@@ -339,7 +339,7 @@ struct InstGenerator {
         return true;
     }
 
-    int writeFile( std::string name, std::stringstream &data, uint64_t s1 = 0, uint64_t s2 = 0 ) {
+    int writeFile( std::string name, std::stringstream &data ) {
         std::string sdata = data.str();
 
         std::ifstream ifile{ name };
@@ -355,11 +355,11 @@ struct InstGenerator {
 
     int writeFiles( std::string selName, std::string extName, std::string instancesPrefix ) {
         int cnt = 0;
-        cnt += writeFile( selName, _select, 1 );
-        cnt += writeFile( extName, _extern, 2 );
+        cnt += writeFile( selName, _select );
+        cnt += writeFile( extName, _extern );
         for ( int i = 0; i < int( _instances.size() ); ++i )
             cnt += writeFile( instancesPrefix + std::to_string( i + 1 ) + ".cpp",
-                        _instances[ i ], 3, i );
+                        _instances[ i ] );
         return cnt;
     }
 
