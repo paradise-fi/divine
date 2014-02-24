@@ -959,14 +959,14 @@ void MainForm::open()
     suffixes << "*." + itr->suffix();
   }
 
-  filters << QString("%1 (%2) (%2)").arg(tr("All applicable files"), suffixes.join(" "));
+  filters << QString("%1 (%2)").arg(tr("All applicable files"), suffixes.join(" "));
 
   foreach(ModuleManager::DocumentList::value_type itr, docs) {
     // skip universal editor
     if(itr->suffix().isEmpty())
       continue;
 
-    filters << QString("%1 (*.%2) (*.%2)").arg(itr->filter(), itr->suffix());
+    filters << QString("%1 (*.%2)").arg(itr->filter(), itr->suffix());
   }
 
   QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
