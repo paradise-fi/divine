@@ -66,6 +66,24 @@ auto refDeleter( Instance &ref, Delete deleter )
     return refDeleteIf( true, ref, deleter );
 }
 
+template< typename Fn >
+struct Defer {
+    Defer( Fn fn ) : fn( fn ) { }
+    void run() {
+        if ( !_deleted ) {
+            fn();
+            _deleted = true;
+        }
+    }
+    bool deleted() const { return _deleted; }
+    ~Defer() { run(); }
+  private:
+    Fn fn;
+    bool _deleted;
+};
+
+template< typename Fn >
+Defer< Fn > defer( Fn fn ) { return Defer< Fn >( fn ); }
 
 }
 }
