@@ -86,6 +86,10 @@ struct MMap
         return asArrayOf< char >()[ offset ];
     }
 
+    const char *cdata() const { return asConstArrayOf< char >(); }
+    const char *data() const { return asConstArrayOf< char >(); }
+    char *data() { return asArrayOf< char >(); }
+
   private:
     std::shared_ptr< void > _ptr;
     ProtectModeFlags _flags;
