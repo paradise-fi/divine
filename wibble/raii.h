@@ -17,14 +17,23 @@ struct AutoDelete {
     Instance value;
     Delete deleter;
 
+    AutoDelete() : runDeleter( false ) { }
     AutoDelete( Instance &&instance, Delete deleter ) :
         AutoDelete( true, std::forward< Instance >( instance ), deleter )
     { }
-
     AutoDelete( bool runDeleter, Instance &&instance, Delete deleter ) :
         value( std::forward< Instance >( instance ) ),
         deleter( deleter ), runDeleter( runDeleter )
     { }
+
+    // allow only move
+    AutoDelete( const AutoDelete & ) = delete;
+    AutoDelete( AutoDelete &&o ) = default;
+    AutoDelete &operator=( AutoDelete other ) {
+        std::swap( other.value, value );
+        std::swap( other.deleter, deleter );
+        std::swap( other.runDeleter, runDeleter );
+    }
 
     ~AutoDelete() {
         if ( runDeleter )
