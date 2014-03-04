@@ -223,7 +223,7 @@ let
                          flags = []; };
     clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
     clang_medium = mkbuild { name = "medium"; inputs = { pkgs }:
-                              [ pkgs.openmpi pkgs.libcxxLLVM pkgs.clangSelf pkgs.libxml2 ];
+                              [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
                              flags = []; clang = true; };
 
     debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
