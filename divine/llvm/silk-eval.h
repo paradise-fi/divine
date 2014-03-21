@@ -39,6 +39,14 @@ struct Symbol {
     }
 };
 
+/*
+ * An immediate use of a symbol (as opposed to a 'quoted symbol or a
+ * right-hand-side of subscope access -- .).
+ */
+struct Use : Symbol {
+    Use( SymbolMap &m, std::string n ) : Symbol( m, n ) {}
+};
+
 using Op = parse::TI; // a little bit of abuse to avoid conversions
 
 struct Label {
@@ -51,53 +59,58 @@ struct Label {
     {}
 };
 
-using SymItem = wibble::Union< Value, Symbol, Op >;
+using SymItem = wibble::Union< Value, Use, Symbol, Op >;
 using ConItem = wibble::Union< Value, Op >;
 using SymStack = std::vector< SymItem >;
 using ConStack = std::vector< ConItem >;
+using DefBlock = std::map< int, int >;
+using DefBlocks = std::vector< DefBlock >;
+
 
 /* map an identifier to a value; each lambda binds exactly one value, hence we
  * always know where to pop when leaving a lambda; indexed by symbol IDs */
 using ScopeStack = std::vector< std::vector< Value > >;
 
 struct Text {
-    Label add( LabelMap &m, Symbol bind, const SymStack &c ) {
-        Label l( m );
+    void add( Label l, Symbol bind, const SymStack &c ) {
         assert_eq( l.id, code.size() );
         assert_eq( l.id, binders.size() );
         code.push_back( c );
         binders.push_back( bind );
-        return l;
     }
 
     std::vector< SymStack > code;
     std::vector< Symbol > binders;
+    DefBlocks defs;
 };
 
 struct Compiler
 {
-    void compile( const parse::BinOp &e )
-    {
-    }
-
-    static parse::Lambda thunk( parse::ExpressionPtr e ) {
-        return parse::Lambda( parse::Identifier( "_dummy" ), e );
-    }
-
     Symbol symbol( parse::Identifier i ) {
         return Symbol( syms, i.name );
     }
 
-    void compile( parse::Expression &e, SymStack &code )
+    void compile( parse::Expression &e, SymStack &code, bool symctx = false )
     {
         e.e.match(
             [&]( const parse::Constant &x ) {
-                code.push_back( Value( x.value ) );
+                if ( x.scope )
+                    code.push_back( Value( compile( *x.scope ) ) );
+                else
+                    code.push_back( Value( x.value ) );
             },
             [&]( const parse::Identifier &x ) {
-                code.push_back( Symbol( syms, x.name ) );
+                code.push_back( Use( syms, x.name ) );
             },
             [&]( const parse::Lambda &x ) { compile( x, code ); },
+            [&]( const parse::SubScope &x ) {
+                code.push_back( Op::SubScope );
+                compile( *x.lhs, code );
+                if ( x.rhs->e.is< parse::Identifier >() )
+                    code.push_back( Symbol( syms, x.rhs->e.get< parse::Identifier >().name ) );
+                else
+                    compile( *x.rhs, code );
+            },
             [&]( const parse::BinOp &x ) {
                 code.push_back( x.op );
                 compile( *x.lhs, code );
@@ -111,31 +124,45 @@ struct Compiler
             [&]( const parse::IfThenElse &x ) {
                 code.push_back( Op::If );
                 compile( *x.cond, code );
-                compile( thunk( x.yes ), code );
-                compile( thunk( x.no ), code );
+                thunk( *x.yes, code );
+                thunk( *x.no, code );
             }
         );
     }
 
-    Label compile( const parse::Lambda &l, SymStack &code )
-    {
-        SymStack c2;
+    Label lambda( parse::Expression &e, Symbol bind ) {
+        SymStack code;
 
-        compile( *l.body, c2 );
+        compile( e, code );
 
-        Label lbl = text.add( labels, symbol( l.bind ), c2 );
-        code.push_back( Value( lbl.id ) );
+        Label lbl( labels );
+        text.add( lbl, bind, code );
         return lbl;
     }
 
-    Label compile( const parse::Lambda &l )
-    {
-        SymStack s;
-        return compile( l, s );
+    Label thunk( parse::Expression &e ) {
+        return lambda( e, Symbol( syms, "_dummy" ) );
     }
 
-    void compile( const parse::Scope &toplevel )
+    void thunk( parse::Expression &e, SymStack &code ) {
+        code.push_back( Value( thunk( e ).id ) );
+    }
+
+    Label compile( const parse::Lambda &l ) {
+        return lambda( *l.body, symbol( l.bind ) );
+    }
+
+    void compile( const parse::Lambda &l, SymStack &code ) {
+        code.push_back( Value( compile( l ).id ) );
+    }
+
+    int compile( parse::Scope &s )
     {
+        DefBlock def;
+        for ( auto &b: s.bindings )
+            def[ symbol( b.name ).id ] = thunk( b.value ).id;
+        text.defs.push_back( def );
+        return text.defs.size() - 1;
     }
 
     Text text; /* the result */
@@ -167,12 +194,17 @@ struct Evaluator {
 
         int binder = text.binders[ l.id ].id;
         scope.resize( std::max( int( scope.size() ), binder + 1 ) );
-        scope[ text.binders[ l.id ].id ].push_back( v );
+        scope[ binder ].push_back( v );
 
         std::transform( body.begin(), body.end(), std::back_inserter( code ),
                         [&]( SymItem x ) {
                             return x.match( [&]( Value v ) -> ConItem { return v; },
-                                            [&]( Symbol s ) -> ConItem { return Value( scope[ s.id ].back() ); },
+                                            [&]( Use s ) -> ConItem {
+                                                assert( scope.size() > s.id );
+                                                assert( scope[ s.id ].size() );
+                                                return Value( scope[ s.id ].back() );
+                                            },
+                                            [&]( Symbol s ) -> ConItem { return Value( s.id ); },
                                             [&]( Op o ) -> ConItem { return o; }
                                           ).value();
                         } );
@@ -217,6 +249,13 @@ struct Evaluator {
                 Value fun = vpop();
                 Value param = vpop();
                 return enter( Label( fun.v ), param );
+            }
+            case Op::SubScope: {
+                Value block = vpop();
+                Value sym = vpop();
+                assert( text.defs[ block.v ].count( sym.v ) );
+                /* bindings are always thunks */
+                return enter( Label( text.defs[ block.v ].find( sym.v )->second ), Value() );
             }
             case Op::Bind: { /* more horrible token-id abuse */
                 Value symbol = vpop();

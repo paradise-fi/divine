@@ -17,7 +17,7 @@ struct TestSilkEval
 
     int _expression( std::string s ) {
         auto top = _parse< Expression >( s );
-        Label l = comp.compile( Compiler::thunk( top ) );
+        Label l = comp.thunk( *top );
         Evaluator eval( comp.text );
         eval.enter( l, Value() );
         return eval.reduce();
@@ -44,5 +44,13 @@ struct TestSilkEval
         assert_eq( _expression( "1 + (if 1 then 5 else 2)" ), 6 );
         assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 0" ), 2 );
         assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 1" ), 6 );
+    }
+
+    Test scope() {
+        assert_eq( _expression( "{ a = 5 }.a" ), 5 );
+        assert_eq( _expression( "{ a = 5 + 3 }.a" ), 8 );
+        assert_eq( _expression( "{ a = |x| x + 3 }.a 5" ), 8 );
+        assert_eq( _expression( "(|x| x.x + 3) { x = 1 }" ), 4 );
+        assert_eq( _expression( "{ a = |x| x.x + 3 }.a { x = 1 }" ), 4 );
     }
 };
