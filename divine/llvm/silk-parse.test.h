@@ -63,6 +63,11 @@ struct TestSilkParse {
         Identifier id = c.rhs->e;
     }
 
+    Test scope_block() {
+        Constant c = _parse< Expression >( "def a = 2 + 3; b = 4 end" ).e;
+        assert( c.scope );
+    }
+
     Test simple() {
         BinOp op = _parse< Expression >( "x + 3" ).e;
         assert( op.op == TI::Plus );

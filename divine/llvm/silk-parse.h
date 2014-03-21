@@ -27,7 +27,7 @@ enum class TI {
     Bool_Or, Bool_And, Bool_Not,
     LEq, Lt, GEq, Gt, Eq, NEq,
     Plus, Minus, Mult, Div, Mod, Or, And, Xor, LShift, RShift,
-    Semicolon, BlockScope, BlockEnd, BraceOpen, BraceClose
+    Semicolon, BlockDef, BlockEnd, BraceOpen, BraceClose
 };
 
 const int TI_End = int( TI::BraceClose ) + 1;
@@ -152,6 +152,9 @@ struct Constant : Parser
         if ( next( TI::BraceOpen ) ) {
             scope = std::make_shared< Scope >( c );
             eat( TI::BraceClose );
+        } else if ( next( TI::BlockDef ) ) {
+            scope = std::make_shared< Scope >( c );
+            eat( TI::BlockEnd );
         } else {
             auto t = eat( TI::Constant );
             value = atoi( t.data.c_str() );
