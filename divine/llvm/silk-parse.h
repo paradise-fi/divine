@@ -39,7 +39,7 @@ struct Token : wibble::Token< TI >
 
     static const std::string frag[6];
 
-    static const int precedences = 6;
+    static const int precedences = 5;
 
     bool leftassoc() const {
         return true;
