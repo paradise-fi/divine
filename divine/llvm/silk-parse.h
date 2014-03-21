@@ -78,7 +78,8 @@ struct Lexer : wibble::Lexer< Token, Stream >
     static int firstident( int c ) { return isalpha( c ) || c == '_'; }
     static int restident( int c ) {
         return isprint( c ) && !isspace( c ) &&
-               c != '|' && c != '#' && c != ':' && c != '(' && c != ')';
+            c != '|' && c != '#' && c != ':' && c != '(' && c != ')' &&
+            c != '{' && c != '}' && c != '.';
     }
 
     static constexpr const std::string * const frag = Token::frag;

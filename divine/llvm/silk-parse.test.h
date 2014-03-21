@@ -120,6 +120,18 @@ struct TestSilkParse {
         Constant right = top.rhs->e;
     }
 
+    Test subscope1() {
+        BinOp top = _parse< Expression >( "1 + x.x" ).e;
+        Constant left = top.lhs->e;
+        SubScope right = top.rhs->e;
+    }
+
+    Test subscope2() {
+        BinOp top = _parse< Expression >( "x.x + 1" ).e;
+        SubScope left = top.lhs->e;
+        Constant right = top.rhs->e;
+    }
+
     Test application() {
         Application top = _parse< Expression >( "a b c" ).e;
         Application left = top.lhs->e;
