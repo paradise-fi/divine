@@ -10,7 +10,8 @@ const std::string parse::Token::tokenName[] =
     "if", "then", "else",
     "||", "&&", "not",
     "<=", "<", ">=", ">", "==", "!=",
-    "+", "-", "*", "/", "%", "|", "&", "^", "<<", ">>"
+    "+", "-", "*", "/", "%", "|", "&", "^", "<<", ">>",
+    ";", "def", "end", "{", "}"
 };
 
 const std::string parse::Token::frag[] = { "#", "\n", "and", "or", "true", "false" };

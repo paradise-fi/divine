@@ -37,6 +37,32 @@ struct TestSilkParse {
         assert_eq( cnst.value, 3 );
     }
 
+    Test scope2() {
+        auto c = _parse< Scope >( "a = 2 + 3\nb = 4" );
+        assert_eq( c.bindings.size(), 2 );
+        auto b1 = c.bindings[0];
+        assert_eq( b1.name.name, "a" );
+        auto b2 = c.bindings[1];
+        assert_eq( b2.name.name, "b" );
+        auto cn = b2.value.e.get< Constant >();
+        assert_eq( cn.value, 4 );
+    }
+
+    Test scope3() {
+        auto c = _parse< Scope >( "a = 2 + 3; b = 4" );
+        assert_eq( c.bindings.size(), 2 );
+        auto b1 = c.bindings[0];
+        assert_eq( b1.name.name, "a" );
+        auto b2 = c.bindings[1];
+        assert_eq( b2.name.name, "b" );
+    }
+
+    Test scope_expr() {
+        SubScope c = _parse< Expression >( "{ a = 2 + 3; b = 4 }.b" ).e;
+        Constant s = c.lhs->e;
+        Identifier id = c.rhs->e;
+    }
+
     Test simple() {
         BinOp op = _parse< Expression >( "x + 3" ).e;
         assert( op.op == TI::Plus );

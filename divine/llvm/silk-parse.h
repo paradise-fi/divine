@@ -26,13 +26,16 @@ enum class TI {
     If, Then, Else,
     Bool_Or, Bool_And, Bool_Not,
     LEq, Lt, GEq, Gt, Eq, NEq,
-    Plus, Minus, Mult, Div, Mod, Or, And, Xor, LShift, RShift
+    Plus, Minus, Mult, Div, Mod, Or, And, Xor, LShift, RShift,
+    Semicolon, BlockScope, BlockEnd, BraceOpen, BraceClose
 };
+
+const int TI_End = int( TI::BraceClose ) + 1;
 
 struct Token : wibble::Token< TI >
 {
     static const TI Comment = TI::Comment;
-    static const std::string tokenName[35];
+    static const std::string tokenName[TI_End];
 
     static const std::string frag[6];
 
@@ -44,9 +47,6 @@ struct Token : wibble::Token< TI >
 
     int precedence() const
     {
-        if ( id == TI::SubScope )
-            return 6;
-
         if ( id == TI::And || id == TI::Or || id == TI::Xor ||
              id == TI::LShift || id == TI::RShift )
             return 5;
@@ -93,8 +93,7 @@ struct Lexer : wibble::Lexer< Token, Stream >
         this->match( frag[ TRUE ], TI::Constant );
         this->match( frag[ FALSE ], TI::Constant );
 
-        for ( int i = static_cast< int >( TI::Map );
-              i < static_cast< int >( TI::RShift ); ++i )
+        for ( int i = static_cast< int >( TI::Map ); i < TI_End; ++i )
             this->match( Token::tokenName[i], static_cast< TI >( i ) );
 
         this->match( frag[ OR ], TI::Bool_Or );
@@ -126,6 +125,12 @@ struct Buffer {
 
 typedef wibble::Parser< Token, Lexer< Buffer > > Parser;
 
+struct Expression;
+using ExpressionPtr = std::shared_ptr< Expression >;
+
+struct Scope;
+using ScopePtr = std::shared_ptr< Scope >;
+
 struct Identifier : Parser {
     std::string name;
     Identifier() = default;
@@ -136,17 +141,22 @@ struct Identifier : Parser {
     Identifier( std::string n ) : name( n ) {}
 };
 
-struct Constant : Parser {
+struct Constant : Parser
+{
     int value;
+    ScopePtr scope;
+
     Constant() = default;
     Constant( Context &c ) : Parser( c ) {
-        auto t = eat( TI::Constant );
-        value = atoi( t.data.c_str() );
+        if ( next( TI::BraceOpen ) ) {
+            scope = std::make_shared< Scope >( c );
+            eat( TI::BraceClose );
+        } else {
+            auto t = eat( TI::Constant );
+            value = atoi( t.data.c_str() );
+        }
     }
 };
-
-struct Expression;
-using ExpressionPtr = std::shared_ptr< Expression >;
 
 struct Lambda : Parser {
     Identifier bind;
@@ -174,6 +184,13 @@ struct BinOp {
     {}
 };
 
+struct SubScope {
+    ExpressionPtr lhs, rhs;
+    SubScope( ExpressionPtr lhs, ExpressionPtr rhs )
+        : lhs( lhs ), rhs( rhs )
+    {}
+};
+
 struct Application {
     ExpressionPtr lhs, rhs;
     Application( ExpressionPtr lhs, ExpressionPtr rhs )
@@ -183,7 +200,7 @@ struct Application {
 
 struct Expression : Parser {
 
-    using E = wibble::Union< BinOp, Lambda, Constant, Identifier, IfThenElse, Application >;
+    using E = wibble::Union< BinOp, SubScope, Lambda, Constant, Identifier, IfThenElse, Application >;
     E e;
 
     struct Atom {};
@@ -226,6 +243,10 @@ struct Expression : Parser {
                 next_min_prec = op.precedence() + op.leftassoc();
                 auto rhs = std::make_shared< Expression >( c, next_min_prec );
                 e = BinOp( std::make_shared< Expression >( e ), op, rhs );
+            } else if ( op.valid() && op.id == TI::SubScope && Token::precedences + 1 >= min_prec ) {
+                auto rhs = std::make_shared< Expression >( c, Token::precedences + 2 );
+                next_min_prec = Token::precedences + 2;
+                e = SubScope( std::make_shared< Expression >( e ), rhs );
             } else {
                 c.rewind( 1 ); // put back op
                 done = true;
@@ -304,7 +325,10 @@ struct Scope : Parser {
 
     void separator() {
         Token t = eat( true );
+
         if ( t.id == TI::Newline )
+            return separator(); /* eat all of them */
+        if ( t.id == TI::Semicolon )
             return separator(); /* eat all of them */
 
         rewind( 1 ); /* done */
