@@ -255,8 +255,13 @@ struct CESMI : public Common< Blob > {
             yield( p.id, p.description, p.type );
     }
 
-    void useProperty( std::string n )
+    void useProperties( PropertySet s )
     {
+        if ( s.size() != 1 )
+            throw wibble::exception::Consistency( "CESMI only supports singleton properties" );
+
+        std::string n = *s.begin();
+
         call_setup();
         for ( auto p : _properties )
             if ( n == p.id ) {

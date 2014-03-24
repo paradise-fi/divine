@@ -20,16 +20,16 @@ namespace meta {
 struct Input : WithReport {
     std::string modelType;
     std::string model;
-    std::string property;
-    std::string propertyName;
     std::string trace;
+    graph::PropertySet properties;
     graph::PropertyType propertyType;
+    std::string propertyDetails;
     bool dummygen;
     bool probabilistic;
 
     std::vector< std::string > definitions;
 
-    Input() : propertyType( graph::PT_Goal ), dummygen( false ), probabilistic( false ) {}
+    Input() : propertyType( graph::PT_None ), dummygen( false ), probabilistic( false ) {}
 
     std::vector< ReportLine > report() const override;
 };

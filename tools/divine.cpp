@@ -173,8 +173,8 @@ struct Main {
         if ( mpi->master() && opts.foundCommand() != cmd_info ) {
             auto a = meta.algorithm.name;
             std::cerr << " input: " << meta.input.model << std::endl
-                      << " property " << meta.input.propertyName
-                      << ": " << meta.input.property << std::endl
+                      << " property " << wibble::str::fmt( meta.input.properties )
+                      << ": " << meta.input.propertyDetails << std::endl
                       << " " << std::string( (44 - a.size()) / 2, '-' )
                       << " " << a << " " << std::string( (44 - a.size()) / 2 , '-' )
                       << std::endl;
@@ -523,6 +523,14 @@ struct Main {
         return rep;
     }
 
+    graph::PropertySet parseProperties( std::string s )
+    {
+        wibble::str::Split splitter( ",", s );
+        graph::PropertySet r;
+        std::copy( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ) );
+        return r;
+    }
+
     graph::ReductionSet parseReductions( std::string s )
     {
         wibble::str::Split splitter( ",", s );
@@ -605,7 +613,7 @@ struct Main {
         // else default (currently set to 2)
 
         meta.input.model = input;
-        meta.input.propertyName = o_property->boolValue() ? o_property->value() : "deadlock";
+        meta.input.properties = parseProperties( o_property->boolValue() ? o_property->value() : "deadlock" );
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
@@ -669,7 +677,7 @@ struct Main {
             if ( !ib )
                 die( "Fatal error encountered while processing input." );
 
-            ib->propertyInfo( meta.input.propertyName, meta );
+            ib->propertyInfo( meta.input.properties, meta );
             meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
         }
 

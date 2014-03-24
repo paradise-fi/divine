@@ -128,7 +128,11 @@ struct Timed : public Common< Blob > {
         Buchi::readLTLFile( fileBase + ".ltl", ltlProps, ltlDefs );
     }
 
-    void useProperty( std::string n ) {
+    void useProperties( PropertySet s ) {
+
+        if ( s.size() != 1 )
+            throw wibble::exception::Consistency( "Timed only supports singleton properties" );
+
         propGuards.resize( 1 );
         int propId;
 

@@ -108,7 +108,7 @@ struct Algorithm
         g->setPool( self.masterPool() );
         g->setSlack( m_slack );
         g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
-        g->useProperty( meta().input.propertyName );
+        g->useProperties( meta().input.properties );
         meta().algorithm.reduce =
             g->useReductions( meta().algorithm.reduce );
         g->fairnessEnabled( meta().algorithm.fairness );

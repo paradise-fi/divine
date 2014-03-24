@@ -217,7 +217,11 @@ struct Dve : public Common< Blob > {
         }
     }
 
-    void useProperty( std::string n ) {
+    void useProperties( PropertySet s ) {
+        if ( s.size() != 1 )
+            throw wibble::exception::Consistency( "DVE only supports singleton properties" );
+
+        std::string n = *s.begin();
         system->property = NULL;
         int i = 0;
         for ( auto &p : system->properties ) {

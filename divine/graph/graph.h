@@ -13,9 +13,10 @@ namespace divine {
 namespace graph {
 
 /// Types of acceptance condition
-enum PropertyType { PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_Rabin, PT_Streett };
+enum PropertyType { PT_None, PT_Goal, PT_Deadlock, PT_Buchi, PT_GenBuchi, PT_Muller, PT_Rabin, PT_Streett };
 enum ReductionType { R_POR, R_Tau, R_TauPlus, R_TauStores, R_Heap, R_LU };
 typedef std::set< ReductionType > ReductionSet;
+typedef std::set< std::string > PropertySet;
 
 enum class DemangleStyle { None, Cpp };
 
@@ -70,7 +71,7 @@ struct Base : Allocator {
         yield( "deadlock", "(deadlock freedom)", PT_Deadlock );
     }
 
-    void useProperty( std::string ) {}
+    void useProperties( PropertySet ) {}
 
     virtual ReductionSet useReductions( ReductionSet ) {
         return ReductionSet();
@@ -195,8 +196,8 @@ struct Transform {
         return base().properties( yield );
     }
 
-    void useProperty( std::string n ) {
-        base().useProperty( n );
+    void useProperties( PropertySet n ) {
+        base().useProperties( n );
     }
 
     ReductionSet useReductions( ReductionSet r ) {

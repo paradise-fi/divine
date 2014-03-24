@@ -8,7 +8,7 @@
 namespace divine {
 
 struct InfoBase {
-    virtual void propertyInfo( std::string prop, Meta &m ) = 0;
+    virtual void propertyInfo( graph::PropertySet prop, Meta &m ) = 0;
     virtual generator::ReductionSet filterReductions( generator::ReductionSet ) = 0;
     virtual ~InfoBase() {};
 };
@@ -30,10 +30,16 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 
     int id() { return 0; }
 
-    virtual void propertyInfo( std::string s, Meta &m ) {
+    virtual void propertyInfo( graph::PropertySet s, Meta &m ) {
+        int count = 0;
         g.properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
-                if ( s == name ) {
-                    m.input.property = des;
+                if ( s.count( name ) ) {
+                    m.input.propertyDetails += (count ? " && " : "") + des;
+                    ++ count;
+                    if ( m.input.propertyType != graph::PT_None &&
+                         m.input.propertyType != t )
+                        throw wibble::exception::Consistency(
+                            "Combining different property types is currently not supported." );
                     m.input.propertyType = t;
                 }
             } );

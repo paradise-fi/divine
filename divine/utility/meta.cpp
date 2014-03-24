@@ -71,8 +71,8 @@ Rep Input::report() const {
     return { { "Model", model },
              { "Model-Type", modelType },
              { "Property-Type", tostr( propertyType ) },
-             { "Property-Name", propertyName.empty() ? "-" : propertyName },
-             { "Property", property.empty() ? "-" : property }
+             { "Properties", properties.empty() ? "-" : wibble::str::fmt( properties ) },
+             { "Property", propertyDetails.empty() ? "-" : propertyDetails }
            };
 }
 
