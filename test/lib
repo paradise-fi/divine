@@ -228,7 +228,7 @@ llvm_verify_file() {
     f=$1; shift
     t=$1; shift
     test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
-    prop=${1-assert}
+    prop=${1-safety}
 
     divine verify $f -p $prop -d -r 2>> progress | capture
     test "$t" == ltl_valid && check ltl_valid

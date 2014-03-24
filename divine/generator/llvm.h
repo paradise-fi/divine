@@ -57,6 +57,7 @@ struct _LLVM : Common< Blob > {
     ReductionSet reduce;
 
     bool use_property;
+    std::vector< llvm::Problem::What > goalProblems;
 
     graph::DemangleStyle demangle;
 
@@ -124,8 +125,12 @@ struct _LLVM : Common< Blob > {
     }
 
     bool isGoal( Node n ) {
-        auto fl = flags( n );
-        return fl.problemcount;
+        auto &fl = flags( n );
+        for ( int i = 0; i < fl.problemcount; ++i )
+            for ( auto p : goalProblems )
+                if ( fl.problems( i ).what == p )
+                    return true;
+        return false;
     }
 
     bool isAccepting( Node n ) {
@@ -177,6 +182,12 @@ struct _LLVM : Common< Blob > {
     void properties( Y yield ) {
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
         yield( "assert", "assertion safety", PT_Goal );
+        yield( "memory", "memory safety (invalid dereferences + bound checks)", PT_Goal );
+        yield( "arithmetic", "arithmetic safety (division by zero)", PT_Goal );
+        yield( "leak", "memory leak freedom", PT_Goal );
+        yield( "user", "user or library defined safety problems", PT_Goal );
+        yield( "guard", "safety of compiler-defined guards (unreachable)", PT_Goal );
+        yield( "safety", "[assert + memory + arithmetic + leak + user + guard]", PT_Goal );
         for ( auto p : interpreter().properties )
             yield( p.first, p.second, PT_Buchi );
     }
@@ -195,16 +206,65 @@ struct _LLVM : Common< Blob > {
         assert_die();
     }
 
-    void useProperty( std::string name ) {
-        std::string ltl;
-
-        if ( name == "deadlock" || name == "assert" )
+    void useProperty( llvm::Problem::What w ) {
+        if ( std::find( goalProblems.begin(), goalProblems.end(), w ) != goalProblems.end() )
             return;
+        goalProblems.push_back( w );
+    }
 
-        if ( interpreter().properties.count( name ) )
-            ltl = interpreter().properties[ name ];
+    bool useProperty( std::string name )
+    {
+        size_t sz = goalProblems.size();
+
+        if ( name == "assert" || name == "safety" )
+            useProperty( llvm::Problem::Assert );
+
+        if ( name == "memory" || name == "safety" ) {
+            useProperty( llvm::Problem::InvalidDereference );
+            useProperty( llvm::Problem::OutOfBounds );
+        }
+
+        if ( name == "arithmetic" || name == "safety" )
+            useProperty( llvm::Problem::DivisionByZero );
+
+        if ( name == "leak" || name == "safety" )
+            useProperty( llvm::Problem::MemoryLeak );
+
+        if ( name == "user" || name == "safety" ) {
+            useProperty( llvm::Problem::Other );
+            useProperty( llvm::Problem::NotImplemented );
+        }
+
+        if ( name == "guard" || name == "safety" ) {
+            useProperty( llvm::Problem::InvalidArgument );
+            useProperty( llvm::Problem::NotImplemented );
+        }
+
+        return goalProblems.size() > sz;
+    }
+
+    void useProperties( PropertySet s ) {
+        std::string ltl;
+        auto &props = interpreter().properties;
+
+        for ( std::string name : s ) {
+            if ( name == "deadlock" ) {
+                assert_eq( s.size(), 1 );
+                return;
+            }
+
+            if ( useProperty( name ) )
+                continue;
+
+            if ( props.count( name ) )
+                ltl += (ltl.empty() ? "" : " && ") + props[ name ];
+            else
+                throw wibble::exception::Consistency(
+                    "Unknown property " + name + ". Please consult divine info." );
+        }
+
         if ( ltl.empty() )
-            throw wibble::exception::Consistency( "Unknown property " + name + ". Please consult divine info." );
+            return;
 
         use_property = true;
         BA_opt_graph_t b = buchi( ltl );

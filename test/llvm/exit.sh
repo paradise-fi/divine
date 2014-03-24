@@ -1,6 +1,6 @@
 . lib
 
-llvm_verify valid <<EOF
+llvm_verify valid assert,user <<EOF
 #include <stdlib.h>
 
 void main() {
@@ -9,7 +9,7 @@ void main() {
 }
 EOF
 
-llvm_verify invalid problem Exit <<EOF
+llvm_verify invalid problem Exit user <<EOF
 #include <stdlib.h>
 
 void main() {
@@ -17,7 +17,7 @@ void main() {
 }
 EOF
 
-llvm_verify invalid assert testcase.c:4 <<EOF
+llvm_verify invalid assert testcase.c:4 assert <<EOF
 #include <stdlib.h>
 #include <assert.h>
 

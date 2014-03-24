@@ -1,13 +1,13 @@
 . lib
 
-llvm_verify invalid "division by zero" testcase.c:3 <<EOF
+llvm_verify invalid "division by zero" testcase.c:3 arithmetic <<EOF
 void main() {
     int a = 4;
     a = a / 0;
 }
 EOF
 
-llvm_verify valid <<EOF
+llvm_verify valid arithmetic <<EOF
 #include <assert.h>
 void main() {
     int a = -1;
@@ -15,7 +15,7 @@ void main() {
 }
 EOF
 
-llvm_verify valid <<EOF
+llvm_verify valid arithmetic <<EOF
 #include <assert.h>
 void main() {
     char *p = malloc(4);
