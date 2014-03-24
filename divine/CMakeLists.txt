@@ -42,6 +42,9 @@ if( LLVM )
     STRING( REPLACE "llvm/usr-glue.cpp" "" SRC_LLVM "${SRC_LLVM}" )
     STRING( REPLACE "llvm/usr-cxa_exception.cpp" "" SRC_LLVM "${SRC_LLVM}" )
     file( GLOB llvmtesth llvm/*.test.h )
+else() # enable silk even when LLVM is disabled
+    file( GLOB SRC_LLVM llvm/silk-*.cpp )
+    file( GLOB llvmtesth llvm/silk-*.test.h )
 endif( LLVM )
 
 if( DVE )
