@@ -1,15 +1,11 @@
 // -*- C++ -*- Substitution Failure Is Not An Error
 
+#include <wibble/config.h>
+
 #ifndef WIBBLE_SFINAE_H
 #define WIBBLE_SFINAE_H
 
 namespace wibble {
-
-#if __cplusplus >= 201103L
-#define WB_CONSTEXPR constexpr
-#else
-#define WB_CONSTEXPR
-#endif
 
 struct Unit {
     bool operator<( Unit ) const { return false; }
@@ -104,11 +100,22 @@ struct TPair {
     typedef B Second;
 };
 
-struct Preferred { WB_CONSTEXPR Preferred() { } };
-struct NotPreferred { WB_CONSTEXPR NotPreferred( Preferred ) {} };
+struct Preferred { WIBBLE_CONSTEXPR Preferred() { } };
+struct NotPreferred { WIBBLE_CONSTEXPR NotPreferred( Preferred ) {} };
 
-#undef WB_CONSTEXPR
+#if WIBBLE_CPP_11
 
+template< typename... >
+struct CompilationStopper {
+    static constexpr bool stop = false;
+};
+
+template< typename R, typename... X >
+R declcheck( X... ) {
+    static_assert( CompilationStopper< R >::stop, "declcheck() must not be used!" );
+}
+
+#endif
 
 }
 
