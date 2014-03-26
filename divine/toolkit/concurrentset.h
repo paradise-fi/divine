@@ -265,13 +265,13 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             td.currentRow = _d.currentRow;
 
             // every cell has to be invalidated
-            for ( ; it != end; it->invalidate(), ++it ) {
-                if ( it->empty() )
+            for ( ; it != end; ++it ) {
+                Cell old = it->invalidate();
+                if ( old.empty() || old.invalid() )
                     continue;
-                if ( !it->wait() )
-                    continue;
-                value_type value = it->fetch();
-                Resolution r = WithTD( _d, td ).insertCell< true >( value, it->hash( _d.hasher ) ).r;
+
+                value_type value = old.fetch();
+                Resolution r = WithTD( _d, td ).insertCell< true >( value, old.hash( _d.hasher ) ).r;
                 switch( r ) {
                     case Resolution::Success:
                         break;
