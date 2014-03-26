@@ -317,8 +317,8 @@ class Split
 	std::string str;
 
 public:
-	// TODO: add iterator_traits
-	class const_iterator
+	class const_iterator :
+		public std::iterator<std::forward_iterator_tag, const std::string, void, const std::string*, const std::string&>
 	{
 		const std::string& sep;
 		const std::string& str;
