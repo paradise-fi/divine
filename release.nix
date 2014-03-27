@@ -4,8 +4,10 @@ let
   pkgs = import nixpkgs {};
   debuild = arch: args:
     import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
-  rpmbuild = arch: if arch == "i386" then pkgs.pkgsi686Linux.releaseTools.rpmBuild
-                                     else pkgs.releaseTools.rpmBuild;
+  rpmbuild = arch: args: if arch == "i386"
+      then pkgs.pkgsi686Linux.releaseTools.rpmBuild
+               (args // (if args ? memSize && args.memSize > 2047 then { memSize = 2047; } else {}))
+      else pkgs.releaseTools.rpmBuild args;
   vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
@@ -153,8 +155,8 @@ let
     ubuntu1210 = mkVM { VM = debuild; disk = "ubuntu1210"; extras = extra_debs31; };
     ubuntu1304 = mkVM { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
     ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
-    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; mem = 2047; };
-    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; mem = 2047; };
+    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; };
+    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; };
   };
 
   builds = {
