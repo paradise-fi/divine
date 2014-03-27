@@ -136,6 +136,8 @@ struct Timed : public Common< Blob > {
         propGuards.resize( 1 );
         int propId;
 
+        std::string n = *s.begin();
+
         if ( n == "deadlock" )
             propId = -1;
         else {
