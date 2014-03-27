@@ -63,18 +63,18 @@ let
   mkbuild = { name, inputs,
               flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=OFF" ],
               clang ? false,
-              clang_runtime ? pkgs.clang, # version of clang used in divine compile --llvm
-              llvm ? pkgs.llvm
+              clang_runtime ? ({ pkgs }: pkgs.clang), # version of clang used in divine compile --llvm
+              llvm ? ({ pkgs }: pkgs.llvm)
             }: system:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
-                      then [ "-DCMD_CLANG=${clang_runtime.clang}/bin/clang"
+                      then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang"
                              "-DCMD_AR=${pkgs.gcc.binutils}/bin/ar"
                              "-DCMD_GOLD=${pkgs.gcc.binutils}/bin/ld.gold"
-                             "-DCMD_LLVMGOLD=${llvm}/lib/LLVMgold.so" ]
+                             "-DCMD_LLVMGOLD=${llvm pkgs}/lib/LLVMgold.so" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
@@ -144,10 +144,11 @@ let
                (lib.splitString "\n" versionFile));
   version = builtins.head (builtins.tail (lib.splitString "\"" (versionLine + " ")));
 
-  gcc_llvm_vers = vers: llvm: clang: mkbuild {
+  gcc_llvm_vers = vers: llvm: clang: with builtins; mkbuild {
       name = "llvm_${vers}";
-      inputs = { pkgs }: [ llvm clang ];
-      llvm = llvm; clang_runtime = clang;
+      inputs = { pkgs }: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
+      llvm = pkgs: getAttr llvm pkgs;
+      clang_runtime = pkgs: getAttr clang pkgs;
   };
 
   vms = {
@@ -165,10 +166,10 @@ let
     gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
 
     gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
-    gcc_llvm_31 = gcc_llvm_vers "3.1" pkgs.llvm_31 pkgs.clang_31;
-    gcc_llvm_32 = gcc_llvm_vers "3.2" pkgs.llvm_32 pkgs.clang_32;
-    gcc_llvm_33 = gcc_llvm_vers "3.3" pkgs.llvm_33 pkgs.clang_33;
-    gcc_llvm_34 = gcc_llvm_vers "3.4" pkgs.llvm_34 pkgs.clang_34;
+    gcc_llvm_31 = gcc_llvm_vers "3.1" "llvm_31" "clang_31";
+    gcc_llvm_32 = gcc_llvm_vers "3.2" "llvm_32" "clang_32";
+    gcc_llvm_33 = gcc_llvm_vers "3.3" "llvm_33" "clang_33";
+    gcc_llvm_34 = gcc_llvm_vers "3.4" "llvm_34" "clang_34";
 
     gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
     gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
