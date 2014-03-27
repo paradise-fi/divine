@@ -1,11 +1,11 @@
-{ nixpkgs ? <nixpkgs>, divineSrc, release ? false, buildType ? "Debug" }:
+{ nixpkgs ? <nixpkgs>, divineSrc ? ./., release ? false, buildType ? "Debug" }:
 
 let
   pkgs = import nixpkgs {};
-  debuild = args:
+  debuild = arch: args:
     import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
-  rpmbuild = pkgs.releaseTools.rpmBuild;
-  rpmbuild_i386 = pkgs.pkgsi686Linux.releaseTools.rpmBuild;
+  rpmbuild = arch: if arch == "i386" then pkgs.pkgsi686Linux.releaseTools.rpmBuild
+                                     else pkgs.releaseTools.rpmBuild;
   vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
@@ -43,11 +43,11 @@ let
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
   extra_rpms = [ "cmake" "redhat-rpm-config" ];
 
-  mkVM = { VM, extras, diskFun, mem ? 3072 }:
-   VM rec {
+  mkVM = { VM, extras, disk, mem ? 3072 }: arch:
+   (VM arch) rec {
      name = "divine";
      src = jobs.tarball;
-     diskImage = diskFun { extraPackages = extras; size = 8192; };
+     diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
      configurePhase = ''
           echo "-DCMAKE_BUILD_TYPE=${buildType}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
@@ -63,8 +63,7 @@ let
               clang ? false,
               clang_runtime ? pkgs.clang, # version of clang used in divine compile --llvm
               llvm ? pkgs.llvm
-            }:
-            { system ? builtins.currentSystem }:
+            }: system:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
@@ -149,6 +148,51 @@ let
       llvm = llvm; clang_runtime = clang;
   };
 
+  vms = {
+    debian70   = mkVM { VM = debuild; disk = "debian70"; extras = extra_debs31; };
+    ubuntu1210 = mkVM { VM = debuild; disk = "ubuntu1210"; extras = extra_debs31; };
+    ubuntu1304 = mkVM { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
+    ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
+    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; mem = 2047; };
+    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; mem = 2047; };
+  };
+
+  builds = {
+    gcc_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
+    gcc_mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
+    gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
+
+    gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    gcc_llvm_31 = gcc_llvm_vers "3.1" pkgs.llvm_31 pkgs.clang_31;
+    gcc_llvm_32 = gcc_llvm_vers "3.2" pkgs.llvm_32 pkgs.clang_32;
+    gcc_llvm_33 = gcc_llvm_vers "3.3" pkgs.llvm_33 pkgs.clang_33;
+    gcc_llvm_34 = gcc_llvm_vers "3.4" pkgs.llvm_34 pkgs.clang_34;
+
+    gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
+    gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
+                       flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
+    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = { pkgs }: [];
+                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" "-DEXPLICIT=OFF" ]; };
+    gcc_explicit = mkbuild { name = "explicit"; inputs = { pkgs }: [];
+                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
+    gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
+                          [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                         flags = []; };
+    clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
+    clang_medium = mkbuild { name = "medium"; inputs = { pkgs }:
+                              [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
+                             flags = []; clang = true; };
+  };
+
+  windows = {
+    win7.i386 = mkwin windows7_img "" false;
+    win7_small.i386 = mkwin windows7_img "-DSMALL=ON" false;
+    win7_llvm.i386 = mkwin windows7_img "" true;
+  };
+
+  mapsystems = systems: attrs: with ( pkgs.lib // builtins );
+    mapAttrs ( n: fun: listToAttrs ( map (sys: { name = sys; value = fun sys; }) systems ) ) attrs;
+
   jobs = rec {
 
     tarball = pkgs.releaseTools.sourceTarball rec {
@@ -200,48 +244,8 @@ let
               '';
               checkPhase = ":";
           };
+  } // mapsystems [ "i686-linux" "x86_64-linux" ] builds
+    // mapsystems [ "i386" "x86_64" ] vms // windows;
 
-    gcc_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
-    gcc_mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
-    gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
-
-    gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
-    gcc_llvm_31 = gcc_llvm_vers "3.1" pkgs.llvm_31 pkgs.clang_31;
-    gcc_llvm_32 = gcc_llvm_vers "3.2" pkgs.llvm_32 pkgs.clang_32;
-    gcc_llvm_33 = gcc_llvm_vers "3.3" pkgs.llvm_33 pkgs.clang_33;
-    gcc_llvm_34 = gcc_llvm_vers "3.4" pkgs.llvm_34 pkgs.clang_34;
-
-    gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
-    gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
-                       flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
-    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = { pkgs }: [];
-                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" "-DEXPLICIT=OFF" ]; };
-    gcc_explicit = mkbuild { name = "explicit"; inputs = { pkgs }: [];
-                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
-    gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
-                          [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                         flags = []; };
-    clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
-    clang_medium = mkbuild { name = "medium"; inputs = { pkgs }:
-                              [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
-                             flags = []; clang = true; };
-
-    debian70_i386 = mkVM { VM = debuild; diskFun = vmImgs.debian70i386; extras = extra_debs31; };
-    ubuntu1210_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210i386; extras = extra_debs31; };
-    ubuntu1304_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304i386; extras = extra_debs32; };
-    ubuntu1310_i386 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1310i386; extras = extra_debs34; };
-    fedora18_i386 = mkVM { VM = rpmbuild_i386; diskFun = vmImgs.fedora18i386; extras = extra_rpms;
-                           mem = 2047; };
-
-    debian70_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.debian70x86_64; extras = extra_debs31; };
-    ubuntu1210_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1210x86_64; extras = extra_debs31; };
-    ubuntu1304_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1304x86_64; extras = extra_debs32; };
-    ubuntu1310_x86_64 = mkVM { VM = debuild; diskFun = vmImgs.ubuntu1310x86_64; extras = extra_debs34; };
-    fedora18_x86_64 = mkVM { VM = rpmbuild; diskFun = vmImgs.fedora18x86_64; extras = extra_rpms; };
-
-    win7_i386_small = mkwin windows7_img "-DSMALL=ON" false;
-    win7_i386 = mkwin windows7_img "" false;
-    win7_i386_llvm = mkwin windows7_img "" true;
-  };
 in
   jobs
