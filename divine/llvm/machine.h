@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2011, 2012 Petr Rockai
+// -*- C++ -*- (c) 2011-2014 Petr Ročkai <me@mornfall.net>
 
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>

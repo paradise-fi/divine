@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2009-2013 Petr Rockai <me@mornfall.net>
 
 #include <divine/generator/common.h>
 

@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//                 2013 Petr Ročkai <me@mornfall.net>
 
 #include <divine/instances/definitions.h>
 #include <wibble/sys/fs.h>

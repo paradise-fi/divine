@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
 #define NO_RTTI
 

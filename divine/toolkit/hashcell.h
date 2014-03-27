@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2013, 2014 Petr Rockai <me@mornfall.net>
 //             (c) 2014 Vladimir Still <xstill@fi.muni.cz>
 
 #ifndef DIVINE_HASHCELL_H

@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2012 Petr Rockai
+// -*- C++ -*- (c) 2012-2014 Petr Rockai
 
 #define NO_RTTI
 

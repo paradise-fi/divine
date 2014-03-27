@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2011 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
 #include <vector>
 #include <divine/toolkit/pool.h>

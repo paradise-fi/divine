@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//                 2013 Petr Ročkai <me@mornfall.net>
 
 #include <divine/utility/meta.h>
 #include <divine/llvm/support.h>

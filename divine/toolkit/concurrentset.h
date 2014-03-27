@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2010-2014 Petr Rockai <me@mornfall.net>
 
 #include <numeric>
 #include <atomic>

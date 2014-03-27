@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2007, 2008, 2009 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2007-2013 Petr Rockai <me@mornfall.net>
 #include <wibble/test.h> // for assert
 #include <wibble/mixin.h>
 

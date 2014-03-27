@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
+
 #include <divine/llvm/execution.h>
 #include <divine/llvm/program.h>
 #include <divine/llvm/wrap/GlobalVariable.h>
