@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
-//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <unistd.h>
 #include <vector>

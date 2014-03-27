@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <cstdint>
 #include <divine/toolkit/jenkins.h>
 

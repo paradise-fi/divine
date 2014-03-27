@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimir Still <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2013 Petr Ročkai <me@mornfall.net>
 
 #include <wibble/test.h> // assert

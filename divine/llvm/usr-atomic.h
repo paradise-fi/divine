@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #if __cplusplus >= 201103L
 

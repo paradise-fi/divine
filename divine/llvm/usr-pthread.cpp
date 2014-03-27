@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
+//             (c) 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 /* Includes */
 #include <pthread.h>
