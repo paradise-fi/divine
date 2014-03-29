@@ -118,7 +118,7 @@ struct _LLVM : Common< Blob > {
         pool().free( s );
     }
 
-    using Flags = divine::llvm::MachineState::Flags;
+    using Flags = divine::llvm::machine::Flags;
 
     Flags &flags( Blob b ) {
         return pool().template get< Flags >( b, this->slack() );
