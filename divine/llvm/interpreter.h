@@ -82,7 +82,7 @@ struct Interpreter
     Pool &pool;
     std::shared_ptr< BitCode > bc;
     TargetData TD;
-    MachineState< void > state; /* the state we are dealing with */
+    MachineState<> state; /* the state we are dealing with */
     std::map< std::string, std::string > properties;
 
     bool jumped;

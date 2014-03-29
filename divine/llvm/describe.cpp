@@ -47,7 +47,7 @@ struct Describe {
     std::string constdata();
 
     ::llvm::TargetData &TD() { return interpreter->TD; }
-    MachineState< void > &state() { return interpreter->state; }
+    MachineState<> &state() { return interpreter->state; }
     ProgramInfo &info() { return interpreter->info(); }
 
     template< typename Ptr > std::string aggregate( Type *t, Ptr where );

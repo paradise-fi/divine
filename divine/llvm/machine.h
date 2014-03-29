@@ -325,7 +325,7 @@ namespace machine {
 }
 
 
-template< typename HeapMeta >
+template< typename HeapMeta = wibble::Unit >
 struct MachineState
 {
     using Frame = machine::Frame;
@@ -354,7 +354,7 @@ struct MachineState
 
     typedef lens::Array< Frame > Stack;
     typedef lens::Array< Stack > Threads;
-    typedef lens::Tuple< Flags, Globals, Heap, Threads > State;
+    typedef lens::Tuple< Flags, Globals, Heap, HeapMeta, Threads > State;
 
     bool globalPointer( Pointer p ) {
         return global().owns( _info, p );

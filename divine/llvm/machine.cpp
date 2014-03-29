@@ -399,7 +399,7 @@ namespace divine {
 namespace llvm {
 
 /* explicit instances */
-template struct MachineState< void >;
+template struct MachineState<>;
 
 }
 }
