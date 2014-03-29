@@ -32,7 +32,7 @@ struct LinearSize {
 
     template< typename Addr, typename U >
     static auto _get( wibble::NotPreferred, Addr ) -> int {
-        return sizeof( T );
+        return std::is_empty< T >::value ? 0 : sizeof( T );
     }
 
     template< typename Addr >
