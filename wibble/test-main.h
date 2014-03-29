@@ -238,6 +238,7 @@ struct Main : RunFeedback {
             if ( socketpair( PF_UNIX,SOCK_STREAM, 0, confirm_fds ) )
                 return 1;
             if ( want_fork ) {
+                all.forked = true;
                 pid = fork();
                 if ( pid < 0 )
                     return 2;

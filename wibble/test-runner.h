@@ -36,7 +36,10 @@ struct RunFeedback {
 struct RunAll {
     RunSuite *suites;
     int suiteCount;
+    bool forked;
     RunFeedback *feedback;
+
+    RunAll() : forked( false ) {}
 
     RunSuite *findSuite( std::string name ) {
         for ( int i = 0; i < suiteCount; ++i )
@@ -56,7 +59,8 @@ struct RunAll {
             s.tests[i].run();
             feedback->status( std::string( "t/d: " ) + s.tests[i].name );
             feedback->waitForAck();
-            exit( 0 ); // ensures next test runs in a new process
+            if ( forked )
+                exit( 0 ); // ensures next test runs in a new process
         }
         feedback->status( std::string( "s/d: " ) + s.name );
     }
