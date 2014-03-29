@@ -79,248 +79,249 @@ Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
 }
 
 namespace machine {
-    inline int size_jumptable( int segcount );
-    inline int size_memoryflags( int bytecount );
-    inline int size_heap( int segcount, int bytecount );
 
-    template< typename F >
-    struct WithMemory {
-        uint8_t *memory() {
-            return reinterpret_cast< uint8_t * >( this ) +
-                ( std::is_empty< F >::value ? 0 : sizeof( F ) );
-        }
-    };
+inline int size_jumptable( int segcount );
+inline int size_memoryflags( int bytecount );
+inline int size_heap( int segcount, int bytecount );
 
-    struct StateAddress : lens::LinearAddress
-    {
-        ProgramInfo *_info;
+template< typename F >
+struct WithMemory {
+    uint8_t *memory() {
+        return reinterpret_cast< uint8_t * >( this ) +
+            ( std::is_empty< F >::value ? 0 : sizeof( F ) );
+    }
+};
 
-        StateAddress() : _info( nullptr ) {}
+struct StateAddress : lens::LinearAddress
+{
+    ProgramInfo *_info;
 
-        StateAddress( StateAddress base, int index, int offset )
-            : LinearAddress( base, index, offset ), _info( base._info )
-        {}
+    StateAddress() : _info( nullptr ) {}
 
-        StateAddress( Pool* pool, ProgramInfo *i, Blob b, int offset )
-            : LinearAddress( pool, b, offset ), _info( i )
-        {}
+    StateAddress( StateAddress base, int index, int offset )
+        : LinearAddress( base, index, offset ), _info( base._info )
+    {}
 
-        StateAddress copy( StateAddress to, int size ) {
-            std::copy( dereference(), dereference() + size, to.dereference() );
-            return StateAddress( pool, _info, to.b, to.offset + size );
-        }
-    };
+    StateAddress( Pool* pool, ProgramInfo *i, Blob b, int offset )
+        : LinearAddress( pool, b, offset ), _info( i )
+    {}
 
-    struct Frame : WithMemory< Frame > {
-        PC pc;
+    StateAddress copy( StateAddress to, int size ) {
+        std::copy( dereference(), dereference() + size, to.dereference() );
+        return StateAddress( pool, _info, to.b, to.offset + size );
+    }
+};
 
-        void clear( ProgramInfo &i ) {
-            std::fill( memory(), memory() + framesize( i ), 0 );
-        }
+struct Frame : WithMemory< Frame > {
+    PC pc;
 
-        static int framesize( ProgramInfo &, int dsize ) {
-            return align( dsize + size_memoryflags( dsize ), 4 );
-        }
-
-        int framesize( ProgramInfo &i ) {
-            return framesize( i, datasize( i ) );
-        }
-
-        int datasize( ProgramInfo &i ) {
-            return i.function( pc ).datasize;
-        }
-
-        MemoryBits memoryflag( ProgramInfo &i, ValueRef v ) {
-            return MemoryBits( memory() + datasize( i ),
-                               v.offset + v.v.offset );
-        }
-
-        StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Frame ) + framesize( *a._info ) );
-        }
-
-        int end() { return 0; }
-
-        template< typename T = char >
-        T *dereference( ProgramInfo &i, ValueRef v ) {
-            assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
-            wibble::param::discard( i );
-            return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
-        }
-    };
-
-    struct Globals : WithMemory< Globals > {
-        StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, size( *a._info ) );
-        }
-        int end() { return 0; }
-
-        static int size( ProgramInfo &i ) {
-            return i.globalsize + size_memoryflags( i.globalsize );
-        }
-
-        MemoryBits memoryflag( ProgramInfo &i, Pointer p ) {
-            assert( owns( i, p ) );
-            return MemoryBits( memory() + i.globalsize, i.globalPointerOffset( p ) );
-        }
-
-        MemoryBits memoryflag( ProgramInfo &i ) {
-            return MemoryBits( memory() + i.globalsize, 0 );
-        }
-
-        bool owns( ProgramInfo &i, Pointer p ) {
-            return !p.heap && p.segment >= 1 && p.segment < i.globals.size() &&
-                   !i.globals[p.segment].constant;
-        }
-
-        template< typename T = char >
-        T *dereference( ProgramInfo &i, Pointer p ) {
-            assert( owns( i, p ) );
-            if ( !i.globalPointerInBounds( p ) )
-                return nullptr;
-            return reinterpret_cast< T * >(
-                memory() + i.globalPointerOffset( p ) );
-        }
-    };
-
-    struct Heap : WithMemory< Heap > {
-        int segcount;
-
-        int size() {
-            return jumptable( segcount ) * 4;
-        }
-
-        uint16_t &jumptable( int segment ) {
-            return reinterpret_cast< uint16_t * >( memory() )[ segment ];
-        }
-
-        uint16_t &jumptable( Pointer p ) {
-            assert( owns( p ) );
-            return jumptable( p.segment );
-        }
-
-        MemoryBits memoryflag( Pointer p ) {
-            assert( owns( p ) );
-            return MemoryBits( memory() + size_jumptable( segcount ),
-                               offset( p ) );
-        }
-
-        bool inBounds( Pointer p, int off ) {
-            p.offset += off; return dereference( p );
-        }
-
-        int offset( Pointer p ) {
-            assert( owns( p ) );
-            return int( jumptable( p ) * 4 ) + p.offset;
-        }
-
-        int size( Pointer p ) {
-            assert( owns( p ) );
-            return 4 * (jumptable( p.segment + 1 ) - jumptable( p ));
-        }
-
-        StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, size_heap( segcount, size() ) );
-        }
-        int end() { return 0; }
-
-        bool owns( Pointer p ) {
-            return p.heap && p.segment < segcount;
-        }
-
-        template< typename T = char >
-        T *dereference( Pointer p ) {
-            assert( owns( p ) );
-            if ( p.offset >= size( p ) )
-                return nullptr;
-            return reinterpret_cast< T * >(
-                memory() + size_memoryflags( size() ) + size_jumptable( segcount ) + offset( p ) );
-        }
-    };
-
-    struct Nursery {
-        std::vector< int > offsets;
-        std::vector< char > memory;
-        std::vector< uint8_t > flags;
-        int segshift;
-
-        Pointer malloc( int size ) {
-            int segment = offsets.size() - 1;
-            int start = offsets[ segment ];
-            int end = align( start + size, 4 );
-            offsets.push_back( end );
-            memory.resize( end, 0 );
-            flags.resize( size_memoryflags( end ), 0 );
-            return Pointer( true, segment + segshift, 0 );
-        }
-
-        bool owns( Pointer p ) {
-            return p.heap && p.segment >= segshift &&
-                   p.segment - segshift < int( offsets.size() ) - 1;
-        }
-
-        int offset( Pointer p ) {
-            assert( owns( p ) );
-            return offsets[ p.segment - segshift ] + p.offset;
-        }
-
-        int size( Pointer p ) {
-            assert( owns( p ) );
-            return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
-        }
-
-        MemoryBits memoryflag( Pointer p ) {
-            return MemoryBits( &flags.front(), offset( p ) );
-        }
-
-        char *dereference( Pointer p ) {
-            assert( owns( p ) );
-            if ( offset( p ) >= offsets[ offsets.size() - 1 ] )
-                return nullptr;
-            assert_leq( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
-            return &memory[ offset( p ) ];
-        }
-
-        void reset( int shift ) {
-            segshift = shift;
-            memory.clear();
-            offsets.clear();
-            offsets.push_back( 0 );
-            flags.clear();
-        }
-    };
-
-    struct Flags : WithMemory< Flags >
-    {
-        uint64_t problemcount:8;
-        uint64_t ap:44;
-        uint64_t buchi:12;
-        Problem &problems( int i ) {
-            return *( reinterpret_cast< Problem * >( this->memory() ) + i );
-        }
-
-        StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Flags ) + problemcount * sizeof( Problem ) );
-        }
-        int end() { return 0; }
-    };
-
-    inline int size_jumptable( int segcount ) {
-        /* 4-align, extra item for "end of memory" */
-        return 2 * (2 + segcount - segcount % 2);
+    void clear( ProgramInfo &i ) {
+        std::fill( memory(), memory() + framesize( i ), 0 );
     }
 
-    inline int size_memoryflags( int bytecount ) {
-        const int bitcount = bytecount * MemoryBits::bitwidth;
-        return divine::align( bitcount / 8 + ((bitcount % 8) ? 1 : 0), 4 );
+    static int framesize( ProgramInfo &, int dsize ) {
+        return align( dsize + size_memoryflags( dsize ), 4 );
     }
 
-    inline int size_heap( int segcount, int bytecount ) {
-        return sizeof( Heap ) +
-            bytecount +
-            size_jumptable( segcount ) +
-            size_memoryflags( bytecount );
+    int framesize( ProgramInfo &i ) {
+        return framesize( i, datasize( i ) );
     }
+
+    int datasize( ProgramInfo &i ) {
+        return i.function( pc ).datasize;
+    }
+
+    MemoryBits memoryflag( ProgramInfo &i, ValueRef v ) {
+        return MemoryBits( memory() + datasize( i ),
+                           v.offset + v.v.offset );
+    }
+
+    StateAddress advance( StateAddress a, int ) {
+        return StateAddress( a, 0, sizeof( Frame ) + framesize( *a._info ) );
+    }
+
+    int end() { return 0; }
+
+    template< typename T = char >
+    T *dereference( ProgramInfo &i, ValueRef v ) {
+        assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
+        wibble::param::discard( i );
+        return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
+    }
+};
+
+struct Globals : WithMemory< Globals > {
+    StateAddress advance( StateAddress a, int ) {
+        return StateAddress( a, 0, size( *a._info ) );
+    }
+    int end() { return 0; }
+
+    static int size( ProgramInfo &i ) {
+        return i.globalsize + size_memoryflags( i.globalsize );
+    }
+
+    MemoryBits memoryflag( ProgramInfo &i, Pointer p ) {
+        assert( owns( i, p ) );
+        return MemoryBits( memory() + i.globalsize, i.globalPointerOffset( p ) );
+    }
+
+    MemoryBits memoryflag( ProgramInfo &i ) {
+        return MemoryBits( memory() + i.globalsize, 0 );
+    }
+
+    bool owns( ProgramInfo &i, Pointer p ) {
+        return !p.heap && p.segment >= 1 && p.segment < i.globals.size() &&
+                                                        !i.globals[p.segment].constant;
+    }
+
+    template< typename T = char >
+    T *dereference( ProgramInfo &i, Pointer p ) {
+        assert( owns( i, p ) );
+        if ( !i.globalPointerInBounds( p ) )
+            return nullptr;
+        return reinterpret_cast< T * >(
+            memory() + i.globalPointerOffset( p ) );
+    }
+};
+
+struct Heap : WithMemory< Heap > {
+    int segcount;
+
+    int size() {
+        return jumptable( segcount ) * 4;
+    }
+
+    uint16_t &jumptable( int segment ) {
+        return reinterpret_cast< uint16_t * >( memory() )[ segment ];
+    }
+
+    uint16_t &jumptable( Pointer p ) {
+        assert( owns( p ) );
+        return jumptable( p.segment );
+    }
+
+    MemoryBits memoryflag( Pointer p ) {
+        assert( owns( p ) );
+        return MemoryBits( memory() + size_jumptable( segcount ),
+                           offset( p ) );
+    }
+
+    bool inBounds( Pointer p, int off ) {
+        p.offset += off; return dereference( p );
+    }
+
+    int offset( Pointer p ) {
+        assert( owns( p ) );
+        return int( jumptable( p ) * 4 ) + p.offset;
+    }
+
+    int size( Pointer p ) {
+        assert( owns( p ) );
+        return 4 * (jumptable( p.segment + 1 ) - jumptable( p ));
+    }
+
+    StateAddress advance( StateAddress a, int ) {
+        return StateAddress( a, 0, size_heap( segcount, size() ) );
+    }
+    int end() { return 0; }
+
+    bool owns( Pointer p ) {
+        return p.heap && p.segment < segcount;
+    }
+
+    template< typename T = char >
+    T *dereference( Pointer p ) {
+        assert( owns( p ) );
+        if ( p.offset >= size( p ) )
+            return nullptr;
+        return reinterpret_cast< T * >(
+            memory() + size_memoryflags( size() ) + size_jumptable( segcount ) + offset( p ) );
+    }
+};
+
+struct Nursery {
+    std::vector< int > offsets;
+    std::vector< char > memory;
+    std::vector< uint8_t > flags;
+    int segshift;
+
+    Pointer malloc( int size ) {
+        int segment = offsets.size() - 1;
+        int start = offsets[ segment ];
+        int end = align( start + size, 4 );
+        offsets.push_back( end );
+        memory.resize( end, 0 );
+        flags.resize( size_memoryflags( end ), 0 );
+        return Pointer( true, segment + segshift, 0 );
+    }
+
+    bool owns( Pointer p ) {
+        return p.heap && p.segment >= segshift &&
+            p.segment - segshift < int( offsets.size() ) - 1;
+    }
+
+    int offset( Pointer p ) {
+        assert( owns( p ) );
+        return offsets[ p.segment - segshift ] + p.offset;
+    }
+
+    int size( Pointer p ) {
+        assert( owns( p ) );
+        return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
+    }
+
+    MemoryBits memoryflag( Pointer p ) {
+        return MemoryBits( &flags.front(), offset( p ) );
+    }
+
+    char *dereference( Pointer p ) {
+        assert( owns( p ) );
+        if ( offset( p ) >= offsets[ offsets.size() - 1 ] )
+            return nullptr;
+        assert_leq( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
+        return &memory[ offset( p ) ];
+    }
+
+    void reset( int shift ) {
+        segshift = shift;
+        memory.clear();
+        offsets.clear();
+        offsets.push_back( 0 );
+        flags.clear();
+    }
+};
+
+struct Flags : WithMemory< Flags >
+{
+    uint64_t problemcount:8;
+    uint64_t ap:44;
+    uint64_t buchi:12;
+    Problem &problems( int i ) {
+        return *( reinterpret_cast< Problem * >( this->memory() ) + i );
+    }
+
+    StateAddress advance( StateAddress a, int ) {
+        return StateAddress( a, 0, sizeof( Flags ) + problemcount * sizeof( Problem ) );
+    }
+    int end() { return 0; }
+};
+
+inline int size_jumptable( int segcount ) {
+    /* 4-align, extra item for "end of memory" */
+    return 2 * (2 + segcount - segcount % 2);
+}
+
+inline int size_memoryflags( int bytecount ) {
+    const int bitcount = bytecount * MemoryBits::bitwidth;
+    return divine::align( bitcount / 8 + ((bitcount % 8) ? 1 : 0), 4 );
+}
+
+inline int size_heap( int segcount, int bytecount ) {
+    return sizeof( Heap ) +
+        bytecount +
+        size_jumptable( segcount ) +
+        size_memoryflags( bytecount );
+}
 
 }
 
