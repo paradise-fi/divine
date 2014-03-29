@@ -82,7 +82,7 @@ struct Interpreter
     Pool &pool;
     std::shared_ptr< BitCode > bc;
     TargetData TD;
-    MachineState state; /* the state we are dealing with */
+    MachineState< void > state; /* the state we are dealing with */
     std::map< std::string, std::string > properties;
 
     bool jumped;
@@ -286,8 +286,8 @@ struct Interpreter
 
     /* ControlContext interface. */
     int stackDepth() { return state.stack().get().length(); }
-    MachineState::Frame &frame( int depth = 0 ) { return state.frame( -1, depth ); }
-    MachineState::Flags &flags() { return state.flags(); }
+    machine::Frame &frame( int depth = 0 ) { return state.frame( -1, depth ); }
+    machine::Flags &flags() { return state.flags(); }
     void problem( Problem::What p, Pointer ptr = Pointer() ) { state.problem( p, ptr ); }
     void leave() { state.leave(); }
     void enter( int fun ) { state.enter( fun ); }

@@ -108,8 +108,8 @@ struct ControlContext {
     Choice choice;
     void enter( int ) { assert_die(); }
     void leave() { assert_die(); }
-    MachineState::Frame &frame( int /*depth*/ = 0 ) { assert_die(); }
-    MachineState::Flags &flags() { assert_die(); }
+    machine::Frame &frame( int /*depth*/ = 0 ) { assert_die(); }
+    machine::Flags &flags() { assert_die(); }
     void problem( Problem::What, Pointer = Pointer() ) { assert_die(); }
     PC &pc() { assert_die(); }
     int new_thread( PC, Maybe< Pointer >, MemoryFlag ) { assert_die(); }
@@ -690,11 +690,11 @@ struct Evaluator
         if ( !isa< ::llvm::PHINode >( instruction.op ) )
             return;  // Nothing fancy to do
 
-        MachineState::Frame &original = ccontext.frame();
+        machine::Frame &original = ccontext.frame();
         int framesize = original.framesize( info );
         std::vector<char> tmp;
-        tmp.resize( sizeof( MachineState::Frame ) + framesize );
-        MachineState::Frame &copy = *reinterpret_cast< MachineState::Frame* >( &tmp[0] );
+        tmp.resize( sizeof( machine::Frame ) + framesize );
+        machine::Frame &copy = *reinterpret_cast< machine::Frame* >( &tmp[0] );
         copy = ccontext.frame();
 
         std::copy( original.memory(), original.memory() + framesize, copy.memory() );

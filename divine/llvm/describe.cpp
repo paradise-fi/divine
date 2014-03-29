@@ -47,7 +47,7 @@ struct Describe {
     std::string constdata();
 
     ::llvm::TargetData &TD() { return interpreter->TD; }
-    MachineState &state() { return interpreter->state; }
+    MachineState< void > &state() { return interpreter->state; }
     ProgramInfo &info() { return interpreter->info(); }
 
     template< typename Ptr > std::string aggregate( Type *t, Ptr where );
@@ -380,7 +380,7 @@ std::string Describe::all()
         s << "thread " << c << ":" << (fcount ? "" : " (zombie)") << std::endl;
         int i = 0;
 
-        state().eachframe( state().stack( c ), [&]( MachineState::Frame &f ) {
+        state().eachframe( state().stack( c ), [&]( machine::Frame &f ) {
                 ++ i;
                 location = "<unknown>";
                 lines.clear();
@@ -404,7 +404,7 @@ std::string Describe::all()
             } );
     }
 
-    MachineState::Flags &flags = state().flags();
+    machine::Flags &flags = state().flags();
     for ( int i = 0; i < flags.problemcount; ++i )
         s << problem( flags.problems(i) ) << std::endl;
 
@@ -442,7 +442,8 @@ std::string Describe::constdata() {
     return wibble::str::fmt( lines );
 }
 
-void MachineState::dump( std::ostream &r ) {
+template< typename HeapMeta >
+void MachineState< HeapMeta >::dump( std::ostream &r ) {
 
     /* TODO problem/flag stuff */
 
@@ -520,10 +521,12 @@ void MachineState::dump( std::ostream &r ) {
     r << "--------" << std::endl;
 }
 
-void MachineState::dump() {
+template< typename HeapMeta >
+void MachineState< HeapMeta >::dump() {
     dump( std::cerr );
 }
 
+/*
 void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
     op->dump();
     std::string fl = isa< ::llvm::Instruction >( op ) ? fileline( *cast< ::llvm::Instruction >( op ) ) : "";
@@ -545,6 +548,7 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
         std::cerr << std::endl;
     }
 }
+*/
 
 std::string Interpreter::describe( bool demangle, bool detailed ) {
     return Describe( this, demangle, detailed ).all();

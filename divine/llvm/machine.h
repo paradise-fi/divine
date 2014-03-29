@@ -11,7 +11,7 @@
 namespace divine {
 namespace llvm {
 
-struct Canonic;
+template< typename HeapMeta > struct Canonic;
 
 struct Problem {
     enum What {
@@ -78,8 +78,19 @@ Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
     return Problem::NoProblem;
 }
 
-struct MachineState
-{
+namespace machine {
+    inline int size_jumptable( int segcount );
+    inline int size_memoryflags( int bytecount );
+    inline int size_heap( int segcount, int bytecount );
+
+    template< typename F >
+    struct WithMemory {
+        uint8_t *memory() {
+            return reinterpret_cast< uint8_t * >( this ) +
+                ( std::is_empty< F >::value ? 0 : sizeof( F ) );
+        }
+    };
+
     struct StateAddress : lens::LinearAddress
     {
         ProgramInfo *_info;
@@ -97,14 +108,6 @@ struct MachineState
         StateAddress copy( StateAddress to, int size ) {
             std::copy( dereference(), dereference() + size, to.dereference() );
             return StateAddress( pool, _info, to.b, to.offset + size );
-        }
-    };
-
-    template< typename F >
-    struct WithMemory {
-        uint8_t *memory() {
-            return reinterpret_cast< uint8_t * >( this ) +
-                ( std::is_empty< F >::value ? 0 : sizeof( F ) );
         }
     };
 
@@ -179,23 +182,6 @@ struct MachineState
                 memory() + i.globalPointerOffset( p ) );
         }
     };
-
-    static int size_jumptable( int segcount ) {
-        /* 4-align, extra item for "end of memory" */
-        return 2 * (2 + segcount - segcount % 2);
-    }
-
-    static int size_memoryflags( int bytecount ) {
-        const int bitcount = bytecount * MemoryBits::bitwidth;
-        return divine::align( bitcount / 8 + ((bitcount % 8) ? 1 : 0), 4 );
-    }
-
-    static int size_heap( int segcount, int bytecount ) {
-        return sizeof( Heap ) +
-            bytecount +
-            size_jumptable( segcount ) +
-            size_memoryflags( bytecount );
-    }
 
     struct Heap : WithMemory< Heap > {
         int segcount;
@@ -304,6 +290,51 @@ struct MachineState
         }
     };
 
+    struct Flags : WithMemory< Flags >
+    {
+        uint64_t problemcount:8;
+        uint64_t ap:44;
+        uint64_t buchi:12;
+        Problem &problems( int i ) {
+            return *( reinterpret_cast< Problem * >( this->memory() ) + i );
+        }
+
+        StateAddress advance( StateAddress a, int ) {
+            return StateAddress( a, 0, sizeof( Flags ) + problemcount * sizeof( Problem ) );
+        }
+        int end() { return 0; }
+    };
+
+    inline int size_jumptable( int segcount ) {
+        /* 4-align, extra item for "end of memory" */
+        return 2 * (2 + segcount - segcount % 2);
+    }
+
+    inline int size_memoryflags( int bytecount ) {
+        const int bitcount = bytecount * MemoryBits::bitwidth;
+        return divine::align( bitcount / 8 + ((bitcount % 8) ? 1 : 0), 4 );
+    }
+
+    inline int size_heap( int segcount, int bytecount ) {
+        return sizeof( Heap ) +
+            bytecount +
+            size_jumptable( segcount ) +
+            size_memoryflags( bytecount );
+    }
+
+}
+
+
+template< typename HeapMeta >
+struct MachineState
+{
+    using Frame = machine::Frame;
+    using Nursery = machine::Nursery;
+    using StateAddress = machine::StateAddress;
+    using Flags = machine::Flags;
+    using Globals = machine::Globals;
+    using Heap = machine::Heap;
+
     Blob _blob;
     /* those stacks experienced an entry and fit in _blob no more */
     std::vector< std::pair< bool, Blob > > _stack;
@@ -320,21 +351,6 @@ struct MachineState
 
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
-
-    struct Flags : WithMemory< Flags >
-    {
-        uint64_t problemcount:8;
-        uint64_t ap:44;
-        uint64_t buchi:12;
-        Problem &problems( int i ) {
-            return *( reinterpret_cast< Problem * >( memory() ) + i );
-        }
-
-        StateAddress advance( StateAddress a, int ) {
-            return StateAddress( a, 0, sizeof( Flags ) + problemcount * sizeof( Problem ) );
-        }
-        int end() { return 0; }
-    };
 
     typedef lens::Array< Frame > Stack;
     typedef lens::Array< Stack > Threads;
@@ -367,8 +383,8 @@ struct MachineState
     }
 
     bool isPrivate( int tid, Pointer p );
-    bool isPrivate( Pointer p, Frame &, Canonic & );
-    bool isPrivate( Pointer p, Pointer, Canonic & );
+    bool isPrivate( Pointer p, Frame &, Canonic< HeapMeta > & );
+    bool isPrivate( Pointer p, Pointer, Canonic< HeapMeta > & );
 
     Lens< State > state() {
         return Lens< State >( StateAddress( &_pool, &_info, _blob, _slack ) );
@@ -581,7 +597,7 @@ struct MachineState
         int idx = 0;
         auto address = s.sub( 0 ).address();
         while ( idx < s.get().length() ) {
-            Frame &fr = address.as< Frame >();
+            Frame &fr = address.template as< Frame >();
             f( fr );
             address = fr.advance( address, 0 );
             ++ idx;
@@ -598,10 +614,10 @@ struct MachineState
     }
 
 
-    void trace( Pointer p, Canonic &canonic );
-    void trace( Frame &f, Canonic &canonic );
-    void snapshot( Pointer &edit, Pointer original, Canonic &canonic, Heap &heap );
-    void snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address );
+    void trace( Pointer p, Canonic< HeapMeta > &canonic );
+    void trace( Frame &f, Canonic< HeapMeta > &canonic );
+    void snapshot( Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap );
+    void snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
     void rewind( Blob, int thread = 0 );
     void problem( Problem::What, Pointer p = Pointer() );
@@ -610,7 +626,7 @@ struct MachineState
         return sizeof( Flags ) +
                sizeof( Problem ) * problems +
                sizeof( int ) + /* thread count */
-               stack + size_heap( heapsegs, heapbytes ) + Globals::size( _info );
+               stack + machine::size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }
 
     MachineState( ProgramInfo &i, Pool &pool, int slack )
@@ -627,7 +643,7 @@ struct MachineState
 
 struct FrameContext {
     ProgramInfo &info;
-    MachineState::Frame &frame;
+    machine::Frame &frame;
 
     template< typename X > MemoryBits memoryflag( X x ) { return frame.memoryflag( info, x ); }
     template< typename X > char *dereference( X x ) { return frame.dereference( info, x ); }
@@ -636,7 +652,7 @@ struct FrameContext {
         return dereference( x );
     }
 
-    FrameContext( ProgramInfo &i, MachineState::Frame &f )
+    FrameContext( ProgramInfo &i, machine::Frame &f )
         : info( i ), frame( f )
     {}
 };

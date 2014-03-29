@@ -5,7 +5,8 @@
 
 using namespace divine::llvm;
 
-void MachineState::rewind( Blob to, int thread )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::rewind( Blob to, int thread )
 {
     _pool.free( _blob );
     _blob = _pool.allocate( _pool.size( to ) );
@@ -25,7 +26,8 @@ void MachineState::rewind( Blob to, int thread )
 
 }
 
-void MachineState::switch_thread( int thread )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::switch_thread( int thread )
 {
     _thread = thread;
     if ( stack().get().length() )
@@ -34,7 +36,8 @@ void MachineState::switch_thread( int thread )
         _frame = nullptr;
 }
 
-int MachineState::new_thread()
+template< typename HeapMeta >
+int MachineState< HeapMeta >::new_thread()
 {
     detach_stack( _thread_count, 0 );
     _thread = _thread_count ++;
@@ -42,7 +45,8 @@ int MachineState::new_thread()
     return _thread;
 }
 
-int MachineState::pointerSize( Pointer p )
+template< typename HeapMeta >
+int MachineState< HeapMeta >::pointerSize( Pointer p )
 {
     if ( !validate( p ) )
         return 0;
@@ -59,15 +63,16 @@ int MachineState::pointerSize( Pointer p )
         return nursery.size( p );
 }
 
+template< typename HeapMeta >
 struct divine::llvm::Canonic
 {
-    MachineState &ms;
+    MachineState< HeapMeta > &ms;
     std::map< int, int > segmap;
     int allocated, segcount;
     int stack;
     int boundary, segdone;
 
-    Canonic( MachineState &ms )
+    Canonic( MachineState< HeapMeta > &ms )
         : ms( ms ), allocated( 0 ), segcount( 0 ), stack( 0 ), boundary( 0 ), segdone( 0 )
     {}
 
@@ -87,7 +92,8 @@ struct divine::llvm::Canonic
     }
 };
 
-void MachineState::trace( Pointer p, Canonic &canonic )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::trace( Pointer p, Canonic< HeapMeta > &canonic )
 {
     if ( p.heap && !freed.count( p.segment ) && !canonic.seen( p ) ) {
         int size = pointerSize( p );
@@ -100,7 +106,7 @@ void MachineState::trace( Pointer p, Canonic &canonic )
 }
 
 template< typename Fun >
-void forPointers( MachineState::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
+void forPointers( machine::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 {
     if ( f.memoryflag( i, v ).get() == MemoryFlag::HeapPointer )
         fun( v, *f.dereference< Pointer >( i, v ) );
@@ -113,7 +119,8 @@ void forPointers( MachineState::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 */
 }
 
-void MachineState::trace( Frame &f, Canonic &canonic )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::trace( Frame &f, Canonic< HeapMeta > &canonic )
 {
     auto vals = _info.function( f.pc ).values;
     for ( auto val : vals )
@@ -123,7 +130,8 @@ void MachineState::trace( Frame &f, Canonic &canonic )
     canonic.stack += sizeof( f ) + f.framesize( _info );
 }
 
-void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, Heap &heap )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::snapshot( Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap )
 {
     if ( !original.heap ) { /* non-heap pointers are always canonic */
         edit = original;
@@ -169,7 +177,8 @@ void MachineState::snapshot( Pointer &edit, Pointer original, Canonic &canonic, 
     }
 }
 
-void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddress &address )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address )
 {
     auto vals = _info.function( f.pc ).values;
     Frame &target = address.as< Frame >();
@@ -189,9 +198,10 @@ void MachineState::snapshot( Frame &f, Canonic &canonic, Heap &heap, StateAddres
     assert_eq( (address.offset - _slack) % 4, 0 );
 }
 
-divine::Blob MachineState::snapshot()
+template< typename HeapMeta >
+divine::Blob MachineState< HeapMeta >::snapshot()
 {
-    Canonic canonic( *this );
+    Canonic< HeapMeta > canonic( *this );
     int dead_threads = 0;
 
     /* TODO inefficient, split globals into globals and constants */
@@ -255,8 +265,8 @@ divine::Blob MachineState::snapshot()
     _heap->segcount = canonic.segcount;
     /* heap needs to know its size in order to correctly dereference! */
     _heap->jumptable( canonic.segcount ) = canonic.allocated / 4;
-    address.advance( size_heap( canonic.segcount, canonic.allocated ) );
-    assert_eq( size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
+    address.advance( machine::size_heap( canonic.segcount, canonic.allocated ) );
+    assert_eq( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
@@ -295,7 +305,8 @@ divine::Blob MachineState::snapshot()
 }
 
 
-void MachineState::problem( Problem::What w, Pointer ptr )
+template< typename HeapMeta >
+void MachineState< HeapMeta >::problem( Problem::What w, Pointer ptr )
 {
     Problem p;
     p.what = w;
@@ -306,7 +317,8 @@ void MachineState::problem( Problem::What w, Pointer ptr )
     problems.push_back( p );
 }
 
-bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
+template< typename HeapMeta >
+bool MachineState< HeapMeta >::isPrivate( Pointer needle, Pointer p, Canonic< HeapMeta > &canonic )
 {
     if ( p.heap && needle.segment == p.segment )
         return false;
@@ -328,7 +340,8 @@ bool MachineState::isPrivate( Pointer needle, Pointer p, Canonic &canonic )
     return true;
 }
 
-bool MachineState::isPrivate( Pointer needle, Frame &f, Canonic &canonic )
+template< typename HeapMeta >
+bool MachineState< HeapMeta >::isPrivate( Pointer needle, Frame &f, Canonic< HeapMeta > &canonic )
 {
     bool result = true;
 
@@ -343,14 +356,15 @@ bool MachineState::isPrivate( Pointer needle, Frame &f, Canonic &canonic )
     return result;
 }
 
-bool MachineState::isPrivate( int tid, Pointer needle )
+template< typename HeapMeta >
+bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
 {
     if ( !needle.heap ) /* globals are never private */
         return _thread_count <= 1;
 
     bool found = false;
 
-    Canonic canonic( *this );
+    Canonic< HeapMeta > canonic( *this );
 
     for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
         ProgramInfo::Value v = _info.globals[i];
@@ -379,4 +393,13 @@ bool MachineState::isPrivate( int tid, Pointer needle )
     }
 
     return true; /* not found */
+}
+
+namespace divine {
+namespace llvm {
+
+/* explicit instances */
+template struct MachineState< void >;
+
+}
 }
