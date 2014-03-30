@@ -270,9 +270,9 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     address.advance( machine::size_heap( canonic.segcount, canonic.allocated ) );
     assert_eq( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
-    auto &hm = address.as< HeapMeta >();
-    hm.setSize( canonic.segcount );
-    address = hm.advance( address, 0 );
+    auto &heapmeta = address.as< HeapMeta >();
+    heapmeta.setSize( canonic.segcount );
+    address = heapmeta.advance( address, 0 );
 
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
@@ -302,7 +302,13 @@ divine::Blob MachineState< HeapMeta >::snapshot()
             snapshot( p, p, canonic, *_heap );
     }
 
-    /* TODO copy HeapMeta */
+    auto &nursery_hm = _pool.get< HeapMeta >( _heapmeta ),
+          &mature_hm = state().get( HeapMeta() );
+    for ( auto &transl : canonic.segmap ) {
+        bool nursed = transl.first >= nursery.segshift;
+        heapmeta.copyFrom( nursed ? nursery_hm : mature_hm,
+                           transl.first - (nursed ? nursery.segshift : 0), transl.second );
+    }
 
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
