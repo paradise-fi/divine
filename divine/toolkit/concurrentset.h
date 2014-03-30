@@ -49,7 +49,42 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         ThreadData() : inserts( 0 ), currentRow( 0 ) {}
     };
 
-    using Row = std::vector< Cell >;
+    struct Row {
+        std::atomic< Cell * > _data;
+        size_t _size;
+
+        size_t size() const { return _size; }
+        bool empty() const { return _size == 0; }
+
+        void resize( size_t n ) {
+            Cell *old = _data.exchange( new Cell[ n ] );
+            _size = n;
+            if ( old )
+                delete[] old;
+        }
+
+        void free() {
+            Cell *old = _data.exchange( nullptr );
+            _size = 0;
+            if ( old )
+                delete[] old;
+        }
+
+        Cell &operator[]( size_t i ) {
+            return _data.load( std::memory_order_relaxed )[ i ];
+        }
+
+        Cell *begin() {
+            return _data.load( std::memory_order_relaxed );
+        }
+
+        Cell *end() {
+            return begin() + size();
+        }
+
+        Row() : _data( nullptr ), _size( 0 ) {}
+        ~Row() { free(); }
+    };
 
     static const unsigned segmentSize = 1 << 16;// 2^16 = 65536
     static const unsigned syncPoint = 1 << 10;// 2^10 = 1024
