@@ -122,7 +122,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         size_t size() { return current().size(); }
         Row &current() { return _d.table[ _d.currentRow ]; }
         Row &current( unsigned index ) { return _d.table[ index ]; }
-        bool changed( unsigned row ) { return row < _d.currentRow; }
+        bool changed( unsigned row ) { return row < _d.currentRow || _d.growing; }
 
         iterator insert( value_type x ) {
             return insertHinted( x, _d.hasher.hash( x ).first );
@@ -186,7 +186,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         template< typename T >
         Find findCell( T v, hash64_t h, unsigned rowIndex )
         {
-            helpWithRehashing();
             if ( changed( rowIndex ) )
                 return Find( Resolution::Growing );
 
@@ -219,7 +218,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 // usage is never greater than size
                 if ( ( s >> 2 ) >= s - u )
                     return Insert( Resolution::NoSpace );
-                helpWithRehashing();
                 if ( changed( _td.currentRow ) )
                     return Insert( Resolution::Growing );
             }
