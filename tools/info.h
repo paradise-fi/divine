@@ -16,11 +16,11 @@ struct InfoBase {
 template< typename Setup >
 struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, virtual InfoBase, Sequential
 {
-    typename Setup::Graph g;
+    typename Setup::Graph *g;
 
     void run() {
         std::cout << "Available properties:" << std::endl;
-        g.properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
+        g->properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
                 std::cout << " * " << name << ": " << descr << std::endl;
             } );
         auto cap = compactCapabilities();
@@ -32,7 +32,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
 
     virtual void propertyInfo( graph::PropertySet s, Meta &m ) {
         int count = 0;
-        g.properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
+        g->properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
                 if ( s.count( name ) ) {
                     m.input.propertyDetails += (count ? " && " : "") + des;
                     ++ count;
@@ -46,7 +46,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
-        return g.useReductions( rs );
+        return g->useReductions( rs );
     }
 
     template< typename T >
@@ -56,7 +56,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     auto _capa( wibble::Preferred ) ->
         decltype( typename Gen::IsExplicit(), std::tuple< bool, std::string >() )
     {
-        return std::make_tuple( true, to_string( g.base().capabilities() ) );
+        return std::make_tuple( true, to_string( g->base().capabilities() ) );
     }
 
     template< typename Gen >
@@ -71,7 +71,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     Info( Meta m ) : Algorithm( m ) {
-        g.read( m.input.model, m.input.definitions );
+        g = this->initGraph( *this );
     }
 };
 
