@@ -99,10 +99,11 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         std::atomic< unsigned > doneSegments;
         std::atomic< size_t > used;
         std::atomic< bool > growing;
+        std::atomic< bool > firstAccess;
 
         Data( const Hasher &h, unsigned maxGrows )
             : hasher( h ), table( maxGrows ), tableWorkers( maxGrows ), currentRow( 1 ),
-              availableSegments( 0 ), used( 0 ), growing( false )
+              availableSegments( 0 ), used( 0 ), growing( false ), firstAccess( false )
         {}
     };
 
@@ -340,19 +341,26 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             if ( !_d.tableWorkers[ index ] )
                 return;
             // only last thread releases memory
-            if ( !--_d.tableWorkers[ index ] ) {
-                _d.table[ index ] = Row();
-            }
+            if ( !--_d.tableWorkers[ index ] )
+                _d.table[ index ].free();
         }
 
         void acquireRow( unsigned &index ) {
+            unsigned short refCount	= _d.tableWorkers[ index ];
+
             do {
-                ++_d.tableWorkers[ index ];
-                if ( index == _d.currentRow )
+                if ( !refCount ) {
+                    index = _d.currentRow;
+                    // only first access is allowed to pass through this guard
+                    if ( index > 1 || _d.firstAccess.exchange( true ) ) {
+                        refCount = _d.tableWorkers[ index ];
+                        continue;
+                    }
+                }
+
+                if (_d.tableWorkers[ index ].compare_exchange_weak( refCount, refCount + 1 ))
                     break;
-                releaseRow( index );
-                index = _d.currentRow; // fetch new index
-            } while ( true );
+            } while( true );
         }
 
         void increaseUsage() {
