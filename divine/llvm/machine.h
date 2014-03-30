@@ -298,11 +298,14 @@ struct NoHeapMeta {
     void newObject( int id ) {}
     StateAddress advance( StateAddress a, int ) { return a; }
     int end() { return 0; }
+    static int size( int ) { return 0; }
 };
 
 /* Track heap object IDs (but nothing else). */
 struct HeapIDs : WithMemory< HeapIDs > {
     int count;
+
+    static int size( int cnt ) { return sizeof( HeapIDs ) + cnt * sizeof( int ); }
 
     StateAddress advance( StateAddress a, int ) {
         return StateAddress( a, 0, sizeof( HeapIDs ) + count * sizeof( int ) );
@@ -660,6 +663,7 @@ struct MachineState
     int size( int stack, int heapbytes, int heapsegs, int problems ) {
         return sizeof( Flags ) +
                sizeof( Problem ) * problems +
+               HeapMeta::size( heapsegs ) +
                sizeof( int ) + /* thread count */
                stack + machine::size_heap( heapsegs, heapbytes ) + Globals::size( _info );
     }
