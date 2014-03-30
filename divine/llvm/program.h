@@ -357,7 +357,7 @@ struct GlobalContext {
 
     MemoryFlag _const_flag;
 
-    Pointer malloc( int ) { assert_die(); }
+    Pointer malloc( int, int ) { assert_die(); }
     bool free( Pointer ) { assert_die(); }
     int pointerSize( Pointer ) { assert_die(); }
 

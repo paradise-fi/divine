@@ -176,6 +176,10 @@ struct Evaluator
     template< typename... X >
     static Unit declcheck( X... ) { return Unit(); }
 
+    int pointerId() {
+        return 0; // TODO
+    }
+
     /******** Arithmetic & comparisons *******/
 
     struct BinaryOperator : Implementation {
@@ -580,7 +584,7 @@ struct Evaluator
         unsigned alloc = std::max( 1, count * size );
         Pointer &p = *reinterpret_cast< Pointer * >(
             dereference( instruction.result() ) );
-        p = econtext.malloc( alloc );
+        p = econtext.malloc( alloc, pointerId() );
         econtext.memoryflag( instruction.result() ).set( MemoryFlag::HeapPointer );
     }
 
@@ -821,7 +825,7 @@ struct Evaluator
 
         /* Well, this is not very pretty. */
         int psize = info.TD.getPointerSize();
-        Pointer r = econtext.malloc( 8 + psize + (4 + psize) * lp.items.size() );
+        Pointer r = econtext.malloc( 8 + psize + (4 + psize) * lp.items.size(), 0 );
 
         auto c = econtext.dereference( r );
         *reinterpret_cast< int32_t * >( c ) = lp.cleanup; c += 4;
@@ -903,7 +907,7 @@ struct Evaluator
                 }
                 case BuiltinMalloc: {
                     int size = withValues( Get< int >(), instruction.operand( 0 ) );
-                    Pointer result = size ? econtext.malloc( size ) : Pointer();
+                    Pointer result = size ? econtext.malloc( size, pointerId() ) : Pointer();
                     withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
                     return;
                 }
@@ -965,7 +969,7 @@ struct Evaluator
             int size = 0;
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += instruction.operand( i ).width;
-            Pointer vaptr = size ? econtext.malloc( size ) : Pointer();
+            Pointer vaptr = size ? econtext.malloc( size, 0 ) : Pointer();
             withValues( Set< Pointer >( vaptr, MemoryFlag::HeapPointer ),
                         function.values[ function.argcount ] );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i ) {

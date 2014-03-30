@@ -291,6 +291,35 @@ struct Nursery {
     }
 };
 
+/* Doesn't store any heap metadata. */
+struct NoHeapMeta {
+    void setSize( int ) {}
+    void copyFrom( NoHeapMeta &, int fromid, int toid ) {}
+    void newObject( int id ) {}
+    StateAddress advance( StateAddress a, int ) { return a; }
+    int end() { return 0; }
+};
+
+/* Track heap object IDs (but nothing else). */
+struct HeapIDs : WithMemory< HeapIDs > {
+    int count;
+
+    StateAddress advance( StateAddress a, int ) {
+        return StateAddress( a, 0, sizeof( HeapIDs ) + count * sizeof( int ) );
+    }
+    int end() { return 0; }
+
+    int &idAt( int idx ) {
+        return *reinterpret_cast< int * >( memory() );
+    }
+
+    void setSize( int c ) { count = c; }
+    void newObject( int id ) { idAt( count++ ) = id; }
+    void copyFrom( HeapIDs &from, int fromid, int toid ) {
+        idAt( toid ) = from.idAt( fromid );
+    }
+};
+
 struct Flags : WithMemory< Flags >
 {
     uint64_t problemcount:8;
@@ -326,7 +355,7 @@ inline int size_heap( int segcount, int bytecount ) {
 }
 
 
-template< typename HeapMeta = wibble::Unit >
+template< typename HeapMeta = machine::NoHeapMeta >
 struct MachineState
 {
     using Frame = machine::Frame;
@@ -340,6 +369,7 @@ struct MachineState
     /* those stacks experienced an entry and fit in _blob no more */
     std::vector< std::pair< bool, Blob > > _stack;
     Nursery nursery;
+    Blob _heapmeta; /* for objects in nursery */
     std::set< int > freed;
     std::vector< Problem > problems;
 
@@ -373,7 +403,11 @@ struct MachineState
                 ( heap().owns( p ) || nursery.owns( p ) ) ) );
     }
 
-    Pointer malloc( int size ) { return nursery.malloc( size ); }
+    Pointer malloc( int size, int id ) {
+        _pool.get< HeapMeta >( _heapmeta ).newObject( id );
+        return nursery.malloc( size );
+    }
+
     bool free( Pointer p ) {
         if ( p.null() )
             return true; /* nothing to do */
@@ -636,6 +670,7 @@ struct MachineState
         _thread_count = 0;
         _frame = nullptr;
         nursery.reset( 0 ); /* nothing in the heap */
+        _heapmeta = _pool.allocate( 4096 );
     }
 
     void dump( std::ostream & );

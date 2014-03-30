@@ -278,7 +278,7 @@ struct Interpreter
     char *dereference( ValueRef v ) { return state.dereference( v ); }
     char *dereference( Pointer p ) { return state.dereference( p ); }
     int pointerSize( Pointer p ) { return state.pointerSize( p ); }
-    Pointer malloc( int size ) { return state.malloc( size ); }
+    Pointer malloc( int size, int id ) { return state.malloc( size, id ); }
     bool free( Pointer p ) { return state.free( p ); }
 
     template< typename X > MemoryBits memoryflag( X p ) { return state.memoryflag( p ); }

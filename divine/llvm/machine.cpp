@@ -131,7 +131,8 @@ void MachineState< HeapMeta >::trace( Frame &f, Canonic< HeapMeta > &canonic )
 }
 
 template< typename HeapMeta >
-void MachineState< HeapMeta >::snapshot( Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap )
+void MachineState< HeapMeta >::snapshot(
+    Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap )
 {
     if ( !original.heap ) { /* non-heap pointers are always canonic */
         edit = original;
@@ -178,7 +179,8 @@ void MachineState< HeapMeta >::snapshot( Pointer &edit, Pointer original, Canoni
 }
 
 template< typename HeapMeta >
-void MachineState< HeapMeta >::snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address )
+void MachineState< HeapMeta >::snapshot(
+    Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address )
 {
     auto vals = _info.function( f.pc ).values;
     Frame &target = address.as< Frame >();
@@ -268,6 +270,10 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     address.advance( machine::size_heap( canonic.segcount, canonic.allocated ) );
     assert_eq( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
+    auto &hm = address.as< HeapMeta >();
+    hm.setSize( canonic.segcount );
+    address = hm.advance( address, 0 );
+
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
 
@@ -295,6 +301,8 @@ divine::Blob MachineState< HeapMeta >::snapshot()
         if ( !p.null() )
             snapshot( p, p, canonic, *_heap );
     }
+
+    /* TODO copy HeapMeta */
 
     assert_eq( canonic.segdone, canonic.segcount );
     assert_eq( canonic.boundary, canonic.allocated );
@@ -400,6 +408,7 @@ namespace llvm {
 
 /* explicit instances */
 template struct MachineState<>;
+template struct MachineState< machine::HeapIDs >;
 
 }
 }
